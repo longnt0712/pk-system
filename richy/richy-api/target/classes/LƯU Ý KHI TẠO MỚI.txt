@@ -1,0 +1,7 @@
+tạo liên kết giữa student và person
+
+ALTER TABLE tbl_student
+ADD CONSTRAINT FK_student_person
+FOREIGN KEY (id)
+REFERENCES tbl_person(id)
+ON DELETE CASCADE;

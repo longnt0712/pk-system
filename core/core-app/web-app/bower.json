@@ -1,0 +1,13 @@
+{
+  "name": "Core",
+  "version": "1.0.0",
+  "author": [
+    "Nguyen Tuan Anh"
+  ],
+  "description": "",
+  "devDependencies": {
+  },
+  "analytics": false,
+  "dependencies": {
+  }
+}

@@ -1,0 +1,390 @@
+<div class="page-sidebar navbar-collapse collapse">
+    <!-- BEGIN SIDEBAR MENU -->
+    <!-- DOC: Apply "page-sidebar-menu-light" class right after "page-sidebar-menu" to enable light sidebar menu style(without borders) -->
+    <!-- DOC: Apply "page-sidebar-menu-hover-submenu" class right after "page-sidebar-menu" to enable hoverable(hover vs accordion) sub menu mode -->
+    <!-- DOC: Apply "page-sidebar-menu-closed" class right after "page-sidebar-menu" to collapse("page-sidebar-closed" class must be applied to the body element) the sidebar sub menu mode -->
+    <!-- DOC: Set data-auto-scroll="false" to disable the sidebar from auto scrolling/focusing -->
+    <!-- DOC: Set data-keep-expand="true" to keep the submenues expanded -->
+    <!-- DOC: Set data-auto-speed="200" to adjust the sub menu slide up/down speed -->
+    <ul class="page-sidebar-menu" data-keep-expanded="false" data-auto-scroll="true" data-slide-speed="200" ng-class="{'page-sidebar-menu-closed': settings.layout.pageSidebarClosed}">
+        <!-- DOC: To remove the search box from the sidebar you just need to completely remove the below "sidebar-search-wrapper" LI element -->
+        <div class="sidebar-header"></div>
+        <li class="start nav-item margin-top-10">
+            <a href="#/dashboard">
+                <i class="icon-screen-desktop"></i>
+                <span class="title">Trang chủ</span>
+            </a>
+        </li>
+        <li class="heading">
+            <h3 class="uppercase"> Sinh viên</h3>
+        </li>
+        <li class="nav-item">
+            <a href="#/student/enrollment">
+                <i class="fa fa-opencart"></i>
+                <span class="title">Đăng ký học</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="#/student/mark_lookup">
+                <i class="fa fa-binoculars"></i>
+                <span class="title">Tra cứu điểm thi</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="#/student/profile">
+                <i class="fa fa-mortar-board"></i>
+                <span class="title">Hồ sơ sinh viên</span>
+            </a>
+        </li>
+        <li class="heading" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_EDUCATION_MANAGERMENT', 'ROLE_STUDENT_MANAGERMENT', 'ROLE_EXAM_MANAGERMENT', 'ROLE_FINANCIAL_MANAGERMENT'])">
+            <h3 class="uppercase">Đào tạo</h3>
+        </li>
+        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_EDUCATION_MANAGERMENT'])">
+            <a href="javascript:;" class="nav-link nav-toggle">
+                <i class="icon-book-open"></i>
+                <span class="title">Quản lý đào tạo</span>
+                <span class="arrow"></span>
+            </a>
+            <ul class="sub-menu">
+                <li>
+                    <a href="#/course_hours/listing">
+                        <i class="fa fa-caret-right"></i> Giờ học
+                    </a>
+                </li>
+                <li>
+                    <a href="#/education_levels/listing">
+                        <i class="fa fa-caret-right"></i> Bậc đào tạo
+                    </a>
+                </li>
+                <li>
+                    <a href="#/education_types/listing">
+                        <i class="fa fa-caret-right"></i> Loại hình đào tạo
+                    </a>
+                </li>
+                <li>
+                    <a href="#/education_programs/listing">
+                        <i class="fa fa-caret-right"></i> Chương trình đào tạo
+                    </a>
+                </li>
+                <li>
+                    <a href="#/subjects/listing">
+                        <i class="fa fa-caret-right"></i> Môn học
+                    </a>
+                </li>
+                <li>
+                    <a href="#/specialties/listing">
+                        <i class="fa fa-caret-right"></i> Ngành/chuyên ngành
+                    </a>
+                </li>
+                <li>
+                    <a href="#/school_years/listing">
+                        <i class="fa fa-caret-right"></i> Năm học
+                    </a>
+                </li>
+                <li>
+                    <a href="#/course_years/listing">
+                        <i class="fa fa-caret-right"></i> Khóa học
+                    </a>
+                </li>
+                <li>
+                    <a href="#/semesters/listing">
+                        <i class="fa fa-caret-right"></i> Học kỳ
+                    </a>
+                </li>
+                <li>
+                    <a href="#/enrollment_classes/listing">
+                        <i class="fa fa-caret-right"></i> Lớp học
+                    </a>
+                </li>
+                <li>
+                    <a href="#/semester_subjects/listing">
+                        <i class="fa fa-caret-right"></i> Học phần - học kỳ
+                    </a>
+                </li>
+                <li>
+                    <a href="#/course_subjects/listing">
+                        <i class="fa fa-caret-right"></i> Lớp học phần
+                    </a>
+                </li>
+                <li>
+                    <a href="#/timetables">
+                        <i class="fa fa-caret-right"></i> Thời khóa biểu
+                    </a>
+                </li>
+                <li>
+                    <a href="#/student_coursesubjects/listing">
+                        <i class="fa fa-caret-right"></i> Thời khóa biểu s/viên
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_EDUCATION_MANAGERMENT'])">
+            <a href="javascript:;" class="nav-link nav-toggle">
+                <i class="icon-wallet"></i>
+                <span class="title">Quản lý học phí</span>
+                <span class="arrow"></span>
+            </a>
+            <ul class="sub-menu">
+                <li>
+                    <a href="#">
+                        <i class="fa fa-caret-right"></i> Thu học phí
+                    </a>
+                </li>
+                <li>
+                    <a href="#">
+                        <i class="fa fa-caret-right"></i> Báo cáo học phí
+                    </a>
+                </li>
+                <li>
+                    <a href="#">
+                        <i class="fa fa-caret-right"></i> Thời khóa biểu
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_STUDENT_MANAGERMENT'])">
+            <a href="javascript:;" class="nav-link nav-toggle">
+                <i class="fa fa-mortar-board"></i>
+                <span class="title">Quản lý sinh viên</span>
+                <span class="arrow"></span>
+            </a>
+            <ul class="sub-menu">
+                <li>
+                    <a href="#/manager_students/listing">
+                        <i class="fa fa-caret-right"></i> Danh sách sinh viên
+                    </a>
+                </li>
+                <li>
+                    <a href="#/student_research/listing">
+                        <i class="fa fa-caret-right"></i> Nghiên cứu khoa học
+                    </a>
+                </li>
+                <li>
+                    <a href="#/student_reward/listing">
+                        <i class="fa fa-caret-right"></i> Quản lý khen thưởng
+                    </a>
+                </li>
+                <li>
+                    <a href="#/student_discipline/listing">
+                        <i class="fa fa-caret-right"></i> Kỷ luật sinh viên
+                    </a>
+                </li>
+                <li>
+                    <a href="#/scholarship_funds/listing">
+                        <i class="fa fa-caret-right"></i> Quỹ học bổng
+                    </a>
+                </li>
+                <li>
+                    <a href="#/fund_types/listing">
+                        <i class="fa fa-caret-right"></i> Danh mục loại quỹ
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN', 'ROLE_EXAM_MANAGERMENT'])">
+            <a href="javascript:;" class="nav-link nav-toggle">
+                <i class="fa fa-certificate"></i>
+                <span class="title">Khảo thí/quản lý điểm</span>
+                <span class="arrow"></span>
+            </a>
+            <ul class="sub-menu">
+                <li>
+                    <a href="#/studentmarks">
+                        <i class="fa fa-caret-right"></i> Điểm sinh viên
+                    </a>
+                </li>
+                <li>
+                    <a href="#/semestersubjectexams">
+                        <i class="fa fa-caret-right"></i> Tổ chức thi
+                    </a>
+                </li>
+                <li>
+                    <a href="#/semestersubjectexamrooms">
+                        <i class="fa fa-caret-right"></i>Phòng thi
+                    </a>
+                </li>
+                <li>
+                    <a href="#/testbags/listing">
+                        <i class="fa fa-caret-right"></i>Túi bài thi
+                    </a>
+                </li>
+                <li>
+                    <a href="#/studentmarkexamrooms">
+                        <i class="fa fa-caret-right"></i>Điểm theo phòng thi
+                    </a>
+                </li>
+                <li>
+                    <a href="#/studentsubjectmarks">
+                        <i class="fa fa-caret-right"></i>Điểm tổng kết học kỳ
+                    </a>
+                </li>
+                <li>
+                    <a href="#/studentsubjectmarks">
+                        <i class="fa fa-caret-right"></i>Điểm tổng kết học kỳ
+                    </a>
+                </li>                
+            </ul>
+        </li>
+        <li class="heading" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN'])">
+            <h3 class="uppercase">Nhân sự</h3>
+        </li>
+        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN'])">
+            <a href="javascript:;" class="nav-link nav-toggle">
+                <i class="fa fa-briefcase"></i>
+                <span class="title">Quản lý nhân sự</span>
+                <span class="arrow"></span>
+            </a>
+            <ul class="sub-menu">
+                <li>
+                    <a href="#" class="small">
+                        <i class="fa fa-caret-right"></i> Thông tin nhân sự
+                    </a>
+                </li>
+                <li>
+                    <a href="#">
+                        <i class="fa fa-caret-right"></i> Chức vụ
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <li class="heading" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN'])">
+            <h3 class="uppercase">Cơ sở vật chất</h3>
+        </li>
+        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN'])">
+            <a href="javascript:;" class="nav-link nav-toggle">
+                <i class="fa fa-building-o"></i>
+                <span class="title">Quản lý cơ sở v/chất</span>
+                <span class="arrow"></span>
+            </a>
+            <ul class="sub-menu">
+                <li>
+                    <a href="#" class="small">
+                        <i class="fa fa-caret-right"></i> [blank]
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <li class="heading" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN'])">
+            <h3 class="uppercase">Hệ thống</h3>
+        </li>
+        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN'])">
+            <a href="javascript:;" class="nav-link nav-toggle">
+                <i class="icon-people"></i>
+                <span class="title">Quản lý người dùng</span>
+                <span class="arrow"></span>
+            </a>
+            <ul class="sub-menu">
+                <li>
+                    <a href="#/user/groups" class="small">
+                        <i class="fa fa-caret-right"></i> Nhóm người dùng
+                    </a>
+                </li>
+                <li>
+                    <a href="#/user/accounts" class="small">
+                        <i class="fa fa-caret-right"></i> Tài khoản người dùng
+                    </a>
+                </li>
+                <li>
+                    <a href="#/user/roles" class="small">
+                        <i class="fa fa-caret-right"></i> Phân quyền
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN'])">
+            <a href="#">
+                <i class="icon-settings"></i> Cấu hình hệ thống
+            </a>
+        </li>
+        <li class="nav-item" ng-if="hasAnyRoles(currentUser, ['ROLE_ADMIN'])">
+            <a href="javascript:;" class="nav-link nav-toggle">
+                <i class="icon-grid"></i>
+                <span class="title">Quản lý danh mục</span>
+                <span class="arrow"></span>
+            </a>
+            <ul class="sub-menu">
+                <li>
+                    <a href="#/department/listing">
+                        <i class="fa fa-caret-right"></i> Phòng ban
+                    </a>
+                </li>
+                <li>
+                    <a href="#/location/listing">
+                        <i class="fa fa-caret-right"></i> Vị trí khu vực
+                    </a>
+                </li>
+                <li>
+                    <a href="#/building/listing">
+                        <i class="fa fa-caret-right"></i> Tòa/dãy nhà
+                    </a>
+                </li>
+                <li>
+                    <a href="#/room/listing">
+                        <i class="fa fa-caret-right"></i> Phòng học
+                    </a>
+                </li>
+                <li>
+                    <a href="#/country/listing">
+                        <i class="fa fa-caret-right"></i> Quốc gia
+                    </a>
+                </li>
+                <li>
+                    <a href="#">
+                        <i class="fa fa-caret-right"></i> Tổ chức
+                    </a>
+                </li>
+                <li>
+                    <a href="#/religion/listing">
+                        <i class="fa fa-caret-right"></i> Tôn giáo
+                    </a>
+                </li>
+                <li>
+                    <a href="#/profession/listing">
+                        <i class="fa fa-caret-right"></i> Nghề nghiệp
+                    </a>
+                </li>
+                <li>
+                    <a href="#/ethnic/listing">
+                        <i class="fa fa-caret-right"></i> Dân tộc
+                    </a>
+                </li>
+                <li>
+                    <a href="#">
+                        <i class="fa fa-caret-right"></i> Đơn vị hành chính
+                    </a>
+                </li>
+                <li>
+                    <a href="#/reward/listing">
+                        <i class="fa fa-caret-right"></i> Khen thưởng
+                    </a>
+                </li>
+                <li>
+                    <a href="#/discipline/listing">
+                        <i class="fa fa-caret-right"></i> Kỷ luật
+                    </a>
+                </li>
+                <li>
+                    <a href="#/student_status/listing">
+                        <i class="fa fa-caret-right"></i> Tình trạng sinh viên
+                    </a>
+                </li>
+                <li>
+                    <a href="#/degree_student/listing">
+                        <i class="fa fa-caret-right"></i> Xếp loại sinh viên
+                    </a>
+                </li>
+                <li>
+                    <a href="#/exam_type/listing">
+                        <i class="fa fa-caret-right"></i> Loại kỳ thi
+                    </a>
+                </li>
+                <li>
+                    <a href="#/mark_type/listing">
+                        <i class="fa fa-caret-right"></i> Loại điểm
+                    </a>
+                </li>
+            </ul>
+        </li>
+    </ul>
+    <!-- END SIDEBAR MENU -->
+</div>

@@ -1,0 +1,10 @@
+com\globits\richy\listeners\ApplicationStartupListener.class
+com\globits\richy\config\ApplicationConfig.class
+com\globits\richy\config\MethodSecurityConfig.class
+com\globits\richy\config\DatabaseConfig.class
+com\globits\richy\RichyApplication.class
+com\globits\richy\config\OAuth2ResourceServerConfig.class
+com\globits\richy\config\WebConfig.class
+com\globits\richy\config\OAuth2AuthorizationServerConfig.class
+com\globits\richy\config\WebInit.class
+com\globits\richy\config\WebSecurityConfig.class
