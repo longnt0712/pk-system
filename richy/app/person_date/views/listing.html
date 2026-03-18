@@ -1,0 +1,1204 @@
+<!-- END PAGE HEADER-->
+<!-- BEGIN MAIN CONTENT -->
+<div class="row margin-top-10">
+    <div class="col-md-12">
+    
+        <div class="portlet light bordered">
+            <div class="portlet-body">
+                <div class="row">
+                    <!--<div class="col-md-1 margin-bottom-10">-->
+                        <!--<button class="btn btn-default" data-ng-click="vm.newObject()"><i class="fa fa-plus-circle"></i>Add Student</button>-->
+                    <!--</div>-->
+
+                    <div class="col-md-12 text-center margin-bottom-10 margin-top-10">
+                        <label style="margin-right: 20px" >
+                            <input type="radio"
+                                   name="checkType"
+                                   ng-model="vm.checkType"
+                                   ng-value="1"
+                                   ng-change="vm.checkTypeChange()">
+                            ĐIỂM DANH LỄ
+                        </label>
+
+                        <label>
+                            <input type="radio"
+                                   name="checkType"
+                                   ng-model="vm.checkType"
+                                   ng-value="2"
+                                   ng-change="vm.checkTypeChange()">
+                            ĐIỂM DANH GIÁO LÝ
+                        </label>
+                        <div class="row" ng-show="vm.checkType != null">
+                            <button style="margin-right: 20px" ng-click="vm.start()" ng-disabled="vm.scanning">
+                                Ấn để mở Camera
+                            </button>
+
+                            <button ng-click="vm.stop()" ng-disabled="!vm.scanning">
+                                Ấn để tắt Camera
+                            </button>
+                            <div class="status">
+                                Status: {{ vm.status }}
+                            </div>
+
+                            <div id="reader" ng-show="vm.scanning"></div>
+                            <!--<button ng-click="vm.saveByScanQr('ht20260021')">test qr</button>-->
+                        </div>
+
+                    </div>
+
+                    <div ng-show="vm.isRoleAdmin" class="row text-center">
+                        <div class="col-md-12">
+                            <label for="start-set-up" style="font-size: 30px"> Bắt đầu thiết lập điểm danh</label>
+                            <input style="height: 30px;width: 30px" id="start-set-up" type="checkbox" ng-model="vm.startSetUp">
+                            <br>
+                            <small>(chỉ cho tạo bảng điểm danh theo ngày)</small>
+                        </div>
+                        <div class="row text-center" ng-show="vm.startSetUp">
+                            <!--<div class="col-md-12 margin-bottom-10">-->
+                            <!--<h2>{{vm.checkDate | date:'dd/MM/yyyy HH:mm:ss' }}</h2>-->
+                            <!--</div>-->
+                            <button class="btn btn-primary margin-bottom-10" ng-click="vm.createCheckList()">TẠO BẢNG ĐIỂM DANH</button>
+                        </div>
+                    </div>
+
+                </div>
+                <!--<table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>-->
+
+                <div class="row">
+                    <!--<div class="col-md-3">-->
+                        <!--<input type="text" class="form-control margin-bottom-10" ng-model="vm.searchTextClient" placeholder="Gõ tên vào đây để tìm...">-->
+                    <!--</div>-->
+                    <div class="col-md-12 margin-bottom-10" ng-show="!vm.startSetUp">
+                        <div class="col-md-2 margin-top-10">
+                            <input data-ng-model="vm.startDate" type="text" class="form-control" placeholder="TÌM TỪ NGÀY" my-date-picker />
+                        </div>
+                        <div class="col-md-2 margin-top-10">
+                            <input data-ng-model="vm.endDate" type="text" class="form-control" placeholder="ĐẾN NGÀY" my-date-picker />
+                        </div>
+                    </div>
+                    <div class="col-md-12 sticky-search-bar">
+                        <div class="col-md-2 margin-bottom-10">
+                            <input type="text"
+                                   class="form-control"
+                                   ng-model="vm.searchTextClient"
+                                   placeholder="Gõ tên vào đây để tìm...">
+                        </div>
+
+                        <div class="col-md-2 margin-bottom-10">
+                            <ui-select ng-model="vm.searchDto.user.person.enrollmentClass"
+                                       ng-change="vm.getPage()"
+                                       close-on-select="true">
+                                <ui-select-match allow-clear="true" placeholder="Chọn lớp để lọc">
+                                    {{$select.selected.name}}
+                                </ui-select-match>
+                                <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | propsFilter:{name:$select.search}">
+                                    <div ng-bind-html="cls.name | highlight:$select.search"></div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <ui-select ng-model="vm.searchDto.group"
+                                       ng-change="vm.groupChange()"
+                                       close-on-select="true"
+                                       style="width:100%">
+
+                                <ui-select-match allow-clear="true" placeholder="BAN/HỘI...">
+                                    {{$select.selected.name}}
+                                </ui-select-match>
+
+                                <ui-select-choices repeat="group in vm.groups | propsFilter:{name:$select.search}">
+                                    <div ng-bind-html="group.name | highlight:$select.search"></div>
+                                </ui-select-choices>
+
+                            </ui-select>
+                        </div>
+                        <div class="col-md-2 margin-bottom-10">
+                            <button class="btn btn-primary" ng-click="vm.statistics()">TẢI LẠI DANH SÁCH</button>
+                        </div>
+                        <div class="col-md-12">
+                            <strong class="text-primary">Tổng học sinh: </strong> {{vm.totalStudent}} <br>
+                            <strong class="text-red">THÁNH LỄ  ✝ => </strong> (Có mặt) {{vm.totalMass1}} + (Ca đoàn) {{vm.totalMass5}} = <strong>Tổng đi:</strong> {{vm.totalGoToChurch}} >>||<<
+                            (Vắng) {{vm.totalMass2}} + (Vắng (P)) {{vm.totalMass6}} = <strong>Tổng nghỉ:</strong> {{vm.totalAbsentChurch}} <br>
+                            <strong class="text-red">HỌC GIÁO LÝ 📖 => </strong>  <strong>Tổng đi: </strong> {{vm.totalClass1}} >>||<< (Vắng) {{vm.totalClass2}} + (Vắng (P)) {{vm.totalClass6}} = <strong>Tổng nghỉ:</strong> {{vm.totalAbsentClass}} <br>
+                        </div>
+
+                        <!--<div class="col-md-2">-->
+                            <!--<button type="button" class="btn btn-default" ng-click="vm.clearSearchClient()">-->
+                                <!--Xóa lọc-->
+                            <!--</button>-->
+                        <!--</div>-->
+
+                        <div class="clearfix"></div>
+                    </div>
+
+                    <div class="col-md-12">
+                        <div class="table-scroll">
+                            <table class="table table-hover table-striped table-bordered text-center order-table">
+                                <thead>
+                                <tr>
+                                    <th scope="col">ĐIỂM DANH</th>
+                                    <th scope="col">STT</th>
+                                    <!--<th scope="col">TÊN THÁNH</th>-->
+                                    <th scope="col">TÊN</th>
+                                    <th scope="col">NGÀY SINH</th>
+                                    <th scope="col">GIỜ ĐẾN NHÀ THỜ</th>
+                                    <th scope="col">LỄ</th>
+                                    <th scope="col">GIỜ ĐẾN LỚP</th>
+                                    <th scope="col">GL</th>
+                                    <th scope="col">LỚP</th>
+                                    <th scope="col">MÃ HỌC SINH (TÊN ĐĂNG NHẬP)</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr ng-repeat="personDate in vm.personDates | filter:vm.searchClient">
+                                    <td>
+                                        <button class="btn btn-primary margin-bottom-10" ng-click="vm.saveByClick(personDate, personDate.user,1,1)">
+                                            <i class="fa fa-church"></i>
+                                        </button>
+
+                                        <button class="btn btn-danger margin-bottom-10" ng-click="vm.saveByClick(personDate, personDate.user,1,2)">
+                                            <i class="fa fa-church"></i>
+                                        </button>
+                                        <button class="btn btn-primary margin-bottom-10" ng-click="vm.saveByClick(personDate, personDate.user,2,1)">
+                                            <i class="fa fa-chalkboard-teacher"></i>
+                                        </button>
+                                        <button class="btn btn-danger margin-bottom-10" ng-click="vm.saveByClick(personDate, personDate.user,2,2)">
+                                            <i class="fa fa-chalkboard-teacher"></i>
+                                        </button>
+                                    </td>
+
+                                    <th scope="row">{{$index + 1}}</th>
+                                    <!--<td></td>-->
+                                    <td>{{personDate.user.person.patron}} {{personDate.user.person.lastName}} {{personDate.user.person.firstName}}</td>
+                                    <td>{{personDate.user.person.birthDate | date:'dd/MM/yy'}}</td>
+                                    <td>{{personDate.timeGoToChurch | date:'dd/MM HH:mm'}}</td>
+
+                                    <td ng-class="{
+                      'status-class-green': personDate.statusMass == 1,
+                      'status-class-red': personDate.statusMass == 2,
+                      'status-class-warning': personDate.statusMass == 6,
+                      'status-class-info': personDate.statusMass == 5
+                    }">
+                                        <ui-select ng-model="personDate.statusMass"
+                                                   close-on-select="true"
+                                                   data-ng-change="vm.saveByClick(personDate, personDate.user,1,personDate.statusMass)">
+                                            <ui-select-match allow-clear="false" placeholder="CÓ ĐI LỄ KHÔNG?">
+                                                {{$select.selected.name}}
+                                            </ui-select-match>
+                                            <ui-select-choices
+                                                    repeat="so.id as so in vm.statusMasses | propsFilter:{name:$select.search}"
+                                                    ui-disable-choice="so.id != 6 && so.id != 5">
+                                                <div class="bold"
+                                                     ng-class="{'text-muted': so.id != 6 && so.id != 5}"
+                                                     ng-bind-html="so.name | highlight:$select.search">
+                                                </div>
+                                            </ui-select-choices>
+                                        </ui-select>
+                                    </td>
+
+                                    <td>{{personDate.timeGoToClass | date:'dd/MM HH:mm'}}</td>
+
+                                    <td ng-class="{
+                      'status-class-green': personDate.statusClass == 1,
+                      'status-class-red': personDate.statusClass == 2,
+                      'status-class-warning': personDate.statusClass == 6
+                    }">
+                                        <ui-select ng-model="personDate.statusClass"
+                                                   close-on-select="true"
+                                                   data-ng-change="vm.saveByClick(personDate, personDate.user,2,personDate.statusClass)">
+                                            <ui-select-match allow-clear="false" placeholder="CÓ ĐI HỌC GIÁO LÝ KHÔNG?">
+                                                {{$select.selected.name}}
+                                            </ui-select-match>
+                                            <ui-select-choices
+                                                    repeat="so.id as so in vm.statusClasses | propsFilter:{name:$select.search}"
+                                                    ui-disable-choice="so.id != 6">
+                                                <div class="bold"
+                                                     ng-class="{'text-muted': so.id != 6}"
+                                                     ng-bind-html="so.name | highlight:$select.search">
+                                                </div>
+                                            </ui-select-choices>
+                                        </ui-select>
+                                    </td>
+
+                                    <td>{{ vm.enrollmentClassMap[personDate.user.person.enrollmentClass] }}</td>
+                                    <td>{{personDate.user.username}}</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="qrModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">QR Code - {{vm.zoomPerson.patron}} {{vm.zoomPerson.lastName}} {{vm.zoomPerson.firstName}}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <div class="modal-body text-center">
+                <img ng-src="{{vm.qrPreview}}" style="max-width:100%;height:auto" alt="QR Preview">
+            </div>
+        </div>
+    </div>
+</div>
+<div id="photoPreviewModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content photo-preview-modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">
+                    Ảnh đại diện - {{vm.photoPreviewUser.person.patron}} {{vm.photoPreviewUser.person.lastName}} {{vm.photoPreviewUser.person.firstName}}
+                </h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" ng-click="vm.closePhotoPreview()">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <div class="modal-body text-center photo-preview-body">
+                <img ng-show="vm.photoPreviewUrl"
+                     ng-src="{{vm.photoPreviewUrl}}"
+                     alt="Ảnh đại diện"
+                     class="photo-preview-large-img">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- END MAIN CONTENT -->
+<!-- BEGIN MAIN JS-->
+
+<script type="text/ng-template" id="edit_object_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title" data-ng-show="vm.personDate.isNew == true"><i class="icon-plus"></i>Add Student</h4>
+            <h4 class="modal-title" data-ng-show="vm.personDate.isNew == false"><i class="fa fa-pencil-square-o"></i>Edit Student</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">HỌC SINH</label>
+                    <ui-select ng-model="vm.personDate.user" data-ng-change="" sortable="true" close-on-select="true">
+                        <ui-select-match allow-clear="false" placeholder="LỚP HỌC">{{$select.selected.displayName}}</ui-select-match>
+                        <ui-select-choices repeat="so in vm.users  | propsFilter: {displayName: $select.search}">
+                            <div class="bold" ng-bind-html="so.displayName | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                <div class="col-md-12">
+                    <label class="bold">code</label>
+                    <input data-ng-model="vm.personDate.personDateCode" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+                <div class="col-md-12">
+                    <label class="bold">Tên</label>
+                    <input data-ng-model="vm.personDate.lastName" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
+            <button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>
+        </div>
+    </div>
+</script>
+
+
+<script type="text/ng-template" id="create_gaps_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title" data-ng-show="vm.personDate.isNew == false"><i class="fa fa-pencil-square-o"></i>Create Content</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-md-12">
+                    <table class="table  table-bordered">
+                        <tbody>
+                        <tr ng-repeat="item in vm.questions">
+                            <td class="print-column-type"><small class="">{{$index + 1}}. </small>{{item.question}}</td>
+                            <td class="print-column-type">{{item.motherTongue}}</td>
+                            <td class="print-column-type">{{item.pronounce}}</td>
+                            <td class="print-column-type"></td>
+                            <td class="print-column-type"></td>
+                            <td class="print-column-type"></td>
+                            <!--<td class="print-column" compile="item.description"></td>-->
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <br>
+                <div class="col-md-12">
+                    <div class="" compile="vm.fillingGapQuestion">
+                    </div>
+                    <br>
+                </div>
+                <!--<div class="col-md-12">-->
+                    <!--<div class="" compile="vm.fillingGapQuestion">-->
+                    <!--</div>-->
+                <!--</div>-->
+                <br>
+                <div class="col-md-12">
+                    <table class="table  table-bordered">
+                        <tbody>
+                        <tr ng-repeat="item in vm.questions">
+                            <td class="print-column-type"></td>
+                            <td class="print-column-type">{{item.motherTongue}}</td>
+                            <td class="print-column-type">{{item.pronounce}}</td>
+                            <td class="print-column-type"></td>
+                            <td class="print-column-type"></td>
+                            <td class="print-column-type"></td>
+                            <!--<td class="print-column" compile="item.description"></td>-->
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
+            <!--<button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>-->
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="create_normal_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title" data-ng-show="vm.personDate.isNew == false"><i class="fa fa-pencil-square-o"></i>Create Content</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <!--<div class="col-md-12" style="margin-bottom:30px">-->
+                    <!--<textarea readonly rows="12" class="form-control" ng-model="vm.personDate.content" />-->
+                <!--</div>-->
+                <br>
+                <div class="col-md-12">
+                    <table class="table  table-bordered">
+                        <tbody>
+                        <tr ng-repeat="item in vm.questions">
+                            <td class="print-column-type"><small class="">{{$index + 1}}. </small>{{item.question}}</td>
+                            <td class="print-column-type">{{item.motherTongue}}</td>
+                            <td class="print-column-type">{{item.pronounce}}</td>
+                            <td class="print-column-type"></td>
+                            <td class="print-column-type"></td>
+                            <td class="print-column-type"></td>
+                            <!--<td class="print-column" compile="item.description"></td>-->
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <br>
+                <div class="col-md-12" style="margin-bottom:30px" compile="vm.personDate.content">
+
+                </div>
+                <br>
+                <div class="col-md-12">
+                    <table class="table  table-bordered">
+                        <tbody>
+                        <tr ng-repeat="item in vm.questions">
+                            <td class="print-column-type"></td>
+                            <td class="print-column-type">{{item.motherTongue}}</td>
+                            <td class="print-column-type">{{item.pronounce}}</td>
+                            <td class="print-column-type"></td>
+                            <td class="print-column-type"></td>
+                            <td class="print-column-type"></td>
+                            <!--<td class="print-column" compile="item.description"></td>-->
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
+            <!--<button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>-->
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="confirm_check_object_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <span class="modal-title"></span>
+            <button ng-class="{
+            'btn-success': vm.checkPerson.status == 1,
+            'btn-danger': vm.checkPerson.status == 2,
+            'btn-info': vm.checkPerson.status == 5,
+            'btn-warning': vm.checkPerson.status == 6,
+            }"
+                    type="button" ng-click="$dismiss()" class="btn " data-dismiss="modal"><i class="fa fa-check"></i>THÀNH CÔNG - CLICK ĐỂ ĐÓNG</button>
+        </div>
+        <div class="modal-body">
+            <div class="tntt-card tntt-card--stack">
+
+                <div class="tntt-stt">#{{$index + 1}}</div>
+
+                <!-- AVATAR TOP -->
+                <div class="tntt-stack-avatar">
+                    <div class="tntt-avatar tntt-avatar--big">
+                        <img
+                                style="cursor:pointer;"
+                                ng-click="vm.openPhotoPreview(vm.checkPerson.user)"
+                                ng-src="{{settings.api.baseUrl}}public/users/photo/{{vm.checkPerson.user.username}}?v={{vm.checkPerson.user.photoVersion || 0}}"
+                                alt="Avatar TNTT">
+                    </div>
+                </div>
+
+                <!-- NAME -->
+                <div class="tntt-stack-name">
+                    {{vm.checkPerson.user.person.patron}}
+                    {{vm.checkPerson.user.person.lastName}}
+                    {{vm.checkPerson.user.person.firstName}}
+                </div>
+
+                <!-- CHIPS -->
+                <div class="tntt-rowchips tntt-rowchips--center">
+                    <span class="tntt-chip">🎂 {{vm.checkPerson.user.person.birthDate | date:'dd/MM/yyyy'}}</span>
+                    <span class="tntt-chip">🆔 <span class="tntt-ellipsis">{{vm.checkPerson.user.username}}</span></span>
+
+    <span class="tntt-chip tntt-class-chip">
+      🎒 Lớp:
+      <ui-select ng-disabled="true"
+                 ng-model="vm.checkPerson.user.person.enrollmentClass"
+                 sortable="true"
+                 close-on-select="true"
+                 class="tntt-inline-select">
+          <ui-select-match allow-clear="false" placeholder="LỚP HỌC">
+              {{$select.selected.name}}
+          </ui-select-match>
+          <ui-select-choices repeat="so.id as so in vm.enrollmentClasses | propsFilter:{name:$select.search}">
+              <div class="bold" ng-bind-html="so.name | highlight:$select.search"></div>
+          </ui-select-choices>
+      </ui-select>
+    </span>
+                </div>
+
+                <!-- TIMES -->
+                <div class="tntt-times tntt-times--stack">
+                    <div class="tntt-time">
+                        <div class="tntt-time__label">⛪ Giờ đến nhà thờ</div>
+                        <div class="tntt-time__value tntt-wrap">
+                            {{vm.checkPerson.timeGoToChurch | date:'dd/MM/yyyy HH:mm:ss' }}
+                        </div>
+                    </div>
+
+                    <div class="tntt-time">
+                        <div class="tntt-time__label">📚 Giờ đến lớp giáo lý</div>
+                        <div class="tntt-time__value tntt-wrap">
+                            {{vm.checkPerson.timeGoToClass | date:'dd/MM/yyyy HH:mm:ss' }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QR -->
+                <div class="tntt-qrbox tntt-qrbox--center">
+                    <div class="tntt-qrbox__title">📌 QR Username</div>
+                    <img ng-show="vm.checkPerson.qrcodeByUsername"
+                         ng-src="{{vm.checkPerson.qrcodeByUsername}}"
+                         ng-click="vm.openQr(vm.checkPerson.qrcodeByUsername,vm.checkPerson.user.person)"
+                         class="tntt-qr"
+                         alt="QR">
+                    <div ng-show="!vm.checkPerson.qrcodeByUsername" class="tntt-muted">Chưa có QR</div>
+                    <div class="tntt-muted">Chạm để phóng to</div>
+                </div>
+
+                <!-- STATUS -->
+                <div class="tntt-status-grid tntt-status-grid--stack">
+
+                    <div class="tntt-statusbox"
+                         ng-class="{
+           'tntt-ok': vm.checkPerson.statusMass==1,
+           'tntt-miss': vm.checkPerson.statusMass==2,
+           'tntt-warn': vm.checkPerson.statusMass==3,
+           'tntt-blue': vm.checkPerson.statusMass==5,
+           'tntt-purple': vm.checkPerson.statusMass==6
+         }">
+                        <div class="tntt-statusbox__title">⛪ Trạng thái điểm danh Lễ</div>
+
+                        <ui-select ng-disabled="true"
+                                   ng-model="vm.checkPerson.statusMass"
+                                   sortable="true"
+                                   close-on-select="true">
+                            <ui-select-match allow-clear="false" placeholder="Trạng thái Lễ">
+                                {{$select.selected.name}}
+                            </ui-select-match>
+                            <ui-select-choices repeat="so.id as so in vm.statusMasses | propsFilter:{name:$select.search}">
+                                <div class="bold" ng-bind-html="so.name | highlight:$select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+
+                    <div class="tntt-statusbox"
+                         ng-class="{
+           'tntt-ok': vm.checkPerson.statusClass==1,
+           'tntt-miss': vm.checkPerson.statusClass==2,
+           'tntt-warn': vm.checkPerson.statusClass==3,
+           'tntt-blue': vm.checkPerson.statusClass==5,
+           'tntt-purple': vm.checkPerson.statusClass==6
+         }">
+                        <div class="tntt-statusbox__title">📚 Trạng thái điểm danh Giáo lý</div>
+
+                        <ui-select ng-disabled="true"
+                                   ng-model="vm.checkPerson.statusClass"
+                                   sortable="true"
+                                   close-on-select="true">
+                            <ui-select-match allow-clear="false" placeholder="Trạng thái GL">
+                                {{$select.selected.name}}
+                            </ui-select-match>
+                            <ui-select-choices repeat="so.id as so in vm.statusClasses | propsFilter:{name:$select.search}">
+                                <div class="bold" ng-bind-html="so.name | highlight:$select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+
+                </div>
+
+                <div class="tntt-footer">🌟 Chăm ngoan – Siêng năng – Vâng lời 🌟</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <!--<button type="button" ng-click="$dismiss()" class="btn btn-success" data-dismiss="modal">CLICK ĐỂ ĐÓNG VÀ ĐIỂM DANH TIẾP</button>-->
+            <!--<button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>-->
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="confirm_delete_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="icon-question"></i>Xóa</h4>
+        </div>
+        <div class="modal-body">
+            <p>Bạn có chắc chắn muốn xóa bản ghi đã chọn không?</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>
+        </div>
+    </div>
+</script>
+
+<script>
+    const txHeight = 16;
+    const tx = document.getElementsByTagName("textarea");
+
+    for (let i = 0; i < tx.length; i++) {
+        if (tx[i].value == '') {
+            tx[i].setAttribute("style", "height:" + txHeight + "px;overflow-y:hidden;");
+        } else {
+            tx[i].setAttribute("style", "height:" + (tx[i].scrollHeight) + "px;overflow-y:hidden;");
+        }
+        tx[i].addEventListener("input", OnInput, false);
+    }
+
+    function OnInput(e) {
+        this.style.height = 0;
+        this.style.height = (this.scrollHeight) + "px";
+    }
+</script>
+
+<!-- BEGIN MAIN JS -->
+
+<style>
+
+    .print-column{
+        width: 20%;
+    }
+
+    .print-column-type{
+        width: 5%;
+    }
+    .print-column-type-2{
+        width: 10%;
+    }
+    .print-column-ordinal-number{
+        width: 1%;
+    }
+
+    .table {
+        border: 0.5px solid #000000;
+    }
+    .table-bordered > thead > tr > th,
+    .table-bordered > tbody > tr > th,
+    .table-bordered > tfoot > tr > th,
+    .table-bordered > thead > tr > td,
+    .table-bordered > tbody > tr > td,
+    .table-bordered > tfoot > tr > td {
+        border: 0.5px solid #000000;
+    }
+</style>
+
+<style>
+    /*body {*/
+    /*font-family: -apple-system, BlinkMacSystemFont, sans-serif;*/
+    /*padding: 20px;*/
+    /*}*/
+
+    /*button {*/
+        /*padding: 14px 18px;*/
+        /*font-size: 16px;*/
+        /*margin-right: 10px;*/
+        /*border-radius: 8px;*/
+        /*border: none;*/
+        /*background: #007aff;*/
+        /*color: white;*/
+    /*}*/
+
+    /*button:disabled {*/
+        /*background: #999;*/
+    /*}*/
+
+    #reader {
+        width: 100%;
+        max-width: 350px;
+        margin-top: 20px;
+    }
+
+    .status {
+        margin-top: 15px;
+        padding: 10px;
+        background: #f2f2f2;
+        border-radius: 8px;
+    }
+
+    .datepicker{
+        background: white !important;
+    }
+</style>
+
+<style>
+    /* ============================
+   TNTT PROFILE - FULL CSS
+   Layout: Avatar TOP -> Info DOWN
+   Fix: lệch ui-select, chống tràn chữ
+   Scope: .tntt-profile-page
+============================ */
+
+    .tntt-profile-page{
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 12px;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    /* box-sizing để tránh lệch do padding/border */
+    .tntt-profile-page,
+    .tntt-profile-page *{
+        box-sizing: border-box;
+    }
+
+    /* ===== Banner ===== */
+    .tntt-banner{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: linear-gradient(135deg,#fff7e6,#eef7ff,#f5eeff);
+        border: 1px solid rgba(36,59,83,.08);
+        box-shadow: 0 10px 25px rgba(0,0,0,.06);
+        margin-bottom: 12px;
+    }
+
+    .tntt-banner__title{
+        font-weight: 950;
+        font-size: 18px;
+        color:#243b53;
+    }
+
+    .tntt-banner__sub{
+        margin-top:2px;
+        font-size: 13px;
+        color: rgba(36,59,83,.72);
+    }
+
+    .tntt-banner__chips{
+        display:flex;
+        gap:8px;
+        flex-wrap:wrap;
+        justify-content:flex-end;
+    }
+
+    .tntt-pill{
+        padding: 8px 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.75);
+        border: 1px dashed rgba(36,59,83,.18);
+        font-weight: 900;
+        font-size: 12px;
+        color:#243b53;
+    }
+
+    @media (max-width: 520px){
+        .tntt-banner{
+            flex-direction: column;
+            align-items:flex-start;
+        }
+        .tntt-banner__chips{
+            justify-content:flex-start;
+        }
+    }
+
+    /* ===== Card ===== */
+    .tntt-card{
+        position: relative;
+        border-radius: 22px;
+        border: 1px solid rgba(36,59,83,.08);
+        box-shadow: 0 12px 30px rgba(0,0,0,.08);
+        overflow:hidden;
+        background:
+                radial-gradient(circle at 10% 0%, rgba(255,184,108,.30), rgba(255,184,108,0) 55%),
+                radial-gradient(circle at 100% 10%, rgba(125,211,252,.25), rgba(125,211,252,0) 55%),
+                radial-gradient(circle at 50% 120%, rgba(196,181,253,.22), rgba(196,181,253,0) 55%),
+                #fff;
+        padding: 14px;
+    }
+
+    /* góc STT */
+    .tntt-stt{
+        position:absolute;
+        top: 12px;
+        right: 12px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.75);
+        border: 1px dashed rgba(36,59,83,.18);
+        font-weight: 950;
+        color:#243b53;
+        font-size: 12px;
+    }
+
+    /* ===== Avatar TOP ===== */
+    .tntt-stack-avatar{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 10px;
+        margin-bottom: 18px;
+        padding: 0 10px;
+    }
+
+    .tntt-avatar{
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        padding: 8px;
+        background: conic-gradient(from 180deg, #ffb86c, #7dd3fc, #c4b5fd, #ffb86c);
+        box-shadow: 0 12px 28px rgba(0,0,0,.12);
+        flex: 0 0 auto;
+    }
+
+    .tntt-avatar--big{
+        width: 100%;
+        height: 100%;
+    }
+
+    .tntt-avatar img{
+        width: 100%;
+        height: 100%;
+        display: block;
+        border-radius: 50%;
+        object-fit: cover;         /* giữ ảnh không méo */
+        object-position: center;   /* luôn lấy giữa ảnh */
+        background: #fff;
+        border: 5px solid rgba(255,255,255,.95);
+    }
+
+    /*!* Tablet *!*/
+    /*@media (max-width: 992px){*/
+        /*.tntt-avatar{*/
+            /*width: 220px;*/
+            /*height: 220px;*/
+        /*}*/
+
+        /*.tntt-avatar--big{*/
+            /*width: 280px;*/
+            /*height: 280px;*/
+        /*}*/
+    /*}*/
+
+    /*!* Mobile *!*/
+    /*@media (max-width: 768px){*/
+        /*.tntt-avatar{*/
+            /*width: 180px;*/
+            /*height: 180px;*/
+            /*padding: 6px;*/
+        /*}*/
+
+        /*.tntt-avatar--big{*/
+            /*width: 220px;*/
+            /*height: 220px;*/
+        /*}*/
+
+        /*.tntt-avatar img{*/
+            /*border-width: 4px;*/
+        /*}*/
+    /*}*/
+
+    /*!* Mobile nhỏ *!*/
+    /*@media (max-width: 480px){*/
+        /*.tntt-stack-avatar{*/
+            /*margin-top: 8px;*/
+            /*margin-bottom: 14px;*/
+        /*}*/
+
+        /*.tntt-avatar{*/
+            /*width: 150px;*/
+            /*height: 150px;*/
+        /*}*/
+
+        /*.tntt-avatar--big{*/
+            /*width: 190px;*/
+            /*height: 190px;*/
+        /*}*/
+    /*}*/
+
+    /* ===== Name ===== */
+    .tntt-stack-name,
+    .tntt-name{
+        text-align:center;
+        font-weight: 950;
+        font-size: 20px;
+        color:#243b53;
+        letter-spacing: .2px;
+        text-shadow: 0 1px 0 rgba(255,255,255,.8);
+        padding: 0 10px;
+
+        /* chống tràn tên dài */
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    /* ===== Chips ===== */
+    .tntt-rowchips{
+        margin-top: 10px;
+        display:flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .tntt-rowchips--center{
+        justify-content: center;
+        align-items: center;
+    }
+
+    .tntt-chip{
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.75);
+        border: 1px solid rgba(36,59,83,.08);
+        font-weight: 900;
+        font-size: 12.5px;
+        color:#243b53;
+
+        display:inline-flex;
+        align-items:center;
+        max-width: 100%;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    /* username ellipsis (nếu dài) */
+    .tntt-ellipsis{
+        display:inline-block;
+        max-width: 180px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: bottom;
+    }
+
+    /* ===== Class chip + ui-select inline ===== */
+    .tntt-class-chip{
+        display:inline-flex !important;
+        align-items:center;
+        gap:6px;
+    }
+
+    .tntt-inline-select{
+        min-width: 86px;
+        max-width: 140px;
+        display:inline-flex;
+        align-items:center;
+        height: 28px;
+    }
+
+    /* fix ui-select inline */
+    .tntt-inline-select .ui-select-container{
+        margin: 0 !important;
+        width: 100%;
+    }
+
+    .tntt-inline-select .ui-select-toggle{
+        width: 100%;
+        height: 28px !important;
+        min-height: 28px !important;
+        padding: 0 10px !important;
+        border-radius: 999px !important;
+        border: 1px solid rgba(36,59,83,.15) !important;
+        background: rgba(255,255,255,.90) !important;
+
+        display:flex !important;
+        align-items:center !important;
+    }
+
+    .tntt-inline-select .ui-select-match-text{
+        display:block;
+        max-width: 110px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: 900;
+        color:#243b53;
+    }
+
+    .tntt-inline-select .ui-select-placeholder{
+        font-weight: 800;
+    }
+
+    /* ===== Times ===== */
+    .tntt-times{
+        margin-top: 12px;
+        display:grid;
+        grid-template-columns: repeat(2, minmax(0,1fr));
+        gap: 10px;
+    }
+
+    .tntt-times--stack{
+        grid-template-columns: repeat(2, minmax(0,1fr));
+    }
+
+    @media (max-width: 520px){
+        .tntt-times,
+        .tntt-times--stack{
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .tntt-time{
+        border-radius: 16px;
+        padding: 10px 12px;
+        background: rgba(255,255,255,.78);
+        border: 1px solid rgba(36,59,83,.08);
+        min-width: 0; /* để text-wrap hoạt động tốt trong grid */
+    }
+
+    .tntt-time__label{
+        font-size: 12px;
+        font-weight: 950;
+        color: rgba(36,59,83,.78);
+    }
+
+    .tntt-time__value{
+        margin-top: 4px;
+        font-weight: 950;
+        color:#243b53;
+
+        /* chống tràn */
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    /* ===== QR ===== */
+    .tntt-qrbox{
+        margin-top: 12px;
+        border-radius: 18px;
+        padding: 12px;
+        background: rgba(255,255,255,.78);
+        border: 1px solid rgba(36,59,83,.08);
+        text-align:center;
+    }
+
+    .tntt-qrbox--center{
+        margin-top: 12px;
+    }
+
+    .tntt-qrbox__title{
+        font-weight: 950;
+        color:#243b53;
+        margin-bottom: 8px;
+    }
+
+    .tntt-qr{
+        width: 150px;
+        height: 150px;
+        border-radius: 16px;
+        cursor: zoom-in;
+        border: 2px solid rgba(36,59,83,.08);
+        background:#fff;
+        transition: .2s;
+        display:block;
+        margin: 0 auto;
+    }
+
+    .tntt-qr:hover{ transform: scale(1.05); }
+
+    .tntt-muted{
+        font-size: 12px;
+        color: rgba(36,59,83,.65);
+    }
+
+    /* ===== Status grid ===== */
+    .tntt-status-grid{
+        margin-top: 12px;
+        display:grid;
+        grid-template-columns: repeat(2, minmax(0,1fr));
+        gap: 10px;
+        align-items: stretch;
+    }
+
+    .tntt-status-grid--stack{
+        grid-template-columns: repeat(2, minmax(0,1fr));
+    }
+
+    @media (max-width: 520px){
+        .tntt-status-grid,
+        .tntt-status-grid--stack{
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .tntt-statusbox{
+        border-radius: 18px;
+        padding: 10px 12px;
+        border: 1px solid rgba(36,59,83,.08);
+        background: rgba(255,255,255,.82);
+
+        display:flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 92px;
+        min-width: 0;
+    }
+
+    .tntt-statusbox__title{
+        font-size: 12px;
+        font-weight: 950;
+        color: rgba(36,59,83,.78);
+        margin-bottom: 6px;
+
+        /* chống tràn tiêu đề dài */
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    /* status colors by id */
+    .tntt-ok{
+        background: rgba(34,197,94,.14) !important;
+        border-color: rgba(34,197,94,.25) !important;
+    }
+    .tntt-miss{
+        background: rgba(239,68,68,.14) !important;
+        border-color: rgba(239,68,68,.25) !important;
+    }
+    .tntt-warn{
+        background: rgba(245,158,11,.16) !important;
+        border-color: rgba(245,158,11,.28) !important;
+    }
+    .tntt-blue{
+        background: rgba(59,130,246,.14) !important;
+        border-color: rgba(59,130,246,.26) !important;
+    }
+    .tntt-purple{
+        background: rgba(139,92,246,.14) !important;
+        border-color: rgba(139,92,246,.26) !important;
+    }
+
+    /* ui-select in status */
+    .tntt-statusbox .ui-select-container{
+        margin: 0 !important;
+        width: 100%;
+    }
+
+    .tntt-statusbox .ui-select-toggle{
+        width: 100%;
+        border-radius: 14px !important;
+        border: 1px solid rgba(36,59,83,.10) !important;
+        background: rgba(255,255,255,.90) !important;
+
+        height: 38px !important;
+        min-height: 38px !important;
+        display:flex !important;
+        align-items:center !important;
+    }
+
+    .tntt-statusbox .ui-select-match-text{
+        font-weight: 950;
+        color:#243b53;
+
+        /* chống tràn value dài */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ===== Footer ===== */
+    .tntt-footer{
+        margin-top: 12px;
+        text-align:center;
+        font-weight: 950;
+        color:#243b53;
+        font-size: 12.5px;
+        padding: 10px 12px;
+        border-radius: 16px;
+        background: linear-gradient(90deg, rgba(255,184,108,.18), rgba(125,211,252,.14), rgba(196,181,253,.14));
+        border: 1px solid rgba(36,59,83,.08);
+    }
+
+    /* ===== Optional: hide old layout if still exists =====
+       Nếu bạn còn giữ HTML cũ có .tntt-top thì bỏ comment 2 dòng dưới.
+    */
+    /*
+    .tntt-top{ display:none; }
+    */
+</style>
+
+<style>
+    /* Tắt scroll dọc, vẫn cho scroll ngang nếu cần */
+    .table-scroll{
+        width: 100%;
+        max-height: none;
+        overflow-y: visible;
+        overflow-x: auto;
+    }
+
+    /* Sticky search theo trang */
+    .sticky-search-bar{
+        position: sticky;
+        top: 0;
+        z-index: 999;
+        background: #fff;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(0,0,0,.08);
+    }
+
+    .status-class-green{
+        background: #e4fff5;
+    }
+
+    .status-class-red{
+        background: #e87867;
+    }
+
+    .status-class-warning{
+        background: #FFC107;
+    }
+
+    .status-class-info{
+        background: #17A2B8;
+    }
+</style>

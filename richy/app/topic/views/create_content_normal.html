@@ -1,0 +1,85 @@
+<div class="row">
+    <!--<div class="col-md-12" style="margin-bottom:30px">-->
+    <!--<textarea readonly rows="12" class="form-control" ng-model="vm.topic.content" />-->
+    <!--</div>-->
+
+    <br>
+    <!--<button class="btn btn-primary" style="margin-bottom: 20px; float: right" ng-click="vm.sortQuestions()">sort by name</button>-->
+    <div class="col-md-12">
+        <table class="table  table-bordered">
+            <tbody>
+            <tr ng-repeat="item in vm.questions">
+                <td class="print-column-type"><small class="">{{$index + 1}}. </small>{{item.question}}</td>
+                <td class="print-column-type">{{item.motherTongue}}</td>
+                <td class="print-column-type">{{item.pronounce}}</td>
+                <td class="print-column-type"></td>
+                <td class="print-column-type"></td>
+                <td class="print-column-type"></td>
+                <!--<td class="print-column" compile="item.description"></td>-->
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <br>
+    <!--<div class="col-md-12" style="margin-bottom:30px" compile="vm.topic.contentHtml">-->
+
+    <!--</div>-->
+    <!--<div class="" compile="vm.fillingGapQuestion">-->
+    <!--</div>-->
+
+    <textarea cols="200" rows="20" data-ng-model="vm.fillingGapQuestion"></textarea>
+
+    <textarea cols="200" rows="20" data-ng-model="vm.fillingGapQuestion2"></textarea>
+
+    <textarea cols="200" rows="20" data-ng-model="vm.fillingGapQuestion3"></textarea>
+
+    <!--<textarea cols="200" rows="20" data-ng-model="vm.fillingGapQuestion3"></textarea>-->
+
+    <br>
+    <div class="col-md-12">
+        <table class="table  table-bordered">
+            <tbody>
+            <tr ng-repeat="item in vm.questions">
+                <td class="print-column-type"></td>
+                <td class="print-column-type">{{item.motherTongue}}</td>
+                <td class="print-column-type">{{item.pronounce}}</td>
+                <td class="print-column-type"></td>
+                <td class="print-column-type"></td>
+                <td class="print-column-type"></td>
+                <!--<td class="print-column" compile="item.description"></td>-->
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+
+<style>
+
+    .print-column{
+        width: 20%;
+    }
+
+    .print-column-type{
+        width: 5%;
+    }
+    .print-column-type-2{
+        width: 10%;
+    }
+    .print-column-ordinal-number{
+        width: 1%;
+    }
+
+    .table {
+        border: 0.5px solid #000000;
+    }
+    .table-bordered > thead > tr > th,
+    .table-bordered > tbody > tr > th,
+    .table-bordered > tfoot > tr > th,
+    .table-bordered > thead > tr > td,
+    .table-bordered > tbody > tr > td,
+    .table-bordered > tfoot > tr > td {
+        border: 0.5px solid #000000;
+    }
+</style>

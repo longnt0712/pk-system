@@ -212,6 +212,14 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	    if (dto.getId() != null) {
 	        domain = studentMarkRepository.findOne(dto.getId());
 	    }
+	    
+	    if(domain == null) { // tìm theo user và mark tránh save 2 lần 1 cái có trùng user mark ok chưa
+		    if (dto.getUser() != null && dto.getUser().getId() != null && dto.getMark() != null && dto.getMark().getId() != null) {
+		    	domain = studentMarkRepository
+	                    .findStudentMarkBy(dto.getMark().getId(), dto.getUser().getId())
+	                    .orElse(null);
+		    }
+	    }
 
 	    if (domain == null) {
 	        domain = new StudentMark();

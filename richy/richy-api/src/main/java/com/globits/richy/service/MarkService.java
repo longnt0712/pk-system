@@ -10,6 +10,6 @@ public interface MarkService {
 	public Page<MarkDto> getPageObject(MarkDto searchDto, int pageIndex, int pageSize);
 	public List<MarkDto> getListObject(MarkDto searchDto, int pageIndex, int pageSize);
 	public MarkDto getObjectById(Long id);
-	public boolean saveObject(MarkDto dto);
+	public MarkDto saveObject(MarkDto dto);
 	public boolean deleteObject(Long id);
 }

@@ -1,0 +1,46 @@
+<!-- END PAGE HEADER-->
+<!-- BEGIN MAIN CONTENT -->
+<div class="row margin-top-10">
+    <div class="col-md-12">
+    
+        <div class="portlet light bordered">
+            <div class="portlet-body">
+                <div class="row">
+                    <!--<div class="col-md-1">-->
+                        <!--<button class="btn btn-default" data-ng-click="startCount()"><i class="fa fa-plus-circle"></i>Bắt đầu</button>-->
+                    <!--</div>-->
+                    <div class="col-md-12 text-center">
+                        <div data-ng-click="startCount()" class="btn btn-danger" style="line-height:43px;border: solid 1px;border-radius: 25px; height: 50px; width: 50px;">{{counter}}</div>
+                    </div>
+                    <div class="col-md-3"></div>
+                    <div class="col-md-6">
+                        <table id="bsTableControl" bs-table-control="vm.bsTableLeftControl"></table>
+                        <!--<table id="bsTableControl" bs-table-control="vm.bsTableRightControl"></table>-->
+                    </div>
+                    <div class="col-md-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<audio id="audio1">
+    <source src="music/60s.oga"/>
+</audio>
+
+<script type="text/ng-template" id="result_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="fa fa-check"></i>Đáp án</h4>
+        </div>
+        <div class="modal-body">
+
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>
+        </div>
+    </div>
+</script>
+<!-- BEGIN MAIN JS -->

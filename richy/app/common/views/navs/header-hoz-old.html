@@ -1,0 +1,811 @@
+<!-- BEGIN HEADER TOP -->
+<div class="page-header-top">
+    <div class="container">
+        <!-- BEGIN LOGO -->
+        <!--<div class="page-logo">-->
+            <!--<a ui-sref="dashboard">-->
+                <!--<img src="{{settings.assetsPath}}/images/troop.jpg" alt="logo" class="logo-default" />-->
+            <!--</a>-->
+        <!--</div>-->
+        <!-- END LOGO -->
+        <!-- BEGIN RESPONSIVE MENU TOGGLER -->
+        <a href="javascript:;" class="menu-toggler"></a>
+        <!-- END RESPONSIVE MENU TOGGLER -->
+        <!-- BEGIN TOP NAVIGATION MENU -->
+        <!--<div class="top-menu">-->
+            <!--<ul class="nav navbar-nav pull-right">-->
+                <!--&lt;!&ndash; BEGIN USER LOGIN DROPDOWN &ndash;&gt;-->
+                <!--<li class="dropdown dropdown-user dropdown-dark">-->
+                    <!--<a target="_blank" href="#" class="dropdown-toggle" dropdown-menu-hover data-toggle="dropdown" data-close-others="true">-->
+                        <!--<img ng-if="!currentUser.hasPhoto" alt="" class="img-circle" ng-src="{{settings.assetsPath}}/images/no-profile-photo-small.png" />-->
+                        <!--<img id="_user_profile_photo_small" ng-if="currentUser.hasPhoto" alt="" class="img-circle" ng-src="{{settings.api.baseUrl}}public/users/photo/{{currentUser.username}}" />-->
+                        <!--<span class="username username-hide-on-mobile" data-ng-cloak="">{{currentUser.displayName}}</span>-->
+                        <!--<i class="fa fa-angle-down"></i>-->
+                    <!--</a>-->
+                    <!--<ul class="dropdown-menu dropdown-menu-default">-->
+                        <!--<li class="user-photo" ng-if="!currentUser.hasPhoto">-->
+                            <!--<a target="_blank" href="#" ng-click="profilePhoto.showUploadModal()"><img class="img-circle" alt="User" ng-src="{{settings.assetsPath}}/images/no-profile-photo.png" /><span>cập nhật ảnh</span></a>-->
+                        <!--</li>-->
+                        <!--<li class="user-photo" ng-if="currentUser.hasPhoto">-->
+                            <!--<a target="_blank" href="#" ng-click="profilePhoto.showUploadModal()"><img id="_user_profile_photo_big" class="img-circle" alt="User" ng-src="{{settings.api.baseUrl}}public/users/photo/{{currentUser.username}}" /><span>cập nhật ảnh</span></a>-->
+                        <!--</li>-->
+                        <!--<li style="padding-top: 10px">-->
+                            <!--<a target="_blank" href="#" ng-click="changePassword()"><i class="icon-shield"></i> Đổi mật khẩu </a>-->
+                        <!--</li>-->
+                        <!--<li class="divider"> </li>-->
+                        <!--<li>-->
+                            <!--<a target="_blank" href="#" data-ng-click="logout()"><i class="icon-power"></i> Đóng phiên làm việc </a>-->
+                        <!--</li>-->
+                    <!--</ul>-->
+                <!--</li>-->
+                <!--&lt;!&ndash; END USER LOGIN DROPDOWN &ndash;&gt;-->
+            <!--</ul>-->
+        <!--</div>-->
+        <!-- END TOP NAVIGATION MENU -->
+    </div>
+</div>
+<!-- END HEADER TOP -->
+<!-- BEGIN HEADER MENU -->
+<div class="page-header-menu">
+    <div class="container">
+        <div class="hor-menu">
+            <ul class="nav navbar-nav">
+                <li class="">
+                    <a href="dashboards">Trang chủ</a>
+                </li>
+                <!--<li class="">-->
+                    <!--<a href="http://giaoxuphungkhoang.org">Church</a>-->
+                <!--</li>-->
+                <!--<li class="menu-dropdown mega-menu-dropdown ">-->
+                    <!--<a target="_blank" href="">-->
+                        <!--Shop Crocs-->
+                        <!--<i class="fa fa-angle-down"></i>-->
+                    <!--</a>-->
+                    <!--<ul class="dropdown-menu" style="min-width: 250px;">-->
+                        <!--<li>-->
+                            <!--<div class="mega-menu-content">-->
+                                <!--<div class="row">-->
+                                    <!--<div class="col-md-12">-->
+                                        <!--<ul class="mega-menu-submenu">-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/voucher_crocs">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Voucher-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/default_price">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Default Price-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/item">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Item-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/shop">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Shop-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+
+                                        <!--</ul>-->
+                                    <!--</div>-->
+                                <!--</div>-->
+                            <!--</div>-->
+                        <!--</li>-->
+                    <!--</ul>                    -->
+                <!--</li>-->
+
+                <li class="menu-dropdown mega-menu-dropdown ">
+                    <a target="_blank" href="">
+                        Vocabulary Room
+                        <i class="fa fa-angle-down"></i>
+                    </a>
+                    <ul class="dropdown-menu" style="min-width: 250px;">
+                        <li>
+                            <div class="mega-menu-content">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <ul class="mega-menu-submenu">
+                                            <li>
+                                                <a target="_blank" href="question/3">
+                                                    <i class="fa fa-caret-right"></i> Flashcards
+                                                </a>
+                                            </li>
+
+                                            <li>
+                                                <a target="_blank" href="ielts_vocabulary">
+                                                    <i class="fa fa-caret-right"></i> IELTS Vocabulary
+                                                </a>
+                                            </li>
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/flash_card_mode/1">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Review Flash Cards-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+
+                                            <li>
+                                                <a target="_blank" href="topics">
+                                                    <i class="fa fa-caret-right"></i> Topic
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </li>
+
+                <li ng-if="settings.isAdmin == true" class="menu-dropdown mega-menu-dropdown ">
+                    <a target="_blank" href="">
+                        IELTS
+                        <i class="fa fa-angle-down"></i>
+                    </a>
+                    <ul class="dropdown-menu" style="min-width: 250px;">
+                        <li>
+                            <div class="mega-menu-content">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <ul class="mega-menu-submenu">
+                                            <li>
+                                                <a target="_blank" href="collection_writing">
+                                                    <i class="fa fa-caret-right"></i> IELTS Learning
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a target="_blank" href="create_ielts_writing_test">
+                                                    <i class="fa fa-caret-right"></i> Create IELTS Writing Test
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a target="_blank" href="create_ielts_reading_test">
+                                                    <i class="fa fa-caret-right"></i> Create IELTS Reading Test
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a target="_blank" href="test_result">
+                                                    <i class="fa fa-caret-right"></i> Test Results
+                                                </a>
+                                            </li>
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/ielts_writing_actual_test">-->
+                                                    <!--<i class="fa fa-caret-right"></i> IELTS Writing Actual Test Mode-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </li>
+
+
+                <!--<li class="menu-dropdown mega-menu-dropdown ">-->
+                    <!--<a target="_blank" href="">-->
+                        <!--Catechism-->
+                        <!--<i class="fa fa-angle-down"></i>-->
+                    <!--</a>-->
+                    <!--<ul class="dropdown-menu" style="min-width: 250px;">-->
+                        <!--<li>-->
+                            <!--<div class="mega-menu-content">-->
+                                <!--<div class="row">-->
+                                    <!--<div class="col-md-12">-->
+                                        <!--<ul class="mega-menu-submenu">-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/question_catechism">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Q&As-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/classical_learning">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Q&As Learning-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/body_learning">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Body Learning-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                        <!--</ul>-->
+                                    <!--</div>-->
+                                <!--</div>-->
+                            <!--</div>-->
+                        <!--</li>-->
+                    <!--</ul>-->
+                <!--</li>-->
+
+                <!--<li class="menu-dropdown mega-menu-dropdown ">-->
+                    <!--<a target="_blank" href="">-->
+                        <!--Quản lý-->
+                        <!--<i class="fa fa-angle-down"></i>-->
+                    <!--</a>-->
+                    <!--<ul class="dropdown-menu" style="min-width: 250px;">-->
+                        <!--<li>-->
+                            <!--<div class="mega-menu-content">-->
+                                <!--<div class="row">-->
+                                    <!--<div class="col-md-12">-->
+                                        <!--<ul class="mega-menu-submenu">-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/folder">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Quản lý thư mục-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/article">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Quản lý bài báo-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                        <!--</ul>-->
+                                    <!--</div>-->
+                                <!--</div>-->
+                            <!--</div>-->
+                        <!--</li>-->
+                    <!--</ul>-->
+                <!--</li>-->
+
+                <!--<li class="menu-dropdown mega-menu-dropdown ">-->
+                    <!--<a target="_blank" href="">-->
+                        <!--Q&A configuration-->
+                        <!--<i class="fa fa-angle-down"></i>-->
+                    <!--</a>-->
+                    <!--<ul class="dropdown-menu" style="min-width: 250px;">-->
+                        <!--<li>-->
+                            <!--<div class="mega-menu-content">-->
+                                <!--<div class="row">-->
+                                    <!--<div class="col-md-12">-->
+                                        <!--<ul class="mega-menu-submenu">-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/question_type">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Question Type-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+
+                                        <!--</ul>-->
+                                    <!--</div>-->
+                                <!--</div>-->
+                            <!--</div>-->
+                        <!--</li>-->
+                    <!--</ul>-->
+                <!--</li>-->
+
+
+                <!--<li class="menu-dropdown mega-menu-dropdown ">-->
+                    <!--<a target="_blank" href="">-->
+                        <!--Question Answer-->
+                        <!--<i class="fa fa-angle-down"></i>-->
+                    <!--</a>-->
+                    <!--<ul class="dropdown-menu" style="min-width: 250px;">-->
+                        <!--<li>-->
+                            <!--<div class="mega-menu-content">-->
+                                <!--<div class="row">-->
+                                    <!--<div class="col-md-12">-->
+                                        <!--<ul class="mega-menu-submenu">-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/question">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Question-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/flash_card_mode">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Flash Card Mode-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/question_catechism">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Catechism-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/answer">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Answer-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/question_type">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Type of Question-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/body">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Body-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                        <!--</ul>-->
+                                    <!--</div>-->
+                                <!--</div>-->
+                            <!--</div>-->
+                        <!--</li>-->
+                    <!--</ul>-->
+                <!--</li>-->
+
+
+                <!--<li class="menu-dropdown mega-menu-dropdown ">-->
+                    <!--<a target="_blank" href="">-->
+                        <!--Learning-->
+                        <!--<i class="fa fa-angle-down"></i>-->
+                    <!--</a>-->
+                    <!--<ul class="dropdown-menu" style="min-width: 250px;">-->
+                        <!--<li>-->
+                            <!--<div class="mega-menu-content">-->
+                                <!--<div class="row">-->
+                                    <!--<div class="col-md-12">-->
+                                        <!--<ul class="mega-menu-submenu">-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/ielts_writing">-->
+                                                    <!--<i class="fa fa-caret-right"></i> IELTS Writing-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/classical_learning">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Classical Learning-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/body_learning">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Body Learning-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                        <!--</ul>-->
+                                    <!--</div>-->
+                                <!--</div>-->
+                            <!--</div>-->
+                        <!--</li>-->
+                    <!--</ul>-->
+                <!--</li>-->
+				<!--<li class="menu-dropdown mega-menu-dropdown">-->
+                    <!--<a target="_blank" href="javascript:;"> Quản lý công việc-->
+                        <!--<i class="fa fa-angle-down"></i>-->
+                    <!--</a>-->
+                    <!--<ul class="dropdown-menu" style="min-width: 250px;">-->
+                        <!--<li>-->
+                            <!--<div class="mega-menu-content">-->
+                                <!--<div class="row">-->
+                                    <!--<div class="col-md-12">-->
+                                        <!--<ul class="mega-menu-submenu">-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/workplans">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Kế hoạch công việc-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/tasks">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Quản lý công việc-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                          <!--<li>-->
+                                                <!--<a target="_blank" href="#/taskowners">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Vị trí công việc-->
+                                                <!--</a>-->
+                                            <!--</li>    -->
+                                          	<!--<li>-->
+                                                <!--<a target="_blank" href="#/taskroles">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Quản lý vai trò công việc-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                          	<!--<li>-->
+                                                <!--<a target="_blank" href="#/task_flow">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Danh mục Quy trình-->
+                                                <!--</a>-->
+                                            <!--</li>   -->
+											<!--<li>-->
+                                                <!--<a target="_blank" href="#/taskpriority">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Danh mục Độ ưu tiên-->
+                                                <!--</a>-->
+                                            <!--</li>   -->
+                                        <!--</ul>-->
+                                    <!--</div>-->
+                                <!--</div>-->
+                            <!--</div>-->
+                        <!--</li>-->
+                    <!--</ul>-->
+                <!--</li> -->
+				<!--<li class="menu-dropdown mega-menu-dropdown">-->
+                    <!--<a target="_blank" href="javascript:;"> Quản lý Dự án-->
+                        <!--<i class="fa fa-angle-down"></i>-->
+                    <!--</a>-->
+                    <!--<ul class="dropdown-menu" style="min-width: 250px;">-->
+                        <!--<li>-->
+                            <!--<div class="mega-menu-content">-->
+                                <!--<div class="row">-->
+                                    <!--<div class="col-md-12">-->
+                                        <!--<ul class="mega-menu-submenu">-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/projects">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Danh sách dự án-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/projecttasks">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Quản lý dự án-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                        <!--</ul>-->
+                                    <!--</div>-->
+                                <!--</div>-->
+                            <!--</div>-->
+                        <!--</li>-->
+                    <!--</ul>-->
+                <!--</li>                                -->
+                <!--<li class="menu-dropdown mega-menu-dropdown ">-->
+                    <!--<a target="_blank" href="#/calendar">-->
+                        <!--Lịch công tác-->
+                    <!--</a>-->
+                <!--</li>                -->
+                <!--&lt;!&ndash;<li class="menu-dropdown mega-menu-dropdown ">&ndash;&gt;-->
+                    <!--&lt;!&ndash;<a target="_blank" href="#/contracts"><i class="icon-magic-wand"></i> Quản lý hợp đồng</a>&ndash;&gt;-->
+                <!--&lt;!&ndash;</li>&ndash;&gt;-->
+                <!--<li class="menu-dropdown mega-menu-dropdown">-->
+                    <!--<a target="_blank" href="javascript:;"> Quản lý tài liệu-->
+                        <!--<i class="fa fa-angle-down"></i>-->
+                    <!--</a>-->
+                    <!--<ul class="dropdown-menu" style="min-width: 250px;">-->
+                        <!--<li>-->
+                            <!--<div class="mega-menu-content">-->
+                                <!--<div class="row">-->
+                                    <!--<div class="col-md-12">-->
+                                        <!--<ul class="mega-menu-submenu">-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/policies-regulations">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Quy chế - quy định-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/collaboration-processes">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Quy trình phối hợp-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/template">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Danh sách biểu mẫu-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                        <!--</ul>-->
+                                    <!--</div>-->
+                                <!--</div>-->
+                            <!--</div>-->
+                        <!--</li>-->
+                    <!--</ul>-->
+                <!--</li>-->
+                <!--&lt;!&ndash;<li class="menu-dropdown mega-menu-dropdown">&ndash;&gt;-->
+                    <!--&lt;!&ndash;<a target="_blank" href="javascript:;"> Tiền lương&ndash;&gt;-->
+                        <!--&lt;!&ndash;<i class="fa fa-angle-down"></i>&ndash;&gt;-->
+                    <!--&lt;!&ndash;</a>&ndash;&gt;-->
+                    <!--&lt;!&ndash;<ul class="dropdown-menu" style="min-width: 250px;">&ndash;&gt;-->
+                        <!--&lt;!&ndash;<li>&ndash;&gt;-->
+                            <!--&lt;!&ndash;<div class="mega-menu-content">&ndash;&gt;-->
+                                <!--&lt;!&ndash;<div class="row">&ndash;&gt;-->
+                                    <!--&lt;!&ndash;<div class="col-md-12">&ndash;&gt;-->
+                                        <!--&lt;!&ndash;<ul class="mega-menu-submenu">&ndash;&gt;-->
+                                            <!--&lt;!&ndash;<li>&ndash;&gt;-->
+                                                <!--&lt;!&ndash;<a target="_blank" href="#/setup_salary">&ndash;&gt;-->
+                                                    <!--&lt;!&ndash;<i class="fa fa-caret-right"></i> Cấu hình tính lương&ndash;&gt;-->
+                                                <!--&lt;!&ndash;</a>&ndash;&gt;-->
+                                            <!--&lt;!&ndash;</li>&ndash;&gt;-->
+                                            <!--&lt;!&ndash;<li>&ndash;&gt;-->
+                                                <!--&lt;!&ndash;<a target="_blank" href="#/salaryitem">&ndash;&gt;-->
+                                                    <!--&lt;!&ndash;<i class="fa fa-caret-right"></i> Danh mục phần tử lương&ndash;&gt;-->
+                                                <!--&lt;!&ndash;</a>&ndash;&gt;-->
+                                            <!--&lt;!&ndash;</li>&ndash;&gt;-->
+                                            <!--&lt;!&ndash;<li>&ndash;&gt;-->
+                                                <!--&lt;!&ndash;<a target="_blank" href="#/salaryconfig">&ndash;&gt;-->
+                                                    <!--&lt;!&ndash;<i class="fa fa-caret-right"></i> Danh mục cấu hình lương&ndash;&gt;-->
+                                                <!--&lt;!&ndash;</a>&ndash;&gt;-->
+                                            <!--&lt;!&ndash;</li>&ndash;&gt;-->
+                                            <!--&lt;!&ndash;<li>&ndash;&gt;-->
+                                                <!--&lt;!&ndash;<a target="_blank" href="#/salaryincrementtype">&ndash;&gt;-->
+                                                    <!--&lt;!&ndash;<i class="fa fa-caret-right"></i> Danh mục loại tăng lương&ndash;&gt;-->
+                                                <!--&lt;!&ndash;</a>&ndash;&gt;-->
+                                            <!--&lt;!&ndash;</li>&ndash;&gt;-->
+                                        <!--&lt;!&ndash;</ul>&ndash;&gt;-->
+                                    <!--&lt;!&ndash;</div>&ndash;&gt;-->
+                                <!--&lt;!&ndash;</div>&ndash;&gt;-->
+                            <!--&lt;!&ndash;</div>&ndash;&gt;-->
+                        <!--&lt;!&ndash;</li>&ndash;&gt;-->
+                    <!--&lt;!&ndash;</ul>&ndash;&gt;-->
+                <!--&lt;!&ndash;</li>&ndash;&gt;-->
+                <!--<li class="menu-dropdown mega-menu-dropdown">-->
+                    <!--<a target="_blank" href="javascript:;"> Danh mục-->
+                        <!--<i class="fa fa-angle-down"></i>-->
+                    <!--</a>-->
+                    <!--<ul class="dropdown-menu" style="min-width: 250px;">-->
+                        <!--<li>-->
+                            <!--<div class="mega-menu-content">-->
+                                <!--<div class="row">-->
+                                    <!--<div class="col-md-12">-->
+                                        <!--<ul class="mega-menu-submenu">-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/document_field">-->
+                                                    <!--<i class="fa fa-caret-right"></i>Danh mục lĩnh vực văn bản-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/document_priority">-->
+                                                    <!--<i class="fa fa-caret-right"></i>Danh mục độ ưu tiên-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/document_security_level">-->
+                                                    <!--<i class="fa fa-caret-right"></i>Danh mục độ mật văn bản-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/document_type">-->
+                                                    <!--<i class="fa fa-caret-right"></i>Danh mục loại văn bản-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/task_flow">-->
+                                                    <!--<i class="fa fa-caret-right"></i>Danh mục quy trình xử lý văn bản-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/positiontitle">-->
+                                                    <!--<i class="fa fa-caret-right"></i>Danh mục chức vụ-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/civilservantgrade/civilservantgrade-system">-->
+                                                    <!--<i class="fa fa-caret-right"></i>Cấp bậc công chức-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/civilservantcategory/civilservantcategory-system">-->
+                                                    <!--<i class="fa fa-caret-right"></i>Danh mục loại công chức-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/department">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Danh mục phòng ban-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--&lt;!&ndash; <li>-->
+                                                <!--<a target="_blank" href="#/salaryitem">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Danh mục phần tử lương-->
+                                                <!--</a>-->
+
+                                            <!--</li> &ndash;&gt;-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/religion">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Danh mục tôn giáo-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/organization">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Danh mục cơ quan - đơn vị-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/educationdegree">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Danh mục bằng cấp-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/academictitle">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Danh mục học hàm học vị-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/shiftwork">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Danh mục ca làm việc-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/overtimetype">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Danh mục làm ngoài giờ-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                            <!--&lt;!&ndash; <li>-->
+                                                <!--<a target="_blank" href="#/salaryincrementtype">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Danh mục loại tăng lương-->
+                                                <!--</a>-->
+                                            <!--</li>  &ndash;&gt;-->
+                                            <!--<li>-->
+                                                <!--<a target="_blank" href="#/specialityadmissionsmap">-->
+                                                    <!--<i class="fa fa-caret-right"></i> Danh mục cấu hình mã ngành tuyển sinh-->
+                                                <!--</a>-->
+                                            <!--</li>-->
+                                        <!--</ul>-->
+                                    <!--</div>-->
+                                <!--</div>-->
+                            <!--</div>-->
+                        <!--</li>-->
+                    <!--</ul>-->
+                <!--</li>-->
+                <li ng-if="settings.isAdmin == true" class="menu-dropdown mega-menu-dropdown">
+                    <a target="_blank" href="javascript:;"><i class="icon-equalizer"></i> System
+                        <i class="fa fa-angle-down"></i>
+                    </a>
+                    <ul class="dropdown-menu" style="min-width: 250px;">
+                        <li>
+                            <div class="mega-menu-content">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <ul class="mega-menu-submenu">
+                                            <li>
+                                                <a target="_blank" href="user/groups">
+                                                    <i class="icon-people"></i> Nhóm người dùng
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a target="_blank" href="user/accounts">
+                                                    <i class="icon-user"></i> Người dùng
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a target="_blank" href="user/roles">
+                                                    <i class="icon-badge"></i> Vai trò
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a target="_blank" href="user/permissions">
+                                                    <i class="icon-shield"></i> Phân quyền
+                                                </a>
+                                            </li>
+                                            <li class="divider"></li>
+                                            <li>
+                                                <a target="_blank" href="settings">
+                                                    <i class="fa fa-gear"></i> Thiết lập hệ thống
+                                                </a>
+                                            </li>
+                                            <li>
+                                            <a href="question_type">
+                                                <i class="fa fa-caret-right"></i> Question Type
+                                            </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="dropdown dropdown-user dropdown-dark">
+                    <a target="_blank" href="#" class="dropdown-toggle" dropdown-menu-hover data-toggle="dropdown" data-close-others="true">
+                        <img ng-if="!currentUser.hasPhoto" alt="" class="img-circle" ng-src="{{settings.assetsPath}}/images/no-profile-photo-small.png" />
+                        <img id="_user_profile_photo_small" ng-if="currentUser.hasPhoto" alt="" class="img-circle" ng-src="{{settings.api.baseUrl}}public/users/photo/{{currentUser.username}}" />
+                        <span class="username username-hide-on-mobile" data-ng-cloak="">{{currentUser.displayName}}</span>
+                        <i class="fa fa-angle-down"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-default">
+                        <li class="user-photo" ng-if="!currentUser.hasPhoto">
+                            <a target="_blank" href="#" ng-click="profilePhoto.showUploadModal()"><img class="img-circle" alt="User" ng-src="{{settings.assetsPath}}/images/no-profile-photo.png" /><span>cập nhật ảnh</span></a>
+                        </li>
+                        <li class="user-photo" ng-if="currentUser.hasPhoto">
+                            <a target="_blank" href="#" ng-click="profilePhoto.showUploadModal()"><img id="_user_profile_photo_big" class="img-circle" alt="User" ng-src="{{settings.api.baseUrl}}public/users/photo/{{currentUser.username}}" /><span>cập nhật ảnh</span></a>
+                        </li>
+                        <li style="padding-top: 10px">
+                            <a target="_blank" href="#" ng-click="changePassword()"><i class="icon-shield"></i> Đổi mật khẩu </a>
+                        </li>
+                        <li class="divider"> </li>
+                        <li>
+                            <a target="_blank" href="#" data-ng-click="logout()"><i class="icon-power"></i> Đóng phiên làm việc </a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        <!-- END MEGA MENU -->
+    </div>
+</div>
+<!-- END HEADER MENU -->
+<script type="text/ng-template" id="upload_photo_modal.html">
+    <div modal-movable min-width="350px">
+        <div class="modal-header">
+            <h4 class="modal-title"><i class="icon-cloud-upload"></i> Cập nhật ảnh đại diện</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-md-12">
+                    <a class="no-content1 display-block link" ngf-select="profilePhoto.triggerUpload($file, $invalidFiles)"
+                       accept="image/*" ngf-pattern="image/*, .jpg, .png" ngf-accept="'image/*'" ngf-multiple="false" ngf-max-size="1MB"
+                       ngf-min-height="300" ngf-max-height="1000" ngf-min-width="300" ngf-max-width="1000"><i class="fa fa-cloud-upload"></i> Chọn ảnh để tải lên</a>
+                </div>
+
+                <div class="col-md-12 margin-top-20" ng-if="profilePhoto.uploadedFile != null">
+                    <div class="row">
+                        <div class="col-xs-5 align-right">
+                            <label>Tệp tin đã chọn:</label>
+                        </div>
+                        <div class="col-xs-7">
+                            <span class="bold">{{profilePhoto.uploadedFile.name}}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-12 margin-top-20" ng-if="profilePhoto.errorFile != null && profilePhoto.errorFile.$error != ''">
+                    Error: <span class="bold" ng-if="profilePhoto.errorFile.$error == 'maxSize'">Kích thước tệp tin không được vượt quá {{profilePhoto.errorFile.$errorParam}}</span>
+                    <span class="bold" ng-if="profilePhoto.errorFile.$error == 'maxWidth' || profilePhoto.errorFile.$error == 'maxHeight' || profilePhoto.errorFile.$error == 'minWidth' || profilePhoto.errorFile.$error == 'minHeight'">Kích thước ngang và dọc của ảnh phải từ 300 đến 1000 điểm ảnh.</span>
+                    <span class="bold" ng-if="profilePhoto.errorFile.$error != null && profilePhoto.errorFile.$error != 'maxSize' && profilePhoto.errorFile.$error != 'maxWidth' && profilePhoto.errorFile.$error != 'maxHeight' && profilePhoto.errorFile.$error != 'minWidth' && profilePhoto.errorFile.$error != 'minHeight'">Tệp tin {{profilePhoto.errorFile.name}} không hợp lệ.</span>
+                </div>
+
+                <div class="col-md-12 margin-top-20" ng-if="profilePhoto.uploadedFile.progress >= 0">
+                    <div class="progress" style="height: 20px">
+                        <div class="progress-bar" role="progressbar" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100" ng-bind="profilePhoto.uploadedFile.progress + '%'" style="width:{{profilePhoto.uploadedFile.progress}}%;">
+                            {{profilePhoto.uploadedFile.progress}}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="profilePhoto.closeUploadFile()"  data-ng-disabled="profilePhoto.uploadedFile.progress > 0 && profilePhoto.uploadedFile.progress < 100" class="btn btn-default" data-dismiss="modal">Đóng lại</button>
+            <button type="button" ng-click="profilePhoto.startUploadFile(profilePhoto.uploadedFile)" class="btn btn-primary" data-ng-disabled="profilePhoto.uploadedFile == null || (profilePhoto.errorFile != null && profilePhoto.errorFile.$error != '') || profilePhoto.uploadedFile.progress >= 100" data-dismiss="modal">Bắt đầu tải lên</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="crop_photo_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <h4 class="modal-title"><i class="fa fa-crop"></i> Chỉnh sửa ảnh</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="cropper-crop-area">
+                        <ui-cropper image="profilePhoto.photoUrl" area-type="square" area-init-size="{ w:cropper.cropWidth,h:cropper.cropHeight}" cropject="profilePhoto.cropper" result-image="profilePhoto.croppedImage"></ui-cropper>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Chấp nhận</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="change_password_modal.html">
+    <div modal-movable min-width="350px">
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="icon-shield"></i> Đổi mật khẩu</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-xs-4">
+                    <span style="font-size: 170px; color: #dddddd"><i class="im im-icon-Lock-3"></i></span>
+                </div>
+                <div class="col-xs-8">
+                    <div class="row">
+                        <div class="col-xs-12 margin-top-20">
+                            <label for="_frm_change_password.current_password" class="bold">Mật khẩu hiện thời</label>
+                            <input type="password" class="form-control" id="_frm_change_password.current_password" ng-model="changePasswordObj.currentPassword" autofocus="autofocus" />
+                        </div>
+                        <div class="col-xs-12 margin-top-20">
+                            <label for="_frm_change_password.new_password" class="bold">Mật khẩu mới</label>
+                            <input type="password" class="form-control" id="_frm_change_password.new_password" ng-model="changePasswordObj.newPassword" />
+                        </div>
+                        <div class="col-xs-12 margin-top-20">
+                            <label for="_frm_change_password.new_password_rep" class="bold">Nhập lại mật khẩu mới</label>
+                            <input type="password" class="form-control" id="_frm_change_password.new_password_rep" ng-model="changePasswordObj.newPasswordRep" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy</button>
+            <button type="button" ng-click="changePasswordObj.saveNewPassword()" class="btn blue-dark" data-dismiss="modal">Cập nhật</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="password_changed_modal.html">
+    <div modal-movable min-width="350px">
+        <div class="modal-header">
+            <h4 class="modal-title"><i class="icon-shield"></i> Mật khẩu đã thay đổi</h4>
+        </div>
+        <div class="modal-body">
+            Bạn đã thay đổi mật khẩu thành công. Bạn vui lòng đóng phiên làm việc hiện tại và đăng nhập lại bằng mật khẩu mới để tiếp tục.
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$close(); logout();" class="btn blue-dark" data-dismiss="modal">Đóng phiên làm việc</button>
+        </div>
+    </div>
+</script>

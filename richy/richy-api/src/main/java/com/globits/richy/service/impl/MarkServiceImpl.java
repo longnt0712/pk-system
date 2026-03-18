@@ -90,7 +90,7 @@ public class MarkServiceImpl implements MarkService {
 	}
 
 	@Override
-	public boolean saveObject(MarkDto dto) {
+	public MarkDto saveObject(MarkDto dto) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		User modifiedUser = null;
 		LocalDateTime currentDate = LocalDateTime.now();
@@ -99,21 +99,42 @@ public class MarkServiceImpl implements MarkService {
 			modifiedUser = (User) authentication.getPrincipal();
 			currentUserName = modifiedUser.getUsername();
 		}
+
 		if(dto == null) {
-			return false;
+			return dto;
 		}
 		Mark domain = null;
+		String saveType = "...";
 		if(dto.getId() != null) {
 			domain = markRepository.getOne(dto.getId());
 		}
 		if(domain != null) {
 			domain.setModifiedBy(currentUserName);
 			domain.setModifyDate(currentDate);
+			saveType = "SỬA";
 		}
 		if(domain == null) {
 			domain = new Mark();
 			domain.setCreateDate(currentDate);
 			domain.setCreatedBy(currentUserName);
+			saveType = "THÊM MỚI";
+		}
+		
+		if(dto.getCode() == null) {
+			dto.setMessage("Chưa có mã");
+			return dto;
+		}
+		if(dto.getName() == null) {
+			dto.setMessage("Chưa có tên");
+			return dto;
+		}
+		if(dto.getCoefficient() == null) {
+			dto.setMessage("Chưa có hệ số");
+			return dto;
+		}
+		if(dto.getEducationProgram() == null) {
+			dto.setMessage("Chưa có chương trình");
+			return dto;
 		}
 		
 		domain.setCode(dto.getCode());
@@ -130,7 +151,10 @@ public class MarkServiceImpl implements MarkService {
 		domain.setDescription(dto.getDescription());
 		domain = markRepository.save(domain);
 		
-		return false;
+		MarkDto ret = new MarkDto(domain);
+		ret.setMessage(saveType + " THÀNH CÔNG");
+		
+		return ret;
 	}
 
 	@Override

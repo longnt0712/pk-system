@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<!--[if IE 8]> <html lang="en" class="ie8 no-js" data-ng-app="Hrm"> <![endif]-->
+<!--[if IE 9]> <html lang="en" class="ie9 no-js" data-ng-app="Hrm"> <![endif]-->
+<!--[if !IE]><!-->
+<html lang="en" data-ng-app="Hrm" translate="no">
+<!--<![endif]-->
+    <head>
+
+        <title ng-if="settings.ieltsRoom == true" data-ng-bind="'IELTS ROOM | ' + $state.current.data.pageTitle"></title>
+        <title ng-if="settings.chapter == true" data-ng-bind="'TNTT PK | ' + $state.current.data.pageTitle"></title>
+
+        <base href="/">
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no,maximum-scale=1">
+        <meta content="" name="description" />
+        <meta content="" name="author" />
+
+        <meta property="og:url"           content="https://www.ieltsroom.com/" />
+        <meta property="og:type"          content="website" />
+        <meta property="og:title"         content="IELTS ROOM" />
+        <meta property="og:description"   content="LEARN STUDY PLAY WITH IELTS" />
+        <meta ng-if="settings.ieltsRoom == true" property="og:image" content="https://ieltsroom.com/assets/images/troop.jpg">
+        <meta ng-if="settings.chapter == true" property="og:image" content="https://ieltsroom.com/assets/images/troop-1.jpg">
+
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="0">
+        <meta name="google" content="notranslate">
+
+        <!--<base href="/">-->
+        <!--begin::Web font -->
+        <!--<script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.16/webfont.js"></script>-->
+        <!--<script>-->
+            <!--WebFont.load({-->
+                <!--google: {"families":["Quicksand:300,400,500,700"]},-->
+                <!--active: function() {-->
+                    <!--sessionStorage.fonts = true;-->
+                <!--}-->
+            <!--});-->
+        <!--</script>-->
+        <!--end::Web font -->
+
+        <!--<link href="http://fonts.googleapis.com/css?family=Open+Sans:400,300,600,700&subset=all" rel="stylesheet" type="text/css" />-->
+        <!--<link href="https://fonts.googleapis.com/css?family=Trirong:300,400,500,700" rel="stylesheet" type="text/css" />-->
+
+        <!--build:css assets/css/plugins.min.css-->
+        <!--<link href="assets/css/external/font-awesome.min.css" rel="stylesheet" type="text/css" />-->
+        <!--<link href="assets/css/external/fontawesome.min.css" rel="stylesheet" type="text/css" />-->
+        <!--<script src="https://kit.fontawesome.com/3dc7db50bf.js" crossorigin="anonymous"></script>-->
+        <!--<link href="assets/css/external/all.min.css" rel="stylesheet" type="text/css" />-->
+        <!--<link href="assets/css/external/all.css" rel="stylesheet" type="text/css" />-->
+        <link href='https://fonts.googleapis.com/css?family=Orbitron' rel='stylesheet' type='text/css'>
+
+        <link href="assets/fontawesome/css/all.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/simple-line-icons.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/iconsmind.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/bootstrap.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/bootstrap-switch.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/bootstrap-table.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/select.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/angular-bootstrap-datepicker.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/jstree-style.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/angular-toastr.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/jquery.webui-popover.min.css" rel="stylesheet" type="text/css"/>
+        <link href="assets/css/external/jquery.orgchart.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/AdminLTE.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/datetimepicker.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/angular-block-ui.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/angucomplete-alt.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/ng-tree-dnd.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/fullcalendar.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/ui-cropper.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/ng-tags-input.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/dx.common.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/external/dx.light.css" rel="stylesheet" type="text/css" />
+        <link rel="stylesheet" href="assets/css/external/cropper.min.css">
+        <!--endbuild-->
+
+        <link id="ng_load_plugins_before" />
+
+        <!--build:css assets/css/client.min.css-->
+        <link href="assets/css/components-md.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/plugins-md.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/layout-hoz.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/default.min.css" rel="stylesheet" type="text/css" />
+        <link href="assets/css/custom.css" rel="stylesheet" type="text/css" />
+        <!--endbuild-->
+
+        <link ng-if="settings.ieltsRoom == true" rel="shortcut icon" content="" href="assets/images/troop.jpg" />
+        <link ng-if="settings.chapter == true" rel="shortcut icon" content="" href="assets/images/troop-1.jpg" />
+
+        <!--[if lt IE 9]>
+        <script src="assets/scripts/external/respond.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/excanvas.min.js" type="text/javascript"></script>
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.js" type="text/javascript"></script>
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/es5-shim/2.2.0/es5-shim.js" type="text/javascript"></script>
+        <script src="assets/scripts/ui-select-ielt9.js" type="text/javascript"></script>
+
+        <![endif]-->
+    </head>
+    <body ng-controller="AppController"  class="page-container-bg-solid">
+
+
+        <!--<svg ng-spinner-bar width="300px" height="200px" viewBox="0 0 187.3 93.7" preserveAspectRatio="xMidYMid meet" style="left: 50%; top: 50%; position: absolute; transform: translate(-50%, -50%) matrix(1, 0, 0, 1, 0, 0);">-->
+            <!--<path stroke="#dc143c" id="outline" fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="M93.9,46.4c9.3,9.5,13.8,17.9,23.5,17.9s17.5-7.8,17.5-17.5s-7.8-17.6-17.5-17.5c-9.7,0.1-13.3,7.2-22.1,17.1 				c-8.9,8.8-15.7,17.9-25.4,17.9s-17.5-7.8-17.5-17.5s7.8-17.5,17.5-17.5S86.2,38.6,93.9,46.4z" />-->
+            <!--<path id="outline-bg" opacity="0.1" fill="none" stroke="#ccc" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="				M93.9,46.4c9.3,9.5,13.8,17.9,23.5,17.9s17.5-7.8,17.5-17.5s-7.8-17.6-17.5-17.5c-9.7,0.1-13.3,7.2-22.1,17.1 				c-8.9,8.8-15.7,17.9-25.4,17.9s-17.5-7.8-17.5-17.5s7.8-17.5,17.5-17.5S86.2,38.6,93.9,46.4z" />-->
+        <!--</svg>-->
+
+        <ui-view></ui-view>
+
+        <!--<script async defer crossorigin="anonymous" src="https://connect.facebook.net/vi_VN/sdk.js#xfbml=1&version=v13.0&appId=1832244337163521&autoLogAppEvents=1" nonce="HLSuRQaX"></script>-->
+
+        <!--build:js assets/scripts/core-jquery.min.js-->
+        <script src="assets/scripts/external/jquery.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/bootstrap.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/bootstrap-hover-dropdown.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/jquery.slimscroll.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/jquery.blockui.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/jquery-ui.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/js.cookie.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/bootstrap-switch.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/bootstrap-table.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/bootstrap-table-vi-VN.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/jquery.inputmask.bundle.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/jstree.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/bootstrap-tabdrop.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/jquery.webui-popover.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/moment-with-locales.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/accounting.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/moment.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/taffy-min.js" type="text/javascript"></script>
+        <!--<script src="assets/scripts/external/tinymce-2.min.js" type="text/javascript"></script>-->
+        <!--<script src="assets/scripts/external/themes/modern/theme.min.js" type="text/javascript"></script>-->
+        <script src="assets/scripts/external/tinymce.min.js" type="text/javascript"></script>
+        <!--<script src="assets/scripts/external/tinymce.js" type="text/javascript"></script>-->
+        <!--<script src="assets/scripts/external/themes/modern/theme.js" type="text/javascript"></script>-->
+        <script src="assets/scripts/external/lodash.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/bootstrap-treeview.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/fullcalendar.min.js" type="text/javascript"></script>
+        <!--endbuild-->
+
+        <!--build:js assets/scripts/core-angular.min.js-->
+        <script src="assets/scripts/external/angular.js" type="text/javascript"></script>
+        <!--<script src="assets/scripts/external/angular.min.js" type="text/javascript"></script>-->
+        <script src="assets/scripts/external/angular-sanitize.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/angular-touch.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/angular-cookies.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/angular-ui-router.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/ocLazyLoad.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/query-string.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/angular-oauth2.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/ui-bootstrap-tpls.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/bootstrap-table-angular.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/angular-bootstrap-datepicker.js" type="text/javascript"  charset="utf-8"></script>
+        <script src="assets/scripts/external/select.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/ngJsTree.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/angular-toastr.tpls.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/angular-block-ui.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/angular-ui-tinymce.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/ng-file-upload-shim.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/ng-file-upload.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/angular-input-masks-standalone.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/angucomplete-alt.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/focusIf.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/ng-tree-dnd.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/ui-cropper.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/angular-idle.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/ng-tags-input.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/angular-drag-and-drop-lists.min.js" type="text/javascript"></script>
+        <script src="assets/scripts/external/angular-drag-and-drop-lists.js" type="text/javascript"></script>
+
+
+         <script src="assets/scripts/external/FileSaver.min.js" type="text/javascript"></script>
+         <script src="assets/scripts/external/angular-file-saver.min.js" type="text/javascript"></script>
+
+        <script src="https://cdn.pubnub.com/pubnub-3.15.1.min.js"></script>
+        <script src="https://cdn.pubnub.com/sdk/pubnub-angular/pubnub-angular-3.2.1.min.js"></script>
+
+        <script src="assets/scripts/external/html5-qrcode.min.js"></script>
+        <script src="assets/scripts/external/qrcode.min.js"></script>
+        <script src="assets/scripts/external/heic2any.min.js"></script>
+
+        <script src="assets/scripts/external/cropper.min.js"></script>
+        <!--<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>-->
+        <!--endbuild-->
+
+        <!--build:js assets/scripts/application.min.js-->
+        <script src="application.js" type="text/javascript"></script>
+        <script src="application.configs.js" type="text/javascript"></script>
+        <script src="application.services.js" type="text/javascript"></script>
+        <script src="application.controllers.js" type="text/javascript"></script>
+
+        <script src="common/common.module.js?ver=<?php echo time(); ?" type="text/javascript"></script>
+        <script src="dashboards/dashboard.module.js" type="text/javascript"></script>
+        <script src="settings/setting.module.js" type="text/javascript"></script>
+        <script src="users/user.module.js" type="text/javascript"></script>
+
+        <script src="account/account.module.js" type="text/javascript"></script>
+		<script src="calendar/calendar.module.js" type="text/javascript"></script>
+		<script src="users/business/UserService.js" type="text/javascript"></script>
+        <script src="users/business/UserService.js" type="text/javascript"></script>
+
+        <script src="answer/answer.module.js" type="text/javascript"></script>
+        <script src="question/question.module.js?ver=<?php echo time(); ?" type="text/javascript"></script>
+        <script src="classical_learning/classical_learning.module.js" type="text/javascript"></script>
+        <script src="body/body.module.js" type="text/javascript"></script>
+        <script src="body_learning/body_learning.module.js" type="text/javascript"></script>
+        <script src="question_types/question_type.module.js" type="text/javascript"></script>
+        <script src="products/products.module.js" type="text/javascript"></script>
+        <script src="item/item.module.js" type="text/javascript"></script>
+        <script src="voucher_crocs/voucher_crocs.module.js" type="text/javascript"></script>
+        <script src="default_price/default_price.module.js" type="text/javascript"></script>
+        <script src="shop/shop.module.js" type="text/javascript"></script>
+        <script src="topic/topic.module.js" type="text/javascript"></script>
+        <script src="test_result/test_result.module.js" type="text/javascript"></script>
+        <script src="person_date/person_date.module.js" type="text/javascript"></script>
+        <script src="education_program/education.module.js" type="text/javascript"></script>
+        <script src="mark/mark.module.js" type="text/javascript"></script>
+        <script src="student_mark/student_mark.module.js" type="text/javascript"></script>
+
+        <!--<script src="wine/wine.module.js" type="text/javascript"></script>-->
+        <!--<script src="church/church.module.js" type="text/javascript"></script>-->
+        <!--<script src="folder/folder.module.js" type="text/javascript"></script>-->
+        <!--<script src="article/article.module.js" type="text/javascript"></script>-->
+
+        <script src="common/utils/directives.js" type="text/javascript"></script>
+        <script src="common/utils/utilities.js" type="text/javascript"></script>
+        <script src="common/utils/filters.js" type="text/javascript"></script>
+        <script src="assets/scripts/app.js" type="text/javascript"></script>
+        <script src="assets/scripts/layout-hoz.js" type="text/javascript"></script>
+        <!--endbuild-->
+
+        <!--build:js dx-->
+        <script src="assets/scripts/external/dx.all.js" type="text/javascript"></script>
+        <!--<script src="assets/scripts/external/dx.web.js" type="text/javascript"></script>-->
+        <script src="assets/scripts/external/globalize.js" type="text/javascript"></script>
+
+
+
+        <!--endbuild-->
+    </body>
+</html>
