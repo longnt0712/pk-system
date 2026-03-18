@@ -54,8 +54,8 @@
     }
     // Hrm.API_SERVER_URL = 'https://giaoxuphungkhoang.org:8085/service/';
     // Hrm.API_SERVER_URL = 'https://tnttphungkhoang.com/service/';
-    // Hrm.API_SERVER_URL = 'https://ieltsroom.com:8443/service/';
-    Hrm.API_SERVER_URL = 'http://localhost:8443/service/'; // đoạn này mình call local
+    Hrm.API_SERVER_URL = 'https://ieltsroom.com:8443/service/';
+    // Hrm.API_SERVER_URL = 'http://localhost:8443/service/'; // đoạn này mình call local
     //--------------------//
 
     // Hrm.API_SERVER_URL = 'https://localhost:8085/service/'; // đoạn này mình call local
@@ -100,7 +100,10 @@
                     }else if(value.name == "ROLE_STUDENT_MANAGERMENT"){
                         settings.isStudentManagerment = true;
                         console.log("isStudentManagerment");
-                    }                    
+                    }else if(value.name == "ROLE_EDUCATION_MANAGERMENT"){
+                        settings.isEducationManagerment = true;
+                        console.log("isEducationManagerment");
+                    }
                 });
             }
 
