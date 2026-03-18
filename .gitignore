@@ -1,0 +1,40 @@
+# Maven / build
+target/
+**/target/
+bin/
+**/bin/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# Eclipse
+.metadata/
+.recommenders/
+**/.settings/
+**/.project
+**/.classpath
+*.launch
+
+# IntelliJ / VS Code
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+
+# Temp
+*.tmp
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local config only
+application-local.properties
+application-local.yml
+application-dev-local.yml
