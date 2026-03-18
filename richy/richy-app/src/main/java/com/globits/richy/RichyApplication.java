@@ -7,7 +7,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class RichyApplication {
 
 	public static void main(String[] args) {
+		System.out.println("hello hello");
 		SpringApplication.run(RichyApplication.class, args);
+		
 	}
 
 }
