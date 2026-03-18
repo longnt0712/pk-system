@@ -36,7 +36,7 @@ public class RestMarkController {
 	
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/save", method = RequestMethod.POST)
-	public boolean saveOne(@RequestBody MarkDto searchDto) {
+	public MarkDto saveOne(@RequestBody MarkDto searchDto) {
 		return service.saveObject(searchDto);
 	}
 	

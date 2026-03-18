@@ -15,8 +15,15 @@ public class MarkDto implements Serializable{
 	private EducationProgramDto educationProgram;
 //	private String markText;
 //	private Double markNumber;
-
+	private String message;
 	private String textSearch;
+	
+	public String getMessage() {
+		return message;
+	}
+	public void setMessage(String message) {
+		this.message = message;
+	}
 	public Long getId() {
 		return id;
 	}
