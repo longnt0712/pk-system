@@ -23,31 +23,31 @@ public class RestStudentMarkController {
 	@Autowired
 	StudentMarkService service;
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
 	public Page<StudentMarkDto> getPage(@RequestBody StudentMarkDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
 		return service.getPageObject(searchDto, pageIndex, pageSize);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/get_list_display", method = RequestMethod.POST)
 	public List<DisplayStudentMarkDto> getListDisplayStudentMark(@RequestBody DisplayStudentMarkDto searchDto) {
 		return service.getListDisplayStudentMark(searchDto);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)
 	public StudentMarkDto getOne(@PathVariable Long id) {
 		return service.getObjectById(id);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/save", method = RequestMethod.POST)
 	public StudentMarkDto saveOne(@RequestBody StudentMarkDto searchDto) {
 		return service.saveObject(searchDto);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)
 	public boolean saveOne(@PathVariable Long id) {
 		return service.deleteObject(id);

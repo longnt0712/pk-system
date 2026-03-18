@@ -77,7 +77,7 @@
                     <!--</li>-->
                     <!--</ul>-->
                 </li>
-                <li class="dropdown" ng-if="settings.isStudentManagerment || settings.isAdmin">
+                <li class="dropdown" ng-if="settings.isStudentManagerment || settings.isEducationManagerment || settings.isAdmin">
                     <a href="student_marks" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">DANH SÁCH ĐIỂM <span class="caret"></span></a>
                     <!--<ul class="dropdown-menu">-->
                     <!--<li>-->
@@ -97,6 +97,26 @@
                         <!--</li>-->
                     <!--</ul>-->
                 <!--</li>-->
+
+                <li ng-show="settings.isAdmin   == true || settings.isEducationManagerment == true" class="menu-dropdown">
+                    <!--<a href=""><i class="icon-equalizer"></i> System-->
+                    <!--<i class="fa fa-angle-down"></i>-->
+                    <!--</a>-->
+                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">ĐÀO TẠO <span class="caret"></span></a>
+                    <ul class="dropdown-menu" >
+                        <li>
+                            <a href="education_programs">
+                                <i class="fa fa-caret-right"></i> Chương trình đào tạo
+                            </a>
+                        </li>
+                        <li>
+                            <a href="marks">
+                                <i class="fa fa-caret-right"></i> Điểm
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
                 <li ng-show="settings.isAdmin == true" class="menu-dropdown">
                     <!--<a href=""><i class="icon-equalizer"></i> System-->
                         <!--<i class="fa fa-angle-down"></i>-->
@@ -127,16 +147,6 @@
                         <li>
                             <a target="_blank" href="settings">
                                 <i class="fa fa-gear"></i> Thiết lập hệ thống
-                            </a>
-                        </li>
-                        <li>
-                            <a href="education_programs">
-                                <i class="fa fa-caret-right"></i> Chương trình đào tạo
-                            </a>
-                        </li>
-                        <li>
-                            <a href="marks">
-                                <i class="fa fa-caret-right"></i> Điểm
                             </a>
                         </li>
                         <li>
