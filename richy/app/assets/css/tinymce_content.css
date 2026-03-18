@@ -1,0 +1,26 @@
+/* width */
+::-webkit-scrollbar {
+    width: 5px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+    background: white;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+    background: #BFBFBF;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+    background: white;
+}
+
+html,
+body {
+    /*background-color: #ffffea;*/
+}
+
+body, p, div, span, pre, .mce-content-body {color:#000; font-family:Cambria !important; font-size: 16px; }

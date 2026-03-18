@@ -1,0 +1,374 @@
+<!-- END PAGE HEADER-->
+<!-- BEGIN MAIN CONTENT -->
+<div class="row margin-top-10">
+    <div class="col-md-12">
+        <div class="portlet light bordered margin-bottom-10">
+            <div class="portlet-body">
+                <uib-tabset active="active">
+                    <uib-tab index="$index + 1" ng-repeat="tab in tabs" heading="{{tab.title}}"
+                             ng-click="vm.switchTab(tab.id)">
+
+                        <!-- tab = 0 -->
+                        <div ng-if="tab.id == 0">
+                            <div class="row">
+                                <!--<div class="col-md-4 margin-bottom-20">-->
+                                    <!--<ui-select multiple ng-change="vm.searchTopicIELTSWritingChange()"-->
+                                               <!--data-ng-model="vm.selectedTopicToSearchIELTSWriting" sortable="true"-->
+                                               <!--close-on-select="true" style="width: 100% !important;">-->
+                                        <!--<ui-select-match allow-clear="true" placeholder="Search by topic...">-->
+                                            <!--{{$item.name}}-->
+                                        <!--</ui-select-match>-->
+                                        <!--<ui-select-choices-->
+                                                <!--repeat="t in vm.topics | propsFilter: {name: $select.search}">-->
+                                            <!--<div class="bold" ng-bind-html="t.name | highlight: $select.search">-->
+                                            <!--</div>-->
+                                        <!--</ui-select-choices>-->
+                                    <!--</ui-select>-->
+                                <!--</div>-->
+
+                                <!--&lt;!&ndash;<div class="col-md-4 bold margin-bottom-20 ">&ndash;&gt;-->
+                                <!--&lt;!&ndash;<ui-select ng-change="vm.statusChange()" data-ng-model="vm.status" sortable="true" close-on-select="true" style="width: 100% !important;">&ndash;&gt;-->
+                                <!--&lt;!&ndash;<ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>&ndash;&gt;-->
+                                <!--&lt;!&ndash;<ui-select-choices repeat="status in vm.statuses | propsFilter: {name: $select.search}">&ndash;&gt;-->
+                                <!--&lt;!&ndash;<div class="bold" ng-bind-html="status.name | highlight: $select.search"></div>&ndash;&gt;-->
+                                <!--&lt;!&ndash;</ui-select-choices>&ndash;&gt;-->
+                                <!--&lt;!&ndash;</ui-select>&ndash;&gt;-->
+                                <!--&lt;!&ndash;</div>&ndash;&gt;-->
+
+                                <!--<div class="col-md-4 margin-bottom-20">-->
+                                    <!--<div class="input-group">-->
+                                        <!--<input ng-model="vm.searchDto.textSearch" ng-keyup="vm.enterSearchCode(e)"-->
+                                               <!--type="text" class="form-control" placeholder="Find words...">-->
+                                        <!--<div class="input-group-btn">-->
+                                            <!--<button ng-click="vm.codeChange()" class="btn btn-default" type="submit"><i-->
+                                                    <!--class="glyphicon glyphicon-search"></i></button>-->
+                                        <!--</div>-->
+                                    <!--</div>-->
+                                <!--</div>-->
+                            </div>
+                            <table id="bsTableControl" bs-table-control="vm.bsTableControlIELTSMaterial"></table>
+                        </div>
+
+                        <!-- tab = 1 -->
+                        <div ng-if="tab.id == 1">
+                            <div class="row">
+                                <div class="col-md-4 margin-bottom-20">
+                                    <ui-select multiple ng-change="vm.searchTopicIELTSWritingChange()"
+                                               data-ng-model="vm.selectedTopicToSearchIELTSWriting" sortable="true"
+                                               close-on-select="true" style="width: 100% !important;">
+                                        <ui-select-match allow-clear="true" placeholder="Search by topic...">
+                                            {{$item.name}}
+                                        </ui-select-match>
+                                        <ui-select-choices
+                                                repeat="t in vm.topics | propsFilter: {name: $select.search}">
+                                            <div class="bold" ng-bind-html="t.name | highlight: $select.search">
+                                            </div>
+                                        </ui-select-choices>
+                                    </ui-select>
+                                </div>
+
+                                <!--<div class="col-md-4 bold margin-bottom-20 ">-->
+                                <!--<ui-select ng-change="vm.statusChange()" data-ng-model="vm.status" sortable="true" close-on-select="true" style="width: 100% !important;">-->
+                                <!--<ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>-->
+                                <!--<ui-select-choices repeat="status in vm.statuses | propsFilter: {name: $select.search}">-->
+                                <!--<div class="bold" ng-bind-html="status.name | highlight: $select.search"></div>-->
+                                <!--</ui-select-choices>-->
+                                <!--</ui-select>-->
+                                <!--</div>-->
+
+                                <div class="col-md-4 margin-bottom-20">
+                                    <div class="input-group">
+                                        <input ng-model="vm.searchDto.textSearch" ng-keyup="vm.enterSearchCode(e)"
+                                               type="text" class="form-control" placeholder="Find words...">
+                                        <div class="input-group-btn">
+                                            <button ng-click="vm.codeChange()" class="btn btn-default" type="submit"><i
+                                                    class="glyphicon glyphicon-search"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <table id="bsTableControl" bs-table-control="vm.bsTableControlIELTSWriting"></table>
+                        </div>
+
+
+                        <!-- tab = 2 -->
+                        <div ng-if="tab.id == 2">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="row">
+                                        <div class="col-md-4" style="margin-bottom: 10px">
+                                            <ui-select multiple ng-change="vm.selectedTopicToAddIELTSWritingChange()"
+                                                       data-ng-model="vm.selectedTopicToAddIELTSWriting" sortable="true"
+                                                       close-on-select="true" style="width: 100% !important;">
+                                                <ui-select-match allow-clear="true" placeholder="Choose topic...">
+                                                    {{$item.name}}
+                                                </ui-select-match>
+                                                <ui-select-choices
+                                                        repeat="t in vm.topics | propsFilter: {name: $select.search}">
+                                                    <div class="bold" ng-bind-html="t.name | highlight: $select.search">
+                                                    </div>
+                                                </ui-select-choices>
+                                            </ui-select>
+                                        </div>
+                                        <div class="col-md-3 margin-bottom-10">
+                                            <input ng-change="vm.changeIELTSWritingGeneral()"
+                                                   data-ng-model="vm.newWritingQuestion.title" type="text"
+                                                   class="form-control" placeholder="Title..."/>
+                                        </div>
+                                        <div class="col-md-3 margin-bottom-10">
+                                            <input id="" ng-change="vm.changeIELTSWritingGeneral()"
+                                                   data-ng-model="vm.newWritingQuestion.author" type="text"
+                                                   class="form-control" placeholder="Author's name..."/>
+                                        </div>
+                                        <!--<div class="col-md-2 text-right">-->
+                                        <!--<button ng-if="vm.isShowAll == true" style="width:40%" class="btn btn-warning" data-ng-click="vm.isShowAllEventChange()"><i class="fa fa-angle-double-right"></i></button>-->
+                                        <!--<button ng-if="vm.isShowAll == false" style="width:40%" class="btn btn-warning" data-ng-click="vm.isShowAllEventChange()"><i class="fa fa-angle-double-left"></i></button>-->
+                                        <!--</div>-->
+                                        <div class="col-md-2 text-left">
+                                            <button ng-style="vm.isShowAddWords && { 'background' : '#35271d' } || !vm.isShowAddWords && { 'background' : '#5b4739' }" ng-click="vm.showTypes(3)" class="btn btn-warning ">Add words
+                                            </button>
+                                            <button ng-style="vm.isShowWords && { 'background' : '#35271d' } || !vm.isShowWords && { 'background' : '#5b4739' }" ng-click="vm.showTypes(1)" class="btn btn-warning ">Words
+                                            </button>
+                                            <button ng-style="vm.isShowNotes && { 'background' : '#35271d' } || !vm.isShowNotes && { 'background' : '#5b4739' }" ng-click="vm.showTypes(2)" class="btn btn-warning ">Notes
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6 margin-bottom-10" >
+                                            <!--<i class="fa-solid fa-eyes"></i>-->
+                                            <!--<i class="fa-regular fa-face-grin-tongue-wink"></i>-->
+                                            <!--<i class="fa-regular fa-face-zany"></i>-->
+                                            <label style="margin-bottom: 5px" class="bold">Article - Passage</label>
+                                            <button ng-if="vm.isNewWriting == true" style="margin-bottom: 5px" class="btn btn-brown" ng-click="vm.saveIELTSWriting()"><i class="fa-solid fa-floppy-disk"></i> SAVE NEW</button>
+                                            <button ng-if="vm.isNewWriting == false" style="margin-bottom: 5px" class="btn btn-brown" ng-click="vm.saveIELTSWriting()"><i class="fa-solid fa-pen"></i> EDIT</button>
+                                            <button ng-if="vm.isNewWriting == false" style="margin-bottom: 5px" class="btn btn-brown" ng-click="vm.cancelEditingIELTSWriting()"><i class="fa-solid fa-ban"></i> CANCEL EDIT</button>
+                                            <button ng-if="vm.isNewWriting == false" ng-style="vm.isView == true && {'background':'#35271d'} || {'background': '#5b4739'}" style="margin-bottom: 5px" class="btn btn-brown" ng-click="vm.viewAndEdit()"><i class="fa-solid fa-face-grin-tongue-wink fa-beat" ></i> VIEW</button>
+                                            <textarea ng-if="vm.isView == false"  ui-tinymce="tinymceOptionsToQuestion" id="tiny-question"
+                                                      ng-change="vm.changeIELTSWritingGeneral()"
+                                                       ng-click="getSelectedText()"
+                                                      ng-model="vm.newWritingQuestion.question"/>
+                                            <div ng-if="vm.isView == true" compile="vm.newWritingQuestion.question" ></div>
+                                        </div>
+                                        <div class="col-md-6" ng-if="vm.isShowWords" style="margin-top: 23px">
+                                            <!--<table id="bsTableControl"-->
+                                                   <!--bs-table-control="vm.bsTableControlIELTSWritingSubQuestion"></table>-->
+                                            <div class="row" ng-repeat="item in vm.subFlashCards | orderBy: '-id'">
+                                                <div class="row">
+                                                    <div class="col-md-5">
+                                                        <input ng-model="item.question" type="text"  class="form-control input-underline-only" placeholder="word..">
+                                                    </div>
+                                                    <!--<div class="col-md-2">-->
+                                                        <!--<input placeholder="pronounce..." class="form-control input-underline-only" ng-model="vm.currentCard.pronounce" autofocus />-->
+                                                    <!--</div>-->
+                                                    <div class="col-md-5">
+                                                        <input ng-model="item.motherTongue" type="text"  class="form-control input-underline-only" placeholder="First language...">
+                                                    </div>
+
+                                                    <div class="col-md-2">
+                                                        <i class="fa fa-save" style="font-size: 18px; padding-top: 12px" data-ng-click="vm.editFlashCard(item)"></i>
+                                                        <i ng-if="item.showDetail == false" class="fa fa-eye" style="font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.showDetailFlashCard(item)"></i>
+                                                        <i ng-if="item.showDetail == true" class="fa fa-eye" style="color: gold;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.hideDetailFlashCard(item)"></i>
+                                                    </div>
+
+                                                    <div class="col-md-12" ng-if="item.showDetail == true">
+                                                        <div class="col-md-12 margin-bottom-10 margin-top-10">
+                                                            <label class="bold">Definition - Description</label>
+                                                            <textarea ui-tinymce="tinymceOptions" rows="6" class="form-control" ng-model="item.description" autofocus />
+                                                        </div>
+                                                        <!--<div class="col-md-12 margin-bottom-10" >-->
+                                                        <!--<label class="bold">Examples</label>-->
+                                                        <!--<textarea ui-tinymce="tinymceOptions" rows="6" class="form-control" ng-model="vm.currentCard.examples" autofocus />-->
+                                                        <!--</div>-->
+                                                        <div class="col-md-12 margin-bottom-10">
+                                                            <ui-select ng-change="vm.topicChangeItem(item)" multiple data-ng-model="item.selectedTopicToEdit" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                                                <!--<ui-select multiple ng-change="vm.topicChangeItem(item)" data-ng-model="vm.selectedTopicToEdit" sortable="true" close-on-select="true" style=" width: 100% !important;">-->
+                                                                <ui-select-match allow-clear="true" placeholder="Topic...">{{$item.name}}</ui-select-match>
+                                                                <ui-select-choices repeat="t in vm.topics | propsFilter: {name: $select.search}">
+                                                                    <div class="bold" ng-bind-html="t.name | highlight: $select.search">
+                                                                    </div>
+                                                                </ui-select-choices>
+                                                            </ui-select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+
+
+                                                <!--<div class="col-md-12 margin-bottom-10">-->
+                                                <!--<ui-select data-ng-model="vm.currentCard.status" sortable="true" close-on-select="true" style="width: 100% !important;">-->
+                                                <!--<ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>-->
+                                                <!--<ui-select-choices repeat="status.id as status in vm.statuses | propsFilter: {name: $select.search}">-->
+                                                <!--<div class="bold" ng-bind-html="status.name | highlight: $select.search"></div>-->
+                                                <!--</ui-select-choices>-->
+                                                <!--</ui-select>-->
+                                                <!--</div>-->
+
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6" ng-if="vm.isShowNotes">
+                                            <label style="margin-top: 10px; margin-bottom: 9px;" class="bold">Taking some notes</label>
+                                            <textarea id="tiny-answer" ui-tinymce="tinymceOptionsToAnswer"
+                                                      data-ng-change="vm.onTextChange()"
+                                                      ng-model="vm.newWritingQuestion.description"/>
+                                            <strong>Total: {{vm.newWritingQuestion.countWords}} word(s) </strong>
+                                        </div>
+                                        <div style="margin-bottom: 10px" class="col-md-6" ng-if="vm.isShowAddWords">
+                                            <div class="col-md-12 text-center margin-bottom-10">
+                                                <h4 class="bold">NEW TOPIC</h4>
+                                                <small style="font-style: italic" class="italic">You can choose topic when adding words</small>
+                                            </div>
+
+                                            <div class="col-md-10">
+                                                <input data-ng-model="vm.topic.name" type="text" placeholder="Create a topic (Ex: Science, health...)" autofocus="autofocus" class="form-control input-underline-only" />
+                                            </div>
+                                            <div class="col-md-2 text-center">
+                                                <i style="padding-top: 17px; cursor: pointer; color: #0978b1" class="fa fa-plus" ng-click="vm.saveTopic()"></i>
+                                            </div>
+
+                                            <div class="col-md-12  text-center margin-bottom-10 margin-top-10">
+                                                <h4 class="bold">NEW WORD</h4>
+                                            </div>
+                                            <div class="col-md-12" style="margin-bottom: 10px">
+                                                <ui-select multiple ng-change="vm.topicChange()"
+                                                           data-ng-model="vm.selectedTopicToAdd" sortable="true"
+                                                           close-on-select="true" style="width: 100% !important;">
+                                                    <ui-select-match allow-clear="true" placeholder="Choose topic...">
+                                                        {{$item.name}}
+                                                    </ui-select-match>
+                                                    <ui-select-choices
+                                                            repeat="t in vm.topics | propsFilter: {name: $select.search}">
+                                                        <div class="bold" ng-bind-html="t.name | highlight: $select.search">
+                                                        </div>
+                                                    </ui-select-choices>
+                                                </ui-select>
+                                            </div>
+                                            <div class="col-md-12" style="margin-bottom: 10px;margin-top: 5px">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <!--<label class="bold">Word</label>-->
+                                                        <input placeholder="Word" rows="2" class="form-control input-underline-only" ng-model="vm.newCard.question" autofocus />
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <!--<label class="bold">Pronounce</label>-->
+                                                        <input placeholder="Pronounce" rows="2" class="form-control input-underline-only" ng-model="vm.newCard.pronounce" autofocus />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-12" style="margin-bottom: 10px">
+                                                <!--<label class="bold">First language </label>-->
+                                                <input placeholder="First language" rows="2" class="form-control input-underline-only" ng-model="vm.newCard.motherTongue" autofocus />
+                                            </div>
+                                            <div class="col-md-12" style="margin-bottom: 10px">
+                                                <label class="bold">Definition - Description</label>
+                                            <textarea ui-tinymce="tinymceOptions" id="tiny-definition" rows="3"
+                                                      ng-model="vm.newCard.description"/>
+                                            </div>
+                                            <!--<div class="col-md-12" style="margin-bottom: 10px;margin-top: 10px">-->
+                                                <!--<label class="bold">The meaning of your first language</label>-->
+                                                <!--<textarea rows="2" class="form-control" ng-model="vm.newCard.motherTongue"/>-->
+                                            <!--</div>-->
+                                            <!--<div class="col-md-12" style="margin-bottom: 10px">-->
+                                            <!--<label class="bold">Examples</label>-->
+                                            <!--<textarea ui-tinymce="tinymceOptions" id="tiny-examples" rows="3" ng-model="vm.newCard.examples"  />-->
+                                            <!--</div>-->
+
+
+                                            <!--<div class="col-md-12" style="margin-bottom: 10px">-->
+                                                <!--<ui-select data-ng-model="vm.newCard.status" sortable="true"-->
+                                                           <!--close-on-select="true" style="width: 100% !important;">-->
+                                                    <!--<ui-select-match allow-clear="true" placeholder="">-->
+                                                        <!--{{$select.selected.name}}-->
+                                                    <!--</ui-select-match>-->
+                                                    <!--<ui-select-choices-->
+                                                            <!--repeat="status.id as status in vm.statuses | propsFilter: {name: $select.search}">-->
+                                                        <!--<div class="bold"-->
+                                                             <!--ng-bind-html="status.name | highlight: $select.search"></div>-->
+                                                    <!--</ui-select-choices>-->
+                                                <!--</ui-select>-->
+                                            <!--</div>-->
+
+                                            <div class="col-md-12 text-right">
+                                                <button ng-if="vm.isNewCard == true" class="btn btn-brown margin-left-10"
+                                                        style="width: 30%" data-ng-click="vm.saveFlashCard()">
+                                                    <i class="fa-solid fa-file-circle-plus"></i> <strong>New card</strong></button>
+
+                                                <button ng-if="vm.isNewCard == false" class="btn btn-primary margin-left-10"
+                                                        style="width: 30%" data-ng-click="vm.saveFlashCard()">
+                                                    <i class="fa-solid fa-pencil"></i> <strong>Edit card</strong></button>
+                                            </div>
+                                            <div class="col-md-12" ng-if="">
+                                                Số lần xem lại: {{vm.question.timeReviewd}}/Số lần đúng:
+                                                {{vm.question.correctAnswer}}/Số lần sai: {{vm.question.wrongAnswer}}
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+                                        <!--Font size: <input type="number"  style="width: 5%;" data-ng-model="vm.fontSize">-->
+
+                                </div>
+
+                            </div>
+                        </div>
+                    </uib-tab>
+
+                </uib-tabset>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script type="text/ng-template" id="result_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="fa fa-check"></i>Đáp án</h4>
+        </div>
+        <div class="modal-body">
+
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>
+        </div>
+    </div>
+</script>
+
+<style>
+    .dx-htmleditor-content img {
+        vertical-align: middle;
+        padding-right: 10px;
+    }
+
+    .dx-htmleditor-content table {
+        width: 50%;
+    }
+
+    .options {
+        padding: 20px;
+        background-color: rgba(191, 191, 191, 0.15);
+        margin-top: 20px;
+    }
+
+    .caption {
+        font-size: 18px;
+        font-weight: 500;
+    }
+
+    .option {
+        margin-top: 10px;
+    }
+
+    .input-underline-only {
+        border: 0;
+        outline: 0;
+        background: transparent;
+        border-bottom: 1px solid black;
+        /*line-height: 1px !important;*/
+        font-size: 14px;
+    }
+</style>
+
+<!-- BEGIN MAIN JS -->

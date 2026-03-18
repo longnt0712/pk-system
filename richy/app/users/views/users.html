@@ -1,0 +1,743 @@
+<!-- BEGIN PAGE HEADER-->
+<!--<div class="page-bar">-->
+    <!--<h3 class="page-title pull-left"><i class="icon-layers"></i> Quản lý người dùng</h3>-->
+    <!--<ul class="page-breadcrumb pull-right hidden-xs">-->
+        <!--<li>-->
+            <!--<a href="#">Hệ thống</a>-->
+            <!--<i class="fa fa-circle"></i>-->
+        <!--</li>-->
+        <!--<li>-->
+            <!--<a href="#/dashboard">Tài khoản người dùng</a>-->
+        <!--</li>-->
+    <!--</ul>-->
+<!--</div>-->
+<!-- END PAGE HEADER-->
+<!-- BEGIN MAIN CONTENT -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="portlet light bordered">
+            <div class="portlet-body">
+                <div class="row margin-bottom-10 margin-right-10">
+                    <div class="col-sm-6 col-xs-12 margin-top-10">
+                        <button ng-if="vm.isRoleAdmin == true" class="btn btn-default" ng-click="vm.newUser()"><i class="icon-user-follow"></i> Thêm người dùng</button>
+                        <!--<button class="btn btn-danger margin-left-10" ng-click="vm.deleteUsers()" data-ng-disabled="vm.selectedUsers.length <= 0"><i class="icon-trash"></i> Xóa <span ng-if="vm.selectedUsers.length > 0">{{vm.selectedUsers.length}} bản ghi đã chọn</span></button>-->
+                    </div>
+                    <!--<div class="col-sm-6 col-xs-12 margin-top-10" style="text-align: right;">-->
+                        <!--<div class="input-group" style="margin-right: -25px;">-->
+                            <!--&lt;!&ndash;<input type="text" data-ng-model="vm.filterTemp.keyword" dl-enter-key="vm.search()" class="form-control" placeholder="Tìm kiếm nhanh" name="search">&ndash;&gt;-->
+                            <!--&lt;!&ndash;<span class="input-group-btn">&ndash;&gt;-->
+                                <!--&lt;!&ndash;<button ng-click="vm.search()" class="btn btn-default" type="button"><i class="glyphicon glyphicon-search"></i></button>&ndash;&gt;-->
+                                <!--&lt;!&ndash;&lt;!&ndash;<button class="btn btn-link" ng-click="vm.advancedSearch()"><i class="icon-equalizer"></i> Tìm nâng cao</button>&ndash;&gt;&ndash;&gt;-->
+                            <!--&lt;!&ndash;</span>&ndash;&gt;-->
+                            <!--&lt;!&ndash;<span class="input-group-btn">&ndash;&gt;-->
+                                <!--&lt;!&ndash;<button ng-click="vm.search()" class="btn btn-default" type="button"><i class="glyphicon glyphicon-search"></i></button>&ndash;&gt;-->
+                                <!--&lt;!&ndash;&lt;!&ndash;<button class="btn btn-link" ng-click="vm.advancedSearch()"><i class="icon-equalizer"></i> Tìm nâng cao</button>&ndash;&gt;&ndash;&gt;-->
+                            <!--&lt;!&ndash;</span>&ndash;&gt;-->
+
+                        <!--</div>-->
+                    <!--</div>-->
+
+                </div>
+                <div class="row margin-bottom-10">
+                    <div class="col-md-3">
+                        <input type="text" data-ng-model="vm.filter.keyword" dl-enter-key="vm.search()" class="form-control" placeholder="Tìm kiếm nhanh" name="search">
+                    </div>
+                    <div class="col-md-3">
+                        <ui-select data-ng-disabled="" ng-model="vm.filter.enrollmentClass" data-ng-change="vm.search()" sortable="true" close-on-select="true">
+                            <ui-select-match allow-clear="" placeholder="LỚP HỌC">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="so.id as so in vm.enrollmentClasses  | propsFilter: {name: $select.search}">
+                                <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+                    <div class="col-md-3">
+                        <ui-select multiple theme="" data-ng-model="vm.filter.groups" data-ng-change="vm.search()" sortable="true" close-on-select="true" style="width: 100% !important;">
+                            <ui-select-match allow-clear="true" placeholder="BAN/HỘI...">{{$item.name}}</ui-select-match>
+                            <ui-select-choices repeat="group in vm.groups | propsFilter: {name: $select.search}">
+                                <div class="bold" ng-bind-html="group.name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+                </div>
+                <div class="row support-panel" ng-if="vm.filter.filtered == 1">
+                    <div class="col-md-12">
+                        <div class="support-container">
+                            <div class="row filter-panel">
+                                <div class="col-xs-1"><i class="icon-directions"></i></div>
+                                <div class="col-xs-11">
+                                    <ul class="tags">
+                                        <li ng-if="vm.filter.keyword && vm.filter.keyword.trim() != ''"><span class="tag red" href="#">&mdash; {{vm.filter.keyword}} <a href="#" ng-click="vm.onFilterRemoved('_keyword', vm.filter.keyword);"><i class="fa fa-remove"></i></a></span></li>
+                                        <li ng-if="vm.filter.groups.length > 0" ng-repeat="group in vm.filter.groups"><span class="tag red" href="#">&mdash; {{group.name}} <a href="#" ng-click="vm.onFilterRemoved('_groups', group);"><i class="fa fa-remove"></i></a></span></li>
+                                        <li ng-if="vm.filter.roles.length > 0" ng-repeat="role in vm.filter.roles"><span class="tag red" href="#">&mdash; {{role.name}} <a href="#" ng-click="vm.onFilterRemoved('_roles', role);"><i class="fa fa-remove"></i></a></span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!--<table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>-->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="table-scroll">
+                            <table class="table table-striped table-hover table-bordered text-center order-table">
+                                <thead>
+                                <tr>
+
+                                    <th scope="col">STT</th>
+                                    <th scope="col">TÊN THÁNH</th>
+                                    <!--<th scope="col">HỌ</th>-->
+                                    <th scope="col">TÊN</th>
+                                    <th scope="col">NGÀY SINH</th>
+                                    <th scope="col">MÃ HỌC SINH (TÊN ĐĂNG NHẬP)</th>
+                                    <!--<th scope="col" ng-if="vm.isRoleAdmin">GIỚI TÍNH</th>-->
+                                    <!--<th scope="col">GIÁO PHẬN</th>-->
+                                    <!--<th scope="col">ĐỊA CHỈ</th>-->
+                                    <th scope="col">HỌ VÀ TÊN MẸ</th>
+                                    <th scope="col">SĐT MẸ</th>
+                                    <th scope="col">HỌ VÀ TÊN BÓ</th>
+                                    <th scope="col">SĐT BỐ</th>
+                                    <th scope="col">SĐT CÁ NHÂN</th>
+                                    <th scope="col">Lớp</th>
+                                    <th scope="col" ng-if="vm.isRoleAdmin">ROLE</th>
+                                    <th scope="col">ẢNH</th>
+                                    <th scope="col">TRẠNG THÁI</th>
+
+                                    <th scope="col">THAO TÁC</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr ng-repeat="user in vm.users track by user.id">
+
+                                    <th scope="row">{{$index + 1}}</th>
+                                    <td>{{user.person.patron}}</td>
+                                    <td>{{user.person.lastName}} {{user.person.firstName}}</td>
+                                    <!--<td></td>-->
+                                    <td>{{user.person.birthDate | date:'dd/MM/yyyy' }}</td>
+                                    <td>
+                                        {{user.username}}<br>
+                                        <!--<img ng-if="user.qrcodeByUsername"-->
+                                             <!--ng-src="{{user.qrcodeByUsername}}"-->
+                                             <!--ng-click="vm.openQr(user.qrcodeByUsername,user.person)"-->
+                                             <!--style="width:70px;height:70px;cursor:zoom-in"-->
+                                             <!--alt="QR">-->
+                                    </td>
+                                    <!--<td><ui-select data-ng-disabled="true" ng-model="user.person.gender" data-ng-change="" sortable="true" close-on-select="true">-->
+                                        <!--<ui-select-match allow-clear="" placeholder="LỚP HỌC">{{$select.selected.name}}</ui-select-match>-->
+                                        <!--<ui-select-choices repeat="so.id as so in vm.genders  | propsFilter: {name: $select.search}">-->
+                                            <!--<div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>-->
+                                        <!--</ui-select-choices>-->
+                                    <!--</ui-select></td>-->
+                                    <!--<td>{{user.person.diocese}}</td>-->
+                                    <!--<td>{{user.person.addressString}}</td>-->
+                                    <td>{{user.person.motherFullName}}</td>
+                                    <td>{{user.person.motherPhoneNumber}}</td>
+                                    <td>{{user.person.fatherFullName}}</td>
+                                    <td>{{user.person.fatherPhoneNumber}}</td>
+                                    <td>
+                                        {{user.person.phoneNumber}}
+                                    </td>
+                                    <td>
+                                        <!--<ui-select data-ng-disabled="true" ng-model="user.person.enrollmentClass" data-ng-change="" sortable="true" close-on-select="true">-->
+                                            <!--<ui-select-match allow-clear="" placeholder="LỚP HỌC">{{$select.selected.name}}</ui-select-match>-->
+                                            <!--<ui-select-choices repeat="so.id as so in vm.enrollmentClasses  | propsFilter: {name: $select.search}">-->
+                                                <!--<div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>-->
+                                            <!--</ui-select-choices>-->
+                                        <!--</ui-select>-->
+                                        {{ (vm.enrollmentClasses | filter:{id: user.person.enrollmentClass})[0].name }}
+                                    </td>
+                                    <td ng-if="vm.isRoleAdmin">
+                                        {{user.roles[0].name}}
+                                        - {{user.roles[1].name}}
+                                        - {{user.roles[2].name}}
+                                    </td>
+                                    <td>
+                                        <img class="img-circle avatar-user"
+                                             alt="User"
+                                             ng-src="{{settings.api.baseUrl}}public/users/photo/{{user.username}}?v={{user.photoVersion || 0}}"
+                                             ng-click="vm.openPhotoPreview(user)"
+                                             style="cursor:pointer;">
+                                    </td>
+                                    <td ng-if="user.active" style="background: #e4fff5">
+                                        KÍCH HOẠT
+                                    </td>
+                                    <td ng-if="user.active == false" style="background: gainsboro" >
+                                        KHÔNG KÍCH HOẠT
+                                    </td>
+                                    <td class="action-btns" >
+
+                                        <button class="btn btn-xs btn-primary" title="Sửa" data-ng-click="vm.editUser(user.id)">
+                                            <i class="fa fa-edit"></i>
+                                        </button>
+
+                                        <button class="btn btn-xs btn-warning" title="Đổi mật khẩu" data-ng-click="vm.changeUserPassword(user.id)">
+                                            <i class="fa fa-key"></i>
+                                        </button>
+
+                                        <button class="btn btn-xs btn-danger" title="Xóa" data-ng-click="vm.deleteUser(user.id)">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                        <label class="btn btn-xs btn-info upload-camera-btn" title="Chụp ảnh / Chọn ảnh">
+                                            <i class="fa fa-camera"></i>
+                                            <input type="file"
+                                                   style="display:none"
+                                                   ngf-select="profilePhoto.triggerUpload($file, $invalidFiles, user)"
+                                                   accept="image/*,.heic,.heif"
+                                                   capture="environment"
+                                                   ngf-multiple="false"
+                                                   ngf-max-size="10MB" />
+                                        </label>
+                                    </td>
+                                    <!--<td class="bold">-->
+                                    <!--<a class="" href="#" data-ng-click="vm.editUser(user.id)">SỬA</a><br>-->
+                                    <!--<a class="" href="#" data-ng-click="vm.changeUserPassword(user.id)">ĐỔI MẬT KHẨU</a><br>-->
+                                    <!--<a class="" href="#" data-ng-click="vm.deleteUser(user.id)">XÓA</a><br>-->
+                                    <!--</td>-->
+
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div  class="col-md-12 text-center" >
+                        <ul uib-pagination total-items="vm.users.totalElement"
+                            ng-model="vm.pageIndex" max-size="7" items-per-page="vm.pageSize"
+                            class="pagination-sm"
+                            previous-text="&lsaquo;" next-text="&rsaquo;" first-text="&laquo;" last-text="&raquo;"
+                            boundary-links="true"
+                            num-pages="numPages"
+                            ng-change="pageChanged()"></ul>
+                        <pre style="padding:0;border: none; background-color: transparent">Page: {{vm.pageIndex}} / {{numPages}} - Total: {{vm.users.totalElement}}</pre>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+<div id="qrModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">QR Code - {{vm.zoomPerson.patron}} {{vm.zoomPerson.lastName}} {{vm.zoomPerson.firstName}}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <div class="modal-body text-center">
+                <img ng-src="{{vm.qrPreview}}" style="max-width:100%;height:auto" alt="QR Preview">
+            </div>
+        </div>
+    </div>
+</div>
+<div id="photoPreviewModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content photo-preview-modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">
+                    Ảnh đại diện - {{vm.photoPreviewUser.person.patron}} {{vm.photoPreviewUser.person.lastName}} {{vm.photoPreviewUser.person.firstName}}
+                </h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" ng-click="vm.closePhotoPreview()">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <div class="modal-body text-center photo-preview-body">
+                <img ng-if="vm.photoPreviewUrl"
+                     ng-src="{{vm.photoPreviewUrl}}"
+                     alt="Ảnh đại diện"
+                     class="photo-preview-large-img">
+            </div>
+        </div>
+    </div>
+</div>
+<!-- END MAIN CONTENT -->
+<!-- BEGIN MAIN JS-->
+<script type="text/ng-template" id="search_user_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="fa fa-search"></i> Tìm kiếm người dùng</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-md-12 margin-top-10">
+                    <label class="bold">Từ khóa tìm kiếm</label>
+                    <input data-ng-model="vm.filterTemp.keyword" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 margin-top-20">
+                    <label class="bold">Vai trò</label>
+                    <ui-select multiple theme="bootstrap" data-ng-model="vm.filterTemp.roles" sortable="true" close-on-select="true" data-ng-disabled="hasRole(vm.user, 'ROLE_ADMIN')" style="width: 100% !important;">
+                        <ui-select-match allow-clear="true" placeholder="Xin mời chọn...">{{$item.name}}</ui-select-match>
+                        <ui-select-choices repeat="role in vm.roles | propsFilter: {name: $select.search}">
+                            <div class="bold" ng-bind-html="role.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                <div class="col-md-6 margin-top-20">
+                    <label class="bold">Nhóm người dùng</label>
+                    <ui-select multiple theme="bootstrap" data-ng-model="vm.filterTemp.groups" sortable="true" close-on-select="true" style="width: 100% !important;">
+                        <ui-select-match allow-clear="true" placeholder="Xin mời chọn...">{{$item.name}}</ui-select-match>
+                        <ui-select-choices repeat="group in vm.groups | propsFilter: {name: $select.search}">
+                            <div class="bold" ng-bind-html="group.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal"><i class="icon-close"></i> Đóng lại</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary"><i class="icon-check"></i> Tìm kiếm</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="edit_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 ng-if="vm.user.isNew == true" class="modal-title"><i class="icon-plus"></i> Thêm người dùng mới</h4>
+            <h4 ng-if="vm.user.isNew == false" class="modal-title"><i class="icon-pencil"></i> Cập nhật thông tin người dùng</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-md-4 margin-top-10">
+                    <label class="bold">Tên Thánh</label>
+                    <input id="vm.user.person.patron" data-ng-model="vm.user.person.patron" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+                <div class="col-md-4 margin-top-10">
+                    <label class="bold">Họ</label>
+                    <input id="vm.user.person.lastName" data-ng-model="vm.user.person.lastName" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+                <div class="col-md-4 margin-top-10">
+                    <label class="bold">Tên</label>
+                    <input id="vm.user.person.firstName" data-ng-model="vm.user.person.firstName" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">Ngày sinh</label>
+                    <input data-ng-model="vm.user.person.birthDate" type="text" class="form-control" placeholder="NGÀY SINH" my-date-picker />
+                </div>
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">Số điện thoại</label>
+                    <input id="vm.user.person.phoneNumber" data-ng-model="vm.user.person.phoneNumber" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">Đã lãnh phép</label>
+                    <input id="vm.user.person.sacrament" data-ng-model="vm.user.person.sacrament" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+
+
+                <!--<div class="col-md-12 margin-top-10">-->
+                    <!--<label class="bold">Họ và tên</label>-->
+                    <!--<input id="vm.user.person.displayName" data-ng-model="vm.user.person.displayName" type="text" autofocus="autofocus" class="form-control" />-->
+                <!--</div>-->
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">Giới tính</label>
+                    <select data-ng-model="vm.user.person.gender"class="form-control">
+                        <option value="M">Nam</option>
+                        <option value="F">Nữ</option>
+                        <option value="U">Không rõ</option>
+                    </select>
+                </div>
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">GIÁO PHẬN</label>
+                    <input id="vm.user.person.diocese" data-ng-model="vm.user.person.diocese" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">ĐỊA CHỈ</label>
+                    <input id="vm.user.person.stringAddress" data-ng-model="vm.user.person.addressString" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">Tên Thánh, họ và tên mẹ</label>
+                    <input id="vm.user.person.motherFullName" data-ng-model="vm.user.person.motherFullName" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">SĐT MẸ</label>
+                    <input id="vm.user.person.motherNumber" data-ng-model="vm.user.person.motherPhoneNumber" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">Tên Thánh, họ và tên bố</label>
+                    <input id="vm.user.person.fatherFullName" data-ng-model="vm.user.person.fatherFullName" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">SĐT BỐ</label>
+                    <input id="vm.user.person.fatherNumber" data-ng-model="vm.user.person.fatherPhoneNumber" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">LỚP</label>
+                    <ui-select ng-model="vm.user.person.enrollmentClass" data-ng-change="" sortable="true" close-on-select="true">
+                        <ui-select-match allow-clear="true" placeholder="LỚP HỌC">{{$select.selected.name}}</ui-select-match>
+                        <ui-select-choices repeat="so.id as so in vm.enrollmentClasses  | propsFilter: {name: $select.search}">
+                            <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+
+                <!--<div class="col-md-12 margin-top-10 disable-remove-program text-center">-->
+                    <!--<label class="bold">CHƯƠNG TRÌNH ĐÀO TẠO</label><br>-->
+                    <!--<small>(tạm thời) đã thêm chương trình thì không xóa nữa (lỡ chọn nhầm mà chưa lưu thì tắt cửa sổ đi làm lại)</small>-->
+                    <!--<ui-select multiple-->
+                               <!--ng-model="vm.user.userEducationPrograms"-->
+                               <!--data-ng-change="vm.userEducationProgramsChange()"-->
+                               <!--sortable="true"-->
+                               <!--close-on-select="true">-->
+                        <!--<ui-select-match allow-clear="false" placeholder="CHƯƠNG TRÌNH">{{$item.name}}</ui-select-match>-->
+                        <!--<ui-select-choices repeat="so in vm.userEducationPrograms | propsFilter: {name: $select.search}">-->
+                            <!--<div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>-->
+                        <!--</ui-select-choices>-->
+                    <!--</ui-select>-->
+                <!--</div>-->
+
+            </div>
+            <div class="row">
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">Địa chỉ email</label>
+                    <input id="vm.user.email" data-ng-model="vm.user.email" class="form-control" />
+                </div>
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">Nhóm người dùng</label>
+                    <ui-select multiple theme="bootstrap" data-ng-model="vm.user.groups" sortable="true" close-on-select="true" style="width: 100% !important;">
+                        <ui-select-match allow-clear="true" placeholder="Xin mời chọn...">{{$item.name}}</ui-select-match>
+                        <ui-select-choices repeat="group in vm.groups | propsFilter: {name: $select.search}">
+                            <div class="bold" ng-bind-html="group.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <div class="row text-center">
+                <div class="col-xs-12">
+                    <div class="m-heading-1 border-green m-bordered narrow">
+                        <h4 class="block">Thông tin tài khoản</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="row" ng-if="vm.user.username != 'admin'">
+                <div class="col-md-12 margin-top-20">
+                    <div class="md-checkbox">
+                        <input type="checkbox" id="chk_active" ng-model="vm.user.active" class="md-check">
+                        <label for="chk_active">
+                            <span></span>
+                            <span class="check"></span>
+                            <span class="box"></span> Người dùng được kích hoạt
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 margin-top-15">
+                    <label class="bold">Vai trò</label>
+                    <ui-select multiple theme="bootstrap" data-ng-model="vm.user.roles" sortable="true" close-on-select="true" data-ng-disabled="hasRole(vm.user, 'ROLE_ADMIN')" style="width: 100% !important;">
+                        <ui-select-match allow-clear="true" placeholder="Xin mời chọn...">{{$item.name}}</ui-select-match>
+                        <ui-select-choices repeat="role in vm.roles | propsFilter: {name: $select.search}">
+                            <div class="bold" ng-bind-html="role.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">Tên đăng nhập</label>
+                    <input id="vm.user.username" ng-disabled="vm.user.id && vm.user.isNew == false" data-ng-model="vm.user.username" type="text" class="form-control" />
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">Mật khẩu</label>
+                    <input id="vm.user.password" ng-disabled="vm.user.id && vm.user.isNew == false" data-ng-model="vm.user.password" type="password" class="form-control" />
+                </div>
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">Nhập lại mật khẩu</label>
+                    <input id="vm.user.confirmPassword" ng-disabled="vm.user.id && vm.user.isNew == false" data-ng-model="vm.user.confirmPassword" type="password" class="form-control" />
+                </div>
+            </div>
+
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal"><i class="icon-close"></i> Hủy</button>
+            <button type="button" ng-click="vm.saveUser()" class="btn btn-primary"><i class="icon-check"></i> Lưu</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="change_user_password_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="fa fa-braille"></i> Đổi mật khẩu</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-sm-6 col-xs-12 margin-top-20">
+                    <label class="bold">Mật khẩu mới</label>
+                    <input class="form-control" id="vm.user.password1" type="password" autofocus="autofocus" ng-model="vm.user.password1" />
+                </div>
+                <div class="col-sm-6 col-xs-12 margin-top-20">
+                    <label class="bold">Nhắc lại mật khẩu mới</label>
+                    <input class="form-control" id="vm.user.password2" type="password" ng-model="vm.user.password2" />
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
+            <button type="button" ng-click="vm.saveNewPassword()" class="btn btn-primary" data-dismiss="modal">Lưu lại</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="confirm_delete_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="icon-question"></i> Xóa người dùng</h4>
+        </div>
+        <div class="modal-body">
+            <!--<p>Bạn có chắc chắn muốn xóa <span ng-cloak>{{vm.selectedUsers.length}}</span> người dùng đã chọn không?</p>-->
+            <p>Bạn có chắc chắn muốn xóa không?</p>
+
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>
+        </div>
+    </div>
+</script>
+
+<!--<script type="text/ng-template" id="upload_photo_modal.html">-->
+    <!--<div modal-movable min-width="350px">-->
+        <!--<div class="modal-header">-->
+            <!--<h4 class="modal-title"><i class="icon-cloud-upload"></i> Cập nhật ảnh đại diện</h4>-->
+        <!--</div>-->
+        <!--<div class="modal-body">-->
+            <!--<div class="row">-->
+                <!--<div class="col-md-12">-->
+                    <!--<a class="no-content1 display-block link" ngf-select="profilePhoto.triggerUpload($file, $invalidFiles)"-->
+                       <!--accept="image/*" ngf-pattern="image/*, .jpg, .png" ngf-accept="'image/*'" ngf-multiple="false" ngf-max-size="1MB"-->
+                       <!--ngf-min-height="300" ngf-max-height="1000" ngf-min-width="300" ngf-max-width="1000"><i class="fa fa-cloud-upload"></i> Chọn ảnh để tải lên</a>-->
+                <!--</div>-->
+
+                <!--<div class="col-md-12 margin-top-20" ng-if="profilePhoto.uploadedFile != null">-->
+                    <!--<div class="row">-->
+                        <!--<div class="col-xs-5 align-right">-->
+                            <!--<label>Tệp tin đã chọn:</label>-->
+                        <!--</div>-->
+                        <!--<div class="col-xs-7">-->
+                            <!--<span class="bold">{{profilePhoto.uploadedFile.name}}</span>-->
+                        <!--</div>-->
+                    <!--</div>-->
+                <!--</div>-->
+
+                <!--<div class="col-md-12 margin-top-20" ng-if="profilePhoto.errorFile != null && profilePhoto.errorFile.$error != ''">-->
+                    <!--Error: <span class="bold" ng-if="profilePhoto.errorFile.$error == 'maxSize'">Kích thước tệp tin không được vượt quá {{profilePhoto.errorFile.$errorParam}}</span>-->
+                    <!--<span class="bold" ng-if="profilePhoto.errorFile.$error == 'maxWidth' || profilePhoto.errorFile.$error == 'maxHeight' || profilePhoto.errorFile.$error == 'minWidth' || profilePhoto.errorFile.$error == 'minHeight'">Kích thước ngang và dọc của ảnh phải từ 300 đến 1000 điểm ảnh.</span>-->
+                    <!--<span class="bold" ng-if="profilePhoto.errorFile.$error != null && profilePhoto.errorFile.$error != 'maxSize' && profilePhoto.errorFile.$error != 'maxWidth' && profilePhoto.errorFile.$error != 'maxHeight' && profilePhoto.errorFile.$error != 'minWidth' && profilePhoto.errorFile.$error != 'minHeight'">Tệp tin {{profilePhoto.errorFile.name}} không hợp lệ.</span>-->
+                <!--</div>-->
+
+                <!--<div class="col-md-12 margin-top-20" ng-if="profilePhoto.uploadedFile.progress >= 0">-->
+                    <!--<div class="progress" style="height: 20px">-->
+                        <!--<div class="progress-bar" role="progressbar" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100" ng-bind="profilePhoto.uploadedFile.progress + '%'" style="width:{{profilePhoto.uploadedFile.progress}}%;">-->
+                            <!--{{profilePhoto.uploadedFile.progress}}%-->
+                        <!--</div>-->
+                    <!--</div>-->
+                <!--</div>-->
+            <!--</div>-->
+        <!--</div>-->
+        <!--<div class="modal-footer">-->
+            <!--<button type="button" ng-click="profilePhoto.closeUploadFile()"  data-ng-disabled="profilePhoto.uploadedFile.progress > 0 && profilePhoto.uploadedFile.progress < 100" class="btn btn-default" data-dismiss="modal">Đóng lại</button>-->
+            <!--<button type="button" ng-click="profilePhoto.startUploadFile(profilePhoto.uploadedFile)" class="btn btn-primary" data-ng-disabled="profilePhoto.uploadedFile == null || (profilePhoto.errorFile != null && profilePhoto.errorFile.$error != '') || profilePhoto.uploadedFile.progress >= 100" data-dismiss="modal">Bắt đầu tải lên</button>-->
+        <!--</div>-->
+    <!--</div>-->
+<!--</script>-->
+
+<script type="text/ng-template" id="crop_photo_modal.html">
+    <div modal-movable min-width="700px">
+        <div class="modal-header">
+            <h4 class="modal-title">
+                <i class="fa fa-crop"></i> Chỉnh sửa ảnh
+            </h4>
+        </div>
+
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-md-7 col-sm-12">
+                    <div class="cropArea cropper-wrapper">
+                        <img id="cropImage"
+                             cropper-source
+                             ng-src="{{profilePhoto.loadedImageData}}"
+                             alt="Crop source"
+                             style="display:block; max-width:100%;">
+                    </div>
+                </div>
+
+                <div class="col-md-5 col-sm-12 text-center margin-top-10">
+                    <label class="bold display-block margin-bottom-10">Xem trước</label>
+                    <img ng-if="profilePhoto.croppedImage"
+                         ng-src="{{profilePhoto.croppedImage}}"
+                         style="width:220px;height:220px;object-fit:cover;border:1px solid #ddd;border-radius:6px;background:#fff;">
+                </div>
+            </div>
+
+            <div class="row margin-top-20" ng-if="profilePhoto.uploadedFile != null">
+                <div class="col-md-12 text-center">
+                    <span class="bold">{{profilePhoto.uploadedFile.name}}</span>
+                </div>
+            </div>
+
+            <div class="row margin-top-20" ng-if="profilePhoto.uploadedFile && profilePhoto.uploadedFile.progress >= 0">
+                <div class="col-md-12">
+                    <div class="progress" style="height:20px;">
+                        <div class="progress-bar"
+                             role="progressbar"
+                             aria-valuemin="0"
+                             aria-valuemax="100"
+                             style="width:{{profilePhoto.uploadedFile.progress}}%;">
+                            {{profilePhoto.uploadedFile.progress}}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button"
+                    ng-click="profilePhoto.closeCropModal()"
+                    class="btn btn-default"
+                    ng-disabled="profilePhoto.uploadedFile && profilePhoto.uploadedFile.progress > 0 && profilePhoto.uploadedFile.progress < 100">
+                Đóng lại
+            </button>
+
+            <button type="button"
+                    ng-click="profilePhoto.startUploadCroppedFile()"
+                    class="btn btn-primary"
+                    ng-disabled="profilePhoto.isUploading">
+                Bắt đầu tải lên
+            </button>
+        </div>
+    </div>
+</script>
+
+
+<!-- BEGIN MAIN JS -->
+
+<style>
+    .datepicker{
+        background: white !important;
+    }
+    .action-btns{
+        display:flex;
+        gap:6px;
+        justify-content:center;
+    }
+
+    .action-btns .btn{
+        width:30px;
+        height:30px;
+        padding:0;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        border-radius:6px;
+    }
+
+    .action-btns i{
+        font-size:14px;
+    }
+
+    .table-scroll{
+        width: 100%;
+        max-height: none;
+        overflow-y: visible;
+        overflow-x: auto;
+    }
+
+    .cropper-wrapper{
+        width:100%;
+        min-height:420px;
+        max-height:420px;
+        overflow:hidden;
+        background:#f7f7f7;
+        border:1px solid #ddd;
+        border-radius:6px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+    }
+
+    .cropper-wrapper img{
+        max-width:100%;
+    }
+
+    .upload-camera-btn{
+        position:relative;
+        overflow:hidden;
+    }
+
+    .upload-camera-btn input[type="file"]{
+        display:none;
+    }
+
+    .user-photo img,
+    .crop-preview-round{
+        border-radius:50%;
+    }
+
+
+</style>
+
+<style>
+    .avatar-user{
+        width:70px;
+        height:70px;
+        object-fit:cover;
+        border-radius:50%;
+        border:2px solid #eee;
+        transition: all 0.2s ease;
+    }
+
+    .avatar-user:hover{
+        transform: scale(1.05);
+        border-color:#5bc0de;
+    }
+
+    .user-photo-preview{
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        gap:6px;
+    }
+
+    .photo-preview-text{
+        font-size:12px;
+        color:#337ab7;
+        cursor:pointer;
+        text-decoration:underline;
+    }
+
+    .photo-preview-text:hover{
+        color:#23527c;
+    }
+
+    .photo-preview-modal-content{
+        border-radius:8px;
+        overflow:hidden;
+    }
+
+    .photo-preview-body{
+        padding:20px;
+        background:#f8f8f8;
+    }
+
+    .photo-preview-large-img{
+        max-width:100%;
+        max-height:75vh;
+        width:auto;
+        height:auto;
+        border-radius:8px;
+        box-shadow:0 2px 12px rgba(0,0,0,0.15);
+        background:#fff;
+    }
+
+    .disable-remove-program .ui-select-match-close {
+        display: none !important;
+    }
+</style>

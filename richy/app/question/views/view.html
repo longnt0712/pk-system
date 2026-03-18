@@ -1,0 +1,1718 @@
+﻿<!-- END PAGE HEADER-->
+<!-- BEGIN MAIN CONTENT -->
+<div class="row margin-top-10">
+    <div class="col-md-12" >
+
+        <div class="portlet light bordered" >
+            <div class="portlet-body" >
+                <!--global set up-->
+                <!--<div class="row" ng-show="vm.endGame == true">-->
+                <div class="row">
+                    <div class="col-md-12 bold margin-bottom-10 " ng-show="vm.isRoleUser == true || vm.isRoleAdmin == true">
+                        <ui-select ng-change="vm.chooseUsers()" data-ng-model="vm.selectedUser" sortable="true" close-on-select="true" style="width: 100% !important;">
+                            <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="item in vm.users | propsFilter: {name: $select.search}">
+                                <div class="bold" ng-bind-html="item.name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+                    <div class="col-md-2 margin-bottom-10">
+                        <!--<button class="btn btn-brown" ng-click="vm.doShuffle()"><i class="fa-solid fa-sync fa-spin"></i> Shuffle</button>-->
+                        <ui-select ng-change="vm.modeChange()" data-ng-model="vm.mode" sortable="true" close-on-select="true" style="width: 100% !important;">
+                            <ui-select-match placeholder="">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="mode in vm.modes | propsFilter: {name: $select.search}">
+                                <div class="bold" ng-bind-html="mode.name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+
+                        <!--<button class="btn btn-brown" ng-click="vm.changeMode('normal')" ng-style="vm.isNormal == true && {'background':'#35271d'} || {'background': '#5b4739'}"><i class="fa-solid fa-gamepad fa-beat"></i> Normal</button>-->
+                        <!--<button class="btn btn-brown" ng-click="vm.changeMode('quiz2')" ng-style="vm.isPlayQuiz2 == true && {'background':'#35271d'} || {'background': '#5b4739'}"><i class="fa-solid fa-gamepad fa-beat"></i> Quiz Game</button>-->
+                        <!--<button class="btn btn-brown" ng-click="vm.changeMode('rewrite')" ng-style="vm.isPlayRewriteWord == true && {'background':'#35271d'} || {'background': '#5b4739'}"><i class="fa-solid fa-gamepad fa-beat"></i> Rewrite Words</button>-->
+                        <!--<button class="btn btn-brown" style="background: rgba(0,0,0,0); color: black">Total: {{vm.questions[0].numberOfWords}} words</button>-->
+                    </div>
+                    <!--<div class="col-md-1 margin-bottom-10" ng-show="vm.mode.id == 5 || vm.mode.id == 8">-->
+                        <!--<input autocomplete="off" id="test-taker-name" ng-model="vm.testResult.testTakerName" class="form-control"  type="text"  ng-disabled="!vm.allowChangeInformation" placeholder="My name is ....">-->
+                    <!--</div>-->
+                    <!--<div class="col-md-2 margin-bottom-10" ng-show="vm.mode.id == 5 || vm.mode.id == 8">-->
+                        <!--<ui-select ng-change="" data-ng-model="vm.class" sortable="true" close-on-select="true" style="width: 100% !important;" data-ng-disabled="!vm.allowChangeInformation">-->
+                            <!--<ui-select-match placeholder="I'm in the ... grade">{{$select.selected.name}}</ui-select-match>-->
+                            <!--<ui-select-choices repeat="mode in vm.classes | propsFilter: {name: $select.search}">-->
+                                <!--<div class="bold" ng-bind-html="mode.name | highlight: $select.search"></div>-->
+                            <!--</ui-select-choices>-->
+                        <!--</ui-select>-->
+                    <!--</div>-->
+
+                    <div  class="col-md-6 margin-bottom-10">
+                        <!--<ui-select multiple ng-change="vm.searchTopicChange()" data-ng-model="vm.selectedTopicToSearch" sortable="true" close-on-select="true" style="width: 100% !important;">-->
+                        <ui-select multiple ng-change="" data-ng-model="vm.selectedTopicToSearch" sortable="true" close-on-select="true" style="width: 100% !important;">
+                            <ui-select-match allow-clear="true" placeholder="Chọn bài từ vựng sau đó ấn tìm kiếm | Có thể chọn nhiều bài nhé :D">{{$item.name}}</ui-select-match>
+                            <ui-select-choices repeat="t in vm.topics | propsFilter: {name: $select.search}">
+                                <div class="bold ui-select-pre-wrap" ng-bind-html="t.name | highlight: $select.search">
+                                </div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+                    <div class="col-md-1 margin-bottom-10">
+                        <div class="input-group">
+                            <div class="input-group-btn">
+                                <button  ng-click="vm.searchTopicChange()" class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i> TÌM KIẾM </button>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <div ng-if="vm.mode.id == 9" class="col-md-12 margin-bottom-10">
+                        <div class="row margin-top-10">
+                            <div class="col-md-12 margin-bottom-10">
+                                <button ng-click="vm.showHideSetUpReward()" class="btn btn-default">
+                                    <i class="fa fa-award" ></i> SHOW/ HIDE REWARDS SETUP
+                                </button>
+                            </div>
+                            <div class="col-md-6">
+                                <textarea placeholder="Điểm thưởng nếu trả lời đúng" ng-show="vm.isShowHidesetUpReward" rows="6" class="form-control" ng-model="vm.textReward"  />
+                            </div>
+                            <div class="col-md-6">
+                                <textarea placeholder="Nếu muốn đúng mà vẫn bị - điểm thì nhập thêm điểm trừ ở đây" ng-show="vm.isShowHidesetUpReward" rows="6" class="form-control" ng-model="vm.textPunishment"  />
+                            </div>
+
+
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <form class="form-inline">
+                                    <div class="form-group mb-2">
+                                        <label class="bold" for="setNumberCard">Number card (total: {{vm.totalCard}}): &ensp;</label>
+                                        <input id="setNumberCard" onkeydown="javascript: return event.keyCode == 69 ? false : true" placeholder="Set number card..." class="form-control input-underline-only-score" ng-model="vm.numberFlipCard"  />
+                                        <!--<i style="cursor: pointer" class="fa fa-refresh" ng-click="vm.getPageFlashCard()"></i>-->
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="col-md-12">
+                                <button class="btn btn-default" ng-click="vm.setUpReward();vm.getPageFlashCard();">START</button>
+                            </div>
+                        </div>
+
+                        <form ng-show="!vm.isShowHidesetUpReward" class="form-inline">
+                            <div class="form-group mb-2">
+                                <label class="bold" for="team-1">Team 1: &ensp;</label>
+                                <input autocomplete="off" id="team-1" onkeydown="javascript: return event.keyCode == 69 ? false : true" placeholder="Score..." class="form-control input-underline-only-score"  />
+
+                                <label class="bold" for="team-2">Team 2: &ensp;</label>
+                                <input autocomplete="off" id="team-2" onkeydown="javascript: return event.keyCode == 69 ? false : true" placeholder="Score..." class="form-control input-underline-only-score"  />
+
+                                <label class="bold" for="team-3">Team 3: &ensp;</label>
+                                <input autocomplete="off" id="team-3" onkeydown="javascript: return event.keyCode == 69 ? false : true" placeholder="Score..." class="form-control input-underline-only-score"  />
+
+                                <label class="bold" for="team-4">Team 4: &ensp;</label>
+                                <input autocomplete="off" id="team-4" onkeydown="javascript: return event.keyCode == 69 ? false : true" placeholder="Score..." class="form-control input-underline-only-score"  />
+
+                                <label class="bold" for="team-5">Team 5: &ensp;</label>
+                                <input autocomplete="off" id="team-5" onkeydown="javascript: return event.keyCode == 69 ? false : true" placeholder="Score..." class="form-control input-underline-only-score"  />
+
+                                <label class="bold" for="team-6">Team 6: &ensp;</label>
+                                <input autocomplete="off" id="team-6" onkeydown="javascript: return event.keyCode == 69 ? false : true" placeholder="Score..." class="form-control input-underline-only-score"  />
+
+                                <label class="bold" for="team-7">Team 7: &ensp;</label>
+                                <input autocomplete="off" id="team-7" onkeydown="javascript: return event.keyCode == 69 ? false : true" placeholder="Score..." class="form-control input-underline-only-score"  />
+
+
+                            </div>
+                        </form>
+                    </div>
+
+                    <!--<div ng-if="vm.mode.id == 8"class="col-md-3 margin-bottom-10">-->
+                        <!--<div class="input-group">-->
+                            <!--<input  ng-model="vm.searchDto.textSearch" ng-keyup="vm.enterSearchCode(e)" type="text"  class="form-control" placeholder="Nhập tiêu đề bài nghe......">-->
+                            <!--<div class="input-group-btn">-->
+                                <!--<button ng-click="vm.codeChange()" class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i> TÌM KIẾM </button>-->
+                            <!--</div>-->
+                        <!--</div>-->
+                    <!--</div>-->
+
+                    <!--<div class="col-md-3 bold margin-bottom-10 ">-->
+                        <!--<ui-select ng-change="vm.statusChange()" data-ng-model="vm.status" sortable="true" close-on-select="true" style="width: 100% !important;">-->
+                            <!--<ui-select-match placeholder="">{{$select.selected.name}}</ui-select-match>-->
+                            <!--<ui-select-choices repeat="status in vm.statuses | propsFilter: {name: $select.search}">-->
+                                <!--<div class="bold" ng-bind-html="status.name | highlight: $select.search"></div>-->
+                            <!--</ui-select-choices>-->
+                        <!--</ui-select>-->
+                    <!--</div>-->
+
+
+                </div>
+                <div ng-hide="vm.mode.id == 9" class="row">
+                    <div class="col-md-12 bold text-center" style="margin-top:7px">
+                        <span >{{vm.showDateTime}}</span>
+                    </div>
+                </div>
+
+
+                <!--end global set up-->
+
+                <!--normal-->
+                <div ng-if="vm.mode.id == 1" class="row bold text-center">
+
+                    <!--<div class="col-md-12 text-center margin-top-10">-->
+                        <!--<div data-ng-click="startCount()" class="btn btn-brown" style="line-height:43px;border: solid 1px;border-radius: 25px; height: 50px; width: 50px;">{{counter}}</div>-->
+                        <!--<div data-ng-click="refreshTimer()" class="btn btn-brown" style="line-height:43px;border: solid 1px;border-radius: 25px; height: 50px; width: 50px;"><i class="fa fa-refresh"></i></div>-->
+                    <!--</div>-->
+                    <div class="col-md-3" style="font-size: 20px">
+
+                        <!--<i class="fa-solid fa-circle-arrow-right " style="padding-left: 20px; cursor: pointer;font-size: 30px" data-ng-disabled="vm.currentPosition + 1 == vm.totalCard" ng-click="vm.nextCard()"></i>-->
+                    </div>
+                    <div class="col-md-12 ">
+                        <i class="fa-solid fa-circle-arrow-left" style="padding-right: 20px; cursor: pointer; font-size: 30px" data-ng-disabled="vm.currentPosition == 0" ng-click="vm.backCard()"></i>
+                        <!--<span ng-show="vm.totalCard > 0">{{vm.currentPosition + 1}}/{{vm.totalCard}}</span>-->
+                        <span ng-show="vm.totalCard > 0">{{vm.currentPosition + 1}}/{{vm.searchDto.pageSize}}</span>
+                        <span ng-show="vm.totalCard == 0">No card</span>
+                        <i class="fa-solid fa-circle-arrow-right " style="padding-left: 20px; cursor: pointer;font-size: 30px" data-ng-disabled="vm.currentPosition + 1 == vm.searchDto.pageSize" ng-click="vm.nextCard()"></i>
+                        <button ng-click="vm.fifteenSeconds()">15s</button>
+                        <button ng-click="vm.tenSeconds()">10s</button>
+                        <button ng-click="vm.loadAudio()">Stop</button>
+                        <button ng-click="vm.doShuffle()">Shuffle</button>
+                        <i class="fa fa-volume-up" ng-if="vm.isMuted === false" ng-click="sayIt(vm.currentCard.question)" style="cursor:pointer;"></i>
+                        <label for="mute-button" ng-if="vm.isMuted === true" class="bold"><i class="fa-solid fa-volume-xmark"></i></label>
+                        <input id="mute-button" type="checkbox" ng-model="vm.isMuted" />
+                        <video id="myVideo" controls width="150" height="100">
+                            <!--<source id="mp4_src" src="music/20s.mp4" type="video/mp4">-->
+                            <source id="mp4_src" src="music/audio-5.mp4" type="video/mp4">
+                            Your browser does not support HTML5 video.
+                        </video>
+                    </div>
+
+                    <div class="col-md-3 ">
+
+                    </div>
+
+
+                    <!--<div class="col-md-3">-->
+
+                    <!--</div>-->
+                    <div class="col-md-12"  >
+
+                        <div class="flip">
+                            <div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">
+                                <div class="face front" style="display: flex">
+                                    <h2 style="margin: auto auto;" >
+                                        <span ng-show="vm.blindMode == false">{{vm.currentCard.question}}</span>
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                                <div class="face back" style="display: flex">
+                                    <h2 style="margin: auto auto;">
+                                        {{vm.currentCard.motherTongue}}
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <!--normal-->
+
+
+                <!--play quiz-->
+
+                <div ng-if="vm.mode.id == 3" class="row bold text-center">
+                    <div class="col-md-4">
+                        <div class="col-md-12 margin-top-10">
+                            <form class="form-inline">
+                                <div class="form-group mb-2">
+                                    <label class="bold" for="setBonusTime">NUMBER OF WORDS: </label>
+                                    <input id="page-size" placeholder="Page size" class="input-underline-only page-size-input" ng-model="vm.searchDto.pageSize" />
+                                    <strong>/&ensp;TOTAL: {{vm.totalCard}}</strong>
+                                    <label style="cursor: pointer;" for="page-size" ng-click="vm.changePageSize()">&ensp;<i class="fa-solid fa-sync"></i></label>
+
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="col-md-12 margin-top-10">
+                            <form class="form-inline">
+                                <div class="form-group mb-2">
+                                    <label class="bold" for="playerName">PLAYER'S NAME: &ensp;</label>
+                                    <input id="playerName" placeholder="Nguyen van A" class="form-control input-underline-only" ng-model="vm.player.name"  />
+                                </div>
+                                <div data-ng-click="vm.putPlayers()" class="btn btn-brown" style="line-height:43px;border: solid 1px;border-radius: 25px; height: 50px; width: 50px"><i class="fa fa-plus"></i></div>
+                            </form>
+                        </div>
+
+                        <div class="col-md-12 text-left margin-top-20">
+                            <div ng-repeat="player in vm.players">
+                                <span class="bold"><span style="color: darkred">{{player.name}}</span>: SCORE: {{player.score}} - HIGHEST STREAK: {{player.highestStreak}} - Incorrect: {{player.wrong}} &ensp; &ensp;</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="col-md-12 text-center margin-top-10">
+                        <div data-ng-click="startCount()" class="btn btn-brown" style="line-height:43px;border: solid 1px;border-radius: 25px; height: 50px; width: 50px;">{{counter}}</div>
+                        <div data-ng-click="refreshTimer()" class="btn btn-brown" style="line-height:43px;border: solid 1px;border-radius: 25px; height: 50px; width: 50px;"><i class="fa fa-refresh"></i></div>
+                    </div>
+
+
+
+                    <!--<div class="col-md-3">-->
+
+                    <!--</div>-->
+                    <div ng-click="vm.showDetails()" class="col-md-12"  >
+
+                        <div class="flip" ng-if="vm.showMotherTongue === true">
+                            <div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">
+                                <div class="face front" style="display: flex">
+                                    <h2 style="margin: auto auto;" >
+                                        <span ng-show="vm.blindMode == false">{{vm.currentCard.question}}</span>
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                                <div class="face back" style="display: flex">
+                                    <h2 style="margin: auto auto;">
+                                        {{vm.currentCard.question}}
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flip" ng-if="vm.showQuestion === true">
+                            <div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">
+                                <div class="face front" style="display: flex">
+                                    <h2 style="margin: auto auto;" ng-show="vm.blindMode == false">
+                                        <span >{{vm.currentCard.motherTongue}}</span>
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                                <div class="face back" style="display: flex">
+                                    <h2 style="margin: auto auto;">
+                                        {{vm.currentCard.motherTongue}}
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="col-md-12" style="font-size: 20px">
+                        <i class="fa fa-volume-up" ng-if="vm.isMuted === false" ng-click="sayIt(vm.currentCard.question)" style="cursor:pointer;"></i>
+                        <label for="mute-button" ng-if="vm.isMuted === true" class="bold"><i class="fa-solid fa-volume-xmark"></i></label>
+                        <input id="mute-button" type="checkbox" ng-model="vm.isMuted" />
+                    </div>
+                    <!--<div class="col-md-3"></div>-->
+
+                    <div class="col-md-6 margin-bottom-10" ng-repeat="item in vm.currentCard.questions" ng-show="vm.showMotherTongue === true">
+                        <button id="answer-quiz-{{$index}}" style="width:100%;height: auto!important;min-height: 50px!important;font-size: 16px!important;" ng-style="item.chosen == true && {'background':'#35271d'} || {'background': '#5b4739'}" class="btn btn-brown" ng-click="vm.answerQuiz(item.correct,item,vm.currentCard.questions)">{{item.motherTongue}}</button>
+                    </div>
+
+                    <div class="col-md-6 margin-bottom-10" ng-repeat="item in vm.currentCard.questions" ng-show="vm.showQuestion === true">
+                        <button id="answer-quiz-{{$index}}" style="width:100%;height: auto!important;min-height: 50px!important;font-size: 16px!important;" ng-style="item.chosen == true && {'background':'#35271d'} || {'background': '#5b4739'}" class="btn btn-brown" ng-click="vm.answerQuiz(item.correct,item,vm.currentCard.questions)">{{item.question}}</button>
+                    </div>
+                </div>
+                <!--play quiz-->
+
+                <!-- daily vocab-->
+                <div ng-if="vm.mode.id == 5" class="row bold text-center">
+                    <div class="col-md-12">
+                        <span
+                                ng-class="{
+                              'streak-box-shadow': vm.streakPlayer1 < 5,
+                              'streak-box-shadow-blue': vm.streakPlayer1 >= 5,
+                              'streak-box-shadow-yellow': vm.streakPlayer1 >= 10,
+                              'streak-box-shadow-red': vm.streakPlayer1 >= 20,
+                              }"
+                        >{{vm.currentPosition}}/{{vm.totalCard}} WORD(s) | SCORE: {{vm.score1}} | STREAK: {{vm.streakPlayer1}} | INCORRECT: {{vm.wrongPlayer1}} | {{vm.finishDailyVocab}}</span>
+                    </div>
+                    <div class="col-md-12 margin-top-10" ng-show="vm.showTimer">
+                    <!--<div class="col-md-12 text-center margin-top-10">-->
+                        <table style="width:100%" class="show-screen" >
+                            <tr>
+                                <td class="">
+                                    <img ng-if="vm.showStart" class="show-image-answer-screen" src="{{vm.linkStart1}}">
+                                    <img ng-if="vm.showWrong" class="show-image-answer-screen" src="{{vm.linkImageWrong}}">
+                                    <img ng-if="vm.showCorrect" class="show-image-answer-screen" src="{{vm.linkImageCorrect}}">
+                                </td>
+                                <td class="" style="padding-left:15px">
+                                    <div data-ng-click="startCount()" class="btn btn-clock"><strong>{{counter}}</strong></div>
+                                </td>
+                                <td class="" style="padding-left:15px">
+                                    <div data-ng-click="refreshTimer()" class="btn" style="line-height:43px;height: 50px; width: 50px;"><i style="font-size: 22px;" class="fa fa-refresh"></i></div>
+                                </td>
+                                <td class="">
+                                    <img ng-if="vm.showStart" class="show-image-answer-screen" src="{{vm.linkStart1}}">
+                                    <img ng-if="vm.showWrong" class="show-image-answer-screen" src="{{vm.linkImageWrong}}">
+                                    <img ng-if="vm.showCorrect" class="show-image-answer-screen" src="{{vm.linkImageCorrect}}">
+                                </td>
+                            </tr>
+                        </table>
+
+                        <div data-ng-click="startCount()" class="btn btn-clock show-normal"><strong>{{counter}}</strong></div>
+                        <div data-ng-click="refreshTimer()" class="btn show-normal" style="line-height:43px;height: 50px; width: 50px;"><i style="font-size: 22px;" class="fa fa-refresh"></i></div>
+                    </div>
+
+                    <!--player 1-->
+                    <div class="col-md-2 " >
+                        <img ng-if="vm.showStart" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkStart1}}">
+                        <img ng-if="vm.showWrong" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkImageWrong}}">
+                        <img ng-if="vm.showCorrect" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkImageCorrect}}">
+                    </div>
+                    <div class="col-md-8" style="padding:0;margin-bottom:10px;margin-top:5px"
+                         ng-class="{
+                              'streak-box-shadow': vm.streakPlayer1 < 5,
+                              'streak-box-shadow-blue': vm.streakPlayer1 >= 5,
+                              'streak-box-shadow-yellow': vm.streakPlayer1 >= 10,
+                              'streak-box-shadow-red': vm.streakPlayer1 >= 20,
+                              }"
+                    >
+
+                        <div class="flip" ng-if="vm.showMotherTongue === true">
+                            <div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">
+                                <div class="face front" style="display: flex">
+                                    <h2 style="margin: auto auto;" class="text-center">
+                                        <span ng-show="vm.blindMode == false">{{vm.currentCard.question}}</span>
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+                                </div>
+                                <div class="face back" style="display: flex">
+                                    <h2 style="margin: auto auto;">
+                                        {{vm.currentCard.question}}
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 margin-top-10 margin-bottom-5" ng-repeat="item in vm.currentCard.questions" ng-show="vm.showMotherTongue === true && vm.endGame == false">
+                            <button id="answer-quiz-1-{{$index}}" style="width:100%;height: auto!important;min-height: 50px!important;font-size: 16px!important;"
+                                    ng-style="
+                                    $index == 0 && {'background':'#641E1E'}
+                                    || $index == 1 && {'background':'#2a623d'}
+                                    || $index == 2 && {'background':'#ecb939','color':'black'}
+                                    || $index == 3 && {'background':'#0e1a40'}
+                                    || {'background': '#5b4739'}"
+
+                                    class="btn btn-brown" ng-click="vm.answerDailyVocab(item.correct,item,vm.currentCard.questions,1)">{{item.motherTongue}}</button>
+                        </div>
+                    </div>
+                    <div class="col-md-2" >
+                        <img ng-if="vm.showStart" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkStart2}}">
+                        <img ng-if="vm.showWrong" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkImageWrong}}">
+                        <img ng-if="vm.showCorrect" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkImageCorrect}}">
+                    </div>
+                    <!--player 1-->
+
+                </div>
+                <!--battle quiz-->
+
+                <!--battle quiz 2-->
+                <div ng-if="vm.mode.id == 6" class="row bold text-center">
+                    <div class="col-md-12 margin-top-10">
+                        <form class="form-inline">
+                            <div class="form-group mb-2">
+                                <strong>TOTAL: {{vm.totalCard}}</strong>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="col-md-12 text-center margin-top-10">
+                        <div data-ng-click="startCount()" class="btn btn-brown" style="line-height:43px;border: solid 1px;border-radius: 25px; height: 50px; width: 50px;">{{counter}}</div>
+                        <div data-ng-click="refreshTimer()" class="btn btn-brown" style="line-height:43px;border: solid 1px;border-radius: 25px; height: 50px; width: 50px;"><i class="fa fa-refresh"></i></div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <span
+                                ng-class="{
+                              'streak-box-shadow': vm.streakPlayer1 < 5,
+                              'streak-box-shadow-blue': vm.streakPlayer1 >= 5,
+                              'streak-box-shadow-yellow': vm.streakPlayer1 >= 10,
+                              'streak-box-shadow-red': vm.streakPlayer1 >= 20,
+                              }"
+                        >PLAYER 1: &ensp; {{vm.score1}} | STREAK: {{vm.streakPlayer1}} | INCORRECT: {{vm.wrongPlayer1}}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <span
+                                ng-class="{
+                              'streak-box-shadow': vm.streakPlayer2 < 5,
+                              'streak-box-shadow-blue': vm.streakPlayer2 >= 5,
+                              'streak-box-shadow-yellow': vm.streakPlayer2 >= 10,
+                              'streak-box-shadow-red': vm.streakPlayer2 >= 20,
+                              }"
+                        >PLAYER 2: &ensp; {{vm.score2}} | STREAK: {{vm.streakPlayer2}} | INCORRECT: {{vm.wrongPlayer2}}</span>
+                    </div>
+
+                    <!--player 1-->
+                    <div class="col-md-6 show-normal"  style="padding-right: 10px; margin-bottom:10px;margin-top:5px"
+                         ng-class="{
+                              'streak-box-shadow': vm.streakPlayer1 < 5,
+                              'streak-box-shadow-blue': vm.streakPlayer1 >= 5,
+                              'streak-box-shadow-yellow': vm.streakPlayer1 >= 10,
+                              'streak-box-shadow-red': vm.streakPlayer1 >= 20,
+                              }">
+
+                        <div class="flip" ng-if="vm.showMotherTongue === true">
+                            <div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">
+                                <div class="face front" style="display: flex">
+                                    <h2 style="margin: auto auto;" >
+                                        <span ng-show="vm.blindMode == false">{{vm.currentCard.question}}</span>
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                                <div class="face back" style="display: flex">
+                                    <h2 style="margin: auto auto;">
+                                        {{vm.currentCard.question}}
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div ng-if="vm.endGame == false" class="col-md-6 margin-top-10 margin-bottom-5" ng-repeat="item in vm.currentCard.questions" ng-show="vm.showMotherTongue === true">
+                            <button id="answer-quiz-1-{{$index}}" style="width:100%;height: auto!important;min-height: 50px!important;font-size: 16px!important;"
+                                    ng-style="
+                                    $index == 0 && {'background':'#641E1E'}
+                                    || $index == 1 && {'background':'#2a623d'}
+                                    || $index == 2 && {'background':'#ecb939','color':'black'}
+                                    || $index == 3 && {'background':'#0e1a40'}
+                                    || {'background': '#5b4739'}"
+
+                                    class="btn btn-brown" ng-click="vm.answerQuizBattle2(item.correct,item,vm.currentCard.questions,1)">{{item.motherTongue}}</button>
+                        </div>
+
+                        <div class="row text-center">
+                            <div class="col-md-12" style="font-size: 20px">
+                                <span ng-show="vm.totalCard > 0">{{vm.currentPosition + 1}}/{{vm.totalCard}}</span>
+                                <span ng-show="vm.totalCard == 0">No card</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!--player 1-->
+
+                    <!--player 2-->
+                    <div class="col-md-6 show-normal" style="padding-left: 10px; margin-bottom:10px;margin-top:5px"
+                         ng-class="{
+                              'streak-box-shadow': vm.streakPlayer2 < 5,
+                              'streak-box-shadow-blue': vm.streakPlayer2 >= 5,
+                              'streak-box-shadow-yellow': vm.streakPlayer2 >= 10,
+                              'streak-box-shadow-red': vm.streakPlayer2 >= 20,
+                              }">
+                        <div class="flip " ng-if="vm.showMotherTongue === true">
+                            <div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">
+                                <div class="face front" style="display: flex">
+                                    <h2 style="margin: auto auto;" >
+                                        <span ng-show="vm.blindMode == false">{{vm.currentCard1.question}}</span>
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard1.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                                <div class="face back" style="display: flex">
+                                    <h2 style="margin: auto auto;">
+                                        {{vm.currentCard1.question}}
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard1.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div ng-if="vm.endGame == false" class="col-md-6 margin-top-10 margin-bottom-5" ng-repeat="item in vm.currentCard1.questions" ng-show="vm.showMotherTongue === true">
+                            <button id="answer-quiz-2-{{$index}}" style="width:100%;height: auto!important;min-height: 50px!important;font-size: 16px!important;"
+                                    ng-style="
+                                    $index == 0 && {'background':'#641E1E'}
+                                    || $index == 1 && {'background':'#2a623d'}
+                                    || $index == 2 && {'background':'#ecb939','color':'black'}
+                                    || $index == 3 && {'background':'#0e1a40'}
+                                    || {'background': '#5b4739'}"
+
+                                    class="btn btn-brown" ng-click="vm.answerQuizBattle2(item.correct,item,vm.currentCard1.questions,2)">{{item.motherTongue}}</button>
+                        </div>
+
+                        <div class="row text-center">
+                            <div class="col-md-12" style="font-size: 20px">
+                                <span ng-show="vm.totalCard > 0">{{vm.currentPosition1 + 1}}/{{vm.totalCard}}</span>
+                                <span ng-show="vm.totalCard == 0">No card</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!--player 2-->
+
+
+                    <!--battla quiz 2 screen-->
+
+                    <div class="row row-two-column show-screen">
+                        <!--player 1-->
+                        <div class="column"  style="padding-right: 10px; margin-bottom:10px;margin-top:5px"
+                             ng-class="{
+                              'streak-box-shadow': vm.streakPlayer1 < 5,
+                              'streak-box-shadow-blue': vm.streakPlayer1 >= 5,
+                              'streak-box-shadow-yellow': vm.streakPlayer1 >= 10,
+                              'streak-box-shadow-red': vm.streakPlayer1 >= 20,
+                              }">
+
+                            <div class="flip" ng-if="vm.showMotherTongue === true">
+                                <div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">
+                                    <div class="face front" style="display: flex">
+                                        <h2 style="margin: auto auto;" >
+                                            <span ng-show="vm.blindMode == false">{{vm.currentCard.question}}</span>
+                                            <br>
+                                            <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                        </h2>
+
+                                    </div>
+                                    <div class="face back" style="display: flex">
+                                        <h2 style="margin: auto auto;">
+                                            {{vm.currentCard.question}}
+                                            <br>
+                                            <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                        </h2>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div ng-if="vm.endGame == false" class="col-md-6 margin-top-10 margin-bottom-5" ng-repeat="item in vm.currentCard.questions" ng-show="vm.showMotherTongue === true">
+                                <button id="answer-quiz-1-{{$index}}" style="width:100%;height: auto!important;min-height: 50px!important;font-size: 16px!important;"
+                                        ng-style="
+                                    $index == 0 && {'background':'#641E1E'}
+                                    || $index == 1 && {'background':'#2a623d'}
+                                    || $index == 2 && {'background':'#ecb939','color':'black'}
+                                    || $index == 3 && {'background':'#0e1a40'}
+                                    || {'background': '#5b4739'}"
+
+                                        class="btn btn-brown button-screen-pre-wrap" ng-click="vm.answerQuizBattle2(item.correct,item,vm.currentCard.questions,1)">{{item.motherTongue}}</button>
+                            </div>
+
+                            <div class="row text-center">
+                                <div class="col-md-12" style="font-size: 20px">
+                                    <span ng-show="vm.totalCard > 0">{{vm.currentPosition + 1}}/{{vm.totalCard}}</span>
+                                    <span ng-show="vm.totalCard == 0">No card</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!--player 1-->
+
+                        <!--player 2-->
+                        <div class="column" style="padding-left: 10px; margin-bottom:10px;margin-top:5px"
+                             ng-class="{
+                              'streak-box-shadow': vm.streakPlayer2 < 5,
+                              'streak-box-shadow-blue': vm.streakPlayer2 >= 5,
+                              'streak-box-shadow-yellow': vm.streakPlayer2 >= 10,
+                              'streak-box-shadow-red': vm.streakPlayer2 >= 20,
+                              }">
+                            <div class="flip " ng-if="vm.showMotherTongue === true">
+                                <div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">
+                                    <div class="face front" style="display: flex">
+                                        <h2 style="margin: auto auto;" >
+                                            <span ng-show="vm.blindMode == false">{{vm.currentCard1.question}}</span>
+                                            <br>
+                                            <small style="color: white">{{vm.currentCard1.pronounce}}</small>
+                                        </h2>
+
+                                    </div>
+                                    <div class="face back" style="display: flex">
+                                        <h2 style="margin: auto auto;">
+                                            {{vm.currentCard1.question}}
+                                            <br>
+                                            <small style="color: white">{{vm.currentCard1.pronounce}}</small>
+                                        </h2>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div ng-if="vm.endGame == false" class="col-md-6 margin-top-10 margin-bottom-5" ng-repeat="item in vm.currentCard1.questions" ng-show="vm.showMotherTongue === true">
+                                <button id="answer-quiz-2-{{$index}}" style="width:100%;height: auto!important;min-height: 50px!important;font-size: 16px!important;"
+                                        ng-style="
+                                    $index == 0 && {'background':'#641E1E'}
+                                    || $index == 1 && {'background':'#2a623d'}
+                                    || $index == 2 && {'background':'#ecb939','color':'black'}
+                                    || $index == 3 && {'background':'#0e1a40'}
+                                    || {'background': '#5b4739'}"
+
+                                        class="btn btn-brown button-screen-pre-wrap" ng-click="vm.answerQuizBattle2(item.correct,item,vm.currentCard1.questions,2)">{{item.motherTongue}}</button>
+                            </div>
+
+                            <div class="row text-center">
+                                <div class="col-md-12" style="font-size: 20px">
+                                    <span ng-show="vm.totalCard > 0">{{vm.currentPosition1 + 1}}/{{vm.totalCard}}</span>
+                                    <span ng-show="vm.totalCard == 0">No card</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!--player 2-->
+                    </div>
+
+                    <!--battla quiz 2 screen-->
+
+                </div>
+                <!--battle quiz 2-->
+
+                <!--flipping-->
+                <div class="row" ng-if="vm.mode.id == 9" style="min-height:1000px">
+                    <div ng-repeat="item in vm.flippingQuestions" ng-show="$index < vm.numberFlipCard*2" class="col-md-2" >
+
+                        <div class="flip" ng-click="vm.clickFlipCard(item,$index)" ng-show="item.display == true" >
+                            <div class="card" ng-class="{'flipped':item.flipped}" ng-click="item.flipped=!item.flipped">
+                                <div class="face front" style="display: flex" >
+                                    <h2 style="margin: auto auto;" class="text-center">
+                                        <span>{{$index + 1}}</span>
+                                        <!--<strong>{{item.question}}</strong>-->
+                                    </h2>
+                                </div>
+                                <div class="face back" style="display: flex">
+                                    <h2 ng-show="!item.duplicate" style="margin: auto auto;" >
+                                        <strong>{{item.question}}</strong>
+                                    </h2>
+
+                                    <h2 ng-show="item.duplicate" style="margin: auto auto;">
+                                        <strong ng-show="item.duplicate == true" style="color: white">{{item.motherTongue}}</strong>
+                                    </h2>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!--flipping-->
+
+                <!--battle quiz 3 ~ đấu loại trực tiếp -->
+                <div ng-if="vm.mode.id == 7" class="row bold text-center">
+                    <!--<div class="col-md-12 margin-top-10">-->
+                        <!--<form class="form-inline">-->
+                            <!--<div class="form-group mb-2">-->
+                                <!--<label class="bold" for="setBonusTime">NUMBER OF WORDS: </label>-->
+                                <!--<input id="page-size" placeholder="Page size" class="input-underline-only page-size-input" ng-model="vm.searchDto.pageSize" />-->
+                                <!--<strong>/&ensp;TOTAL: {{vm.totalCard}}</strong>-->
+                                <!--<label style="cursor: pointer;" for="page-size" ng-click="vm.changePageSize()">&ensp;<i class="fa-solid fa-sync"></i></label>-->
+
+                            <!--</div>-->
+                        <!--</form>-->
+                    <!--</div>-->
+                    <div class="col-md-6">
+                        PLAYER 1: &ensp; {{vm.score1}}
+                    </div>
+                    <div class="col-md-6">
+                        PLAYER 2: &ensp; {{vm.score2}}
+                    </div>
+                </div>
+
+                <!--<div class="col-md-12 text-center margin-top-10" style="margin-bottom: 20px">-->
+                    <!--<div data-ng-click="startCount()" class="btn btn-brown" style="line-height:43px;border: solid 1px;border-radius: 25px; height: 50px; width: 50px;">{{counter}}</div>-->
+                    <!--<div data-ng-click="refreshTimer()" class="btn btn-brown" style="line-height:43px;border: solid 1px;border-radius: 25px; height: 50px; width: 50px;"><i class="fa fa-refresh"></i></div>-->
+                <!--</div>-->
+
+                <div ng-if="vm.mode.id == 7 && vm.showQuestionBattlel3 == true" class="row bold text-center">
+
+
+                    <!--answer -->
+                    <div class="col-md-12"  >
+
+                        <div class="flip" ng-if="vm.showMotherTongue === true">
+                            <div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">
+                                <div class="face front" style="display: flex">
+                                    <h2 style="margin: auto auto;" >
+                                        <span ng-show="vm.blindMode == false">{{vm.currentCard.question}}</span>
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                                <div class="face back" style="display: flex">
+                                    <h2 style="margin: auto auto;">
+                                        {{vm.currentCard.question}}
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flip" ng-if="vm.showQuestion === true">
+                            <div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">
+                                <div class="face front" style="display: flex">
+                                    <h2 style="margin: auto auto;" ng-show="vm.blindMode == false">
+                                        <span >{{vm.currentCard.motherTongue}}</span>
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                                <div class="face back" style="display: flex">
+                                    <h2 style="margin: auto auto;">
+                                        {{vm.currentCard.motherTongue}}
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 margin-bottom-10" ng-repeat="item in vm.currentCard.questions" >
+                            <button id="answer-quiz-1-{{$index}}"
+                                    style="margin-bottom: 10px; width:100%;height: auto!important;min-height: 50px!important;font-size: 16px!important;"
+                                    ng-style="item.chosen == true && {'background':'#35271d'} || {'background': '#5b4739'}" class="btn btn-brown"
+                                    ng-click="vm.answerQuizBattle3(item.correct,item,vm.currentCard.questions,1)">{{item.motherTongue}}</button>
+                            <button ng-show="false" id="answer-quiz-2-{{$index}}" style="width:100%;height: auto!important;min-height: 50px!important;font-size: 16px!important;" ng-style="item.chosen == true && {'background':'#35271d'} || {'background': '#5b4739'}" class="btn btn-brown"
+                                    ng-click="vm.answerQuizBattle3(item.correct,item,vm.currentCard.questions,2)">{{item.motherTongue}}</button>
+                        </div>
+
+
+                    </div>
+                    <!-- answer -->
+
+                </div>
+                <!--battle quiz 3-->
+
+                <!--rewrite-->
+                <div ng-if="vm.mode.id == 4" class="row bold text-center">
+                    <!--<div class="col-md-3"></div>-->
+                    <div class="col-md-12 text-center margin-top-10">
+                        <div data-ng-click="startCount()" class="btn btn-brown" style="line-height:43px;border: solid 1px;border-radius: 25px; height: 50px; width: 50px;">{{counter}}</div>
+                        <div data-ng-click="refreshTimer()" class="btn btn-brown" style="line-height:43px;border: solid 1px;border-radius: 25px; height: 50px; width: 50px;"><i class="fa fa-refresh"></i></div>
+                    </div>
+
+                    <div ng-click="vm.showDetails()" class="col-md-12"  >
+
+
+                        <div class="flip">
+                            <div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">
+                                <div class="face front" style="display: flex">
+                                    <h2 style="margin: auto auto;">
+                                        {{vm.currentCard.motherTongue}}
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                                <div class="face back" style="display: flex">
+                                    <h2 style="margin: auto auto;">
+                                        {{vm.currentCard.motherTongue}}
+                                        <br>
+                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="col-md-12" style="font-size: 20px">
+                        <i class="fa fa-volume-up" ng-if="vm.isMuted === false" ng-click="sayIt(vm.currentCard.motherTongue)" style="cursor:pointer;"></i>
+                        <label for="mute-button" ng-if="vm.isMuted === true" class="bold"><i class="fa-solid fa-volume-xmark"></i></label>
+                        <input id="mute-button" type="checkbox" ng-model="vm.isMuted" />
+                        <button class="btn btn-success" ng-click="vm.clickAnswerRewriteWord(e)">ANSWER</button>
+                        <span>Incorrect: {{vm.wrong}}</span>
+                    </div>
+                    <div class="col-md-12 margin-bottom-20 margin-top-10">
+                        <!--<input ng-model="vm.answerRewriteWord" type="text" ng-keyup="vm.clickAnswerRewriteWord(e)" style="font-size: 25px !important; text-align: center" class="form-control input-underline-only" placeholder="Your answer...">-->
+                        <input ng-model="vm.answerRewriteWord" type="text" ng-keyup="vm.typeAnswerRewriteWord(e)" style="font-size: 25px !important; text-align: center" class="form-control input-underline-only" placeholder="Your answer...">
+                    </div>
+
+                </div>
+
+                <!--listening-->
+                <div ng-if="vm.mode.id == 8" class="row">
+                    <div class="row">
+                        <div class="col-md-3" style="padding-left: 20px">
+                            <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
+                        </div>
+                        <div class="col-md-9" style="padding-right: 20px">
+                            <div class="row audio-menu">
+                                <div class="col-md-4"></div>
+                                <div class="col-md-12 text-center">
+                                    <audio id="main-audio" controls controlsList="nodownload" style="width: 70%">
+                                        <source src="http://docs.google.com/uc?export=open&id=1rU-C_PU00o_tdFAMFqpyB5hGMSYk2z8L" type="audio/mpeg">
+                                        Your browser does not support the audio element.
+                                    </audio>
+
+                                    <br>
+                                    <button ng-click="vm.backwardAudio(e)"><i class="fa fa-backward" aria-hidden="true"></i></button>
+                                    <button ng-click="vm.forwardAudio(e)"><i class="fa fa-forward" aria-hidden="true"></i></button>
+                                    | Speed: <input class="input-underline-only" style="width:70px;text-align: center" id="play-back-input" ng-disabled="true" type="number" min="0.5" max="4"  ng-value="vm.playbackValue | number : 1"/>
+
+                                    <button ng-click="vm.increaseSpeed()"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>
+                                    <button ng-click="vm.decreaseSpeed()"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>
+
+                                    | Volume: <input class="input-underline-only" style="width:70px;text-align: center" id="play-back-input" ng-disabled="true" type="number" min="0.5" max="4"  ng-value="vm.volumeValue | number : 2"/>
+
+                                    <button ng-click="vm.increaseVolume()"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>
+                                    <button ng-click="vm.decreaseVolume()"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>
+                                </div>
+                                <div class="col-md-4"></div>
+                            </div>
+
+                            <div class="row margin-bottom-10 margin-top-20">
+                                <div class="col-md-12 text-center">
+                                    (hit '<i class="fa fa-chevron-left bold"></i>' playback 3s) | (hit '<i class="bold fa fa-chevron-right"></i>' forward 3s) | (hit 'space' to pause/resume)
+                                </div>
+                            </div>
+
+                            <div class="row margin-bottom-10">
+                                <div class="col-md-12 text-center">
+                                    <h2 class="bold" ng-bind-html="vm.currentCard.question" >
+                                    </h2>
+                                    <span>{{vm.finishListening}} === Progress: {{vm.percentage}}%</span>
+                                    <button class="btn btn-danger" ng-click="vm.saveTestResult()"> SURRENDER </button>
+                                </div>
+                            </div>
+
+                            <div class="row margin-top-10 margin-bottom-10 filling-content">
+                                <div class="col-md-12">
+                                    <div class="bold" compile="vm.fillingGapQuestion" >
+                                    </div>
+                                </div>
+                                <!--<div class="col-md-2"></div>-->
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                        </div>
+                        <div class="col-md-12 margin-top-10">
+
+                        </div>
+                        <div class="col-md-1"></div>
+                    </div>
+
+                </div>
+
+                <!--rewrite-->
+                <div ng-if="vm.isNormal == true" class="row bold text-center">
+                    <div class="col-md-3"></div>
+                    <div ng-click="vm.showDetails()" class="col-md-6"  >
+
+                        <div class="flip">
+                            <div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">
+                                <div class="face front" style="display: flex">
+                                    <h2 style="margin: auto auto;">
+                                        {{vm.currentCard.motherTongue}}
+                                        <br>
+                                        <small style="color: white; z-index: 10">{{vm.currentCard.pronounce}}</small>
+                                    </h2>
+
+                                </div>
+                                <div class="face back" style="display: flex">
+                                    <h3 style="margin: auto auto;">
+                                        {{vm.currentCard.motherTongue}}
+                                        <br>
+                                        <br>
+                                        <small compile="vm.currentCard.description" style="color: white"> </small>
+                                    </h3>
+
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="col-md-12" style="font-size: 20px">
+                        <i class="fa fa-volume-up" ng-if="vm.isMuted === false" ng-click="sayIt(vm.currentCard.motherTongue)" style="cursor:pointer;"></i>
+                        <label for="mute-button" ng-if="vm.isMuted === true" class="bold"><i class="fa-solid fa-volume-xmark"></i></label>
+                        <input id="mute-button" type="checkbox" ng-model="vm.isMuted" />
+                    </div>
+                </div>
+                <!--rewrite-->
+
+                <!--pagination-->
+                <div class="row text-center" ng-show="vm.mode.id == 1 || vm.mode.id == 2 || vm.mode.id == 3">
+                    <div class="col-md-12" style="font-size: 20px">
+                        <i class="fa-solid fa-circle-arrow-left" style="padding-right: 20px; cursor: pointer; font-size: 30px" data-ng-disabled="vm.currentPosition == 0" ng-click="vm.backCard()"></i>
+                        <!--<span ng-show="vm.totalCard > 0">{{vm.currentPosition + 1}}/{{vm.totalCard}}</span>-->
+                        <span ng-show="vm.totalCard > 0">{{vm.currentPosition + 1}}/{{vm.searchDto.pageSize}}</span>
+                        <span ng-show="vm.totalCard == 0">No card</span>
+                        <i class="fa-solid fa-circle-arrow-right " style="padding-left: 20px; cursor: pointer;font-size: 30px" data-ng-disabled="vm.currentPosition + 1 == vm.searchDto.pageSize" ng-click="vm.nextCard()"></i>
+                        <!--<i class="fa-solid fa-circle-arrow-right " style="padding-left: 20px; cursor: pointer;font-size: 30px" data-ng-disabled="vm.currentPosition + 1 == vm.totalCard" ng-click="vm.nextCard()"></i>-->
+                    </div>
+                </div>
+                <!--pagination-->
+                <div class="row text-center bold" ng-show="vm.mode.id == 1 || vm.mode.id == 2 || vm.mode.id == 3">
+                    <div class="col-md-12" style="font-size: 20px">
+                        <span ng-show="vm.totalCard > 0 && vm.mode.id == 4">CÂU SỐ: {{vm.currentPosition + 1}}/{{vm.searchDto.pageSize}}</span>
+                        <span ng-show="vm.totalCard == 0">No card</span>
+                    </div>
+                </div>
+                <!--show infomation-->
+                <div class="row" style="margin: 10px" ng-show="vm.mode.id == 1 || vm.mode.id == 2 || vm.mode.id == 3">
+                    <div class="row">
+                        <div class="row">
+                            <div class="col-md-12 text-center">
+                                <button class="btn btn-brown " ng-click="vm.clickShowListFlashCard()"><i class="fa-solid fa-list-ul"></i> LIST</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div ng-if="vm.showListFlashCard == true" class="row" ng-repeat="item in vm.questions">
+                        <div class="row hover-item">
+
+                            <div class="col-md-3 hover-item">
+                                <input ng-model="item.question" type="text"  class="form-control input-underline-only" placeholder="word..">
+                            </div>
+                            <div class="col-md-1 hover-item">
+                                <input placeholder="pronounce..." class="form-control input-underline-only" ng-model="item.pronounce"  />
+                            </div>
+                            <div class="col-md-6 hover-item">
+                                <input ng-model="item.motherTongue" type="text"  class="form-control input-underline-only" placeholder="First language...">
+                            </div>
+                            <div class="col-md-1 hover-item">
+                                <input ng-if="settings.isAdmin == true" placeholder="website..." class="form-control input-underline-only" ng-model="item.website"  />
+                            </div>
+                            <div class="col-md-2">
+                                <!--<i class="fa fa-save" style="font-size: 18px; padding-top: 12px" data-ng-click="vm.editFlashCard(item)"></i>-->
+                                <!--<i ng-show="item.showDetail == false" class="fa fa-eye" style="font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.showDetailFlashCard(item)"></i>-->
+                                <!--<i ng-show="item.showDetail == true" class="fa fa-eye" style="color: gold;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.hideDetailFlashCard(item)"></i>-->
+
+                                <!--<i class="fa-solid fa-floppy-disk" style="cursor:pointer;font-size: 18px; padding-top: 12px" data-ng-click="vm.editFlashCard(item)"></i>-->
+                                <i ng-show="item.showDetail == false" class="fa-solid fa-circle-info" style="cursor:pointer;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.showDetailFlashCard(item)"></i>
+                                <i ng-show="item.showDetail == true" class="fa-solid fa-circle-info" style="cursor:pointer;color: gold;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.hideDetailFlashCard(item)"></i>
+                                <!--<i class="fa-solid fa-trash" style="cursor:pointer;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="deleteObject(item.id)"></i>-->
+                                &nbsp; &nbsp;<i class="fa fa-volume-up" style="cursor:pointer;font-size: 18px; padding-top: 12px" ng-click="sayIt(item.question)" style=""></i>
+                            </div>
+
+
+                            <div class="col-md-12" ng-if="item.showDetail == true">
+                                <div class="col-md-12 margin-bottom-10 margin-top-10">
+                                    <label class="bold">Definition - Description</label>
+                                    <textarea ui-tinymce="tinymceOptionsToReview" rows="6" class="form-control" ng-model="item.description"  />
+                                </div>
+                                <!--<div class="col-md-12 margin-bottom-10" >-->
+                                <!--<label class="bold">Examples</label>-->
+                                <!--<textarea ui-tinymce="tinymceOptions" rows="6" class="form-control" ng-model="vm.currentCard.examples"  />-->
+                                <!--</div>-->
+                                <div class="col-md-12 margin-bottom-10">
+                                    <ui-select ng-change="vm.topicChangeItem(item)" multiple data-ng-model="item.selectedTopicToEdit" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                    <!--<ui-select multiple ng-change="vm.topicChangeItem(item)" data-ng-model="vm.selectedTopicToEdit" sortable="true" close-on-select="true" style=" width: 100% !important;">-->
+                                        <ui-select-match allow-clear="true" placeholder="Topic...">{{$item.name}}</ui-select-match>
+                                        <ui-select-choices  repeat="t in vm.topics | propsFilter: {name: $select.search}">
+                                            <div class="bold" ng-bind-html="t.name | highlight: $select.search">
+                                            </div>
+                                        </ui-select-choices>
+                                    </ui-select>
+                                </div>
+
+                                <div class="col-md-12 margin-bottom-10">
+                                    <ui-select data-ng-model="item.status" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                        <ui-select-match placeholder="">{{$select.selected.name}}</ui-select-match>
+                                        <ui-select-choices repeat="status.id as status in vm.statuses | propsFilter: {name: $select.search}">
+                                            <div class="bold" ng-bind-html="status.name | highlight: $select.search"></div>
+                                        </ui-select-choices>
+                                    </ui-select>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="row text-center" ng-show="vm.mode.id == 1 || vm.mode.id == 2 || vm.mode.id == 3">
+                    <div  class="col-md-12">
+
+                        <label for="page-size" class="bold">Page Size: &ensp;</label>
+                        <input id="page-size" placeholder="Page size" class="input-underline-only page-size-input" ng-model="vm.searchDto.pageSize" />
+                        <label style="cursor: pointer;" for="page-size" ng-click="vm.changePageSize()">&ensp;<i class="fa-solid fa-sync"></i></label>
+
+
+                    </div>
+                    <div  class="col-md-12">
+                        <ul uib-pagination total-items="vm.totalCard"
+                            ng-model="vm.searchDto.pageIndex" max-size="7" items-per-page="vm.searchDto.pageSize"
+                            class="pagination-sm"
+                            previous-text="&lsaquo;" next-text="&rsaquo;" first-text="&laquo;" last-text="&raquo;"
+                            boundary-links="true"
+                            num-pages="numPages"
+                            ng-change="pageChanged()"></ul>
+                        <pre style="padding:0;border: none; background-color: transparent">Page: {{vm.searchDto.pageIndex}} / {{numPages}} - Total: {{vm.totalCard}}</pre>
+                    </div>
+
+                </div>
+
+                <!--show infomation-->
+
+
+            </div>
+        </div>
+    </div>
+
+    <!--set up game -->
+    <!--<div class="col-md-12" ng-show="vm.endGame == true" >-->
+    <div class="col-md-12">
+        <!--<div class="col-md-2 margin-bottom-10" ng-repeat="item in vm.allVoices">-->
+            <!--{{item.name}} | {{item.voiceURI}} | {{item.lang}}-->
+        <!--</div>-->
+        <div class="portlet light bordered" >
+            <div class="portlet-body" >
+                <div class="row" ng-show="vm.mode.id != 8">
+
+                    <div class="col-md-12 margin-top-10">
+                        <form class="form-inline">
+                            <div class="form-group mb-2">
+                                <label class="bold" for="setTimer">SET TIMER: &ensp;</label>
+                                <input id="setTimer" onkeydown="javascript: return event.keyCode == 69 ? false : true" ng-change="vm.counterChange()" placeholder="Set timer..." class="form-control input-underline-only" ng-model="vm.tempCounter"  />
+                            </div>
+                        </form>
+                    </div>
+                    <!--<div class="col-md-12 margin-top-10">-->
+                        <!--<form class="form-inline">-->
+                            <!--<div class="form-group mb-2">-->
+                                <!--<label class="bold" for="setScore">SET SCORE FOR LISTENING MODE: &ensp;</label>-->
+                                <!--<input id="setScore" placeholder="set score..." type="number" class="input-underline-only" ng-model="vm.blindModeScore"  />-->
+                            <!--</div>-->
+                        <!--</form>-->
+                    <!--</div>-->
+                    <!--<div class="col-md-12 margin-top-10">-->
+                        <!--<form class="form-inline">-->
+                            <!--<div class="form-group mb-2">-->
+                                <!--<label class="bold" for="setBonusTime">SET BONUS TIME (FOR STREAK): &ensp;</label>-->
+                                <!--<input id="setBonusTime" placeholder="set score..." type="number" onKeyDown="return false" min="0" class="input-underline-only" ng-model="vm.bonusTime"  />-->
+                            <!--</div>-->
+                        <!--</form>-->
+                        <!--<hr>-->
+                    <!--</div>-->
+                    <!--<div class="col-md-12">-->
+                        <!--&lt;!&ndash;<i class="fa fa-volume-up" ng-if="vm.isMuted === false" ng-click="sayIt(vm.currentCard.question)" style="cursor:pointer;"></i>&ndash;&gt;-->
+                        <!--<label for="mute-button-1" class="bold">SHOW ENGLISH</label>-->
+                        <!--<input ng-click="vm.showQuestionMother()" id="mute-button-1" type="checkbox" ng-model="vm.showQuestion" />-->
+                    <!--</div>-->
+                    <!--<div class="col-md-12">-->
+                        <!--<label for="mute-button-2" class="bold">SHOW FIRST LANGUAGE</label>-->
+                        <!--<input id="mute-button-2" type="checkbox" ng-model="vm.showMotherTongue" />-->
+                    <!--</div>-->
+                    <div class="col-md-12">
+                        <label for="mute-button-3" class="bold">NO BACKGROUND MUSIC</label>
+                        <input id="mute-button-3" type="checkbox" ng-model="vm.noBGMusic" />
+                    </div>
+
+                </div>
+
+                <div class="row">
+
+                    <p id="msg" style="visibility: hidden"></p>
+                    <!--<div class="col-md-12" ng-show="vm.mode.id != 8">-->
+                        <!--<label for="show-voice">Cài đặt giọng đọc</label>-->
+                        <!--<input type="checkbox" id="show-voice" ng-model="vm.showVoiceOption" >-->
+                    <!--</div>-->
+                    <div class="col-md-4" ng-show="vm.showVoiceOption === true">
+                        <div class="option">
+                            <label for="voice">Giọng đọc</label>
+                            <select name="voice" id="voice"></select>
+                        </div>
+                        <div class="option" ng-show="vm.mode.id != 8">
+                            <label for="volume">Âm thanh</label>
+                            <input type="range" min="0" max="1" step="0.1" name="volume" id="volume" value="1">
+                        </div>
+                        <div class="option" ng-show="vm.mode.id != 8">
+                            <label for="rate">Tốc độ đọc</label>
+                            <input type="range" min="0.1" max="10" step="0.1" name="rate" id="rate" value="1">
+                        </div>
+                        <div class="option" ng-show="vm.mode.id != 8">
+                            <label for="pitch">Tông giọng</label>
+                            <input type="range" min="0" max="2" step="0.1" name="pitch" id="pitch" value="1">
+                        </div>
+                        <label for="loop-speech" ng-show="vm.mode.id != 8">Tự động lặp lại</label>
+                        <input id="loop-speech" type="checkbox" ng-model="vm.loopSpeech" ng-show="vm.mode.id != 8">
+                    </div>
+                </div>
+
+
+
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- END MAIN CONTENT -->
+<!-- BEGIN MAIN JS-->
+
+<script type="text/ng-template" id="review_flash_card_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title" data-ng-if="vm.question.isNew == true"><i class="icon-plus"></i>Review</h4>
+            <!--<h4 class="modal-title" data-ng-if="vm.question.isNew == false"><i class="fa fa-pencil-square-o"></i></h4>-->
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-md-12 margin-bottom">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="bold" style="margin-bottom: 11px">Answer</label>
+                            <textarea rows="2" class="form-control" ng-model="vm.myAnswer"  />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="bold"><button ng-click="vm.isShowPronunciation()">Show pronunciation</button></label>
+                            <textarea data-ng-disabled="true" ng-if="vm.showPronunciation == true" rows="2" class="form-control" ng-model="vm.question.pronounce"  />
+                            <textarea data-ng-disabled="true" ng-if="vm.showPronunciation == false" rows="2" class="form-control"   />
+                        </div>
+                    </div>
+
+                </div>
+                <div class="col-md-12 margin-bottom">
+                    <label class="bold">Definition - Description</label>
+                    <textarea rows="6" data-ng-disabled="true" class="form-control" ng-model="vm.question.description"  />
+                </div>
+                <div class="col-md-12" style="margin-bottom: 10px">
+                    <label class="bold">The meaning of your first language </label>
+                    <textarea rows="2" class="form-control" ng-model="vm.question.motherTongue"  />
+                </div>
+                <div class="col-md-12" >
+                    <label class="bold"><button ng-click="vm.isShowExamples()">Show examples</button></label>
+                    <textarea data-ng-disabled="true" ng-show="vm.showExamples == true" rows="6" class="form-control" ng-model="vm.question.examples"  />
+                </div>
+
+                <div class="col-md-12 margin-bottom-10" >
+                    <ui-select multiple ng-change="vm.topicChange()" data-ng-model="vm.selectedTopics" sortable="true" close-on-select="true" style="width: 100% !important;">
+                        <ui-select-match allow-clear="true" placeholder="Topic...">{{$item.name}}</ui-select-match>
+                        <ui-select-choices repeat="t in vm.topics | propsFilter: {name: $select.search}">
+                            <div class="bold" ng-bind-html="t.name | highlight: $select.search">
+                            </div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                <div class="col-md-12 margin-bottom">
+                    <ui-select data-ng-disabled="true" data-ng-model="vm.question.status" sortable="true" close-on-select="true" style="width: 100% !important;">
+                        <ui-select-match placeholder="">{{$select.selected.name}}</ui-select-match>
+                        <ui-select-choices repeat="status.id as status in vm.statuses | propsFilter: {name: $select.search}">
+                            <div class="bold" ng-bind-html="status.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+
+            </div>
+        </div>
+        <div class="modal-footer">
+            <i ng-show="vm.question.status == 1"class="fa fa-times-circle"> - </i><i ng-show="vm.question.status == 2"class="fa fa-check-circle"> - </i>  {{vm.question.timeReviewd}}/{{vm.question.correctAnswer}}/{{vm.question.wrongAnswer}}
+            <button type="button" ng-click="$dismiss()" class="btn btn-default margin-left-10" data-dismiss="modal">Exit</button>
+            <button type="button" ng-show="vm.answer == false" ng-click="vm.clickAnswer();" class="btn btn-primary" data-dismiss="modal">Answer</button>
+            <button type="button" ng-show="vm.answer == true" ng-click="vm.clickNextInMode();" class="btn btn-success" data-dismiss="modal">Next</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="edit_flash_card_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="fa fa-pencil-square-o"></i> Edit Card</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-md-12" style="margin-bottom: 10px">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="bold">Word</label>
+                            <textarea rows="2" class="form-control" ng-model="vm.currentCard.question"  />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="bold">Pronounce</label>
+                            <textarea rows="2" class="form-control" ng-model="vm.currentCard.pronounce"  />
+                        </div>
+                    </div>
+
+                </div>
+                <div class="col-md-12 margin-bottom-10">
+                    <label class="bold">Definition - Description</label>
+                    <textarea ui-tinymce="tinymceOptions" rows="6" class="form-control" ng-model="vm.currentCard.description"  />
+                </div>
+                <div class="col-md-12" style="margin-bottom: 10px">
+                    <label class="bold">The meaning of your first language </label>
+                    <textarea rows="2" class="form-control" ng-model="vm.currentCard.motherTongue"  />
+                </div>
+                <!--<div class="col-md-12 margin-bottom-10" >-->
+                    <!--<label class="bold">Examples</label>-->
+                    <!--<textarea ui-tinymce="tinymceOptions" rows="6" class="form-control" ng-model="vm.currentCard.examples"  />-->
+                <!--</div>-->
+                <div class="col-md-12 margin-bottom-10">
+                    <ui-select multiple ng-change="vm.topicChange()" data-ng-model="vm.selectedTopicToEdit" sortable="true" close-on-select="true" style="width: 100% !important;">
+                        <ui-select-match allow-clear="true" placeholder="Topic...">{{$item.name}}</ui-select-match>
+                        <ui-select-choices repeat="t in vm.topics | propsFilter: {name: $select.search}">
+                            <div class="bold" ng-bind-html="t.name | highlight: $select.search">
+                            </div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                <!--<div class="col-md-12 margin-bottom-10">-->
+                    <!--<ui-select data-ng-model="vm.currentCard.status" sortable="true" close-on-select="true" style="width: 100% !important;">-->
+                        <!--<ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>-->
+                        <!--<ui-select-choices repeat="status.id as status in vm.statuses | propsFilter: {name: $select.search}">-->
+                            <!--<div class="bold" ng-bind-html="status.name | highlight: $select.search"></div>-->
+                        <!--</ui-select-choices>-->
+                    <!--</ui-select>-->
+                <!--</div>-->
+            </div>
+        </div>
+        <div class="modal-footer">
+            Chưa Thuộc <i ng-show="vm.currentCard.status == 1"class="fa fa-times-circle"> - </i><i ng-show="vm.currentCard.status == 2"class="fa fa-check-circle"> - </i>  Số lần xem lại: {{vm.currentCard.timeReviewd}}/Số lần đúng: {{vm.currentCard.correctAnswer}}/Số lần sai: {{vm.currentCard.wrongAnswer}}
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
+            <button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="confirm_delete_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="icon-question"></i>Xóa</h4>
+        </div>
+        <div class="modal-body">
+            <p>Bạn có chắc chắn muốn xóa bản ghi đã chọn không?</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="reward.html">
+    <div modal-movable>
+        <div class="modal-header text-center">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h2 class="modal-title bold"><i class="fa fa-reward"></i> Congratulations</h2>
+        </div>
+        <div class="modal-body text-center">
+            <h1 class="text-red">{{vm.reward.text}}</h1>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">CLOSE</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="edit_object_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title" data-ng-if="vm.question.isNew == true"><i class="icon-plus"></i>Thêm tôn giáo</h4>
+            <h4 class="modal-title" data-ng-if="vm.question.isNew == false"><i class="fa fa-pencil-square-o"></i>Cập nhật tôn giáo</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">newCard of Question</label>
+                    <ui-select ng-change="vm.selectType()" data-ng-model="vm.question.questionType" sortable="true" close-on-select="true" style="width: 100% !important;">
+                        <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
+                        <ui-select-choices repeat="questionType in vm.questionTypes | propsFilter: {name: $select.search}">
+                            <div class="bold" ng-bind-html="questionType.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                <div class="col-md-12" style="margin-bottom: 10px">
+                    <label class="bold">Word</label>
+                    <textarea rows="4" class="form-control" ng-model="vm.question.question"  />
+                </div>
+                <div class="col-md-12" style="margin-bottom: 10px">
+                    <label class="bold">Description</label>
+                    <textarea rows="4" class="form-control" ng-model="vm.question.description"  />
+                </div>
+                <div class="col-md-6">
+                    <div class="input-group" style="margin-bottom: 5px">
+                        <input type="text" data-ng-model="vm.textSearch" class="form-control" placeholder="Tìm theo tên hoặc mã nhân sự" name="search"
+                               ng-keypress="vm.enterSearchCode()">
+                        <div class="input-group-btn">
+                            <button ng-click="vm.searchByCode()" class="btn btn-default" type="submit">
+                                <i class="glyphicon glyphicon-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <table class="table table-striped table-bordered">
+                        <thead>
+                        <tr>
+                            <th>List Answer</th>
+                            <th>Action</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr ng-repeat="item in vm.answers">
+                            <td ng-bind-html="item.answer" class="b"></td>
+                            <td><p><a ng-click="vm.addAnswer(item)"><i class="fa fa-plus"></i></a></p></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <div class="col-md-12 text-center">
+                        <ul uib-pagination items-per-page="vm.pageSizeAnswer" total-items="vm.totalItems" ng-model="vm.pageIndexAnswer" ng-change="pageChanged()" class="pagination-sm" boundary-links="true"></ul>
+                    </div>
+                </div>
+                <div class="col-md-6" style="margin-top: 40px">
+                    <table class="table table-striped table-bordered">
+                        <thead>
+                        <tr>
+                            <th>Answer</th>
+                            <th>Correct</th>
+                            <th>Action</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr ng-repeat="item in vm.question.questionAnswers">
+                            <td ng-bind-html="item.answer.answer"></td>
+                            <td>
+                                <p><input type="checkbox" ng-model="item.correct"></p>
+                            </td>
+                            <td><p><a ng-click="vm.deleteAnswer($index)"><i class="fa fa-trash"></i></a></p></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
+            <button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>
+        </div>
+    </div>
+</script>
+
+<audio id="audio-1">
+    <source src="music/audio-1.mp3"/>
+</audio>
+<!--<audio id="audio-2">-->
+    <!--<source src="music/audio-2.mp3"/>-->
+<!--</audio>-->
+<!--<audio id="audio-3">-->
+    <!--<source src="music/audio-3.mp3"/>-->
+<!--</audio>-->
+<!--<audio id="audio-4">-->
+    <!--<source src="music/audio-4.mp3"/>-->
+<!--</audio>-->
+<audio id="audio-5">
+    <source src="music/audio-5.mp3"/>
+</audio>
+<audio id="audio-6">
+    <source src="music/audio-6.mp3"/>
+</audio>
+<audio id="audio-7">
+    <source src="music/audio-7.mp3"/>
+</audio>
+<audio id="phai-chiu">
+    <source src="music/phai-chiu.mp3"/>
+</audio>
+<audio id="dung-co-keu">
+    <source src="music/dung-co-keu.mp3"/>
+</audio>
+<audio id="vo-tay-pew">
+    <source src="music/vo-tay-pew.mp3"/>
+</audio>
+<audio id="applause">
+    <source src="music/applause.mp3"/>
+</audio>
+<!--<audio id="labu2">-->
+    <!--<source src="music/labu2.mp3"/>-->
+<!--</audio>-->
+<!--<audio id="mixue">-->
+    <!--<source src="music/mixue.mp3"/>-->
+<!--</audio>-->
+<!--<audio id="meo-meo">-->
+    <!--<source src="music/meo-meo.mp3"/>-->
+<!--</audio>-->
+<!--<audio id="party-troll">-->
+    <!--<source src="music/party-troll.mp3"/>-->
+<!--</audio>-->
+
+<audio id="sai">
+    <source src="music/sai.m4a"/>
+</audio>
+
+<audio id="ngao">
+    <source src="music/ngao.m4a"/>
+</audio>
+
+<audio id="stupid">
+    <source src="music/stupid.m4a"/>
+</audio>
+
+<audio id="welldone">
+    <source src="music/welldone.m4a"/>
+</audio>
+
+<audio id="quec">
+    <source src="music/quec.mp3"/>
+</audio>
+
+<!--<audio id="end-sound">-->
+    <!--<source src="music/end-sound.m4a"/>-->
+<!--</audio>-->
+
+<!--<audio id="10s">-->
+    <!--<source src="music/10s.mp3"/>-->
+<!--</audio>-->
+
+<!--<audio id="15s">-->
+    <!--<source src="music/15s.mp3"/>-->
+<!--</audio>-->
+
+<style>
+    .modal-lg{
+        width: 88%;
+    }
+    @media only screen and (max-width: 768px){
+        .modal-lg {
+            width: 100%;
+        }
+        h2 {
+            font-size: 18px !important;
+        }
+        /*.audio-menu{*/
+            /*width: 100%;*/
+            /*position: fixed;*/
+            /*bottom: 5%;*/
+            /*left:1%;*/
+            /*background: saddlebrown;*/
+            /*z-index: 3;*/
+        /*}*/
+
+        .show-image-answer {
+            width: 20% !important;
+            height: auto !important;
+        }
+        .show-image-answer-normal{
+            display: none !important;
+        }
+
+        .show-normal{
+            display: none !important;
+        }
+
+        .show-image-answer-screen{
+            display: block !important;
+            width: 60px !important;
+            height: auto;
+        }
+
+        .show-screen{
+            display: flex !important;
+            justify-content: center;
+        }
+    }
+    /*.show-image-answer-normal{*/
+        /*display: flex;*/
+    /*}*/
+    .show-image-answer-screen{
+        display: none;
+    }
+
+    .show-screen{
+        display: none;
+    }
+
+    .button-screen-pre-wrap{
+        width: auto;
+        white-space: pre-wrap;
+    }
+
+
+
+    /*h2 {*/
+        /*font-size: 24px !important;*/
+    /*}*/
+
+    #flashcards{
+        background:  #e4fff5 ;
+        border: solid 1px ;
+        height:150px;
+        margin-left: 6%
+    }
+
+    #flashcards:hover{
+        background: #f9ffbb !important;
+    }
+
+    /*#new-item{*/
+        /*position: fixed;*/
+        /*right: 0%*/
+
+    /*}*/
+
+    .input-underline-only {
+        border: 0;
+        outline: 0;
+        background: transparent;
+        border-bottom: 1px solid black;
+        /*line-height: 1px !important;*/
+        font-size: 14px;
+    }
+
+    .input-underline-only-score {
+        border: 0;
+        outline: 0;
+        width: 60px !important;
+        background: transparent;
+        border-bottom: 1px solid black;
+        /*line-height: 1px !important;*/
+        font-size: 14px;
+    }
+
+    .hover-item:hover{
+        background: whitesmoke;
+    }
+
+    .flip {
+        -webkit-perspective: 800px;
+        width: 100%;
+        height: 160px;
+        position: relative;
+        /*margin: 10px auto;*/
+    }
+
+    .flip .card.flipped {
+        -webkit-transform: rotatex(-180deg);
+    }
+
+    .flip .card {
+        width: 100%;
+        height: 100%;
+        -webkit-transform-style: preserve-3d;
+        -webkit-transition: 0.5s;
+    }
+    .flip .card .face {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        -webkit-backface-visibility: hidden ;
+        z-index: 2;
+        font-family: Georgia;
+        text-align: center;
+    }
+    .flip .card .front {
+        position: absolute;
+        z-index: 1;
+        cursor: pointer;
+        border-radius: 20px;
+        font-size: 30px;
+    }
+    .flip .card .back {
+        -webkit-transform: rotatex(-180deg);
+        cursor: pointer;
+        border-radius: 20px;
+        font-size: 30px;
+    }
+
+    .page-size-input{
+        width: 40px;
+        text-align: center;
+    }
+    .video-container {
+        position: relative;
+        padding-bottom: 56.25%; /* 16:9 */
+        height: 0;
+    }
+    .video-container iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    .btn-clock {
+        line-height:25px !important;
+        border-radius: 5px;
+        height: 25px;
+        width: 65px;
+        font-family: Orbitron !important;
+        background: #DD8141;
+        letter-spacing: 2px;
+        color: #371009;
+    }
+
+    .filling-content{
+        padding: 10px;
+        max-height: 300px;
+        overflow: scroll;
+        text-align: justify;
+    }
+
+    .streak-box-shadow{
+        border-radius: 20px;
+        padding-left: 5px;
+        padding-right: 5px;
+        background: transparent;
+    }
+
+    .streak-box-shadow-blue{
+        border-radius: 20px;
+        background: rgba(41, 231, 255, 0.2);
+        animation: shadow-loop-blue 3s infinite alternate;
+    }
+
+    @keyframes shadow-loop-blue {
+        0% {
+            box-shadow: rgba(41, 231, 255, 0.2) 0px 22px 70px 4px;
+        }
+        50% {
+            box-shadow: rgba(41, 231, 255, 1) 0px 22px 70px 4px;
+        }
+        100% {
+            box-shadow: rgba(41, 231, 255, 0.2) 0px 22px 70px 4px;
+        }
+    }
+
+    .streak-box-shadow-yellow{
+        border-radius: 20px;
+        background: rgba(253, 216, 8, 0.2);
+        animation: shadow-loop-yellow 3s infinite alternate;
+    }
+
+    @keyframes shadow-loop-yellow {
+        0% {
+
+            box-shadow: rgba(253, 216, 8, 0.2) 0px 22px 70px 4px;
+        }
+        50% {
+            box-shadow: rgba(253, 216, 8, 1) 0px 22px 70px 4px;
+        }
+        100% {
+            box-shadow: rgba(253, 216, 8, 0.2) 0px 22px 70px 4px;
+        }
+    }
+
+    .streak-box-shadow-red{
+        border-radius: 20px;
+        background: rgba(255, 0, 0, 0.2);
+        animation: shadow-loop-red 3s infinite alternate;
+    }
+
+    @keyframes shadow-loop-red {
+        0% {
+            box-shadow: rgba(255, 0, 0, 0.2) 0px 22px 70px 4px;
+        }
+        50% {
+            box-shadow: rgba(255, 0, 0, 1) 0px 22px 70px 4px;
+        }
+        100% {
+            box-shadow: rgba(255, 0, 0, 0.2) 0px 22px 70px 4px;
+        }
+    }
+
+    .column {
+        float: left;
+        width: 50%;
+        padding-right: 20px;
+        min-height: 250px; /* Should be removed. Only for demonstration */
+    }
+
+    /* Clear floats after the columns */
+    .row-two-column:after {
+        content: "";
+        display: table;
+        clear: both;
+    }
+</style>
+<!-- BEGIN MAIN JS -->

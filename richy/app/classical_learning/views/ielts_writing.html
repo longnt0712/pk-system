@@ -1,0 +1,70 @@
+<!-- END PAGE HEADER-->
+<!-- BEGIN MAIN CONTENT -->
+<div class="row margin-top-10">
+    <div class="col-md-12">
+    
+        <div class="portlet bg-gray-light bordered">
+            <div class="portlet-body">
+                <div class="btn-group pull-left">
+                    <!--<button class="btn btn-default" data-ng-click="vm.newObject()"><i class="fa fa-plus-circle"></i>Thêm mới</button>-->
+                    <!--<button class="btn btn-danger margin-left-10" data-ng-click="vm.deleteanswers()" data-ng-disabled="vm.selectedanswers.length <= 0"><i class="fa fa-trash"></i>Xóa</button>-->
+
+                </div>
+
+
+                <div class="row">
+                    <div class="col-md-12 margin-bottom-10 margin-top-10 text-center" >
+
+
+
+                        <div data-ng-click="startCount()" class="btn btn-danger" style="width: 100px" >{{minuteDisplay}} : {{secondDisplay}}</div>
+
+                    </div>
+                    <div class="col-md-2"></div>
+                    <div class="col-md-8 margin-bottom-10" >
+                        <textarea ng-style="{'font-size': vm.fontSize}"  rows="2" class="form-control" autofocus />
+                    </div>
+                    <div class="col-md-2"></div>
+
+                </div>
+
+                <div class="row">
+                    <div class="col-md-2"></div>
+                    <div class="col-md-8 margin-bottom-10" >
+                        <textarea ng-style="{'font-size': vm.fontSize}" rows="20" data-ng-change="vm.onTextChange()" class="form-control" ng-model="vm.writingText" autofocus />
+                    </div>
+                </div>
+
+                <div class="row text-right">
+                    <div class="col-md-2"></div>
+
+                    <div class="col-md-8 margin-bottom-10">
+                        <span>
+                            <strong>Total: {{vm.countWords}} word(s) </strong> |
+                            Font size: <input type="number"  style="width: 5%;" data-ng-model="vm.fontSize">
+                        </span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script type="text/ng-template" id="result_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="fa fa-check"></i>Đáp án</h4>
+        </div>
+        <div class="modal-body">
+
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>
+        </div>
+    </div>
+</script>
+<!-- BEGIN MAIN JS -->

@@ -1,0 +1,36 @@
+/* width */
+::-webkit-scrollbar {
+    width: 5px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+    background: white;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+    background: #BFBFBF;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+    background: #BFBFBF;
+}
+
+html,
+
+body {
+    /*background-color: #ffffea;*/
+    /* width */
+    padding-top: 10px;
+    padding-left: 50px;
+    padding-right: 50px;
+    padding-bottom: 10px;
+
+}
+
+body, p, div, span, pre, .mce-content-body {
+    color:#000; font-family:Quicksand, Verdana, Arial, Helvetica, sans-serif!important; font-size: 11px; margin:8px;
+}
+

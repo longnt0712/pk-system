@@ -1,0 +1,92 @@
+<!-- END PAGE HEADER-->
+<!-- BEGIN MAIN CONTENT -->
+<div class="row margin-top-10">
+    <div class="col-md-12">
+    
+        <div class="portlet light bordered">
+            <div class="portlet-body">
+                    <div class="row margin-top-10 margin-bottom-10">
+                        <div class="col-md-9">
+                            <button class="btn btn-default" data-ng-click="vm.newObject()"><i class="fa fa-plus-circle"></i>Thêm mới</button>
+                            <button class="btn btn-default margin-left-10" data-ng-click="vm.newObjectType2()"><i class="fa fa-plus-circle"></i>Thêm mới loại 2</button>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="input-group">
+                                <input ng-model="vm.searchDto.textSearch" ng-keyup="vm.enterSearchCode(e)" type="text"  class="form-control" placeholder="Từ cần tìm">
+                                <div class="input-group-btn">
+                                    <button ng-click="vm.searchChange()" class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!--<button class="btn btn-danger margin-left-10" data-ng-click="vm.deletebodys()" data-ng-disabled="vm.selectedbodys.length <= 0"><i class="fa fa-trash"></i>Xóa</button>-->
+                <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- END MAIN CONTENT -->
+<!-- BEGIN MAIN JS-->
+<script type="text/ng-template" id="edit_object_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title" data-ng-if="vm.body.isNew == true"><i class="icon-plus"></i>Thêm tôn giáo</h4>
+            <h4 class="modal-title" data-ng-if="vm.body.isNew == false"><i class="fa fa-pencil-square-o"></i>Cập nhật tôn giáo</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-md-12">
+                    <label class="bold">Text</label>
+                    <input class="form-control" ng-model="vm.body.text" autofocus />
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
+            <button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="edit_object_type2_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title" data-ng-if="vm.body.isNew == true"><i class="icon-plus"></i>Thêm tôn giáo</h4>
+            <h4 class="modal-title" data-ng-if="vm.body.isNew == false"><i class="fa fa-pencil-square-o"></i>Cập nhật tôn giáo</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-md-12">
+                    <label class="bold">Text</label>
+                    <textarea rows="10" class="form-control" ng-model="vm.body.text" autofocus />
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
+            <button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="confirm_delete_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="icon-question"></i>Xóa</h4>
+        </div>
+        <div class="modal-body">
+            <p>Bạn có chắc chắn muốn xóa bản ghi đã chọn không?</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>
+        </div>
+    </div>
+</script>
+<!-- BEGIN MAIN JS -->

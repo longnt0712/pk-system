@@ -1,0 +1,462 @@
+<!-- END PAGE HEADER-->
+<!-- BEGIN MAIN CONTENT -->
+<div class="row margin-top-10">
+    <div class="col-md-12">
+    
+        <div class="portlet light bordered">
+            <div class="portlet-body">
+                <div class="row">
+                    <div class="col-md-3 margin-bottom-10">
+                        <!--<button class="btn btn-default" data-ng-click="vm.processNewVoucher()"><i class="fa fa-plus-circle"></i>Nhập đơn dép</button>-->
+                        <button class="btn btn-default" data-ng-click="vm.processNewVoucher()"><i class="fa fa-plus-circle"></i>Nhập đơn chốt</button>
+                        <input data-ng-model="vm.searchDto.teamName" type="text" style="width: 50px !important" ng-change="vm.teamNameChange()" ng-keyup="vm.enterSearchCode(e)"/>
+                    </div>
+                    <div class="col-md-2 margin-bottom-10">
+                        <input data-ng-model="vm.searchDto.voucherDate" type="text" class="form-control" my-date-picker />
+                    </div>
+                    <div class="col-md-2 margin-bottom-10">
+                        <input data-ng-model="vm.searchDto.endVoucherDate" type="text" class="form-control" my-date-picker />
+                    </div>
+                    <div class="col-md-2 margin-bottom-10">
+                        <button class="btn btn-default" ng-click="vm.getByDate()">Tìm kiếm</button>
+                        <div class="dropdown  margin-left-10" style="float: none;display: inline-block;">
+                            <button class="btn btn-default dropdown-toggle" type="button"
+                                    data-toggle="dropdown">
+                                Export<span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <a href="#" class=""
+                                   file-name="'THONG_KE.xlsx'" ng-click="getFile()"
+                                   file-download="myBlobObject">
+                                    THONG_KE
+                                </a>
+                                <br>
+                                <a href="#" class=""
+                                   file-name="'GHN.xlsx'" ng-click="getFileQuantity()"
+                                   file-download="myBlobObject1">
+                                    GHN
+                                </a>
+                                <br>
+                                <a href="#" class=""
+                                   file-name="'GHTK.xlsx'" ng-click="getFileDelivery()"
+                                   file-download="myBlobObject3">
+                                    GHTK
+                                </a>
+                                <br>
+                                <a href="#" class=""
+                                   file-name="'BODY.xlsx'" ng-click="getBody()"
+                                   file-download="myBlobObject2">
+                                    BODY
+                                </a>
+                            </ul>
+
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="input-group">
+                            <input ng-model="vm.searchDto.textSearch" ng-keyup="vm.enterSearchCode(e)" type="text"  class="form-control" placeholder="Nhập mã, tên...">
+                            <div class="input-group-btn">
+                                <button ng-click="vm.codeChange()" class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!--<div class="row">-->
+                    <!--<div class="col-md-2">-->
+                        <!--<label class="bold">Giá nhập dép mặc định</label>-->
+                        <!--<input class="form-control" ng-model="vm.defaultReceipt" type="text" number-input>-->
+                    <!--</div>-->
+                    <!--<div class="col-md-2">-->
+                        <!--<label class="bold">Giá bán dép mặc định</label>-->
+                        <!--<input class="form-control" ng-model="vm.defaultIssue" type="text" number-input>-->
+                    <!--</div>-->
+                    <!--<div class="col-md-2">-->
+                        <!--<label class="bold">Giá nhập jibitz mặc định</label>-->
+                        <!--<input class="form-control" ng-model="vm.defaultStickerReceipt" type="text" number-input>-->
+                    <!--</div>-->
+                    <!--<div class="col-md-2">-->
+                        <!--<label class="bold">Giá bán jibitz mặc định</label>-->
+                        <!--<input class="form-control" ng-model="vm.defaultStickerIssue" type="text" number-input>-->
+                    <!--</div>-->
+                    <!--<div class="col-md-2">-->
+                        <!--<label class="bold">Jibitz free/1 dép</label>-->
+                        <!--<input class="form-control" ng-model="vm.defaultStickerFree" type="text" number-input>-->
+                    <!--</div>-->
+                    <!--<div class="col-md-2">-->
+                        <!--<label class="bold">Tiền ship chịu mặc định</label>-->
+                        <!--<input class="form-control" ng-model="vm.defaultShipFee" type="text" number-input>-->
+                    <!--</div>-->
+                    <!--<div class="col-md-2">-->
+                        <!--<label class="bold">Tiền ship bán mặc định</label>-->
+                        <!--<input class="form-control" ng-model="vm.defaultShip" type="text" number-input>-->
+                    <!--</div>-->
+                    <!--<div class="col-md-2">-->
+                        <!--<label class="bold">Tiền khuyến mại mặc định</label>-->
+                        <!--<input class="form-control" ng-model="vm.defaultPromotionFee" type="text" number-input>-->
+                    <!--</div>-->
+                    <!--<div class="col-md-2">-->
+                        <!--<label class="bold">Phụ phí mặc định</label>-->
+                        <!--<input class="form-control" ng-model="vm.defaultOtherFee" type="text" number-input>-->
+                    <!--</div>-->
+                    <!--<div class="col-md-2">-->
+                        <!--<label class="bold">Jb nhập ngày</label>-->
+                        <!--<input class="form-control" ng-model="vm.defaultDateReceipt" type="text" my-date-picker>-->
+                    <!--</div>-->
+                <!--</div>-->
+                <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- END MAIN CONTENT -->
+<!-- BEGIN MAIN JS-->
+<script type="text/ng-template" id="edit_object_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title" data-ng-if="vm.voucherCrocs.isNew == true"><i class="icon-plus"></i>Thêm</h4>
+            <h4 class="modal-title" data-ng-if="vm.voucherCrocs.isNew == false"><i class="fa fa-pencil-square-o"></i>Cập nhật</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label class="bold">Mã</label>
+                            <input data-ng-model="vm.voucherCrocs.code" type="text" autofocus="autofocus" class="form-control" />
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold">Ngày lập hóa đơn</label>
+                            <input data-ng-model="vm.voucherCrocs.voucherDate" type="text" class="form-control" my-date-picker />
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold">Tên shop</label>
+                            <label class="bold">Dép</label>
+                            <ui-select ng-model="vm.voucherCrocs.shopDto" sortable="true" close-on-select="true">
+                                <ui-select-match allow-clear="true" placeholder="Xin mời chọn...">{{$select.selected.name}}</ui-select-match>
+                                <ui-select-choices repeat=" so in vm.shops  | propsFilter: {name: $select.search}">
+                                    <div class="bold" ng-bind-html="so.name | highlight: $select.search">{{so.code}}</div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold">Tên khách hàng</label>
+                            <input data-ng-model="vm.voucherCrocs.customerName" type="text" class="form-control" />
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold">Nick name</label>
+                            <input data-ng-model="vm.voucherCrocs.customerNickName" type="text" class="form-control" />
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold">Số điện thoại</label>
+                            <input data-ng-model="vm.voucherCrocs.phoneNumber" type="text" class="form-control"/>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold">Địa chỉ</label>
+                            <textarea rows="2" data-ng-model="vm.voucherCrocs.address" type="text" class="form-control"/>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold">Nhân viên chốt đơn</label>
+                            <input data-ng-model="vm.voucherCrocs.user.displayName" type="text" class="form-control"/>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold form-check-label" for="exampleCheck1">Nội thành</label>
+                            <input type="checkbox" data-ng-model="vm.voucherCrocs.isInTown" class="form-check-input" id="exampleCheck1">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="bold">Dép</label>
+                            <ui-select ng-model="vm.item" on-select="vm.addItem()" sortable="true" close-on-select="true">
+                                <ui-select-match allow-clear="true" placeholder="Xin mời chọn...">{{$select.selected.name}}</ui-select-match>
+                                <ui-select-choices repeat="so in vm.items  | propsFilter: {name: $select.search}">
+                                    <div class="bold" ng-bind-html="so.name | highlight: $select.search">{{so.code}}</div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="bold">Jibitz</label>
+                            <input ng-change="vm.getJb()" ng-model="vm.textJb" type="text" class="form-control"/>
+                        </div>
+                        <div class="col-md-12 text-center" >
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>STT</th>
+                                    <th>Tên</th>
+                                    <th>Mã</th>
+                                    <th>Số lượng</th>
+                                    <th>Giá nhập</th>
+                                    <th>Giá bán</th>
+                                    <th>Hành động</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr ng-repeat="e in vm.voucherCrocs.items">
+                                    <td>{{$index+1}}</td>
+                                    <td style="width:19%">{{e.item.name}}</td>
+                                    <td ng-if="e.item.itemType == 1 || e.item.itemType == 3 || e.item.itemType == 4 || e.item.itemType == 5 || e.item.itemType == 6 ">{{e.item.code}}</td>
+                                    <td ng-if="e.item.itemType == 2">{{e.textJb}}</td>
+                                    <td><input style="width:35%" ng-change="vm.calculateFeeReceipt();vm.calculateTotalFee()" ng-model="e.quantity" type="text" number-input></td>
+                                    <td><input style="width:60%" ng-change="vm.calculateFeeReceipt();vm.calculateTotalFee()" ng-model="e.priceReceipt" type="text" number-input></td>
+                                    <td><input style="width:60%" ng-change="vm.calculateFeeIssue();vm.calculateTotalAmountIssue()" ng-model="e.priceIssue" type="text" number-input></td>
+                                    <td>
+                                        <a ng-if="e.item.itemType != 2" ng-click="vm.changeCostOne($index)" type="number"><icon class="fa fa-exchange"></icon></a>
+                                        <a ng-click="vm.deleteItem($index)" type="number"><icon class="fa fa-times"></icon></a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td>Tổng nhập: {{vm.voucherCrocs.priceProductReceipt}}</td>
+                                    <td>Tổng bán: {{vm.voucherCrocs.priceProductIssue}}</td>
+                                    <td></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-12 text-center">
+                            <label class="bold">Note</label>
+                            <textarea rows="3" ng-model="vm.voucherCrocs.note" class="form-control"></textarea>
+                        </div>
+                        <div class="col-md-12 text-center">
+                            <label class="bold">Đơn copy từ zalo</label>
+                            <textarea rows="10" ng-model="vm.voucherCrocs.rawText" class="form-control"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label class="bold">Tiền ship bán</label>
+                            <input ng-change="vm.calculateTotalAmountIssue()" data-ng-model="vm.voucherCrocs.ship" type="text" class="form-control" number-input/>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold">Tiền ship chịu</label>
+                            <input ng-change="vm.calculateTotalFee()" data-ng-model="vm.voucherCrocs.shipFee" type="text" class="form-control" number-input/>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold">Tiền khuyến mãi</label>
+                            <input ng-change="vm.calculateTotalFee()" data-ng-model="vm.voucherCrocs.promotionFee" type="text" class="form-control" number-input/>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold">Phụ phí khác</label>
+                            <input ng-change="vm.calculateTotalFee()" data-ng-model="vm.voucherCrocs.otherFee" type="text" class="form-control" number-input/>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold">Tổng phí chịu</label>
+                            <input readonly data-ng-model="vm.voucherCrocs.totalFee" type="text" class="form-control" number-input/>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold">Tổng tiền bán</label>
+                            <input data-ng-model="vm.voucherCrocs.totalAmountIssue" type="text" class="form-control" number-input/>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold">Tổng thực thu về</label>
+                            <input data-ng-model="vm.voucherCrocs.realAmount" type="text" class="form-control" number-input/>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="bold">Loại đơn hàng</label>
+                            <ui-select ng-model="vm.voucherCrocs.status" sortable="true" close-on-select="true">
+                                <ui-select-match allow-clear="true" placeholder="Xin mời chọn...">{{$select.selected.name}}</ui-select-match>
+                                <ui-select-choices repeat="so.id as so in vm.status  | propsFilter: {name: $select.search}">
+                                    <div class="bold" ng-bind-html="so.name | highlight: $select.search">{{so.code}}</div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <!--<div class="col-md-12">-->
+                    <!--<label class="bold">Mã</label>-->
+                    <!--<input data-ng-model="vm.voucherCrocs.code" type="text" autofocus="autofocus" class="form-control" />-->
+                <!--</div>-->
+                <!--<div class="col-md-12">-->
+                    <!--<label class="bold">Ngày lập hóa đơn</label>-->
+                    <!--<input data-ng-model="vm.voucherCrocs.voucherDate" type="text" class="form-control" my-date-picker />-->
+                <!--</div>-->
+                <!--<div class="col-md-12">-->
+                    <!--<label class="bold">Tên khách hàng</label>-->
+                    <!--<input data-ng-model="vm.voucherCrocs.customerName" type="text" class="form-control" />-->
+                <!--</div>-->
+                <!--<div class="col-md-12">-->
+                    <!--<label class="bold">Số điện thoại</label>-->
+                    <!--<input data-ng-model="vm.voucherCrocs.phoneNumber" type="text" class="form-control"/>-->
+                <!--</div>-->
+                <!--<div class="col-md-12">-->
+                    <!--<label class="bold">Địa chỉ</label>-->
+                    <!--<input data-ng-model="vm.voucherCrocs.address" type="text" class="form-control"/>-->
+                <!--</div>-->
+                <!--<div class="col-md-6">-->
+                    <!--<label class="bold">Dép</label>-->
+                    <!--<ui-select ng-model="vm.item" on-select="vm.addItem()" sortable="true" close-on-select="true">-->
+                        <!--<ui-select-match allow-clear="true" placeholder="Xin mời chọn...">{{$select.selected.name}}</ui-select-match>-->
+                        <!--<ui-select-choices repeat="so in vm.items  | propsFilter: {name: $select.search}">-->
+                            <!--<div class="bold" ng-bind-html="so.name | highlight: $select.search">{{so.code}}</div>-->
+                        <!--</ui-select-choices>-->
+                    <!--</ui-select>-->
+                <!--</div>-->
+                <!--<div class="col-md-6">-->
+                    <!--<label class="bold">Jibitz</label>-->
+                    <!--<input ng-change="vm.getJb()" ng-model="vm.textJb" type="text" class="form-control"/>-->
+                <!--</div>-->
+                <!--<div class="col-md-12 text-center">-->
+                    <!--<table class="table">-->
+                        <!--<thead>-->
+                        <!--<tr>-->
+                            <!--<th>STT</th>-->
+                            <!--<th>Tên</th>-->
+                            <!--<th>Giá nhập</th>-->
+                            <!--<th>Giá bán</th>-->
+                            <!--<th>Hành động</th>-->
+                        <!--</tr>-->
+                        <!--</thead>-->
+                        <!--<tbody>-->
+                        <!--<tr ng-repeat="e in vm.voucherCrocs.items">-->
+                            <!--<td>{{$index+1}}</td>-->
+                            <!--<td>{{e.item.name}}</td>-->
+                            <!--<td><input ng-change="vm.calculateFeeReceipt();vm.calculateTotalFee()" ng-model="e.priceReceipt" type="text" number-input></td>-->
+                            <!--<td><input ng-change="vm.calculateFeeIssue();vm.calculateTotalAmountIssue()" ng-model="e.priceIssue" type="text" number-input></td>-->
+                            <!--<td><a ng-click="vm.deleteItem($index)" type="number"><icon class="fa fa-times"></icon></a></td>-->
+                        <!--</tr>-->
+                        <!--<tr>-->
+                            <!--<td></td>-->
+                            <!--<td></td>-->
+                            <!--<td>Tổng nhập: {{vm.voucherCrocs.priceProductReceipt}}</td>-->
+                            <!--<td>Tổng bán: {{vm.voucherCrocs.priceProductIssue}}</td>-->
+                            <!--<td></td>-->
+                        <!--</tr>-->
+                        <!--</tbody>-->
+                    <!--</table>-->
+                <!--</div>-->
+                <!--<div class="col-md-12">-->
+                    <!--<label class="bold">Tiền ship bán</label>-->
+                    <!--<input ng-change="vm.calculateTotalAmountIssue()" data-ng-model="vm.voucherCrocs.ship" type="text" class="form-control" number-input/>-->
+                <!--</div>-->
+                <!--<div class="col-md-12">-->
+                    <!--<label class="bold">Tiền ship chịu</label>-->
+                    <!--<input ng-change="vm.calculateTotalFee()" data-ng-model="vm.voucherCrocs.shipFee" type="text" class="form-control" number-input/>-->
+                <!--</div>-->
+                <!--<div class="col-md-12">-->
+                    <!--<label class="bold">Tiền khuyến mãi</label>-->
+                    <!--<input ng-change="vm.calculateTotalFee()" data-ng-model="vm.voucherCrocs.promotionFee" type="text" class="form-control" number-input/>-->
+                <!--</div>-->
+                <!--<div class="col-md-12">-->
+                    <!--<label class="bold">Phụ phí khác</label>-->
+                    <!--<input ng-change="vm.calculateTotalFee()" data-ng-model="vm.voucherCrocs.otherFee" type="text" class="form-control" number-input/>-->
+                <!--</div>-->
+                <!--<div class="col-md-12">-->
+                    <!--<label class="bold">Tổng phí chịu</label>-->
+                    <!--<input readonly data-ng-model="vm.voucherCrocs.totalFee" type="text" class="form-control" number-input/>-->
+                <!--</div>-->
+                <!--<div class="col-md-12">-->
+                    <!--<label class="bold">Tổng tiền bán</label>-->
+                    <!--<input data-ng-model="vm.voucherCrocs.totalAmountIssue" type="text" class="form-control" number-input/>-->
+                <!--</div>-->
+                <!--<div class="col-md-12">-->
+                    <!--<label class="bold">Tổng phí thu về</label>-->
+                    <!--<input data-ng-model="vm.voucherCrocs.realAmount" type="text" class="form-control" number-input/>-->
+                <!--</div>-->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
+            <button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="confirm_delete_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="icon-question"></i>Xóa</h4>
+        </div>
+        <div class="modal-body">
+            <p>Bạn có chắc chắn muốn xóa bản ghi đã chọn không?</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="import_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title bold font-yellow-gold"><i class="fa fa-cloud-upload"></i> Thêm môn học vào chương trình đào tạo</h4>
+        </div>
+        <div class="modal-body">
+            <div class="box-body box-profile">
+                <div class="box-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <a class="dash-box display-block link" ngf-select="uploadFiles($file, $invalidFiles)"
+                               accept="/*" ngf-max-size="{{MAX_FILE_SIZE}}"><i class="fa fa-cloud-upload"></i> Chọn tệp tin để tải lên</a>
+                        </div>
+
+                        <div class="col-md-12 margin-top-20" ng-if="f != null">
+                            Tải tệp tin: {{f.name}}
+                        </div>
+
+                        <div class="col-md-12 margin-top-20" ng-if="errFile != null && errFile.$error != ''">
+                            Có lỗi: <span ng-if="errFile.$error == 'maxSize'">Kích thước tệp tin phải nhỏ hơn {{errFile.$errorParam}}</span>
+                            <span ng-if="errFile.$error != null && errFile.$error != 'maxSize'">Tệp tin {{errFile.name}} có lỗi. Xin mời chọn tệp tin khác.</span>
+                        </div>
+
+                        <div class="col-md-12 margin-top-20" ng-if="f.progress >= 0">
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100" ng-bind="f.progress + '%'" style="width:{{f.progress}}%">
+                                    {{f.progress}}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Tải lên</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="process_new_voucher_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="icon-plus"></i>Nhập đơn</h4>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <textarea rows="10" class="form-control" ng-model="vm.textVoucher" autofocus></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <input style="width: 20px;height: 20px;" class="btn btn-default" data-ng-model="vm.isCrocs" type="checkbox" />
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
+            <button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>
+        </div>
+    </div>
+</script>
+
+<style>
+    .modal-lg{
+        width: 88%;
+    }
+    @media only screen and (max-width: 768px){
+        .modal-lg {
+            width: 100%;
+        }
+    }
+</style>
+<!-- BEGIN MAIN JS -->

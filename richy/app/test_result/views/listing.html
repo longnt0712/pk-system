@@ -1,0 +1,617 @@
+<!-- END PAGE HEADER-->
+<!-- BEGIN MAIN CONTENT -->
+<div class="row margin-top-10">
+    <div class="col-md-12">
+    
+        <div class="portlet light bordered">
+            <div class="portlet-body">
+                    <div class="row">
+                        <div class="col-md-1">
+                            <input data-ng-model="vm.startDate" type="text" class="form-control" placeholder="Start date" my-date-picker />
+                        </div>
+
+                        <div class="col-md-1">
+                            <input data-ng-model="vm.endDate" type="text" class="form-control" placeholder="End date" my-date-picker />
+                        </div>
+                        <div class="col-md-2 margin-bottom-20">
+                            <div class="input-group">
+                                <input ng-model="vm.searchDto.grade" ng-keyup="vm.enterSearchCode(e)" type="text"  class="form-control" placeholder="Find by grade...">
+                                <div class="input-group-btn">
+                                    <button ng-click="vm.codeChange()" class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2 margin-bottom-20">
+                            <div class="input-group">
+                                <input ng-model="vm.searchDto.textSearch" ng-keyup="vm.enterSearchCode(e)" type="text"  class="form-control" placeholder="Find by test name...">
+                                <div class="input-group-btn">
+                                    <button ng-click="vm.codeChange()" class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <!--<div class="col-md-2 margin-bottom-20">-->
+                            <!--<div class="input-group">-->
+                                <!--<input ng-model="vm.searchDto.userDisplayName" ng-keyup="vm.enterSearchCode(e)" type="text"  class="form-control" placeholder="Find by name (new)...">-->
+                                <!--<div class="input-group-btn">-->
+                                    <!--<button ng-click="vm.codeChange()" class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>-->
+                                <!--</div>-->
+                            <!--</div>-->
+                        <!--</div>-->
+                        <div class="col-md-2 margin-bottom-20">
+                            <ui-select ng-change="vm.codeChange()" data-ng-model="vm.searchDto.user" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                <ui-select-match allow-clear="true" placeholder="user...">{{$select.selected.displayName}}</ui-select-match>
+                                <ui-select-choices repeat="mode in vm.users | propsFilter: {displayName: $select.search}">
+                                    <div class="bold" ng-bind-html="mode.displayName | highlight: $select.search">
+                                    </div>
+                                    <small>{{mode.username}}</small>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                        <div class="col-md-2 margin-bottom-20">
+                            <ui-select ng-change="vm.codeChange()" data-ng-model="vm.searchDto.testType" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                <ui-select-match allow-clear="true" placeholder="Daily, listening?">{{$select.selected.name}}</ui-select-match>
+                                <ui-select-choices repeat="mode.id as mode in vm.testTypes | propsFilter: {name: $select.search}">
+                                    <div class="bold" ng-bind-html="mode.name | highlight: $select.search">
+                                    </div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+
+                    <!--<button class="btn btn-default" data-ng-click="vm.newObject()"><i class="fa fa-plus-circle"></i>Thêm mới</button>-->
+                    <!--<button class="btn btn-danger margin-left-10" data-ng-click="vm.deletequestionTypes()" data-ng-disabled="vm.selectedquestionTypes.length <= 0"><i class="fa fa-trash"></i>Xóa</button>-->
+
+                <div class="row">
+                    <div class="col-md-5">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <table class="table table-striped ">
+                                    <tr class="text-center">
+                                        <h1 class="text-center" style="font-family: cursive">RANKINGS <br>TIMES DO TEST</h1>
+                                    </tr>
+                                    <tr ng-repeat="item in vm.rankings" ng-if="$index < vm.rankings.length/2">
+                                        <td style="width: 15%" class="text-center">
+                                            <image ng-show="item.rank == 1" ng-src="assets/images/1st.png" style="width: 50%; height: auto;"/>
+                                            <image ng-show="item.rank == 2" ng-src="assets/images/2nd.png" style="width: 50%; height: auto;"/>
+                                            <image ng-show="item.rank == 3" ng-src="assets/images/3rd.png" style="width: 50%; height: auto;"/>
+                                            <span ng-hide="item.rank < 4">Top {{item.rank}}:</span>
+                                        </td>
+                                        <td>{{item.user.displayName}} - Số lần học: {{item.times}} </td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <table class="table table-striped ">
+                                    <tr class="text-center">
+                                        <h1 class="text-center" style="font-family: cursive">RANKINGS <br>WORDS LEARNED</h1>
+                                    </tr>
+                                    <tr ng-repeat="item in vm.rankings" ng-if="$index >= vm.rankings.length/2">
+                                        <td style="width: 15%" class="text-center">
+                                            <image ng-show="item.rank == 1" ng-src="assets/images/1st.png" style="width: 50%; height: auto;"/>
+                                            <image ng-show="item.rank == 2" ng-src="assets/images/2nd.png" style="width: 50%; height: auto;"/>
+                                            <image ng-show="item.rank == 3" ng-src="assets/images/3rd.png" style="width: 50%; height: auto;"/>
+                                            <span ng-hide="item.rank < 4">Top {{item.rank}}:</span>
+                                        </td>
+                                        <td>{{item.user.displayName}} - Số từ đã học: {{item.numberOfWords}} </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+
+                    </div>
+                    <div class="col-md-7">
+                        <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- END MAIN CONTENT -->
+<!-- BEGIN MAIN JS-->
+<script type="text/ng-template" id="edit_object_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title" data-ng-if="vm.questionType.isNew == true"><i class="icon-plus"></i>Thêm tôn giáo</h4>
+            <h4 class="modal-title" data-ng-if="vm.questionType.isNew == false"><i class="fa fa-pencil-square-o"></i>Cập nhật tôn giáo</h4>
+        </div>
+        <div class="modal-body">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th scope="col">Index</th>
+                    <th scope="col">Your answer</th>
+                    <th scope="col">Correct answer</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr class="text-center bold" ng-style="(!item.isCorrectTestResultDetail) && {'background':'rgba(196, 77, 86,0.7)'} " ng-repeat="item in vm.testResult.questionAnswerTestResult">
+
+                    <td>{{item.ordinalNumber}}</td>
+
+                    <td ng-if="item.questionAnswer.question.parent.type == 1
+                    || item.questionAnswer.question.parent.type == 6
+                    || item.questionAnswer.question.parent.type == 5
+                    || item.questionAnswer.question.parent.type == 7
+                    || item.questionAnswer.question.parent.type == 9
+                    || item.questionAnswer.question.parent.type == 10">{{item.questionAnswer.answer.answer}}</td>
+
+                    <td ng-if="item.questionAnswer.question.parent.type == 1 || item.questionAnswer.question.parent.type == 6|| item.questionAnswer.question.parent.type == 9|| item.questionAnswer.question.parent.type == 10">{{item.questionAnswer.correctAnswer}}</td>
+
+                    <td ng-if="item.questionAnswer.question.parent.type == 5 || item.questionAnswer.question.parent.type == 7" ng-bind-html="item.correctAnswerForMultipleAnswer"></td>
+
+                    <td ng-if="item.questionAnswer.question.parent.type == 4 || item.questionAnswer.question.parent.type == 8">{{item.clientAnswer}}</td>
+                    <td ng-if="item.questionAnswer.question.parent.type == 4 || item.questionAnswer.question.parent.type == 8">{{item.questionAnswer.correctAnswer}}</td>
+
+
+                    <!--<td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3"-->
+                        <!--ng-style="(!item.isCorrectTestResultDetail) && {'background':'rgba(196, 77, 86,1)'}">{{item.ordinalNumber}}</td>-->
+
+                    <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3">
+                        {{item.clientAnswer}}
+                    </td>
+                    <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3">
+                        {{item.questionAnswer.answer.answer}}
+                    </td>
+                </tr>
+
+                </tbody>
+            </table>
+            <div class="col-md-12" compile="vm.testResult.testTakerPerformance">
+
+            </div>
+        </div>
+        <div class="modal-footer">
+            <!--<button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>-->
+            <!--<button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>-->
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="confirm_delete_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="icon-question"></i>Xóa</h4>
+        </div>
+        <div class="modal-body">
+            <p>Bạn có chắc chắn muốn xóa bản ghi đã chọn không?</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>
+        </div>
+    </div>
+</script>
+<!-- BEGIN MAIN JS -->
+
+<style>
+    .surrounded-text {
+        background-color: yellow;
+    }
+
+    /*.button-question-not-click{*/
+        /*border:none;border-radius:7px;background-color: #6D6E71;color: white;font-size: 18px;font-weight: 500; padding-top: 10px;padding-bottom: 10px;*/
+        /*width: 100%;*/
+    /*}*/
+
+    /*.button-question-not-click:hover{*/
+        /*background-color: #174A7C;*/
+    /*}*/
+
+    /*.button-question-click{*/
+        /*border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 18px;font-weight: 500; padding-top: 10px;padding-bottom: 10px;*/
+        /*width: 100%;*/
+    /*}*/
+
+    /*!* width *!*/
+    /*::-webkit-scrollbar {*/
+        /*width: 5px;*/
+        /*height: 7px;*/
+    /*}*/
+
+    /*!* Track *!*/
+    /*::-webkit-scrollbar-track {*/
+        /*border-radius: 10px;*/
+        /*background: white;*/
+    /*}*/
+
+    /*!* Handle *!*/
+    /*::-webkit-scrollbar-thumb {*/
+        /*border-radius: 10px;*/
+        /*background: #BFBFBF;*/
+    /*}*/
+
+    /*!* Handle on hover *!*/
+    /*::-webkit-scrollbar-thumb:hover {*/
+        /*background: #BFBFBF;*/
+    /*}*/
+
+    /*.button-bottom{*/
+        /*margin-right: 3px;*/
+        /*border: none;*/
+        /*border-radius: 7px;*/
+        /*height: 40px;*/
+        /*width: 40px;*/
+        /*background-color: #6D6E71;*/
+        /*color: white;*/
+        /*font-weight: 500;*/
+        /*!*padding: 10px 15px 10px 15px;*!*/
+        /*!*top right bottom left*!*/
+
+    /*}*/
+
+    /*.button-bottom-question-not-click{*/
+        /*margin-right: 3px;*/
+        /*border: none;*/
+        /*border-radius: 7px;*/
+        /*height: 35px;*/
+        /*width: 35px;*/
+        /*background-color: #6D6E71;*/
+        /*color: white;*/
+        /*font-weight: 500;*/
+    /*}*/
+
+    /*.button-bottom-question-not-click:hover{*/
+        /*background-color: #174A7C;*/
+    /*}*/
+
+    /*.button-bottom-question-click{*/
+        /*margin-right: 3px;*/
+        /*border: none;*/
+        /*border-radius: 7px;*/
+        /*height: 35px;*/
+        /*width: 35px;*/
+        /*background-color: #0096D6;*/
+        /*color: white;*/
+        /*font-weight: 500;*/
+    /*}*/
+
+    /*.question-filling-root{*/
+        /*!*display: inline-block;*!*/
+        /*font-size: 15px;*/
+        /*font-weight: 500;*/
+    /*}*/
+    /*.text-question-filling-root{*/
+        /*!*float:left;*!*/
+        /*!*margin-top: 15px;*!*/
+        /*width: 170px;*/
+        /*margin-left: 5px;*/
+        /*margin-right: 5px;*/
+        /*!*font-weight: bold;*!*/
+    /*}*/
+
+    /*input[type=text] {*/
+        /*border: solid 0.3px lightgrey;*/
+    /*}*/
+
+    /*input[type=text]:focus {*/
+        /*border: 0.3px solid #0096D6;*/
+    /*}*/
+
+    /*.button-bottom-right{*/
+        /*border:none;*/
+        /*border-radius: 30px;padding: 17px 20px 17px 20px;color: white;background-color: #999999;*/
+    /*}*/
+
+    /*.button-bottom-right:hover{*/
+        /*background-color: #0488C5*/
+    /*}*/
+
+    /*input:focus::placeholder {*/
+        /*color: transparent;*/
+    /*}*/
+
+
+    /*::-webkit-input-placeholder {*/
+        /*font-weight: 700;*/
+        /*text-align: center;*/
+    /*}*/
+
+    /*:-moz-placeholder { !* Firefox 18- *!*/
+        /*font-weight: 700;*/
+        /*text-align: center;*/
+    /*}*/
+
+    /*::-moz-placeholder {  !* Firefox 19+ *!*/
+        /*font-weight: 700;*/
+        /*text-align: center;*/
+    /*}*/
+
+    /*:-ms-input-placeholder {*/
+        /*font-weight: 700;*/
+        /*text-align: center;*/
+    /*}*/
+
+    .surrounded-text {
+        background-color: yellow;
+    }
+
+    .surrounded-text-to-clear {
+        background-color: white;
+    }
+
+    .surrounded-text-have-note {
+        background-color: yellow;
+    }
+
+    /*.dropdown-menu-highlight{*/
+        /*background-color: #FAFAFA;*/
+        /*width: 150px !important;*/
+        /*height: 97px;*/
+        /*box-shadow: 3px 5px 7px #888888;*/
+        /*border-radius: 5px;*/
+    /*}*/
+    /*.context-menu-highlight{*/
+        /*padding: 5px 10px 5px 10px;*/
+        /*width: 150px;*/
+        /*font-size: 16px;*/
+        /*font-weight: 500;*/
+        /*border-radius: 5px;*/
+    /*}*/
+    /*.context-menu-highlight:hover{*/
+        /*background-color: #E1E1E1;*/
+    /*}*/
+
+    /*.close-highlight{*/
+        /*background-color: #db0;*/
+        /*border-bottom: 1px solid #a80;*/
+        /*height: 1.5em;*/
+    /*}*/
+
+    .notes-highlight{
+        background-color: #fff046;
+        height: 270px;
+        width: 190px;
+        outline: none;
+        /*overflow-x: hidden;*/
+        /*overflow-y: auto;*/
+        word-wrap: break-word;
+        border-radius: 5px;
+        box-shadow: 3px 5px 7px #888888;
+        font-size: 18px;
+        font-weight: 500;
+        z-index: 2;
+    }
+
+    .headers-highlight{
+        padding: 5px;
+        border-radius: 5px;
+    }
+
+    .specific-note-highlight{
+        position: relative;
+        background-color: #fff045;
+        width: 190px;
+        height: 75%;
+        /*word-wrap: break-word;*/
+        padding-left: 3px;
+        /*z-index: 3;*/
+        /*border: solid 0.3px lightgrey ;*/
+        border: none !important;
+        cursor: text;
+        overflow-x: hidden;
+        overflow-y: auto;
+        outline: none;
+    }
+
+    .close-note-icon {
+        cursor: pointer;
+        padding-right: 5px;
+    }
+
+    .dropdown-menu  {
+        /*background: white !important;*/
+    }
+    .datepicker{
+        background: white !important;
+    }
+
+    /*.drag-matching-heading{*/
+        /*font-size: 18px;*/
+        /*font-weight: 500;*/
+        /*margin-bottom: 10px;*/
+        /*display: inline-block;*/
+        /*height:auto;*/
+        /*word-wrap: break-word;*/
+        /*border-radius: 5px;*/
+        /*background-color: #E5F1F8;*/
+        /*width: auto;*/
+        /*padding: 7px;*/
+
+        /*min-width: 50px;*/
+        /*max-width: 700px;*/
+    /*}*/
+
+    /*.matching-heading-drop-box {*/
+        /*font-size: 18px;*/
+        /*font-weight: 700;*/
+        /*display: inline-block;*/
+        /*height:auto;*/
+        /*word-wrap: break-word;*/
+        /*border-radius: 5px;*/
+        /*color: #757575;*/
+        /*!*width: auto;*!*/
+        /*width:180px;*/
+
+        /*min-width: 200px;*/
+        /*min-height: 35px;*/
+        /*border: solid 1px lightgrey;*/
+        /*text-align: center;*/
+        /*!*line-height: 5%;*!*/
+        /*padding-top: 5px;*/
+        /*resize: none;*/
+    /*}*/
+
+    /*.page-header{*/
+        /*display: none;*/
+    /*}*/
+
+    /*.span-test{*/
+        /*width: 200px;*/
+        /*height: 50px;*/
+        /*border: solid 1px lightgrey;*/
+        /*display: inline-block;*/
+    /*}*/
+
+    /*.multiDemo ul[dnd-list] .dndPlaceholder {*/
+        /*background-color: #ddd;*/
+        /*display: block;*/
+        /*min-height: 42px;*/
+    /*}*/
+
+    /*.multiDemo ul[dnd-list] li.selected {*/
+        /*background-color: #dff0d8;*/
+        /*color: #3c763d;*/
+    /*}*/
+
+    /*.multiple-choice-question-text p {*/
+        /*display: inline;*/
+        /*color: white !important;*/
+        /*font-family: Cambria !important;*/
+    /*}*/
+    /*.multiple-choice-question-text span {*/
+        /*!*display: inline;*!*/
+        /*font-family: Cambria !important;*/
+        /*color: white !important;*/
+    /*}*/
+
+    /*.main-test{*/
+        /*padding-left: 40px;*/
+        /*padding-right: 40px;*/
+    /*}*/
+
+    /*.for-media{*/
+        /*display: none !important;*/
+    /*}*/
+
+    /*@media only screen and (max-width: 996px) {*/
+        /*.wrap-test {*/
+            /*padding-left: 0px !important;*/
+            /*padding-right: 0px !important;*/
+        /*}*/
+
+        /*.main-test {*/
+            /*padding-left: 0 !important;*/
+            /*padding-right: 0 !important;*/
+
+        /*}*/
+
+        /*.not-for-media{*/
+            /*display: none !important;*/
+        /*}*/
+
+        /*.for-media{*/
+            /*display: block !important;*/
+        /*}*/
+
+        /*!*.passage-text-for-media{*!*/
+        /*!*height:35vh !important;*!*/
+        /*!*overflow: auto;*!*/
+        /*!*}*!*/
+
+        /*.passage-text{*/
+            /*!*padding-top:20px;padding-left:30px;padding-right:30px;*!*/
+            /*height: 35vh !important;*/
+            /*!*overflow: auto;*!*/
+        /*}*/
+
+        /*.question-content{*/
+            /*max-height: none !important;*/
+            /*height:35vh !important;*/
+            /*border-top: solid 1px lightgrey !important;*/
+        /*}*/
+
+        /*!*.list-question-bottom{*!*/
+        /*!*height:10vh !important;*!*/
+        /*!*}*!*/
+    /*}*/
+
+    /*.for-media-screen{*/
+        /*display: none !important;*/
+    /*}*/
+
+    /*@media only screen and (max-width: 1500px) {*/
+        /*.for-media-screen{*/
+            /*display: block !important;*/
+        /*}*/
+
+        /*.not-for-media-screen{*/
+            /*display: none;*/
+        /*}*/
+    /*}*/
+
+    /*.text-media{*/
+        /*margin:0 !important;;*/
+    /*}*/
+
+    /*.question-content{*/
+        /*padding-top: 10px;*/
+        /*padding-left:30px;*/
+        /*padding-right:30px;*/
+        /*!*max-height: 450px;*!*/
+        /*height: 55vh;*/
+        /*overflow: auto;*/
+    /*}*/
+
+    /*.passage-text{*/
+        /*padding-top:20px;padding-left:30px;padding-right:30px;*/
+        /*height: 55vh;*/
+        /*overflow: auto;*/
+    /*}*/
+
+    /*.passage-text p{*/
+        /*padding-bottom: 20px;*/
+        /*font-weight: 500;*/
+        /*font-size: 30px;*/
+    /*}*/
+
+    /*.wrap-test{*/
+        /*padding-left: 100px;*/
+        /*padding-right: 100px;*/
+        /*!*height: 50vh !important;*!*/
+        /*margin: auto;*/
+    /*}*/
+
+    /*h1,h2,h3,h4,h5,h6,p,span {*/
+        /*!*font-size: 18px !important;*!*/
+        /*font-family: Cambria !important;*/
+    /*}*/
+
+
+    /*#question-have-image > p > span > img {*/
+        /*max-width: 100%;*/
+        /*height: auto;*/
+    /*}*/
+    /*.question-filling-root > span > table {*/
+        /*max-width:  100% !important;*/
+        /*width:  100% !important;*/
+        /*margin: 0 !important;*/
+    /*}*/
+
+    /*!*-- change font size --*!*/
+    /*!*#passage-text-1 > p > span {*!*/
+    /*!*font-size: 18px !important;*!*/
+    /*!*}*!*/
+
+    /*!*#passage-text-1 > p > span > span {*!*/
+    /*!*font-size: 18px !important;*!*/
+    /*!*}*!*/
+
+    /*!*#passage-text-1 > p > span > em {*!*/
+    /*!*font-size: 18px !important;*!*/
+    /*!*}*!*/
+
+    /*!*#passage-text-1 > h2 > span > span {*!*/
+    /*!*font-size: 18px !important;*!*/
+    /*!*}*!*/
+
+    /*!*-- change font size --*!*/
+
+
+</style>

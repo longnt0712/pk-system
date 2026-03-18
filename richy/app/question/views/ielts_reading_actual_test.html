@@ -1,0 +1,1918 @@
+<!-- END PAGE HEADER-->
+<!-- BEGIN MAIN CONTENT -->
+
+<div class="row margin-top-10 wrap-test " ng-show="vm.isHasTestTakerName === false">
+    <div class="col-md-3"></div>
+    <div class="col-md-6 start-test-form text-center">
+        <div class="row" style="border-bottom: solid gray 1px; margin-bottom:10px">
+            <div class="col-md-2 margin-bottom-10">
+                <i class="fa fa-user text-blue" aria-hidden="true"></i>
+            </div>
+            <div class="col-md-7 margin-bottom-10">
+                <input id="test-taker-name" ng-model="vm.testResult.testTakerName"  type="text" style="width: 100%; text-align: center"  class="" placeholder="Your name, please......">
+            </div>
+            <div class="col-md-3 margin-bottom-10">
+                &nbsp; <strong ng-click="vm.submitTestTakerName()" style="cursor: pointer" class="text-green"><i class="fa fa-paper-plane"   ></i> TAKE TEST</strong>
+            </div>
+        </div>
+        <div class="row" style="border-bottom: solid gray 1px; margin-bottom:10px">
+            <div class="col-md-12 margin-bottom-10">
+                <div class="form-check">
+                    <strong style="font-size: 20px" class="form-check-label" for="defaultCheck1">
+                        Show <i class="fa fa-headphones"></i> (Listening Only)
+                    </strong>
+                    <input class="form-check-input" type="checkbox" ng-model="vm.showAudioListening" id="defaultCheck1" style="height:15px; width:15px;padding-bottom:5px;">
+                </div>
+            </div>
+        </div>
+        <div class="row" >
+            <div class="col-md-2">
+                <i class="fa fa-cog text-yellow"></i>
+            </div>
+            <div class="col-md-7 ">
+                <input id="change-length" ng-model="vm.length" ng-change="vm.changeLength()" type="text" style="text-align: center" class="" placeholder="height of the text">
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3"></div>
+
+</div>
+<div class="row margin-top-10 wrap-test text-center" ng-show="vm.isStartTest === false">
+    <h1 class="start-test-button" ng-show="vm.isHasTestTakerName === true" style="cursor: pointer" ng-click="vm.startTest()" ><i class="fa fa-play"  ></i> START TEST</h1>
+</div>
+<div class="row margin-top-10 wrap-test" ng-show="vm.isHasTestTakerName === true" id="test-performance">
+    <div class="row">
+        <div class="col-md-12" style="background-color: #E1EDF4;" ng-hide="vm.passageNumber == 4">
+            <div class="portlet bg-white bordered">
+                <div class="portlet-body">
+                    <div class="row" ng-hide="vm.passageNumber == 4">
+                        <div class="col-md-12 not-for-media" style="width: 100%;background-color: white">
+                            <div  style="padding-top: 20px;padding-left: 40px" class=" col-md-4 text-left">
+                                <p class="bold" style="font-size: 20px"><i class="fa fa-desktop"> </i>     &nbsp; &nbsp; {{vm.testResult.testTakerName}} - 1234567</p>
+                            </div>
+                            <div style="padding-top: 20px;" ng-show="vm.displayAllTimer == true" ng-mouseleave="vm.displayOnlyMinute()" class="col-md-4  text-center">
+                                <p><span style="font-weight:bold;font-size:20px;">&nbsp; {{minuteDisplay}} : {{secondDisplay}}</span> left</p>
+                            </div>
+                            <div style="padding-top: 20px;" ng-show="vm.displayAllTimer == false" ng-mouseover="vm.displayTimer()" class="col-md-4  text-center" >
+                                <p style="font-size: 15px;font-weight: 700;"><span style="font-weight:bold;font-size:20px;">&nbsp; {{minuteDisplay+1}}</span> minute<span ng-show="minuteDisplay != 1">s</span> left</p>
+                            </div>
+                            <div style="padding-top: 15px;padding-right: 40px" class="col-md-4 text-right" ng-show="vm.isStartTest">
+                                <button style="padding-left: 20px; padding-right: 20px" class="btn btn-primary" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">Submit</span></button>
+                            </div>
+                        </div>
+
+
+                        <div class="row for-media text-center" style="width: 100%;background-color: white" ng-show="vm.isStartTest">
+                        <div class="col-md-6 margin-top-10">
+                            <button style="margin-left: 10px;padding-left: 20px; padding-right: 20px" class="btn btn-primary" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">Submit</span></button>
+                        </div>
+                        <div class="col-md-6">
+                            <span style="font-weight:bold;font-size:20px;">&nbsp; {{minuteDisplay}} : {{secondDisplay}}</span> left
+                        </div>
+
+                    </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-12 main-test" style="padding-left: 40px;padding-right: 40px;">
+
+                <div class="portlet bg-white bordered" style="margin-top: 10px;border-radius: 7px !important;" ng-hide="vm.passageNumber == 4">
+                    <div class="portlet-body">
+                        <div class="row">
+                            <div ng-show="vm.ieltsReadingActualTest.pronounce !=null" class="col-md-12 text-center" style="margin-left: 20px;margin-bottom: 0 !important" >
+                                <audio ng-show="vm.showAudio" id="main-audio" controls controlsList="nodownload" style="width: 70%" preload="metadata">
+                                    <source src="http://docs.google.com/uc?export=open&id=1rU-C_PU00o_tdFAMFqpyB5hGMSYk2z8L" type="audio/mpeg">
+                                    Your browser does not support the audio element.
+                                </audio>
+                            </div>
+                            <div ng-show="vm.ieltsReadingActualTest.pronounce !=null" class="col-md-12 text-center">
+                                Speed: <input class="input-underline-only" style="width:70px;text-align: center" id="play-back-input" ng-disabled="true" type="number" min="0.5" max="4"  ng-value="vm.playbackValue | number : 1"/>
+
+                                <button ng-click="vm.increaseSpeed()"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>
+                                <button ng-click="vm.decreaseSpeed()"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>
+                                <input type="checkbox" ng-model="vm.showAudio" ng-if="vm.showAudioListening"> <strong ng-if="vm.showAudioListening">Show audio </strong>
+                            </div>
+                            <div ng-show="vm.ieltsReadingActualTest.pronounce == null" class="col-md-12"style="margin-left: 20px;margin-bottom: 0 !important" >
+                                <h3 ng-show="vm.passageNumber == 1" class="bold text-media">Reading Passage 1</h3>
+                                <h4 class="not-for-media" ng-show="vm.passageNumber == 1">You should spend about 20 minutes on on Questions 1-13, which are based on Reading Passage 1 below.</h4>
+
+                                <h3 ng-show="vm.passageNumber == 2" class="bold text-media">Reading Passage 2</h3>
+                                <h4 class="not-for-media" ng-show="vm.passageNumber == 2">You should spend about 20 minutes on Questions 14-26, which are based on Reading Passage 2 below.</h4>
+
+                                <h3 ng-show="vm.passageNumber == 3" class="bold text-media">Reading Passage 3</h3>
+                                <h4 class="not-for-media" ng-show="vm.passageNumber == 3">You should spend about 20 minutes on Questions 27-40, which are based on Reading Passage 3 below.</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="portlet bg-white bordered" style="border-radius: 7px;" >
+                    <div class="portlet-body">
+                        <div ng-show="vm.passageNumber == 1" class="row" >
+
+                            <!--<div class="col-md-6 passage-text-for-media">-->
+                            <!--ng-style="(x.selectedMedia == true  && {'color':'black'})"-->
+                            <div class="col-md-6" ng-hide="vm.ieltsReadingActualTest.subQuestions[0].type === 6">
+                                <!--<h3>{{vm.ieltsReadingActualTest.subQuestions[0].type}}</h3>-->
+                                <div class="row">
+                                    <div class="notes-highlight actual-test-font-global" id="passage-1-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes">
+                                        <div  class="close-highlight text-right">
+                                            <i class="fa fa-times text-right close-note-icon" ng-click="closeASpecificNote1($index+1)"></i>
+                                        </div>
+
+                                        <div class="headers-highlight">{{note.header}}</div>
+                                        <textarea type="text" ng-model="note.specificNote" data-ng-change="vm.testNoteChange()" class="specific-note-highlight" />
+
+                                    </div>
+                                    <div ng-mousedown="closeNotes1()" id="passage-text-1" data-ng-change="vm.questionChange()" data-ng-model="vm.ieltsReadingActualTest.subQuestions[0].question" ng-right-click="showContextMenu()" context="context1" class="col-md-12  passage-text" compile="vm.ieltsReadingActualTest.subQuestions[0].question">
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div ng-style="(vm.ieltsReadingActualTest.subQuestions[0].type === 6  && {'width':'100%'})" class="col-md-6  question-content" ng-mousedown="closeNotes1()" id="passage-question-text-1" ng-right-click="showContextMenu()" context="context1">
+                                <!--<span style="" my-draggable>Drag Me</span>-->
+                                <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions">
+                                    <hr ng-show="$index != 0" style="border-top: 1px solid;">
+                                    <div id="passage-number-1 right_panel" class="row">
+                                        <p class="col-md-12 actual-test-font-global" id="question-have-image" compile="item.question" ng-if="item.type != 8 && item.type != 9">
+                                        </p>
+                                        <div class="row" ng-if="item.type == 8">
+                                            <table class="table">
+                                                <tbody>
+                                                <tr>
+                                                    <td style="width: 35%">
+                                                        <div class="col-md-12 table-question actual-test-font-global" compile="item.question" >
+                                                        </div>
+                                                    </td>
+                                                    <td style="width: 65%;padding-top:70px">
+                                                        <div class="col-md-12" style="padding: 5px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 8">
+                                                            <span id="question-number-{{q.ordinalNumber}}" class="bold" compile="q.question"></span>
+                                                            <ui-select
+                                                                    ng-change="vm.selectHeadingMedia1(x.answer,item.subQuestions[$index].questionAnswers,q, x.answer.answer.answer.answer, item.subQuestions)" data-ng-model="x.answer.answer" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                                                <ui-select-match allow-clear placeholder="Question {{q.ordinalNumber}}">{{$select.selected.answer.answer}}</ui-select-match>
+                                                                <ui-select-choices ui-disable-choice="x.selectedMedia == true" repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">
+                                                                    <!--<ui-select-choices repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">-->
+                                                                    <div class="bold ui-select-pre-wrap"
+                                                                         ng-style="(x.selectedMedia == true  && {'color':'black'})"
+                                                                         ng-bind-html="x.answer.answer | highlight: $select.search">
+                                                                    </div>
+                                                                </ui-select-choices>
+                                                            </ui-select>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <div class="row" ng-if="item.type == 9" style="overflow-x: scroll">
+                                            <table class="table">
+                                                <tbody>
+                                                <tr>
+                                                    <td style="width: 40%">
+                                                        <div id="question-have-image-map" class="col-md-12 table-question actual-test-font-global" compile="item.question" >
+                                                        </div>
+                                                    </td>
+                                                    <td style="width: 60%;padding-top:60px">
+                                                        <table class="table-hover table-bordered" style="width: 100%">
+                                                            <tr style="border-bottom: solid gainsboro 1px" ng-repeat="q in item.subQuestions" ng-if="$index == 0">
+                                                                <td></td>
+                                                                <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                                    <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
+                                                                    {{a.answer.answer}}
+                                                                </td>
+                                                            </tr>
+
+                                                            <tr style="border-bottom: solid gainsboro 1px" ng-repeat="q in item.subQuestions" >
+                                                                <td style="width: 40%; padding-right:10px" class="row" style="margin-bottom: 20px">
+                                                                    <span id="question-number-{{q.ordinalNumber}}" class=" actual-test-font-global ">
+                                                                    <span class=""><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                                        <span compile="q.question"></span>
+                                                                    </span>
+                                                                    </span>
+                                                                    <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                                                </td>
+                                                                <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                                    <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                                    <!--{{a.answer.answer}}-->
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                        <!--<div class="col-md-12" style="padding: 10px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 9">-->
+                                                        <!--<div class="row" style="margin-bottom: 20px">-->
+                                                        <!--<button id="question-number-{{q.ordinalNumber}}" class="text-left button-question-click actual-test-font-global">-->
+                                                        <!--<span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>-->
+                                                        <!--<span compile="q.question"></span>-->
+                                                        <!--</span>-->
+                                                        <!--</button>-->
+                                                        <!--&lt;!&ndash;<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>&ndash;&gt;-->
+                                                        <!--</div>-->
+
+                                                        <!--<span style="padding-left: 5px" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >-->
+                                                        <!--&lt;!&ndash;<div class="col-md-1">&ndash;&gt;-->
+                                                        <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
+                                                        <!--{{a.answer.answer}}-->
+                                                        <!--</span>-->
+                                                        <!--</div>-->
+                                                    </td>
+                                                </tr>
+
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="row" ng-if="item.type == 10" style="overflow-x: scroll">
+
+                                            <table class="table-hover table-bordered" style="width: 100%;margin-bottom: 20px">
+                                                <tr ng-repeat="q in item.subQuestions" ng-if="$index == 0">
+                                                    <td></td>
+                                                    <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                        <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
+                                                        {{a.answer.answer}}
+                                                    </td>
+                                                </tr>
+
+                                                <tr ng-repeat="q in item.subQuestions" >
+                                                    <td style="width: 50%; padding-right:10px;padding-top: 10px;padding-bottom: 10px" class="row" style="margin-bottom: 20px">
+                                                        <span id="question-number-{{q.ordinalNumber}}" class=" actual-test-font-global ">
+                                                        <span class=""><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                            <span compile="q.question"></span>
+                                                        </span>
+                                                        </span>
+                                                        <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                                    </td>
+                                                    <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                        <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                        <!--{{a.answer.answer}}-->
+                                                    </td>
+                                                </tr>
+                                            </table>
+
+                                        </div>
+
+                                    </div>
+
+
+
+                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 1">
+                                        <div class="row" style="margin-bottom: 20px">
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == false" ng-click="vm.clickShowChildren(q,item.subQuestions);" class="text-left button-question-not-click actual-test-font-global ">
+                                                <span   class=" multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                    <span compile="q.question"></span>
+                                                </span>
+
+                                            </button>
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true" class="text-left button-question-click actual-test-font-global">
+                                                <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                    <span compile="q.question"></span>
+                                                </span>
+                                            </button>
+                                            <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                        </div>
+
+                                        <div style="padding-left: 25px" ng-show="q.showChildren == true" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                            <div class="col-md-1">
+                                                <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                            </div>
+                                            <div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">
+                                                {{a.answer.answer}}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                            <span style="font-size: 17px" compile="q.question">
+                                            </span>
+                                        </span>
+                                    </span>
+
+                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                            <span style="font-size: 17px" compile="q.question">
+                                            </span>
+                                        </span>
+                                    </span>
+
+                                    <div class="row">
+                                        <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB.items" dnd-drop="onDropB(listB, item, index)" ng-repeat="itemB in listB.items"  ng-if="item.type == 4">
+                                        <span
+                                                dnd-draggable="getSelectedItemsIncluding(listB, itemB)"
+                                                dnd-draggable="itemB"
+                                                dnd-effect-allowed="move"
+                                                ng-hide="itemB.isHide == true"
+                                                class="drag-matching-heading actual-test-font-global"
+                                                ng-bind="itemB.clientAnswer"
+                                        >
+                                            <!--{{$index}} - {{item.clientAnswer}}-->
+                                        </span>
+                                        </div>
+                                    </div>
+
+                                    <!--<div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-show="q.parent.type == 5">-->
+                                        <!--<div class="row" style="margin-bottom: 20px" ng-show="$index == 0">-->
+                                            <!--<button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == false" ng-click="vm.clickShowChildren(q,item.subQuestions);" class="text-left button-question-not-click actual-test-font-global"><span class="bold"> </span>{{q.question}}</button>-->
+                                            <!--<button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true" class="text-left button-question-click actual-test-font-global"> {{q.question}}</button>-->
+                                            <!--&lt;!&ndash;<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>&ndash;&gt;-->
+
+                                        <!--</div>-->
+                                        <!--<div style="padding-left: 25px" ng-show="q.showChildren == true && q.isFirstQuestion==true" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >-->
+                                            <!--<div class="col-md-1">-->
+                                                <!--<input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
+                                            <!--</div>-->
+                                            <!--<div  style="font-size: 19px;font-weight: 500;" class="col-md-11">-->
+                                                <!--{{a.answer.answer}}-->
+                                            <!--</div>-->
+                                        <!--</div>-->
+
+                                    <!--</div>-->
+
+                                    <div class="col-md-12 for-media-screen" style="margin-bottom: 10px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 4">
+                                        <strong>Question {{q.ordinalNumber}}</strong>
+                                        <ui-select
+                                                ng-change="vm.selectHeadingMedia1(x.answer,item.subQuestions[$index].questionAnswers,q, x.answer.answer.answer.answer, item.subQuestions)" data-ng-model="x.answer.answer" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                            <ui-select-match allow-clear placeholder="">{{$select.selected.answer.answer}}</ui-select-match>
+                                            <ui-select-choices ui-disable-choice="x.selectedMedia == true" repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">
+                                                <!--<ui-select-choices repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">-->
+                                                <div class="bold ui-select-pre-wrap"
+                                                     ng-style="(x.selectedMedia == true  && {'color':'black'})"
+                                                     ng-bind-html="x.answer.answer | highlight: $select.search">
+                                                </div>
+                                            </ui-select-choices>
+                                        </ui-select>
+                                    </div>
+
+                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 5">
+                                        <div class="row" style="" >
+
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == false && $index == 0" ng-click="vm.clickShowChildren(q,item.subQuestions);" class="text-left button-question-not-click actual-test-font-global"><span class="bold" compile=""> </span>{{q.question}}</button>
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global"> {{q.question}}</button>
+                                            <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                            <div class="row" ng-if="$index == vm.type5Index">
+                                                <div style="padding-left: 25px" ng-show="q.showChildren == true" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                    <div class="col-md-1">
+                                                        <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                    </div>
+                                                    <div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">
+                                                        {{a.answer.answer}}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+
+                                    </div>
+
+                                    <div class="row row-two-column">
+                                        <div class="column" style="" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 6">
+                                            <div class="row" style="">
+                                                <button id="question-number-{{q.ordinalNumber}}" class="text-left button-question-click actual-test-font-global">
+                                                <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                    <span compile="q.question"></span>
+                                                </span>
+                                                </button>
+                                                <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                            </div>
+
+                                            <div style="padding-top: 5px; padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                <div class="col-md-1">
+                                                    <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                </div>
+                                                <div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">
+                                                    {{a.answer.answer}}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!--<div class="col-md-6" style="padding: 20px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 6">-->
+                                        <!--<div class="row" style="margin-bottom: 20px">-->
+                                            <!--<button id="question-number-{{q.ordinalNumber}}" class="text-left button-question-click actual-test-font-global">-->
+                                                <!--<span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>-->
+                                                    <!--<span compile="q.question"></span>-->
+                                                <!--</span>-->
+                                            <!--</button>-->
+                                            <!--&lt;!&ndash;<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>&ndash;&gt;-->
+                                        <!--</div>-->
+
+                                        <!--<div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >-->
+                                            <!--<div class="col-md-1">-->
+                                                <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
+                                            <!--</div>-->
+                                            <!--<div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">-->
+                                                <!--{{a.answer.answer}}-->
+                                            <!--</div>-->
+                                        <!--</div>-->
+                                    <!--</div>-->
+
+                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 7">
+                                        <div class="row" style="" >
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="$index == 0" class="text-left button-question-click actual-test-font-global">{{q.question}}</button>
+                                            <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                            <div class="row" ng-if="$index == vm.type5Index">
+                                                <div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                    <div class="col-md-1">
+                                                        <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                    </div>
+                                                    <div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">
+                                                        {{a.answer.answer}}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+
+                                    </div>
+
+
+
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="portlet bg-white bordered" style="border-radius: 7px;">
+                    <div class="portlet-body">
+                        <div ng-show="vm.passageNumber == 2" class="row" >
+                            <div class="col-md-6" ng-hide="vm.ieltsReadingActualTest.subQuestions[1].type === 6">
+                                <div class="row">
+                                    <div class="notes-highlight actual-test-font-global" id="passage-2-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes2">
+                                        <div  class="close-highlight text-right">
+                                            <i class="fa fa-times text-right close-note-icon" ng-click="closeASpecificNote2($index + 1)"></i>
+                                        </div>
+
+                                        <div class="headers-highlight">{{note.header}}</div>
+                                        <textarea type="text" ng-model="note.specificNote" data-ng-change="vm.testNoteChange()" class="specific-note-highlight" />
+
+                                    </div>
+                                    <div ng-mousedown="closeNotes2()" id="passage-text-2" ng-right-click="showContextMenu()" context="context1" class="col-md-12  passage-text" compile="vm.ieltsReadingActualTest.subQuestions[1].question">
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div ng-style="(vm.ieltsReadingActualTest.subQuestions[0].type === 6  && {'width':'100%'})" class="col-md-6 question-content" id="passage-question-text-2"  ng-right-click="showContextMenu()" context="context1">
+                                <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[1].subQuestions">
+                                    <hr ng-show="$index != 0" style="border-top: 1px solid;">
+                                    <div id="passage-number-2" class="row" >
+                                        <p class="col-md-12 actual-test-font-global" compile="item.question" ng-if="item.type != 8 && item.type != 9">
+                                        </p>
+                                        <div class="row" ng-if="item.type == 8" style="margin-bottom: 100px">
+                                            <table class="table">
+                                                <tbody>
+                                                <tr>
+                                                    <td style="width: 35%">
+                                                        <div class="col-md-12 table-question actual-test-font-global" compile="item.question" >
+                                                        </div>
+                                                    </td>
+                                                    <td style="width: 65%;padding-top:70px">
+                                                        <div class="col-md-12" style="padding: 5px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 8">
+                                                            <span id="question-number-{{q.ordinalNumber}}" class="bold" compile="q.question"></span>
+                                                            <ui-select
+                                                                    ng-change="vm.selectHeadingMedia2(x.answer,item.subQuestions[$index].questionAnswers,q, x.answer.answer.answer.answer, item.subQuestions)" data-ng-model="x.answer.answer" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                                                <ui-select-match allow-clear placeholder="Question {{q.ordinalNumber}}">{{$select.selected.answer.answer}}</ui-select-match>
+                                                                <ui-select-choices ui-disable-choice="x.selectedMedia == true" repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">
+                                                                    <!--<ui-select-choices repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">-->
+                                                                    <div class="bold ui-select-pre-wrap"
+                                                                         ng-style="(x.selectedMedia == true  && {'color':'black'})"
+                                                                         ng-bind-html="x.answer.answer | highlight: $select.search">
+                                                                    </div>
+                                                                </ui-select-choices>
+                                                            </ui-select>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <div class="row" ng-if="item.type == 9" style="overflow-x: scroll">
+                                            <table class="table">
+                                                <tbody>
+                                                <tr>
+                                                    <td style="width: 40%">
+                                                        <div id="question-have-image-map" class="col-md-12 table-question actual-test-font-global" compile="item.question" >
+                                                        </div>
+                                                    </td>
+                                                    <td style="width: 60%;padding-top:60px">
+                                                        <table class="table-hover table-bordered" style="width: 100%">
+                                                            <tr style="border-bottom: solid gainsboro 1px" ng-repeat="q in item.subQuestions" ng-if="$index == 0">
+                                                                <td></td>
+                                                                <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                                    <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
+                                                                    {{a.answer.answer}}
+                                                                </td>
+                                                            </tr>
+
+                                                            <tr style="border-bottom: solid gainsboro 1px" ng-repeat="q in item.subQuestions" >
+                                                                <td style="width: 40%; padding-right:10px" class="row" style="margin-bottom: 20px">
+                                                                    <span id="question-number-{{q.ordinalNumber}}" class=" actual-test-font-global ">
+                                                                    <span class=""><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                                        <span compile="q.question"></span>
+                                                                    </span>
+                                                                    </span>
+                                                                    <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                                                </td>
+                                                                <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                                    <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                                    <!--{{a.answer.answer}}-->
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                        <!--<div class="col-md-12" style="padding: 10px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 9">-->
+                                                        <!--<div class="row" style="margin-bottom: 20px">-->
+                                                        <!--<button id="question-number-{{q.ordinalNumber}}" class="text-left button-question-click actual-test-font-global">-->
+                                                        <!--<span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>-->
+                                                        <!--<span compile="q.question"></span>-->
+                                                        <!--</span>-->
+                                                        <!--</button>-->
+                                                        <!--&lt;!&ndash;<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>&ndash;&gt;-->
+                                                        <!--</div>-->
+
+                                                        <!--<span style="padding-left: 5px" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >-->
+                                                        <!--&lt;!&ndash;<div class="col-md-1">&ndash;&gt;-->
+                                                        <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
+                                                        <!--{{a.answer.answer}}-->
+                                                        <!--</span>-->
+                                                        <!--</div>-->
+                                                    </td>
+                                                </tr>
+
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="row" ng-if="item.type == 10" style="overflow-x: scroll">
+
+                                            <table class="table-hover table-bordered" style="width: 100%;margin-bottom: 20px">
+                                                <tr ng-repeat="q in item.subQuestions" ng-if="$index == 0">
+                                                    <td></td>
+                                                    <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                        <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
+                                                        {{a.answer.answer}}
+                                                    </td>
+                                                </tr>
+
+                                                <tr ng-repeat="q in item.subQuestions" >
+                                                    <td style="width: 50%; padding-right:10px;padding-top: 10px;padding-bottom: 10px" class="row" style="margin-bottom: 20px">
+                                                        <span id="question-number-{{q.ordinalNumber}}" class=" actual-test-font-global ">
+                                                        <span class=""><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                            <span compile="q.question"></span>
+                                                        </span>
+                                                        </span>
+                                                        <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                                    </td>
+                                                    <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                        <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                        <!--{{a.answer.answer}}-->
+                                                    </td>
+                                                </tr>
+                                            </table>
+
+                                        </div>
+
+                                    </div>
+
+                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 1">
+                                        <div class="row" style="margin-bottom: 20px">
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == false" ng-click="vm.clickShowChildren(q,item.subQuestions);" class="text-left button-question-not-click actual-test-font-global">
+                                                <span class=" multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                    <span compile="q.question"></span>
+                                                </span>
+
+                                            </button>
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true" class="text-left button-question-click actual-test-font-global">
+                                                <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                    <span compile="q.question"></span>
+                                                </span>
+                                            </button>
+                                            <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                        </div>
+
+                                        <div style="padding-left: 25px" ng-show="q.showChildren == true" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                            <div class="col-md-1">
+                                                <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                            </div>
+                                            <div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">
+                                                {{a.answer.answer}}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                            <span style="font-size: 17px" compile="q.question">
+                                            </span>
+                                        </span>
+                                    </span>
+
+                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                            <span style="font-size: 17px" compile="q.question">
+                                            </span>
+                                        </span>
+                                    </span>
+
+                                    <div class="row">
+                                        <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB2.items" dnd-drop="onDropB2(listB2, item, index)" ng-repeat="itemB in listB2.items"  ng-if="item.type == 4">
+                                        <span
+                                                dnd-draggable="getSelectedItemsIncluding(listB2, itemB)"
+                                                dnd-draggable="itemB"
+                                                dnd-effect-allowed="move"
+                                                ng-hide="itemB.isHide == true"
+                                                class="drag-matching-heading actual-test-font-global"
+                                                ng-bind="itemB.clientAnswer"
+                                        >
+                                            <!--{{$index}} - {{item.clientAnswer}}-->
+                                        </span>
+                                        </div>
+                                    </div>
+
+
+                                    <div class="col-md-12 for-media-screen" style="margin-bottom: 10px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 4">
+                                        <strong>Question {{q.ordinalNumber}}</strong>
+                                        <ui-select
+                                                   ng-change="vm.selectHeadingMedia2(x.answer,item.subQuestions[$index].questionAnswers,q, x.answer.answer.answer.answer, item.subQuestions)" data-ng-model="x.answer.answer" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                            <ui-select-match allow-clear placeholder="">{{$select.selected.answer.answer}}</ui-select-match>
+                                            <ui-select-choices ui-disable-choice="x.selectedMedia == true" repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">
+                                            <!--<ui-select-choices repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">-->
+                                                <div class="bold ui-select-pre-wrap"
+                                                     ng-style="(x.selectedMedia == true  && {'color':'black'})"
+                                                     ng-bind-html="x.answer.answer | highlight: $select.search">
+                                                </div>
+                                            </ui-select-choices>
+                                        </ui-select>
+                                    </div>
+
+
+                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 5">
+                                        <div class="row" style="" >
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == false && $index == 0" ng-click="vm.clickShowChildren(q,item.subQuestions);" class="text-left button-question-not-click actual-test-font-global"><span class="" style="color: white" compile="q.question"> </span></button>
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global"><span class="" compile="q.question"> </span></button>
+                                            <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                            <div class="row" ng-if="$index == vm.type5Index">
+                                                <div style="padding-left: 25px" ng-show="q.showChildren == true" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                    <div class="col-md-1">
+                                                        <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                    </div>
+                                                    <div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">
+                                                        {{a.answer.answer}}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+
+                                    </div>
+
+                                    <div class="row row-two-column">
+                                        <div class="column" style="" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 6">
+                                            <div class="row" style="">
+                                                <button id="question-number-{{q.ordinalNumber}}" class="text-left button-question-click actual-test-font-global">
+                                                <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                    <span compile="q.question"></span>
+                                                </span>
+                                                </button>
+                                                <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                            </div>
+
+                                            <div style="padding-top: 5px; padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                <div class="col-md-1">
+                                                    <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                </div>
+                                                <div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">
+                                                    {{a.answer.answer}}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!--<div class="col-md-6" style="padding: 20px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 6">-->
+                                        <!--<div class="row" style="margin-bottom: 20px">-->
+                                            <!--<button id="question-number-{{q.ordinalNumber}}" class="text-left button-question-click actual-test-font-global">-->
+                                                <!--<span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>-->
+                                                    <!--<span compile="q.question"></span>-->
+                                                <!--</span>-->
+                                            <!--</button>-->
+                                            <!--&lt;!&ndash;<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>&ndash;&gt;-->
+                                        <!--</div>-->
+
+                                        <!--<div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >-->
+                                            <!--<div class="col-md-1">-->
+                                                <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
+                                            <!--</div>-->
+                                            <!--<div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">-->
+                                                <!--{{a.answer.answer}}-->
+                                            <!--</div>-->
+                                        <!--</div>-->
+                                    <!--</div>-->
+
+                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 7">
+                                        <div class="row" style="" >
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="$index == 0" class="text-left button-question-click actual-test-font-global">{{q.question}}</button>
+                                            <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                            <div class="row" ng-if="$index == vm.type5Index">
+                                                <div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                    <div class="col-md-1">
+                                                        <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                    </div>
+                                                    <div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">
+                                                        {{a.answer.answer}}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+
+                                    </div>
+
+
+
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="portlet bg-white bordered" style="border-radius: 7px;">
+                    <div class="portlet-body">
+                        <div ng-show="vm.passageNumber == 3" class="row" >
+
+                            <div class="col-md-6" ng-hide="vm.ieltsReadingActualTest.subQuestions[2].type === 6">
+                                <div class="row">
+                                    <div class="notes-highlight actual-test-font-global" id="passage-3-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes3">
+                                        <div  class="close-highlight text-right">
+                                            <i class="fa fa-times text-right close-note-icon" ng-click="closeASpecificNote3($index + 1)"></i>
+                                        </div>
+
+                                        <div class="headers-highlight">{{note.header}}</div>
+                                        <textarea type="text" ng-model="note.specificNote" data-ng-change="vm.testNoteChange()" class="specific-note-highlight" />
+
+                                    </div>
+                                    <div ng-mousedown="closeNotes3()" id="passage-text-3" ng-right-click="showContextMenu()" context="context1" class="col-md-12  passage-text" compile="vm.ieltsReadingActualTest.subQuestions[2].question">
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div ng-style="(vm.ieltsReadingActualTest.subQuestions[0].type === 6  && {'width':'100%'})" class="col-md-6 question-content" id="passage-question-text-3" ng-right-click="showContextMenu()" context="context1">
+                                <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[2].subQuestions">
+                                    <hr ng-show="$index != 0" style="border-top: 1px solid;">
+                                    <div id="passage-number-3" class="row">
+                                        <p class="col-md-12 actual-test-font-global" compile="item.question" ng-if="item.type != 8 && item.type != 9">
+                                        </p>
+                                        <div class="row" ng-if="item.type == 8">
+                                            <table class="table">
+                                                <tbody>
+                                                <tr>
+                                                    <td style="width: 35%">
+                                                        <div class="col-md-12 table-question actual-test-font-global" compile="item.question" >
+                                                        </div>
+                                                    </td>
+                                                    <td style="width: 65%;padding-top:70px">
+                                                        <div id="question-number-{{q.ordinalNumber}}" class="col-md-12" style="padding: 5px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 8">
+                                                            <span class="bold" compile="q.question"></span>
+                                                            <ui-select
+                                                                    ng-change="vm.selectHeadingMedia3(x.answer,item.subQuestions[$index].questionAnswers,q, x.answer.answer.answer.answer, item.subQuestions)" data-ng-model="x.answer.answer" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                                                <ui-select-match allow-clear placeholder="Question {{q.ordinalNumber}}">{{$select.selected.answer.answer}}</ui-select-match>
+                                                                <ui-select-choices ui-disable-choice="x.selectedMedia == true" repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">
+                                                                    <!--<ui-select-choices repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">-->
+                                                                    <div class="bold ui-select-pre-wrap"
+                                                                         ng-style="(x.selectedMedia == true  && {'color':'black'})"
+                                                                         ng-bind-html="x.answer.answer | highlight: $select.search">
+                                                                    </div>
+                                                                </ui-select-choices>
+                                                            </ui-select>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <div class="row" ng-if="item.type == 9" style="overflow-x: scroll">
+                                            <table class="table">
+                                                <tbody>
+                                                <tr>
+                                                    <td style="width: 40%">
+                                                        <div id="question-have-image-map" class="col-md-12 table-question actual-test-font-global" compile="item.question" >
+                                                        </div>
+                                                    </td>
+                                                    <td style="width: 60%;padding-top:60px">
+                                                        <table class="table-hover table-bordered" style="width: 100%">
+                                                            <tr style="border-bottom: solid gainsboro 1px" ng-repeat="q in item.subQuestions" ng-if="$index == 0">
+                                                                <td></td>
+                                                                <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                                    <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
+                                                                    {{a.answer.answer}}
+                                                                </td>
+                                                            </tr>
+
+                                                            <tr style="border-bottom: solid gainsboro 1px" ng-repeat="q in item.subQuestions" >
+                                                                <td style="width: 40%; padding-right:10px" class="row" style="margin-bottom: 20px">
+                                                                    <span id="question-number-{{q.ordinalNumber}}" class=" actual-test-font-global ">
+                                                                    <span class=""><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                                        <span compile="q.question"></span>
+                                                                    </span>
+                                                                    </span>
+                                                                    <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                                                </td>
+                                                                <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                                    <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                                    <!--{{a.answer.answer}}-->
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                        <!--<div class="col-md-12" style="padding: 10px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 9">-->
+                                                        <!--<div class="row" style="margin-bottom: 20px">-->
+                                                        <!--<button id="question-number-{{q.ordinalNumber}}" class="text-left button-question-click actual-test-font-global">-->
+                                                        <!--<span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>-->
+                                                        <!--<span compile="q.question"></span>-->
+                                                        <!--</span>-->
+                                                        <!--</button>-->
+                                                        <!--&lt;!&ndash;<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>&ndash;&gt;-->
+                                                        <!--</div>-->
+
+                                                        <!--<span style="padding-left: 5px" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >-->
+                                                        <!--&lt;!&ndash;<div class="col-md-1">&ndash;&gt;-->
+                                                        <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
+                                                        <!--{{a.answer.answer}}-->
+                                                        <!--</span>-->
+                                                        <!--</div>-->
+                                                    </td>
+                                                </tr>
+
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="row" ng-if="item.type == 10" style="overflow-x: scroll">
+
+                                            <table class="table-hover table-bordered" style="width: 100%;margin-bottom: 20px">
+                                                <tr ng-repeat="q in item.subQuestions" ng-if="$index == 0">
+                                                    <td></td>
+                                                    <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                        <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
+                                                        {{a.answer.answer}}
+                                                    </td>
+                                                </tr>
+
+                                                <tr ng-repeat="q in item.subQuestions" >
+                                                    <td style="width: 50%; padding-right:10px;padding-top: 10px;padding-bottom: 10px" class="row" style="margin-bottom: 20px">
+                                                        <span id="question-number-{{q.ordinalNumber}}" class=" actual-test-font-global ">
+                                                        <span class=""><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                            <span compile="q.question"></span>
+                                                        </span>
+                                                        </span>
+                                                        <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                                    </td>
+                                                    <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                        <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                        <!--{{a.answer.answer}}-->
+                                                    </td>
+                                                </tr>
+                                            </table>
+
+                                        </div>
+                                    </div>
+                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 1">
+                                        <div class="row" style="margin-bottom: 20px">
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == false" ng-click="vm.clickShowChildren(q,item.subQuestions);" class="text-left button-question-not-click actual-test-font-global">
+                                                <span class=" multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                    <span compile="q.question"></span>
+                                                </span>
+
+                                            </button>
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true" class="text-left button-question-click actual-test-font-global">
+                                                <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                    <span compile="q.question"></span>
+                                                </span>
+                                            </button>
+                                            <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                        </div>
+
+                                        <div style="padding-left: 25px" ng-show="q.showChildren == true" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                            <div class="col-md-1">
+                                                <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                            </div>
+                                            <div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">
+                                                {{a.answer.answer}}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                            <span style="font-size: 17px" compile="q.question">
+                                            </span>
+                                        </span>
+                                    </span>
+
+                                    <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                            <span style="font-size: 17px" compile="q.question">
+                                            </span>
+                                        </span>
+                                    </span>
+
+                                    <div class="row">
+                                        <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB3.items" dnd-drop="onDropB3(listB3, item, index)" ng-repeat="itemB in listB3.items"  ng-if="item.type == 4">
+                                        <span
+                                                dnd-draggable="getSelectedItemsIncluding(listB3, itemB)"
+                                                dnd-draggable="itemB"
+                                                dnd-effect-allowed="move"
+                                                ng-hide="itemB.isHide == true"
+                                                class="drag-matching-heading actual-test-font-global"
+                                                ng-bind="itemB.clientAnswer"
+                                        >
+                                            <!--{{$index}} - {{item.clientAnswer}}-->
+                                        </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-12 for-media-screen" style="margin-bottom: 10px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 4">
+                                        <strong>Question {{q.ordinalNumber}}</strong>
+                                        <ui-select
+                                                ng-change="vm.selectHeadingMedia3(x.answer,item.subQuestions[$index].questionAnswers,q, x.answer.answer.answer.answer, item.subQuestions)" data-ng-model="x.answer.answer" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                            <ui-select-match allow-clear placeholder="">{{$select.selected.answer.answer}}</ui-select-match>
+                                            <ui-select-choices ui-disable-choice="x.selectedMedia == true" repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">
+                                                <!--<ui-select-choices repeat="x in item.subQuestions[$index].questionAnswers | propsFilter: {answer: $select.search}">-->
+                                                <div class="bold ui-select-pre-wrap"
+                                                     ng-style="(x.selectedMedia == true  && {'color':'black'})"
+                                                     ng-bind-html="x.answer.answer | highlight: $select.search">
+                                                </div>
+                                            </ui-select-choices>
+                                        </ui-select>
+                                    </div>
+
+                                    <!--<div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-show="q.parent.type == 5">-->
+                                        <!--<div class="row" style="margin-bottom: 20px" ng-show="$index == 0">-->
+                                            <!--<button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == false" ng-click="vm.clickShowChildren(q,item.subQuestions);" class="text-left button-question-not-click actual-test-font-global"><span class="bold"> </span>{{q.question}}</button>-->
+                                            <!--<button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true" class="text-left button-question-click actual-test-font-global"> {{q.question}}</button>-->
+                                            <!--&lt;!&ndash;<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>&ndash;&gt;-->
+
+                                        <!--</div>-->
+                                        <!--<div style="padding-left: 25px" ng-show="q.showChildren == true && q.isFirstQuestion==true" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >-->
+                                            <!--<div class="col-md-1">-->
+                                                <!--<input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
+                                            <!--</div>-->
+                                            <!--<div  style="font-size: 19px;font-weight: 500;" class="col-md-11">-->
+                                                <!--{{a.answer.answer}}-->
+                                            <!--</div>-->
+                                        <!--</div>-->
+
+                                    <!--</div>-->
+
+
+                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 5">
+                                        <div class="row" style="" >
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == false && $index == 0" ng-click="vm.clickShowChildren(q,item.subQuestions);" class="text-left button-question-not-click actual-test-font-global"><span class="bold"> </span>{{q.question}}</button>
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global">{{q.question}}</button>
+                                            <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                            <div class="row" ng-if="$index == vm.type5Index">
+                                                <div style="padding-left: 25px" ng-show="q.showChildren == true" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                    <div class="col-md-1">
+                                                        <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                    </div>
+                                                    <div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">
+                                                        {{a.answer.answer}}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+
+                                    </div>
+
+                                    <div class="row row-two-column">
+                                        <div class="column" style="" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 6">
+                                            <div class="row" style="">
+                                                <button id="question-number-{{q.ordinalNumber}}" class="text-left button-question-click actual-test-font-global">
+                                                <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                                    <span compile="q.question"></span>
+                                                </span>
+                                                </button>
+                                                <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                            </div>
+
+                                            <div style="padding-top: 5px; padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                <div class="col-md-1">
+                                                    <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                </div>
+                                                <div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">
+                                                    {{a.answer.answer}}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!--<div class="col-md-6" style="padding: 20px;" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 6">-->
+                                        <!--<div class="row" style="margin-bottom: 20px">-->
+                                            <!--<button id="question-number-{{q.ordinalNumber}}" class="text-left button-question-click actual-test-font-global">-->
+                                                <!--<span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>-->
+                                                    <!--<span compile="q.question"></span>-->
+                                                <!--</span>-->
+                                            <!--</button>-->
+                                            <!--&lt;!&ndash;<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>&ndash;&gt;-->
+                                        <!--</div>-->
+
+                                        <!--<div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >-->
+                                            <!--<div class="col-md-1">-->
+                                                <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
+                                            <!--</div>-->
+                                            <!--<div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">-->
+                                                <!--{{a.answer.answer}}-->
+                                            <!--</div>-->
+                                        <!--</div>-->
+                                    <!--</div>-->
+
+                                    <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 7">
+                                        <div class="row" style="" >
+                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="$index == 0" class="text-left button-question-click actual-test-font-global">{{q.question}}</button>
+                                            <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
+                                            <div class="row" ng-if="$index == vm.type5Index">
+                                                <div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                    <div class="col-md-1">
+                                                        <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                    </div>
+                                                    <div  style="font-weight: 500;" class="col-md-11 actual-test-font-global">
+                                                        {{a.answer.answer}}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+
+                                    </div>
+
+
+                                </div>
+
+
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!--<div ng-show="vm.passageNumber == 4" class="row" > &lt;!&ndash; showing result &ndash;&gt;-->
+                    <!--<div class="col-md-12">-->
+                        <!--<h2>{{vm.testResultAfterSubmitting.correctAnswer}}/40</h2>-->
+                        <!--<h2>{{vm.testResultAfterSubmitting.bandScore}}</h2>-->
+                    <!--</div>-->
+                    <!--<div class="col-md-12 text-center" >-->
+                        <!--<a class="btn btn-success" ng-click="vm.showDetailTestAfterSubmit()">See details</a>-->
+                    <!--</div>-->
+                <!--</div>-->
+
+
+
+                <div ng-hide="vm.passageNumber == 4" class="portlet bg-white bordered list-question-bottom" style="margin-top: 10px;border-radius: 7px !important;" >
+                    <div class="portlet-body">
+                        <div class="row" style="background-color: #E1EDF4;">
+                            <div class="col-md-1 not-for-media" style="padding-top: 25px;padding-left: 20px;">
+                                <input ng-model="vm.tempQuestion.needReview" ng-click="vm.setReviewQuestion()" class="" type="checkbox"  id="defaultCheck1">
+                                <label  class="form-check-label bold actual-test-font-global" for="defaultCheck1">
+                                    &nbsp; Review
+                                </label>
+                            </div>
+
+                            <div class="col-md-10" style="border-radius:7px;padding-bottom: 10px;background-color:white;padding-top: 15px;overflow-x: scroll;overflow-y: hidden;white-space: nowrap;">
+
+                                <span style="margin-left: 20px;font-size: 17px;" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions">
+                                    <span>
+                                        <span class="bold">Part {{item.ordinalNumber}}:&nbsp;</span>
+
+
+                                        <span ng-repeat="package in item.subQuestions">
+                                            <span ng-repeat="q in package.subQuestions">
+                                                <button ng-show="q.showChildren == false"
+                                                        ng-style="
+                                                        (q.answered == true && q.needReview == false  && {'color':'black','background-color':'#F2F2F2','text-decoration': 'underline'}) ||
+                                                        (q.answered == false && q.needReview == true  && {'border-radius': '30px'}) ||
+                                                        (q.answered == true && q.needReview == true && {'color':'black','background-color':'#F2F2F2','text-decoration': 'underline','border-radius': '30px'})"
+                                                        ng-click="vm.clickShowChildren(q,package.subQuestions);vm.autoScrollToView(q.ordinalNumber);vm.changePassage(item.subQuestions);vm.autoFocusOnText(q.ordinalNumber)"
+                                                        class="button-bottom-question-not-click">
+                                                    {{q.ordinalNumber}}
+                                                </button>
+                                                <button ng-show="q.showChildren == true"
+                                                        ng-style="
+                                                        (q.answered == true && q.needReview == false  && {'text-decoration': 'underline'}) ||
+                                                        (q.answered == false && q.needReview == true  && {'border-radius': '30px'}) ||
+                                                        (q.answered == true && q.needReview == true && {'text-decoration': 'underline','border-radius': '30px'})"
+                                                        ng-click="" class="button-bottom-question-click">
+                                                    {{q.ordinalNumber}}
+                                                </button>
+                                                <span ng-show="vm.ieltsReadingActualTest.pronounce !=null && vm.ieltsReadingActualTest.pronounce.length > 0 && q.ordinalNumber == 30" class="bold">&nbsp;&nbsp;&nbsp;&nbsp;Part 4:&nbsp;</span>
+                                            </span>
+                                        </span>
+                                    </span>
+                                    <!--<button ng-repeat="package in vm.ieltsReadingActualTest.subQuestions[0].subQuestions[0].subQuestions" style="border-radius: 7px;padding-left: 13px;padding-right: 13px;" class="btn btn-default"  id="button-part-1"> <span style="font-size: 19px;font-weight: bold"> {{package.ordinalNumber}}</span></button>-->
+
+                                </span>
+                            </div>
+
+                            <!--<div class="col-md-1 text-right" style="margin-top:10px;margin-bottom: 10px;background-color: #E1EDF4">-->
+                                <!--<button class="button-bottom-right" data-ng-click="vm.buttonBottomNextQuestion()"> <i class="fa fa-arrow-left"></i></button>-->
+                                <!--<button class="button-bottom-right" data-ng-click="vm.buttonBottomNextQuestion()" > <i class="fa fa-arrow-right"></i></button>-->
+                            <!--</div>-->
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <div ng-show="vm.passageNumber == 4" class="col-md-12">
+            <div class="row">
+                <div class="col-md-3 left-result">
+                    <div class="row text-center">
+                        <div class="col-md-12">
+                            <div id="circlechart" class="circlechart" data-percentage="2.5"></div>
+                        </div>
+                    </div>
+                    <h1><i class="fa fa-book"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testName}}</h1>
+                    <h1><i class="fa fa-user"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testTakerName}}</h1>
+                    <h1><i class="fa fa-clock"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testTime}}</h1>
+                    <h1><i class="fa fa-calendar"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testDate | date: 'dd/MM/yyyy HH:mm:ss'}}</h1>
+                    <h1><i class="fa fa-pencil"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.correctAnswer}}/40</h1>
+                    <h1 class="bold text-red"><i class="fa fa-graduation-cap"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.bandScore}}</h1>
+                    <h1 class="bold text-blue" style="cursor: pointer" ng-click="vm.showDetailTestAfterSubmit()"><i class="fa fa-info-circle" aria-hidden="true"></i> &nbsp;<i class="fa fa-caret-right"></i> CLICK TO SEE DETAILS</h1>
+                </div>
+
+                <div class="col-md-8 right-result" >
+
+                    <table class="table" ng-if="vm.isShowDetail">
+                        <thead>
+                        <tr>
+                            <th scope="col">Index</th>
+                            <th scope="col">Your answer</th>
+                            <th scope="col">Correct answer</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr class="text-center bold" ng-style="(!item.isCorrectTestResultDetail) && {'background':'rgba(196, 77, 86,0.7)'} " ng-repeat="item in vm.testResultAfterSubmitting.questionAnswerTestResult">
+
+                            <td>{{item.ordinalNumber}}</td>
+
+                            <td ng-if="item.questionAnswer.question.parent.type == 1
+                    || item.questionAnswer.question.parent.type == 6
+                    || item.questionAnswer.question.parent.type == 5
+                    || item.questionAnswer.question.parent.type == 7
+                    || item.questionAnswer.question.parent.type == 9
+                    || item.questionAnswer.question.parent.type == 10">{{item.questionAnswer.answer.answer}}</td>
+
+                            <td ng-if="item.questionAnswer.question.parent.type == 1 || item.questionAnswer.question.parent.type == 6|| item.questionAnswer.question.parent.type == 9|| item.questionAnswer.question.parent.type == 10">{{item.questionAnswer.correctAnswer}}</td>
+
+                            <td ng-if="item.questionAnswer.question.parent.type == 5 || item.questionAnswer.question.parent.type == 7" ng-bind-html="item.correctAnswerForMultipleAnswer"></td>
+
+                            <td ng-if="item.questionAnswer.question.parent.type == 4 || item.questionAnswer.question.parent.type == 8">{{item.clientAnswer}}</td>
+                            <td ng-if="item.questionAnswer.question.parent.type == 4 || item.questionAnswer.question.parent.type == 8">{{item.questionAnswer.correctAnswer}}</td>
+
+
+                            <!--<td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3"-->
+                            <!--ng-style="(!item.isCorrectTestResultDetail) && {'background':'rgba(196, 77, 86,1)'}">{{item.ordinalNumber}}</td>-->
+
+                            <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3">
+                                {{item.clientAnswer}}
+                            </td>
+                            <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3">
+                                {{item.questionAnswer.answer.answer}}
+                            </td>
+                        </tr>
+
+                        </tbody>
+                    </table>
+                    <div class="col-md-12" compile="vm.testResult.testTakerPerformance">
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="col-md-12 text-center" ng-show="vm.passageNumber == 4">
+
+        </div>
+    </div>
+
+
+</div>
+
+<!--<div class="row margin-top-10 wrap-test change-length ">-->
+    <!--&lt;!&ndash;<label for="change-font-size">Change font size</label>&ndash;&gt;-->
+    <!--&lt;!&ndash;<input id="change-font-size" ng-model="vm.fontSize" ng-change="vm.changeFontSize()" type="text"  class="form-control" placeholder="length...">&ndash;&gt;-->
+    <!---->
+<!--</div>-->
+
+
+
+<div ng-show="vm.isShowContextMenu == true" id="context1" class="dropdown-menu-highlight" role='menu'>
+    <div class="context-menu-highlight" ng-mousedown="highlightText()"><i class="fa fa-pencil"></i>&nbsp; Highlight</div>
+    <div ng-show="vm.passageNumber == 1" class="context-menu-highlight" ng-mousedown="createNotes1()"><i class="fa fa-note-sticky" aria-hidden="true"></i>&nbsp; Notes</div>
+    <div ng-show="vm.passageNumber == 2" class="context-menu-highlight" ng-mousedown="createNotes2()"><i class="fa fa-note-sticky" aria-hidden="true"></i>&nbsp; Notes</div>
+    <div ng-show="vm.passageNumber == 3" class="context-menu-highlight" ng-mousedown="createNotes3()"><i class="fa fa-note-sticky" aria-hidden="true"></i>&nbsp; Notes</div>
+    <div class="context-menu-highlight" ng-mousedown="clearHighlightText()"><i class="fa fa-times"></i>&nbsp; Clear </div>
+</div>
+
+<script type="text/ng-template" id="result_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="fa fa-check"></i>Đáp án</h4>
+        </div>
+        <div class="modal-body">
+
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>
+        </div>
+    </div>
+</script>
+
+
+<style>
+
+    .button-question-not-click {
+        border:none;border-radius:7px;background-color: #6D6E71;color: white;font-weight: 500; padding-top: 10px;padding-bottom: 10px;
+        width: 100%;
+    }
+
+    .button-question-not-click :hover{
+        background-color: #174A7C;
+    }
+
+    .button-question-click {
+        border:none;border-radius:7px;background-color: #0096D6;color: white;font-weight: 500; padding-top: 10px;padding-bottom: 10px;
+        width: 100%;
+    }
+
+    /* width */
+    ::-webkit-scrollbar {
+        width: 5px;
+        height: 7px;
+    }
+
+    /* Track */
+    ::-webkit-scrollbar-track {
+        border-radius: 10px;
+        background: white;
+    }
+
+    /* Handle */
+    ::-webkit-scrollbar-thumb {
+        border-radius: 10px;
+        background: #BFBFBF;
+    }
+
+    /* Handle on hover */
+    ::-webkit-scrollbar-thumb:hover {
+        background: #BFBFBF;
+    }
+
+    .button-bottom{
+        margin-right: 3px;
+        border: none;
+        border-radius: 7px;
+        height: 40px;
+        width: 40px;
+        background-color: #6D6E71;
+        color: white;
+        font-weight: 500;
+        /*padding: 10px 15px 10px 15px;*/
+        /*top right bottom left*/
+
+    }
+
+    .button-bottom-question-not-click{
+        margin-right: 3px;
+        border: none;
+        border-radius: 7px;
+        height: 35px;
+        width: 35px;
+        background-color: #6D6E71;
+        color: white;
+        font-weight: 500;
+    }
+
+    .button-bottom-question-not-click:hover{
+        background-color: #174A7C;
+    }
+
+    .button-bottom-question-click{
+        margin-right: 3px;
+        border: none;
+        border-radius: 7px;
+        height: 35px;
+        width: 35px;
+        background-color: #0096D6;
+        color: white;
+        font-weight: 500;
+    }
+
+    .question-filling-root{
+        /*display: inline-block;*/
+        font-size: 15px;
+        font-weight: 500;
+    }
+    .text-question-filling-root{
+        /*float:left;*/
+        /*margin-top: 15px;*/
+        width: 170px;
+        margin-left: 5px;
+        margin-right: 5px;
+        /*font-weight: bold;*/
+    }
+
+    input[type=text] {
+        border: solid 0.3px lightgrey;
+    }
+
+    input[type=text]:focus {
+        border: 0.3px solid #0096D6;
+    }
+
+    .button-bottom-right{
+        border:none;
+        border-radius: 30px;padding: 17px 20px 17px 20px;color: white;background-color: #999999;
+    }
+
+    .button-bottom-right:hover{
+        background-color: #0488C5
+    }
+
+    input:focus::placeholder {
+        color: transparent;
+    }
+
+
+    ::-webkit-input-placeholder {
+        font-weight: 700;
+        text-align: center;
+    }
+
+    :-moz-placeholder { /* Firefox 18- */
+        font-weight: 700;
+        text-align: center;
+    }
+
+    ::-moz-placeholder {  /* Firefox 19+ */
+        font-weight: 700;
+        text-align: center;
+    }
+
+    :-ms-input-placeholder {
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .surrounded-text {
+        background-color: yellow;
+    }
+
+    .surrounded-text-to-clear {
+        background-color: white;
+    }
+
+    .surrounded-text-have-note {
+        background-color: yellow;
+    }
+
+    .dropdown-menu-highlight{
+        background-color: #FAFAFA;
+        width: 150px !important;
+        height: 97px;
+        box-shadow: 3px 5px 7px #888888;
+        border-radius: 5px;
+    }
+    .context-menu-highlight{
+        padding: 5px 10px 5px 10px;
+        width: 150px;
+        font-size: 16px;
+        font-weight: 500;
+        border-radius: 5px;
+    }
+    .context-menu-highlight:hover{
+        background-color: #E1E1E1;
+    }
+
+    .close-highlight{
+        background-color: #db0;
+        border-bottom: 1px solid #a80;
+        height: 1.5em;
+    }
+
+    .notes-highlight {
+        background-color: #fff046;
+        height: 270px;
+        width: 190px;
+        outline: none;
+        /*overflow-x: hidden;*/
+        /*overflow-y: auto;*/
+        word-wrap: break-word;
+        border-radius: 5px;
+        box-shadow: 3px 5px 7px #888888;
+        font-weight: 500;
+        z-index: 2;
+    }
+
+    .headers-highlight{
+        padding: 5px;
+        border-radius: 5px;
+    }
+
+    .specific-note-highlight{
+        position: relative;
+        background-color: #fff045;
+        width: 190px;
+        height: 75%;
+        /*word-wrap: break-word;*/
+        padding-left: 3px;
+        /*z-index: 3;*/
+        /*border: solid 0.3px lightgrey ;*/
+        border: none !important;
+        cursor: text;
+        overflow-x: hidden;
+        overflow-y: auto;
+        outline: none;
+    }
+
+    .close-note-icon {
+        cursor: pointer;
+        padding-right: 5px;
+    }
+
+    .drag-matching-heading{
+        font-weight: 500;
+        margin-bottom: 10px;
+        display: inline-block;
+        height:auto;
+        word-wrap: break-word;
+        border-radius: 5px;
+        background-color: #E5F1F8;
+        /*width: auto;*/
+        padding: 5px;
+
+        min-width: 50px;
+        max-width: 700px;
+    }
+
+    .matching-heading-drop-box {
+        font-weight: 700;
+        display: inline-block;
+        height:auto;
+        word-wrap: break-word;
+        border-radius: 5px;
+        color: #757575;
+        /*width: auto;*/
+        width:180px;
+
+        min-width: 200px;
+        min-height: 35px;
+        border: solid 1px lightgrey;
+        text-align: center;
+        /*line-height: 5%;*/
+        padding-top: 5px;
+        resize: none;
+    }
+
+    .page-header{
+        display: none;
+    }
+
+    .span-test{
+        width: 200px;
+        height: 50px;
+        border: solid 1px lightgrey;
+        display: inline-block;
+    }
+
+    .multiDemo ul[dnd-list] .dndPlaceholder {
+        background-color: #ddd;
+        display: block;
+        min-height: 42px;
+    }
+
+    .multiDemo ul[dnd-list] li.selected {
+        background-color: #dff0d8;
+        color: #3c763d;
+    }
+
+    .multiple-choice-question-text p {
+        display: inline;
+        color: white !important;
+        font-family: Cambria !important;
+    }
+    .multiple-choice-question-text span {
+        /*display: inline;*/
+        font-family: Cambria !important;
+        color: white !important;
+    }
+
+    .main-test{
+        padding-left: 40px;
+        padding-right: 40px;
+    }
+
+    .for-media{
+        display: none !important;
+    }
+
+    @media only screen and (max-width: 996px) {
+        .wrap-test {
+            padding-left: 0px !important;
+            padding-right: 0px !important;
+        }
+
+        .main-test {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+
+        }
+        
+        .not-for-media{
+            display: none !important;
+        }
+
+        .for-media{
+            display: block !important;
+        }
+
+        /*.passage-text-for-media{*/
+            /*height:35vh !important;*/
+            /*overflow: auto;*/
+        /*}*/
+
+        .passage-text{
+            /*padding-top:20px;padding-left:30px;padding-right:30px;*/
+            height: 35vh !important;
+            /*overflow: auto;*/
+        }
+
+        .question-content{
+            max-height: none !important;
+            height:35vh !important;
+            border-top: solid 1px lightgrey !important;
+        }
+
+        /*.list-question-bottom{*/
+            /*height:10vh !important;*/
+        /*}*/
+    }
+
+    .for-media-screen{
+        display: none !important;
+    }
+
+    @media only screen and (max-width: 1500px) {
+        .for-media-screen{
+            display: block !important;
+        }
+
+        .not-for-media-screen{
+            display: none;
+        }
+    }
+
+    .text-media{
+        margin:0 !important;;
+    }
+
+    .question-content{
+        padding-top: 10px;
+        padding-left:30px;
+        padding-right:30px;
+        /*max-height: 450px;*/
+        height: 65vh;
+        overflow: auto;
+    }
+
+    .passage-text{
+        padding-top:20px;padding-left:30px;padding-right:30px;
+        height: 65vh;
+        overflow: auto;
+    }
+
+    .passage-text p{
+        padding-bottom: 20px;
+        font-weight: 500;
+        font-size: 30px;
+    }
+
+    .wrap-test{
+        padding-left: 100px;
+        padding-right: 100px;
+        /*height: 50vh !important;*/
+        margin: auto;
+    }
+
+    h1,h2,h3,h4,h5,h6,p,span,em,h2>span>span {
+        font-size: 19px !important;
+        font-family: Cambria !important;
+    }
+
+
+    #question-have-image > p > span > img {
+        max-width: 80%;
+        height: auto;
+    }
+
+    #question-have-image > p > span > span > img {
+        max-width: 80%;
+        height: auto;
+    }
+
+    #question-have-image-map > p > img{
+        max-width: 100%;
+        height: auto;
+    }
+
+    .question-filling-root > span > table {
+        max-width:  100% !important;
+        width:  100% !important;
+        margin: 0 !important;
+    }
+
+    .btn:not(.md-skip):not(.bs-select-all):not(.bs-deselect-all){
+        min-height: 45px !important;
+    }
+    /*-- change font size --*/
+    /*#passage-text-1 > p > span {*/
+        /*font-size: 19px !important;*/
+    /*}*/
+
+    /*#passage-text-1 > p > span > span {*/
+        /*font-size: 19px !important;*/
+    /*}*/
+
+    /*#passage-text-1 > p > span > em {*/
+        /*font-size: 19px !important;*/
+    /*}*/
+
+    /*#passage-text-1 > h2 > span > span {*/
+        /*font-size: 19px !important;*/
+    /*}*/
+
+    /*-- change font size --*/
+
+
+    /* Split the screen in half */
+    .split {
+        height: 100%;
+        width: 50%;
+        position: fixed;
+        z-index: 1;
+        top: 0;
+        overflow-x: hidden;
+        padding-top: 20px;
+    }
+
+    /* Control the left side */
+    .left {
+        left: 0;
+        background-color: #111;
+    }
+
+    /* Control the right side */
+    .right {
+        right: 0;
+        background-color: red;
+    }
+
+    /* If you want the content centered horizontally and vertically */
+    .centered {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+
+    /* Style the image inside the centered container, if needed */
+    .centered img {
+        width: 150px;
+        border-radius: 50%;
+    }
+
+    .ui-select-choices-row-inner {
+        font-size: 15px !important;
+    }
+
+    .actual-test-font-global{
+        font-size: 19px;
+    }
+
+    .ui-select-bootstrap>.ui-select-choices, .ui-select-bootstrap>.ui-select-no-choice{
+        max-height: 300px;
+    }
+
+    .column {
+        float: left;
+        width: 50%;
+        padding-right: 20px;
+        min-height: 250px; /* Should be removed. Only for demonstration */
+    }
+
+    /* Clear floats after the columns */
+    .row-two-column:after {
+        content: "";
+        display: table;
+        clear: both;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /**
+ * Inspiration for this project found at:
+ * https://markus.oberlehner.net/blog/pure-css-animated-svg-circle-chart
+ * 1. The `reverse` animation direction plays the animation backwards
+ *    which makes it start at the stroke offset 100 which means displaying
+ *    no stroke at all and animating it to the value defined in the SVG
+ *    via the inline `stroke-dashoffset` attribute.
+ * 2. Rotate by -90 degree to make the starting point of the
+ *    stroke the top of the circle.
+ * 3. Using CSS transforms on SVG elements is not supported by Internet Explorer
+ *    and Edge, use the transform attribute directly on the SVG element as a
+ * .  workaround.
+ */
+
+    .circle-chart {
+        width: 150px;
+        height: 150px;
+    }
+
+    .circle-chart__circle {
+        stroke: #00acc1;
+        stroke-width: 2;
+        stroke-linecap: square;
+        fill: none;
+        animation: circle-chart-fill 2s reverse; /* 1 */
+        transform: rotate(-90deg); /* 2, 3 */
+        transform-origin: center; /* 4 */
+    }
+
+    /**
+     * 1. Rotate by -90 degree to make the starting point of the
+     *    stroke the top of the circle.
+     * 2. Scaling mirrors the circle to make the stroke move right
+     *    to mark a positive chart value.
+     * 3. Using CSS transforms on SVG elements is not supported by Internet Explorer
+     *    and Edge, use the transform attribute directly on the SVG element as a
+     * .  workaround.
+     */
+
+    .circle-chart__circle--negative {
+        transform: rotate(-90deg) scale(1,-1); /* 1, 2, 3 */
+    }
+
+    .circle-chart__background {
+        stroke: #efefef;
+        stroke-width: 2;
+        fill: none;
+    }
+
+    .circle-chart__info {
+        animation: circle-chart-appear 2s forwards;
+        opacity: 0;
+        transform: translateY(0.3em);
+    }
+
+    .circle-chart__percent {
+        alignment-baseline: central;
+        text-anchor: middle;
+        font-size: 8px;
+    }
+
+    .circle-chart__subline {
+        alignment-baseline: central;
+        text-anchor: middle;
+        font-size: 3px;
+    }
+
+    .success-stroke {
+        stroke: #00C851;
+    }
+
+    .warning-stroke {
+        stroke: #ffbb33;
+    }
+
+    .danger-stroke {
+        stroke: #ff4444;
+    }
+
+    @keyframes circle-chart-fill {
+        to { stroke-dasharray: 0 100; }
+    }
+
+    @keyframes circle-chart-appear {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /*@import url('https://fonts.googleapis.com/css?family=Poppins:400,500,700&display=swap');*/
+
+    /** {*/
+        /*margin: 0;*/
+        /*padding: 0;*/
+        /*font-family: 'Poppins', sans-serif;*/
+        /*box-sizing: border-box;*/
+    /*}*/
+
+    /*button:focus, input:focus, textarea:focus {*/
+        /*outline: 0;*/
+    /*}*/
+
+    .skill_wrapper {
+        padding: 80px 0;
+        background: #1c84cc;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+    }
+
+    .head_text {
+        font-size: 45px;
+        font-weight: 700;
+        color: #000000;
+        margin-bottom: 70px;
+        color: #ffffff;
+    }
+
+    .box {
+        text-align: center;
+        padding: 40px;
+        box-shadow: rgba(50, 50, 93, 0.25) 0 50px 100px -20px, rgba(0, 0, 0, 0.3) 0 30px 60px -30px;
+        margin-bottom: 25px;
+    }
+
+    .circlechart {
+        font-weight: 700;
+    }
+
+    .circle-chart__percent, .circle-chart__subline {
+        color: darkred;
+    }
+
+    .left-result{
+        margin-right: 20px;
+        padding: 20px;
+        background: white;
+        box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+    }
+
+    .right-result{
+        pointer-events:none;
+        padding: 20px;
+        background: white;
+        box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+    }
+
+    .start-test-form{
+        margin-right: 20px;
+        padding: 20px;
+        background: white;
+        box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+    }
+
+    .start-test-button{
+        padding: 20px;
+        background: white;
+        box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+    }
+
+    .start-test-button:hover{
+        background: aliceblue;
+        /*color: white;*/
+    }
+
+    /*.change-length{*/
+        /*position: fixed;*/
+        /*bottom:61px;*/
+    /*}*/
+
+</style>
+
+<!-- BEGIN MAIN JS -->

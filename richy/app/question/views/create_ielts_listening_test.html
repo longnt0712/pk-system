@@ -1,0 +1,791 @@
+<!-- END PAGE HEADER-->
+<!-- BEGIN MAIN CONTENT -->
+<div class="row margin-top-10">
+    <div class="col-md-12 margin-bottom-10" >
+        <div class="portlet light bordered">
+            <div class="portlet-body">
+
+                <div class="row">
+                    <div class="col-md-4 margin-bottom-20">
+                        <div class="input-group">
+                            <input ng-model="vm.searchDto.textSearch" ng-keyup="vm.enterSearchCode(e)" type="text"  class="form-control" placeholder="Find test...">
+                            <div class="input-group-btn">
+                                <button ng-click="vm.codeChange()" class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <table id="bsTableControl" bs-table-control="vm.bsTableControlCreateIELTSReadingTest"></table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-12" ng-if="settings.isAdmin == true">
+    
+        <div class="portlet light bordered">
+            <div class="portlet-body">
+                <div class="row">
+                    <div class="col-md-3"></div>
+                    <div class="col-md-6">
+                        <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" style="height: 50px" data-ng-model="vm.ieltsListeningTest.title" type="text" class="form-control" placeholder="Test Name..." />
+                    </div>
+                    <!--<div class="col-md-3"><button style="height: 50px;width: 50px;border-radius: 25px" class="btn btn-primary" data-ng-click="vm.saveReadingTest()"><i class="fa fa-plus-circle"></i></button></div>-->
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Passage 1 -->
+    <div class="col-md-12" ng-if="settings.isAdmin == true">
+
+        <div class="portlet light bordered">
+            <div class="portlet-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="row" style="margin-bottom: 5px">
+                            <div class="col-md-3">
+                                <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest()" data-ng-model="vm.ieltsListeningTest.subQuestions[0].type" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                    <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
+                                    <ui-select-choices repeat="type.id as type in vm.types | propsFilter: {name: $select.search}">
+                                        <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
+                                        <small>{{type.notice}}</small>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                            <div class="col-md-6 text-center" style="margin-bottom: 5px">
+                                <p class="bold" style="font-size: 18px">Passage 1</p>
+                            </div>
+                            <div class="col-md-3 text-right" >
+                                <button ng-show="vm.createPackage == false" class="btn btn-primary" data-ng-click="vm.startCreateQuestionForPassage1()"><i class="fa fa-arrow-right"></i> Start Creating Questions</button>
+                            </div>
+
+
+                            <div class="col-md-12">
+                                <!--<h3 ng-show="item.ordinalNumber == 2" class="bold">Heading and sub heading</h3>-->
+                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" class="form-control" placeholder="Listening Url" ng-model="vm.ieltsListeningTest.subQuestions[0].question" />
+                            </div>
+                        </div>
+
+                        <!--<div class="row">-->
+                            <!--<div class="col-md-12">-->
+                                <!--<button class="btn btn-info" data-ng-click="vm.pushParagraph()"><i class="fa fa-arrow-down"></i> Adding new Passages</button>-->
+                            <!--</div>-->
+                        <!--</div>-->
+
+                    </div>
+
+
+
+
+                    <!-- add question -->
+
+                    <div class="col-md-6">
+
+                        <div class="col-md-12" ng-repeat="item in vm.ieltsListeningTest.subQuestions[0].subQuestions">
+                            <div class="row margin-bottom-5">
+                                <div class="col-md-6">
+                                    <p style="font-size: 18px" class="bold">Question for package {{item.ordinalNumber}}</p>
+                                    <a class="btn btn-danger" ng-click="deleteObject(item.id)">DELETE PACKAGE</a>
+                                </div>
+                                <div class="col-md-6">
+                                    <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest(item)" data-ng-model="item.type" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                        <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
+                                        <ui-select-choices repeat="type.id as type in vm.types | propsFilter: {name: $select.search}">
+                                            <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
+                                            <small>{{type.notice}}</small>
+                                        </ui-select-choices>
+                                    </ui-select>
+                                </div>
+                            </div>
+                            <!--<label class="form-check-label bold" for="defaultCheck1">-->
+                            <!--The number of question = &nbsp;-->
+                            <!--</label>-->
+                            <!--<input data-ng-change="vm.numberQuestionForPackage1ForReadingTestPassage1Change()" class="" type="number" data-ng-model="vm.numberQuestionForPackage1ForReadingTestPassage1"  id="defaultCheck1">-->
+
+                            <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+
+
+                            <!--<div ng-show="vm.highestOrdinalNumberPackageForPassage1 - 1 == $index && vm.showSetUp == true;" class="row margin-bottom-5">-->
+
+                            <div class="col-md-12" ng-show="item.isHaveChildren == false">
+                                <div class="col-md-12">
+                                    <p style="font-size: 15px" class="bold">Configuring Answers for Questions</p>
+                                </div>
+                                <label class="bold" for="fromOfQuestions">
+                                    From question
+                                </label>
+                                <input style="margin-top: 5px;margin-bottom: 5px" data-ng-disabled="vm.disableFromQuestion == true" type="number" id="fromOfQuestions"  data-ng-model="vm.fromQuestion">
+
+                                <label class="bold" for="toOfQuestions">
+                                    to question
+                                </label>
+                                <input style="margin-top: 5px;margin-bottom: 5px" type="number" id="toOfQuestions" data-ng-model="vm.toQuestion" ng-change="vm.validateFromToQuestion()">
+
+                                <br>
+                                <label class="bold" for="numberConfig">
+                                    The number of answers for each question
+                                </label>
+                                <input style="margin-top: 5px;margin-bottom: 5px" type="number" id="numberConfig" ng-model="vm.numberOfAnswers" ng-change="vm.createTempAnswers($index)">
+                                <!--<button class="btn btn-primary" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.createTempAnswers($index)"><i class="fa fa-arrow-down"></i> Setting up Answers</button>-->
+                                <div ng-repeat="c in vm.tempAnswers" style="margin-bottom:5px">
+                                    <input class="form-control" type="text" data-ng-model="c.answer.answer">
+                                </div>
+                                <p><span class="font-red bold">WARNING: </span>The process of configuring Answer for each package will disappear if you click ' <span class="bold font-yellow"> Adding questions for Package </span>' => make sure your configuration is correct</p>
+                                <button class="btn btn-warning" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addQuestionForPassage1($index)"><i class="fa fa-arrow-down"></i> Adding Questions For package {{item.ordinalNumber}}</button>
+                            </div>
+
+
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions">
+                                    <div class="col-md-12">
+                                        <div class="row">
+                                            <div class="col-md-2">
+                                                <h4 class="bold">Question {{q.ordinalNumber}}</h4>
+                                            </div>
+                                            <div class="col-md-10">
+                                                <textarea ng-if="item.type == 2" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinyConFigQuestion" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <textarea ng-if="item.type != 2" ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <!--<button class="btn btn-success" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addAnswerForQuestionForPassage1($index)"><i class="fa fa-plus-circle"></i> Adding answers For Questions {{q.ordinalNumber}}</button>-->
+                                                <small style="font-style: italic;font-weight: bold">(tick 'v' at where it is the correct answer)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+
+                                    <div class="row">
+                                        <div class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                            <div class="row">
+                                                <div class="col-md-2"></div>
+                                                <div class="col-md-2">
+                                                    <h4 class="bold">Answer {{a.ordinalNumberQuestionAnswer}}</h4>
+                                                </div>
+                                                <div class="col-md-7">
+                                                    <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                </div>
+                                                <div class="col-md-1">
+                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  type="checkbox"  id="defaultCheck1" data-ng-model="a.correct">
+                                                </div>
+                                            </div>
+                                            <!--<textarea class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>-->
+                                            <!--<button class="btn btn-primary" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addAnswer(q.ordinalNumber)"><i class="fa fa-plus-circle"></i> Adding answers For Questions {{q.ordinalNumber}}</button>-->
+
+
+                                        </div>
+
+                                    </div>
+
+                                    <hr>
+
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="col-md-12 margin-bottom-10" ng-show="vm.createPackage == true">
+                            <!--<div class="row">-->
+                                <!--<div class="col-md-12">-->
+                                    <!--<p class="bold" style="font-size: 18px">Create Package {{vm.highestOrdinalNumberPackageForPassage1 + 1}}</p>-->
+                                <!--</div>-->
+
+                                <!--<div class="col-md-12">-->
+                                    <!--<label style="font-size: 18px" class="form-check-label bold" for="numberQuestion1">-->
+                                        <!--From question number: &nbsp;-->
+                                    <!--</label>-->
+                                    <!--<input type="number" data-ng-change="vm.changeNumberQuestion()" id="numberQuestion1" data-ng-model="vm.fromNumber">-->
+                                    <!--&nbsp;-->
+                                    <!--<label style="font-size: 18px" class="form-check-label bold" for="numberQuestion2">-->
+                                        <!--to question number: &nbsp;-->
+                                    <!--</label>-->
+                                    <!--<input type="number" id="numberQuestion2" data-ng-model="vm.fromNumber">-->
+
+                                <!--</div>-->
+
+                                <!--<div class="col-md-12" style="margin-bottom: 10px">-->
+                                    <!--<ui-select ng-change="" data-ng-model="vm.readingQuestionType" sortable="true" close-on-select="true" style="width: 100% !important;">-->
+                                        <!--<ui-select-match allow-clear="true" placeholder="Choose type...">{{$select.selected.name}}</ui-select-match>-->
+                                        <!--<ui-select-choices repeat="t in vm.readingQuestionTypes | propsFilter: {name: $select.search}">-->
+                                            <!--<div class="bold" ng-bind-html="t.name | highlight: $select.search">-->
+                                            <!--</div>-->
+                                        <!--</ui-select-choices>-->
+                                    <!--</ui-select>-->
+                                <!--</div>-->
+                            <hr>
+                                <div class="col-md-9" ng-show="vm.createPassageNumber == 1">
+                                    <button class="btn btn-info" data-ng-click="vm.addPackageForPassage1()"><i class="fa fa-arrow-down"></i> Adding Packages for passage 1</button>
+                                </div>
+                            <div class="col-md-9" ng-show="vm.createPassageNumber == 2">
+                            </div>
+                            <div class="col-md-3 text-right">
+                                <button  class="btn btn-warning" data-ng-click="vm.startCreatePassage2()"><i class="fa fa-arrow-down"></i> Start creating for passage 2</button>
+                            </div>
+                            <!--</div>-->
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+
+
+        <!--<div class="col-md-4 margin-bottom-20 text-right" style="padding-right: 5px">-->
+            <!--<button ng-if="vm.isCreateNewIELTSWritingTest == true" class="btn btn-primary" data-ng-click="vm.saveCreateIELTSWriting()"><i class="fa fa-save"></i>   Add new</button>-->
+            <!--<button ng-if="vm.isCreateNewIELTSWritingTest == false" class="btn btn-primary" data-ng-click="vm.saveCreateIELTSWriting();"><i class="fa fa-pencil"></i>   Edit Text</button>-->
+            <!--<button ng-if="vm.isCreateNewIELTSWritingTest == false" class="btn btn-default" data-ng-click="vm.cancelEditingCreateIELTSWritingTest()"><i class="fa fa-times"></i>   Cancel Edit</button>-->
+        <!--</div>-->
+
+    </div>
+
+    <!-- Passage 2 -->
+    <div class="col-md-12" ng-show="vm.createPassageNumber == 2 || vm.createPassageNumber == 3 || vm.createPassageNumber == 4" ng-if="settings.isAdmin == true">
+
+        <div class="portlet light bordered">
+            <div class="portlet-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="row" style="margin-bottom: 5px">
+                            <div class="col-md-3">
+                                <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest()" data-ng-model="vm.ieltsListeningTest.subQuestions[1].type" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                    <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
+                                    <ui-select-choices repeat="type.id as type in vm.types | propsFilter: {name: $select.search}">
+                                        <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
+                                        <small>{{type.notice}}</small>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                            <div class="col-md-6 text-center" style="margin-bottom: 5px">
+                                <p class="bold" style="font-size: 18px">Passage 2</p>
+                            </div>
+                            <!--<div class="col-md-3 text-right" >-->
+                                <!--<button ng-show="vm.createPackagePassage2 == false" class="btn btn-primary" data-ng-click="vm.startCreateQuestionForPassage2()"><i class="fa fa-arrow-right"></i> Start Creating Questions</button>-->
+                            <!--</div>-->
+
+                            <div class="col-md-12">
+                                <!--<h3 ng-show="item.ordinalNumber == 2" class="bold">Heading and sub heading</h3>-->
+                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsListeningTest.subQuestions[1].question" />
+                            </div>
+                        </div>
+
+                        <!--<div class="row">-->
+                        <!--<div class="col-md-12">-->
+                        <!--<button class="btn btn-info" data-ng-click="vm.pushParagraph()"><i class="fa fa-arrow-down"></i> Adding new Passages</button>-->
+                        <!--</div>-->
+                        <!--</div>-->
+
+                    </div>
+
+
+
+
+                    <!-- add question -->
+
+                    <div class="col-md-6">
+
+                        <div class="col-md-12" ng-repeat="item in vm.ieltsListeningTest.subQuestions[1].subQuestions">
+                            <div class="row margin-bottom-5">
+                                <div class="col-md-6">
+                                    <p style="font-size: 18px" class="bold">Question for package {{item.ordinalNumber}}</p>
+                                    <a class="btn btn-danger" ng-click="deleteObject(item.id)">DELETE PACKAGE</a>
+                                </div>
+                                <div class="col-md-6">
+                                    <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest(item)" data-ng-model="item.type" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                        <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
+                                        <ui-select-choices repeat="type.id as type in vm.types | propsFilter: {name: $select.search}">
+                                            <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
+                                            <small>{{type.notice}}</small>
+                                        </ui-select-choices>
+                                    </ui-select>
+                                </div>
+                            </div>
+
+
+                            <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+
+                            <div class="col-md-12" ng-show="item.isHaveChildren == false">
+                                <div class="col-md-12">
+
+                                    <p style="font-size: 15px" class="bold">Configuring Answers for Questions</p>
+                                </div>
+                                <label class="bold" for="fromOfQuestions">
+                                    From question
+                                </label>
+                                <input style="margin-top: 5px;margin-bottom: 5px" type="number" data-ng-disabled="vm.disableFromQuestion == true" id="fromOfQuestions"  data-ng-model="vm.fromQuestion">
+
+                                <label class="bold" for="toOfQuestions">
+                                    To question
+                                </label>
+                                <input style="margin-top: 5px;margin-bottom: 5px" type="number" id="toOfQuestions" data-ng-model="vm.toQuestion" ng-change="vm.validateFromToQuestion()">
+
+                                <br>
+                                <label class="bold" for="numberConfig">
+                                    The number of answers for each question
+                                </label>
+                                <input style="margin-top: 5px;margin-bottom: 5px" type="number" id="numberConfig" ng-model="vm.numberOfAnswers" ng-change="vm.createTempAnswers($index)">
+                                <!--<button class="btn btn-primary" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.createTempAnswers($index)"><i class="fa fa-arrow-down"></i> Setting up Answers</button>-->
+                                <div ng-repeat="c in vm.tempAnswers" style="margin-bottom:5px">
+                                    <input class="form-control" type="text" data-ng-model="c.answer.answer">
+                                </div>
+                                <p><span class="font-red bold">WARNING: </span>The process of configuring Answer for each package will disappear if you click ' <span class="bold font-yellow"> Adding questions for Package </span>' => make sure your configuration is correct</p>
+                                <button class="btn btn-warning" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addQuestionForPassage2($index)"><i class="fa fa-arrow-down"></i> Adding Questions For package {{item.ordinalNumber}}</button>
+                            </div>
+
+                            <!--<button class="btn btn-warning" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addQuestionForPassage2($index)"><i class="fa fa-arrow-down"></i> Adding Questions For package {{item.ordinalNumber}}</button>-->
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions">
+
+                                    <div class="col-md-12">
+                                        <div class="row">
+                                            <div class="col-md-2">
+                                                <h4 class="bold">Question {{q.ordinalNumber}}</h4>
+                                            </div>
+                                            <div class="col-md-10">
+                                                <textarea ng-if="item.type == 2" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinyConFigQuestion" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <textarea ng-if="item.type != 2" ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <!--<button class="btn btn-success" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addAnswerForQuestionForPassage2($index)"><i class="fa fa-plus-circle"></i> Adding answers For Questions {{q.ordinalNumber}}</button>-->
+                                                <small style="font-style: italic;font-weight: bold">(tick 'v' where it is the correct answer)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+
+                                    <div class="row">
+                                        <div class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                            <div class="row">
+                                                <div class="col-md-2"></div>
+                                                <div class="col-md-2">
+                                                    <h4 class="bold">Answer {{a.ordinalNumberQuestionAnswer}}</h4>
+                                                </div>
+                                                <div class="col-md-7">
+                                                    <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                </div>
+                                                <div class="col-md-1">
+                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  type="checkbox"  id="defaultCheck1" data-ng-model="a.correct">
+                                                </div>
+                                            </div>
+                                            <!--<textarea class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>-->
+                                            <!--<button class="btn btn-primary" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addAnswer(q.ordinalNumber)"><i class="fa fa-plus-circle"></i> Adding answers For Questions {{q.ordinalNumber}}</button>-->
+
+
+                                        </div>
+
+                                    </div>
+
+                                    <hr>
+
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="col-md-12 margin-bottom-10" ng-show="vm.createPackage == true">
+                            <!--<div class="row">-->
+                            <!--<div class="col-md-12">-->
+                            <!--<p class="bold" style="font-size: 18px">Create Package {{vm.highestOrdinalNumberPackageForPassage1 + 1}}</p>-->
+                            <!--</div>-->
+
+                            <!--<div class="col-md-12">-->
+                            <!--<label style="font-size: 18px" class="form-check-label bold" for="numberQuestion1">-->
+                            <!--From question number: &nbsp;-->
+                            <!--</label>-->
+                            <!--<input type="number" data-ng-change="vm.changeNumberQuestion()" id="numberQuestion1" data-ng-model="vm.fromNumber">-->
+                            <!--&nbsp;-->
+                            <!--<label style="font-size: 18px" class="form-check-label bold" for="numberQuestion2">-->
+                            <!--to question number: &nbsp;-->
+                            <!--</label>-->
+                            <!--<input type="number" id="numberQuestion2" data-ng-model="vm.fromNumber">-->
+
+                            <!--</div>-->
+
+                            <!--<div class="col-md-12" style="margin-bottom: 10px">-->
+                            <!--<ui-select ng-change="" data-ng-model="vm.readingQuestionType" sortable="true" close-on-select="true" style="width: 100% !important;">-->
+                            <!--<ui-select-match allow-clear="true" placeholder="Choose type...">{{$select.selected.name}}</ui-select-match>-->
+                            <!--<ui-select-choices repeat="t in vm.readingQuestionTypes | propsFilter: {name: $select.search}">-->
+                            <!--<div class="bold" ng-bind-html="t.name | highlight: $select.search">-->
+                            <!--</div>-->
+                            <!--</ui-select-choices>-->
+                            <!--</ui-select>-->
+                            <!--</div>-->
+
+                            <hr>
+                            <div class="col-md-9" ng-show="vm.createPassageNumber == 2">
+                                <button class="btn btn-info" data-ng-click="vm.addPackageForPassage2()"><i class="fa fa-arrow-down"></i> Adding Packages for passage 2</button>
+                            </div>
+                            <div class="col-md-9" ng-show="vm.createPassageNumber == 3">
+                            </div>
+                            <div class="col-md-3 text-right">
+                                <button  class="btn btn-warning" data-ng-click="vm.startCreatePassage3()"><i class="fa fa-arrow-down"></i> Start creating for passage 3</button>
+                            </div>
+                            <!--</div>-->
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+
+
+        <!--<div class="col-md-4 margin-bottom-20 text-right" style="padding-right: 5px">-->
+        <!--<button ng-if="vm.isCreateNewIELTSWritingTest == true" class="btn btn-primary" data-ng-click="vm.saveCreateIELTSWriting()"><i class="fa fa-save"></i>   Add new</button>-->
+        <!--<button ng-if="vm.isCreateNewIELTSWritingTest == false" class="btn btn-primary" data-ng-click="vm.saveCreateIELTSWriting();"><i class="fa fa-pencil"></i>   Edit Text</button>-->
+        <!--<button ng-if="vm.isCreateNewIELTSWritingTest == false" class="btn btn-default" data-ng-click="vm.cancelEditingCreateIELTSWritingTest()"><i class="fa fa-times"></i>   Cancel Edit</button>-->
+        <!--</div>-->
+
+    </div>
+
+
+    <!-- Passage 3 -->
+    <div class="col-md-12" ng-show="vm.createPassageNumber == 3 || vm.createPassageNumber == 4" ng-if="settings.isAdmin == true">
+
+        <div class="portlet light bordered">
+            <div class="portlet-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="row" style="margin-bottom: 5px">
+                            <div class="col-md-3">
+                                <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest()" data-ng-model="vm.ieltsListeningTest.subQuestions[2].type" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                    <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
+                                    <ui-select-choices repeat="type.id as type in vm.types | propsFilter: {name: $select.search}">
+                                        <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
+                                        <small>{{type.notice}}</small>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                            <div class="col-md-6 text-center" style="margin-bottom: 5px">
+                                <p class="bold" style="font-size: 18px">Passage 3</p>
+                            </div>
+
+                            <div class="col-md-12">
+                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsListeningTest.subQuestions[2].question" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- add question -->
+
+                    <div class="col-md-6">
+
+                        <div class="col-md-12" ng-repeat="item in vm.ieltsListeningTest.subQuestions[2].subQuestions">
+                            <div class="row margin-bottom-5">
+                                <div class="col-md-6">
+                                    <p style="font-size: 18px" class="bold">Question for package {{item.ordinalNumber}}</p>
+                                    <a class="btn btn-danger" ng-click="deleteObject(item.id)">DELETE PACKAGE</a>
+                                </div>
+                                <div class="col-md-6">
+                                    <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest(item)" data-ng-model="item.type" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                        <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
+                                        <ui-select-choices repeat="type.id as type in vm.types | propsFilter: {name: $select.search}">
+                                            <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
+                                            <small>{{type.notice}}</small>
+                                        </ui-select-choices>
+                                    </ui-select>
+                                </div>
+                            </div>
+
+                            <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+
+                            <div class="col-md-12" ng-show="item.isHaveChildren == false">
+                                <div class="col-md-12">
+
+                                    <p style="font-size: 15px" class="bold">Configuring Answers for Questions</p>
+                                </div>
+                                <label class="bold" for="fromOfQuestions">
+                                    From question
+                                </label>
+                                <input style="margin-top: 5px;margin-bottom: 5px" type="number" data-ng-disabled="vm.disableFromQuestion == true" id="fromOfQuestions"  data-ng-model="vm.fromQuestion">
+
+                                <label class="bold" for="toOfQuestions">
+                                    To question
+                                </label>
+                                <input style="margin-top: 5px;margin-bottom: 5px" type="number" id="toOfQuestions" data-ng-model="vm.toQuestion" ng-change="vm.validateFromToQuestion()">
+
+                                <br>
+                                <label class="bold" for="numberConfig">
+                                    The number of answers for each question
+                                </label>
+                                <input style="margin-top: 5px;margin-bottom: 5px" type="number" id="numberConfig" ng-model="vm.numberOfAnswers" ng-change="vm.createTempAnswers($index)">
+                                <!--<button class="btn btn-primary" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.createTempAnswers($index)"><i class="fa fa-arrow-down"></i> Setting up Answers</button>-->
+                                <div ng-repeat="c in vm.tempAnswers" style="margin-bottom:5px">
+                                    <input class="form-control" type="text" data-ng-model="c.answer.answer">
+                                </div>
+                                <p><span class="font-red bold">WARNING: </span>The process of configuring Answer for each package will disappear if you click ' <span class="bold font-yellow"> Adding questions for Package </span>' => make sure your configuration is correct</p>
+                                <button class="btn btn-warning" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addQuestionForPassage3($index)"><i class="fa fa-arrow-down"></i> Adding Questions For package {{item.ordinalNumber}}</button>
+                            </div>
+
+                            <!--<button class="btn btn-warning" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addQuestionForPassage2($index)"><i class="fa fa-arrow-down"></i> Adding Questions For package {{item.ordinalNumber}}</button>-->
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions">
+
+                                    <div class="col-md-12">
+                                        <div class="row">
+                                            <div class="col-md-2">
+                                                <h4 class="bold">Question {{q.ordinalNumber}}</h4>
+                                            </div>
+                                            <div class="col-md-10">
+                                                <textarea ng-if="item.type == 2" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinyConFigQuestion" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <textarea ng-if="item.type != 2" ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <!--<button class="btn btn-success" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addAnswerForQuestionForPassage3($index)"><i class="fa fa-plus-circle"></i> Adding answers For Questions {{q.ordinalNumber}}</button>-->
+                                                <small style="font-style: italic;font-weight: bold">(tick 'v' where it is the correct answer)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+
+                                    <div class="row">
+                                        <div class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                            <div class="row">
+                                                <div class="col-md-2"></div>
+                                                <div class="col-md-2">
+                                                    <h4 class="bold">Answer {{a.ordinalNumberQuestionAnswer}}</h4>
+                                                </div>
+                                                <div class="col-md-7">
+                                                    <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                </div>
+                                                <div class="col-md-1">
+                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  type="checkbox"  id="defaultCheck1" data-ng-model="a.correct">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <hr>
+
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="col-md-12 margin-bottom-10" ng-show="vm.createPackage == true">
+                            <hr>
+                            <!--<div class="col-md-3">-->
+                                <!--<button  class="btn btn-info" data-ng-click="vm.addPackageForPassage3()"><i class="fa fa-arrow-down"></i> Adding Packages for passage 3</button>-->
+                            <!--</div>-->
+                            <div class="col-md-9" ng-show="vm.createPassageNumber == 3">
+                                <button class="btn btn-info" data-ng-click="vm.addPackageForPassage3()"><i class="fa fa-arrow-down"></i> Adding Packages for passage 3</button>
+                            </div>
+                            <div class="col-md-9" ng-show="vm.createPassageNumber == 4">
+                            </div>
+                            <div class="col-md-3 text-right">
+                                <button  class="btn btn-warning" data-ng-click="vm.startCreatePassage4()"><i class="fa fa-arrow-down"></i> Start creating for passage 4</button>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Passage 4 -->
+    <div class="col-md-12" ng-show="vm.createPassageNumber == 4" ng-if="settings.isAdmin == true">
+
+        <div class="portlet light bordered">
+            <div class="portlet-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="row" style="margin-bottom: 5px">
+                            <div class="col-md-3">
+                                <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest()" data-ng-model="vm.ieltsListeningTest.subQuestions[3].type" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                    <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
+                                    <ui-select-choices repeat="type.id as type in vm.types | propsFilter: {name: $select.search}">
+                                        <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
+                                        <small>{{type.notice}}</small>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                            <div class="col-md-6 text-center" style="margin-bottom: 5px">
+                                <p class="bold" style="font-size: 18px">Passage 4</p>
+                            </div>
+
+                            <div class="col-md-12">
+                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsListeningTest.subQuestions[3].question" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- add question -->
+
+                    <div class="col-md-6">
+
+                        <div class="col-md-12" ng-repeat="item in vm.ieltsListeningTest.subQuestions[3].subQuestions">
+                            <div class="row margin-bottom-5">
+                                <div class="col-md-6">
+                                    <p style="font-size: 18px" class="bold">Question for package {{item.ordinalNumber}}</p>
+                                    <a class="btn btn-danger" ng-click="deleteObject(item.id)">DELETE PACKAGE</a>
+                                </div>
+                                <div class="col-md-6">
+                                    <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest(item)" data-ng-model="item.type" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                        <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
+                                        <ui-select-choices repeat="type.id as type in vm.types | propsFilter: {name: $select.search}">
+                                            <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
+                                            <small>{{type.notice}}</small>
+                                        </ui-select-choices>
+                                    </ui-select>
+                                </div>
+                            </div>
+
+                            <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+
+                            <div class="col-md-12" ng-show="item.isHaveChildren == false">
+                                <div class="col-md-12">
+
+                                    <p style="font-size: 15px" class="bold">Configuring Answers for Questions</p>
+                                </div>
+                                <label class="bold" for="fromOfQuestions">
+                                    From question
+                                </label>
+                                <input style="margin-top: 5px;margin-bottom: 5px" type="number" data-ng-disabled="vm.disableFromQuestion == true" id="fromOfQuestions"  data-ng-model="vm.fromQuestion">
+
+                                <label class="bold" for="toOfQuestions">
+                                    To question
+                                </label>
+                                <input style="margin-top: 5px;margin-bottom: 5px" type="number" id="toOfQuestions" data-ng-model="vm.toQuestion" ng-change="vm.validateFromToQuestion()">
+
+                                <br>
+                                <label class="bold" for="numberConfig">
+                                    The number of answers for each question
+                                </label>
+                                <input style="margin-top: 5px;margin-bottom: 5px" type="number" id="numberConfig" ng-model="vm.numberOfAnswers" ng-change="vm.createTempAnswers($index)">
+                                <!--<button class="btn btn-primary" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.createTempAnswers($index)"><i class="fa fa-arrow-down"></i> Setting up Answers</button>-->
+                                <div ng-repeat="c in vm.tempAnswers" style="margin-bottom:5px">
+                                    <input class="form-control" type="text" data-ng-model="c.answer.answer">
+                                </div>
+                                <p><span class="font-red bold">WARNING: </span>The process of configuring Answer for each package will disappear if you click ' <span class="bold font-yellow"> Adding questions for Package </span>' => make sure your configuration is correct</p>
+                                <button class="btn btn-warning" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addQuestionForPassage4($index)"><i class="fa fa-arrow-down"></i> Adding Questions For package {{item.ordinalNumber}}</button>
+                            </div>
+
+                            <!--<button class="btn btn-warning" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addQuestionForPassage2($index)"><i class="fa fa-arrow-down"></i> Adding Questions For package {{item.ordinalNumber}}</button>-->
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions">
+
+                                    <div class="col-md-12">
+                                        <div class="row">
+                                            <div class="col-md-2">
+                                                <h4 class="bold">Question {{q.ordinalNumber}}</h4>
+                                            </div>
+                                            <div class="col-md-10">
+                                                <textarea ng-if="item.type == 2" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinyConFigQuestion" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <textarea ng-if="item.type != 2" ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <!--<button class="btn btn-success" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addAnswerForQuestionForPassage3($index)"><i class="fa fa-plus-circle"></i> Adding answers For Questions {{q.ordinalNumber}}</button>-->
+                                                <small style="font-style: italic;font-weight: bold">(tick 'v' where it is the correct answer)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+
+                                    <div class="row">
+                                        <div class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                            <div class="row">
+                                                <div class="col-md-2"></div>
+                                                <div class="col-md-2">
+                                                    <h4 class="bold">Answer {{a.ordinalNumberQuestionAnswer}}</h4>
+                                                </div>
+                                                <div class="col-md-7">
+                                                    <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                </div>
+                                                <div class="col-md-1">
+                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  type="checkbox"  id="defaultCheck1" data-ng-model="a.correct">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <hr>
+
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="col-md-12 margin-bottom-10" ng-show="vm.createPackage == true">
+                            <hr>
+                            <div class="col-md-3">
+                                <button  class="btn btn-info" data-ng-click="vm.addPackageForPassage4()"><i class="fa fa-arrow-down"></i> Adding Packages for passage 4</button>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+
+</div>
+
+
+<script type="text/ng-template" id="result_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="fa fa-check"></i>Đáp án</h4>
+        </div>
+        <div class="modal-body">
+
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>
+        </div>
+    </div>
+</script>
+
+<style>
+    .dx-htmleditor-content img {
+        vertical-align: middle;
+        padding-right: 10px;
+    }
+
+    .dx-htmleditor-content table {
+        width: 50%;
+    }
+
+    .options {
+        padding: 20px;
+        background-color: rgba(191, 191, 191, 0.15);
+        margin-top: 20px;
+    }
+
+    .caption {
+        font-size: 18px;
+        font-weight: 500;
+    }
+
+    .option {
+        margin-top: 10px;
+    }
+
+</style>
+
+<script type="text/ng-template" id="confirm_delete_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title"><i class="icon-question"></i>Xóa</h4>
+        </div>
+        <div class="modal-body">
+            <p>Bạn có chắc chắn muốn xóa bản ghi đã chọn không?</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>
+        </div>
+    </div>
+</script>
+
+<!-- BEGIN MAIN JS -->
