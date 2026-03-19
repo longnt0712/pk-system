@@ -204,8 +204,27 @@
         /**
          * New event account
          */
-        vm.newObject = function () {
+        vm.saveObject = function () {
+            // service.saveObject(vm.mark, function success(response) {
+            //
+            //     vm.getPage();
+            //     toastr.info(response.message, 'Thông báo');
+            //     vm.mark = {};
+            //
+            // }, function failure() {
+            //     toastr.error('Có lỗi khi cập nhật điểm', 'Lỗi');
+            // });
 
+            service.saveObject(vm.mark).then(function (data) {
+                vm.getPage();
+                toastr.info(data.message, 'Thông báo');
+            }, function failure() {
+                toastr.error('Có lỗi khi cập nhật điểm', 'Lỗi');
+            });
+        };
+
+        vm.newObject = function () {
+            vm.mark = {};
             vm.mark.isNew = true;
 
             var modalInstance = modal.open({
@@ -216,15 +235,16 @@
             });
 
             modalInstance.result.then(function (confirm) {
-                if (confirm == 'yes') {
-                    service.saveObject(vm.mark, function success() {
-                        vm.getPage();
-                        toastr.info('Bạn đã tạo mới thành công một tài khoản.', 'Thông báo');
-                        vm.mark = {};
-                    }, function failure() {
-                        toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
-                    });
-                }
+                // if (confirm == 'yes') {
+                //     // service.saveObject(vm.mark, function success() {
+                //     //     vm.getPage();
+                //     //     toastr.info('Bạn đã tạo mới thành công một tài khoản.', 'Thông báo');
+                //     //     vm.mark = {};
+                //     // }, function failure() {
+                //     //     toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
+                //     // });
+                //     vm.saveObject();
+                // }
             }, function () {
                 vm.mark = {};
             });
@@ -246,13 +266,14 @@
 
                 modalInstance.result.then(function (confirm) {
                     if (confirm == 'yes') {
-                        service.saveObject(vm.mark, function success() {
-                            vm.getPage();
-                            toastr.info('Bạn đã lưu thành công một bản ghi.', 'Thông báo');
-                            vm.mark = {};
-                        }, function failure() {
-                            toastr.error('Có lỗi xảy ra khi lưu thông tin tài khoản.', 'Lỗi');
-                        });
+                        // service.saveObject(vm.mark, function success() {
+                        //     vm.getPage();
+                        //     toastr.info('Bạn đã lưu thành công một bản ghi.', 'Thông báo');
+                        //     vm.mark = {};
+                        // }, function failure() {
+                        //     toastr.error('Có lỗi xảy ra khi lưu thông tin tài khoản.', 'Lỗi');
+                        // });
+                        vm.saveObject();
                     }
                 }, function () {
                     vm.mark = {};
