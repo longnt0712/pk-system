@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import com.globits.richy.domain.Topic;
 import com.globits.richy.dto.TopicDto;
+import com.globits.richy.dto.TopicForListAllDto;
 
 @Repository
 public interface TopicRepository extends JpaRepository<Topic, Long> {
@@ -16,6 +17,9 @@ public interface TopicRepository extends JpaRepository<Topic, Long> {
 	
 	@Query("select new com.globits.richy.dto.TopicDto(u) from Topic u")
 	List<TopicDto> getListObject();
+	
+	@Query("select new com.globits.richy.dto.TopicForListAllDto(u) from Topic u")
+	List<TopicForListAllDto> getAllTopics();
 	
 	@Query("select count(i.id) from Topic i where i.user.id = ?1")
 	Long countByUserId(Long userId);
