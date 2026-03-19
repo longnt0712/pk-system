@@ -723,6 +723,123 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 			return null;
 		}
 	}
+	
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public UserDto saveBasicInfo(UserDto userDto) {
+
+		if (userDto == null) {
+			throw new IllegalArgumentException();
+		}
+
+		User user = null;
+
+		if (CommonUtils.isPositive(userDto.getId(), true)) {
+			user = userRepository.findById(userDto.getId());
+		}
+
+		if (user == null) {
+			user = userDto.toEntity();
+
+			user.setJustCreated(true);
+
+			if (userDto.getPassword() != null && userDto.getPassword().length() > 0) {
+				user.setPassword(SecurityUtils.getHashPassword(userDto.getPassword()));
+			}
+
+		} else {
+			user.setUsername(userDto.getUsername());//Nếu muốn cho đổi username thì bỏ đoạn rem này ra
+			user.setEmail(userDto.getEmail());
+//			if (userDto.getPassword() != null && userDto.getPassword().length() > 0) {
+//				user.setPassword(SecurityUtils.getHashPassword(userDto.getPassword()));
+//			}
+		}
+
+//		if (userDto.getRoles() != null) {
+//			List<Role> rs = new ArrayList<Role>();
+//
+//			for (RoleDto d : userDto.getRoles()) {
+//				Role r = roleRepos.findOne(d.getId());
+//
+//				if (r != null) {
+//					rs.add(r);
+//				}
+//			}
+//
+//			user.getRoles().clear();
+//			user.getRoles().addAll(rs);
+//		}
+
+		if (userDto.getGroups() != null) {
+			List<UserGroup> gs = new ArrayList<>();
+
+			for (UserGroupDto d : userDto.getGroups()) {
+				UserGroup g = groupRepos.findOne(d.getId());
+
+				if (g != null) {
+					gs.add(g);
+				}
+			}
+
+			user.getGroups().clear();
+			user.getGroups().addAll(gs);
+		}
+
+		PersonDto personDto = userDto.getPerson();
+		Person person = null;
+
+		if (personDto != null && CommonUtils.isPositive(personDto.getId(), true)) {
+			person = personRepos.findOne(personDto.getId());
+		}
+
+		if (person != null) {
+			person.setFirstName(personDto.getFirstName());
+			person.setLastName(personDto.getLastName());
+			person.setDisplayName(personDto.getDisplayName());
+			person.setBirthDate(personDto.getBirthDate());
+			person.setBirthPlace(personDto.getBirthPlace());
+			person.setEmail(personDto.getEmail());
+			person.setEndDate(personDto.getEndDate());
+			person.setFatherFullName(personDto.getFatherFullName());
+			person.setMotherFullName(personDto.getMotherFullName());
+			person.setFatherPhoneNumber(personDto.getFatherPhoneNumber());
+			person.setMotherPhoneNumber(personDto.getMotherPhoneNumber());
+			person.setAddressString(personDto.getAddressString());
+			person.setZaloStatus(personDto.getZaloStatus());
+			person.setDiocese(personDto.getDiocese());
+			person.setEnrollmentClass(personDto.getEnrollmentClass());
+			person.setPatron(personDto.getPatron());
+			person.setSacrament(personDto.getSacrament());
+			person.setPhoneNumber(personDto.getPhoneNumber());
+
+			if (personDto.getEthnics() != null && CommonUtils.isPositive(personDto.getEthnics().getId(), true)) {
+
+				Ethnics e = ethnicsRepos.findOne(personDto.getEthnics().getId());
+
+				if (e != null) {
+					person.setEthnics(e);
+				}
+			}
+
+			person.setGender(personDto.getGender());
+			person.setIdNumber(personDto.getIdNumber());
+			person.setIdNumberIssueBy(personDto.getIdNumberIssueBy());
+			person.setIdNumberIssueDate(personDto.getIdNumberIssueDate());
+		} else {
+			person = personDto.toEntity();
+		}
+
+		user.setPerson(person);
+		person.setUser(user);
+		user.setActive(userDto.getActive());
+		user = userRepository.save(user);
+
+		if (user != null) {
+			return new UserDto(user);
+		} else {
+			return null;
+		}
+	}
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)

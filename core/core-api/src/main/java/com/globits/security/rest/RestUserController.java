@@ -109,6 +109,12 @@ public class RestUserController {
 	public UserDto updateUser(@RequestBody UserDto user) {
 		return userService.save(user);
 	}
+	
+	@PreAuthorize("hasRole('ADMIN') or hasRole('STUDENT_MANAGERMENT')")
+	@PostMapping(path = "/api/update_users_basic_info")
+	public UserDto saveBasicInfo(@RequestBody UserDto user) {
+		return userService.saveBasicInfo(user);
+	}
 
 	@PreAuthorize("hasRole('ROLE_ADMIN')")
 	@PostMapping(path = "/api/users")

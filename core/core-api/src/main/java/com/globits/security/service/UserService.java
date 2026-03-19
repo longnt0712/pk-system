@@ -22,6 +22,8 @@ public interface UserService extends GenericService<User, Long> {
 	public Page<UserDto> findByPageBasicInfo(int pageIndex, int pageSize);
 
 	public UserDto save(UserDto user);
+	
+	public UserDto saveBasicInfo(UserDto user);
 
 	public Page<UserDto> findByPage(int pageIndex, int pageSize);
 
