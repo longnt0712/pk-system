@@ -28,6 +28,7 @@ public class RestEducationProgramController {
 		return service.getPageObject(searchDto, pageIndex, pageSize);
 	}
 	
+	//Thêm role nè
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)
 	public EducationProgramDto getOne(@PathVariable Long id) {
