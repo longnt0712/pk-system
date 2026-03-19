@@ -247,11 +247,15 @@
             }
             if(value.name === "ROLE_STAFF_MANAGEMENT"){
                 vm.isRoleStaffManagement = true;
-                console.log('Staff');
+                console.log('staff');
             }
             if(value.name === "ROLE_STUDENT_MANAGERMENT"){
                 vm.isRoleStudentManagerment = true;
-                console.log('Staff');
+                console.log('isRoleStudentManagerment');
+            }
+            if(value.name === "ROLE_STUDENT_MANAGERMENT"){
+                vm.isRoleEducationManagerment = true;
+                console.log('isRoleEducationManagerment');
             }
         });
         

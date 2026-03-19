@@ -274,7 +274,7 @@
             });
         };
 
-        vm.processEducationPrograms();
+        // vm.processEducationPrograms();
 
         vm.userEducationProgramsChange = function (s) {
             // angular.forEach(vm.educationPrograms, function(value, key) {
@@ -295,7 +295,7 @@
         vm.getUsers = function () {
 
             angular.forEach(vm.roles, function(value1, key1) {
-                if(value1.name === "ROLE_STUDENT"){
+                if(value1.name === "ROLE_STUDENT" || value1.name === "ROLE_STUDENT_MANAGERMENT" ){
                     // vm.filter.roles = [];
                     if(vm.isRoleStudentManagerment == true){
                         vm.filter.roles.push(value1);
@@ -446,31 +446,29 @@
          */
         vm.editUser = function (userId) {
 
-            vm.processEducationPrograms();
+            // vm.processEducationPrograms();
             service.getUser(userId).then(function (data) {
                 if (data && data.id) {
                     vm.user = data;
                     vm.user.isNew = false;
 
-
-
-                    var normalized = [];
-
-                    if (vm.user.userEducationPrograms && vm.userEducationPrograms) {
-                        angular.forEach(vm.user.userEducationPrograms, function (selectedItem) {
-                            angular.forEach(vm.userEducationPrograms, function (option) {
-                                if (
-                                    selectedItem.educationProgram &&
-                                    option.educationProgram &&
-                                    selectedItem.educationProgram.id === option.educationProgram.id
-                                ) {
-                                    normalized.push(option);
-                                }
-                            });
-                        });
-                    }
-
-                    vm.user.userEducationPrograms = normalized;
+                    // var normalized = [];
+                    //
+                    // if (vm.user.userEducationPrograms && vm.userEducationPrograms) {
+                    //     angular.forEach(vm.user.userEducationPrograms, function (selectedItem) {
+                    //         angular.forEach(vm.userEducationPrograms, function (option) {
+                    //             if (
+                    //                 selectedItem.educationProgram &&
+                    //                 option.educationProgram &&
+                    //                 selectedItem.educationProgram.id === option.educationProgram.id
+                    //             ) {
+                    //                 normalized.push(option);
+                    //             }
+                    //         });
+                    //     });
+                    // }
+                    //
+                    // vm.user.userEducationPrograms = normalized;
 
                     vm.modalInstance = modal.open({
                         animation: true,
