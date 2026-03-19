@@ -34,7 +34,7 @@ public class RestPersonDateController {
 		return service.getObjectById(id);
 	}
 	
-	@Secured({"ROLE_ADMIN"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/save_list_by_enrollment_class/{enrollmentClass}", method = RequestMethod.POST)
 	public boolean saveListByEnrollmentClass(@PathVariable int enrollmentClass) {
 		return service.saveListByEnrollmentClass(enrollmentClass);
