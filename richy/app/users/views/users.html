@@ -169,11 +169,11 @@
                                             <i class="fa fa-edit"></i>
                                         </button>
 
-                                        <button class="btn btn-xs btn-warning" title="Đổi mật khẩu" data-ng-click="vm.changeUserPassword(user.id)">
+                                        <button ng-if="vm.isRoleAdmin" class="btn btn-xs btn-warning" title="Đổi mật khẩu" data-ng-click="vm.changeUserPassword(user.id)">
                                             <i class="fa fa-key"></i>
                                         </button>
 
-                                        <button class="btn btn-xs btn-danger" title="Xóa" data-ng-click="vm.deleteUser(user.id)">
+                                        <button ng-if="vm.isRoleAdmin" class="btn btn-xs btn-danger" title="Xóa" data-ng-click="vm.deleteUser(user.id)">
                                             <i class="fa fa-trash"></i>
                                         </button>
                                         <label class="btn btn-xs btn-info upload-camera-btn" title="Chụp ảnh / Chọn ảnh">
