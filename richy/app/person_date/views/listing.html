@@ -148,10 +148,10 @@
                                 <thead>
                                 <tr>
                                     <th scope="col">ĐIỂM DANH</th>
-                                    <th scope="col">STT</th>
+                                    <!--<th scope="col">STT</th>-->
                                     <!--<th scope="col">TÊN THÁNH</th>-->
                                     <th scope="col">TÊN</th>
-                                    <th scope="col">NGÀY SINH</th>
+                                    <!--<th scope="col">NGÀY SINH</th>-->
                                     <!--<th scope="col">GIỜ ĐẾN NHÀ THỜ</th>-->
                                     <th scope="col">LỄ</th>
                                     <!--<th scope="col">GIỜ ĐẾN LỚP</th>-->
@@ -182,12 +182,13 @@
                                         </button>
                                     </td>
 
-                                    <th scope="row">{{$index + 1}}</th>
+                                    <!--<th scope="row"></th>-->
                                     <!--<td></td>-->
-                                    <td>{{personDate.user.person.patron}} {{personDate.user.person.lastName}}
+                                    <td>{{$index + 1}}. {{personDate.user.person.patron}} {{personDate.user.person.lastName}}
                                         {{personDate.user.person.firstName}}
+                                        <small>{{personDate.user.person.birthDate | date:'dd/MM/yy'}}</small>
                                     </td>
-                                    <td>{{personDate.user.person.birthDate | date:'dd/MM/yy'}}</td>
+                                    <td></td>
                                     <!--<td>{{personDate.timeGoToChurch | date:'dd/MM HH:mm'}}</td>-->
 
                                     <td ng-class="{
