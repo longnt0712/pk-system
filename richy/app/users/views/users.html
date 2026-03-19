@@ -94,10 +94,11 @@
                                     <!--<th scope="col">ĐỊA CHỈ</th>-->
                                     <th scope="col">HỌ VÀ TÊN MẸ</th>
                                     <th scope="col">SĐT MẸ</th>
-                                    <th scope="col">HỌ VÀ TÊN BÓ</th>
+                                    <th scope="col">HỌ VÀ TÊN BỐ</th>
                                     <th scope="col">SĐT BỐ</th>
                                     <th scope="col">SĐT CÁ NHÂN</th>
                                     <th scope="col">Lớp</th>
+                                    <th scope="col">CÓ BỐ MẸ TRONG NHÓM ZALO?</th>
                                     <th scope="col" ng-if="vm.isRoleAdmin">ROLE</th>
                                     <th scope="col">ẢNH</th>
                                     <th scope="col">TRẠNG THÁI</th>
@@ -144,6 +145,9 @@
                                             <!--</ui-select-choices>-->
                                         <!--</ui-select>-->
                                         {{ (vm.enrollmentClasses | filter:{id: user.person.enrollmentClass})[0].name }}
+                                    </td>
+                                    <td ng-class="vm.getZaloStatusClass(user.person.zaloStatus)">
+                                        {{ vm.getZaloStatusName(user.person.zaloStatus) }}
                                     </td>
                                     <td ng-if="vm.isRoleAdmin">
                                         {{user.roles[0].name}}
@@ -370,6 +374,15 @@
                     <ui-select ng-model="vm.user.person.enrollmentClass" data-ng-change="" sortable="true" close-on-select="true">
                         <ui-select-match allow-clear="true" placeholder="LỚP HỌC">{{$select.selected.name}}</ui-select-match>
                         <ui-select-choices repeat="so.id as so in vm.enrollmentClasses  | propsFilter: {name: $select.search}">
+                            <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                <div class="col-md-6 margin-top-10">
+                    <label class="bold">CÓ TRONG NHÓM ZALO KHÔNG?</label>
+                    <ui-select ng-model="vm.user.person.zaloStatus" data-ng-change="" sortable="true" close-on-select="true">
+                        <ui-select-match allow-clear="true" placeholder="CÓ TRONG NHÓM ZALO KHÔNG?">{{$select.selected.name}}</ui-select-match>
+                        <ui-select-choices repeat="so.id as so in vm.zaloStatuses  | propsFilter: {name: $select.search}">
                             <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -740,5 +753,15 @@
 
     .disable-remove-program .ui-select-match-close {
         display: none !important;
+    }
+</style>
+
+<style>
+    .zalo-status-green {
+        background-color: #d4edda !important;
+    }
+
+    .zalo-status-gray {
+        background-color: #e9ecef !important;
     }
 </style>
