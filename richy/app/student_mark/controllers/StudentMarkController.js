@@ -65,6 +65,72 @@
         };
     });
 
+    angular.module('Hrm.StudentMark').directive('decimalInput', ['$timeout', function ($timeout) {
+        function normalizeDecimal(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+
+            value = String(value);
+
+            // đổi toàn bộ dấu phẩy thành dấu chấm
+            value = value.replace(/,/g, '.');
+
+            // chỉ giữ số và dấu chấm
+            value = value.replace(/[^\d.]/g, '');
+
+            // chỉ cho phép 1 dấu chấm
+            var parts = value.split('.');
+            if (parts.length > 2) {
+                value = parts[0] + '.' + parts.slice(1).join('');
+            }
+
+            return value;
+        }
+
+        return {
+            restrict: 'A',
+            require: 'ngModel',
+            link: function (scope, element, attrs, ngModelCtrl) {
+
+                ngModelCtrl.$parsers.push(function (viewValue) {
+                    var normalized = normalizeDecimal(viewValue);
+
+                    if (normalized !== viewValue) {
+                        ngModelCtrl.$setViewValue(normalized);
+                        ngModelCtrl.$render();
+                    }
+
+                    return normalized;
+                });
+
+                element.on('input', function () {
+                    var currentValue = element.val();
+                    var normalized = normalizeDecimal(currentValue);
+
+                    if (currentValue !== normalized) {
+                        scope.$applyAsync(function () {
+                            ngModelCtrl.$setViewValue(normalized);
+                            ngModelCtrl.$render();
+                        });
+                    }
+                });
+
+                element.on('paste', function () {
+                    $timeout(function () {
+                        var currentValue = element.val();
+                        var normalized = normalizeDecimal(currentValue);
+
+                        if (currentValue !== normalized) {
+                            ngModelCtrl.$setViewValue(normalized);
+                            ngModelCtrl.$render();
+                        }
+                    });
+                });
+            }
+        };
+    }]);
+
     angular.module('Hrm.StudentMark').filter('removeHTMLTags', function () {
         return function (text) {
             return text ? String(text).replace(/<[^>]+>/gm, '') : '';
@@ -95,8 +161,6 @@
         vm.searchDisplayDto.educationProgramId = 1;
         vm.searchDisplayDto.textSearch = null;
 
-
-
         vm.enrollmentClasses = [
             {id: 1, name: "DCN1"},
             {id: 2, name: "DCN2"},
@@ -123,10 +187,9 @@
 
         vm.allowEdit = function (studentMark) {
             angular.forEach(vm.studentMarks, function(value, key) {
-                console.log('hehe');
-                if(value.id == studentMark.id){
+                if (value.id == studentMark.id) {
                     value.allowEdit = true;
-                }else{
+                } else {
                     value.allowEdit = false;
                 }
             });
@@ -157,6 +220,17 @@
         vm.getListDisplayStudentMark();
         vm.markTimeouts = {};
 
+        vm.parseMarkNumber = function (value) {
+            if (value === null || value === undefined || value === '') {
+                return null;
+            }
+
+            value = String(value).replace(/,/g, '.').trim();
+            var num = parseFloat(value);
+
+            return isNaN(num) ? null : num;
+        };
+
         vm.onMarkKeyup = function (markItem) {
             if (!markItem) return;
 
@@ -170,15 +244,14 @@
             }
 
             vm.markTimeouts[key] = $timeout(function () {
+                var normalizedValue = vm.parseMarkNumber(markItem.markNumber);
 
-                if (markItem._lastSaved === markItem.markNumber) {
+                if (markItem._lastSaved === normalizedValue) {
                     return;
                 }
 
                 vm.saveMark(markItem);
-
-                markItem._lastSaved = markItem.markNumber;
-
+                markItem._lastSaved = normalizedValue;
             }, 1000);
         };
 
@@ -187,9 +260,11 @@
                 return;
             }
 
+            var normalizedMarkNumber = vm.parseMarkNumber(markItem.markNumber);
+
             var dto = {
                 id: markItem.id,
-                markNumber: markItem.markNumber,
+                markNumber: normalizedMarkNumber,
                 markText: markItem.markText,
                 user: {
                     id: markItem.user ? markItem.user.id : null
@@ -205,27 +280,30 @@
                 if (response && response.id) {
                     markItem.id = response.id;
                 }
+
+                // đồng bộ lại model sau khi save
+                markItem.markNumber = normalizedMarkNumber;
             }, function failure() {
                 toastr.error('Có lỗi khi cập nhật điểm', 'Lỗi');
             });
         };
 
         vm.getMarkValueClass = function(markNumber) {
-            if (markNumber == null || markNumber === undefined || markNumber === '') {
+            markNumber = vm.parseMarkNumber(markNumber);
+
+            if (markNumber === null) {
                 return '';
             }
 
-            markNumber = parseFloat(markNumber);
-
             if (markNumber < 5) {
-                return 'mark-danger';   // đỏ
+                return 'mark-danger';
             }
 
             if (markNumber >= 8) {
-                return 'mark-good';     // xanh lá, thể hiện học giỏi
+                return 'mark-good';
             }
 
-            return 'mark-normal';       // đen
+            return 'mark-normal';
         };
 
         vm.getWeightedAverage = function(studentMarks) {
@@ -241,14 +319,14 @@
                     return;
                 }
 
-                var markNumber = parseFloat(item.markNumber);
+                var markNumber = vm.parseMarkNumber(item.markNumber);
                 var coefficient = 1;
 
                 if (item.mark && item.mark.coefficient != null && item.mark.coefficient !== undefined) {
                     coefficient = parseFloat(item.mark.coefficient) || 1;
                 }
 
-                if (!isNaN(markNumber)) {
+                if (markNumber !== null) {
                     totalScore += markNumber * coefficient;
                     totalCoefficient += coefficient;
                 }
