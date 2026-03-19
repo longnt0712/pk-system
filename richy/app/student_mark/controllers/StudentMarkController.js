@@ -95,6 +95,8 @@
         vm.searchDisplayDto.educationProgramId = 1;
         vm.searchDisplayDto.textSearch = null;
 
+
+
         vm.enrollmentClasses = [
             {id: 1, name: "DCN1"},
             {id: 2, name: "DCN2"},
@@ -119,9 +121,24 @@
             }
         });
 
+        vm.allowEdit = function (studentMark) {
+            angular.forEach(vm.studentMarks, function(value, key) {
+                console.log('hehe');
+                if(value.id == studentMark.id){
+                    value.allowEdit = true;
+                }else{
+                    value.allowEdit = false;
+                }
+            });
+        };
+
         vm.getListDisplayStudentMark = function () {
             service.getListDisplayStudentMark(vm.searchDisplayDto).then(function (data) {
                 vm.studentMarks = data || [];
+
+                angular.forEach(vm.studentMarks, function(value, key) {
+                    value.allowEdit = false;
+                });
 
                 vm.markColumns = [];
                 if (vm.studentMarks.length > 0 && vm.studentMarks[0].studentMarks) {

@@ -76,12 +76,12 @@
                 </div>
 
                 <div class="table-responsive">
-                    <table class="table table-bordered table-striped text-center product-table">
+                    <table class="table table-bordered table-hover table-striped text-center product-table">
                         <thead>
                         <tr>
                             <th style="min-width: 60px;">STT</th>
                             <th style="min-width: 220px;">Tên học sinh</th>
-                            <th style="min-width: 140px;">Mã học sinh</th>
+                            <th style="min-width: 50px;">Thao tác</th>
 
                             <th ng-repeat="mark in vm.markColumns track by mark.id" style="min-width: 70px;">
                                 {{mark.name}}
@@ -92,11 +92,17 @@
                         </thead>
                         <tbody>
                         <tr ng-repeat="student in vm.studentMarks track by $index">
-                            <td>{{$index + 1}}</td>
+                            <td>{{$index + 1}}
+                            </td>
                             <td class="text-left">
                                 {{student.user.person.patron}} {{student.user.person.lastName}} {{student.user.person.firstName}}
+                                <small>
+                                    <br>({{student.user.username}})
+                                </small>
                             </td>
-                            <td>{{student.user.username}}</td>
+                            <td>
+                                <button ng-click="vm.allowEdit(student)" class="btn btn-primary"><i class="fa fa-pencil"></i></button>
+                            </td>
 
                             <td ng-repeat="markItem in student.studentMarks track by $index">
                                 <input type="number"
@@ -105,7 +111,8 @@
                                        ng-model="markItem.markNumber"
                                        ng-keyup="vm.onMarkKeyup(markItem, $event)"
                                        ng-class="vm.getMarkValueClass(markItem.markNumber)"
-                                       placeholder="Nhập điểm">
+                                       placeholder="Nhập điểm"
+                                        ng-disabled="student.allowEdit == false">
                             </td>
 
                             <td>
