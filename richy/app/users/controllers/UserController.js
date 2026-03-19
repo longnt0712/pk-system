@@ -194,6 +194,34 @@
             {id: 'F', name: "NỮ"},
             {id: 'U', name: "KHÔNG RÕ"},
         ];
+
+        vm.zaloStatuses = [
+            {id: 1, name: "CÓ TRONG NHÓM"},
+            {id: 2, name: "KHÔNG CÓ TRONG NHÓM"}
+        ];
+        vm.zaloStatuses = [
+            { id: 1, name: "CÓ TRONG NHÓM" },
+            { id: 2, name: "KHÔNG CÓ TRONG NHÓM" }
+        ];
+
+        vm.getZaloStatusName = function (statusId) {
+            for (var i = 0; i < vm.zaloStatuses.length; i++) {
+                if (vm.zaloStatuses[i].id === statusId) {
+                    return vm.zaloStatuses[i].name;
+                }
+            }
+            return "";
+        };
+
+        vm.getZaloStatusClass = function (statusId) {
+            if (statusId === 1) {
+                return "zalo-status-green";
+            }
+            if (statusId === 2) {
+                return "zalo-status-gray";
+            }
+            return "";
+        };
         // vm.user.enrollmentClass = vm.enrollmentClasses[0].id;
 
         vm.roles = [];
