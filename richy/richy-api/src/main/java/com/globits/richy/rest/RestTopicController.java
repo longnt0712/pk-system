@@ -1,5 +1,7 @@
 package com.globits.richy.rest;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.annotation.Secured;
@@ -10,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.globits.richy.dto.TopicDto;
+import com.globits.richy.dto.TopicForListAllDto;
 import com.globits.richy.service.TopicService;
 
 @RestController
@@ -22,6 +25,11 @@ public class RestTopicController {
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
 	public Page<TopicDto> getPage(@RequestBody TopicDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
 		return service.getPageObject(searchDto, pageIndex, pageSize);
+	}
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER"})
+	@RequestMapping(value = "/get_all_topics", method = RequestMethod.POST)
+	public List<TopicForListAllDto> getAllTopics(@RequestBody TopicDto searchDto) {
+		return service.getAllTopics(searchDto);
 	}
 	@Secured({"ROLE_ADMIN","ROLE_USER"})
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)

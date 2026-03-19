@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import com.globits.richy.test;
 import com.globits.richy.domain.Topic;
 import com.globits.richy.dto.TopicDto;
+import com.globits.richy.dto.TopicForListAllDto;
 import com.globits.richy.repository.TopicRepository;
 import com.globits.richy.service.TopicService;
 import com.globits.security.domain.User;
@@ -116,6 +117,46 @@ public class TopicServiceImpl implements TopicService {
 	@Override
 	public List<TopicDto> getListObject() {
 		return topicRepository.getListObject();
+	}
+	
+	@Override
+	public List<TopicForListAllDto> getAllTopics(TopicDto searchDto) {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		User modifiedUser = null;
+		if (authentication != null) {
+			modifiedUser = (User) authentication.getPrincipal();
+		}
+
+		String sql = "select new com.globits.richy.dto.TopicForListAllDto(s) from Topic s where (1=1)";
+		String whereClause = "";
+		
+		if(modifiedUser!= null && modifiedUser.getId() != null) {
+			whereClause += " and s.user.id = :userId ";
+		}
+		
+		if(searchDto.getWebsite() != null) {
+			whereClause += " and (s.website = :website) ";
+		}
+
+		sql += whereClause;
+		
+		sql += " order by s.createDate DESC ";
+
+		Query q = manager.createQuery(sql, TopicForListAllDto.class);
+		
+		if(modifiedUser!= null && modifiedUser.getId() != null) {
+			q.setParameter("userId",  modifiedUser.getId() );
+		}
+		
+		if(searchDto.getWebsite() != null) {
+			q.setParameter("website",searchDto.getWebsite());
+		}
+		
+		if(searchDto.getUserId() != null) {
+			q.setParameter("userId", searchDto.getUserId());
+		}
+
+		return q.getResultList();
 	}
 
 	@Override
