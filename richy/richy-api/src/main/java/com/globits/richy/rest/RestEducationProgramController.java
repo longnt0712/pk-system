@@ -22,13 +22,13 @@ public class RestEducationProgramController {
 	@Autowired
 	EducationProgramService service;
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
 	public Page<EducationProgramDto> getPage(@RequestBody EducationProgramDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
 		return service.getPageObject(searchDto, pageIndex, pageSize);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)
 	public EducationProgramDto getOne(@PathVariable Long id) {
 		return service.getObjectById(id);
