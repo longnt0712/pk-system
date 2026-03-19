@@ -426,7 +426,7 @@
                 </div>
             </div>
             <div class="row">
-                <div class="col-md-6 margin-top-15">
+                <div ng-if="vm.isRoleAdmin" class="col-md-6 margin-top-15">
                     <label class="bold">Vai trò</label>
                     <ui-select multiple theme="bootstrap" data-ng-model="vm.user.roles" sortable="true" close-on-select="true" data-ng-disabled="hasRole(vm.user, 'ROLE_ADMIN')" style="width: 100% !important;">
                         <ui-select-match allow-clear="true" placeholder="Xin mời chọn...">{{$item.name}}</ui-select-match>
