@@ -91,6 +91,17 @@
             return utils.resolve(url, 'GET', angular.noop, angular.noop);
         }
 
+        self.saveUserBasicInfo = saveUserBasicInfo;
+        function saveUserBasicInfo(user, successCallback, errorCallback) {
+            var url = baseUrl + 'update_users_basic_info';
+
+            user.active = user.active == null ? 0 : user.active;
+
+            return utils.resolveAlt(url, 'POST', null, user, {
+                'Content-Type': 'application/json; charset=utf-8'
+            }, successCallback, errorCallback);
+        }
+
         function saveUser(user, successCallback, errorCallback) {
             var url = baseUrl + 'users';
 

@@ -424,6 +424,86 @@
             });
         };
 
+        vm.saveUserBasicInfo = function () {
+
+            if (!vm.user.person) {
+                vm.user.person = {};
+            }
+
+            if (!vm.user.person.firstName || !vm.user.person.lastName) {
+                toastr.error('Vui lòng nhập đầy đủ họ tên người dùng!', 'Thông báo');
+                focus('vm.user.person.displayName');
+                return;
+            }
+
+            if (!vm.user.email || vm.user.email.trim().length <= 0) {
+                toastr.error('Vui lòng nhập địa chỉ email!', 'Thông báo');
+                focus('vm.user.email');
+                return;
+            }
+
+            if (!vm.user.id) {
+                if (!vm.user.username || vm.user.username.trim().length <= 0) {
+                    toastr.error('Vui lòng nhập tên đăng nhập!', 'Thông báo');
+                    focus('vm.user.username');
+                    return;
+                }
+            }
+
+            if (!vm.user.id) {
+                if (!vm.user.password || vm.user.password.trim().length <= 0) {
+                    toastr.error('Vui lòng nhập mật khẩu!', 'Thông báo');
+                    focus('vm.user.password');
+                    return;
+                }
+
+                if (vm.user.password != vm.user.confirmPassword) {
+                    toastr.error('Mật khẩu không khớp nhau!', 'Thông báo');
+                    focus('vm.user.confirmPassword');
+                    return;
+                }
+            }
+
+            if (!vm.user.roles || vm.user.roles.length <= 0) {
+                toastr.error('Vui lòng chọn ít nhất một vai trò cho người dùng!', 'Thông báo');
+                return;
+            }
+
+            // Check for duplicate username & email
+            service.getUserByUsername(vm.user.username).then(function (data) {
+                if (data && data.id) {
+                    if (!vm.user.id || (vm.user.id && data.id != vm.user.id)) {
+                        toastr.error('Tên đăng nhập đã tồn tại!', 'Thông báo');
+                        focus('vm.user.username');
+                        return;
+                    }
+                }
+
+                service.emailAlreadyUsed(vm.user).then(function (data2) {
+                    if (data2 && data2 == true && (vm.user.id==null || vm.user.id==0) ) {
+                        toastr.error('Địa chỉ email đã tồn tại!', 'Thông báo');
+                        focus('vm.user.email');
+                        return;
+                    }
+
+                    service.saveUserBasicInfo(vm.user, function successCallback(data) {
+                        toastr.info('Đã lưu thông tin người dùng thành công!', 'Thông báo');
+
+                        // Reload users
+                        vm.getUsers();
+
+                    }, function errorCallback(response) {
+                        toastr.error('Có lỗi xảy ra khi lưu.', 'Thông báo');
+                    }).then(function () {
+                        // Close the modal
+                        if (vm.modalInstance) {
+                            vm.modalInstance.close();
+                        }
+                    });
+                });
+            });
+        };
+
         /**
          * Create a new user
          */
