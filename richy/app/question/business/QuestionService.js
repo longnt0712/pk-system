@@ -75,6 +75,16 @@
             }, successCallback, errorCallback);
         }
 
+        self.getAllTopics = getAllTopics;
+        function getAllTopics(searchdto,successCallback, errorCallback) {
+            var url = baseUrl + 'topic' + '/get_all_topics';
+
+            return utils.resolveAlt(url, 'POST', null, searchdto, {
+                'Content-Type': 'application/json; charset=utf-8'
+            }, successCallback, errorCallback);
+        }
+
+
         function getTopics(searchdto, pageIndex, pageSize, successCallback, errorCallback) {
             var url = baseUrl + 'topic' + '/get_page';
             url += '/'+pageIndex;

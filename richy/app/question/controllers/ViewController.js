@@ -511,9 +511,9 @@
         vm.topic.userId = vm.currentUser.id;
         vm.getTopics = function () {
             blockUI.start();
-            service.getTopics(vm.searchDto,1, 10000000).then(function (data) {
+            service.getAllTopics(vm.searchDto).then(function (data) {
                 blockUI.stop();
-                vm.topics = data.content;
+                vm.topics = data;
                 // console.log(vm.topics);
             });
         };
