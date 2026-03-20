@@ -2431,7 +2431,7 @@
 
                 if(vm.mode.id == 8) {
                     vm.testResult.id = data1.id;
-                    // vm.finishListening = "Finished";
+                    vm.finishListening = "Finished";
                     // vm.percentage = 0;
                 } else if (vm.mode.id == 5 && data1.messageCode == 0) {
                     vm.finishDailyVocab = "Finished";
