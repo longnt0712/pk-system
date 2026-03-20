@@ -1,13 +1,10 @@
 <!-- BEGIN MAIN CONTENT -->
 <div class="row">
     <div class="row">
-        <!--<div class="col-md-1">-->
-            <!--&lt;!&ndash;Column 1 Content&ndash;&gt;-->
-        <!--</div>-->
-        <div class="col-md-12">
+        <div class="col-md-12" ng-if="vm.permissionsLoaded">
 
-
-            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10" ng-show="vm.isRoleView || vm.isRoleAdmin">
+            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
+                 ng-if="vm.isRoleView || vm.isRoleAdmin">
                 <div class="dash-let" style="background: #eeba30!important">
                     <a href="view/3" style="background: #641E1E !important">
                         <i class="fa fa-gamepad"></i>
@@ -16,7 +13,9 @@
                     </a>
                 </div>
             </div>
-            <div class="col-md-6 col-sm-4 col-xs-12 margin-top-10" ng-show="vm.isRoleView || vm.isRoleAdmin">
+
+            <div class="col-md-6 col-sm-4 col-xs-12 margin-top-10"
+                 ng-if="vm.isRoleView || vm.isRoleAdmin">
                 <div class="dash-let" style="background: #1a472a !important">
                     <a href="question/3" style="background: #2a623d !important">
                         <i class="fa fa-diamond"></i>
@@ -25,29 +24,33 @@
                     </a>
                 </div>
             </div>
-            <div class="col-md-6 col-sm-4 col-xs-12 margin-top-10" ng-show="vm.isRoleView || vm.isRoleAdmin">
+
+            <div class="col-md-6 col-sm-4 col-xs-12 margin-top-10"
+                 ng-if="vm.isRoleView || vm.isRoleAdmin">
                 <div class="dash-let" style="background: #726255 !important">
-                    <a href="create_ielts_reading_test"  style="background: #ecb939 !important">
-                        <i class="fa fa-book"></i></i>
-                        <i class="fa fa-book" style="color: #946b2d"></i></i>
+                    <a href="create_ielts_reading_test" style="background: #ecb939 !important">
+                        <i class="fa fa-book"></i>
+                        <i class="fa fa-book" style="color: #946b2d"></i>
                         <span style="color: white">IELTS TEST</span>
                     </a>
                 </div>
             </div>
-            <div class="col-md-6 col-sm-4 col-xs-12 margin-top-10" ng-show="vm.isRoleView || vm.isRoleAdmin">
+
+            <div class="col-md-6 col-sm-4 col-xs-12 margin-top-10"
+                 ng-if="vm.isRoleView || vm.isRoleAdmin">
                 <div class="dash-let" style="background: #946b2d !important">
                     <a href="test_results" style="background: #0e1a40 !important">
-                        <i class="fa fa-award"></i></i>
-                        <i class="fa fa-award" style="color: #946b2d"></i></i>
+                        <i class="fa fa-award"></i>
+                        <i class="fa fa-award" style="color: #946b2d"></i>
                         <span style="color: white">RESULTS</span>
                     </a>
                 </div>
             </div>
-            <div class="col-md-6 col-sm-4 col-xs-12 margin-top-10" ng-show="vm.isRoleView || vm.isRoleAdmin">
+
+            <div class="col-md-6 col-sm-4 col-xs-12 margin-top-10"
+                 ng-if="vm.isRoleView || vm.isRoleAdmin">
                 <div class="dash-let">
                     <a href="topics">
-                        <!--<i class="fa fa-tasks"></i>-->
-                        <!--<i class="fa fa-tasks"></i>-->
                         <i class="fa fa-list-ul"></i>
                         <i class="fa fa-list-ul"></i>
                         <span>Topic</span>
@@ -55,45 +58,51 @@
                 </div>
             </div>
 
-            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10" ng-show="vm.isRoleStudentManagerment || vm.isRoleAdmin">
+            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
+                 ng-if="vm.isRoleStudentManagerment || vm.isRoleAdmin">
                 <div class="dash-let">
-                    <a href="person_dates" >
+                    <a href="person_dates">
                         <i class="fa fa-id-card"></i>
-                        <i class="fa fa-id-card" ></i>
-                        <span >ĐIỂM DANH</span>
+                        <i class="fa fa-id-card"></i>
+                        <span>ĐIỂM DANH</span>
                     </a>
                 </div>
             </div>
-            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10" ng-show="vm.isRoleStudentManagerment || vm.isRoleAdmin">
+
+            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
+                 ng-if="vm.isRoleStudentManagerment || vm.isRoleAdmin">
                 <div class="dash-let" style="background: #946b2d !important">
-                    <a href="user/accounts"  style="background: #0e1a40 !important">
-                        <i class="fa fa-book"></i></i>
-                        <i class="fa fa-book" style="color: #946b2d"></i></i>
+                    <a href="user/accounts" style="background: #0e1a40 !important">
+                        <i class="fa fa-book"></i>
+                        <i class="fa fa-book" style="color: #946b2d"></i>
                         <span style="color: white">DANH SÁCH HỌC SINH</span>
                     </a>
                 </div>
             </div>
-            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10" ng-show="vm.isRoleStaff || vm.isRoleAdmin">
+
+            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
+                 ng-if="vm.isRoleStaff || vm.isRoleAdmin">
                 <div class="dash-let" style="background: #726255 !important">
-                    <a href="product"  style="background: #ecb939 !important">
-                        <i class="fa fa-book"></i></i>
-                        <i class="fa fa-book" style="color: #946b2d"></i></i>
+                    <a href="product" style="background: #ecb939 !important">
+                        <i class="fa fa-book"></i>
+                        <i class="fa fa-book" style="color: #946b2d"></i>
                         <span style="color: white">BÁN HÀNG</span>
                     </a>
                 </div>
             </div>
 
         </div>
-        <!--<div class="col-md-1">-->
-            <!--&lt;!&ndash;Column 3 Content&ndash;&gt;-->
-        <!--</div>-->
-    </div>
 
+        <div class="col-md-12 text-center margin-top-20" ng-if="!vm.permissionsLoaded">
+            <i class="fa fa-spinner fa-spin"></i> Đang tải quyền người dùng...
+        </div>
+    </div>
 </div>
 <!-- END MAIN CONTENT -->
+
 <style>
     .donate-not-media{
-        display: block
+        display: block;
     }
 
     .donate-media{

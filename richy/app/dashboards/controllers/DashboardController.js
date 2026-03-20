@@ -16,13 +16,11 @@
         '$cookies',
         '$location',
         '$window',
-        '$state',
-        
+        '$state'
     ];
-    
-    function DashboardController ($rootScope, $scope, $http, $timeout, settings, utils,$cookies,$location,$window,$state) {
-        $scope.$on('$viewContentLoaded', function() {
-            // initialize core components
+
+    function DashboardController($rootScope, $scope, $http, $timeout, settings, utils, $cookies, $location, $window, $state) {
+        $scope.$on('$viewContentLoaded', function () {
             App.initAjax();
         });
 
@@ -34,67 +32,148 @@
         var vm = this;
 
         vm.currentUser = {};
-        if($cookies.getAll()["education.user"] != null && !angular.isUndefined($cookies.getAll()["education.user"])){
-            vm.currentUser = JSON.parse($cookies.getAll()["education.user"]);
-        }
+        vm.myUser = {
+            id: null,
+            name: '',
+            roles: []
+        };
 
-        if(vm.currentUser.roles != null){
-            angular.forEach(vm.currentUser.roles, function(value, key) {
-                if(value.name == "ROLE_ADMIN"){
-                    settings.isAdmin = true;
-                    console.log("ADMIN");
-                }
-                // if(value.name == "ROLE_STAFF" || value.name == "ROLE_STAFF_MANAGEMENT"){
-                //     $window.location.href = 'https://ieltsroom.com/product';
-                // }
-            });
-        }
+        vm.permissionsLoaded = false;
 
-        // vm.currentUser = JSON.parse($cookies.getAll()["education.user"]);
-        vm.myUser = {};
-        vm.myUser.id = vm.currentUser.id;
-        // vm.myUser.username = vm.currentUser.username;
-        vm.myUser.name = vm.currentUser.displayName;
-        vm.myUser.roles = vm.currentUser.roles;
         vm.isRoleView = false;
         vm.isRoleUser = false;
         vm.isRoleAdmin = false;
         vm.isRoleStaff = false;
         vm.isRoleStaffManagement = false;
-        angular.forEach(vm.myUser.roles, function(value, key) {
-            if(value.name === "ROLE_VIEWER"){
-                vm.isRoleView = true;
-            }
-            if(value.name === "ROLE_USER"){
-                vm.isRoleUser = true;
-                console.log('User');
-            }
-            if(value.name === "ROLE_ADMIN"){
-                vm.isRoleAdmin = true;
-                console.log('Admin');
-            }
-            if(value.name === "ROLE_STAFF"){
-                vm.isRoleStaff = true;
-                console.log('Staff');
-            }
-            if(value.name === "ROLE_STAFF_MANAGEMENT"){
-                vm.isRoleStaffManagement = true;
-                console.log('Staff');
-            }
-            if(value.name === "ROLE_STUDENT_MANAGERMENT"){
-                vm.isRoleStudentManagerment = true;
-                console.log('isRoleStudentManagerment');
-            }
-        });
-        
-        // vm.currentUser = JSON.parse($cookies.getAll()["education.user"]);
+        vm.isRoleStudentManagerment = false;
 
-        var checkHttp =  $location.protocol();
-        if(checkHttp == 'http'){
-            // console.log(checkHttp);
-            // $state.go('login');
-            // var hostname = window.location.hostname;
-            // $window.location.href = hostname + '/dashboard';
+        vm.resetRoles = function () {
+            vm.isRoleView = false;
+            vm.isRoleUser = false;
+            vm.isRoleAdmin = false;
+            vm.isRoleStaff = false;
+            vm.isRoleStaffManagement = false;
+            vm.isRoleStudentManagerment = false;
+            settings.isAdmin = false;
+        };
+
+        vm.applyRoles = function (roles) {
+            vm.resetRoles();
+
+            angular.forEach(roles || [], function (value) {
+                if (value.name === "ROLE_VIEWER") {
+                    vm.isRoleView = true;
+                }
+                if (value.name === "ROLE_USER") {
+                    vm.isRoleUser = true;
+                    console.log('User');
+                }
+                if (value.name === "ROLE_ADMIN") {
+                    vm.isRoleAdmin = true;
+                    settings.isAdmin = true;
+                    console.log('Admin');
+                }
+                if (value.name === "ROLE_STAFF") {
+                    vm.isRoleStaff = true;
+                    console.log('Staff');
+                }
+                if (value.name === "ROLE_STAFF_MANAGEMENT") {
+                    vm.isRoleStaffManagement = true;
+                    console.log('Staff Management');
+                }
+                if (value.name === "ROLE_STUDENT_MANAGERMENT") {
+                    vm.isRoleStudentManagerment = true;
+                    console.log('isRoleStudentManagerment');
+                }
+            });
+        };
+
+        vm.hasRole = function (roleName) {
+            if (!vm.myUser || !vm.myUser.roles || !vm.myUser.roles.length) {
+                return false;
+            }
+
+            for (var i = 0; i < vm.myUser.roles.length; i++) {
+                if (vm.myUser.roles[i].name === roleName) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        vm.buildCurrentUser = function (rawUser) {
+            vm.currentUser = rawUser || {};
+            vm.myUser = {
+                id: vm.currentUser.id || null,
+                name: vm.currentUser.displayName || '',
+                roles: vm.currentUser.roles || []
+            };
+
+            vm.applyRoles(vm.myUser.roles);
+        };
+
+        vm.loadCurrentUserFromCookie = function () {
+            vm.permissionsLoaded = false;
+
+            var userCookie = $cookies.get("education.user");
+
+            if (userCookie) {
+                try {
+                    vm.buildCurrentUser(JSON.parse(userCookie));
+                } catch (e) {
+                    console.error("Parse education.user failed:", e);
+                    vm.currentUser = {};
+                    vm.myUser = {
+                        id: null,
+                        name: '',
+                        roles: []
+                    };
+                    vm.resetRoles();
+                }
+
+                vm.permissionsLoaded = true;
+                return;
+            }
+
+            $timeout(function () {
+                var retryCookie = $cookies.get("education.user");
+
+                if (retryCookie) {
+                    try {
+                        vm.buildCurrentUser(JSON.parse(retryCookie));
+                    } catch (e) {
+                        console.error("Retry parse education.user failed:", e);
+                        vm.currentUser = {};
+                        vm.myUser = {
+                            id: null,
+                            name: '',
+                            roles: []
+                        };
+                        vm.resetRoles();
+                    }
+                } else {
+                    vm.currentUser = {};
+                    vm.myUser = {
+                        id: null,
+                        name: '',
+                        roles: []
+                    };
+                    vm.resetRoles();
+                }
+
+                vm.permissionsLoaded = true;
+            }, 300);
+        };
+
+        vm.loadCurrentUserFromCookie();
+
+        var checkHttp = $location.protocol();
+        if (checkHttp === 'http') {
+            // để nguyên nếu bạn cần xử lý sau
+            /*console.log(checkHttp);
+            $state.go('login');
+            var hostname = window.location.hostname;
+            $window.location.href = hostname + '/dashboard';*/
         }
     }
 
