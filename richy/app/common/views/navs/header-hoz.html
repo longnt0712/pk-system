@@ -1,109 +1,81 @@
 <nav id="navscroll" class="navbar navbar-default ">
-<!--<nav id="bottom" class="navbar navbar-default navbar-fixed-top">-->
     <div class="container-fluid">
-        <!-- Brand and toggle get grouped for better mobile display -->
         <div class="navbar-header">
-            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+            <button type="button"
+                    class="navbar-toggle collapsed"
+                    data-toggle="collapse"
+                    data-target="#bs-example-navbar-collapse-1"
+                    aria-expanded="false">
                 <span class="sr-only">Toggle navigation</span>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
             </button>
 
-
-            <a ng-if="settings.ieltsRoom == true" class="navbar-brand" id="church-title" href="dashboards"> IELTS ROOM</a>
-            <a ng-if="settings.chapter == true" class="navbar-brand" id="church-title" href="dashboards"> Chapter</a>
-            <!--<a class="icon-for-media" target="_blank" href="fb://page/?id=105689154802913"><i class="fa fa-facebook-square " aria-hidden="true"></i></a>-->
-
+            <a ng-if="settings.ieltsRoom == true" class="navbar-brand" id="church-title" href="dashboards">IELTS ROOM</a>
+            <a ng-if="settings.chapter == true" class="navbar-brand" id="church-title" href="dashboards">Chapter</a>
         </div>
 
-        <!-- Collect the nav links, forms, and other content for toggling -->
-        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1" ng-if="settings.permissionsLoaded">
             <ul class="nav navbar-nav">
                 <li class="dropdown" ng-if="settings.isViewer || settings.isAdmin">
-                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Vocabulary <span class="caret"></span></a>
+                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        Vocabulary <span class="caret"></span>
+                    </a>
                     <ul class="dropdown-menu">
                         <li><a href="question/3"><i class="fa fa-caret-right"></i>YOUR FLASHCARDS</a></li>
                         <li><a href="view/3"><i class="fa fa-caret-right"></i>GAME MODES</a></li>
-                        <!--<li><a href="listening-game-mode/3"><i class="fa fa-caret-right"></i>LISTENING GAME MODES</a></li>-->
-                        <!--<li role="separator" class="divider"></li>-->
-                        <!--<li><a href="ielts_vocabulary"><i class="fa fa-caret-right"></i>YOUR ROOM</a></li>-->
-                        <!--<li role="separator" class="divider"></li>-->
                         <li><a href="topics"><i class="fa fa-caret-right"></i>TOPIC</a></li>
                     </ul>
                 </li>
+
                 <li class="dropdown" ng-if="settings.isViewer || settings.isAdmin">
-                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">TEST ROOM <span class="caret"></span></a>
+                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        TEST ROOM <span class="caret"></span>
+                    </a>
                     <ul class="dropdown-menu">
                         <li>
-                        <a  href="create_ielts_reading_test">
-                            <i class="fa fa-caret-right"></i> IELTS Test
-                        </a>
-                    </li>
+                            <a href="create_ielts_reading_test">
+                                <i class="fa fa-caret-right"></i> IELTS Test
+                            </a>
+                        </li>
                         <li>
-                            <a target="_blank" href="test_results">
+                            <a href="test_results">
                                 <i class="fa fa-caret-right"></i> Test Results
                             </a>
                         </li>
                     </ul>
                 </li>
-                <li class="dropdown" ng-if="settings.isStaff || settings.isAdmin">
-                    <a href="product" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Bán hàng <span class="caret"></span></a>
-                    <!--<ul class="dropdown-menu">-->
-                        <!--<li>-->
-                            <!--<a  href="product">-->
-                                <!--<i class="fa fa-caret-right"></i> Sản Phẩm-->
-                            <!--</a>-->
-                        <!--</li>-->
-                    <!--</ul>-->
-                </li>
-                <li class="dropdown" ng-if="settings.isStudentManagerment || settings.isAdmin">
-                    <a href="person_dates" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">ĐIỂM DANH <span class="caret"></span></a>
-                    <!--<ul class="dropdown-menu">-->
-                    <!--<li>-->
-                    <!--<a  href="product">-->
-                    <!--<i class="fa fa-caret-right"></i> Sản Phẩm-->
-                    <!--</a>-->
-                    <!--</li>-->
-                    <!--</ul>-->
-                </li>
-                <li class="dropdown" ng-if="settings.isStudentManagerment || settings.isAdmin">
-                    <a href="user/accounts" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">DANH SÁCH HỌC SINH <span class="caret"></span></a>
-                    <!--<ul class="dropdown-menu">-->
-                    <!--<li>-->
-                    <!--<a  href="product">-->
-                    <!--<i class="fa fa-caret-right"></i> Sản Phẩm-->
-                    <!--</a>-->
-                    <!--</li>-->
-                    <!--</ul>-->
-                </li>
-                <li class="dropdown" ng-if="settings.isStudentManagerment || settings.isEducationManagerment || settings.isAdmin">
-                    <a href="student_marks" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">DANH SÁCH ĐIỂM <span class="caret"></span></a>
-                    <!--<ul class="dropdown-menu">-->
-                    <!--<li>-->
-                    <!--<a  href="product">-->
-                    <!--<i class="fa fa-caret-right"></i> Sản Phẩm-->
-                    <!--</a>-->
-                    <!--</li>-->
-                    <!--</ul>-->
-                </li>
-                <!--<li class="dropdown">-->
-                    <!--<a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">CATECHISM <span class="caret"></span></a>-->
-                    <!--<ul class="dropdown-menu">-->
-                        <!--<li>-->
-                            <!--<a  href="classical_learning">-->
-                                <!--<i class="fa fa-caret-right"></i> CLASSICAL LEARNING-->
-                            <!--</a>-->
-                        <!--</li>-->
-                    <!--</ul>-->
-                <!--</li>-->
 
-                <li ng-show="settings.isAdmin   == true || settings.isEducationManagerment == true" class="menu-dropdown">
-                    <!--<a href=""><i class="icon-equalizer"></i> System-->
-                    <!--<i class="fa fa-angle-down"></i>-->
-                    <!--</a>-->
-                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">ĐÀO TẠO <span class="caret"></span></a>
-                    <ul class="dropdown-menu" >
+                <li class="dropdown" ng-if="settings.isStaff || settings.isAdmin">
+                    <a href="product" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        Bán hàng <span class="caret"></span>
+                    </a>
+                </li>
+
+                <li class="dropdown" ng-if="settings.isStudentManagerment || settings.isAdmin">
+                    <a href="person_dates" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        ĐIỂM DANH <span class="caret"></span>
+                    </a>
+                </li>
+
+                <li class="dropdown" ng-if="settings.isStudentManagerment || settings.isAdmin">
+                    <a href="user/accounts" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        DANH SÁCH HỌC SINH <span class="caret"></span>
+                    </a>
+                </li>
+
+                <li class="dropdown" ng-if="settings.isStudentManagerment || settings.isEducationManagerment || settings.isAdmin">
+                    <a href="student_marks" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        DANH SÁCH ĐIỂM <span class="caret"></span>
+                    </a>
+                </li>
+
+                <li ng-show="settings.isAdmin == true || settings.isEducationManagerment == true" class="menu-dropdown">
+                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        ĐÀO TẠO <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu">
                         <li>
                             <a href="education_programs">
                                 <i class="fa fa-caret-right"></i> Chương trình đào tạo
@@ -118,11 +90,10 @@
                 </li>
 
                 <li ng-show="settings.isAdmin == true" class="menu-dropdown">
-                    <!--<a href=""><i class="icon-equalizer"></i> System-->
-                        <!--<i class="fa fa-angle-down"></i>-->
-                    <!--</a>-->
-                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><i class="icon-equalizer"></i> System <span class="caret"></span></a>
-                    <ul class="dropdown-menu" >
+                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        <i class="icon-equalizer"></i> System <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu">
                         <li>
                             <a href="user/groups">
                                 <i class="icon-people"></i> Nhóm người dùng
@@ -145,7 +116,7 @@
                         </li>
                         <li class="divider"></li>
                         <li>
-                            <a target="_blank" href="settings">
+                            <a href="settings">
                                 <i class="fa fa-gear"></i> Thiết lập hệ thống
                             </a>
                         </li>
@@ -158,34 +129,32 @@
                 </li>
 
                 <li ng-show="settings.isAdmin == true" class="menu-dropdown">
-                    <!--<a href=""><i class="icon-equalizer"></i> System-->
-                    <!--<i class="fa fa-angle-down"></i>-->
-                    <!--</a>-->
-                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><i class="icon-equalizer"></i> Create Test <span class="caret"></span></a>
-                    <ul class="dropdown-menu" >
-
+                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        <i class="icon-equalizer"></i> Create Test <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu">
                         <li>
-                            <a  href="create_ielts_writing_test">
+                            <a href="create_ielts_writing_test">
                                 <i class="fa fa-caret-right"></i> Create IELTS Writing Test
                             </a>
                         </li>
                         <li>
-                            <a  href="create_ielts_reading_test">
+                            <a href="create_ielts_reading_test">
                                 <i class="fa fa-caret-right"></i> Create IELTS Test
                             </a>
                         </li>
                         <li>
-                            <a  href="create_ielts_listening_test">
+                            <a href="create_ielts_listening_test">
                                 <i class="fa fa-caret-right"></i> Create IELTS Listening Test
                             </a>
                         </li>
                         <li>
-                            <a  href="test_results">
+                            <a href="test_results">
                                 <i class="fa fa-caret-right"></i> Test Results
                             </a>
                         </li>
                         <li>
-                            <a  href="statistic_user">
+                            <a href="statistic_user">
                                 <i class="fa fa-caret-right"></i> Statistic User
                             </a>
                         </li>
@@ -193,54 +162,54 @@
                 </li>
             </ul>
 
-            <ul class="nav navbar-nav navbar-right" >
-
-                <li class="dropdown ">
+            <ul class="nav navbar-nav navbar-right">
+                <li class="dropdown user-dropdown-mobile">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" data-close-others="true">
-                        <!--<img ng-if="!currentUser.hasPhoto" alt="" class="img-circle" ng-src="{{settings.assetsPath}}/images/no-profile-photo-small.png" />-->
-                        <!--<img id="_user_profile_photo_small" ng-if="currentUser.hasPhoto" alt="" class="img-circle" ng-src="{{settings.api.baseUrl}}public/users/photo/{{currentUser.username}}" />-->
-                        <span style="padding-left: 27px;padding-right: 27px" class="username username-hide-on-mobile" data-ng-cloak="">{{currentUser.person.firstName}} | {{currentUser.username}}  <span class="caret"></span></span>
-                        <!--<i class="fa fa-angle-down"></i>-->
+                        <span class="username username-hide-on-mobile user-dropdown-label" data-ng-cloak="">
+                            {{currentUser.person.firstName}} | {{currentUser.username}} <span class="caret"></span>
+                        </span>
                     </a>
-                    <ul class="dropdown-menu ">
-                        <li class="user-photo" ng-if="!currentUser.hasPhoto" ng-if="!settings.isViewer">
-                            <a ng-if="!settings.isViewer" target="_blank" href="#" ng-click="profilePhoto.showUploadModal()"><img class="img-circle" alt="User" ng-src="{{settings.assetsPath}}/images/no-profile-photo.png" /><span>cập nhật ảnh</span></a>
+                    <ul class="dropdown-menu user-dropdown-menu">
+                        <li class="user-photo" ng-if="!currentUser.hasPhoto && !settings.isViewer">
+                            <a href="" ng-click="profilePhoto.showUploadModal()">
+                                <img class="img-circle" alt="User" ng-src="{{settings.assetsPath}}/images/no-profile-photo.png" />
+                                <span>cập nhật ảnh</span>
+                            </a>
                         </li>
-                        <li class="user-photo" ng-if="currentUser.hasPhoto" ng-if="!settings.isViewer">
-                            <a ng-if="!settings.isViewer" target="_blank" href="#" ng-click="profilePhoto.showUploadModal()"><img id="_user_profile_photo_big" class="img-circle" alt="User" ng-src="{{settings.api.baseUrl}}public/users/photo/{{currentUser.username}}" /><span>cập nhật ảnh</span></a>
+
+                        <li class="user-photo" ng-if="currentUser.hasPhoto && !settings.isViewer">
+                            <a href="" ng-click="profilePhoto.showUploadModal()">
+                                <img id="_user_profile_photo_big" class="img-circle" alt="User" ng-src="{{settings.api.baseUrl}}public/users/photo/{{currentUser.username}}" />
+                                <span>cập nhật ảnh</span>
+                            </a>
                         </li>
+
                         <li style="padding-top: 10px" ng-if="!settings.isViewer">
-                            <a target="_blank" href="#" ng-click="changePassword()"><i class="icon-shield"></i> Đổi mật khẩu</a>
+                            <a href="" ng-click="changePassword()">
+                                <i class="icon-shield"></i> Đổi mật khẩu
+                            </a>
                         </li>
-                        <li class="divider"> </li>
+
+                        <li class="divider"></li>
+
                         <li>
-                            <a target="_blank" href="#" data-ng-click="logout()"><i class="icon-power"></i> Đóng phiên làm việc </a>
+                            <a href="" data-ng-click="logout()">
+                                <i class="icon-power"></i> Đóng phiên làm việc
+                            </a>
                         </li>
                     </ul>
                 </li>
-
-                <!--<li class="not-for-media"><a target="_blank" href="https://www.facebook.com/GxDucMeManCoi"><i class="fa fa-facebook-square header-icon" aria-hidden="true"></i></a></li>-->
-
-
-                <!--<li class="dropdown not-for-media">-->
-                    <!--<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><i class="fa fa-search header-icon" aria-hidden="true"></i>-->
-                        <!--<span class="caret"></span></a>-->
-                    <!--<ul class="dropdown-menu">-->
-                        <!--<li>-->
-                            <!--<form class="navbar-form navbar-left">-->
-                                <!--<div class="form-group">-->
-                                    <!--<input type="text" class="form-control" ng-model="vm.textSearch" placeholder="Tìm kiếm..." ng-keyup="vm.enterSearchCodeClient(e)" >-->
-                                <!--</div>-->
-                                <!--&lt;!&ndash;<button type="submit" class="btn btn-default">Submit</button>&ndash;&gt;-->
-                            <!--</form>-->
-                        <!--</li>-->
-                    <!--</ul>-->
-                <!--</li>-->
-
             </ul>
+        </div>
 
-        </div><!-- /.navbar-collapse -->
-    </div><!-- /.container-fluid -->
+        <div class="collapse navbar-collapse" ng-if="!settings.permissionsLoaded">
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a href=""><i class="fa fa-spinner fa-spin"></i> Đang tải menu...</a>
+                </li>
+            </ul>
+        </div>
+    </div>
 </nav>
 
 <script type="text/ng-template" id="upload_photo_modal.html">
@@ -251,9 +220,19 @@
         <div class="modal-body">
             <div class="row">
                 <div class="col-md-12">
-                    <a class="no-content1 display-block link" ngf-select="profilePhoto.triggerUpload($file, $invalidFiles)"
-                       accept="image/*" ngf-pattern="image/*, .jpg, .png" ngf-accept="'image/*'" ngf-multiple="false" ngf-max-size="1MB"
-                       ngf-min-height="300" ngf-max-height="1000" ngf-min-width="300" ngf-max-width="1000"><i class="fa fa-cloud-upload"></i> Chọn ảnh để tải lên</a>
+                    <a class="no-content1 display-block link"
+                       ngf-select="profilePhoto.triggerUpload($file, $invalidFiles)"
+                       accept="image/*"
+                       ngf-pattern="image/*, .jpg, .png"
+                       ngf-accept="'image/*'"
+                       ngf-multiple="false"
+                       ngf-max-size="1MB"
+                       ngf-min-height="300"
+                       ngf-max-height="1000"
+                       ngf-min-width="300"
+                       ngf-max-width="1000">
+                        <i class="fa fa-cloud-upload"></i> Chọn ảnh để tải lên
+                    </a>
                 </div>
 
                 <div class="col-md-12 margin-top-20" ng-if="profilePhoto.uploadedFile != null">
@@ -268,14 +247,27 @@
                 </div>
 
                 <div class="col-md-12 margin-top-20" ng-if="profilePhoto.errorFile != null && profilePhoto.errorFile.$error != ''">
-                    Error: <span class="bold" ng-if="profilePhoto.errorFile.$error == 'maxSize'">Kích thước tệp tin không được vượt quá {{profilePhoto.errorFile.$errorParam}}</span>
-                    <span class="bold" ng-if="profilePhoto.errorFile.$error == 'maxWidth' || profilePhoto.errorFile.$error == 'maxHeight' || profilePhoto.errorFile.$error == 'minWidth' || profilePhoto.errorFile.$error == 'minHeight'">Kích thước ngang và dọc của ảnh phải từ 300 đến 1000 điểm ảnh.</span>
-                    <span class="bold" ng-if="profilePhoto.errorFile.$error != null && profilePhoto.errorFile.$error != 'maxSize' && profilePhoto.errorFile.$error != 'maxWidth' && profilePhoto.errorFile.$error != 'maxHeight' && profilePhoto.errorFile.$error != 'minWidth' && profilePhoto.errorFile.$error != 'minHeight'">Tệp tin {{profilePhoto.errorFile.name}} không hợp lệ.</span>
+                    Error:
+                    <span class="bold" ng-if="profilePhoto.errorFile.$error == 'maxSize'">
+                        Kích thước tệp tin không được vượt quá {{profilePhoto.errorFile.$errorParam}}
+                    </span>
+                    <span class="bold" ng-if="profilePhoto.errorFile.$error == 'maxWidth' || profilePhoto.errorFile.$error == 'maxHeight' || profilePhoto.errorFile.$error == 'minWidth' || profilePhoto.errorFile.$error == 'minHeight'">
+                        Kích thước ngang và dọc của ảnh phải từ 300 đến 1000 điểm ảnh.
+                    </span>
+                    <span class="bold" ng-if="profilePhoto.errorFile.$error != null && profilePhoto.errorFile.$error != 'maxSize' && profilePhoto.errorFile.$error != 'maxWidth' && profilePhoto.errorFile.$error != 'maxHeight' && profilePhoto.errorFile.$error != 'minWidth' && profilePhoto.errorFile.$error != 'minHeight'">
+                        Tệp tin {{profilePhoto.errorFile.name}} không hợp lệ.
+                    </span>
                 </div>
 
                 <div class="col-md-12 margin-top-20" ng-if="profilePhoto.uploadedFile.progress >= 0">
                     <div class="progress" style="height: 20px">
-                        <div class="progress-bar" role="progressbar" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100" ng-bind="profilePhoto.uploadedFile.progress + '%'" style="width:{{profilePhoto.uploadedFile.progress}}%;">
+                        <div class="progress-bar"
+                             role="progressbar"
+                             aria-valuenow="70"
+                             aria-valuemin="0"
+                             aria-valuemax="100"
+                             ng-bind="profilePhoto.uploadedFile.progress + '%'"
+                             style="width:{{profilePhoto.uploadedFile.progress}}%;">
                             {{profilePhoto.uploadedFile.progress}}%
                         </div>
                     </div>
@@ -283,8 +275,20 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" ng-click="profilePhoto.closeUploadFile()"  data-ng-disabled="profilePhoto.uploadedFile.progress > 0 && profilePhoto.uploadedFile.progress < 100" class="btn btn-default" data-dismiss="modal">Đóng lại</button>
-            <button type="button" ng-click="profilePhoto.startUploadFile(profilePhoto.uploadedFile)" class="btn btn-primary" data-ng-disabled="profilePhoto.uploadedFile == null || (profilePhoto.errorFile != null && profilePhoto.errorFile.$error != '') || profilePhoto.uploadedFile.progress >= 100" data-dismiss="modal">Bắt đầu tải lên</button>
+            <button type="button"
+                    ng-click="profilePhoto.closeUploadFile()"
+                    data-ng-disabled="profilePhoto.uploadedFile.progress > 0 && profilePhoto.uploadedFile.progress < 100"
+                    class="btn btn-default"
+                    data-dismiss="modal">
+                Đóng lại
+            </button>
+            <button type="button"
+                    ng-click="profilePhoto.startUploadFile(profilePhoto.uploadedFile)"
+                    class="btn btn-primary"
+                    data-ng-disabled="profilePhoto.uploadedFile == null || (profilePhoto.errorFile != null && profilePhoto.errorFile.$error != '') || profilePhoto.uploadedFile.progress >= 100"
+                    data-dismiss="modal">
+                Bắt đầu tải lên
+            </button>
         </div>
     </div>
 </script>
@@ -298,7 +302,11 @@
             <div class="row">
                 <div class="col-xs-12">
                     <div class="cropper-crop-area">
-                        <ui-cropper image="profilePhoto.photoUrl" area-type="square" area-init-size="{ w:cropper.cropWidth,h:cropper.cropHeight}" cropject="profilePhoto.cropper" result-image="profilePhoto.croppedImage"></ui-cropper>
+                        <ui-cropper image="profilePhoto.photoUrl"
+                                    area-type="square"
+                                    area-init-size="{ w:cropper.cropWidth,h:cropper.cropHeight}"
+                                    cropject="profilePhoto.cropper"
+                                    result-image="profilePhoto.croppedImage"></ui-cropper>
                     </div>
                 </div>
             </div>
@@ -360,6 +368,9 @@
 </script>
 
 <style>
+    .navbar-nav.navbar-right .open .dropdown-menu{
+        background: #371009 !important;
+    }
     #navscroll{
         transition: 0.3s;
     }
@@ -423,6 +434,27 @@
         display: block;
     }
 
+    .user-dropdown-label {
+        padding-left: 27px;
+        padding-right: 27px;
+    }
+
+    .user-dropdown-menu {
+        min-width: 240px;
+    }
+
+    .user-photo a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-photo img.img-circle {
+        width: 48px;
+        height: 48px;
+        object-fit: cover;
+    }
+
     @media only screen and (max-width: 767px){
         .navbar-nav .open .dropdown-menu{
             width: 100% !important;
@@ -434,15 +466,15 @@
         }
 
         .navbar-default .navbar-nav>li>a {
-            font-size: 2.5vh !important;;
+            font-size: 2.5vh !important;
         }
 
         .navbar-default .navbar-nav>li>a:hover {
-            font-size: 2.5vh !important;;
+            font-size: 2.5vh !important;
         }
 
         .dropdown-menu > li > a{
-            font-size: 2.5vh !important;;
+            font-size: 2.5vh !important;
         }
 
         .dropdown-menu > li > a{
@@ -452,23 +484,97 @@
         }
 
         .header-icon {
-            font-size: 2.5vh !important;;
+            font-size: 2.5vh !important;
+        }
+
+        .navbar-nav .open .dropdown-menu {
+            width: 100% !important;
+            background: #fff !important;
+            /*border: 1px solid #ddd !important;*/
+            padding: 10px 0 !important;
+            margin-top: 5px !important;
+        }
+
+        .navbar-nav.navbar-right .open .dropdown-menu {
+            position: static !important;
+            float: none !important;
+            width: 100% !important;
+            min-width: 100% !important;
+            box-shadow: none !important;
+            /*border-radius: 6px !important;*/
+        }
+
+        .navbar-nav.navbar-right .open .dropdown-menu > li > a {
+            padding: 12px 20px !important;
+            white-space: normal !important;
+        }
+
+        .navbar-nav.navbar-right > li {
+            width: 100% !important;
+        }
+
+        .navbar-nav.navbar-right > li > a {
+            width: 100% !important;
+            display: block !important;
+        }
+
+        .user-dropdown-mobile {
+            width: 100% !important;
+        }
+
+        .user-dropdown-mobile > a {
+            width: 100% !important;
+            display: block !important;
+        }
+
+        .user-dropdown-label {
+            display: block !important;
+            width: 100% !important;
+            padding-left: 15px !important;
+            padding-right: 15px !important;
+        }
+
+        .user-dropdown-mobile.open .dropdown-menu {
+            width: 100% !important;
+            min-width: 100% !important;
+            position: static !important;
+            float: none !important;
+            background: #ffffff !important;
+            /*border: 1px solid #dcdcdc !important;*/
+            /*border-radius: 6px !important;*/
+            margin-top: 8px !important;
+        }
+
+        .username-hide-on-mobile {
+            display: block !important;
+            width: 100% !important;
+            padding-left: 15px !important;
+            padding-right: 15px !important;
+        }
+
+        .user-photo a {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            width: 100% !important;
+        }
+
+        .user-photo img.img-circle {
+            width: 48px !important;
+            height: 48px !important;
+            object-fit: cover !important;
         }
     }
 
     .navbar-default .navbar-toggle{
         margin-right: 5px;
         margin-top: 2px;
-
     }
 
     .navbar-default .navbar-nav>li>a {
         font-family: Cambria;
-        /*padding-top: 20px;*/
     }
 
     .navbar-brand {
-        /*padding-top: 20px;*/
     }
-
 </style>

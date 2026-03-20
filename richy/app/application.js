@@ -70,161 +70,205 @@
     Hrm.API_PREFIX = 'api/';
 
     /* Init global settings and run the app */
-    Hrm.run(['$rootScope', 'settings', '$http', '$cookies', '$state', '$injector', 'constants', 'OAuth', 'blockUI', 'toastr', 'Idle', 'Keepalive',
-        function ($rootScope, settings, $http, $cookies, $state, $injector, constants, OAuth, blockUI, toastr, Idle, Keepalive) {
-            $rootScope.$state = $state; // state to be accessed from view
-            settings.api.apiV1Url=Hrm.API_PREFIX;
-            $rootScope.$settings = settings; // state to be accessed from view
+    /* Init global settings and run the app */
+    Hrm.run([
+        '$rootScope',
+        'settings',
+        '$http',
+        '$cookies',
+        '$state',
+        '$injector',
+        'constants',
+        'OAuth',
+        'blockUI',
+        'toastr',
+        'Idle',
+        'Keepalive',
+        '$timeout',
+        function ($rootScope, settings, $http, $cookies, $state, $injector, constants, OAuth, blockUI, toastr, Idle, Keepalive, $timeout) {
+            $rootScope.$state = $state;
+            settings.api.apiV1Url = Hrm.API_PREFIX;
+            $rootScope.$settings = settings;
 
             $rootScope.islogOut = false;
-            
-            
+
             console.log("ver 1.0");
 
-            var currentUser = {};
-            if($cookies.getAll()["education.user"] != null && !angular.isUndefined($cookies.getAll()["education.user"])){
-                currentUser = JSON.parse($cookies.getAll()["education.user"]);
+            // =========================
+            // Init permission flags
+            // =========================
+            settings.permissionsLoaded = false;
+            settings.isAdmin = false;
+            settings.isViewer = false;
+            settings.isStaff = false;
+            settings.isStudentManagerment = false;
+            settings.isEducationManagerment = false;
+
+            function resetPermissionSettings() {
+                settings.isAdmin = false;
+                settings.isViewer = false;
+                settings.isStaff = false;
+                settings.isStudentManagerment = false;
+                settings.isEducationManagerment = false;
             }
 
-            if(currentUser.roles != null){
-                angular.forEach(currentUser.roles, function(value, key) {
-                    if(value.name == "ROLE_ADMIN"){
+            function applyRolesToSettings(user) {
+                resetPermissionSettings();
+
+                if (!user || !user.roles || !user.roles.length) {
+                    return;
+                }
+
+                angular.forEach(user.roles, function (value) {
+                    if (value.name === "ROLE_ADMIN") {
                         settings.isAdmin = true;
                         console.log("ADMIN");
-                    }else if(value.name == "ROLE_VIEWER"){
+                    } else if (value.name === "ROLE_VIEWER") {
                         settings.isViewer = true;
                         console.log("VIEWER");
-                    }else if(value.name == "ROLE_STAFF" || value.name == "ROLE_STAFF_MANAGEMENT"){
+                    } else if (value.name === "ROLE_STAFF" || value.name === "ROLE_STAFF_MANAGEMENT") {
                         settings.isStaff = true;
-                        console.log("staff");
-                    }else if(value.name == "ROLE_STUDENT_MANAGERMENT"){
+                        console.log("STAFF");
+                    } else if (value.name === "ROLE_STUDENT_MANAGERMENT") {
                         settings.isStudentManagerment = true;
                         console.log("isStudentManagerment");
-                    }else if(value.name == "ROLE_EDUCATION_MANAGERMENT"){
+                    } else if (value.name === "ROLE_EDUCATION_MANAGERMENT") {
                         settings.isEducationManagerment = true;
                         console.log("isEducationManagerment");
                     }
                 });
             }
 
-            document.documentElement.setAttribute('translate','no');
-            document.documentElement.classList.add('notranslate');
-            // Optional: for specific chunks you create dynamically
-            document.querySelectorAll('[data-notranslate]').forEach(el=>{
-                el.setAttribute('translate','no');
-            el.classList.add('notranslate');
-            });
+            function loadPermissionsFromCookie(done) {
+                settings.permissionsLoaded = false;
 
-            var hostname = window.location.hostname;
+                var raw = $cookies.get("education.user");
 
-            if (hostname === "giaoxuphungkhoang.org" || hostname === "tnttphungkhoang.com" ) {
-                // alert("Đúng domain");
-                settings.chapter = true;
-            }
-            if (hostname === "ieltsroom.com") {
-                // alert("Đúng domain");
-                settings.ieltsRoom = true;
-            }
+                if (raw) {
+                    try {
+                        var currentUser = JSON.parse(raw);
+                        applyRolesToSettings(currentUser);
+                    } catch (e) {
+                        console.error("Parse education.user failed:", e);
+                        resetPermissionSettings();
+                    }
 
-            // $rootScope.facebookAppId = '367012131893866'; // set your facebook app id here
-
-            // Idle management
-            // Idle.watch();
-            // Keepalive.start();
-
-            // $rootScope.$on('IdleStart', function() {
-            //     $http.get(settings.api.baseUrl + 'api/users/getCurrentUser').success(function (response, status, headers, config) {
-            //         if (response) {
-            //             /* Display modal warning or sth */
-            //             $rootScope.idleToastr = toastr.warning('Bạn đã ngưng làm việc trên hệ thống một khoảng thời gian khá lâu. Phiên làm việc của bạn sẽ tự động kết thúc ngay sau đây nếu bạn không thực hiện một thao tác nào.', 'Cảnh báo...', {
-            //                 timeOut: 60000, // 60 seconds
-            //                 closeButton: true,
-            //                 progressBar: true});
-            //         }
-            //     }).error(function (response, status, headers, config) {
-            //     });
-            // });
-            //
-            // $rootScope.$on('IdleEnd', function() {
-            //     if ($rootScope.idleToastr) {
-            //         toastr.remove($rootScope.idleToastr);
-            //     }
-            // });
-            //
-            // $rootScope.$on('IdleTimeout', function() {
-            //     OAuth.revokeToken();
-            //
-            //     $cookies.remove(constants.oauth2_token);
-            //     $state.go('login');
-            // });
-
-            // $state.go('church');
-            // $cookies.putObject(constants.cookies_user, $rootScope.currentUser);
-            // OAuth.getRefreshToken();
-            // console.log($state.current.name);
-
-            // vm.user =
-            //
-            // vm.user.username = 'admin';
-            // vm.user.password = 'admin';
-            // OAuth.getAccessToken({
-            //
-            //     username: 'admin', password : 'admin'
-            // }, 'POST');
-
-            // oauth2...
-            $rootScope.$on('oauth:error', function (event, rejection) {
-
-                blockUI.stop();
-
-                // Ignore `invalid_grant` error - should be catched on `LoginController`.
-                if (angular.isDefined(rejection.data) && 'invalid_grant' === rejection.data.error) {
-                    $cookies.remove(constants.oauth2_token);
-                    $state.go('login');
-                    // $state.go('church');
-
+                    settings.permissionsLoaded = true;
+                    $rootScope.$broadcast('permissionsLoaded');
+                    if (done) {
+                        done();
+                    }
                     return;
                 }
 
-                // Refresh token when a `invalid_token` error occurs.
-                if (angular.isDefined(rejection.data) && 'invalid_token' === rejection.data.error) {
+                $timeout(function () {
+                    var retryRaw = $cookies.get("education.user");
+
+                    if (retryRaw) {
+                        try {
+                            var retryUser = JSON.parse(retryRaw);
+                            applyRolesToSettings(retryUser);
+                        } catch (e) {
+                            console.error("Retry parse education.user failed:", e);
+                            resetPermissionSettings();
+                        }
+                    } else {
+                        resetPermissionSettings();
+                    }
+
+                    settings.permissionsLoaded = true;
+                    $rootScope.$broadcast('permissionsLoaded');
+
+                    if (done) {
+                        done();
+                    }
+                }, 300);
+            }
+
+            loadPermissionsFromCookie();
+
+            // =========================
+            // Notranslate
+            // =========================
+            document.documentElement.setAttribute('translate', 'no');
+            document.documentElement.classList.add('notranslate');
+
+            document.querySelectorAll('[data-notranslate]').forEach(function (el) {
+                el.setAttribute('translate', 'no');
+                el.classList.add('notranslate');
+            });
+
+            // =========================
+            // Domain mode
+            // =========================
+            var hostname = window.location.hostname;
+
+            settings.chapter = false;
+            settings.ieltsRoom = false;
+
+            if (hostname === "giaoxuphungkhoang.org" || hostname === "tnttphungkhoang.com") {
+                settings.chapter = true;
+            }
+
+            if (hostname === "ieltsroom.com") {
+                settings.ieltsRoom = true;
+            }
+
+            // =========================
+            // OAuth errors
+            // =========================
+            $rootScope.$on('oauth:error', function (event, rejection) {
+                blockUI.stop();
+
+                if (angular.isDefined(rejection.data) && rejection.data.error === 'invalid_grant') {
+                    $cookies.remove(constants.oauth2_token);
+                    $state.go('login');
+                    return;
+                }
+
+                if (angular.isDefined(rejection.data) && rejection.data.error === 'invalid_token') {
                     return OAuth.getRefreshToken();
                 }
 
-                // Redirect to `/login` with the `error_reason`.
-                $rootScope.$emit('$unauthorized', function (event, data) {});
+                $rootScope.$emit('$unauthorized', function () {});
                 $state.go('login');
-                // $state.go('church');
-
-
             });
 
-            $rootScope.$on('$locationChangeSuccess', function (event) {
-
+            // =========================
+            // Route change / auth check
+            // =========================
+            $rootScope.$on('$locationChangeSuccess', function () {
 
                 if (!OAuth.isAuthenticated()) {
-                    $rootScope.$emit('$unauthorized', function (event, data) {});
+                    $rootScope.$emit('$unauthorized', function () {});
                     $state.go('login');
-                    // $state.go('church');
+                    return;
                 }
 
                 blockUI.start();
-                $http.get(settings.api.baseUrl + 'api/users/getCurrentUser').success(function (response, status, headers, config) {
-                    blockUI.stop();
-                    if (response) {
-                        $rootScope.$emit('$onCurrentUserData', response);
 
-                        if ($state.current.name == 'login') {
-                            $state.go('application.dashboard');
-                            // $state.go('church');
+                $http.get(settings.api.baseUrl + 'api/users/getCurrentUser')
+                    .success(function (response) {
+                        blockUI.stop();
+
+                        if (response) {
+                            $rootScope.$emit('$onCurrentUserData', response);
+
+                            // Ưu tiên update settings role theo response backend cho chắc ăn hơn cookie
+                            applyRolesToSettings(response);
+                            settings.permissionsLoaded = true;
+                            $rootScope.$broadcast('permissionsLoaded');
+
+                            if ($state.current.name === 'login') {
+                                $state.go('application.dashboard');
+                            }
                         }
-                    }
-                }).error(function (response, status, headers, config) {
-                    blockUI.stop();
-                    $cookies.remove(constants.oauth2_token);
-                    $state.go('login');
-                    // $state.go('church');
-                });
+                    })
+                    .error(function () {
+                        blockUI.stop();
+                        $cookies.remove(constants.oauth2_token);
+                        $state.go('login');
+                    });
             });
         }
     ]);
