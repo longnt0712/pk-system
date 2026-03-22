@@ -982,6 +982,7 @@
             vm.checkType = checkType;
             vm.resetPersonDate(user,status,null);
             vm.personDate.id = personDate.id;
+            vm.personDate.description = personDate.description;
 
             service.saveObject(vm.personDate).then(function (data) {
                 // vm.getPage();
