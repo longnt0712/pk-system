@@ -1089,7 +1089,239 @@
 
         vm.statusMass = [
             {id:1}
-        ]
+        ];
+
+        // =========================
+        // EXPORT PNG / EXCEL
+        // =========================
+
+        vm.exportDateText = '';
+
+        vm.getFilteredPersonDates = function () {
+            return $filter('filter')(vm.personDates || [], vm.searchClient);
+        };
+
+        vm.getFullName = function (personDate) {
+            if (!personDate || !personDate.user || !personDate.user.person) return '';
+            return [
+                personDate.user.person.patron || '',
+                personDate.user.person.lastName || '',
+                personDate.user.person.firstName || ''
+            ].join(' ').replace(/\s+/g, ' ').trim();
+        };
+
+        vm.getBirthDateText = function (personDate) {
+            if (!personDate || !personDate.user || !personDate.user.person || !personDate.user.person.birthDate) {
+                return '';
+            }
+            return $filter('date')(personDate.user.person.birthDate, 'dd/MM/yyyy');
+        };
+
+        vm.getStatusMassName = function (status) {
+            var map = {
+                1: 'CÓ ĐI LỄ',
+                2: 'KHÔNG ĐI LỄ',
+                3: 'MUỘN',
+                5: 'CA ĐOÀN',
+                6: 'PHÉP (LỄ)'
+            };
+            return map[status] || '';
+        };
+
+        vm.getStatusClassName = function (status) {
+            var map = {
+                1: 'CÓ ĐI HỌC',
+                2: 'KHÔNG ĐI HỌC',
+                3: 'MUỘN',
+                5: 'CA ĐOÀN',
+                6: 'PHÉP (GL)'
+            };
+            return map[status] || '';
+        };
+
+        vm.getStatusMassClass = function (status) {
+            if (status == 1) return 'status-class-green';
+            if (status == 2) return 'status-class-red';
+            if (status == 5) return 'status-class-info';
+            if (status == 6) return 'status-class-warning';
+            return '';
+        };
+
+        vm.getStatusClassClass = function (status) {
+            if (status == 1) return 'status-class-green';
+            if (status == 2) return 'status-class-red';
+            if (status == 5) return 'status-class-info';
+            if (status == 6) return 'status-class-warning';
+            return '';
+        };
+
+        vm.getExcelFillByStatus = function (status) {
+            if (status == 1) return 'E4FFF5';
+            if (status == 2) return 'E87867';
+            if (status == 5) return '17A2B8';
+            if (status == 6) return 'FFC107';
+            return null;
+        };
+
+        vm.exportAttendancePng = function () {
+            var exportEl = document.getElementById('attendance-export-wrapper');
+            if (!exportEl) {
+                toastr.error('Không tìm thấy vùng export PNG.', 'Lỗi');
+                return;
+            }
+
+            var rows = vm.getFilteredPersonDates();
+            if (!rows || rows.length === 0) {
+                toastr.warning('Không có dữ liệu để xuất.', 'Thông báo');
+                return;
+            }
+
+            if (typeof html2canvas === 'undefined') {
+                toastr.error('Thiếu thư viện html2canvas.', 'Lỗi');
+                return;
+            }
+
+            vm.exportDateText = $filter('date')(new Date(), 'dd/MM/yyyy HH:mm:ss');
+
+            blockUI.start();
+
+            var oldDisplay = exportEl.style.display;
+            exportEl.style.display = 'block';
+
+            $timeout(function () {
+                html2canvas(exportEl, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff'
+                }).then(function (canvas) {
+                    canvas.toBlob(function (blob) {
+                        if (!blob) {
+                            exportEl.style.display = oldDisplay || 'none';
+                            blockUI.stop();
+                            toastr.error('Xuất PNG thất bại.', 'Lỗi');
+                            return;
+                        }
+
+                        saveAs(blob, 'diem-danh-' + $filter('date')(new Date(), 'dd-MM-yyyy-HH-mm-ss') + '.png');
+                        exportEl.style.display = oldDisplay || 'none';
+                        blockUI.stop();
+                        toastr.success('Xuất PNG thành công.', 'Thông báo');
+                    });
+                }).catch(function (err) {
+                    console.error(err);
+                    exportEl.style.display = oldDisplay || 'none';
+                    blockUI.stop();
+                    toastr.error('Xuất PNG thất bại.', 'Lỗi');
+                });
+            }, 300);
+        };
+
+        vm.exportAttendanceExcel = function () {
+            var rows = vm.getFilteredPersonDates();
+
+            if (!rows || rows.length === 0) {
+                toastr.warning('Không có dữ liệu để xuất.', 'Thông báo');
+                return;
+            }
+
+            if (typeof ExcelJS === 'undefined') {
+                toastr.error('Thiếu thư viện ExcelJS.', 'Lỗi');
+                return;
+            }
+
+            blockUI.start();
+
+            var workbook = new ExcelJS.Workbook();
+            var worksheet = workbook.addWorksheet('DiemDanh');
+
+            worksheet.columns = [
+                { header: 'TÊN', key: 'name', width: 35 },
+                { header: 'NGÀY SINH', key: 'birthDate', width: 15 },
+                { header: 'LỄ', key: 'mass', width: 20 },
+                { header: 'GL', key: 'clazz', width: 20 },
+                { header: 'LỚP', key: 'enrollmentClass', width: 15 }
+            ];
+
+            var headerRow = worksheet.getRow(1);
+            headerRow.eachCell(function (cell) {
+                cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 12 };
+                cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: '4472C4' }
+                };
+                cell.border = {
+                    top: { style: 'thin', color: { argb: '000000' } },
+                    left: { style: 'thin', color: { argb: '000000' } },
+                    bottom: { style: 'thin', color: { argb: '000000' } },
+                    right: { style: 'thin', color: { argb: '000000' } }
+                };
+            });
+            headerRow.height = 24;
+
+            angular.forEach(rows, function (personDate, index) {
+                var row = worksheet.addRow({
+                    name: (index + 1) + '. ' + vm.getFullName(personDate),
+                    birthDate: vm.getBirthDateText(personDate),
+                    mass: vm.getStatusMassName(personDate.statusMass),
+                    clazz: vm.getStatusClassName(personDate.statusClass),
+                    enrollmentClass: vm.enrollmentClassMap[personDate.user.person.enrollmentClass] || ''
+                });
+
+                row.height = 22;
+
+                row.eachCell(function (cell, colNumber) {
+                    cell.alignment = {
+                        vertical: 'middle',
+                        horizontal: colNumber === 1 ? 'left' : 'center',
+                        wrapText: true
+                    };
+                    cell.border = {
+                        top: { style: 'thin', color: { argb: '000000' } },
+                        left: { style: 'thin', color: { argb: '000000' } },
+                        bottom: { style: 'thin', color: { argb: '000000' } },
+                        right: { style: 'thin', color: { argb: '000000' } }
+                    };
+                    cell.font = { size: 11 };
+                });
+
+                // LỄ = cột 3
+                var massFill = vm.getExcelFillByStatus(personDate.statusMass);
+                if (massFill) {
+                    row.getCell(3).fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: massFill }
+                    };
+                }
+
+                // GL = cột 4
+                var classFill = vm.getExcelFillByStatus(personDate.statusClass);
+                if (classFill) {
+                    row.getCell(4).fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: classFill }
+                    };
+                }
+            });
+
+            workbook.xlsx.writeBuffer().then(function (buffer) {
+                var blob = new Blob(
+                    [buffer],
+                    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+                );
+
+                saveAs(blob, 'diem-danh-' + $filter('date')(new Date(), 'dd-MM-yyyy-HH-mm-ss') + '.xlsx');
+                blockUI.stop();
+                toastr.success('Xuất Excel thành công.', 'Thông báo');
+            }).catch(function (err) {
+                console.error(err);
+                blockUI.stop();
+                toastr.error('Xuất Excel thất bại.', 'Lỗi');
+            });
+        };
         
 
     }
