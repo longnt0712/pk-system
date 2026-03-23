@@ -1,5 +1,30 @@
 ﻿<!-- END PAGE HEADER-->
 <!-- BEGIN MAIN CONTENT -->
+<table class="table table-bordered table-striped" ng-if="vm.questionTable && vm.questionTable.length > 0 && vm.mode.id == 1">
+    <thead>
+    <tr>
+        <th>Từ vựng</th>
+        <th>Đáp án 1</th>
+        <th>Đáp án 2</th>
+        <th>Đáp án 3</th>
+        <th>Đáp án 4</th>
+        <th>Time Limit</th>
+        <th>Correct Answer(s)</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr ng-repeat="row in vm.questionTable track by $index">
+        <td>{{ row['Từ vựng'] }}</td>
+        <td>{{ row['Đáp án 1'] }}</td>
+        <td>{{ row['Đáp án 2'] }}</td>
+        <td>{{ row['Đáp án 3'] }}</td>
+        <td>{{ row['Đáp án 4'] }}</td>
+        <td>{{ row['Time Limit'] }}</td>
+        <td>{{ row['Correct Answer(s)'] }}</td>
+    </tr>
+    </tbody>
+</table>
+
 <div class="row margin-top-10">
     <div class="col-md-12" >
 
@@ -413,6 +438,10 @@
                         <img ng-if="vm.showStart" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkStart2}}">
                         <img ng-if="vm.showWrong" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkImageWrong}}">
                         <img ng-if="vm.showCorrect" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkImageCorrect}}">
+                    </div>
+
+                    <div class="col-md-12" ng-bind-html="vm.tempWrong">
+
                     </div>
                     <!--player 1-->
 

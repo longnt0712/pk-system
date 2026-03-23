@@ -216,6 +216,7 @@
         
         vm.question = {};
         vm.questions = [];
+        vm.questionTable = [];
         vm.selectedQuestions = [];
         vm.pageIndex = 1;
         vm.pageSize = 10000;
@@ -348,9 +349,11 @@
 
             blockUI.start();
             service.getPageForGames(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
+                blockUI.stop();
                 if(vm.mode.id == 9){ // flipping
                     shuffleArray(data.content);
                     vm.questions = data.content.splice(0,vm.numberFlipCard);
+
 
                     angular.forEach(vm.questions, function(value, key) {
                         value.display = true;
@@ -372,19 +375,21 @@
                     vm.questions1 = structuredClone(data.content);
                     vm.questions1.arrayNumber = 2;
                 }
-                
+
                 if(vm.mode.id != 8) { //listening
                     vm.doShuffle();
                 }
-                
+
                 if(vm.mode.id == 8){
                     vm.setUpTable();
                     vm.bsTableControl.options.data = vm.questions;
                     vm.bsTableControl.options.totalRows = data.totalElements;
                 }
 
-
-                blockUI.stop();
+                if(vm.mode.id == 1){ // normal
+                    var tableSource = angular.copy(data.content || []);
+                    vm.questionTable = buildQuestionTable(tableSource);
+                }
 
                 //tạm thời
                 vm.totalCard = data.totalElements; //cmt tạm
@@ -1790,6 +1795,7 @@
                                 vm.wrongPlayer1 = vm.wrongPlayer1 + 1;
                                 stillInAQuestion1 = true;
                                 vm.testResult.testTakerPerformance = vm.testResult.testTakerPerformance + vm.currentCard.question + ' --- ' + vm.currentCard.motherTongue + ' <br> ';
+                                vm.tempWrong = vm.testResult.testTakerPerformance;
                             }
                         }
                         vm.sayingWhenWrong();
@@ -2390,6 +2396,7 @@
             // vm.testResult.testTakerName = testTakerName;
             vm.testResult.user = vm.currentUser;
             vm.testResult.testTakerPerformance = '';
+            // vm.tempWrong = vm.testResult.testTakerPerformance;
             if(vm.mode.id == 5){
                 vm.testResult.totalWord = vm.totalCard;
             }
@@ -2400,8 +2407,9 @@
         };
         vm.setUpTestResult();
 
+        vm.tempWrong = '';
         vm.saveTestResult = function () {
-
+            vm.tempWrong = vm.testResult.testTakerPerformance;
             if(vm.mode.id == 8){
                 vm.testResult.testType = 3; //LISTENING
                 vm.testResult.testName = vm.currentCard.question;
@@ -3112,7 +3120,129 @@
         
         //------------------ End Flash Card ---------------------------------//
 
+        function buildQuestionTable(data) {
+            function shuffleArray(arr) {
+                var array = angular.copy(arr || []);
+                for (var i = array.length - 1; i > 0; i--) {
+                    var j = Math.floor(Math.random() * (i + 1));
+                    var temp = array[i];
+                    array[i] = array[j];
+                    array[j] = temp;
+                }
+                return array;
+            }
 
+            return (data || []).map(function (item) {
+                var rawQuestions = angular.copy(Array.isArray(item.questions) ? item.questions : []);
+                var questions = [];
+
+                // Chuẩn hóa dữ liệu từ item.questions
+                angular.forEach(rawQuestions, function (q) {
+                    if (!q) return;
+
+                    questions.push({
+                        id: q.id || null,
+                        question: q.question || '',
+                        motherTongue: q.motherTongue || '',
+                        correct: q.correct === true || q.result === true
+                    });
+                });
+
+                // Nếu đáp án đúng chưa có trong questions thì thêm từ object cha
+                var hasMainQuestion = false;
+
+                angular.forEach(questions, function (q) {
+                    if (
+                        (q.id != null && item.id != null && q.id === item.id) ||
+                        ((q.question || '').trim().toLowerCase() === (item.question || '').trim().toLowerCase())
+                    ) {
+                        hasMainQuestion = true;
+                        q.correct = true;
+                        q.question = q.question || item.question || '';
+                        q.motherTongue = q.motherTongue || item.motherTongue || '';
+                    }
+                });
+
+                if (!hasMainQuestion) {
+                    questions.push({
+                        id: item.id || null,
+                        question: item.question || '',
+                        motherTongue: item.motherTongue || '',
+                        correct: true
+                    });
+                }
+
+                // Loại trùng nhưng giữ thứ tự
+                var uniqueQuestions = [];
+                var seen = {};
+
+                angular.forEach(questions, function (q) {
+                    var key = q.id != null
+                        ? 'id_' + q.id
+                        : 'q_' + (q.question || '').trim().toLowerCase();
+
+                    if (!seen[key]) {
+                        seen[key] = true;
+                        uniqueQuestions.push(q);
+                    }
+                });
+
+                // Tách đúng / sai
+                var wrongAnswers = [];
+                var correctAnswersObj = [];
+
+                angular.forEach(uniqueQuestions, function (q) {
+                    if (q.correct === true) {
+                        correctAnswersObj.push(q);
+                    } else {
+                        wrongAnswers.push(q);
+                    }
+                });
+
+                // Fallback nếu vẫn chưa có đáp án đúng
+                if (correctAnswersObj.length === 0) {
+                    correctAnswersObj.push({
+                        id: item.id || null,
+                        question: item.question || '',
+                        motherTongue: item.motherTongue || '',
+                        correct: true
+                    });
+                }
+
+                // Lấy tối đa 3 đáp án sai + 1 đáp án đúng
+                var displayAnswers = wrongAnswers.slice(0, 3).concat(correctAnswersObj.slice(0, 1));
+
+                // Nếu chưa đủ 4 thì thêm ô trống
+                while (displayAnswers.length < 4) {
+                    displayAnswers.push({
+                        question: '',
+                        motherTongue: '',
+                        correct: false
+                    });
+                }
+
+                // Random vị trí đáp án
+                displayAnswers = shuffleArray(displayAnswers);
+
+                // Correct Answer(s) = vị trí sau khi random
+                var correctAnswerIndexes = [];
+                angular.forEach(displayAnswers, function (q, index) {
+                    if (q.correct === true) {
+                        correctAnswerIndexes.push(index + 1);
+                    }
+                });
+
+                return {
+                    "Từ vựng": item.question || '',
+                    "Đáp án 1": displayAnswers[0] ? (displayAnswers[0].motherTongue || '') : '',
+                    "Đáp án 2": displayAnswers[1] ? (displayAnswers[1].motherTongue || '') : '',
+                    "Đáp án 3": displayAnswers[2] ? (displayAnswers[2].motherTongue || '') : '',
+                    "Đáp án 4": displayAnswers[3] ? (displayAnswers[3].motherTongue || '') : '',
+                    "Time Limit": 20,
+                    "Correct Answer(s)": correctAnswerIndexes.join(', ')
+                };
+            });
+        }
 
 
     }
