@@ -151,7 +151,7 @@
         vm.searchDto.testType = null;
         vm.testTypes = [
             {id: 1, name: "DAILY VOCAB", notice: ""},
-            {id: 3, name: "LISTENING", notice: ""}
+            {id: 3, name: "FILLING GAPS", notice: ""}
         ];
 
         var date = new Date();
