@@ -725,18 +725,10 @@
 
                 <!--battle quiz 3 ~ đấu loại trực tiếp -->
                 <!-- QUIZ BATTLE TUG OF WAR -->
-                <div ng-if="vm.mode.id == 7" class="row bold text-center">
-                    <!--<div class="col-md-12 margin-top-10" style="margin-bottom: 10px;">-->
-                    <!--<label style="margin-right:10px;">SỐ LẦN KÉO ĐỂ THẮNG:</label>-->
-                    <!--<select ng-model="vm.tugWinPulls"-->
-                    <!--ng-options="n for n in [5,6,7,8,9,10]"-->
-                    <!--ng-change="vm.resetTugOfWar()"-->
-                    <!--style="color:black; padding:4px 8px;">-->
-                    <!--</select>-->
-                    <!--</div>-->
-                    <div class="col-md-12 margin-top-10 beam-control-bar">
+                <div ng-if="vm.mode.id == 7" class="row bold text-center wrap-total">
+                    <div class="col-md-12 margin-top-10 beam-control-bar" ng-if="vm.totalCard > 0">
                         <div class="beam-control-left">
-                            <label class="beam-control-label">WIN PULLS</label>
+                            <label class="beam-control-label" style="color: black">WIN PULLS</label>
                             <select
                                     ng-model="vm.tugWinPulls"
                                     ng-options="n for n in [5,6,7,8,9,10]"
@@ -750,10 +742,6 @@
                                 <i class="fa fa-refresh"></i>
                             </div>
                         </div>
-
-                        <!--<div class="beam-control-right">-->
-                            <!---->
-                        <!--</div>-->
                     </div>
 
                     <div class="col-md-12 margin-top-10">
@@ -767,7 +755,7 @@
                             <div class="beam-war-header">
                                 <div class="beam-side beam-side-left">
                                     <div class="beam-side-name">PLAYER 1</div>
-                                    <div class="beam-side-sub">PULL TO LEFT GOAL</div>
+                                    <!--<div class="beam-side-sub">PULL TO LEFT GOAL</div>-->
                                 </div>
 
                                 <div class="beam-war-status">
@@ -776,7 +764,7 @@
 
                                 <div class="beam-side beam-side-right">
                                     <div class="beam-side-name">PLAYER 2</div>
-                                    <div class="beam-side-sub">PULL TO RIGHT GOAL</div>
+                                    <!--<div class="beam-side-sub">PULL TO RIGHT GOAL</div>-->
                                 </div>
                             </div>
 
@@ -819,19 +807,20 @@
                                     <div class="beam-particles beam-particles-right"></div>
                                 </div>
 
-                                <div class="beam-war-scale">
-                                    <span class="beam-scale-left">P1 GOAL</span>
-                                    <span class="beam-scale-center">CENTER</span>
-                                    <span class="beam-scale-right">P2 GOAL</span>
-                                </div>
+                                <!--<div class="beam-war-scale">-->
+                                    <!--<span class="beam-scale-left">P1 GOAL</span>-->
+                                    <!--<span class="beam-scale-center">CENTER</span>-->
+                                    <!--<span class="beam-scale-right">P2 GOAL</span>-->
+                                <!--</div>-->
                             </div>
                         </div>
                     </div>
 
                     <div class="col-md-6">
                         <div class="beam-stat-card beam-stat-card-left">
-                            <div class="beam-stat-title">PLAYER 1</div>
+                            <!--<div class="beam-stat-title"></div>-->
                             <div class="beam-stat-line">
+                                <span class="beam-stat-title">PLAYER 1</span>
                                 <span>PULL: {{vm.pullCount1}}</span>
                                 <span>STREAK: {{vm.streakPlayer1}}</span>
                                 <span>WRONG: {{vm.wrongPlayer1}}</span>
@@ -841,8 +830,9 @@
 
                     <div class="col-md-6">
                         <div class="beam-stat-card beam-stat-card-right">
-                            <div class="beam-stat-title">PLAYER 2</div>
+                            <!--<div class="beam-stat-title">PLAYER 2</div>-->
                             <div class="beam-stat-line">
+                                <span class="beam-stat-title">PLAYER 2</span>
                                 <span>PULL: {{vm.pullCount2}}</span>
                                 <span>STREAK: {{vm.streakPlayer2}}</span>
                                 <span>WRONG: {{vm.wrongPlayer2}}</span>
@@ -911,94 +901,7 @@
                     </div>
                 </div>
                 <!-- /QUIZ BATTLE TUG OF WAR -->
-                <!--<div ng-if="vm.mode.id == 7" class="row bold text-center">-->
-                <!--&lt;!&ndash;<div class="col-md-12 margin-top-10">&ndash;&gt;-->
-                <!--&lt;!&ndash;<form class="form-inline">&ndash;&gt;-->
-                <!--&lt;!&ndash;<div class="form-group mb-2">&ndash;&gt;-->
-                <!--&lt;!&ndash;<label class="bold" for="setBonusTime">NUMBER OF WORDS: </label>&ndash;&gt;-->
-                <!--&lt;!&ndash;<input id="page-size" placeholder="Page size" class="input-underline-only page-size-input" ng-model="vm.searchDto.pageSize" />&ndash;&gt;-->
-                <!--&lt;!&ndash;<strong>/&ensp;TOTAL: {{vm.totalCard}}</strong>&ndash;&gt;-->
-                <!--&lt;!&ndash;<label style="cursor: pointer;" for="page-size" ng-click="vm.changePageSize()">&ensp;<i class="fa-solid fa-sync"></i></label>&ndash;&gt;-->
 
-                <!--&lt;!&ndash;</div>&ndash;&gt;-->
-                <!--&lt;!&ndash;</form>&ndash;&gt;-->
-                <!--&lt;!&ndash;</div>&ndash;&gt;-->
-                <!--<div class="col-md-6">-->
-                <!--PLAYER 1: &ensp; {{vm.score1}}-->
-                <!--</div>-->
-                <!--<div class="col-md-6">-->
-                <!--PLAYER 2: &ensp; {{vm.score2}}-->
-                <!--</div>-->
-                <!--</div>-->
-
-                <!--&lt;!&ndash;<div class="col-md-12 text-center margin-top-10" style="margin-bottom: 20px">&ndash;&gt;-->
-                <!--&lt;!&ndash;<div data-ng-click="startCount()" class="btn btn-brown" style="line-height:43px;border: solid 1px;border-radius: 25px; height: 50px; width: 50px;">{{counter}}</div>&ndash;&gt;-->
-                <!--&lt;!&ndash;<div data-ng-click="refreshTimer()" class="btn btn-brown" style="line-height:43px;border: solid 1px;border-radius: 25px; height: 50px; width: 50px;"><i class="fa fa-refresh"></i></div>&ndash;&gt;-->
-                <!--&lt;!&ndash;</div>&ndash;&gt;-->
-
-                <!--<div ng-if="vm.mode.id == 7 && vm.showQuestionBattlel3 == true" class="row bold text-center">-->
-
-
-                <!--&lt;!&ndash;answer &ndash;&gt;-->
-                <!--<div class="col-md-12"  >-->
-
-                <!--<div class="flip" ng-if="vm.showMotherTongue === true">-->
-                <!--<div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">-->
-                <!--<div class="face front" style="display: flex">-->
-                <!--<h2 style="margin: auto auto;" >-->
-                <!--<span ng-show="vm.blindMode == false">{{vm.currentCard.question}}</span>-->
-                <!--<br>-->
-                <!--<small style="color: white">{{vm.currentCard.pronounce}}</small>-->
-                <!--</h2>-->
-
-                <!--</div>-->
-                <!--<div class="face back" style="display: flex">-->
-                <!--<h2 style="margin: auto auto;">-->
-                <!--{{vm.currentCard.question}}-->
-                <!--<br>-->
-                <!--<small style="color: white">{{vm.currentCard.pronounce}}</small>-->
-                <!--</h2>-->
-
-                <!--</div>-->
-                <!--</div>-->
-                <!--</div>-->
-
-                <!--<div class="flip" ng-if="vm.showQuestion === true">-->
-                <!--<div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">-->
-                <!--<div class="face front" style="display: flex">-->
-                <!--<h2 style="margin: auto auto;" ng-show="vm.blindMode == false">-->
-                <!--<span >{{vm.currentCard.motherTongue}}</span>-->
-                <!--<br>-->
-                <!--<small style="color: white">{{vm.currentCard.pronounce}}</small>-->
-                <!--</h2>-->
-
-                <!--</div>-->
-                <!--<div class="face back" style="display: flex">-->
-                <!--<h2 style="margin: auto auto;">-->
-                <!--{{vm.currentCard.motherTongue}}-->
-                <!--<br>-->
-                <!--<small style="color: white">{{vm.currentCard.pronounce}}</small>-->
-                <!--</h2>-->
-
-                <!--</div>-->
-                <!--</div>-->
-                <!--</div>-->
-
-                <!--<div class="col-md-6 margin-bottom-10" ng-repeat="item in vm.currentCard.questions" >-->
-                <!--<button id="answer-quiz-1-{{$index}}"-->
-                <!--style="margin-bottom: 10px; width:100%;height: auto!important;min-height: 50px!important;font-size: 16px!important;"-->
-                <!--ng-style="item.chosen == true && {'background':'#35271d'} || {'background': '#5b4739'}" class="btn btn-brown"-->
-                <!--ng-click="vm.answerQuizBattle3(item.correct,item,vm.currentCard.questions,1)">{{item.motherTongue}}</button>-->
-                <!--<button ng-show="false" id="answer-quiz-2-{{$index}}" style="width:100%;height: auto!important;min-height: 50px!important;font-size: 16px!important;" ng-style="item.chosen == true && {'background':'#35271d'} || {'background': '#5b4739'}" class="btn btn-brown"-->
-                <!--ng-click="vm.answerQuizBattle3(item.correct,item,vm.currentCard.questions,2)">{{item.motherTongue}}</button>-->
-                <!--</div>-->
-
-
-                <!--</div>-->
-                <!--&lt;!&ndash; answer &ndash;&gt;-->
-
-                <!--</div>-->
-                <!--battle quiz 3-->
 
                 <!--rewrite-->
                 <div ng-if="vm.mode.id == 4" class="row bold text-center">
@@ -1607,6 +1510,11 @@
 <audio id="audio-7">
     <source src="music/audio-7.mp3"/>
 </audio>
+
+<audio id="tuong-lai" ng-if="vm.mode.id == 7" preload="auto" loop>
+    <source src="music/tuong-lai.mp3" type="audio/mpeg"/>
+</audio>
+
 <audio id="phai-chiu">
     <source src="music/phai-chiu.mp3"/>
 </audio>
@@ -1912,6 +1820,16 @@
 </style><!-- BEGIN MAIN JS -->
 
 <style>
+    .wrap-total {
+        border-radius:20px;
+        background:
+                linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)),
+                linear-gradient(90deg, rgba(80,180,255,.08), rgba(255,255,255,.02) 50%, rgba(150,255,100,.08));
+        border:1px solid rgba(255,255,255,.08);
+        box-shadow:
+                0 10px 24px rgba(0,0,0,.22),
+                inset 0 1px 0 rgba(255,255,255,.06);
+    }
     .beam-war-wrap {
         position: relative;
         max-width: 1120px;
@@ -2498,14 +2416,14 @@
         gap:14px;
         margin-bottom:12px;
         padding:14px 18px;
-        border-radius:20px;
-        background:
-                linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)),
-                linear-gradient(90deg, rgba(80,180,255,.08), rgba(255,255,255,.02) 50%, rgba(150,255,100,.08));
-        border:1px solid rgba(255,255,255,.08);
-        box-shadow:
-                0 10px 24px rgba(0,0,0,.22),
-                inset 0 1px 0 rgba(255,255,255,.06);
+        /*border-radius:20px;*/
+        /*background:*/
+                /*linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)),*/
+                /*linear-gradient(90deg, rgba(80,180,255,.08), rgba(255,255,255,.02) 50%, rgba(150,255,100,.08));*/
+        /*border:1px solid rgba(255,255,255,.08);*/
+        /*box-shadow:*/
+                /*0 10px 24px rgba(0,0,0,.22),*/
+                /*inset 0 1px 0 rgba(255,255,255,.06);*/
         position:relative;
         overflow:hidden;
     }
@@ -2789,79 +2707,408 @@
         opacity:.92;
     }
 
+    /* ===== QUESTION CARD COLOR BY SIDE ===== */
+
+    /* base chung cho cả 2 mặt */
+    .beam-question-face{
+        position: relative;
+        overflow: hidden;
+        border-radius: 22px !important;
+        border: 1px solid rgba(255,255,255,.10);
+        box-shadow:
+                0 14px 34px rgba(0,0,0,.26),
+                inset 0 1px 0 rgba(255,255,255,.06),
+                inset 0 0 26px rgba(255,255,255,.03);
+    }
+
+    /* lớp glow nền */
+    .beam-question-face:before{
+        content:"";
+        position:absolute;
+        inset:0;
+        border-radius:inherit;
+        pointer-events:none;
+        z-index:0;
+        opacity:.95;
+    }
+
+    /* vệt sáng chạy ngang */
+    .beam-question-face:after{
+        content:"";
+        position:absolute;
+        top:-30%;
+        bottom:-30%;
+        width:42%;
+        border-radius:999px;
+        pointer-events:none;
+        z-index:1;
+        filter:blur(12px);
+        opacity:.5;
+        animation: beamCardSweep 2.6s linear infinite;
+    }
+
+    /* text nằm trên hiệu ứng */
+    .beam-question-face > *{
+        position:relative;
+        z-index:2;
+    }
+
+    /* ===== LEFT SIDE / PLAYER 1 : BLUE ===== */
+    .beam-player-zone-left .beam-question-front{
+        background:
+                linear-gradient(135deg, rgba(10,34,68,.96), rgba(38,118,168,.88) 55%, rgba(205,240,248,.92));
+        border-color: rgba(120,220,255,.28);
+        box-shadow:
+                0 16px 36px rgba(0,0,0,.28),
+                0 0 22px rgba(79,190,255,.14),
+                inset 0 1px 0 rgba(255,255,255,.08),
+                inset 0 0 28px rgba(120,220,255,.05);
+    }
+
+    .beam-player-zone-left .beam-question-front:before{
+        background:
+                radial-gradient(circle at 16% 50%, rgba(80,220,255,.16), transparent 34%),
+                linear-gradient(90deg, rgba(80,180,255,.10), transparent 46%, rgba(220,245,255,.18));
+    }
+
+    .beam-player-zone-left .beam-question-front:after{
+        background: linear-gradient(90deg,
+        rgba(70,170,255,0) 0%,
+        rgba(105,205,255,.10) 18%,
+        rgba(225,248,255,.78) 50%,
+        rgba(105,205,255,.12) 82%,
+        rgba(70,170,255,0) 100%);
+        box-shadow:
+                0 0 16px rgba(180,235,255,.24),
+                0 0 34px rgba(79,190,255,.12);
+    }
+
+    /* mặt sau trái: cùng tông nhưng đậm hơn */
+    .beam-player-zone-left .beam-question-back{
+        background:
+                linear-gradient(135deg, rgba(7,24,48,.98), rgba(25,86,135,.90) 52%, rgba(145,210,225,.82));
+        border-color: rgba(120,220,255,.22);
+        box-shadow:
+                0 16px 36px rgba(0,0,0,.28),
+                0 0 18px rgba(79,190,255,.10),
+                inset 0 1px 0 rgba(255,255,255,.07),
+                inset 0 0 24px rgba(120,220,255,.04);
+    }
+
+    .beam-player-zone-left .beam-question-back:before{
+        background:
+                radial-gradient(circle at 20% 48%, rgba(70,210,255,.14), transparent 34%),
+                linear-gradient(90deg, rgba(58,155,255,.08), transparent 48%, rgba(200,240,255,.14));
+    }
+
+    .beam-player-zone-left .beam-question-back:after{
+        background: linear-gradient(90deg,
+        rgba(70,170,255,0) 0%,
+        rgba(95,195,255,.08) 18%,
+        rgba(220,246,255,.62) 50%,
+        rgba(95,195,255,.10) 82%,
+        rgba(70,170,255,0) 100%);
+    }
+
+    /* ===== RIGHT SIDE / PLAYER 2 : GREEN ===== */
+    .beam-player-zone-right .beam-question-front{
+        background:
+                linear-gradient(135deg, rgba(236,244,222,.96), rgba(131,166,95,.90) 52%, rgba(33,80,28,.92));
+        border-color: rgba(184,255,124,.28);
+        box-shadow:
+                0 16px 36px rgba(0,0,0,.28),
+                0 0 22px rgba(150,255,92,.14),
+                inset 0 1px 0 rgba(255,255,255,.10),
+                inset 0 0 28px rgba(184,255,124,.05);
+    }
+
+    .beam-player-zone-right .beam-question-front:before{
+        background:
+                radial-gradient(circle at 84% 50%, rgba(195,255,140,.16), transparent 34%),
+                linear-gradient(270deg, rgba(170,255,112,.10), transparent 46%, rgba(244,255,214,.18));
+    }
+
+    .beam-player-zone-right .beam-question-front:after{
+        background: linear-gradient(270deg,
+        rgba(170,255,110,0) 0%,
+        rgba(196,255,134,.10) 18%,
+        rgba(248,255,221,.76) 50%,
+        rgba(196,255,134,.12) 82%,
+        rgba(170,255,110,0) 100%);
+        box-shadow:
+                0 0 16px rgba(220,255,178,.22),
+                0 0 34px rgba(150,255,92,.12);
+    }
+
+    /* mặt sau phải: cùng tông nhưng đậm hơn */
+    .beam-player-zone-right .beam-question-back{
+        background:
+                linear-gradient(135deg, rgba(223,235,200,.94), rgba(103,144,72,.90) 50%, rgba(20,62,20,.96));
+        border-color: rgba(184,255,124,.22);
+        box-shadow:
+                0 16px 36px rgba(0,0,0,.28),
+                0 0 18px rgba(150,255,92,.10),
+                inset 0 1px 0 rgba(255,255,255,.08),
+                inset 0 0 24px rgba(184,255,124,.04);
+    }
+
+    .beam-player-zone-right .beam-question-back:before{
+        background:
+                radial-gradient(circle at 80% 48%, rgba(195,255,140,.14), transparent 34%),
+                linear-gradient(270deg, rgba(170,255,112,.08), transparent 48%, rgba(244,255,214,.14));
+    }
+
+    .beam-player-zone-right .beam-question-back:after{
+        background: linear-gradient(270deg,
+        rgba(170,255,110,0) 0%,
+        rgba(196,255,134,.08) 18%,
+        rgba(248,255,221,.60) 50%,
+        rgba(196,255,134,.10) 82%,
+        rgba(170,255,110,0) 100%);
+    }
+
+    /* chữ trên nền sáng bên phải dễ đọc hơn */
+    .beam-player-zone-right .beam-question-face h2,
+    .beam-player-zone-right .beam-question-face small{
+        color:#f7fff0 !important;
+        text-shadow: 0 1px 8px rgba(0,0,0,.28);
+    }
+
+    /* trái giữ tone trắng xanh */
+    .beam-player-zone-left .beam-question-face h2,
+    .beam-player-zone-left .beam-question-face small{
+        color:#eefbff !important;
+        text-shadow: 0 1px 8px rgba(0,0,0,.30);
+    }
+
+    @keyframes beamCardSweep{
+        0%{
+            transform:translateX(-170%) skewX(-18deg);
+            opacity:.10;
+        }
+        35%{
+            opacity:.45;
+        }
+        100%{
+            transform:translateX(340%) skewX(-18deg);
+            opacity:.08;
+        }
+    }
+
     /* ===== ANSWER BUTTONS ===== */
     .beam-answer-btn{
         position:relative;
+        isolation:isolate;
+        overflow:hidden;
         width:100%;
         min-height:56px !important;
         height:auto !important;
         margin-bottom:8px;
         padding:14px 16px !important;
         border-radius:18px !important;
-        border:1px solid rgba(255,255,255,.08) !important;
+        border:1px solid rgba(255,255,255,.10) !important;
         color:#eef6ff !important;
         font-size:16px !important;
         font-weight:800 !important;
         letter-spacing:.2px;
         text-align:center;
+        white-space:normal !important;
         background:
-                linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015)),
-                linear-gradient(180deg, rgba(15,20,34,.98), rgba(8,11,22,.98)) !important;
+                linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.015)),
+                linear-gradient(180deg, rgba(14,20,34,.98), rgba(8,11,22,.98)) !important;
         box-shadow:
-                0 10px 22px rgba(0,0,0,.22),
-                inset 0 1px 0 rgba(255,255,255,.05);
+                0 10px 22px rgba(0,0,0,.24),
+                inset 0 1px 0 rgba(255,255,255,.06),
+                inset 0 0 18px rgba(255,255,255,.03);
         transition:
                 transform .18s ease,
                 box-shadow .25s ease,
                 border-color .25s ease,
                 filter .25s ease;
-        white-space:normal !important;
     }
 
+    /* lớp aura nền */
     .beam-answer-btn:before{
         content:"";
         position:absolute;
         inset:0;
         border-radius:18px;
         pointer-events:none;
-        opacity:.9;
+        z-index:0;
+        opacity:.95;
+    }
+
+    /* lớp ánh sáng chạy ngang kiểu thanh năng lượng */
+    .beam-answer-btn:after{
+        content:"";
+        position:absolute;
+        top:-35%;
+        bottom:-35%;
+        width:42%;
+        border-radius:999px;
+        pointer-events:none;
+        z-index:1;
+        filter:blur(10px);
+        opacity:.65;
+        animation: beamAnswerSweep 2.2s linear infinite;
+    }
+
+    /* nội dung luôn nằm trên hiệu ứng */
+    .beam-answer-btn > *{
+        position:relative;
+        z-index:2;
+    }
+
+    /* bên trái: tông xanh - tím */
+    .beam-answer-btn-left{
+        border-color:rgba(133,213,255,.22) !important;
+        box-shadow:
+                0 10px 22px rgba(0,0,0,.24),
+                0 0 18px rgba(90,190,255,.10),
+                inset 0 1px 0 rgba(255,255,255,.06),
+                inset 0 0 18px rgba(90,190,255,.05);
+        animation: beamAnswerGlowLeft 1.6s ease-in-out infinite;
     }
 
     .beam-answer-btn-left:before{
-        background: radial-gradient(circle at 18% 50%, rgba(102,208,255,.10), transparent 35%);
+        background:
+                radial-gradient(circle at 18% 50%, rgba(110,220,255,.18), transparent 38%),
+                linear-gradient(90deg, rgba(72,120,255,.08), transparent 42%, rgba(120,235,255,.10));
+    }
+
+    .beam-answer-btn-left:after{
+        left:-22%;
+        background: linear-gradient(90deg,
+        rgba(80,170,255,0) 0%,
+        rgba(95,200,255,.10) 18%,
+        rgba(180,245,255,.80) 50%,
+        rgba(95,200,255,.12) 82%,
+        rgba(80,170,255,0) 100%);
+        box-shadow:
+                0 0 14px rgba(150,230,255,.30),
+                0 0 28px rgba(90,190,255,.16);
+    }
+
+    /* bên phải: tông cam - hồng */
+    .beam-answer-btn-right{
+        border-color:rgba(255,186,122,.22) !important;
+        box-shadow:
+                0 10px 22px rgba(0,0,0,.24),
+                0 0 18px rgba(255,164,94,.10),
+                inset 0 1px 0 rgba(255,255,255,.06),
+                inset 0 0 18px rgba(255,164,94,.05);
+        animation: beamAnswerGlowRight 1.6s ease-in-out infinite;
     }
 
     .beam-answer-btn-right:before{
-        background: radial-gradient(circle at 82% 50%, rgba(156,255,97,.10), transparent 35%);
+        background:
+                radial-gradient(circle at 82% 50%, rgba(255,187,116,.18), transparent 38%),
+                linear-gradient(270deg, rgba(255,106,136,.08), transparent 42%, rgba(255,210,120,.10));
     }
 
-    .beam-answer-btn:hover{
-        transform:translateY(-1px);
-        border-color:rgba(255,255,255,.14) !important;
+    .beam-answer-btn-right:after{
+        right:-22%;
+        background: linear-gradient(270deg,
+        rgba(255,170,100,0) 0%,
+        rgba(255,170,105,.10) 18%,
+        rgba(255,238,180,.78) 50%,
+        rgba(255,170,105,.12) 82%,
+        rgba(255,170,100,0) 100%);
         box-shadow:
-                0 14px 28px rgba(0,0,0,.28),
-                0 0 18px rgba(255,255,255,.05),
-                inset 0 1px 0 rgba(255,255,255,.07);
+                0 0 14px rgba(255,225,170,.28),
+                0 0 28px rgba(255,153,102,.16);
+    }
+
+    /* hover */
+    .beam-answer-btn:hover{
+        transform:translateY(-2px) scale(1.01);
+        filter:brightness(1.04);
     }
 
     .beam-answer-btn-left:hover{
+        border-color:rgba(150,225,255,.40) !important;
         box-shadow:
-                0 14px 28px rgba(0,0,0,.28),
-                0 0 20px rgba(102,208,255,.10),
-                inset 0 1px 0 rgba(255,255,255,.07);
+                0 16px 30px rgba(0,0,0,.30),
+                0 0 24px rgba(90,190,255,.18),
+                0 0 42px rgba(90,190,255,.10),
+                inset 0 1px 0 rgba(255,255,255,.08);
     }
 
     .beam-answer-btn-right:hover{
+        border-color:rgba(255,204,145,.40) !important;
         box-shadow:
-                0 14px 28px rgba(0,0,0,.28),
-                0 0 20px rgba(156,255,97,.10),
-                inset 0 1px 0 rgba(255,255,255,.07);
+                0 16px 30px rgba(0,0,0,.30),
+                0 0 24px rgba(255,164,94,.18),
+                0 0 42px rgba(255,120,120,.08),
+                inset 0 1px 0 rgba(255,255,255,.08);
+    }
+
+    .beam-answer-btn:active{
+        transform:scale(.985);
     }
 
     .beam-answer-btn:disabled{
         opacity:.58;
         filter:grayscale(.15);
         cursor:not-allowed;
+    }
+
+    .beam-answer-btn:disabled:after{
+        animation:none;
+        opacity:.2;
+    }
+
+    @keyframes beamAnswerSweep{
+        0%{
+            transform:translateX(-160%) skewX(-18deg);
+            opacity:.15;
+        }
+        25%{
+            opacity:.55;
+        }
+        50%{
+            opacity:.8;
+        }
+        100%{
+            transform:translateX(340%) skewX(-18deg);
+            opacity:.12;
+        }
+    }
+
+    @keyframes beamAnswerGlowLeft{
+        0%,100%{
+            box-shadow:
+                    0 10px 22px rgba(0,0,0,.24),
+                    0 0 16px rgba(90,190,255,.08),
+                    inset 0 1px 0 rgba(255,255,255,.06),
+                    inset 0 0 18px rgba(90,190,255,.04);
+        }
+        50%{
+            box-shadow:
+                    0 14px 28px rgba(0,0,0,.28),
+                    0 0 26px rgba(90,190,255,.18),
+                    0 0 40px rgba(160,235,255,.08),
+                    inset 0 1px 0 rgba(255,255,255,.08),
+                    inset 0 0 24px rgba(110,220,255,.08);
+        }
+    }
+
+    @keyframes beamAnswerGlowRight{
+        0%,100%{
+            box-shadow:
+                    0 10px 22px rgba(0,0,0,.24),
+                    0 0 16px rgba(255,164,94,.08),
+                    inset 0 1px 0 rgba(255,255,255,.06),
+                    inset 0 0 18px rgba(255,164,94,.04);
+        }
+        50%{
+            box-shadow:
+                    0 14px 28px rgba(0,0,0,.28),
+                    0 0 26px rgba(255,164,94,.18),
+                    0 0 40px rgba(255,210,140,.08),
+                    inset 0 1px 0 rgba(255,255,255,.08),
+                    inset 0 0 24px rgba(255,190,120,.08);
+        }
     }
 
     /* tone variations */

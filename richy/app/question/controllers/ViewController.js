@@ -416,7 +416,7 @@
                         // vm.setUpVideo();
                     }
                     if(vm.mode.id == 7){
-                        vm.resetTugOfWar();
+                        vm.resetTugOfWarDefault();
                     }
                 }
 
@@ -545,7 +545,7 @@
                     vm.currentCard1 = vm.questions1[vm.currentPosition1];
                     vm.createQuiz(vm.currentCard1,2);
                     vm.answerRewriteWord = '';
-                    if(!vm.isMuted && vm.mode.id != 7 && vm.mode.id !=4){
+                    if(!vm.isMuted && vm.mode.id !=4){
                         $scope.sayIt(vm.currentCard1.question);
                     }
                 }
@@ -556,7 +556,7 @@
                     vm.currentCard = vm.questions[vm.currentPosition];
                     vm.createQuiz(vm.currentCard);
                     vm.answerRewriteWord = '';
-                    if(!vm.isMuted  && vm.mode.id != 7 && vm.mode.id !=4){
+                    if(!vm.isMuted && vm.mode.id !=4){
                         $scope.sayIt(vm.currentCard.question);
                     }
                 }
@@ -814,6 +814,16 @@
                 // vm.allowChangeInformation = false;
                 vm.finishDailyVocab = "Unfinished";
             }
+
+            if(vm.mode.id == 7){
+
+                if(vm.searchDto.questionTopics == null || vm.searchDto.questionTopics.length <= 0){
+                    alert('Phải chọn bài từ vựng rồi ấn tìm kiếm');
+                    return;
+                }
+            }
+
+
 
             vm.showTimer = true;
 
@@ -1321,12 +1331,14 @@
             vm.score1 = 0;
             vm.score2 = 0;
 
-            if(vm.mode.id != 7 && vm.mode.id != 4){
+            if(vm.mode.id != 4){
                 $scope.sayIt(vm.currentCard.question);
             }
 
             if (vm.mode.id == 7) {
-                vm.resetTugOfWar();
+                // vm.resetTugOfWarDefault();
+                tuongLai.load();
+                tuongLai.play();
             }
 
         };
@@ -1401,6 +1413,8 @@
             }
 
             $scope.counter = vm.tempCounter;
+            tuongLai.load();
+
         };
         //--//
 
@@ -1628,7 +1642,6 @@
                                 vm.score2 = vm.score2 + 1;
 
                             }
-
                             vm.nextCard(2);
                         }
                     }
@@ -2024,9 +2037,9 @@
         vm.mode = {id:5,name: 'DAILY VOCAB'};
         // vm.mode = {id:9,name: 'FLIPPING CARD'};
 
-        if(vm.mode.id == 7){
-            $scope.counter =20;vm.tempCounter =20;
-        }
+        // if(vm.mode.id == 7){
+        //     $scope.counter =20;vm.tempCounter =20;
+        // }
 
         // if(vm.mode.id == 6 || vm.mode.id == 5){
         //     $scope.counter = 900;vm.tempCounter = 900;
@@ -2051,6 +2064,12 @@
             vm.tempCounter = 900;
         }
 
+        if(vm.mode.id == 7){
+            $scope.counter = 180;
+            vm.tempCounter = 180;
+        }
+
+        var tuongLai = null;
         vm.modeChange = function () {
             if(vm.mode.id == 4){
                 vm.doShuffle();
@@ -2062,9 +2081,16 @@
             }
 
             if(vm.mode.id == 7){
-                $scope.counter = 900;
-                vm.tempCounter = 900;
-                vm.resetTugOfWar();
+                $timeout(function () {
+                    tuongLai = document.getElementById('tuong-lai');
+                });
+                if(tuongLai != null){
+                    tuongLai.load();
+                }
+
+                $scope.counter = 180;
+                vm.tempCounter = 180;
+                vm.resetTugOfWarDefault();
             }
         };
 
@@ -3310,7 +3336,10 @@
             return (100 - vm.getTugProgress()) + '%';
         };
 
-        vm.resetTugOfWar = function () {
+        vm.resetTugOfWarDefault = function () {
+            $timeout.cancel(mytimeout);
+            audio.load();
+
             vm.tugScore = 0;
             vm.tugWinner = null;
             vm.tugStatusText = 'Kéo chùm năng lượng về phía mình';
@@ -3325,17 +3354,50 @@
             vm.streakPlayer2 = 0;
             vm.wrongPlayer1 = 0;
             vm.wrongPlayer2 = 0;
-            vm.endGame = false;
-            vm.endGamePlayer1 = false;
-            vm.endGamePlayer2 = false;
 
             stillInAQuestion1 = false;
             stillInAQuestion2 = false;
+
+            vm.endGame = true;
+            vm.endGamePlayer1 = false;
+            vm.endGamePlayer2 = false;
+
+            $scope.counter = 180;
+            vm.tempCounter = 180;
+
+            vm.currentPosition = 0;
+            vm.currentPosition1 = 0;
+
+            if (angular.isArray(vm.questions) && vm.questions.length > 0) {
+                shuffleArray(vm.questions); // nếu không muốn shuffle lại thì bỏ dòng này
+                vm.currentCard = vm.questions[0];
+                vm.createQuiz(vm.currentCard);
+
+                angular.forEach(vm.currentCard.questions, function (q) {
+                    q.chosen = false;
+                });
+            } else {
+                vm.currentCard = {};
+            }
+
+            if (angular.isArray(vm.questions1) && vm.questions1.length > 0) {
+                shuffleArray(vm.questions1); // nếu không muốn shuffle lại thì bỏ dòng này
+                vm.currentCard1 = vm.questions1[0];
+                vm.createQuiz(vm.currentCard1, 2);
+
+                angular.forEach(vm.currentCard1.questions, function (q) {
+                    q.chosen = false;
+                });
+            } else {
+                vm.currentCard1 = {};
+            }
         };
 
         vm.finishTugOfWar = function (winner) {
             vm.tugWinner = winner;
             vm.endGame = true;
+            vm.isPulling1 = false;
+            vm.isPulling2 = false;
 
             if (winner === 1) {
                 vm.tugStatusText = 'PLAYER 1 THẮNG!';
@@ -3343,8 +3405,14 @@
                 vm.tugStatusText = 'PLAYER 2 THẮNG!';
             }
 
+            $timeout.cancel(mytimeout);
+            audio.load();
+
             window.speechSynthesis.speak(new SpeechSynthesisUtterance(vm.tugStatusText));
-            // $scope.refreshTimer();
+
+            $timeout(function () {
+                vm.resetTugOfWarDefault();
+            }, 100000);
         };
 
         vm.pullRope = function (player) {
@@ -3385,6 +3453,29 @@
                     vm.createQuiz(vm.currentCard1, 2);
                 } else {
                     vm.nextCard(2);
+                }
+            }
+        };
+
+        vm.pushBackRope = function (player) {
+            if (vm.endGame) return;
+
+            // player trả lời sai sẽ bị đẩy ngược về phía đối thủ 1 nhịp
+            if (player === 1) {
+                vm.tugScore = Math.min(vm.tugWinPulls, vm.tugScore + 1);
+
+                if (vm.tugScore >= vm.tugWinPulls) {
+                    vm.finishTugOfWar(2);
+                } else {
+                    vm.tugStatusText = 'PLAYER 1 BỊ Never Give Up';
+                }
+            } else {
+                vm.tugScore = Math.max(-vm.tugWinPulls, vm.tugScore - 1);
+
+                if (vm.tugScore <= -vm.tugWinPulls) {
+                    vm.finishTugOfWar(1);
+                } else {
+                    vm.tugStatusText = 'PLAYER 2 BỊ Never Give Up';
                 }
             }
         };
@@ -3439,16 +3530,36 @@
                     vm.wrongPlayer1 = vm.wrongPlayer1 + 1;
                     vm.streakPlayer1 = 0;
                     stillInAQuestion1 = true;
-                    vm.tugStatusText = 'PLAYER 1 BỊ ĐẨY LÙI';
+                    vm.isPulling1 = true;
+
+                    vm.pushBackRope(1);
                     vm.sayingWhenWrong();
+
+                    if (!vm.endGame) {
+                        $timeout(function () {
+                            vm.isPulling1 = false;
+                        }, vm.tugMoveDuration);
+                    } else {
+                        vm.isPulling1 = false;
+                    }
                 }
 
                 if (player === 2 && stillInAQuestion2 === false) {
                     vm.wrongPlayer2 = vm.wrongPlayer2 + 1;
                     vm.streakPlayer2 = 0;
                     stillInAQuestion2 = true;
-                    vm.tugStatusText = 'PLAYER 2 BỊ ĐẨY LÙI';
+                    vm.isPulling2 = true;
+
+                    vm.pushBackRope(2);
                     vm.sayingWhenWrong();
+
+                    if (!vm.endGame) {
+                        $timeout(function () {
+                            vm.isPulling2 = false;
+                        }, vm.tugMoveDuration);
+                    } else {
+                        vm.isPulling2 = false;
+                    }
                 }
             }
         };
