@@ -26,9 +26,9 @@
         // 'pubnub.angular.service'
         // 'dndLists'
         // 'ngSanitize',
-        
+
     ];
-    
+
     /**
      * Filters an array of drop effects using a HTML5 effectAllowed string.
      */
@@ -213,14 +213,14 @@
 
         vm.currentUser = JSON.parse($cookies.getAll()["education.user"]);
         // console.log(vm.currentUser);
-        
+
         vm.question = {};
         vm.questions = [];
         vm.questionTable = [];
         vm.selectedQuestions = [];
         vm.pageIndex = 1;
         vm.pageSize = 10000;
-        vm.searchDto = {};        
+        vm.searchDto = {};
         vm.answer = null;
         vm.answers = [];
 
@@ -326,7 +326,7 @@
 
         vm.totalCard = 0;
         vm.showListFlashCard = false;
-        
+
 
         $scope.pageChanged = function() {
             vm.getPageFlashCard();
@@ -335,7 +335,7 @@
         vm.searchDto.questionType = {id: 6};
         vm.searchDto.userId = vm.selectedUser.id;
         vm.numberFlipCard = 6;
-        
+
         vm.getPageFlashCard = function () {
             vm.searchDto.questionType = {id: 6};
             vm.searchDto.userId = vm.selectedUser.id;
@@ -415,7 +415,12 @@
 
                         // vm.setUpVideo();
                     }
+                    if(vm.mode.id == 7){
+                        vm.resetTugOfWar();
+                    }
                 }
+
+
 
             });
         };
@@ -529,7 +534,7 @@
             vm.searchDto.pageIndex = 1;
             vm.getPageFlashCard();
         };
-        
+
         vm.nextCard = function (player) {
             $scope.shutUp();
 
@@ -724,7 +729,7 @@
 
             return topics;
         }
-        
+
         vm.showTimer = false;
 
         vm.topicChange = function () {
@@ -747,7 +752,7 @@
         vm.title = '';
         vm.searchTopicChange = function () {
             vm.showTimer = false;
-            
+
             if(vm.mode.id == 5){
                 vm.endGame = true;
             }
@@ -811,7 +816,7 @@
             }
 
             vm.showTimer = true;
-            
+
             // console.log(vm.title);
             vm.currentPosition = 0;
             vm.searchDto.pageIndex = 1;
@@ -819,7 +824,7 @@
         };
 
         vm.newFlashCard = function () {
-            
+
             if(vm.newCard.question == null || angular.isUndefined(vm.newCard.question)){
                 toastr.warning('Please fill in the word');
                 return;
@@ -875,7 +880,7 @@
             });
 
         };
-        
+
         vm.showDetailFlashCard = function (item) {
             item.selectedTopicToEdit = getListTopicFromCard(item.questionTopics);
             item.showDetail = true;
@@ -1010,19 +1015,19 @@
             toastr.info('Start Noti', 'Thông báo');
 
             if(Notification.permission === "granted") {
-                
+
                 clearInterval(idInterval);
                 idInterval = setInterval(showNotification,vm.timeGap);
             } else if (Notification.permission !== "denied"){
                 Notification.requestPermission().then(function (permission) {
                     if(permission === "granted"){
-                        
+
                     }
                 });
             }
         };
 
-       
+
 
         vm.statusChange = function () {
             vm.question.status = vm.status.id;
@@ -1138,7 +1143,7 @@
                         body: description
                     });
                 };
-                
+
             });
 
         }
@@ -1259,11 +1264,12 @@
 
                     return;
 
-                }else if (vm.showQuestionBattlel3 == true) {
-                    $scope.counter = 3;
-                    vm.showQuestionBattlel3 = false;
-                    battleTimeout = $timeout($scope.setupQuestionBattle3, 3000);
                 }
+                // else if (vm.showQuestionBattlel3 == true) {
+                //     $scope.counter = 3;
+                //     vm.showQuestionBattlel3 = false;
+                //     battleTimeout = $timeout($scope.setupQuestionBattle3, 3000);
+                // }
             }
 
             mytimeout = $timeout($scope.onTimeout, 1000);
@@ -1296,9 +1302,9 @@
             mytimeout = $timeout($scope.onTimeout, 1000);
             audio.load();
             if(vm.noBGMusic == false){
-                audio.play();    
+                audio.play();
             }
-            
+
             audio.loop = true;
 
             vm.endGame = false;
@@ -1317,6 +1323,10 @@
 
             if(vm.mode.id != 7 && vm.mode.id != 4){
                 $scope.sayIt(vm.currentCard.question);
+            }
+
+            if (vm.mode.id == 7) {
+                vm.resetTugOfWar();
             }
 
         };
@@ -1430,7 +1440,7 @@
                         if(vm.blindModeScore == vm.players[vm.indexPlayer].score){
                             vm.blindMode = true;
                         }
-                        
+
                         if(vm.streak >= 5){
                             // toastr.info('+ 5s !!!');
                             $scope.counter= $scope.counter + vm.bonusTime;
@@ -1441,7 +1451,7 @@
                         if(vm.players[vm.indexPlayer].highestStreak < vm.streak){
                             vm.players[vm.indexPlayer].highestStreak = vm.streak;
                         }
-                                                
+
                         vm.players[vm.indexPlayer].score = vm.players[vm.indexPlayer].score + 1;
                         vm.nextCard();
                     }
@@ -1786,7 +1796,7 @@
                     vm.showStart = false;
                     vm.showWrong = true;
                     vm.showCorrect = false;
-                    
+
                     if(vm.endGame == false) {
                         if(player == 1){
                             vm.streakPlayer1 = 0;
@@ -1847,104 +1857,104 @@
 
         vm.showQuestionBattlel3 = true;
         var battleTimeout = null;
-        $scope.setupQuestionBattle3 = function () {
-            vm.nextCard();
-            vm.showQuestionBattlel3 = true;
-            // $scope.refreshTimer();
-            $scope.counter =20;
-        };
+        // $scope.setupQuestionBattle3 = function () {
+        //     vm.nextCard();
+        //     vm.showQuestionBattlel3 = true;
+        //     // $scope.refreshTimer();
+        //     $scope.counter =20;
+        // };
 
-        vm.answerQuizBattle3 = function (correct,item,questions,player) { //player1 = 1 player 2 = 2
-
-            angular.forEach(questions, function(value, key) {
-                value.chosen = false;
-            });
-
-            if(correct == true){
-                if(player == 1){
-                    if(vm.endGame == true){
-                        window.speechSynthesis.speak(new SpeechSynthesisUtterance("TIME'S UP"));
-                    // } else if((vm.currentPosition + 1) >= vm.searchDto.pageSize && vm.endGame == false){
-                    } else if((vm.currentPosition + 1) >= vm.totalCard && vm.endGame == false){
-
-                        if(vm.endGamePlayer1 == false){
-                            window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội một đúng và GAME OVER"));
-                            vm.score1 = vm.score1 + 1;
-                        }
-
-                        vm.endGame = true;
-                        $scope.refreshTimer();
-
-                    }else{
-                        if(vm.endGame == false) {
-                            window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội một đúng"));
-                            vm.showQuestionBattlel3 = false;
-                            vm.score1 = vm.score1 + 1;
-                            $scope.counter = 3;
-                            battleTimeout = $timeout($scope.setupQuestionBattle3, 3000);
-                        }
-                    }
-                } else if(player == 2){
-                    if(vm.endGame == true){
-                        window.speechSynthesis.speak(new SpeechSynthesisUtterance("TIME'S UP"));
-                    } else if((vm.currentPosition1 + 1) >= vm.totalCard && vm.endGame == false){
-
-                        if(vm.endGamePlayer2 == false){
-                            window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội hai đúng và GAME OVER"));
-                            vm.score2 = vm.score2 + 1;
-                        }
-
-                        vm.endGame = true;
-                        $scope.refreshTimer();
-
-                    }else{
-                        if(vm.endGame == false) {
-                            window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội hai đúng"));
-                            vm.showQuestionBattlel3 = false;
-                            vm.score2 = vm.score2 + 1;
-                            $scope.counter = 3;
-                            battleTimeout = $timeout($scope.setupQuestionBattle3, 3000);
-                        }
-                    }
-                }
-
-
-            }else{
-                if(player == 1){
-                    if(vm.endGame == true){
-                        if((vm.currentPosition1 + 1) >= vm.totalCard ){
-                            window.speechSynthesis.speak(new SpeechSynthesisUtterance("GAME OVER"));
-                        }
-
-                    } else {
-                        if(vm.endGame == false) {
-
-                            if(player == 1){
-                                window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội một chọn sai"));
-                                vm.score1 = vm.score1 - 1;
-                            }
-
-                        }
-                    }
-                } else if (player == 2){
-                    if(vm.endGame == true){
-                        if((vm.currentPosition + 1) >= vm.totalCard){
-                            window.speechSynthesis.speak(new SpeechSynthesisUtterance("GAME OVER"));
-                        }
-
-
-                    }else {
-                        if(vm.endGame == false) {
-                            if(player == 2){
-                                window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội hai chọn sai"));
-                                vm.score2 = vm.score2 - 1;
-                            }
-
-                        }
-                    }
-                }
-            }
-        };
+        // vm.answerQuizBattle3 = function (correct,item,questions,player) { //player1 = 1 player 2 = 2
+        //
+        //     angular.forEach(questions, function(value, key) {
+        //         value.chosen = false;
+        //     });
+        //
+        //     if(correct == true){
+        //         if(player == 1){
+        //             if(vm.endGame == true){
+        //                 window.speechSynthesis.speak(new SpeechSynthesisUtterance("TIME'S UP"));
+        //             // } else if((vm.currentPosition + 1) >= vm.searchDto.pageSize && vm.endGame == false){
+        //             } else if((vm.currentPosition + 1) >= vm.totalCard && vm.endGame == false){
+        //
+        //                 if(vm.endGamePlayer1 == false){
+        //                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội một đúng và GAME OVER"));
+        //                     vm.score1 = vm.score1 + 1;
+        //                 }
+        //
+        //                 vm.endGame = true;
+        //                 $scope.refreshTimer();
+        //
+        //             }else{
+        //                 if(vm.endGame == false) {
+        //                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội một đúng"));
+        //                     vm.showQuestionBattlel3 = false;
+        //                     vm.score1 = vm.score1 + 1;
+        //                     $scope.counter = 3;
+        //                     battleTimeout = $timeout($scope.setupQuestionBattle3, 3000);
+        //                 }
+        //             }
+        //         } else if(player == 2){
+        //             if(vm.endGame == true){
+        //                 window.speechSynthesis.speak(new SpeechSynthesisUtterance("TIME'S UP"));
+        //             } else if((vm.currentPosition1 + 1) >= vm.totalCard && vm.endGame == false){
+        //
+        //                 if(vm.endGamePlayer2 == false){
+        //                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội hai đúng và GAME OVER"));
+        //                     vm.score2 = vm.score2 + 1;
+        //                 }
+        //
+        //                 vm.endGame = true;
+        //                 $scope.refreshTimer();
+        //
+        //             }else{
+        //                 if(vm.endGame == false) {
+        //                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội hai đúng"));
+        //                     vm.showQuestionBattlel3 = false;
+        //                     vm.score2 = vm.score2 + 1;
+        //                     $scope.counter = 3;
+        //                     battleTimeout = $timeout($scope.setupQuestionBattle3, 3000);
+        //                 }
+        //             }
+        //         }
+        //
+        //
+        //     }else{
+        //         if(player == 1){
+        //             if(vm.endGame == true){
+        //                 if((vm.currentPosition1 + 1) >= vm.totalCard ){
+        //                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("GAME OVER"));
+        //                 }
+        //
+        //             } else {
+        //                 if(vm.endGame == false) {
+        //
+        //                     if(player == 1){
+        //                         window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội một chọn sai"));
+        //                         vm.score1 = vm.score1 - 1;
+        //                     }
+        //
+        //                 }
+        //             }
+        //         } else if (player == 2){
+        //             if(vm.endGame == true){
+        //                 if((vm.currentPosition + 1) >= vm.totalCard){
+        //                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("GAME OVER"));
+        //                 }
+        //
+        //
+        //             }else {
+        //                 if(vm.endGame == false) {
+        //                     if(player == 2){
+        //                         window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội hai chọn sai"));
+        //                         vm.score2 = vm.score2 - 1;
+        //                     }
+        //
+        //                 }
+        //             }
+        //         }
+        //     }
+        // };
 
         vm.score = 0;
         vm.players = [];
@@ -1988,18 +1998,29 @@
         ];
         vm.class = null;
 
+        // vm.modes = [
+        //     {id:5,name: 'DAILY VOCAB'},
+        //     {id:8,name: 'FILLING GAPS'},
+        //     {id:6,name: 'QUIZ BATTLE 2'},
+        //     {id:9,name: 'FLIPPING CARD'},
+        //     {id:1,name: 'NORMAL'},
+        //     // {id:2,name: 'QUIZ GAME'},
+        //     // {id:3,name: 'QUIZ GAME 2'},
+        //     {id:4,name: 'REWRITE'}
+        //     // {id:7,name: 'QUIZ BATTLE 3'},
+        //
+        // ];
+
         vm.modes = [
             {id:5,name: 'DAILY VOCAB'},
             {id:8,name: 'FILLING GAPS'},
             {id:6,name: 'QUIZ BATTLE 2'},
+            {id:7,name: 'QUIZ BATTLE TUG OF WAR'},
             {id:9,name: 'FLIPPING CARD'},
             {id:1,name: 'NORMAL'},
-            // {id:2,name: 'QUIZ GAME'},
-            // {id:3,name: 'QUIZ GAME 2'},
             {id:4,name: 'REWRITE'}
-            // {id:7,name: 'QUIZ BATTLE 3'},
-
         ];
+
         vm.mode = {id:5,name: 'DAILY VOCAB'};
         // vm.mode = {id:9,name: 'FLIPPING CARD'};
 
@@ -2007,8 +2028,27 @@
             $scope.counter =20;vm.tempCounter =20;
         }
 
-        if(vm.mode.id == 6 || vm.mode.id == 5){
-            $scope.counter = 900;vm.tempCounter = 900;
+        // if(vm.mode.id == 6 || vm.mode.id == 5){
+        //     $scope.counter = 900;vm.tempCounter = 900;
+        // }
+        //
+        // vm.modeChange = function () {
+        //     if(vm.mode.id == 4){
+        //         vm.doShuffle();
+        //     }
+        //
+        //     if(vm.mode.id == 7){
+        //         $scope.counter =20;vm.tempCounter =20;
+        //     }
+        //
+        //     if(vm.mode.id == 6){
+        //         $scope.counter = 900;vm.tempCounter = 900;
+        //     }
+        // };
+
+        if(vm.mode.id == 6 || vm.mode.id == 5 || vm.mode.id == 7){
+            $scope.counter = 900;
+            vm.tempCounter = 900;
         }
 
         vm.modeChange = function () {
@@ -2016,12 +2056,15 @@
                 vm.doShuffle();
             }
 
-            if(vm.mode.id == 7){
-                $scope.counter =20;vm.tempCounter =20;
+            if(vm.mode.id == 6 || vm.mode.id == 7){
+                $scope.counter = 900;
+                vm.tempCounter = 900;
             }
 
-            if(vm.mode.id == 6){
-                $scope.counter = 900;vm.tempCounter = 900;
+            if(vm.mode.id == 7){
+                $scope.counter = 900;
+                vm.tempCounter = 900;
+                vm.resetTugOfWar();
             }
         };
 
@@ -2098,7 +2141,7 @@
         var volumeInput = document.getElementById('volume');
         var rateInput = document.getElementById('rate');
         var pitchInput = document.getElementById('pitch');
-        
+
         vm.allVoices = null;
 
         function isIOS() {
@@ -2321,9 +2364,9 @@
 
             shuffleArray1(vm.questions1);
             shuffleArray2(vm.questions2);
-            
+
         };
-        
+
         vm.print = function () {
             window.print();
         };
@@ -2360,7 +2403,7 @@
             vm.getTopics();
         };
 
-        
+
         var fifteenSec = document.getElementById("15s");
         var tenSec = document.getElementById("10s");
         vm.fifteenSeconds = function () {
@@ -2385,7 +2428,7 @@
                 return false;
             }
         });
-        
+
         vm.testResult = {};
         vm.setUpTestResult = function () {
             // var testTakerName = '';
@@ -2917,8 +2960,8 @@
             player.focus();
         };
         //youtube//
-        
-        
+
+
         // flipping
         vm.flip1 = null;
         vm.flip2 = null;
@@ -3101,7 +3144,7 @@
             }
 
             // console.log(vm.rewards);
-            
+
             vm.isShowHidesetUpReward = false;
 
             toastr.info('Set up successfully');
@@ -3118,7 +3161,7 @@
 
 
         // flipping
-        
+
         //------------------ End Flash Card ---------------------------------//
 
         function buildQuestionTable(data) {
@@ -3244,6 +3287,171 @@
                 };
             });
         }
+
+        vm.tugWinPulls = 7;       // đổi 6 / 7 / 8 tùy ý
+        vm.tugScore = 0;          // 0 là giữa, âm nghiêng P1, dương nghiêng P2
+        vm.tugMoveDuration = 850; // ms
+        vm.tugWinner = null;
+        vm.tugStatusText = 'Kéo chùm năng lượng về phía mình';
+        vm.pullCount1 = 0;
+        vm.pullCount2 = 0;
+        vm.isPulling1 = false;
+        vm.isPulling2 = false;
+
+        vm.getTugProgress = function () {
+            return ((vm.tugScore + vm.tugWinPulls) / (vm.tugWinPulls * 2)) * 100;
+        };
+
+        vm.getTugPercent = function () {
+            return vm.getTugProgress() + '%';
+        };
+
+        vm.getTugRightPercent = function () {
+            return (100 - vm.getTugProgress()) + '%';
+        };
+
+        vm.resetTugOfWar = function () {
+            vm.tugScore = 0;
+            vm.tugWinner = null;
+            vm.tugStatusText = 'Kéo chùm năng lượng về phía mình';
+            vm.pullCount1 = 0;
+            vm.pullCount2 = 0;
+            vm.isPulling1 = false;
+            vm.isPulling2 = false;
+
+            vm.score1 = 0;
+            vm.score2 = 0;
+            vm.streakPlayer1 = 0;
+            vm.streakPlayer2 = 0;
+            vm.wrongPlayer1 = 0;
+            vm.wrongPlayer2 = 0;
+            vm.endGame = false;
+            vm.endGamePlayer1 = false;
+            vm.endGamePlayer2 = false;
+
+            stillInAQuestion1 = false;
+            stillInAQuestion2 = false;
+        };
+
+        vm.finishTugOfWar = function (winner) {
+            vm.tugWinner = winner;
+            vm.endGame = true;
+
+            if (winner === 1) {
+                vm.tugStatusText = 'PLAYER 1 THẮNG!';
+            } else {
+                vm.tugStatusText = 'PLAYER 2 THẮNG!';
+            }
+
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance(vm.tugStatusText));
+            // $scope.refreshTimer();
+        };
+
+        vm.pullRope = function (player) {
+            if (vm.endGame) return;
+
+            if (player === 1) {
+                vm.tugScore = Math.max(-vm.tugWinPulls, vm.tugScore - 1);
+                if (vm.tugScore <= -vm.tugWinPulls) {
+                    vm.finishTugOfWar(1);
+                } else {
+                    vm.tugStatusText = 'PLAYER 1 ĐANG ÉP DẦN';
+                }
+            } else {
+                vm.tugScore = Math.min(vm.tugWinPulls, vm.tugScore + 1);
+                if (vm.tugScore >= vm.tugWinPulls) {
+                    vm.finishTugOfWar(2);
+                } else {
+                    vm.tugStatusText = 'PLAYER 2 ĐANG ÉP DẦN';
+                }
+            }
+        };
+
+        vm.loopCardsForPlayer = function (player) {
+            if (player === 1) {
+                if ((vm.currentPosition + 1) >= vm.totalCard) {
+                    shuffleArray(vm.questions);
+                    vm.currentPosition = 0;
+                    vm.currentCard = vm.questions[0];
+                    vm.createQuiz(vm.currentCard);
+                } else {
+                    vm.nextCard(1);
+                }
+            } else {
+                if ((vm.currentPosition1 + 1) >= vm.totalCard) {
+                    shuffleArray(vm.questions1);
+                    vm.currentPosition1 = 0;
+                    vm.currentCard1 = vm.questions1[0];
+                    vm.createQuiz(vm.currentCard1, 2);
+                } else {
+                    vm.nextCard(2);
+                }
+            }
+        };
+
+        vm.answerQuizBattle3 = function (correct, item, questions, player) {
+            if (vm.endGame) return;
+
+            if (player === 1 && vm.isPulling1) return;
+            if (player === 2 && vm.isPulling2) return;
+
+            angular.forEach(questions, function(value) {
+                value.chosen = false;
+            });
+            item.chosen = true;
+
+            if (correct === true) {
+                if (player === 1) {
+                    stillInAQuestion1 = false;
+                    vm.streakPlayer1 = vm.streakPlayer1 + 1;
+                    vm.pullCount1 = vm.pullCount1 + 1;
+                    vm.isPulling1 = true;
+
+                    vm.pullRope(1);
+
+                    if (!vm.endGame) {
+                        $timeout(function () {
+                            vm.loopCardsForPlayer(1);
+                            vm.isPulling1 = false;
+                        }, vm.tugMoveDuration);
+                    } else {
+                        vm.isPulling1 = false;
+                    }
+                } else {
+                    stillInAQuestion2 = false;
+                    vm.streakPlayer2 = vm.streakPlayer2 + 1;
+                    vm.pullCount2 = vm.pullCount2 + 1;
+                    vm.isPulling2 = true;
+
+                    vm.pullRope(2);
+
+                    if (!vm.endGame) {
+                        $timeout(function () {
+                            vm.loopCardsForPlayer(2);
+                            vm.isPulling2 = false;
+                        }, vm.tugMoveDuration);
+                    } else {
+                        vm.isPulling2 = false;
+                    }
+                }
+            } else {
+                if (player === 1 && stillInAQuestion1 === false) {
+                    vm.wrongPlayer1 = vm.wrongPlayer1 + 1;
+                    vm.streakPlayer1 = 0;
+                    stillInAQuestion1 = true;
+                    vm.tugStatusText = 'PLAYER 1 BỊ ĐẨY LÙI';
+                    vm.sayingWhenWrong();
+                }
+
+                if (player === 2 && stillInAQuestion2 === false) {
+                    vm.wrongPlayer2 = vm.wrongPlayer2 + 1;
+                    vm.streakPlayer2 = 0;
+                    stillInAQuestion2 = true;
+                    vm.tugStatusText = 'PLAYER 2 BỊ ĐẨY LÙI';
+                    vm.sayingWhenWrong();
+                }
+            }
+        };
 
 
     }
