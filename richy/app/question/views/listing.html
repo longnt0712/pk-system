@@ -308,9 +308,9 @@
                             <div class="col-md-6 hover-item">
                                 <input ng-model="item.motherTongue" type="text"  class="form-control input-underline-only" placeholder="First language...">
                             </div>
-                            <div class="col-md-1 hover-item">
-                                <input ng-if="settings.isAdmin == true" placeholder="website..." class="form-control input-underline-only" ng-model="item.website"  />
-                            </div>
+                            <!--<div class="col-md-1 hover-item">-->
+                                <!--<input ng-if="settings.isAdmin == true" placeholder="website..." class="form-control input-underline-only" ng-model="item.website"  />-->
+                            <!--</div>-->
                             <div class="col-md-2">
                                 <!--<i class="fa fa-save" style="font-size: 18px; padding-top: 12px" data-ng-click="vm.editFlashCard(item)"></i>-->
                                 <!--<i ng-show="item.showDetail == false" class="fa fa-eye" style="font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.showDetailFlashCard(item)"></i>-->
@@ -319,9 +319,9 @@
                                 <i class="fa-solid fa-floppy-disk" style="cursor:pointer;font-size: 18px; padding-top: 12px" data-ng-click="vm.editFlashCard(item)"></i>
                                 <i ng-show="item.showDetail == false" class="fa-solid fa-circle-info" style="cursor:pointer;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.showDetailFlashCard(item)"></i>
                                 <i ng-show="item.showDetail == true" class="fa-solid fa-circle-info" style="cursor:pointer;color: gold;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.hideDetailFlashCard(item)"></i>
-                                &nbsp; &nbsp;
-                                <i ng-if="item.status === 4" class="fa-solid fa-star" style="cursor:pointer;font-size: 18px; padding-top: 12px;color: gold" data-ng-click="vm.saveTypeNormal(item)"></i>
-                                <i ng-if="item.status != 4" class="fa-solid fa-star" style="cursor:pointer;font-size: 18px; padding-top: 12px; color: black" data-ng-click="vm.saveImportant(item)"></i>
+                                <!--&nbsp; &nbsp;-->
+                                <!--<i ng-if="item.status === 4" class="fa-solid fa-star" style="cursor:pointer;font-size: 18px; padding-top: 12px;color: gold" data-ng-click="vm.saveTypeNormal(item)"></i>-->
+                                <!--<i ng-if="item.status != 4" class="fa-solid fa-star" style="cursor:pointer;font-size: 18px; padding-top: 12px; color: black" data-ng-click="vm.saveImportant(item)"></i>-->
                                 &nbsp; &nbsp;
                                 <i ng-if="item.status === 5" class="fa-solid fa-headphones" style="cursor:pointer;font-size: 18px; padding-top: 12px;color: gold" data-ng-click="vm.saveTypeNormal(item)"></i>
                                 <i ng-if="item.status != 5" class="fa-solid fa-headphones" style="cursor:pointer;font-size: 18px; padding-top: 12px; color: black" data-ng-click="vm.saveListening(item)"></i>
@@ -351,14 +351,14 @@
                                     </ui-select>
                                 </div>
 
-                                <div class="col-md-12 margin-bottom-10">
-                                    <ui-select data-ng-model="item.status" sortable="true" close-on-select="true" style="width: 100% !important;">
-                                        <ui-select-match placeholder="">{{$select.selected.name}}</ui-select-match>
-                                        <ui-select-choices repeat="status.id as status in vm.statuses | propsFilter: {name: $select.search}">
-                                            <div class="bold" ng-bind-html="status.name | highlight: $select.search"></div>
-                                        </ui-select-choices>
-                                    </ui-select>
-                                </div>
+                                <!--<div class="col-md-12 margin-bottom-10">-->
+                                    <!--<ui-select data-ng-model="item.status" sortable="true" close-on-select="true" style="width: 100% !important;">-->
+                                        <!--<ui-select-match placeholder="">{{$select.selected.name}}</ui-select-match>-->
+                                        <!--<ui-select-choices repeat="status.id as status in vm.statuses | propsFilter: {name: $select.search}">-->
+                                            <!--<div class="bold" ng-bind-html="status.name | highlight: $select.search"></div>-->
+                                        <!--</ui-select-choices>-->
+                                    <!--</ui-select>-->
+                                <!--</div>-->
                             </div>
                         </div>
 
@@ -530,9 +530,9 @@
                                     </ui-select-choices>
                                 </ui-select>
                             </div>
-                            <div class="col-md-12">
-                                <input ng-if="settings.isAdmin == true" ng-model="vm.newCard.website" type="number"  class=" input-underline-only" style="width: 60px" placeholder="website...">
-                            </div>
+                            <!--<div class="col-md-12">-->
+                                <!--<input ng-if="settings.isAdmin == true" ng-model="vm.newCard.website" type="number"  class=" input-underline-only" style="width: 60px" placeholder="website...">-->
+                            <!--</div>-->
                             <div class="col-md-12" style="margin-bottom: 10px">
                                 <div class="row">
                                     <div class="col-md-6">

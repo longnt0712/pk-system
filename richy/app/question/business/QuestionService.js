@@ -315,7 +315,7 @@
         function getTableDefinitionQuestions() {
 
             var _tableOperation = function (value, row, index) {
-                return '<a class="green-dark margin-right-10" href="#" data-ng-click="$parent.chooseListening(' + "'" + index + "'" + ')"><i class="icon-pencil"></i></a>';
+                return '<a class="green-dark margin-right-10" href="#" data-ng-click="$parent.chooseFillingGaps(' + "'" + index + "'" + ')"><i class="icon-pencil"></i></a>';
             };
 
             var _cellNowrap = function (value, row, index, field) {

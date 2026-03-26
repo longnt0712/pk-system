@@ -49,7 +49,7 @@
                         </div>
                         <div class="col-md-2 margin-bottom-20">
                             <ui-select ng-change="vm.codeChange()" data-ng-model="vm.searchDto.testType" sortable="true" close-on-select="true" style="width: 100% !important;">
-                                <ui-select-match allow-clear="true" placeholder="Daily, listening?">{{$select.selected.name}}</ui-select-match>
+                                <ui-select-match allow-clear="true" placeholder="Daily, gaps?">{{$select.selected.name}}</ui-select-match>
                                 <ui-select-choices repeat="mode.id as mode in vm.testTypes | propsFilter: {name: $select.search}">
                                     <div class="bold" ng-bind-html="mode.name | highlight: $select.search">
                                     </div>

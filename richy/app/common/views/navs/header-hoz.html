@@ -47,28 +47,51 @@
                     </ul>
                 </li>
 
-                <li class="dropdown" ng-if="settings.isStaff || settings.isAdmin">
-                    <a href="product" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                        Bán hàng <span class="caret"></span>
-                    </a>
-                </li>
+                <!--<li class="dropdown" ng-if="settings.isStaff || settings.isAdmin">-->
+                    <!--<a href="product" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">-->
+                        <!--Bán hàng <span class="caret"></span>-->
+                    <!--</a>-->
+                <!--</li>-->
 
-                <li class="dropdown" ng-if="settings.isStudentManagerment || settings.isAdmin">
-                    <a href="person_dates" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                        ĐIỂM DANH <span class="caret"></span>
-                    </a>
-                </li>
+                <!--<li class="dropdown" ng-if="settings.isStudentManagerment || settings.isAdmin">-->
+                    <!--<a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">-->
+                        <!--ĐIỂM DANH <span class="caret"></span>-->
+                    <!--</a>-->
+                <!--</li>-->
 
-                <li class="dropdown" ng-if="settings.isStudentManagerment || settings.isAdmin">
-                    <a href="user/accounts" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                        DANH SÁCH HỌC SINH <span class="caret"></span>
-                    </a>
-                </li>
+                <!--<li class="dropdown" ng-if="settings.isStudentManagerment || settings.isAdmin">-->
+                    <!--<a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">-->
+                        <!--DANH SÁCH HỌC SINH <span class="caret"></span>-->
+                    <!--</a>-->
+                <!--</li>-->
 
-                <li class="dropdown" ng-if="settings.isStudentManagerment || settings.isEducationManagerment || settings.isAdmin">
-                    <a href="student_marks" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                        DANH SÁCH ĐIỂM <span class="caret"></span>
+                <!--<li class="dropdown" ng-if="settings.isStudentManagerment || settings.isEducationManagerment || settings.isAdmin">-->
+                    <!--<a href="student_marks" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">-->
+                         <!--<span class="caret"></span>-->
+                    <!--</a>-->
+                <!--</li>-->
+
+                <li ng-show="settings.isAdmin == true || settings.isEducationManagerment == true" class="menu-dropdown">
+                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        HỌC SINH <span class="caret"></span>
                     </a>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a href="person_dates">
+                                <i class="fa fa-caret-right"></i> ĐIỂM DANH
+                            </a>
+                        </li>
+                        <li>
+                            <a href="user/accounts">
+                                <i class="fa fa-caret-right"></i> DANH SÁCH HỌC SINH
+                            </a>
+                        </li>
+                        <li>
+                            <a href="student_marks">
+                                <i class="fa fa-caret-right"></i> DANH SÁCH ĐIỂM
+                            </a>
+                        </li>
+                    </ul>
                 </li>
 
                 <li ng-show="settings.isAdmin == true || settings.isEducationManagerment == true" class="menu-dropdown">
@@ -76,6 +99,11 @@
                         ĐÀO TẠO <span class="caret"></span>
                     </a>
                     <ul class="dropdown-menu">
+                        <li>
+                            <a href="product">
+                                <i class="fa fa-caret-right"></i> BÁN HÀNG
+                            </a>
+                        </li>
                         <li>
                             <a href="education_programs">
                                 <i class="fa fa-caret-right"></i> Chương trình đào tạo
@@ -86,6 +114,7 @@
                                 <i class="fa fa-caret-right"></i> Điểm
                             </a>
                         </li>
+
                     </ul>
                 </li>
 
@@ -128,38 +157,38 @@
                     </ul>
                 </li>
 
-                <li ng-show="settings.isAdmin == true" class="menu-dropdown">
-                    <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                        <i class="icon-equalizer"></i> Create Test <span class="caret"></span>
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li>
-                            <a href="create_ielts_writing_test">
-                                <i class="fa fa-caret-right"></i> Create IELTS Writing Test
-                            </a>
-                        </li>
-                        <li>
-                            <a href="create_ielts_reading_test">
-                                <i class="fa fa-caret-right"></i> Create IELTS Test
-                            </a>
-                        </li>
-                        <li>
-                            <a href="create_ielts_listening_test">
-                                <i class="fa fa-caret-right"></i> Create IELTS Listening Test
-                            </a>
-                        </li>
-                        <li>
-                            <a href="test_results">
-                                <i class="fa fa-caret-right"></i> Test Results
-                            </a>
-                        </li>
-                        <li>
-                            <a href="statistic_user">
-                                <i class="fa fa-caret-right"></i> Statistic User
-                            </a>
-                        </li>
-                    </ul>
-                </li>
+                <!--<li ng-show="settings.isAdmin == true" class="menu-dropdown">-->
+                    <!--<a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">-->
+                        <!--<i class="icon-equalizer"></i> Create Test <span class="caret"></span>-->
+                    <!--</a>-->
+                    <!--<ul class="dropdown-menu">-->
+                        <!--<li>-->
+                            <!--<a href="create_ielts_writing_test">-->
+                                <!--<i class="fa fa-caret-right"></i> Create IELTS Writing Test-->
+                            <!--</a>-->
+                        <!--</li>-->
+                        <!--<li>-->
+                            <!--<a href="create_ielts_reading_test">-->
+                                <!--<i class="fa fa-caret-right"></i> Create IELTS Test-->
+                            <!--</a>-->
+                        <!--</li>-->
+                        <!--<li>-->
+                            <!--<a href="create_ielts_listening_test">-->
+                                <!--<i class="fa fa-caret-right"></i> Create IELTS Listening Test-->
+                            <!--</a>-->
+                        <!--</li>-->
+                        <!--<li>-->
+                            <!--<a href="test_results">-->
+                                <!--<i class="fa fa-caret-right"></i> Test Results-->
+                            <!--</a>-->
+                        <!--</li>-->
+                        <!--<li>-->
+                            <!--<a href="statistic_user">-->
+                                <!--<i class="fa fa-caret-right"></i> Statistic User-->
+                            <!--</a>-->
+                        <!--</li>-->
+                    <!--</ul>-->
+                <!--</li>-->
             </ul>
 
             <ul class="nav navbar-nav navbar-right">

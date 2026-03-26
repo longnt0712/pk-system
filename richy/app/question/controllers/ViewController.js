@@ -376,7 +376,7 @@
                     vm.questions1.arrayNumber = 2;
                 }
 
-                if(vm.mode.id != 8) { //listening
+                if(vm.mode.id != 8) { //filling gaps
                     vm.doShuffle();
                 }
 
@@ -471,10 +471,10 @@
         };
 
 
-        $scope.chooseListening = function (index) {
+        $scope.chooseFillingGaps = function (index) {
             vm.currentCard = vm.questions[index];
             vm.fillingGapQuestion = (processFillingGaps(vm.currentCard.motherTongue));
-            vm.finishListening = "Unfinished";
+            vm.finishFillingGaps = "Unfinished";
             vm.percentage = 0;
             vm.allowChangeInformation = false;
 
@@ -1990,7 +1990,7 @@
 
         vm.modes = [
             {id:5,name: 'DAILY VOCAB'},
-            {id:8,name: 'LISTENING'},
+            {id:8,name: 'FILLING GAPS'},
             {id:6,name: 'QUIZ BATTLE 2'},
             {id:9,name: 'FLIPPING CARD'},
             {id:1,name: 'NORMAL'},
@@ -2411,9 +2411,9 @@
         vm.saveTestResult = function () {
             vm.tempWrong = vm.testResult.testTakerPerformance;
             if(vm.mode.id == 8){
-                vm.testResult.testType = 3; //LISTENING
+                vm.testResult.testType = 3; //FILLING GAPS
                 vm.testResult.testName = vm.currentCard.question;
-                vm.testResult.testTime = "LISTENING " + vm.percentage +"%";
+                vm.testResult.testTime = "GAPS " + vm.percentage +"%";
             }else if (vm.mode.id == 5) {
                 vm.testResult.testType = 1; //DAILY VOCAB
                 vm.testResult.testName = vm.title.substring(0,50);
@@ -2439,7 +2439,8 @@
 
                 if(vm.mode.id == 8) {
                     vm.testResult.id = data1.id;
-                    vm.finishListening = "Finished";
+                    // vm.finishListening = "Finished";
+                    vm.finishFillingGaps = "Finished";
                     // vm.percentage = 0;
                 } else if (vm.mode.id == 5 && data1.messageCode == 0) {
                     vm.finishDailyVocab = "Finished";
@@ -2450,7 +2451,7 @@
             });
         };
 
-        //--listening
+        //--filling gaps
         vm.fillingGapQuestion = '';
         var mainAudio = null;
         var playBackInput = null;
@@ -2757,7 +2758,7 @@
             var processedText = '';
             var previousIndex = null;
             for (var i = 0; i < x.length; i++) {
-                var randomNumber = getRndInteger(1, 3);
+                var randomNumber = getRndInteger(1, 4);
                 if(checkIfDateOrNumber(x[i]) === true){
                     x[i] = processText(x[i]);
                     vm.numberOfGaps = vm.numberOfGaps + 1;
@@ -2768,7 +2769,7 @@
                     previousIndex = i;
                 }else if (isFirstLetterCapital(x[i])){
                     processedText = processedText + ' ' + x[i];
-                }else if (randomNumber === 2) {
+                }else if (randomNumber === 2 || randomNumber === 3) {
                     processedText = processedText + ' ' + x[i];
                 } else {
                     x[i] = processText(x[i]);
@@ -2812,7 +2813,7 @@
             }
         };
 
-        vm.finishListening = "Unfinished";
+        vm.finishFillingGaps = "Unfinished";
         // vm.testResult.testTakerPerformance = '';
         vm.percentage = 0;
         vm.fillingGaps = function (maxIndex, index, motherTongue) {
