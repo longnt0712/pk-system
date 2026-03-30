@@ -89,9 +89,9 @@
 
                         <div class="col-md-2 margin-bottom-10">
                             <ui-select ng-model="vm.searchDto.user.person.enrollmentClass"
-                                       ng-change="vm.getPage()"
+                                       ng-change=""
                                        close-on-select="true">
-                                <ui-select-match allow-clear="true" placeholder="Chọn lớp để lọc">
+                                <ui-select-match allow-clear="false" placeholder="Chọn lớp để lọc">
                                     {{$select.selected.name}}
                                 </ui-select-match>
                                 <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | propsFilter:{name:$select.search}">

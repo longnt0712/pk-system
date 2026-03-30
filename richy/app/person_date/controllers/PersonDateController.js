@@ -281,7 +281,8 @@
             {id: 11, name: "TS3B"},
             {id: 12, name: "HT"},
             {id: 13, name: "SĐ"},
-            {id: 14, name: "KHÁC"}
+            {id: 14, name: "KHÁC"},
+            {id: null, name: "Tất cả"}
         ];
 
         vm.searchDto.groupId = null;
@@ -554,10 +555,14 @@
             vm.endDate.setHours(0, 0, 0, 0);
             vm.searchDto.startDate =  Date.parse(vm.startDate);
             vm.searchDto.endDate =  Date.parse(vm.endDate);
+
             vm.resetSum();
+
+            // alert(vm.searchDto.user.person.enrollmentClass);
 
             service.getPage(vm.searchDto, vm.pageIndex, vm.pageSize).then(function (data) {
                 blockUI.stop();
+
                 vm.personDates = data.content || [];
                 vm.totalStudent = data.totalElements;
 
