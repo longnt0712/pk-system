@@ -1345,6 +1345,9 @@
 
                 tuongLai.load();
                 tuongLai.play();
+
+                mytimeout = $timeout($scope.onTimeout, 1000);
+
             }
 
         };
