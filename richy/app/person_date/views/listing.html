@@ -694,3 +694,403 @@
         background: #fff;
     }
 </style>
+
+<style>
+    /* =========================
+   TNTT PROFILE CARD
+   Vui vẻ - tinh nghịch - profile dọc
+   ========================= */
+
+    .tntt-card,
+    .tntt-card * {
+        box-sizing: border-box;
+    }
+
+    .tntt-card.tntt-card--stack {
+        position: relative;
+        width: 100%;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 26px 24px 22px;
+        border-radius: 28px;
+        overflow: hidden;
+        background:
+                radial-gradient(circle at top left, rgba(255,255,255,.8) 0%, rgba(255,255,255,0) 35%),
+                radial-gradient(circle at bottom right, rgba(255,255,255,.6) 0%, rgba(255,255,255,0) 30%),
+                linear-gradient(135deg,
+                #ffffff 0%,
+                #c8a27a 15%,   /* nâu nhạt */
+                #a0e7f5 30%,   /* xanh nước biển nhạt */
+                #caffbf 45%,   /* xanh lá mạ nhạt */
+                #fff3b0 60%,   /* vàng nhạt */
+                #ffc6d0 75%,   /* hồng nhạt */
+                #ffadad 90%,   /* đỏ nhạt */
+                #ffffff 100%
+                );
+        border: 4px solid #8b5a2b;
+        box-shadow:
+                0 14px 35px rgba(139, 90, 43, 0.22),
+                inset 0 2px 0 rgba(255,255,255,.75);
+    }
+
+    /* viền trang trí */
+    .tntt-card.tntt-card--stack:before {
+        content: "";
+        position: absolute;
+        inset: 10px;
+        border: 2px dashed rgba(139, 90, 43, 0.28);
+        border-radius: 22px;
+        pointer-events: none;
+    }
+
+    .tntt-card.tntt-card--stack:after {
+        content: "✦ ✦ ✦";
+        position: absolute;
+        top: 14px;
+        right: 18px;
+        font-size: 16px;
+        letter-spacing: 4px;
+        color: rgba(139, 90, 43, 0.45);
+        pointer-events: none;
+    }
+
+    /* số thứ tự */
+    .tntt-stt {
+        position: absolute;
+        top: 18px;
+        left: 18px;
+        min-width: 58px;
+        height: 34px;
+        padding: 0 14px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #8b5a2b 0%, #6f431c 100%);
+        color: #fff8ec;
+        font-weight: 800;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 6px 14px rgba(111, 67, 28, .25);
+        z-index: 2;
+    }
+
+    /* avatar */
+    .tntt-stack-avatar {
+        text-align: center;
+        margin-top: 18px;
+        margin-bottom: 16px;
+    }
+
+    .tntt-avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow:
+                0 10px 25px rgba(111, 67, 28, .20),
+                inset 0 1px 0 rgba(255,255,255,.9);
+    }
+
+    .tntt-stack-avatar {
+        margin-top: 0;
+        margin-bottom: 18px;
+    }
+
+    .tntt-avatar.tntt-avatar--big {
+        width: 100%;
+        height: auto; /* chỉnh cao thấp tùy bạn */
+        padding: 0;
+        border: none;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 10px 25px rgba(111, 67, 28, .2);
+    }
+
+    /* ảnh full width */
+    .tntt-avatar.tntt-avatar--big img {
+        width: 100%;
+        height: auto;
+        object-fit: cover;
+        border-radius: 20px;
+        border: none;
+    }
+
+    /* tên */
+    .tntt-stack-name {
+        position: relative;
+        text-align: center;
+        font-size: 30px;
+        line-height: 1.35;
+        font-weight: 900;
+        color: #6f431c;
+        margin-bottom: 18px;
+        padding: 0 16px;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        text-shadow: 1px 1px 0 rgba(255,255,255,.6);
+    }
+
+    .tntt-stack-name:after {
+        content: "🌟 Thiếu Nhi Thánh Thể 🌟";
+        display: block;
+        margin-top: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        color: #b06b2d;
+        text-transform: none;
+    }
+
+    /* row chips */
+    .tntt-rowchips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .tntt-rowchips.tntt-rowchips--center {
+        justify-content: center;
+    }
+
+    .tntt-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 10px 16px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.78);
+        border: 2px solid rgba(139, 90, 43, .18);
+        color: #70461f;
+        font-size: 14px;
+        font-weight: 700;
+        box-shadow: 0 4px 10px rgba(139, 90, 43, .08);
+        text-align: center;
+    }
+
+    .tntt-class-chip {
+        max-width: 100%;
+        padding-right: 12px;
+    }
+
+    .tntt-ellipsis {
+        display: inline-block;
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: bottom;
+    }
+
+    /* select inline trong chip */
+    .tntt-inline-select {
+        display: inline-block;
+        min-width: 170px;
+        margin-left: 6px;
+        vertical-align: middle;
+    }
+
+    .tntt-inline-select .ui-select-match > .btn,
+    .tntt-class-chip .ui-select-match > .btn {
+        min-height: 32px;
+        border-radius: 16px !important;
+        border: 1px solid #d9b27c !important;
+        background: #fffaf0 !important;
+        color: #6f431c !important;
+        font-weight: 700;
+        padding: 5px 12px !important;
+        box-shadow: none !important;
+    }
+
+    /* khối thời gian */
+    .tntt-times.tntt-times--stack {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+
+    .tntt-time {
+        position: relative;
+        background: rgba(255,255,255,.72);
+        border: 2px solid rgba(139, 90, 43, .16);
+        border-radius: 18px;
+        padding: 16px 18px;
+        box-shadow: 0 4px 10px rgba(139, 90, 43, .06);
+    }
+
+    .tntt-time:before {
+        content: "";
+        position: absolute;
+        left: 14px;
+        top: 14px;
+        bottom: 14px;
+        width: 5px;
+        border-radius: 999px;
+        background: linear-gradient(to bottom, #f7b733, #fc4a1a);
+    }
+
+    .tntt-time__label {
+        padding-left: 16px;
+        font-size: 14px;
+        font-weight: 800;
+        color: #8b5a2b;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+    }
+
+    .tntt-time__value {
+        padding-left: 16px;
+        font-size: 18px;
+        font-weight: 800;
+        color: #5e3818;
+    }
+
+    .tntt-wrap {
+        word-break: break-word;
+        white-space: normal;
+    }
+
+    /* trạng thái */
+    .tntt-status-grid.tntt-status-grid--stack {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+
+    .tntt-statusbox {
+        position: relative;
+        padding: 18px 18px 14px;
+        border-radius: 20px;
+        border: 3px solid #d9b27c;
+        background: linear-gradient(180deg, rgba(255,255,255,.86) 0%, rgba(255,248,232,.95) 100%);
+        box-shadow: 0 6px 14px rgba(139, 90, 43, .08);
+    }
+
+    .tntt-statusbox__title {
+        margin-bottom: 12px;
+        font-size: 15px;
+        font-weight: 900;
+        color: #6f431c;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+    }
+
+    /* màu trạng thái */
+    .tntt-statusbox.tntt-ok {
+        border-color: #42b883;
+        background: linear-gradient(180deg, #ecfff5 0%, #dcf8ea 100%);
+    }
+
+    .tntt-statusbox.tntt-miss {
+        border-color: #ef6b57;
+        background: linear-gradient(180deg, #fff1ee 0%, #ffe1dc 100%);
+    }
+
+    .tntt-statusbox.tntt-warn {
+        border-color: #f2b632;
+        background: linear-gradient(180deg, #fff9e8 0%, #fff0bf 100%);
+    }
+
+    .tntt-statusbox.tntt-blue {
+        border-color: #3da5d9;
+        background: linear-gradient(180deg, #eef9ff 0%, #d9f1ff 100%);
+    }
+
+    .tntt-statusbox.tntt-purple {
+        border-color: #8f63d8;
+        background: linear-gradient(180deg, #f6f0ff 0%, #eadfff 100%);
+    }
+
+    /* ui-select trong box */
+    .tntt-statusbox .ui-select-match > .btn {
+        min-height: 42px;
+        border-radius: 14px !important;
+        border: 2px solid rgba(111, 67, 28, .15) !important;
+        background: rgba(255,255,255,.92) !important;
+        color: #5d3919 !important;
+        font-weight: 800;
+        padding: 10px 14px !important;
+        box-shadow: none !important;
+    }
+
+    .tntt-statusbox .ui-select-toggle .caret {
+        margin-top: 8px;
+    }
+
+    /* footer */
+    .tntt-footer {
+        margin-top: 8px;
+        text-align: center;
+        font-size: 18px;
+        font-weight: 900;
+        color: #8b5a2b;
+        letter-spacing: .6px;
+        padding: 14px 12px 4px;
+        text-shadow: 1px 1px 0 rgba(255,255,255,.5);
+    }
+
+    /* modal đẹp hơn */
+    #confirm_check_object_modal .modal-body,
+    .modal-body .tntt-card {
+        overflow: visible;
+    }
+
+    .modal-body .tntt-card {
+        margin-top: 4px;
+    }
+
+    /* responsive */
+    @media (max-width: 767px) {
+        .tntt-card.tntt-card--stack {
+            padding: 22px 16px 18px;
+            border-radius: 22px;
+        }
+
+        .tntt-stt {
+            top: 14px;
+            left: 14px;
+            min-width: 50px;
+            height: 30px;
+            font-size: 13px;
+        }
+
+        .tntt-avatar.tntt-avatar--big {
+            width: 120px;
+            height: 120px;
+        }
+
+        .tntt-stack-name {
+            font-size: 22px;
+            margin-bottom: 14px;
+        }
+
+        .tntt-stack-name:after {
+            font-size: 12px;
+        }
+
+        .tntt-chip {
+            width: 100%;
+            border-radius: 16px;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .tntt-inline-select {
+            min-width: 140px;
+        }
+
+        .tntt-time__value {
+            font-size: 16px;
+        }
+
+        .tntt-footer {
+            font-size: 15px;
+            line-height: 1.5;
+        }
+    }
+</style>
