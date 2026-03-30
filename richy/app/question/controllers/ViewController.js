@@ -1336,7 +1336,13 @@
             }
 
             if (vm.mode.id == 7) {
-                // vm.resetTugOfWarDefault();
+                vm.resetTugOfWarDefault();
+
+                // sau khi reset xong mới mở trận
+                vm.endGame = false;
+                vm.endGamePlayer1 = false;
+                vm.endGamePlayer2 = false;
+
                 tuongLai.load();
                 tuongLai.play();
             }
@@ -1347,6 +1353,9 @@
             $scope.shutUp();
             $timeout.cancel(mytimeout);
             vm.resetBackgroundMusic();
+            if (vm.mode.id == 7) {
+                vm.resetTugOfWarDefault();
+            }
 
             vm.endGame = false;
             if(vm.mode.id == 5){
@@ -3314,6 +3323,35 @@
             });
         }
 
+        var tugResetTimeout = null;
+        var tugMoveTimeout1 = null;
+        var tugMoveTimeout2 = null;
+
+        vm.cancelTugTimeouts = function () {
+            if (tugResetTimeout) {
+                $timeout.cancel(tugResetTimeout);
+                tugResetTimeout = null;
+            }
+            if (tugMoveTimeout1) {
+                $timeout.cancel(tugMoveTimeout1);
+                tugMoveTimeout1 = null;
+            }
+            if (tugMoveTimeout2) {
+                $timeout.cancel(tugMoveTimeout2);
+                tugMoveTimeout2 = null;
+            }
+        };
+
+        vm.getTugPointGain = function (streak) {
+            // điểm cơ bản luôn là 1
+            // streak càng cao thì mỗi câu đúng cộng càng nhiều
+            if (streak >= 15) return 5;
+            if (streak >= 10) return 4;
+            if (streak >= 7) return 3;
+            if (streak >= 4) return 2;
+            return 1;
+        };
+
         vm.tugWinPulls = 7;       // đổi 6 / 7 / 8 tùy ý
         vm.tugScore = 0;          // 0 là giữa, âm nghiêng P1, dương nghiêng P2
         vm.tugMoveDuration = 850; // ms
@@ -3337,7 +3375,9 @@
         };
 
         vm.resetTugOfWarDefault = function () {
+            vm.cancelTugTimeouts();
             $timeout.cancel(mytimeout);
+
             audio.load();
 
             vm.tugScore = 0;
@@ -3358,9 +3398,11 @@
             stillInAQuestion1 = false;
             stillInAQuestion2 = false;
 
+            // reset hoàn toàn trạng thái trận tug
             vm.endGame = true;
             vm.endGamePlayer1 = false;
             vm.endGamePlayer2 = false;
+            vm.blindMode = false;
 
             $scope.counter = 180;
             vm.tempCounter = 180;
@@ -3369,31 +3411,37 @@
             vm.currentPosition1 = 0;
 
             if (angular.isArray(vm.questions) && vm.questions.length > 0) {
-                shuffleArray(vm.questions); // nếu không muốn shuffle lại thì bỏ dòng này
+                shuffleArray(vm.questions);
                 vm.currentCard = vm.questions[0];
                 vm.createQuiz(vm.currentCard);
 
-                angular.forEach(vm.currentCard.questions, function (q) {
-                    q.chosen = false;
-                });
+                if (vm.currentCard.questions) {
+                    angular.forEach(vm.currentCard.questions, function (q) {
+                        q.chosen = false;
+                    });
+                }
             } else {
                 vm.currentCard = {};
             }
 
             if (angular.isArray(vm.questions1) && vm.questions1.length > 0) {
-                shuffleArray(vm.questions1); // nếu không muốn shuffle lại thì bỏ dòng này
+                shuffleArray(vm.questions1);
                 vm.currentCard1 = vm.questions1[0];
                 vm.createQuiz(vm.currentCard1, 2);
 
-                angular.forEach(vm.currentCard1.questions, function (q) {
-                    q.chosen = false;
-                });
+                if (vm.currentCard1.questions) {
+                    angular.forEach(vm.currentCard1.questions, function (q) {
+                        q.chosen = false;
+                    });
+                }
             } else {
                 vm.currentCard1 = {};
             }
         };
 
         vm.finishTugOfWar = function (winner) {
+            vm.cancelTugTimeouts();
+
             vm.tugWinner = winner;
             vm.endGame = true;
             vm.isPulling1 = false;
@@ -3410,7 +3458,7 @@
 
             window.speechSynthesis.speak(new SpeechSynthesisUtterance(vm.tugStatusText));
 
-            $timeout(function () {
+            tugResetTimeout = $timeout(function () {
                 vm.resetTugOfWarDefault();
             }, 100000);
         };
@@ -3495,15 +3543,18 @@
                 if (player === 1) {
                     stillInAQuestion1 = false;
                     vm.streakPlayer1 = vm.streakPlayer1 + 1;
-                    vm.pullCount1 = vm.pullCount1 + 1;
-                    vm.isPulling1 = true;
 
+                    // điểm thuần tăng theo streak
+                    vm.score1 = vm.score1 + vm.getTugPointGain(vm.streakPlayer1);
+
+                    vm.isPulling1 = true;
                     vm.pullRope(1);
 
                     if (!vm.endGame) {
-                        $timeout(function () {
+                        tugMoveTimeout1 = $timeout(function () {
                             vm.loopCardsForPlayer(1);
                             vm.isPulling1 = false;
+                            tugMoveTimeout1 = null;
                         }, vm.tugMoveDuration);
                     } else {
                         vm.isPulling1 = false;
@@ -3511,15 +3562,18 @@
                 } else {
                     stillInAQuestion2 = false;
                     vm.streakPlayer2 = vm.streakPlayer2 + 1;
-                    vm.pullCount2 = vm.pullCount2 + 1;
-                    vm.isPulling2 = true;
 
+                    // điểm thuần tăng theo streak
+                    vm.score2 = vm.score2 + vm.getTugPointGain(vm.streakPlayer2);
+
+                    vm.isPulling2 = true;
                     vm.pullRope(2);
 
                     if (!vm.endGame) {
-                        $timeout(function () {
+                        tugMoveTimeout2 = $timeout(function () {
                             vm.loopCardsForPlayer(2);
                             vm.isPulling2 = false;
+                            tugMoveTimeout2 = null;
                         }, vm.tugMoveDuration);
                     } else {
                         vm.isPulling2 = false;
@@ -3536,8 +3590,9 @@
                     vm.sayingWhenWrong();
 
                     if (!vm.endGame) {
-                        $timeout(function () {
+                        tugMoveTimeout1 = $timeout(function () {
                             vm.isPulling1 = false;
+                            tugMoveTimeout1 = null;
                         }, vm.tugMoveDuration);
                     } else {
                         vm.isPulling1 = false;
@@ -3554,8 +3609,9 @@
                     vm.sayingWhenWrong();
 
                     if (!vm.endGame) {
-                        $timeout(function () {
+                        tugMoveTimeout2 = $timeout(function () {
                             vm.isPulling2 = false;
+                            tugMoveTimeout2 = null;
                         }, vm.tugMoveDuration);
                     } else {
                         vm.isPulling2 = false;
