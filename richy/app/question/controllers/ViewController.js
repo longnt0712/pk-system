@@ -3454,7 +3454,7 @@
             }
 
             $timeout.cancel(mytimeout);
-            audio.load();
+            tuongLai.load();
 
             window.speechSynthesis.speak(new SpeechSynthesisUtterance(vm.tugStatusText));
 
