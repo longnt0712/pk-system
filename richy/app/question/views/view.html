@@ -754,7 +754,11 @@
 
                             <div class="beam-war-header">
                                 <div class="beam-side beam-side-left">
-                                    <div class="beam-side-name">PLAYER 1</div>
+                                    <div class="beam-side-name">
+                                        PLAYER 1
+                                    </div>
+                                    <small style="color: white">{{vm.score1}}pt | STREAK: {{vm.streakPlayer1}}</small>
+
                                     <!--<div class="beam-side-sub">PULL TO LEFT GOAL</div>-->
                                 </div>
 
@@ -763,7 +767,10 @@
                                 </div>
 
                                 <div class="beam-side beam-side-right">
-                                    <div class="beam-side-name">PLAYER 2</div>
+                                    <div class="beam-side-name">
+                                        PLAYER 2
+                                    </div>
+                                    <small style="color: white">{{vm.score2}}pt | STREAK: {{vm.streakPlayer2}}</small>
                                     <!--<div class="beam-side-sub">PULL TO RIGHT GOAL</div>-->
                                 </div>
                             </div>
@@ -816,22 +823,11 @@
                         </div>
                     </div>
 
-                    <div class="row beam-score-row">
-                        <div class="col-xs-6 col-md-6 beam-score-half">
-                            <div class="beam-stat-card beam-stat-card-left">
-                                <div class="beam-stat-line beam-stat-line-mobile">
-                                    <span class="beam-stat-title">PLAYER 1: <span style="color: white">{{vm.score1}}pt | STREAK: {{vm.streakPlayer1}}</span></span>
-
-                                </div>
-                            </div>
+                    <div class="row text-center">
+                        <div class="col-xs-6">
                         </div>
 
-                        <div class="col-xs-6 col-md-6 beam-score-half">
-                            <div class="beam-stat-card beam-stat-card-right">
-                                <div class="beam-stat-line beam-stat-line-mobile">
-                                    <span class="beam-stat-title">PLAYER 2: <span style="color: white">{{vm.score1}}pt | STREAK: {{vm.streakPlayer1}}</span></span>
-                                </div>
-                            </div>
+                        <div class="col-xs-6">
                         </div>
                     </div>
 
@@ -2918,7 +2914,7 @@
         font-weight:800 !important;
         letter-spacing:.2px;
         text-align:center;
-        white-space:normal !important;
+        /*white-space:normal !important;*/
         background:
                 linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.015)),
                 linear-gradient(180deg, rgba(14,20,34,.98), rgba(8,11,22,.98)) !important;
@@ -3211,6 +3207,11 @@
             padding: 10px 8px !important;
             margin-bottom: 6px;
         }
+
+        .beam-answer-btn {
+            white-space:normal !important;
+        }
+
     }
 
     .beam-score-row{
