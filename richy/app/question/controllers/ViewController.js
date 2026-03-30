@@ -1422,7 +1422,10 @@
             }
 
             $scope.counter = vm.tempCounter;
-            tuongLai.load();
+            if(tuongLai != null){
+                tuongLai.load();
+            }
+
 
         };
         //--//
