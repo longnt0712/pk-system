@@ -1256,7 +1256,7 @@
                 $timeout.cancel(mytimeout);
                 return;
             }
-            $scope.counter--;
+            $scope.counter = $scope.counter - 1;
 
             if($scope.counter == 0 && vm.mode.id != 7){
                 vm.endGame = true;
