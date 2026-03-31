@@ -204,7 +204,7 @@
 
         var vm = this;
 
-        // // ===== SPEECH INIT =====
+        // ===== SPEECH INIT =====
         // var voices = [];
         //
         // function loadVoices() {
@@ -213,83 +213,78 @@
         //
         // speechSynthesis.onvoiceschanged = loadVoices;
         // loadVoices();
-        //
-        // // warm up (fix mất chữ đầu + delay)
-        // (function () {
-        //     const u = new SpeechSynthesisUtterance(' ');
-        //     u.volume = 0;
-        //     speechSynthesis.speak(u);
-        // })();
-        //
-        // (function () {
-        //
-        //     function isBlockMode() {
-        //         return vm && vm.mode && vm.mode.id === 8;
-        //     }
-        //
-        //     // Chặn paste
-        //     document.addEventListener('paste', function (e) {
-        //         if (isBlockMode()) {
-        //             e.preventDefault();
-        //             e.stopPropagation();
-        //             return false;
-        //         }
-        //     }, true);
-        //
-        //     // Chặn Ctrl+V, Shift+Insert
-        //     document.addEventListener('keydown', function (e) {
-        //         if (!isBlockMode()) return;
-        //
-        //         var key = (e.key || '').toLowerCase();
-        //
-        //         if (
-        //             (e.ctrlKey && key === 'v') ||
-        //             (e.shiftKey && e.keyCode === 45)
-        //         ) {
-        //             e.preventDefault();
-        //             e.stopPropagation();
-        //             return false;
-        //         }
-        //     }, true);
-        //
-        //     // Chặn menu chuột phải
-        //     document.addEventListener('contextmenu', function (e) {
-        //         if (isBlockMode()) {
-        //             e.preventDefault();
-        //             return false;
-        //         }
-        //     }, true);
-        //
-        //     // Chặn kéo thả
-        //     document.addEventListener('drop', function (e) {
-        //         if (isBlockMode()) {
-        //             e.preventDefault();
-        //             return false;
-        //         }
-        //     }, true);
-        //
-        //     document.addEventListener('dragover', function (e) {
-        //         if (isBlockMode()) {
-        //             e.preventDefault();
-        //             return false;
-        //         }
-        //     }, true);
-        //
-        //     // Tắt autocomplete nhưng không phá nhập tay
-        //     document.addEventListener('focus', function (e) {
-        //         if (!isBlockMode()) return;
-        //
-        //         var el = e.target;
-        //
-        //         if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
-        //             el.setAttribute('autocomplete', 'off');
-        //             el.setAttribute('autocorrect', 'off');
-        //             el.setAttribute('autocapitalize', 'off');
-        //             el.setAttribute('spellcheck', 'false');
-        //         }
-        //     }, true);
-        //
-        // })();
+        
+        // ======== PASTE ============
+
+        (function () {
+        
+            function isBlockMode() {
+                return vm && vm.mode && vm.mode.id === 8;
+            }
+        
+            // Chặn paste
+            document.addEventListener('paste', function (e) {
+                if (isBlockMode()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }, true);
+        
+            // Chặn Ctrl+V, Shift+Insert
+            document.addEventListener('keydown', function (e) {
+                if (!isBlockMode()) return;
+        
+                var key = (e.key || '').toLowerCase();
+        
+                if (
+                    (e.ctrlKey && key === 'v') ||
+                    (e.shiftKey && e.keyCode === 45)
+                ) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }, true);
+        
+            // Chặn menu chuột phải
+            document.addEventListener('contextmenu', function (e) {
+                if (isBlockMode()) {
+                    e.preventDefault();
+                    return false;
+                }
+            }, true);
+        
+            // Chặn kéo thả
+            document.addEventListener('drop', function (e) {
+                if (isBlockMode()) {
+                    e.preventDefault();
+                    return false;
+                }
+            }, true);
+        
+            document.addEventListener('dragover', function (e) {
+                if (isBlockMode()) {
+                    e.preventDefault();
+                    return false;
+                }
+            }, true);
+        
+            // Tắt autocomplete nhưng không phá nhập tay
+            document.addEventListener('focus', function (e) {
+                if (!isBlockMode()) return;
+        
+                var el = e.target;
+        
+                if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+                    el.setAttribute('autocomplete', 'off');
+                    el.setAttribute('autocorrect', 'off');
+                    el.setAttribute('autocapitalize', 'off');
+                    el.setAttribute('spellcheck', 'false');
+                }
+            }, true);
+        
+        })();
 
         window.addEventListener('beforeunload', function (e) {
             // Cancel the event
@@ -2186,9 +2181,10 @@
         }
 
         // Fetch the list of voices and populate the voice options.
+        var voices = speechSynthesis.getVoices();
         function loadVoices() {
             // Fetch the available voices.
-            var voices = speechSynthesis.getVoices();
+            // var voices = speechSynthesis.getVoices();
             vm.allVoices = voices;
 
             // Loop through each of the voices.
@@ -2255,6 +2251,13 @@
             // console.log('hello');
             loadVoices();
         };
+
+        // warm up (fix mất chữ đầu + delay)
+        (function () {
+            const u = new SpeechSynthesisUtterance(' ');
+            u.volume = 0;
+            speechSynthesis.speak(u);
+        })();
 
 // Create a new utterance for the specified text and add it to
 // the queue.
