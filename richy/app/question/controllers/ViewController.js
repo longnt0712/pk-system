@@ -207,12 +207,10 @@
         window.addEventListener('beforeunload', function (e) {
             // Cancel the event
             e.preventDefault(); // If you prevent default behavior in Mozilla Firefox prompt will always be shown
-            // Chrome requires returnValue to be set
             e.returnValue = '';
         });
 
         vm.currentUser = JSON.parse($cookies.getAll()["education.user"]);
-        // console.log(vm.currentUser);
 
         vm.question = {};
         vm.questions = [];
@@ -306,26 +304,87 @@
         vm.currentCard1 = {};
         vm.questions1 = [];
 
-        vm.ieltsWritingTests = [];
-
-        vm.ieltsReadingTests = [];
-        vm.ieltsReadingTest = {
-            questionType: {
-                code: 'IELTSRT',
-                id: 11,
-                name: 'IELTS Writing Test',
-                textSearch: null
-            },
-            type: 0,
-            status: 1,
-            questionTopics: [],
-            countWords: 0,
-            ordinalNumber: 1,
-            subQuestions: []
-        };  //create a new test
+        // vm.ieltsWritingTests = [];
+        //
+        // vm.ieltsReadingTests = [];
+        // vm.ieltsReadingTest = {
+        //     questionType: {
+        //         code: 'IELTSRT',
+        //         id: 11,
+        //         name: 'IELTS Writing Test',
+        //         textSearch: null
+        //     },
+        //     type: 0,
+        //     status: 1,
+        //     questionTopics: [],
+        //     countWords: 0,
+        //     ordinalNumber: 1,
+        //     subQuestions: []
+        // };  //create a new test
 
         vm.totalCard = 0;
         vm.showListFlashCard = false;
+
+        function createQuestionsWithOptions(parents, optionCount) {
+            if (!Array.isArray(parents)) {
+                throw new Error('parents phải là một array');
+            }
+
+            var totalOptions = optionCount || 4;
+
+            if (totalOptions < 2) {
+                throw new Error('optionCount phải >= 2');
+            }
+
+            function shuffle(arr) {
+                var result = arr.slice();
+                for (var i = result.length - 1; i > 0; i--) {
+                    var j = Math.floor(Math.random() * (i + 1));
+                    var temp = result[i];
+                    result[i] = result[j];
+                    result[j] = temp;
+                }
+                return result;
+            }
+
+            function pickRandomWrongAnswers(source, currentId, count) {
+                var filtered = source.filter(function(item) {
+                    return item.id !== currentId;
+                });
+
+                return shuffle(filtered).slice(0, count);
+            }
+
+            return parents.map(function(parent) {
+                var wrongAnswers = pickRandomWrongAnswers(parents, parent.id, totalOptions - 1)
+                    .map(function(item) {
+                        return {
+                            id: item.id,
+                            question: item.question,
+                            motherTongue: item.motherTongue,
+                            pronounce: item.pronounce,
+                            ordinalNumber: item.ordinalNumber,
+                            result: false,
+                            correct: false
+                        };
+                    });
+
+                var correctAnswer = {
+                    id: parent.id,
+                    question: parent.question,
+                    motherTongue: parent.motherTongue,
+                    pronounce: parent.pronounce,
+                    ordinalNumber: parent.ordinalNumber,
+                    result: false,
+                    correct: true
+                };
+
+                return {
+                    ...parent,
+                    questions: shuffle([correctAnswer].concat(wrongAnswers))
+            };
+            });
+        }
 
 
         $scope.pageChanged = function() {
@@ -335,6 +394,17 @@
         vm.searchDto.questionType = {id: 6};
         vm.searchDto.userId = vm.selectedUser.id;
         vm.numberFlipCard = 6;
+
+        vm.modes = [
+            {id:5,name: 'DAILY VOCAB'},
+            {id:8,name: 'FILLING GAPS'},
+            {id:6,name: 'QUIZ BATTLE 2'},
+            {id:7,name: 'QUIZ BATTLE TUG OF WAR'},
+            {id:9,name: 'FLIPPING CARD'},
+            {id:1,name: 'NORMAL'},
+            {id:4,name: 'REWRITE'}
+        ];
+        vm.mode = {id:5,name: 'DAILY VOCAB'};
 
         vm.getPageFlashCard = function () {
             vm.searchDto.questionType = {id: 6};
@@ -350,37 +420,35 @@
             blockUI.start();
             service.getPageForGames(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
                 blockUI.stop();
+
                 if(vm.mode.id == 9){ // flipping
-                    shuffleArray(data.content);
+                    // shuffleArray(data.content);
                     vm.questions = data.content.splice(0,vm.numberFlipCard);
-
-
                     angular.forEach(vm.questions, function(value, key) {
                         value.display = true;
                         value.flipped = false;
                     });
-
                     vm.questions1 = structuredClone(vm.questions);
                     angular.forEach(vm.questions1, function(value, key) {
                         value.duplicate = true;
                         value.flipped = false;
                     });
-
                     vm.flippingQuestions = vm.questions.concat(vm.questions1);
                     shuffleArray(vm.flippingQuestions);
-                    console.log(vm.flippingQuestions);
                 } else{
-                    vm.questions = data.content;
-                    vm.questions.arrayNumber = 1;
-                    vm.questions1 = structuredClone(data.content);
-                    vm.questions1.arrayNumber = 2;
+                    vm.questions = shuffleArray(createQuestionsWithOptions(data.content));
+                    vm.questions1 = shuffleArray(createQuestionsWithOptions(data.content));
+                    // vm.questions = data.content;
+                    // vm.questions.arrayNumber = 1;
+                    // vm.questions1 = structuredClone(data.content);
+                    // vm.questions1.arrayNumber = 2;
                 }
 
-                if(vm.mode.id != 8) { //filling gaps
+                if(vm.mode.id != 8) { //không phải filling gaps
                     vm.doShuffle();
                 }
 
-                if(vm.mode.id == 8){
+                if(vm.mode.id == 8){ //filling gaps
                     vm.setUpTable();
                     vm.bsTableControl.options.data = vm.questions;
                     vm.bsTableControl.options.totalRows = data.totalElements;
@@ -404,25 +472,116 @@
                     vm.totalCard = 0;
                 } else {
                     vm.currentCard = vm.questions[vm.currentPosition];
-                    vm.createQuiz(vm.currentCard);
-                    if(vm.mode.id != 5){
+                    // vm.createQuiz(vm.currentCard);
+
+                    if(vm.mode.id != 5){ //daily
                         vm.currentCard1 = vm.questions1[vm.currentPosition1];
-                        vm.createQuiz(vm.currentCard1,2);
+                        // vm.createQuiz(vm.currentCard1,2);
                     }
-                    if(vm.mode.id == 8){
+                    if(vm.mode.id == 8){ // fill gaps
                         vm.fillingGapQuestion = (processFillingGaps(vm.currentCard.motherTongue));
                         vm.setUpAudio();
-
-                        // vm.setUpVideo();
                     }
-                    if(vm.mode.id == 7){
+                    if(vm.mode.id == 7){ // tug of war
                         vm.resetTugOfWarDefault();
                     }
                 }
-
-
-
             });
+        };
+
+        vm.createQuiz = function (currentCard,player) {
+            var mainQuestion = {};
+            if(currentCard != null && angular.isDefined(currentCard)){
+                mainQuestion.id = currentCard.id;
+                mainQuestion.question = currentCard.question;
+                mainQuestion.motherTongue = currentCard.motherTongue;
+                mainQuestion.correct = true;
+
+                var hasThisQuestion = false;
+                angular.forEach(currentCard.questions, function(value, key) {
+                    if(value.id == mainQuestion.id){
+                        hasThisQuestion = true;
+                    }
+                });
+
+                if(hasThisQuestion == false){
+                    currentCard.questions.push(mainQuestion);
+                }
+
+                if(player == 2){
+                    shuffleArray(currentCard.questions);
+                } else {
+                    shuffleArray(currentCard.questions);
+                }
+            }
+        };
+
+        vm.doShuffle = function() {
+            shuffleArray(vm.questions);
+            shuffleArray(vm.questions1);
+            vm.currentPosition = 0;
+            vm.currentPosition1 = 0;
+            vm.currentCard = vm.questions[vm.currentPosition];
+            vm.currentCard1 = vm.questions1[vm.currentPosition1];
+            vm.isShowDetail = false;
+            // vm.createQuiz(vm.currentCard);
+            // vm.createQuiz(vm.currentCard1);
+            vm.answerRewriteWord = '';
+            // console.log('...');
+        };
+
+        // -> Fisher–Yates shuffle algorithm
+        var shuffleArray = function(array) {
+            var m = array.length, t, i;
+
+            // While there remain elements to shuffle
+            while (m) {
+                // Pick a remaining element…
+                i = Math.floor(Math.random() * m--);
+
+                // And swap it with the current element.
+                t = array[m];
+                array[m] = array[i];
+                array[i] = t;
+            }
+
+            return array;
+        };
+
+        // -> Fisher–Yates shuffle algorithm
+        var shuffleArray1 = function(array) {
+            var m = array.length, t, i;
+
+            // While there remain elements to shuffle
+            while (m) {
+                // Pick a remaining element…
+                i = Math.floor(Math.random() * m--);
+
+                // And swap it with the current element.
+                t = array[m];
+                array[m] = array[i];
+                array[i] = t;
+            }
+
+            return array;
+        };
+
+        // -> Fisher–Yates shuffle algorithm
+        var shuffleArray2 = function(array) {
+            var m = array.length, t, i;
+
+            // While there remain elements to shuffle
+            while (m) {
+                // Pick a remaining element…
+                i = Math.floor(Math.random() * m--);
+
+                // And swap it with the current element.
+                t = array[m];
+                array[m] = array[i];
+                array[i] = t;
+            }
+
+            return array;
         };
 
         vm.bsTableControl = {};
@@ -543,7 +702,7 @@
                 if(vm.currentPosition1 + 1 < vm.totalCard){
                     vm.currentPosition1 = vm.currentPosition1 + 1;
                     vm.currentCard1 = vm.questions1[vm.currentPosition1];
-                    vm.createQuiz(vm.currentCard1,2);
+                    // vm.createQuiz(vm.currentCard1,2);
                     vm.answerRewriteWord = '';
                     if(!vm.isMuted && vm.mode.id !=4){
                         $scope.sayIt(vm.currentCard1.question);
@@ -554,7 +713,7 @@
                 if(vm.currentPosition + 1 < vm.totalCard){
                     vm.currentPosition = vm.currentPosition + 1;
                     vm.currentCard = vm.questions[vm.currentPosition];
-                    vm.createQuiz(vm.currentCard);
+                    // vm.createQuiz(vm.currentCard);
                     vm.answerRewriteWord = '';
                     if(!vm.isMuted && vm.mode.id !=4){
                         $scope.sayIt(vm.currentCard.question);
@@ -568,7 +727,7 @@
                 if(vm.currentPosition1 > 0){
                     vm.currentPosition1 = vm.currentPosition1 - 1;
                     vm.currentCard1 = vm.questions1[vm.currentPosition1];
-                    vm.createQuiz(vm.currentCard1);
+                    // vm.createQuiz(vm.currentCard1);
                     vm.answerRewriteWord = '';
                     if(!vm.isMuted){
                         $scope.sayIt(vm.currentCard1.question);
@@ -578,85 +737,13 @@
                 if(vm.currentPosition > 0){
                     vm.currentPosition = vm.currentPosition - 1;
                     vm.currentCard = vm.questions[vm.currentPosition];
-                    vm.createQuiz(vm.currentCard);
+                    // vm.createQuiz(vm.currentCard);
                     vm.answerRewriteWord = '';
                     if(!vm.isMuted){
                         $scope.sayIt(vm.currentCard.question);
                     }
                 }
             }
-        };
-
-        vm.doShuffle = function() {
-            shuffleArray(vm.questions);
-            shuffleArray(vm.questions1);
-            vm.currentPosition = 0;
-            vm.currentPosition1 = 0;
-            vm.currentCard = vm.questions[vm.currentPosition];
-            vm.currentCard1 = vm.questions1[vm.currentPosition1];
-            vm.isShowDetail = false;
-            vm.createQuiz(vm.currentCard);
-            vm.createQuiz(vm.currentCard1);
-            vm.answerRewriteWord = '';
-            // console.log('...');
-        };
-
-        // -> Fisher–Yates shuffle algorithm
-        var shuffleArray = function(array) {
-            var m = array.length, t, i;
-
-            // While there remain elements to shuffle
-            while (m) {
-                // Pick a remaining element…
-                i = Math.floor(Math.random() * m--);
-
-                // And swap it with the current element.
-                t = array[m];
-                array[m] = array[i];
-                array[i] = t;
-            }
-
-            return array;
-        };
-
-        // -> Fisher–Yates shuffle algorithm
-        var shuffleArray1 = function(array) {
-            var m = array.length, t, i;
-
-            // While there remain elements to shuffle
-            while (m) {
-                // Pick a remaining element…
-                i = Math.floor(Math.random() * m--);
-
-                // And swap it with the current element.
-                t = array[m];
-                array[m] = array[i];
-                array[i] = t;
-            }
-
-            return array;
-        };
-
-        // -> Fisher–Yates shuffle algorithm
-        var shuffleArray2 = function(array) {
-            var m = array.length, t, i;
-
-            // While there remain elements to shuffle
-            while (m) {
-                // Pick a remaining element…
-                i = Math.floor(Math.random() * m--);
-
-                // And swap it with the current element.
-                t = array[m];
-                array[m] = array[i];
-                array[i] = t;
-            }
-
-            return array;
-        };
-
-        vm.selectType = function () {
-            // console.log(vm.question);
         };
 
         vm.enterSearchCode = function(){
@@ -1052,7 +1139,7 @@
                 vm.currentPosition = vm.currentPosition + 1;
                 vm.currentCard = vm.questions[vm.currentPosition];
                 vm.isShowDetail = false;
-                vm.createQuiz(vm.currentCard);
+                // vm.createQuiz(vm.currentCard);
             }
         };
 
@@ -1061,7 +1148,7 @@
                 vm.currentPosition = vm.currentPosition - 1;
                 vm.currentCard = vm.questions[vm.currentPosition];
                 vm.isShowDetail = false;
-                vm.createQuiz(vm.currentCard);
+                // vm.createQuiz(vm.currentCard);
             }
         };
 
@@ -1885,104 +1972,6 @@
 
         vm.showQuestionBattlel3 = true;
         var battleTimeout = null;
-        // $scope.setupQuestionBattle3 = function () {
-        //     vm.nextCard();
-        //     vm.showQuestionBattlel3 = true;
-        //     // $scope.refreshTimer();
-        //     $scope.counter =20;
-        // };
-
-        // vm.answerQuizBattle3 = function (correct,item,questions,player) { //player1 = 1 player 2 = 2
-        //
-        //     angular.forEach(questions, function(value, key) {
-        //         value.chosen = false;
-        //     });
-        //
-        //     if(correct == true){
-        //         if(player == 1){
-        //             if(vm.endGame == true){
-        //                 window.speechSynthesis.speak(new SpeechSynthesisUtterance("TIME'S UP"));
-        //             // } else if((vm.currentPosition + 1) >= vm.searchDto.pageSize && vm.endGame == false){
-        //             } else if((vm.currentPosition + 1) >= vm.totalCard && vm.endGame == false){
-        //
-        //                 if(vm.endGamePlayer1 == false){
-        //                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội một đúng và GAME OVER"));
-        //                     vm.score1 = vm.score1 + 1;
-        //                 }
-        //
-        //                 vm.endGame = true;
-        //                 $scope.refreshTimer();
-        //
-        //             }else{
-        //                 if(vm.endGame == false) {
-        //                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội một đúng"));
-        //                     vm.showQuestionBattlel3 = false;
-        //                     vm.score1 = vm.score1 + 1;
-        //                     $scope.counter = 3;
-        //                     battleTimeout = $timeout($scope.setupQuestionBattle3, 3000);
-        //                 }
-        //             }
-        //         } else if(player == 2){
-        //             if(vm.endGame == true){
-        //                 window.speechSynthesis.speak(new SpeechSynthesisUtterance("TIME'S UP"));
-        //             } else if((vm.currentPosition1 + 1) >= vm.totalCard && vm.endGame == false){
-        //
-        //                 if(vm.endGamePlayer2 == false){
-        //                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội hai đúng và GAME OVER"));
-        //                     vm.score2 = vm.score2 + 1;
-        //                 }
-        //
-        //                 vm.endGame = true;
-        //                 $scope.refreshTimer();
-        //
-        //             }else{
-        //                 if(vm.endGame == false) {
-        //                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội hai đúng"));
-        //                     vm.showQuestionBattlel3 = false;
-        //                     vm.score2 = vm.score2 + 1;
-        //                     $scope.counter = 3;
-        //                     battleTimeout = $timeout($scope.setupQuestionBattle3, 3000);
-        //                 }
-        //             }
-        //         }
-        //
-        //
-        //     }else{
-        //         if(player == 1){
-        //             if(vm.endGame == true){
-        //                 if((vm.currentPosition1 + 1) >= vm.totalCard ){
-        //                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("GAME OVER"));
-        //                 }
-        //
-        //             } else {
-        //                 if(vm.endGame == false) {
-        //
-        //                     if(player == 1){
-        //                         window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội một chọn sai"));
-        //                         vm.score1 = vm.score1 - 1;
-        //                     }
-        //
-        //                 }
-        //             }
-        //         } else if (player == 2){
-        //             if(vm.endGame == true){
-        //                 if((vm.currentPosition + 1) >= vm.totalCard){
-        //                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("GAME OVER"));
-        //                 }
-        //
-        //
-        //             }else {
-        //                 if(vm.endGame == false) {
-        //                     if(player == 2){
-        //                         window.speechSynthesis.speak(new SpeechSynthesisUtterance("Đội hai chọn sai"));
-        //                         vm.score2 = vm.score2 - 1;
-        //                     }
-        //
-        //                 }
-        //             }
-        //         }
-        //     }
-        // };
 
         vm.score = 0;
         vm.players = [];
@@ -2025,54 +2014,6 @@
             {id:9,name: 'iSpa09'},
         ];
         vm.class = null;
-
-        // vm.modes = [
-        //     {id:5,name: 'DAILY VOCAB'},
-        //     {id:8,name: 'FILLING GAPS'},
-        //     {id:6,name: 'QUIZ BATTLE 2'},
-        //     {id:9,name: 'FLIPPING CARD'},
-        //     {id:1,name: 'NORMAL'},
-        //     // {id:2,name: 'QUIZ GAME'},
-        //     // {id:3,name: 'QUIZ GAME 2'},
-        //     {id:4,name: 'REWRITE'}
-        //     // {id:7,name: 'QUIZ BATTLE 3'},
-        //
-        // ];
-
-        vm.modes = [
-            {id:5,name: 'DAILY VOCAB'},
-            {id:8,name: 'FILLING GAPS'},
-            {id:6,name: 'QUIZ BATTLE 2'},
-            {id:7,name: 'QUIZ BATTLE TUG OF WAR'},
-            {id:9,name: 'FLIPPING CARD'},
-            {id:1,name: 'NORMAL'},
-            {id:4,name: 'REWRITE'}
-        ];
-
-        vm.mode = {id:5,name: 'DAILY VOCAB'};
-        // vm.mode = {id:9,name: 'FLIPPING CARD'};
-
-        // if(vm.mode.id == 7){
-        //     $scope.counter =20;vm.tempCounter =20;
-        // }
-
-        // if(vm.mode.id == 6 || vm.mode.id == 5){
-        //     $scope.counter = 900;vm.tempCounter = 900;
-        // }
-        //
-        // vm.modeChange = function () {
-        //     if(vm.mode.id == 4){
-        //         vm.doShuffle();
-        //     }
-        //
-        //     if(vm.mode.id == 7){
-        //         $scope.counter =20;vm.tempCounter =20;
-        //     }
-        //
-        //     if(vm.mode.id == 6){
-        //         $scope.counter = 900;vm.tempCounter = 900;
-        //     }
-        // };
 
         if(vm.mode.id == 6 || vm.mode.id == 5 || vm.mode.id == 7){
             $scope.counter = 900;
@@ -2122,46 +2063,12 @@
         vm.searchDto.numberOfAnswers = 4;
         vm.showQuestion = false;
         vm.showMotherTongue = true;
-        vm.createQuiz = function (currentCard,player) {
-            var mainQuestion = {};
-            if(currentCard != null && angular.isDefined(currentCard)){
-                mainQuestion.id = currentCard.id;
-                mainQuestion.question = currentCard.question;
-                mainQuestion.motherTongue = currentCard.motherTongue;
-                mainQuestion.correct = true;
-
-                var hasThisQuestion = false;
-                angular.forEach(currentCard.questions, function(value, key) {
-                    if(value.id == mainQuestion.id){
-                        hasThisQuestion = true;
-                    }
-                });
-
-                if(hasThisQuestion == false){
-                    currentCard.questions.push(mainQuestion);
-                }
-
-                if(player == 2){
-                    shuffleArray(currentCard.questions);
-                } else {
-                    shuffleArray(currentCard.questions);
-                }
-
-            }
-
-        };
-
-        vm.showQuestionMother = function () {
-            console.log(vm.showQuestion);
-        };
-
 
         //old//
         vm.isMuted = false;
 
         vm.showVoiceOption = true;
         vm.loop = true;
-
 
         /*
          * Check for browser support
@@ -3419,7 +3326,7 @@
             if (angular.isArray(vm.questions) && vm.questions.length > 0) {
                 shuffleArray(vm.questions);
                 vm.currentCard = vm.questions[0];
-                vm.createQuiz(vm.currentCard);
+                // vm.createQuiz(vm.currentCard);
 
                 if (vm.currentCard.questions) {
                     angular.forEach(vm.currentCard.questions, function (q) {
@@ -3433,7 +3340,7 @@
             if (angular.isArray(vm.questions1) && vm.questions1.length > 0) {
                 shuffleArray(vm.questions1);
                 vm.currentCard1 = vm.questions1[0];
-                vm.createQuiz(vm.currentCard1, 2);
+                // vm.createQuiz(vm.currentCard1, 2);
 
                 if (vm.currentCard1.questions) {
                     angular.forEach(vm.currentCard1.questions, function (q) {
@@ -3495,7 +3402,7 @@
                     shuffleArray(vm.questions);
                     vm.currentPosition = 0;
                     vm.currentCard = vm.questions[0];
-                    vm.createQuiz(vm.currentCard);
+                    // vm.createQuiz(vm.currentCard);
                 } else {
                     vm.nextCard(1);
                 }
@@ -3504,7 +3411,7 @@
                     shuffleArray(vm.questions1);
                     vm.currentPosition1 = 0;
                     vm.currentCard1 = vm.questions1[0];
-                    vm.createQuiz(vm.currentCard1, 2);
+                    // vm.createQuiz(vm.currentCard1, 2);
                 } else {
                     vm.nextCard(2);
                 }

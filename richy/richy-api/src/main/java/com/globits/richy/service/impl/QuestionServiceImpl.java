@@ -397,17 +397,16 @@ public class QuestionServiceImpl implements QuestionService {
 			list.get(0).setNumberOfWords(numberOfWords);
 		}
 		
-		for(QuestionForGamesDto dto : list) {
-			searchDto.setId(dto.getId());
-			List<QuestionForGamesDto> questions = getListRandomQuestionForGames(searchDto);
-			if(questions != null && questions.size() > 0) {
-				for(QuestionForGamesDto randomQuestion : questions) {
-					dto.getQuestions().add(randomQuestion);
-				}
-				
-			}
-			
-		}
+//		for(QuestionForGamesDto dto : list) {
+//			searchDto.setId(dto.getId());
+//			List<QuestionForGamesDto> questions = getListRandomQuestionForGames(searchDto);
+//			if(questions != null && questions.size() > 0) {
+//				for(QuestionForGamesDto randomQuestion : questions) {
+//					dto.getQuestions().add(randomQuestion);
+//				}
+//				
+//			}
+//		}
 		
 
 		Page<QuestionForGamesDto> page = new PageImpl<QuestionForGamesDto>(list, pageable, numberResult);
