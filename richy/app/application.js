@@ -92,7 +92,7 @@
 
             $rootScope.islogOut = false;
 
-            console.log("ver 1.0");
+            // console.log("ver 1.0");
 
             // =========================
             // Init permission flags

@@ -109,6 +109,10 @@
 
         <ui-view></ui-view>
 
+        <script>
+            window.APP_VERSION = '<?php echo time(); ?>';
+        </script>
+
         <!--<script async defer crossorigin="anonymous" src="https://connect.facebook.net/vi_VN/sdk.js#xfbml=1&version=v13.0&appId=1832244337163521&autoLogAppEvents=1" nonce="HLSuRQaX"></script>-->
 
         <!--build:js assets/scripts/core-jquery.min.js-->
@@ -189,12 +193,12 @@
         <!--endbuild-->
 
         <!--build:js assets/scripts/application.min.js-->
-        <script src="application.js" type="text/javascript"></script>
+        <script src="application.js?v=<?php echo time(); ?>" type="text/javascript"></script>
         <script src="application.configs.js" type="text/javascript"></script>
         <script src="application.services.js" type="text/javascript"></script>
         <script src="application.controllers.js" type="text/javascript"></script>
 
-        <script src="common/common.module.js?ver=<?php echo time(); ?" type="text/javascript"></script>
+        <script src="common/common.module.js?v=<?php echo time(); ?>" type="text/javascript"></script>
         <script src="dashboards/dashboard.module.js" type="text/javascript"></script>
         <script src="settings/setting.module.js" type="text/javascript"></script>
         <script src="users/user.module.js" type="text/javascript"></script>
@@ -205,7 +209,7 @@
         <script src="users/business/UserService.js" type="text/javascript"></script>
 
         <script src="answer/answer.module.js" type="text/javascript"></script>
-        <script src="question/question.module.js?ver=<?php echo time(); ?" type="text/javascript"></script>
+        <script src="question/question.module.js?v=<?php echo time(); ?>" type="text/javascript"></script>
         <script src="classical_learning/classical_learning.module.js" type="text/javascript"></script>
         <script src="body/body.module.js" type="text/javascript"></script>
         <script src="body_learning/body_learning.module.js" type="text/javascript"></script>

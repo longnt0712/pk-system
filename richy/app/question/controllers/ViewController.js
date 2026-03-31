@@ -204,6 +204,93 @@
 
         var vm = this;
 
+        // // ===== SPEECH INIT =====
+        // var voices = [];
+        //
+        // function loadVoices() {
+        //     voices = speechSynthesis.getVoices();
+        // }
+        //
+        // speechSynthesis.onvoiceschanged = loadVoices;
+        // loadVoices();
+        //
+        // // warm up (fix mất chữ đầu + delay)
+        // (function () {
+        //     const u = new SpeechSynthesisUtterance(' ');
+        //     u.volume = 0;
+        //     speechSynthesis.speak(u);
+        // })();
+        //
+        // (function () {
+        //
+        //     function isBlockMode() {
+        //         return vm && vm.mode && vm.mode.id === 8;
+        //     }
+        //
+        //     // Chặn paste
+        //     document.addEventListener('paste', function (e) {
+        //         if (isBlockMode()) {
+        //             e.preventDefault();
+        //             e.stopPropagation();
+        //             return false;
+        //         }
+        //     }, true);
+        //
+        //     // Chặn Ctrl+V, Shift+Insert
+        //     document.addEventListener('keydown', function (e) {
+        //         if (!isBlockMode()) return;
+        //
+        //         var key = (e.key || '').toLowerCase();
+        //
+        //         if (
+        //             (e.ctrlKey && key === 'v') ||
+        //             (e.shiftKey && e.keyCode === 45)
+        //         ) {
+        //             e.preventDefault();
+        //             e.stopPropagation();
+        //             return false;
+        //         }
+        //     }, true);
+        //
+        //     // Chặn menu chuột phải
+        //     document.addEventListener('contextmenu', function (e) {
+        //         if (isBlockMode()) {
+        //             e.preventDefault();
+        //             return false;
+        //         }
+        //     }, true);
+        //
+        //     // Chặn kéo thả
+        //     document.addEventListener('drop', function (e) {
+        //         if (isBlockMode()) {
+        //             e.preventDefault();
+        //             return false;
+        //         }
+        //     }, true);
+        //
+        //     document.addEventListener('dragover', function (e) {
+        //         if (isBlockMode()) {
+        //             e.preventDefault();
+        //             return false;
+        //         }
+        //     }, true);
+        //
+        //     // Tắt autocomplete nhưng không phá nhập tay
+        //     document.addEventListener('focus', function (e) {
+        //         if (!isBlockMode()) return;
+        //
+        //         var el = e.target;
+        //
+        //         if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+        //             el.setAttribute('autocomplete', 'off');
+        //             el.setAttribute('autocorrect', 'off');
+        //             el.setAttribute('autocapitalize', 'off');
+        //             el.setAttribute('spellcheck', 'false');
+        //         }
+        //     }, true);
+        //
+        // })();
+
         window.addEventListener('beforeunload', function (e) {
             // Cancel the event
             e.preventDefault(); // If you prevent default behavior in Mozilla Firefox prompt will always be shown
@@ -2205,16 +2292,34 @@
 
         vm.test = null;
         vm.loopSpeech = false;
+        // $scope.sayIt = function (text) {
+        //     if (!vm.isMuted) {
+        //
+        //         if (window.speechSynthesis.speaking) {
+        //             window.speechSynthesis.cancel();
+        //         }
+        //
+        //         speak(text);
+        //
+        //     }
+        // };
+
         $scope.sayIt = function (text) {
-            if (!vm.isMuted) {
+            if (!text) return;
 
-                if (window.speechSynthesis.speaking) {
-                    window.speechSynthesis.cancel();
-                }
+            const u = new SpeechSynthesisUtterance(' ' + text);
 
-                speak(text);
+            u.rate = 1;
+            u.pitch = 1;
+            u.volume = 1;
 
-            }
+            const v = voices.find(v => v.lang && v.lang.includes('en'));
+            if (v) u.voice = v;
+
+            speechSynthesis.pause();
+            speechSynthesis.resume();
+            speechSynthesis.cancel();
+            speechSynthesis.speak(u);
         };
 
         $scope.shutUp = function () {

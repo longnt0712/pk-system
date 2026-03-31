@@ -13,11 +13,11 @@
         // 'pubnub.angular.service',
     ]);
 
-    	Hrm.Question.config(['$stateProvider', function ($stateProvider) {
+    Hrm.Question.config(['$stateProvider', function ($stateProvider) {
 
         $stateProvider
 
-            // Event priority
+        // Event priority
             .state('application.question', {
                 url: '/question/:listFlashCard',
                 templateUrl: 'question/views/listing.html',
@@ -29,9 +29,9 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/QuestionController.js',
-                                'question/business/QuestionService.js',
-                                'topic/business/TopicService.js'
+                                'question/controllers/QuestionController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION,
+                                'topic/business/TopicService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
@@ -49,9 +49,9 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/QuestionController.js',
-                                'question/business/QuestionService.js',
-                                'topic/business/TopicService.js'
+                                'question/controllers/QuestionController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION,
+                                'topic/business/TopicService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
@@ -69,8 +69,8 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/QuestionCatechismController.js',
-                                'question/business/QuestionService.js'
+                                'question/controllers/QuestionCatechismController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
@@ -89,8 +89,8 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/QuestionController.js',
-                                'question/business/QuestionService.js'
+                                'question/controllers/QuestionController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
@@ -108,8 +108,8 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/IELTSWritingCollectionController.js',
-                                'question/business/QuestionService.js'
+                                'question/controllers/IELTSWritingCollectionController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
@@ -128,9 +128,9 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/IELTSVocabularyController.js',
-                                'question/business/QuestionService.js',
-                                'topic/business/TopicService.js',
+                                'question/controllers/IELTSVocabularyController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION,
+                                'topic/business/TopicService.js?v=' + window.APP_VERSION,
                             ]
                         });
                     }]
@@ -148,9 +148,9 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/IELTSMaterialController.js',
-                                'question/business/QuestionService.js',
-                                'topic/business/TopicService.js',
+                                'question/controllers/IELTSMaterialController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION,
+                                'topic/business/TopicService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
@@ -168,8 +168,8 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/IELTSWritingActualTestController.js',
-                                'question/business/QuestionService.js'
+                                'question/controllers/IELTSWritingActualTestController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
@@ -188,8 +188,8 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/IELTSCreateWritingTestController.js',
-                                'question/business/QuestionService.js'
+                                'question/controllers/IELTSCreateWritingTestController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
@@ -207,8 +207,8 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/IELTSCreateReadingTestController.js',
-                                'question/business/QuestionService.js'
+                                'question/controllers/IELTSCreateReadingTestController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
@@ -226,8 +226,8 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/IELTSCreateListeningTestController.js',
-                                'question/business/QuestionService.js'
+                                'question/controllers/IELTSCreateListeningTestController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
@@ -245,8 +245,8 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/IELTSReadingActualTestController.js',
-                                'question/business/QuestionService.js'
+                                'question/controllers/IELTSReadingActualTestController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
@@ -264,8 +264,8 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/IELTSListeningActualTestController.js',
-                                'question/business/QuestionService.js'
+                                'question/controllers/IELTSListeningActualTestController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
@@ -282,13 +282,11 @@
                         return $ocLazyLoad.load({
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
-
                             files: [
-                                'question/controllers/ViewController.js',
-                                'question/business/QuestionService.js',
-                                'topic/business/TopicService.js'
-                            ],
-                            cache: false          // add a cache-busting query param
+                                'question/controllers/ViewController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION,
+                                'topic/business/TopicService.js?v=' + window.APP_VERSION
+                            ]
                         });
                     }]
                 }
@@ -306,15 +304,15 @@
                             insertBefore: '#ng_load_plugins_before',
 
                             files: [
-                                'question/controllers/ListeningGameModeController.js',
-                                'question/business/QuestionService.js',
-                                'topic/business/TopicService.js'
+                                'question/controllers/ListeningGameModeController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION,
+                                'topic/business/TopicService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
                 }
             })
-            
+
 
             .state('application.statistic_user', {
                 url: '/statistic_user',
@@ -327,8 +325,8 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/StatisticUserController.js',
-                                'question/business/QuestionService.js'
+                                'question/controllers/StatisticUserController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
