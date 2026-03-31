@@ -1427,11 +1427,14 @@
             }
             $scope.counter = $scope.counter - 1;
 
-            if($scope.counter == 0 && vm.mode.id != 7){
-                vm.endGame = true;
-            }
+            // if($scope.counter == 0){
+            //     vm.endGame = true;
+            //
+            // }
 
-            if($scope.counter == 0 && vm.mode.id == 7){
+            if($scope.counter <= 0){
+                stopGameByTimeout();
+
                 if((vm.currentPosition + 1) >= vm.totalCard){
                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
                     vm.endGame = true;
@@ -3425,8 +3428,8 @@
             vm.endGamePlayer2 = false;
             vm.blindMode = false;
 
-            $scope.counter = 180;
-            vm.tempCounter = 180;
+            $scope.counter = vm.tempCounter;
+            // vm.tempCounter = 180;
 
             vm.currentPosition = 0;
             vm.currentPosition1 = 0;
@@ -3640,6 +3643,39 @@
                 }
             }
         };
+
+        function stopGameByTimeout() {
+            $scope.counter = 0;
+            vm.endGame = true;
+
+            if (vm.mode.id == 7) {
+                vm.endGamePlayer1 = true;
+                vm.endGamePlayer2 = true;
+                vm.isPulling1 = false;
+                vm.isPulling2 = false;
+
+                if (angular.isFunction(vm.cancelTugTimeouts)) {
+                    vm.cancelTugTimeouts();
+                }
+
+                // Hết giờ => ai điểm cao hơn thắng
+                if (vm.score1 > vm.score2) {
+                    vm.tugWinner = 1;
+                    vm.tugStatusText = 'HẾT GIỜ - PLAYER 1 THẮNG!';
+                } else if (vm.score2 > vm.score1) {
+                    vm.tugWinner = 2;
+                    vm.tugStatusText = 'HẾT GIỜ - PLAYER 2 THẮNG!';
+                } else {
+                    vm.tugWinner = 0;
+                    vm.tugStatusText = 'HẾT GIỜ - HÒA!';
+                }
+            }
+
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
+            audio.load();
+            $scope.$broadcast('timer-stopped', 0);
+            $timeout.cancel(mytimeout);
+        }
 
 
     }
