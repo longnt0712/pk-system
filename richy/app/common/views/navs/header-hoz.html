@@ -12,8 +12,8 @@
                 <span class="icon-bar"></span>
             </button>
 
-            <a ng-if="settings.ieltsRoom == true" class="navbar-brand" id="church-title" href="dashboards">IELTS ROOM</a>
-            <a ng-if="settings.chapter == true" class="navbar-brand" id="church-title" href="dashboards">Chapter</a>
+            <a ng-if="settings.ieltsRoom == true" class="navbar-brand" id="church-title" href="dashboard">IELTS ROOM</a>
+            <a ng-if="settings.chapter == true" class="navbar-brand" id="church-title" href="dashboard">Chapter</a>
         </div>
 
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1" ng-if="settings.permissionsLoaded">
@@ -71,7 +71,7 @@
                     <!--</a>-->
                 <!--</li>-->
 
-                <li ng-show="settings.isAdmin == true || settings.isEducationManagerment == true" class="menu-dropdown">
+                <li ng-show="settings.isAdmin == true || settings.isEducationManagerment == true || settings.isStudentManagerment == true" class="menu-dropdown">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         HỌC SINH <span class="caret"></span>
                     </a>
@@ -100,22 +100,23 @@
                     </a>
                     <ul class="dropdown-menu">
                         <li>
-                            <a href="product">
-                                <i class="fa fa-caret-right"></i> BÁN HÀNG
-                            </a>
-                        </li>
-                        <li>
                             <a href="education_programs">
                                 <i class="fa fa-caret-right"></i> Chương trình đào tạo
                             </a>
                         </li>
                         <li>
                             <a href="marks">
-                                <i class="fa fa-caret-right"></i> Điểm
+                                <i class="fa fa-caret-right"></i> Thiết lập điểm
                             </a>
                         </li>
 
                     </ul>
+                </li>
+
+                <li ng-show="settings.isAdmin == true || settings.isStaff == true" class="menu-dropdown">
+                    <a href="product" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        BÁN HÀNG</span>
+                    </a>
                 </li>
 
                 <li ng-show="settings.isAdmin == true" class="menu-dropdown">

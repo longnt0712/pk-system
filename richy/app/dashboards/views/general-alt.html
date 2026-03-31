@@ -59,7 +59,7 @@
             </div>
 
             <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
-                 ng-if="vm.isRoleStudentManagerment || vm.isRoleAdmin">
+                 ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
                 <div class="dash-let">
                     <a href="person_dates">
                         <i class="fa fa-id-card"></i>
@@ -70,18 +70,51 @@
             </div>
 
             <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
-                 ng-if="vm.isRoleStudentManagerment || vm.isRoleAdmin">
+                 ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
                 <div class="dash-let" style="background: #946b2d !important">
                     <a href="user/accounts" style="background: #0e1a40 !important">
-                        <i class="fa fa-book"></i>
-                        <i class="fa fa-book" style="color: #946b2d"></i>
+                        <i class="fa fa-list"></i>
+                        <i class="fa fa-list" style="color: #946b2d"></i>
                         <span style="color: white">DANH SÁCH HỌC SINH</span>
                     </a>
                 </div>
             </div>
 
             <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
-                 ng-if="vm.isRoleStaff || vm.isRoleAdmin">
+                 ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
+                <div class="dash-let" style="background: #726255 !important">
+                    <a href="student_marks" style="background: #ecb939 !important">
+                        <i class="fa fa-graduation-cap"></i>
+                        <i class="fa fa-graduation-cap" style="color: #946b2d"></i>
+                        <span style="color: white">ĐIỂM HS</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
+                 ng-if="vm.isEducationManagerment || vm.isRoleAdmin">
+                <div class="dash-let" style="background: #1a472a !important">
+                    <a href="education_programs" style="background: #2a623d !important">
+                        <i class="fa fa fa-tasks"></i>
+                        <i class="fa fa fa-tasks" style="color: #946b2d"></i>
+                        <span style="color: white">CHƯƠNG TRÌNH ĐÀO TẠO</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
+                 ng-if="vm.isEducationManagerment || vm.isRoleAdmin">
+                <div class="dash-let" style="background: #eeba30!important">
+                    <a href="mark" style="background: #641E1E !important">
+                        <i class="fa fa-puzzle-piece"></i>
+                        <i class="fa fa-puzzle-piece" style="color: #946b2d"></i>
+                        <span style="color: white">THIẾT LẬP ĐIỂM</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
+                 ng-if="vm.isRoleStaff || vm.isRoleStaffManagement || vm.isRoleAdmin">
                 <div class="dash-let" style="background: #726255 !important">
                     <a href="product" style="background: #ecb939 !important">
                         <i class="fa fa-book"></i>
