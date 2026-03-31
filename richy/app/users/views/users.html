@@ -40,7 +40,12 @@
                 </div>
                 <div class="row margin-bottom-10">
                     <div class="col-md-3">
-                        <input type="text" data-ng-model="vm.filter.keyword" dl-enter-key="vm.search()" class="form-control" placeholder="Tìm kiếm nhanh" name="search">
+                        <ui-select multiple theme="" data-ng-model="vm.filter.groups" data-ng-change="vm.search()" sortable="true" close-on-select="true" style="width: 100% !important;">
+                            <ui-select-match allow-clear="true" placeholder="BAN/HỘI...">{{$item.name}}</ui-select-match>
+                            <ui-select-choices repeat="group in vm.groups | propsFilter: {name: $select.search}">
+                                <div class="bold" ng-bind-html="group.name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
                     </div>
                     <div class="col-md-3">
                         <ui-select data-ng-disabled="" ng-model="vm.filter.enrollmentClass" data-ng-change="vm.search()" sortable="true" close-on-select="true">
@@ -51,12 +56,23 @@
                         </ui-select>
                     </div>
                     <div class="col-md-3">
-                        <ui-select multiple theme="" data-ng-model="vm.filter.groups" data-ng-change="vm.search()" sortable="true" close-on-select="true" style="width: 100% !important;">
-                            <ui-select-match allow-clear="true" placeholder="BAN/HỘI...">{{$item.name}}</ui-select-match>
-                            <ui-select-choices repeat="group in vm.groups | propsFilter: {name: $select.search}">
-                                <div class="bold" ng-bind-html="group.name | highlight: $select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
+                        <div class="input-group">
+                            <input type="text"
+                                   data-ng-model="vm.filter.keyword"
+                                   dl-enter-key="vm.search()"
+                                   class="form-control"
+                                   placeholder="Tìm kiếm nhanh"
+                                   name="search">
+
+                            <span class="input-group-btn">
+                                <button type="button"
+                                        class="btn btn-default"
+                                        data-ng-click="vm.search()">
+                                    <i class="fa fa-search"></i>
+                                </button>
+                            </span>
+                        </div>
+                        <!--<input type="text" data-ng-model="vm.filter.keyword" dl-enter-key="vm.search()" class="form-control" placeholder="Tìm kiếm nhanh" name="search">-->
                     </div>
                 </div>
                 <div class="row support-panel" ng-if="vm.filter.filtered == 1">
