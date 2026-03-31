@@ -46,6 +46,7 @@
         vm.isRoleStaff = false;
         vm.isRoleStaffManagement = false;
         vm.isRoleStudentManagerment = false;
+        vm.isEducationManagerment = false;
 
         vm.resetRoles = function () {
             vm.isRoleView = false;
@@ -55,6 +56,7 @@
             vm.isRoleStaffManagement = false;
             vm.isRoleStudentManagerment = false;
             settings.isAdmin = false;
+            vm.isEducationManagerment = false;
         };
 
         vm.applyRoles = function (roles) {
@@ -84,6 +86,10 @@
                 if (value.name === "ROLE_STUDENT_MANAGERMENT") {
                     vm.isRoleStudentManagerment = true;
                     console.log('isRoleStudentManagerment');
+                }
+                if (value.name === "ROLE_EDUCATION_MANAGERMENT") {
+                    vm.isEducationManagerment = true;
+                    console.log('isEducationManagerment');
                 }
             });
         };

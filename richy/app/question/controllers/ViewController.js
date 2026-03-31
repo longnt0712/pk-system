@@ -537,8 +537,8 @@
                 }
 
                 if(vm.mode.id == 1){ // normal
-                    var tableSource = angular.copy(data.content || []);
-                    vm.questionTable = buildQuestionTable(tableSource);
+                    // var tableSource = angular.copy(data.content || []);
+                    vm.questionTable = buildQuestionTable(shuffleArray(createQuestionsWithOptions(data.content)));
                 }
 
                 //tạm thời
