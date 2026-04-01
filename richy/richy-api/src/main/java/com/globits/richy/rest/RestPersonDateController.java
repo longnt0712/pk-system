@@ -23,12 +23,12 @@ public class RestPersonDateController {
 	@Autowired
 	private PersonDateService service;
 	
-	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
 	public Page<PersonDateDto> getPage(@RequestBody PersonDateDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
 		return service.getPageObject(searchDto, pageIndex, pageSize);
 	}
-	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)
 	public PersonDateDto getOne(@PathVariable Long id) {
 		return service.getObjectById(id);
@@ -40,13 +40,13 @@ public class RestPersonDateController {
 		return service.saveListByEnrollmentClass(enrollmentClass);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/save", method = RequestMethod.POST)
 	public PersonDateDto saveOne(@RequestBody PersonDateDto searchDto) {
 		return service.saveObject(searchDto);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)
 	public boolean saveOne(@PathVariable Long id) {
 		return service.deleteObject(id);
