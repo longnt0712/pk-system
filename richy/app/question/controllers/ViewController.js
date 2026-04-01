@@ -2531,6 +2531,8 @@
 
                 if(data1.messageCode == 1){
                     toastr.error('Sai quá nhiều => chưa đạt', 'Thông báo');
+                }else {
+                    toastr.info('Lưu thành công', 'Thông báo');
                 }
 
                 // vm.setUpTestResult();
