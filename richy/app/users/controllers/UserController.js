@@ -239,6 +239,7 @@
         vm.isRoleStaff = false;
         vm.isRoleStaffManagement = false;
         vm.isRoleStudentManagerment = false;
+        vm.isRoleEducationManagerment = false;
 
         angular.forEach(vm.myUser.roles, function(value, key) {
             if(value.name === "ROLE_VIEWER"){
@@ -246,20 +247,20 @@
             }
             if(value.name === "ROLE_USER"){
                 vm.isRoleUser = true;
-                console.log('User');
+                // console.log('User');
             }
             if(value.name === "ROLE_ADMIN"){
                 vm.isRoleAdmin = true;
 
-                console.log('Admin');
+                // console.log('Admin');
             }
             if(value.name === "ROLE_STAFF"){
                 vm.isRoleStaff = true;
-                console.log('Staff');
+                // console.log('Staff');
             }
             if(value.name === "ROLE_STAFF_MANAGEMENT"){
                 vm.isRoleStaffManagement = true;
-                console.log('ROLE_STAFF_MANAGEMENT');
+                // console.log('ROLE_STAFF_MANAGEMENT');
             }
             if(value.name === "ROLE_STUDENT_MANAGERMENT"){
                 vm.isRoleStudentManagerment = true;
@@ -268,21 +269,33 @@
                 //         vm.filter.roles.add(value1);
                 //     }
                 // });
-                console.log('ROLE_STUDENT_MANAGERMENT');
+                // console.log('ROLE_STUDENT_MANAGERMENT');
+            }
+            if(value.name === "ROLE_EDUCATION_MANAGERMENT"){
+                vm.isRoleEducationManagerment = true;
+                // angular.forEach(vm.roles, function(value1, key1) {
+                //     if(value1.name === "ROLE_STUDENT"){
+                //         vm.filter.roles.add(value1);
+                //     }
+                // });
+                // console.log('ROLE_STUDENT_MANAGERMENT');
             }
         });
 
         /**
          * Get all roles
          */
-        service.getAllRoles().then(function (data) {
-            if (data && data.length > 0) {
-                vm.roles = data;
-            } else {
-                vm.roles = [];
-            }
-            vm.getUsers();
-        });
+        // if(vm.isRoleAdmin){
+            service.getAllRoles().then(function (data) {
+                if (data && data.length > 0) {
+                    vm.roles = data;
+                } else {
+                    vm.roles = [];
+                }
+                vm.getUsers();
+            });
+        // }
+
 
         vm.processEducationPrograms = function () {
             vm.educationPrograms = [];
@@ -323,14 +336,15 @@
         vm.getUsers = function () {
 
             angular.forEach(vm.roles, function(value1, key1) {
-                if(value1.name === "ROLE_STUDENT" || value1.name === "ROLE_STUDENT_MANAGERMENT" ){
+                if(value1.name === "ROLE_STUDENT" || value1.name === "ROLE_STUDENT_MANAGERMENT" || value1.name === "ROLE_EDUCATION_MANAGERMENT" ){
                     // vm.filter.roles = [];
-                    if(vm.isRoleStudentManagerment == true){
+                    if(vm.isRoleStudentManagerment == true || vm.isRoleEducationManagerment == true){
                         vm.filter.roles.push(value1);
-                        // console.log()
+
                     }
                 }
             });
+            console.log(vm.filter.roles);
             service.getUsers(vm.filter, vm.pageIndex, vm.pageSize).then(function (data) {
                 vm.users = data.content;
                 vm.users.totalElement = data.totalElements;

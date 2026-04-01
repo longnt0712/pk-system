@@ -398,10 +398,36 @@
 
         vm.users = [];
         vm.searchDto.user = null;
-        service.getListUsers().then(function (data) {
-            vm.users = data;
-            // console.log(data);
+        // service.getListUsers().then(function (data) {
+        //     vm.users = data;
+        //     // console.log(data);
+        // });
+
+        vm.filter = {};
+        vm.filter.roles = [];
+        var role = {};
+        role.authority = "ROLE_VIEWER";
+        role.name = "ROLE_VIEWER";
+        role.id = 12; // tạm thời, vì k có tgian :)
+        vm.filter.roles.push(role);
+
+        angular.forEach(vm.roles, function(value1, key1) {
+            if(value1.name === "ROLE_STUDENT" || value1.name === "ROLE_STUDENT_MANAGERMENT" || value1.name === "ROLE_EDUCATION_MANAGERMENT" ){
+                // vm.filter.roles = [];
+                if(vm.isRoleStudentManagerment == true || vm.isRoleEducationManagerment == true){
+                    vm.filter.roles.push(value1);
+
+                }
+            }
         });
+
+        $timeout(function () {
+            service.getUsers(vm.filter, 1, 1000000).then(function (data) {
+                vm.users = data.content;
+                console.log(vm.users);
+            });
+        }, 1000);
+
 
     }
 

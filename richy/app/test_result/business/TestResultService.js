@@ -23,7 +23,7 @@
         self.getOne = getOne;
         self.deleteObject = deleteObject;
         self.getTableDefinition = getTableDefinition;
-        self.getListUsers = getListUsers;
+        self.getUsers = getUsers;
         self.getRanking = getRanking;
 
         var restUrl = 'test_result';
@@ -46,9 +46,15 @@
             }, successCallback, errorCallback);
         }
 
-        function getListUsers() {
-            var url = baseUrl + 'users' + '/' + 'get-all-user';
-            return utils.resolve(url, 'GET', angular.noop, angular.noop);
+        function getUsers(filter, pageIndex, pageSize) {
+
+            var url = baseUrl + 'users/search';
+            url += '/' + ((pageIndex > 0) ? pageIndex : 1);
+            url += '/' + ((pageSize > 0) ? pageSize : 10);
+
+            return utils.resolveAlt(url, 'POST', null, filter, {
+                'Content-Type': 'application/json; charset=utf-8'
+            }, angular.noop, angular.noop);
         }
 
         function saveObject(object, successCallback, errorCallback) {
