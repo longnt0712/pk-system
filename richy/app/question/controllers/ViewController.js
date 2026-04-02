@@ -487,6 +487,7 @@
             {id:4,name: 'REWRITE'}
         ];
         vm.mode = {id:5,name: 'DAILY VOCAB'};
+        vm.rawQuestions = [];
 
         vm.getPageFlashCard = function () {
             vm.searchDto.questionType = {id: 6};
@@ -502,6 +503,7 @@
             blockUI.start();
             service.getPageForGames(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
                 blockUI.stop();
+                vm.rawQuestions = data.content;
 
                 if(vm.mode.id == 9){ // flipping
                     // shuffleArray(data.content);
@@ -599,6 +601,8 @@
         };
 
         vm.doShuffle = function() {
+            vm.questions = shuffleArray(createQuestionsWithOptions(vm.rawQuestions));
+            vm.questions1 = shuffleArray(createQuestionsWithOptions(vm.rawQuestions));
             shuffleArray(vm.questions);
             shuffleArray(vm.questions1);
             vm.currentPosition = 0;
