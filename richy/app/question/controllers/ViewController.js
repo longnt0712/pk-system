@@ -2857,6 +2857,19 @@
             return false;
         }
 
+        function checkHaveAllLetterIsNormal(str) {
+            if (!str || str.trim().length === 0) {
+                return 2;
+            }
+
+            // Nếu có bất kỳ ký tự nào không phải chữ hoặc số thì trả về 2
+            if (/[^a-zA-Z0-9À-ỹĐđ]/.test(str)) {
+                return 2;
+            }
+
+            return 1;
+        }
+
         // vm.numberOfGaps = 0;
         function processFillingGaps(text) {
             vm.numberOfGaps = 0;
@@ -2867,7 +2880,9 @@
             var previousIndex = null;
             for (var i = 0; i < x.length; i++) {
                 var randomNumber = getRndInteger(1, 4);
-                if(checkIfDateOrNumber(x[i]) === true){
+                if(isFirstLetterCapital(x[i]) || checkHaveAllLetterIsNormal(x[i]) == 2){
+                    processedText = processedText + ' ' + x[i];
+                } else if(checkIfDateOrNumber(x[i]) === true){
                     x[i] = processText(x[i]);
                     vm.numberOfGaps = vm.numberOfGaps + 1;
                     indexGap++;
@@ -2875,8 +2890,6 @@
                         '<i class="fa fa-volume-up" style="cursor:pointer;font-size: 10px" ng-click="sayIt(' + "'"  + x[i] + "'" + ')"></i>';
                     processedText = processedText + " " + input;
                     previousIndex = i;
-                }else if (isFirstLetterCapital(x[i])){
-                    processedText = processedText + ' ' + x[i];
                 }else if (randomNumber === 2 || randomNumber === 3) {
                     processedText = processedText + ' ' + x[i];
                 } else {
@@ -2888,6 +2901,28 @@
                     processedText = processedText + " " + input;
                     previousIndex = i;
                 }
+
+                // if(checkIfDateOrNumber(x[i]) === true){
+                //     x[i] = processText(x[i]);
+                //     vm.numberOfGaps = vm.numberOfGaps + 1;
+                //     indexGap++;
+                //     var input = '<input autocomplete="off" ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,'+ "'"  + x[i] + "'" +');vm.fillingGaps(' + x.length + ',' + i + ',vm.currentCard.motherTongue)" class="input-underline-only" type="text" style="width: 70px" id="gap-number-' + i + '"' + '/>' +
+                //         '<i class="fa fa-volume-up" style="cursor:pointer;font-size: 10px" ng-click="sayIt(' + "'"  + x[i] + "'" + ')"></i>';
+                //     processedText = processedText + " " + input;
+                //     previousIndex = i;
+                // }else if (isFirstLetterCapital(x[i])){
+                //     processedText = processedText + ' ' + x[i];
+                // }else if (randomNumber === 2 || randomNumber === 3) {
+                //     processedText = processedText + ' ' + x[i];
+                // } else {
+                //     x[i] = processText(x[i]);
+                //     vm.numberOfGaps = vm.numberOfGaps + 1;
+                //     indexGap++;
+                //     var input = '<input autocomplete="off" ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,'+ "'"  + x[i] + "'" +');vm.fillingGaps(' + x.length + ',' + i + ',vm.currentCard.motherTongue)" class="input-underline-only" type="text" style="width: 70px" id="gap-number-' + i + '"' + '/>' +
+                //         '<i class="fa fa-volume-up" style="cursor:pointer;font-size: 10px" ng-click="sayIt(' + "'"  + x[i] + "'" + ')"></i>';
+                //     processedText = processedText + " " + input;
+                //     previousIndex = i;
+                // }
             }
 
             return processedText;
