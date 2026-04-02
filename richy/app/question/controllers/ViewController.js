@@ -533,9 +533,21 @@
                 }
 
                 if(vm.mode.id == 8){ //filling gaps
+
                     vm.setUpTable();
+                    vm.bsTableControl.options.sidePagination = 'client';
+
+                    vm.questions = (vm.questions || []).sort(function (a, b) {
+                        return (a.question || '').localeCompare((b.question || ''), 'en', {
+                            numeric: true,
+                            sensitivity: 'base'
+                        });
+                    });
+                    
                     vm.bsTableControl.options.data = vm.questions;
                     vm.bsTableControl.options.totalRows = data.totalElements;
+                } else {
+                    vm.bsTableControl.options.sidePagination = 'server';
                 }
 
                 if(vm.mode.id == 1){ // normal
