@@ -309,37 +309,27 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 
 	    Pageable pageable = new PageRequest(pageIndex, pageSize);
 
-	    String sql = "select distinct u from User u ";
-	    String sqlCount = "select count(distinct u.id) from User u ";
+	    String sql = "select u from User u left join u.person p ";
+	    String sqlCount = "select count(u.id) from User u left join u.person p ";
 
 	    String clause = " where 1=1 ";
 
 	    List<Long> roleIds = new ArrayList<>();
 	    List<Long> groupIds = new ArrayList<>();
 
-	    boolean joinRole = false;
-	    boolean joinGroup = false;
-
 	    /*
 	     * KEYWORD
 	     */
 	    if (!CommonUtils.isEmpty(filter.getKeyword())) {
-//	        clause += " and (u.username like :keyword "
-//	                + " or u.email like :keyword "
-//	                + " or (u.person is not null and u.person.displayName like :keyword)"
-//	                + " or (u.person is not null and u.person.patron like :keyword)"
-//	                + " or (u.person is not null and u.person.firstName like :keyword)"
-//	                + " or (u.person is not null and u.person.lastName like :keyword))";
-	    	clause += " and ("
-	    	        + " lower(u.username) like :keyword "
-	    	        + " or lower(u.email) like :keyword "
-	    	        + " or lower(concat("
-	    	        + " coalesce(u.person.patron,''),' ',"
-	    	        + " coalesce(u.person.lastName,''),' ',"
-	    	        + " coalesce(u.person.firstName,'')"
-	    	        + " )) like :keyword "
-	    	        + ")";
-	    	
+	        clause += " and ("
+	                + " lower(u.username) like :keyword "
+	                + " or lower(u.email) like :keyword "
+	                + " or lower(concat("
+	                + " coalesce(p.patron,''), ' ',"
+	                + " coalesce(p.lastName,''), ' ',"
+	                + " coalesce(p.firstName,'')"
+	                + " )) like :keyword "
+	                + ")";
 	    }
 
 	    /*
@@ -353,14 +343,13 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	     * ENROLLMENT CLASS
 	     */
 	    if (filter.getEnrollmentClass() != null) {
-	        clause += " and u.person.enrollmentClass = :enrollmentClass ";
+	        clause += " and p.enrollmentClass = :enrollmentClass ";
 	    }
 
 	    /*
 	     * ROLE FILTER
 	     */
 	    if (filter.getRoles() != null && filter.getRoles().length > 0) {
-
 	        for (RoleDto dto : filter.getRoles()) {
 	            if (CommonUtils.isPositive(dto.getId(), true)) {
 	                roleIds.add(dto.getId());
@@ -368,8 +357,10 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	        }
 
 	        if (!roleIds.isEmpty()) {
-	            joinRole = true;
-	            clause += " and roles.id in :roleIds ";
+	            clause += " and exists ("
+	                    + " select 1 from u.roles r "
+	                    + " where r.id in :roleIds"
+	                    + " )";
 	        }
 	    }
 
@@ -377,7 +368,6 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	     * GROUP FILTER
 	     */
 	    if (filter.getGroups() != null && filter.getGroups().length > 0) {
-
 	        for (UserGroupDto dto : filter.getGroups()) {
 	            if (CommonUtils.isPositive(dto.getId(), true)) {
 	                groupIds.add(dto.getId());
@@ -385,28 +375,24 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	        }
 
 	        if (!groupIds.isEmpty()) {
-	            joinGroup = true;
-	            clause += " and groups.id in :groupIds ";
+	            clause += " and exists ("
+	                    + " select 1 from u.groups g "
+	                    + " where g.id in :groupIds"
+	                    + " )";
 	        }
-	    }
-
-	    /*
-	     * JOIN
-	     */
-	    if (joinRole) {
-	        sql += " join u.roles roles ";
-	        sqlCount += " join u.roles roles ";
-	    }
-
-	    if (joinGroup) {
-	        sql += " join u.groups groups ";
-	        sqlCount += " join u.groups groups ";
 	    }
 
 	    /*
 	     * FINAL QUERY
 	     */
-	    sql += clause + " order by u.person.firstName ASC ";
+	    sql += clause
+	            + " order by "
+	            + " case when p.firstName is null then 1 else 0 end, "
+	            + " p.firstName asc, "
+	            + " case when p.lastName is null then 1 else 0 end, "
+	            + " p.lastName asc, "
+	            + " u.username asc ";
+
 	    sqlCount += clause;
 
 	    Query q = manager.createQuery(sql);
@@ -415,15 +401,10 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	    /*
 	     * SET PARAMETER
 	     */
-	    
-	    
 	    if (!CommonUtils.isEmpty(filter.getKeyword())) {
-//	    	String keyword = removeAccent(filter.getKeyword());
-	        q.setParameter("keyword", "%" + filter.getKeyword() + "%");
-	        qCount.setParameter("keyword", "%" + filter.getKeyword() + "%");
-	        
-//	        q.setParameter("keyword", "%" + keyword + "%");
-//	        qCount.setParameter("keyword", "%" + keyword + "%");
+	        String keyword = "%" + filter.getKeyword().toLowerCase().trim() + "%";
+	        q.setParameter("keyword", keyword);
+	        qCount.setParameter("keyword", keyword);
 	    }
 
 	    if (filter.getActive() != null) {
@@ -456,7 +437,6 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	    Long numberResult = (Long) qCount.getSingleResult();
 
 	    List<UserDto> userDtos = new ArrayList<>();
-
 	    for (User u : users) {
 	        userDtos.add(new UserDto(u));
 	    }
