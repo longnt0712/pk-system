@@ -546,9 +546,10 @@
                     
                     vm.bsTableControl.options.data = vm.questions;
                     vm.bsTableControl.options.totalRows = data.totalElements;
-                } else {
-                    vm.bsTableControl.options.sidePagination = 'server';
                 }
+                // else {
+                //     vm.bsTableControl.options.sidePagination = 'server';
+                // }
 
                 if(vm.mode.id == 1){ // normal
                     // var tableSource = angular.copy(data.content || []);
