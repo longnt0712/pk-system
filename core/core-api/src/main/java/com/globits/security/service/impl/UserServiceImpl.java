@@ -406,7 +406,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	    /*
 	     * FINAL QUERY
 	     */
-	    sql += clause + " order by u.username ASC ";
+	    sql += clause + " order by u.person.firstName ASC ";
 	    sqlCount += clause;
 
 	    Query q = manager.createQuery(sql);
