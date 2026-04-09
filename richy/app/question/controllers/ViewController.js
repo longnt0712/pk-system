@@ -485,7 +485,8 @@
             {id:9,name: 'FLIPPING CARD'},
             {id:10,name: 'FLIPPING CARD IMAGES'},
             {id:1,name: 'NORMAL'},
-            {id:4,name: 'REWRITE'}
+            {id:4,name: 'REWRITE'},
+            {id:11,name: 'FILLING GAPS VNI'}
         ];
         vm.mode = {id:5,name: 'DAILY VOCAB'};
         vm.rawQuestions = [];
@@ -533,7 +534,7 @@
                     vm.doShuffle();
                 }
 
-                if(vm.mode.id == 8){ //filling gaps
+                if(vm.mode.id == 8 || vm.mode.id == 11){ //filling gaps
 
                     vm.setUpTable();
                     vm.bsTableControl.options.sidePagination = 'client';
@@ -576,7 +577,7 @@
                         vm.currentCard1 = vm.questions1[vm.currentPosition1];
                         // vm.createQuiz(vm.currentCard1,2);
                     }
-                    if(vm.mode.id == 8){ // fill gaps
+                    if(vm.mode.id == 8 || vm.mode.id == 11){ // fill gaps
                         vm.fillingGapQuestion = (processFillingGaps(vm.currentCard.motherTongue));
                         vm.setUpAudio();
                     }
@@ -975,7 +976,7 @@
                 vm.finishDailyVocab = "Unfinished";
             }
 
-            if(vm.mode.id == 8){
+            if(vm.mode.id == 8 || vm.mode.id == 11){
                 // if(vm.testResult.testTakerName == null || vm.testResult.testTakerName.length <= 0){
                 //     alert('Phải nhập tên. Ví dụ: Long');
                 //     return;
@@ -2530,7 +2531,7 @@
         vm.tempWrong = '';
         vm.saveTestResult = function () {
             vm.tempWrong = vm.testResult.testTakerPerformance;
-            if(vm.mode.id == 8){
+            if(vm.mode.id == 8 || vm.mode.id == 11){
                 vm.testResult.testType = 3; //FILLING GAPS
                 vm.testResult.testName = vm.currentCard.question;
                 vm.testResult.testTime = "GAPS " + vm.percentage +"%";
@@ -2559,7 +2560,7 @@
                     console.log(data1.id);
                 }
 
-                if(vm.mode.id == 8) {
+                if(vm.mode.id == 8 || vm.mode.id == 11) {
                     vm.testResult.id = data1.id;
                     // vm.finishListening = "Finished";
                     vm.finishFillingGaps = "Finished";
@@ -2900,8 +2901,13 @@
                     x[i] = processText(x[i]);
                     vm.numberOfGaps = vm.numberOfGaps + 1;
                     indexGap++;
-                    var input = '<input autocomplete="off" ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,'+ "'"  + x[i] + "'" +');vm.fillingGaps(' + x.length + ',' + i + ',vm.currentCard.motherTongue)" class="input-underline-only" type="text" style="width: 70px" id="gap-number-' + i + '"' + '/>' +
-                        '<i class="fa fa-volume-up" style="cursor:pointer;font-size: 10px" ng-click="sayIt(' + "'"  + x[i] + "'" + ')"></i>';
+                    if(vm.mode.id == 11){
+                        var input = '<input autocomplete="off" ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,'+ "'"  + x[i] + "'" +');vm.fillingGaps(' + x.length + ',' + i + ',vm.currentCard.motherTongue)" class="input-underline-only" type="text" style="width: 70px" id="gap-number-' + i + '"' + '/>' ;    
+                    }else{
+                        var input = '<input autocomplete="off" ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,'+ "'"  + x[i] + "'" +');vm.fillingGaps(' + x.length + ',' + i + ',vm.currentCard.motherTongue)" class="input-underline-only" type="text" style="width: 70px" id="gap-number-' + i + '"' + '/>' +
+                            '<i class="fa fa-volume-up" style="cursor:pointer;font-size: 10px" ng-click="sayIt(' + "'"  + x[i] + "'" + ')"></i>';
+                    }
+                    
                     processedText = processedText + " " + input;
                     previousIndex = i;
                 }else if (randomNumber === 2 || randomNumber === 3) {
@@ -2910,8 +2916,14 @@
                     x[i] = processText(x[i]);
                     vm.numberOfGaps = vm.numberOfGaps + 1;
                     indexGap++;
-                    var input = '<input autocomplete="off" ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,'+ "'"  + x[i] + "'" +');vm.fillingGaps(' + x.length + ',' + i + ',vm.currentCard.motherTongue)" class="input-underline-only" type="text" style="width: 70px" id="gap-number-' + i + '"' + '/>' +
-                        '<i class="fa fa-volume-up" style="cursor:pointer;font-size: 10px" ng-click="sayIt(' + "'"  + x[i] + "'" + ')"></i>';
+                    if(vm.mode.id == 11){
+                        var input = '<input autocomplete="off" ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,'+ "'"  + x[i] + "'" +');vm.fillingGaps(' + x.length + ',' + i + ',vm.currentCard.motherTongue)" class="input-underline-only" type="text" style="width: 70px" id="gap-number-' + i + '"' + '/>' ;
+                    }else{
+                        var input = '<input autocomplete="off" ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,'+ "'"  + x[i] + "'" +');vm.fillingGaps(' + x.length + ',' + i + ',vm.currentCard.motherTongue)" class="input-underline-only" type="text" style="width: 70px" id="gap-number-' + i + '"' + '/>' +
+                            '<i class="fa fa-volume-up" style="cursor:pointer;font-size: 10px" ng-click="sayIt(' + "'"  + x[i] + "'" + ')"></i>';
+                    }
+                    // var input = '<input autocomplete="off" ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,'+ "'"  + x[i] + "'" +');vm.fillingGaps(' + x.length + ',' + i + ',vm.currentCard.motherTongue)" class="input-underline-only" type="text" style="width: 70px" id="gap-number-' + i + '"' + '/>' +
+                    //     '<i class="fa fa-volume-up" style="cursor:pointer;font-size: 10px" ng-click="sayIt(' + "'"  + x[i] + "'" + ')"></i>';
                     processedText = processedText + " " + input;
                     previousIndex = i;
                 }

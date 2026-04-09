@@ -1105,6 +1105,74 @@
 
                 </div>
 
+                <div ng-if="vm.mode.id == 11" class="row">
+                    <div class="row">
+                        <div class="col-md-3" style="padding-left: 20px">
+                            <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
+                        </div>
+                        <div class="col-md-9" style="padding-right: 20px">
+                            <!--<div class="row audio-menu">-->
+                                <!--<div class="col-md-4"></div>-->
+                                <!--<div class="col-md-12 text-center">-->
+                                    <!--<audio id="main-audio" controls controlsList="nodownload" style="width: 70%">-->
+                                        <!--<source src="http://docs.google.com/uc?export=open&id=1rU-C_PU00o_tdFAMFqpyB5hGMSYk2z8L" type="audio/mpeg">-->
+                                        <!--Your browser does not support the audio element.-->
+                                    <!--</audio>-->
+
+                                    <!--<br>-->
+                                    <!--<button ng-click="vm.backwardAudio(e)">-->
+                                        <!--<i class="fa fa-backward" aria-hidden="true"></i></button>-->
+                                    <!--<button ng-click="vm.forwardAudio(e)">-->
+                                        <!--<i class="fa fa-forward" aria-hidden="true"></i></button>-->
+                                    <!--| Speed:-->
+                                    <!--<input class="input-underline-only" style="width:70px;text-align: center" id="play-back-input" ng-disabled="true" type="number" min="0.5" max="4" ng-value="vm.playbackValue | number : 1"/>-->
+
+                                    <!--<button ng-click="vm.increaseSpeed()">-->
+                                        <!--<i class="fa fa-arrow-up" aria-hidden="true"></i></button>-->
+                                    <!--<button ng-click="vm.decreaseSpeed()">-->
+                                        <!--<i class="fa fa-arrow-down" aria-hidden="true"></i></button>-->
+
+                                    <!--| Volume:-->
+                                    <!--<input class="input-underline-only" style="width:70px;text-align: center" id="play-back-input" ng-disabled="true" type="number" min="0.5" max="4" ng-value="vm.volumeValue | number : 2"/>-->
+
+                                    <!--<button ng-click="vm.increaseVolume()">-->
+                                        <!--<i class="fa fa-arrow-up" aria-hidden="true"></i></button>-->
+                                    <!--<button ng-click="vm.decreaseVolume()">-->
+                                        <!--<i class="fa fa-arrow-down" aria-hidden="true"></i></button>-->
+                                <!--</div>-->
+                                <!--<div class="col-md-4"></div>-->
+                            <!--</div>-->
+
+                            <!--<div class="row margin-bottom-10 margin-top-20">-->
+                                <!--<div class="col-md-12 text-center">-->
+                                    <!--(hit '<i class="fa fa-chevron-left bold"></i>' playback 3s) | (hit '<i class="bold fa fa-chevron-right"></i>' forward 3s) | (hit 'space' to pause/resume)-->
+                                <!--</div>-->
+                            <!--</div>-->
+
+                            <div class="row margin-bottom-10">
+                                <div class="col-md-12 text-center">
+                                    <h2 class="bold" ng-bind-html="vm.currentCard.question"></h2>
+                                    <span>{{vm.finishListening}} === Progress: {{vm.percentage}}%</span>
+                                    <button class="btn btn-danger" ng-click="vm.saveTestResult()"> SURRENDER</button>
+                                </div>
+                            </div>
+
+                            <div class="row margin-top-10 margin-bottom-10 filling-content">
+                                <div class="col-md-12">
+                                    <div class="bold" compile="vm.fillingGapQuestion"></div>
+                                </div>
+                                <!--<div class="col-md-2"></div>-->
+                            </div>
+                        </div>
+                        <div class="col-md-4"></div>
+                        <div class="col-md-12 margin-top-10">
+
+                        </div>
+                        <div class="col-md-1"></div>
+                    </div>
+
+                </div>
+
                 <!--rewrite-->
                 <div ng-if="vm.isNormal == true" class="row bold text-center">
                     <div class="col-md-3"></div>
