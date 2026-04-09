@@ -89,7 +89,7 @@
                         </div>
                     </div>
 
-                    <div ng-if="vm.mode.id == 9" class="col-md-12 margin-bottom-10">
+                    <div ng-if="vm.mode.id == 9 || vm.mode.id == 10" class="col-md-12 margin-bottom-10">
                         <div class="row margin-top-10">
                             <div class="col-md-12 margin-bottom-10">
                                 <button ng-click="vm.showHideSetUpReward()" class="btn btn-default">
@@ -110,8 +110,32 @@
                                 <form class="form-inline">
                                     <div class="form-group mb-2">
                                         <label class="bold" for="setNumberCard">Number card (total: {{vm.totalCard}}): &ensp;</label>
-                                        <input id="setNumberCard" onkeydown="javascript: return event.keyCode == 69 ? false : true" placeholder="Set number card..." class="form-control input-underline-only-score" ng-model="vm.numberFlipCard"/>
-                                        <!--<i style="cursor: pointer" class="fa fa-refresh" ng-click="vm.getPageFlashCard()"></i>-->
+                                        <input id="setNumberCard"
+                                               onkeydown="javascript: return event.keyCode == 69 ? false : true"
+                                               placeholder="Set number card..."
+                                               class="form-control input-underline-only-score"
+                                               ng-model="vm.numberFlipCard"/>
+
+                                        &ensp;&ensp;
+
+                                        <label class="bold" for="cardScale">Card size (%): &ensp;</label>
+                                        <input id="cardScale"
+                                               type="number"
+                                               min="30"
+                                               max="100"
+                                               class="form-control input-underline-only-score"
+                                               ng-model="vm.cardScale"/>
+
+                                        &ensp;&ensp;
+
+                                        <label class="bold" for="timeReset"> Time reset (%): &ensp;</label>
+                                        <input style="width: 100px !important" id="timeReset"
+                                               type="number"
+                                               min="2000"
+                                               max="10000"
+                                               step="1000"
+                                               class="form-control input-underline-only-score"
+                                               ng-model="vm.timeReset"/>
                                     </div>
                                 </form>
                             </div>
@@ -171,7 +195,7 @@
 
 
                 </div>
-                <div ng-hide="vm.mode.id == 9" class="row">
+                <div ng-hide="vm.mode.id == 9 || vm.mode.id == 10" class="row">
                     <div class="col-md-12 bold text-center" style="margin-top:7px">
                         <span>{{vm.showDateTime}}</span>
                     </div>
@@ -720,8 +744,63 @@
                         </div>
                     </div>
                 </div>
-
                 <!--flipping-->
+
+                <!--flipping image-->
+                <div class="row" ng-if="vm.mode.id == 10" style="min-height:1000px">
+                    <div class="flip-excel-board">
+
+                        <div class="excel-corner"></div>
+
+                        <div class="excel-col-header">A</div>
+                        <div class="excel-col-header">B</div>
+                        <div class="excel-col-header">C</div>
+                        <div class="excel-col-header">D</div>
+                        <div class="excel-col-header">E</div>
+
+                        <div ng-repeat-start="item in vm.flippingQuestions track by $index"
+                             ng-if="$index < vm.numberFlipCard*2 && $index % 5 == 0"
+                             class="excel-row-header">
+                            {{ ($index / 5) + 1 }}
+                        </div>
+
+                        <div ng-repeat-end
+                             ng-if="$index < vm.numberFlipCard*2"
+                             class="flip excel-flip-card"
+                             ng-class="{'matched-card': item.display === false}"
+                             ng-style="{
+                 'width': (vm.cardScale || 100) + '%',
+                 'margin': '0 auto'
+             }"
+                             ng-click="item.display !== false && vm.clickFlipCardImage(item,$index)">
+
+                            <div class="card"
+                                 ng-class="{'flipped': item.flipped}"
+                                 ng-click="item.display !== false && (item.flipped = !item.flipped)">
+
+                                <div class="face front excel-face-front">
+                                    <h2 class="text-center excel-card-number">
+                                        <span>{{$index + 1}}</span>
+                                    </h2>
+                                </div>
+
+                                <div class="face back image-card-face">
+                                    <div ng-show="!item.duplicate" class="image-card-wrap">
+                                        <img ng-src="{{item.question}}" class="image-card-img"/>
+                                        <small class="image-card-text-overlay">{{item.pronounce}}</small>
+                                    </div>
+
+                                    <div ng-show="item.duplicate" class="image-card-wrap">
+                                        <img ng-src="{{item.motherTongue}}" class="image-card-img"/>
+                                        <small class="image-card-text-overlay">{{item.pronounce}}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <!--flipping image-->
 
                 <!--battle quiz 3 ~ đấu loại trực tiếp -->
                 <!-- QUIZ BATTLE TUG OF WAR -->
@@ -1413,6 +1492,8 @@
         </div>
         <div class="modal-body text-center">
             <h1 class="text-red">{{vm.reward.text}}</h1>
+            <h1 class="text-red">{{vm.sentence}}</h1>
+            <img ng-src="{{vm.sentenceImage}}" class="image-card-img"/>
         </div>
         <div class="modal-footer">
             <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">CLOSE</button>
@@ -3258,4 +3339,180 @@
             margin-bottom:2px;
         }
     }
+</style>
+
+<style>
+    .image-card-face {
+        padding: 0 !important;
+        overflow: hidden;
+        align-items: stretch;
+        justify-content: stretch;
+    }
+
+    .image-card-wrap {
+        position: relative;
+        width: 100%;
+        height: 100%;
+    }
+
+    .image-card-img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: contain;
+        background: #fff;
+        border-radius: 20px;
+    }
+
+    .image-card-text-overlay {
+        position: absolute;
+        left: 50%;
+        bottom: 10px;
+        transform: translateX(-50%);
+        z-index: 2;
+        color: white;
+        background: rgba(0,0,0,0.45);
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 14px;
+        text-align: center;
+        max-width: 90%;
+    }
+
+    .matched-card {
+        visibility: hidden;
+        pointer-events: none;
+    }
+
+    /* ===== Excel-like board for mode 10 ===== */
+    .flip-excel-board {
+        display: grid;
+        grid-template-columns: 52px repeat(5, minmax(0, 1fr));
+        gap: 10px;
+        width: 100%;
+        align-items: stretch;
+    }
+
+    .excel-corner {
+        height: 34px;
+    }
+
+    .excel-col-header {
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 18px;
+        border-radius: 10px;
+        background: #f3f3f3;
+        border: 1px solid #d8d8d8;
+    }
+
+    /*.excel-row-header {*/
+        /*display: flex;*/
+        /*align-items: center;*/
+        /*justify-content: center;*/
+        /*font-weight: 700;*/
+        /*font-size: 18px;*/
+        /*border-radius: 14px;*/
+        /*background: #4b0f2d;*/
+        /*color: #fff8ea;*/
+        /*aspect-ratio: 1 / 1;*/
+        /*box-shadow: 0 6px 18px rgba(0,0,0,.18);*/
+    /*}*/
+
+    .excel-row-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        /* padding-left: 12px; */
+        font-weight: 700;
+        font-size: 18px;
+        border-radius: 14px;
+        background: white;
+        color: black;
+        aspect-ratio: 1 / 1;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+        width: 52px;
+    }
+
+    /* ghi đè .flip cũ */
+    .excel-flip-card {
+        width: 82%;
+        height: auto !important;
+        aspect-ratio: 1 / 1;
+        margin: 0 auto !important;
+    }
+
+    .excel-flip-card .card {
+        width: 100%;
+        height: 100%;
+    }
+
+    .excel-flip-card .face {
+        width: 100%;
+        height: 100%;
+        border-radius: 20px;
+        overflow: hidden;
+    }
+
+    .excel-face-front {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        background: #4b0f2d;
+        color: #fff8ea;
+        box-shadow: 0 12px 30px rgba(0,0,0,.22);
+    }
+
+    .excel-card-number {
+        margin: 0;
+        font-size: 26px;
+    }
+
+    .image-card-face {
+        display: flex !important;
+        padding: 0 !important;
+        align-items: stretch;
+        justify-content: stretch;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(0,0,0,.22);
+    }
+
+    .image-card-wrap {
+        width: 100%;
+        height: 100%;
+    }
+
+    .image-card-img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+    }
+
+    /* mobile vẫn giữ đúng 5 cột */
+    @media (max-width: 768px) {
+        .flip-excel-board {
+            grid-template-columns: 34px repeat(5, minmax(0, 1fr));
+            gap: 6px;
+        }
+
+        .excel-col-header {
+            height: 24px;
+            font-size: 12px;
+            border-radius: 6px;
+        }
+
+        .excel-row-header {
+            font-size: 12px;
+            border-radius: 10px;
+        }
+
+        .excel-card-number {
+            font-size: 16px;
+        }
+    }
+
 </style>

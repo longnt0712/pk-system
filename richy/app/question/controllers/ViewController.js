@@ -483,6 +483,7 @@
             {id:6,name: 'QUIZ BATTLE 2'},
             {id:7,name: 'QUIZ BATTLE TUG OF WAR'},
             {id:9,name: 'FLIPPING CARD'},
+            {id:10,name: 'FLIPPING CARD IMAGES'},
             {id:1,name: 'NORMAL'},
             {id:4,name: 'REWRITE'}
         ];
@@ -505,7 +506,7 @@
                 blockUI.stop();
                 vm.rawQuestions = data.content;
 
-                if(vm.mode.id == 9){ // flipping
+                if(vm.mode.id == 9 || vm.mode.id == 10){ // flipping
                     // shuffleArray(data.content);
                     vm.questions = data.content.splice(0,vm.numberFlipCard);
                     angular.forEach(vm.questions, function(value, key) {
@@ -3083,9 +3084,104 @@
         vm.inProcess = null;
         vm.reward = {};
         // vm.isFlipped = false;
+        vm.cardScale = 82;
+        vm.timeReset = 2000;
+        vm.sentence = '';
+        vm.sentenceImage = '';
+
+        vm.clickFlipCardImage = function (item, index) {
+            if (!item || item.display === false) {
+                return;
+            }
+
+            // click lại chính card đang chọn
+            if (vm.currentIndex === index) {
+                item.flipped = true;
+                return;
+            } else {
+                vm.currentIndex = index;
+            }
+
+            // đang xử lý 2 card thì không cho click card thứ 3
+            if (vm.inProcess === true) {
+                item.flipped = false;
+                return;
+            }
+
+            // chọn 2 lá
+            if (vm.flip1 === null) {
+                vm.flip1 = item;
+            } else if (vm.flip2 === null) {
+                vm.flip2 = item;
+            } else {
+                item.flipped = false;
+                return;
+            }
+
+            // có đủ 2 lá thì xử lý
+            if (vm.flip1 !== null && vm.flip2 !== null) {
+                vm.inProcess = true;
+
+                // match
+                if (vm.flip1.id === vm.flip2.id) {
+                    $timeout(function () {
+                        angular.forEach(vm.flippingQuestions, function (value) {
+                            if (value.id === vm.flip1.id) {
+                                value.display = false;
+                            }
+                        });
+
+                        vm.sentence = item.pronounce;
+                        vm.sentenceImage = item.question;
+
+                        vm.flip1 = null;
+                        vm.flip2 = null;
+                        vm.currentIndex = -1;
+                        vm.inProcess = false;
+
+                        vm.reward = vm.rewards[Math.floor(Math.random() * vm.rewards.length)];
+
+                        var modalInstance = modal.open({
+                            animation: true,
+                            templateUrl: 'reward.html',
+                            scope: $scope,
+                            size: 'md',
+                            backdrop: 'static'
+                        });
+
+                        modalInstance.result.then(function (confirm) {
+                            if (confirm === 'yes') {
+                            }
+                        }, function () {
+                        });
+
+                        if (vm.reward && vm.reward.audio) {
+                            var rewardAudio = document.getElementById(vm.reward.audio);
+                            if (rewardAudio) {
+                                rewardAudio.play();
+                            }
+                        }
+                    }, 300);
+                } else {
+                    // không match thì úp lại
+                    $timeout(function () {
+                        vm.flip1.flipped = false;
+                        vm.flip2.flipped = false;
+
+                        vm.flip1 = null;
+                        vm.flip2 = null;
+                        vm.currentIndex = -1;
+                        vm.inProcess = false;
+                    }, vm.timeReset || 2000);
+                }
+            }
+        };
 
 
         vm.clickFlipCard = function (item,index) {
+            // if(vm.mode.id == 10){
+            //     vm.timeReset = 7000;
+            // }
             console.log(0);
 
             //click liên tục vào 1 cái
@@ -3180,7 +3276,7 @@
                     var timeoutFlip2;
                     timeoutFlip2 = $timeout(function(){
                         vm.resetFlipCard();
-                    },2000);
+                    },vm.timeReset);
                 }
             }
         };
