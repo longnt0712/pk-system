@@ -1102,6 +1102,198 @@
 
         vm.exportDateText = '';
 
+        vm.exportDateText = '';
+        vm.exportPreviewRows = [];
+        vm.exportPreviewHeaders = [];
+
+        vm.exportSelectedColumns = [];
+        vm.exportAllRows = [];
+
+        vm.exportColumns = [
+            {
+                key: 'stt',
+                title: 'STT',
+                checked: true,
+                width: 8,
+                align: 'center',
+                getter: function (personDate, index) {
+                    return index + 1;
+                }
+            },
+            {
+                key: 'fullName',
+                title: 'TÊN',
+                checked: true,
+                width: 35,
+                align: 'left',
+                getter: function (personDate, index) {
+                    return vm.getFullName(personDate);
+                }
+            },
+            {
+                key: 'birthDate',
+                title: 'NGÀY SINH',
+                checked: true,
+                width: 15,
+                align: 'center',
+                getter: function (personDate, index) {
+                    return vm.getBirthDateText(personDate);
+                }
+            },
+            {
+                key: 'mass',
+                title: 'LỄ',
+                checked: true,
+                width: 18,
+                align: 'center',
+                getter: function (personDate, index) {
+                    return vm.getStatusMassName(personDate.statusMass);
+                },
+                classGetter: function (personDate) {
+                    return vm.getStatusMassClass(personDate.statusMass);
+                },
+                excelFillGetter: function (personDate) {
+                    return vm.getExcelFillByStatus(personDate.statusMass);
+                }
+            },
+            {
+                key: 'class',
+                title: 'GL',
+                checked: true,
+                width: 18,
+                align: 'center',
+                getter: function (personDate, index) {
+                    return vm.getStatusClassName(personDate.statusClass);
+                },
+                classGetter: function (personDate) {
+                    return vm.getStatusClassClass(personDate.statusClass);
+                },
+                excelFillGetter: function (personDate) {
+                    return vm.getExcelFillByStatus(personDate.statusClass);
+                }
+            },
+            {
+                key: 'enrollmentClass',
+                title: 'LỚP',
+                checked: true,
+                width: 15,
+                align: 'center',
+                getter: function (personDate, index) {
+                    return vm.enrollmentClassMap[
+                            personDate && personDate.user && personDate.user.person
+                                ? personDate.user.person.enrollmentClass
+                                : null
+                            ] || '';
+                }
+            },
+            {
+                key: 'description',
+                title: 'GHI CHÚ',
+                checked: true,
+                width: 30,
+                align: 'left',
+                getter: function (personDate, index) {
+                    return personDate ? (personDate.description || '') : '';
+                }
+            },
+            {
+                key: 'timeGoToChurch',
+                title: 'GIỜ ĐI LỄ',
+                checked: false,
+                width: 20,
+                align: 'center',
+                getter: function (personDate, index) {
+                    return personDate && personDate.timeGoToChurch
+                        ? $filter('date')(personDate.timeGoToChurch, 'dd/MM/yyyy HH:mm')
+                        : '';
+                }
+            },
+            {
+                key: 'timeGoToClass',
+                title: 'GIỜ ĐI GL',
+                checked: false,
+                width: 20,
+                align: 'center',
+                getter: function (personDate, index) {
+                    return personDate && personDate.timeGoToClass
+                        ? $filter('date')(personDate.timeGoToClass, 'dd/MM/yyyy HH:mm')
+                        : '';
+                }
+            }
+        ];
+
+        vm.getSelectedExportColumns = function () {
+            return (vm.exportColumns || []).filter(function (col) {
+                return col.checked;
+            });
+        };
+
+        vm.moveExportColumnUp = function (index) {
+            if (index <= 0) return;
+            var temp = vm.exportColumns[index - 1];
+            vm.exportColumns[index - 1] = vm.exportColumns[index];
+            vm.exportColumns[index] = temp;
+            vm.refreshExportData();
+        };
+
+        vm.moveExportColumnDown = function (index) {
+            if (index >= vm.exportColumns.length - 1) return;
+            var temp = vm.exportColumns[index + 1];
+            vm.exportColumns[index + 1] = vm.exportColumns[index];
+            vm.exportColumns[index] = temp;
+            vm.refreshExportData();
+        };
+
+        vm.buildExportRows = function () {
+            var selectedColumns = vm.getSelectedExportColumns();
+            var rows = vm.getFilteredPersonDates() || [];
+
+            return rows.map(function (personDate, rowIndex) {
+                var item = {
+                    _source: personDate
+                };
+
+                angular.forEach(selectedColumns, function (col) {
+                    item[col.key] = col.getter(personDate, rowIndex);
+                });
+
+                return item;
+            });
+        };
+
+        vm.refreshExportPreview = function () {
+            var selectedColumns = vm.getSelectedExportColumns();
+            vm.exportPreviewHeaders = selectedColumns;
+            vm.exportPreviewRows = vm.buildExportRows().slice(0, 5);
+        };
+
+        vm.openExportModal = function () {
+            var rows = vm.getFilteredPersonDates();
+
+            if (!rows || rows.length === 0) {
+                toastr.warning('Không có dữ liệu để xuất.', 'Thông báo');
+                return;
+            }
+
+            vm.refreshExportData();
+
+            vm.modalInstance = modal.open({
+                animation: true,
+                templateUrl: 'export_attendance_modal.html',
+                scope: $scope,
+                size: 'lg',
+                backdrop: 'static'
+            });
+        };
+
+        $scope.$watch(function () {
+            return (vm.exportColumns || []).map(function (col) {
+                return col.checked ? '1' : '0';
+            }).join('|');
+        }, function () {
+            vm.refreshExportData();
+        });
+
         vm.getFilteredPersonDates = function () {
             return $filter('filter')(vm.personDates || [], vm.searchClient);
         };
@@ -1169,15 +1361,24 @@
         };
 
         vm.exportAttendancePng = function () {
+            vm.refreshExportData();
+
             var exportEl = document.getElementById('attendance-export-wrapper');
+            var rows = vm.getFilteredPersonDates();
+            var selectedColumns = vm.exportSelectedColumns;
+
             if (!exportEl) {
                 toastr.error('Không tìm thấy vùng export PNG.', 'Lỗi');
                 return;
             }
 
-            var rows = vm.getFilteredPersonDates();
             if (!rows || rows.length === 0) {
                 toastr.warning('Không có dữ liệu để xuất.', 'Thông báo');
+                return;
+            }
+
+            if (!selectedColumns.length) {
+                toastr.warning('Vui lòng chọn ít nhất 1 cột.', 'Thông báo');
                 return;
             }
 
@@ -1200,15 +1401,15 @@
                     backgroundColor: '#ffffff'
                 }).then(function (canvas) {
                     canvas.toBlob(function (blob) {
+                        exportEl.style.display = oldDisplay || 'none';
+
                         if (!blob) {
-                            exportEl.style.display = oldDisplay || 'none';
                             blockUI.stop();
                             toastr.error('Xuất PNG thất bại.', 'Lỗi');
                             return;
                         }
 
                         saveAs(blob, 'diem-danh-' + $filter('date')(new Date(), 'dd-MM-yyyy-HH-mm-ss') + '.png');
-                        exportEl.style.display = oldDisplay || 'none';
                         blockUI.stop();
                         toastr.success('Xuất PNG thành công.', 'Thông báo');
                     });
@@ -1223,9 +1424,16 @@
 
         vm.exportAttendanceExcel = function () {
             var rows = vm.getFilteredPersonDates();
+            vm.refreshExportData();
+            var selectedColumns = vm.exportSelectedColumns;
 
             if (!rows || rows.length === 0) {
                 toastr.warning('Không có dữ liệu để xuất.', 'Thông báo');
+                return;
+            }
+
+            if (!selectedColumns.length) {
+                toastr.warning('Vui lòng chọn ít nhất 1 cột.', 'Thông báo');
                 return;
             }
 
@@ -1239,13 +1447,13 @@
             var workbook = new ExcelJS.Workbook();
             var worksheet = workbook.addWorksheet('DiemDanh');
 
-            worksheet.columns = [
-                { header: 'TÊN', key: 'name', width: 35 },
-                { header: 'NGÀY SINH', key: 'birthDate', width: 15 },
-                { header: 'LỄ', key: 'mass', width: 20 },
-                { header: 'GL', key: 'clazz', width: 20 },
-                { header: 'LỚP', key: 'enrollmentClass', width: 15 }
-            ];
+            worksheet.columns = selectedColumns.map(function (col) {
+                return {
+                    header: col.title,
+                    key: col.key,
+                    width: col.width || 20
+                };
+            });
 
             var headerRow = worksheet.getRow(1);
             headerRow.eachCell(function (cell) {
@@ -1266,59 +1474,58 @@
             headerRow.height = 24;
 
             angular.forEach(rows, function (personDate, index) {
-                var row = worksheet.addRow({
-                    name: (index + 1) + '. ' + vm.getFullName(personDate),
-                    birthDate: vm.getBirthDateText(personDate),
-                    mass: vm.getStatusMassName(personDate.statusMass),
-                    clazz: vm.getStatusClassName(personDate.statusClass),
-                    enrollmentClass: vm.enrollmentClassMap[personDate.user.person.enrollmentClass] || ''
+                var rowData = {};
+
+                angular.forEach(selectedColumns, function (col) {
+                    rowData[col.key] = col.getter(personDate, index);
                 });
 
-                row.height = 22;
+                var row = worksheet.addRow(rowData);
 
-                row.eachCell(function (cell, colNumber) {
+                angular.forEach(selectedColumns, function (col, colIndex) {
+                    var cell = row.getCell(colIndex + 1);
+
                     cell.alignment = {
                         vertical: 'middle',
-                        horizontal: colNumber === 1 ? 'left' : 'center',
+                        horizontal: col.align || 'center',
                         wrapText: true
                     };
+
                     cell.border = {
                         top: { style: 'thin', color: { argb: '000000' } },
                         left: { style: 'thin', color: { argb: '000000' } },
                         bottom: { style: 'thin', color: { argb: '000000' } },
                         right: { style: 'thin', color: { argb: '000000' } }
                     };
-                    cell.font = { size: 11 };
+
+                    if (col.excelFillGetter) {
+                        var fillColor = col.excelFillGetter(personDate);
+                        if (fillColor) {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: fillColor }
+                            };
+
+                            if (fillColor === 'E87867' || fillColor === '17A2B8') {
+                                cell.font = { color: { argb: 'FFFFFFFF' } };
+                            }
+                        }
+                    }
                 });
 
-                // LỄ = cột 3
-                var massFill = vm.getExcelFillByStatus(personDate.statusMass);
-                if (massFill) {
-                    row.getCell(3).fill = {
-                        type: 'pattern',
-                        pattern: 'solid',
-                        fgColor: { argb: massFill }
-                    };
-                }
-
-                // GL = cột 4
-                var classFill = vm.getExcelFillByStatus(personDate.statusClass);
-                if (classFill) {
-                    row.getCell(4).fill = {
-                        type: 'pattern',
-                        pattern: 'solid',
-                        fgColor: { argb: classFill }
-                    };
-                }
+                row.height = 22;
             });
 
             workbook.xlsx.writeBuffer().then(function (buffer) {
-                var blob = new Blob(
-                    [buffer],
-                    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+                saveAs(
+                    new Blob(
+                        [buffer],
+                        { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+                    ),
+                    'diem-danh-' + $filter('date')(new Date(), 'dd-MM-yyyy-HH-mm-ss') + '.xlsx'
                 );
 
-                saveAs(blob, 'diem-danh-' + $filter('date')(new Date(), 'dd-MM-yyyy-HH-mm-ss') + '.xlsx');
                 blockUI.stop();
                 toastr.success('Xuất Excel thành công.', 'Thông báo');
             }).catch(function (err) {
@@ -1326,6 +1533,44 @@
                 blockUI.stop();
                 toastr.error('Xuất Excel thất bại.', 'Lỗi');
             });
+        };
+
+        vm.confirmExportExcel = function () {
+            if (vm.modalInstance) {
+                vm.modalInstance.close();
+            }
+            vm.exportAttendanceExcel();
+        };
+
+        vm.confirmExportPng = function () {
+            if (vm.modalInstance) {
+                vm.modalInstance.close();
+            }
+            vm.exportAttendancePng();
+        };
+
+        vm.refreshExportData = function () {
+            var rows = vm.getFilteredPersonDates() || [];
+
+            vm.exportSelectedColumns = (vm.exportColumns || []).filter(function (col) {
+                return col.checked;
+            });
+
+            vm.exportPreviewHeaders = vm.exportSelectedColumns.slice();
+
+            vm.exportAllRows = rows.map(function (personDate, index) {
+                var row = {
+                    _source: personDate
+                };
+
+                angular.forEach(vm.exportSelectedColumns, function (col) {
+                    row[col.key] = col.getter(personDate, index);
+                });
+
+                return row;
+            });
+
+            vm.exportPreviewRows = vm.exportAllRows.slice(0, 5);
         };
         
 

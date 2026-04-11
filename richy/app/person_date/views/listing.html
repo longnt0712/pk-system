@@ -120,12 +120,16 @@
                                 TẢI LẠI DANH SÁCH
                             </button>
 
-                            <button class="btn btn-success" ng-click="vm.exportAttendancePng()">
-                                <i class="fa fa-file-image"></i> Xuất PNG
-                            </button>
+                            <!--<button class="btn btn-success" ng-click="vm.exportAttendancePng()">-->
+                                <!--<i class="fa fa-file-image"></i> Xuất PNG-->
+                            <!--</button>-->
 
-                            <button class="btn btn-info" ng-click="vm.exportAttendanceExcel()">
-                                <i class="fa fa-file-excel"></i> Xuất Excel
+                            <!--<button class="btn btn-info" ng-click="vm.exportAttendanceExcel()">-->
+                                <!--<i class="fa fa-file-excel"></i> Xuất Excel-->
+                            <!--</button>-->
+
+                            <button class="btn btn-primary" ng-click="vm.openExportModal()">
+                                <i class="fa fa-download"></i> Xuất danh sách
                             </button>
                         </div>
 
@@ -274,36 +278,17 @@
                         <table class="table table-bordered attendance-export-table">
                             <thead>
                             <tr>
-                                <th>TÊN</th>
-                                <th>NGÀY SINH</th>
-                                <th>LỄ</th>
-                                <th>GL</th>
-                                <th>LỚP</th>
+                                <th ng-repeat="col in vm.exportSelectedColumns track by col.key">
+                                    {{ col.title }}
+                                </th>
                             </tr>
                             </thead>
                             <tbody>
-                            <tr ng-repeat="personDate in vm.personDates | filter:vm.searchClient">
-                                <td class="text-left">
-                                    {{$index + 1}}.
-                                    {{personDate.user.person.patron}}
-                                    {{personDate.user.person.lastName}}
-                                    {{personDate.user.person.firstName}}
-                                </td>
-
-                                <td>
-                                    {{ personDate.user.person.birthDate | date:'dd/MM/yyyy' }}
-                                </td>
-
-                                <td ng-class="vm.getStatusMassClass(personDate.statusMass)">
-                                    {{ vm.getStatusMassName(personDate.statusMass) }}
-                                </td>
-
-                                <td ng-class="vm.getStatusClassClass(personDate.statusClass)">
-                                    {{ vm.getStatusClassName(personDate.statusClass) }}
-                                </td>
-
-                                <td>
-                                    {{ vm.enrollmentClassMap[personDate.user.person.enrollmentClass] }}
+                            <tr ng-repeat="row in vm.exportAllRows track by $index">
+                                <td ng-repeat="col in vm.exportSelectedColumns track by col.key"
+                                        ng-class="col.classGetter ? col.classGetter(row._source) : ''"
+                                        ng-style="{'text-align': col.align || 'center'}">
+                                    {{ row[col.key] }}
                                 </td>
                             </tr>
                             </tbody>
@@ -541,6 +526,95 @@
         <div class="modal-footer">
             <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
             <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="export_attendance_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title">
+                <i class="fa fa-download"></i> Cấu hình xuất danh sách
+            </h4>
+        </div>
+
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-md-5">
+                    <label class="bold margin-bottom-10">Chọn cột và sắp thứ tự</label>
+
+                    <div class="export-column-item"
+                            ng-repeat="col in vm.exportColumns track by col.key">
+                        <div class="row">
+                            <div class="col-xs-7">
+                                <label style="font-weight: normal; margin-bottom: 0;">
+                                    <input type="checkbox" ng-model="col.checked">
+                                    {{col.title}}
+                                </label>
+                            </div>
+                            <div class="col-xs-5 text-right">
+                                <button type="button"
+                                        class="btn btn-xs btn-default"
+                                        ng-click="vm.moveExportColumnUp($index)">
+                                    <i class="fa fa-arrow-up"></i>
+                                </button>
+                                <button type="button"
+                                        class="btn btn-xs btn-default"
+                                        ng-click="vm.moveExportColumnDown($index)">
+                                    <i class="fa fa-arrow-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-7">
+                    <label class="bold margin-bottom-10">Xem trước file sẽ xuất</label>
+
+                    <div class="table-responsive export-preview-box">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                            <tr>
+                                <th ng-repeat="col in vm.exportPreviewHeaders track by col.key">
+                                    {{col.title}}
+                                </th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr ng-if="vm.exportPreviewRows.length === 0">
+                                <td colspan="{{vm.exportPreviewHeaders.length || 1}}" class="text-center">
+                                    Không có dữ liệu xem trước
+                                </td>
+                            </tr>
+                            <tr ng-repeat="row in vm.exportPreviewRows track by $index">
+                                <td ng-repeat="col in vm.exportPreviewHeaders track by col.key"
+                                        ng-class="col.classGetter ? col.classGetter(row._source) : ''"
+                                        ng-style="{'text-align': col.align || 'center'}">
+                                    {{row[col.key]}}
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p class="text-muted margin-top-10">
+                        Preview hiển thị tối đa 5 dòng đầu tiên theo đúng cột và thứ tự đã chọn.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default">
+                Đóng
+            </button>
+            <button type="button" ng-click="vm.confirmExportPng()" class="btn btn-success">
+                <i class="fa fa-file-image"></i> Xuất PNG
+            </button>
+            <button type="button" ng-click="vm.confirmExportExcel()" class="btn btn-info">
+                <i class="fa fa-file-excel"></i> Xuất Excel
+            </button>
         </div>
     </div>
 </script>
@@ -1092,5 +1166,21 @@
             font-size: 15px;
             line-height: 1.5;
         }
+    }
+</style>
+
+<style>
+    .export-column-item {
+        border: 1px solid #ddd;
+        padding: 10px;
+        margin-bottom: 8px;
+        border-radius: 4px;
+        background: #fff;
+    }
+
+    .export-preview-box {
+        max-height: 360px;
+        overflow: auto;
+        border: 1px solid #ddd;
     }
 </style>
