@@ -1450,7 +1450,211 @@
 
         };
 
+        vm.exportColumns = [
+            {
+                key: 'patron',
+                title: 'TÊN THÁNH',
+                checked: true,
+                getter: function (user, index) {
+                    return user && user.person ? (user.person.patron || '') : '';
+                }
+            },
+            {
+                key: 'fullName',
+                title: 'TÊN',
+                checked: true,
+                getter: function (user, index) {
+                    if (!user || !user.person) return '';
+                    return ((user.person.lastName || '') + ' ' + (user.person.firstName || '')).trim();
+                }
+            },
+            {
+                key: 'birthDate',
+                title: 'NGÀY SINH',
+                checked: true,
+                getter: function (user, index) {
+                    if (!user || !user.person || !user.person.birthDate) return '';
+                    return moment(user.person.birthDate).format('DD/MM/YYYY');
+                }
+            },
+            {
+                key: 'username',
+                title: 'MÃ HỌC SINH',
+                checked: true,
+                getter: function (user, index) {
+                    return user ? (user.username || '') : '';
+                }
+            },
+            {
+                key: 'motherFullName',
+                title: 'HỌ VÀ TÊN MẸ',
+                checked: true,
+                getter: function (user, index) {
+                    return user && user.person ? (user.person.motherFullName || '') : '';
+                }
+            },
+            {
+                key: 'motherPhoneNumber',
+                title: 'SĐT MẸ',
+                checked: true,
+                getter: function (user, index) {
+                    return user && user.person ? (user.person.motherPhoneNumber || '') : '';
+                }
+            },
+            {
+                key: 'fatherFullName',
+                title: 'HỌ VÀ TÊN BỐ',
+                checked: true,
+                getter: function (user, index) {
+                    return user && user.person ? (user.person.fatherFullName || '') : '';
+                }
+            },
+            {
+                key: 'fatherPhoneNumber',
+                title: 'SĐT BỐ',
+                checked: true,
+                getter: function (user, index) {
+                    return user && user.person ? (user.person.fatherPhoneNumber || '') : '';
+                }
+            },
+            {
+                key: 'phoneNumber',
+                title: 'SĐT CÁ NHÂN',
+                checked: true,
+                getter: function (user, index) {
+                    return user && user.person ? (user.person.phoneNumber || '') : '';
+                }
+            },
+            {
+                key: 'enrollmentClass',
+                title: 'LỚP',
+                checked: true,
+                getter: function (user, index) {
+                    if (!user || !user.person) return '';
+                    var found = (vm.enrollmentClasses || []).filter(function (item) {
+                        return item.id === user.person.enrollmentClass;
+                    });
+                    return found.length ? found[0].name : '';
+                }
+            }
+            // ,
+            // {
+            //     key: 'zaloStatus',
+            //     title: 'CÓ BỐ MẸ TRONG NHÓM ZALO?',
+            //     checked: true,
+            //     getter: function (user, index) {
+            //         return user && user.person ? vm.getZaloStatusName(user.person.zaloStatus) : '';
+            //     }
+            // },
+            // {
+            //     key: 'active',
+            //     title: 'TRẠNG THÁI',
+            //     checked: true,
+            //     getter: function (user, index) {
+            //         return user && user.active ? 'KÍCH HOẠT' : 'KHÔNG KÍCH HOẠT';
+            //     }
+            // }
+        ];
 
+        vm.exportPreviewRows = [];
+
+        vm.getSelectedExportColumns = function () {
+            return (vm.exportColumns || []).filter(function (col) {
+                return col.checked;
+            });
+        };
+
+        vm.buildExportPreviewRows = function () {
+            var selectedColumns = vm.getSelectedExportColumns();
+            var previewSource = (vm.users || []).slice(0, 5);
+
+            vm.exportPreviewRows = previewSource.map(function (user, rowIndex) {
+                var row = {};
+                angular.forEach(selectedColumns, function (col) {
+                    row[col.key] = col.getter(user, rowIndex);
+                });
+                return row;
+            });
+        };
+
+        vm.moveExportColumnUp = function (index) {
+            if (index <= 0) return;
+            var temp = vm.exportColumns[index - 1];
+            vm.exportColumns[index - 1] = vm.exportColumns[index];
+            vm.exportColumns[index] = temp;
+            vm.buildExportPreviewRows();
+        };
+
+        vm.moveExportColumnDown = function (index) {
+            if (index >= vm.exportColumns.length - 1) return;
+            var temp = vm.exportColumns[index + 1];
+            vm.exportColumns[index + 1] = vm.exportColumns[index];
+            vm.exportColumns[index] = temp;
+            vm.buildExportPreviewRows();
+        };
+
+        vm.openExportExcelModal = function () {
+            vm.buildExportPreviewRows();
+
+            vm.modalInstance = modal.open({
+                animation: true,
+                templateUrl: 'export_excel_modal.html',
+                scope: $scope,
+                size: 'lg',
+                backdrop: 'static'
+            });
+        };
+
+        vm.exportStudentsToExcel = function () {
+            var selectedColumns = vm.getSelectedExportColumns();
+
+            if (!selectedColumns.length) {
+                toastr.warning('Vui lòng chọn ít nhất 1 cột để xuất Excel.', 'Thông báo');
+                return;
+            }
+
+            var rows = (vm.users || []).map(function (user, index) {
+                var row = {};
+
+                angular.forEach(selectedColumns, function (col) {
+                    row[col.title] = col.getter(user, index);
+                });
+
+                return row;
+            });
+
+            if (!rows.length) {
+                toastr.warning('Không có dữ liệu để xuất Excel.', 'Thông báo');
+                return;
+            }
+
+            var worksheet = XLSX.utils.json_to_sheet(rows);
+
+            var columnWidths = selectedColumns.map(function (col) {
+                return { wch: Math.max(col.title.length + 2, 18) };
+            });
+            worksheet['!cols'] = columnWidths;
+
+            var workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Danh sách học sinh');
+
+            var fileName = 'danh_sach_hoc_sinh_' + moment().format('YYYYMMDD_HHmmss') + '.xlsx';
+            XLSX.writeFile(workbook, fileName);
+
+            toastr.success('Xuất file Excel thành công.', 'Thông báo');
+
+            if (vm.modalInstance) {
+                vm.modalInstance.close();
+            }
+        };
+
+        $scope.$watch(function () {
+            return (vm.exportColumns || []).map(function (col) {
+                return col.checked;
+            }).join('|');
+        }, function () {
+            vm.buildExportPreviewRows();
+        });
 
     }
 

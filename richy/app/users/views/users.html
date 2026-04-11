@@ -20,6 +20,9 @@
                 <div class="row margin-bottom-10 margin-right-10">
                     <div class="col-sm-6 col-xs-12 margin-top-10">
                         <button ng-if="vm.isRoleAdmin == true" class="btn btn-default" ng-click="vm.newUser()"><i class="icon-user-follow"></i> Thêm người dùng</button>
+                        <button class="btn btn-success margin-left-10" ng-click="vm.openExportExcelModal()">
+                            <i class="fa fa-file-excel"></i> Xuất Excel
+                        </button>
                         <!--<button class="btn btn-danger margin-left-10" ng-click="vm.deleteUsers()" data-ng-disabled="vm.selectedUsers.length <= 0"><i class="icon-trash"></i> Xóa <span ng-if="vm.selectedUsers.length > 0">{{vm.selectedUsers.length}} bản ghi đã chọn</span></button>-->
                     </div>
                     <!--<div class="col-sm-6 col-xs-12 margin-top-10" style="text-align: right;">-->
@@ -640,6 +643,91 @@
                     class="btn btn-primary"
                     ng-disabled="profilePhoto.isUploading">
                 Bắt đầu tải lên
+            </button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="export_excel_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title">
+                <i class="fa fa-file-excel"></i> Xuất danh sách học sinh ra Excel
+            </h4>
+        </div>
+
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-md-5">
+                    <label class="bold margin-bottom-10">Chọn cột và thứ tự cột</label>
+
+                    <div class="export-column-item"
+                            ng-repeat="col in vm.exportColumns track by col.key"
+                            style="border:1px solid #ddd; padding:10px; margin-bottom:8px; border-radius:4px;">
+                        <div class="row">
+                            <div class="col-xs-7">
+                                <label style="font-weight: normal; margin-bottom: 0;">
+                                    <input type="checkbox" ng-model="col.checked">
+                                    {{col.title}}
+                                </label>
+                            </div>
+                            <div class="col-xs-5 text-right">
+                                <button type="button"
+                                        class="btn btn-xs btn-default"
+                                        ng-click="vm.moveExportColumnUp($index)">
+                                    <i class="fa fa-arrow-up"></i>
+                                </button>
+                                <button type="button"
+                                        class="btn btn-xs btn-default"
+                                        ng-click="vm.moveExportColumnDown($index)">
+                                    <i class="fa fa-arrow-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-7">
+                    <label class="bold margin-bottom-10">Xem trước file Excel</label>
+
+                    <div class="table-responsive" style="max-height: 350px; overflow: auto; border:1px solid #ddd;">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                            <tr>
+                                <th ng-repeat="col in vm.getSelectedExportColumns() track by col.key">
+                                    {{col.title}}
+                                </th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr ng-if="vm.exportPreviewRows.length === 0">
+                                <td colspan="{{vm.getSelectedExportColumns().length || 1}}" class="text-center">
+                                    Không có dữ liệu xem trước
+                                </td>
+                            </tr>
+                            <tr ng-repeat="row in vm.exportPreviewRows track by $index">
+                                <td ng-repeat="col in vm.getSelectedExportColumns() track by col.key">
+                                    {{row[col.key]}}
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p class="text-muted margin-top-10">
+                        Preview đang hiển thị 5 dòng đầu tiên của danh sách hiện tại.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default">
+                <i class="icon-close"></i> Đóng
+            </button>
+            <button type="button" ng-click="vm.exportStudentsToExcel()" class="btn btn-success">
+                <i class="fa fa-file-excel"></i> Xuất file
             </button>
         </div>
     </div>
