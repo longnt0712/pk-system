@@ -746,6 +746,25 @@
             vm.setUpAudio();
             vm.setUpTestResult();
         };
+        
+        vm.fillingGapAllQuestions = '';
+        vm.selectAllFillingGaps = function (index) {
+            vm.fillingGapAllQuestions = '';
+            angular.forEach(vm.questions, function(value, key) {
+                vm.fillingGapAllQuestions = vm.fillingGapAllQuestions +'<br><br>';
+                vm.fillingGapAllQuestions = vm.fillingGapAllQuestions + value.question;
+                vm.fillingGapAllQuestions = vm.fillingGapAllQuestions +'<br>';
+                vm.fillingGapAllQuestions = vm.fillingGapAllQuestions + processFillingGaps(value.motherTongue)
+            });
+            
+            // vm.currentCard = vm.questions[index];
+            // vm.fillingGapQuestion = (processFillingGaps(vm.currentCard.motherTongue));
+            // vm.percentage = 0;
+            // vm.allowChangeInformation = false;
+            //
+            // vm.setUpAudio();
+            // vm.setUpTestResult();
+        };
 
         vm.clickShowListFlashCard = function () {
             if(vm.showListFlashCard == true){
