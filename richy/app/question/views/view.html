@@ -1128,7 +1128,7 @@
                                             ng-bind-html="vm.currentCard.question"></h2>
 
                                         <div ng-if="vm.mode.id == 12" class="gaps3-subtitle">
-                                            Cùng điền 3 cụm còn thiếu nhé 💙
+                                            Cùng điền {{vm.gaps3Config.gapCount}} cụm còn thiếu nhé 💙
                                         </div>
 
                                         <button class="btn btn-danger"
@@ -1146,13 +1146,43 @@
                                         </button>
 
                                         <div ng-if="vm.mode.id == 12" style="margin-top: 12px;">
-                                            <button class="btn btn-info gaps3-btn" ng-click="vm.thirtySeconds()">⏳ 30s</button>
-                                            <button class="btn btn-success gaps3-btn" ng-click="vm.twentySeconds()" style="margin-left: 10px;">
-                                                ⚡ 20s
+                                            <button class="btn btn-info gaps3-btn" ng-click="vm.thirtySeconds()">
+                                                ⏳ {{vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
                                             </button>
-    <span style="margin-left: 12px; font-weight: 700;">
-        Thời gian: {{counter}}s
-    </span>
+
+                                            <button class="btn btn-success gaps3-btn" ng-click="vm.twentySeconds()" style="margin-left: 10px;">
+                                                ⚡ {{vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
+                                            </button>
+
+                                            <button class="btn btn-warning gaps3-btn" ng-click="refreshTimer()" style="margin-left: 10px;">
+                                                🔄 Reset
+                                            </button>
+
+                                            <div style="margin-top: 12px; display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap;">
+                                                <div>
+                                                    <label class="bold" for="gap-count-input">Số gaps:</label>
+                                                    <input id="gap-count-input"
+                                                            type="number"
+                                                            min="1"
+                                                            max="20"
+                                                            class="form-control"
+                                                            style="width: 100px; display: inline-block; margin-left: 6px;"
+                                                            ng-model="vm.gaps3Config.gapCount"
+                                                            ng-change="vm.updateGaps3Preview()" />
+                                                </div>
+
+                                                <div>
+                                                    <label class="bold" for="gap-max-words-input">Số từ tối đa / gap:</label>
+                                                    <input id="gap-max-words-input"
+                                                            type="number"
+                                                            min="2"
+                                                            max="10"
+                                                            class="form-control"
+                                                            style="width: 100px; display: inline-block; margin-left: 6px;"
+                                                            ng-model="vm.gaps3Config.maxWordsPerGap"
+                                                            ng-change="vm.updateGaps3Preview()" />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1703,6 +1733,13 @@
 
 <audio id="quec">
     <source src="music/quec.mp3"/>
+</audio>
+<audio id="tick-tock" preload="auto">
+    <source src="music/tick-tock.mp3" type="audio/mpeg"/>
+</audio>
+
+<audio id="boom-sound" preload="auto">
+    <source src="music/boom.mp3" type="audio/mpeg"/>
 </audio>
 
 <!--<audio id="end-sound">--><!--<source src="music/end-sound.m4a"/>--><!--</audio>-->
@@ -3779,5 +3816,101 @@
     .gaps3-cate-theme .gaps3-time {
         color: #6a57c8;
         font-weight: 700;
+    }
+
+    /* ===== nâng cấp nhẹ ô gaps mode 12 ===== */
+    .gaps3-cate-theme .gaps3-content {
+        font-size: 23px;
+        line-height: 2.3;
+    }
+
+    .gaps3-cate-theme .filling-gap-3-answer {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px 4px 28px;
+        margin: 0 4px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fcff 100%);
+        border: 2px solid #8fd3ff !important;
+        border-bottom: 5px solid #5bb6ff !important;
+        border-radius: 18px !important;
+        min-height: 46px;
+        vertical-align: middle;
+        box-shadow: 0 6px 14px rgba(110,197,255,0.18);
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    .gaps3-cate-theme .filling-gap-3-answer:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 20px rgba(110,197,255,0.24);
+        border-color: #69c3ff !important;
+    }
+
+    .gaps3-cate-theme .filling-gap-3-answer:before {
+        content: "✎";
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 14px;
+        opacity: 0.65;
+    }
+
+    .gaps3-cate-theme .filling-gap-3-answer input.input-underline-only {
+        min-width: 90px;
+        padding: 2px 2px 4px 2px;
+        border: 0 !important;
+        outline: none !important;
+        background: transparent !important;
+        border-bottom: 2px dashed #5bb6ff !important;
+        font-size: 20px !important;
+        font-weight: 700;
+        color: #355c7d;
+        text-align: center;
+        box-shadow: none !important;
+    }
+
+    .gaps3-cate-theme .filling-gap-3-answer input.input-underline-only:focus {
+        border-bottom-color: #ff8fb1 !important;
+    }
+
+    .gaps3-cate-theme .filling-gap-3-answer i.fa-volume-up {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #ffd86b, #ffb74d);
+        color: white;
+        font-size: 12px !important;
+        box-shadow: 0 3px 8px rgba(255, 183, 77, 0.3);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .gaps3-cate-theme .filling-gap-3-answer i.fa-volume-up:hover {
+        transform: scale(1.08);
+        box-shadow: 0 5px 12px rgba(255, 183, 77, 0.4);
+    }
+
+    /* khi đúng thì ô xanh đẹp hơn */
+    .gaps3-cate-theme .filling-gap-3-answer input.input-underline-only[style*="background: rgba(183, 244, 216"] {
+        border-radius: 10px;
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+
+    /* đáp án hiện ra */
+    .gaps3-cate-theme .gaps3-content .gaps3-answer-chip {
+        display: inline-block;
+        padding: 6px 12px;
+        margin: 0 4px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #fff0f0, #fff8fb);
+        border: 2px solid #ffb3b3;
+        color: #d93c54;
+        font-weight: 700;
+        box-shadow: 0 4px 10px rgba(229,57,53,0.10);
     }
 </style>

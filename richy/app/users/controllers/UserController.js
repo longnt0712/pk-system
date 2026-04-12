@@ -1452,6 +1452,15 @@
 
         vm.exportColumns = [
             {
+                key: 'stt',
+                title: 'STT',
+                checked: true,
+                disabled: true,
+                getter: function (user, index) {
+                    return index + 1;
+                }
+            },
+            {
                 key: 'patron',
                 title: 'TÊN THÁNH',
                 checked: true,

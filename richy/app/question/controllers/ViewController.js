@@ -592,6 +592,12 @@
                             false,
                             true
                         );
+
+                        if (vm.mode.id == 12) {
+                            vm.lastSetCounter = 30;
+                            $scope.counter = 30;
+                        }
+
                         vm.setUpAudio();
                     }
                     if(vm.mode.id == 7){ // tug of war
@@ -789,7 +795,8 @@
 
         vm.toggleShowGapAnswers = function () {
             vm.showGapAnswers = !vm.showGapAnswers;
-            if(vm.currentCard && vm.currentCard.motherTongue){
+
+            if (vm.currentCard && vm.currentCard.motherTongue) {
                 vm.fillingGapQuestion = processFillingGapsByMode(
                     vm.currentCard.motherTongue,
                     vm.showGapAnswers,
@@ -1460,6 +1467,10 @@
         var mytimeout = null; // the current timeoutID
         var audio = document.getElementById("audio-1");
         vm.endGame = true;
+        var tickTock = document.getElementById("tick-tock");
+        var boomSound = document.getElementById("boom-sound");
+        vm.lastSetCounter = 30;
+        vm.timeUpInGaps3 = false;
 
         vm.resetBackgroundMusic = function () {
             audio.load();
@@ -1505,20 +1516,38 @@
 
         // actual timer method, counts down every second, stops on zero
         $scope.onTimeout = function() {
-            if(($scope.counter ===  0 || $scope.counter < 0) && vm.mode.id != 7 ) {
-                window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
+            if ($scope.counter <= 0) {
                 $scope.counter = 0;
-                audio.load();
-                $scope.$broadcast('timer-stopped', 0);
-                $timeout.cancel(mytimeout);
-                return;
+
+                if (tickTock) {
+                    tickTock.pause();
+                    tickTock.currentTime = 0;
+                }
+
+                if (boomSound) {
+                    boomSound.currentTime = 0;
+                    boomSound.play();
+                }
+
+                vm.timeUpInGaps3 = true;
+
+                if (vm.mode.id != 7) {
+                    window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
+                    audio.load();
+                    $scope.$broadcast('timer-stopped', 0);
+                    $timeout.cancel(mytimeout);
+                    return;
+                }
             }
+
             $scope.counter = $scope.counter - 1;
 
-            // if($scope.counter == 0){
-            //     vm.endGame = true;
-            //
-            // }
+            if ($scope.counter > 0 && vm.mode.id == 12) {
+                if (tickTock) {
+                    tickTock.currentTime = 0;
+                    tickTock.play();
+                }
+            }
 
             if($scope.counter <= 0){
                 stopGameByTimeout();
@@ -1528,18 +1557,10 @@
                     vm.endGame = true;
                     $scope.counter = 0;
                     audio.load();
-                    $scope.counter = 0;
                     $scope.$broadcast('timer-stopped', 0);
                     $timeout.cancel(mytimeout);
-
                     return;
-
                 }
-                // else if (vm.showQuestionBattlel3 == true) {
-                //     $scope.counter = 3;
-                //     vm.showQuestionBattlel3 = false;
-                //     battleTimeout = $timeout($scope.setupQuestionBattle3, 3000);
-                // }
             }
 
             mytimeout = $timeout($scope.onTimeout, 1000);
@@ -1616,6 +1637,30 @@
             $scope.shutUp();
             $timeout.cancel(mytimeout);
             vm.resetBackgroundMusic();
+
+            if (tickTock) {
+                tickTock.pause();
+                tickTock.currentTime = 0;
+            }
+
+            if (boomSound) {
+                boomSound.pause();
+                boomSound.currentTime = 0;
+            }
+
+            vm.resetBackgroundMusic();
+            if (vm.mode.id == 7) {
+                vm.resetTugOfWarDefault();
+            }
+
+            vm.timeUpInGaps3 = false;
+
+            if (vm.mode.id == 12) {
+                $scope.counter = vm.lastSetCounter || 30;
+            } else {
+                $scope.counter = vm.tempCounter;
+            }
+
             if (vm.mode.id == 7) {
                 vm.resetTugOfWarDefault();
             }
@@ -3912,33 +3957,47 @@
         }
 
         function processFillingGapsByMode(text, forceShowAnswer, shouldRegenerate) {
-            if (vm.mode.id == 12) {
-                return processFillingGapsThreeBlocks(text, forceShowAnswer, shouldRegenerate);
-            }
-            return processFillingGaps(text);
-        }
+            if (!text) return '';
 
-        function processFillingGapsThreeBlocks(text, forceShowAnswer, shouldRegenerate) {
+            if (vm.mode.id != 12) {
+                return processFillingGaps(text);
+            }
+
             vm.numberOfGaps = 0;
-            vm.currentGapAnswers = [];
+            vm.currentGapAnswers = vm.currentGapAnswers || [];
+            vm.currentGapBlocks = vm.currentGapBlocks || null;
 
-            if (!text || !text.trim()) {
-                return '';
-            }
+            var words = text.split(/\s+/).filter(Boolean);
+            if (!words.length) return '';
 
-            var words = text.split(/\s+/);
-            var processed = [];
-            var maxBlocks = 3;
+            var processedText = '';
+            var gapCount = parseInt(vm.gaps3Config && vm.gaps3Config.gapCount, 10) || 3;
+            var maxWordsPerGap = parseInt(vm.gaps3Config && vm.gaps3Config.maxWordsPerGap, 10) || 4;
+            var minWordsPerGap = 2;
+
+            gapCount = Math.max(1, gapCount);
+            maxWordsPerGap = Math.max(minWordsPerGap, maxWordsPerGap);
 
             function cleanWord(word) {
-                return (word || '').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+                return processText(word || '');
+            }
+
+            function shuffle(arr) {
+                var a = arr.slice();
+                for (var i = a.length - 1; i > 0; i--) {
+                    var j = Math.floor(Math.random() * (i + 1));
+                    var temp = a[i];
+                    a[i] = a[j];
+                    a[j] = temp;
+                }
+                return a;
             }
 
             function isGoodWord(word, indexInSentence) {
                 var clean = cleanWord(word);
                 if (!clean) return false;
+                if (checkHaveAllLetterIsNormal(clean) == 2) return false;
                 if (checkIfDateOrNumber(clean)) return false;
-                if (indexInSentence === 0 && isFirstLetterCapital(clean)) return false;
                 return true;
             }
 
@@ -3950,50 +4009,47 @@
                     if (!isGoodWord(words[i], i)) return false;
                 }
 
+                // tránh dính sát block khác
                 if (used[start - 1] || used[start + len]) return false;
 
                 return true;
             }
 
-            function generateBlocks() {
-                var blocks = [];
+            function buildBlocks() {
                 var used = {};
-                var attempts = 0;
+                var blocks = [];
+                var starts = [];
 
-                function markBlock(start, len) {
-                    var answer = words.slice(start, start + len).join(' ');
+                for (var i = 0; i < words.length; i++) {
+                    starts.push(i);
+                }
+                starts = shuffle(starts);
+
+                for (var s = 0; s < starts.length && blocks.length < gapCount; s++) {
+                    var start = starts[s];
+                    var lengths = [];
+
+                    for (var len = minWordsPerGap; len <= maxWordsPerGap; len++) {
+                        if (canTake(start, len, used)) {
+                            lengths.push(len);
+                        }
+                    }
+
+                    if (!lengths.length) continue;
+
+                    lengths = shuffle(lengths);
+                    var chosenLen = lengths[0];
+                    var answerWords = words.slice(start, start + chosenLen);
+                    var answer = answerWords.join(' ');
+
                     blocks.push({
                         start: start,
-                        end: start + len - 1,
+                        end: start + chosenLen - 1,
                         answer: answer
                     });
 
-                    for (var i = start; i < start + len; i++) {
-                        used[i] = true;
-                    }
-                }
-
-                while (blocks.length < maxBlocks && attempts < 1000) {
-                    attempts++;
-                    var len = getRndInteger(2, 5); // 2-4 từ
-                    var start = getRndInteger(0, words.length - len + 1);
-
-                    if (canTake(start, len, used)) {
-                        markBlock(start, len);
-                    }
-                }
-
-                if (blocks.length < maxBlocks) {
-                    for (var s = 0; s < words.length && blocks.length < maxBlocks; s++) {
-                        if (used[s]) continue;
-
-                        for (var l = 4; l >= 2; l--) {
-                            if (canTake(s, l, used)) {
-                                markBlock(s, l);
-                                s = s + l - 1;
-                                break;
-                            }
-                        }
+                    for (var k = start; k < start + chosenLen; k++) {
+                        used[k] = true;
                     }
                 }
 
@@ -4004,66 +4060,101 @@
                 return blocks;
             }
 
-            if (shouldRegenerate || !vm.currentGapBlocks || !vm.currentGapBlocks.length) {
-                vm.currentGapBlocks = generateBlocks();
+            if (
+                shouldRegenerate === true ||
+                !angular.isArray(vm.currentGapBlocks) ||
+                !vm.currentGapBlocks.length
+            ) {
+                vm.currentGapBlocks = buildBlocks();
+                vm.currentGapAnswers = vm.currentGapBlocks.map(function (b) {
+                    return b.answer;
+                });
             }
 
             var blocks = vm.currentGapBlocks || [];
-            var blockMap = {};
+            vm.numberOfGaps = blocks.length;
 
-            angular.forEach(blocks, function (b, idx) {
-                blockMap[b.start] = {
-                    blockIndex: idx,
-                    end: b.end,
-                    answer: b.answer
-                };
+            var startMap = {};
+            var hiddenMap = {};
+
+            angular.forEach(blocks, function (block) {
+                startMap[block.start] = block;
+                for (var i = block.start; i <= block.end; i++) {
+                    hiddenMap[i] = true;
+                }
             });
 
             for (var i = 0; i < words.length; i++) {
-                if (blockMap[i]) {
-                    var block = blockMap[i];
-                    vm.numberOfGaps++;
-                    vm.currentGapAnswers.push({
-                        index: block.blockIndex,
-                        answer: block.answer
-                    });
+                if (startMap[i]) {
+                    var block = startMap[i];
+                    var answer = block.answer;
+                    var inputWidth = Math.max(90, Math.min(260, answer.length * 8));
 
-                    if (forceShowAnswer) {
-                        processed.push(
-                            '<span style="color:red;font-weight:bold;">' +
-                            block.answer +
-                            '</span>'
-                        );
+                    if (forceShowAnswer === true) {
+                        processedText += ' <span class="gaps3-answer-chip">' + answer + '</span>';
                     } else {
-                        var blankWidth = Math.max(120, block.answer.length * 9);
-                        processed.push(
-                            '<span class="filling-gap-3-answer" ' +
-                            'data-gap-index="' + block.blockIndex + '" ' +
-                            'style="display:inline-block;min-width:' + blankWidth + 'px;border-bottom:2px solid #000;text-align:center;padding:2px 6px;margin:0 3px;">' +
-                            '&nbsp;' +
-                            '</span>'
-                        );
+                        processedText +=
+                            ' <span class="filling-gap-3-answer">' +
+                            '<input autocomplete="off" ' +
+                            'ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,' + "'" + answer.replace(/'/g, "\\'") + "'" + ');vm.fillingGaps(' + words.length + ',' + block.start + ',vm.currentCard.motherTongue)" ' +
+                            'class="input-underline-only" ' +
+                            'type="text" ' +
+                            'style="width: ' + inputWidth + 'px" ' +
+                            'id="gap-number-' + block.start + '"' +
+                            '/>' +
+                            '</span>';
                     }
-
-                    i = block.end;
-                } else {
-                    processed.push(words[i]);
+                    continue;
                 }
+
+                if (hiddenMap[i]) {
+                    continue;
+                }
+
+                processedText += ' ' + words[i];
             }
 
-            return processed.join(' ');
+            return processedText.trim();
         }
 
         vm.thirtySeconds = function () {
+            vm.lastSetCounter = 30;
             vm.tempCounter = 30;
             $scope.counter = 30;
-            $scope.startCount();
+            vm.timeUpInGaps3 = false;
+            vm.showGapAnswers = false;
+            $scope.refreshTimer();
+            mytimeout = $timeout($scope.onTimeout, 1000);
         };
 
         vm.twentySeconds = function () {
+            vm.lastSetCounter = 20;
             vm.tempCounter = 20;
             $scope.counter = 20;
-            $scope.startCount();
+            vm.timeUpInGaps3 = false;
+            vm.showGapAnswers = false;
+            $scope.refreshTimer();
+            mytimeout = $timeout($scope.onTimeout, 1000);
+        };
+
+        vm.gaps3Config = {
+            gapCount: 3,
+            maxWordsPerGap: 4
+        };
+
+        vm.updateGaps3Preview = function () {
+            if (!vm.currentCard || !vm.currentCard.motherTongue) {
+                return;
+            }
+
+            vm.showGapAnswers = false;
+            vm.currentGapBlocks = null;
+
+            vm.fillingGapQuestion = processFillingGapsByMode(
+                vm.currentCard.motherTongue,
+                false,
+                true
+            );
         };
 
     }

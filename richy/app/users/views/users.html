@@ -659,7 +659,7 @@
 
         <div class="modal-body">
             <div class="row">
-                <div class="col-md-5">
+                <div class="col-md-3">
                     <label class="bold margin-bottom-10">Chọn cột và thứ tự cột</label>
 
                     <div class="export-column-item"
@@ -668,19 +668,22 @@
                         <div class="row">
                             <div class="col-xs-7">
                                 <label style="font-weight: normal; margin-bottom: 0;">
-                                    <input type="checkbox" ng-model="col.checked">
+                                    <input type="checkbox" ng-model="col.checked" ng-disabled="col.disabled">
                                     {{col.title}}
                                 </label>
                             </div>
                             <div class="col-xs-5 text-right">
                                 <button type="button"
                                         class="btn btn-xs btn-default"
-                                        ng-click="vm.moveExportColumnUp($index)">
+                                        ng-click="vm.moveExportColumnUp($index)"
+                                        ng-disabled="col.key === 'stt' || $index === 0">
                                     <i class="fa fa-arrow-up"></i>
                                 </button>
+
                                 <button type="button"
                                         class="btn btn-xs btn-default"
-                                        ng-click="vm.moveExportColumnDown($index)">
+                                        ng-click="vm.moveExportColumnDown($index)"
+                                        ng-disabled="col.key === 'stt'">
                                     <i class="fa fa-arrow-down"></i>
                                 </button>
                             </div>
@@ -688,7 +691,7 @@
                     </div>
                 </div>
 
-                <div class="col-md-7">
+                <div class="col-md-9">
                     <label class="bold margin-bottom-10">Xem trước file Excel</label>
 
                     <div class="table-responsive" style="max-height: 350px; overflow: auto; border:1px solid #ddd;">
@@ -867,5 +870,9 @@
 
     .zalo-status-gray {
         background-color: #e9ecef !important;
+    }
+
+    .modal-lg{
+        width: 85%;
     }
 </style>
