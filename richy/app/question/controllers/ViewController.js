@@ -349,7 +349,9 @@
         }
 
         // if(vm.myUser.id == 39) {
-        if(vm.isRoleView == true) {
+        if(vm.isRoleUser == true){
+            vm.selectedUser = vm.myUser;
+        }else if(vm.isRoleView == true) {
             vm.selectedUser = {
                 id:26,name: 'EM YÊU INH LÍCH'
             };
@@ -1532,8 +1534,9 @@
                 vm.timeUpInGaps3 = true;
 
                 if (vm.mode.id != 7) {
-                    window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
-                    audio.load();
+                    if(vm.mode.id != 12){
+                        window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
+                    }                    audio.load();
                     $scope.$broadcast('timer-stopped', 0);
                     $timeout.cancel(mytimeout);
                     return;
@@ -1553,7 +1556,9 @@
                 stopGameByTimeout();
 
                 if((vm.currentPosition + 1) >= vm.totalCard){
-                    window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
+                    if(vm.mode.id != 12){
+                        window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
+                    }
                     vm.endGame = true;
                     $scope.counter = 0;
                     audio.load();
@@ -3950,7 +3955,9 @@
                 }
             }
 
-            window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
+            if(vm.mode.id != 12){
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
+            }
             audio.load();
             $scope.$broadcast('timer-stopped', 0);
             $timeout.cancel(mytimeout);
