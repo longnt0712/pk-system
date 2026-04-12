@@ -486,7 +486,8 @@
             {id:10,name: 'FLIPPING CARD IMAGES'},
             {id:1,name: 'NORMAL'},
             {id:4,name: 'REWRITE'},
-            {id:11,name: 'FILLING GAPS VNI'}
+            {id:11,name: 'FILLING GAPS VNI'},
+            {id:12,name: 'FILLING GAPS 3'}
         ];
         vm.mode = {id:5,name: 'DAILY VOCAB'};
         vm.rawQuestions = [];
@@ -534,8 +535,7 @@
                     vm.doShuffle();
                 }
 
-                if(vm.mode.id == 8 || vm.mode.id == 11){ //filling gaps
-
+                if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){ //filling gaps
                     vm.setUpTable();
                     vm.bsTableControl.options.sidePagination = 'client';
 
@@ -577,8 +577,21 @@
                         vm.currentCard1 = vm.questions1[vm.currentPosition1];
                         // vm.createQuiz(vm.currentCard1,2);
                     }
-                    if(vm.mode.id == 8 || vm.mode.id == 11){ // fill gaps
-                        vm.fillingGapQuestion = (processFillingGaps(vm.currentCard.motherTongue));
+                    // if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){ // fill gaps
+                    //     // vm.fillingGapQuestion = (processFillingGaps(vm.currentCard.motherTongue));
+                    //     // if(vm.mode.id == 12){
+                    //         vm.fillingGapQuestion = processFillingGapsByMode(vm.currentCard.motherTongue);
+                    //     // }
+                    //     vm.setUpAudio();
+                    // }
+                    if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){ // fill gaps
+                        vm.showGapAnswers = false;
+                        vm.currentGapBlocks = null;
+                        vm.fillingGapQuestion = processFillingGapsByMode(
+                            vm.currentCard.motherTongue,
+                            false,
+                            true
+                        );
                         vm.setUpAudio();
                     }
                     if(vm.mode.id == 7){ // tug of war
@@ -736,9 +749,30 @@
         };
 
 
+        // $scope.chooseFillingGaps = function (index) {
+        //     vm.currentCard = vm.questions[index];
+        //     // vm.fillingGapQuestion = (processFillingGaps(vm.currentCard.motherTongue));
+        //     // if(vm.mode.id == 12){
+        //         vm.fillingGapQuestion = processFillingGapsByMode(vm.currentCard.motherTongue);
+        //     // }
+        //     vm.showGapAnswers = false;
+        //     vm.finishFillingGaps = "Unfinished";
+        //     vm.percentage = 0;
+        //     vm.allowChangeInformation = false;
+        //
+        //     vm.setUpAudio();
+        //     vm.setUpTestResult();
+        // };
+
         $scope.chooseFillingGaps = function (index) {
             vm.currentCard = vm.questions[index];
-            vm.fillingGapQuestion = (processFillingGaps(vm.currentCard.motherTongue));
+            vm.showGapAnswers = false;
+            vm.currentGapBlocks = null;
+            vm.fillingGapQuestion = processFillingGapsByMode(
+                vm.currentCard.motherTongue,
+                false,
+                true
+            );
             vm.finishFillingGaps = "Unfinished";
             vm.percentage = 0;
             vm.allowChangeInformation = false;
@@ -746,15 +780,31 @@
             vm.setUpAudio();
             vm.setUpTestResult();
         };
-        
+
         vm.fillingGapAllQuestions = '';
+        vm.fillingGapQuestion = '';
+        vm.showGapAnswers = false;
+        vm.currentGapAnswers = [];
+        vm.currentGapBlocks = null;
+
+        vm.toggleShowGapAnswers = function () {
+            vm.showGapAnswers = !vm.showGapAnswers;
+            if(vm.currentCard && vm.currentCard.motherTongue){
+                vm.fillingGapQuestion = processFillingGapsByMode(
+                    vm.currentCard.motherTongue,
+                    vm.showGapAnswers,
+                    false
+                );
+            }
+        };
+
         vm.selectAllFillingGaps = function (index) {
             vm.fillingGapAllQuestions = '';
             angular.forEach(vm.questions, function(value, key) {
                 vm.fillingGapAllQuestions = vm.fillingGapAllQuestions +'<br><br>';
                 vm.fillingGapAllQuestions = vm.fillingGapAllQuestions + value.question;
                 vm.fillingGapAllQuestions = vm.fillingGapAllQuestions +'<br>';
-                vm.fillingGapAllQuestions = vm.fillingGapAllQuestions + processFillingGaps(value.motherTongue)
+                vm.fillingGapAllQuestions = vm.fillingGapAllQuestions + processFillingGapsByMode(value.motherTongue, true)
             });
             
             // vm.currentCard = vm.questions[index];
@@ -995,7 +1045,7 @@
                 vm.finishDailyVocab = "Unfinished";
             }
 
-            if(vm.mode.id == 8 || vm.mode.id == 11){
+            if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){
                 // if(vm.testResult.testTakerName == null || vm.testResult.testTakerName.length <= 0){
                 //     alert('Phải nhập tên. Ví dụ: Long');
                 //     return;
@@ -2579,7 +2629,8 @@
                     console.log(data1.id);
                 }
 
-                if(vm.mode.id == 8 || vm.mode.id == 11) {
+                // if(vm.mode.id == 8 || vm.mode.id == 11) {
+                if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12) {
                     vm.testResult.id = data1.id;
                     // vm.finishListening = "Finished";
                     vm.finishFillingGaps = "Finished";
@@ -2605,9 +2656,11 @@
         vm.setUpAudio = function () {
             mainAudio = document.getElementById('main-audio');
             playBackInput = document.getElementById('play-back-input');
-            mainAudio.src = vm.currentCard.pronounce; // local server
-            mainAudio.load();
-            mainAudio.loop = true;
+            if(mainAudio != null){
+                mainAudio.src = vm.currentCard.pronounce; // local server
+                mainAudio.load();
+                mainAudio.loop = true;
+            }
         };
 
         // vm.setUpVideo = function () {
@@ -2921,7 +2974,7 @@
                     vm.numberOfGaps = vm.numberOfGaps + 1;
                     indexGap++;
                     if(vm.mode.id == 11){
-                        var input = '<input autocomplete="off" ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,'+ "'"  + x[i] + "'" +');vm.fillingGaps(' + x.length + ',' + i + ',vm.currentCard.motherTongue)" class="input-underline-only" type="text" style="width: 70px" id="gap-number-' + i + '"' + '/>' ;    
+                        var input = '_______ ';
                     }else{
                         var input = '<input autocomplete="off" ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,'+ "'"  + x[i] + "'" +');vm.fillingGaps(' + x.length + ',' + i + ',vm.currentCard.motherTongue)" class="input-underline-only" type="text" style="width: 70px" id="gap-number-' + i + '"' + '/>' +
                             '<i class="fa fa-volume-up" style="cursor:pointer;font-size: 10px" ng-click="sayIt(' + "'"  + x[i] + "'" + ')"></i>';
@@ -2936,7 +2989,7 @@
                     vm.numberOfGaps = vm.numberOfGaps + 1;
                     indexGap++;
                     if(vm.mode.id == 11){
-                        var input = '<input autocomplete="off" ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,'+ "'"  + x[i] + "'" +');vm.fillingGaps(' + x.length + ',' + i + ',vm.currentCard.motherTongue)" class="input-underline-only" type="text" style="width: 70px" id="gap-number-' + i + '"' + '/>' ;
+                        var input = '_______ ';
                     }else{
                         var input = '<input autocomplete="off" ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,'+ "'"  + x[i] + "'" +');vm.fillingGaps(' + x.length + ',' + i + ',vm.currentCard.motherTongue)" class="input-underline-only" type="text" style="width: 70px" id="gap-number-' + i + '"' + '/>' +
                             '<i class="fa fa-volume-up" style="cursor:pointer;font-size: 10px" ng-click="sayIt(' + "'"  + x[i] + "'" + ')"></i>';
@@ -3858,6 +3911,160 @@
             $timeout.cancel(mytimeout);
         }
 
+        function processFillingGapsByMode(text, forceShowAnswer, shouldRegenerate) {
+            if (vm.mode.id == 12) {
+                return processFillingGapsThreeBlocks(text, forceShowAnswer, shouldRegenerate);
+            }
+            return processFillingGaps(text);
+        }
+
+        function processFillingGapsThreeBlocks(text, forceShowAnswer, shouldRegenerate) {
+            vm.numberOfGaps = 0;
+            vm.currentGapAnswers = [];
+
+            if (!text || !text.trim()) {
+                return '';
+            }
+
+            var words = text.split(/\s+/);
+            var processed = [];
+            var maxBlocks = 3;
+
+            function cleanWord(word) {
+                return (word || '').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+            }
+
+            function isGoodWord(word, indexInSentence) {
+                var clean = cleanWord(word);
+                if (!clean) return false;
+                if (checkIfDateOrNumber(clean)) return false;
+                if (indexInSentence === 0 && isFirstLetterCapital(clean)) return false;
+                return true;
+            }
+
+            function canTake(start, len, used) {
+                if (start < 0 || start + len > words.length) return false;
+
+                for (var i = start; i < start + len; i++) {
+                    if (used[i]) return false;
+                    if (!isGoodWord(words[i], i)) return false;
+                }
+
+                if (used[start - 1] || used[start + len]) return false;
+
+                return true;
+            }
+
+            function generateBlocks() {
+                var blocks = [];
+                var used = {};
+                var attempts = 0;
+
+                function markBlock(start, len) {
+                    var answer = words.slice(start, start + len).join(' ');
+                    blocks.push({
+                        start: start,
+                        end: start + len - 1,
+                        answer: answer
+                    });
+
+                    for (var i = start; i < start + len; i++) {
+                        used[i] = true;
+                    }
+                }
+
+                while (blocks.length < maxBlocks && attempts < 1000) {
+                    attempts++;
+                    var len = getRndInteger(2, 5); // 2-4 từ
+                    var start = getRndInteger(0, words.length - len + 1);
+
+                    if (canTake(start, len, used)) {
+                        markBlock(start, len);
+                    }
+                }
+
+                if (blocks.length < maxBlocks) {
+                    for (var s = 0; s < words.length && blocks.length < maxBlocks; s++) {
+                        if (used[s]) continue;
+
+                        for (var l = 4; l >= 2; l--) {
+                            if (canTake(s, l, used)) {
+                                markBlock(s, l);
+                                s = s + l - 1;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                blocks.sort(function (a, b) {
+                    return a.start - b.start;
+                });
+
+                return blocks;
+            }
+
+            if (shouldRegenerate || !vm.currentGapBlocks || !vm.currentGapBlocks.length) {
+                vm.currentGapBlocks = generateBlocks();
+            }
+
+            var blocks = vm.currentGapBlocks || [];
+            var blockMap = {};
+
+            angular.forEach(blocks, function (b, idx) {
+                blockMap[b.start] = {
+                    blockIndex: idx,
+                    end: b.end,
+                    answer: b.answer
+                };
+            });
+
+            for (var i = 0; i < words.length; i++) {
+                if (blockMap[i]) {
+                    var block = blockMap[i];
+                    vm.numberOfGaps++;
+                    vm.currentGapAnswers.push({
+                        index: block.blockIndex,
+                        answer: block.answer
+                    });
+
+                    if (forceShowAnswer) {
+                        processed.push(
+                            '<span style="color:red;font-weight:bold;">' +
+                            block.answer +
+                            '</span>'
+                        );
+                    } else {
+                        var blankWidth = Math.max(120, block.answer.length * 9);
+                        processed.push(
+                            '<span class="filling-gap-3-answer" ' +
+                            'data-gap-index="' + block.blockIndex + '" ' +
+                            'style="display:inline-block;min-width:' + blankWidth + 'px;border-bottom:2px solid #000;text-align:center;padding:2px 6px;margin:0 3px;">' +
+                            '&nbsp;' +
+                            '</span>'
+                        );
+                    }
+
+                    i = block.end;
+                } else {
+                    processed.push(words[i]);
+                }
+            }
+
+            return processed.join(' ');
+        }
+
+        vm.thirtySeconds = function () {
+            vm.tempCounter = 30;
+            $scope.counter = 30;
+            $scope.startCount();
+        };
+
+        vm.twentySeconds = function () {
+            vm.tempCounter = 20;
+            $scope.counter = 20;
+            $scope.startCount();
+        };
 
     }
 

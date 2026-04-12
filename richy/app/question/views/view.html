@@ -1105,34 +1105,74 @@
 
                 </div>
 
-                <div ng-if="vm.mode.id == 11" class="row">
+                <div ng-if="vm.mode.id == 11 || vm.mode.id == 12"
+                     class="row"
+                     ng-class="{'gaps3-cate-theme': vm.mode.id == 12}">
                     <div class="row">
                         <div class="col-md-3" style="padding-left: 20px">
-                            <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
+                            <div ng-class="{'gaps3-side-card': vm.mode.id == 12}">
+                                <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
+                            </div>
                         </div>
+
                         <div class="col-md-9" style="padding-right: 20px">
-                            <div class="row margin-bottom-10">
-                                <div class="col-md-12 text-center">
-                                    <h2 class="bold" ng-bind-html="vm.currentCard.question"></h2>
-                                    <!--<span>{{vm.finishListening}} === Progress: {{vm.percentage}}%</span>-->
-                                    <button class="btn btn-danger" ng-click="vm.selectAllFillingGaps()"> Show all</button>
-                                </div>
-                            </div>
+                            <div ng-class="{'gaps3-main-card': vm.mode.id == 12}">
+                                <div class="row margin-bottom-10">
+                                    <div class="col-md-12 text-center">
+                                        <div ng-if="vm.mode.id == 12" class="gaps3-top-decor">
+                                            🌈 ✨ Thiếu Nhi Thánh Thể ✨ 🌈
+                                        </div>
 
-                            <div class="row margin-top-10 margin-bottom-10 filling-content">
-                                <div class="col-md-12">
-                                    <div class="bold" compile="vm.fillingGapQuestion"></div>
+                                        <h2 class="bold"
+                                            ng-class="{'gaps3-title': vm.mode.id == 12}"
+                                            ng-bind-html="vm.currentCard.question"></h2>
+
+                                        <div ng-if="vm.mode.id == 12" class="gaps3-subtitle">
+                                            Cùng điền 3 cụm còn thiếu nhé 💙
+                                        </div>
+
+                                        <button class="btn btn-danger"
+                                                ng-class="{'gaps3-btn gaps3-btn-showall': vm.mode.id == 12}"
+                                                ng-click="vm.selectAllFillingGaps()">
+                                            {{ vm.mode.id == 12 ? '📖 Xem tất cả' : 'Show all' }}
+                                        </button>
+
+                                        <button
+                                                ng-if="vm.mode.id == 12"
+                                                class="btn btn-warning gaps3-btn gaps3-btn-answer"
+                                                ng-click="vm.toggleShowGapAnswers()"
+                                                style="margin-left: 10px;">
+                                            {{ vm.showGapAnswers ? '🙈 Ẩn đáp án' : '🎁 Hiển thị đáp án' }}
+                                        </button>
+
+                                        <div ng-if="vm.mode.id == 12" style="margin-top: 12px;">
+                                            <button class="btn btn-info gaps3-btn" ng-click="vm.thirtySeconds()">⏳ 30s</button>
+                                            <button class="btn btn-success gaps3-btn" ng-click="vm.twentySeconds()" style="margin-left: 10px;">
+                                                ⚡ 20s
+                                            </button>
+    <span style="margin-left: 12px; font-weight: 700;">
+        Thời gian: {{counter}}s
+    </span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <!--<div class="col-md-2"></div>-->
+
+                                <div class="row margin-top-10 margin-bottom-10 filling-content">
+                                    <div class="col-md-12">
+                                        <div class="bold"
+                                             ng-class="{'gaps3-content': vm.mode.id == 12}"
+                                             compile="vm.fillingGapQuestion"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-4"></div>
+
                         <div class="col-md-12 margin-top-10">
-                            <div class="bold" compile="vm.fillingGapAllQuestions"></div>
+                            <div class="bold"
+                                 ng-class="{'gaps3-all-content': vm.mode.id == 12}"
+                                 compile="vm.fillingGapAllQuestions"></div>
                         </div>
-                        <div class="col-md-1"></div>
                     </div>
-
                 </div>
 
                 <!--rewrite-->
@@ -3562,4 +3602,182 @@
         border-radius: inherit;
     }
 
+</style>
+
+<style>
+    /* ===== FILLING GAPS 3 - Giáo lý thiếu nhi thánh thể ===== */
+    .gaps3-cate-theme {
+        --g3-pink: #ff8fb1;
+        --g3-blue: #6ec5ff;
+        --g3-yellow: #ffd86b;
+        --g3-green: #8ee3a1;
+        --g3-purple: #bca7ff;
+        --g3-red: #ff5a5f;
+        --g3-text: #5a3d2b;
+    }
+
+    .gaps3-cate-theme .gaps3-side-card,
+    .gaps3-cate-theme .gaps3-main-card,
+    .gaps3-cate-theme .gaps3-all-content {
+        background: linear-gradient(180deg, #fffdf7 0%, #fef6ff 100%);
+        border: 3px solid #ffd86b;
+        border-radius: 24px;
+        box-shadow: 0 8px 24px rgba(255, 184, 77, 0.18);
+    }
+
+    .gaps3-cate-theme .gaps3-side-card {
+        padding: 10px;
+    }
+
+    .gaps3-cate-theme .gaps3-main-card {
+        padding: 22px 20px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .gaps3-cate-theme .gaps3-main-card:before {
+        content: "☁️";
+        position: absolute;
+        top: 10px;
+        left: 16px;
+        font-size: 28px;
+        opacity: 0.7;
+    }
+
+    .gaps3-cate-theme .gaps3-main-card:after {
+        content: "⭐";
+        position: absolute;
+        top: 12px;
+        right: 18px;
+        font-size: 24px;
+        opacity: 0.7;
+    }
+
+    .gaps3-cate-theme .gaps3-top-decor {
+        font-size: 20px;
+        font-weight: 700;
+        color: #ff7a59;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+    }
+
+    .gaps3-cate-theme .gaps3-title {
+        font-size: 48px;
+        color: #3d4f9f;
+        text-shadow: 2px 2px 0 #fff1a8;
+        margin-bottom: 6px;
+    }
+
+    .gaps3-cate-theme .gaps3-subtitle {
+        font-size: 20px;
+        color: #d96c8a;
+        font-weight: 700;
+        margin-bottom: 14px;
+    }
+
+    .gaps3-cate-theme .gaps3-btn {
+        border: none !important;
+        border-radius: 999px !important;
+        padding: 10px 18px !important;
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+        transition: all 0.2s ease;
+    }
+
+    .gaps3-cate-theme .gaps3-btn:hover {
+        transform: translateY(-2px) scale(1.03);
+    }
+
+    .gaps3-cate-theme .gaps3-btn-showall {
+        background: linear-gradient(135deg, #ff8a65, #ffb74d) !important;
+        color: white !important;
+    }
+
+    .gaps3-cate-theme .gaps3-btn-answer {
+        background: linear-gradient(135deg, #42a5f5, #7e57c2) !important;
+        color: white !important;
+    }
+
+    .gaps3-cate-theme .gaps3-content {
+        font-size: 22px;
+        line-height: 2.1;
+        color: var(--g3-text);
+        background: #ffffffd9;
+        border: 2px dashed #9ed8ff;
+        border-radius: 22px;
+        padding: 22px 24px;
+        box-shadow: inset 0 0 0 4px #fff5c4;
+    }
+
+    .gaps3-cate-theme .gaps3-all-content {
+        margin: 14px 20px 0 20px;
+        padding: 18px 20px;
+        border-color: #8ee3a1;
+    }
+
+    /* Gap ẩn */
+    .gaps3-cate-theme .filling-gap-3-answer {
+        background: linear-gradient(180deg, #fff 0%, #f7fbff 100%);
+        border: 3px solid #8fd3ff !important;
+        border-bottom: 6px solid #5bb6ff !important;
+        border-radius: 16px !important;
+        min-height: 44px;
+        vertical-align: middle;
+        box-shadow: 0 4px 10px rgba(110,197,255,0.18);
+        position: relative;
+    }
+
+    .gaps3-cate-theme .filling-gap-3-answer:before {
+        content: "✎";
+        position: absolute;
+        left: 8px;
+        top: 4px;
+        font-size: 14px;
+        opacity: 0.55;
+    }
+
+    /* Đáp án hiện ra */
+    .gaps3-cate-theme .gaps3-content span[style*="color:red"] {
+        color: #e53935 !important;
+        background: #fff0f0;
+        border-radius: 12px;
+        padding: 2px 8px;
+        box-shadow: 0 2px 8px rgba(229,57,53,0.12);
+    }
+
+    /* Bảng bên trái */
+    .gaps3-cate-theme #bsTableControl table,
+    .gaps3-cate-theme .bootstrap-table table {
+        border-radius: 18px;
+        overflow: hidden;
+    }
+
+    .gaps3-cate-theme .fixed-table-container thead th,
+    .gaps3-cate-theme table thead th {
+        background: linear-gradient(135deg, #ffb74d, #ff8fb1) !important;
+        color: white !important;
+        border-color: #ffd86b !important;
+        font-size: 20px;
+    }
+
+    .gaps3-cate-theme .fixed-table-container tbody td,
+    .gaps3-cate-theme table tbody td {
+        background: #fffdfc !important;
+        color: #5a3d2b !important;
+        border-color: #ffe7a3 !important;
+        font-weight: 600;
+    }
+
+    .gaps3-cate-theme .fixed-table-container tbody tr:nth-child(even) td,
+    .gaps3-cate-theme table tbody tr:nth-child(even) td {
+        background: #fef6ff !important;
+    }
+
+    /* Đồng hồ ngày giờ */
+    .gaps3-cate-theme ~ .row .col-md-12.bold.text-center span,
+    .gaps3-cate-theme .gaps3-time {
+        color: #6a57c8;
+        font-weight: 700;
+    }
 </style>
