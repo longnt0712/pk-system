@@ -4095,7 +4095,7 @@
                 if (startMap[i]) {
                     var block = startMap[i];
                     var answer = block.answer;
-                    var inputWidth = Math.max(90, Math.min(260, answer.length * 8));
+                    var inputWidth = Math.max(90, Math.min(260, answer.length * 30));
 
                     if (forceShowAnswer === true) {
                         processedText += ' <span class="gaps3-answer-chip">' + answer + '</span>';
@@ -4103,7 +4103,6 @@
                         processedText +=
                             ' <span class="filling-gap-3-answer">' +
                             '<input autocomplete="off" ' +
-                            'ng-keyup="vm.backForthAudio();vm.pauseAudio();vm.speakSingleWord(e,' + "'" + answer.replace(/'/g, "\\'") + "'" + ');vm.fillingGaps(' + words.length + ',' + block.start + ',vm.currentCard.motherTongue)" ' +
                             'class="input-underline-only" ' +
                             'type="text" ' +
                             'style="width: ' + inputWidth + 'px" ' +
