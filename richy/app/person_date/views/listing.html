@@ -128,17 +128,28 @@
                             <button class="btn btn-primary" ng-click="vm.statistics()">
                                 TẢI LẠI DANH SÁCH
                             </button>
-
-                            <!--<button class="btn btn-success" ng-click="vm.exportAttendancePng()">-->
-                                <!--<i class="fa fa-file-image"></i> Xuất PNG-->
-                            <!--</button>-->
-
-                            <!--<button class="btn btn-info" ng-click="vm.exportAttendanceExcel()">-->
-                                <!--<i class="fa fa-file-excel"></i> Xuất Excel-->
-                            <!--</button>-->
-
                             <button class="btn btn-primary" ng-click="vm.openExportModal()">
                                 <i class="fa fa-download"></i> Xuất danh sách
+                            </button>
+                        </div>
+
+                        <div class="col-md-12 margin-bottom-10">
+                            <button class="btn btn-warning" ng-click="vm.loadDailyStatistics()">
+                                <i class="fa fa-bar-chart"></i> THỐNG KÊ THEO NGÀY
+                            </button>
+
+                            <button class="btn"
+                                    ng-class="vm.onlySundayColumns ? 'btn-danger' : 'btn-warning'"
+                                    ng-click="vm.toggleOnlySundayColumns()">
+                                <i class="fa fa-calendar"></i>
+                                {{ vm.onlySundayColumns ? 'Đang chỉ hiện Chúa nhật' : 'Chỉ hiện Chúa nhật' }}
+                            </button>
+
+                            <button class="btn"
+                                    ng-class="vm.onlySaturdayColumns ? 'btn-danger' : 'btn-info'"
+                                    ng-click="vm.toggleOnlySaturdayColumns()">
+                                <i class="fa fa-calendar"></i>
+                                {{ vm.onlySaturdayColumns ? 'Đang chỉ hiện Thứ 7' : 'Chỉ hiện Thứ 7' }}
                             </button>
                         </div>
 
@@ -158,6 +169,98 @@
                         </div>
 
                         <div class="clearfix"></div>
+                    </div>
+
+                    <div class="col-md-12 margin-top-20" ng-if="vm.dailyStatisticRows && vm.dailyStatisticRows.length">
+                        <div class="table-scroll">
+                            <table class="table table-bordered table-striped text-center">
+                                <thead>
+                                <tr>
+                                    <th rowspan="2">STT</th>
+                                    <th rowspan="2">DANH SÁCH HỌC SINH</th>
+
+                                    <th ng-repeat="day in vm.visibleStatisticDates track by $index"
+                                        ng-class="{
+                                            'sunday-column': day.isSunday,
+                                            'saturday-column': day.isSaturday
+                                        }">
+                                        {{day.label}}
+                                    </th>
+
+                                    <th rowspan="2" class="summary-sunday-column" ng-if="!vm.onlySaturdayColumns">Tổng kết Chúa nhật</th>
+                                    <th rowspan="2" class="summary-saturday-column" ng-if="!vm.onlySundayColumns">Tổng kết Thứ 7</th>
+                                </tr>
+                                <tr>
+                                    <th ng-repeat="day in vm.visibleStatisticDates track by $index"
+                                        ng-class="{
+                                            'sunday-column': day.isSunday,
+                                            'saturday-column': day.isSaturday
+                                        }">
+                                        {{ vm.onlySundayColumns ? 'Lễ | GL' : 'Lễ | GL | NK' }}
+                                    </th>
+                                </tr>
+                                </thead>
+
+                                <tbody>
+                                <tr ng-repeat="row in vm.dailyStatisticRows track by row.userId">
+                                    <td>{{$index + 1}}</td>
+                                    <td class="text-left">{{row.fullName}}</td>
+
+                                    <td ng-repeat="day in vm.visibleStatisticDates track by $index"
+                                        ng-class="{
+                                            'sunday-column': day.isSunday,
+                                            'saturday-column': day.isSaturday
+                                        }">
+
+                                                                            <div ng-if="row.days[day.key].mass != null">
+                                            <span ng-class="{
+                                                'text-success': row.days[day.key].mass == 1 || row.days[day.key].mass == 5,
+                                                'text-danger': row.days[day.key].mass != 1 && row.days[day.key].mass != 5
+                                            }">
+                                                {{ row.days[day.key].mass == 1 || row.days[day.key].mass == 5 ? 'Có lễ' : 'Không' }}
+                                            </span>
+                                                                            </div>
+
+                                                                            <div ng-if="row.days[day.key].class != null">
+                                            <span ng-class="{
+                                                'text-success': row.days[day.key].class == 1,
+                                                'text-danger': row.days[day.key].class != 1
+                                            }">
+                                                {{ row.days[day.key].class == 1 ? 'Có GL' : 'Không' }}
+                                            </span>
+                                                                            </div>
+
+                                                                            <div ng-if="!vm.onlySundayColumns && row.days[day.key].extra != null">
+                                            <span ng-class="{
+                                                'text-success': row.days[day.key].extra == 1,
+                                                'text-danger': row.days[day.key].extra != 1
+                                            }">
+                                                {{ row.days[day.key].extra == 1 ? 'Có NK' : 'Không' }}
+                                            </span>
+                                        </div>
+                                    </td>
+
+                                    <td class="summary-sunday-column summary-sunday-cell" ng-if="!vm.onlySaturdayColumns">
+                                        <div ng-if="row.sundaySummary.massTotal > 0">
+                                            Đi lễ {{row.sundaySummary.massYes}}/{{row.sundaySummary.massTotal}} buổi
+                                        </div>
+                                        <div ng-if="row.sundaySummary.classTotal > 0">
+                                            Đi học {{row.sundaySummary.classYes}}/{{row.sundaySummary.classTotal}} buổi
+                                        </div>
+                                    </td>
+
+                                    <td class="summary-saturday-column summary-saturday-cell" ng-if="!vm.onlySundayColumns">
+                                        <div ng-if="row.saturdaySummary.massTotal > 0">
+                                            Đi lễ {{row.saturdaySummary.massYes}}/{{row.saturdaySummary.massTotal}} buổi
+                                        </div>
+                                        <div ng-if="row.saturdaySummary.classTotal > 0">
+                                            Đi học {{row.saturdaySummary.classYes}}/{{row.saturdaySummary.classTotal}} buổi
+                                        </div>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div class="col-md-12">
@@ -1231,5 +1334,28 @@
 
     .modal-lg{
         width: 85%;
+    }
+</style>
+
+<style>
+    th.sunday-column {
+        background-color: #ffeaa7 !important;
+        color: #000 !important;
+        font-weight: bold;
+    }
+
+    td.sunday-column {
+        background-color: #fff7cc !important;
+    }
+
+    .summary-sunday-column {
+        background-color: #eef7ff !important;
+        min-width: 160px;
+        font-weight: bold;
+    }
+
+    .summary-sunday-cell {
+        text-align: left;
+        line-height: 1.8;
     }
 </style>

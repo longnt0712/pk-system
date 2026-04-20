@@ -1639,7 +1639,263 @@
 
             vm.exportPreviewRows = vm.exportAllRows.slice(0, 5);
         };
-        
+
+
+        //theo ngày
+        vm.dailyStatisticDates = [];
+        vm.dailyStatisticRows = [];
+        vm.onlySundayColumns = false;
+        vm.onlySaturdayColumns = false;
+        vm.visibleStatisticDates = [];
+
+        vm.loadDailyStatistics = function () {
+            if (!vm.startDate || !vm.endDate) {
+                toastr.warning("Vui lòng chọn từ ngày và đến ngày", "Thông báo");
+                return;
+            }
+
+            var fromDate = new Date(vm.startDate);
+            var toDate = new Date(vm.endDate);
+
+            fromDate.setHours(0, 0, 0, 0);
+            toDate.setHours(0, 0, 0, 0);
+
+            if (fromDate > toDate) {
+                toastr.warning("Từ ngày không được lớn hơn đến ngày", "Thông báo");
+                return;
+            }
+
+            vm.dailyStatisticDates = buildDateColumns(fromDate, toDate);
+            vm.updateVisibleStatisticDates();
+
+            var search = angular.copy(vm.searchDto || {});
+            search.startDate = fromDate.getTime();
+            search.endDate = toDate.getTime();
+
+            blockUI.start();
+
+            service.getPage(search, 1, 10000).then(function (data) {
+                var records = (data && data.content) ? data.content : [];
+                vm.dailyStatisticRows = buildStatisticRows(records, vm.dailyStatisticDates);
+            }).finally(function () {
+                blockUI.stop();
+            });
+        };
+
+        function buildDateColumns(fromDate, toDate) {
+            var dates = [];
+            var current = new Date(fromDate);
+
+            while (current <= toDate) {
+                var m = moment(current);
+
+                dates.push({
+                    key: m.format('YYYY-MM-DD'),
+                    label: m.locale('en').format('ddd, DD/MM').toLowerCase(),
+                    isSunday: m.day() === 0,
+                    isSaturday: m.day() === 6
+                });
+
+                current.setDate(current.getDate() + 1);
+            }
+
+            return dates;
+        }
+
+        function getFullName(user) {
+            if (!user || !user.person) return '';
+            return [
+                user.person.patron || '',
+                user.person.lastName || '',
+                user.person.firstName || ''
+            ].join(' ').replace(/\s+/g, ' ').trim();
+        }
+
+        function buildStatisticRows(records, dateColumns) {
+            var map = {};
+
+            angular.forEach(records, function (item) {
+                if (!item || !item.user || !item.user.person) return;
+
+                var userId = item.user.id;
+                var fullName = [
+                    item.user.person.patron || '',
+                    item.user.person.lastName || '',
+                    item.user.person.firstName || ''
+                ].join(' ').replace(/\s+/g, ' ').trim();
+
+                if (!map[userId]) {
+                    map[userId] = {
+                        userId: userId,
+                        fullName: fullName,
+                        days: {}
+                    };
+
+                    angular.forEach(dateColumns, function (d) {
+                        map[userId].days[d.key] = {
+                            mass: null,
+                            class: null,
+                            extra: null
+                        };
+                    });
+                }
+
+                var dateKey = null;
+
+                if (item.createDate) {
+                    dateKey = moment(item.createDate).format('YYYY-MM-DD');
+                } else if (item.modifiedDate) {
+                    dateKey = moment(item.modifiedDate).format('YYYY-MM-DD');
+                }
+
+                if (!dateKey || !map[userId].days[dateKey]) return;
+
+                map[userId].days[dateKey] = {
+                    mass: item.statusMass,
+                    class: item.statusClass,
+                    extra: item.extraClass
+                };
+            });
+
+            var rows = Object.keys(map).map(function (key) {
+                map[key].sundaySummary = buildSundaySummary(map[key].days, dateColumns);
+                map[key].saturdaySummary = buildSaturdaySummary(map[key].days, dateColumns);
+                return map[key];
+            });
+
+            return rows;
+        }
+
+        function buildSundaySummary(days, dateColumns) {
+            var summary = {
+                massYes: 0,
+                massTotal: 0,
+                classYes: 0,
+                classTotal: 0
+            };
+
+            angular.forEach(dateColumns, function (day) {
+                if (!day.isSunday) return;
+
+                var value = days[day.key];
+                if (!value) return;
+
+                // LỄ
+                if (value.mass != null) {
+                    summary.massTotal++;
+                    if (value.mass == 1 || value.mass == 5) {
+                        summary.massYes++;
+                    }
+                }
+
+                // GIÁO LÝ
+                if (value.class != null) {
+                    summary.classTotal++;
+                    if (value.class == 1) {
+                        summary.classYes++;
+                    }
+                }
+            });
+
+            return summary;
+        }
+
+        vm.getVisibleStatisticDates = function () {
+            if (!vm.dailyStatisticDates || !vm.dailyStatisticDates.length) {
+                return [];
+            }
+
+            if (vm.onlySundayColumns) {
+                return vm.dailyStatisticDates.filter(function (d) {
+                    return d.isSunday;
+                });
+            }
+
+            return vm.dailyStatisticDates;
+        };
+
+        vm.toggleOnlySundayColumns = function () {
+            vm.onlySundayColumns = !vm.onlySundayColumns;
+            if (vm.onlySundayColumns) {
+                vm.onlySaturdayColumns = false;
+            }
+            vm.updateVisibleStatisticDates();
+        };
+
+        vm.toggleOnlySaturdayColumns = function () {
+            vm.onlySaturdayColumns = !vm.onlySaturdayColumns;
+            if (vm.onlySaturdayColumns) {
+                vm.onlySundayColumns = false;
+            }
+            vm.updateVisibleStatisticDates();
+        };
+
+        vm.updateVisibleStatisticDates = function () {
+            if (!vm.dailyStatisticDates || !vm.dailyStatisticDates.length) {
+                vm.visibleStatisticDates = [];
+                return;
+            }
+
+            if (vm.onlySundayColumns) {
+                vm.visibleStatisticDates = vm.dailyStatisticDates.filter(function (d) {
+                    return d.isSunday;
+                });
+                return;
+            }
+
+            if (vm.onlySaturdayColumns) {
+                vm.visibleStatisticDates = vm.dailyStatisticDates.filter(function (d) {
+                    return d.isSaturday;
+                });
+                return;
+            }
+
+            vm.visibleStatisticDates = vm.dailyStatisticDates;
+        };
+
+        function buildSaturdaySummary(days, dateColumns) {
+            var summary = {
+                massYes: 0,
+                massTotal: 0,
+                classYes: 0,
+                classTotal: 0,
+                extraYes: 0,
+                extraTotal: 0
+            };
+
+            angular.forEach(dateColumns, function (day) {
+                if (!day.isSaturday) return;
+
+                var value = days[day.key];
+                if (!value) return;
+
+                // LỄ
+                if (value.mass != null) {
+                    summary.massTotal++;
+                    if (value.mass == 1 || value.mass == 5) {
+                        summary.massYes++;
+                    }
+                }
+
+                // GIÁO LÝ
+                if (value.class != null) {
+                    summary.classTotal++;
+                    if (value.class == 1) {
+                        summary.classYes++;
+                    }
+                }
+
+                // NGOẠI KHÓA
+                if (value.extra != null) {
+                    summary.extraTotal++;
+                    if (value.extra == 1) {
+                        summary.extraYes++;
+                    }
+                }
+            });
+
+            return summary;
+        }
 
     }
 
