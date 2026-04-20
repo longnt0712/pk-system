@@ -111,7 +111,7 @@
 
                         <div class="col-md-2">
                             <ui-select ng-model="vm.searchDto.group"
-                                       ng-change="vm.groupChange()"
+                                       <!--ng-change="vm.groupChange()"-->
                                        close-on-select="true"
                                        style="width:100%">
                                 <ui-select-match allow-clear="true" placeholder="BAN/HỘI...">
@@ -1355,6 +1355,50 @@
     }
 
     .summary-sunday-cell {
+        text-align: left;
+        line-height: 1.8;
+    }
+
+    th.sunday-column {
+        background-color: #ffeaa7 !important;
+        color: #000 !important;
+        font-weight: bold;
+    }
+
+    td.sunday-column {
+        background-color: #fff7cc !important;
+    }
+
+    .summary-sunday-column {
+        background-color: #eef7ff !important;
+        min-width: 160px;
+        font-weight: bold;
+        color: #000 !important;
+    }
+
+    .summary-sunday-cell {
+        text-align: left;
+        line-height: 1.8;
+    }
+
+    th.saturday-column {
+        background-color: #e8f4ff !important;
+        color: #000 !important;
+        font-weight: bold;
+    }
+
+    td.saturday-column {
+        background-color: #e8f4ff !important;
+    }
+
+    .summary-saturday-column {
+        background-color: #dff0ff !important;
+        min-width: 170px;
+        font-weight: bold;
+        color: #000 !important;
+    }
+
+    .summary-saturday-cell {
         text-align: left;
         line-height: 1.8;
     }
