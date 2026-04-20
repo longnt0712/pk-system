@@ -932,6 +932,14 @@
             {id: 6,name: "PHÉP (GL)"}
         ];
 
+        vm.extraClasses = [
+            {id: 1,name: "CÓ ĐI HỌC"},
+            {id: 2,name: "KHÔNG ĐI HỌC"},
+            {id: 3,name: "MUỘN"},
+            {id: 5,name: "CA ĐOÀN"},
+            {id: 6,name: "PHÉP (GL)"}
+        ];
+
         vm.resetPersonDate = function (user,status,username) {
             vm.personDate = {};
             vm.personDate.user = {};
@@ -949,6 +957,10 @@
             if(vm.checkType == 2){ //điểm danh học GL
                 // vm.personDate.timeGoToClass = Date.parse(now);
                 vm.personDate.statusClass = status;
+            }
+            if(vm.checkType == 3){ //điểm danh học ngoại khóa
+                // vm.personDate.timeGoToClass = Date.parse(now);
+                vm.personDate.extraClass = status;
             }
             // alert(vm.personDate.user.username + "hehe");
         };
@@ -978,6 +990,9 @@
                 if(vm.checkType == 2){
                     vm.checkPerson.status = data.statusClass;
                 }
+                if(vm.checkType == 3){
+                    vm.checkPerson.status = data.extraClass;
+                }
                 vm.confirmCheck();
             });
         };
@@ -995,6 +1010,8 @@
                 personDate.timeGoToChurch = data.timeGoToChurch;
                 personDate.statusClass = data.statusClass;
                 personDate.timeGoToClass = data.timeGoToClass;
+                personDate.extraClass = data.extraClass;
+                personDate.timeGoToExtraClass = data.timeGoToExtraClass;
                 // personDate = data;
                 vm.personDate = {};
                 // console.log(data);
@@ -1004,6 +1021,9 @@
                 }
                 if(checkType == 2){
                     vm.checkPerson.status = data.statusClass;
+                }
+                if(checkType == 3){
+                    vm.checkPerson.status = data.extraClass;
                 }
                 vm.confirmCheck();
             });
@@ -1173,6 +1193,22 @@
                 }
             },
             {
+                key: 'extraClass',
+                title: 'NGOẠI KHÓA',
+                checked: true,
+                width: 18,
+                align: 'center',
+                getter: function (personDate, index) {
+                    return vm.getStatusExtraClassName(personDate.extraClass);
+                },
+                classGetter: function (personDate) {
+                    return vm.getStatusExtraClassClass(personDate.extraClass);
+                },
+                excelFillGetter: function (personDate) {
+                    return vm.getExcelFillByStatus(personDate.extraClass);
+                }
+            },
+            {
                 key: 'enrollmentClass',
                 title: 'LỚP',
                 checked: true,
@@ -1217,6 +1253,18 @@
                 getter: function (personDate, index) {
                     return personDate && personDate.timeGoToClass
                         ? $filter('date')(personDate.timeGoToClass, 'dd/MM/yyyy HH:mm')
+                        : '';
+                }
+            },
+            {
+                key: 'timeGoToExtraClass',
+                title: 'GIỜ ĐI NGOẠI KHÓA',
+                checked: false,
+                width: 22,
+                align: 'center',
+                getter: function (personDate, index) {
+                    return personDate && personDate.timeGoToExtraClass
+                        ? $filter('date')(personDate.timeGoToExtraClass, 'dd/MM/yyyy HH:mm')
                         : '';
                 }
             }
@@ -1358,6 +1406,25 @@
             if (status == 5) return '17A2B8';
             if (status == 6) return 'FFC107';
             return null;
+        };
+
+        vm.getStatusExtraClassName = function (status) {
+            var map = {
+                1: 'CÓ ĐI HỌC',
+                2: 'KHÔNG ĐI HỌC',
+                3: 'MUỘN',
+                5: 'CA ĐOÀN',
+                6: 'PHÉP (NGOẠI KHÓA)'
+            };
+            return map[status] || '';
+        };
+
+        vm.getStatusExtraClassClass = function (status) {
+            if (status == 1) return 'status-class-green';
+            if (status == 2) return 'status-class-red';
+            if (status == 5) return 'status-class-info';
+            if (status == 6) return 'status-class-warning';
+            return '';
         };
 
         vm.exportAttendancePng = function () {

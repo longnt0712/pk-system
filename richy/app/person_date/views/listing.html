@@ -24,6 +24,15 @@
                             ĐIỂM DANH GIÁO LÝ
                         </label>
 
+                        <label>
+                            <input type="radio"
+                                   name="checkType"
+                                   ng-model="vm.checkType"
+                                   ng-value="3"
+                                   ng-change="vm.checkTypeChange()">
+                            ĐIỂM DANH NGOẠI KHÓA
+                        </label>
+
                         <div class="row" ng-show="vm.checkType != null">
                             <button style="margin-right: 20px" ng-click="vm.start()" ng-disabled="vm.scanning">
                                 Ấn để mở Camera
@@ -160,6 +169,7 @@
                                     <th scope="col">TÊN</th>
                                     <th scope="col">LỄ</th>
                                     <th scope="col">GL</th>
+                                    <th scope="col">NGOẠI KHÓA</th>
                                     <th scope="col">LỚP</th>
                                     <th scope="col">GHI CHÚ</th>
                                 </tr>
@@ -186,6 +196,16 @@
                                         <button class="btn btn-danger margin-bottom-10"
                                                 ng-click="vm.saveByClick(personDate, personDate.user,2,2)">
                                             <i class="fa fa-chalkboard-teacher"></i>
+                                        </button>
+
+                                        <button class="btn btn-primary margin-bottom-10"
+                                                ng-click="vm.saveByClick(personDate, personDate.user,3,1)">
+                                            <i class="fa fa fa-bicycle"></i>
+                                        </button>
+
+                                        <button class="btn btn-danger margin-bottom-10"
+                                                ng-click="vm.saveByClick(personDate, personDate.user,3,2)">
+                                            <i class="fa fa fa-bicycle"></i>
                                         </button>
                                     </td>
 
@@ -245,6 +265,31 @@
                                         </ui-select>
                                         <small class="text-red">
                                             {{personDate.timeGoToClass | date:'dd/MM HH:mm'}}
+                                        </small>
+                                    </td>
+
+                                    <td ng-class="{
+                                            'status-class-green': personDate.extraClass == 1,
+                                            'status-class-red': personDate.extraClass == 2,
+                                            'status-class-warning': personDate.extraClass == 6,
+                                            'status-class-info': personDate.extraClass == 5
+                                        }">
+                                        <ui-select ng-model="personDate.extraClass"
+                                                   close-on-select="true"
+                                                   data-ng-change="vm.saveByClick(personDate, personDate.user,3,personDate.extraClass)">
+                                            <ui-select-match allow-clear="false" placeholder="HỌC NGOẠI KHÓA?">
+                                                {{$select.selected.name}}
+                                            </ui-select-match>
+                                            <ui-select-choices repeat="so.id as so in vm.extraClasses | propsFilter:{name:$select.search}"
+                                                               ui-disable-choice="so.id != 6">
+                                                <div class="bold"
+                                                     ng-class="{'text-muted': so.id != 6}"
+                                                     ng-bind-html="so.name | highlight:$select.search">
+                                                </div>
+                                            </ui-select-choices>
+                                        </ui-select>
+                                        <small class="text-red">
+                                            {{personDate.timeGoToExtraClass | date:'dd/MM HH:mm'}}
                                         </small>
                                     </td>
 

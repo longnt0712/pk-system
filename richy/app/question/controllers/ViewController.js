@@ -2323,10 +2323,20 @@
 
         // Fetch the list of voices and populate the voice options.
         var voices = speechSynthesis.getVoices();
+        var voiceSelect = document.getElementById('voice');
+
         function loadVoices() {
             // Fetch the available voices.
             // var voices = speechSynthesis.getVoices();
-            vm.allVoices = voices;
+            // vm.allVoices = voices;
+
+            const voices = window.speechSynthesis.getVoices();
+
+            // clear cũ
+            voiceSelect.innerHTML = '';
+
+            // debug
+            console.log('voices loaded:', voices);
 
             // Loop through each of the voices.
             voices.forEach(function (voice, i) {
@@ -2336,6 +2346,16 @@
                 //english
                 if(angular.isDefined(voice) && voice != null){
                     if(angular.isDefined(voice.lang) && voice.lang != null && voice.lang.length > 0){
+                        if(voice.lang == 'vi-VN'){
+                            var option = document.createElement('option');
+
+                            // Set the options value and text.
+                            option.value = voice.name;
+                            option.innerHTML = voice.name;
+
+                            // Add the option to the voice selector.
+                            voiceSelect.appendChild(option);
+                        }
 
                         if (isIOS()) {
                             //ios
@@ -2457,11 +2477,14 @@
             u.pitch = 1;
             u.volume = 1;
 
-            const v = voices.find(v => v.lang && v.lang.includes('en'));
-            if (v) u.voice = v;
+            const selectedVoice = speechSynthesis.getVoices().find(function (voice) {
+                return voice.name === voiceSelect.value;
+            });
 
-            speechSynthesis.pause();
-            speechSynthesis.resume();
+            if (selectedVoice) {
+                u.voice = selectedVoice;
+            }
+
             speechSynthesis.cancel();
             speechSynthesis.speak(u);
         };
