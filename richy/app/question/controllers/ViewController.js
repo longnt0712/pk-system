@@ -641,15 +641,18 @@
             vm.questions1 = shuffleArray(createQuestionsWithOptions(vm.rawQuestions));
             shuffleArray(vm.questions);
             shuffleArray(vm.questions1);
+
+            if (vm.mode.id == 7) {
+                vm.assignTugEffects(vm.questions);
+                vm.assignTugEffects(vm.questions1);
+            }
+
             vm.currentPosition = 0;
             vm.currentPosition1 = 0;
             vm.currentCard = vm.questions[vm.currentPosition];
             vm.currentCard1 = vm.questions1[vm.currentPosition1];
             vm.isShowDetail = false;
-            // vm.createQuiz(vm.currentCard);
-            // vm.createQuiz(vm.currentCard1);
             vm.answerRewriteWord = '';
-            // console.log('...');
         };
 
         // -> Fisher–Yates shuffle algorithm
@@ -3705,6 +3708,46 @@
             return (100 - vm.getTugProgress()) + '%';
         };
 
+        vm.tugBonusRate = 0.1;   // 10% câu hỏi đúng sẽ kéo 2 nhịp
+        vm.tugPenaltyRate = 0.1; // 10% câu hỏi sai sẽ bị trừ 2 nhịp
+
+        vm.assignTugEffects = function (questions) {
+            if (!angular.isArray(questions) || questions.length === 0) return;
+
+            var i;
+            var indexes = [];
+            var bonusCount = Math.floor(questions.length * vm.tugBonusRate);
+            var penaltyCount = Math.floor(questions.length * vm.tugPenaltyRate);
+
+            // reset effect cũ
+            angular.forEach(questions, function (q) {
+                q.tugEffect = null; // 'bonus2' | 'penalty2' | null
+            });
+
+            for (i = 0; i < questions.length; i++) {
+                indexes.push(i);
+            }
+
+            shuffleArray(indexes);
+
+            // nhóm kéo 2 nhịp khi trả lời đúng
+            for (i = 0; i < bonusCount && i < indexes.length; i++) {
+                questions[indexes[i]].tugEffect = 'bonus2';
+            }
+
+            // nhóm bị trừ 2 nhịp khi trả lời sai
+            for (i = bonusCount; i < bonusCount + penaltyCount && i < indexes.length; i++) {
+                questions[indexes[i]].tugEffect = 'penalty2';
+            }
+        };
+
+        vm.getTugQuestionEffectClass = function (card) {
+            if (!card || !card.tugEffect) return '';
+            if (card.tugEffect === 'bonus2') return 'beam-question-card-gold';
+            if (card.tugEffect === 'penalty2') return 'beam-question-card-red';
+            return '';
+        };
+
         vm.resetTugOfWarDefault = function () {
             vm.cancelTugTimeouts();
             $timeout.cancel(mytimeout);
@@ -3794,22 +3837,28 @@
             }, 100000);
         };
 
-        vm.pullRope = function (player) {
+        vm.pullRope = function (player, step) {
             if (vm.endGame) return;
 
+            step = step || 1;
+
             if (player === 1) {
-                vm.tugScore = Math.max(-vm.tugWinPulls, vm.tugScore - 1);
+                vm.tugScore = Math.max(-vm.tugWinPulls, vm.tugScore - step);
                 if (vm.tugScore <= -vm.tugWinPulls) {
                     vm.finishTugOfWar(1);
                 } else {
-                    vm.tugStatusText = 'PLAYER 1 ĐANG ÉP DẦN';
+                    vm.tugStatusText = step === 2
+                        ? 'PLAYER 1 KÉO X2!'
+                        : 'PLAYER 1 ĐANG ÉP DẦN';
                 }
             } else {
-                vm.tugScore = Math.min(vm.tugWinPulls, vm.tugScore + 1);
+                vm.tugScore = Math.min(vm.tugWinPulls, vm.tugScore + step);
                 if (vm.tugScore >= vm.tugWinPulls) {
                     vm.finishTugOfWar(2);
                 } else {
-                    vm.tugStatusText = 'PLAYER 2 ĐANG ÉP DẦN';
+                    vm.tugStatusText = step === 2
+                        ? 'PLAYER 2 KÉO X2!'
+                        : 'PLAYER 2 ĐANG ÉP DẦN';
                 }
             }
         };
@@ -3836,25 +3885,30 @@
             }
         };
 
-        vm.pushBackRope = function (player) {
+        vm.pushBackRope = function (player, step) {
             if (vm.endGame) return;
 
-            // player trả lời sai sẽ bị đẩy ngược về phía đối thủ 1 nhịp
+            step = step || 1;
+
             if (player === 1) {
-                vm.tugScore = Math.min(vm.tugWinPulls, vm.tugScore + 1);
+                vm.tugScore = Math.min(vm.tugWinPulls, vm.tugScore + step);
 
                 if (vm.tugScore >= vm.tugWinPulls) {
                     vm.finishTugOfWar(2);
                 } else {
-                    vm.tugStatusText = 'PLAYER 1 BỊ Never Give Up';
+                    vm.tugStatusText = step === 2
+                        ? 'PLAYER 1 BỊ TRỪ X2!'
+                        : 'PLAYER 1 BỊ Never Give Up';
                 }
             } else {
-                vm.tugScore = Math.max(-vm.tugWinPulls, vm.tugScore - 1);
+                vm.tugScore = Math.max(-vm.tugWinPulls, vm.tugScore - step);
 
                 if (vm.tugScore <= -vm.tugWinPulls) {
                     vm.finishTugOfWar(1);
                 } else {
-                    vm.tugStatusText = 'PLAYER 2 BỊ Never Give Up';
+                    vm.tugStatusText = step === 2
+                        ? 'PLAYER 2 BỊ TRỪ X2!'
+                        : 'PLAYER 2 BỊ Never Give Up';
                 }
             }
         };
@@ -3870,16 +3924,26 @@
             });
             item.chosen = true;
 
+            var currentCard = player === 1 ? vm.currentCard : vm.currentCard1;
+            var pullStep = 1;
+            var pushStep = 1;
+
+            if (currentCard && currentCard.tugEffect === 'bonus2') {
+                pullStep = 2;
+            }
+
+            if (currentCard && currentCard.tugEffect === 'penalty2') {
+                pushStep = 2;
+            }
+
             if (correct === true) {
                 if (player === 1) {
                     stillInAQuestion1 = false;
                     vm.streakPlayer1 = vm.streakPlayer1 + 1;
-
-                    // điểm thuần tăng theo streak
                     vm.score1 = vm.score1 + vm.getTugPointGain(vm.streakPlayer1);
 
                     vm.isPulling1 = true;
-                    vm.pullRope(1);
+                    vm.pullRope(1, pullStep);
 
                     if (!vm.endGame) {
                         tugMoveTimeout1 = $timeout(function () {
@@ -3893,12 +3957,10 @@
                 } else {
                     stillInAQuestion2 = false;
                     vm.streakPlayer2 = vm.streakPlayer2 + 1;
-
-                    // điểm thuần tăng theo streak
                     vm.score2 = vm.score2 + vm.getTugPointGain(vm.streakPlayer2);
 
                     vm.isPulling2 = true;
-                    vm.pullRope(2);
+                    vm.pullRope(2, pullStep);
 
                     if (!vm.endGame) {
                         tugMoveTimeout2 = $timeout(function () {
@@ -3917,7 +3979,7 @@
                     stillInAQuestion1 = true;
                     vm.isPulling1 = true;
 
-                    vm.pushBackRope(1);
+                    vm.pushBackRope(1, pushStep);
                     vm.sayingWhenWrong();
 
                     if (!vm.endGame) {
@@ -3936,7 +3998,7 @@
                     stillInAQuestion2 = true;
                     vm.isPulling2 = true;
 
-                    vm.pushBackRope(2);
+                    vm.pushBackRope(2, pushStep);
                     vm.sayingWhenWrong();
 
                     if (!vm.endGame) {
