@@ -289,7 +289,7 @@
         vm.groupChange = function () {
             if(vm.searchDto.group != null){
                 vm.searchDto.groupId = vm.searchDto.group.id;
-                vm.getPage();
+                // vm.getPage();
             }else {
                 vm.searchDto.groupId = null;
             }
@@ -1666,9 +1666,15 @@
             }
 
             vm.dailyStatisticDates = buildDateColumns(fromDate, toDate);
-            vm.updateVisibleStatisticDates();
 
             var search = angular.copy(vm.searchDto || {});
+
+            if (search.group && search.group.id) {
+                search.groupId = search.group.id;
+            } else {
+                search.groupId = null;
+            }
+
             search.startDate = fromDate.getTime();
             search.endDate = toDate.getTime();
 
@@ -1677,6 +1683,7 @@
             service.getPage(search, 1, 10000).then(function (data) {
                 var records = (data && data.content) ? data.content : [];
                 vm.dailyStatisticRows = buildStatisticRows(records, vm.dailyStatisticDates);
+                vm.updateVisibleStatisticDates();
             }).finally(function () {
                 blockUI.stop();
             });
