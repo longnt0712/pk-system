@@ -258,7 +258,7 @@
                 console.log('isRoleEducationManagerment');
             }
         });
-        
+
         vm.personDate = {};
         vm.personDates = [];
         vm.selectedPersonDates = [];
@@ -647,7 +647,7 @@
 
                     });
 
-               
+
                 }
             }, function () {
                 vm.personDate = {};
@@ -708,7 +708,7 @@
 
             modalInstance.result.then(function (confirm) {
                 if (confirm == 'yes') {
-                    
+
                 }
             }, function () {
             });
@@ -727,7 +727,7 @@
 
             modalInstance.result.then(function (confirm) {
                 if (confirm == 'yes') {
-                	console.log(vm.selectedPersonDates);
+                    console.log(vm.selectedPersonDates);
                     service.deleteObject(id, function success() {
                         toastr.info('Bạn đã xóa thành công', 'Thông báo');
                         vm.getPage();
@@ -915,7 +915,7 @@
         //statusMass =>  1: có đi lễ ; 2: không đi lễ; 3: muộn; 5: ca đoàn; 6: Phép (lễ)
 
         //statusClass => 1: có đi học ; 2: không đi học; 3: muộn; 5: ca đoàn; 6: Phép (GL)
-        
+
         vm.statusMasses = [
             {id: 1,name: "CÓ ĐI LỄ"},
             {id: 2,name: "KHÔNG ĐI LỄ"},
@@ -964,7 +964,7 @@
             }
             // alert(vm.personDate.user.username + "hehe");
         };
-        
+
         vm.checkPerson = {};
         vm.saveByScanQr = function (username) { // quét qr thì chỉ cho điểm danh là có đi lễ hoặc có đi học giáo lý thôi
             vm.resetPersonDate(null,1,username); // nên là 2 cái status set là 1 hết
@@ -1128,6 +1128,10 @@
 
         vm.exportSelectedColumns = [];
         vm.exportAllRows = [];
+
+        vm.showMass = true;
+        vm.showClass = true;
+        vm.showExtra = true;
 
         vm.exportColumns = [
             {
@@ -1735,6 +1739,7 @@
                     map[userId] = {
                         userId: userId,
                         fullName: fullName,
+                        birthDate: item.user.person.birthDate ? moment(item.user.person.birthDate).format('DD/MM/YYYY') : '',
                         days: {}
                     };
 
@@ -1767,6 +1772,7 @@
             var rows = Object.keys(map).map(function (key) {
                 map[key].sundaySummary = buildSundaySummary(map[key].days, dateColumns);
                 map[key].saturdaySummary = buildSaturdaySummary(map[key].days, dateColumns);
+                map[key].rangeSummary = buildRangeSummary(map[key].days, dateColumns);
                 return map[key];
             });
 
@@ -1843,21 +1849,29 @@
                 return;
             }
 
+            var dates = vm.dailyStatisticDates;
+
+            // lọc theo nút chỉ hiện CN / Thứ 7
             if (vm.onlySundayColumns) {
-                vm.visibleStatisticDates = vm.dailyStatisticDates.filter(function (d) {
+                dates = dates.filter(function (d) {
                     return d.isSunday;
                 });
-                return;
-            }
-
-            if (vm.onlySaturdayColumns) {
-                vm.visibleStatisticDates = vm.dailyStatisticDates.filter(function (d) {
+            } else if (vm.onlySaturdayColumns) {
+                dates = dates.filter(function (d) {
                     return d.isSaturday;
                 });
-                return;
             }
 
-            vm.visibleStatisticDates = vm.dailyStatisticDates;
+            // ẩn các ngày không phải CN mà toàn bộ học sinh đều trống
+            dates = dates.filter(function (d) {
+                if (d.isSunday) {
+                    return true;
+                }
+
+                return vm.dayHasAnyVisibleData(d);
+            });
+
+            vm.visibleStatisticDates = dates;
         };
 
         function buildSaturdaySummary(days, dateColumns) {
@@ -1903,6 +1917,393 @@
 
             return summary;
         }
+
+        vm.dayHasAnyVisibleData = function (day) {
+            if (!vm.dailyStatisticRows || !vm.dailyStatisticRows.length) {
+                return false;
+            }
+
+            for (var i = 0; i < vm.dailyStatisticRows.length; i++) {
+                var row = vm.dailyStatisticRows[i];
+                if (!row || !row.days || !row.days[day.key]) continue;
+
+                var cell = row.days[day.key];
+
+                if (vm.showMass && cell.mass != null) {
+                    return true;
+                }
+
+                if (vm.showClass && cell.class != null) {
+                    return true;
+                }
+
+                if (vm.showExtra && cell.extra != null) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        function buildRangeSummary(days, dateColumns) {
+            var summary = {
+                massYes: 0,
+                massTotal: 0,
+                classYes: 0,
+                classTotal: 0,
+                extraYes: 0,
+                extraTotal: 0
+            };
+
+            angular.forEach(dateColumns, function (day) {
+                var value = days[day.key];
+                if (!value) return;
+
+                if (value.mass != null) {
+                    summary.massTotal++;
+                    if (value.mass == 1 || value.mass == 5) {
+                        summary.massYes++;
+                    }
+                }
+
+                if (value.class != null) {
+                    summary.classTotal++;
+                    if (value.class == 1) {
+                        summary.classYes++;
+                    }
+                }
+
+                if (value.extra != null) {
+                    summary.extraTotal++;
+                    if (value.extra == 1) {
+                        summary.extraYes++;
+                    }
+                }
+            });
+
+            return summary;
+        }
+
+        vm.showAllColumns = function () {
+            vm.onlySundayColumns = false;
+            vm.onlySaturdayColumns = false;
+            vm.updateVisibleStatisticDates();
+        };
+
+        vm.exportDailyStatisticExcel = async function () {
+            if (!vm.dailyStatisticRows || !vm.dailyStatisticRows.length) {
+                toastr.warning("Không có dữ liệu để xuất Excel", "Thông báo");
+                return;
+            }
+
+            if (typeof ExcelJS === "undefined") {
+                toastr.error("Thiếu thư viện ExcelJS", "Lỗi");
+                return;
+            }
+
+            var workbook = new ExcelJS.Workbook();
+            var worksheet = workbook.addWorksheet("Thong_ke_ngay");
+
+            var visibleDates = vm.visibleStatisticDates || [];
+
+            var headerRow1 = ["STT", "DANH SÁCH HỌC SINH", "NGÀY SINH"];
+            var headerRow2 = ["", "", ""];
+
+            angular.forEach(visibleDates, function (day) {
+                headerRow1.push(day.label);
+
+                var parts = [];
+                if (vm.showMass) parts.push("Lễ");
+                if (vm.showClass) parts.push("GL");
+                if (vm.showExtra) parts.push("NK");
+
+                headerRow2.push(parts.join(" | "));
+            });
+
+            if (vm.onlySundayColumns) {
+                headerRow1.push("Tổng kết Chúa nhật");
+                headerRow2.push("");
+            } else if (vm.onlySaturdayColumns) {
+                headerRow1.push("Tổng kết Thứ 7");
+                headerRow2.push("");
+            } else {
+                headerRow1.push("Tổng kết toàn bộ");
+                headerRow2.push("");
+            }
+
+            worksheet.addRow(headerRow1);
+            worksheet.addRow(headerRow2);
+
+            angular.forEach(vm.dailyStatisticRows, function (row, index) {
+                var excelRow = [];
+                excelRow.push(index + 1);
+                excelRow.push(row.fullName || "");
+                excelRow.push(row.birthDate || "");
+
+                angular.forEach(visibleDates, function (day) {
+                    var cell = (row.days && row.days[day.key]) ? row.days[day.key] : {};
+                    var parts = [];
+
+                    if (vm.showMass) {
+                        parts.push((cell.mass == 1 || cell.mass == 5) ? "Có lễ" : "Không");
+                    }
+                    if (vm.showClass) {
+                        parts.push(cell.class == 1 ? "Có GL" : "Không");
+                    }
+                    if (vm.showExtra) {
+                        parts.push(cell.extra == 1 ? "Có NK" : "Không");
+                    }
+
+                    excelRow.push(parts.join("\n"));
+                });
+
+                var summaryText = [];
+                if (vm.onlySundayColumns) {
+                    if (vm.showMass) summaryText.push("Đi lễ " + (row.sundaySummary.massYes || 0) + "/" + (row.sundaySummary.massTotal || 0));
+                    if (vm.showClass) summaryText.push("Đi học " + (row.sundaySummary.classYes || 0) + "/" + (row.sundaySummary.classTotal || 0));
+                } else if (vm.onlySaturdayColumns) {
+                    if (vm.showMass) summaryText.push("Đi lễ " + (row.saturdaySummary.massYes || 0) + "/" + (row.saturdaySummary.massTotal || 0));
+                    if (vm.showClass) summaryText.push("Đi học " + (row.saturdaySummary.classYes || 0) + "/" + (row.saturdaySummary.classTotal || 0));
+                    if (vm.showExtra) summaryText.push("Ngoại khóa " + (row.saturdaySummary.extraYes || 0) + "/" + (row.saturdaySummary.extraTotal || 0));
+                } else {
+                    if (vm.showMass) summaryText.push("Đi lễ " + (row.rangeSummary.massYes || 0) + "/" + (row.rangeSummary.massTotal || 0));
+                    if (vm.showClass) summaryText.push("Đi học " + (row.rangeSummary.classYes || 0) + "/" + (row.rangeSummary.classTotal || 0));
+                    if (vm.showExtra) summaryText.push("Ngoại khóa " + (row.rangeSummary.extraYes || 0) + "/" + (row.rangeSummary.extraTotal || 0));
+                }
+
+                excelRow.push(summaryText.join("\n"));
+                worksheet.addRow(excelRow);
+            });
+
+            var columns = [
+                { width: 8 },
+                { width: 30 },
+                { width: 14 }
+            ];
+
+            for (var i = 0; i < visibleDates.length; i++) {
+                columns.push({ width: 18 });
+            }
+
+            columns.push({ width: 22 });
+
+            worksheet.columns = columns;
+
+            // Style toàn bảng
+            worksheet.eachRow(function (row, rowNumber) {
+                row.eachCell(function (cell, colNumber) {
+                    cell.border = {
+                        top: { style: "thin" },
+                        left: { style: "thin" },
+                        bottom: { style: "thin" },
+                        right: { style: "thin" }
+                    };
+
+                    cell.alignment = {
+                        vertical: "middle",
+                        horizontal: colNumber === 2 ? "left" : "center",
+                        wrapText: true
+                    };
+
+                    if (rowNumber <= 2) {
+                        cell.font = { bold: true };
+                    }
+                });
+            });
+
+            // Merge STT + tên
+            worksheet.mergeCells(1, 1, 2, 1);
+            worksheet.mergeCells(1, 2, 2, 2);
+            worksheet.mergeCells(1, 3, 2, 3);
+
+            // Style header ngày
+            for (var c = 4; c <= 3 + visibleDates.length; c++) {
+                var day = visibleDates[c - 4];
+                var topCell = worksheet.getCell(1, c);
+                var subCell = worksheet.getCell(2, c);
+
+                if (day.isSunday) {
+                    topCell.fill = {
+                        type: "pattern",
+                        pattern: "solid",
+                        fgColor: { argb: "FFFFEAA7" }
+                    };
+                    subCell.fill = {
+                        type: "pattern",
+                        pattern: "solid",
+                        fgColor: { argb: "FFFFEAA7" }
+                    };
+                } else if (day.isSaturday) {
+                    topCell.fill = {
+                        type: "pattern",
+                        pattern: "solid",
+                        fgColor: { argb: "FFE8F4FF" }
+                    };
+                    subCell.fill = {
+                        type: "pattern",
+                        pattern: "solid",
+                        fgColor: { argb: "FFE8F4FF" }
+                    };
+                }
+            }
+
+            // Cột tổng kết cuối
+            var summaryCol = 4 + visibleDates.length;
+            worksheet.mergeCells(1, summaryCol, 2, summaryCol);
+            var summaryHeaderCell = worksheet.getCell(1, summaryCol);
+            summaryHeaderCell.font = { bold: true };
+
+            if (vm.onlySundayColumns) {
+                summaryHeaderCell.fill = {
+                    type: "pattern",
+                    pattern: "solid",
+                    fgColor: { argb: "FFEEF7FF" }
+                };
+            } else if (vm.onlySaturdayColumns) {
+                summaryHeaderCell.fill = {
+                    type: "pattern",
+                    pattern: "solid",
+                    fgColor: { argb: "FFDFF0FF" }
+                };
+            } else {
+                summaryHeaderCell.fill = {
+                    type: "pattern",
+                    pattern: "solid",
+                    fgColor: { argb: "FFF3F0FF" }
+                };
+            }
+
+            // Tô màu thân bảng
+            for (var r = 3; r <= worksheet.rowCount; r++) {
+                for (var c2 = 3; c2 <= 2 + visibleDates.length; c2++) {
+                    var d = visibleDates[c2 - 3];
+                    var bodyCell = worksheet.getCell(r, c2);
+
+                    if (d.isSunday) {
+                        bodyCell.fill = {
+                            type: "pattern",
+                            pattern: "solid",
+                            fgColor: { argb: "FFFFF7CC" }
+                        };
+                    } else if (d.isSaturday) {
+                        bodyCell.fill = {
+                            type: "pattern",
+                            pattern: "solid",
+                            fgColor: { argb: "FFE8F4FF" }
+                        };
+                    }
+                }
+
+                var summaryBodyCell = worksheet.getCell(r, summaryCol);
+                if (vm.onlySundayColumns) {
+                    summaryBodyCell.fill = {
+                        type: "pattern",
+                        pattern: "solid",
+                        fgColor: { argb: "FFEEF7FF" }
+                    };
+                } else if (vm.onlySaturdayColumns) {
+                    summaryBodyCell.fill = {
+                        type: "pattern",
+                        pattern: "solid",
+                        fgColor: { argb: "FFDFF0FF" }
+                    };
+                } else {
+                    summaryBodyCell.fill = {
+                        type: "pattern",
+                        pattern: "solid",
+                        fgColor: { argb: "FFF3F0FF" }
+                    };
+                }
+            }
+
+            var buffer = await workbook.xlsx.writeBuffer();
+            var blob = new Blob([buffer], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            });
+
+            saveAs(blob, buildDailyStatisticFileName("xlsx"));
+        };
+
+        vm.exportDailyStatisticImage = function () {
+            if (!vm.dailyStatisticRows || !vm.dailyStatisticRows.length) {
+                toastr.warning("Không có dữ liệu để xuất ảnh", "Thông báo");
+                return;
+            }
+
+            if (typeof html2canvas === "undefined") {
+                toastr.error("Thiếu thư viện html2canvas", "Lỗi");
+                return;
+            }
+
+            var table = document.getElementById("daily-statistic-wrapper");
+            if (!table) {
+                toastr.error("Không tìm thấy bảng thống kê", "Lỗi");
+                return;
+            }
+
+            html2canvas(table, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: "#ffffff"
+            }).then(function (canvas) {
+                var image = canvas.toDataURL("image/png");
+                var link = document.createElement("a");
+                link.href = image;
+                link.download = buildDailyStatisticFileName("png");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }).catch(function (err) {
+                console.error(err);
+                toastr.error("Xuất ảnh thất bại", "Lỗi");
+            });
+        };
+
+        function buildDailyStatisticFileName(ext) {
+            var fromText = vm.startDate ? moment(vm.startDate).format("YYYYMMDD") : "from";
+            var toText = vm.endDate ? moment(vm.endDate).format("YYYYMMDD") : "to";
+
+            var mode = "toan_bo";
+            if (vm.onlySundayColumns) {
+                mode = "chu_nhat";
+            } else if (vm.onlySaturdayColumns) {
+                mode = "thu_7";
+            }
+
+            return "thong_ke_theo_ngay_" + mode + "_" + fromText + "_" + toText + "." + ext;
+        }
+
+        vm.getStatisticExcelHeaderStyle = function (day) {
+            var style = {
+                'text-align': 'center',
+                'font-weight': 'bold',
+                'border': '1px solid #000'
+            };
+
+            if (day && day.isSunday) {
+                style['background'] = '#ffeaa7';
+            } else if (day && day.isSaturday) {
+                style['background'] = '#e8f4ff';
+            }
+
+            return style;
+        };
+
+        vm.getStatisticExcelCellStyle = function (day) {
+            var style = {
+                'text-align': 'center',
+                'border': '1px solid #000',
+                'vertical-align': 'top'
+            };
+
+            if (day && day.isSunday) {
+                style['background'] = '#fff7cc';
+            } else if (day && day.isSaturday) {
+                style['background'] = '#e8f4ff';
+            }
+
+            return style;
+        };
 
     }
 
