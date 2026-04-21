@@ -933,8 +933,8 @@
         ];
 
         vm.extraClasses = [
-            {id: 1,name: "CÓ ĐI HỌC"},
-            {id: 2,name: "KHÔNG ĐI HỌC"},
+            {id: 1,name: "CÓ ĐI NK"},
+            {id: 2,name: "KHÔNG ĐI NK"},
             {id: 3,name: "MUỘN"},
             {id: 5,name: "CA ĐOÀN"},
             {id: 6,name: "PHÉP (GL)"}
