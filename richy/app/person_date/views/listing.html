@@ -451,6 +451,7 @@
                                     <th rowspan="2">STT</th>
                                     <th rowspan="2">DANH SÁCH HỌC SINH</th>
                                     <th rowspan="2">NGÀY SINH</th>
+                                    <th rowspan="2">LỚP</th>
 
                                     <th ng-repeat="day in vm.visibleStatisticDates track by $index"
                                             ng-class="{
@@ -484,6 +485,7 @@
                                     <td>{{$index + 1}}</td>
                                     <td class="text-left">{{row.fullName}}</td>
                                     <td>{{row.birthDate}}</td>
+                                    <td>{{row.className}}</td>
 
                                     <td ng-repeat="day in vm.visibleStatisticDates track by $index"
                                             ng-class="{

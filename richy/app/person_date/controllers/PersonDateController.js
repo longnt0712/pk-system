@@ -1699,10 +1699,12 @@
 
             while (current <= toDate) {
                 var m = moment(current);
+                var label = m.locale('en').format('ddd, DD/MM');
+                label = label.charAt(0).toUpperCase() + label.slice(1);
 
                 dates.push({
                     key: m.format('YYYY-MM-DD'),
-                    label: m.locale('en').format('ddd, DD/MM').toLowerCase(),
+                    label: label,
                     isSunday: m.day() === 0,
                     isSaturday: m.day() === 6
                 });
@@ -1740,6 +1742,7 @@
                         userId: userId,
                         fullName: fullName,
                         birthDate: item.user.person.birthDate ? moment(item.user.person.birthDate).format('DD/MM/YYYY') : '',
+                        className: vm.enrollmentClassMap[item.user.person.enrollmentClass] || '',
                         days: {}
                     };
 
@@ -2006,8 +2009,8 @@
 
             var visibleDates = vm.visibleStatisticDates || [];
 
-            var headerRow1 = ["STT", "DANH SÁCH HỌC SINH", "NGÀY SINH"];
-            var headerRow2 = ["", "", ""];
+            var headerRow1 = ["STT", "DANH SÁCH HỌC SINH", "NGÀY SINH", "LỚP"];
+            var headerRow2 = ["", "", "", ""];
 
             angular.forEach(visibleDates, function (day) {
                 headerRow1.push(day.label);
@@ -2039,6 +2042,7 @@
                 excelRow.push(index + 1);
                 excelRow.push(row.fullName || "");
                 excelRow.push(row.birthDate || "");
+                excelRow.push(row.className || "");
 
                 angular.forEach(visibleDates, function (day) {
                     var cell = (row.days && row.days[day.key]) ? row.days[day.key] : {};
@@ -2078,7 +2082,8 @@
             var columns = [
                 { width: 8 },
                 { width: 30 },
-                { width: 14 }
+                { width: 14 },
+                { width: 12 }
             ];
 
             for (var i = 0; i < visibleDates.length; i++) {
@@ -2115,10 +2120,11 @@
             worksheet.mergeCells(1, 1, 2, 1);
             worksheet.mergeCells(1, 2, 2, 2);
             worksheet.mergeCells(1, 3, 2, 3);
+            worksheet.mergeCells(1, 4, 2, 4);
 
             // Style header ngày
-            for (var c = 4; c <= 3 + visibleDates.length; c++) {
-                var day = visibleDates[c - 4];
+            for (var c = 5; c <= 4 + visibleDates.length; c++) {
+                var day = visibleDates[c - 5];
                 var topCell = worksheet.getCell(1, c);
                 var subCell = worksheet.getCell(2, c);
 
@@ -2148,7 +2154,7 @@
             }
 
             // Cột tổng kết cuối
-            var summaryCol = 4 + visibleDates.length;
+            var summaryCol = 5 + visibleDates.length;
             worksheet.mergeCells(1, summaryCol, 2, summaryCol);
             var summaryHeaderCell = worksheet.getCell(1, summaryCol);
             summaryHeaderCell.font = { bold: true };
