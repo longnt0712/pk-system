@@ -80,12 +80,19 @@ public class PersonDto extends AuditableEntityDto {
 	
 	private String diocese;// giáo phận
 	
+	private String personNote;
+
+	public String getPersonNote() {
+		return personNote;
+	}
+
+	public void setPersonNote(String personNote) {
+		this.personNote = personNote;
+	}
 
 	public String getDiocese() {
 		return diocese;
 	}
-
-
 
 	public String getPatron() {
 		return patron;
@@ -516,6 +523,7 @@ public class PersonDto extends AuditableEntityDto {
 			this.diocese = p.getDiocese();
 			this.enrollmentClass = p.getEnrollmentClass();
 			this.patron = p.getPatron();
+			this.personNote = p.getPersonNote();
 			if (p.getUser() != null) {
 				this.userId = p.getUser().getId();
 			}

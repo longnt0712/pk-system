@@ -171,6 +171,17 @@ public class Person extends BaseObject {
 	@Column(name = "zalo_status")
 	private Integer zaloStatus;
 	
+	@Column(name = "person_note")
+	private String personNote;
+
+	public String getPersonNote() {
+		return personNote;
+	}
+
+	public void setPersonNote(String personNote) {
+		this.personNote = personNote;
+	}
+
 	public String getDiocese() {
 		return diocese;
 	}

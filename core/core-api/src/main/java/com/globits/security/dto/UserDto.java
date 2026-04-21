@@ -78,6 +78,7 @@ public class UserDto extends AuditableEntityDto {
 			this.person.setSacrament(entity.getPerson().getSacrament());
 			this.person.setBirthDate(entity.getPerson().getBirthDate());
 			this.person.setPhoneNumber(entity.getPerson().getPhoneNumber());
+			this.person.setPersonNote(entity.getPerson().getPersonNote());
 		}
 
 		if (entity.getRoles() != null) {

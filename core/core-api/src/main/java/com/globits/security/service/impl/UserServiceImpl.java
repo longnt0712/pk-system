@@ -562,6 +562,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 			person.setPatron(personDto.getPatron());
 			person.setSacrament(personDto.getSacrament());
 			person.setPhoneNumber(personDto.getPhoneNumber());
+			person.setPersonNote(personDto.getPersonNote());
 
 			if (personDto.getEthnics() != null && CommonUtils.isPositive(personDto.getEthnics().getId(), true)) {
 
@@ -674,6 +675,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 			person.setPatron(personDto.getPatron());
 			person.setSacrament(personDto.getSacrament());
 			person.setPhoneNumber(personDto.getPhoneNumber());
+			person.setPersonNote(personDto.getPersonNote());
 
 			if (personDto.getEthnics() != null && CommonUtils.isPositive(personDto.getEthnics().getId(), true)) {
 
@@ -791,6 +793,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 			person.setPatron(personDto.getPatron());
 			person.setSacrament(personDto.getSacrament());
 			person.setPhoneNumber(personDto.getPhoneNumber());
+			person.setPersonNote(personDto.getPersonNote());
 
 			if (personDto.getEthnics() != null && CommonUtils.isPositive(personDto.getEthnics().getId(), true)) {
 
