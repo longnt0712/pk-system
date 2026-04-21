@@ -19,6 +19,8 @@ public class PersonDateDto implements Serializable{
 	// 1: có đi lễ ; 2: không đi lễ; 3: muộn; 5: ca đoàn; 6: Phép (lễ)
 	private Integer statusClass;
 	// 1: có đi học ; 2: không đi học; 3: muộn; 5: ca đoàn; 6: Phép (GL)
+	private Integer extraClass;
+	// 1: có đi học ; 2: không đi học; 3: muộn; 5: ca đoàn; 6: Phép (NK)
 
 	private String description;
 	private String textSearch;
@@ -27,10 +29,25 @@ public class PersonDateDto implements Serializable{
 	private Date timeGoToChurch;
 	private Date timeGoToClass;
 	private Long groupId;
+	private Date timeGoToExtraClass;
+
 
 	private LocalDateTime startDate;
 	private LocalDateTime endDate;
 	
+	public Integer getExtraClass() {
+		return extraClass;
+	}
+	public void setExtraClass(Integer extraClass) {
+		this.extraClass = extraClass;
+	}
+	
+	public Date getTimeGoToExtraClass() {
+		return timeGoToExtraClass;
+	}
+	public void setTimeGoToExtraClass(Date timeGoToExtraClass) {
+		this.timeGoToExtraClass = timeGoToExtraClass;
+	}
 	public Long getGroupId() {
 		return groupId;
 	}
@@ -160,8 +177,21 @@ public class PersonDateDto implements Serializable{
 			e.printStackTrace();
 		}
 		
+		try {
+			if(domain.getTimeGoToExtraClass() != null) {
+				this.timeGoToExtraClass = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(domain.getTimeGoToExtraClass().toString());	
+			}
+			if(domain.getTimeGoToExtraClass() != null) {
+				this.timeGoToExtraClass = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(domain.getTimeGoToExtraClass().toString());	
+			}
+		} catch (ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		this.statusMass = domain.getStatusMass();
 		this.statusClass = domain.getStatusClass();
+		this.extraClass = domain.getExtraClass();
 		this.description = domain.getDescription();
 	}
 	

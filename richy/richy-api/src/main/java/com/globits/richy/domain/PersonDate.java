@@ -30,6 +30,10 @@ public class PersonDate extends BaseObject{
 	private Integer statusClass;
 	// 1: có đi học ; 2: không đi học; 3: muộn; 5: ca đoàn; 6: Phép (GL)
 	
+	@Column(name = "extra_class")
+	private Integer extraClass;
+	// 1: có đi học ; 2: không đi học; 3: muộn; 5: ca đoàn; 6: Phép (NK)
+	
 	@Column(name = "description")
 	private String description;
 	
@@ -40,9 +44,29 @@ public class PersonDate extends BaseObject{
 	@Column(name = "time_go_to_class", nullable = true)
 	@Type(type="org.jadira.usertype.dateandtime.joda.PersistentLocalDateTime")
 	private LocalDateTime timeGoToClass;
+	
+	@Column(name = "time_go_to_extra_class", nullable = true)
+	@Type(type="org.jadira.usertype.dateandtime.joda.PersistentLocalDateTime")
+	private LocalDateTime timeGoToExtraClass;
 
 	public LocalDateTime getTimeGoToClass() {
 		return timeGoToClass;
+	}
+
+	public Integer getExtraClass() {
+		return extraClass;
+	}
+
+	public void setExtraClass(Integer extraClass) {
+		this.extraClass = extraClass;
+	}
+
+	public LocalDateTime getTimeGoToExtraClass() {
+		return timeGoToExtraClass;
+	}
+
+	public void setTimeGoToExtraClass(LocalDateTime timeGoToExtraClass) {
+		this.timeGoToExtraClass = timeGoToExtraClass;
 	}
 
 	public void setTimeGoToClass(LocalDateTime timeGoToClass) {

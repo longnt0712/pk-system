@@ -319,6 +319,24 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 			domain.setStatusClass(dto.getStatusClass());
 		}
 		
+		if(dto.getExtraClass() != null) {
+			if(dto.getExtraClass() == 1) {// có đi học giáo lý
+			    LocalDateTime localDateTime = LocalDateTime.now();
+			    domain.setTimeGoToExtraClass(localDateTime);
+			}
+			if(dto.getExtraClass() == 2) {// không đi học giáo lý
+			    domain.setTimeGoToExtraClass(null);
+			}
+			if(dto.getExtraClass() == 3) {// muộn => tách ra để sau này sửa thêm
+			    LocalDateTime localDateTime = LocalDateTime.now();
+			    domain.setTimeGoToExtraClass(localDateTime);
+			}
+			if(dto.getExtraClass() == 6) {// Phép
+			    domain.setTimeGoToExtraClass(null);
+			}
+			domain.setExtraClass(dto.getExtraClass());
+		}
+		
 		if(dto.getStatusMass() != null) {
 			if(dto.getStatusMass() == 1) {// có đi LỄ
 			    LocalDateTime localDateTime = LocalDateTime.now();
@@ -405,6 +423,7 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 			personDate.setUser(user);
 			personDate.setStatusClass(2);
 			personDate.setStatusMass(2);
+			personDate.setExtraClass(2);
 			personDates.add(personDate);
 		}
 		if(personDates != null && personDates.size() > 0) {
