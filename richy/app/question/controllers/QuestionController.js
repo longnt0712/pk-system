@@ -409,7 +409,7 @@
                 // if(vm.topicCategories != null){
                     // vm.searchTopicDto.topicCategory = vm.topicCategories[0];
                 // }
-                vm.getTopics();
+                // vm.getTopics();
             });
         };
         vm.getPageTopicCategory();

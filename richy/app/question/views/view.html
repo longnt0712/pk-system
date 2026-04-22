@@ -55,6 +55,14 @@
                         <!--<button class="btn btn-brown" ng-click="vm.changeMode('rewrite')" ng-style="vm.isPlayRewriteWord == true && {'background':'#35271d'} || {'background': '#5b4739'}"><i class="fa-solid fa-gamepad fa-beat"></i> Rewrite Words</button>-->
                         <!--<button class="btn btn-brown" style="background: rgba(0,0,0,0); color: black">Total: {{vm.questions[0].numberOfWords}} words</button>-->
                     </div>
+                    <div class="col-md-2" style="margin-bottom: 10px">
+                        <ui-select data-ng-change="vm.getTopics()" ng-model="vm.searchTopicDto.topicCategory" sortable="true" close-on-select="true">
+                            <ui-select-match allow-clear="false" placeholder="Chọn cái này đầu tiên nhé...">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="so in vm.topicCategories  | propsFilter: {name: $select.search}">
+                                <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
                     <!--<div class="col-md-1 margin-bottom-10" ng-show="vm.mode.id == 5 || vm.mode.id == 8">-->
                     <!--<input autocomplete="off" id="test-taker-name" ng-model="vm.testResult.testTakerName" class="form-control"  type="text"  ng-disabled="!vm.allowChangeInformation" placeholder="My name is ....">-->
                     <!--</div>-->
@@ -67,7 +75,7 @@
                     <!--</ui-select>-->
                     <!--</div>-->
 
-                    <div class="col-md-6 margin-bottom-10">
+                    <div class="col-md-7 margin-bottom-10">
                         <!--<ui-select multiple ng-change="vm.searchTopicChange()" data-ng-model="vm.selectedTopicToSearch" sortable="true" close-on-select="true" style="width: 100% !important;">-->
                         <ui-select multiple ng-change="" data-ng-model="vm.selectedTopicToSearch" sortable="true" close-on-select="true" style="width: 100% !important;">
                             <ui-select-match allow-clear="true" placeholder="Chọn bài từ vựng sau đó ấn tìm kiếm | Có thể chọn nhiều bài nhé :D">

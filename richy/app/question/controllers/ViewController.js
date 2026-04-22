@@ -388,24 +388,6 @@
         vm.currentCard1 = {};
         vm.questions1 = [];
 
-        // vm.ieltsWritingTests = [];
-        //
-        // vm.ieltsReadingTests = [];
-        // vm.ieltsReadingTest = {
-        //     questionType: {
-        //         code: 'IELTSRT',
-        //         id: 11,
-        //         name: 'IELTS Writing Test',
-        //         textSearch: null
-        //     },
-        //     type: 0,
-        //     status: 1,
-        //     questionTopics: [],
-        //     countWords: 0,
-        //     ordinalNumber: 1,
-        //     subQuestions: []
-        // };  //create a new test
-
         vm.totalCard = 0;
         vm.showListFlashCard = false;
 
@@ -857,18 +839,32 @@
         // vm.getQuestionTypes();
 
         //----------------------- Flash Card -------------------------//
+        vm.topicCategories = [];
+        vm.searchTopicCategory = {};
+        vm.getPageTopicCategory = function () {
+            blockUI.start();
+            service.getPageTopicCategory(vm.searchTopicCategory,1, 100).then(function (data) {
+                blockUI.stop();
+                vm.topicCategories = data.content;
+                // vm.getTopics();
+            });
+        };
+        vm.getPageTopicCategory();
+
         vm.topics = [];
         vm.topic = {};
         vm.topic.userId = vm.currentUser.id;
+        vm.searchTopicDto = {};
+        vm.searchTopicDto.username = vm.currentUser.username;
+        vm.searchTopicDto.userId = vm.currentUser.id;
+
         vm.getTopics = function () {
             blockUI.start();
-            service.getAllTopics(vm.searchDto).then(function (data) {
+            service.getTopics(vm.searchTopicDto,1, 10000000).then(function (data) {
+                vm.topics = data.content;
                 blockUI.stop();
-                vm.topics = data;
-                // console.log(vm.topics);
             });
         };
-        vm.getTopics();
 
         vm.changePageSize = function () {
             //calculate page index
