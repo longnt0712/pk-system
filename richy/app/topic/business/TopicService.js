@@ -19,6 +19,7 @@
         var baseUrl = settings.api.baseUrl + settings.api.apiV1Url;
         // console.log(baseUrl);
         self.getPage = getPage;
+        self.getPageTopicCategory = getPageTopicCategory;
         self.saveObject = saveObject;
         self.getOne = getOne;
         self.deleteObject = deleteObject;
@@ -30,6 +31,16 @@
             url += '/'+pageIndex;
             url += '/' + ((pageSize > 0) ? pageSize : 25);
             // console.log(url);
+
+            return utils.resolveAlt(url, 'POST', null, searchDto, {
+                'Content-Type': 'application/json; charset=utf-8'
+            }, successCallback, errorCallback);
+        }
+
+        function getPageTopicCategory(searchDto, pageIndex, pageSize, successCallback, errorCallback) {
+            var url = baseUrl + 'topic_category' + '/get_page';
+            url += '/'+pageIndex;
+            url += '/' + ((pageSize > 0) ? pageSize : 25);
 
             return utils.resolveAlt(url, 'POST', null, searchDto, {
                 'Content-Type': 'application/json; charset=utf-8'

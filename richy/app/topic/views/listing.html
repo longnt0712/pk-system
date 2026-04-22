@@ -28,6 +28,37 @@
                     </div>
                 </div>
                 <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
+
+                <div class="row margin-top-10">
+                    <table class="table table-bordered text-center product-table">
+                        <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>THAO TÁC</th>
+                            <th>NAME</th>
+                            <th>LOẠI</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr ng-repeat="topic in vm.topics">
+                            <th>{{$index + 1}}</th>
+                            <td>
+                                <a ng-click=""></a>
+                            </td>
+                            <td>{{topic.name}}</td>
+                            <td>
+                                <ui-select data-ng-change="vm.saveTopicForCategoryTopic(topic,topic.topicCategory)" ng-model="topic.topicCategory" sortable="true" close-on-select="true">
+                                    <ui-select-match allow-clear="true" placeholder="Xin mời chọn...">{{$select.selected.name}}</ui-select-match>
+                                    <ui-select-choices repeat="so in vm.topicCategories  | propsFilter: {name: $select.search}">
+                                        <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
             </div>
         </div>
     </div>

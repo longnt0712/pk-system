@@ -129,11 +129,6 @@
         vm.currentUser = JSON.parse($cookies.getAll()["education.user"]);
         vm.searchDto.username = vm.currentUser.username;
         vm.searchDto.userId = vm.currentUser.id;
-        // console.log(vm.currentUser);
-
-
-
-
 
         /* TINYMCE */
         $scope.tinymceOptions = {
@@ -152,15 +147,6 @@
             menubar: false
         };
 
-        vm.test = '';
-        vm.testFunction = function() {
-            service.test(vm.test, function success() {
-                toastr.info('Bạn đã tạo mới thành công một tài khoản.', 'Thông báo');
-                vm.topic = {};
-            }, function failure() {
-                toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
-            });
-        };
 
         vm.getPage = function () {
             blockUI.start();
@@ -174,6 +160,17 @@
         };
 
         vm.getPage();
+
+        vm.topicCategories = [];
+        vm.getPageTopicCategory = function () {
+            blockUI.start();
+            service.getPageTopicCategory(null,1, 100).then(function (data) {
+                blockUI.stop();
+                vm.topicCategories = data.content;
+            });
+        };
+
+        vm.getPageTopicCategory();
 
         vm.enterSearchCode = function(){
             // console.log(event.keyCode);
@@ -209,7 +206,7 @@
                 clickToSelect: false,
                 showColumns: false,
                 showToggle: false,
-                pagination: false,
+                pagination: true,
                 pageSize: vm.pageSize,
                 pageList: [5, 10, 25, 50, 100],
                 locale: settings.locale,
@@ -677,6 +674,19 @@
                 }, function () {
                     vm.topic = {};
                 });
+            });
+        };
+        
+        vm.saveTopicForCategoryTopic = function (topic,topicCategory) {
+            console.log(topic);
+            service.saveObject(topic).then(function (data) {
+                vm.getPage();
+                vm.topic = {};
+                if(data.message != null){
+                    toastr.info(data.message, 'Notification');
+                }else{
+                    toastr.error('Error.', 'Warning');
+                }
             });
         };
 
