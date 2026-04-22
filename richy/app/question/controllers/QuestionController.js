@@ -59,26 +59,6 @@
         }
     });
 
-    // angular.module('Hrm.Question').directive('draggable', function () {
-    //     return {
-    //         restrict: 'A',
-    //         link: function (scope, element, attrs) {
-    //             element[0].addEventListener('dragstart', scope.handleDragStart, false);
-    //             element[0].addEventListener('dragend', scope.handleDragEnd, false);
-    //         }
-    //     }
-    // });
-    //
-    // angular.module('Hrm.Question').directive('droppable', function () {
-    //     return {
-    //         restrict: 'A',
-    //         link: function (scope, element, attrs) {
-    //             element[0].addEventListener('drop', scope.handleDrop, false);
-    //             element[0].addEventListener('dragover', scope.handleDragOver, false);
-    //         }
-    //     }
-    // });
-
     angular.module('Hrm.Question').directive('myDraggable', ['$document', function($document) {
         return {
             link: function(scope, element, attr) {
@@ -118,42 +98,6 @@
             }
         };
     }]);
-
-
-    // angular.module('Hrm.Question').directive('draggable', ['$document', function($document) {
-    //     return {
-    //         restrict: 'A',
-    //         link: function(scope, elm, attrs) {
-    //             var startX, startY, initialMouseX, initialMouseY;
-    //             elm.css({ position: 'absolute' });
-    //
-    //             elm.bind('mousedown', function($event) {
-    //                 startX = elm.prop('offsetLeft');
-    //                 startY = elm.prop('offsetTop');
-    //                 initialMouseX = $event.clientX;
-    //                 initialMouseY = $event.clientY;
-    //                 $document.bind('mousemove', mousemove);
-    //                 $document.bind('mouseup', mouseup);
-    //                 return false;
-    //             });
-    //
-    //             function mousemove($event) {
-    //                 var dx = $event.clientX - initialMouseX;
-    //                 var dy = $event.clientY - initialMouseY;
-    //                 elm.css({
-    //                     top: startY + dy + 'px',
-    //                     left: startX + dx + 'px'
-    //                 });
-    //                 return false;
-    //             }
-    //
-    //             function mouseup() {
-    //                 $document.unbind('mousemove', mousemove);
-    //                 $document.unbind('mouseup', mouseup);
-    //             }
-    //         }
-    //     };
-    // }]);
 
     angular.module('Hrm.Question').directive('compile', ['$compile', function ($compile) {
         return function(scope, element, attrs) {
@@ -362,14 +306,9 @@
                 vm.questions = data.content;
                 blockUI.stop();
                 console.log(vm.questions);
-
                 //tạm thời
-                // vm.totalCard = vm.questions.length;
                 vm.totalCard = data.totalElements; //cmt tạm
                 vm.searchDto.totalItems = data.totalElements;
-                // console.log(data.content);
-
-
             });
         };
 
@@ -378,20 +317,12 @@
             vm.searchDto.questionType = {id: 6};
             vm.searchDto.username = vm.currentUser.username;
             vm.searchDto.userId = vm.currentUser.id;
-            // vm.searchDto.pageSize = 15;
-
             blockUI.start();
             service.getPage(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
                 vm.questions = data.content;
-                // console.log(data);
-
                 blockUI.stop();
-
-
-                // vm.questions2 = vm.questions;
                 
                 //tạm thời
-                // vm.totalCard = vm.questions.length;
                 vm.totalCard = data.totalElements; //cmt tạm
                 vm.searchDto.totalItems = data.totalElements;
                 vm.currentPosition = 0;

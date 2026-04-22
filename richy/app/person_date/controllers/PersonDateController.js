@@ -307,13 +307,7 @@
         vm.enrollmentClassMap = {};
         angular.forEach(vm.enrollmentClasses, function (cls) {
             vm.enrollmentClassMap[cls.id] = cls.name;
-            // console.log(cls);
         });
-
-        // vm.enrollmentClassMap = {};
-        // angular.forEach(vm.enrollmentClasses, function (cls) {
-        //     vm.enrollmentClassMap[String(cls.id)] = cls.name;
-        // });
 
         vm.clearSearchClient = function () {
             vm.searchTextClient = '';
@@ -558,8 +552,6 @@
 
             vm.resetSum();
 
-            // alert(vm.searchDto.user.person.enrollmentClass);
-
             service.getPage(vm.searchDto, vm.pageIndex, vm.pageSize).then(function (data) {
                 blockUI.stop();
 
@@ -598,21 +590,6 @@
                 // vm.totalGoToClass = vm.totalClass1 + vm.totalClass5;
                 vm.totalAbsentChurch = vm.totalMass2 + vm.totalMass6;
                 vm.totalAbsentClass = vm.totalClass2 + vm. totalClass6;
-
-                // angular.forEach(vm.personDates, function (personDate) {
-                //     var username = personDate?.user?.username || '';
-                //     if (!username) return;
-                //
-                //     if (personDate.qrcodeByUsername) return; // cache
-                //
-                //     generateQrPro(username, vm.logoUrl, { qrSize: 240 }).then(function (url) {
-                //         $timeout(function () {
-                //             personDate.qrcodeByUsername = url;
-                //         }, 0);
-                //     }).catch(function (e) {
-                //         console.error('QR error:', e);
-                //     });
-                // });
             });
         };
 
@@ -737,73 +714,6 @@
                 }
             }, function () {
             });
-        };
-
-        //// Upload file
-        $scope.MAX_FILE_SIZE = '2MB';
-        $scope.f = null;
-        $scope.errFile = null;
-        vm.baseUrl = settings.api.baseUrl + settings.api.apiPrefix;
-
-        $scope.uploadFiles = function(file, errFiles) {
-            $scope.f = file;
-            $scope.errFile = errFiles && errFiles[0];
-        };
-
-        vm.startUploadFile = function(file) {
-            // console.log(file);
-            if (file) {
-                file.upload = Upload.upload({
-                    url: vm.baseUrl + 'file/import_bill/',
-                    data: {uploadfile: file}
-                });
-
-                file.upload.then(function (response) {
-                    // console.log(response);
-                    file.result = response.data;
-                    // getListSubject(vm.pageIndex,vm.pageSize);
-                    toastr.info('Import thành công.', 'Thông báo');
-                },function errorCallback(response) {
-                    toastr.error('Import lỗi.', 'Lỗi');
-                });
-            }
-        };
-
-        vm.importBills = function () {
-            var modalInstance = modal.open({
-                animation: true,
-                templateUrl: 'import_modal.html',
-                scope: $scope,
-                size: 'md'
-            });
-
-            vm.personDate = {};
-            $scope.f = null;
-            $scope.errFile = null;
-
-            modalInstance.result.then(function (confirm) {
-                if (confirm == 'yes') {
-                    vm.startUploadFile($scope.f);
-                    // console.log($scope.f);
-                }
-            }, function () {
-                vm.educationProgram = null;
-                vm.address = {};
-                // console.log("cancel");
-            });
-        };
-
-        $scope.myBlobObject=undefined;
-        $scope.getFile=function(){
-            console.log('download started, you can show a wating animation');
-            service.getStream()
-                .then(function(data){//is important that the data was returned as Aray Buffer
-                    console.log('Stream download complete, stop animation!');
-                    $scope.myBlobObject=new Blob([data],{ type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-                },function(fail){
-                    console.log('Download Error, stop animation and show error message');
-                    $scope.myBlobObject=[];
-                });
         };
 
         vm.scanning = false;
@@ -1088,7 +998,9 @@
         };
 
         vm.createCheckList = function () {
+            blockUI.start();
             service.saveListByEnrollmentClass(0).then(function (data) { // tạm thời để 0
+                blockUI.stop();
                 vm.statistics();
             });
         };
