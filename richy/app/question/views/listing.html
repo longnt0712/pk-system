@@ -522,6 +522,14 @@
                     <div class="col-md-12">
                         <div class="row">
                             <div class="col-md-12" style="margin-bottom: 10px">
+                                <ui-select data-ng-change="vm.getTopics()" ng-model="vm.searchTopicDto.topicCategory" sortable="true" close-on-select="true">
+                                    <ui-select-match allow-clear="true" placeholder="Loại topic...">{{$select.selected.name}}</ui-select-match>
+                                    <ui-select-choices repeat="so in vm.topicCategories  | propsFilter: {name: $select.search}">
+                                        <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                            <div class="col-md-12" style="margin-bottom: 10px">
                                 <ui-select multiple ng-change="vm.topicChange()" data-ng-model="vm.selectedTopicToAdd" sortable="true" close-on-select="true" style="width: 100% !important;">
                                     <ui-select-match allow-clear="true" placeholder="Choose topic (Optional)">{{$item.name}}</ui-select-match>
                                     <ui-select-choices repeat="t in vm.topics | propsFilter: {name: $select.search}">

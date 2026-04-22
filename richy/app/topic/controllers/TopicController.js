@@ -162,9 +162,10 @@
         vm.getPage();
 
         vm.topicCategories = [];
+        vm.searchTopicCategory = {};
         vm.getPageTopicCategory = function () {
             blockUI.start();
-            service.getPageTopicCategory(null,1, 100).then(function (data) {
+            service.getPageTopicCategory(vm.searchTopicCategory,1, 100).then(function (data) {
                 blockUI.stop();
                 vm.topicCategories = data.content;
             });
@@ -179,21 +180,30 @@
             }
         };
 
+        function isEmpty(obj) {
+            for (const prop in obj) {
+                if (Object.hasOwn(obj, prop)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         vm.codeChange=function () {
             vm.pageIndex = 1;
-            // vm.bsTableControl.state.pageNumber.state = 1;
+            if(!isEmpty(vm.bsTableControl.state)){
+                vm.bsTableControl.state.pageNumber = 1;
+            }
+
             vm.getPage();
-            
-            // if(vm.listFlashCard == 3 || vm.isFlashCardMode == 1){
-                // console.log('listFlashCard');
+        };
 
-            // }
-
-            // if($stateParams.writingCollectionMode == 2){
-            //     // console.log('IELTSWriting');
-            //
-            //     vm.getPageIELTSWriting();
-            // }
+        vm.topicCategoryChange = function () {
+            vm.pageIndex = 1;
+            if(!isEmpty(vm.bsTableControl.state)){
+                vm.bsTableControl.state.pageNumber = 1;
+            }
+            vm.getPage();
         };
 
         vm.bsTableControl = {
@@ -680,7 +690,7 @@
         vm.saveTopicForCategoryTopic = function (topic,topicCategory) {
             console.log(topic);
             service.saveObject(topic).then(function (data) {
-                vm.getPage();
+                // vm.getPage();
                 vm.topic = {};
                 if(data.message != null){
                     toastr.info(data.message, 'Notification');

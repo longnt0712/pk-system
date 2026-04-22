@@ -398,19 +398,38 @@
 
         vm.getQuestionTypes();
 
+        vm.topicCategories = [];
+        vm.searchTopicCategory = {};
+        vm.getPageTopicCategory = function () {
+            blockUI.start();
+            service.getPageTopicCategory(vm.searchTopicCategory,1, 100).then(function (data) {
+                blockUI.stop();
+
+                vm.topicCategories = data.content;
+                // if(vm.topicCategories != null){
+                    // vm.searchTopicDto.topicCategory = vm.topicCategories[0];
+                // }
+                vm.getTopics();
+            });
+        };
+        vm.getPageTopicCategory();
+
         //----------------------- Flash Card -------------------------//
         vm.topics = [];
         vm.topic = {};
         vm.topic.userId = vm.currentUser.id;
+        vm.searchTopicDto = {};
+        vm.searchTopicDto.username = vm.currentUser.username;
+        vm.searchTopicDto.userId = vm.currentUser.id;
+
         vm.getTopics = function () {
             blockUI.start();
-            service.getTopics(vm.searchDto,1, 10000000).then(function (data) {
+            service.getTopics(vm.searchTopicDto,1, 10000000).then(function (data) {
                 vm.topics = data.content;
                 blockUI.stop();
                 // console.log(vm.topics);
             });
         };
-        vm.getTopics();
         vm.saveTopic = function () {
 
             topicService.saveObject(vm.topic).then(function (data) {

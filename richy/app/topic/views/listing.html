@@ -18,7 +18,15 @@
                         </div>
 
                     </div>
-                    <div class="col-md-8 margin-bottom-10">
+                    <div class="col-md-3">
+                        <ui-select data-ng-change="vm.topicCategoryChange()" ng-model="vm.searchDto.topicCategory" sortable="true" close-on-select="true">
+                            <ui-select-match allow-clear="true" placeholder="Xin mời chọn...">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="so in vm.topicCategories  | propsFilter: {name: $select.search}">
+                                <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+                    <div class="col-md-5 margin-bottom-10">
                         <div class="input-group" style="padding-left: 10px">
                             <input ng-model="vm.searchDto.contentSearch" ng-keyup="vm.enterSearchCode(e)" type="text"  class="form-control" placeholder="Find by content......">
                             <div class="input-group-btn">
@@ -26,11 +34,12 @@
                             </div>
                         </div>
                     </div>
+
                 </div>
                 <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
 
                 <div class="row margin-top-10">
-                    <table class="table table-bordered text-center product-table">
+                    <table class="table table-hover table-bordered product-table">
                         <thead>
                         <tr>
                             <th>STT</th>
@@ -45,7 +54,7 @@
                             <td>
                                 <a ng-click=""></a>
                             </td>
-                            <td>{{topic.name}}</td>
+                            <td class="text-right">{{topic.name}}</td>
                             <td>
                                 <ui-select data-ng-change="vm.saveTopicForCategoryTopic(topic,topic.topicCategory)" ng-model="topic.topicCategory" sortable="true" close-on-select="true">
                                     <ui-select-match allow-clear="true" placeholder="Xin mời chọn...">{{$select.selected.name}}</ui-select-match>

@@ -46,6 +46,18 @@
         self.getTableDefinitionStatisticUser = getTableDefinitionStatisticUser;
         self.getTableDefinitionQuestions = getTableDefinitionQuestions;
 
+        self.getPageTopicCategory = getPageTopicCategory;
+        function getPageTopicCategory(searchDto, pageIndex, pageSize, successCallback, errorCallback) {
+            var url = baseUrl + 'topic_category' + '/get_page';
+            url += '/'+pageIndex;
+            url += '/' + ((pageSize > 0) ? pageSize : 25);
+
+            return utils.resolveAlt(url, 'POST', null, searchDto, {
+                'Content-Type': 'application/json; charset=utf-8'
+            }, successCallback, errorCallback);
+        }
+
+
         // self.getBrands = brands;
 
         function getRandomQuestion(searchDto,successCallback, errorCallback) {
