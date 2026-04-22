@@ -5,6 +5,7 @@ import java.io.Serializable;
 import javax.persistence.Column;
 
 import com.globits.richy.domain.Topic;
+import com.globits.richy.domain.TopicCategory;
 
 public class TopicDto implements Serializable{
 	private Long id;
@@ -15,7 +16,15 @@ public class TopicDto implements Serializable{
 	private String contentSearch;
 	private String username;
 	private String message;
-		
+	private TopicCategoryDto topicCategory;
+
+	
+	public TopicCategoryDto getTopicCategory() {
+		return topicCategory;
+	}
+	public void setTopicCategory(TopicCategoryDto topicCategory) {
+		this.topicCategory = topicCategory;
+	}
 	public String getContentHtml() {
 		return contentHtml;
 	}
@@ -80,6 +89,9 @@ public class TopicDto implements Serializable{
 		super();
 		this.id = item.getId();
 		this.name = item.getName();
+		if(item.getTopicCategory() != null) {
+			this.topicCategory = new TopicCategoryDto(item.getTopicCategory());
+		}
 	}
 	
 	public TopicDto(Topic item, boolean showContent) {
@@ -88,6 +100,9 @@ public class TopicDto implements Serializable{
 		if(showContent) {
 			this.contentHtml = item.getContentHtml();
 			this.content = item.getContent();
+		}
+		if(item.getTopicCategory() != null) {
+			this.topicCategory = new TopicCategoryDto(item.getTopicCategory());
 		}
 	}
 	

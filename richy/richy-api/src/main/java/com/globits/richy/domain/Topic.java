@@ -37,9 +37,18 @@ public class Topic extends BaseObject{
 	@Column(name="content_html")
 	private String contentHtml;
 	
-//	@Column(name="topic_category")
-//	private Integer topicCategory;
+	@ManyToOne(fetch = FetchType.EAGER, optional = true)
+	@JoinColumn(name = "topic_category_id")
+	private TopicCategory topicCategory;
 	
+	public TopicCategory getTopicCategory() {
+		return topicCategory;
+	}
+
+	public void setTopicCategory(TopicCategory topicCategory) {
+		this.topicCategory = topicCategory;
+	}
+
 	public String getContentHtml() {
 		return contentHtml;
 	}

@@ -18,8 +18,10 @@ import org.springframework.stereotype.Service;
 
 import com.globits.richy.test;
 import com.globits.richy.domain.Topic;
+import com.globits.richy.domain.TopicCategory;
 import com.globits.richy.dto.TopicDto;
 import com.globits.richy.dto.TopicForListAllDto;
+import com.globits.richy.repository.TopicCategoryRepository;
 import com.globits.richy.repository.TopicRepository;
 import com.globits.richy.service.TopicService;
 import com.globits.security.domain.User;
@@ -31,6 +33,8 @@ public class TopicServiceImpl implements TopicService {
 	EntityManager manager;
 	@Autowired
 	TopicRepository topicRepository;
+	@Autowired
+	TopicCategoryRepository topicCategoryRepository;
 	@Autowired
 	UserRepository userRepository;
 	
@@ -222,6 +226,13 @@ public class TopicServiceImpl implements TopicService {
 //		domain.setWebsite(dto.getWebsite());
 		domain.setContent(dto.getContent());
 		domain.setContentHtml(dto.getContentHtml());
+		
+		if(dto.getTopicCategory() != null && dto.getTopicCategory().getId() != null) {
+			TopicCategory topicCategory = topicCategoryRepository.getOne(dto.getTopicCategory().getId());
+			if(topicCategory != null) {
+				domain.setTopicCategory(topicCategory);
+			}
+		}
 		
 		domain = topicRepository.save(domain);
 		
