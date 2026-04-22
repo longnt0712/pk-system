@@ -71,6 +71,9 @@ public class TopicServiceImpl implements TopicService {
 			whereClause += " and (s.content like :contentSearch or s.contentHtml like :contentSearch)";
 		}
 		
+		if(searchDto.getTopicCategory() != null && searchDto.getTopicCategory().getId() != null ){
+			whereClause += " and s.topicCategory.id = :topicCategoryId ";
+		}
 //		if(searchDto.getWebsite() != null) {
 //			whereClause += " and (s.website = :website) ";
 //		}
@@ -96,6 +99,11 @@ public class TopicServiceImpl implements TopicService {
 		if(modifiedUser!= null && modifiedUser.getId() != null) {
 			q.setParameter("userId",  modifiedUser.getId() );
 			qCount.setParameter("userId",  modifiedUser.getId());
+		}
+		
+		if(searchDto.getTopicCategory() != null && searchDto.getTopicCategory().getId() != null ){
+			q.setParameter("topicCategoryId",  searchDto.getTopicCategory().getId() );
+			qCount.setParameter("topicCategoryId",  searchDto.getTopicCategory().getId());
 		}
 		
 //		if(searchDto.getWebsite() != null) {
