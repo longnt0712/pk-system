@@ -381,21 +381,11 @@
 
         vm.getPageFlashCard();
 
-
-
-
-
         vm.totalItems = 0;
         vm.pageIndexAnswer = 1;
         vm.pageSizeAnswer = 2;
         vm.searchDtoAnswer = {};
         vm.questionTypes = [];
-        // vm.getAnswers = function () {
-        //     service.getAnswers(vm.searchDtoAnswer,vm.pageIndexAnswer, vm.pageSizeAnswer).then(function (data) {
-        //         vm.answers = data.content;
-        //         vm.totalItems = data.totalElements;
-        //     });
-        // };
 
         vm.questionTypeFlashCard = {};
         vm.getQuestionTypes = function () {
@@ -406,12 +396,7 @@
             });
         };
 
-        // $scope.pageChanged = function () {
-        //     vm.getAnswers();
-        // };
         vm.getQuestionTypes();
-        // vm.getAnswers();
-
 
         //----------------------- Flash Card -------------------------//
         vm.topics = [];
@@ -427,15 +412,6 @@
         };
         vm.getTopics();
         vm.saveTopic = function () {
-            // topicService.saveObject(vm.topic, function success() {
-            //     toastr.info('successfully');
-            //     vm.topic = {};
-            //     vm.topic.userId = vm.currentUser.id;
-            //     vm.getTopics();
-            // }, function failure() {
-            //     toastr.error('Error');
-            // });
-
 
             topicService.saveObject(vm.topic).then(function (data) {
                 vm.topic = {};
