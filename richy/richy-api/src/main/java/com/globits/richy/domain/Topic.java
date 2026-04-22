@@ -37,8 +37,8 @@ public class Topic extends BaseObject{
 	@Column(name="content_html")
 	private String contentHtml;
 	
-	@Column(name="website")
-	private Integer website;//1: church; 1: richy; 2: shop crocs; 5: clothes
+//	@Column(name="topic_category")
+//	private Integer topicCategory;
 	
 	public String getContentHtml() {
 		return contentHtml;
@@ -48,20 +48,12 @@ public class Topic extends BaseObject{
 		this.contentHtml = contentHtml;
 	}
 
-	public Integer getWebsite() {
-		return website;
-	}
-
 	public String getContent() {
 		return content;
 	}
 
 	public void setContent(String content) {
 		this.content = content;
-	}
-
-	public void setWebsite(Integer website) {
-		this.website = website;
 	}
 
 	public String getName() {

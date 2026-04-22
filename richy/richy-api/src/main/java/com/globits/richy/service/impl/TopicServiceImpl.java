@@ -67,9 +67,9 @@ public class TopicServiceImpl implements TopicService {
 			whereClause += " and (s.content like :contentSearch or s.contentHtml like :contentSearch)";
 		}
 		
-		if(searchDto.getWebsite() != null) {
-			whereClause += " and (s.website = :website) ";
-		}
+//		if(searchDto.getWebsite() != null) {
+//			whereClause += " and (s.website = :website) ";
+//		}
 
 		sql += whereClause;
 		sqlCount += whereClause;
@@ -94,10 +94,10 @@ public class TopicServiceImpl implements TopicService {
 			qCount.setParameter("userId",  modifiedUser.getId());
 		}
 		
-		if(searchDto.getWebsite() != null) {
-			q.setParameter("website",searchDto.getWebsite());
-			qCount.setParameter("website",searchDto.getWebsite());
-		}
+//		if(searchDto.getWebsite() != null) {
+//			q.setParameter("website",searchDto.getWebsite());
+//			qCount.setParameter("website",searchDto.getWebsite());
+//		}
 		
 		if(searchDto.getUserId() != null) {
 			q.setParameter("userId", searchDto.getUserId());
@@ -134,9 +134,9 @@ public class TopicServiceImpl implements TopicService {
 			whereClause += " and s.user.id = :userId ";
 		}
 		
-		if(searchDto.getWebsite() != null) {
-			whereClause += " and (s.website = :website) ";
-		}
+//		if(searchDto.getWebsite() != null) {
+//			whereClause += " and (s.website = :website) ";
+//		}
 
 		sql += whereClause;
 		
@@ -148,9 +148,9 @@ public class TopicServiceImpl implements TopicService {
 			q.setParameter("userId",  modifiedUser.getId() );
 		}
 		
-		if(searchDto.getWebsite() != null) {
-			q.setParameter("website",searchDto.getWebsite());
-		}
+//		if(searchDto.getWebsite() != null) {
+//			q.setParameter("website",searchDto.getWebsite());
+//		}
 		
 		if(searchDto.getUserId() != null) {
 			q.setParameter("userId", searchDto.getUserId());
@@ -178,8 +178,6 @@ public class TopicServiceImpl implements TopicService {
 			modifiedUser = (User) authentication.getPrincipal();
 			currentUserName = modifiedUser.getUsername();
 		}
-		
-		
 		
 		if(dto == null) {
 			return ret;
@@ -221,7 +219,7 @@ public class TopicServiceImpl implements TopicService {
 			message = "The name of the topic should be less than 100 characters";
 		}
 		
-		domain.setWebsite(dto.getWebsite());
+//		domain.setWebsite(dto.getWebsite());
 		domain.setContent(dto.getContent());
 		domain.setContentHtml(dto.getContentHtml());
 		

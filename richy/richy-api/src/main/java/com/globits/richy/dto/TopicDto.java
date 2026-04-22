@@ -15,7 +15,6 @@ public class TopicDto implements Serializable{
 	private String contentSearch;
 	private String username;
 	private String message;
-	private Integer website;//1: church; 1: richy; 2: shop crocs; 5: clothes
 		
 	public String getContentHtml() {
 		return contentHtml;
@@ -34,12 +33,6 @@ public class TopicDto implements Serializable{
 	}
 	public void setContent(String content) {
 		this.content = content;
-	}
-	public Integer getWebsite() {
-		return website;
-	}
-	public void setWebsite(Integer website) {
-		this.website = website;
 	}
 	public String getMessage() {
 		return message;
@@ -87,14 +80,11 @@ public class TopicDto implements Serializable{
 		super();
 		this.id = item.getId();
 		this.name = item.getName();
-//		this.content = item.getContent();
-		this.website = item.getWebsite();
 	}
 	
 	public TopicDto(Topic item, boolean showContent) {
 		this.id = item.getId();
 		this.name = item.getName();	
-		this.website = item.getWebsite();
 		if(showContent) {
 			this.contentHtml = item.getContentHtml();
 			this.content = item.getContent();
