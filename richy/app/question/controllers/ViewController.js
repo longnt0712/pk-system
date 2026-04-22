@@ -203,6 +203,11 @@
         $rootScope.settings.layout.pageSidebarClosed = false;
 
         var vm = this;
+        vm.showVoiceOption = true;
+
+        $timeout(function () {
+            loadVoices(0);
+        }, 0);
 
         // ===== SPEECH INIT =====
         // var voices = [];
@@ -855,8 +860,8 @@
         vm.topic = {};
         vm.topic.userId = vm.currentUser.id;
         vm.searchTopicDto = {};
-        vm.searchTopicDto.username = vm.currentUser.username;
-        vm.searchTopicDto.userId = vm.currentUser.id;
+        // vm.searchTopicDto.username = vm.currentUser.username;
+        vm.searchTopicDto.userId = vm.selectedUser.id;
 
         vm.getTopics = function () {
             blockUI.start();
@@ -2304,7 +2309,7 @@
             supportMsg.classList.add('not-supported');
         }
 
-// Get the voice select element.
+        // Get the voice select element.
         var voiceSelect = document.getElementById('voice');
 
         // Get the attribute controls.
@@ -2320,108 +2325,171 @@
             return /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
         }
 
+        var vm = this;
+        vm.speechLang = 'en-US';
+
         // Fetch the list of voices and populate the voice options.
-        var voices = speechSynthesis.getVoices();
+        // var voices = speechSynthesis.getVoices();
+        // var voiceSelect = document.getElementById('voice');
+
+        // function loadVoices() {
+        //     // Fetch the available voices.
+        //     // var voices = speechSynthesis.getVoices();
+        //     // vm.allVoices = voices;
+        //
+        //     const voices = window.speechSynthesis.getVoices();
+        //
+        //     // clear cũ
+        //     voiceSelect.innerHTML = '';
+        //
+        //     // debug
+        //     console.log('voices loaded:', voices);
+        //
+        //     // Loop through each of the voices.
+        //     voices.forEach(function (voice, i) {
+        //         // Create a new option element.
+        //         // console.log(voice);
+        //
+        //         //english
+        //         if(angular.isDefined(voice) && voice != null){
+        //             if(angular.isDefined(voice.lang) && voice.lang != null && voice.lang.length > 0){
+        //                 if(voice.lang == 'vi-VN'){
+        //                     var option = document.createElement('option');
+        //
+        //                     // Set the options value and text.
+        //                     option.value = voice.name;
+        //                     option.innerHTML = voice.name;
+        //
+        //                     // Add the option to the voice selector.
+        //                     voiceSelect.appendChild(option);
+        //                 }
+        //
+        //                 if (isIOS()) {
+        //                     //ios
+        //                     if((voice.lang == 'en-GB' && voice.name == 'Daniel')
+        //                         || (voice.lang == 'en-AU' && voice.name == 'Karen')
+        //                         || (voice.lang == 'en-US' && voice.name == 'Samantha')  ){
+        //
+        //                         var option = document.createElement('option');
+        //
+        //                         // Set the options value and text.
+        //                         option.value = voice.name;
+        //                         option.innerHTML = voice.name;
+        //
+        //                         // Add the option to the voice selector.
+        //                         voiceSelect.appendChild(option);
+        //
+        //                     }
+        //                 } else {
+        //                     if(voice.lang == 'en-US' || voice.lang == 'en-GB'){
+        //                         var option = document.createElement('option');
+        //
+        //                         // Set the options value and text.
+        //                         option.value = voice.name;
+        //                         option.innerHTML = voice.name;
+        //
+        //                         // Add the option to the voice selector.
+        //                         voiceSelect.appendChild(option);
+        //
+        //                         // alert(voice.name);
+        //                     }
+        //                 }
+        //
+        //             }
+        //         }
+        //     });
+        // }
+        //
+        // // Execute loadVoices.
+        // loadVoices();
+        //
+        // // Chrome loads voices asynchronously.
+        // window.speechSynthesis.onvoiceschanged = function (e) {
+        //     // console.log('hello');
+        //     loadVoices();
+        // };
+        //
+        // // warm up (fix mất chữ đầu + delay)
+        // (function () {
+        //     const u = new SpeechSynthesisUtterance(' ');
+        //     u.volume = 0;
+        //     speechSynthesis.speak(u);
+        // })();
+
+        var voices = [];
         var voiceSelect = document.getElementById('voice');
+        var MAX_VOICE_RETRY = 20;
+        var VOICE_RETRY_DELAY = 300;
 
-        function loadVoices() {
-            // Fetch the available voices.
-            // var voices = speechSynthesis.getVoices();
-            // vm.allVoices = voices;
+        function getStrictVoices(allVoices) {
+            var isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-            const voices = window.speechSynthesis.getVoices();
+            return allVoices.filter(function (voice) {
+                if (!voice || !voice.lang) return false;
 
-            // clear cũ
-            voiceSelect.innerHTML = '';
-
-            // debug
-            console.log('voices loaded:', voices);
-
-            // Loop through each of the voices.
-            voices.forEach(function (voice, i) {
-                // Create a new option element.
-                // console.log(voice);
-
-                //english
-                if(angular.isDefined(voice) && voice != null){
-                    if(angular.isDefined(voice.lang) && voice.lang != null && voice.lang.length > 0){
-                        if(voice.lang == 'vi-VN'){
-                            var option = document.createElement('option');
-
-                            // Set the options value and text.
-                            option.value = voice.name;
-                            option.innerHTML = voice.name;
-
-                            // Add the option to the voice selector.
-                            voiceSelect.appendChild(option);
-                        }
-
-                        if (isIOS()) {
-                            //ios
-                            if((voice.lang == 'en-GB' && voice.name == 'Daniel')
-                                || (voice.lang == 'en-AU' && voice.name == 'Karen')
-                                || (voice.lang == 'en-US' && voice.name == 'Samantha')  ){
-
-                                var option = document.createElement('option');
-
-                                // Set the options value and text.
-                                option.value = voice.name;
-                                option.innerHTML = voice.name;
-
-                                // Add the option to the voice selector.
-                                voiceSelect.appendChild(option);
-
-                            }
-                        } else {
-                            if(voice.lang == 'en-US' || voice.lang == 'en-GB'){
-                                var option = document.createElement('option');
-
-                                // Set the options value and text.
-                                option.value = voice.name;
-                                option.innerHTML = voice.name;
-
-                                // Add the option to the voice selector.
-                                voiceSelect.appendChild(option);
-                            }
-                        }
-
-                    }
+                if (voice.lang === 'vi-VN') {
+                    return true;
                 }
 
-                //all languages
+                if (isiOS) {
+                    return (
+                        (voice.lang === 'en-GB' && voice.name === 'Daniel') ||
+                        (voice.lang === 'en-AU' && voice.name === 'Karen') ||
+                        (voice.lang === 'en-US' && voice.name === 'Samantha')
+                    );
+                }
 
-                // var option = document.createElement('option');
-                //
-                // // if(voice.lang === 'vi-VN'){
-                //     // Set the options value and text.
-                //     option.value = voice.name;
-                //     option.innerHTML = voice.name;
-                //
-                //     // Add the option to the voice selector.
-                //     voiceSelect.appendChild(option);
-                // // }
+                return voice.lang === 'en-US' || voice.lang === 'en-GB';
             });
         }
 
-        // Execute loadVoices.
-        loadVoices();
+        function renderVoiceOptions(filteredVoices) {
+            if (!voiceSelect) {
+                voiceSelect = document.getElementById('voice');
+            }
+            if (!voiceSelect) return;
 
-        // Chrome loads voices asynchronously.
-        window.speechSynthesis.onvoiceschanged = function (e) {
-            // console.log('hello');
-            loadVoices();
+            voiceSelect.innerHTML = '';
+
+            filteredVoices.forEach(function (voice) {
+                var option = document.createElement('option');
+                option.value = voice.name;
+                option.innerHTML = voice.name;
+                voiceSelect.appendChild(option);
+            });
+        }
+
+        function loadVoices(retryCount) {
+            retryCount = retryCount || 0;
+
+            var allVoices = window.speechSynthesis.getVoices();
+            console.log('all voices:', allVoices);
+
+            if ((!allVoices || allVoices.length === 0) && retryCount < MAX_VOICE_RETRY) {
+                setTimeout(function () {
+                    loadVoices(retryCount + 1);
+                }, VOICE_RETRY_DELAY);
+                return;
+            }
+
+            voices = getStrictVoices(allVoices || []);
+            console.log('filtered voices:', voices);
+
+            renderVoiceOptions(voices);
+        }
+
+// gọi 1 lần để browser bắt đầu nạp voices
+        window.speechSynthesis.getVoices();
+
+// retry chủ động
+        loadVoices(0);
+        setTimeout(function () { loadVoices(1); }, 500);
+        setTimeout(function () { loadVoices(2); }, 1500);
+
+// khi browser báo voices đã sẵn sàng
+        window.speechSynthesis.onvoiceschanged = function () {
+            loadVoices(0);
         };
-
-        // warm up (fix mất chữ đầu + delay)
-        (function () {
-            const u = new SpeechSynthesisUtterance(' ');
-            u.volume = 0;
-            speechSynthesis.speak(u);
-        })();
-
-// Create a new utterance for the specified text and add it to
-// the queue.
-//         const synth = window.speechSynthesis;
 
         function speak(text) {
             // Create a new instance of SpeechSynthesisUtterance.
@@ -2455,37 +2523,34 @@
 
         vm.test = null;
         vm.loopSpeech = false;
-        // $scope.sayIt = function (text) {
-        //     if (!vm.isMuted) {
-        //
-        //         if (window.speechSynthesis.speaking) {
-        //             window.speechSynthesis.cancel();
-        //         }
-        //
-        //         speak(text);
-        //
-        //     }
-        // };
 
         $scope.sayIt = function (text) {
             if (!text) return;
 
-            const u = new SpeechSynthesisUtterance(' ' + text);
-
+            var u = new SpeechSynthesisUtterance(text);
+            u.lang = vm.speechLang;
             u.rate = 1;
             u.pitch = 1;
             u.volume = 1;
 
-            const selectedVoice = speechSynthesis.getVoices().find(function (voice) {
-                return voice.name === voiceSelect.value;
-            });
+            var allVoices = window.speechSynthesis.getVoices() || [];
+
+            var selectedVoice =
+                allVoices.find(function (v) {
+                    return v.lang === vm.speechLang;
+                }) ||
+                allVoices.find(function (v) {
+                    return v.lang && v.lang.indexOf(vm.speechLang.substring(0, 2)) === 0;
+                }) ||
+                null;
 
             if (selectedVoice) {
                 u.voice = selectedVoice;
+                u.lang = selectedVoice.lang;
             }
 
-            speechSynthesis.cancel();
-            speechSynthesis.speak(u);
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(u);
         };
 
         $scope.shutUp = function () {

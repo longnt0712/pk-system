@@ -1427,9 +1427,23 @@
                     <!--<label for="show-voice">Cài đặt giọng đọc</label>-->
                     <!--<input type="checkbox" id="show-voice" ng-model="vm.showVoiceOption" >-->
                     <!--</div>-->
-                    <div class="col-md-4" ng-show="vm.showVoiceOption === true">
+                    <!--<div class="col-md-4" ng-show="vm.showVoiceOption === true">-->
+                    <div class="col-md-4">
                         <div class="option">
-                            <label for="voice">Giọng đọc</label> <select name="voice" id="voice"></select>
+                            <!--<label for="voice">Giọng đọc</label> <select name="voice" id="voice"></select>-->
+                            <button
+                                    class="btn"
+                                    ng-class="vm.speechLang === 'en-US' ? 'btn-primary' : 'btn-default'"
+                                    ng-click="vm.speechLang='en-US'">
+                                EN
+                            </button>
+
+                            <button
+                                    class="btn"
+                                    ng-class="vm.speechLang === 'vi-VN' ? 'btn-primary' : 'btn-default'"
+                                    ng-click="vm.speechLang='vi-VN'">
+                                VI
+                            </button>
                         </div>
                         <div class="option" ng-show="vm.mode.id != 8">
                             <label for="volume">Âm thanh</label>
