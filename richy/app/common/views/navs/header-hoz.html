@@ -26,6 +26,7 @@
                         <li><a href="question/3"><i class="fa fa-caret-right"></i>YOUR FLASHCARDS</a></li>
                         <li><a href="view/3"><i class="fa fa-caret-right"></i>GAME MODES</a></li>
                         <li><a href="topics"><i class="fa fa-caret-right"></i>TOPIC</a></li>
+                        <li ng-if="settings.isAdmin"><a href="topic_categories"><i class="fa fa-caret-right"></i>TOPIC CATEGORIES</a></li>
                     </ul>
                 </li>
 
@@ -46,30 +47,6 @@
                         </li>
                     </ul>
                 </li>
-
-                <!--<li class="dropdown" ng-if="settings.isStaff || settings.isAdmin">-->
-                    <!--<a href="product" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">-->
-                        <!--Bán hàng <span class="caret"></span>-->
-                    <!--</a>-->
-                <!--</li>-->
-
-                <!--<li class="dropdown" ng-if="settings.isStudentManagerment || settings.isAdmin">-->
-                    <!--<a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">-->
-                        <!--ĐIỂM DANH <span class="caret"></span>-->
-                    <!--</a>-->
-                <!--</li>-->
-
-                <!--<li class="dropdown" ng-if="settings.isStudentManagerment || settings.isAdmin">-->
-                    <!--<a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">-->
-                        <!--DANH SÁCH HỌC SINH <span class="caret"></span>-->
-                    <!--</a>-->
-                <!--</li>-->
-
-                <!--<li class="dropdown" ng-if="settings.isStudentManagerment || settings.isEducationManagerment || settings.isAdmin">-->
-                    <!--<a href="student_marks" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">-->
-                         <!--<span class="caret"></span>-->
-                    <!--</a>-->
-                <!--</li>-->
 
                 <li ng-show="settings.isAdmin == true || settings.isEducationManagerment == true || settings.isStudentManagerment == true" class="menu-dropdown">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
@@ -114,7 +91,7 @@
                 </li>
 
                 <li ng-show="settings.isAdmin == true || settings.isStaff == true" class="menu-dropdown">
-                    <a href="product" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                    <a target="_blank" href="product" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         BÁN HÀNG</span>
                     </a>
                 </li>
