@@ -3168,6 +3168,14 @@
                 return /^[A-ZÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴ]/.test(word);
             }
 
+            function isSingleUppercaseLetter(word) {
+                return /^[A-ZÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴ]$/.test(word);
+            }
+
+            function isSingleDigit(word) {
+                return /^[0-9]$/.test(word);
+            }
+
             vm.numberOfGaps = 0;
 
             var x = String(text).split(' ');
@@ -3186,14 +3194,28 @@
 
                 var shouldMakeGap = false;
 
-                if (!startsWithLetter(trimmedWord)) {
+                // nếu không bắt đầu bằng chữ cái hoặc số thì không tạo gap
+                if (!startsWithLetter(trimmedWord) && !/^[0-9]/.test(trimmedWord)) {
                     shouldMakeGap = false;
-                } else if (vm.mode.id == 8 && startsWithUppercaseLetter(trimmedWord)) {
-                    // mode 8: từ bắt đầu bằng chữ hoa thì không tạo gap
-                    shouldMakeGap = false;
-                } else if (typeof checkIfDateOrNumber === 'function' && checkIfDateOrNumber(trimmedWord)) {
+                }
+                // nếu là đúng 1 chữ cái viết hoa đứng một mình thì LUÔN tạo gap
+                else if (isSingleUppercaseLetter(trimmedWord)) {
                     shouldMakeGap = true;
-                } else {
+                }
+                // nếu là đúng 1 chữ số đứng một mình thì LUÔN tạo gap
+                else if (isSingleDigit(trimmedWord)) {
+                    shouldMakeGap = true;
+                }
+                // mode 8: các từ bắt đầu bằng chữ hoa thì không tạo gap
+                else if (vm.mode.id == 8 && startsWithUppercaseLetter(trimmedWord)) {
+                    shouldMakeGap = false;
+                }
+                // số / ngày tháng thì ưu tiên tạo gap
+                else if (typeof checkIfDateOrNumber === 'function' && checkIfDateOrNumber(trimmedWord)) {
+                    shouldMakeGap = true;
+                }
+                // còn lại thì random theo gapRate
+                else {
                     if (trimmedWord.length > 1 && Math.random() < gapRate) {
                         shouldMakeGap = true;
                     }
