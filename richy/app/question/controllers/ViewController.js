@@ -4429,6 +4429,8 @@
         vm.gaps3Config.fontSize = vm.gaps3Config.fontSize || 40;
         vm.gaps3Config.lineHeight = vm.gaps3Config.lineHeight || 1.8;
 
+        vm.cardBaseHeight = 260;
+
     }
 
 })();
