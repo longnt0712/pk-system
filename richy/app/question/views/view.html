@@ -1050,7 +1050,7 @@
                 </div>
 
                 <!--listening-->
-                <div ng-if="vm.mode.id == 8" class="row">
+                <div ng-if="vm.mode.id == 8 || vm.mode.id == 11" class="row">
                     <div class="row">
                         <div class="col-md-3" style="padding-left: 20px">
                             <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
@@ -1118,8 +1118,44 @@
 
                 </div>
 
+                <!--gaps vni-->
+                <!--<div id="filling-gaps-top-vni"-->
+                        <!--ng-if="vm.mode.id == 11"-->
+                        <!--class="row"-->
+                        <!--style="scroll-margin-top: 20px;">-->
+                    <!--<div class="row">-->
+                        <!--<div class="col-md-3" style="padding-left: 20px">-->
+                            <!--<table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>-->
+                        <!--</div>-->
+
+                        <!--<div class="col-md-9" style="padding-right: 20px">-->
+                            <!--<div class="row margin-bottom-10">-->
+                                <!--<div class="col-md-12 text-center">-->
+                                    <!--<h2 class="bold" ng-bind-html="vm.currentCard.question"></h2>-->
+
+                                    <!--<button class="btn btn-warning"-->
+                                            <!--ng-click="vm.toggleShowGapAnswers()">-->
+                                        <!--{{ vm.showGapAnswers ? 'Ẩn đáp án' : 'Hiển thị đáp án' }}-->
+                                    <!--</button>-->
+                                <!--</div>-->
+                            <!--</div>-->
+
+                            <!--<div class="row margin-top-10 margin-bottom-10">-->
+                                <!--<div class="col-md-12">-->
+                                    <!--<div class="bold" compile="vm.fillingGapQuestion"></div>-->
+                                <!--</div>-->
+                            <!--</div>-->
+                        <!--</div>-->
+
+                        <!--<div class="col-md-12 margin-top-10">-->
+                            <!--<div class="bold" compile="vm.fillingGapAllQuestions"></div>-->
+                        <!--</div>-->
+                    <!--</div>-->
+                <!--</div>-->
+                <!--end gaps vni-->
+
                 <div id="filling-gaps-top"
-                     ng-if="vm.mode.id == 11 || vm.mode.id == 12"
+                     ng-if="vm.mode.id == 12"
                      class="row"
                      style="scroll-margin-top: 20px;"
                      ng-class="{'gaps3-cate-theme': vm.mode.id == 12}">
