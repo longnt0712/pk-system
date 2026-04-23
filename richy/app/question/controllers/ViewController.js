@@ -525,6 +525,11 @@
                 }
 
                 if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){ //filling gaps
+
+                    if (vm.mode.id == 12) {
+                        vm.showGapsTable = false;
+                    }
+
                     vm.setUpTable();
                     vm.bsTableControl.options.sidePagination = 'client';
 
@@ -592,6 +597,10 @@
                     if(vm.mode.id == 7){ // tug of war
                         vm.resetTugOfWarDefault();
                     }
+                }
+
+                if (vm.mode.id == 11 || vm.mode.id == 12) {
+                    vm.scrollToFillingGapsTop();
                 }
             });
         };
@@ -777,6 +786,10 @@
 
             vm.setUpAudio();
             vm.setUpTestResult();
+
+            vm.currentPosition = index;
+            vm.currentCard = vm.questions[index];
+            vm.syncCurrentFillingGapCard();
         };
 
         vm.fillingGapAllQuestions = '';
@@ -893,11 +906,25 @@
                 }
             } else {
                 // if(vm.currentPosition + 1 < vm.searchDto.pageSize){
+                // if(vm.currentPosition + 1 < vm.totalCard){
+                //     vm.currentPosition = vm.currentPosition + 1;
+                //     vm.currentCard = vm.questions[vm.currentPosition];
+                //     // vm.createQuiz(vm.currentCard);
+                //     vm.answerRewriteWord = '';
+                //     if(!vm.isMuted && vm.mode.id !=4){
+                //         $scope.sayIt(vm.currentCard.question);
+                //     }
+                // }
+
                 if(vm.currentPosition + 1 < vm.totalCard){
                     vm.currentPosition = vm.currentPosition + 1;
                     vm.currentCard = vm.questions[vm.currentPosition];
-                    // vm.createQuiz(vm.currentCard);
                     vm.answerRewriteWord = '';
+
+                    if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){
+                        vm.syncCurrentFillingGapCard();
+                    }
+
                     if(!vm.isMuted && vm.mode.id !=4){
                         $scope.sayIt(vm.currentCard.question);
                     }
@@ -917,11 +944,25 @@
                     }
                 }
             }else {
+                // if(vm.currentPosition > 0){
+                //     vm.currentPosition = vm.currentPosition - 1;
+                //     vm.currentCard = vm.questions[vm.currentPosition];
+                //     // vm.createQuiz(vm.currentCard);
+                //     vm.answerRewriteWord = '';
+                //     if(!vm.isMuted){
+                //         $scope.sayIt(vm.currentCard.question);
+                //     }
+                // }
+
                 if(vm.currentPosition > 0){
                     vm.currentPosition = vm.currentPosition - 1;
                     vm.currentCard = vm.questions[vm.currentPosition];
-                    // vm.createQuiz(vm.currentCard);
                     vm.answerRewriteWord = '';
+
+                    if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){
+                        vm.syncCurrentFillingGapCard();
+                    }
+
                     if(!vm.isMuted){
                         $scope.sayIt(vm.currentCard.question);
                     }
@@ -1665,7 +1706,8 @@
             vm.timeUpInGaps3 = false;
 
             if (vm.mode.id == 12) {
-                $scope.counter = vm.lastSetCounter || 30;
+                $scope.counter = 30;
+                vm.scrollToFillingGapsTop();
             } else {
                 $scope.counter = vm.tempCounter;
             }
@@ -4308,6 +4350,84 @@
                 true
             );
         };
+
+        vm.showGapsTable = false;
+
+        vm.syncCurrentFillingGapCard = function () {
+            if (!(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12)) {
+                return;
+            }
+
+            if (!vm.currentCard) {
+                return;
+            }
+
+            vm.showGapAnswers = false;
+            vm.currentGapBlocks = null;
+            vm.fillingGapQuestion = processFillingGapsByMode(
+                vm.currentCard.motherTongue,
+                false,
+                true
+            );
+            vm.finishFillingGaps = "Unfinished";
+            vm.percentage = 0;
+            vm.allowChangeInformation = false;
+
+            vm.setUpAudio();
+            vm.setUpTestResult();
+
+            if (vm.bsTableControl && vm.bsTableControl.options) {
+                vm.bsTableControl.options.data = angular.copy(vm.questions || []);
+            }
+        };
+
+        vm.toggleGapsTable = function () {
+            vm.showGapsTable = !vm.showGapsTable;
+
+            if (vm.showGapsTable && vm.bsTableControl && vm.bsTableControl.options) {
+                $timeout(function () {
+                    vm.bsTableControl.options.data = angular.copy(vm.questions || []);
+                }, 0);
+            }
+        };
+
+        vm.shuffleGapsTable = function () {
+            if (!vm.questions || !vm.questions.length) {
+                return;
+            }
+
+            vm.questions = shuffleArray((vm.questions || []).slice());
+            vm.questions1 = angular.copy(vm.questions);
+
+            if (vm.bsTableControl && vm.bsTableControl.options) {
+                vm.bsTableControl.options.data = angular.copy(vm.questions);
+                vm.bsTableControl.options.totalRows = vm.questions.length;
+            }
+
+            vm.currentPosition = 0;
+            vm.currentCard = vm.questions[0];
+            vm.syncCurrentFillingGapCard();
+        };
+
+        vm.scrollToFillingGapsTop = function () {
+            $timeout(function () {
+                var el = document.getElementById('filling-gaps-top');
+                if (el) {
+                    el.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                } else {
+                    $window.scrollTo(0, 0);
+                }
+            }, 100);
+        };
+
+        vm.gaps3Config = vm.gaps3Config || {};
+        vm.gaps3Config.gapCount = vm.gaps3Config.gapCount || 3;
+        vm.gaps3Config.maxWordsPerGap = vm.gaps3Config.maxWordsPerGap || 4;
+        vm.gaps3Config.fontSize = vm.gaps3Config.fontSize || 40;
+        vm.gaps3Config.lineHeight = vm.gaps3Config.lineHeight || 1.8;
 
     }
 

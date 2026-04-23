@@ -1123,93 +1123,158 @@
 
                 </div>
 
-                <div ng-if="vm.mode.id == 11 || vm.mode.id == 12"
+                <div id="filling-gaps-top"
+                     ng-if="vm.mode.id == 11 || vm.mode.id == 12"
                      class="row"
+                     style="scroll-margin-top: 20px;"
                      ng-class="{'gaps3-cate-theme': vm.mode.id == 12}">
                     <div class="row">
-                        <div class="col-md-3" style="padding-left: 20px">
-                            <div ng-class="{'gaps3-side-card': vm.mode.id == 12}">
+                        <div class="col-md-12" style="padding-left: 20px">
+                            <div ng-if="vm.mode.id == 12" class="gaps3-side-tools">
+                                <button class="btn btn-primary gaps3-btn"
+                                        ng-click="vm.toggleGapsTable()">
+                                    {{ vm.showGapsTable ? '🙈 Ẩn danh sách' : '📋 Hiện danh sách' }}
+                                </button>
+
+                                <button class="btn btn-warning gaps3-btn"
+                                        ng-click="vm.shuffleGapsTable()"
+                                        ng-disabled="!vm.questions || !vm.questions.length">
+                                    🔀 Trộn
+                                </button>
+
+                                <button class="btn btn-brown gaps3-btn"
+                                        ng-click="vm.backCard()"
+                                        ng-disabled="vm.currentPosition <= 0">
+                                    ⬅ Back
+                                </button>
+
+                                <button class="btn btn-success gaps3-btn"
+                                        ng-click="vm.nextCard()"
+                                        ng-disabled="vm.currentPosition + 1 >= vm.totalCard">
+                                    Next ➡
+                                </button>
+                            </div>
+
+                            <div ng-if="vm.mode.id != 12 || vm.showGapsTable"
+                                 ng-class="{'gaps3-side-card': vm.mode.id == 12}">
                                 <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
                             </div>
                         </div>
 
-                        <div class="col-md-9" style="padding-right: 20px">
+                        <div class="col-md-12" style="padding-right: 20px">
                             <div ng-class="{'gaps3-main-card': vm.mode.id == 12}">
-                                <div class="row margin-bottom-10">
-                                    <div class="col-md-12 text-center">
-                                        <div ng-if="vm.mode.id == 12" class="gaps3-top-decor">
-                                            🌈 ✨ Thiếu Nhi Thánh Thể ✨ 🌈
-                                        </div>
+                                <div class="row gaps3-layout">
+                                    <!-- Cột trái -->
+                                    <div class="col-xs-12 col-md-3 gaps3-left-col">
+                                        <div class="gaps3-left-sticky">
+                                            <div class="row margin-bottom-10">
+                                                <div class="col-md-12 text-center">
+                                                    <div ng-if="vm.mode.id == 12" class="gaps3-top-decor">
+                                                        🌈 ✨ Thiếu Nhi Thánh Thể ✨ 🌈
+                                                    </div>
 
-                                        <h2 class="bold"
-                                            ng-class="{'gaps3-title': vm.mode.id == 12}"
-                                            ng-bind-html="vm.currentCard.question"></h2>
+                                                    <h2 class="bold"
+                                                        ng-class="{'gaps3-title': vm.mode.id == 12}"
+                                                        ng-bind-html="vm.currentCard.question"></h2>
 
-                                        <div ng-if="vm.mode.id == 12" class="gaps3-subtitle">
-                                            Cùng điền {{vm.gaps3Config.gapCount}} cụm còn thiếu nhé 💙
-                                        </div>
+                                                    <div ng-if="vm.mode.id == 12" class="gaps3-subtitle">
+                                                        Cùng điền {{vm.gaps3Config.gapCount}} cụm còn thiếu nhé 💙
+                                                    </div>
 
-                                        <button class="btn btn-danger"
-                                                ng-class="{'gaps3-btn gaps3-btn-showall': vm.mode.id == 12}"
-                                                ng-click="vm.selectAllFillingGaps()">
-                                            {{ vm.mode.id == 12 ? '📖 Xem tất cả' : 'Show all' }}
-                                        </button>
+                                                    <button
+                                                            ng-if="vm.mode.id == 12"
+                                                            class="btn btn-warning gaps3-btn gaps3-btn-answer"
+                                                            ng-click="vm.toggleShowGapAnswers()"
+                                                            style="margin-top: 10px;">
+                                                        {{ vm.showGapAnswers ? '🙈 Ẩn đáp án' : '🎁 Hiển thị đáp án' }}
+                                                    </button>
 
-                                        <button
-                                                ng-if="vm.mode.id == 12"
-                                                class="btn btn-warning gaps3-btn gaps3-btn-answer"
-                                                ng-click="vm.toggleShowGapAnswers()"
-                                                style="margin-left: 10px;">
-                                            {{ vm.showGapAnswers ? '🙈 Ẩn đáp án' : '🎁 Hiển thị đáp án' }}
-                                        </button>
+                                                    <div ng-if="vm.mode.id == 12" style="margin-top: 12px;">
+                                                        <button class="btn btn-info gaps3-btn" ng-click="vm.thirtySeconds()">
+                                                            ⏳ {{vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
+                                                        </button>
 
-                                        <div ng-if="vm.mode.id == 12" style="margin-top: 12px;">
-                                            <button class="btn btn-info gaps3-btn" ng-click="vm.thirtySeconds()">
-                                                ⏳ {{vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
-                                            </button>
+                                                        <button class="btn btn-success gaps3-btn"
+                                                                ng-click="vm.twentySeconds()"
+                                                                style="margin-top: 10px;">
+                                                            ⚡ {{vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
+                                                        </button>
 
-                                            <button class="btn btn-success gaps3-btn" ng-click="vm.twentySeconds()" style="margin-left: 10px;">
-                                                ⚡ {{vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
-                                            </button>
+                                                        <button class="btn btn-warning gaps3-btn"
+                                                                ng-click="refreshTimer()"
+                                                                style="margin-top: 10px;">
+                                                            🔄 Reset
+                                                        </button>
 
-                                            <button class="btn btn-warning gaps3-btn" ng-click="refreshTimer()" style="margin-left: 10px;">
-                                                🔄 Reset
-                                            </button>
+                                                        <div style="margin-top: 12px;">
+                                                            <div class="row gaps3-setting-row">
+                                                                <div class="col-xs-6">
+                                                                    <label class="bold gaps3-label-nowrap" for="gap-count-input">Số gaps:</label>
+                                                                    <input id="gap-count-input"
+                                                                           type="number"
+                                                                           min="1"
+                                                                           max="20"
+                                                                           class="form-control"
+                                                                           ng-model="vm.gaps3Config.gapCount"
+                                                                           ng-change="vm.updateGaps3Preview()" />
+                                                                </div>
 
-                                            <div style="margin-top: 12px; display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap;">
-                                                <div>
-                                                    <label class="bold" for="gap-count-input">Số gaps:</label>
-                                                    <input id="gap-count-input"
-                                                            type="number"
-                                                            min="1"
-                                                            max="20"
-                                                            class="form-control"
-                                                            style="width: 100px; display: inline-block; margin-left: 6px;"
-                                                            ng-model="vm.gaps3Config.gapCount"
-                                                            ng-change="vm.updateGaps3Preview()" />
-                                                </div>
+                                                                <div class="col-xs-6">
+                                                                    <label class="bold gaps3-label-nowrap" for="gap-max-words-input">Số từ tối đa / gap:</label>
+                                                                    <input id="gap-max-words-input"
+                                                                           type="number"
+                                                                           min="2"
+                                                                           max="10"
+                                                                           class="form-control"
+                                                                           ng-model="vm.gaps3Config.maxWordsPerGap"
+                                                                           ng-change="vm.updateGaps3Preview()" />
+                                                                </div>
+                                                            </div>
 
-                                                <div>
-                                                    <label class="bold" for="gap-max-words-input">Số từ tối đa / gap:</label>
-                                                    <input id="gap-max-words-input"
-                                                            type="number"
-                                                            min="2"
-                                                            max="10"
-                                                            class="form-control"
-                                                            style="width: 100px; display: inline-block; margin-left: 6px;"
-                                                            ng-model="vm.gaps3Config.maxWordsPerGap"
-                                                            ng-change="vm.updateGaps3Preview()" />
+                                                            <div class="row gaps3-setting-row" style="margin-top: 10px;">
+                                                                <div class="col-xs-6">
+                                                                    <label class="bold gaps3-label-nowrap" for="gap-font-size-input">Cỡ chữ (px):</label>
+                                                                    <input id="gap-font-size-input"
+                                                                           type="number"
+                                                                           min="20"
+                                                                           max="100"
+                                                                           class="form-control"
+                                                                           ng-model="vm.gaps3Config.fontSize" />
+                                                                </div>
+
+                                                                <div class="col-xs-6">
+                                                                    <label class="bold gaps3-label-nowrap" for="gap-line-height-input">Line height:</label>
+                                                                    <input id="gap-line-height-input"
+                                                                           type="number"
+                                                                           min="1"
+                                                                           max="3"
+                                                                           step="0.1"
+                                                                           class="form-control"
+                                                                           ng-model="vm.gaps3Config.lineHeight" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div class="row margin-top-10 margin-bottom-10 .filling-content-mode-gaps-3">
-                                    <div class="col-md-12">
-                                        <div class="bold"
-                                             ng-class="{'gaps3-content': vm.mode.id == 12}"
-                                             compile="vm.fillingGapQuestion"></div>
+                                    <!-- Cột phải -->
+                                    <div class="col-xs-12 col-md-9 gaps3-right-col">
+                                        <div class="gaps3-main-fill">
+                                            <div class="row margin-top-10 margin-bottom-10 filling-content-mode-gaps-3">
+                                                <div class="col-md-12">
+                                                    <div class="bold"
+                                                         ng-class="{'gaps3-content': vm.mode.id == 12}"
+                                                         ng-style="vm.mode.id == 12 && {
+                                                             'font-size': (vm.gaps3Config.fontSize || 40) + 'px',
+                                                             'line-height': (vm.gaps3Config.lineHeight || 1.8)
+                                                         }"
+                                                         compile="vm.fillingGapQuestion"></div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -3836,7 +3901,7 @@
     }
 
     .gaps3-cate-theme .gaps3-content {
-        font-size: 22px;
+        font-size: 40px;
         line-height: 2.1;
         color: var(--g3-text);
         background: #ffffffd9;
@@ -3919,8 +3984,8 @@
 
     /* ===== nâng cấp nhẹ ô gaps mode 12 ===== */
     .gaps3-cate-theme .gaps3-content {
-        font-size: 23px;
-        line-height: 2.3;
+        font-size: 40px;
+        line-height: 1.8;
     }
 
     .gaps3-cate-theme .filling-gap-3-answer {
@@ -3963,7 +4028,7 @@
         outline: none !important;
         background: transparent !important;
         border-bottom: 2px dashed #5bb6ff !important;
-        font-size: 20px !important;
+        font-size: 15px !important;
         font-weight: 700;
         color: #355c7d;
         text-align: center;
@@ -4011,5 +4076,75 @@
         color: #d93c54;
         font-weight: 700;
         box-shadow: 0 4px 10px rgba(229,57,53,0.10);
+    }
+
+    .gaps3-side-tools{
+        display:flex;
+        flex-wrap:wrap;
+        gap:8px;
+        margin-bottom:12px;
+        justify-content:center;
+    }
+
+    /* layout 2 cột cho gaps3 */
+    .gaps3-layout{
+        display: flex;
+        flex-wrap: wrap;
+        align-items: stretch;
+    }
+
+    .gaps3-left-col,
+    .gaps3-right-col{
+        display: flex;
+        flex-direction: column;
+    }
+
+    .gaps3-main-fill{
+        flex: 1;
+        min-height: calc(100vh - 20px);
+        height: 100%;
+    }
+
+    /* sticky cột trái trên desktop */
+    .gaps3-left-sticky{
+        position: sticky;
+        top: 10px;
+        align-self: flex-start;
+    }
+
+    /* giúp card/phần phải kéo đủ chiều cao */
+    .gaps3-right-col > .gaps3-main-fill,
+    .gaps3-right-col .filling-content-mode-gaps-3{
+        height: 100%;
+    }
+
+    /* mobile: tự xuống 12/12, bỏ sticky */
+    @media (max-width: 991px){
+        .gaps3-layout{
+            display: block;
+        }
+
+        .gaps3-left-sticky{
+            position: static;
+            top: auto;
+        }
+
+        .gaps3-main-fill{
+            min-height: auto;
+        }
+
+        .gaps3-left-col{
+            margin-bottom: 16px;
+        }
+    }
+
+    .gaps3-label-nowrap{
+        display: block;
+        white-space: nowrap;
+        margin-bottom: 6px;
+    }
+
+    .gaps3-setting-row .form-control{
+        width: 100%;
     }
 </style>
