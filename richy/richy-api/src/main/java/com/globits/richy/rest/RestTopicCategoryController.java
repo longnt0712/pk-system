@@ -22,7 +22,7 @@ public class RestTopicCategoryController {
 	@Autowired
 	TopicCategoryService service;
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER"})
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
 	public Page<TopicCategoryDto> getPage(@RequestBody TopicCategoryDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
 		return service.getPageObject(searchDto, pageIndex, pageSize);
