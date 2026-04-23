@@ -89,23 +89,27 @@
                     <input data-ng-model="vm.topic.name" type="text" autofocus="autofocus" class="form-control" />
                 </div>
                 <div class="col-md-12">
+                    <label class="bold">Loại</label>
+                    <ui-select ng-model="vm.topic.topicCategory" sortable="true" close-on-select="true">
+                        <ui-select-match allow-clear="false" placeholder="Loại...">{{$select.selected.name}}</ui-select-match>
+                        <ui-select-choices repeat="so in vm.topicCategories  | propsFilter: {name: $select.search}">
+                            <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                <div class="col-md-12">
                     <label class="bold">Content</label>
-                    <!--<textarea ui-tinymce="tinymceOptions" rows="6" class="form-control" ng-model="vm.topic.content"  />-->
                     <textarea rows="12" class="form-control" ng-model="vm.topic.content"  />
                 </div>
                 <div class="col-md-12">
                     <label class="bold">Content HTML</label>
                     <textarea ui-tinymce="tinymceOptions" rows="6" class="form-control" ng-model="vm.topic.contentHtml"  />
-                    <!--<textarea rows="12" class="form-control" ng-model="vm.topic.content"  />-->
-                </div>
-                <div ng-if="settings.isAdmin == true" class="col-md-12">
-                    <input ng-model="vm.topic.website" type="number"  class=" input-underline-only" style="width: 60px" placeholder="Time...">
                 </div>
             </div>
         </div>
         <div class="modal-footer">
             <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
-            <button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>
+            <button type="button" ng-click="vm.saveObjectValidate();" class="btn btn-primary">Lưu</button>
         </div>
     </div>
 </script>

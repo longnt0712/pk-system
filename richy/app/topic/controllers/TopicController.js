@@ -606,12 +606,13 @@
         /**
          * New event account
          */
+
         vm.newObject = function () {
 
             vm.topic.isNew = true;
             vm.topic.userId = vm.currentUser.id;
 
-            var modalInstance = modal.open({
+            vm.modalInstance = modal.open({
                 animation: true,
                 templateUrl: 'edit_object_modal.html',
                 scope: $scope,
@@ -619,30 +620,33 @@
                 backdrop: 'static',
             });
 
-            modalInstance.result.then(function (confirm) {
-                if (confirm == 'yes') {
-                    service.saveObject(vm.topic).then(function (data) {
-                        vm.getPage();
-                        vm.topic = {};
-                        if(data.message != null){
-                            toastr.info(data.message, 'Notification');
-                        }else{
-                            toastr.error('Error.', 'Warning');
-                        }
+            vm.modalInstance.result.then(function (confirm) {
 
-                    });
-
-                    // service.saveObject(vm.topic, function success(data) {
-                    //     console.log(vm.topic);
-                    //     vm.getPage();
-                    //     toastr.info('Bạn đã tạo mới thành công một tài khoản.', 'Thông báo');
-                    //     vm.topic = {};
-                    // }, function failure() {
-                    //     toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
-                    // });
-                }
             }, function () {
                 vm.topic = {};
+            });
+        };
+
+        vm.saveObjectValidate = function () {
+            if(vm.topic.name == null || vm.topic.name.length <= 0){
+                toastr.warning('Xin mời nhập tên topic', 'cảnh báo');
+                return;
+            }
+            if(vm.topic.topicCategory == null){
+                toastr.warning('Xin mời chọn loại topic', 'cảnh báo');
+                return;
+            }
+
+            service.saveObject(vm.topic).then(function (data) {
+                vm.getPage();
+                vm.topic = {};
+                if(data.message != null){
+                    toastr.info(data.message, 'Notification');
+                    vm.modalInstance.close(data);   // đóng modal ở đây
+                }else{
+                    toastr.error('Error.', 'Warning');
+                }
+
             });
         };
 
