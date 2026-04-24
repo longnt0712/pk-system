@@ -3180,6 +3180,8 @@
                         '<input autocomplete="off" ' +
                         'oncompositionstart="this.dataset.composing=\'1\'" ' +
                         'oncompositionend="this.dataset.composing=\'0\'" ' +
+                        'ng-model="vm.gapValues[' + i + ']" ' +
+                        'ng-change="vm.onGapInputChange(' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')" ' +
                         'ng-keyup="vm.onGapKeyup($event,' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')" ' +
                         'class="input-underline-only gap-inline-input" ' +
                         'type="text" ' +
@@ -3199,6 +3201,39 @@
             return processedText.trim();
         }
 
+        vm.gapValues = {};
+        function normalizeGapAutoNext(text) {
+            var normalize = (typeof processTextByMode === 'function') ? processTextByMode : processText;
+
+            var cleaned = String(text || '')
+                .replace(/^[\s"'“”‘’.,!?;:()\[\]{}_-]+/, '')
+                .replace(/[\s"'“”‘’.,!?;:()\[\]{}_-]+$/, '');
+
+            return normalize(cleaned);
+        }
+        vm.onGapInputChange = function (totalWords, index, fullText, gapWord) {
+            vm.fillingGaps(totalWords, index, fullText);
+
+            var typed = normalizeGapAutoNext(vm.gapValues[index]);
+            var answer = normalizeGapAutoNext(gapWord);
+
+            if (typed && typed === answer) {
+                $timeout(function () {
+                    var currentInput = document.getElementById('gap-number-' + index);
+                    if (currentInput) {
+                        currentInput.blur();
+                    }
+
+                    for (var j = index + 1; j < totalWords; j++) {
+                        var nextInput = document.getElementById('gap-number-' + j);
+                        if (nextInput) {
+                            nextInput.focus();
+                            break;
+                        }
+                    }
+                }, 120);
+            }
+        };
         vm.onGapKeyup = function ($event, totalWords, index, fullText, gapWord) {
             var target = $event && $event.target;
 
@@ -3211,7 +3246,6 @@
                 return;
             }
 
-            // Enter = đọc đáp án đúng của gap hiện tại như gợi ý
             if ($event && ($event.key === 'Enter' || $event.keyCode === 13)) {
                 if ($event.preventDefault) {
                     $event.preventDefault();
@@ -3221,29 +3255,6 @@
                     vm.updateSpeechLangByMode();
                     $scope.sayIt(gapWord);
                 }
-                return;
-            }
-
-            vm.backForthAudio();
-            vm.pauseAudio();
-            vm.fillingGaps(totalWords, index, fullText);
-
-            var normalize = (typeof processTextByMode === 'function') ? processTextByMode : processText;
-
-            var currentValue = target && target.value ? target.value : '';
-            var typed = normalize(currentValue);
-            var answer = normalize(gapWord);
-
-            if (typed && typed === answer) {
-                $timeout(function () {
-                    for (var j = index + 1; j < totalWords; j++) {
-                        var nextInput = document.getElementById('gap-number-' + j);
-                        if (nextInput) {
-                            nextInput.focus();
-                            break;
-                        }
-                    }
-                }, 80);
             }
         };
 
