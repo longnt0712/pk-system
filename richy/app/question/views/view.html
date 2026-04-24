@@ -1329,6 +1329,14 @@
                                 </div>
 
                                 <div style="margin-top: 12px;">
+                                    <button class="btn btn-brown gaps3-btn"
+                                            ng-click="vm.toggleMcqQuestion()"
+                                            style="margin-top: 10px;">
+                                        {{ vm.showMcqQuestion ? 'Ẩn câu hỏi' : 'Hiển thị câu hỏi' }}
+                                    </button>
+                                </div>
+                                <div style="margin-top: 12px;">
+
                                     <button class="btn btn-info gaps3-btn"
                                             ng-click="vm.thirtySeconds()">
                                         ⏳ {{vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
@@ -1426,9 +1434,9 @@
 
                         <!-- Cột phải: câu hỏi + đáp án -->
                         <div class="col-xs-12 col-md-9" style="padding-right: 20px;">
-                            <div class="gaps3-main-card">
+                            <div class="gaps3-main-card"  >
 
-                                <div class="row margin-bottom-10">
+                                <div class="row margin-bottom-10" ng-if="vm.showMcqQuestion">
                                     <div class="col-md-12 text-center">
                                         <div class="bold mcq-passage-text"
                                              ng-style="{
@@ -1447,27 +1455,27 @@
                                         <div ng-if="vm.currentCard.pronounce"
                                              class="mcq-question-text"
                                              ng-style="{
-        'font-size': vm.mcqQuestionFontSize + 'px'
-     }">
+                                                'font-size': vm.mcqQuestionFontSize + 'px'
+                                             }">
                                             {{vm.currentCard.pronounce}}
                                         </div>
 
                                         <div ng-if="vm.currentCard.mcqResult"
                                              style="margin-top: 10px; font-size: 22px;">
-                            <span ng-if="vm.currentCard.mcqResult == 'Correct'"
-                                  style="color: green;">
-                                ✅ Correct
-                            </span>
+                                            <span ng-if="vm.currentCard.mcqResult == 'Correct'"
+                                                  style="color: green;">
+                                                ✅ Correct
+                                            </span>
 
-                            <span ng-if="vm.currentCard.mcqResult == 'Wrong'"
-                                  style="color: red;">
-                                ❌ Wrong
-                            </span>
+                                            <span ng-if="vm.currentCard.mcqResult == 'Wrong'"
+                                                  style="color: red;">
+                                                ❌ Wrong
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="row margin-top-10">
+                                <div class="row margin-top-10" ng-if="vm.showMcqQuestion">
                                     <div class="col-xs-12 col-md-12 margin-top-10 margin-bottom-5 tntt-mcq-answer-row"
                                          ng-repeat="answer in vm.currentCard.mcqAnswers track by $index">
 
@@ -1475,20 +1483,23 @@
                                                 ng-disabled="vm.currentCard.mcqAnswered"
                                                 ng-click="vm.answerMCQ(answer)"
                                                 ng-class="{
-                                    'mcq-answer-correct': answer.showCorrect === true,
-                                    'mcq-answer-wrong': answer.chosen === true && answer.correct !== true
-                                }">
+                                                    'mcq-answer-correct': answer.showCorrect === true && !vm.currentCard.mcqRevealMode,
+                                                    'mcq-answer-wrong': answer.chosen === true && answer.correct !== true && !vm.currentCard.mcqRevealMode,
 
-                            <span class="mcq-answer-label">
-                                {{answer.label}}.
-                            </span>
+                                                    'mcq-answer-reveal-correct': vm.currentCard.mcqRevealMode === true && answer.correct === true,
+                                                    'mcq-answer-reveal-dim': vm.currentCard.mcqRevealMode === true && answer.correct !== true
+                                                }">
 
-                            <span class="mcq-answer-text"
-                                  ng-style="{
-                                    'font-size': vm.mcqAnswerFontSize + 'px'
-                                  }">
-                                {{answer.text}}
-                            </span>
+                                            <span class="mcq-answer-label">
+                                                {{answer.label}}.
+                                            </span>
+
+                                            <span class="mcq-answer-text"
+                                                  ng-style="{
+                                                    'font-size': vm.mcqAnswerFontSize + 'px'
+                                                  }">
+                                                {{answer.text}}
+                                            </span>
                                         </button>
 
                                     </div>
@@ -1515,9 +1526,9 @@
                                             <i class="fa-solid fa-volume-xmark"></i>
                                         </label>
 
-                                        <!--<input id="mute-button-mcq"-->
-                                               <!--type="checkbox"-->
-                                               <!--ng-model="vm.isMuted"/>-->
+                                        <input id="mute-button-mcq"
+                                               type="checkbox"
+                                               ng-model="vm.isMuted"/>
 
                                         <!--<i class="fa fa-stop-circle mcq-stop-voice-btn"-->
                                            <!--ng-click="shutUp()"-->
@@ -4712,6 +4723,38 @@
 
     .mcq-mode-wrap .mcq-answer-wrong .mcq-answer-label {
         background: linear-gradient(135deg, #b91c1c, #ef4444) !important;
+    }
+
+    .mcq-mode-wrap .mcq-answer-reveal-correct {
+        background: linear-gradient(135deg, #e8fff1 0%, #bceacb 100%) !important;
+        border-color: #2f9e5f !important;
+        color: #14532d !important;
+        box-shadow: 0 8px 18px rgba(47, 158, 95, 0.24) !important;
+        animation: mcqAnswerBounce 2s ease-in-out infinite;
+        transform-origin: center;
+    }
+
+    .mcq-mode-wrap .mcq-answer-reveal-correct .mcq-answer-label {
+        background: linear-gradient(135deg, #16803b, #35b96b) !important;
+    }
+
+    .mcq-mode-wrap .mcq-answer-reveal-dim {
+        opacity: 0.35 !important;
+        filter: grayscale(25%);
+        transform: scale(0.98);
+        box-shadow: none !important;
+    }
+
+    .mcq-mode-wrap .mcq-answer-reveal-dim .mcq-answer-label {
+        opacity: 0.7;
+    }
+
+    @keyframes mcqAnswerBounce {
+        0%   { transform: translateY(0) scale(1); }
+        20%  { transform: translateY(-6px) scale(1.02); }
+        40%  { transform: translateY(0) scale(1); }
+        60%  { transform: translateY(-3px) scale(1.01); }
+        100% { transform: translateY(0) scale(1); }
     }
 
     .mcq-passage-text {

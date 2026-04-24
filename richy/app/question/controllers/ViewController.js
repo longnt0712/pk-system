@@ -628,7 +628,9 @@
                     vm.scrollToFlipExcelBoard();
                 }
 
+
                 if (vm.mode.id == 13) {
+                    vm.showMcqQuestion = false;
                     vm.scrollToMcqTop();
                 }
             });
@@ -917,6 +919,7 @@
             $scope.shutUp();
             vm.updateSpeechLangByMode();
 
+
             if(player == 2){
                 // if(vm.currentPosition1 + 1 < vm.searchDto.pageSize){
                 if(vm.currentPosition1 + 1 < vm.totalCard){
@@ -954,10 +957,15 @@
                     }
                 }
             }
+
+            if (vm.mode.id == 13) {
+                vm.showMcqQuestion = false;
+            }
         };
 
         vm.backCard = function (player) {
             vm.updateSpeechLangByMode();
+
             if(player == 2 ){
                 if(vm.currentPosition1 > 0){
                     vm.currentPosition1 = vm.currentPosition1 - 1;
@@ -992,6 +1000,10 @@
                         $scope.sayIt(vm.currentCard.question);
                     }
                 }
+            }
+
+            if (vm.mode.id == 13) {
+                vm.showMcqQuestion = false;
             }
         };
 
@@ -2371,7 +2383,7 @@
         vm.showMotherTongue = true;
 
         //old//
-        vm.isMuted = false;
+        vm.isMuted = true;
 
         vm.showVoiceOption = true;
         vm.loop = true;
@@ -4458,6 +4470,12 @@
             return processedText.trim();
         }
 
+        vm.showMcqQuestion = false;
+
+        vm.toggleMcqQuestion = function () {
+            vm.showMcqQuestion = !vm.showMcqQuestion;
+        };
+
         vm.thirtySeconds = function () {
             vm.lastSetCounter = 30;
             vm.tempCounter = 30;
@@ -4669,6 +4687,7 @@
                 item.mcqAnswers = displayAnswers;
                 item.mcqAnswered = false;
                 item.mcqResult = null;
+                item.mcqRevealMode = false;
 
                 result.push(item);
             });
@@ -4724,11 +4743,10 @@
             }
 
             vm.currentCard.mcqAnswered = true;
+            vm.currentCard.mcqRevealMode = true;
 
             angular.forEach(vm.currentCard.mcqAnswers, function (item) {
-                if (item.correct === true) {
-                    item.showCorrect = true;
-                }
+                item.showCorrect = (item.correct === true);
             });
 
             if (applause) {
