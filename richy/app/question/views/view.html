@@ -1340,6 +1340,12 @@
                                         ⚡ {{vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
                                     </button>
 
+                                    <button class="btn btn-primary gaps3-btn"
+                                            ng-click="vm.tenSeconds()"
+                                            style="margin-top: 10px;">
+                                        🎯 {{vm.lastSetCounter == 10 ? counter + 's' : '10s'}}
+                                    </button>
+
                                     <button class="btn btn-warning gaps3-btn"
                                             ng-click="refreshTimer()"
                                             style="margin-top: 10px;">

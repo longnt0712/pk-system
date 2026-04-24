@@ -1605,8 +1605,9 @@
 
                 if (vm.mode.id != 7) {
                     if(vm.mode.id != 12){
-                        window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
-                    }                    audio.load();
+                        // window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
+                    }
+                    audio.load();
                     $scope.$broadcast('timer-stopped', 0);
                     $timeout.cancel(mytimeout);
                     return;
@@ -1615,7 +1616,7 @@
 
             $scope.counter = $scope.counter - 1;
 
-            if ($scope.counter > 0 && vm.mode.id == 12) {
+            if ($scope.counter > 0 && (vm.mode.id == 12 || vm.mode.id == 13)) {
                 if (tickTock) {
                     tickTock.currentTime = 0;
                     tickTock.play();
@@ -1627,7 +1628,7 @@
 
                 if((vm.currentPosition + 1) >= vm.totalCard){
                     if(vm.mode.id != 12){
-                        window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
+                        // window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
                     }
                     vm.endGame = true;
                     $scope.counter = 0;
@@ -4290,7 +4291,7 @@
             }
 
             if(vm.mode.id != 12){
-                window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
+                // window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
             }
             audio.load();
             $scope.$broadcast('timer-stopped', 0);
@@ -4474,6 +4475,24 @@
             vm.timeUpInGaps3 = false;
             vm.showGapAnswers = false;
             $scope.refreshTimer();
+            mytimeout = $timeout($scope.onTimeout, 1000);
+        };
+
+        vm.tenSeconds = function () {
+            vm.lastSetCounter = 10;
+            vm.tempCounter = 10;
+            $scope.counter = 10;
+            vm.timeUpInGaps3 = false;
+            vm.showGapAnswers = false;
+
+            $scope.refreshTimer();
+
+            if (tickTock) {
+                tickTock.pause();
+                tickTock.currentTime = 0;
+                tickTock.play();
+            }
+
             mytimeout = $timeout($scope.onTimeout, 1000);
         };
 
@@ -4711,6 +4730,12 @@
                     item.showCorrect = true;
                 }
             });
+
+            if (applause) {
+                applause.pause();
+                applause.currentTime = 0;
+                applause.play();
+            }
         };
 
         vm.mcqPassageFontSize = 40;   // đoạn Kinh Thánh / đoạn lớn
