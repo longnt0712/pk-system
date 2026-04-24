@@ -627,6 +627,10 @@
                 if (vm.mode.id == 10) {
                     vm.scrollToFlipExcelBoard();
                 }
+
+                if (vm.mode.id == 13) {
+                    vm.scrollToMcqTop();
+                }
             });
         };
 
@@ -2403,7 +2407,7 @@
         vm.speechLang = 'en-US';
 
         vm.updateSpeechLangByMode = function () {
-            vm.speechLang = (vm.mode.id == 11) ? 'vi-VN' : 'en-US';
+            vm.speechLang = (vm.mode.id == 11 || vm.mode.id == 13) ? 'vi-VN' : 'en-US';
         };
 
         vm.updateSpeechLangByMode();
@@ -2547,7 +2551,9 @@
         };
 
         $scope.shutUp = function () {
-            window.speechSynthesis.cancel();
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
         };
         $scope.shutUp();
 
@@ -4694,6 +4700,57 @@
                     item.showCorrect = true;
                 }
             });
+        };
+
+        vm.mcqPassageFontSize = 40;   // đoạn Kinh Thánh / đoạn lớn
+        vm.mcqQuestionFontSize = 40;  // câu hỏi nhỏ
+        vm.mcqAnswerFontSize = 40;    // đáp án
+
+        vm.changeMcqFontSize = function () {
+            if (!vm.mcqPassageFontSize || vm.mcqPassageFontSize < 20) {
+                vm.mcqPassageFontSize = 20;
+            }
+
+            if (!vm.mcqQuestionFontSize || vm.mcqQuestionFontSize < 12) {
+                vm.mcqQuestionFontSize = 12;
+            }
+
+            if (!vm.mcqAnswerFontSize || vm.mcqAnswerFontSize < 12) {
+                vm.mcqAnswerFontSize = 12;
+            }
+        };
+
+        vm.scrollToMcqTop = function () {
+            function scrollWhenReady(retry) {
+                $timeout(function () {
+                    var el = document.getElementById('mcq-game-top');
+
+                    if (!el) {
+                        if (retry < 10) {
+                            scrollWhenReady(retry + 1);
+                        }
+                        return;
+                    }
+
+                    var top = el.getBoundingClientRect().top + window.pageYOffset;
+
+                    // Cách 1: browser mới
+                    if (document.scrollingElement) {
+                        document.scrollingElement.scrollTo({
+                            top: top,
+                            behavior: 'smooth'
+                        });
+                    }
+
+                    // Cách 2: fallback cho browser cũ / Angular template
+                    $('html, body').animate({
+                        scrollTop: top
+                    }, 350);
+
+                }, 150);
+            }
+
+            scrollWhenReady(0);
         };
         // end MCQs
     }

@@ -1302,7 +1302,8 @@
                 </div>
 
                 <!-- MCQs -->
-                <div ng-if="vm.mode.id == 13"
+                <div id="mcq-game-top"
+                     ng-if="vm.mode.id == 13"
                      class="row gaps3-cate-theme mcq-mode-wrap">
 
                     <div class="row">
@@ -1384,6 +1385,35 @@
                                         Next ➡
                                     </button>
                                 </div>
+                                <div class="col-md-12 text-center margin-bottom-10 mcq-font-control">
+                                    <label class="bold">Đoạn lớn:</label>
+                                    <input type="number"
+                                           min="20"
+                                           max="120"
+                                           class="input-underline-only-score mcq-font-input"
+                                           ng-model="vm.mcqPassageFontSize"
+                                           ng-change="vm.changeMcqFontSize()">
+
+                                    &ensp;&ensp;
+
+                                    <label class="bold">Câu hỏi:</label>
+                                    <input type="number"
+                                           min="12"
+                                           max="80"
+                                           class="input-underline-only-score mcq-font-input"
+                                           ng-model="vm.mcqQuestionFontSize"
+                                           ng-change="vm.changeMcqFontSize()">
+
+                                    &ensp;&ensp;
+
+                                    <label class="bold">Đáp án:</label>
+                                    <input type="number"
+                                           min="12"
+                                           max="80"
+                                           class="input-underline-only-score mcq-font-input"
+                                           ng-model="vm.mcqAnswerFontSize"
+                                           ng-change="vm.changeMcqFontSize()">
+                                </div>
 
                             </div>
                         </div>
@@ -1394,12 +1424,26 @@
 
                                 <div class="row margin-bottom-10">
                                     <div class="col-md-12 text-center">
-                                        <h2 class="bold gaps3-title"
-                                            ng-bind-html="vm.currentCard.question">
-                                        </h2>
+                                        <div class="bold mcq-passage-text"
+                                             ng-style="{
+                                                'font-size': vm.mcqPassageFontSize + 'px'
+                                             }"
+                                             ng-bind-html="vm.currentCard.question">
+                                        </div>
 
-                                        <div ng-if="vm.currentCard.pronounce">
-                                            <small>{{vm.currentCard.pronounce}}</small>
+                                        <!--<div class="mcq-question-text"-->
+                                             <!--ng-style="{-->
+                                                <!--'font-size': vm.mcqQuestionFontSize + 'px'-->
+                                             <!--}"-->
+                                             <!--ng-bind-html="vm.currentCard.motherTongue">-->
+                                        <!--</div>-->
+
+                                        <div ng-if="vm.currentCard.pronounce"
+                                             class="mcq-question-text"
+                                             ng-style="{
+        'font-size': vm.mcqQuestionFontSize + 'px'
+     }">
+                                            {{vm.currentCard.pronounce}}
                                         </div>
 
                                         <div ng-if="vm.currentCard.mcqResult"
@@ -1418,7 +1462,7 @@
                                 </div>
 
                                 <div class="row margin-top-10">
-                                    <div class="col-xs-12 col-md-12 margin-top-10 margin-bottom-5"
+                                    <div class="col-xs-12 col-md-12 margin-top-10 margin-bottom-5 tntt-mcq-answer-row"
                                          ng-repeat="answer in vm.currentCard.mcqAnswers track by $index">
 
                                         <button class="btn btn-brown button-screen-pre-wrap mcq-answer-btn"
@@ -1433,7 +1477,10 @@
                                 {{answer.label}}.
                             </span>
 
-                            <span>
+                            <span class="mcq-answer-text"
+                                  ng-style="{
+                                    'font-size': vm.mcqAnswerFontSize + 'px'
+                                  }">
                                 {{answer.text}}
                             </span>
                                         </button>
@@ -1445,8 +1492,15 @@
                                     <div class="col-md-12 text-center">
                                         <i class="fa fa-volume-up"
                                            ng-if="vm.isMuted === false"
-                                           ng-click="sayIt(vm.currentCard.question)"
-                                           style="cursor:pointer; font-size: 22px;">
+                                           ng-click="sayIt(vm.currentCard.question + '. ' + vm.currentCard.pronounce)"
+                                           title="Đọc"
+                                           style="cursor:pointer; font-size: 24px; margin-right: 10px;">
+                                        </i>
+
+                                        <i class="fa fa-stop-circle"
+                                           ng-click="shutUp()"
+                                           title="Dừng đọc"
+                                           style="cursor:pointer; font-size: 24px; margin-right: 10px; color: #d9534f;">
                                         </i>
 
                                         <label for="mute-button-mcq"
@@ -1455,9 +1509,14 @@
                                             <i class="fa-solid fa-volume-xmark"></i>
                                         </label>
 
-                                        <input id="mute-button-mcq"
-                                               type="checkbox"
-                                               ng-model="vm.isMuted"/>
+                                        <!--<input id="mute-button-mcq"-->
+                                               <!--type="checkbox"-->
+                                               <!--ng-model="vm.isMuted"/>-->
+
+                                        <!--<i class="fa fa-stop-circle mcq-stop-voice-btn"-->
+                                           <!--ng-click="shutUp()"-->
+                                           <!--title="Dừng đọc">-->
+                                        <!--</i>-->
                                     </div>
                                 </div>
 
@@ -4647,5 +4706,82 @@
 
     .mcq-mode-wrap .mcq-answer-wrong .mcq-answer-label {
         background: linear-gradient(135deg, #b91c1c, #ef4444) !important;
+    }
+
+    .mcq-passage-text {
+        /*font-family: Georgia, "Times New Roman", serif;*/
+        font-weight: 800;
+        line-height: 1.12;
+        color: #264aa5;
+        text-align: center;
+        letter-spacing: 0.1px;
+        /*text-shadow:*/
+                /*1.2px 1.2px 0 #f5d757,*/
+                /*0 2px 4px rgba(31, 63, 145, 0.12);*/
+        margin-bottom: 18px;
+        padding: 8px 16px;
+    }
+
+    .mcq-passage-text * {
+        font-size: inherit !important;
+        line-height: inherit !important;
+        color: inherit !important;
+        /*font-family: inherit !important;*/
+        font-weight: inherit !important;
+    }
+
+    .mcq-question-text {
+        margin: 8px auto 22px auto;
+        padding: 8px 14px;
+        color: #2b2b2b;
+        /*font-family: Georgia, "Times New Roman", serif;*/
+        font-weight: 700;
+        text-align: center;
+        line-height: 1.35;
+        background: rgba(255, 255, 255, 0.78);
+        border-radius: 14px;
+        max-width: 90%;
+    }
+
+    .mcq-question-text * {
+        font-size: inherit !important;
+        line-height: inherit !important;
+        color: inherit !important;
+        /*font-family: inherit !important;*/
+        font-weight: inherit !important;
+    }
+
+    .mcq-answer-text {
+        flex: 1;
+        color: #2f2f2f !important;
+        line-height: 1.35 !important;
+        /*font-family: Georgia, "Times New Roman", serif !important;*/
+        font-weight: 700 !important;
+    }
+
+    .mcq-answer-text * {
+        font-size: inherit !important;
+        line-height: inherit !important;
+        color: inherit !important;
+        /*font-family: inherit !important;*/
+        font-weight: inherit !important;
+    }
+
+    .mcq-stop-voice-btn {
+        cursor: pointer;
+        font-size: 24px;
+        margin-right: 10px;
+        color: #d9534f;
+        transition: transform 0.15s ease, color 0.15s ease;
+    }
+
+    .mcq-stop-voice-btn:hover {
+        transform: scale(1.12);
+        color: #b52b2b;
+    }
+
+    #mcq-game-top {
+        min-height: calc(100vh - 10px);
+        scroll-margin-top: 10px;
     }
 </style>
