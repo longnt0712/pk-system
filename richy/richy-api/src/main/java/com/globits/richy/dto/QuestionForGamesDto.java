@@ -26,6 +26,15 @@ public class QuestionForGamesDto implements Serializable  {
 	private String motherTongue;
 	private Long numberOfWords;
 	private List<QuestionForGamesDto> questions = new ArrayList<QuestionForGamesDto>(); 
+	private List<QuestionAnswerDto> questionAnswers;
+	
+	public List<QuestionAnswerDto> getQuestionAnswers() {
+	    return questionAnswers;
+	}
+
+	public void setQuestionAnswers(List<QuestionAnswerDto> questionAnswers) {
+	    this.questionAnswers = questionAnswers;
+	}
 
 	
 	
@@ -87,6 +96,18 @@ public class QuestionForGamesDto implements Serializable  {
 		this.ordinalNumber = domain.getOrdinalNumber();
 		this.pronounce = domain.getPronounce();
 		this.motherTongue = domain.getMotherTongue();	
+		
+		if (domain.getQuestionAnswers() != null && domain.getQuestionAnswers().size() > 0) {
+		    this.questionAnswers = new ArrayList<QuestionAnswerDto>();
+
+		    for (QuestionAnswer qa : domain.getQuestionAnswers()) {
+		        if (qa != null && qa.getAnswer() != null) {
+		            this.questionAnswers.add(new QuestionAnswerDto(qa));
+		        }
+		    }
+
+		    Collections.sort(this.questionAnswers, new QuestionAnswerDto().new sortByOrdinalNumberQuestionAnswer());
+		}
 	}	
 		
 		

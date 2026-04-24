@@ -1288,34 +1288,107 @@ public class QuestionServiceImpl implements QuestionService {
 		if(dto.getQuestionType() != null && dto.getQuestionType().getId() != null) {
 			domain.setQuestionType(questionTypeRepository.getOne(dto.getQuestionType().getId()));
 		}
-		if(dto.getQuestionAnswers() !=null && dto.getQuestionAnswers().size()>0) {
-			HashSet<QuestionAnswer> childrens = new HashSet<QuestionAnswer>();
-			for(QuestionAnswerDto q:dto.getQuestionAnswers()) {
-				QuestionAnswer children = null;
-				if(q.getId()!=null) {
-					children= questionAnswerRepository.getOne(q.getId());
-				}
-				if(children == null) {
-					children = new QuestionAnswer();
-					children.setCreateDate(currentDate);
-					children.setCreatedBy(currentUserName);
-				}
-				children.setQuestion(domain);
-				if(q.getAnswer() != null && q.getAnswer().getId() != null) {
-					children.setAnswer(answerRepository.getOne(q.getAnswer().getId()));
-				}
-				childrens.add(children);
-			}
-			if(domain.getQuestionAnswers()!=null) {
-				domain.getQuestionAnswers().clear();
-				domain.getQuestionAnswers().addAll(childrens);
-			}else {
-				domain.setQuestionAnswers(childrens);
-			}
-		}else if(dto.getQuestionAnswers()==null || dto.getQuestionAnswers().size()<=0) {
-			if(domain.getQuestionAnswers() != null && domain.getQuestionAnswers().size() > 0) {
-				domain.getQuestionAnswers().clear();
-			}
+//		if(dto.getQuestionAnswers() !=null && dto.getQuestionAnswers().size()>0) {
+//			HashSet<QuestionAnswer> childrens = new HashSet<QuestionAnswer>();
+//			for(QuestionAnswerDto q:dto.getQuestionAnswers()) {
+//				QuestionAnswer children = null;
+//				if(q.getId()!=null) {
+//					children= questionAnswerRepository.getOne(q.getId());
+//				}
+//				if(children == null) {
+//					children = new QuestionAnswer();
+//					children.setCreateDate(currentDate);
+//					children.setCreatedBy(currentUserName);
+//				}
+//				children.setQuestion(domain);
+//				if(q.getAnswer() != null && q.getAnswer().getId() != null) {
+//					children.setAnswer(answerRepository.getOne(q.getAnswer().getId()));
+//				}
+//				childrens.add(children);
+//			}
+//			if(domain.getQuestionAnswers()!=null) {
+//				domain.getQuestionAnswers().clear();
+//				domain.getQuestionAnswers().addAll(childrens);
+//			}else {
+//				domain.setQuestionAnswers(childrens);
+//			}
+//		}else if(dto.getQuestionAnswers()==null || dto.getQuestionAnswers().size()<=0) {
+//			if(domain.getQuestionAnswers() != null && domain.getQuestionAnswers().size() > 0) {
+//				domain.getQuestionAnswers().clear();
+//			}
+//		}
+		
+		if (dto.getQuestionAnswers() != null && dto.getQuestionAnswers().size() > 0) {
+		    HashSet<QuestionAnswer> childrens = new HashSet<QuestionAnswer>();
+		    int index = 1;
+
+		    for (QuestionAnswerDto q : dto.getQuestionAnswers()) {
+
+		        // BỎ QUA nếu QuestionAnswerDto null
+		        if (q == null) {
+		            continue;
+		        }
+
+		        // BỎ QUA nếu answer null hoặc text rỗng
+		        if (q.getAnswer() == null
+		                || q.getAnswer().getAnswer() == null
+		                || q.getAnswer().getAnswer().trim().isEmpty()) {
+		            continue;
+		        }
+
+		        QuestionAnswer children = null;
+
+		        if (q.getId() != null) {
+		            children = questionAnswerRepository.getOne(q.getId());
+		        }
+
+		        if (children == null) {
+		            children = new QuestionAnswer();
+		            children.setCreateDate(currentDate);
+		            children.setCreatedBy(currentUserName);
+		        }
+
+		        children.setQuestion(domain);
+
+		        Answer answer = null;
+
+		        if (q.getAnswer().getId() != null) {
+		            answer = answerRepository.getOne(q.getAnswer().getId());
+		        }
+
+		        if (answer == null) {
+		            answer = new Answer();
+		            answer.setCreateDate(currentDate);
+		            answer.setCreatedBy(currentUserName);
+		        }
+
+		        answer.setAnswer(q.getAnswer().getAnswer().trim());
+		        answer = answerRepository.save(answer);
+
+		        children.setAnswer(answer);
+		        children.setCorrect(q.isCorrect());
+
+		        if (q.getOrdinalNumberQuestionAnswer() != null) {
+		            children.setOrdinalNumber(q.getOrdinalNumberQuestionAnswer());
+		        } else {
+		            children.setOrdinalNumber(index);
+		        }
+
+		        childrens.add(children);
+		        index++;
+		    }
+
+		    if (domain.getQuestionAnswers() != null) {
+		        domain.getQuestionAnswers().clear();
+		        domain.getQuestionAnswers().addAll(childrens);
+		    } else {
+		        domain.setQuestionAnswers(childrens);
+		    }
+
+		} else {
+		    if (domain.getQuestionAnswers() != null && domain.getQuestionAnswers().size() > 0) {
+		        domain.getQuestionAnswers().clear();
+		    }
 		}
 		
 		if(dto.getQuestionTopics() !=null && dto.getQuestionTopics().size()>0) {

@@ -92,31 +92,74 @@ public class QuestionAnswerDto implements Serializable{
 		
 	}
 	
+//	public QuestionAnswerDto(QuestionAnswer domain) {
+//		this.id = domain.getId();
+//		if(domain.getQuestion() != null) {
+//			this.question = new QuestionDto();
+//			this.question.setId(domain.getQuestion().getId());
+//			this.question.setOrdinalNumber(domain.getQuestion().getOrdinalNumber());
+//			if(domain.getQuestion().getParent()!=null) {
+//				QuestionDto qDto = new QuestionDto();
+//				qDto.setId(domain.getQuestion().getParent().getId());
+//				qDto.setType(domain.getQuestion().getParent().getType());
+//				this.question.setParent(qDto);
+//			}
+//			if(domain.getQuestion().getQuestionAnswers() != null && domain.getQuestion().getQuestionAnswers().size() > 0) {
+//				for (QuestionAnswer qadto : domain.getQuestion().getQuestionAnswers()) {
+//					if(qadto.isCorrect()) {
+//						this.correctAnswer = qadto.getAnswer().getAnswer();
+//					}
+//				}
+//			}
+//		}
+//		if(domain.getAnswer() != null) {
+//			this.answer = new  AnswerDto(domain.getAnswer());
+//		}
+//		this.isCorrect = domain.isCorrect();
+//		this.ordinalNumberQuestionAnswer = domain.getOrdinalNumber();
+//	}
+	
 	public QuestionAnswerDto(QuestionAnswer domain) {
-		this.id = domain.getId();
-		if(domain.getQuestion() != null) {
-			this.question = new QuestionDto();
-			this.question.setId(domain.getQuestion().getId());
-			this.question.setOrdinalNumber(domain.getQuestion().getOrdinalNumber());
-			if(domain.getQuestion().getParent()!=null) {
-				QuestionDto qDto = new QuestionDto();
-				qDto.setId(domain.getQuestion().getParent().getId());
-				qDto.setType(domain.getQuestion().getParent().getType());
-				this.question.setParent(qDto);
-			}
-			if(domain.getQuestion().getQuestionAnswers() != null && domain.getQuestion().getQuestionAnswers().size() > 0) {
-				for (QuestionAnswer qadto : domain.getQuestion().getQuestionAnswers()) {
-					if(qadto.isCorrect()) {
-						this.correctAnswer = qadto.getAnswer().getAnswer();
-					}
-				}
-			}
-		}
-		if(domain.getAnswer() != null) {
-			this.answer = new  AnswerDto(domain.getAnswer());
-		}
-		this.isCorrect = domain.isCorrect();
-		this.ordinalNumberQuestionAnswer = domain.getOrdinalNumber();
+	    if (domain == null) {
+	        return;
+	    }
+
+	    this.id = domain.getId();
+
+	    if (domain.getQuestion() != null) {
+	        this.question = new QuestionDto();
+	        this.question.setId(domain.getQuestion().getId());
+	        this.question.setOrdinalNumber(domain.getQuestion().getOrdinalNumber());
+
+	        if (domain.getQuestion().getParent() != null) {
+	            QuestionDto qDto = new QuestionDto();
+	            qDto.setId(domain.getQuestion().getParent().getId());
+	            qDto.setType(domain.getQuestion().getParent().getType());
+	            this.question.setParent(qDto);
+	        }
+
+	        if (domain.getQuestion().getQuestionAnswers() != null 
+	                && domain.getQuestion().getQuestionAnswers().size() > 0) {
+
+	            for (QuestionAnswer qadto : domain.getQuestion().getQuestionAnswers()) {
+	                if (qadto != null 
+	                        && qadto.isCorrect() 
+	                        && qadto.getAnswer() != null 
+	                        && qadto.getAnswer().getAnswer() != null) {
+
+	                    this.correctAnswer = qadto.getAnswer().getAnswer();
+	                    break;
+	                }
+	            }
+	        }
+	    }
+
+	    if (domain.getAnswer() != null) {
+	        this.answer = new AnswerDto(domain.getAnswer());
+	    }
+
+	    this.isCorrect = domain.isCorrect();
+	    this.ordinalNumberQuestionAnswer = domain.getOrdinalNumber();
 	}
 	
 	public class sortByOrdinalNumberQuestionAnswer implements Comparator<QuestionAnswerDto> {
