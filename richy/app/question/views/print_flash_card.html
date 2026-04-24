@@ -9,6 +9,14 @@
             <div class="portlet-body" >
 
                 <div class="row">
+                    <div class="col-md-2" style="margin-bottom: 10px">
+                        <ui-select data-ng-change="vm.getTopics()" ng-model="vm.searchTopicDto.topicCategory" sortable="true" close-on-select="true">
+                            <ui-select-match allow-clear="true" placeholder="Loại topic...">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="so in vm.topicCategories  | propsFilter: {name: $select.search}">
+                                <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
                     <div class="col-md-3 margin-bottom-10">
                         <ui-select multiple ng-change="vm.searchTopicChange()" data-ng-model="vm.selectedTopicToSearch" sortable="true" close-on-select="true" style="width: 100% !important;">
                             <ui-select-match allow-clear="true" placeholder="Search by topic...">{{$item.name}}</ui-select-match>
