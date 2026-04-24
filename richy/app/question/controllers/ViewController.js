@@ -3155,16 +3155,18 @@
                     indexGap++;
 
                     var input =
+                        '<span class="gap-inline-wrap">' +
                         '<input autocomplete="off" ' +
+                        'oncompositionstart="this.dataset.composing=\'1\'" ' +
+                        'oncompositionend="this.dataset.composing=\'0\'" ' +
                         'ng-keyup="vm.onGapKeyup($event,' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')" ' +
-                        'class="input-underline-only" ' +
+                        'class="input-underline-only gap-inline-input" ' +
                         'type="text" ' +
-                        'style="width: 70px" ' +
                         'id="gap-number-' + i + '"' +
                         '/>' +
-                        '<i class="fa fa-volume-up" ' +
-                        'style="cursor:pointer;font-size:10px" ' +
-                        'ng-click="sayIt(\'' + gapWordEscaped + '\')"></i>';
+                        '<i class="fa fa-volume-up gap-inline-speaker" ' +
+                        'ng-click="sayIt(\'' + gapWordEscaped + '\')"></i>' +
+                        '</span>';
 
                     processedText += ' ' + input;
                 } else {
@@ -3177,7 +3179,27 @@
         }
 
         vm.onGapKeyup = function ($event, totalWords, index, fullText, gapWord) {
-            if ($event && ($event.isComposing || $event.keyCode === 229)) {
+            var target = $event && $event.target;
+
+            var isComposing =
+                ($event && $event.isComposing) ||
+                ($event && $event.keyCode === 229) ||
+                (target && target.dataset && target.dataset.composing === '1');
+
+            if (isComposing) {
+                return;
+            }
+
+            // Enter = đọc đáp án đúng của gap hiện tại như gợi ý
+            if ($event && ($event.key === 'Enter' || $event.keyCode === 13)) {
+                if ($event.preventDefault) {
+                    $event.preventDefault();
+                }
+
+                if (gapWord) {
+                    vm.updateSpeechLangByMode();
+                    $scope.sayIt(gapWord);
+                }
                 return;
             }
 
@@ -3185,8 +3207,22 @@
             vm.pauseAudio();
             vm.fillingGaps(totalWords, index, fullText);
 
-            if ($event && ($event.key === 'Enter' || $event.keyCode === 13)) {
-                vm.speakSingleWord($event, gapWord);
+            var normalize = (typeof processTextByMode === 'function') ? processTextByMode : processText;
+
+            var currentValue = target && target.value ? target.value : '';
+            var typed = normalize(currentValue);
+            var answer = normalize(gapWord);
+
+            if (typed && typed === answer) {
+                $timeout(function () {
+                    for (var j = index + 1; j < totalWords; j++) {
+                        var nextInput = document.getElementById('gap-number-' + j);
+                        if (nextInput) {
+                            nextInput.focus();
+                            break;
+                        }
+                    }
+                }, 80);
             }
         };
 
