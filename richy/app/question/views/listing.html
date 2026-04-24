@@ -359,6 +359,50 @@
                                     </ui-select>
                                 </div>
 
+                                <div class="col-md-12 margin-bottom-10">
+                                    <label class="bold">Question Answers</label>
+
+                                    <table class="table table-striped table-bordered">
+                                        <thead>
+                                        <tr>
+                                            <th style="width: 50px">#</th>
+                                            <th>Answer</th>
+                                            <th style="width: 90px">Correct</th>
+                                            <th style="width: 70px">Action</th>
+                                        </tr>
+                                        </thead>
+
+                                        <tbody>
+                                        <tr ng-repeat="qa in item.questionAnswers track by $index">
+                                            <td>{{$index + 1}}</td>
+
+                                            <td>
+                                                <input type="text"
+                                                       class="form-control input-underline-only"
+                                                       ng-model="qa.answer.answer">
+                                            </td>
+
+                                            <td class="text-center">
+                                                <input type="checkbox" ng-model="qa.correct">
+                                            </td>
+
+                                            <td class="text-center">
+                                                <i class="fa-solid fa-trash"
+                                                   style="cursor:pointer"
+                                                   ng-click="vm.deleteQuestionAnswer(item, $index)">
+                                                </i>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+
+                                    <button type="button"
+                                            class="btn btn-default"
+                                            ng-click="vm.addQuestionAnswer(item)">
+                                        <i class="fa fa-plus"></i> Add answer
+                                    </button>
+                                </div>
+
                                 <!--<div class="col-md-12 margin-bottom-10">-->
                                     <!--<ui-select data-ng-model="item.status" sortable="true" close-on-select="true" style="width: 100% !important;">-->
                                         <!--<ui-select-match placeholder="">{{$select.selected.name}}</ui-select-match>-->
@@ -587,6 +631,51 @@
                                     <!--</ui-select-choices>-->
                                 <!--</ui-select>-->
                             <!--</div>-->
+
+                            <div class="col-md-12" style="margin-bottom: 10px">
+                                <label class="bold">Question Answers</label>
+
+                                <table class="table table-striped table-bordered">
+                                    <thead>
+                                    <tr>
+                                        <th style="width: 50px">#</th>
+                                        <th>Answer</th>
+                                        <th style="width: 90px">Correct</th>
+                                        <th style="width: 70px">Action</th>
+                                    </tr>
+                                    </thead>
+
+                                    <tbody>
+                                    <tr ng-repeat="qa in vm.newCard.questionAnswers track by $index">
+                                        <td>{{$index + 1}}</td>
+
+                                        <td>
+                                            <input type="text"
+                                                   class="form-control input-underline-only"
+                                                   placeholder="Answer..."
+                                                   ng-model="qa.answer.answer">
+                                        </td>
+
+                                        <td class="text-center">
+                                            <input type="checkbox" ng-model="qa.correct">
+                                        </td>
+
+                                        <td class="text-center">
+                                            <i class="fa-solid fa-trash"
+                                               style="cursor:pointer"
+                                               ng-click="vm.deleteQuestionAnswer(vm.newCard, $index)">
+                                            </i>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+
+                                <button type="button"
+                                        class="btn btn-default"
+                                        ng-click="vm.addQuestionAnswer(vm.newCard)">
+                                    <i class="fa fa-plus"></i> Add answer
+                                </button>
+                            </div>
 
                             <div class="col-md-12 text-right">
                                 <button class="btn btn-brown margin-left-10" style="width: 30%" data-ng-click="vm.newFlashCard()"> <i class="fa-solid fa-file-circle-plus"></i> <strong>New card</strong></button>
