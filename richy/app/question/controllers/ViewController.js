@@ -312,7 +312,23 @@
         vm.myUser = {};
         vm.myUser.id = vm.currentUser.id;
         // vm.myUser.username = vm.currentUser.username;
-        vm.myUser.name = vm.currentUser.displayName;
+        // vm.myUser.name = vm.currentUser.displayName;
+        function getFullName(user) {
+            if (user && user.person) {
+                var firstName = user.person.firstName || '';
+                var lastName = user.person.lastName || '';
+                var fullName = (lastName + ' ' + firstName).trim();
+
+                if (fullName) {
+                    return fullName;
+                }
+            }
+
+            return user.displayName || user.username || '';
+        }
+
+        vm.myUser.name = getFullName(vm.currentUser);
+
         vm.myUser.roles = vm.currentUser.roles;
         vm.isRoleView = false;
         vm.isRoleUser = false;
@@ -602,6 +618,10 @@
                 if (vm.mode.id == 11 || vm.mode.id == 12) {
                     vm.scrollToFillingGapsTop();
                 }
+
+                if (vm.mode.id == 10) {
+                    vm.scrollToFlipExcelBoard();
+                }
             });
         };
 
@@ -810,22 +830,16 @@
             }
         };
 
-        vm.selectAllFillingGaps = function (index) {
-            vm.fillingGapAllQuestions = '';
-            angular.forEach(vm.questions, function(value, key) {
-                vm.fillingGapAllQuestions = vm.fillingGapAllQuestions +'<br><br>';
-                vm.fillingGapAllQuestions = vm.fillingGapAllQuestions + value.question;
-                vm.fillingGapAllQuestions = vm.fillingGapAllQuestions +'<br>';
-                vm.fillingGapAllQuestions = vm.fillingGapAllQuestions + processFillingGapsByMode(value.motherTongue, true)
-            });
-            
-            // vm.currentCard = vm.questions[index];
-            // vm.fillingGapQuestion = (processFillingGaps(vm.currentCard.motherTongue));
-            // vm.percentage = 0;
-            // vm.allowChangeInformation = false;
-            //
-            // vm.setUpAudio();
-            // vm.setUpTestResult();
+        vm.selectAllFillingGaps = function () {
+            vm.isShowAllFillingGaps = !vm.isShowAllFillingGaps;
+
+            if (!vm.isShowAllFillingGaps) {
+                vm.fillingGapAllQuestions = '';
+                vm.fillingGapAllQuestionsPrintable = '';
+                return;
+            }
+
+            vm.buildAllFillingGapsContent();
         };
 
         vm.clickShowListFlashCard = function () {
@@ -2379,94 +2393,6 @@
 
         vm.updateSpeechLangByMode();
 
-        // Fetch the list of voices and populate the voice options.
-        // var voices = speechSynthesis.getVoices();
-        // var voiceSelect = document.getElementById('voice');
-
-        // function loadVoices() {
-        //     // Fetch the available voices.
-        //     // var voices = speechSynthesis.getVoices();
-        //     // vm.allVoices = voices;
-        //
-        //     const voices = window.speechSynthesis.getVoices();
-        //
-        //     // clear cũ
-        //     voiceSelect.innerHTML = '';
-        //
-        //     // debug
-        //     console.log('voices loaded:', voices);
-        //
-        //     // Loop through each of the voices.
-        //     voices.forEach(function (voice, i) {
-        //         // Create a new option element.
-        //         // console.log(voice);
-        //
-        //         //english
-        //         if(angular.isDefined(voice) && voice != null){
-        //             if(angular.isDefined(voice.lang) && voice.lang != null && voice.lang.length > 0){
-        //                 if(voice.lang == 'vi-VN'){
-        //                     var option = document.createElement('option');
-        //
-        //                     // Set the options value and text.
-        //                     option.value = voice.name;
-        //                     option.innerHTML = voice.name;
-        //
-        //                     // Add the option to the voice selector.
-        //                     voiceSelect.appendChild(option);
-        //                 }
-        //
-        //                 if (isIOS()) {
-        //                     //ios
-        //                     if((voice.lang == 'en-GB' && voice.name == 'Daniel')
-        //                         || (voice.lang == 'en-AU' && voice.name == 'Karen')
-        //                         || (voice.lang == 'en-US' && voice.name == 'Samantha')  ){
-        //
-        //                         var option = document.createElement('option');
-        //
-        //                         // Set the options value and text.
-        //                         option.value = voice.name;
-        //                         option.innerHTML = voice.name;
-        //
-        //                         // Add the option to the voice selector.
-        //                         voiceSelect.appendChild(option);
-        //
-        //                     }
-        //                 } else {
-        //                     if(voice.lang == 'en-US' || voice.lang == 'en-GB'){
-        //                         var option = document.createElement('option');
-        //
-        //                         // Set the options value and text.
-        //                         option.value = voice.name;
-        //                         option.innerHTML = voice.name;
-        //
-        //                         // Add the option to the voice selector.
-        //                         voiceSelect.appendChild(option);
-        //
-        //                         // alert(voice.name);
-        //                     }
-        //                 }
-        //
-        //             }
-        //         }
-        //     });
-        // }
-        //
-        // // Execute loadVoices.
-        // loadVoices();
-        //
-        // // Chrome loads voices asynchronously.
-        // window.speechSynthesis.onvoiceschanged = function (e) {
-        //     // console.log('hello');
-        //     loadVoices();
-        // };
-        //
-        // // warm up (fix mất chữ đầu + delay)
-        // (function () {
-        //     const u = new SpeechSynthesisUtterance(' ');
-        //     u.volume = 0;
-        //     speechSynthesis.speak(u);
-        // })();
-
         var voices = [];
         var voiceSelect = document.getElementById('voice');
         var MAX_VOICE_RETRY = 20;
@@ -2514,7 +2440,7 @@
             retryCount = retryCount || 0;
 
             var allVoices = window.speechSynthesis.getVoices();
-            console.log('all voices:', allVoices);
+            // console.log('all voices:', allVoices);
 
             if ((!allVoices || allVoices.length === 0) && retryCount < MAX_VOICE_RETRY) {
                 setTimeout(function () {
@@ -2529,15 +2455,15 @@
             renderVoiceOptions(voices);
         }
 
-// gọi 1 lần để browser bắt đầu nạp voices
+        // gọi 1 lần để browser bắt đầu nạp voices
         window.speechSynthesis.getVoices();
 
-// retry chủ động
+        // retry chủ động
         loadVoices(0);
         setTimeout(function () { loadVoices(1); }, 500);
         setTimeout(function () { loadVoices(2); }, 1500);
 
-// khi browser báo voices đã sẵn sàng
+        // khi browser báo voices đã sẵn sàng
         window.speechSynthesis.onvoiceschanged = function () {
             loadVoices(0);
         };
@@ -3400,6 +3326,86 @@
                 vm.result = findMistakes(a,b);
                 toastr.error('Wrong !!!');
             }
+        };
+
+        vm.fillingGapAllQuestionsPrintable = '';
+        function processFillingGapsForPrint(text) {
+            if (!text) {
+                return '';
+            }
+
+            function startsWithLetter(word) {
+                return /^[A-Za-zÀ-ỹĂăÂâĐđÊêÔôƠơƯư]/.test(word);
+            }
+
+            function startsWithUppercaseLetter(word) {
+                return /^[A-ZÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴ]/.test(word);
+            }
+
+            function isSingleUppercaseLetter(word) {
+                return /^[A-ZÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴ]$/.test(word);
+            }
+
+            function isSingleDigit(word) {
+                return /^[0-9]$/.test(word);
+            }
+
+            var x = String(text).split(' ');
+            var processedText = '';
+            var gapRate = 0.45;
+
+            for (var i = 0; i < x.length; i++) {
+                var originalWord = x[i];
+                var trimmedWord = (originalWord || '').trim();
+
+                if (!trimmedWord) {
+                    processedText += ' ';
+                    continue;
+                }
+
+                var shouldMakeGap = false;
+
+                if (!startsWithLetter(trimmedWord) && !/^[0-9]/.test(trimmedWord)) {
+                    shouldMakeGap = false;
+                } else if (isSingleUppercaseLetter(trimmedWord)) {
+                    shouldMakeGap = true;
+                } else if (isSingleDigit(trimmedWord)) {
+                    shouldMakeGap = true;
+                } else if (vm.mode.id == 8 && startsWithUppercaseLetter(trimmedWord)) {
+                    shouldMakeGap = false;
+                } else if (typeof checkIfDateOrNumber === 'function' && checkIfDateOrNumber(trimmedWord)) {
+                    shouldMakeGap = true;
+                } else {
+                    if (trimmedWord.length > 1 && Math.random() < gapRate) {
+                        shouldMakeGap = true;
+                    }
+                }
+
+                if (shouldMakeGap) {
+                    processedText += ' <span class="gaps3-print-gap">_____</span>';
+                } else {
+                    processedText += ' ' + originalWord;
+                }
+            }
+
+            return processedText.trim();
+        }
+
+        vm.buildAllFillingGapsContent = function () {
+            vm.fillingGapAllQuestions = '';
+            vm.fillingGapAllQuestionsPrintable = '';
+
+            angular.forEach(vm.questions || [], function (value) {
+                vm.fillingGapAllQuestions += '<br><br>';
+                vm.fillingGapAllQuestions += value.question;
+                vm.fillingGapAllQuestions += '<br>';
+                vm.fillingGapAllQuestions += processFillingGapsByMode(value.motherTongue, true);
+
+                vm.fillingGapAllQuestionsPrintable += '<br><br>';
+                vm.fillingGapAllQuestionsPrintable += value.question;
+                vm.fillingGapAllQuestionsPrintable += '<br>';
+                vm.fillingGapAllQuestionsPrintable += processFillingGapsForPrint(value.motherTongue);
+            });
         };
         //---filling gaps--//
 
@@ -4478,8 +4484,16 @@
 
             vm.currentPosition = 0;
             vm.currentCard = vm.questions[0];
-            vm.syncCurrentFillingGapCard();
+
+            if (typeof vm.syncCurrentFillingGapCard === 'function') {
+                vm.syncCurrentFillingGapCard();
+            }
+
+            if (vm.isShowAllFillingGaps) {
+                vm.buildAllFillingGapsContent();
+            }
         };
+        vm.isShowAllFillingGaps = false;
 
         vm.scrollToFillingGapsTop = function () {
             $timeout(function () {
@@ -4503,6 +4517,23 @@
 
         vm.cardBaseHeight = 260;
 
+
+        vm.scrollToFlipExcelBoard = function () {
+            $timeout(function () {
+                var el = document.getElementById('flip-excel-board-top');
+                if (el) {
+                    el.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                } else {
+                    $window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 100);
+        };
     }
 
 })();

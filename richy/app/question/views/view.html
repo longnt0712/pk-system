@@ -756,7 +756,9 @@
 
                 <!--flipping image-->
                 <div class="row" ng-if="vm.mode.id == 10" style="min-height:1000px">
-                    <div class="flip-excel-board">
+                    <div id="flip-excel-board-top"
+                            class="flip-excel-board"
+                            style="scroll-margin-top: 10px;">
 
                         <div class="excel-corner"></div>
 
@@ -1118,42 +1120,6 @@
 
                 </div>
 
-                <!--gaps vni-->
-                <!--<div id="filling-gaps-top-vni"-->
-                        <!--ng-if="vm.mode.id == 11"-->
-                        <!--class="row"-->
-                        <!--style="scroll-margin-top: 20px;">-->
-                    <!--<div class="row">-->
-                        <!--<div class="col-md-3" style="padding-left: 20px">-->
-                            <!--<table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>-->
-                        <!--</div>-->
-
-                        <!--<div class="col-md-9" style="padding-right: 20px">-->
-                            <!--<div class="row margin-bottom-10">-->
-                                <!--<div class="col-md-12 text-center">-->
-                                    <!--<h2 class="bold" ng-bind-html="vm.currentCard.question"></h2>-->
-
-                                    <!--<button class="btn btn-warning"-->
-                                            <!--ng-click="vm.toggleShowGapAnswers()">-->
-                                        <!--{{ vm.showGapAnswers ? 'Ẩn đáp án' : 'Hiển thị đáp án' }}-->
-                                    <!--</button>-->
-                                <!--</div>-->
-                            <!--</div>-->
-
-                            <!--<div class="row margin-top-10 margin-bottom-10">-->
-                                <!--<div class="col-md-12">-->
-                                    <!--<div class="bold" compile="vm.fillingGapQuestion"></div>-->
-                                <!--</div>-->
-                            <!--</div>-->
-                        <!--</div>-->
-
-                        <!--<div class="col-md-12 margin-top-10">-->
-                            <!--<div class="bold" compile="vm.fillingGapAllQuestions"></div>-->
-                        <!--</div>-->
-                    <!--</div>-->
-                <!--</div>-->
-                <!--end gaps vni-->
-
                 <div id="filling-gaps-top"
                      ng-if="vm.mode.id == 12"
                      class="row"
@@ -1165,6 +1131,12 @@
                                 <button class="btn btn-primary gaps3-btn"
                                         ng-click="vm.toggleGapsTable()">
                                     {{ vm.showGapsTable ? '🙈 Ẩn danh sách' : '📋 Hiện danh sách' }}
+                                </button>
+
+                                <button class="btn btn-info gaps3-btn"
+                                        ng-click="vm.selectAllFillingGaps()"
+                                        ng-disabled="!vm.questions || !vm.questions.length">
+                                    {{ vm.isShowAllFillingGaps ? '🙈 Ẩn toàn bộ' : '📖 Hiển thị toàn bộ' }}
                                 </button>
 
                                 <button class="btn btn-warning gaps3-btn"
@@ -1311,10 +1283,20 @@
                             </div>
                         </div>
 
-                        <div class="col-md-12 margin-top-10">
+                        <div class="col-md-12 margin-top-10" ng-if="vm.isShowAllFillingGaps">
                             <div class="bold"
-                                 ng-class="{'gaps3-all-content': vm.mode.id == 12}"
-                                 compile="vm.fillingGapAllQuestions"></div>
+                                    ng-class="{'gaps3-all-content': vm.mode.id == 12}"
+                                    compile="vm.fillingGapAllQuestions"></div>
+                        </div>
+
+                        <div class="col-md-12 margin-top-20"
+                                ng-if="vm.isShowAllFillingGaps && vm.fillingGapAllQuestionsPrintable">
+                            <div class="gaps3-print-title">
+                                🖨️ Bản in có chỗ trống
+                            </div>
+
+                            <div class="bold gaps3-all-content gaps3-print-content"
+                                    compile="vm.fillingGapAllQuestionsPrintable"></div>
                         </div>
                     </div>
                 </div>
@@ -3790,34 +3772,78 @@
 
     .excel-flip-card,
     .excel-flip-card .card,
-    .excel-flip-card .face,
-    .excel-flip-card .image-card-face,
-    .excel-flip-card .image-card-wrap {
+    .excel-flip-card .face {
         width: 100%;
         height: 100%;
+    }
+
+    .excel-face-front,
+    .image-card-face {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background: #fff;
+        padding: 6px;
+        box-sizing: border-box;
+    }
+
+    .image-card-wrap {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
     }
 
     .excel-front-img,
     .image-card-img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .image-card-face {
-        display: flex !important;
-        padding: 0 !important;
-        align-items: stretch;
-        justify-content: stretch;
-        background: #fff;
-        box-shadow: 0 12px 30px rgba(0,0,0,.22);
-    }
-
-    .image-card-img {
-        width: 100%;
-        height: 100%;
         display: block;
-        object-fit: cover;
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        object-position: center center;
+    }
+
+    .excel-flip-card,
+    .excel-flip-card .card,
+    .excel-flip-card .face {
+        width: 100%;
+        height: 100%;
+    }
+
+    .excel-face-front,
+    .image-card-face {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background: #fff;
+        padding: 6px;
+        box-sizing: border-box;
+    }
+
+    .image-card-wrap {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+    .excel-front-img,
+    .image-card-img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        object-position: center center;
     }
 
     /* mobile vẫn giữ đúng 5 cột */
@@ -4200,5 +4226,46 @@
 
     .gaps3-setting-row .form-control{
         width: 100%;
+    }
+
+    .gaps3-print-title{
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: #3047a5;
+    }
+
+    .gaps3-print-content{
+        background: #fff;
+        border: 2px dashed #f2c94c;
+        border-radius: 16px;
+        padding: 20px;
+        line-height: 1.9;
+    }
+
+    .gaps3-print-gap{
+        display: inline-block;
+        min-width: 70px;
+        text-align: center;
+        border-bottom: 2px solid #333;
+        letter-spacing: 2px;
+        font-weight: 700;
+    }
+
+    @media print{
+        .gaps3-print-content{
+            border: none;
+            background: #fff;
+            padding: 0;
+        }
+
+        .gaps3-print-title{
+            color: #000;
+        }
+
+        .gaps3-print-gap{
+            min-width: 90px;
+            border-bottom: 1px solid #000;
+        }
     }
 </style>
