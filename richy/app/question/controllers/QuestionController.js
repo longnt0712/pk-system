@@ -618,6 +618,74 @@
             vm.newCard.website = 1;
         }
 
+        function buildNewCard() {
+            var card = {
+                questionType: {
+                    code: 'FC',
+                    id: 6,
+                    name: 'Flash card',
+                    textSearch: null
+                },
+                status: 1,
+                questionTopics: pushTopic(vm.selectedTopicToAdd),
+                userId: vm.currentUser.id,
+                questionAnswers: []
+            };
+
+            if (settings.isAdmin == true) {
+                card.website = 1;
+            }
+
+            return card;
+        }
+
+        vm.newCard = buildNewCard();
+
+        vm.addQuestionAnswer = function (card) {
+            if (!card.questionAnswers) {
+                card.questionAnswers = [];
+            }
+
+            card.questionAnswers.push({
+                answer: {
+                    answer: ''
+                },
+                correct: card.questionAnswers.length === 0,
+                ordinalNumberQuestionAnswer: card.questionAnswers.length + 1
+            });
+        };
+
+        vm.deleteQuestionAnswer = function (card, index) {
+            if (!card || !card.questionAnswers) {
+                return;
+            }
+
+            card.questionAnswers.splice(index, 1);
+
+            angular.forEach(card.questionAnswers, function (item, key) {
+                item.ordinalNumberQuestionAnswer = key + 1;
+            });
+        };
+
+        vm.normalizeQuestionAnswers = function (card) {
+            if (!card.questionAnswers) {
+                card.questionAnswers = [];
+                return;
+            }
+
+            card.questionAnswers = card.questionAnswers.filter(function (item) {
+                return item.answer && item.answer.answer && item.answer.answer.trim().length > 0;
+            });
+
+            angular.forEach(card.questionAnswers, function (item, key) {
+                item.ordinalNumberQuestionAnswer = key + 1;
+
+                if (angular.isUndefined(item.correct)) {
+                    item.correct = false;
+                }
+            });
+        };
+
 
         vm.selectedTopicToAdd = [];
         vm.selectedTopicToSearch= [];
@@ -686,64 +754,91 @@
             vm.getPageFlashCard();
         };
 
+        // vm.newFlashCard = function () {
+        //
+        //     if(vm.newCard.question == null || angular.isUndefined(vm.newCard.question)){
+        //         toastr.warning('Please fill in the word');
+        //         return;
+        //     }
+        //
+        //     // service.saveObject(vm.newCard, function success() {
+        //     //     vm.getPageFlashCard();
+        //     //     toastr.info('Save successfully');
+        //     //     vm.newCard = {
+        //     //         questionType : {
+        //     //             code: 'FC',
+        //     //             id: 6,
+        //     //             name: 'Flash card',
+        //     //             textSearch: null
+        //     //         },
+        //     //         status : 1,
+        //     //         questionTopics: [],
+        //     //         userId: vm.currentUser.id
+        //     //     };
+        //     //     vm.selectedTopicToAdd = [];
+        //     // }, function failure() {
+        //     //     toastr.error('There is something wrong!!');
+        //     // });
+        //     blockUI.start();
+        //     service.saveObject(vm.newCard).then(function (data) {
+        //         blockUI.stop();
+        //         vm.getPageFlashCard();
+        //         // toastr.info('Save successfully');
+        //         vm.newCard = {
+        //             questionType : {
+        //                 code: 'FC',
+        //                 id: 6,
+        //                 name: 'Flash card',
+        //                 textSearch: null
+        //             },
+        //             status : 1,
+        //             questionTopics: pushTopic(vm.selectedTopicToAdd),
+        //             userId: vm.currentUser.id
+        //         };
+        //         if(settings.isAdmin == true){
+        //             vm.newCard.website = 1;
+        //         }
+        //         // vm.newCard.questionTopics = pushTopic(vm.selectedTopicToAdd);
+        //         // vm.topicChange();
+        //         // vm.selectedTopicToAdd = [];
+        //         if(data.message != null){
+        //             if(data.message === 'Successfully, but there is another card like this'){
+        //                 toastr.warning(data.message, 'Warning');
+        //             } else{
+        //                 toastr.info(data.message, 'Notification');
+        //             }
+        //         }else{
+        //             toastr.error('Error.', 'Warning');
+        //         }
+        //     });
+        //
+        // };
+
         vm.newFlashCard = function () {
-            
-            if(vm.newCard.question == null || angular.isUndefined(vm.newCard.question)){
+            if (vm.newCard.question == null || angular.isUndefined(vm.newCard.question)) {
                 toastr.warning('Please fill in the word');
                 return;
             }
 
-            // service.saveObject(vm.newCard, function success() {
-            //     vm.getPageFlashCard();
-            //     toastr.info('Save successfully');
-            //     vm.newCard = {
-            //         questionType : {
-            //             code: 'FC',
-            //             id: 6,
-            //             name: 'Flash card',
-            //             textSearch: null
-            //         },
-            //         status : 1,
-            //         questionTopics: [],
-            //         userId: vm.currentUser.id
-            //     };
-            //     vm.selectedTopicToAdd = [];
-            // }, function failure() {
-            //     toastr.error('There is something wrong!!');
-            // });
+            vm.normalizeQuestionAnswers(vm.newCard);
+
             blockUI.start();
             service.saveObject(vm.newCard).then(function (data) {
                 blockUI.stop();
                 vm.getPageFlashCard();
-                // toastr.info('Save successfully');
-                vm.newCard = {
-                    questionType : {
-                        code: 'FC',
-                        id: 6,
-                        name: 'Flash card',
-                        textSearch: null
-                    },
-                    status : 1,
-                    questionTopics: pushTopic(vm.selectedTopicToAdd),
-                    userId: vm.currentUser.id
-                };
-                if(settings.isAdmin == true){
-                    vm.newCard.website = 1;
-                }
-                // vm.newCard.questionTopics = pushTopic(vm.selectedTopicToAdd);
-                // vm.topicChange();
-                // vm.selectedTopicToAdd = [];
-                if(data.message != null){
-                    if(data.message === 'Successfully, but there is another card like this'){
+
+                vm.newCard = buildNewCard();
+
+                if (data.message != null) {
+                    if (data.message === 'Successfully, but there is another card like this') {
                         toastr.warning(data.message, 'Warning');
-                    } else{
+                    } else {
                         toastr.info(data.message, 'Notification');
                     }
-                }else{
+                } else {
                     toastr.error('Error.', 'Warning');
                 }
             });
-
         };
 
 

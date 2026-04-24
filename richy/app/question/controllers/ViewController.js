@@ -492,7 +492,8 @@
             {id:1,name: 'NORMAL'},
             {id:4,name: 'REWRITE'},
             {id:11,name: 'FILLING GAPS VNI'},
-            {id:12,name: 'FILLING GAPS 3'}
+            {id:12,name: 'FILLING GAPS 3'},
+            {id:13,name: 'MCQs'}
         ];
         vm.mode = {id:5,name: 'DAILY VOCAB'};
         vm.rawQuestions = [];
@@ -513,30 +514,34 @@
                 blockUI.stop();
                 vm.rawQuestions = data.content;
 
-                if(vm.mode.id == 9 || vm.mode.id == 10){ // flipping
-                    // shuffleArray(data.content);
-                    vm.questions = data.content.splice(0,vm.numberFlipCard);
+                if (vm.mode.id == 9 || vm.mode.id == 10) { // flipping
+                    vm.questions = data.content.splice(0, vm.numberFlipCard);
+
                     angular.forEach(vm.questions, function(value, key) {
                         value.display = true;
                         value.flipped = false;
                     });
+
                     vm.questions1 = structuredClone(vm.questions);
+
                     angular.forEach(vm.questions1, function(value, key) {
                         value.duplicate = true;
                         value.flipped = false;
                     });
+
                     vm.flippingQuestions = vm.questions.concat(vm.questions1);
                     shuffleArray(vm.flippingQuestions);
-                } else{
+
+                } else if (vm.mode.id == 13) { // MCQs
+                    vm.questions = shuffleArray(buildMcqQuestions(data.content));
+                    vm.questions1 = [];
+
+                } else {
                     vm.questions = shuffleArray(createQuestionsWithOptions(data.content));
                     vm.questions1 = shuffleArray(createQuestionsWithOptions(data.content));
-                    // vm.questions = data.content;
-                    // vm.questions.arrayNumber = 1;
-                    // vm.questions1 = structuredClone(data.content);
-                    // vm.questions1.arrayNumber = 2;
                 }
 
-                if(vm.mode.id != 8) { //không phải filling gaps
+                if (vm.mode.id != 8 && vm.mode.id != 13) { // không phải filling gaps, không phải MCQs
                     vm.doShuffle();
                 }
 
@@ -2333,6 +2338,16 @@
                 $scope.counter = 180;
                 vm.tempCounter = 180;
                 vm.resetTugOfWarDefault();
+            }
+
+            if (vm.mode.id == 13) {
+                vm.resetMcqGame();
+
+                vm.lastSetCounter = 30;
+                vm.tempCounter = 30;
+                $scope.counter = 30;
+
+                vm.showTimer = true;
             }
         };
 
@@ -4570,6 +4585,117 @@
                 }
             }, 100);
         };
+
+        // MCQs
+        function buildMcqQuestions(source) {
+            if (!angular.isArray(source)) {
+                return [];
+            }
+
+            var result = [];
+
+            angular.forEach(source, function (question) {
+                if (!question) {
+                    return;
+                }
+
+                var answers = [];
+
+                angular.forEach(question.questionAnswers || [], function (qa, index) {
+                    if (!qa || !qa.answer || !qa.answer.answer) {
+                        return;
+                    }
+
+                    answers.push({
+                        id: qa.id,
+                        text: qa.answer.answer,
+                        correct: qa.correct === true,
+                        chosen: false,
+                        showCorrect: false,
+                        ordinalNumberQuestionAnswer: qa.ordinalNumberQuestionAnswer || index + 1
+                    });
+                });
+
+                if (answers.length <= 0) {
+                    return;
+                }
+
+                // Đảo đáp án trước
+                var displayAnswers = shuffleArray(answers.slice());
+
+                // Gán A/B/C/D SAU KHI đảo.
+                // Dòng đầu tiên luôn là A, dòng thứ hai luôn là B...
+                angular.forEach(displayAnswers, function (item, index) {
+                    item.label = String.fromCharCode(65 + index); // A, B, C, D
+                });
+
+                var item = angular.copy(question);
+                item.mcqAnswers = displayAnswers;
+                item.mcqAnswered = false;
+                item.mcqResult = null;
+
+                result.push(item);
+            });
+
+            return result;
+        }
+
+        vm.mcqScore = 0;
+        vm.mcqWrong = 0;
+        vm.mcqFinished = '';
+
+        vm.resetMcqGame = function () {
+            vm.mcqScore = 0;
+            vm.mcqWrong = 0;
+            vm.mcqFinished = '';
+        };
+
+        vm.answerMCQ = function (answer) {
+            if (!answer || !vm.currentCard || vm.currentCard.mcqAnswered === true) {
+                return;
+            }
+
+            answer.chosen = true;
+            vm.currentCard.mcqAnswered = true;
+
+            angular.forEach(vm.currentCard.mcqAnswers || [], function (item) {
+                if (item.correct === true) {
+                    item.showCorrect = true;
+                }
+            });
+
+            if (answer.correct === true) {
+                vm.mcqScore = vm.mcqScore + 1;
+                vm.currentCard.mcqResult = 'Correct';
+            } else {
+                vm.mcqWrong = vm.mcqWrong + 1;
+                vm.currentCard.mcqResult = 'Wrong';
+            }
+
+            if (vm.currentPosition + 1 >= vm.questions.length) {
+                vm.mcqFinished = 'Finished';
+                return;
+            }
+
+            $timeout(function () {
+                vm.nextCard();
+            }, 800);
+        };
+
+        vm.showMcqAnswer = function () {
+            if (!vm.currentCard || !vm.currentCard.mcqAnswers) {
+                return;
+            }
+
+            vm.currentCard.mcqAnswered = true;
+
+            angular.forEach(vm.currentCard.mcqAnswers, function (item) {
+                if (item.correct === true) {
+                    item.showCorrect = true;
+                }
+            });
+        };
+        // end MCQs
     }
 
 })();
