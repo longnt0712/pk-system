@@ -2383,7 +2383,10 @@
         vm.showMotherTongue = true;
 
         //old//
-        vm.isMuted = true;
+        vm.isMuted = false;
+        if(vm.mode.id == 13){
+            vm.isMuted = true;
+        }
 
         vm.showVoiceOption = true;
         vm.loop = true;
