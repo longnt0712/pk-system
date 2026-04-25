@@ -1476,32 +1476,27 @@
                                 </div>
 
                                 <div class="row margin-top-10" ng-if="vm.showMcqQuestion">
-                                    <div class="col-xs-12 col-md-12 margin-top-10 margin-bottom-5 tntt-mcq-answer-row"
-                                         ng-repeat="answer in vm.currentCard.mcqAnswers track by $index">
+                                    <div class="col-md-12 margin-bottom-15"
+                                            ng-repeat="answer in vm.currentCard.mcqAnswers track by $index">
 
                                         <button class="btn btn-brown button-screen-pre-wrap mcq-answer-btn"
-                                                ng-disabled="vm.currentCard.mcqAnswered"
-                                                ng-click="vm.answerMCQ(answer)"
+                                                ng-click="vm.revealMcqChoice(answer)"
                                                 ng-class="{
-                                                    'mcq-answer-correct': answer.showCorrect === true && !vm.currentCard.mcqRevealMode,
-                                                    'mcq-answer-wrong': answer.chosen === true && answer.correct !== true && !vm.currentCard.mcqRevealMode,
+                                                        'mcq-answer-correct': answer.showCorrect === true && !vm.currentCard.mcqRevealMode,
+                                                        'mcq-answer-wrong': answer.chosen === true && answer.correct !== true && !vm.currentCard.mcqRevealMode,
+                                                        'mcq-answer-reveal-correct': vm.currentCard.mcqRevealMode === true && answer.correct === true
+                                                    }">
 
-                                                    'mcq-answer-reveal-correct': vm.currentCard.mcqRevealMode === true && answer.correct === true,
-                                                    'mcq-answer-reveal-dim': vm.currentCard.mcqRevealMode === true && answer.correct !== true
-                                                }">
+                                                <span class="mcq-answer-label">
+                                                    {{answer.label}}.
+                                                </span>
 
-                                            <span class="mcq-answer-label">
-                                                {{answer.label}}.
-                                            </span>
-
-                                            <span class="mcq-answer-text"
-                                                  ng-style="{
-                                                    'font-size': vm.mcqAnswerFontSize + 'px'
-                                                  }">
-                                                {{answer.text}}
-                                            </span>
+                                                <span class="mcq-answer-text"
+                                                        ng-if="answer.revealed || vm.currentCard.mcqRevealMode"
+                                                        ng-style="{'font-size': vm.mcqAnswerFontSize + 'px'}">
+                                                    {{answer.text}}
+                                                </span>
                                         </button>
-
                                     </div>
                                 </div>
 
@@ -2093,6 +2088,14 @@
 
 <audio id="boom-sound" preload="auto">
     <source src="music/boom.mp3" type="audio/mpeg"/>
+</audio>
+
+<audio id="ting">
+    <source src="music/ting.mp3" type="audio/mpeg"/>
+</audio>
+
+<audio id="open-question">
+    <source src="music/open-question.mp3" type="audio/mpeg"/>
 </audio>
 
 <!--<audio id="end-sound">--><!--<source src="music/end-sound.m4a"/>--><!--</audio>-->
@@ -4833,4 +4836,32 @@
         min-height: calc(100vh - 10px);
         scroll-margin-top: 10px;
     }
+
+    /*.mcq-answer-btn {*/
+        /*display: flex;*/
+        /*align-items: center;*/
+        /*justify-content: flex-start;*/
+        /*min-height: 82px;*/
+    /*}*/
+
+    /*.mcq-answer-label {*/
+        /*flex: 0 0 auto;*/
+    /*}*/
+
+    /*.mcq-answer-text {*/
+        /*margin-left: 18px;*/
+    /*}*/
+
+    /*.mcq-mode-wrap .mcq-answer-btn {*/
+        /*transition: all 0.3s ease;*/
+    /*}*/
+
+    /*.mcq-mode-wrap .mcq-answer-reveal-correct {*/
+        /*background: linear-gradient(135deg, #e8fff1 0%, #bceacb 100%) !important;*/
+        /*border: 2px solid #2f9e5f !important;*/
+        /*color: #14532d !important;*/
+        /*box-shadow: 0 8px 18px rgba(47, 158, 95, 0.24) !important;*/
+        /*animation: mcqAnswerBounce 0.9s ease-in-out infinite;*/
+        /*transform-origin: center;*/
+    /*}*/
 </style>

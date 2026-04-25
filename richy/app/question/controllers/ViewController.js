@@ -4477,6 +4477,19 @@
 
         vm.toggleMcqQuestion = function () {
             vm.showMcqQuestion = !vm.showMcqQuestion;
+
+            if (vm.showMcqQuestion) {
+                var openQuestion = document.getElementById('open-question');
+                if (openQuestion) {
+                    openQuestion.pause();
+                    openQuestion.currentTime = 0;
+
+                    var playPromise = openQuestion.play();
+                    if (playPromise && typeof playPromise.catch === 'function') {
+                        playPromise.catch(function () {});
+                    }
+                }
+            }
         };
 
         vm.thirtySeconds = function () {
@@ -4669,6 +4682,7 @@
                         correct: qa.correct === true,
                         chosen: false,
                         showCorrect: false,
+                        revealed: false,
                         ordinalNumberQuestionAnswer: qa.ordinalNumberQuestionAnswer || index + 1
                     });
                 });
@@ -4697,6 +4711,21 @@
 
             return result;
         }
+
+        vm.revealMcqChoice = function (answer) {
+            if (!answer) {
+                return;
+            }
+
+            answer.revealed = !answer.revealed;
+
+            var ting = document.getElementById('ting');
+            if (ting) {
+                ting.pause();
+                ting.currentTime = 0;
+                ting.play();
+            }
+        };
 
         vm.mcqScore = 0;
         vm.mcqWrong = 0;
@@ -4745,11 +4774,12 @@
                 return;
             }
 
+            vm.showMcqQuestion = true;
             vm.currentCard.mcqAnswered = true;
             vm.currentCard.mcqRevealMode = true;
 
-            angular.forEach(vm.currentCard.mcqAnswers, function (item) {
-                item.showCorrect = (item.correct === true);
+            angular.forEach(vm.currentCard.mcqAnswers, function (answer) {
+                answer.showCorrect = (answer.correct === true);
             });
 
             if (applause) {
