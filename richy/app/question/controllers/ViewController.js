@@ -1556,6 +1556,23 @@
         vm.lastSetCounter = 30;
         vm.timeUpInGaps3 = false;
 
+        function playTickTockLoop() {
+            if (tickTock) {
+                tickTock.pause();
+                tickTock.currentTime = 0;
+                tickTock.loop = true;
+                tickTock.play();
+            }
+        }
+
+        function stopTickTockLoop() {
+            if (tickTock) {
+                tickTock.pause();
+                tickTock.currentTime = 0;
+                tickTock.loop = false;
+            }
+        }
+
         vm.resetBackgroundMusic = function () {
             audio.load();
             var audioNumber = getRndInteger(1,8);
@@ -1603,10 +1620,7 @@
             if ($scope.counter <= 0) {
                 $scope.counter = 0;
 
-                if (tickTock) {
-                    tickTock.pause();
-                    tickTock.currentTime = 0;
-                }
+                stopTickTockLoop();
 
                 if (boomSound) {
                     boomSound.currentTime = 0;
@@ -1627,13 +1641,6 @@
             }
 
             $scope.counter = $scope.counter - 1;
-
-            if ($scope.counter > 0 && (vm.mode.id == 12 || vm.mode.id == 13)) {
-                if (tickTock) {
-                    tickTock.currentTime = 0;
-                    tickTock.play();
-                }
-            }
 
             if($scope.counter <= 0){
                 stopGameByTimeout();
@@ -1726,10 +1733,7 @@
             $timeout.cancel(mytimeout);
             vm.resetBackgroundMusic();
 
-            if (tickTock) {
-                tickTock.pause();
-                tickTock.currentTime = 0;
-            }
+            stopTickTockLoop();
 
             if (boomSound) {
                 boomSound.pause();
@@ -2365,6 +2369,8 @@
                 $scope.counter = 30;
 
                 vm.showTimer = true;
+
+                vm.isMuted = true;
             }
         };
 
@@ -2384,9 +2390,6 @@
 
         //old//
         vm.isMuted = false;
-        if(vm.mode.id == 13){
-            vm.isMuted = true;
-        }
 
         vm.showVoiceOption = true;
         vm.loop = true;
@@ -3566,6 +3569,12 @@
 
                         vm.reward = vm.rewards[Math.floor(Math.random() * vm.rewards.length)];
 
+                        if (applause) {
+                            applause.pause();
+                            applause.currentTime = 0;
+                            applause.play();
+                        }
+
                         var modalInstance = modal.open({
                             animation: true,
                             templateUrl: 'reward.html',
@@ -3651,6 +3660,12 @@
                         vm.inProcess = false;
 
                         vm.reward = vm.rewards[Math.floor(Math.random()*vm.rewards.length)];
+
+                        if (applause) {
+                            applause.pause();
+                            applause.currentTime = 0;
+                            applause.play();
+                        }
 
                         var modalInstance = modal.open({
                             animation: true,
@@ -4492,23 +4507,16 @@
             }
         };
 
-        vm.thirtySeconds = function () {
-            vm.lastSetCounter = 30;
-            vm.tempCounter = 30;
-            $scope.counter = 30;
+        vm.fiveSeconds = function () {
+            vm.lastSetCounter = 5;
+            vm.tempCounter = 5;
+            $scope.counter = 5;
             vm.timeUpInGaps3 = false;
             vm.showGapAnswers = false;
-            $scope.refreshTimer();
-            mytimeout = $timeout($scope.onTimeout, 1000);
-        };
 
-        vm.twentySeconds = function () {
-            vm.lastSetCounter = 20;
-            vm.tempCounter = 20;
-            $scope.counter = 20;
-            vm.timeUpInGaps3 = false;
-            vm.showGapAnswers = false;
             $scope.refreshTimer();
+            playTickTockLoop();
+
             mytimeout = $timeout($scope.onTimeout, 1000);
         };
 
@@ -4520,12 +4528,33 @@
             vm.showGapAnswers = false;
 
             $scope.refreshTimer();
+            playTickTockLoop();
 
-            if (tickTock) {
-                tickTock.pause();
-                tickTock.currentTime = 0;
-                tickTock.play();
-            }
+            mytimeout = $timeout($scope.onTimeout, 1000);
+        };
+
+        vm.twentySeconds = function () {
+            vm.lastSetCounter = 20;
+            vm.tempCounter = 20;
+            $scope.counter = 20;
+            vm.timeUpInGaps3 = false;
+            vm.showGapAnswers = false;
+
+            $scope.refreshTimer();
+            playTickTockLoop();
+
+            mytimeout = $timeout($scope.onTimeout, 1000);
+        };
+
+        vm.thirtySeconds = function () {
+            vm.lastSetCounter = 30;
+            vm.tempCounter = 30;
+            $scope.counter = 30;
+            vm.timeUpInGaps3 = false;
+            vm.showGapAnswers = false;
+
+            $scope.refreshTimer();
+            playTickTockLoop();
 
             mytimeout = $timeout($scope.onTimeout, 1000);
         };
