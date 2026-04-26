@@ -4559,6 +4559,14 @@
             mytimeout = $timeout($scope.onTimeout, 1000);
         };
 
+        vm.playApplause = function () {
+            if (applause) {
+                applause.pause();
+                applause.currentTime = 0;
+                applause.play();
+            }
+        };
+
         vm.gaps3Config = {
             gapCount: 3,
             maxWordsPerGap: 4
