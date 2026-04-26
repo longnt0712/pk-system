@@ -1445,13 +1445,6 @@
                                              ng-bind-html="vm.currentCard.question">
                                         </div>
 
-                                        <!--<div class="mcq-question-text"-->
-                                             <!--ng-style="{-->
-                                                <!--'font-size': vm.mcqQuestionFontSize + 'px'-->
-                                             <!--}"-->
-                                             <!--ng-bind-html="vm.currentCard.motherTongue">-->
-                                        <!--</div>-->
-
                                         <div ng-if="vm.currentCard.pronounce"
                                              class="mcq-question-text"
                                              ng-style="{
@@ -1498,7 +1491,13 @@
                                                 </span>
                                         </button>
                                     </div>
+                                    <small class="mcq-mother-tongue-small"
+                                            ng-if="vm.currentCard.mcqRevealMode === true && vm.currentCard.motherTongue"
+                                            ng-bind-html="vm.currentCard.motherTongue">
+                                    </small>
                                 </div>
+
+
 
                                 <div class="row margin-top-20">
                                     <div class="col-md-12 text-center">
@@ -1937,18 +1936,48 @@
 </script>
 
 <script type="text/ng-template" id="reward.html">
-    <div modal-movable>
-        <div class="modal-header text-center">
+    <div modal-movable class="reward-modal-wrapper">
+        <div class="modal-header text-center reward-modal-header">
             <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
-            <h2 class="modal-title bold"><i class="fa fa-reward"></i> Congratulations</h2>
+
+            <h2 class="modal-title bold">
+                <i class="fa fa-reward"></i> Congratulations
+            </h2>
+
+            <div class="reward-time-buttons">
+                <button class="btn btn-danger btn-sm" ng-click="vm.fiveSeconds()">
+                    🔥 {{vm.lastSetCounter == 5 ? counter + 's' : '5s'}}
+                </button>
+
+                <button class="btn btn-primary btn-sm" ng-click="vm.tenSeconds()">
+                    🎯 {{vm.lastSetCounter == 10 ? counter + 's' : '10s'}}
+                </button>
+
+                <button class="btn btn-success btn-sm" ng-click="vm.twentySeconds()">
+                    ⚡ {{vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
+                </button>
+
+                <button class="btn btn-info btn-sm" ng-click="vm.thirtySeconds()">
+                    ⏳ {{vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
+                </button>
+
+                <button class="btn btn-warning btn-sm" ng-click="vm.playApplause()">
+                    👏 Clap
+                </button>
+            </div>
         </div>
-        <div class="modal-body text-center">
+
+        <div class="modal-body text-center reward-modal-body">
             <h1 class="text-red">{{vm.reward.text}}</h1>
             <h1 class="text-red">{{vm.sentence}}</h1>
-            <img ng-src="{{vm.sentenceImage}}" class="image-card-img"/>
+
+            <img ng-src="{{vm.sentenceImage}}" class="image-card-img reward-modal-image"/>
         </div>
-        <div class="modal-footer">
-            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">CLOSE</button>
+
+        <div class="modal-footer reward-modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">
+                CLOSE
+            </button>
         </div>
     </div>
 </script>
@@ -4837,31 +4866,54 @@
         scroll-margin-top: 10px;
     }
 
-    /*.mcq-answer-btn {*/
-        /*display: flex;*/
-        /*align-items: center;*/
-        /*justify-content: flex-start;*/
-        /*min-height: 82px;*/
-    /*}*/
+    .mcq-mother-tongue-small {
+        display: block;
+        margin-top: 8px;
+        font-size: 12px;
+        line-height: 1.35;
+        opacity: 0.7;
+        font-weight: normal;
+    }
+</style>
 
-    /*.mcq-answer-label {*/
-        /*flex: 0 0 auto;*/
-    /*}*/
+<style>
+    .modal-dialog {
+        max-height: 95vh;
+    }
 
-    /*.mcq-answer-text {*/
-        /*margin-left: 18px;*/
-    /*}*/
+    .modal-content {
+        max-height: 95vh;
+        overflow: hidden;
+    }
 
-    /*.mcq-mode-wrap .mcq-answer-btn {*/
-        /*transition: all 0.3s ease;*/
-    /*}*/
+    .reward-modal-wrapper {
+        max-height: 95vh;
+        display: flex;
+        flex-direction: column;
+    }
 
-    /*.mcq-mode-wrap .mcq-answer-reveal-correct {*/
-        /*background: linear-gradient(135deg, #e8fff1 0%, #bceacb 100%) !important;*/
-        /*border: 2px solid #2f9e5f !important;*/
-        /*color: #14532d !important;*/
-        /*box-shadow: 0 8px 18px rgba(47, 158, 95, 0.24) !important;*/
-        /*animation: mcqAnswerBounce 0.9s ease-in-out infinite;*/
-        /*transform-origin: center;*/
-    /*}*/
+    .reward-modal-header,
+    .reward-modal-footer {
+        flex-shrink: 0;
+    }
+
+    .reward-modal-body {
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .reward-modal-image {
+        max-height: calc(95vh - 260px);
+        width: auto;
+        max-width: 100%;
+        object-fit: contain;
+    }
+
+    .reward-time-buttons {
+        margin-top: 10px;
+    }
+
+    .reward-time-buttons .btn {
+        margin: 3px;
+    }
 </style>
