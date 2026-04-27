@@ -2375,15 +2375,12 @@
                 vm.resetTugOfWarDefault();
             }
 
-            if (vm.mode.id == 13 || vm.mode.id == 14) {
+            if (vm.mode.id == 11 || vm.mode.id == 12 || vm.mode.id == 13 || vm.mode.id == 14) {
                 vm.resetMcqGame();
-
                 vm.lastSetCounter = 30;
                 vm.tempCounter = 30;
                 $scope.counter = 30;
-
                 vm.showTimer = true;
-
                 vm.isMuted = true;
             }
         };
@@ -3215,6 +3212,9 @@
                         'oncompositionend="this.dataset.composing=\'0\'" ' +
                         'ng-model="vm.gapValues[' + i + ']" ' +
                         'ng-change="vm.onGapInputChange(' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')" ' +
+
+                        'ng-keydown="vm.onGapAudioShortcut($event)" ' +
+
                         'ng-keyup="vm.onGapKeyup($event,' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')" ' +
                         'class="input-underline-only gap-inline-input" ' +
                         'type="text" ' +
@@ -3233,6 +3233,81 @@
             vm.numberOfGaps = indexGap;
             return processedText.trim();
         }
+
+        function getMainAudio() {
+            if (!mainAudio) {
+                mainAudio = document.getElementById('main-audio');
+            }
+            return mainAudio;
+        }
+
+        vm.togglePauseAudio = function () {
+            var audio = getMainAudio();
+            if (!audio) return;
+
+            if (audio.paused) {
+                audio.play();
+            } else {
+                audio.pause();
+            }
+        };
+
+        vm.backwardAudio = function () {
+            var audio = getMainAudio();
+            if (!audio) return;
+
+            var timeValue = 3;
+            audio.currentTime = Math.max(0, (audio.currentTime || 0) - timeValue);
+        };
+
+        vm.forwardAudio = function () {
+            var audio = getMainAudio();
+            if (!audio) return;
+
+            var timeValue = 3;
+            var duration = isFinite(audio.duration) ? audio.duration : audio.currentTime + timeValue;
+
+            audio.currentTime = Math.min(duration, (audio.currentTime || 0) + timeValue);
+        };
+
+        vm.onGapAudioShortcut = function (e) {
+            e = e || window.event;
+
+            var key = e.key || '';
+            var keyCode = e.which || e.keyCode;
+
+            var isBackward =
+                key === 'ArrowLeft' ||
+                keyCode === 37 ||
+                key === '<' ||
+                (e.shiftKey && keyCode === 188);
+
+            var isForward =
+                key === 'ArrowRight' ||
+                keyCode === 39 ||
+                key === '>' ||
+                (e.shiftKey && keyCode === 190);
+
+            var isSpace =
+                key === ' ' ||
+                key === 'Spacebar' ||
+                keyCode === 32;
+
+            if (!isBackward && !isForward && !isSpace) {
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (isBackward) {
+                vm.backwardAudio();
+            } else if (isForward) {
+                vm.forwardAudio();
+            } else if (isSpace) {
+                vm.togglePauseAudio();
+            }
+        };
 
         vm.gapValues = {};
         function normalizeGapAutoNext(text) {
