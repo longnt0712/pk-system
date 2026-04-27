@@ -809,24 +809,21 @@
         // };
 
         $scope.chooseFillingGaps = function (index) {
+            vm.currentPosition = index;
             vm.currentCard = vm.questions[index];
-            vm.showGapAnswers = false;
-            vm.currentGapBlocks = null;
+
+            vm.resetFillingGapsRun();
+
             vm.fillingGapQuestion = processFillingGapsByMode(
                 vm.currentCard.motherTongue,
                 false,
                 true
             );
-            vm.finishFillingGaps = "Unfinished";
-            vm.percentage = 0;
+
             vm.allowChangeInformation = false;
 
             vm.setUpAudio();
             vm.setUpTestResult();
-
-            vm.currentPosition = index;
-            vm.currentCard = vm.questions[index];
-            vm.syncCurrentFillingGapCard();
         };
 
         vm.fillingGapAllQuestions = '';
@@ -2375,13 +2372,15 @@
                 vm.resetTugOfWarDefault();
             }
 
-            if (vm.mode.id == 11 || vm.mode.id == 12 || vm.mode.id == 13 || vm.mode.id == 14) {
+            if (vm.mode.id == 12 || vm.mode.id == 13 || vm.mode.id == 14) {
                 vm.resetMcqGame();
                 vm.lastSetCounter = 30;
                 vm.tempCounter = 30;
                 $scope.counter = 30;
                 vm.showTimer = true;
                 vm.isMuted = true;
+            }else{
+                vm.isMuted = false;
             }
         };
 
@@ -3310,6 +3309,27 @@
         };
 
         vm.gapValues = {};
+        vm.resetFillingGapsRun = function () {
+            vm.gapValues = {};
+
+            vm.currentGapAnswers = [];
+            vm.currentGapBlocks = null;
+            vm.showGapAnswers = false;
+
+            vm.finishFillingGaps = "Unfinished";
+            vm.percentage = 0;
+            vm.numberOfGaps = 0;
+            vm.result = {};
+
+            if (vm.currentCard) {
+                vm.currentCard.fillingGapsAnswer = '';
+            }
+
+            angular.forEach(document.querySelectorAll('input[id^="gap-number-"]'), function (el) {
+                el.value = '';
+                el.style.background = '';
+            });
+        };
         function normalizeGapAutoNext(text) {
             var normalize = (typeof processTextByMode === 'function') ? processTextByMode : processText;
 
@@ -4676,15 +4696,14 @@
                 return;
             }
 
-            vm.showGapAnswers = false;
-            vm.currentGapBlocks = null;
+            vm.resetFillingGapsRun();
+
             vm.fillingGapQuestion = processFillingGapsByMode(
                 vm.currentCard.motherTongue,
                 false,
                 true
             );
-            vm.finishFillingGaps = "Unfinished";
-            vm.percentage = 0;
+
             vm.allowChangeInformation = false;
 
             vm.setUpAudio();
