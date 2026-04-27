@@ -493,7 +493,8 @@
             {id:4,name: 'REWRITE'},
             {id:11,name: 'FILLING GAPS VNI'},
             {id:12,name: 'FILLING GAPS 3'},
-            {id:13,name: 'MCQs'}
+            {id:13,name: 'MCQs'},
+            {id:14, name: 'GUESS THE WORD'}
         ];
         vm.mode = {id:5,name: 'DAILY VOCAB'};
         vm.rawQuestions = [];
@@ -536,12 +537,17 @@
                     vm.questions = shuffleArray(buildMcqQuestions(data.content));
                     vm.questions1 = [];
 
+                } else if (vm.mode.id == 14) { // GUESS THE WORD
+                    vm.questions = buildMcqQuestions(data.content).slice().reverse();
+                    vm.questions1 = [];
+                    // console.log(vm.questions);
+
                 } else {
                     vm.questions = shuffleArray(createQuestionsWithOptions(data.content));
                     vm.questions1 = shuffleArray(createQuestionsWithOptions(data.content));
                 }
 
-                if (vm.mode.id != 8 && vm.mode.id != 13) { // không phải filling gaps, không phải MCQs
+                if (vm.mode.id != 8 && vm.mode.id != 13 && vm.mode.id != 14) { // không phải filling gaps, không phải MCQs
                     vm.doShuffle();
                 }
 
@@ -629,7 +635,7 @@
                 }
 
 
-                if (vm.mode.id == 13) {
+                if (vm.mode.id == 13 || vm.mode.id == 14) {
                     vm.showMcqQuestion = false;
                     vm.scrollToMcqTop();
                 }
@@ -1553,7 +1559,8 @@
         vm.endGame = true;
         var tickTock = document.getElementById("tick-tock");
         var boomSound = document.getElementById("boom-sound");
-        vm.lastSetCounter = 30;
+        vm.lastSetCounter = null;
+        vm.timerRunning = false;
         vm.timeUpInGaps3 = false;
 
         function playTickTockLoop() {
@@ -1616,46 +1623,53 @@
         // var endSound = document.getElementById("end-sound");
 
         // actual timer method, counts down every second, stops on zero
-        $scope.onTimeout = function() {
+        $scope.onTimeout = function () {
             if ($scope.counter <= 0) {
                 $scope.counter = 0;
+                vm.timerRunning = false;
+
+                $timeout.cancel(mytimeout);
+                mytimeout = null;
 
                 stopTickTockLoop();
 
                 if (boomSound) {
+                    boomSound.pause();
                     boomSound.currentTime = 0;
                     boomSound.play();
                 }
 
                 vm.timeUpInGaps3 = true;
 
-                if (vm.mode.id != 7) {
-                    if(vm.mode.id != 12){
-                        // window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
-                    }
-                    audio.load();
-                    $scope.$broadcast('timer-stopped', 0);
-                    $timeout.cancel(mytimeout);
-                    return;
-                }
+                audio.load();
+                $scope.$broadcast('timer-stopped', 0);
+
+                return;
             }
 
             $scope.counter = $scope.counter - 1;
 
-            if($scope.counter <= 0){
-                stopGameByTimeout();
+            if ($scope.counter <= 0) {
+                $scope.counter = 0;
+                vm.timerRunning = false;
 
-                if((vm.currentPosition + 1) >= vm.totalCard){
-                    if(vm.mode.id != 12){
-                        // window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
-                    }
-                    vm.endGame = true;
-                    $scope.counter = 0;
-                    audio.load();
-                    $scope.$broadcast('timer-stopped', 0);
-                    $timeout.cancel(mytimeout);
-                    return;
+                $timeout.cancel(mytimeout);
+                mytimeout = null;
+
+                stopTickTockLoop();
+
+                if (boomSound) {
+                    boomSound.pause();
+                    boomSound.currentTime = 0;
+                    boomSound.play();
                 }
+
+                vm.timeUpInGaps3 = true;
+
+                audio.load();
+                $scope.$broadcast('timer-stopped', 0);
+
+                return;
             }
 
             mytimeout = $timeout($scope.onTimeout, 1000);
@@ -2361,7 +2375,7 @@
                 vm.resetTugOfWarDefault();
             }
 
-            if (vm.mode.id == 13) {
+            if (vm.mode.id == 13 || vm.mode.id == 14) {
                 vm.resetMcqGame();
 
                 vm.lastSetCounter = 30;
@@ -2426,7 +2440,7 @@
         vm.speechLang = 'en-US';
 
         vm.updateSpeechLangByMode = function () {
-            vm.speechLang = (vm.mode.id == 11 || vm.mode.id == 13) ? 'vi-VN' : 'en-US';
+            vm.speechLang = (vm.mode.id == 11 || vm.mode.id == 13 || vm.mode.id == 14) ? 'vi-VN' : 'en-US';
         };
 
         vm.updateSpeechLangByMode();
@@ -4507,56 +4521,45 @@
             }
         };
 
-        vm.fiveSeconds = function () {
-            vm.lastSetCounter = 5;
-            vm.tempCounter = 5;
-            $scope.counter = 5;
+        function startGameTimer(seconds) {
+            vm.lastSetCounter = seconds;
+            vm.tempCounter = seconds;
+            $scope.counter = seconds;
+
+            vm.timerRunning = true;
             vm.timeUpInGaps3 = false;
             vm.showGapAnswers = false;
 
             $scope.refreshTimer();
+
+            vm.lastSetCounter = seconds;
+            vm.tempCounter = seconds;
+            $scope.counter = seconds;
+
             playTickTockLoop();
 
+            $timeout.cancel(mytimeout);
             mytimeout = $timeout($scope.onTimeout, 1000);
+        }
+
+        vm.fiveSeconds = function () {
+            startGameTimer(5);
         };
 
         vm.tenSeconds = function () {
-            vm.lastSetCounter = 10;
-            vm.tempCounter = 10;
-            $scope.counter = 10;
-            vm.timeUpInGaps3 = false;
-            vm.showGapAnswers = false;
+            startGameTimer(10);
+        };
 
-            $scope.refreshTimer();
-            playTickTockLoop();
-
-            mytimeout = $timeout($scope.onTimeout, 1000);
+        vm.fifteenSeconds = function () {
+            startGameTimer(15);
         };
 
         vm.twentySeconds = function () {
-            vm.lastSetCounter = 20;
-            vm.tempCounter = 20;
-            $scope.counter = 20;
-            vm.timeUpInGaps3 = false;
-            vm.showGapAnswers = false;
-
-            $scope.refreshTimer();
-            playTickTockLoop();
-
-            mytimeout = $timeout($scope.onTimeout, 1000);
+            startGameTimer(20);
         };
 
         vm.thirtySeconds = function () {
-            vm.lastSetCounter = 30;
-            vm.tempCounter = 30;
-            $scope.counter = 30;
-            vm.timeUpInGaps3 = false;
-            vm.showGapAnswers = false;
-
-            $scope.refreshTimer();
-            playTickTockLoop();
-
-            mytimeout = $timeout($scope.onTimeout, 1000);
+            startGameTimer(30);
         };
 
         vm.playApplause = function () {
@@ -4672,6 +4675,8 @@
         vm.gaps3Config.maxWordsPerGap = vm.gaps3Config.maxWordsPerGap || 4;
         vm.gaps3Config.fontSize = vm.gaps3Config.fontSize || 40;
         vm.gaps3Config.lineHeight = vm.gaps3Config.lineHeight || 1.8;
+
+        vm.guessWordAnswerHeight = 135;
 
         vm.cardBaseHeight = 260;
 
@@ -4847,7 +4852,9 @@
         vm.scrollToMcqTop = function () {
             function scrollWhenReady(retry) {
                 $timeout(function () {
-                    var el = document.getElementById('mcq-game-top');
+                    var el = document.getElementById(
+                        vm.mode.id == 14 ? 'guess-word-question-area' : 'mcq-game-top'
+                    );
 
                     if (!el) {
                         if (retry < 10) {
@@ -4857,6 +4864,10 @@
                     }
 
                     var top = el.getBoundingClientRect().top + window.pageYOffset;
+
+                    if (vm.mode.id == 14) {
+                        top = top - 15;
+                    }
 
                     // Cách 1: browser mới
                     if (document.scrollingElement) {
