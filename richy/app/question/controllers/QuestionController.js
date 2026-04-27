@@ -915,6 +915,57 @@
             });
 
         };
+
+        vm.duplicateFlashCard = function (item) {
+            if (!item) return;
+
+            var newItem = {
+                question: item.question,
+                pronounce: item.pronounce,
+                motherTongue: item.motherTongue,
+                description: item.description,
+                examples: item.examples,
+                status: item.status || 1,
+                questionType: item.questionType || { id: 6 },
+                userId: vm.currentUser.id,
+                questionTopics: [],
+                questionAnswers: []
+            };
+
+            // copy topic, KHÔNG copy id của QuestionTopic
+            if (item.questionTopics && item.questionTopics.length > 0) {
+                angular.forEach(item.questionTopics, function (qt) {
+                    if (qt && qt.topic && qt.topic.id) {
+                        newItem.questionTopics.push({
+                            topic: {
+                                id: qt.topic.id,
+                                name: qt.topic.name
+                            }
+                        });
+                    }
+                });
+            }
+
+            // copy answer, KHÔNG copy id
+            if (item.questionAnswers && item.questionAnswers.length > 0) {
+                angular.forEach(item.questionAnswers, function (qa) {
+                    if (qa && qa.answer && qa.answer.answer) {
+                        newItem.questionAnswers.push({
+                            answer: {
+                                answer: qa.answer.answer
+                            },
+                            correct: qa.correct,
+                            ordinalNumberQuestionAnswer: qa.ordinalNumberQuestionAnswer
+                        });
+                    }
+                });
+            }
+
+            service.saveObject(newItem).then(function (data) {
+                vm.getPageFlashCard();
+                toastr.success('Duplicated!', 'OK');
+            });
+        };
         
         vm.showDetailFlashCard = function (item) {
             // console.log(item);

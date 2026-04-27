@@ -119,31 +119,31 @@
                                     <div class="form-group mb-2">
                                         <label class="bold" for="setNumberCard">Number card (total: {{vm.totalCard}}): &ensp;</label>
                                         <input id="setNumberCard"
-                                               onkeydown="javascript: return event.keyCode == 69 ? false : true"
-                                               placeholder="Set number card..."
-                                               class="form-control input-underline-only-score"
-                                               ng-model="vm.numberFlipCard"/>
+                                                onkeydown="javascript: return event.keyCode == 69 ? false : true"
+                                                placeholder="Set number card..."
+                                                class="form-control input-underline-only-score"
+                                                ng-model="vm.numberFlipCard"/>
 
                                         &ensp;&ensp;
 
                                         <label class="bold" for="cardScale">Card height (%): &ensp;</label>
                                         <input id="cardScale"
-                                               type="number"
-                                               min="30"
-                                               max="100"
-                                               class="form-control input-underline-only-score"
-                                               ng-model="vm.cardScale"/>
+                                                type="number"
+                                                min="30"
+                                                max="100"
+                                                class="form-control input-underline-only-score"
+                                                ng-model="vm.cardScale"/>
 
                                         &ensp;&ensp;
 
                                         <label class="bold" for="timeReset"> Time reset (%): &ensp;</label>
                                         <input style="width: 100px !important" id="timeReset"
-                                               type="number"
-                                               min="2000"
-                                               max="10000"
-                                               step="1000"
-                                               class="form-control input-underline-only-score"
-                                               ng-model="vm.timeReset"/>
+                                                type="number"
+                                                min="2000"
+                                                max="10000"
+                                                step="1000"
+                                                class="form-control input-underline-only-score"
+                                                ng-model="vm.timeReset"/>
                                     </div>
                                 </form>
                             </div>
@@ -769,25 +769,25 @@
                         <div class="excel-col-header">E</div>
 
                         <div ng-repeat-start="item in vm.flippingQuestions track by $index"
-                             ng-if="$index < vm.numberFlipCard*2 && $index % 5 == 0"
-                             class="excel-row-header">
+                                ng-if="$index < vm.numberFlipCard*2 && $index % 5 == 0"
+                                class="excel-row-header">
                             {{ ($index / 5) + 1 }}
                         </div>
 
                         <div ng-repeat-end
-                             ng-if="$index < vm.numberFlipCard*2"
-                             class="flip excel-flip-card"
-                             ng-class="{'matched-card': item.display === false}"
-                             ng-style="{
+                                ng-if="$index < vm.numberFlipCard*2"
+                                class="flip excel-flip-card"
+                                ng-class="{'matched-card': item.display === false}"
+                                ng-style="{
                                  'width': '100%',
                                  'margin': '0',
                                  'height': (((vm.cardBaseHeight || 260) * (vm.cardScale || 100)) / 100) + 'px'
                              }"
-                             ng-click="item.display !== false && vm.clickFlipCardImage(item,$index)">
+                                ng-click="item.display !== false && vm.clickFlipCardImage(item,$index)">
 
                             <div class="card"
-                                 ng-class="{'flipped': item.flipped}"
-                                 ng-click="item.display !== false && (item.flipped = !item.flipped)">
+                                    ng-class="{'flipped': item.flipped}"
+                                    ng-click="item.display !== false && (item.flipped = !item.flipped)">
 
                                 <div class="face front excel-face-front">
                                     <img src="assets/images/lien-doan.jpg" class="excel-front-img" alt="lien-doan">
@@ -903,9 +903,9 @@
                                 </div>
 
                                 <!--<div class="beam-war-scale">-->
-                                    <!--<span class="beam-scale-left">P1 GOAL</span>-->
-                                    <!--<span class="beam-scale-center">CENTER</span>-->
-                                    <!--<span class="beam-scale-right">P2 GOAL</span>-->
+                                <!--<span class="beam-scale-left">P1 GOAL</span>-->
+                                <!--<span class="beam-scale-center">CENTER</span>-->
+                                <!--<span class="beam-scale-right">P2 GOAL</span>-->
                                 <!--</div>-->
                             </div>
                         </div>
@@ -923,15 +923,15 @@
                     <div class="row beam-player-row">
                         <!-- PLAYER 1 -->
                         <div class="col-xs-6 col-md-6 beam-player-zone beam-player-zone-left tug-mobile-half"
-                             style="padding-right:10px; margin-bottom:10px; margin-top:15px;">
+                                style="padding-right:10px; margin-bottom:10px; margin-top:15px;">
 
                             <div class="flip" ng-if="vm.showMotherTongue === true">
                                 <div class="card beam-question-card"
-                                     ng-class="[
+                                        ng-class="[
                                                 {'flipped':isFlipped},
                                                 vm.getTugQuestionEffectClass(vm.currentCard)
                                              ]"
-                                     ng-click="isFlipped=!isFlipped">
+                                        ng-click="isFlipped=!isFlipped">
                                     <div class="face front beam-question-face beam-question-front" style="display:flex">
                                         <h2 style="margin:auto auto;">
                                             <span ng-show="vm.blindMode == false">{{vm.currentCard.question}}</span><br>
@@ -948,9 +948,9 @@
                             </div>
 
                             <div ng-if="vm.endGame == false"
-                                 class="col-xs-12 col-md-6 margin-top-10 margin-bottom-5 tug-answer-item"
-                                 ng-repeat="item in vm.currentCard.questions"
-                                 ng-show="vm.showMotherTongue === true">
+                                    class="col-xs-12 col-md-6 margin-top-10 margin-bottom-5 tug-answer-item"
+                                    ng-repeat="item in vm.currentCard.questions"
+                                    ng-show="vm.showMotherTongue === true">
                                 <button id="answer-quiz-1-{{$index}}"
                                         ng-disabled="vm.isPulling1 || vm.endGame"
                                         class="btn btn-brown button-screen-pre-wrap beam-answer-btn beam-answer-btn-left beam-answer-tone-{{$index}}"
@@ -962,15 +962,15 @@
 
                         <!-- PLAYER 2 -->
                         <div class="col-xs-6 col-md-6 beam-player-zone beam-player-zone-right tug-mobile-half"
-                             style="padding-left:10px; margin-bottom:10px; margin-top:15px;">
+                                style="padding-left:10px; margin-bottom:10px; margin-top:15px;">
 
                             <div class="flip" ng-if="vm.showMotherTongue === true">
                                 <div class="card beam-question-card"
-                                     ng-class="[
+                                        ng-class="[
                                                 {'flipped':isFlipped},
                                                 vm.getTugQuestionEffectClass(vm.currentCard1)
                                              ]"
-                                     ng-click="isFlipped=!isFlipped">
+                                        ng-click="isFlipped=!isFlipped">
                                     <div class="face front beam-question-face beam-question-front" style="display:flex">
                                         <h2 style="margin:auto auto;">
                                             <span ng-show="vm.blindMode == false">{{vm.currentCard1.question}}</span><br>
@@ -987,9 +987,9 @@
                             </div>
 
                             <div ng-if="vm.endGame == false"
-                                 class="col-xs-12 col-md-6 margin-top-10 margin-bottom-5 tug-answer-item"
-                                 ng-repeat="item in vm.currentCard1.questions"
-                                 ng-show="vm.showMotherTongue === true">
+                                    class="col-xs-12 col-md-6 margin-top-10 margin-bottom-5 tug-answer-item"
+                                    ng-repeat="item in vm.currentCard1.questions"
+                                    ng-show="vm.showMotherTongue === true">
                                 <button id="answer-quiz-2-{{$index}}"
                                         ng-disabled="vm.isPulling2 || vm.endGame"
                                         class="btn btn-brown button-screen-pre-wrap beam-answer-btn beam-answer-btn-right beam-answer-tone-{{$index}}"
@@ -1121,10 +1121,10 @@
                 </div>
 
                 <div id="filling-gaps-top"
-                     ng-if="vm.mode.id == 12"
-                     class="row"
-                     style="scroll-margin-top: 20px;"
-                     ng-class="{'gaps3-cate-theme': vm.mode.id == 12}">
+                        ng-if="vm.mode.id == 12"
+                        class="row"
+                        style="scroll-margin-top: 20px;"
+                        ng-class="{'gaps3-cate-theme': vm.mode.id == 12}">
                     <div class="row">
                         <div class="col-md-12" style="padding-left: 20px">
                             <div ng-if="vm.mode.id == 12" class="gaps3-side-tools">
@@ -1159,7 +1159,7 @@
                             </div>
 
                             <div ng-if="vm.mode.id != 12 || vm.showGapsTable"
-                                 ng-class="{'gaps3-side-card': vm.mode.id == 12}">
+                                    ng-class="{'gaps3-side-card': vm.mode.id == 12}">
                                 <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
                             </div>
                         </div>
@@ -1177,8 +1177,8 @@
                                                     </div>
 
                                                     <h2 class="bold"
-                                                        ng-class="{'gaps3-title': vm.mode.id == 12}"
-                                                        ng-bind-html="vm.currentCard.question"></h2>
+                                                            ng-class="{'gaps3-title': vm.mode.id == 12}"
+                                                            ng-bind-html="vm.currentCard.question"></h2>
 
                                                     <div ng-if="vm.mode.id == 12" class="gaps3-subtitle">
                                                         Cùng điền {{vm.gaps3Config.gapCount}} cụm còn thiếu nhé 💙
@@ -1214,23 +1214,23 @@
                                                                 <div class="col-xs-6">
                                                                     <label class="bold gaps3-label-nowrap" for="gap-count-input">Số gaps:</label>
                                                                     <input id="gap-count-input"
-                                                                           type="number"
-                                                                           min="1"
-                                                                           max="20"
-                                                                           class="form-control"
-                                                                           ng-model="vm.gaps3Config.gapCount"
-                                                                           ng-change="vm.updateGaps3Preview()" />
+                                                                            type="number"
+                                                                            min="1"
+                                                                            max="20"
+                                                                            class="form-control"
+                                                                            ng-model="vm.gaps3Config.gapCount"
+                                                                            ng-change="vm.updateGaps3Preview()" />
                                                                 </div>
 
                                                                 <div class="col-xs-6">
                                                                     <label class="bold gaps3-label-nowrap" for="gap-max-words-input">Số từ tối đa / gap:</label>
                                                                     <input id="gap-max-words-input"
-                                                                           type="number"
-                                                                           min="2"
-                                                                           max="10"
-                                                                           class="form-control"
-                                                                           ng-model="vm.gaps3Config.maxWordsPerGap"
-                                                                           ng-change="vm.updateGaps3Preview()" />
+                                                                            type="number"
+                                                                            min="2"
+                                                                            max="10"
+                                                                            class="form-control"
+                                                                            ng-model="vm.gaps3Config.maxWordsPerGap"
+                                                                            ng-change="vm.updateGaps3Preview()" />
                                                                 </div>
                                                             </div>
 
@@ -1238,22 +1238,22 @@
                                                                 <div class="col-xs-6">
                                                                     <label class="bold gaps3-label-nowrap" for="gap-font-size-input">Cỡ chữ (px):</label>
                                                                     <input id="gap-font-size-input"
-                                                                           type="number"
-                                                                           min="20"
-                                                                           max="100"
-                                                                           class="form-control"
-                                                                           ng-model="vm.gaps3Config.fontSize" />
+                                                                            type="number"
+                                                                            min="20"
+                                                                            max="100"
+                                                                            class="form-control"
+                                                                            ng-model="vm.gaps3Config.fontSize" />
                                                                 </div>
 
                                                                 <div class="col-xs-6">
                                                                     <label class="bold gaps3-label-nowrap" for="gap-line-height-input">Line height:</label>
                                                                     <input id="gap-line-height-input"
-                                                                           type="number"
-                                                                           min="1"
-                                                                           max="3"
-                                                                           step="0.1"
-                                                                           class="form-control"
-                                                                           ng-model="vm.gaps3Config.lineHeight" />
+                                                                            type="number"
+                                                                            min="1"
+                                                                            max="3"
+                                                                            step="0.1"
+                                                                            class="form-control"
+                                                                            ng-model="vm.gaps3Config.lineHeight" />
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1269,12 +1269,12 @@
                                             <div class="row margin-top-10 margin-bottom-10 filling-content-mode-gaps-3">
                                                 <div class="col-md-12">
                                                     <div class="bold"
-                                                         ng-class="{'gaps3-content': vm.mode.id == 12}"
-                                                         ng-style="vm.mode.id == 12 && {
+                                                            ng-class="{'gaps3-content': vm.mode.id == 12}"
+                                                            ng-style="vm.mode.id == 12 && {
                                                              'font-size': (vm.gaps3Config.fontSize || 40) + 'px',
                                                              'line-height': (vm.gaps3Config.lineHeight || 1.8)
                                                          }"
-                                                         compile="vm.fillingGapQuestion"></div>
+                                                            compile="vm.fillingGapQuestion"></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1303,8 +1303,8 @@
 
                 <!-- MCQs -->
                 <div id="mcq-game-top"
-                     ng-if="vm.mode.id == 13"
-                     class="row gaps3-cate-theme mcq-mode-wrap">
+                        ng-if="vm.mode.id == 13"
+                        class="row gaps3-cate-theme mcq-mode-wrap">
 
                     <div class="row">
 
@@ -1321,7 +1321,7 @@
                                 </h2>
 
                                 <!--<div class="mcq-tntt-question-content"-->
-                                     <!--ng-bind-html="vm.currentCard.question">-->
+                                <!--ng-bind-html="vm.currentCard.question">-->
                                 <!--</div>-->
 
                                 <div class="gaps3-subtitle">
@@ -1359,12 +1359,6 @@
                                             style="margin-top: 10px;">
                                         🔄 Reset
                                     </button>
-
-                                    <button class="btn btn-danger gaps3-btn"
-                                            ng-click="vm.showMcqAnswer()"
-                                            style="margin-top: 10px;">
-                                        🎁 Hiển thị đáp án
-                                    </button>
                                 </div>
 
                                 <div style="margin-top: 15px; font-size: 16px;">
@@ -1372,16 +1366,22 @@
                                         <strong>{{vm.currentPosition + 1}} / {{vm.questions.length}}</strong>
                                     </div>
 
+                                    <button class="btn btn-danger gaps3-btn"
+                                            ng-click="vm.showMcqAnswer()"
+                                            style="margin-top: 10px;">
+                                        🎁 Hiển thị đáp án
+                                    </button>
+
                                     <!--<div>-->
-                                        <!--SCORE: <strong>{{vm.mcqScore}}</strong>-->
+                                    <!--SCORE: <strong>{{vm.mcqScore}}</strong>-->
                                     <!--</div>-->
 
                                     <!--<div>-->
-                                        <!--WRONG: <strong>{{vm.mcqWrong}}</strong>-->
+                                    <!--WRONG: <strong>{{vm.mcqWrong}}</strong>-->
                                     <!--</div>-->
 
                                     <!--<div ng-if="vm.mcqFinished">-->
-                                        <!--<strong>{{vm.mcqFinished}}</strong>-->
+                                    <!--<strong>{{vm.mcqFinished}}</strong>-->
                                     <!--</div>-->
                                 </div>
 
@@ -1402,31 +1402,31 @@
                                 <div class="col-md-12 text-center margin-bottom-10 mcq-font-control">
                                     <label class="bold">Đoạn lớn:</label>
                                     <input type="number"
-                                           min="20"
-                                           max="120"
-                                           class="input-underline-only-score mcq-font-input"
-                                           ng-model="vm.mcqPassageFontSize"
-                                           ng-change="vm.changeMcqFontSize()">
+                                            min="20"
+                                            max="120"
+                                            class="input-underline-only-score mcq-font-input"
+                                            ng-model="vm.mcqPassageFontSize"
+                                            ng-change="vm.changeMcqFontSize()">
 
                                     &ensp;&ensp;
 
                                     <label class="bold">Câu hỏi:</label>
                                     <input type="number"
-                                           min="12"
-                                           max="80"
-                                           class="input-underline-only-score mcq-font-input"
-                                           ng-model="vm.mcqQuestionFontSize"
-                                           ng-change="vm.changeMcqFontSize()">
+                                            min="12"
+                                            max="80"
+                                            class="input-underline-only-score mcq-font-input"
+                                            ng-model="vm.mcqQuestionFontSize"
+                                            ng-change="vm.changeMcqFontSize()">
 
                                     &ensp;&ensp;
 
                                     <label class="bold">Đáp án:</label>
                                     <input type="number"
-                                           min="12"
-                                           max="80"
-                                           class="input-underline-only-score mcq-font-input"
-                                           ng-model="vm.mcqAnswerFontSize"
-                                           ng-change="vm.changeMcqFontSize()">
+                                            min="12"
+                                            max="80"
+                                            class="input-underline-only-score mcq-font-input"
+                                            ng-model="vm.mcqAnswerFontSize"
+                                            ng-change="vm.changeMcqFontSize()">
                                 </div>
 
                             </div>
@@ -1439,29 +1439,29 @@
                                 <div class="row margin-bottom-10" ng-if="vm.showMcqQuestion">
                                     <div class="col-md-12 text-center">
                                         <div class="bold mcq-passage-text"
-                                             ng-style="{
+                                                ng-style="{
                                                 'font-size': vm.mcqPassageFontSize + 'px'
                                              }"
-                                             ng-bind-html="vm.currentCard.question">
+                                                ng-bind-html="vm.currentCard.question">
                                         </div>
 
                                         <div ng-if="vm.currentCard.pronounce"
-                                             class="mcq-question-text"
-                                             ng-style="{
+                                                class="mcq-question-text"
+                                                ng-style="{
                                                 'font-size': vm.mcqQuestionFontSize + 'px'
                                              }">
                                             {{vm.currentCard.pronounce}}
                                         </div>
 
                                         <div ng-if="vm.currentCard.mcqResult"
-                                             style="margin-top: 10px; font-size: 22px;">
+                                                style="margin-top: 10px; font-size: 22px;">
                                             <span ng-if="vm.currentCard.mcqResult == 'Correct'"
-                                                  style="color: green;">
+                                                    style="color: green;">
                                                 ✅ Correct
                                             </span>
 
                                             <span ng-if="vm.currentCard.mcqResult == 'Wrong'"
-                                                  style="color: red;">
+                                                    style="color: red;">
                                                 ❌ Wrong
                                             </span>
                                         </div>
@@ -1502,31 +1502,31 @@
                                 <div class="row margin-top-20">
                                     <div class="col-md-12 text-center">
                                         <i class="fa fa-volume-up"
-                                           ng-if="vm.isMuted === false"
-                                           ng-click="sayIt(vm.currentCard.question + '. ' + vm.currentCard.pronounce)"
-                                           title="Đọc"
-                                           style="cursor:pointer; font-size: 24px; margin-right: 10px;">
+                                                ng-if="vm.isMuted === false"
+                                                ng-click="sayIt(vm.currentCard.question + '. ' + vm.currentCard.pronounce)"
+                                                title="Đọc"
+                                                style="cursor:pointer; font-size: 24px; margin-right: 10px;">
                                         </i>
 
                                         <i class="fa fa-stop-circle"
-                                           ng-click="shutUp()"
-                                           title="Dừng đọc"
-                                           style="cursor:pointer; font-size: 24px; margin-right: 10px; color: #d9534f;">
+                                                ng-click="shutUp()"
+                                                title="Dừng đọc"
+                                                style="cursor:pointer; font-size: 24px; margin-right: 10px; color: #d9534f;">
                                         </i>
 
                                         <label for="mute-button-mcq"
-                                               ng-if="vm.isMuted === true"
-                                               class="bold">
+                                                ng-if="vm.isMuted === true"
+                                                class="bold">
                                             <i class="fa-solid fa-volume-xmark"></i>
                                         </label>
 
                                         <input id="mute-button-mcq"
-                                               type="checkbox"
-                                               ng-model="vm.isMuted"/>
+                                                type="checkbox"
+                                                ng-model="vm.isMuted"/>
 
                                         <!--<i class="fa fa-stop-circle mcq-stop-voice-btn"-->
-                                           <!--ng-click="shutUp()"-->
-                                           <!--title="Dừng đọc">-->
+                                        <!--ng-click="shutUp()"-->
+                                        <!--title="Dừng đọc">-->
                                         <!--</i>-->
                                     </div>
                                 </div>
@@ -1537,6 +1537,270 @@
                     </div>
                 </div>
                 <!-- /MCQs -->
+
+                <!-- Guess The Word -->
+                <div id="guess-word-game-top"
+                        ng-if="vm.mode.id == 14"
+                        class="row gaps3-cate-theme mcq-mode-wrap guess-word-mode-wrap">
+
+                    <div class="row">
+
+                        <!-- Cột trái: câu hỏi + đáp án -->
+                        <div id="guess-word-question-area" class="col-xs-12 col-md-9" style="padding-left: 20px;">
+                            <div class="gaps3-main-card"  >
+
+                                <div class="row margin-bottom-10" ng-if="vm.showMcqQuestion">
+                                    <div class="col-md-12 text-center">
+                                        <!--<div class="bold mcq-passage-text"-->
+                                                <!--ng-style="{-->
+                                                <!--'font-size': vm.mcqPassageFontSize + 'px'-->
+                                             <!--}"-->
+                                                <!--ng-bind-html="vm.currentCard.question">-->
+                                        <!--</div>-->
+
+                                        <div ng-if="vm.currentCard.pronounce"
+                                                class="mcq-question-text"
+                                                ng-style="{
+                                                'font-size': vm.mcqQuestionFontSize + 'px'
+                                             }">
+                                            {{vm.currentCard.pronounce}}
+                                        </div>
+
+                                        <div ng-if="vm.currentCard.mcqResult"
+                                                style="margin-top: 10px; font-size: 22px;">
+                                            <span ng-if="vm.currentCard.mcqResult == 'Correct'"
+                                                    style="color: green;">
+                                                ✅ Correct
+                                            </span>
+
+                                            <span ng-if="vm.currentCard.mcqResult == 'Wrong'"
+                                                    style="color: red;">
+                                                ❌ Wrong
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row margin-top-10" ng-if="vm.showMcqQuestion">
+                                    <div class="col-xs-12 col-sm-4 col-md-4 margin-bottom-15"
+                                            ng-repeat="answer in vm.currentCard.mcqAnswers track by $index">
+
+                                        <button class="btn btn-brown button-screen-pre-wrap mcq-answer-btn guess-word-answer-btn"
+                                                ng-attr-style="height: {{vm.guessWordAnswerHeight}}px !important; min-height: {{vm.guessWordAnswerHeight}}px !important; max-height: {{vm.guessWordAnswerHeight}}px !important;"
+                                                ng-click="vm.revealMcqChoice(answer)"
+                                                ng-class="{
+                                                        'mcq-answer-correct': answer.showCorrect === true && !vm.currentCard.mcqRevealMode,
+                                                        'mcq-answer-wrong': answer.chosen === true && answer.correct !== true && !vm.currentCard.mcqRevealMode,
+                                                        'mcq-answer-reveal-correct': vm.currentCard.mcqRevealMode === true && answer.correct === true
+                                                    }">
+
+                                                <!--<span class="mcq-answer-label">-->
+                                                    <!--{{answer.label}}.-->
+                                                <!--</span>-->
+
+                                                <!--<span class="mcq-answer-text"-->
+                                                        <!--ng-if="answer.revealed || vm.currentCard.mcqRevealMode"-->
+                                                        <!--ng-style="{'font-size': vm.mcqAnswerFontSize + 'px'}">-->
+                                                    <!--{{answer.text}}-->
+                                                <!--</span>-->
+
+                                                <span class="mcq-answer-text"
+                                                        ng-style="{'font-size': vm.mcqAnswerFontSize + 'px'}">
+                                                    {{answer.text}}
+                                                </span>
+                                        </button>
+                                    </div>
+                                    <small class="mcq-mother-tongue-small"
+                                            ng-if="vm.currentCard.mcqRevealMode === true && vm.currentCard.motherTongue"
+                                            ng-bind-html="vm.currentCard.motherTongue">
+                                    </small>
+                                </div>
+
+
+
+                                <div class="row margin-top-20">
+                                    <div class="col-md-12 text-center">
+                                        <i class="fa fa-volume-up"
+                                                ng-if="vm.isMuted === false"
+                                                ng-click="sayIt(vm.currentCard.question + '. ' + vm.currentCard.pronounce)"
+                                                title="Đọc"
+                                                style="cursor:pointer; font-size: 24px; margin-right: 10px;">
+                                        </i>
+
+                                        <i class="fa fa-stop-circle"
+                                                ng-click="shutUp()"
+                                                title="Dừng đọc"
+                                                style="cursor:pointer; font-size: 24px; margin-right: 10px; color: #d9534f;">
+                                        </i>
+
+                                        <label for="mute-button-mcq"
+                                                ng-if="vm.isMuted === true"
+                                                class="bold">
+                                            <i class="fa-solid fa-volume-xmark"></i>
+                                        </label>
+
+                                        <input id="mute-button-mcq"
+                                                type="checkbox"
+                                                ng-model="vm.isMuted"/>
+
+                                        <!--<i class="fa fa-stop-circle mcq-stop-voice-btn"-->
+                                        <!--ng-click="shutUp()"-->
+                                        <!--title="Dừng đọc">-->
+                                        <!--</i>-->
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div class="col-xs-12 col-md-3 gaps3-left-col">
+                            <div class="gaps3-left-sticky gaps3-side-card text-center">
+
+                                <div class="gaps3-top-decor">
+                                    🌈 ✨ THIẾU NHI THÁNH THỂ ✨ 🌈
+                                </div>
+
+                                <!--<span ng-bind-html="vm.currentCard.question"></span>-->
+                                <div ng-if="vm.showMcqQuestion" class="bold mcq-passage-text"
+                                    ng-style="{
+                                    'font-size': vm.mcqPassageFontSize + 'px'
+                                    }"
+                                    ng-bind-html="vm.currentCard.question">
+                                </div>
+
+                                <!--<div class="mcq-tntt-question-content"-->
+                                <!--ng-bind-html="vm.currentCard.question">-->
+                                <!--</div>-->
+
+                                <!--<div class="gaps3-subtitle">-->
+                                    <!--Guess the word nhé 💙-->
+                                <!--</div>-->
+
+                                <div style="margin-top: 12px;">
+                                    <button class="btn btn-brown gaps3-btn"
+                                            ng-click="vm.toggleMcqQuestion()"
+                                            style="margin-top: 10px;">
+                                        {{ vm.showMcqQuestion ? 'Ẩn câu hỏi' : 'Hiển thị câu hỏi' }}
+                                    </button>
+                                </div>
+                                <div style="margin-top: 12px;">
+
+                                    <button class="btn btn-info gaps3-btn"
+                                            ng-click="vm.thirtySeconds()">
+                                        ⏳ {{vm.timerRunning && vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
+                                    </button>
+
+                                    <button class="btn btn-success gaps3-btn"
+                                            ng-click="vm.twentySeconds()"
+                                            style="margin-top: 10px;">
+                                        ⚡ {{vm.timerRunning && vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
+                                    </button>
+
+                                    <button class="btn btn-info gaps3-btn"
+                                            ng-click="vm.fifteenSeconds()"
+                                            style="margin-top: 10px;">
+                                        ⏱ {{vm.timerRunning && vm.lastSetCounter == 15 ? counter + 's' : '15s'}}
+                                    </button>
+
+                                    <button class="btn btn-primary gaps3-btn"
+                                            ng-click="vm.tenSeconds()"
+                                            style="margin-top: 10px;">
+                                        🎯 {{vm.timerRunning && vm.lastSetCounter == 10 ? counter + 's' : '10s'}}
+                                    </button>
+
+                                    <button class="btn btn-danger gaps3-btn"
+                                            ng-click="vm.fiveSeconds()"
+                                            style="margin-top: 10px;">
+                                        🔥 {{vm.timerRunning && vm.lastSetCounter == 5 ? counter + 's' : '5s'}}
+                                    </button>
+
+                                </div>
+
+                                <div style="margin-top: 15px; font-size: 16px;">
+                                    <div>
+                                        <strong>{{vm.currentPosition + 1}} / {{vm.questions.length}}</strong>
+                                    </div>
+
+                                    <button class="btn btn-danger gaps3-btn"
+                                            ng-click="vm.showMcqAnswer()"
+                                            style="margin-top: 10px;">
+                                        🎁 Hiển thị đáp án
+                                    </button>
+
+                                    <!--<div>-->
+                                    <!--SCORE: <strong>{{vm.mcqScore}}</strong>-->
+                                    <!--</div>-->
+
+                                    <!--<div>-->
+                                    <!--WRONG: <strong>{{vm.mcqWrong}}</strong>-->
+                                    <!--</div>-->
+
+                                    <!--<div ng-if="vm.mcqFinished">-->
+                                    <!--<strong>{{vm.mcqFinished}}</strong>-->
+                                    <!--</div>-->
+                                </div>
+
+                                <div style="margin-top: 15px;">
+                                    <button class="btn btn-default gaps3-btn"
+                                            ng-click="vm.backCard()"
+                                            ng-disabled="vm.currentPosition <= 0">
+                                        ⬅ Back
+                                    </button>
+
+                                    <button class="btn btn-success gaps3-btn"
+                                            ng-click="vm.nextCard()"
+                                            ng-disabled="vm.currentPosition + 1 >= vm.questions.length"
+                                            style="margin-top: 10px;">
+                                        Next ➡
+                                    </button>
+                                </div>
+                                <div class="col-md-12 text-center margin-bottom-10 mcq-font-control">
+                                    <label class="bold">Đoạn lớn:</label>
+                                    <input type="number"
+                                            min="20"
+                                            max="120"
+                                            class="input-underline-only-score mcq-font-input"
+                                            ng-model="vm.mcqPassageFontSize"
+                                            ng-change="vm.changeMcqFontSize()">
+
+                                    &ensp;&ensp;
+
+                                    <label class="bold">Câu hỏi:</label>
+                                    <input type="number"
+                                            min="12"
+                                            max="80"
+                                            class="input-underline-only-score mcq-font-input"
+                                            ng-model="vm.mcqQuestionFontSize"
+                                            ng-change="vm.changeMcqFontSize()">
+
+                                    &ensp;&ensp;
+
+                                    <label class="bold">Đáp án:</label>
+                                    <input type="number"
+                                            min="12"
+                                            max="80"
+                                            class="input-underline-only-score mcq-font-input"
+                                            ng-model="vm.mcqAnswerFontSize"
+                                            ng-change="vm.changeMcqFontSize()">
+
+                                    <span>
+                                        Chiều cao:
+                                        <input type="number"
+                                                ng-model="vm.guessWordAnswerHeight"
+                                                min="80"
+                                                max="250"
+                                                class="input-underline-only-score mcq-font-input"
+                                                style="width: 60px;">
+                                    </span>
+
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <!-- /Guess The Word -->
 
                 <!--rewrite-->
                 <div ng-if="vm.isNormal == true" class="row bold text-center">
@@ -3004,12 +3268,12 @@
         padding:14px 18px;
         /*border-radius:20px;*/
         /*background:*/
-                /*linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)),*/
-                /*linear-gradient(90deg, rgba(80,180,255,.08), rgba(255,255,255,.02) 50%, rgba(150,255,100,.08));*/
+        /*linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)),*/
+        /*linear-gradient(90deg, rgba(80,180,255,.08), rgba(255,255,255,.02) 50%, rgba(150,255,100,.08));*/
         /*border:1px solid rgba(255,255,255,.08);*/
         /*box-shadow:*/
-                /*0 10px 24px rgba(0,0,0,.22),*/
-                /*inset 0 1px 0 rgba(255,255,255,.06);*/
+        /*0 10px 24px rgba(0,0,0,.22),*/
+        /*inset 0 1px 0 rgba(255,255,255,.06);*/
         position:relative;
         overflow:hidden;
     }
@@ -3225,8 +3489,8 @@
         padding-bottom:16px;
         border-radius:26px;
         /*background:*/
-                /*linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015)),*/
-                /*linear-gradient(180deg, rgba(12,16,29,.98), rgba(7,10,20,.98));*/
+        /*linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015)),*/
+        /*linear-gradient(180deg, rgba(12,16,29,.98), rgba(7,10,20,.98));*/
         border:1px solid rgba(255,255,255,.07);
         box-shadow:
                 0 18px 36px rgba(0,0,0,.26),
@@ -3984,16 +4248,16 @@
     }
 
     /*.excel-row-header {*/
-        /*display: flex;*/
-        /*align-items: center;*/
-        /*justify-content: center;*/
-        /*font-weight: 700;*/
-        /*font-size: 18px;*/
-        /*border-radius: 14px;*/
-        /*background: #4b0f2d;*/
-        /*color: #fff8ea;*/
-        /*aspect-ratio: 1 / 1;*/
-        /*box-shadow: 0 6px 18px rgba(0,0,0,.18);*/
+    /*display: flex;*/
+    /*align-items: center;*/
+    /*justify-content: center;*/
+    /*font-weight: 700;*/
+    /*font-size: 18px;*/
+    /*border-radius: 14px;*/
+    /*background: #4b0f2d;*/
+    /*color: #fff8ea;*/
+    /*aspect-ratio: 1 / 1;*/
+    /*box-shadow: 0 6px 18px rgba(0,0,0,.18);*/
     /*}*/
 
     .excel-row-header {
@@ -4253,6 +4517,11 @@
     .gaps3-cate-theme .gaps3-btn-answer {
         background: linear-gradient(135deg, #42a5f5, #7e57c2) !important;
         color: white !important;
+    }
+
+    .gaps3-btn {
+        margin-top: 10px;
+        vertical-align: middle;
     }
 
     .gaps3-cate-theme .gaps3-content {
@@ -4797,8 +5066,8 @@
         text-align: center;
         letter-spacing: 0.1px;
         /*text-shadow:*/
-                /*1.2px 1.2px 0 #f5d757,*/
-                /*0 2px 4px rgba(31, 63, 145, 0.12);*/
+        /*1.2px 1.2px 0 #f5d757,*/
+        /*0 2px 4px rgba(31, 63, 145, 0.12);*/
         margin-bottom: 18px;
         padding: 8px 16px;
     }
@@ -4915,5 +5184,105 @@
 
     .reward-time-buttons .btn {
         margin: 3px;
+    }
+</style>
+
+
+<style>
+    .guess-word-mode-wrap .row.margin-top-10 {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .guess-word-mode-wrap .row.margin-top-10 > .col-xs-12.col-sm-4.col-md-4 {
+        display: flex;
+        margin-bottom: 15px;
+    }
+
+    .guess-word-mode-wrap .guess-word-answer-btn {
+        width: 100% !important;
+
+
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .guess-word-mode-wrap .guess-word-answer-btn .mcq-answer-label {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .guess-word-mode-wrap .guess-word-answer-btn .mcq-answer-text {
+        display: block;
+        width: 100%;
+        line-height: 1.25;
+        text-align: center;
+    }
+    #guess-word-game-top {
+        width: 100% !important;
+        height: calc(100vh - 10px) !important;
+        min-height: calc(100vh - 10px) !important;
+        max-height: calc(100vh - 10px) !important;
+
+        margin: 0 !important;
+        padding: 10px 10px !important;
+
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    #guess-word-game-top > .row {
+        height: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    #guess-word-game-top .col-xs-12,
+    #guess-word-game-top .col-md-9,
+    #guess-word-game-top .col-md-3 {
+        box-sizing: border-box !important;
+    }
+
+    #guess-word-game-top .gaps3-left-col {
+        transform: scale(0.95);
+        transform-origin: top center;
+    }
+
+    /*#guess-word-game-top .guess-word-answer-btn {*/
+        /*height: 96px !important;*/
+        /*min-height: 96px !important;*/
+        /*max-height: 96px !important;*/
+    /*}*/
+
+    #guess-word-game-top .row.margin-top-10 {
+        margin-top: 5px !important;
+    }
+
+    #guess-word-game-top .margin-bottom-15 {
+        margin-bottom: 8px !important;
+    }
+
+    .guess-word-mode-wrap .guess-word-answer-btn {
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 18px !important;
+        white-space: normal !important;
+        text-align: center !important;
+        overflow: hidden !important;
+    }
+
+    .guess-word-mode-wrap .guess-word-answer-btn .mcq-answer-text {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100%;
+        height: 100%;
+        line-height: 1.2;
+        text-align: center;
     }
 </style>

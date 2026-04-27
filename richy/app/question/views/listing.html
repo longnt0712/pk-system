@@ -335,6 +335,13 @@
                                 <i ng-if="item.status != 5" class="fa-solid fa-headphones" style="cursor:pointer;font-size: 18px; padding-top: 12px; color: black" data-ng-click="vm.saveListening(item)"></i>
                                 &nbsp; &nbsp;
                                 <i class="fa fa-volume-up" style="cursor:pointer;font-size: 18px; padding-top: 12px" ng-click="sayIt(item.question)" style=""></i>
+                                &nbsp; &nbsp;
+
+                                <i class="fa fa-copy"
+                                        title="Duplicate"
+                                        style="cursor:pointer;font-size: 18px; padding-top: 12px"
+                                        ng-click="vm.duplicateFlashCard(item)">
+                                </i>
                                 <!--<i class="fa-solid fa-trash" style="cursor:pointer;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="deleteObject(item.id)"></i>-->
                             </div>
 
