@@ -1173,7 +1173,8 @@
                     return;
                 }
             }
-
+            
+            vm.setUpTestResult();
 
 
             vm.showTimer = true;
@@ -2382,6 +2383,8 @@
             }else{
                 vm.isMuted = false;
             }
+
+            vm.setUpTestResult();
         };
 
         vm.answerRewriteWord = '';
