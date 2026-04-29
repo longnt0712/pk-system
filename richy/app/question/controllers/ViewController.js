@@ -619,6 +619,10 @@
                             $scope.counter = 30;
                         }
 
+                        if (vm.questions && vm.questions.length > 0) {
+                            $scope.chooseFillingGaps(0);
+                        }
+
                         vm.setUpAudio();
                     }
                     if(vm.mode.id == 7){ // tug of war
