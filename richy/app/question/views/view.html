@@ -32,7 +32,8 @@
                 <!--global set up-->
                 <!--<div class="row" ng-show="vm.endGame == true">-->
                 <div class="row">
-                    <div class="col-md-12 bold margin-bottom-10 " ng-show="vm.isRoleUser == true || vm.isRoleAdmin == true">
+                    <!--<div class="col-md-12 bold margin-bottom-10 " ng-show="vm.isRoleUser == true || vm.isRoleAdmin == true">-->
+                    <div class="col-md-12 bold margin-bottom-10 " >
                         <ui-select ng-change="vm.chooseUsers()" data-ng-model="vm.selectedUser" sortable="true" close-on-select="true" style="width: 100% !important;">
                             <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}
                             </ui-select-match>
