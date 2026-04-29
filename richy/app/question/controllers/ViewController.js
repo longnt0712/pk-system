@@ -2770,46 +2770,47 @@
         vm.tempWrong = '';
         vm.saveTestResult = function () {
             vm.tempWrong = vm.testResult.testTakerPerformance;
-            if(vm.mode.id == 8 || vm.mode.id == 11){
-                vm.testResult.testType = 3; //FILLING GAPS
+
+            var isFillingGapMode = vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12;
+
+            if(isFillingGapMode){
+                vm.testResult.testType = 3; // FILLING GAPS
                 vm.testResult.testName = vm.currentCard.question;
-                vm.testResult.testTime = "GAPS " + vm.percentage +"%";
-            }else if (vm.mode.id == 5) {
-                vm.testResult.testType = 1; //DAILY VOCAB
-                vm.testResult.testName = vm.title.substring(0,50);
-                // vm.testResult.testTime = vm.totalCard.toString() +  ' WORD(s) | '+ vm.score1.toString() +'pt' + ' | STREAK: ' + vm.streakPlayer1 + '| INCORRECT: ' + vm.wrongPlayer1.toString() + '| TIME: ' + $scope.counter + '/'+ vm.tempCounter;
-                vm.testResult.testTime = vm.totalCard.toString() +  ' WORD(s)|' + vm.score1.toString() + 'pt' + '|INCORRECT: ' + vm.wrongPlayer1.toString() + '|TIME: ' + $scope.counter + '/'+ vm.tempCounter;
+                vm.testResult.testTime = "GAPS " + vm.percentage + "%";
+            } else if (vm.mode.id == 5) {
+                vm.testResult.testType = 1; // DAILY VOCAB
+                vm.testResult.testName = vm.title.substring(0, 50);
+                vm.testResult.testTime =
+                    vm.totalCard.toString() + ' WORD(s)|' +
+                    vm.score1.toString() + 'pt' +
+                    '|INCORRECT: ' + vm.wrongPlayer1.toString() +
+                    '|TIME: ' + $scope.counter + '/' + vm.tempCounter;
+
                 vm.testResult.numberOfWords = vm.totalCard - vm.wrongPlayer1;
                 vm.testResult.totalWord = vm.totalCard;
             }
 
             blockUI.start();
+
             service.saveTestResult(vm.testResult).then(function (data1) {
                 blockUI.stop();
 
                 if(data1.messageCode == 1){
                     toastr.error('Sai quá nhiều => chưa đạt', 'Thông báo');
-                }else {
+                } else {
                     toastr.info('Lưu thành công', 'Thông báo');
                 }
 
-                // vm.setUpTestResult();
-                if(vm.mode.id != 8){
+                if(isFillingGapMode) {
+                    vm.testResult.id = data1.id;
+                    vm.finishFillingGaps = "Finished";
+                } else {
                     vm.setUpTestResult();
                     console.log(data1.id);
                 }
 
-                // if(vm.mode.id == 8 || vm.mode.id == 11) {
-                if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12) {
-                    vm.testResult.id = data1.id;
-                    // vm.finishListening = "Finished";
-                    vm.finishFillingGaps = "Finished";
-                    // vm.percentage = 0;
-                } else if (vm.mode.id == 5 && data1.messageCode == 0) {
-                    vm.finishDailyVocab = "Finished";
-                }
-            }, function success() {
-            }, function failure() {
+            }, function () {
+                blockUI.stop();
                 toastr.error('Có lỗi xảy ra.', 'Thông báo');
             });
         };
@@ -3204,6 +3205,9 @@
                     var gapWord = originalWord;
                     var gapWordEscaped = escapeForNgString(gapWord);
 
+                    vm.gapAnswers = vm.gapAnswers || {};
+                    vm.gapAnswers[i] = gapWord;
+
                     vm.numberOfGaps++;
                     indexGap++;
 
@@ -3242,6 +3246,62 @@
             }
             return mainAudio;
         }
+
+        vm.tryAutoSaveFillingGaps = function () {
+            if (!(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12)) {
+                return;
+            }
+
+            if (vm.isSaveTestResult === true) {
+                return;
+            }
+
+            var answers = vm.gapAnswers || {};
+            var keys = Object.keys(answers);
+
+            if (!keys.length) {
+                return;
+            }
+
+            var filledCount = 0;
+            var correctCount = 0;
+            var allFilled = true;
+            var allCorrect = true;
+
+            angular.forEach(keys, function (key) {
+                var typed = vm.gapValues[key];
+
+                if (typed == null || String(typed).trim().length <= 0) {
+                    allFilled = false;
+                    allCorrect = false;
+                    return;
+                }
+
+                filledCount++;
+
+                var typedNormalized = normalizeGapAutoNext(typed);
+                var answerNormalized = normalizeGapAutoNext(answers[key]);
+
+                var correct = typedNormalized === answerNormalized;
+
+                vm.gapCorrectMap[key] = correct;
+
+                if (correct) {
+                    correctCount++;
+                } else {
+                    allCorrect = false;
+                }
+            });
+
+            vm.percentage = keys.length > 0
+                ? ((correctCount / keys.length) * 100).toFixed(2)
+                : 0;
+
+            if (allFilled && allCorrect) {
+                vm.isSaveTestResult = true;
+                vm.saveTestResult();
+            }
+        };
 
         vm.togglePauseAudio = function () {
             var audio = getMainAudio();
@@ -3314,6 +3374,8 @@
         vm.gapValues = {};
         vm.resetFillingGapsRun = function () {
             vm.gapValues = {};
+            vm.gapAnswers = {};
+            vm.gapCorrectMap = {};
 
             vm.currentGapAnswers = [];
             vm.currentGapBlocks = null;
@@ -3343,14 +3405,19 @@
             return normalize(cleaned);
         }
         vm.onGapInputChange = function (totalWords, index, fullText, gapWord) {
-            vm.fillingGaps(totalWords, index, fullText);
-
             var typed = normalizeGapAutoNext(vm.gapValues[index]);
             var answer = normalizeGapAutoNext(gapWord);
 
+            var currentInput = document.getElementById('gap-number-' + index);
+
             if (typed && typed === answer) {
+                vm.gapCorrectMap[index] = true;
+
+                if (currentInput) {
+                    currentInput.style.background = 'rgba(183, 244, 216, 0.7)';
+                }
+
                 $timeout(function () {
-                    var currentInput = document.getElementById('gap-number-' + index);
                     if (currentInput) {
                         currentInput.blur();
                     }
@@ -3363,7 +3430,15 @@
                         }
                     }
                 }, 120);
+            } else {
+                vm.gapCorrectMap[index] = false;
+
+                if (currentInput) {
+                    currentInput.style.background = 'rgba(255, 180, 180, 0.7)';
+                }
             }
+
+            vm.tryAutoSaveFillingGaps();
         };
         vm.onGapKeyup = function ($event, totalWords, index, fullText, gapWord) {
             var target = $event && $event.target;
