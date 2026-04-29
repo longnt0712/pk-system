@@ -352,10 +352,10 @@
         // if(settings.isViewer == true){
             // console.log('here');
             vm.users = [
-                {id: 32,name:'IELTS IELTS'},
-                {id: 37,name:'NO ROOT'},
+                // {id: 32,name:'IELTS IELTS'},
+                // {id: 37,name:'NO ROOT'},
                 {id: 26,name:'EM YÊU INH LÍCH'},
-                {id: 33,name:'SADDLEBACK'}
+                {id: 33,name:'CHURCH'}
             ];
         // }
 
