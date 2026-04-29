@@ -73,9 +73,15 @@
                             </ui-select-choices>
                         </ui-select>
                     </div>
+                    <div class="col-md-3">
+                        <input type="text"
+                                class="form-control"
+                                ng-model="vm.keywordStudentName"
+                                placeholder="Tìm theo tên hoặc mã học sinh...">
+                    </div>
                 </div>
 
-                <div class="table-responsive">
+                <div class="table-responsive margin-top-10">
                     <table class="table table-bordered table-hover table-striped text-center product-table">
                         <thead>
                         <tr>
@@ -91,7 +97,7 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr ng-repeat="student in vm.studentMarks track by $index">
+                        <tr ng-repeat="student in vm.studentMarks | filter: vm.filterStudentByName track by $index">
                             <td>{{$index + 1}}
                             </td>
                             <td class="text-left">

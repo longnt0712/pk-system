@@ -12,7 +12,8 @@
         'Utilities',
         '$uibModal',
         'StudentMarkService',
-        'Upload'
+        'Upload',
+        'blockUI',
     ];
 
     angular.module('Hrm.StudentMark').directive('fileDownload', function () {
@@ -137,7 +138,7 @@
         };
     });
 
-    function StudentMarkController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, Upload) {
+    function StudentMarkController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, Upload,blockUI) {
         $scope.$on('$viewContentLoaded', function () {
             App.initAjax();
         });
@@ -160,6 +161,32 @@
         vm.searchDisplayDto.enrollmentClass = 1;
         vm.searchDisplayDto.educationProgramId = 1;
         vm.searchDisplayDto.textSearch = null;
+
+        vm.markColumns = [];
+        vm.keywordStudentName = '';
+
+        vm.filterStudentByName = function (student) {
+            if (!vm.keywordStudentName) {
+                return true;
+            }
+
+            if (!student || !student.user || !student.user.person) {
+                return false;
+            }
+
+            var person = student.user.person;
+
+            var fullNameAndCode = [
+                person.patron,
+                person.lastName,
+                person.firstName,
+                student.user.username
+            ].join(' ').toLowerCase();
+
+            var keyword = vm.keywordStudentName.toLowerCase().trim();
+
+            return fullNameAndCode.indexOf(keyword) !== -1;
+        };
 
         vm.enrollmentClasses = [
             {id: 1, name: "DCN1"},
@@ -196,7 +223,9 @@
         };
 
         vm.getListDisplayStudentMark = function () {
+            blockUI.start();
             service.getListDisplayStudentMark(vm.searchDisplayDto).then(function (data) {
+                blockUI.stop();
                 vm.studentMarks = data || [];
 
                 angular.forEach(vm.studentMarks, function(value, key) {

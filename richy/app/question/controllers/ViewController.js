@@ -2799,19 +2799,33 @@
             service.saveTestResult(vm.testResult).then(function (data1) {
                 blockUI.stop();
 
-                if(data1.messageCode == 1){
+                if (data1.messageCode == 1) {
                     toastr.error('Sai quá nhiều => chưa đạt', 'Thông báo');
                 } else {
                     toastr.info('Lưu thành công', 'Thông báo');
                 }
 
-                if(isFillingGapMode) {
+                if (isFillingGapMode) {
                     vm.testResult.id = data1.id;
                     vm.finishFillingGaps = "Finished";
-                } else {
-                    vm.setUpTestResult();
-                    console.log(data1.id);
+                    return;
                 }
+
+                if (vm.mode.id == 5) {
+                    vm.testResult.id = data1.id;
+
+                    // Nếu chỉ cần đã lưu là xong:
+                    // vm.finishDailyVocab = "Finished";
+
+                    // Nếu muốn phân biệt chưa đạt thì dùng dòng này thay dòng trên:
+                    vm.finishDailyVocab = data1.messageCode == 1 ? "Not Passed" : "Finished";
+
+                    vm.isSaveTestResult = true;
+                    return;
+                }
+
+                vm.setUpTestResult();
+                console.log(data1.id);
 
             }, function () {
                 blockUI.stop();
