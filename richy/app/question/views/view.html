@@ -1098,10 +1098,21 @@
                                     </audio>
 
                                     <br>
-                                    <button ng-click="vm.backwardAudio(e)">
-                                        <i class="fa fa-backward" aria-hidden="true"></i></button>
-                                    <button ng-click="vm.forwardAudio(e)">
-                                        <i class="fa fa-forward" aria-hidden="true"></i></button>
+                                    <span class="global-mobile-audio-seek-controls">
+    <button type="button"
+            class="global-mobile-audio-seek-btn global-mobile-audio-back-btn"
+            ng-click="vm.backwardAudio(e)"
+            aria-label="Playback 3 seconds">
+        <i class="fa fa-backward" aria-hidden="true"></i>
+    </button>
+
+    <button type="button"
+            class="global-mobile-audio-seek-btn global-mobile-audio-forward-btn"
+            ng-click="vm.forwardAudio(e)"
+            aria-label="Forward 3 seconds">
+        <i class="fa fa-forward" aria-hidden="true"></i>
+    </button>
+</span>
                                     | Speed:
                                     <input class="input-underline-only" style="width:70px;text-align: center" id="play-back-input" ng-disabled="true" type="number" min="0.5" max="4" ng-value="vm.playbackValue | number : 1"/>
 
@@ -1119,9 +1130,6 @@
                                         <i class="fa fa-arrow-down" aria-hidden="true"></i></button>
                                 </div>
                                 <div class="col-md-4"></div>
-                            </div>
-
-                            <div class="row margin-bottom-10 margin-top-20">
                                 <div class="col-md-12 text-center">
                                     (hit '<i class="fa fa-chevron-left bold"></i>' playback 3s) | (hit '<i class="bold fa fa-chevron-right"></i>' forward 3s) | (hit 'space' to pause/resume)
                                 </div>
@@ -5474,7 +5482,8 @@
         line-height: 1.9;
         letter-spacing: 0.2px;
         word-spacing: 5px;
-        text-align: left;
+        text-align: justify;
+        text-align-last: left;
         text-shadow: 0 1px 0 rgba(255,255,255,0.95);
     }
 
@@ -5800,23 +5809,23 @@
     }
 
     /* English ribbon */
-    .gap-english-theme .filling-content-mode-gaps::before,
-    .gap-english-theme .filling-content-mode-gaps-3::before,
-    .gap-english-theme .margin-bottom-10.margin-top-20::before {
-        content: "✎ Fill in the gaps";
-        display: inline-block;
-        position: absolute;
-        top: -17px;
-        left: 24px;
-        padding: 6px 16px;
-        border-radius: 999px;
-        background: linear-gradient(135deg, #3f7ee8, #4ecdc4);
-        color: #ffffff;
-        font-size: 15px;
-        font-weight: 900;
-        letter-spacing: 0.4px;
-        box-shadow: 0 8px 16px rgba(63, 126, 232, 0.22);
-    }
+    /*.gap-english-theme .filling-content-mode-gaps::before,*/
+    /*.gap-english-theme .filling-content-mode-gaps-3::before,*/
+    /*.gap-english-theme .margin-bottom-10.margin-top-20::before {*/
+        /*content: "✎ Fill in the gaps";*/
+        /*display: inline-block;*/
+        /*position: absolute;*/
+        /*top: -17px;*/
+        /*left: 24px;*/
+        /*padding: 6px 16px;*/
+        /*border-radius: 999px;*/
+        /*background: linear-gradient(135deg, #3f7ee8, #4ecdc4);*/
+        /*color: #ffffff;*/
+        /*font-size: 15px;*/
+        /*font-weight: 900;*/
+        /*letter-spacing: 0.4px;*/
+        /*box-shadow: 0 8px 16px rgba(63, 126, 232, 0.22);*/
+    /*}*/
 
     /* Main English text */
     .gap-english-content {
@@ -5825,7 +5834,8 @@
         line-height: 1.85;
         letter-spacing: 0.15px;
         word-spacing: 4px;
-        text-align: left;
+        text-align: justify;
+        text-align-last: left;
         text-shadow: 0 1px 0 rgba(255,255,255,0.95);
     }
 
@@ -5919,6 +5929,86 @@
         .gap-english-theme::before {
             font-size: 12px;
             right: 14px;
+        }
+    }
+
+    /* =========================================================
+   MOBILE ONLY - GLOBAL FIXED AUDIO SEEK BUTTONS
+   Applies to the backward / forward buttons only
+   ========================================================= */
+
+    .global-mobile-audio-seek-controls {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Mobile: stick to the whole viewport, not only the section */
+    @media (max-width: 991px) {
+        .global-mobile-audio-seek-controls {
+            position: fixed !important;
+
+            /* Nếu bị đè bởi navbar/header, đổi 12px thành 55px hoặc 65px */
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+
+            z-index: 2147483000;
+
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+
+            padding: 8px 12px;
+            border-radius: 999px;
+
+            background: rgba(255, 255, 255, 0.94);
+            border: 2px solid rgba(63, 126, 232, 0.35);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .global-mobile-audio-seek-btn {
+            width: 46px !important;
+            height: 46px !important;
+
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+
+            padding: 0 !important;
+            margin: 0 !important;
+
+            border: none !important;
+            border-radius: 50% !important;
+
+            color: #ffffff !important;
+            font-size: 18px !important;
+            font-weight: 900 !important;
+
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22) !important;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .global-mobile-audio-back-btn {
+            background: linear-gradient(135deg, #1976d2, #26c6da) !important;
+        }
+
+        .global-mobile-audio-forward-btn {
+            background: linear-gradient(135deg, #ff8f00, #ffca28) !important;
+            color: #3b2600 !important;
+        }
+
+        .global-mobile-audio-seek-btn:active {
+            transform: scale(0.94);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24) !important;
+        }
+
+        .global-mobile-audio-seek-btn i {
+            pointer-events: none;
         }
     }
 </style>
