@@ -3422,6 +3422,10 @@
 
             return normalize(cleaned);
         }
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
+                .test(navigator.userAgent || '');
+        }
         vm.onGapInputChange = function (totalWords, index, fullText, gapWord) {
             var typed = normalizeGapAutoNext(vm.gapValues[index]);
             var answer = normalizeGapAutoNext(gapWord);
@@ -3435,19 +3439,23 @@
                     currentInput.style.background = 'rgba(183, 244, 216, 0.7)';
                 }
 
-                $timeout(function () {
-                    if (currentInput) {
-                        currentInput.blur();
-                    }
-
-                    for (var j = index + 1; j < totalWords; j++) {
-                        var nextInput = document.getElementById('gap-number-' + j);
-                        if (nextInput) {
-                            nextInput.focus();
-                            break;
+                // Chỉ điện thoại mới tự nhảy sang gap tiếp theo.
+                // Máy tính thì đứng nguyên tại gap hiện tại.
+                if (vm.mode.id !== 11 || isMobileDevice()) {
+                    $timeout(function () {
+                        if (currentInput) {
+                            currentInput.blur();
                         }
-                    }
-                }, 120);
+
+                        for (var j = index + 1; j < totalWords; j++) {
+                            var nextInput = document.getElementById('gap-number-' + j);
+                            if (nextInput) {
+                                nextInput.focus();
+                                break;
+                            }
+                        }
+                    }, 120);
+                }
             } else {
                 vm.gapCorrectMap[index] = false;
 
