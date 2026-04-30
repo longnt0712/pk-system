@@ -1053,9 +1053,39 @@
                 </div>
 
                 <!--listening-->
-                <div ng-if="vm.mode.id == 8 || vm.mode.id == 11" class="row">
+                <div ng-if="vm.mode.id == 8 || vm.mode.id == 11"
+                        class="row"
+                        ng-class="{
+                            'gap-english-theme': vm.mode.id == 8,
+                            'gap-vni-tntt-theme': vm.mode.id == 11
+                         }">
                     <div class="row">
                         <div class="col-md-3" style="padding-left: 20px">
+
+                            <div class="gap-table-search-box">
+                                <div class="input-group">
+                                    <input type="text"
+                                            class="form-control gap-table-search-input"
+                                            ng-model="vm.gapTableSearchText"
+                                            ng-change="vm.searchGapTableByName()"
+                                            placeholder="Tìm theo tên bài..."
+                                            autocomplete="off">
+
+                                    <span class="input-group-btn">
+                                        <button class="btn btn-default gap-table-clear-btn"
+                                                type="button"
+                                                ng-click="vm.clearGapTableSearch()"
+                                                ng-if="vm.gapTableSearchText">
+                                            <i class="fa fa-times"></i>
+                                        </button>
+                                    </span>
+                                </div>
+
+                                <div class="gap-table-search-count">
+                                    Tìm thấy {{vm.questions.length}} / {{vm.allGapQuestions.length}} bài
+                                </div>
+                            </div>
+
                             <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
                         </div>
                         <div class="col-md-9" style="padding-right: 20px">
@@ -1107,7 +1137,12 @@
 
                             <div class="row margin-top-10 margin-bottom-10 filling-content">
                                 <div class="col-md-12">
-                                    <div class="bold" compile="vm.fillingGapQuestion"></div>
+                                    <div class="bold"
+                                            ng-class="{
+                                                'gap-english-content': vm.mode.id == 8,
+                                                'gap-vni-tntt-content': vm.mode.id == 11
+                                             }"
+                                            compile="vm.fillingGapQuestion"></div>
                                 </div>
                                 <!--<div class="col-md-2"></div>-->
                             </div>
@@ -5285,5 +5320,605 @@
         height: 100%;
         line-height: 1.2;
         text-align: center;
+    }
+</style>
+
+<style>
+    /* =========================================================
+   FILLING GAPS VNI - THIẾU NHI THÁNH THỂ STYLE
+   Mode 11 only. Does NOT change input gap CSS.
+   ========================================================= */
+
+    .gap-vni-tntt-theme {
+        padding: 22px 14px 30px;
+        border-radius: 28px;
+        background:
+                radial-gradient(circle at top left, rgba(255, 215, 0, 0.35), transparent 28%),
+                radial-gradient(circle at top right, rgba(0, 92, 185, 0.18), transparent 30%),
+                radial-gradient(circle at bottom left, rgba(220, 20, 60, 0.16), transparent 32%),
+                linear-gradient(135deg, #fffdf3 0%, #ffffff 45%, #eef7ff 100%);
+        border: 3px solid rgba(255, 213, 79, 0.75);
+        box-shadow:
+                0 18px 40px rgba(0, 58, 120, 0.12),
+                inset 0 0 0 4px rgba(255, 255, 255, 0.75);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .gap-vni-tntt-theme::before {
+        content: "✦ TNTT ✦";
+        position: absolute;
+        top: 12px;
+        right: 22px;
+        font-size: 18px;
+        font-weight: 900;
+        letter-spacing: 2px;
+        color: rgba(220, 20, 60, 0.22);
+    }
+
+    .gap-vni-tntt-theme::after {
+        content: "✝";
+        position: absolute;
+        bottom: -28px;
+        right: 24px;
+        font-size: 120px;
+        line-height: 1;
+        color: rgba(0, 92, 185, 0.08);
+        font-weight: 900;
+        pointer-events: none;
+    }
+
+    .gap-vni-tntt-theme .col-md-3 {
+        background: rgba(255, 255, 255, 0.88);
+        border: 2px solid rgba(255, 193, 7, 0.65);
+        border-radius: 24px;
+        padding-top: 16px;
+        padding-bottom: 16px;
+        box-shadow: 0 12px 26px rgba(120, 72, 0, 0.10);
+    }
+
+    .gap-vni-tntt-theme .col-md-9 {
+        background: rgba(255, 255, 255, 0.92);
+        border: 2px solid rgba(0, 92, 185, 0.28);
+        border-radius: 28px;
+        padding-top: 20px;
+        padding-bottom: 26px;
+        box-shadow: 0 16px 36px rgba(0, 58, 120, 0.12);
+    }
+
+    .gap-vni-tntt-theme .audio-menu {
+        margin: 0 0 20px;
+        padding: 15px 14px;
+        border-radius: 24px;
+        background: linear-gradient(135deg, #ffffff 0%, #fff7d6 100%);
+        border: 2px dashed rgba(255, 193, 7, 0.85);
+        box-shadow: 0 8px 18px rgba(255, 193, 7, 0.16);
+    }
+
+    .gap-vni-tntt-theme #main-audio {
+        width: 82% !important;
+        max-width: 780px;
+        height: 44px;
+        border-radius: 999px;
+        box-shadow: 0 8px 18px rgba(0, 92, 185, 0.13);
+    }
+
+    .gap-vni-tntt-theme button,
+    .gap-vni-tntt-theme .audio-menu button {
+        border: 0 !important;
+        border-radius: 999px !important;
+        padding: 8px 14px;
+        margin: 4px 3px;
+        color: #ffffff !important;
+        font-weight: 800;
+        background: linear-gradient(135deg, #005bbb 0%, #1e88e5 100%);
+        box-shadow: 0 8px 16px rgba(0, 92, 185, 0.22);
+        transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    }
+
+    .gap-vni-tntt-theme button:nth-of-type(2n) {
+        background: linear-gradient(135deg, #d71920 0%, #ff5252 100%);
+        box-shadow: 0 8px 16px rgba(215, 25, 32, 0.20);
+    }
+
+    .gap-vni-tntt-theme button:nth-of-type(3n) {
+        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+        color: #5a3500 !important;
+        box-shadow: 0 8px 16px rgba(255, 152, 0, 0.22);
+    }
+
+    .gap-vni-tntt-theme button:hover,
+    .gap-vni-tntt-theme .audio-menu button:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.04);
+        box-shadow: 0 12px 24px rgba(0, 58, 120, 0.22);
+    }
+
+    .gap-vni-tntt-theme .filling-content-mode-gaps,
+    .gap-vni-tntt-theme .filling-content-mode-gaps-3,
+    .gap-vni-tntt-theme .margin-bottom-10.margin-top-20 {
+        position: relative;
+        padding: 26px 28px;
+        margin-top: 20px;
+        border-radius: 30px;
+        background:
+                linear-gradient(#ffffff, #ffffff) padding-box,
+                linear-gradient(135deg, #ffc107, #d71920, #005bbb) border-box;
+        border: 4px solid transparent;
+        box-shadow:
+                0 18px 38px rgba(0, 58, 120, 0.12),
+                inset 0 0 0 2px rgba(255, 255, 255, 0.9);
+    }
+
+    .gap-vni-tntt-theme .filling-content-mode-gaps::before,
+    .gap-vni-tntt-theme .filling-content-mode-gaps-3::before,
+    .gap-vni-tntt-theme .margin-bottom-10.margin-top-20::before {
+        content: "✝ Thiếu Nhi Thánh Thể ✝";
+        display: inline-block;
+        position: absolute;
+        top: -17px;
+        left: 24px;
+        padding: 6px 16px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #d71920, #ff5252);
+        color: #fff;
+        font-size: 15px;
+        font-weight: 900;
+        letter-spacing: 0.5px;
+        box-shadow: 0 8px 16px rgba(215, 25, 32, 0.22);
+    }
+
+    .gap-vni-tntt-content {
+        color: #17345c;
+        font-size: 14px;
+        line-height: 1.9;
+        letter-spacing: 0.2px;
+        word-spacing: 5px;
+        text-align: left;
+        text-shadow: 0 1px 0 rgba(255,255,255,0.95);
+    }
+
+    .gap-vni-tntt-content::first-letter {
+        font-size: 1.25em;
+        color: #d71920;
+        font-weight: 900;
+    }
+
+    .gap-vni-tntt-theme span[style*="color:red"] {
+        color: #d71920 !important;
+        background: #fff3f3;
+        border: 1px solid #ffc6c6;
+        border-radius: 14px;
+        padding: 2px 9px;
+        font-weight: 900;
+        box-shadow: 0 4px 10px rgba(215, 25, 32, 0.13);
+    }
+
+    .gap-vni-tntt-theme #bsTableControl table,
+    .gap-vni-tntt-theme .bootstrap-table table {
+        border-radius: 18px;
+        overflow: hidden;
+        border-collapse: separate;
+    }
+
+    .gap-vni-tntt-theme .fixed-table-container thead th,
+    .gap-vni-tntt-theme table thead th {
+        background: linear-gradient(135deg, #005bbb 0%, #1e88e5 100%) !important;
+        color: #fff !important;
+        border-color: #b7dcff !important;
+        font-weight: 900;
+        text-align: center;
+    }
+
+    .gap-vni-tntt-theme .fixed-table-container tbody td,
+    .gap-vni-tntt-theme table tbody td {
+        background: rgba(255, 255, 255, 0.96) !important;
+        color: #17345c !important;
+        border-color: #ffe7a3 !important;
+        font-weight: 700;
+    }
+
+    .gap-vni-tntt-theme .fixed-table-container tbody tr:hover td,
+    .gap-vni-tntt-theme table tbody tr:hover td {
+        background: #fff7d6 !important;
+    }
+
+    .gap-vni-tntt-theme .pagination > li > a,
+    .gap-vni-tntt-theme .pagination > li > span {
+        border-radius: 999px !important;
+        margin: 0 2px;
+        border: 1px solid #ffd766;
+        color: #005bbb;
+        font-weight: 800;
+    }
+
+    .gap-vni-tntt-theme .pagination > .active > a,
+    .gap-vni-tntt-theme .pagination > .active > span {
+        background: #d71920 !important;
+        border-color: #d71920 !important;
+        color: #fff !important;
+    }
+
+    @media (max-width: 991px) {
+        .gap-vni-tntt-theme {
+            padding: 16px 8px 22px;
+            border-radius: 22px;
+        }
+
+        .gap-vni-tntt-theme .col-md-3,
+        .gap-vni-tntt-theme .col-md-9 {
+            margin-bottom: 14px;
+            padding-left: 14px !important;
+            padding-right: 14px !important;
+        }
+
+        .gap-vni-tntt-content {
+            font-size: 14px;
+            line-height: 1.75;
+        }
+
+        .gap-vni-tntt-theme #main-audio {
+            width: 100% !important;
+        }
+
+        .gap-vni-tntt-theme::before {
+            font-size: 14px;
+            right: 14px;
+        }
+    }
+
+    .gap-table-search-box {
+        margin-bottom: 12px;
+        padding: 10px;
+        background: #fffdf5;
+        border: 2px solid #ffd766;
+        border-radius: 18px;
+        box-shadow: 0 8px 18px rgba(0, 58, 120, 0.08);
+    }
+
+    .gap-table-search-input {
+        height: 38px;
+        border-radius: 999px 0 0 999px !important;
+        border: 1px solid #ffc107 !important;
+        font-weight: 700;
+        color: #17345c;
+    }
+
+    .gap-table-search-input:focus {
+        border-color: #005bbb !important;
+        box-shadow: 0 0 0 3px rgba(0, 91, 187, 0.12) !important;
+    }
+
+    .gap-table-clear-btn {
+        height: 38px;
+        border-radius: 0 999px 999px 0 !important;
+        border: 1px solid #ffc107 !important;
+        background: #d71920 !important;
+        color: #fff !important;
+    }
+
+    .gap-table-search-count {
+        margin-top: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #005bbb;
+        text-align: center;
+    }
+
+    /* =========================================================
+   FILLING GAPS - ENGLISH STUDENT STYLE
+   Mode 8 only. Does NOT change input gap CSS.
+   ========================================================= */
+
+    .gap-english-theme {
+        position: relative;
+        padding: 24px 16px 32px;
+        border-radius: 30px;
+        overflow: hidden;
+        background:
+                radial-gradient(circle at 12% 10%, rgba(255, 214, 102, 0.45), transparent 24%),
+                radial-gradient(circle at 88% 18%, rgba(78, 205, 196, 0.26), transparent 28%),
+                radial-gradient(circle at 50% 100%, rgba(91, 141, 239, 0.18), transparent 32%),
+                linear-gradient(135deg, #f7fbff 0%, #ffffff 46%, #fff9e8 100%);
+        border: 3px solid rgba(91, 141, 239, 0.28);
+        box-shadow:
+                0 20px 45px rgba(30, 70, 130, 0.12),
+                inset 0 0 0 5px rgba(255, 255, 255, 0.65);
+    }
+
+    /* Decorative English classroom text */
+    .gap-english-theme::before {
+        content: "A B C  •  ENGLISH PRACTICE  •  ✎";
+        position: absolute;
+        top: 14px;
+        right: 24px;
+        font-size: 15px;
+        font-weight: 900;
+        letter-spacing: 1.5px;
+        color: rgba(45, 90, 180, 0.20);
+        pointer-events: none;
+    }
+
+    .gap-english-theme::after {
+        content: "BOOK";
+        position: absolute;
+        bottom: -24px;
+        right: 24px;
+        font-size: 82px;
+        font-weight: 900;
+        letter-spacing: 4px;
+        color: rgba(91, 141, 239, 0.07);
+        pointer-events: none;
+    }
+
+    /* Left table panel */
+    .gap-english-theme .col-md-3 {
+        background:
+                linear-gradient(180deg, rgba(255,255,255,0.96), rgba(247,251,255,0.92));
+        border: 2px solid rgba(91, 141, 239, 0.35);
+        border-radius: 26px;
+        padding-top: 16px;
+        padding-bottom: 18px;
+        box-shadow: 0 14px 30px rgba(30, 70, 130, 0.10);
+    }
+
+    /* Main exercise panel */
+    .gap-english-theme .col-md-9 {
+        background:
+                linear-gradient(180deg, rgba(255,255,255,0.97), rgba(255,252,242,0.95));
+        border: 2px solid rgba(255, 193, 7, 0.45);
+        border-radius: 30px;
+        padding-top: 22px;
+        padding-bottom: 28px;
+        box-shadow: 0 18px 40px rgba(30, 70, 130, 0.12);
+    }
+
+    /* Search box, if you added the table search input */
+    .gap-english-theme .gap-table-search-box {
+        margin-bottom: 14px;
+        padding: 12px;
+        border-radius: 20px;
+        background:
+                linear-gradient(135deg, #ffffff 0%, #eef6ff 100%);
+        border: 2px solid rgba(91, 141, 239, 0.35);
+        box-shadow: 0 8px 18px rgba(30, 70, 130, 0.08);
+    }
+
+    .gap-english-theme .gap-table-search-input {
+        height: 40px;
+        border-radius: 999px 0 0 999px !important;
+        border: 1px solid #8bb6ff !important;
+        color: #1f3f73;
+        font-weight: 700;
+    }
+
+    .gap-english-theme .gap-table-search-input:focus {
+        border-color: #3f7ee8 !important;
+        box-shadow: 0 0 0 4px rgba(63, 126, 232, 0.13) !important;
+    }
+
+    .gap-english-theme .gap-table-clear-btn {
+        height: 40px;
+        border-radius: 0 999px 999px 0 !important;
+        border: 1px solid #8bb6ff !important;
+        background: linear-gradient(135deg, #ff6b6b, #ff8e53) !important;
+        color: #ffffff !important;
+    }
+
+    .gap-english-theme .gap-table-search-count {
+        margin-top: 7px;
+        font-size: 12px;
+        color: #3f7ee8;
+        font-weight: 800;
+        text-align: center;
+    }
+
+    /* Audio menu */
+    .gap-english-theme .audio-menu {
+        position: relative;
+        margin: 0 0 22px;
+        padding: 16px 14px;
+        border-radius: 24px;
+        background:
+                linear-gradient(135deg, #eef6ff 0%, #ffffff 50%, #fff7d8 100%);
+        border: 2px dashed rgba(63, 126, 232, 0.45);
+        box-shadow: 0 10px 22px rgba(30, 70, 130, 0.10);
+    }
+
+    .gap-english-theme .audio-menu::before {
+        content: "Listening Practice";
+        display: inline-block;
+        position: absolute;
+        top: -14px;
+        left: 22px;
+        padding: 5px 14px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #3f7ee8, #4ecdc4);
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.3px;
+        box-shadow: 0 8px 16px rgba(63, 126, 232, 0.22);
+    }
+
+    .gap-english-theme #main-audio {
+        width: 82% !important;
+        max-width: 760px;
+        height: 44px;
+        border-radius: 999px;
+        box-shadow: 0 8px 18px rgba(63, 126, 232, 0.13);
+    }
+
+    /* Buttons */
+    .gap-english-theme button,
+    .gap-english-theme .audio-menu button {
+        border: 0 !important;
+        border-radius: 999px !important;
+        padding: 8px 14px;
+        margin: 4px 3px;
+        color: #ffffff !important;
+        font-weight: 800;
+        background: linear-gradient(135deg, #3f7ee8 0%, #4ecdc4 100%);
+        box-shadow: 0 9px 18px rgba(63, 126, 232, 0.22);
+        transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    }
+
+    .gap-english-theme button:nth-of-type(2n) {
+        background: linear-gradient(135deg, #ff8e53 0%, #ffca3a 100%);
+        color: #543600 !important;
+        box-shadow: 0 9px 18px rgba(255, 142, 83, 0.22);
+    }
+
+    .gap-english-theme button:nth-of-type(3n) {
+        background: linear-gradient(135deg, #845ec2 0%, #d65db1 100%);
+        color: #ffffff !important;
+        box-shadow: 0 9px 18px rgba(132, 94, 194, 0.20);
+    }
+
+    .gap-english-theme button:hover,
+    .gap-english-theme .audio-menu button:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.04);
+        box-shadow: 0 13px 26px rgba(30, 70, 130, 0.24);
+    }
+
+    /* Main question box */
+    .gap-english-theme .filling-content-mode-gaps,
+    .gap-english-theme .filling-content-mode-gaps-3,
+    .gap-english-theme .margin-bottom-10.margin-top-20 {
+        position: relative;
+        padding: 28px 30px;
+        margin-top: 22px;
+        border-radius: 32px;
+        background:
+                linear-gradient(#ffffff, #ffffff) padding-box,
+                linear-gradient(135deg, #3f7ee8, #4ecdc4, #ffca3a, #ff6b6b) border-box;
+        border: 4px solid transparent;
+        box-shadow:
+                0 18px 40px rgba(30, 70, 130, 0.12),
+                inset 0 0 0 2px rgba(255, 255, 255, 0.95);
+    }
+
+    /* English ribbon */
+    .gap-english-theme .filling-content-mode-gaps::before,
+    .gap-english-theme .filling-content-mode-gaps-3::before,
+    .gap-english-theme .margin-bottom-10.margin-top-20::before {
+        content: "✎ Fill in the gaps";
+        display: inline-block;
+        position: absolute;
+        top: -17px;
+        left: 24px;
+        padding: 6px 16px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #3f7ee8, #4ecdc4);
+        color: #ffffff;
+        font-size: 15px;
+        font-weight: 900;
+        letter-spacing: 0.4px;
+        box-shadow: 0 8px 16px rgba(63, 126, 232, 0.22);
+    }
+
+    /* Main English text */
+    .gap-english-content {
+        color: #1f3f73;
+        font-size: 14px;
+        line-height: 1.85;
+        letter-spacing: 0.15px;
+        word-spacing: 4px;
+        text-align: left;
+        text-shadow: 0 1px 0 rgba(255,255,255,0.95);
+    }
+
+    .gap-english-content::first-letter {
+        font-size: 1.25em;
+        color: #ff6b6b;
+        font-weight: 900;
+    }
+
+    /* Correct answer text only */
+    .gap-english-theme span[style*="color:red"] {
+        color: #ff4d4f !important;
+        background: #fff1f1;
+        border: 1px solid #ffc9c9;
+        border-radius: 12px;
+        padding: 2px 8px;
+        font-weight: 900;
+        box-shadow: 0 4px 10px rgba(255, 77, 79, 0.12);
+    }
+
+    /* Table */
+    .gap-english-theme #bsTableControl table,
+    .gap-english-theme .bootstrap-table table {
+        border-radius: 18px;
+        overflow: hidden;
+        border-collapse: separate;
+    }
+
+    .gap-english-theme .fixed-table-container thead th,
+    .gap-english-theme table thead th {
+        background: linear-gradient(135deg, #3f7ee8 0%, #2f65c8 100%) !important;
+        color: #ffffff !important;
+        border-color: #b7d3ff !important;
+        font-weight: 900;
+        text-align: center;
+    }
+
+    .gap-english-theme .fixed-table-container tbody td,
+    .gap-english-theme table tbody td {
+        background: rgba(255, 255, 255, 0.97) !important;
+        color: #18345f !important;
+        border-color: #d9e8ff !important;
+        font-weight: 700;
+    }
+
+    .gap-english-theme .fixed-table-container tbody tr:hover td,
+    .gap-english-theme table tbody tr:hover td {
+        background: #eef6ff !important;
+    }
+
+    /* Pagination */
+    .gap-english-theme .pagination > li > a,
+    .gap-english-theme .pagination > li > span {
+        border-radius: 999px !important;
+        margin: 0 2px;
+        border: 1px solid #b7d3ff;
+        color: #3f7ee8;
+        font-weight: 800;
+    }
+
+    .gap-english-theme .pagination > .active > a,
+    .gap-english-theme .pagination > .active > span {
+        background: #3f7ee8 !important;
+        border-color: #3f7ee8 !important;
+        color: #ffffff !important;
+    }
+
+    /* Mobile */
+    @media (max-width: 991px) {
+        .gap-english-theme {
+            padding: 16px 8px 24px;
+            border-radius: 22px;
+        }
+
+        .gap-english-theme .col-md-3,
+        .gap-english-theme .col-md-9 {
+            margin-bottom: 14px;
+            padding-left: 14px !important;
+            padding-right: 14px !important;
+        }
+
+        .gap-english-content {
+            font-size: 14px;
+            line-height: 1.75;
+        }
+
+        .gap-english-theme #main-audio {
+            width: 100% !important;
+        }
+
+        .gap-english-theme::before {
+            font-size: 12px;
+            right: 14px;
+        }
     }
 </style>

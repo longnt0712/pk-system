@@ -303,6 +303,51 @@
         vm.questions = [];
         vm.questionTable = [];
         vm.selectedQuestions = [];
+        vm.gapTableSearchText = '';
+        vm.allGapQuestions = [];
+        vm.searchGapTableByName = function () {
+            var keyword = (vm.gapTableSearchText || '').toLowerCase().trim();
+
+            if (!vm.allGapQuestions || vm.allGapQuestions.length === 0) {
+                vm.allGapQuestions = angular.copy(vm.questions || []);
+            }
+
+            var filteredQuestions = [];
+
+            if (keyword.length === 0) {
+                filteredQuestions = angular.copy(vm.allGapQuestions);
+            } else {
+                filteredQuestions = vm.allGapQuestions.filter(function (item) {
+                    var title = (
+                        item.question ||
+                        item.title ||
+                        item.name ||
+                        ''
+                    ).toLowerCase();
+
+                    return title.indexOf(keyword) !== -1;
+                });
+            }
+
+            vm.questions = filteredQuestions;
+
+            if (vm.bsTableControl && vm.bsTableControl.options) {
+                vm.bsTableControl.options.data = vm.questions;
+                vm.bsTableControl.options.totalRows = vm.questions.length;
+            }
+
+            if (vm.questions.length > 0) {
+                $scope.chooseFillingGaps(0);
+            } else {
+                vm.currentCard = {};
+                vm.fillingGapQuestion = '';
+            }
+        };
+
+        vm.clearGapTableSearch = function () {
+            vm.gapTableSearchText = '';
+            vm.searchGapTableByName();
+        };
         vm.pageIndex = 1;
         vm.pageSize = 10000;
         vm.searchDto = {};
@@ -566,6 +611,9 @@
                             sensitivity: 'base'
                         });
                     });
+
+                    vm.allGapQuestions = angular.copy(vm.questions);
+                    vm.gapTableSearchText = '';
                     
                     vm.bsTableControl.options.data = vm.questions;
                     vm.bsTableControl.options.totalRows = data.totalElements;
