@@ -1060,35 +1060,27 @@
                             'gap-vni-tntt-theme': vm.mode.id == 11
                          }">
                     <div class="row">
-                        <div class="col-md-3" style="padding-left: 20px">
+                        <div class="col-md-3" >
 
-                            <div class="gap-table-search-box">
-                                <div class="input-group">
-                                    <input type="text"
-                                            class="form-control gap-table-search-input"
-                                            ng-model="vm.gapTableSearchText"
-                                            ng-change="vm.searchGapTableByName()"
-                                            placeholder="Tìm theo tên bài..."
-                                            autocomplete="off">
+                            <div class="gap-table-search-inner  margin-bottom-10">
+                                <input type="text"
+                                        class="gap-table-search-input"
+                                        ng-model="vm.gapTableSearchText"
+                                        ng-change="vm.searchGapTableByName()"
+                                        placeholder="Tìm theo tên bài..."
+                                        autocomplete="off">
 
-                                    <span class="input-group-btn">
-                                        <button class="btn btn-default gap-table-clear-btn"
-                                                type="button"
-                                                ng-click="vm.clearGapTableSearch()"
-                                                ng-if="vm.gapTableSearchText">
-                                            <i class="fa fa-times"></i>
-                                        </button>
-                                    </span>
-                                </div>
-
-                                <div class="gap-table-search-count">
-                                    Tìm thấy {{vm.questions.length}} / {{vm.allGapQuestions.length}} bài
-                                </div>
+                                <button class="gap-table-clear-btn"
+                                        type="button"
+                                        ng-click="vm.clearGapTableSearch()"
+                                        ng-show="vm.gapTableSearchText">
+                                    <i class="fa fa-times"></i>
+                                </button>
                             </div>
 
                             <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
                         </div>
-                        <div class="col-md-9" style="padding-right: 20px">
+                        <div class="col-md-9">
                             <div class="row audio-menu">
                                 <div class="col-md-4"></div>
                                 <div class="col-md-12 text-center">
@@ -1099,20 +1091,20 @@
 
                                     <br>
                                     <span class="global-mobile-audio-seek-controls">
-    <button type="button"
-            class="global-mobile-audio-seek-btn global-mobile-audio-back-btn"
-            ng-click="vm.backwardAudio(e)"
-            aria-label="Playback 3 seconds">
-        <i class="fa fa-backward" aria-hidden="true"></i>
-    </button>
+                                        <button type="button"
+                                                class="global-mobile-audio-seek-btn global-mobile-audio-back-btn"
+                                                ng-click="vm.backwardAudio(e)"
+                                                aria-label="Playback 3 seconds">
+                                            <i class="fa fa-backward" aria-hidden="true"></i>
+                                        </button>
 
-    <button type="button"
-            class="global-mobile-audio-seek-btn global-mobile-audio-forward-btn"
-            ng-click="vm.forwardAudio(e)"
-            aria-label="Forward 3 seconds">
-        <i class="fa fa-forward" aria-hidden="true"></i>
-    </button>
-</span>
+                                        <button type="button"
+                                                class="global-mobile-audio-seek-btn global-mobile-audio-forward-btn"
+                                                ng-click="vm.forwardAudio(e)"
+                                                aria-label="Forward 3 seconds">
+                                            <i class="fa fa-forward" aria-hidden="true"></i>
+                                        </button>
+                                    </span>
                                     | Speed:
                                     <input class="input-underline-only" style="width:70px;text-align: center" id="play-back-input" ng-disabled="true" type="number" min="0.5" max="4" ng-value="vm.playbackValue | number : 1"/>
 
@@ -5638,7 +5630,7 @@
 
     /* Decorative English classroom text */
     .gap-english-theme::before {
-        content: "A B C  •  ENGLISH PRACTICE  •  ✎";
+        /*content: "A B C  •  ENGLISH PRACTICE  •  ✎";*/
         position: absolute;
         top: 14px;
         right: 24px;
@@ -6011,5 +6003,106 @@
         .global-mobile-audio-seek-btn i {
             pointer-events: none;
         }
+    }
+
+    .gap-table-search-inner {
+        position: relative;
+        width: 100%;
+    }
+
+    .gap-table-search-input {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 42px !important;
+        box-sizing: border-box !important;
+        border-radius: 999px !important;
+        padding: 0 42px 0 14px !important;
+    }
+
+    .gap-table-clear-btn {
+        position: absolute;
+        top: 50%;
+        right: 7px;
+        transform: translateY(-50%);
+        width: 30px;
+        height: 30px;
+        border: 0 !important;
+        border-radius: 50% !important;
+    }
+
+    /* =========================================================
+   FINAL FIX - SEARCH INPUT FULL WIDTH
+   Mode 8 + Mode 11
+   ========================================================= */
+
+    .gap-english-theme .gap-table-search-box,
+    .gap-vni-tntt-theme .gap-table-search-box {
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box !important;
+    }
+
+    .gap-english-theme .gap-table-search-inner,
+    .gap-vni-tntt-theme .gap-table-search-inner {
+        display: block !important;
+        position: relative !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .gap-english-theme input.gap-table-search-input,
+    .gap-vni-tntt-theme input.gap-table-search-input {
+        display: block !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+
+        height: 42px !important;
+        box-sizing: border-box !important;
+
+        padding: 0 42px 0 14px !important;
+        margin: 0 !important;
+
+        border-radius: 999px !important;
+        background: #ffffff !important;
+
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        line-height: 42px !important;
+    }
+
+    /* Mode 8 color */
+    .gap-english-theme input.gap-table-search-input {
+        border: 2px solid #8bb6ff !important;
+        color: #1f3f73 !important;
+    }
+
+    /* Mode 11 color */
+    .gap-vni-tntt-theme input.gap-table-search-input {
+        border: 2px solid #ffc107 !important;
+        color: #17345c !important;
+    }
+
+    .gap-table-clear-btn {
+        position: absolute !important;
+        top: 50% !important;
+        right: 7px !important;
+        transform: translateY(-50%) !important;
+
+        width: 30px !important;
+        height: 30px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+
+        border: 0 !important;
+        border-radius: 50% !important;
+        background: #ff4d4f !important;
+        color: #ffffff !important;
     }
 </style>

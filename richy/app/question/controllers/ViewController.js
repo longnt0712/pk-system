@@ -1,5 +1,5 @@
 ﻿/**
- * Created by nguyen the dat on 23/4/2018.
+ * Created by nguyen the dat on 23/4/2018.   ver 5/2/2026
  */
 (function () {
     'use strict';
