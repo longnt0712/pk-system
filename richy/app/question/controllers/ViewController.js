@@ -1,7 +1,4 @@
-﻿/**
- * Created by nguyen the dat on 23/4/2018.   ver 5/2/2026
- */
-(function () {
+﻿(function () {
     'use strict';
 
     angular.module('Hrm.Question').controller('ViewController', ViewController);
@@ -22,23 +19,8 @@
         '$sce',
         '$cookies',
         'TopicService',
-        // 'Pubnub',
-        // 'pubnub.angular.service'
-        // 'dndLists'
-        // 'ngSanitize',
 
     ];
-
-    /**
-     * Filters an array of drop effects using a HTML5 effectAllowed string.
-     */
-    function filterEffects(effects, effectAllowed) {
-        if (effectAllowed == 'all') return effects;
-        return effects.filter(function(effect) {
-            return effectAllowed.toLowerCase().indexOf(effect) != -1;
-        });
-    }
-
     angular.module('Hrm.Question').directive('inputFieldSelection', function(){
         return{
             restrict: 'A',
@@ -66,15 +48,13 @@
 
                 element.css({
                     position: 'absolute',
-                    // border: '1px solid red',
-                    // backgroundColor: 'lightgrey',
+
                     cursor: 'all-scroll'
-                    // 'z-index': 2
+
                 });
 
                 element.on('mousedown', function(event) {
-                    // Prevent default dragging of selected content
-                    // event.preventDefault();
+
                     startX = event.pageX - x;
                     startY = event.pageY - y;
                     $document.on('mousemove', mousemove);
@@ -151,15 +131,6 @@
                                 });
                                 last = event.timeStamp;
                             });
-                            //$(iElement).click(function(event) {
-                            //  ul.css({
-                            //    position: "fixed",
-                            //    display: "block",
-                            //    left: event.clientX + 'px',
-                            //    top: event.clientY + 'px'
-                            //  });
-                            //  last = event.timeStamp;
-                            //});
 
                             $(document).click(function(event) {
                                 var target = $(event.target);
@@ -178,7 +149,6 @@
         }
     ]);
 
-    // Rightclick directive
     angular.module('Hrm.Question').directive('ngRightClick', function($parse) {
         return function(scope, element, attrs) {
             var fn = $parse(attrs.ngRightClick);
@@ -193,11 +163,10 @@
 
     function ViewController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,topicService) {
         $scope.$on('$viewContentLoaded', function () {
-            // initialize core components
+
             App.initAjax();
         });
 
-        // set sidebar closed and body solid layout mode
         $rootScope.settings.layout.pageContentWhite = true;
         $rootScope.settings.layout.pageBodySolid = false;
         $rootScope.settings.layout.pageSidebarClosed = false;
@@ -209,25 +178,12 @@
             loadVoices(0);
         }, 0);
 
-        // ===== SPEECH INIT =====
-        // var voices = [];
-        //
-        // function loadVoices() {
-        //     voices = speechSynthesis.getVoices();
-        // }
-        //
-        // speechSynthesis.onvoiceschanged = loadVoices;
-        // loadVoices();
-        
-        // ======== PASTE ============
-
         (function () {
-        
+
             function isBlockMode() {
                 return vm && vm.mode && vm.mode.id === 8;
             }
-        
-            // Chặn paste
+
             document.addEventListener('paste', function (e) {
                 if (isBlockMode()) {
                     e.preventDefault();
@@ -235,13 +191,12 @@
                     return false;
                 }
             }, true);
-        
-            // Chặn Ctrl+V, Shift+Insert
+
             document.addEventListener('keydown', function (e) {
                 if (!isBlockMode()) return;
-        
+
                 var key = (e.key || '').toLowerCase();
-        
+
                 if (
                     (e.ctrlKey && key === 'v') ||
                     (e.shiftKey && e.keyCode === 45)
@@ -251,36 +206,33 @@
                     return false;
                 }
             }, true);
-        
-            // Chặn menu chuột phải
+
             document.addEventListener('contextmenu', function (e) {
                 if (isBlockMode()) {
                     e.preventDefault();
                     return false;
                 }
             }, true);
-        
-            // Chặn kéo thả
+
             document.addEventListener('drop', function (e) {
                 if (isBlockMode()) {
                     e.preventDefault();
                     return false;
                 }
             }, true);
-        
+
             document.addEventListener('dragover', function (e) {
                 if (isBlockMode()) {
                     e.preventDefault();
                     return false;
                 }
             }, true);
-        
-            // Tắt autocomplete nhưng không phá nhập tay
+
             document.addEventListener('focus', function (e) {
                 if (!isBlockMode()) return;
-        
+
                 var el = e.target;
-        
+
                 if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
                     el.setAttribute('autocomplete', 'off');
                     el.setAttribute('autocorrect', 'off');
@@ -288,12 +240,12 @@
                     el.setAttribute('spellcheck', 'false');
                 }
             }, true);
-        
+
         })();
 
         window.addEventListener('beforeunload', function (e) {
-            // Cancel the event
-            e.preventDefault(); // If you prevent default behavior in Mozilla Firefox prompt will always be shown
+
+            e.preventDefault();
             e.returnValue = '';
         });
 
@@ -356,8 +308,7 @@
 
         vm.myUser = {};
         vm.myUser.id = vm.currentUser.id;
-        // vm.myUser.username = vm.currentUser.username;
-        // vm.myUser.name = vm.currentUser.displayName;
+
         function getFullName(user) {
             if (user && user.person) {
                 var firstName = user.person.firstName || '';
@@ -384,25 +335,17 @@
             }
             if(value.name === "ROLE_USER"){
                 vm.isRoleUser = true;
-                console.log('User');
             }
             if(value.name === "ROLE_ADMIN"){
                 vm.isRoleAdmin = true;
-                console.log('Admin');
             }
         });
-        // console.log(vm.myUser);
-        // location.reload();
 
-        // if(settings.isViewer == true){
-            // console.log('here');
-            vm.users = [
-                // {id: 32,name:'IELTS IELTS'},
-                // {id: 37,name:'NO ROOT'},
-                {id: 26,name:'EM YÊU INH LÍCH'},
-                {id: 33,name:'CHURCH'}
-            ];
-        // }
+        vm.users = [
+
+            {id: 26,name:'EM YÊU INH LÍCH'},
+            {id: 33,name:'CHURCH'}
+        ];
 
         vm.haveInHashUsers = false;
         angular.forEach(vm.users, function(value, key) {
@@ -414,7 +357,6 @@
             vm.users.push(vm.myUser);
         }
 
-        // if(vm.myUser.id == 39) {
         if(vm.isRoleUser == true){
             vm.selectedUser = vm.myUser;
         }else if(vm.isRoleView == true) {
@@ -432,15 +374,13 @@
             {id: 3, name: "Filling Gaps Enter", notice: "Fill A-G in gaps"},
             {id: 4, name: "Matching Heading", notice: "Drag and Drop"}
         ];
-        //1:writing; 2: wimpy kid; 3: idiom - expression; 4: other
 
         vm.status = {id: 3, name: "Tất cả"};
         vm.statuses = [
-            // {id: 1, name: "Chưa thuộc"},
-            // {id: 2, name: "Thuộc"},
+
             {id: 4, name: "Đánh dấu"},
             {id: 3, name: "Tất cả"}
-            // {id: 3, name:"Tất cả"}
+
         ];
 
         vm.searchDto.upper = 100;
@@ -518,7 +458,6 @@
             });
         }
 
-
         $scope.pageChanged = function() {
             vm.getPageFlashCard();
         };
@@ -560,7 +499,7 @@
                 blockUI.stop();
                 vm.rawQuestions = data.content;
 
-                if (vm.mode.id == 9 || vm.mode.id == 10) { // flipping
+                if (vm.mode.id == 9 || vm.mode.id == 10) {
                     vm.questions = data.content.splice(0, vm.numberFlipCard);
 
                     angular.forEach(vm.questions, function(value, key) {
@@ -568,7 +507,7 @@
                         value.flipped = false;
                     });
 
-                    vm.questions1 = structuredClone(vm.questions);
+                    vm.questions1 = angular.copy(vm.questions);
 
                     angular.forEach(vm.questions1, function(value, key) {
                         value.duplicate = true;
@@ -578,25 +517,24 @@
                     vm.flippingQuestions = vm.questions.concat(vm.questions1);
                     shuffleArray(vm.flippingQuestions);
 
-                } else if (vm.mode.id == 13) { // MCQs
+                } else if (vm.mode.id == 13) {
                     vm.questions = shuffleArray(buildMcqQuestions(data.content));
                     vm.questions1 = [];
 
-                } else if (vm.mode.id == 14) { // GUESS THE WORD
+                } else if (vm.mode.id == 14) {
                     vm.questions = buildMcqQuestions(data.content).slice().reverse();
                     vm.questions1 = [];
-                    // console.log(vm.questions);
 
                 } else {
                     vm.questions = shuffleArray(createQuestionsWithOptions(data.content));
                     vm.questions1 = shuffleArray(createQuestionsWithOptions(data.content));
                 }
 
-                if (vm.mode.id != 8 && vm.mode.id != 13 && vm.mode.id != 14) { // không phải filling gaps, không phải MCQs
+                if (vm.mode.id != 8 && vm.mode.id != 13 && vm.mode.id != 14) {
                     vm.doShuffle();
                 }
 
-                if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){ //filling gaps
+                if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){
 
                     if (vm.mode.id == 12) {
                         vm.showGapsTable = false;
@@ -614,21 +552,17 @@
 
                     vm.allGapQuestions = angular.copy(vm.questions);
                     vm.gapTableSearchText = '';
-                    
+
                     vm.bsTableControl.options.data = vm.questions;
                     vm.bsTableControl.options.totalRows = data.totalElements;
                 }
-                // else {
-                //     vm.bsTableControl.options.sidePagination = 'server';
-                // }
 
-                if(vm.mode.id == 1){ // normal
-                    // var tableSource = angular.copy(data.content || []);
+                if(vm.mode.id == 1){
+
                     vm.questionTable = buildQuestionTable(shuffleArray(createQuestionsWithOptions(data.content)));
                 }
 
-                //tạm thời
-                vm.totalCard = data.totalElements; //cmt tạm
+                vm.totalCard = data.totalElements;
                 vm.searchDto.totalItems = data.totalElements;
                 vm.currentPosition = 0;
                 vm.currentPosition1 = 0;
@@ -640,20 +574,13 @@
                     vm.totalCard = 0;
                 } else {
                     vm.currentCard = vm.questions[vm.currentPosition];
-                    // vm.createQuiz(vm.currentCard);
 
-                    if(vm.mode.id != 5){ //daily
+                    if(vm.mode.id != 5){
                         vm.currentCard1 = vm.questions1[vm.currentPosition1];
-                        // vm.createQuiz(vm.currentCard1,2);
+
                     }
-                    // if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){ // fill gaps
-                    //     // vm.fillingGapQuestion = (processFillingGaps(vm.currentCard.motherTongue));
-                    //     // if(vm.mode.id == 12){
-                    //         vm.fillingGapQuestion = processFillingGapsByMode(vm.currentCard.motherTongue);
-                    //     // }
-                    //     vm.setUpAudio();
-                    // }
-                    if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){ // fill gaps
+
+                    if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){
                         vm.showGapAnswers = false;
                         vm.currentGapBlocks = null;
                         vm.fillingGapQuestion = processFillingGapsByMode(
@@ -673,7 +600,7 @@
 
                         vm.setUpAudio();
                     }
-                    if(vm.mode.id == 7){ // tug of war
+                    if(vm.mode.id == 7){
                         vm.resetTugOfWarDefault();
                     }
                 }
@@ -685,7 +612,6 @@
                 if (vm.mode.id == 10) {
                     vm.scrollToFlipExcelBoard();
                 }
-
 
                 if (vm.mode.id == 13 || vm.mode.id == 14) {
                     vm.showMcqQuestion = false;
@@ -740,16 +666,13 @@
             vm.answerRewriteWord = '';
         };
 
-        // -> Fisher–Yates shuffle algorithm
         var shuffleArray = function(array) {
             var m = array.length, t, i;
 
-            // While there remain elements to shuffle
             while (m) {
-                // Pick a remaining element…
+
                 i = Math.floor(Math.random() * m--);
 
-                // And swap it with the current element.
                 t = array[m];
                 array[m] = array[i];
                 array[i] = t;
@@ -757,43 +680,6 @@
 
             return array;
         };
-
-        // -> Fisher–Yates shuffle algorithm
-        var shuffleArray1 = function(array) {
-            var m = array.length, t, i;
-
-            // While there remain elements to shuffle
-            while (m) {
-                // Pick a remaining element…
-                i = Math.floor(Math.random() * m--);
-
-                // And swap it with the current element.
-                t = array[m];
-                array[m] = array[i];
-                array[i] = t;
-            }
-
-            return array;
-        };
-
-        // -> Fisher–Yates shuffle algorithm
-        var shuffleArray2 = function(array) {
-            var m = array.length, t, i;
-
-            // While there remain elements to shuffle
-            while (m) {
-                // Pick a remaining element…
-                i = Math.floor(Math.random() * m--);
-
-                // And swap it with the current element.
-                t = array[m];
-                array[m] = array[i];
-                array[i] = t;
-            }
-
-            return array;
-        };
-
         vm.bsTableControl = {};
         vm.setUpTable = function () {
             vm.bsTableControl = {
@@ -823,7 +709,7 @@
                         });
                     },
                     onUncheck: function (row, $element) {
-                        var index = utils.indexOf(row, vm.selectedpositiontitles);
+                        var index = utils.indexOf(row, vm.selectedTestResults);
                         if (index >= 0) {
                             $scope.$apply(function () {
                                 vm.selectedTestResults.splice(index, 1);
@@ -843,22 +729,6 @@
                 }
             };
         };
-
-
-        // $scope.chooseFillingGaps = function (index) {
-        //     vm.currentCard = vm.questions[index];
-        //     // vm.fillingGapQuestion = (processFillingGaps(vm.currentCard.motherTongue));
-        //     // if(vm.mode.id == 12){
-        //         vm.fillingGapQuestion = processFillingGapsByMode(vm.currentCard.motherTongue);
-        //     // }
-        //     vm.showGapAnswers = false;
-        //     vm.finishFillingGaps = "Unfinished";
-        //     vm.percentage = 0;
-        //     vm.allowChangeInformation = false;
-        //
-        //     vm.setUpAudio();
-        //     vm.setUpTestResult();
-        // };
 
         $scope.chooseFillingGaps = function (index) {
             vm.currentPosition = index;
@@ -918,7 +788,7 @@
 
         vm.listFlashCard = 0;
         vm.listFlashCard = $stateParams.listFlashCard;
-        vm.isFlashCardMode = $stateParams.flashCardModeId | 0; // flashCardModeId = 1 => in this mode.
+        vm.isFlashCardMode = $stateParams.flashCardModeId | 0;
 
         vm.totalItems = 0;
         vm.pageIndexAnswer = 1;
@@ -934,9 +804,7 @@
 
             });
         };
-        // vm.getQuestionTypes();
 
-        //----------------------- Flash Card -------------------------//
         vm.topicCategories = [];
         vm.searchTopicCategory = {};
         vm.getPageTopicCategory = function () {
@@ -944,7 +812,7 @@
             service.getPageTopicCategory(vm.searchTopicCategory,1, 100).then(function (data) {
                 blockUI.stop();
                 vm.topicCategories = data.content;
-                // vm.getTopics();
+
             });
         };
         vm.getPageTopicCategory();
@@ -953,7 +821,7 @@
         vm.topic = {};
         vm.topic.userId = vm.currentUser.id;
         vm.searchTopicDto = {};
-        // vm.searchTopicDto.username = vm.currentUser.username;
+
         vm.searchTopicDto.userId = vm.selectedUser.id;
 
         vm.getTopics = function () {
@@ -965,7 +833,7 @@
         };
 
         vm.changePageSize = function () {
-            //calculate page index
+
             vm.searchDto.pageIndex = 1;
             vm.getPageFlashCard();
         };
@@ -974,29 +842,18 @@
             $scope.shutUp();
             vm.updateSpeechLangByMode();
 
-
             if(player == 2){
-                // if(vm.currentPosition1 + 1 < vm.searchDto.pageSize){
+
                 if(vm.currentPosition1 + 1 < vm.totalCard){
                     vm.currentPosition1 = vm.currentPosition1 + 1;
                     vm.currentCard1 = vm.questions1[vm.currentPosition1];
-                    // vm.createQuiz(vm.currentCard1,2);
+
                     vm.answerRewriteWord = '';
                     if(!vm.isMuted && vm.mode.id !=4){
                         $scope.sayIt(vm.currentCard1.question);
                     }
                 }
             } else {
-                // if(vm.currentPosition + 1 < vm.searchDto.pageSize){
-                // if(vm.currentPosition + 1 < vm.totalCard){
-                //     vm.currentPosition = vm.currentPosition + 1;
-                //     vm.currentCard = vm.questions[vm.currentPosition];
-                //     // vm.createQuiz(vm.currentCard);
-                //     vm.answerRewriteWord = '';
-                //     if(!vm.isMuted && vm.mode.id !=4){
-                //         $scope.sayIt(vm.currentCard.question);
-                //     }
-                // }
 
                 if(vm.currentPosition + 1 < vm.totalCard){
                     vm.currentPosition = vm.currentPosition + 1;
@@ -1025,22 +882,13 @@
                 if(vm.currentPosition1 > 0){
                     vm.currentPosition1 = vm.currentPosition1 - 1;
                     vm.currentCard1 = vm.questions1[vm.currentPosition1];
-                    // vm.createQuiz(vm.currentCard1);
+
                     vm.answerRewriteWord = '';
                     if(!vm.isMuted){
                         $scope.sayIt(vm.currentCard1.question);
                     }
                 }
             }else {
-                // if(vm.currentPosition > 0){
-                //     vm.currentPosition = vm.currentPosition - 1;
-                //     vm.currentCard = vm.questions[vm.currentPosition];
-                //     // vm.createQuiz(vm.currentCard);
-                //     vm.answerRewriteWord = '';
-                //     if(!vm.isMuted){
-                //         $scope.sayIt(vm.currentCard.question);
-                //     }
-                // }
 
                 if(vm.currentPosition > 0){
                     vm.currentPosition = vm.currentPosition - 1;
@@ -1063,15 +911,15 @@
         };
 
         vm.enterSearchCode = function(){
-            // console.log(event.keyCode);
-            if(event.keyCode == 13){//Phím Enter
+
+            if(event.keyCode == 13){
                 vm.codeChange();
             }
         };
 
         vm.codeChange=function () {
             vm.pageIndex = 1;
-            // vm.bsTableControl.state.pageNumber.state = 1;
+
             if(vm.listFlashCard == 3 || vm.isFlashCardMode == 1){
                 vm.getPageFlashCard();
             }
@@ -1096,7 +944,6 @@
         if(settings.isAdmin == true){
             vm.newCard.website = 1;
         }
-
 
         vm.selectedTopicToAdd = [];
         vm.selectedTopicToSearch= [];
@@ -1143,7 +990,6 @@
                 vm.currentCard.questionTopics = pushTopic(vm.selectedTopicToEdit);
             }
 
-
         };
 
         vm.topicChangeItem = function (item) {
@@ -1166,55 +1012,26 @@
                 vm.title = vm.title + ' ' + vm.searchDto.questionTopics[i].topic.name;
             }
 
-            if(vm.mode.id == 5){
-                // if(vm.testResult.testTakerName == null || vm.testResult.testTakerName.length <= 0){
-                //     alert('Phải nhập tên. Ví dụ: Long');
-                //     return;
-                // }
-                // if(vm.class == null || vm.class.id == null){
-                //     alert('Phải chọn lớp');
-                //     return;
-                // }
-
-                if(vm.searchDto.questionTopics == null || vm.searchDto.questionTopics.length <= 0){
+            if (vm.mode.id == 5) {
+                if (vm.searchDto.questionTopics == null || vm.searchDto.questionTopics.length <= 0) {
                     alert('Phải chọn bài từ vựng cần học rồi ấn tìm kiếm');
                     return;
                 }
 
-                // if(vm.allowChangeInformation == true){
-                //     vm.testResult.testTakerName = vm.testResult.testTakerName + ' | ' + vm.class.name;
-                // }
-
-                vm.isSaveTestResult = false;
-
-                // vm.allowChangeInformation = false;
-                vm.finishDailyVocab = "Unfinished";
+                vm.resetDailyVocabRun();
             }
 
             if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){
-                // if(vm.testResult.testTakerName == null || vm.testResult.testTakerName.length <= 0){
-                //     alert('Phải nhập tên. Ví dụ: Long');
-                //     return;
-                // }
-                // if(vm.class == null || vm.class.id == null){
-                //     alert('Phải chọn lớp');
-                //     return;
-                // }
 
                 if(vm.searchDto.questionTopics == null || vm.searchDto.questionTopics.length <= 0){
                     alert('Phải chọn các bài nghe cần học rồi ấn tìm kiếm');
                     return;
                 }
 
-                // if(vm.allowChangeInformation == true){
-                //     vm.testResult.testTakerName = vm.testResult.testTakerName + ' | ' + vm.class.name;
-                // }
-
                 vm.isSaveTestResult = false;
                 vm.percentage = 0;
                 vm.numberOfGaps = 0;
 
-                // vm.allowChangeInformation = false;
                 vm.finishDailyVocab = "Unfinished";
             }
 
@@ -1225,13 +1042,11 @@
                     return;
                 }
             }
-            
-            vm.setUpTestResult();
 
+            vm.setUpTestResult();
 
             vm.showTimer = true;
 
-            // console.log(vm.title);
             vm.currentPosition = 0;
             vm.searchDto.pageIndex = 1;
             vm.getPageFlashCard();
@@ -1248,7 +1063,7 @@
             service.saveObject(vm.newCard).then(function (data) {
                 blockUI.stop();
                 vm.getPageFlashCard();
-                // toastr.info('Save successfully');
+
                 vm.newCard = {
                     questionType : {
                         code: 'FC',
@@ -1263,9 +1078,7 @@
                 if(settings.isAdmin == true){
                     vm.newCard.website = 1;
                 }
-                // vm.newCard.questionTopics = pushTopic(vm.selectedTopicToAdd);
-                // vm.topicChange();
-                // vm.selectedTopicToAdd = [];
+
                 if(data.message != null){
                     if(data.message === 'Successfully, but there is another card like this'){
                         toastr.warning(data.message, 'Warning');
@@ -1279,13 +1092,11 @@
 
         };
 
-
-
         vm.editFlashCard = function (item) {
 
             service.saveObject(item).then(function (data) {
                 vm.getPageFlashCard();
-                // toastr.info('Save successfully');
+
                 if(data.message != null){
                     toastr.info(data.message, 'Notification');
                 }else{
@@ -1319,7 +1130,6 @@
                 vm.showExamples = false;
                 vm.showPronunciation = false;
                 vm.question.isNew = false;
-
 
                 var modalInstance = modal.open({
                     animation: true,
@@ -1393,7 +1203,7 @@
 
         function showBackFlashCard(text) {
             const notification = new Notification("Back: " + text,{
-                // body: text
+
             });
 
         }
@@ -1409,15 +1219,12 @@
                 });
 
                 notification.onclick = function(event) {
-                    event.preventDefault(); // prevent the browser from focusing the Notification's tab
+                    event.preventDefault();
                     const notification2 = new Notification("Back: ",{
                         body: description
                     });
                 };
 
-                // var x = setTimeout(showBackFlashCard(description),10000);
-
-                // clearTimeout(x);
             });
 
         }
@@ -1441,8 +1248,6 @@
             }
         };
 
-
-
         vm.statusChange = function () {
             vm.question.status = vm.status.id;
             vm.searchDto.status = vm.status.id;
@@ -1456,7 +1261,7 @@
                 vm.currentPosition = vm.currentPosition + 1;
                 vm.currentCard = vm.questions[vm.currentPosition];
                 vm.isShowDetail = false;
-                // vm.createQuiz(vm.currentCard);
+
             }
         };
 
@@ -1465,15 +1270,14 @@
                 vm.currentPosition = vm.currentPosition - 1;
                 vm.currentCard = vm.questions[vm.currentPosition];
                 vm.isShowDetail = false;
-                // vm.createQuiz(vm.currentCard);
+
             }
         };
 
         document.body.onkeydown = function(e){
-            // alert(e.keyCode);
-            // if(!vm.endGame && vm.mode.id != 7) {
+
             if(!vm.endGame) {
-                // player 1
+
                 if (e.keyCode == 81) {
                     var a = document.getElementById('answer-quiz-1-' + 0).click();
                 }
@@ -1487,7 +1291,6 @@
                     var a = document.getElementById('answer-quiz-1-' + 3).click();
                 }
 
-                // player 2
                 if (e.keyCode == 73) {
                     var a = document.getElementById('answer-quiz-2-' + 0).click();
                 }
@@ -1502,8 +1305,6 @@
                 }
             }
         };
-
-
 
         $scope.tinymceOptions = {
             height: 200,
@@ -1538,7 +1339,7 @@
         };
 
         function showNotification() {
-            // console.log(vm.type.id);
+
             service.getRandomQuestion(vm.searchDto).then(function (data) {
                 vm.question = data;
                 var question = vm.question.question + " " + vm.question.pronounce;
@@ -1547,12 +1348,12 @@
                     description = vm.question.motherTongue.replace(/(<([^>]+)>)/ig, '');
                 }
                 $scope.sayIt(vm.question.question);
-                // }
+
                 const notification = new Notification("Front: " + question,{
                 });
 
                 notification.onclick = function(event) {
-                    event.preventDefault(); // prevent the browser from focusing the Notification's tab
+                    event.preventDefault();
                     const notification2 = new Notification("Back: ",{
                         body: description
                     });
@@ -1579,22 +1380,21 @@
         vm.quizs = [
 
         ];
-        //timer
+
         const now = new Date();
         const currentDateTime = now.toLocaleString();
         vm.showDateTime = currentDateTime;
-        // console.log(currentDateTime);
 
         vm.tempCounter = 90;
 
         vm.counterChange = function () {
             if(vm.tempCounter > 9999){
                 alert('Not greater than 9999');
-                // vm.tempCounter = 900;
+
                 $scope.counter = vm.tempCounter;
-                // return;
+
             }else if (vm.tempCounter <=0) {
-                // vm.tempCounter = 900;
+
                 $scope.counter = vm.tempCounter;
                 alert('Not lower than 0');
             }else {
@@ -1604,7 +1404,7 @@
 
         $scope.counter = 90;
 
-        var mytimeout = null; // the current timeoutID
+        var mytimeout = null;
         var audio = document.getElementById("audio-1");
         vm.endGame = true;
         var tickTock = document.getElementById("tick-tock");
@@ -1633,20 +1433,20 @@
         vm.resetBackgroundMusic = function () {
             audio.load();
             var audioNumber = getRndInteger(1,8);
-            // console.log(audioNumber);
+
             if(audioNumber == 1){
                 audio = document.getElementById("audio-1");
             }
             if(audioNumber == 2){
-                // audio = document.getElementById("audio-2");
+
                 audio = document.getElementById("audio-1");
             }
             if(audioNumber == 3){
-                // audio = document.getElementById("audio-3");
+
                 audio = document.getElementById("audio-5");
             }
             if(audioNumber == 4){
-                // audio = document.getElementById("audio-4");
+
                 audio = document.getElementById("audio-7");
             }
             if(audioNumber == 5){
@@ -1670,9 +1470,7 @@
         var dungCoKeu = document.getElementById("dung-co-keu");
         var voTayPew = document.getElementById("vo-tay-pew");
         var applause = document.getElementById("applause");
-        // var endSound = document.getElementById("end-sound");
 
-        // actual timer method, counts down every second, stops on zero
         $scope.onTimeout = function () {
             if ($scope.counter <= 0) {
                 $scope.counter = 0;
@@ -1741,8 +1539,12 @@
             } else {
             }
 
-
             vm.finishDailyVocab = "Unfinished";
+
+            if (vm.mode.id == 5) {
+                vm.resetDailyVocabSaveState();
+                vm.setUpTestResult();
+            }
 
             vm.allowChangeInformation = false;
 
@@ -1778,7 +1580,6 @@
             if (vm.mode.id == 7) {
                 vm.resetTugOfWarDefault();
 
-                // sau khi reset xong mới mở trận
                 vm.endGame = false;
                 vm.endGamePlayer1 = false;
                 vm.endGamePlayer2 = false;
@@ -1834,7 +1635,7 @@
                     timeLeft: 0,
                     highestStreak: 0,
                     wrong: 0
-                    // index: 1,
+
                 };
                 vm.players.push(vm.player);
                 vm.player ={
@@ -1843,7 +1644,7 @@
                     timeLeft: 0,
                     highestStreak: 0,
                     wrong: 0
-                    // index: 1,
+
                 };
             }
             else if(vm.players[vm.indexPlayer].name.length === 0 && vm.players[vm.indexPlayer].score !== 0){
@@ -1854,7 +1655,7 @@
                     timeLeft: 0,
                     highestStreak: 0,
                     wrong: 0
-                    // index: 1,
+
                 };
                 vm.players.push(vm.player);
                 vm.player ={
@@ -1863,7 +1664,7 @@
                     timeLeft: 0,
                     highestStreak: 0,
                     wrong: 0
-                    // index: 1,
+
                 };
             } else if(vm.players[vm.indexPlayer].name.length !== 0 && vm.players[vm.indexPlayer].score !== 0){
                 vm.indexPlayer = vm.indexPlayer + 1;
@@ -1873,7 +1674,7 @@
                     timeLeft: 0,
                     highestStreak: 0,
                     wrong: 0
-                    // index: 1,
+
                 };
                 vm.players.push(vm.player);
                 vm.player ={
@@ -1882,7 +1683,7 @@
                     timeLeft: 0,
                     highestStreak: 0,
                     wrong: 0
-                    // index: 1,
+
                 };
             }
 
@@ -1891,11 +1692,8 @@
                 tuongLai.load();
             }
 
-
         };
-        //--//
 
-        //answer quiz
         vm.endGame = true;
         vm.blindMode = false;
         vm.blindModeScore = 1500000;
@@ -1919,7 +1717,7 @@
                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("GAME OVER"));
                     if(vm.endGame == false){
                         vm.players[vm.indexPlayer].score = vm.players[vm.indexPlayer].score + ($scope.counter)/12;
-                                            }
+                    }
                     vm.endGame = true;
 
                     $scope.refreshTimer();
@@ -1933,7 +1731,7 @@
                         }
 
                         if(vm.streak >= 5){
-                            // toastr.info('+ 5s !!!');
+
                             $scope.counter= $scope.counter + vm.bonusTime;
                             vm.players[vm.indexPlayer].score = vm.players[vm.indexPlayer].score + parseInt(vm.streak/3);
                         }else{
@@ -1954,7 +1752,7 @@
 
                 }else {
                     if(vm.endGame == false) {
-			            vm.streak = 0;
+                        vm.streak = 0;
                         vm.players[vm.indexPlayer].score = vm.players[vm.indexPlayer].score - 0.5;
                         if(stillInAQuestion == false){
                             vm.players[vm.indexPlayer].wrong = vm.players[vm.indexPlayer].wrong + 1;
@@ -1979,18 +1777,16 @@
             }
         };
 
-
         vm.score1 = 0;
         vm.score2 = 0;
-        vm.answerQuizBattle = function (correct,item,questions,player) { //player1 = 1 player 2 = 2
+        vm.answerQuizBattle = function (correct,item,questions,player) {
 
             angular.forEach(questions, function(value, key) {
                 value.chosen = false;
             });
 
-            // item.chosen = true;
             if(correct == true){
-                // if((vm.currentPosition + 1) >= vm.searchDto.pageSize){
+
                 if((vm.currentPosition + 1) >= vm.totalCard){
                     window.speechSynthesis.speak(new SpeechSynthesisUtterance("GAME OVER"));
                     if(vm.endGame == false){
@@ -2057,14 +1853,11 @@
         var stillInAQuestion1 = false;
         var stillInAQuestion2 = false;
 
-        vm.answerQuizBattle2 = function (correct,item,questions,player) { //player1 = 1 player 2 = 2
-
-            console.log(2);
+        vm.answerQuizBattle2 = function (correct,item,questions,player) {
             angular.forEach(questions, function(value, key) {
                 value.chosen = false;
             });
 
-            // item.chosen = true;
             if(correct == true){
 
                 if(player == 1){
@@ -2108,7 +1901,7 @@
                             vm.endGame = true;
                             $scope.refreshTimer();
                         }
-                            // $scope.refreshTimer();
+
                     }else{
                         if(vm.endGamePlayer2 == false) {
                             vm.streakPlayer2 = vm.streakPlayer2 + 1;
@@ -2172,7 +1965,6 @@
 
         vm.linkImageCorrect = 'https://lh3.googleusercontent.com/pw/AP1GczMWD3uVqUpqROszj5p_a0W5j2lvpD_Nuh8P0rCmeh03DNmj1CE-XOttzUpK7vWtBgjtbbdsuw_X-i3jskTDSxMloH5U_2scXD-B5BTpTchPfv8h1RQGIgx5PG0e22SHpYo5Pcf4GEIWi-TIxLvOkXMj=w989-h989-s-no-gm?authuser=1';
 
-
         vm.changeImageForAnswer = function () {
 
             if(getRndInteger(1,4) == 1){
@@ -2189,19 +1981,16 @@
                 vm.linkImageCorrect = 'https://lh3.googleusercontent.com/pw/AP1GczMlQpFC5mxUfomDjlskHiy-_wKfnSN_YBmA8iWr-f17Ypb5siqavs308dIOTsrDYbQHIA2Ia3__A9jOwMDcP4-NBkJYB4X3iOzJzjfrwxGBzRFunsZof5okn6_0CBTTcHbHFNGrPan_cfnvY6WFLWiR=w989-h989-s-no-gm?authuser=1';
             }
 
-            // vm.linkStart = '';
-
         };
 
         vm.changeImageForAnswer();
 
-        vm.answerDailyVocab = function (correct,item,questions,player) { //player1 = 1 player 2 = 2
+        vm.answerDailyVocab = function (correct,item,questions,player) {
 
             angular.forEach(questions, function(value, key) {
                 value.chosen = false;
             });
 
-            // item.chosen = true;
             if(correct == true){
                 vm.changeImageForAnswer();
                 vm.showStart = false;
@@ -2280,7 +2069,7 @@
                     }
                 }
 
-            }else{ // trả lời sai
+            }else{
                 if(player == 1){
                     vm.changeImageForAnswer();
                     vm.showStart = false;
@@ -2321,13 +2110,11 @@
                 sai.load();
                 sai.play();
             }else if(getRndInteger(1,7) == 2){
-                // ngao.load();
-                // ngao.play();
+
                 phaiChiu.load();
                 phaiChiu.play();
             }else if(getRndInteger(1,7) == 3){
-                // stupid.load();
-                // stupid.play();
+
                 phaiChiu.load();
                 phaiChiu.play();
             }else if(getRndInteger(1,7) == 4){
@@ -2357,7 +2144,7 @@
             timeLeft: 0,
             highestStreak: 0,
             wrong: 0
-            // index: 1,
+
         };
 
         vm.putPlayers = function () {
@@ -2369,11 +2156,9 @@
                 timeLeft: 0,
                 highestStreak: 0,
                 wrong: 0
-                // index: 1,
+
             };
         };
-
-        //--//
 
         vm.classes = [
             {id:10,name: 'CHURCH'},
@@ -2453,15 +2238,11 @@
         vm.showQuestion = false;
         vm.showMotherTongue = true;
 
-        //old//
         vm.isMuted = false;
 
         vm.showVoiceOption = true;
         vm.loop = true;
 
-        /*
-         * Check for browser support
-         */
         var supportMsg = document.getElementById('msg');
 
         if ('speechSynthesis' in window) {
@@ -2471,10 +2252,8 @@
             supportMsg.classList.add('not-supported');
         }
 
-        // Get the voice select element.
         var voiceSelect = document.getElementById('voice');
 
-        // Get the attribute controls.
         var volumeInput = document.getElementById('volume');
         var rateInput = document.getElementById('rate');
         var pitchInput = document.getElementById('pitch');
@@ -2483,7 +2262,7 @@
 
         function isIOS() {
             const userAgent = navigator.userAgent || navigator.vendor || (window.opera && opera.toString() === '[object Opera]');
-            // Regular expression to check for common iOS device identifiers
+
             return /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
         }
 
@@ -2543,7 +2322,6 @@
             retryCount = retryCount || 0;
 
             var allVoices = window.speechSynthesis.getVoices();
-            // console.log('all voices:', allVoices);
 
             if ((!allVoices || allVoices.length === 0) && retryCount < MAX_VOICE_RETRY) {
                 setTimeout(function () {
@@ -2553,45 +2331,35 @@
             }
 
             voices = getStrictVoices(allVoices || []);
-            console.log('filtered voices:', voices);
-
             renderVoiceOptions(voices);
         }
 
-        // gọi 1 lần để browser bắt đầu nạp voices
         window.speechSynthesis.getVoices();
 
-        // retry chủ động
         loadVoices(0);
         setTimeout(function () { loadVoices(1); }, 500);
         setTimeout(function () { loadVoices(2); }, 1500);
 
-        // khi browser báo voices đã sẵn sàng
         window.speechSynthesis.onvoiceschanged = function () {
             loadVoices(0);
         };
 
         function speak(text) {
-            // Create a new instance of SpeechSynthesisUtterance.
+
             var msg = new SpeechSynthesisUtterance();
 
-            // Set the text.
             msg.text = text;
 
-            // Set the attributes.
             msg.volume = parseFloat(volumeInput.value);
             msg.rate = parseFloat(rateInput.value);
             msg.pitch = parseFloat(pitchInput.value);
 
-            // If a voice has been selected, find the voice and set the
-            // utterance instance's voice attribute.
             if (voiceSelect.value) {
                 msg.voice = speechSynthesis.getVoices().filter(function (voice) {
                     return voice.name == voiceSelect.value;
                 })[0];
             }
 
-            // Queue this utterance.
             window.speechSynthesis.speak(msg);
 
             msg.addEventListener("end", (event) => {
@@ -2641,7 +2409,6 @@
         };
         $scope.shutUp();
 
-
         vm.clickAnswerRewriteWord = function () {
 
             if(vm.endGame == true){
@@ -2657,10 +2424,9 @@
             root = vm.currentCard.question.toLowerCase();
 
             if(vm.answerRewriteWord.trim() == root){
-                // toastr.info('Correct !!!');
+
                 vm.nextCard();
             } else {
-                // toastr.error('Wrong !!!');
 
                 vm.wrong = vm.wrong + 1;
 
@@ -2686,7 +2452,7 @@
                 return;
             }
 
-            if(event.keyCode == 13){//Phím Enter
+            if(event.keyCode == 13){
                 vm.answerRewriteWord = vm.answerRewriteWord.trim();
                 vm.answerRewriteWord = vm.answerRewriteWord.toLowerCase();
 
@@ -2738,9 +2504,6 @@
             window.print();
         };
 
-        /**
-         * Delete accounts
-         */
         $scope.deleteObject = function (id) {
             var modalInstance = modal.open({
                 animation: true,
@@ -2751,7 +2514,6 @@
 
             modalInstance.result.then(function (confirm) {
                 if (confirm == 'yes') {
-                    console.log(vm.selectedShops);
                     service.deleteObject(id, function success() {
                         toastr.info('Bạn đã xóa thành công', 'Thông báo');
                         vm.getPageFlashCard();
@@ -2764,14 +2526,11 @@
         };
 
         vm.chooseUsers = function () {
-            // vm.getQuestionTypes();
-            // vm.getPageFlashCard();
+
             vm.searchDto.userId = vm.selectedUser.id;
             vm.searchTopicDto.userId = vm.selectedUser.id;
-            console.log(vm.selectedUser);
             vm.getTopics();
         };
-
 
         var fifteenSec = document.getElementById("15s");
         var tenSec = document.getElementById("10s");
@@ -2791,47 +2550,56 @@
         };
 
         $(document).keydown(function (event) {
-            if (event.keyCode == 123) { // Prevent F12
+            if (event.keyCode == 123) {
                 return false;
-            } else if (event.ctrlKey && event.shiftKey && event.keyCode == 73) { // Prevent Ctrl+Shift+I
+            } else if (event.ctrlKey && event.shiftKey && event.keyCode == 73) {
                 return false;
             }
         });
 
         vm.testResult = {};
         vm.setUpTestResult = function () {
-            // var testTakerName = '';
-            // if(vm.testResult.testTakerName != null && angular.isDefined(vm.testResult.testTakerName) && vm.testResult.testTakerName.length > 0){
-            //     testTakerName = vm.testResult.testTakerName;
-            // }
+
             vm.testResult = {};
-            // vm.testResult.testTakerName = testTakerName;
+
             vm.testResult.user = vm.currentUser;
             vm.testResult.testTakerPerformance = '';
-            // vm.tempWrong = vm.testResult.testTakerPerformance;
+
             if(vm.mode.id == 5){
                 vm.testResult.totalWord = vm.totalCard;
             }
-            // if(vm.mode.id != 8){
-            //     vm.allowChangeInformation = true;
-            // }
+
             vm.isSaveTestResult = false;
         };
         vm.setUpTestResult();
 
         vm.tempWrong = '';
+        vm.savingTestResult = false;
+
         vm.saveTestResult = function () {
+            if (vm.savingTestResult === true) {
+                return;
+            }
+
+            if (vm.mode.id == 5 && vm.isSaveTestResult === true) {
+                return;
+            }
+
+            vm.savingTestResult = true;
+
             vm.tempWrong = vm.testResult.testTakerPerformance;
 
             var isFillingGapMode = vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12;
+            var isDailyVocabMode = vm.mode.id == 5;
 
-            if(isFillingGapMode){
-                vm.testResult.testType = 3; // FILLING GAPS
+            if (isFillingGapMode) {
+                vm.testResult.testType = 3;
                 vm.testResult.testName = vm.currentCard.question;
                 vm.testResult.testTime = "GAPS " + vm.percentage + "%";
-            } else if (vm.mode.id == 5) {
-                vm.testResult.testType = 1; // DAILY VOCAB
+            } else if (isDailyVocabMode) {
+                vm.testResult.testType = 1;
                 vm.testResult.testName = vm.title.substring(0, 50);
+
                 vm.testResult.testTime =
                     vm.totalCard.toString() + ' WORD(s)|' +
                     vm.score1.toString() + 'pt' +
@@ -2859,29 +2627,66 @@
                     return;
                 }
 
-                if (vm.mode.id == 5) {
+                if (isDailyVocabMode) {
                     vm.testResult.id = data1.id;
-
-                    // Nếu chỉ cần đã lưu là xong:
-                    // vm.finishDailyVocab = "Finished";
-
-                    // Nếu muốn phân biệt chưa đạt thì dùng dòng này thay dòng trên:
                     vm.finishDailyVocab = data1.messageCode == 1 ? "Not Passed" : "Finished";
-
                     vm.isSaveTestResult = true;
                     return;
                 }
 
                 vm.setUpTestResult();
-                console.log(data1.id);
 
             }, function () {
                 blockUI.stop();
                 toastr.error('Có lỗi xảy ra.', 'Thông báo');
+
+            }).finally(function () {
+                vm.savingTestResult = false;
             });
         };
 
-        //--filling gaps
+        vm.resetDailyVocabSaveState = function () {
+            vm.isSaveTestResult = false;
+            vm.savingTestResult = false;
+            vm.finishDailyVocab = "Unfinished";
+
+            vm.tempWrong = '';
+
+            if (vm.testResult) {
+                vm.testResult.id = null;
+                vm.testResult.testTakerPerformance = '';
+            }
+        };
+
+        vm.resetDailyVocabRun = function () {
+            vm.isSaveTestResult = false;
+            vm.savingTestResult = false;
+            vm.finishDailyVocab = "Unfinished";
+
+            vm.endGame = false;
+            vm.endGamePlayer1 = false;
+            vm.endGamePlayer2 = false;
+
+            vm.currentPosition = 0;
+            vm.currentPosition1 = 0;
+
+            vm.score1 = 0;
+            vm.score2 = 0;
+            vm.streakPlayer1 = 0;
+            vm.streakPlayer2 = 0;
+            vm.wrongPlayer1 = 0;
+            vm.wrongPlayer2 = 0;
+
+            vm.tempWrong = '';
+            if (vm.testResult) {
+                vm.testResult.testTakerPerformance = '';
+            }
+
+            vm.showStart = true;
+            vm.showWrong = false;
+            vm.showCorrect = false;
+        };
+
         vm.fillingGapQuestion = '';
         var mainAudio = null;
         var playBackInput = null;
@@ -2894,16 +2699,11 @@
             mainAudio = document.getElementById('main-audio');
             playBackInput = document.getElementById('play-back-input');
             if(mainAudio != null){
-                mainAudio.src = vm.currentCard.pronounce; // local server
+                mainAudio.src = vm.currentCard.pronounce;
                 mainAudio.load();
                 mainAudio.loop = true;
             }
         };
-
-        // vm.setUpVideo = function () {
-        //     loadVideoYouTube = document.getElementById('load-video-youtube');
-        //     loadVideoYouTube.src = vm.currentCard.pronounce; // local server
-        // };
 
         vm.backForthAudio = function () {
             if(event.keyCode == 37){
@@ -2923,7 +2723,7 @@
 
             mainAudio.playbackRate  = vm.playbackValue;
             loadVideoYouTube.playbackRate  = vm.playbackValue;
-            // loadVideo.playbackRate  = vm.playbackValue;
+
         };
 
         vm.decreaseSpeed = function () {
@@ -2945,8 +2745,7 @@
             vm.volumeValue = vm.volumeValue + 0.05;
 
             mainAudio.volume  = vm.volumeValue;
-            // loadVideoYouTube.volume  = vm.volumeValue;
-            // loadVideo.playbackRate  = vm.playbackValue;
+
         };
 
         vm.decreaseVolume = function () {
@@ -2957,7 +2756,7 @@
             vm.volumeValue = vm.volumeValue - 0.05;
 
             mainAudio.volume  = vm.volumeValue;
-            // loadVideoYouTube.volume  = vm.volumeValue;
+
         };
 
         vm.backwardAudio = function () {
@@ -2989,7 +2788,6 @@
             }
         };
 
-
         vm.pauseAudio = function () {
             if(event.keyCode == 32){
                 if (mainAudio.paused) {
@@ -3000,7 +2798,6 @@
             }
         };
 
-        // This function converts the string to lowercase, then perform the conversion
         function toLowerCaseNonAccentVietnamese(str) {
             str = str.toLowerCase();
             str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
@@ -3011,13 +2808,12 @@
             str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
             str = str.replace(/đ/g, "d");
             str = str.replace(/ð/g, "d");
-            // Some system encode vietnamese combining accent as individual utf-8 characters
-            str = str.replace(/\u0300|\u0301|\u0303|\u0309|\u0323/g, ""); // Huyền sắc hỏi ngã nặng
-            str = str.replace(/\u02C6|\u0306|\u031B/g, ""); // Â, Ê, Ă, Ơ, Ư
+
+            str = str.replace(/\u0300|\u0301|\u0303|\u0309|\u0323/g, "");
+            str = str.replace(/\u02C6|\u0306|\u031B/g, "");
             return str;
         }
 
-        // This function keeps the casing unchanged for str, then perform the conversion
         function toNonAccentVietnamese(str) {
             str = str.replace(/A|Á|À|Ã|Ạ|Â|Ấ|Ầ|Ẫ|Ậ|Ă|Ắ|Ằ|Ẵ|Ặ/g, "A");
             str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
@@ -3034,9 +2830,9 @@
             str = str.replace(/Đ/g, "D");
             str = str.replace(/đ/g, "d");
             str = str.replace(/ð/g, "d");
-            // Some system encode vietnamese combining accent as individual utf-8 characters
-            str = str.replace(/\u0300|\u0301|\u0303|\u0309|\u0323/g, ""); // Huyền sắc hỏi ngã nặng
-            str = str.replace(/\u02C6|\u0306|\u031B/g, ""); // Â, Ê, Ă, Ơ, Ư
+
+            str = str.replace(/\u0300|\u0301|\u0303|\u0309|\u0323/g, "");
+            str = str.replace(/\u02C6|\u0306|\u031B/g, "");
             return str;
         }
 
@@ -3044,21 +2840,17 @@
         function processText(text) {
             var regex = /(<([^>]+)>)/ig
                 , body = text
-                , answer = body.replace(regex, ""); //remove html
-
+                , answer = body.replace(regex, "");
 
             if (vm.exactAnswer === false) {
-                //answer = answer.toLowerCase();
-                //answer = answer.replace('ð','đ');
+
                 answer = toLowerCaseNonAccentVietnamese(answer);
                 answer = toNonAccentVietnamese(answer);
                 answer = (answer.replace(/[`~!@#$%^&£*()_|+\-=?;:'"“”‘’,.<>\{\}\[\]\\\/]/gi, '')).replace(/  +/g, ' '); //special characters
                 // answer = answer.toLowerCase();
                 answer = answer.trim();
 
-
                 answer = answer.replace(/  +/g, ' ');//redundant spaces
-
 
                 answer = answer.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); //deaccent
                 answer = stringToSlug(answer);
@@ -3066,7 +2858,6 @@
                 answer = (answer.replace(/[`~!@#$%^&£*()_|+\-=?;:'"“”‘’,.<>\{\}\[\]\\\/]/gi, '')).replace(/  +/g, ' '); //special characters
                 answer = answer.toLowerCase();
                 answer = answer.trim();
-
 
                 answer = answer.replace(/  +/g, ' ');//redundant spaces
             }
@@ -3089,7 +2880,6 @@
 
             return str;
         }
-
 
         function findMistakes(a, b) {
             var result = {};
@@ -3157,7 +2947,7 @@
             }
 
             if(str.toLowerCase() === 'monday' || str.toLowerCase() === 'mondays'
-            || str.toLowerCase() === 'tuesday' || str.toLowerCase() === 'tuesdays'
+                || str.toLowerCase() === 'tuesday' || str.toLowerCase() === 'tuesdays'
                 || str.toLowerCase() === 'wednesday' || str.toLowerCase() === 'wednesdays'
                 || str.toLowerCase() === 'thursday' || str.toLowerCase() === 'thursdays'
                 || str.toLowerCase() === 'friday' || str.toLowerCase() === 'fridays'
@@ -3240,27 +3030,26 @@
 
                 var shouldMakeGap = false;
 
-                // nếu không bắt đầu bằng chữ cái hoặc số thì không tạo gap
                 if (!startsWithLetter(trimmedWord) && !/^[0-9]/.test(trimmedWord)) {
                     shouldMakeGap = false;
                 }
-                // nếu là đúng 1 chữ cái viết hoa đứng một mình thì LUÔN tạo gap
+
                 else if (isSingleUppercaseLetter(trimmedWord)) {
                     shouldMakeGap = true;
                 }
-                // nếu là đúng 1 chữ số đứng một mình thì LUÔN tạo gap
+
                 else if (isSingleDigit(trimmedWord)) {
                     shouldMakeGap = true;
                 }
-                // mode 8: các từ bắt đầu bằng chữ hoa thì không tạo gap
+
                 else if (vm.mode.id == 8 && startsWithUppercaseLetter(trimmedWord)) {
                     shouldMakeGap = false;
                 }
-                // số / ngày tháng thì ưu tiên tạo gap
+
                 else if (typeof checkIfDateOrNumber === 'function' && checkIfDateOrNumber(trimmedWord)) {
                     shouldMakeGap = true;
                 }
-                // còn lại thì random theo gapRate
+
                 else {
                     if (trimmedWord.length > 1 && Math.random() < gapRate) {
                         shouldMakeGap = true;
@@ -3661,13 +3450,9 @@
             }
         };
 
-
         vm.clickAnswerFillingGaps = function () {
             var a = processTextByMode(vm.currentCard.question);
             var b = processTextByMode(vm.currentCard.answer);
-            console.log(a);
-            console.log(b);
-
             if(a === b){
                 toastr.success('Yesss !!!');
             }else {
@@ -3763,7 +3548,6 @@
             player.focus();
         };
         //youtube//
-
 
         // flipping
         vm.flip1 = null;
@@ -3872,13 +3656,10 @@
             }
         };
 
-
         vm.clickFlipCard = function (item,index) {
             // if(vm.mode.id == 10){
             //     vm.timeReset = 7000;
             // }
-            console.log(0);
-
             //click liên tục vào 1 cái
             if(vm.currentIndex == index){
                 item.flipped = true;
@@ -3892,7 +3673,6 @@
                 item.flipped = false;
                 return;
             }
-
 
             // xử lý chính
             if(vm.flip1 == null){
@@ -4068,7 +3848,6 @@
                 vm.isShowHidesetUpReward = true;
             }
         };
-
 
         // flipping
 
@@ -4925,7 +4704,6 @@
         vm.guessWordAnswerHeight = 135;
 
         vm.cardBaseHeight = 260;
-
 
         vm.scrollToFlipExcelBoard = function () {
             $timeout(function () {
