@@ -165,8 +165,97 @@
         vm.markColumns = [];
         vm.keywordStudentName = '';
 
+        function normalizeVietnameseTonePositionForSearch(text) {
+            text = String(text || '');
+
+            var map = {
+                // oa: Hoà -> Hòa
+                'oà': 'òa',
+                'oá': 'óa',
+                'oả': 'ỏa',
+                'oã': 'õa',
+                'oạ': 'ọa',
+
+                'Oà': 'Òa',
+                'Oá': 'Óa',
+                'Oả': 'Ỏa',
+                'Oã': 'Õa',
+                'Oạ': 'Ọa',
+
+                'OÀ': 'ÒA',
+                'OÁ': 'ÓA',
+                'OẢ': 'ỎA',
+                'OÃ': 'ÕA',
+                'OẠ': 'ỌA',
+
+                // oe: Khoẻ -> Khỏe
+                'oè': 'òe',
+                'oé': 'óe',
+                'oẻ': 'ỏe',
+                'oẽ': 'õe',
+                'oẹ': 'ọe',
+
+                'Oè': 'Òe',
+                'Oé': 'Óe',
+                'Oẻ': 'Ỏe',
+                'Oẽ': 'Õe',
+                'Oẹ': 'Ọe',
+
+                'OÈ': 'ÒE',
+                'OÉ': 'ÓE',
+                'OẺ': 'ỎE',
+                'OẼ': 'ÕE',
+                'OẸ': 'ỌE',
+
+                // uy: Thuý -> Thúy
+                'uỳ': 'ùy',
+                'uý': 'úy',
+                'uỷ': 'ủy',
+                'uỹ': 'ũy',
+                'uỵ': 'ụy',
+
+                'Uỳ': 'Ùy',
+                'Uý': 'Úy',
+                'Uỷ': 'Ủy',
+                'Uỹ': 'Ũy',
+                'Uỵ': 'Ụy',
+
+                'UỲ': 'ÙY',
+                'UÝ': 'ÚY',
+                'UỶ': 'ỦY',
+                'UỸ': 'ŨY',
+                'UỴ': 'ỤY'
+            };
+
+            return text.replace(
+                /o[àáảãạ]|O[àáảãạ]|O[ÀÁẢÃẠ]|o[èéẻẽẹ]|O[èéẻẽẹ]|O[ÈÉẺẼẸ]|u[ỳýỷỹỵ]|U[ỳýỷỹỵ]|U[ỲÝỶỸỴ]/g,
+                function (match) {
+                    return map[match] || match;
+                }
+            );
+        }
+
+        function normalizeTextForStudentSearch(text) {
+            var result = String(text || '');
+
+            if (typeof result.normalize === 'function') {
+                result = result.normalize('NFC');
+            }
+
+            result = normalizeVietnameseTonePositionForSearch(result);
+
+            if (typeof result.normalize === 'function') {
+                result = result.normalize('NFC');
+            }
+
+            return result
+                .toLowerCase()
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
         vm.filterStudentByName = function (student) {
-            if (!vm.keywordStudentName) {
+            if (!vm.keywordStudentName || vm.keywordStudentName.trim() === '') {
                 return true;
             }
 
@@ -181,12 +270,13 @@
                 person.lastName,
                 person.firstName,
                 student.user.username
-            ].join(' ').toLowerCase();
+            ].join(' ');
 
-            var keyword = vm.keywordStudentName.toLowerCase().trim();
+            var normalizedFullNameAndCode = normalizeTextForStudentSearch(fullNameAndCode);
+            var normalizedKeyword = normalizeTextForStudentSearch(vm.keywordStudentName);
 
-            return fullNameAndCode.indexOf(keyword) !== -1;
-        };
+            return normalizedFullNameAndCode.indexOf(normalizedKeyword) !== -1;
+        };;
 
         vm.enrollmentClasses = [
             {id: 1, name: "DCN1"},

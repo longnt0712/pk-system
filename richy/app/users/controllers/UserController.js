@@ -763,10 +763,8 @@
                 if (confirm == 'yes') {
                     angular.copy(vm.filterTemp, vm.filter);
                     vm.filterTemp = {filtered: 0};
-                    vm.filter.filtered = (vm.filter.keyword.trim() != '') || (vm.filter.groups.length > 0) || (vm.filter.roles.length > 0);
 
-                    vm.pageIndex = 0;
-                    vm.getUsers();
+                    vm.search();
                 }
             });
         };
@@ -779,14 +777,21 @@
          * Perform search
          */
         vm.search = function () {
-            // vm.filter.keyword = vm.filterTemp.keyword;
-            // angular.copy(vm.filterTemp, vm.filter);
-            // vm.filterTemp = {filtered: 0};
-            // vm.filter.filtered = (vm.filter.keyword.trim() != '') || (vm.filter.groups.length > 0) || (vm.filter.roles.length > 0);
+            if (vm.filter && vm.filter.keyword != null) {
+                vm.filter.keyword = String(vm.filter.keyword)
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            }
+
+            vm.filter.filtered =
+                (vm.filter.keyword && vm.filter.keyword.trim() !== '') ||
+                (vm.filter.groups && vm.filter.groups.length > 0) ||
+                (vm.filter.roles && vm.filter.roles.length > 0) ||
+                vm.filter.enrollmentClass != null;
 
             console.log(vm.filter);
 
-            if(vm.filter.enrollmentClass != null || (vm.filter.groups != null && vm.filter.groups.length > 0)){ //class change
+            if (vm.filter.enrollmentClass != null || (vm.filter.groups != null && vm.filter.groups.length > 0)) {
                 vm.pageSize = 1000;
             } else {
                 vm.pageSize = 25;
