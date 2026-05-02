@@ -3250,14 +3250,87 @@
                 el.style.background = '';
             });
         };
+        function normalizeVietnameseTonePositionForGap(text) {
+            text = String(text || '');
+
+            var map = {
+                // oa: hoà -> hòa
+                'oà': 'òa',
+                'oá': 'óa',
+                'oả': 'ỏa',
+                'oã': 'õa',
+                'oạ': 'ọa',
+
+                'Oà': 'Òa',
+                'Oá': 'Óa',
+                'Oả': 'Ỏa',
+                'Oã': 'Õa',
+                'Oạ': 'Ọa',
+
+                'OÀ': 'ÒA',
+                'OÁ': 'ÓA',
+                'OẢ': 'ỎA',
+                'OÃ': 'ÕA',
+                'OẠ': 'ỌA',
+
+                // oe: khoẻ -> khỏe
+                'oè': 'òe',
+                'oé': 'óe',
+                'oẻ': 'ỏe',
+                'oẽ': 'õe',
+                'oẹ': 'ọe',
+
+                'Oè': 'Òe',
+                'Oé': 'Óe',
+                'Oẻ': 'Ỏe',
+                'Oẽ': 'Õe',
+                'Oẹ': 'Ọe',
+
+                'OÈ': 'ÒE',
+                'OÉ': 'ÓE',
+                'OẺ': 'ỎE',
+                'OẼ': 'ÕE',
+                'OẸ': 'ỌE',
+
+                // uy: thuý -> thúy
+                'uỳ': 'ùy',
+                'uý': 'úy',
+                'uỷ': 'ủy',
+                'uỹ': 'ũy',
+                'uỵ': 'ụy',
+
+                'Uỳ': 'Ùy',
+                'Uý': 'Úy',
+                'Uỷ': 'Ủy',
+                'Uỹ': 'Ũy',
+                'Uỵ': 'Ụy',
+
+                'UỲ': 'ÙY',
+                'UÝ': 'ÚY',
+                'UỶ': 'ỦY',
+                'UỸ': 'ŨY',
+                'UỴ': 'ỤY'
+            };
+
+            return text.replace(
+                /o[àáảãạ]|O[àáảãạ]|O[ÀÁẢÃẠ]|o[èéẻẽẹ]|O[èéẻẽẹ]|O[ÈÉẺẼẸ]|u[ỳýỷỹỵ]|U[ỳýỷỹỵ]|U[ỲÝỶỸỴ]/g,
+                function (match) {
+                    return map[match] || match;
+                }
+            );
+        }
+
         function normalizeGapAutoNext(text) {
             var normalize = (typeof processTextByMode === 'function') ? processTextByMode : processText;
 
             var cleaned = String(text || '')
+                .normalize('NFC')
                 .replace(/^[\s"'“”‘’.,!?;:()\[\]{}_-]+/, '')
                 .replace(/[\s"'“”‘’.,!?;:()\[\]{}_-]+$/, '');
 
-            return normalize(cleaned);
+            cleaned = normalizeVietnameseTonePositionForGap(cleaned);
+
+            return normalize(cleaned).normalize('NFC');
         }
         function isMobileDevice() {
             return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
