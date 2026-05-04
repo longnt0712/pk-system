@@ -754,6 +754,137 @@
         vm.currentGapAnswers = [];
         vm.currentGapBlocks = null;
 
+        vm.minGapRatePercent = 30;
+        vm.maxGapRatePercent = 100;
+
+        function getSavedGapRatePercent() {
+            var saved = localStorage.getItem('fillingGapRatePercent');
+            var percent = parseFloat(saved);
+
+            if (isNaN(percent)) {
+                percent = 35;
+            }
+
+            if (percent < vm.minGapRatePercent) {
+                percent = vm.minGapRatePercent;
+            }
+
+            if (percent > vm.maxGapRatePercent) {
+                percent = vm.maxGapRatePercent;
+            }
+
+            return percent;
+        }
+
+        vm.gapRatePercent = getSavedGapRatePercent();
+
+        vm.getGapRate = function () {
+            var percent = parseFloat(vm.gapRatePercent);
+
+            if (isNaN(percent)) {
+                percent = 35;
+            }
+
+            if (percent < vm.minGapRatePercent) {
+                percent = vm.minGapRatePercent;
+            }
+
+            if (percent > vm.maxGapRatePercent) {
+                percent = vm.maxGapRatePercent;
+            }
+
+            vm.gapRatePercent = percent;
+
+            localStorage.setItem('fillingGapRatePercent', percent);
+
+            return percent / 100;
+        };
+
+        vm.resetGapProgressOnly = function () {
+            vm.percentage = 0;
+            vm.numberOfGaps = 0;
+            vm.tempWrong = '';
+            vm.isSaveTestResult = false;
+            vm.savingTestResult = false;
+
+            if (vm.testResult) {
+                vm.testResult.id = null;
+                vm.testResult.testTime = 'GAPS 0%';
+                vm.testResult.testTakerPerformance = '';
+            }
+
+            if (angular.isDefined(vm.finishDailyVocab)) {
+                vm.finishDailyVocab = 'Unfinished';
+            }
+
+            if (angular.isDefined(vm.finishFillingGaps)) {
+                vm.finishFillingGaps = 'Unfinished';
+            }
+
+            if (angular.isDefined(vm.finishListening)) {
+                vm.finishListening = 'Unfinished';
+            }
+        };
+
+        vm.recalculateGapProgress = function () {
+            var answers = vm.gapAnswers || {};
+            var keys = Object.keys(answers);
+            var correct = 0;
+
+            angular.forEach(keys, function (key) {
+                if (vm.gapCorrectMap && vm.gapCorrectMap[key] === true) {
+                    correct++;
+                }
+            });
+
+            vm.numberOfGaps = keys.length;
+
+            if (vm.numberOfGaps <= 0) {
+                vm.percentage = 0;
+            } else {
+                vm.percentage = Math.round((correct / vm.numberOfGaps) * 10000) / 100;
+            }
+
+            if (vm.testResult) {
+                vm.testResult.testTime = 'GAPS ' + vm.percentage + '%';
+            }
+        };
+
+        vm.changeGapRate = function () {
+            vm.getGapRate();
+
+            if (!vm.currentCard || !vm.currentCard.motherTongue) {
+                return;
+            }
+
+            vm.showGapAnswers = false;
+
+            // Reset toàn bộ cache gap cũ
+            vm.currentGapBlocks = null;
+            vm.currentGapAnswers = [];
+            vm.gapAnswers = {};
+            vm.gapValues = {};
+            vm.gapCorrectMap = {};
+
+            // Reset progress cũ
+            vm.resetGapProgressOnly();
+
+            // Generate lại câu với gap rate mới
+            vm.fillingGapQuestion = processFillingGapsByMode(
+                vm.currentCard.motherTongue,
+                false,
+                true
+            );
+
+            // Sau khi generate lại, processFillingGaps sẽ set lại vm.numberOfGaps.
+            // Nhưng user chưa làm bộ gap mới nên progress phải về 0.
+            vm.percentage = 0;
+
+            if (vm.testResult) {
+                vm.testResult.testTime = 'GAPS 0%';
+            }
+        };
+
         vm.toggleShowGapAnswers = function () {
             vm.showGapAnswers = !vm.showGapAnswers;
 
@@ -2987,6 +3118,10 @@
         function processFillingGaps(text) {
             if (!text) {
                 vm.numberOfGaps = 0;
+                vm.currentGapAnswers = [];
+                vm.gapAnswers = {};
+                vm.gapValues = {};
+                vm.gapCorrectMap = {};
                 return '';
             }
 
@@ -3012,12 +3147,17 @@
                 return /^[0-9]$/.test(word);
             }
 
+            // Reset sạch data gap cũ trước khi tạo bộ gap mới
             vm.numberOfGaps = 0;
+            vm.currentGapAnswers = [];
+            vm.gapAnswers = {};
+            vm.gapValues = {};
+            vm.gapCorrectMap = {};
 
             var x = String(text).split(' ');
             var processedText = '';
             var indexGap = 0;
-            var gapRate = 0.35;
+            var gapRate = vm.getGapRate ? vm.getGapRate() : 0.35;
 
             for (var i = 0; i < x.length; i++) {
                 var originalWord = x[i];
@@ -3060,10 +3200,19 @@
                     var gapWord = originalWord;
                     var gapWordEscaped = escapeForNgString(gapWord);
 
-                    vm.gapAnswers = vm.gapAnswers || {};
                     vm.gapAnswers[i] = gapWord;
+                    vm.gapCorrectMap[i] = false;
 
-                    vm.numberOfGaps++;
+                    vm.currentGapAnswers.push({
+                        index: i,
+                        answer: gapWord,
+                        value: '',
+                        result: false,
+                        correct: false,
+                        isCorrect: false,
+                        isRight: false
+                    });
+
                     indexGap++;
 
                     var input =
@@ -3073,9 +3222,7 @@
                         'oncompositionend="this.dataset.composing=\'0\'" ' +
                         'ng-model="vm.gapValues[' + i + ']" ' +
                         'ng-change="vm.onGapInputChange(' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')" ' +
-
                         'ng-keydown="vm.onGapAudioShortcut($event)" ' +
-
                         'ng-keyup="vm.onGapKeyup($event,' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')" ' +
                         'class="input-underline-only gap-inline-input" ' +
                         'type="text" ' +
@@ -3091,7 +3238,13 @@
                 }
             }
 
-            vm.numberOfGaps = indexGap;
+            vm.numberOfGaps = vm.currentGapAnswers.length;
+            vm.percentage = 0;
+
+            if (vm.testResult) {
+                vm.testResult.testTime = 'GAPS 0%';
+            }
+
             return processedText.trim();
         }
 
@@ -3100,6 +3253,18 @@
                 mainAudio = document.getElementById('main-audio');
             }
             return mainAudio;
+        }
+
+        function updateCurrentGapAnswerState(index, typedValue, isCorrect) {
+            angular.forEach(vm.currentGapAnswers || [], function (item) {
+                if (String(item.index) === String(index)) {
+                    item.value = typedValue || '';
+                    item.result = isCorrect;
+                    item.correct = isCorrect;
+                    item.isCorrect = isCorrect;
+                    item.isRight = isCorrect;
+                }
+            });
         }
 
         vm.tryAutoSaveFillingGaps = function () {
@@ -3115,24 +3280,32 @@
             var keys = Object.keys(answers);
 
             if (!keys.length) {
+                vm.percentage = 0;
+                vm.numberOfGaps = 0;
+
+                if (vm.testResult) {
+                    vm.testResult.testTime = 'GAPS 0%';
+                }
+
                 return;
             }
 
-            var filledCount = 0;
             var correctCount = 0;
             var allFilled = true;
             var allCorrect = true;
 
             angular.forEach(keys, function (key) {
-                var typed = vm.gapValues[key];
+                var typed = vm.gapValues ? vm.gapValues[key] : '';
 
                 if (typed == null || String(typed).trim().length <= 0) {
                     allFilled = false;
                     allCorrect = false;
+
+                    vm.gapCorrectMap[key] = false;
+                    updateCurrentGapAnswerState(key, typed, false);
+
                     return;
                 }
-
-                filledCount++;
 
                 var typedNormalized = normalizeGapAutoNext(typed);
                 var answerNormalized = normalizeGapAutoNext(answers[key]);
@@ -3140,6 +3313,7 @@
                 var correct = typedNormalized === answerNormalized;
 
                 vm.gapCorrectMap[key] = correct;
+                updateCurrentGapAnswerState(key, typed, correct);
 
                 if (correct) {
                     correctCount++;
@@ -3148,9 +3322,15 @@
                 }
             });
 
-            vm.percentage = keys.length > 0
-                ? ((correctCount / keys.length) * 100).toFixed(2)
+            vm.numberOfGaps = keys.length;
+
+            vm.percentage = vm.numberOfGaps > 0
+                ? Math.round((correctCount / vm.numberOfGaps) * 10000) / 100
                 : 0;
+
+            if (vm.testResult) {
+                vm.testResult.testTime = 'GAPS ' + vm.percentage + '%';
+            }
 
             if (allFilled && allCorrect) {
                 vm.isSaveTestResult = true;
@@ -3337,14 +3517,19 @@
                 .test(navigator.userAgent || '');
         }
         vm.onGapInputChange = function (totalWords, index, fullText, gapWord) {
-            var typed = normalizeGapAutoNext(vm.gapValues[index]);
+            var rawTyped = vm.gapValues ? vm.gapValues[index] : '';
+            var typed = normalizeGapAutoNext(rawTyped);
             var answer = normalizeGapAutoNext(gapWord);
 
             var currentInput = document.getElementById('gap-number-' + index);
+            var isCorrect = typed && typed === answer;
 
-            if (typed && typed === answer) {
-                vm.gapCorrectMap[index] = true;
+            vm.gapCorrectMap = vm.gapCorrectMap || {};
+            vm.gapCorrectMap[index] = isCorrect;
 
+            updateCurrentGapAnswerState(index, rawTyped, isCorrect);
+
+            if (isCorrect) {
                 if (currentInput) {
                     currentInput.style.background = 'rgba(183, 244, 216, 0.7)';
                 }
@@ -3367,10 +3552,12 @@
                     }, 120);
                 }
             } else {
-                vm.gapCorrectMap[index] = false;
-
                 if (currentInput) {
-                    currentInput.style.background = 'rgba(255, 180, 180, 0.7)';
+                    if (rawTyped == null || String(rawTyped).trim().length <= 0) {
+                        currentInput.style.background = '';
+                    } else {
+                        currentInput.style.background = 'rgba(255, 180, 180, 0.7)';
+                    }
                 }
             }
 
@@ -3558,7 +3745,7 @@
 
             var x = String(text).split(' ');
             var processedText = '';
-            var gapRate = 0.45;
+            var gapRate = vm.getGapRate ? vm.getGapRate() : 0.45;
 
             for (var i = 0; i < x.length; i++) {
                 var originalWord = x[i];

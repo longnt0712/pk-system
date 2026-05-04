@@ -1035,7 +1035,26 @@
                                     <h2 class="bold" ng-bind-html="vm.currentCard.question"></h2>
                                     <span>{{vm.finishListening}} === Progress: {{vm.percentage}}%</span>
                                     <button class="btn btn-danger" ng-click="vm.saveTestResult()"> SURRENDER</button>
+                                    <span ng-if="vm.mode.id == 8 || vm.mode.id == 11"
+                                          style="margin-left: 10px; display: inline-block;">
+                                        <label class="bold">Gap rate:</label>
+
+                                        <input
+                                                type="number"
+                                                min="30"
+                                                max="100"
+                                                step="5"
+                                                ng-model="vm.gapRatePercent"
+                                                ng-change="vm.changeGapRate()"
+                                                ng-model-options="{ debounce: 500 }"
+                                                class="form-control input-sm"
+                                                style="width: 80px; display: inline-block;"
+                                        />
+
+                                        <span>%</span>
+                                    </span>
                                 </div>
+
                             </div>
 
                             <div class="row margin-top-10 margin-bottom-10 filling-content">
