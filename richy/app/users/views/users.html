@@ -23,6 +23,10 @@
                         <button class="btn btn-success margin-left-10" ng-click="vm.openExportExcelModal()">
                             <i class="fa fa-file-excel"></i> Xuất Excel
                         </button>
+
+                        <button class="btn btn-info margin-left-10" ng-click="vm.openExportImageModal()">
+                            <i class="fa fa-image"></i> Xuất ảnh
+                        </button>
                         <!--<button class="btn btn-danger margin-left-10" ng-click="vm.deleteUsers()" data-ng-disabled="vm.selectedUsers.length <= 0"><i class="icon-trash"></i> Xóa <span ng-if="vm.selectedUsers.length > 0">{{vm.selectedUsers.length}} bản ghi đã chọn</span></button>-->
                     </div>
                     <!--<div class="col-sm-6 col-xs-12 margin-top-10" style="text-align: right;">-->
@@ -657,7 +661,8 @@
         <div class="modal-header">
             <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
             <h4 class="modal-title">
-                <i class="fa fa-file-excel"></i> Xuất danh sách học sinh ra Excel
+                <i class="fa" ng-class="vm.exportMode === 'image' ? 'fa-image' : 'fa-file-excel'"></i>
+                {{vm.exportMode === 'image' ? 'Xuất danh sách học sinh ra ảnh' : 'Xuất danh sách học sinh ra Excel'}}
             </h4>
         </div>
 
@@ -667,8 +672,8 @@
                     <label class="bold margin-bottom-10">Chọn cột và thứ tự cột</label>
 
                     <div class="export-column-item"
-                            ng-repeat="col in vm.exportColumns track by col.key"
-                            style="border:1px solid #ddd; padding:10px; margin-bottom:8px; border-radius:4px;">
+                         ng-repeat="col in vm.exportColumns track by col.key"
+                         style="border:1px solid #ddd; padding:10px; margin-bottom:8px; border-radius:4px;">
                         <div class="row">
                             <div class="col-xs-7">
                                 <label style="font-weight: normal; margin-bottom: 0;">
@@ -696,34 +701,56 @@
                 </div>
 
                 <div class="col-md-9">
-                    <label class="bold margin-bottom-10">Xem trước file Excel</label>
+                    <label class="bold margin-bottom-10">
+                        {{vm.exportMode === 'image' ? 'Xem trước ảnh' : 'Xem trước file Excel'}}
+                    </label>
 
-                    <div class="table-responsive" style="max-height: 350px; overflow: auto; border:1px solid #ddd;">
-                        <table class="table table-bordered table-striped">
-                            <thead>
-                            <tr>
-                                <th ng-repeat="col in vm.getSelectedExportColumns() track by col.key">
-                                    {{col.title}}
-                                </th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr ng-if="vm.exportPreviewRows.length === 0">
-                                <td colspan="{{vm.getSelectedExportColumns().length || 1}}" class="text-center">
-                                    Không có dữ liệu xem trước
-                                </td>
-                            </tr>
-                            <tr ng-repeat="row in vm.exportPreviewRows track by $index">
-                                <td ng-repeat="col in vm.getSelectedExportColumns() track by col.key">
-                                    {{row[col.key]}}
-                                </td>
-                            </tr>
-                            </tbody>
-                        </table>
+                    <div id="exportImageArea"
+                         class="export-image-area"
+                         style="background:#fff; padding:16px; border:1px solid #ddd; overflow:auto;">
+                        <h4 ng-if="vm.exportMode === 'image'"
+                            class="text-center"
+                            style="margin-top:0; margin-bottom:15px; font-weight:bold;">
+                            DANH SÁCH HỌC SINH
+                        </h4>
+
+                        <div class="table-responsive" style="max-height: 350px; overflow: auto;">
+                            <table class="table table-bordered table-striped export-preview-table"
+                                   style="background:#fff; margin-bottom:0;">
+                                <thead>
+                                <tr>
+                                    <th ng-repeat="col in vm.getSelectedExportColumns() track by col.key"
+                                        style="text-align:center; vertical-align:middle; white-space:nowrap;">
+                                        {{col.title}}
+                                    </th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr ng-if="vm.exportPreviewRows.length === 0">
+                                    <td colspan="{{vm.getSelectedExportColumns().length || 1}}" class="text-center">
+                                        Không có dữ liệu xem trước
+                                    </td>
+                                </tr>
+                                <tr ng-repeat="row in vm.exportPreviewRows track by $index">
+                                    <td ng-repeat="col in vm.getSelectedExportColumns() track by col.key"
+                                        style="vertical-align:middle;">
+                                        {{row[col.key]}}
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <p ng-if="vm.exportMode === 'image'"
+                           class="text-right"
+                           style="margin:10px 0 0 0; font-size:12px; color:#666;">
+                            Ngày xuất:&nbsp;{{vm.exportDateText}}
+                        </p>
                     </div>
 
                     <p class="text-muted margin-top-10">
                         Preview đang hiển thị 5 dòng đầu tiên của danh sách hiện tại.
+                        Khi bấm xuất, hệ thống sẽ xuất toàn bộ danh sách hiện tại theo các cột đã chọn.
                     </p>
                 </div>
             </div>
@@ -733,8 +760,19 @@
             <button type="button" ng-click="$dismiss()" class="btn btn-default">
                 <i class="icon-close"></i> Đóng
             </button>
-            <button type="button" ng-click="vm.exportStudentsToExcel()" class="btn btn-success">
-                <i class="fa fa-file-excel"></i> Xuất file
+
+            <button type="button"
+                    ng-if="vm.exportMode !== 'image'"
+                    ng-click="vm.exportStudentsToExcel()"
+                    class="btn btn-success">
+                <i class="fa fa-file-excel"></i> Xuất file Excel
+            </button>
+
+            <button type="button"
+                    ng-if="vm.exportMode === 'image'"
+                    ng-click="vm.exportStudentsToImage()"
+                    class="btn btn-info">
+                <i class="fa fa-image"></i> Xuất ảnh
             </button>
         </div>
     </div>

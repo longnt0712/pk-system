@@ -1607,7 +1607,12 @@
             vm.buildExportPreviewRows();
         };
 
+        vm.exportMode = 'excel';
+        vm.exportDateText = '';
+
         vm.openExportExcelModal = function () {
+            vm.exportMode = 'excel';
+            vm.exportDateText = moment().format('DD/MM/YYYY HH:mm');
             vm.buildExportPreviewRows();
 
             vm.modalInstance = modal.open({
@@ -1616,6 +1621,34 @@
                 scope: $scope,
                 size: 'lg',
                 backdrop: 'static'
+            });
+        };
+
+        vm.openExportImageModal = function () {
+            vm.exportMode = 'image';
+            vm.exportDateText = moment().format('DD/MM/YYYY HH:mm');
+            vm.buildExportPreviewRows();
+
+            vm.modalInstance = modal.open({
+                animation: true,
+                templateUrl: 'export_excel_modal.html',
+                scope: $scope,
+                size: 'lg',
+                backdrop: 'static'
+            });
+        };
+
+        vm.buildExportRowsBySelectedColumns = function () {
+            var selectedColumns = vm.getSelectedExportColumns();
+
+            return (vm.users || []).map(function (user, index) {
+                var row = {};
+
+                angular.forEach(selectedColumns, function (col) {
+                    row[col.key] = col.getter(user, index);
+                });
+
+                return row;
             });
         };
 
@@ -1660,6 +1693,278 @@
             if (vm.modalInstance) {
                 vm.modalInstance.close();
             }
+        };
+
+        function exportImageEscapeHtml(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function getExportImageColumnWidth(col) {
+            if (!col || !col.key) {
+                return 140;
+            }
+
+            switch (col.key) {
+                case 'stt':
+                    return 60;
+                case 'patron':
+                    return 120;
+                case 'fullName':
+                    return 180;
+                case 'birthDate':
+                    return 130;
+                case 'username':
+                    return 160;
+                case 'motherFullName':
+                    return 220;
+                case 'motherPhoneNumber':
+                    return 150;
+                case 'fatherFullName':
+                    return 220;
+                case 'fatherPhoneNumber':
+                    return 150;
+                case 'phoneNumber':
+                    return 150;
+                case 'enrollmentClass':
+                    return 100;
+                case 'zaloStatus':
+                    return 180;
+                case 'roles':
+                    return 220;
+                case 'active':
+                    return 140;
+                default:
+                    return 160;
+            }
+        }
+
+        function buildFullExportImageHtml(selectedColumns, rows) {
+            var nowText = moment().format('DD/MM/YYYY HH:mm');
+            var tableWidth = 0;
+
+            angular.forEach(selectedColumns, function (col) {
+                tableWidth += getExportImageColumnWidth(col);
+            });
+
+            if (tableWidth < 900) {
+                tableWidth = 900;
+            }
+
+            var html = '';
+
+            html += '<div id="exportImageFullArea" style="';
+            html += 'background:#ffffff;';
+            html += 'padding:28px 32px;';
+            html += 'font-family:Arial, Helvetica, sans-serif;';
+            html += 'color:#333;';
+            html += 'width:' + (tableWidth + 64) + 'px;';
+            html += 'box-sizing:border-box;';
+            html += '">';
+
+            html += '<div style="';
+            html += 'font-size:24px;';
+            html += 'font-weight:700;';
+            html += 'text-align:center;';
+            html += 'margin-bottom:22px;';
+            html += 'text-transform:uppercase;';
+            html += '">DANH SÁCH HỌC SINH</div>';
+
+            html += '<table style="';
+            html += 'border-collapse:collapse;';
+            html += 'width:' + tableWidth + 'px;';
+            html += 'table-layout:fixed;';
+            html += 'font-size:14px;';
+            html += '">';
+
+            html += '<thead><tr>';
+
+            angular.forEach(selectedColumns, function (col) {
+                var width = getExportImageColumnWidth(col);
+
+                html += '<th style="';
+                html += 'width:' + width + 'px;';
+                html += 'background:#2b1b13;';
+                html += 'color:#ffffff;';
+                html += 'border:1px solid #ffffff;';
+                html += 'padding:10px 8px;';
+                html += 'text-align:center;';
+                html += 'vertical-align:middle;';
+                html += 'font-weight:700;';
+                html += 'box-sizing:border-box;';
+                html += 'word-break:break-word;';
+                html += 'white-space:normal;';
+                html += '">';
+                html += exportImageEscapeHtml(col.title);
+                html += '</th>';
+            });
+
+            html += '</tr></thead>';
+
+            html += '<tbody>';
+
+            angular.forEach(rows, function (row, rowIndex) {
+                var bgColor = rowIndex % 2 === 0 ? '#eee9e5' : '#ffffff';
+
+                html += '<tr>';
+
+                angular.forEach(selectedColumns, function (col) {
+                    var width = getExportImageColumnWidth(col);
+                    var value = row[col.key];
+
+                    html += '<td style="';
+                    html += 'width:' + width + 'px;';
+                    html += 'background:' + bgColor + ';';
+                    html += 'border:1px solid #ffffff;';
+                    html += 'padding:9px 8px;';
+                    html += 'vertical-align:middle;';
+                    html += 'box-sizing:border-box;';
+                    html += 'line-height:1.45;';
+                    html += 'word-break:break-word;';
+                    html += 'white-space:normal;';
+                    html += '">';
+                    html += exportImageEscapeHtml(value);
+                    html += '</td>';
+                });
+
+                html += '</tr>';
+            });
+
+            html += '</tbody>';
+            html += '</table>';
+
+            html += '<div style="';
+            html += 'font-size:13px;';
+            html += 'color:#666;';
+            html += 'text-align:right;';
+            html += 'margin-top:18px;';
+            html += '">Ngày xuất: ' + exportImageEscapeHtml(nowText) + '</div>';
+
+            html += '</div>';
+
+            return html;
+        }
+
+        vm.exportStudentsToImage = function () {
+            var selectedColumns = vm.getSelectedExportColumns();
+
+            if (!selectedColumns.length) {
+                toastr.warning('Vui lòng chọn ít nhất 1 cột để xuất ảnh.', 'Thông báo');
+                return;
+            }
+
+            if (!vm.users || !vm.users.length) {
+                toastr.warning('Không có dữ liệu để xuất ảnh.', 'Thông báo');
+                return;
+            }
+
+            if (typeof html2canvas === 'undefined') {
+                toastr.error('Chưa tải thư viện html2canvas. Vui lòng kiểm tra file index.html.', 'Thông báo');
+                return;
+            }
+
+            var rows = vm.buildExportRowsBySelectedColumns();
+
+            if (!rows || !rows.length) {
+                toastr.warning('Không có dữ liệu để xuất ảnh.', 'Thông báo');
+                return;
+            }
+
+            blockUI.start('Đang xuất ảnh...');
+
+            var oldExportWrapper = document.getElementById('exportImageFullWrapper');
+            if (oldExportWrapper && oldExportWrapper.parentNode) {
+                oldExportWrapper.parentNode.removeChild(oldExportWrapper);
+            }
+
+            var wrapper = document.createElement('div');
+            wrapper.id = 'exportImageFullWrapper';
+
+            wrapper.style.position = 'absolute';
+            wrapper.style.left = '-100000px';
+            wrapper.style.top = '0';
+            wrapper.style.zIndex = '-1';
+            wrapper.style.background = '#ffffff';
+            wrapper.style.overflow = 'visible';
+
+            wrapper.innerHTML = buildFullExportImageHtml(selectedColumns, rows);
+
+            document.body.appendChild(wrapper);
+
+            $timeout(function () {
+                var exportElement = document.getElementById('exportImageFullArea');
+
+                if (!exportElement) {
+                    blockUI.stop();
+
+                    if (wrapper && wrapper.parentNode) {
+                        wrapper.parentNode.removeChild(wrapper);
+                    }
+
+                    toastr.error('Không tìm thấy vùng dữ liệu để xuất ảnh.', 'Thông báo');
+                    return;
+                }
+
+                var exportWidth = exportElement.scrollWidth;
+                var exportHeight = exportElement.scrollHeight;
+
+                html2canvas(exportElement, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    logging: false,
+                    scrollX: 0,
+                    scrollY: 0,
+                    width: exportWidth,
+                    height: exportHeight,
+                    windowWidth: exportWidth,
+                    windowHeight: exportHeight
+                }).then(function (canvas) {
+                    var imageData = canvas.toDataURL('image/png');
+                    var fileName = 'danh_sach_hoc_sinh_' + moment().format('YYYYMMDD_HHmmss') + '.png';
+
+                    var link = document.createElement('a');
+                    link.href = imageData;
+                    link.download = fileName;
+
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    if (wrapper && wrapper.parentNode) {
+                        wrapper.parentNode.removeChild(wrapper);
+                    }
+
+                    blockUI.stop();
+                    toastr.success('Xuất ảnh thành công.', 'Thông báo');
+
+                    if (vm.modalInstance) {
+                        vm.modalInstance.close();
+                    }
+
+                    $scope.$applyAsync();
+                }).catch(function (error) {
+                    console.error('Export image error:', error);
+
+                    if (wrapper && wrapper.parentNode) {
+                        wrapper.parentNode.removeChild(wrapper);
+                    }
+
+                    blockUI.stop();
+                    toastr.error('Có lỗi xảy ra khi xuất ảnh.', 'Thông báo');
+
+                    $scope.$applyAsync();
+                });
+            }, 500);
         };
 
         $scope.$watch(function () {
