@@ -5865,7 +5865,7 @@
                 return;
             }
 
-            var controlHeight = el.offsetHeight || 58;
+            var controlHeight = el.offsetHeight || 65;
             var gap = 10;
             var topValue = 12;
 
