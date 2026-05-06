@@ -1012,6 +1012,35 @@
                                 </div>
                             </div>
 
+                            <!-- MOBILE FIXED AUDIO/YOUTUBE CONTROLS -->
+                            <div class="gap-mobile-fixed-audio-controls"
+                                 ng-if="vm.mode.id == 8 || vm.mode.id == 11">
+
+                                <button type="button"
+                                        class="gap-mobile-audio-btn gap-mobile-back-btn"
+                                        ng-click="vm.backwardAudio($event)"
+                                        aria-label="Playback 3 seconds">
+                                    <i class="fa fa-backward" aria-hidden="true"></i>
+                                </button>
+
+                                <button type="button"
+                                        class="gap-mobile-audio-btn gap-mobile-play-btn"
+                                        ng-click="vm.togglePauseAudio($event)"
+                                        aria-label="Pause or resume">
+                                    <i class="fa fa-pause" aria-hidden="true"></i>
+                                    /
+                                    <i class="fa fa-play" aria-hidden="true"></i>
+                                </button>
+
+                                <button type="button"
+                                        class="gap-mobile-audio-btn gap-mobile-forward-btn"
+                                        ng-click="vm.forwardAudio($event)"
+                                        aria-label="Forward 3 seconds">
+                                    <i class="fa fa-forward" aria-hidden="true"></i>
+                                </button>
+
+                            </div>
+
                             <div class="gap-main-control-box">
 
                                 <div ng-if="vm.isYoutubeAudio" class="gap-youtube-note">
@@ -6193,5 +6222,102 @@
     .youtube-gap-left .gap-main-control-row,
     .youtube-gap-left .gap-shortcut-text {
         display: none !important;
+    }
+
+    /* =========================
+   MOBILE FLOATING AUDIO/YOUTUBE CONTROLS - iOS SAFE
+========================= */
+
+    .gap-mobile-fixed-audio-controls {
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        .gap-mobile-fixed-audio-controls {
+            display: flex !important;
+            position: fixed !important;
+
+            left: 50% !important;
+            top: 12px;
+
+            bottom: auto !important;
+            right: auto !important;
+
+            transform: translateX(-50%) translateZ(0) !important;
+            -webkit-transform: translateX(-50%) translateZ(0) !important;
+
+            z-index: 2147483647 !important;
+
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 14px !important;
+
+            width: auto !important;
+            min-width: 210px !important;
+            height: 58px !important;
+
+            padding: 6px 14px !important;
+
+            background: rgba(255, 250, 235, 0.98) !important;
+            border: 1px solid rgba(0, 0, 0, 0.12) !important;
+            border-radius: 999px !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28) !important;
+
+            pointer-events: auto !important;
+            touch-action: manipulation !important;
+        }
+
+        .gap-mobile-audio-btn {
+            width: 46px !important;
+            height: 46px !important;
+            min-width: 46px !important;
+
+            border: none !important;
+            border-radius: 50% !important;
+
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+
+            font-size: 18px !important;
+            color: #fff !important;
+
+            box-shadow: 0 5px 14px rgba(0, 0, 0, 0.18) !important;
+            outline: none !important;
+            padding: 0 !important;
+        }
+
+        .gap-mobile-back-btn {
+            background: linear-gradient(135deg, #3f8cff, #35c2d0) !important;
+        }
+
+        .gap-mobile-play-btn {
+            width: 66px !important;
+            min-width: 66px !important;
+            border-radius: 25px !important;
+            background: linear-gradient(135deg, #ff8b3d, #ffc13d) !important;
+            color: #2b1a00 !important;
+            font-weight: bold !important;
+        }
+
+        .gap-mobile-forward-btn {
+            background: linear-gradient(135deg, #8758ff, #d255b6) !important;
+        }
+
+        .gap-main-control-box .global-mobile-audio-seek-controls {
+            display: none !important;
+        }
+
+        .gap-main-control-box .gap-youtube-note,
+        .gap-main-control-box .gap-shortcut-text {
+            display: none !important;
+        }
+
+        .filling-content input,
+        .gap-english-content input,
+        .gap-vni-tntt-content input {
+            scroll-margin-top: 90px !important;
+            scroll-margin-bottom: 140px !important;
+        }
     }
 </style>

@@ -5854,6 +5854,124 @@
             scrollWhenReady(0);
         };
         // end MCQs
+
+        var gapMobileControlTimer = null;
+
+        function updateGapMobileControlsPosition() {
+            var isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+            var el = document.querySelector('.gap-mobile-fixed-audio-controls');
+
+            if (!el || !isMobile) {
+                return;
+            }
+
+            var controlHeight = el.offsetHeight || 58;
+            var gap = 10;
+            var topValue = 12;
+
+            if (window.visualViewport) {
+                var viewport = window.visualViewport;
+
+                // Mép dưới thật của vùng nhìn thấy, đã trừ keyboard
+                topValue = viewport.offsetTop + viewport.height - controlHeight - gap;
+
+                // Không cho tụt xuống quá thấp
+                var maxTop = window.innerHeight - controlHeight - gap;
+
+                if (topValue > maxTop) {
+                    topValue = maxTop;
+                }
+
+                // Không cho chui lên quá cao
+                if (topValue < 8) {
+                    topValue = 8;
+                }
+            } else {
+                topValue = window.innerHeight - controlHeight - gap;
+            }
+
+            el.style.top = topValue + 'px';
+            el.style.bottom = 'auto';
+        }
+
+        function moveGapMobileControlsToBody() {
+            var el = document.querySelector('.gap-mobile-fixed-audio-controls');
+
+            if (!el) {
+                return;
+            }
+
+            if (el.parentNode !== document.body) {
+                document.body.appendChild(el);
+            }
+
+            updateGapMobileControlsPosition();
+        }
+
+        function startGapMobileControlPositionLoop() {
+            stopGapMobileControlPositionLoop();
+
+            gapMobileControlTimer = setInterval(function () {
+                moveGapMobileControlsToBody();
+                updateGapMobileControlsPosition();
+            }, 120);
+
+            setTimeout(function () {
+                stopGapMobileControlPositionLoop();
+                updateGapMobileControlsPosition();
+            }, 1800);
+        }
+
+        function stopGapMobileControlPositionLoop() {
+            if (gapMobileControlTimer) {
+                clearInterval(gapMobileControlTimer);
+                gapMobileControlTimer = null;
+            }
+        }
+
+        $timeout(function () {
+            moveGapMobileControlsToBody();
+            updateGapMobileControlsPosition();
+        }, 500);
+
+        window.addEventListener('resize', updateGapMobileControlsPosition, true);
+        window.addEventListener('orientationchange', updateGapMobileControlsPosition, true);
+        window.addEventListener('scroll', updateGapMobileControlsPosition, true);
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', updateGapMobileControlsPosition);
+            window.visualViewport.addEventListener('scroll', updateGapMobileControlsPosition);
+        }
+
+        document.addEventListener('focusin', function () {
+            $timeout(function () {
+                moveGapMobileControlsToBody();
+                startGapMobileControlPositionLoop();
+            }, 50);
+        }, true);
+
+        document.addEventListener('focusout', function () {
+            $timeout(function () {
+                updateGapMobileControlsPosition();
+            }, 200);
+        }, true);
+
+        document.addEventListener('touchstart', function () {
+            updateGapMobileControlsPosition();
+        }, true);
+
+        $scope.$on('$destroy', function () {
+            stopGapMobileControlPositionLoop();
+
+            window.removeEventListener('resize', updateGapMobileControlsPosition, true);
+            window.removeEventListener('orientationchange', updateGapMobileControlsPosition, true);
+            window.removeEventListener('scroll', updateGapMobileControlsPosition, true);
+
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', updateGapMobileControlsPosition);
+                window.visualViewport.removeEventListener('scroll', updateGapMobileControlsPosition);
+            }
+        });
     }
 
 })();
