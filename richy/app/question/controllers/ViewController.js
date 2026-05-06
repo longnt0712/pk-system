@@ -1542,6 +1542,7 @@
         var boomSound = document.getElementById("boom-sound");
         vm.lastSetCounter = null;
         vm.timerRunning = false;
+        vm.timerPaused = false;
         vm.timeUpInGaps3 = false;
 
         function playTickTockLoop() {
@@ -1631,6 +1632,7 @@
             if ($scope.counter <= 0) {
                 $scope.counter = 0;
                 vm.timerRunning = false;
+                vm.timerPaused = false;
 
                 $timeout.cancel(mytimeout);
                 mytimeout = null;
@@ -4807,12 +4809,51 @@
             }
         };
 
+        function pauseGameTimer() {
+            vm.timerRunning = false;
+            vm.timerPaused = true;
+
+            $timeout.cancel(mytimeout);
+            mytimeout = null;
+
+            stopTickTockLoop();
+        }
+
+        function resumeGameTimer() {
+            if (!$scope.counter || $scope.counter <= 0) {
+                return;
+            }
+
+            vm.timerRunning = true;
+            vm.timerPaused = false;
+            vm.timeUpInGaps3 = false;
+
+            playTickTockLoop();
+
+            $timeout.cancel(mytimeout);
+            mytimeout = $timeout($scope.onTimeout, 1000);
+        }
+
         function startGameTimer(seconds) {
+            // Đang chạy đúng nút đó -> bấm lần nữa thì dừng
+            if (vm.timerRunning === true && vm.lastSetCounter === seconds) {
+                pauseGameTimer();
+                return;
+            }
+
+            // Đang pause đúng nút đó -> bấm lần nữa thì chạy tiếp
+            if (vm.timerPaused === true && vm.lastSetCounter === seconds && $scope.counter > 0) {
+                resumeGameTimer();
+                return;
+            }
+
+            // Bấm nút khác, hoặc timer đã hết -> bắt đầu lại từ số giây mới
             vm.lastSetCounter = seconds;
             vm.tempCounter = seconds;
             $scope.counter = seconds;
 
             vm.timerRunning = true;
+            vm.timerPaused = false;
             vm.timeUpInGaps3 = false;
             vm.showGapAnswers = false;
 
@@ -4821,6 +4862,11 @@
             vm.lastSetCounter = seconds;
             vm.tempCounter = seconds;
             $scope.counter = seconds;
+
+            vm.timerRunning = true;
+            vm.timerPaused = false;
+            vm.timeUpInGaps3 = false;
+            vm.showGapAnswers = false;
 
             playTickTockLoop();
 

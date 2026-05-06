@@ -1151,17 +1151,24 @@
                                                     </button>
 
                                                     <div ng-if="vm.mode.id == 12" style="margin-top: 12px;">
-                                                        <button class="btn btn-info gaps3-btn" ng-click="vm.thirtySeconds()">
-                                                            ⏳ {{vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
+                                                        <button class="btn btn-info gaps3-btn gaps3-timer-btn timer-block"
+                                                                ng-click="vm.thirtySeconds()">
+                                                            ⏳
+                                                            <span class="gaps3-timer-text">
+                                                                {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
+                                                            </span>
                                                         </button>
 
-                                                        <button class="btn btn-success gaps3-btn"
+                                                        <button class="btn btn-success gaps3-btn gaps3-timer-btn timer-block"
                                                                 ng-click="vm.twentySeconds()"
                                                                 style="margin-top: 10px;">
-                                                            ⚡ {{vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
+                                                            ⚡
+                                                            <span class="gaps3-timer-text">
+                                                                {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
+                                                            </span>
                                                         </button>
 
-                                                        <button class="btn btn-warning gaps3-btn"
+                                                        <button class="btn btn-warning gaps3-btn timer-block"
                                                                 ng-click="refreshTimer()"
                                                                 style="margin-top: 10px;">
                                                             🔄 Reset
@@ -1288,24 +1295,33 @@
                                 </div>
                                 <div style="margin-top: 12px;">
 
-                                    <button class="btn btn-info gaps3-btn"
+                                    <button class="btn btn-info gaps3-btn gaps3-timer-btn timer-block"
                                             ng-click="vm.thirtySeconds()">
-                                        ⏳ {{vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
+                                        ⏳
+                                        <span class="gaps3-timer-text">
+                                            {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
+                                        </span>
                                     </button>
 
-                                    <button class="btn btn-success gaps3-btn"
+                                    <button class="btn btn-success gaps3-btn gaps3-timer-btn timer-block"
                                             ng-click="vm.twentySeconds()"
                                             style="margin-top: 10px;">
-                                        ⚡ {{vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
+                                        ⚡
+                                        <span class="gaps3-timer-text">
+                                            {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
+                                        </span>
                                     </button>
 
-                                    <button class="btn btn-primary gaps3-btn"
+                                    <button class="btn btn-primary gaps3-btn gaps3-timer-btn timer-block"
                                             ng-click="vm.tenSeconds()"
                                             style="margin-top: 10px;">
-                                        🎯 {{vm.lastSetCounter == 10 ? counter + 's' : '10s'}}
+                                        🎯
+                                        <span class="gaps3-timer-text">
+                                            {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 10 ? counter + 's' : '10s'}}
+                                        </span>
                                     </button>
 
-                                    <button class="btn btn-warning gaps3-btn"
+                                    <button class="btn btn-warning gaps3-btn timer-block"
                                             ng-click="refreshTimer()"
                                             style="margin-top: 10px;">
                                         🔄 Reset
@@ -1584,33 +1600,48 @@
                                 </div>
                                 <div style="margin-top: 12px;">
 
-                                    <button class="btn btn-info gaps3-btn"
+                                    <button class="btn btn-info gaps3-btn gaps3-timer-btn timer-block"
                                             ng-click="vm.thirtySeconds()">
-                                        ⏳ {{vm.timerRunning && vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
+                                        ⏳
+                                        <span class="gaps3-timer-text">
+                                            {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
+                                        </span>
                                     </button>
 
-                                    <button class="btn btn-success gaps3-btn"
+                                    <button class="btn btn-success gaps3-btn gaps3-timer-btn timer-block"
                                             ng-click="vm.twentySeconds()"
                                             style="margin-top: 10px;">
-                                        ⚡ {{vm.timerRunning && vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
+                                        ⚡
+                                        <span class="gaps3-timer-text">
+                                            {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
+                                        </span>
                                     </button>
 
-                                    <button class="btn btn-info gaps3-btn"
+                                    <button class="btn btn-info gaps3-btn gaps3-timer-btn timer-block"
                                             ng-click="vm.fifteenSeconds()"
                                             style="margin-top: 10px;">
-                                        ⏱ {{vm.timerRunning && vm.lastSetCounter == 15 ? counter + 's' : '15s'}}
+                                        ⏱
+                                        <span class="gaps3-timer-text">
+                                            {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 15 ? counter + 's' : '15s'}}
+                                        </span>
                                     </button>
 
-                                    <button class="btn btn-primary gaps3-btn"
+                                    <button class="btn btn-primary gaps3-btn gaps3-timer-btn timer-block"
                                             ng-click="vm.tenSeconds()"
                                             style="margin-top: 10px;">
-                                        🎯 {{vm.timerRunning && vm.lastSetCounter == 10 ? counter + 's' : '10s'}}
+                                        🎯
+                                        <span class="gaps3-timer-text">
+                                            {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 10 ? counter + 's' : '10s'}}
+                                        </span>
                                     </button>
 
-                                    <button class="btn btn-danger gaps3-btn"
+                                    <button class="btn btn-danger gaps3-btn gaps3-timer-btn timer-block"
                                             ng-click="vm.fiveSeconds()"
                                             style="margin-top: 10px;">
-                                        🔥 {{vm.timerRunning && vm.lastSetCounter == 5 ? counter + 's' : '5s'}}
+                                        🔥
+                                        <span class="gaps3-timer-text">
+                                            {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 5 ? counter + 's' : '5s'}}
+                                        </span>
                                     </button>
 
                                 </div>
@@ -5885,5 +5916,46 @@
         border-radius: 50% !important;
         background: #ff4d4f !important;
         color: #ffffff !important;
+    }
+</style>
+
+<style>
+    /* =========================
+   FIX SIZE TIMER BUTTONS
+   Không cho nút đồng hồ co giãn theo text 30s / 20s / 5s
+========================= */
+
+    .gaps3-cate-theme .gaps3-timer-btn {
+        width: 125px !important;
+        min-width: 125px !important;
+        max-width: 125px !important;
+
+        height: 46px !important;
+        min-height: 46px !important;
+
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+
+        text-align: center !important;
+        white-space: nowrap !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Nếu nút nằm dọc trong cột trái thì cho mỗi nút chiếm 1 dòng */
+    .gaps3-cate-theme .gaps3-timer-btn.timer-block {
+        display: flex !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+
+    /* Giữ chữ/số trong nút không bị nhảy */
+    .gaps3-cate-theme .gaps3-timer-text {
+        display: inline-block;
+        min-width: 38px;
+        text-align: left;
     }
 </style>
