@@ -2820,116 +2820,752 @@
             vm.showCorrect = false;
         };
 
-        vm.fillingGapQuestion = '';
-        var mainAudio = null;
-        var playBackInput = null;
-        var loadVideoYouTube = null;
+        // ===============================
+// FILLING GAPS AUDIO / YOUTUBE
+// Mode 8 + Mode 11
+// Link lấy từ: vm.currentCard.pronounce
+// Nếu là YouTube => hiện video YouTube
+// Nếu không phải YouTube => dùng thẻ audio như cũ
+// ===============================
 
-        vm.playbackValue = 1.0;
-        vm.volumeValue = 1.0;
+        vm.fillingGapQuestion = '';
+
+        // ===============================
+// FILLING GAPS AUDIO / YOUTUBE
+// Mode 8 + Mode 11
+// ===============================
+
+        var mainAudio = null;
+
+        var youtubeGapPlayer = null;
+        var youtubeGapPlayerReady = false;
+        var youtubeGapLoadToken = 0;
+        var youtubeGapApiCallbacks = [];
+        var youtubeGapApiLoading = false;
+        var youtubeGapPendingAction = null;
+
+        vm.playbackValue = vm.playbackValue || 1.0;
+        vm.volumeValue = vm.volumeValue || 1.0;
+
+        vm.isYoutubeAudio = false;
+        vm.youtubeVideoId = null;
+
+        function getMainAudio() {
+            if (!mainAudio) {
+                mainAudio = document.getElementById('main-audio');
+            }
+
+            return mainAudio;
+        }
+
+        function getYoutubeVideoId(url) {
+            if (!url) {
+                return null;
+            }
+
+            var text = String(url).trim();
+
+            var match = text.match(/(?:youtube\.com\/watch\?.*v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|youtube\.com\/live\/|youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/);
+
+            if (match && match[1]) {
+                return match[1];
+            }
+
+            match = text.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+
+            if (match && match[1]) {
+                return match[1];
+            }
+
+            return null;
+        }
+
+        function flushYoutubeApiCallbacks() {
+            youtubeGapApiLoading = false;
+
+            while (youtubeGapApiCallbacks.length > 0) {
+                var cb = youtubeGapApiCallbacks.shift();
+
+                if (typeof cb === 'function') {
+                    cb();
+                }
+            }
+        }
+
+        function loadYoutubeIframeApi(callback) {
+            if (window.YT && window.YT.Player) {
+                callback();
+                return;
+            }
+
+            youtubeGapApiCallbacks.push(callback);
+
+            if (!youtubeGapApiLoading && !document.getElementById('youtube-iframe-api-script')) {
+                youtubeGapApiLoading = true;
+
+                var oldReady = window.onYouTubeIframeAPIReady;
+
+                window.onYouTubeIframeAPIReady = function () {
+                    if (typeof oldReady === 'function') {
+                        oldReady();
+                    }
+
+                    flushYoutubeApiCallbacks();
+                };
+
+                var tag = document.createElement('script');
+                tag.id = 'youtube-iframe-api-script';
+                tag.src = 'https://www.youtube.com/iframe_api';
+
+                var firstScriptTag = document.getElementsByTagName('script')[0];
+                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            }
+
+            var waited = 0;
+            var checkTimer = setInterval(function () {
+                waited += 100;
+
+                if (window.YT && window.YT.Player) {
+                    clearInterval(checkTimer);
+                    flushYoutubeApiCallbacks();
+                }
+
+                if (waited >= 10000) {
+                    clearInterval(checkTimer);
+                    // console.log('YouTube API chưa sẵn sàng sau 10s');
+                }
+            }, 100);
+        }
+
+        function getYoutubeWrap() {
+            return document.querySelector('.youtube-gap-left .gap-youtube-player-wrap') ||
+                document.querySelector('.gap-youtube-player-wrap');
+        }
+
+        function waitForYoutubeWrap(callback, attempt) {
+            attempt = attempt || 0;
+
+            var wrap = getYoutubeWrap();
+
+            if (wrap) {
+                callback(wrap);
+                return;
+            }
+
+            if (attempt >= 50) {
+                // console.log('Không tìm thấy .gap-youtube-player-wrap');
+                return;
+            }
+
+            $timeout(function () {
+                waitForYoutubeWrap(callback, attempt + 1);
+            }, 100);
+        }
+
+        function rebuildYoutubePlayerHost(wrap) {
+            wrap.innerHTML = '';
+
+            var div = document.createElement('div');
+            div.id = 'youtube-gap-player';
+
+            wrap.appendChild(div);
+
+            return div;
+        }
+
+        function destroyYoutubePlayer() {
+            youtubeGapPlayerReady = false;
+
+            if (youtubeGapPlayer && youtubeGapPlayer.destroy) {
+                try {
+                    youtubeGapPlayer.destroy();
+                } catch (e) {
+                    // console.log('Destroy YouTube player error:', e);
+                }
+            }
+
+            youtubeGapPlayer = null;
+        }
+
+        function applyNormalAudioSettings() {
+            var audio = getMainAudio();
+
+            if (!audio) {
+                return;
+            }
+
+            audio.playbackRate = vm.playbackValue;
+            audio.volume = vm.volumeValue;
+        }
+
+        function applyYoutubeSettings() {
+            if (!youtubeGapPlayer || !youtubeGapPlayerReady) {
+                return;
+            }
+
+            try {
+                if (youtubeGapPlayer.setVolume) {
+                    youtubeGapPlayer.setVolume(Math.round(vm.volumeValue * 100));
+                }
+
+                if (youtubeGapPlayer.setPlaybackRate) {
+                    youtubeGapPlayer.setPlaybackRate(vm.playbackValue);
+                }
+            } catch (e) {
+                // console.log('Apply YouTube settings error:', e);
+            }
+        }
+
+        function stopNormalAudio() {
+            var audio = getMainAudio();
+
+            if (!audio) {
+                return;
+            }
+
+            try {
+                audio.pause();
+                audio.removeAttribute('src');
+                audio.load();
+            } catch (e) {
+                // console.log(e);
+            }
+        }
+
+        function stopYoutubeAudio() {
+            if (youtubeGapPlayer && youtubeGapPlayer.pauseVideo) {
+                try {
+                    youtubeGapPlayer.pauseVideo();
+                } catch (e) {
+                    // console.log(e);
+                }
+            }
+        }
+
+        function loadYoutubeVideo(videoId) {
+            if (!videoId) {
+                return;
+            }
+
+            var token = ++youtubeGapLoadToken;
+
+            // console.log('LOAD YOUTUBE VIDEO:', videoId);
+
+            loadYoutubeIframeApi(function () {
+                waitForYoutubeWrap(function (wrap) {
+                    if (token !== youtubeGapLoadToken) {
+                        return;
+                    }
+
+                    destroyYoutubePlayer();
+
+                    var hostDiv = rebuildYoutubePlayerHost(wrap);
+
+                    youtubeGapPlayerReady = false;
+
+                    youtubeGapPlayer = new YT.Player(hostDiv.id, {
+                        width: '100%',
+                        height: '100%',
+                        videoId: videoId,
+                        host: 'https://www.youtube.com',
+                        playerVars: {
+                            playsinline: 1,
+                            controls: 1,
+                            rel: 0,
+                            modestbranding: 1,
+                            enablejsapi: 1,
+                            origin: window.location.protocol + '//' + window.location.host
+                        },
+                        events: {
+                            onReady: function (event) {
+                                if (token !== youtubeGapLoadToken) {
+                                    return;
+                                }
+
+                                youtubeGapPlayer = event.target;
+                                youtubeGapPlayerReady = true;
+
+                                window.youtubeGapPlayerDebug = event.target;
+
+                                // console.log('YOUTUBE PLAYER READY:', {
+                                //     videoId: videoId,
+                                //     player: event.target
+                                // });
+
+                                applyYoutubeSettings();
+
+                                if (typeof youtubeGapPendingAction === 'function') {
+                                    var pending = youtubeGapPendingAction;
+                                    youtubeGapPendingAction = null;
+                                    pending();
+                                }
+                            },
+                            onStateChange: function (event) {
+                                // console.log('YOUTUBE STATE:', event.data);
+
+                                if (window.YT &&
+                                    YT.PlayerState &&
+                                    event.data === YT.PlayerState.ENDED) {
+                                    event.target.seekTo(0, true);
+                                }
+                            },
+                            onError: function (event) {
+                                // console.log('YOUTUBE ERROR:', event.data);
+                            }
+                        }
+                    });
+                });
+            });
+        }
+
+        function runYoutubeAction(action) {
+            if (!vm.isYoutubeAudio) {
+                return;
+            }
+
+            if (youtubeGapPlayerReady &&
+                youtubeGapPlayer &&
+                typeof youtubeGapPlayer.getCurrentTime === 'function' &&
+                typeof youtubeGapPlayer.seekTo === 'function') {
+                action(youtubeGapPlayer);
+                return;
+            }
+
+            // console.log('YouTube player chưa ready, lưu action lại');
+
+            youtubeGapPendingAction = function () {
+                if (youtubeGapPlayerReady && youtubeGapPlayer) {
+                    action(youtubeGapPlayer);
+                }
+            };
+
+            if (vm.youtubeVideoId) {
+                loadYoutubeVideo(vm.youtubeVideoId);
+            }
+        }
+
+        function seekYoutubeBy(deltaSeconds) {
+            runYoutubeAction(function (player) {
+                var currentTime = 0;
+                var duration = 0;
+                var state = null;
+
+                try {
+                    currentTime = Number(player.getCurrentTime()) || 0;
+                } catch (e) {
+                    currentTime = 0;
+                }
+
+                try {
+                    duration = Number(player.getDuration()) || 0;
+                } catch (e) {
+                    duration = 0;
+                }
+
+                try {
+                    state = player.getPlayerState();
+                } catch (e) {
+                    state = null;
+                }
+
+                var newTime = currentTime + deltaSeconds;
+
+                if (newTime < 0) {
+                    newTime = 0;
+                }
+
+                if (duration && isFinite(duration) && newTime > duration) {
+                    newTime = duration;
+                }
+
+                // console.log('YOUTUBE SEEK:', {
+                //     currentTime: currentTime,
+                //     newTime: newTime,
+                //     duration: duration,
+                //     state: state,
+                //     deltaSeconds: deltaSeconds
+                // });
+
+                try {
+                    player.seekTo(newTime, true);
+
+                    $timeout(function () {
+                        try {
+                            var afterSeek = Number(player.getCurrentTime()) || 0;
+
+                            // console.log('YOUTUBE AFTER SEEK:', {
+                            //     afterSeek: afterSeek,
+                            //     expected: newTime
+                            // });
+
+                            if (Math.abs(afterSeek - newTime) > 1.5) {
+                                player.seekTo(newTime, true);
+                            }
+                        } catch (retryError) {
+                            // console.log('YouTube seek retry error:', retryError);
+                        }
+                    }, 300);
+
+                } catch (err) {
+                    // console.log('YouTube seek error:', err);
+                }
+            });
+        }
 
         vm.setUpAudio = function () {
             mainAudio = document.getElementById('main-audio');
-            playBackInput = document.getElementById('play-back-input');
-            if(mainAudio != null){
-                mainAudio.src = vm.currentCard.pronounce;
-                mainAudio.load();
-                mainAudio.loop = true;
+
+            var mediaUrl = '';
+
+            if (vm.currentCard && vm.currentCard.pronounce) {
+                mediaUrl = String(vm.currentCard.pronounce).trim();
+            }
+
+            vm.youtubeVideoId = getYoutubeVideoId(mediaUrl);
+            vm.isYoutubeAudio = !!vm.youtubeVideoId;
+
+            // console.log('SETUP AUDIO:', {
+            //     mediaUrl: mediaUrl,
+            //     isYoutubeAudio: vm.isYoutubeAudio,
+            //     youtubeVideoId: vm.youtubeVideoId
+            // });
+
+            if (vm.isYoutubeAudio) {
+                stopNormalAudio();
+
+                $timeout(function () {
+                    loadYoutubeVideo(vm.youtubeVideoId);
+                }, 150);
+
+                return;
+            }
+
+            stopYoutubeAudio();
+            destroyYoutubePlayer();
+
+            $timeout(function () {
+                var audio = getMainAudio();
+
+                if (!audio) {
+                    return;
+                }
+
+                audio.src = mediaUrl;
+                audio.load();
+                audio.loop = true;
+
+                applyNormalAudioSettings();
+            }, 0);
+        };
+
+        var lastToggleYoutubeTime = 0;
+
+        vm.togglePauseAudio = function (e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (e.stopImmediatePropagation) {
+                    e.stopImmediatePropagation();
+                }
+            }
+
+            // console.log('CLICK PAUSE/PLAY:', {
+            //     isYoutubeAudio: vm.isYoutubeAudio,
+            //     youtubeVideoId: vm.youtubeVideoId
+            // });
+
+            if (vm.isYoutubeAudio) {
+                var now = Date.now();
+
+                if (now - lastToggleYoutubeTime < 300) {
+                    return;
+                }
+
+                lastToggleYoutubeTime = now;
+
+                runYoutubeAction(function (player) {
+                    try {
+                        var state = player.getPlayerState ? player.getPlayerState() : null;
+                        var ytState = window.YT && YT.PlayerState ? YT.PlayerState : {
+                            PLAYING: 1,
+                            BUFFERING: 3
+                        };
+
+                        // console.log('YOUTUBE TOGGLE:', {
+                        //     state: state
+                        // });
+
+                        if (state === ytState.PLAYING || state === ytState.BUFFERING) {
+                            player.pauseVideo();
+                        } else {
+                            player.playVideo();
+                        }
+                    } catch (err) {
+                        // console.log('Không điều khiển được YouTube pause/play:', err);
+                    }
+                });
+
+                return;
+            }
+
+            var audio = getMainAudio();
+
+            if (!audio) {
+                return;
+            }
+
+            if (audio.paused) {
+                var playPromise = audio.play();
+
+                if (playPromise && playPromise.catch) {
+                    playPromise.catch(function (err) {
+                        // console.log('Audio play error:', err);
+                    });
+                }
+            } else {
+                audio.pause();
             }
         };
 
-        vm.backForthAudio = function () {
-            if(event.keyCode == 37){
-                vm.backwardAudio();
+        vm.backwardAudio = function (e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (e.stopImmediatePropagation) {
+                    e.stopImmediatePropagation();
+                }
             }
-            if(event.keyCode == 39){
-                vm.forwardAudio();
+
+            // console.log('CLICK BACK:', {
+            //     isYoutubeAudio: vm.isYoutubeAudio,
+            //     youtubeVideoId: vm.youtubeVideoId
+            // });
+
+            var timeValue = 3;
+
+            if (vm.isYoutubeAudio) {
+                seekYoutubeBy(-timeValue);
+                return;
             }
+
+            var audio = getMainAudio();
+
+            if (!audio) {
+                return;
+            }
+
+            audio.currentTime = Math.max(0, (audio.currentTime || 0) - timeValue);
+        };
+
+        vm.forwardAudio = function (e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (e.stopImmediatePropagation) {
+                    e.stopImmediatePropagation();
+                }
+            }
+
+            // console.log('CLICK FORWARD:', {
+            //     isYoutubeAudio: vm.isYoutubeAudio,
+            //     youtubeVideoId: vm.youtubeVideoId
+            // });
+
+            var timeValue = 3;
+
+            if (vm.isYoutubeAudio) {
+                seekYoutubeBy(timeValue);
+                return;
+            }
+
+            var audio = getMainAudio();
+
+            if (!audio) {
+                return;
+            }
+
+            var duration = isFinite(audio.duration) ? audio.duration : (audio.currentTime || 0) + timeValue;
+
+            audio.currentTime = Math.min(duration, (audio.currentTime || 0) + timeValue);
         };
 
         vm.increaseSpeed = function () {
-            if(vm.playbackValue >= 4){
+            if (vm.playbackValue >= 4) {
                 return;
             }
 
-            vm.playbackValue = vm.playbackValue + 0.1;
+            vm.playbackValue = Math.round((vm.playbackValue + 0.1) * 10) / 10;
 
-            mainAudio.playbackRate  = vm.playbackValue;
-            loadVideoYouTube.playbackRate  = vm.playbackValue;
+            if (vm.isYoutubeAudio) {
+                applyYoutubeSettings();
+                return;
+            }
 
+            applyNormalAudioSettings();
         };
 
         vm.decreaseSpeed = function () {
-            if(vm.playbackValue <= 0.6){
+            if (vm.playbackValue <= 0.6) {
                 return;
             }
 
-            vm.playbackValue = vm.playbackValue - 0.1;
+            vm.playbackValue = Math.round((vm.playbackValue - 0.1) * 10) / 10;
 
-            mainAudio.playbackRate  = vm.playbackValue;
-            loadVideoYouTube.playbackRate  = vm.playbackValue;
+            if (vm.isYoutubeAudio) {
+                applyYoutubeSettings();
+                return;
+            }
+
+            applyNormalAudioSettings();
         };
 
         vm.increaseVolume = function () {
-            if(vm.volumeValue >= 1){
+            if (vm.volumeValue >= 1) {
                 return;
             }
 
-            vm.volumeValue = vm.volumeValue + 0.05;
+            vm.volumeValue = Math.round((vm.volumeValue + 0.05) * 100) / 100;
 
-            mainAudio.volume  = vm.volumeValue;
+            if (vm.volumeValue > 1) {
+                vm.volumeValue = 1;
+            }
 
+            if (vm.isYoutubeAudio) {
+                applyYoutubeSettings();
+                return;
+            }
+
+            applyNormalAudioSettings();
         };
 
         vm.decreaseVolume = function () {
-            if(vm.volumeValue <= 0){
+            if (vm.volumeValue <= 0) {
                 return;
             }
 
-            vm.volumeValue = vm.volumeValue - 0.05;
+            vm.volumeValue = Math.round((vm.volumeValue - 0.05) * 100) / 100;
 
-            mainAudio.volume  = vm.volumeValue;
+            if (vm.volumeValue < 0) {
+                vm.volumeValue = 0;
+            }
 
+            if (vm.isYoutubeAudio) {
+                applyYoutubeSettings();
+                return;
+            }
+
+            applyNormalAudioSettings();
         };
 
-        vm.backwardAudio = function () {
-            var currentTime = mainAudio.currentTime;
-            var timeValue = 3;
-            if(currentTime < timeValue){
-                mainAudio.currentTime = 0;
-            }else{
-                mainAudio.currentTime = currentTime - timeValue;
+        vm.backForthAudio = function (e) {
+            e = e || window.event;
+
+            var keyCode = e.which || e.keyCode;
+
+            if (keyCode === 37) {
+                vm.backwardAudio(e);
+            }
+
+            if (keyCode === 39) {
+                vm.forwardAudio(e);
             }
         };
 
-        vm.forwardAudio = function () {
-            var currentTime = mainAudio.currentTime;
-            var timeValue = 3;
-            if((currentTime + timeValue) > mainAudio.duration){
-                mainAudio.currentTime = mainAudio.duration;
-            }else{
-                mainAudio.currentTime = currentTime + timeValue;
+        vm.pauseAudio = function (e) {
+            e = e || window.event;
+
+            var keyCode = e.which || e.keyCode;
+
+            if (keyCode === 32) {
+                vm.togglePauseAudio(e);
             }
         };
 
-        vm.backForthVideo = function () {
-            if(event.keyCode == 37){
-                vm.backwardVideo();
+        vm.onGapAudioShortcut = function (e) {
+            e = e || window.event;
+
+            if (!(vm.mode && (vm.mode.id == 8 || vm.mode.id == 11))) {
+                return;
             }
-            if(event.keyCode == 39){
-                vm.forwardVideo();
+
+            var key = e.key || '';
+            var code = e.code || '';
+            var keyCode = e.which || e.keyCode;
+
+            var isBackward =
+                key === 'ArrowLeft' ||
+                code === 'ArrowLeft' ||
+                keyCode === 37 ||
+                key === '<' ||
+                (e.shiftKey && keyCode === 188) ||
+                (e.shiftKey && code === 'Comma');
+
+            var isForward =
+                key === 'ArrowRight' ||
+                code === 'ArrowRight' ||
+                keyCode === 39 ||
+                key === '>' ||
+                (e.shiftKey && keyCode === 190) ||
+                (e.shiftKey && code === 'Period');
+
+            var isSpace =
+                key === ' ' ||
+                key === 'Spacebar' ||
+                code === 'Space' ||
+                keyCode === 32;
+
+            if (!isBackward && !isForward && !isSpace) {
+                return;
+            }
+
+            // Quan trọng:
+            // Chặn input nhận phím này, nếu không:
+            // - ArrowLeft/ArrowRight sẽ chỉ di chuyển con trỏ trong input
+            // - Space sẽ chỉ nhập dấu cách trong input
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (e.stopImmediatePropagation) {
+                e.stopImmediatePropagation();
+            }
+
+            if (isBackward) {
+                vm.backwardAudio(e);
+                return;
+            }
+
+            if (isForward) {
+                vm.forwardAudio(e);
+                return;
+            }
+
+            if (isSpace) {
+                vm.togglePauseAudio(e);
             }
         };
 
-        vm.pauseAudio = function () {
-            if(event.keyCode == 32){
-                if (mainAudio.paused) {
-                    mainAudio.play();
-                } else {
-                    mainAudio.pause();
-                }
+        function handleGapAudioShortcutKeydown(e) {
+            if (!(vm.mode && (vm.mode.id == 8 || vm.mode.id == 11))) {
+                return;
             }
-        };
+
+            vm.onGapAudioShortcut(e);
+
+            if (!$scope.$$phase) {
+                $scope.$applyAsync();
+            }
+        }
+
+// Bắt trên window, capture = true
+// Như vậy kể cả focus đang ở input thì vẫn bắt được trước input
+        window.addEventListener('keydown', handleGapAudioShortcutKeydown, true);
+
+        $scope.$on('$destroy', function () {
+            window.removeEventListener('keydown', handleGapAudioShortcutKeydown, true);
+        });
 
         function toLowerCaseNonAccentVietnamese(str) {
             str = str.toLowerCase();
@@ -3340,34 +3976,34 @@
             }
         };
 
-        vm.togglePauseAudio = function () {
-            var audio = getMainAudio();
-            if (!audio) return;
-
-            if (audio.paused) {
-                audio.play();
-            } else {
-                audio.pause();
-            }
-        };
-
-        vm.backwardAudio = function () {
-            var audio = getMainAudio();
-            if (!audio) return;
-
-            var timeValue = 3;
-            audio.currentTime = Math.max(0, (audio.currentTime || 0) - timeValue);
-        };
-
-        vm.forwardAudio = function () {
-            var audio = getMainAudio();
-            if (!audio) return;
-
-            var timeValue = 3;
-            var duration = isFinite(audio.duration) ? audio.duration : audio.currentTime + timeValue;
-
-            audio.currentTime = Math.min(duration, (audio.currentTime || 0) + timeValue);
-        };
+        // vm.togglePauseAudio = function () {
+        //     var audio = getMainAudio();
+        //     if (!audio) return;
+        //
+        //     if (audio.paused) {
+        //         audio.play();
+        //     } else {
+        //         audio.pause();
+        //     }
+        // };
+        //
+        // vm.backwardAudio = function () {
+        //     var audio = getMainAudio();
+        //     if (!audio) return;
+        //
+        //     var timeValue = 3;
+        //     audio.currentTime = Math.max(0, (audio.currentTime || 0) - timeValue);
+        // };
+        //
+        // vm.forwardAudio = function () {
+        //     var audio = getMainAudio();
+        //     if (!audio) return;
+        //
+        //     var timeValue = 3;
+        //     var duration = isFinite(audio.duration) ? audio.duration : audio.currentTime + timeValue;
+        //
+        //     audio.currentTime = Math.min(duration, (audio.currentTime || 0) + timeValue);
+        // };
 
         vm.onGapAudioShortcut = function (e) {
             e = e || window.event;

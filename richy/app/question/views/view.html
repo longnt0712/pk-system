@@ -984,90 +984,178 @@
                             <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
                         </div>
                         <div class="col-md-9">
-                            <div class="row audio-menu">
-                                <div class="col-md-4"></div>
-                                <div class="col-md-12 text-center">
-                                    <audio id="main-audio" controls controlsList="nodownload" style="width: 70%">
-                                        <source src="http://docs.google.com/uc?export=open&id=1rU-C_PU00o_tdFAMFqpyB5hGMSYk2z8L" type="audio/mpeg">
-                                        Your browser does not support the audio element.
-                                    </audio>
+                            <div class="gap-top-info-box">
+                                <h2 class="bold" ng-bind-html="vm.currentCard.question"></h2>
 
-                                    <br>
-                                    <span class="global-mobile-audio-seek-controls">
-                                        <button type="button"
-                                                class="global-mobile-audio-seek-btn global-mobile-audio-back-btn"
-                                                ng-click="vm.backwardAudio(e)"
-                                                aria-label="Playback 3 seconds">
-                                            <i class="fa fa-backward" aria-hidden="true"></i>
-                                        </button>
+                                <div class="gap-top-info-line">
+                                    <span>{{vm.finishListening}} === Progress: {{vm.percentage}}%</span>
 
-                                        <button type="button"
-                                                class="global-mobile-audio-seek-btn global-mobile-audio-forward-btn"
-                                                ng-click="vm.forwardAudio(e)"
-                                                aria-label="Forward 3 seconds">
-                                            <i class="fa fa-forward" aria-hidden="true"></i>
-                                        </button>
-                                    </span>
-                                    | Speed:
-                                    <input class="input-underline-only" style="width:70px;text-align: center" id="play-back-input" ng-disabled="true" type="number" min="0.5" max="4" ng-value="vm.playbackValue | number : 1"/>
+                                    <button class="btn btn-danger" ng-click="vm.saveTestResult()">
+                                        SURRENDER
+                                    </button>
+
+                                <span ng-if="vm.mode.id == 8 || vm.mode.id == 11">
+                                    <label class="bold">Gap rate:</label>
+
+                                    <input type="number"
+                                           min="30"
+                                           max="100"
+                                           step="5"
+                                           ng-model="vm.gapRatePercent"
+                                           ng-change="vm.changeGapRate()"
+                                           ng-model-options="{ debounce: 500 }"
+                                           class="form-control input-sm"
+                                           style="width: 80px; display: inline-block;" />
+
+                                    <span>%</span>
+                                </span>
+                                </div>
+                            </div>
+
+                            <div class="gap-main-control-box">
+
+                                <div ng-if="vm.isYoutubeAudio" class="gap-youtube-note">
+                                    YouTube mode: dùng nút dưới đây để pause / back 3s / forward 3s
+                                </div>
+
+                                <audio id="main-audio"
+                                       ng-show="!vm.isYoutubeAudio"
+                                       controls
+                                       controlsList="nodownload"
+                                       style="width: 70%; margin-bottom: 10px;">
+                                    Your browser does not support the audio element.
+                                </audio>
+
+                                <br ng-if="!vm.isYoutubeAudio">
+
+                                <span class="global-mobile-audio-seek-controls">
+                                    <button type="button"
+                                            class="global-mobile-audio-seek-btn global-mobile-audio-back-btn"
+                                            ng-click="vm.backwardAudio($event)"
+                                            aria-label="Playback 3 seconds">
+                                        <i class="fa fa-backward" aria-hidden="true"></i>
+                                    </button>
+
+                                    <button type="button"
+                                            class="global-mobile-audio-seek-btn"
+                                            ng-click="vm.togglePauseAudio($event)"
+                                            aria-label="Pause or resume">
+                                        <i class="fa fa-pause" aria-hidden="true"></i>
+                                        /
+                                        <i class="fa fa-play" aria-hidden="true"></i>
+                                    </button>
+
+                                    <button type="button"
+                                            class="global-mobile-audio-seek-btn global-mobile-audio-forward-btn"
+                                            ng-click="vm.forwardAudio($event)"
+                                            aria-label="Forward 3 seconds">
+                                        <i class="fa fa-forward" aria-hidden="true"></i>
+                                    </button>
+                                </span>
+
+                                <div class="gap-main-control-row">
+                                    Speed:
+                                    <input class="input-underline-only"
+                                           style="width:70px;text-align: center"
+                                           ng-disabled="true"
+                                           type="number"
+                                           min="0.5"
+                                           max="4"
+                                           ng-value="vm.playbackValue | number : 1"/>
 
                                     <button ng-click="vm.increaseSpeed()">
-                                        <i class="fa fa-arrow-up" aria-hidden="true"></i></button>
-                                    <button ng-click="vm.decreaseSpeed()">
-                                        <i class="fa fa-arrow-down" aria-hidden="true"></i></button>
+                                        <i class="fa fa-arrow-up" aria-hidden="true"></i>
+                                    </button>
 
-                                    | Volume:
-                                    <input class="input-underline-only" style="width:70px;text-align: center" id="play-back-input" ng-disabled="true" type="number" min="0.5" max="4" ng-value="vm.volumeValue | number : 2"/>
+                                    <button ng-click="vm.decreaseSpeed()">
+                                        <i class="fa fa-arrow-down" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+
+                                <div class="gap-main-control-row">
+                                    Volume:
+                                    <input class="input-underline-only"
+                                           style="width:70px;text-align: center"
+                                           ng-disabled="true"
+                                           type="number"
+                                           min="0"
+                                           max="1"
+                                           ng-value="vm.volumeValue | number : 2"/>
 
                                     <button ng-click="vm.increaseVolume()">
-                                        <i class="fa fa-arrow-up" aria-hidden="true"></i></button>
+                                        <i class="fa fa-arrow-up" aria-hidden="true"></i>
+                                    </button>
+
                                     <button ng-click="vm.decreaseVolume()">
-                                        <i class="fa fa-arrow-down" aria-hidden="true"></i></button>
+                                        <i class="fa fa-arrow-down" aria-hidden="true"></i>
+                                    </button>
                                 </div>
-                                <div class="col-md-4"></div>
-                                <div class="col-md-12 text-center">
-                                    (hit '<i class="fa fa-chevron-left bold"></i>' playback 3s) | (hit '<i class="bold fa fa-chevron-right"></i>' forward 3s) | (hit 'space' to pause/resume)
-                                </div>
-                            </div>
 
-                            <div class="row margin-bottom-10">
-                                <div class="col-md-12 text-center">
-                                    <h2 class="bold" ng-bind-html="vm.currentCard.question"></h2>
-                                    <span>{{vm.finishListening}} === Progress: {{vm.percentage}}%</span>
-                                    <button class="btn btn-danger" ng-click="vm.saveTestResult()"> SURRENDER</button>
-                                    <span ng-if="vm.mode.id == 8 || vm.mode.id == 11"
-                                          style="margin-left: 10px; display: inline-block;">
-                                        <label class="bold">Gap rate:</label>
-
-                                        <input
-                                                type="number"
-                                                min="30"
-                                                max="100"
-                                                step="5"
-                                                ng-model="vm.gapRatePercent"
-                                                ng-change="vm.changeGapRate()"
-                                                ng-model-options="{ debounce: 500 }"
-                                                class="form-control input-sm"
-                                                style="width: 80px; display: inline-block;"
-                                        />
-
-                                        <span>%</span>
-                                    </span>
+                                <div class="gap-shortcut-text" style="margin-top: 10px;">
+                                    (hit '<i class="fa fa-chevron-left bold"></i>' playback 3s)
+                                    |
+                                    (hit '<i class="bold fa fa-chevron-right"></i>' forward 3s)
+                                    |
+                                    (hit 'space' to pause/resume)
                                 </div>
 
                             </div>
 
-                            <div class="row margin-top-10 margin-bottom-10 filling-content">
-                                <div class="col-md-12">
-                                    <div class="bold"
-                                            ng-class="{
-                                                'gap-english-content': vm.mode.id == 8,
-                                                'gap-vni-tntt-content': vm.mode.id == 11
+                            <!-- =========================
+                                 KHÔNG PHẢI YOUTUBE: giữ layout cũ
+                            ========================== -->
+                            <div ng-if="!vm.isYoutubeAudio">
+
+                                <div class="row margin-top-10 margin-bottom-10 filling-content">
+                                    <div class="col-md-12">
+                                        <div class="bold"
+                                             ng-class="{
+                                                 'gap-english-content': vm.mode.id == 8,
+                                                 'gap-vni-tntt-content': vm.mode.id == 11
                                              }"
-                                            compile="vm.fillingGapQuestion"></div>
+                                             compile="vm.fillingGapQuestion"></div>
+                                    </div>
                                 </div>
 
                             </div>
+
+
+                            <!-- =========================
+                                 YOUTUBE: chia đôi màn hình
+                                 Trái: video
+                                 Phải: điền từ
+                            ========================== -->
+                            <div ng-if="vm.isYoutubeAudio" class="youtube-gap-split-layout">
+
+                                <div class="youtube-gap-left">
+                                    <div class="row audio-menu">
+                                        <div class="col-md-12 text-center">
+
+                                            <div class="gap-youtube-player-wrap">
+                                                <div id="youtube-gap-player"></div>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="youtube-gap-right">
+
+                                    <div class="row margin-top-10 margin-bottom-10 filling-content">
+                                        <div class="col-md-12">
+                                            <div class="bold"
+                                                 ng-class="{
+                                                     'gap-english-content': vm.mode.id == 8,
+                                                     'gap-vni-tntt-content': vm.mode.id == 11
+                                                 }"
+                                                 compile="vm.fillingGapQuestion"></div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
                         </div>
                         <div class="col-md-4"></div>
                         <div class="col-md-12 margin-top-10">
@@ -5957,5 +6045,153 @@
         display: inline-block;
         min-width: 38px;
         text-align: left;
+    }
+</style>
+
+<style>
+    .gap-youtube-player-wrap {
+        width: 70%;
+        max-width: 900px;
+        margin: 0 auto 10px auto;
+        aspect-ratio: 16 / 9;
+        background: #000;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .gap-youtube-player-wrap iframe {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    .gap-youtube-note {
+        margin-top: 6px;
+        font-size: 13px;
+        color: #777;
+    }
+
+    .youtube-gap-split-layout {
+        display: flex;
+        align-items: flex-start;
+        gap: 18px;
+        width: 100%;
+    }
+
+    .youtube-gap-left {
+        flex: 0 0 48%;
+        max-width: 48%;
+        position: sticky;
+        top: 10px;
+        align-self: flex-start;
+    }
+
+    .youtube-gap-right {
+        flex: 0 0 52%;
+        max-width: 52%;
+        max-height: calc(100vh - 120px);
+        overflow-y: auto;
+        padding-right: 8px;
+    }
+
+    .youtube-gap-left .gap-youtube-player-wrap {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 auto 10px auto !important;
+        aspect-ratio: 16 / 9;
+    }
+
+    .youtube-gap-left .gap-youtube-player-wrap iframe {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    .youtube-gap-left .audio-menu {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .youtube-gap-left .global-mobile-audio-seek-controls {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .youtube-gap-right .filling-content {
+        margin-top: 10px !important;
+    }
+
+    @media (max-width: 991px) {
+        .youtube-gap-split-layout {
+            display: block;
+        }
+
+        .youtube-gap-left,
+        .youtube-gap-right {
+            flex: none;
+            max-width: 100%;
+            width: 100%;
+            position: static;
+            max-height: none;
+            overflow-y: visible;
+        }
+
+        .youtube-gap-left {
+            margin-bottom: 15px;
+        }
+    }
+
+    .gap-top-info-box {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 14px;
+    }
+
+    .gap-top-info-box h2 {
+        margin-top: 0;
+        margin-bottom: 12px;
+    }
+
+    .gap-top-info-line {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .youtube-gap-split-layout {
+        margin-top: 10px;
+    }
+
+    .gap-main-control-box {
+        width: 100%;
+        text-align: center;
+        margin-top: 12px;
+        margin-bottom: 18px;
+    }
+
+    .gap-main-control-box .global-mobile-audio-seek-controls {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        margin-top: 10px;
+        margin-bottom: 12px;
+    }
+
+    .gap-main-control-row {
+        margin-top: 10px;
+    }
+
+    .gap-main-control-row input {
+        margin-left: 8px;
+        margin-right: 8px;
+    }
+
+    .youtube-gap-left .gap-youtube-note,
+    .youtube-gap-left .global-mobile-audio-seek-controls,
+    .youtube-gap-left .gap-main-control-row,
+    .youtube-gap-left .gap-shortcut-text {
+        display: none !important;
     }
 </style>
