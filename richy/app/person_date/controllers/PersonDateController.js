@@ -29,93 +29,89 @@
             restrict: 'A',
             require: '?ngModel',
             link: function (scope, element, attrs, ngModelController) {
+                var datepickerFormat = 'dd/mm/yyyy';
+                var momentFormat = 'DD/MM/YYYY';
 
-                // Private variables
-                var datepickerFormat = 'dd/mm/yyyy',
-                    momentFormat = 'DD/MM/YYYY',
-                    datepicker,
-                    elPicker;
+                function toMoment(value) {
+                    if (!value) return null;
 
-                // Init date picker and get objects http://bootstrap-datepicker.readthedocs.org/en/release/index.html
-                datepicker = element.datepicker({
+                    if (angular.isDate(value)) {
+                        var mDate = moment(value);
+                        return mDate.isValid() ? mDate : null;
+                    }
+
+                    if (angular.isNumber(value)) {
+                        var mNumber = moment(value);
+                        return mNumber.isValid() ? mNumber : null;
+                    }
+
+                    if (angular.isString(value)) {
+                        var text = value.trim();
+
+                        // Quan trọng: parse string theo DD/MM/YYYY, KHÔNG dùng moment(text)
+                        var mText = moment(text, ['DD/MM/YYYY', 'D/M/YYYY'], true);
+                        if (mText.isValid()) return mText;
+
+                        var mIso = moment(text, moment.ISO_8601, true);
+                        if (mIso.isValid()) return mIso;
+
+                        return null;
+                    }
+
+                    var m = moment(value);
+                    return m.isValid() ? m : null;
+                }
+
+                element.datepicker({
                     autoclose: true,
                     keyboardNavigation: false,
                     todayHighlight: true,
                     format: datepickerFormat
                 });
-                elPicker = datepicker.data('datepicker').picker;
 
-                // Adjust offset on show
-                datepicker.on('show', function (evt) {
-                    elPicker.css('left', parseInt(elPicker.css('left')) + +attrs.offsetX);
-                    elPicker.css('top', parseInt(elPicker.css('top')) + +attrs.offsetY);
+                if (!ngModelController) return;
+
+                ngModelController.$formatters.push(function (modelValue) {
+                    var m = toMoment(modelValue);
+                    var viewValue = m ? m.format(momentFormat) : '';
+
+                    element.datepicker('update', viewValue);
+                    return viewValue;
                 });
 
-                // Only watch and format if ng-model is present https://docs.angularjs.org/api/ng/type/ngModel.NgModelController
-                if (ngModelController) {
-                    // So we can maintain time
-                    var lastModelValueMoment;
+                ngModelController.$parsers.push(function (viewValue) {
+                    if (!viewValue) return null;
 
-                    ngModelController.$formatters.push(function (modelValue) {
-                        //
-                        // Date -> String
-                        //
+                    var m = moment(String(viewValue).trim(), ['DD/MM/YYYY', 'D/M/YYYY'], true);
+                    return m.isValid() ? m.toDate() : null;
+                });
 
-                        // Get view value (String) from model value (Date)
-                        var viewValue,
-                            m = moment(modelValue);
-                        if (modelValue && m.isValid()) {
-                            // Valid date obj in model
-                            lastModelValueMoment = m.clone(); // Save date (so we can restore time later)
-                            viewValue = m.format(momentFormat);
-                        } else {
-                            // Invalid date obj in model
-                            lastModelValueMoment = undefined;
-                            viewValue = undefined;
-                        }
+                ngModelController.$render = function () {
+                    var value = ngModelController.$viewValue || '';
+                    element.val(value);
+                    element.datepicker('update', value);
+                };
 
-                        // Update picker
-                        element.datepicker('update', viewValue);
+                element.on('changeDate', function (evt) {
+                    scope.$applyAsync(function () {
+                        var value = evt.date
+                            ? moment(evt.date).format(momentFormat)
+                            : element.val();
 
-                        // Update view
-                        return viewValue;
+                        ngModelController.$setViewValue(value);
+                        ngModelController.$render();
                     });
+                });
 
-                    ngModelController.$parsers.push(function (viewValue) {
-                        //
-                        // String -> Date
-                        //
-
-                        // Get model value (Date) from view value (String)
-                        var modelValue,
-                            m = moment(viewValue, momentFormat, true);
-                        if (viewValue && m.isValid()) {
-                            // Valid date string in view
-                            if (lastModelValueMoment) { // Restore time
-                                m.hour(lastModelValueMoment.hour());
-                                m.minute(lastModelValueMoment.minute());
-                                m.second(lastModelValueMoment.second());
-                                m.millisecond(lastModelValueMoment.millisecond());
-                            }
-                            modelValue = m.toDate();
-                        } else {
-                            // Invalid date string in view
-                            modelValue = undefined;
-                        }
-
-                        // Update model
-                        return modelValue;
+                element.on('blur', function () {
+                    scope.$applyAsync(function () {
+                        ngModelController.$setViewValue(element.val());
                     });
+                });
 
-                    datepicker.on('changeDate', function (evt) {
-                        // Only update if it's NOT an <input> (if it's an <input> the datepicker plugin trys to cast the val to a Date)
-                        if (evt.target.tagName !== 'INPUT') {
-                            ngModelController.$setViewValue(moment(evt.date).format(momentFormat)); // $seViewValue basically calls the $parser above so we need to pass a string date value in
-                            ngModelController.$render();
-                        }
-                    });
-                }
-
+                element.on('$destroy', function () {
+                    element.datepicker('destroy');
+                });
             }
         };
     });
@@ -634,54 +630,118 @@
             vm.totalAbsentClass = 0;
         };
 
+        function parseDateOnly(value) {
+            if (!value) return null;
+
+            var m = null;
+
+            if (angular.isDate(value)) {
+                m = moment(value);
+            } else if (angular.isNumber(value)) {
+                m = moment(value);
+            } else if (angular.isString(value)) {
+                var text = value.trim();
+
+                // Không dùng new Date('08/05/2026') hoặc Date.parse('08/05/2026')
+                m = moment(text, ['DD/MM/YYYY', 'D/M/YYYY'], true);
+
+                if (!m.isValid()) {
+                    m = moment(text, moment.ISO_8601, true);
+                }
+            } else {
+                m = moment(value);
+            }
+
+            if (!m || !m.isValid()) {
+                return null;
+            }
+
+            var d = m.toDate();
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
+
+        function getSearchDateRange(startValue, endValue) {
+            var start = parseDateOnly(startValue);
+            var end = parseDateOnly(endValue);
+
+            if (!start || !end) {
+                toastr.warning('Ngày không hợp lệ. Vui lòng nhập theo định dạng dd/MM/yyyy.', 'Thông báo');
+                return null;
+            }
+
+            if (start > end) {
+                toastr.warning('Từ ngày không được lớn hơn đến ngày.', 'Thông báo');
+                return null;
+            }
+
+            return {
+                start: start,
+                end: end,
+                startTime: start.getTime(),
+                endTime: end.getTime()
+            };
+        }
+
         vm.getPage = function () {
-            blockUI.start();
-            vm.startDate.setHours(0, 0, 0, 0);
-            vm.endDate.setHours(0, 0, 0, 0);
-            vm.searchDto.startDate =  Date.parse(vm.startDate);
-            vm.searchDto.endDate =  Date.parse(vm.endDate);
+            var range = getSearchDateRange(vm.startDate, vm.endDate);
+            if (!range) return;
+
+            vm.startDate = range.start;
+            vm.endDate = range.end;
+
+            vm.searchDto.startDate = range.startTime;
+            vm.searchDto.endDate = range.endTime;
 
             vm.resetSum();
+            blockUI.start();
 
-            service.getPage(vm.searchDto, vm.pageIndex, vm.pageSize).then(function (data) {
-                blockUI.stop();
+            service.getPage(vm.searchDto, vm.pageIndex, vm.pageSize)
+                .then(function (data) {
+                    vm.personDates = data.content || [];
+                    vm.totalStudent = data.totalElements || 0;
 
-                vm.personDates = data.content || [];
-                vm.totalStudent = data.totalElements;
+                    angular.forEach(vm.personDates, function (value) {
+                        if (value.statusMass == 1) {
+                            vm.totalMass1 = vm.totalMass1 + 1;
+                        }
 
-                angular.forEach(vm.personDates, function(value, key) {
-                    if(value.statusMass == 1){ //có
-                        vm.totalMass1 = vm.totalMass1 + 1;
-                    }
-                    if(value.statusMass == 2){ // không
-                        vm.totalMass2 = vm.totalMass2 + 1;
-                    }
-                    if(value.statusMass == 5){ // ca đoàn
-                        vm.totalMass5 = vm.totalMass5 + 1;
-                    }
-                    if(value.statusMass == 6){ // phép
-                        vm.totalMass6 = vm.totalMass6 + 1;
-                    }
+                        if (value.statusMass == 2) {
+                            vm.totalMass2 = vm.totalMass2 + 1;
+                        }
 
-                    if(value.statusClass == 1){ //có
-                        vm.totalClass1 = vm.totalClass1 + 1;
-                    }
-                    if(value.statusClass == 2){ // không
-                        vm.totalClass2 = vm.totalClass2 + 1;
-                    }
-                    // if(value.statusClass == 5){ // ca đoàn
-                    //     vm.totalClass5 = vm.totalClass5 + 1;
-                    // }
-                    if(value.statusClass == 6){ // phép
-                        vm.totalClass6 = vm.totalClass6 + 1;
-                    }
+                        if (value.statusMass == 5) {
+                            vm.totalMass5 = vm.totalMass5 + 1;
+                        }
+
+                        if (value.statusMass == 6) {
+                            vm.totalMass6 = vm.totalMass6 + 1;
+                        }
+
+                        if (value.statusClass == 1) {
+                            vm.totalClass1 = vm.totalClass1 + 1;
+                        }
+
+                        if (value.statusClass == 2) {
+                            vm.totalClass2 = vm.totalClass2 + 1;
+                        }
+
+                        if (value.statusClass == 6) {
+                            vm.totalClass6 = vm.totalClass6 + 1;
+                        }
+                    });
+
+                    vm.totalGoToChurch = vm.totalMass1 + vm.totalMass5;
+                    vm.totalAbsentChurch = vm.totalMass2 + vm.totalMass6;
+                    vm.totalAbsentClass = vm.totalClass2 + vm.totalClass6;
+                })
+                .catch(function (err) {
+                    console.error(err);
+                    toastr.error('Tải danh sách điểm danh thất bại.', 'Lỗi');
+                })
+                .finally(function () {
+                    blockUI.stop();
                 });
-
-                vm.totalGoToChurch = vm.totalMass1 + vm.totalMass5;
-                // vm.totalGoToClass = vm.totalClass1 + vm.totalClass5;
-                vm.totalAbsentChurch = vm.totalMass2 + vm.totalMass6;
-                vm.totalAbsentClass = vm.totalClass2 + vm. totalClass6;
-            });
         };
 
         vm.getPage();
@@ -1066,25 +1126,31 @@
         // vm.endDate.setHours(0, 0, 0, 0);
 
         vm.setDateForBills = function () {
-            if(vm.startDate != null && vm.endDate != null){
-                //vm.startDate = DateUtil.addDays(myDate, 1);
-                vm.startDate.setHours(0, 0, 0, 0);
-                vm.endDate.setHours(0, 0, 0, 0);
-                vm.searchDto.startDate =  Date.parse(vm.startDate);
-                vm.searchDto.endDate =  Date.parse(vm.endDate);
-            }
+            var range = getSearchDateRange(vm.startDate, vm.endDate);
+            if (!range) return false;
+
+            vm.startDate = range.start;
+            vm.endDate = range.end;
+
+            vm.searchDto.startDate = range.startTime;
+            vm.searchDto.endDate = range.endTime;
+
+            return true;
         };
 
         vm.statistics = function () {
-
-            if(angular.isUndefined(vm.startDate)){
+            if (!vm.startDate) {
                 vm.startDate = new Date();
             }
-            if(angular.isUndefined(vm.endDate)){
+
+            if (!vm.endDate) {
                 vm.endDate = new Date();
             }
 
-            vm.setDateForBills();
+            if (!vm.setDateForBills()) {
+                return;
+            }
+
             vm.getPage();
         };
 
@@ -1661,8 +1727,11 @@
                 return;
             }
 
-            var fromDate = new Date(vm.startDate);
-            var toDate = new Date(vm.endDate);
+            var range = getSearchDateRange(vm.startDate, vm.endDate);
+            if (!range) return;
+
+            var fromDate = range.start;
+            var toDate = range.end;
 
             fromDate.setHours(0, 0, 0, 0);
             toDate.setHours(0, 0, 0, 0);
