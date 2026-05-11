@@ -77,6 +77,8 @@ public class QuestionServiceImpl implements QuestionService {
 	TopicRepository topicRepository;
 	@Autowired
 	UserRepository userRepository;
+	
+	private static final int MAX_QUESTION_ANSWERS = 30;
 
 	@Override
 	public Page<QuestionDto> getPageObject(QuestionDto searchDto, int pageIndex, int pageSize) {
@@ -1319,6 +1321,23 @@ public class QuestionServiceImpl implements QuestionService {
 //		}
 		
 		if (dto.getQuestionAnswers() != null && dto.getQuestionAnswers().size() > 0) {
+
+		    int validAnswerCount = 0;
+
+		    for (QuestionAnswerDto q : dto.getQuestionAnswers()) {
+		        if (q != null
+		                && q.getAnswer() != null
+		                && q.getAnswer().getAnswer() != null
+		                && !q.getAnswer().getAnswer().trim().isEmpty()) {
+		            validAnswerCount++;
+		        }
+		    }
+
+		    if (validAnswerCount > MAX_QUESTION_ANSWERS) {
+		        ret.setMessage("You can only add up to 30 answers");
+		        return ret;
+		    }
+
 		    HashSet<QuestionAnswer> childrens = new HashSet<QuestionAnswer>();
 		    int index = 1;
 
