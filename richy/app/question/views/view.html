@@ -6326,4 +6326,17 @@
             scroll-margin-bottom: 140px !important;
         }
     }
+
+    @media (max-width: 768px) {
+        .gap-mobile-fixed-audio-controls {
+            opacity: 0.3;
+            transition: opacity 0.2s ease;
+        }
+
+        .gap-mobile-fixed-audio-controls:hover,
+        .gap-mobile-fixed-audio-controls:active,
+        .gap-mobile-fixed-audio-controls:focus-within {
+            opacity: 1;
+        }
+    }
 </style>
