@@ -1090,6 +1090,44 @@
             });
         };
 
+        vm.saveNote = function (personDate) {
+            if (!personDate || !personDate.id) {
+                toastr.warning('Không tìm thấy bản ghi để lưu ghi chú.', 'Thông báo');
+                return;
+            }
+
+            personDate.savingNote = true;
+            personDate.noteSaved = false;
+
+            var noteObject = {
+                id: personDate.id,
+                description: personDate.description,
+                user: {
+                    id: personDate.user && personDate.user.id ? personDate.user.id : null
+                }
+            };
+
+            service.saveObject(noteObject)
+                .then(function (data) {
+                    if (data) {
+                        personDate.description = data.description;
+                    }
+
+                    personDate.noteSaved = true;
+
+                    $timeout(function () {
+                        personDate.noteSaved = false;
+                    }, 1000);
+                })
+                .catch(function (err) {
+                    console.error(err);
+                    toastr.error('Lưu ghi chú thất bại.', 'Lỗi');
+                })
+                .finally(function () {
+                    personDate.savingNote = false;
+                });
+        };
+
         vm.openPhotoPreview = function (user) {
             if (!user || !user.username) {
                 return;

@@ -288,13 +288,32 @@
                                         {{ vm.enrollmentClassMap[personDate.user.person.enrollmentClass] }}
                                     </td>
 
-                                    <td>
-                                        <input data-ng-model="personDate.description"
-                                               placeholder="Ghi chú..."
-                                               type="text"
-                                               autofocus="autofocus"
-                                               class="form-control"
-                                               style="font-size: 15px;" />
+                                    <td style="min-width: 260px;">
+                                        <div class="input-group">
+                                            <input data-ng-model="personDate.description"
+                                                   placeholder="Ghi chú..."
+                                                   type="text"
+                                                   class="form-control"
+                                                   style="font-size: 15px;" />
+
+                                            <span class="input-group-btn">
+                                                <button class="btn"
+                                                        type="button"
+                                                        ng-class="personDate.noteSaved ? 'btn-success' : 'btn-primary'"
+                                                        ng-click="vm.saveNote(personDate)"
+                                                        ng-disabled="personDate.savingNote">
+
+                                                    <span ng-if="!personDate.noteSaved">
+                                                        <i class="fa fa-save"></i>
+                                                        Lưu
+                                                    </span>
+
+                                                    <span ng-if="personDate.noteSaved">
+                                                        <i class="fa fa-check"></i>
+                                                    </span>
+                                                </button>
+                                            </span>
+                                        </div>
                                     </td>
                                 </tr>
                                 </tbody>
