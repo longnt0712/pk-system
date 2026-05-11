@@ -405,9 +405,17 @@
 
                                     <button type="button"
                                             class="btn btn-default"
+                                            ng-disabled="item.questionAnswers && item.questionAnswers.length >= vm.MAX_QUESTION_ANSWERS"
                                             ng-click="vm.addQuestionAnswer(item)">
-                                        <i class="fa fa-plus"></i> Add answer
+                                        <i class="fa fa-plus"></i>
+                                        Add answer {{item.questionAnswers ? item.questionAnswers.length : 0}}/30
                                     </button>
+
+                                    <span ng-if="item.questionAnswers && item.questionAnswers.length >= vm.MAX_QUESTION_ANSWERS"
+                                          class="text-danger"
+                                          style="margin-left: 10px;">
+                                        Đã đạt tối đa 30 answer
+                                    </span>
                                 </div>
 
                                 <!--<div class="col-md-12 margin-bottom-10">-->
@@ -544,23 +552,23 @@
     </div>
 
     <div id="new-item" class="col-md-3">
-        <div class="portlet light bordered">
-            <div class="portlet-body">
-                <div class="row">
-                    <div class="col-md-12 text-center margin-bottom-10">
-                        <h4 class="bold">NEW TOPIC</h4>
-                        <small style="font-style: italic" class="italic">You can choose topic when adding words</small>
-                    </div>
+        <!--<div class="portlet light bordered">-->
+            <!--<div class="portlet-body">-->
+                <!--<div class="row">-->
+                    <!--<div class="col-md-12 text-center margin-bottom-10">-->
+                        <!--<h4 class="bold">NEW TOPIC</h4>-->
+                        <!--<small style="font-style: italic" class="italic">You can choose topic when adding words</small>-->
+                    <!--</div>-->
 
-                    <div class="col-md-10">
-                        <input data-ng-model="vm.topic.name" type="text" placeholder="Topic name (Ex: Science, Environment...)"  class="form-control input-underline-only" />
-                    </div>
-                    <div class="col-md-2 text-center">
-                        <i style="padding-top: 17px; cursor: pointer; color: #0978b1" class="fa fa-plus" ng-click="vm.saveTopic()"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    <!--<div class="col-md-10">-->
+                        <!--<input data-ng-model="vm.topic.name" type="text" placeholder="Topic name (Ex: Science, Environment...)"  class="form-control input-underline-only" />-->
+                    <!--</div>-->
+                    <!--<div class="col-md-2 text-center">-->
+                        <!--<i style="padding-top: 17px; cursor: pointer; color: #0978b1" class="fa fa-plus" ng-click="vm.saveTopic()"></i>-->
+                    <!--</div>-->
+                <!--</div>-->
+            <!--</div>-->
+        <!--</div>-->
 
         <div class="portlet light bordered">
             <div class="portlet-body">
@@ -620,10 +628,10 @@
                                 <label class="bold">Definition - Description</label>
                                 <textarea ui-tinymce="tinymceOptions" rows="6" class="form-control" ng-model="vm.newCard.description"  />
                             </div>
-                            <div class="col-md-12" style="margin-bottom: 10px">
-                                <!--<label class="bold">Pronounce</label>-->
-                                <input placeholder="whatever you want..." rows="2" class="form-control input-underline-only" ng-model="vm.newCard.examples"  />
-                            </div>
+                            <!--<div class="col-md-12" style="margin-bottom: 10px">-->
+                                <!--&lt;!&ndash;<label class="bold">Pronounce</label>&ndash;&gt;-->
+                                <!--<input placeholder="whatever you want..." rows="2" class="form-control input-underline-only" ng-model="vm.newCard.examples"  />-->
+                            <!--</div>-->
                             <!--<div class="col-md-12" style="margin-bottom: 10px">-->
                                 <!--<label class="bold">Examples</label>-->
                                 <!--<textarea ui-tinymce="tinymceOptions" rows="6" class="form-control" ng-model="vm.newCard.examples" autofocus />-->

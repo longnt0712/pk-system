@@ -641,9 +641,16 @@
 
         vm.newCard = buildNewCard();
 
+        vm.MAX_QUESTION_ANSWERS = 30;
+
         vm.addQuestionAnswer = function (card) {
             if (!card.questionAnswers) {
                 card.questionAnswers = [];
+            }
+
+            if (card.questionAnswers.length >= vm.MAX_QUESTION_ANSWERS) {
+                toastr.warning('Chỉ được thêm tối đa 30 answer');
+                return;
             }
 
             card.questionAnswers.push({
@@ -822,6 +829,11 @@
 
             vm.normalizeQuestionAnswers(vm.newCard);
 
+            if (vm.newCard.questionAnswers.length > vm.MAX_QUESTION_ANSWERS) {
+                toastr.warning('Chỉ được thêm tối đa 30 answer');
+                return;
+            }
+
             blockUI.start();
             service.saveObject(vm.newCard).then(function (data) {
                 blockUI.stop();
@@ -844,6 +856,14 @@
 
 
         vm.editFlashCard = function (item) {
+
+            vm.normalizeQuestionAnswers(item);
+
+            if (item.questionAnswers.length > vm.MAX_QUESTION_ANSWERS) {
+                toastr.warning('Chỉ được thêm tối đa 30 answer');
+                return;
+            }
+
             // vm.selectedTopicToEdit = getListTopicFromCard(item.questionTopics);
             // service.saveObject(item, function success() {
             //
