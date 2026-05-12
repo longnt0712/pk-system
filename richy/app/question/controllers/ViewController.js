@@ -173,6 +173,7 @@
 
         var vm = this;
         vm.showVoiceOption = true;
+        vm.blockCopyPasteOnlyMode8 = false;
 
         $timeout(function () {
             loadVoices(0);
@@ -180,56 +181,73 @@
 
         (function () {
 
-            function isBlockMode() {
-                return vm && vm.mode && vm.mode.id === 8;
+            function isBlockMode8Now() {
+                return vm && vm.blockCopyPasteOnlyMode8 === true;
             }
 
-            document.addEventListener('paste', function (e) {
-                if (isBlockMode()) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
+            function blockEvent(e) {
+                if (!isBlockMode8Now()) {
+                    return true;
                 }
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (e.stopImmediatePropagation) {
+                    e.stopImmediatePropagation();
+                }
+
+                return false;
+            }
+
+            document.addEventListener('copy', function (e) {
+                return blockEvent(e);
             }, true);
 
-            document.addEventListener('keydown', function (e) {
-                if (!isBlockMode()) return;
+            document.addEventListener('cut', function (e) {
+                return blockEvent(e);
+            }, true);
 
-                var key = (e.key || '').toLowerCase();
-
-                if (
-                    (e.ctrlKey && key === 'v') ||
-                    (e.shiftKey && e.keyCode === 45)
-                ) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
-                }
+            document.addEventListener('paste', function (e) {
+                return blockEvent(e);
             }, true);
 
             document.addEventListener('contextmenu', function (e) {
-                if (isBlockMode()) {
-                    e.preventDefault();
-                    return false;
-                }
+                return blockEvent(e);
             }, true);
 
             document.addEventListener('drop', function (e) {
-                if (isBlockMode()) {
-                    e.preventDefault();
-                    return false;
-                }
+                return blockEvent(e);
             }, true);
 
             document.addEventListener('dragover', function (e) {
-                if (isBlockMode()) {
-                    e.preventDefault();
-                    return false;
+                return blockEvent(e);
+            }, true);
+
+            document.addEventListener('keydown', function (e) {
+                if (!isBlockMode8Now()) {
+                    return true;
                 }
+
+                var key = (e.key || '').toLowerCase();
+                var keyCode = e.which || e.keyCode;
+
+                var isCopy = e.ctrlKey && key === 'c';
+                var isCut = e.ctrlKey && key === 'x';
+                var isPaste = e.ctrlKey && key === 'v';
+                var isShiftInsertPaste = e.shiftKey && keyCode === 45;
+
+                if (isCopy || isCut || isPaste || isShiftInsertPaste) {
+                    return blockEvent(e);
+                }
+
+                return true;
             }, true);
 
             document.addEventListener('focus', function (e) {
-                if (!isBlockMode()) return;
+                if (!isBlockMode8Now()) {
+                    return true;
+                }
 
                 var el = e.target;
 
@@ -239,6 +257,8 @@
                     el.setAttribute('autocapitalize', 'off');
                     el.setAttribute('spellcheck', 'false');
                 }
+
+                return true;
             }, true);
 
         })();
@@ -1131,6 +1151,8 @@
 
         vm.title = '';
         vm.searchTopicChange = function () {
+            vm.blockCopyPasteOnlyMode8 = vm.mode && vm.mode.id == 8;
+
             vm.showTimer = false;
 
             if(vm.mode.id == 5){
@@ -2320,6 +2342,8 @@
 
         var tuongLai = null;
         vm.modeChange = function () {
+            vm.blockCopyPasteOnlyMode8 = vm.mode && vm.mode.id == 8;
+
             vm.updateSpeechLangByMode();
             if(vm.mode.id == 4){
                 vm.doShuffle();
@@ -3487,7 +3511,7 @@
         vm.onGapAudioShortcut = function (e) {
             e = e || window.event;
 
-            if (!(vm.mode && (vm.mode.id == 8 || vm.mode.id == 11))) {
+            if (!(vm.mode && vm.mode.id == 8)) {
                 return;
             }
 
@@ -3548,7 +3572,9 @@
         };
 
         function handleGapAudioShortcutKeydown(e) {
-            if (!(vm.mode && (vm.mode.id == 8 || vm.mode.id == 11))) {
+            // Mode 11 không dùng audio shortcut nữa.
+            // Để Space cho input xử lý nhảy sang gap tiếp theo.
+            if (!(vm.mode && vm.mode.id == 8)) {
                 return;
             }
 
@@ -3860,7 +3886,7 @@
                         'oncompositionend="this.dataset.composing=\'0\'" ' +
                         'ng-model="vm.gapValues[' + i + ']" ' +
                         'ng-change="vm.onGapInputChange(' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')" ' +
-                        'ng-keydown="vm.onGapAudioShortcut($event)" ' +
+                        'ng-keydown="vm.onGapKeydown($event,' + x.length + ',' + i + ',\'' + gapWordEscaped + '\')" ' +
                         'ng-keyup="vm.onGapKeyup($event,' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')" ' +
                         'class="input-underline-only gap-inline-input" ' +
                         'type="text" ' +
@@ -4154,6 +4180,105 @@
             return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
                 .test(navigator.userAgent || '');
         }
+        function isGapSpaceKey(e) {
+            var key = e && e.key;
+            var keyCode = e && (e.which || e.keyCode);
+
+            return key === ' ' ||
+                key === 'Spacebar' ||
+                keyCode === 32;
+        }
+
+        function focusNextGapInput(totalWords, index) {
+            $timeout(function () {
+                var currentInput = document.getElementById('gap-number-' + index);
+
+                if (currentInput) {
+                    currentInput.blur();
+                }
+
+                for (var j = index + 1; j < totalWords; j++) {
+                    var nextInput = document.getElementById('gap-number-' + j);
+
+                    if (nextInput) {
+                        nextInput.focus();
+                        return;
+                    }
+                }
+            }, 0);
+        }
+
+        function isCurrentGapCorrect(index, gapWord) {
+            var rawTyped = vm.gapValues ? vm.gapValues[index] : '';
+
+            var typed = normalizeGapAutoNext(rawTyped);
+            var answer = normalizeGapAutoNext(gapWord);
+
+            return typed && typed === answer;
+        }
+
+        vm.onGapKeydown = function (e, totalWords, index, gapWord) {
+            e = e || window.event;
+
+            var key = e.key || '';
+            var code = e.code || '';
+            var keyCode = e.which || e.keyCode;
+
+            var isSpace =
+                key === ' ' ||
+                key === 'Spacebar' ||
+                code === 'Space' ||
+                keyCode === 32;
+
+            // MODE 11:
+            // Chỉ xử lý phím Space để nhảy gap.
+            // Các phím khác như ArrowLeft, ArrowRight, Backspace, Delete, Home, End
+            // phải return để con trỏ trong input hoạt động bình thường.
+            if (vm.mode && vm.mode.id == 11) {
+                if (!isSpace) {
+                    return true;
+                }
+
+                if (e.preventDefault) {
+                    e.preventDefault();
+                }
+
+                if (e.stopPropagation) {
+                    e.stopPropagation();
+                }
+
+                var currentInput = document.getElementById('gap-number-' + index);
+                var rawTyped = vm.gapValues ? vm.gapValues[index] : '';
+                var isCorrect = isCurrentGapCorrect(index, gapWord);
+
+                vm.gapCorrectMap = vm.gapCorrectMap || {};
+                vm.gapCorrectMap[index] = isCorrect;
+
+                updateCurrentGapAnswerState(index, rawTyped, isCorrect);
+
+                if (isCorrect) {
+                    if (currentInput) {
+                        currentInput.style.background = 'rgba(183, 244, 216, 0.7)';
+                    }
+
+                    focusNextGapInput(totalWords, index);
+                } else {
+                    if (currentInput) {
+                        if (rawTyped == null || String(rawTyped).trim().length <= 0) {
+                            currentInput.style.background = '';
+                        } else {
+                            currentInput.style.background = 'rgba(255, 180, 180, 0.7)';
+                        }
+                    }
+                }
+
+                vm.tryAutoSaveFillingGaps();
+                return false;
+            }
+
+            // Mode khác giữ shortcut audio cũ.
+            vm.onGapAudioShortcut(e);
+        };
         vm.onGapInputChange = function (totalWords, index, fullText, gapWord) {
             var rawTyped = vm.gapValues ? vm.gapValues[index] : '';
             var typed = normalizeGapAutoNext(rawTyped);
