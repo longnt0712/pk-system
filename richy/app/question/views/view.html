@@ -962,8 +962,8 @@
                             'gap-english-theme': vm.mode.id == 8,
                             'gap-vni-tntt-theme': vm.mode.id == 11
                          }">
-                    <div class="row">
-                        <div class="col-md-3" >
+                    <div class="row gap-filling-equal-row">
+                        <div class="col-md-3 gap-left-list-col">
 
                             <div class="gap-table-search-inner  margin-bottom-10">
                                 <input type="text"
@@ -983,12 +983,12 @@
 
                             <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
                         </div>
-                        <div class="col-md-9">
+                        <div class="col-md-9 gap-right-filling-col">
                             <div class="gap-top-info-box">
                                 <h2 class="bold" ng-bind-html="vm.currentCard.question"></h2>
 
                                 <div class="gap-top-info-line">
-                                    <span>{{vm.finishListening}} === Progress: {{vm.percentage}}%</span>
+                                    <span>Progress: {{vm.percentage}}%</span>
 
                                     <button class="btn btn-danger" ng-click="vm.saveTestResult()">
                                         SURRENDER
@@ -1014,7 +1014,7 @@
 
                             <!-- MOBILE FIXED AUDIO/YOUTUBE CONTROLS -->
                             <div class="gap-mobile-fixed-audio-controls"
-                                 ng-if="vm.mode.id == 8 || vm.mode.id == 11">
+                                 ng-if="vm.mode.id == 8">
 
                                 <button type="button"
                                         class="gap-mobile-audio-btn gap-mobile-back-btn"
@@ -1041,7 +1041,7 @@
 
                             </div>
 
-                            <div class="gap-main-control-box">
+                            <div class="gap-main-control-box" ng-if="vm.mode.id != 11">
 
                                 <div ng-if="vm.isYoutubeAudio" class="gap-youtube-note">
                                     YouTube mode: dùng nút dưới đây để pause / back 3s / forward 3s
@@ -1133,9 +1133,9 @@
                             <!-- =========================
                                  KHÔNG PHẢI YOUTUBE: giữ layout cũ
                             ========================== -->
-                            <div ng-if="!vm.isYoutubeAudio">
+                            <div ng-if="vm.mode.id == 11 || !vm.isYoutubeAudio">
 
-                                <div class="row margin-top-10 margin-bottom-10 filling-content">
+                                <div class="row margin-top-10 margin-bottom-10 filling-content gap-filling-scroll-box">
                                     <div class="col-md-12">
                                         <div class="bold"
                                              ng-class="{
@@ -1154,7 +1154,7 @@
                                  Trái: video
                                  Phải: điền từ
                             ========================== -->
-                            <div ng-if="vm.isYoutubeAudio" class="youtube-gap-split-layout">
+                            <div ng-if="vm.mode.id != 11 && vm.isYoutubeAudio" class="youtube-gap-split-layout">
 
                                 <div class="youtube-gap-left">
                                     <div class="row audio-menu">
@@ -1186,11 +1186,7 @@
                             </div>
 
                         </div>
-                        <div class="col-md-4"></div>
-                        <div class="col-md-12 margin-top-10">
 
-                        </div>
-                        <div class="col-md-1"></div>
                     </div>
 
                 </div>
@@ -6398,5 +6394,44 @@
         font-size: 16px;
         line-height: 1.6;
         text-align: left;
+    }
+
+    @media (min-width: 992px) {
+        .gap-vni-tntt-theme .gap-filling-equal-row {
+            display: flex;
+            align-items: stretch;
+            width: 100%;
+            margin-left: 0;
+            margin-right: 0;
+        }
+
+        .gap-vni-tntt-theme .gap-left-list-col {
+            float: none;
+            flex: 0 0 25%;
+            max-width: 25%;
+        }
+
+        .gap-vni-tntt-theme .gap-right-filling-col {
+            float: none;
+            flex: 0 0 75%;
+            max-width: 75%;
+            display: flex;
+            flex-direction: column;
+            min-height: 620px;
+        }
+
+        .gap-vni-tntt-theme .gap-top-info-box {
+            flex: 0 0 auto;
+        }
+
+        .gap-vni-tntt-theme .gap-filling-scroll-box {
+            flex: 1 1 auto;
+            min-height: 430px;
+            overflow-y: auto !important;
+            overflow-x: auto !important;
+            margin-left: 0;
+            margin-right: 0;
+            align-content: flex-start;
+        }
     }
 </style>
