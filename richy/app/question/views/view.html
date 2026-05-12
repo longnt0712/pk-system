@@ -1365,9 +1365,25 @@
                         </div>
 
                         <div class="col-md-12 margin-top-10" ng-if="vm.isShowAllFillingGaps">
-                            <div class="bold"
-                                    ng-class="{'gaps3-all-content': vm.mode.id == 12}"
-                                    compile="vm.fillingGapAllQuestions"></div>
+                            <div class="bold gaps3-all-questions-content"
+                                    ng-class="{'gaps3-all-content': vm.mode.id == 12}">
+
+                                <div class="gaps3-question-item"
+                                        ng-repeat="item in vm.questions track by $index">
+
+                                    <div class="gaps3-question-number">
+                                        Câu {{$index + 1}}
+                                    </div>
+
+                                    <div class="gaps3-question-text"
+                                            compile="item.question">
+                                    </div>
+                                    <div class="gaps3-question-text" style="font-weight: normal !important"
+                                            compile="item.motherTongue">
+                                    </div>
+
+                                </div>
+                            </div>
                         </div>
 
                         <div class="col-md-12 margin-top-20"
@@ -6338,5 +6354,49 @@
         .gap-mobile-fixed-audio-controls:focus-within {
             opacity: 1;
         }
+    }
+
+    /* FILLING GAPS 3 - hiển thị full question của tất cả câu */
+    .gaps3-all-questions-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        white-space: normal !important;
+    }
+
+    .gaps3-question-item {
+        width: 100% !important;
+        display: block !important;
+        padding: 16px 18px;
+        margin-bottom: 18px;
+        border: 2px solid #8ee3a1;
+        border-radius: 18px;
+        background: #ffffff;
+    }
+
+    .gaps3-question-number {
+        font-size: 18px;
+        font-weight: 800;
+        color: #2f56d9;
+        margin-bottom: 8px;
+    }
+
+    .gaps3-question-text {
+        width: 100% !important;
+        max-width: 100% !important;
+
+        height: auto !important;
+        max-height: none !important;
+
+        overflow: visible !important;
+        white-space: pre-wrap !important;
+        word-break: normal !important;
+        overflow-wrap: anywhere !important;
+
+        font-size: 16px;
+        line-height: 1.6;
+        text-align: left;
     }
 </style>
