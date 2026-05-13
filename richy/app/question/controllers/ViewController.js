@@ -798,6 +798,28 @@
 
         vm.gapRatePercent = getSavedGapRatePercent();
 
+        vm.adjustGapRate = function (delta) {
+            var percent = parseFloat(vm.gapRatePercent);
+
+            if (isNaN(percent)) {
+                percent = getSavedGapRatePercent();
+            }
+
+            percent = percent + delta;
+
+            if (percent < vm.minGapRatePercent) {
+                percent = vm.minGapRatePercent;
+            }
+
+            if (percent > vm.maxGapRatePercent) {
+                percent = vm.maxGapRatePercent;
+            }
+
+            vm.gapRatePercent = percent;
+
+            vm.changeGapRate();
+        };
+
         vm.getGapRate = function () {
             var percent = parseFloat(vm.gapRatePercent);
 
@@ -964,6 +986,9 @@
                 blockUI.stop();
                 vm.topicCategories = data.content;
 
+                if(vm.topicCategories != null && vm.topicCategories != []){
+                    vm.searchTopicDto.topicCategory = vm.topicCategories[0];
+                }
             });
         };
         vm.getPageTopicCategory();
@@ -3885,9 +3910,11 @@
                         'oncompositionstart="this.dataset.composing=\'1\'" ' +
                         'oncompositionend="this.dataset.composing=\'0\'" ' +
                         'ng-model="vm.gapValues[' + i + ']" ' +
-                        'ng-change="vm.onGapInputChange(' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')" ' +
                         'ng-keydown="vm.onGapKeydown($event,' + x.length + ',' + i + ',\'' + gapWordEscaped + '\')" ' +
-                        'ng-keyup="vm.onGapKeyup($event,' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')" ' +
+                        'ng-keyup="' +
+                        'vm.onGapKeyup($event,' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\');' +
+                        '$event.target.dataset.composing !== \'1\' && vm.onGapInputChange(' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')' +
+                        '" ' +
                         'class="input-underline-only gap-inline-input" ' +
                         'type="text" ' +
                         'id="gap-number-' + i + '"' +

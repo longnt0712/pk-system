@@ -994,20 +994,38 @@
                                         SURRENDER
                                     </button>
 
-                                <span ng-if="vm.mode.id == 8 || vm.mode.id == 11">
-                                    <label class="bold">Gap rate:</label>
+                                <span ng-if="vm.mode.id == 8 || vm.mode.id == 11" class="gap-rate-control">
+                                    <label class="bold gap-rate-label">Gap rate:</label>
+
+                                    <button type="button"
+                                            class="btn btn-default btn-sm gap-rate-btn"
+                                            ng-click="vm.adjustGapRate(-5)"
+                                            ng-disabled="vm.gapRatePercent <= vm.minGapRatePercent"
+                                            title="Giảm 5%"
+                                            aria-label="Giảm Gap rate 5%">
+                                        <i class="fa-solid fa-chevron-down"></i>
+                                    </button>
 
                                     <input type="number"
                                            min="30"
                                            max="100"
                                            step="5"
+                                           inputmode="numeric"
                                            ng-model="vm.gapRatePercent"
                                            ng-change="vm.changeGapRate()"
                                            ng-model-options="{ debounce: 500 }"
-                                           class="form-control input-sm"
-                                           style="width: 80px; display: inline-block;" />
+                                           class="form-control input-sm gap-rate-input" />
 
-                                    <span>%</span>
+                                    <span class="gap-rate-percent">%</span>
+
+                                    <button type="button"
+                                            class="btn btn-default btn-sm gap-rate-btn"
+                                            ng-click="vm.adjustGapRate(5)"
+                                            ng-disabled="vm.gapRatePercent >= vm.maxGapRatePercent"
+                                            title="Tăng 5%"
+                                            aria-label="Tăng Gap rate 5%">
+                                        <i class="fa-solid fa-chevron-up"></i>
+                                    </button>
                                 </span>
                                 </div>
                             </div>
@@ -5309,11 +5327,13 @@
         position: absolute;
         bottom: -28px;
         right: 24px;
-        font-size: 120px;
+        font-size: 100px;
         line-height: 1;
         color: rgba(0, 92, 185, 0.08);
         font-weight: 900;
         pointer-events: none;
+        opacity: 0.2 !important;
+        pointer-events: none !important;
     }
 
     .gap-vni-tntt-theme .col-md-3 {
@@ -6432,6 +6452,68 @@
             margin-left: 0;
             margin-right: 0;
             align-content: flex-start;
+        }
+    }
+
+    .gap-rate-control {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: 8px;
+        vertical-align: middle;
+    }
+
+    .gap-rate-label {
+        margin-bottom: 0;
+    }
+
+    .gap-rate-input {
+        width: 70px !important;
+        display: inline-block;
+        text-align: center;
+    }
+
+    .gap-rate-btn {
+        min-width: 42px;
+        height: 34px;
+        padding-left: 8px;
+        padding-right: 8px;
+        font-weight: bold;
+    }
+
+    .gap-rate-percent {
+        font-weight: bold;
+    }
+
+    @media (max-width: 767px) {
+        .gap-top-info-line {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .gap-rate-control {
+            width: 100%;
+            justify-content: center;
+            margin-left: 0;
+            margin-top: 6px;
+            gap: 8px;
+        }
+
+        .gap-rate-btn {
+            min-width: 52px;
+            height: 42px;
+            font-size: 16px;
+            border-radius: 8px;
+        }
+
+        .gap-rate-input {
+            width: 64px !important;
+            height: 42px;
+            font-size: 16px;
+            text-align: center;
         }
     }
 </style>
