@@ -62,9 +62,22 @@
                         </div>
 
                         <div class="row text-center" ng-show="vm.startSetUp">
-                            <button class="btn btn-primary margin-bottom-10" ng-click="vm.createCheckList()">
-                                TẠO BẢNG ĐIỂM DANH
-                            </button>
+                            <div class="col-md-12 margin-bottom-10">
+                                <label>Chọn ngày tạo bảng điểm danh</label>
+
+                                <input data-ng-model="vm.setupAttendanceDate"
+                                       type="text"
+                                       class="form-control"
+                                       style="width: 180px; margin: 0 auto;"
+                                       placeholder="CHỌN NGÀY"
+                                       my-date-picker />
+                            </div>
+
+                            <div class="col-md-12">
+                                <button class="btn btn-primary margin-bottom-10" ng-click="vm.createCheckList()">
+                                    TẠO BẢNG ĐIỂM DANH
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

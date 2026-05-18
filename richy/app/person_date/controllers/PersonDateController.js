@@ -613,6 +613,9 @@
         vm.searchDto.user.person = {};
         vm.searchDto.user.person.enrollmentClass = 1;
 
+        // Ngày dùng để tạo bảng điểm danh trong phần thiết lập
+        vm.setupAttendanceDate = new Date();
+
         vm.resetSum = function () {
             vm.totalStudent = 0;
             vm.totalMass1 = 0;
@@ -1193,10 +1196,33 @@
         };
 
         vm.createCheckList = function () {
+            var selectedDate = parseDateOnly(vm.setupAttendanceDate);
+
+            if (!selectedDate) {
+                toastr.warning('Vui lòng chọn ngày hợp lệ theo định dạng dd/MM/yyyy.', 'Thông báo');
+                return;
+            }
+
+            var attendanceDate = moment(selectedDate).format('YYYY-MM-DD');
+
             blockUI.start();
-            service.saveListByEnrollmentClass(0).then(function (data) { // tạm thời để 0
-                blockUI.stop();
+
+            service.saveListByEnrollmentClass(0, attendanceDate).then(function (data) {
+                // Sau khi tạo xong thì tự chuyển bộ lọc về đúng ngày vừa tạo
+                vm.startDate = new Date(selectedDate);
+                vm.endDate = new Date(selectedDate);
+
                 vm.statistics();
+
+                toastr.success(
+                    'Đã tạo bảng điểm danh ngày ' + moment(selectedDate).format('DD/MM/YYYY'),
+                    'Thông báo'
+                );
+            }).catch(function (err) {
+                console.error(err);
+                toastr.error('Tạo bảng điểm danh thất bại.', 'Lỗi');
+            }).finally(function () {
+                blockUI.stop();
             });
         };
 

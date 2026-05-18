@@ -65,10 +65,18 @@
             }, successCallback, errorCallback);
         }
 
-        function saveListByEnrollmentClass(enrollmentClass, successCallback, errorCallback) {
+        function saveListByEnrollmentClass(enrollmentClass, attendanceDate, successCallback, errorCallback) {
+            enrollmentClass = 0;
             var url = baseUrl + restUrl + '/save_list_by_enrollment_class/' + enrollmentClass;
 
-            return utils.resolveAlt(url, 'POST', null, enrollmentClass, {
+            if (attendanceDate) {
+                url += '/' + attendanceDate; // yyyy-MM-dd
+            }
+
+            return utils.resolveAlt(url, 'POST', null, {
+                enrollmentClass: enrollmentClass,
+                attendanceDate: attendanceDate
+            }, {
                 'Content-Type': 'application/json; charset=utf-8'
             }, successCallback, errorCallback);
         }
