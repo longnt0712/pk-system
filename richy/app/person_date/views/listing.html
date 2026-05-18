@@ -83,22 +83,12 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-md-12 margin-bottom-10" ng-show="!vm.startSetUp">
-                        <div class="col-md-2 margin-top-10">
-                            <input data-ng-model="vm.startDate"
-                                   type="text"
-                                   class="form-control"
-                                   placeholder="TÌM TỪ NGÀY"
-                                   my-date-picker />
-                        </div>
-
-                        <div class="col-md-2 margin-top-10">
-                            <input data-ng-model="vm.endDate"
-                                   type="text"
-                                   class="form-control"
-                                   placeholder="ĐẾN NGÀY"
-                                   my-date-picker />
-                        </div>
+                    <div class="col-md-2 margin-top-10">
+                        <input data-ng-model="vm.attendanceDate"
+                               type="text"
+                               class="form-control"
+                               placeholder="NGÀY ĐIỂM DANH"
+                               my-date-picker />
                     </div>
 
                     <div class="col-md-12 sticky-search-bar">
@@ -138,7 +128,7 @@
                         </div>
 
                         <div class="col-md-4 margin-bottom-10">
-                            <button class="btn btn-primary" ng-click="vm.statistics()">
+                            <button class="btn btn-primary" ng-click="vm.getPage()">
                                 TẢI LẠI DANH SÁCH
                             </button>
                             <button class="btn btn-primary" ng-click="vm.openExportModal()">
@@ -368,19 +358,19 @@
                     <h1 class="text-center bold">PHẦN THỐNG KÊ</h1>
                     <div class="col-md-12 margin-bottom-10" ng-show="!vm.startSetUp">
                         <div class="col-md-2 margin-top-10">
-                            <input data-ng-model="vm.startDate"
-                                    type="text"
-                                    class="form-control"
-                                    placeholder="TÌM TỪ NGÀY"
-                                    my-date-picker />
+                            <input data-ng-model="vm.statStartDate"
+                                   type="text"
+                                   class="form-control"
+                                   placeholder="TỪ NGÀY"
+                                   my-date-picker />
                         </div>
 
                         <div class="col-md-2 margin-top-10">
-                            <input data-ng-model="vm.endDate"
-                                    type="text"
-                                    class="form-control"
-                                    placeholder="ĐẾN NGÀY"
-                                    my-date-picker />
+                            <input data-ng-model="vm.statEndDate"
+                                   type="text"
+                                   class="form-control"
+                                   placeholder="ĐẾN NGÀY"
+                                   my-date-picker />
                         </div>
                     </div>
 

@@ -606,15 +606,19 @@
             $('#qrModal').modal('show'); // Bootstrap 3/4
         };
 
-        // ===== Get page + generate QR for each row =====
-        vm.startDate = new Date();
-        vm.endDate = new Date();
+        // ===== Ngày hiển thị danh sách điểm danh phía trên: chỉ 1 ngày =====
+        vm.attendanceDate = new Date();
+
+// ===== Ngày dùng cho phần thống kê: cho chọn khoảng ngày =====
+        vm.statStartDate = new Date();
+        vm.statEndDate = new Date();
+
+// ===== Ngày dùng để tạo bảng điểm danh trong phần thiết lập =====
+        vm.setupAttendanceDate = new Date();
+
         vm.searchDto.user = {};
         vm.searchDto.user.person = {};
         vm.searchDto.user.person.enrollmentClass = 1;
-
-        // Ngày dùng để tạo bảng điểm danh trong phần thiết lập
-        vm.setupAttendanceDate = new Date();
 
         vm.resetSum = function () {
             vm.totalStudent = 0;
@@ -687,14 +691,18 @@
         }
 
         vm.getPage = function () {
-            var range = getSearchDateRange(vm.startDate, vm.endDate);
-            if (!range) return;
+            var selectedDate = parseDateOnly(vm.attendanceDate);
 
-            vm.startDate = range.start;
-            vm.endDate = range.end;
+            if (!selectedDate) {
+                toastr.warning('Ngày không hợp lệ. Vui lòng nhập theo định dạng dd/MM/yyyy.', 'Thông báo');
+                return;
+            }
 
-            vm.searchDto.startDate = range.startTime;
-            vm.searchDto.endDate = range.endTime;
+            vm.attendanceDate = selectedDate;
+
+            // Danh sách phía trên chỉ lấy đúng 1 ngày
+            vm.searchDto.startDate = selectedDate.getTime();
+            vm.searchDto.endDate = selectedDate.getTime();
 
             vm.resetSum();
             blockUI.start();
@@ -1167,31 +1175,17 @@
         // vm.endDate.setHours(0, 0, 0, 0);
 
         vm.setDateForBills = function () {
-            var range = getSearchDateRange(vm.startDate, vm.endDate);
+            var range = getSearchDateRange(vm.statStartDate, vm.statEndDate);
             if (!range) return false;
 
-            vm.startDate = range.start;
-            vm.endDate = range.end;
-
-            vm.searchDto.startDate = range.startTime;
-            vm.searchDto.endDate = range.endTime;
+            vm.statStartDate = range.start;
+            vm.statEndDate = range.end;
 
             return true;
         };
 
+// Giữ hàm này để không lỗi nếu chỗ cũ nào còn gọi vm.statistics()
         vm.statistics = function () {
-            if (!vm.startDate) {
-                vm.startDate = new Date();
-            }
-
-            if (!vm.endDate) {
-                vm.endDate = new Date();
-            }
-
-            if (!vm.setDateForBills()) {
-                return;
-            }
-
             vm.getPage();
         };
 
@@ -1207,23 +1201,26 @@
 
             blockUI.start();
 
-            service.saveListByEnrollmentClass(0, attendanceDate).then(function (data) {
-                // Sau khi tạo xong thì tự chuyển bộ lọc về đúng ngày vừa tạo
-                vm.startDate = new Date(selectedDate);
-                vm.endDate = new Date(selectedDate);
+            service.saveListByEnrollmentClass(0, attendanceDate)
+                .then(function (data) {
+                    // Sau khi tạo xong thì phần danh sách phía trên tự nhảy về đúng ngày vừa tạo
+                    vm.attendanceDate = new Date(selectedDate);
 
-                vm.statistics();
+                    // Chỉ tải lại danh sách điểm danh 1 ngày, không đụng phần thống kê
+                    vm.getPage();
 
-                toastr.success(
-                    'Đã tạo bảng điểm danh ngày ' + moment(selectedDate).format('DD/MM/YYYY'),
-                    'Thông báo'
-                );
-            }).catch(function (err) {
-                console.error(err);
-                toastr.error('Tạo bảng điểm danh thất bại.', 'Lỗi');
-            }).finally(function () {
-                blockUI.stop();
-            });
+                    toastr.success(
+                        'Đã tạo bảng điểm danh ngày ' + moment(selectedDate).format('DD/MM/YYYY'),
+                        'Thông báo'
+                    );
+                })
+                .catch(function (err) {
+                    console.error(err);
+                    toastr.error('Tạo bảng điểm danh thất bại.', 'Lỗi');
+                })
+                .finally(function () {
+                    blockUI.stop();
+                });
         };
 
         vm.checkType = null; // 1 là lễ 2 là giáo lý
@@ -1786,16 +1783,14 @@
         vm.visibleStatisticDates = [];
 
         vm.loadDailyStatistics = function () {
-            if (!vm.startDate || !vm.endDate) {
-                toastr.warning("Vui lòng chọn từ ngày và đến ngày", "Thông báo");
-                return;
-            }
-
-            var range = getSearchDateRange(vm.startDate, vm.endDate);
+            var range = getSearchDateRange(vm.statStartDate, vm.statEndDate);
             if (!range) return;
 
-            var fromDate = range.start;
-            var toDate = range.end;
+            vm.statStartDate = range.start;
+            vm.statEndDate = range.end;
+
+            var fromDate = new Date(range.start);
+            var toDate = new Date(range.end);
 
             fromDate.setHours(0, 0, 0, 0);
             toDate.setHours(0, 0, 0, 0);
@@ -1815,18 +1810,26 @@
                 search.groupId = null;
             }
 
+            // Phần thống kê dùng khoảng ngày riêng
             search.startDate = fromDate.getTime();
             search.endDate = toDate.getTime();
 
             blockUI.start();
 
-            service.getPage(search, 1, 10000).then(function (data) {
-                var records = (data && data.content) ? data.content : [];
-                vm.dailyStatisticRows = buildStatisticRows(records, vm.dailyStatisticDates);
-                vm.updateVisibleStatisticDates();
-            }).finally(function () {
-                blockUI.stop();
-            });
+            service.getPage(search, 1, 10000)
+                .then(function (data) {
+                    var records = (data && data.content) ? data.content : [];
+
+                    vm.dailyStatisticRows = buildStatisticRows(records, vm.dailyStatisticDates);
+                    vm.updateVisibleStatisticDates();
+                })
+                .catch(function (err) {
+                    console.error(err);
+                    toastr.error('Tải thống kê thất bại.', 'Lỗi');
+                })
+                .finally(function () {
+                    blockUI.stop();
+                });
         };
 
         function buildDateColumns(fromDate, toDate) {
