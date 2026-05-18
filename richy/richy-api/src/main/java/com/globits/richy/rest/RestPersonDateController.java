@@ -35,9 +35,13 @@ public class RestPersonDateController {
 	}
 	
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
-	@RequestMapping(value = "/save_list_by_enrollment_class/{enrollmentClass}", method = RequestMethod.POST)
-	public boolean saveListByEnrollmentClass(@PathVariable int enrollmentClass) {
-		return service.saveListByEnrollmentClass(enrollmentClass);
+	@RequestMapping(value = "/save_list_by_enrollment_class/{enrollmentClass}/{attendanceDate}", method = RequestMethod.POST)
+	public ResponseEntity<Boolean> saveListByEnrollmentClass(
+	        @PathVariable("enrollmentClass") int enrollmentClass,
+	        @PathVariable("attendanceDate") String attendanceDate) {
+
+	    Boolean result = service.saveListByEnrollmentClass(enrollmentClass, attendanceDate);
+	    return new ResponseEntity<Boolean>(result, HttpStatus.OK);
 	}
 	
 	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})

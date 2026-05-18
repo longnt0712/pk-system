@@ -1,6 +1,8 @@
 package com.globits.richy.service.impl;
 
 import java.util.ArrayList;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.List;
 import javax.persistence.Query;
@@ -389,47 +391,105 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 		return true;
 	}
 
-    @Transactional(rollbackFor = Exception.class)
+	@Transactional(rollbackFor = Exception.class)
 	@Override
-	public boolean saveListByEnrollmentClass(int enrollmentClass) {
-    	//quy trình
-    	//Chưa có bảng điểm danh của ngày đó => sẽ tạo mới tất cả
-    	//Đã tạo mới bảng điểm danh của ngày đó rồi => không tạo nữa
-    	
-    	// => tìm xem đã có bảng điểm danh của ngày chưa
-    	LocalDate today = LocalDate.now();
+	public boolean saveListByEnrollmentClass(int enrollmentClass, String attendanceDate) {
+	    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-    	LocalDateTime startOfToday = today.toDateTimeAtStartOfDay().toLocalDateTime();
-    	LocalDateTime startOfTomorrow = today.plusDays(1).toDateTimeAtStartOfDay().toLocalDateTime();
-    	
-    	Long personDateNumbers = personDateRepository.countPersonDateBy(startOfToday, startOfTomorrow);
-    	
-    	if(personDateNumbers != null && personDateNumbers > 0) {// đã có bảng điểm danh
-    		return true;
-    	}
-    	
-    	// chưa có bảng điểm danh => tạo mới
-		// tìm tất cả học sinh của lớp
-    	List<User> users = new ArrayList<User>();
-    	if(enrollmentClass == 0) {
-    		users = userRepository.getUsersByAllEnrollmentClass();
-    	}else {
-    		users = userRepository.getUsersByEnrollmentClass(enrollmentClass);
-    	}
-		List<PersonDate> personDates = new ArrayList<PersonDate>();
-		// create bản ghi điểm danh
-		for (User user : users) {
-			PersonDate personDate = new PersonDate();
-			personDate.setUser(user);
-			personDate.setStatusClass(2);
-			personDate.setStatusMass(2);
-			personDate.setExtraClass(2);
-			personDates.add(personDate);
-		}
-		if(personDates != null && personDates.size() > 0) {
-			personDateRepository.save(personDates);
-		}
-		
-		return true;
+	    String currentUserName = "Unknown User";
+	    if (authentication != null) {
+	        User modifiedUser = (User) authentication.getPrincipal();
+	        currentUserName = modifiedUser.getUsername();
+	    }
+
+	    LocalDate selectedDate;
+	    if (attendanceDate != null && attendanceDate.trim().length() > 0) {
+	        DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd");
+	        selectedDate = formatter.parseLocalDate(attendanceDate.trim());
+	    } else {
+	        selectedDate = LocalDate.now();
+	    }
+
+	    LocalDateTime startOfSelectedDate = selectedDate.toDateTimeAtStartOfDay().toLocalDateTime();
+	    LocalDateTime startOfNextDate = selectedDate.plusDays(1).toDateTimeAtStartOfDay().toLocalDateTime();
+
+	    // Kiểm tra ngày đã có bảng điểm danh chưa
+	    Long personDateNumbers = personDateRepository.countPersonDateBy(
+	            startOfSelectedDate,
+	            startOfNextDate
+	    );
+
+	    if (personDateNumbers != null && personDateNumbers > 0) {
+	        return true;
+	    }
+
+	    List<User> users = new ArrayList<User>();
+
+	    if (enrollmentClass == 0) {
+	        users = userRepository.getUsersByAllEnrollmentClass();
+	    } else {
+	        users = userRepository.getUsersByEnrollmentClass(enrollmentClass);
+	    }
+
+	    List<PersonDate> personDates = new ArrayList<PersonDate>();
+
+	    for (User user : users) {
+	        PersonDate personDate = new PersonDate();
+
+	        personDate.setUser(user);
+	        personDate.setStatusClass(2);
+	        personDate.setStatusMass(2);
+	        personDate.setExtraClass(2);
+
+	        // Set trước vẫn giữ, nhưng có thể bị audit listener ghi đè khi insert
+	        personDate.setCreateDate(startOfSelectedDate);
+	        personDate.setModifyDate(startOfSelectedDate);
+	        personDate.setCreatedBy(currentUserName);
+	        personDate.setModifiedBy(currentUserName);
+
+	        personDates.add(personDate);
+	    }
+
+	    if (personDates != null && personDates.size() > 0) {
+	        // Bước 1: save trước để có id
+	        List<PersonDate> savedPersonDates = personDateRepository.save(personDates);
+
+	        // Ép Hibernate insert xuống DB trước
+	        manager.flush();
+
+	        // Bước 2: lấy id các bản ghi vừa tạo
+	        List<Long> ids = new ArrayList<Long>();
+
+	        for (PersonDate item : savedPersonDates) {
+	            if (item != null && item.getId() != null) {
+	                ids.add(item.getId());
+	            }
+	        }
+
+	        // Bước 3: update lại createDate về ngày đã chọn
+	        if (ids != null && ids.size() > 0) {
+	            Query updateQuery = manager.createQuery(
+	                    "update PersonDate p " +
+	                    "set p.createDate = :createDate, " +
+	                    "    p.modifyDate = :modifyDate, " +
+	                    "    p.createdBy = :createdBy, " +
+	                    "    p.modifiedBy = :modifiedBy " +
+	                    "where p.id in (:ids)"
+	            );
+
+	            updateQuery.setParameter("createDate", startOfSelectedDate);
+	            updateQuery.setParameter("modifyDate", startOfSelectedDate);
+	            updateQuery.setParameter("createdBy", currentUserName);
+	            updateQuery.setParameter("modifiedBy", currentUserName);
+	            updateQuery.setParameter("ids", ids);
+
+	            updateQuery.executeUpdate();
+
+	            manager.flush();
+	            manager.clear();
+	        }
+	    }
+
+	    return true;
 	}
 }

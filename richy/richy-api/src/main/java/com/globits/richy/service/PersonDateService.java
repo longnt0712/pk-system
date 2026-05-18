@@ -13,6 +13,6 @@ public interface PersonDateService extends GenericService<PersonDate, Long> {
 	public PersonDateDto getObjectById(Long id);
 	public PersonDateDto saveObject(PersonDateDto dto);
 	public boolean deleteObject(Long id);
-	public boolean saveListByEnrollmentClass(int enrollmentClass);
+	public boolean saveListByEnrollmentClass(int enrollmentClass, String attendanceDate);
 	
 }
