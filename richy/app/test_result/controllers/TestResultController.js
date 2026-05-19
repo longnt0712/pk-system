@@ -410,6 +410,7 @@
         role.name = "ROLE_VIEWER";
         role.id = 12; // tạm thời, vì k có tgian :)
         vm.filter.roles.push(role);
+        vm.filter.active = true;
 
         angular.forEach(vm.roles, function(value1, key1) {
             if(value1.name === "ROLE_STUDENT" || value1.name === "ROLE_STUDENT_MANAGERMENT" || value1.name === "ROLE_EDUCATION_MANAGERMENT" ){
