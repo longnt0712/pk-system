@@ -963,15 +963,15 @@
                             'gap-vni-tntt-theme': vm.mode.id == 11
                          }">
                     <div class="row gap-filling-equal-row">
-                        <div class="col-md-3 gap-left-list-col">
+                        <div ng-if="vm.showGapTitleTable" class="col-md-3 gap-left-list-col">
 
-                            <div class="gap-table-search-inner  margin-bottom-10">
+                            <div class="gap-table-search-inner margin-bottom-10">
                                 <input type="text"
-                                        class="gap-table-search-input"
-                                        ng-model="vm.gapTableSearchText"
-                                        ng-change="vm.searchGapTableByName()"
-                                        placeholder="Tìm theo tên bài..."
-                                        autocomplete="off">
+                                       class="gap-table-search-input"
+                                       ng-model="vm.gapTableSearchText"
+                                       ng-change="vm.searchGapTableByName()"
+                                       placeholder="Tìm theo tên bài..."
+                                       autocomplete="off">
 
                                 <button class="gap-table-clear-btn"
                                         type="button"
@@ -983,11 +983,21 @@
 
                             <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
                         </div>
-                        <div class="col-md-9 gap-right-filling-col">
+
+                        <div class="gap-right-filling-col"
+                             ng-class="[vm.showGapTitleTable ? 'col-md-9' : 'col-md-12', !vm.showGapTitleTable ? 'gap-right-filling-col-full' : '']">
                             <div class="gap-top-info-box">
                                 <h2 class="bold" ng-bind-html="vm.currentCard.question"></h2>
 
                                 <div class="gap-top-info-line">
+                                    <button type="button"
+                                            class="btn btn-default gap-toggle-title-btn"
+                                            ng-click="vm.toggleGapTitleTable()"
+                                            title="{{vm.showGapTitleTable ? 'Ẩn bảng Title' : 'Hiện bảng Title'}}">
+                                        <i ng-class="vm.showGapTitleTable ? 'fa fa-eye-slash' : 'fa fa-list'"></i>
+                                        {{ vm.showGapTitleTable ? 'Ẩn Title' : 'Hiện Title' }}
+                                    </button>
+
                                     <span>Progress: {{vm.percentage}}%</span>
 
                                     <button class="btn btn-danger" ng-click="vm.saveTestResult()">
@@ -1074,7 +1084,44 @@
                                 </audio>
 
                                 <br ng-if="!vm.isYoutubeAudio">
+                                <div class="gap-main-control-row">
+                                    Speed:
+                                    <input class="input-underline-only"
+                                           style="width:70px;text-align: center"
+                                           ng-disabled="true"
+                                           type="number"
+                                           min="0.5"
+                                           max="4"
+                                           ng-value="vm.playbackValue | number : 1"/>
 
+                                    <button ng-click="vm.increaseSpeed()">
+                                        <i class="fa fa-arrow-up" aria-hidden="true"></i>
+                                    </button>
+
+                                    <button ng-click="vm.decreaseSpeed()">
+                                        <i class="fa fa-arrow-down" aria-hidden="true"></i>
+                                    </button>
+
+                                    Volume:
+                                    <input class="input-underline-only"
+                                           style="width:70px;text-align: center"
+                                           ng-disabled="true"
+                                           type="number"
+                                           min="0"
+                                           max="1"
+                                           ng-value="vm.volumeValue | number : 2"/>
+
+                                    <button ng-click="vm.increaseVolume()">
+                                        <i class="fa fa-arrow-up" aria-hidden="true"></i>
+                                    </button>
+
+                                    <button ng-click="vm.decreaseVolume()">
+                                        <i class="fa fa-arrow-down" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                                <div class="gap-main-control-row">
+
+                                </div>
                                 <span class="global-mobile-audio-seek-controls">
                                     <button type="button"
                                             class="global-mobile-audio-seek-btn global-mobile-audio-back-btn"
@@ -1100,43 +1147,9 @@
                                     </button>
                                 </span>
 
-                                <div class="gap-main-control-row">
-                                    Speed:
-                                    <input class="input-underline-only"
-                                           style="width:70px;text-align: center"
-                                           ng-disabled="true"
-                                           type="number"
-                                           min="0.5"
-                                           max="4"
-                                           ng-value="vm.playbackValue | number : 1"/>
 
-                                    <button ng-click="vm.increaseSpeed()">
-                                        <i class="fa fa-arrow-up" aria-hidden="true"></i>
-                                    </button>
 
-                                    <button ng-click="vm.decreaseSpeed()">
-                                        <i class="fa fa-arrow-down" aria-hidden="true"></i>
-                                    </button>
-                                </div>
 
-                                <div class="gap-main-control-row">
-                                    Volume:
-                                    <input class="input-underline-only"
-                                           style="width:70px;text-align: center"
-                                           ng-disabled="true"
-                                           type="number"
-                                           min="0"
-                                           max="1"
-                                           ng-value="vm.volumeValue | number : 2"/>
-
-                                    <button ng-click="vm.increaseVolume()">
-                                        <i class="fa fa-arrow-up" aria-hidden="true"></i>
-                                    </button>
-
-                                    <button ng-click="vm.decreaseVolume()">
-                                        <i class="fa fa-arrow-down" aria-hidden="true"></i>
-                                    </button>
-                                </div>
 
                                 <div class="gap-shortcut-text" style="margin-top: 10px;">
                                     (hit '<i class="fa fa-chevron-left bold"></i>' playback 3s)
@@ -6514,6 +6527,25 @@
             height: 42px;
             font-size: 16px;
             text-align: center;
+        }
+    }
+
+    .gap-toggle-title-btn {
+        border-radius: 18px;
+        font-weight: 700;
+        padding: 7px 14px;
+    }
+
+    .gap-right-filling-col-full {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Fix riêng cho mode VNI vì đang dùng flex 25% / 75% */
+    @media (min-width: 992px) {
+        .gap-vni-tntt-theme .gap-right-filling-col.gap-right-filling-col-full {
+            flex: 0 0 100% !important;
+            max-width: 100% !important;
         }
     }
 </style>

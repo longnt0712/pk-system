@@ -277,6 +277,18 @@
         vm.selectedQuestions = [];
         vm.gapTableSearchText = '';
         vm.allGapQuestions = [];
+        vm.showGapTitleTable = true;
+
+        vm.toggleGapTitleTable = function () {
+            vm.showGapTitleTable = !vm.showGapTitleTable;
+
+            if (vm.showGapTitleTable && vm.bsTableControl && vm.bsTableControl.options) {
+                $timeout(function () {
+                    vm.bsTableControl.options.data = angular.copy(vm.questions || []);
+                    vm.bsTableControl.options.totalRows = (vm.questions || []).length;
+                }, 0);
+            }
+        };
         vm.searchGapTableByName = function () {
             var keyword = (vm.gapTableSearchText || '').toLowerCase().trim();
 
@@ -556,6 +568,10 @@
 
                 if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){
 
+                    if (vm.mode.id == 8 || vm.mode.id == 11) {
+                        vm.showGapTitleTable = true;
+                    }
+                    
                     if (vm.mode.id == 12) {
                         vm.showGapsTable = false;
                     }
@@ -2898,6 +2914,7 @@
 
         vm.isYoutubeAudio = false;
         vm.youtubeVideoId = null;
+        vm.youtubeStartSeconds = 0;
 
         function getMainAudio() {
             if (!mainAudio) {
@@ -2927,6 +2944,56 @@
             }
 
             return null;
+        }
+        function parseYoutubeTimeToSeconds(value) {
+            if (!value) {
+                return 0;
+            }
+
+            value = decodeURIComponent(String(value)).trim().toLowerCase();
+
+            // Dạng: t=412 hoặc start=412
+            if (/^\d+$/.test(value)) {
+                return parseInt(value, 10) || 0;
+            }
+
+            // Dạng: t=6m52s, t=1h2m3s
+            var total = 0;
+
+            var hourMatch = value.match(/(\d+)h/);
+            var minuteMatch = value.match(/(\d+)m/);
+            var secondMatch = value.match(/(\d+)s/);
+
+            if (hourMatch) {
+                total += parseInt(hourMatch[1], 10) * 3600;
+            }
+
+            if (minuteMatch) {
+                total += parseInt(minuteMatch[1], 10) * 60;
+            }
+
+            if (secondMatch) {
+                total += parseInt(secondMatch[1], 10);
+            }
+
+            return total || 0;
+        }
+
+        function getYoutubeStartSeconds(url) {
+            if (!url) {
+                return 0;
+            }
+
+            var text = String(url).trim();
+
+            // Hỗ trợ: ?t=412, &t=412, ?start=412, &start=412
+            var match = text.match(/[?&#](?:t|start)=([^&#]+)/i);
+
+            if (match && match[1]) {
+                return parseYoutubeTimeToSeconds(match[1]);
+            }
+
+            return 0;
         }
 
         function flushYoutubeApiCallbacks() {
@@ -3091,7 +3158,7 @@
             }
         }
 
-        function loadYoutubeVideo(videoId) {
+        function loadYoutubeVideo(videoId, startSeconds) {
             if (!videoId) {
                 return;
             }
@@ -3123,6 +3190,7 @@
                             rel: 0,
                             modestbranding: 1,
                             enablejsapi: 1,
+                            start: startSeconds || 0,
                             origin: window.location.protocol + '//' + window.location.host
                         },
                         events: {
@@ -3142,6 +3210,14 @@
                                 // });
 
                                 applyYoutubeSettings();
+
+                                if (startSeconds && startSeconds > 0) {
+                                    try {
+                                        event.target.seekTo(startSeconds, true);
+                                    } catch (e) {
+                                        // console.log('Seek start error:', e);
+                                    }
+                                }
 
                                 if (typeof youtubeGapPendingAction === 'function') {
                                     var pending = youtubeGapPendingAction;
@@ -3189,7 +3265,7 @@
             };
 
             if (vm.youtubeVideoId) {
-                loadYoutubeVideo(vm.youtubeVideoId);
+                loadYoutubeVideo(vm.youtubeVideoId, vm.youtubeStartSeconds);
             }
         }
 
@@ -3271,6 +3347,7 @@
             }
 
             vm.youtubeVideoId = getYoutubeVideoId(mediaUrl);
+            vm.youtubeStartSeconds = getYoutubeStartSeconds(mediaUrl);
             vm.isYoutubeAudio = !!vm.youtubeVideoId;
 
             // console.log('SETUP AUDIO:', {
@@ -3283,7 +3360,7 @@
                 stopNormalAudio();
 
                 $timeout(function () {
-                    loadYoutubeVideo(vm.youtubeVideoId);
+                    loadYoutubeVideo(vm.youtubeVideoId, vm.youtubeStartSeconds);
                 }, 150);
 
                 return;
