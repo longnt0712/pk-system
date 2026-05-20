@@ -378,23 +378,13 @@
                             </div>
 
                             <div class="col-md-2 margin-bottom-10">
-                                <button class="btn btn-warning"
-                                        style="width: 100%; height: 34px;"
-                                        ng-click="vm.loadDailyStatistics()">
-                                    <i class="fa fa-bar-chart"></i> THỐNG KÊ
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Hàng chọn lớp / ban hội -->
-                        <div class="row">
-                            <div class="col-md-2 margin-bottom-10">
                                 <ui-select ng-model="vm.searchDto.user.person.enrollmentClass"
                                            ng-change=""
                                            close-on-select="true">
                                     <ui-select-match allow-clear="false" placeholder="Chọn lớp để lọc">
                                         {{$select.selected.name}}
                                     </ui-select-match>
+
                                     <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | propsFilter:{name:$select.search}">
                                         <div ng-bind-html="cls.name | highlight:$select.search"></div>
                                     </ui-select-choices>
@@ -414,6 +404,14 @@
                                         <div ng-bind-html="group.name | highlight:$select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
+                            </div>
+
+                            <div class="col-md-2 margin-bottom-10">
+                                <button class="btn btn-warning"
+                                        style="width: 100%; height: 34px;"
+                                        ng-click="vm.loadDailyStatistics()">
+                                    <i class="fa fa-bar-chart"></i> THỐNG KÊ
+                                </button>
                             </div>
                         </div>
 
