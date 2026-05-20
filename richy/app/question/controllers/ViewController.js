@@ -3985,13 +3985,11 @@
                         '<span class="gap-inline-wrap">' +
                         '<input autocomplete="off" ' +
                         'oncompositionstart="this.dataset.composing=\'1\'" ' +
-                        'oncompositionend="this.dataset.composing=\'0\'" ' +
+                        'oncompositionend="this.dataset.composing=\'0\'; angular.element(this).triggerHandler(\'change\')" ' +
                         'ng-model="vm.gapValues[' + i + ']" ' +
                         'ng-keydown="vm.onGapKeydown($event,' + x.length + ',' + i + ',\'' + gapWordEscaped + '\')" ' +
-                        'ng-keyup="' +
-                        'vm.onGapKeyup($event,' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\');' +
-                        '$event.target.dataset.composing !== \'1\' && vm.onGapInputChange(' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')' +
-                        '" ' +
+                        'ng-change="vm.onGapInputChange(' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')" ' +
+                        'ng-keyup="vm.onGapKeyup($event,' + x.length + ',' + i + ',vm.currentCard.motherTongue,\'' + gapWordEscaped + '\')" ' +
                         'class="input-underline-only gap-inline-input" ' +
                         'type="text" ' +
                         'id="gap-number-' + i + '"' +
@@ -4384,11 +4382,17 @@
             vm.onGapAudioShortcut(e);
         };
         vm.onGapInputChange = function (totalWords, index, fullText, gapWord) {
-            var rawTyped = vm.gapValues ? vm.gapValues[index] : '';
+            var currentInput = document.getElementById('gap-number-' + index);
+
+            // Đọc trực tiếp từ input để không bị chậm ng-model
+            var rawTyped = currentInput ? currentInput.value : '';
+
+            vm.gapValues = vm.gapValues || {};
+            vm.gapValues[index] = rawTyped;
+
             var typed = normalizeGapAutoNext(rawTyped);
             var answer = normalizeGapAutoNext(gapWord);
 
-            var currentInput = document.getElementById('gap-number-' + index);
             var isCorrect = typed && typed === answer;
 
             vm.gapCorrectMap = vm.gapCorrectMap || {};
@@ -4396,14 +4400,22 @@
 
             updateCurrentGapAnswerState(index, rawTyped, isCorrect);
 
-            if (isCorrect) {
-                if (currentInput) {
+            if (currentInput) {
+                if (isCorrect) {
                     currentInput.style.background = 'rgba(183, 244, 216, 0.7)';
+                } else {
+                    if (rawTyped == null || String(rawTyped).trim().length <= 0) {
+                        currentInput.style.background = '';
+                    } else {
+                        currentInput.style.background = 'rgba(255, 180, 180, 0.7)';
+                    }
                 }
+            }
 
-                // Chỉ điện thoại mới tự nhảy sang gap tiếp theo.
-                // Máy tính thì đứng nguyên tại gap hiện tại.
-                if (vm.mode.id !== 11 || isMobileDevice()) {
+            if (isCorrect) {
+                // Mode 8: tự nhảy luôn
+                // Mode 11: chỉ điện thoại tự nhảy, máy tính dùng Space
+                if (vm.mode.id == 8 || isMobileDevice()) {
                     $timeout(function () {
                         if (currentInput) {
                             currentInput.blur();
@@ -4411,20 +4423,13 @@
 
                         for (var j = index + 1; j < totalWords; j++) {
                             var nextInput = document.getElementById('gap-number-' + j);
+
                             if (nextInput) {
                                 nextInput.focus();
                                 break;
                             }
                         }
-                    }, 120);
-                }
-            } else {
-                if (currentInput) {
-                    if (rawTyped == null || String(rawTyped).trim().length <= 0) {
-                        currentInput.style.background = '';
-                    } else {
-                        currentInput.style.background = 'rgba(255, 180, 180, 0.7)';
-                    }
+                    }, 80);
                 }
             }
 
