@@ -83,15 +83,16 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-md-2 margin-top-10">
-                        <input data-ng-model="vm.attendanceDate"
-                               type="text"
-                               class="form-control"
-                               placeholder="NGÀY ĐIỂM DANH"
-                               my-date-picker />
-                    </div>
-
                     <div class="col-md-12 sticky-search-bar">
+
+                        <div class="col-md-2 margin-bottom-10">
+                            <input data-ng-model="vm.attendanceDate"
+                                   type="text"
+                                   class="form-control"
+                                   placeholder="NGÀY ĐIỂM DANH"
+                                   my-date-picker />
+                        </div>
+
                         <div class="col-md-2 margin-bottom-10">
                             <input type="text"
                                    class="form-control"
@@ -112,7 +113,7 @@
                             </ui-select>
                         </div>
 
-                        <div class="col-md-2">
+                        <div class="col-md-2 margin-bottom-10">
                             <ui-select ng-model="vm.searchDto.group"
                                        ng-change="vm.groupChange()"
                                        close-on-select="true"
@@ -356,110 +357,121 @@
 
                 <div class="row">
                     <h1 class="text-center bold">PHẦN THỐNG KÊ</h1>
-                    <div class="col-md-12 margin-bottom-10" ng-show="!vm.startSetUp">
-                        <div class="col-md-2 margin-top-10">
-                            <input data-ng-model="vm.statStartDate"
-                                   type="text"
-                                   class="form-control"
-                                   placeholder="TỪ NGÀY"
-                                   my-date-picker />
-                        </div>
-
-                        <div class="col-md-2 margin-top-10">
-                            <input data-ng-model="vm.statEndDate"
-                                   type="text"
-                                   class="form-control"
-                                   placeholder="ĐẾN NGÀY"
-                                   my-date-picker />
-                        </div>
-                    </div>
 
                     <div class="col-md-12 sticky-search-bar">
-                        <!--<div class="col-md-2 margin-bottom-10">-->
-                            <!--<input type="text"-->
-                                    <!--class="form-control"-->
-                                    <!--ng-model="vm.searchTextClient"-->
-                                    <!--placeholder="Gõ tên vào đây để tìm...">-->
-                        <!--</div>-->
+                        <!-- Hàng chọn ngày + nút thống kê màu cam nằm ngay cạnh -->
+                        <div class="row" ng-show="!vm.startSetUp">
+                            <div class="col-md-2 margin-bottom-10">
+                                <input data-ng-model="vm.statStartDate"
+                                       type="text"
+                                       class="form-control"
+                                       placeholder="TỪ NGÀY"
+                                       my-date-picker />
+                            </div>
 
-                        <div class="col-md-2 margin-bottom-10">
-                            <ui-select ng-model="vm.searchDto.user.person.enrollmentClass"
-                                    ng-change=""
-                                    close-on-select="true">
-                                <ui-select-match allow-clear="false" placeholder="Chọn lớp để lọc">
-                                    {{$select.selected.name}}
-                                </ui-select-match>
-                                <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | propsFilter:{name:$select.search}">
-                                    <div ng-bind-html="cls.name | highlight:$select.search"></div>
-                                </ui-select-choices>
-                            </ui-select>
+                            <div class="col-md-2 margin-bottom-10">
+                                <input data-ng-model="vm.statEndDate"
+                                       type="text"
+                                       class="form-control"
+                                       placeholder="ĐẾN NGÀY"
+                                       my-date-picker />
+                            </div>
+
+                            <div class="col-md-2 margin-bottom-10">
+                                <button class="btn btn-warning"
+                                        style="width: 100%; height: 34px;"
+                                        ng-click="vm.loadDailyStatistics()">
+                                    <i class="fa fa-bar-chart"></i> THỐNG KÊ
+                                </button>
+                            </div>
                         </div>
 
-                        <div class="col-md-2">
-                            <ui-select ng-model="vm.searchDto.group"
-                                    ng-change="vm.groupChange()"
-                                    close-on-select="true"
-                                    style="width:100%">
-                                <ui-select-match allow-clear="true" placeholder="BAN/HỘI...">
-                                    {{$select.selected.name}}
-                                </ui-select-match>
+                        <!-- Hàng chọn lớp / ban hội -->
+                        <div class="row">
+                            <div class="col-md-2 margin-bottom-10">
+                                <ui-select ng-model="vm.searchDto.user.person.enrollmentClass"
+                                           ng-change=""
+                                           close-on-select="true">
+                                    <ui-select-match allow-clear="false" placeholder="Chọn lớp để lọc">
+                                        {{$select.selected.name}}
+                                    </ui-select-match>
+                                    <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | propsFilter:{name:$select.search}">
+                                        <div ng-bind-html="cls.name | highlight:$select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
 
-                                <ui-select-choices repeat="group in vm.groups | propsFilter:{name:$select.search}">
-                                    <div ng-bind-html="group.name | highlight:$select.search"></div>
-                                </ui-select-choices>
-                            </ui-select>
+                            <div class="col-md-2 margin-bottom-10">
+                                <ui-select ng-model="vm.searchDto.group"
+                                           ng-change="vm.groupChange()"
+                                           close-on-select="true"
+                                           style="width:100%">
+                                    <ui-select-match allow-clear="true" placeholder="BAN/HỘI...">
+                                        {{$select.selected.name}}
+                                    </ui-select-match>
+
+                                    <ui-select-choices repeat="group in vm.groups | propsFilter:{name:$select.search}">
+                                        <div ng-bind-html="group.name | highlight:$select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
                         </div>
 
-                        <div class="col-md-12 margin-bottom-10">
-                            <button class="btn btn-warning" ng-click="vm.loadDailyStatistics()">
-                                <i class="fa fa-bar-chart"></i> THỐNG KÊ
-                            </button>
+                        <!-- Hàng nút + checkbox lọc ngày -->
+                        <div class="row">
+                            <div class="col-md-12 margin-bottom-10">
+                                <!--<button class="btn btn-success"-->
+                                        <!--ng-click="vm.showAllColumns()">-->
+                                    <!--<i class="fa fa-calendar"></i>-->
+                                    <!--Thống kê toàn bộ-->
+                                <!--</button>-->
+                                <span class="bold">HIỂN THỊ CÁC NGÀY:</span>
+                                <span style="display:inline-block; margin-left: 10px; margin-right: 10px;">
+                                    <label ng-repeat="day in vm.weekdayOptions track by day.value"
+                                           style="margin-right: 12px; font-weight: normal;">
+                                        {{day.label}}
+                                        <input type="checkbox"
+                                               ng-model="day.checked"
+                                               ng-change="vm.updateVisibleStatisticDates()">
+                                    </label>
+                                </span>
+                                <br>
+                                <span class="bold" style="margin-right: 15px;">CÁC MỤC HIỂN THỊ:</span>
+                                <label style="margin-right: 15px;">
+                                    <input type="checkbox"
+                                           ng-model="vm.showMass"
+                                           ng-change="vm.updateVisibleStatisticDates()">
+                                    Lễ
+                                </label>
 
-                            <button class="btn btn-success"
-                                    ng-click="vm.showAllColumns()">
-                                <i class="fa fa-calendar"></i>
-                                Thống kê toàn bộ
-                            </button>
+                                <label style="margin-right: 15px;">
+                                    <input type="checkbox"
+                                           ng-model="vm.showClass"
+                                           ng-change="vm.updateVisibleStatisticDates()">
+                                    GL
+                                </label>
 
-                            <button class="btn"
-                                    ng-class="vm.onlySundayColumns ? 'btn-danger' : 'btn-primary'"
-                                    ng-click="vm.toggleOnlySundayColumns()">
-                                <i class="fa fa-calendar"></i>
-                                {{ vm.onlySundayColumns ? 'Đang chỉ thống kê Chúa nhật' : 'Chỉ thống kê Chúa nhật' }}
-                            </button>
+                                <label style="margin-right: 15px;">
+                                    <input type="checkbox"
+                                           ng-model="vm.showExtra"
+                                           ng-change="vm.updateVisibleStatisticDates()">
+                                    NK
+                                </label>
+                                <br>
+                                <button class="btn btn-success"
+                                        ng-click="vm.exportDailyStatisticExcel()"
+                                        ng-disabled="!vm.dailyStatisticRows || !vm.dailyStatisticRows.length">
+                                    <i class="fa fa-file-excel-o"></i>
+                                    Xuất Excel thống kê
+                                </button>
 
-                            <button class="btn"
-                                    ng-class="vm.onlySaturdayColumns ? 'btn-danger' : 'btn-info'"
-                                    ng-click="vm.toggleOnlySaturdayColumns()">
-                                <i class="fa fa-calendar"></i>
-                                {{ vm.onlySaturdayColumns ? 'Đang chỉ thống kê Thứ 7' : 'Chỉ thống kê Thứ 7' }}
-                            </button>
-
-                            <label style="margin-right: 15px;">
-                                <input type="checkbox" ng-model="vm.showMass" ng-change="vm.updateVisibleStatisticDates()"> Lễ
-                            </label>
-
-                            <label style="margin-right: 15px;">
-                                <input type="checkbox" ng-model="vm.showClass" ng-change="vm.updateVisibleStatisticDates()"> GL
-                            </label>
-
-                            <label style="margin-right: 15px;">
-                                <input type="checkbox" ng-model="vm.showExtra" ng-change="vm.updateVisibleStatisticDates()"> NK
-                            </label>
-
-                            <button class="btn btn-success"
-                                    ng-click="vm.exportDailyStatisticExcel()"
-                                    ng-disabled="!vm.dailyStatisticRows || !vm.dailyStatisticRows.length">
-                                <i class="fa fa-file-excel-o"></i>
-                                Xuất Excel thống kê
-                            </button>
-
-                            <button class="btn btn-primary"
-                                    ng-click="vm.exportDailyStatisticImage()"
-                                    ng-disabled="!vm.dailyStatisticRows || !vm.dailyStatisticRows.length">
-                                <i class="fa fa-image"></i>
-                                Xuất ảnh thống kê
-                            </button>
+                                <button class="btn btn-primary"
+                                        ng-click="vm.exportDailyStatisticImage()"
+                                        ng-disabled="!vm.dailyStatisticRows || !vm.dailyStatisticRows.length">
+                                    <i class="fa fa-image"></i>
+                                    Xuất ảnh thống kê
+                                </button>
+                            </div>
                         </div>
 
                         <div class="clearfix"></div>
@@ -483,9 +495,7 @@
                                         {{day.label}}
                                     </th>
 
-                                    <th rowspan="2" class="summary-sunday-column" ng-if="vm.onlySundayColumns">Tổng kết Chúa nhật</th>
-                                    <th rowspan="2" class="summary-saturday-column" ng-if="vm.onlySaturdayColumns">Tổng kết Thứ 7</th>
-                                    <th rowspan="2" class="summary-range-column" ng-if="!vm.onlySundayColumns && !vm.onlySaturdayColumns">Tổng kết toàn bộ</th>
+                                    <th rowspan="2" class="summary-range-column">Tổng kết ngày đã chọn</th>
                                 </tr>
                                 <th ng-repeat="day in vm.visibleStatisticDates track by $index"
                                         ng-class="{
@@ -543,35 +553,17 @@
                                         </div>
                                     </td>
 
-                                    <td class="summary-sunday-column summary-sunday-cell" ng-if="vm.onlySundayColumns">
-                                        <div ng-if="row.sundaySummary.massTotal > 0">
-                                            Đi lễ {{row.sundaySummary.massYes}}/{{row.sundaySummary.massTotal}} buổi
-                                        </div>
-                                        <div ng-if="row.sundaySummary.classTotal > 0">
-                                            Đi học {{row.sundaySummary.classYes}}/{{row.sundaySummary.classTotal}} buổi
-                                        </div>
-                                    </td>
-
-                                    <td class="summary-saturday-column summary-saturday-cell" ng-if="vm.onlySaturdayColumns">
-                                        <div ng-if="row.saturdaySummary.massTotal > 0">
-                                            Đi lễ {{row.saturdaySummary.massYes}}/{{row.saturdaySummary.massTotal}} buổi
-                                        </div>
-                                        <div ng-if="row.saturdaySummary.classTotal > 0">
-                                            Đi học {{row.saturdaySummary.classYes}}/{{row.saturdaySummary.classTotal}} buổi
-                                        </div>
-                                    </td>
-
-                                    <td class="summary-range-column summary-range-cell" ng-if="!vm.onlySundayColumns && !vm.onlySaturdayColumns">
-                                        <div ng-if="vm.showMass && row.rangeSummary.massTotal > 0">
-                                            Đi lễ {{row.rangeSummary.massYes}}/{{row.rangeSummary.massTotal}} buổi
+                                    <td class="summary-range-column summary-range-cell">
+                                        <div ng-if="vm.showMass && row.visibleSummary.massTotal > 0">
+                                            Đi lễ {{row.visibleSummary.massYes}}/{{row.visibleSummary.massTotal}} buổi
                                         </div>
 
-                                        <div ng-if="vm.showClass && row.rangeSummary.classTotal > 0">
-                                            Đi học {{row.rangeSummary.classYes}}/{{row.rangeSummary.classTotal}} buổi
+                                        <div ng-if="vm.showClass && row.visibleSummary.classTotal > 0">
+                                            Đi học {{row.visibleSummary.classYes}}/{{row.visibleSummary.classTotal}} buổi
                                         </div>
 
-                                        <div ng-if="vm.showExtra && row.rangeSummary.extraTotal > 0">
-                                            Ngoại khóa {{row.rangeSummary.extraYes}}/{{row.rangeSummary.extraTotal}} buổi
+                                        <div ng-if="vm.showExtra && row.visibleSummary.extraTotal > 0">
+                                            Ngoại khóa {{row.visibleSummary.extraYes}}/{{row.visibleSummary.extraTotal}} buổi
                                         </div>
                                     </td>
                                 </tr>

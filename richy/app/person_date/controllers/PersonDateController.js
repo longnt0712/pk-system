@@ -1778,9 +1778,22 @@
         //theo ngày
         vm.dailyStatisticDates = [];
         vm.dailyStatisticRows = [];
+        vm.visibleStatisticDates = [];
+
+        // Giữ lại 2 biến cũ để code cũ không bị lỗi
         vm.onlySundayColumns = false;
         vm.onlySaturdayColumns = false;
-        vm.visibleStatisticDates = [];
+
+        // Checkbox 7 ngày
+        vm.weekdayOptions = [
+            { value: 0, label: 'Sun', checked: true },
+            { value: 1, label: 'Mon', checked: true },
+            { value: 2, label: 'Tue', checked: true },
+            { value: 3, label: 'Wed', checked: true },
+            { value: 4, label: 'Thu', checked: true },
+            { value: 5, label: 'Fri', checked: true },
+            { value: 6, label: 'Sat', checked: true }
+        ];
 
         vm.loadDailyStatistics = function () {
             var range = getSearchDateRange(vm.statStartDate, vm.statEndDate);
@@ -1844,6 +1857,7 @@
                 dates.push({
                     key: m.format('YYYY-MM-DD'),
                     label: label,
+                    weekday: m.day(),
                     isSunday: m.day() === 0,
                     isSaturday: m.day() === 6
                 });
@@ -1915,6 +1929,7 @@
                 map[key].sundaySummary = buildSundaySummary(map[key].days, dateColumns);
                 map[key].saturdaySummary = buildSaturdaySummary(map[key].days, dateColumns);
                 map[key].rangeSummary = buildRangeSummary(map[key].days, dateColumns);
+                map[key].visibleSummary = buildRangeSummary(map[key].days, dateColumns);
                 return map[key];
             });
 
@@ -1955,65 +1970,88 @@
             return summary;
         }
 
+        function getSelectedWeekdayMap() {
+            var map = {};
+            var count = 0;
+
+            angular.forEach(vm.weekdayOptions, function (day) {
+                if (day.checked) {
+                    map[day.value] = true;
+                    count++;
+                }
+            });
+
+            return {
+                map: map,
+                count: count
+            };
+        }
+
         vm.getVisibleStatisticDates = function () {
-            if (!vm.dailyStatisticDates || !vm.dailyStatisticDates.length) {
-                return [];
-            }
-
-            if (vm.onlySundayColumns) {
-                return vm.dailyStatisticDates.filter(function (d) {
-                    return d.isSunday;
-                });
-            }
-
-            return vm.dailyStatisticDates;
-        };
-
-        vm.toggleOnlySundayColumns = function () {
-            vm.onlySundayColumns = !vm.onlySundayColumns;
-            if (vm.onlySundayColumns) {
-                vm.onlySaturdayColumns = false;
-            }
-            vm.updateVisibleStatisticDates();
-        };
-
-        vm.toggleOnlySaturdayColumns = function () {
-            vm.onlySaturdayColumns = !vm.onlySaturdayColumns;
-            if (vm.onlySaturdayColumns) {
-                vm.onlySundayColumns = false;
-            }
-            vm.updateVisibleStatisticDates();
+            return vm.visibleStatisticDates || [];
         };
 
         vm.updateVisibleStatisticDates = function () {
             if (!vm.dailyStatisticDates || !vm.dailyStatisticDates.length) {
                 vm.visibleStatisticDates = [];
+                vm.refreshVisibleSummaries();
                 return;
             }
 
-            var dates = vm.dailyStatisticDates;
+            var selected = getSelectedWeekdayMap();
 
-            // lọc theo nút chỉ hiện CN / Thứ 7
-            if (vm.onlySundayColumns) {
-                dates = dates.filter(function (d) {
-                    return d.isSunday;
-                });
-            } else if (vm.onlySaturdayColumns) {
-                dates = dates.filter(function (d) {
-                    return d.isSaturday;
-                });
+            // Nếu bỏ hết tick thì không hiện cột ngày nào
+            if (selected.count === 0) {
+                vm.visibleStatisticDates = [];
+                vm.onlySundayColumns = false;
+                vm.onlySaturdayColumns = false;
+                vm.refreshVisibleSummaries();
+                return;
             }
 
-            // ẩn các ngày không phải CN mà toàn bộ học sinh đều trống
-            dates = dates.filter(function (d) {
-                if (d.isSunday) {
-                    return true;
-                }
+            // Giữ mode cũ để không ảnh hưởng code export/style cũ
+            vm.onlySundayColumns = selected.count === 1 && selected.map[0] === true;
+            vm.onlySaturdayColumns = selected.count === 1 && selected.map[6] === true;
 
-                return vm.dayHasAnyVisibleData(d);
+            vm.visibleStatisticDates = vm.dailyStatisticDates.filter(function (d) {
+                return selected.map[d.weekday] === true;
             });
 
-            vm.visibleStatisticDates = dates;
+            vm.refreshVisibleSummaries();
+        };
+
+        vm.refreshVisibleSummaries = function () {
+            angular.forEach(vm.dailyStatisticRows || [], function (row) {
+                row.visibleSummary = buildRangeSummary(row.days || {}, vm.visibleStatisticDates || []);
+            });
+        };
+
+        vm.showAllColumns = function () {
+            angular.forEach(vm.weekdayOptions, function (day) {
+                day.checked = true;
+            });
+
+            vm.onlySundayColumns = false;
+            vm.onlySaturdayColumns = false;
+
+            vm.updateVisibleStatisticDates();
+        };
+
+// Giữ lại để code cũ không lỗi nếu chỗ nào còn gọi
+        vm.toggleOnlySundayColumns = function () {
+            angular.forEach(vm.weekdayOptions, function (day) {
+                day.checked = day.value === 0;
+            });
+
+            vm.updateVisibleStatisticDates();
+        };
+
+        vm.toggleOnlySaturdayColumns = function () {
+            angular.forEach(vm.weekdayOptions, function (day) {
+                day.checked = day.value === 6;
+            });
+
+            vm.updateVisibleStatisticDates();
         };
 
         function buildSaturdaySummary(days, dateColumns) {
@@ -2162,16 +2200,8 @@
                 headerRow2.push(parts.join(" | "));
             });
 
-            if (vm.onlySundayColumns) {
-                headerRow1.push("Tổng kết Chúa nhật");
-                headerRow2.push("");
-            } else if (vm.onlySaturdayColumns) {
-                headerRow1.push("Tổng kết Thứ 7");
-                headerRow2.push("");
-            } else {
-                headerRow1.push("Tổng kết toàn bộ");
-                headerRow2.push("");
-            }
+            headerRow1.push("Tổng kết ngày đã chọn");
+            headerRow2.push("");
 
             worksheet.addRow(headerRow1);
             worksheet.addRow(headerRow2);
@@ -2201,17 +2231,18 @@
                 });
 
                 var summaryText = [];
-                if (vm.onlySundayColumns) {
-                    if (vm.showMass) summaryText.push("Đi lễ " + (row.sundaySummary.massYes || 0) + "/" + (row.sundaySummary.massTotal || 0));
-                    if (vm.showClass) summaryText.push("Đi học " + (row.sundaySummary.classYes || 0) + "/" + (row.sundaySummary.classTotal || 0));
-                } else if (vm.onlySaturdayColumns) {
-                    if (vm.showMass) summaryText.push("Đi lễ " + (row.saturdaySummary.massYes || 0) + "/" + (row.saturdaySummary.massTotal || 0));
-                    if (vm.showClass) summaryText.push("Đi học " + (row.saturdaySummary.classYes || 0) + "/" + (row.saturdaySummary.classTotal || 0));
-                    if (vm.showExtra) summaryText.push("Ngoại khóa " + (row.saturdaySummary.extraYes || 0) + "/" + (row.saturdaySummary.extraTotal || 0));
-                } else {
-                    if (vm.showMass) summaryText.push("Đi lễ " + (row.rangeSummary.massYes || 0) + "/" + (row.rangeSummary.massTotal || 0));
-                    if (vm.showClass) summaryText.push("Đi học " + (row.rangeSummary.classYes || 0) + "/" + (row.rangeSummary.classTotal || 0));
-                    if (vm.showExtra) summaryText.push("Ngoại khóa " + (row.rangeSummary.extraYes || 0) + "/" + (row.rangeSummary.extraTotal || 0));
+                var summary = row.visibleSummary || row.rangeSummary || {};
+
+                if (vm.showMass) {
+                    summaryText.push("Đi lễ " + (summary.massYes || 0) + "/" + (summary.massTotal || 0));
+                }
+
+                if (vm.showClass) {
+                    summaryText.push("Đi học " + (summary.classYes || 0) + "/" + (summary.classTotal || 0));
+                }
+
+                if (vm.showExtra) {
+                    summaryText.push("Ngoại khóa " + (summary.extraYes || 0) + "/" + (summary.extraTotal || 0));
                 }
 
                 excelRow.push(summaryText.join("\n"));
