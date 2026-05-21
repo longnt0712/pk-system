@@ -125,6 +125,96 @@ public class TopicServiceImpl implements TopicService {
 		Page<TopicDto> page = new PageImpl<TopicDto>(q.getResultList(), pageable, numberResult);
 		return page;
 	}
+	
+	@Override
+	public Page<TopicDto> getPageObjectForGames(TopicDto searchDto, int pageIndex, int pageSize) {
+		if (pageIndex > 0)
+			pageIndex = pageIndex - 1;
+		else
+			pageIndex = 0;
+		Pageable pageable = new PageRequest(pageIndex, pageSize);
+
+		String textSearch = searchDto.getTextSearch();
+		String contentSearch = searchDto.getContentSearch();
+		
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		User modifiedUser = null;
+		if (authentication != null) {
+			modifiedUser = (User) authentication.getPrincipal();
+		}
+
+		String sql = "select new com.globits.richy.dto.TopicDto(s) from Topic s where (1=1)";
+		String sqlCount = "select count(s.id) from Topic s where (1=1)";
+		String whereClause = "";
+		
+		if(modifiedUser!= null && modifiedUser.getId() != null) {
+			whereClause += " and s.user.id = :userId ";
+		}
+
+		if (textSearch != null && textSearch.length() > 0) {
+			whereClause += " and (s.name like :textSearch)";
+		}
+		
+		if (contentSearch != null && contentSearch.length() > 0) {
+			whereClause += " and (s.content like :contentSearch or s.contentHtml like :contentSearch)";
+		}
+		
+		if(searchDto.getTopicCategory() != null && searchDto.getTopicCategory().getId() != null ){
+			whereClause += " and s.topicCategory.id = :topicCategoryId ";
+		}
+		
+		whereClause += " and (s.isShow = true or s.isShow is null) ";
+//		if(searchDto.getWebsite() != null) {
+//			whereClause += " and (s.website = :website) ";
+//		}
+
+		sql += whereClause;
+		sqlCount += whereClause;
+		
+		sql += " order by s.createDate DESC ";
+
+		Query q = manager.createQuery(sql, TopicDto.class);
+		Query qCount = manager.createQuery(sqlCount);
+
+		if (textSearch != null && textSearch.length() > 0) {
+			q.setParameter("textSearch", '%' + textSearch + '%');
+			qCount.setParameter("textSearch", '%' + textSearch + '%');
+		}
+		
+		if (contentSearch != null && contentSearch.length() > 0) {
+			q.setParameter("contentSearch", '%' + contentSearch + '%');
+			qCount.setParameter("contentSearch", '%' + contentSearch + '%');
+		}
+		
+		if(modifiedUser!= null && modifiedUser.getId() != null) {
+			q.setParameter("userId",  modifiedUser.getId() );
+			qCount.setParameter("userId",  modifiedUser.getId());
+		}
+		
+		if(searchDto.getTopicCategory() != null && searchDto.getTopicCategory().getId() != null ){
+			q.setParameter("topicCategoryId",  searchDto.getTopicCategory().getId() );
+			qCount.setParameter("topicCategoryId",  searchDto.getTopicCategory().getId());
+		}
+		
+//		if(searchDto.getWebsite() != null) {
+//			q.setParameter("website",searchDto.getWebsite());
+//			qCount.setParameter("website",searchDto.getWebsite());
+//		}
+		
+		if(searchDto.getUserId() != null) {
+			q.setParameter("userId", searchDto.getUserId());
+			qCount.setParameter("userId", searchDto.getUserId());
+		}
+		
+
+		q.setFirstResult((pageIndex) * pageSize);
+		q.setMaxResults(pageSize);
+
+		Long numberResult = (Long) qCount.getSingleResult();
+
+		Page<TopicDto> page = new PageImpl<TopicDto>(q.getResultList(), pageable, numberResult);
+		return page;
+	}
 
 	@Override
 	public List<TopicDto> getListObject() {
@@ -234,6 +324,7 @@ public class TopicServiceImpl implements TopicService {
 //		domain.setWebsite(dto.getWebsite());
 		domain.setContent(dto.getContent());
 		domain.setContentHtml(dto.getContentHtml());
+		domain.setIsShow(dto.getIsShow());
 		
 		if(dto.getTopicCategory() != null && dto.getTopicCategory().getId() != null) {
 			TopicCategory topicCategory = topicCategoryRepository.getOne(dto.getTopicCategory().getId());

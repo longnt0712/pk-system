@@ -8,6 +8,7 @@ import com.globits.richy.dto.TopicForListAllDto;
 
 public interface TopicService {
 	public Page<TopicDto> getPageObject(TopicDto searchDto, int pageIndex, int pageSize);
+	public Page<TopicDto> getPageObjectForGames(TopicDto searchDto, int pageIndex, int pageSize);
 	public List<TopicDto> getListObject();
 	public List<TopicForListAllDto> getAllTopics(TopicDto searchDto);
 	public TopicDto getObjectById(Long id);

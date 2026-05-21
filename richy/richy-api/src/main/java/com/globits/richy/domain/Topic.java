@@ -41,6 +41,17 @@ public class Topic extends BaseObject{
 	@JoinColumn(name = "topic_category_id")
 	private TopicCategory topicCategory;
 	
+	@Column(name="is_show")
+	private Boolean isShow;
+	
+	public Boolean getIsShow() {
+		return isShow;
+	}
+
+	public void setIsShow(Boolean isShow) {
+		this.isShow = isShow;
+	}
+
 	public TopicCategory getTopicCategory() {
 		return topicCategory;
 	}

@@ -27,6 +27,11 @@ public class RestTopicController {
 		return service.getPageObject(searchDto, pageIndex, pageSize);
 	}
 	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER"})
+	@RequestMapping(value = "/get_page_for_games/{pageIndex}/{pageSize}", method = RequestMethod.POST)
+	public Page<TopicDto> getPageForGames(@RequestBody TopicDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
+		return service.getPageObjectForGames(searchDto, pageIndex, pageSize);
+	}
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER"})
 	@RequestMapping(value = "/get_all_topics", method = RequestMethod.POST)
 	public List<TopicForListAllDto> getAllTopics(@RequestBody TopicDto searchDto) {
 		return service.getAllTopics(searchDto);

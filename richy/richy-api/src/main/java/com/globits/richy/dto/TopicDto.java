@@ -17,8 +17,14 @@ public class TopicDto implements Serializable{
 	private String username;
 	private String message;
 	private TopicCategoryDto topicCategory;
-
+	private Boolean isShow;
 	
+	public Boolean getIsShow() {
+		return isShow;
+	}
+	public void setIsShow(Boolean isShow) {
+		this.isShow = isShow;
+	}
 	public TopicCategoryDto getTopicCategory() {
 		return topicCategory;
 	}
@@ -92,6 +98,12 @@ public class TopicDto implements Serializable{
 		if(item.getTopicCategory() != null) {
 			this.topicCategory = new TopicCategoryDto(item.getTopicCategory());
 		}
+		if(item.getIsShow() == null) {
+			this.isShow = true;
+		} else {
+			this.isShow = item.getIsShow();
+		}
+		
 	}
 	
 	public TopicDto(Topic item, boolean showContent) {
@@ -103,6 +115,11 @@ public class TopicDto implements Serializable{
 		}
 		if(item.getTopicCategory() != null) {
 			this.topicCategory = new TopicCategoryDto(item.getTopicCategory());
+		}
+		if(item.getIsShow() == null) {
+			this.isShow = true;
+		} else {
+			this.isShow = item.getIsShow();
 		}
 	}
 	
