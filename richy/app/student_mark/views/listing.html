@@ -79,6 +79,36 @@
                                 ng-model="vm.keywordStudentName"
                                 placeholder="Tìm theo tên hoặc mã học sinh...">
                     </div>
+                    <div class="col-md-3 text-right">
+                        <div class="btn-group">
+                            <button type="button"
+                                    class="btn btn-success dropdown-toggle"
+                                    data-toggle="dropdown"
+                                    ng-disabled="!vm.studentMarks || vm.studentMarks.length === 0">
+                                <i class="fa fa-download"></i>
+                                Xuất danh sách điểm
+                                <span class="caret"></span>
+                            </button>
+
+                            <ul class="dropdown-menu pull-right">
+                                <li>
+                                    <a href=""
+                                       ng-click="$event.preventDefault(); vm.exportStudentMarksExcel();">
+                                        <i class="fa fa-table"></i>
+                                        Xuất Excel
+                                    </a>
+                                </li>
+
+                                <li>
+                                    <a href=""
+                                       ng-click="$event.preventDefault(); vm.exportStudentMarksImage();">
+                                        <i class="fa fa-image"></i>
+                                        Xuất ảnh
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="table-responsive margin-top-10">
