@@ -608,9 +608,11 @@
          */
 
         vm.newObject = function () {
-
-            vm.topic.isNew = true;
-            vm.topic.userId = vm.currentUser.id;
+            vm.topic = {
+                isNew: true,
+                userId: vm.currentUser.id,
+                isShow: true // mặc định thêm mới là hiển thị
+            };
 
             vm.modalInstance = modal.open({
                 animation: true,
@@ -657,7 +659,12 @@
             service.getOne(id).then(function (data) {
                 vm.topic = data;
                 vm.topic.isNew = false;
-                var modalInstance = modal.open({
+
+                if (vm.topic.isShow == null) {
+                    vm.topic.isShow = true;
+                }
+
+                vm.modalInstance = modal.open({
                     animation: true,
                     templateUrl: 'edit_object_modal.html',
                     scope: $scope,
@@ -665,29 +672,30 @@
                     backdrop: 'static',
                 });
 
-                modalInstance.result.then(function (confirm) {
-                    if (confirm == 'yes') {
-                        service.saveObject(vm.topic).then(function (data) {
-                            vm.getPage();
-                            vm.topic = {};
-                            if(data.message != null){
-                                toastr.info(data.message, 'Notification');
-                            }else{
-                                toastr.error('Error.', 'Warning');
-                            }
-                        });
-                        // service.saveObject(vm.topic, function success(data) {
-                        //     console.log(vm.topic);
-                        //     vm.getPage();
-                        //     toastr.info('Bạn đã lưu thành công một bản ghi.', 'Thông báo');
-                        //     vm.topic = {};
-                        // }, function failure() {
-                        //     toastr.error('Có lỗi xảy ra khi lưu thông tin tài khoản.', 'Lỗi');
-                        // });
-                    }
+                vm.modalInstance.result.then(function (confirm) {
+
                 }, function () {
                     vm.topic = {};
                 });
+            });
+        };
+
+        $scope.changeIsShow = function (id, isShow) {
+            service.getOne(id).then(function (data) {
+                if (data != null) {
+                    data.isShow = isShow;
+
+                    service.saveObject(data).then(function (result) {
+                        toastr.info('Cập nhật trạng thái hiển thị thành công', 'Thông báo');
+                        vm.getPage();
+                    }, function () {
+                        toastr.error('Có lỗi xảy ra khi cập nhật trạng thái hiển thị', 'Lỗi');
+                        vm.getPage();
+                    });
+                }
+            }, function () {
+                toastr.error('Không lấy được dữ liệu topic', 'Lỗi');
+                vm.getPage();
             });
         };
         

@@ -110,9 +110,9 @@
 
             var _tableOperation = function (value, row, index) {
                 return '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.editObject(' + "'" + row.id + "'" + ')"><i class="icon-pencil margin-right-5"></i>Edit</a>'
-                        + '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.createGaps(' + "'" + row.id + "'" + ')"><i class="fa fa-pencil margin-right-5"></i>Create gaps</a>'
-                    + '<a class="green-dark margin-right-20" target="_blank" href="topics/' + row.id +'" ><i class="fa fa-pencil margin-right-5"></i>Create normal</a>'
-                    +  '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.deleteObject(' + "'" + row.id + "'" + ')"><i class="fa fa-trash margin-right-5"></i>Delete</a>';;
+                    + '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.createGaps(' + "'" + row.id + "'" + ')"><i class="fa fa-pencil margin-right-5"></i>Create gaps</a>'
+                    + '<a class="green-dark margin-right-20" target="_blank" href="topics/' + row.id + '" ><i class="fa fa-pencil margin-right-5"></i>Create normal</a>'
+                    + '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.deleteObject(' + "'" + row.id + "'" + ')"><i class="fa fa-trash margin-right-5"></i>Delete</a>';
             };
 
             var _cellNowrap = function (value, row, index, field) {
@@ -122,28 +122,47 @@
                 };
             };
 
+            var _isShowFormatter = function (value, row, index) {
+                var isShow = row.isShow !== false;
+                var checked = isShow ? 'checked="checked"' : '';
+                var nextValue = !isShow;
+
+                return '<input type="checkbox" ' + checked +
+                    ' onclick="event.stopPropagation();" ' +
+                    ' data-ng-click="$parent.changeIsShow(' + "'" + row.id + "'" + ', ' + nextValue + ')" />';
+            };
+
             return [
                 {
                     field: 'state',
                     checkbox: true
-                }
-                , {
+                },
+                {
                     field: '',
                     title: 'Thao tác',
                     switchable: true,
                     visible: true,
                     formatter: _tableOperation,
                     cellStyle: _cellNowrap
-                }
-                , {
+                },
+                {
                     field: 'name',
                     title: 'name',
                     sortable: true,
                     switchable: false,
                     cellStyle: _cellNowrap
+                },
+                {
+                    field: 'isShow',
+                    title: 'Hiển thị',
+                    sortable: true,
+                    switchable: true,
+                    visible: true,
+                    align: 'center',
+                    formatter: _isShowFormatter,
+                    cellStyle: _cellNowrap
                 }
-
-            ]
+            ];
         }
     }
 

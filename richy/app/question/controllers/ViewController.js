@@ -1018,7 +1018,7 @@
 
         vm.getTopics = function () {
             blockUI.start();
-            service.getTopics(vm.searchTopicDto,1, 10000000).then(function (data) {
+            service.getTopicsForGames(vm.searchTopicDto,1, 10000000).then(function (data) {
                 vm.topics = data.content;
                 blockUI.stop();
             });

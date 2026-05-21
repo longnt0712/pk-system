@@ -105,6 +105,18 @@
                     <label class="bold">Content HTML</label>
                     <textarea ui-tinymce="tinymceOptions" rows="6" class="form-control" ng-model="vm.topic.contentHtml"  />
                 </div>
+                <div class="col-md-12 margin-top-10">
+                    <label class="bold">Trạng thái hiển thị</label>
+                    <div>
+                        <label>
+                            <input type="checkbox" ng-model="vm.topic.isShow">
+                            Hiển thị topic
+                        </label>
+                    </div>
+                    <small class="text-muted">
+                        {{vm.topic.isShow ? 'Topic đang được hiển thị' : 'Topic đang bị ẩn'}}
+                    </small>
+                </div>
             </div>
         </div>
         <div class="modal-footer">

@@ -41,6 +41,7 @@
         self.getRandomQuestion = getRandomQuestion;
         self.getRandomQuestionQuiz = getRandomQuestionQuiz;
         self.getTopics = getTopics;
+        self.getTopicsForGames = getTopicsForGames;
 
         self.getStatisticQuestionUser = getStatisticQuestionUser;
         self.getTableDefinitionStatisticUser = getTableDefinitionStatisticUser;
@@ -96,9 +97,19 @@
             }, successCallback, errorCallback);
         }
 
-
         function getTopics(searchdto, pageIndex, pageSize, successCallback, errorCallback) {
             var url = baseUrl + 'topic' + '/get_page';
+            url += '/'+pageIndex;
+            url += '/'+ ((pageSize > 0) ? pageSize : 10000);
+            // console.log(url);
+
+            return utils.resolveAlt(url, 'POST', null, searchdto, {
+                'Content-Type': 'application/json; charset=utf-8'
+            }, successCallback, errorCallback);
+        }
+
+        function getTopicsForGames(searchdto, pageIndex, pageSize, successCallback, errorCallback) {
+            var url = baseUrl + 'topic' + '/get_page_for_games';
             url += '/'+pageIndex;
             url += '/'+ ((pageSize > 0) ? pageSize : 10000);
             // console.log(url);
