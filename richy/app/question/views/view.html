@@ -1,4 +1,4 @@
-﻿<table class="table table-bordered table-striped" ng-if="vm.questionTable && vm.questionTable.length > 0 && vm.mode.id == 1">
+<table class="table table-bordered table-striped" ng-if="vm.questionTable && vm.questionTable.length > 0 && vm.mode.id == 1">
     <thead>
     <tr>
         <th>Từ vựng</th>
@@ -956,11 +956,11 @@
 
                 </div>
 
-                <div ng-if="vm.mode.id == 8 || vm.mode.id == 11"
+                <div ng-if="vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15"
                         class="row"
                         ng-class="{
                             'gap-english-theme': vm.mode.id == 8,
-                            'gap-vni-tntt-theme': vm.mode.id == 11
+                            'gap-vni-tntt-theme': vm.mode.id == 11 || vm.mode.id == 15
                          }">
                     <div class="row gap-filling-equal-row">
                         <div ng-if="vm.showGapTitleTable" class="col-md-3 gap-left-list-col">
@@ -1004,7 +1004,7 @@
                                         SURRENDER
                                     </button>
 
-                                <span ng-if="vm.mode.id == 8 || vm.mode.id == 11" class="gap-rate-control">
+                                <span ng-if="vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15" class="gap-rate-control">
                                     <label class="bold gap-rate-label">Gap rate:</label>
 
                                     <button type="button"
@@ -1036,6 +1036,18 @@
                                             aria-label="Tăng Gap rate 5%">
                                         <i class="fa-solid fa-chevron-up"></i>
                                     </button>
+                                </span>
+                                <span ng-if="vm.mode.id == 15" class="gap-rate-control gap-vni2-max-words-control">
+                                    <label class="bold gap-rate-label">Max từ / gap:</label>
+
+                                    <input type="number"
+                                           min="2"
+                                           step="1"
+                                           inputmode="numeric"
+                                           ng-model="vm.vni2MaxWordsPerGap"
+                                           ng-change="vm.changeVni2MaxWordsPerGap()"
+                                           ng-model-options="{ debounce: 500 }"
+                                           class="form-control input-sm gap-rate-input" />
                                 </span>
                                 </div>
                             </div>
@@ -1069,7 +1081,7 @@
 
                             </div>
 
-                            <div class="gap-main-control-box" ng-if="vm.mode.id != 11">
+                            <div class="gap-main-control-box" ng-if="vm.mode.id != 11 && vm.mode.id != 15">
 
                                 <div ng-if="vm.isYoutubeAudio" class="gap-youtube-note">
                                     YouTube mode: dùng nút dưới đây để pause / back 3s / forward 3s
@@ -1164,14 +1176,14 @@
                             <!-- =========================
                                  KHÔNG PHẢI YOUTUBE: giữ layout cũ
                             ========================== -->
-                            <div ng-if="vm.mode.id == 11 || !vm.isYoutubeAudio">
+                            <div ng-if="vm.mode.id == 11 || vm.mode.id == 15 || !vm.isYoutubeAudio">
 
                                 <div class="row margin-top-10 margin-bottom-10 filling-content gap-filling-scroll-box">
                                     <div class="col-md-12">
                                         <div class="bold"
                                              ng-class="{
                                                  'gap-english-content': vm.mode.id == 8,
-                                                 'gap-vni-tntt-content': vm.mode.id == 11
+                                                 'gap-vni-tntt-content': vm.mode.id == 11 || vm.mode.id == 15
                                              }"
                                              compile="vm.fillingGapQuestion"></div>
                                     </div>
@@ -1185,7 +1197,7 @@
                                  Trái: video
                                  Phải: điền từ
                             ========================== -->
-                            <div ng-if="vm.mode.id != 11 && vm.isYoutubeAudio" class="youtube-gap-split-layout">
+                            <div ng-if="vm.mode.id != 11 && vm.mode.id != 15 && vm.isYoutubeAudio" class="youtube-gap-split-layout">
 
                                 <div class="youtube-gap-left">
                                     <div class="row audio-menu">
@@ -1206,7 +1218,7 @@
                                             <div class="bold"
                                                  ng-class="{
                                                      'gap-english-content': vm.mode.id == 8,
-                                                     'gap-vni-tntt-content': vm.mode.id == 11
+                                                     'gap-vni-tntt-content': vm.mode.id == 11 || vm.mode.id == 15
                                                  }"
                                                  compile="vm.fillingGapQuestion"></div>
                                         </div>
@@ -2684,6 +2696,16 @@
         display: table;
         clear: both;
     }
+
+    .gap-inline-input-phrase {
+        min-width: 170px !important;
+        max-width: 520px !important;
+    }
+
+    .gap-inline-wrap-phrase {
+        white-space: nowrap;
+    }
+
 </style>
 
 <style>
@@ -6498,6 +6520,10 @@
         font-weight: bold;
     }
 
+    .gap-vni2-max-words-control .gap-rate-input {
+        width: 86px !important;
+    }
+
     @media (max-width: 767px) {
         .gap-top-info-line {
             display: flex;
@@ -6549,3 +6575,13 @@
         }
     }
 </style>
+
+
+<style>
+    /* FILLING GAPS VNI 2 - input đã đúng thì khóa lại, Space để sang gap tiếp theo */
+    .gap-vni-tntt-theme input.gap-input-correct-locked {
+        background: rgba(183, 244, 216, 0.7) !important;
+        caret-color: transparent;
+    }
+</style>
+

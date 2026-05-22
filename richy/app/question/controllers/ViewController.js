@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
     'use strict';
 
     angular.module('Hrm.Question').controller('ViewController', ViewController);
@@ -508,6 +508,7 @@
             {id:1,name: 'NORMAL'},
             {id:4,name: 'REWRITE'},
             {id:11,name: 'FILLING GAPS VNI'},
+            {id:15,name: 'FILLING GAPS VNI 2'},
             {id:12,name: 'FILLING GAPS 3'},
             {id:13,name: 'MCQs'},
             {id:14, name: 'GUESS THE WORD'}
@@ -566,9 +567,9 @@
                     vm.doShuffle();
                 }
 
-                if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){
+                if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15 || vm.mode.id == 12){
 
-                    if (vm.mode.id == 8 || vm.mode.id == 11) {
+                    if (vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15) {
                         vm.showGapTitleTable = true;
                     }
                     
@@ -616,7 +617,7 @@
 
                     }
 
-                    if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){
+                    if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15 || vm.mode.id == 12){
                         vm.showGapAnswers = false;
                         vm.currentGapBlocks = null;
                         vm.fillingGapQuestion = processFillingGapsByMode(
@@ -641,7 +642,7 @@
                     }
                 }
 
-                if (vm.mode.id == 11 || vm.mode.id == 12) {
+                if (vm.mode.id == 11 || vm.mode.id == 15 || vm.mode.id == 12) {
                     vm.scrollToFillingGapsTop();
                 }
 
@@ -813,6 +814,77 @@
         }
 
         vm.gapRatePercent = getSavedGapRatePercent();
+        vm.minVni2MaxWordsPerGap = 2;
+
+        function getSavedVni2MaxWordsPerGap() {
+            var saved = localStorage.getItem('fillingGapVni2MaxWordsPerGap');
+            var value = parseInt(saved, 10);
+
+            if (isNaN(value)) {
+                value = 4;
+            }
+
+            if (value < vm.minVni2MaxWordsPerGap) {
+                value = vm.minVni2MaxWordsPerGap;
+            }
+
+            return value;
+        }
+
+        vm.vni2MaxWordsPerGap = getSavedVni2MaxWordsPerGap();
+
+        vm.getVni2MaxWordsPerGap = function () {
+            var value = parseInt(vm.vni2MaxWordsPerGap, 10);
+
+            if (isNaN(value)) {
+                value = getSavedVni2MaxWordsPerGap();
+            }
+
+            if (value < vm.minVni2MaxWordsPerGap) {
+                value = vm.minVni2MaxWordsPerGap;
+            }
+
+            vm.vni2MaxWordsPerGap = value;
+            localStorage.setItem('fillingGapVni2MaxWordsPerGap', value);
+
+            return value;
+        };
+
+        vm.changeVni2MaxWordsPerGap = function () {
+            vm.getVni2MaxWordsPerGap();
+
+            if (!vm.mode || vm.mode.id != 15) {
+                return;
+            }
+
+            if (!vm.currentCard || !vm.currentCard.motherTongue) {
+                return;
+            }
+
+            vm.showGapAnswers = false;
+
+            // Reset cache để câu hiện tại được tạo lại theo số từ tối đa / gap mới.
+            vm.currentGapBlocks = null;
+            vm.currentGapAnswers = [];
+            vm.gapAnswers = {};
+            vm.gapValues = {};
+            vm.gapCorrectMap = {};
+
+            vm.resetGapProgressOnly();
+
+            vm.fillingGapQuestion = processFillingGapsByMode(
+                vm.currentCard.motherTongue,
+                false,
+                true
+            );
+
+            vm.percentage = 0;
+
+            if (vm.testResult) {
+                vm.testResult.testTime = 'GAPS 0%';
+            }
+        };
+
 
         vm.adjustGapRate = function (delta) {
             var percent = parseFloat(vm.gapRatePercent);
@@ -1052,7 +1124,7 @@
                     vm.currentCard = vm.questions[vm.currentPosition];
                     vm.answerRewriteWord = '';
 
-                    if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){
+                    if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15 || vm.mode.id == 12){
                         vm.syncCurrentFillingGapCard();
                     }
 
@@ -1087,7 +1159,7 @@
                     vm.currentCard = vm.questions[vm.currentPosition];
                     vm.answerRewriteWord = '';
 
-                    if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){
+                    if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15 || vm.mode.id == 12){
                         vm.syncCurrentFillingGapCard();
                     }
 
@@ -1215,7 +1287,7 @@
                 vm.resetDailyVocabRun();
             }
 
-            if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12){
+            if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15 || vm.mode.id == 12){
 
                 if(vm.searchDto.questionTopics == null || vm.searchDto.questionTopics.length <= 0){
                     alert('Phải chọn các bài nghe cần học rồi ấn tìm kiếm');
@@ -2468,7 +2540,15 @@
         vm.speechLang = 'en-US';
 
         vm.updateSpeechLangByMode = function () {
-            vm.speechLang = (vm.mode.id == 11 || vm.mode.id == 13 || vm.mode.id == 14) ? 'vi-VN' : 'en-US';
+            vm.speechLang = (
+                vm.mode &&
+                (
+                    vm.mode.id == 11 ||
+                    vm.mode.id == 13 ||
+                    vm.mode.id == 14 ||
+                    vm.mode.id == 15
+                )
+            ) ? 'vi-VN' : 'en-US';
         };
 
         vm.updateSpeechLangByMode();
@@ -4014,6 +4094,320 @@
             return processedText.trim();
         }
 
+        function processFillingGapsVni2(text, forceShowAnswer, shouldRegenerate) {
+            if (!text) {
+                vm.numberOfGaps = 0;
+                vm.currentGapAnswers = [];
+                vm.currentGapBlocks = null;
+                vm.gapAnswers = {};
+                vm.gapValues = {};
+                vm.gapCorrectMap = {};
+                return '';
+            }
+
+            function escapeForNgString(str) {
+                return String(str || '')
+                    .replace(/\\/g, '\\\\')
+                    .replace(/'/g, "\\'");
+            }
+
+            function escapeHtml(str) {
+                return String(str || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function startsWithLetter(word) {
+                return /^[A-Za-zÀ-ỹĂăÂâĐđÊêÔôƠơƯư]/.test(word || '');
+            }
+
+            function shuffle(arr) {
+                var result = arr.slice();
+
+                for (var i = result.length - 1; i > 0; i--) {
+                    var j = Math.floor(Math.random() * (i + 1));
+                    var temp = result[i];
+                    result[i] = result[j];
+                    result[j] = temp;
+                }
+
+                return result;
+            }
+
+            function isGoodGapWord(word) {
+                var trimmedWord = (word || '').trim();
+
+                if (!trimmedWord) {
+                    return false;
+                }
+
+                if (!startsWithLetter(trimmedWord) && !/^[0-9]/.test(trimmedWord)) {
+                    return false;
+                }
+
+                var clean = processTextByMode(trimmedWord);
+
+                if (!clean) {
+                    return false;
+                }
+
+                if (checkHaveAllLetterIsNormal(clean) == 2) {
+                    return false;
+                }
+
+                return true;
+            }
+
+            function canTakeBlock(start, len, selected, words) {
+                if (start < 0 || start + len > words.length) {
+                    return false;
+                }
+
+                for (var i = start; i < start + len; i++) {
+                    if (selected[i] || !isGoodGapWord(words[i])) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            function getSafeVni2MaxWordsPerGap() {
+                var maxWordsPerGap = vm.getVni2MaxWordsPerGap ? vm.getVni2MaxWordsPerGap() : 4;
+
+                maxWordsPerGap = parseInt(maxWordsPerGap, 10);
+
+                if (isNaN(maxWordsPerGap) || maxWordsPerGap < 2) {
+                    maxWordsPerGap = 2;
+                }
+
+                return maxWordsPerGap;
+            }
+
+            function buildBlocksFromSelectedWords(words, selected, maxWordsPerGap) {
+                var blocks = [];
+                var i = 0;
+
+                while (i < words.length) {
+                    if (!selected[i]) {
+                        i++;
+                        continue;
+                    }
+
+                    var start = i;
+                    var answerWords = [];
+
+                    while (i < words.length && selected[i] && answerWords.length < maxWordsPerGap) {
+                        answerWords.push(words[i]);
+                        i++;
+                    }
+
+                    blocks.push({
+                        start: start,
+                        end: i - 1,
+                        answer: answerWords.join(' ')
+                    });
+                }
+
+                return blocks;
+            }
+
+            function buildAllWordsAsBlocks(words, maxWordsPerGap) {
+                var selected = {};
+
+                for (var i = 0; i < words.length; i++) {
+                    selected[i] = true;
+                }
+
+                return buildBlocksFromSelectedWords(words, selected, maxWordsPerGap);
+            }
+
+            function buildVni2Blocks(words) {
+                var maxWordsPerGap = getSafeVni2MaxWordsPerGap();
+                var gapRate = vm.getGapRate ? vm.getGapRate() : 0.35;
+
+                if (isNaN(gapRate)) {
+                    gapRate = 0.35;
+                }
+
+                if (gapRate < 0.3) {
+                    gapRate = 0.3;
+                }
+
+                if (gapRate > 1) {
+                    gapRate = 1;
+                }
+
+                if (!words.length) {
+                    return [];
+                }
+
+                // 100%: toàn bộ câu trở thành input, chia block theo Max từ / gap.
+                if (gapRate >= 1) {
+                    return buildAllWordsAsBlocks(words, maxWordsPerGap);
+                }
+
+                var selected = {};
+                var goodIndexes = [];
+
+                for (var i = 0; i < words.length; i++) {
+                    if (isGoodGapWord(words[i])) {
+                        goodIndexes.push(i);
+                    }
+                }
+
+                if (!goodIndexes.length) {
+                    return [];
+                }
+
+                var targetHiddenWords = Math.round(words.length * gapRate);
+
+                // 30% là mức ít gap nhất, nhưng vẫn tạo ít nhất 1 input nếu có từ hợp lệ.
+                targetHiddenWords = Math.max(1, targetHiddenWords);
+                targetHiddenWords = Math.min(targetHiddenWords, goodIndexes.length);
+
+                var hiddenWordCount = 0;
+                var starts = shuffle(goodIndexes);
+
+                for (var s = 0; s < starts.length && hiddenWordCount < targetHiddenWords; s++) {
+                    var start = starts[s];
+
+                    if (selected[start]) {
+                        continue;
+                    }
+
+                    var remaining = targetHiddenWords - hiddenWordCount;
+                    var maxLenForThisBlock = Math.min(maxWordsPerGap, remaining, words.length - start);
+                    var chosenLen = 0;
+
+                    // Ưu tiên block dài nhất có thể để 30% thật sự ít gap hơn.
+                    for (var len = maxLenForThisBlock; len >= 1; len--) {
+                        if (canTakeBlock(start, len, selected, words)) {
+                            chosenLen = len;
+                            break;
+                        }
+                    }
+
+                    if (chosenLen <= 0) {
+                        continue;
+                    }
+
+                    for (var k = start; k < start + chosenLen; k++) {
+                        selected[k] = true;
+                    }
+
+                    hiddenWordCount += chosenLen;
+                }
+
+                // Nếu vì random mà chưa đủ số từ cần ẩn, lấp thêm từng từ hợp lệ còn trống.
+                if (hiddenWordCount < targetHiddenWords) {
+                    for (var g = 0; g < goodIndexes.length && hiddenWordCount < targetHiddenWords; g++) {
+                        var index = goodIndexes[g];
+
+                        if (!selected[index]) {
+                            selected[index] = true;
+                            hiddenWordCount++;
+                        }
+                    }
+                }
+
+                return buildBlocksFromSelectedWords(words, selected, maxWordsPerGap);
+            }
+
+            var words = String(text).split(/\s+/).filter(Boolean);
+            var processedText = '';
+
+            if (
+                shouldRegenerate === true ||
+                !angular.isArray(vm.currentGapBlocks)
+            ) {
+                vm.currentGapBlocks = buildVni2Blocks(words);
+            }
+
+            // Reset sạch data gap cũ trước khi render lại từ cache block hiện tại.
+            vm.numberOfGaps = 0;
+            vm.currentGapAnswers = [];
+            vm.gapAnswers = {};
+            vm.gapValues = {};
+            vm.gapCorrectMap = {};
+
+            var blocks = vm.currentGapBlocks || [];
+            var startMap = {};
+            var hiddenMap = {};
+
+            angular.forEach(blocks, function (block) {
+                startMap[block.start] = block;
+
+                for (var i = block.start; i <= block.end; i++) {
+                    hiddenMap[i] = true;
+                }
+
+                vm.gapAnswers[block.start] = block.answer;
+                vm.gapCorrectMap[block.start] = false;
+
+                vm.currentGapAnswers.push({
+                    index: block.start,
+                    answer: block.answer,
+                    value: '',
+                    result: false,
+                    correct: false,
+                    isCorrect: false,
+                    isRight: false
+                });
+            });
+
+            for (var i = 0; i < words.length; i++) {
+                if (startMap[i]) {
+                    var block = startMap[i];
+                    var answer = block.answer;
+                    var answerEscaped = escapeForNgString(answer);
+                    var inputWidth = Math.max(170, Math.min(520, answer.length * 15));
+
+                    if (forceShowAnswer === true) {
+                        processedText += ' <span class="gaps3-answer-chip">' + escapeHtml(answer) + '</span>';
+                    } else {
+                        processedText +=
+                            ' <span class="gap-inline-wrap gap-inline-wrap-phrase">' +
+                            '<input autocomplete="off" ' +
+                            'oncompositionstart="this.dataset.composing=\'1\'" ' +
+                            'oncompositionend="this.dataset.composing=\'0\'; angular.element(this).triggerHandler(\'change\')" ' +
+                            'ng-model="vm.gapValues[' + block.start + ']" ' +
+                            'ng-keydown="vm.onGapKeydown($event,' + words.length + ',' + block.start + ',\'' + answerEscaped + '\')" ' +
+                            'ng-change="vm.onGapInputChange(' + words.length + ',' + block.start + ',vm.currentCard.motherTongue,\'' + answerEscaped + '\')" ' +
+                            'ng-keyup="vm.onGapKeyup($event,' + words.length + ',' + block.start + ',vm.currentCard.motherTongue,\'' + answerEscaped + '\')" ' +
+                            'class="input-underline-only gap-inline-input gap-inline-input-phrase" ' +
+                            'type="text" ' +
+                            'style="width: ' + inputWidth + 'px" ' +
+                            'id="gap-number-' + block.start + '"' +
+                            '/>' +
+                            '<i class="fa fa-volume-up gap-inline-speaker" ' +
+                            'ng-click="sayIt(\'' + answerEscaped + '\')"></i>' +
+                            '</span>';
+                    }
+
+                    continue;
+                }
+
+                if (hiddenMap[i]) {
+                    continue;
+                }
+
+                processedText += ' ' + words[i];
+            }
+
+            vm.numberOfGaps = vm.currentGapAnswers.length;
+            vm.percentage = 0;
+
+            if (vm.testResult) {
+                vm.testResult.testTime = 'GAPS 0%';
+            }
+
+            return processedText.trim();
+        }
+
         function getMainAudio() {
             if (!mainAudio) {
                 mainAudio = document.getElementById('main-audio');
@@ -4034,7 +4428,7 @@
         }
 
         vm.tryAutoSaveFillingGaps = function () {
-            if (!(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12)) {
+            if (!(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15 || vm.mode.id == 12)) {
                 return;
             }
 
@@ -4299,11 +4693,22 @@
                     currentInput.blur();
                 }
 
+                // Ưu tiên nhảy tới gap chưa đúng tiếp theo.
                 for (var j = index + 1; j < totalWords; j++) {
                     var nextInput = document.getElementById('gap-number-' + j);
 
-                    if (nextInput) {
+                    if (nextInput && !(vm.gapCorrectMap && vm.gapCorrectMap[j] === true)) {
                         nextInput.focus();
+                        return;
+                    }
+                }
+
+                // Nếu phía sau đều đã đúng thì fallback tới input tiếp theo bất kỳ.
+                for (var k = index + 1; k < totalWords; k++) {
+                    var fallbackInput = document.getElementById('gap-number-' + k);
+
+                    if (fallbackInput) {
+                        fallbackInput.focus();
                         return;
                     }
                 }
@@ -4319,6 +4724,95 @@
             return typed && typed === answer;
         }
 
+        function stopGapKeyEvent(e) {
+            if (!e) {
+                return false;
+            }
+
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+
+            if (e.stopImmediatePropagation) {
+                e.stopImmediatePropagation();
+            }
+
+            return false;
+        }
+
+        function setGapInputLocked(input, locked) {
+            if (!input) {
+                return;
+            }
+
+            if (locked) {
+                input.readOnly = true;
+                input.setAttribute('readonly', 'readonly');
+
+                if (input.classList) {
+                    input.classList.add('gap-input-correct-locked');
+                }
+            } else {
+                input.readOnly = false;
+                input.removeAttribute('readonly');
+
+                if (input.classList) {
+                    input.classList.remove('gap-input-correct-locked');
+                }
+            }
+        }
+
+        function syncGapInputState(index, gapWord) {
+            var currentInput = document.getElementById('gap-number-' + index);
+
+            // Đọc trực tiếp từ input để không bị chậm ng-model.
+            var rawTyped = currentInput
+                ? currentInput.value
+                : (vm.gapValues ? vm.gapValues[index] : '');
+
+            vm.gapValues = vm.gapValues || {};
+            vm.gapValues[index] = rawTyped;
+
+            var typed = normalizeGapAutoNext(rawTyped);
+            var answer = normalizeGapAutoNext(gapWord);
+            var isCorrect = typed && typed === answer;
+
+            vm.gapCorrectMap = vm.gapCorrectMap || {};
+            vm.gapCorrectMap[index] = isCorrect;
+
+            updateCurrentGapAnswerState(index, rawTyped, isCorrect);
+
+            if (currentInput) {
+                if (isCorrect) {
+                    currentInput.style.background = 'rgba(183, 244, 216, 0.7)';
+
+                    // Chỉ mode VNI 2 cần khóa input sau khi đúng.
+                    // Mode VNI thường vẫn giữ behavior cũ.
+                    if (vm.mode && vm.mode.id == 15) {
+                        setGapInputLocked(currentInput, true);
+                    }
+                } else {
+                    setGapInputLocked(currentInput, false);
+
+                    if (rawTyped == null || String(rawTyped).trim().length <= 0) {
+                        currentInput.style.background = '';
+                    } else {
+                        currentInput.style.background = 'rgba(255, 180, 180, 0.7)';
+                    }
+                }
+            }
+
+            return {
+                currentInput: currentInput,
+                rawTyped: rawTyped,
+                isCorrect: isCorrect
+            };
+        }
+
         vm.onGapKeydown = function (e, totalWords, index, gapWord) {
             e = e || window.event;
 
@@ -4332,6 +4826,37 @@
                 code === 'Space' ||
                 keyCode === 32;
 
+            // MODE 15 - FILLING GAPS VNI 2:
+            // - Khi chưa đúng: cho Space / Backspace / ArrowLeft / ArrowRight hoạt động bình thường.
+            // - Khi đã đúng: khóa input, chặn sửa; nhấn Space sẽ nhảy sang gap tiếp theo.
+            if (vm.mode && vm.mode.id == 15) {
+                var stateVni2 = syncGapInputState(index, gapWord);
+
+                if (!stateVni2.isCorrect) {
+                    return true;
+                }
+
+                if (isSpace) {
+                    stopGapKeyEvent(e);
+                    focusNextGapInput(totalWords, index);
+                    vm.tryAutoSaveFillingGaps();
+                    return false;
+                }
+
+                // Cho Tab đi tiếp bằng hành vi mặc định của trình duyệt.
+                if (key === 'Tab' || keyCode === 9) {
+                    return true;
+                }
+
+                // Cho Enter phát âm như logic keyup hiện tại.
+                if (key === 'Enter' || keyCode === 13) {
+                    return true;
+                }
+
+                // Đã đúng rồi thì không cho gõ thêm, không cho xóa, không cho di chuyển caret.
+                return stopGapKeyEvent(e);
+            }
+
             // MODE 11:
             // Chỉ xử lý phím Space để nhảy gap.
             // Các phím khác như ArrowLeft, ArrowRight, Backspace, Delete, Home, End
@@ -4341,16 +4866,10 @@
                     return true;
                 }
 
-                if (e.preventDefault) {
-                    e.preventDefault();
-                }
-
-                if (e.stopPropagation) {
-                    e.stopPropagation();
-                }
+                stopGapKeyEvent(e);
 
                 var currentInput = document.getElementById('gap-number-' + index);
-                var rawTyped = vm.gapValues ? vm.gapValues[index] : '';
+                var rawTyped = currentInput ? currentInput.value : (vm.gapValues ? vm.gapValues[index] : '');
                 var isCorrect = isCurrentGapCorrect(index, gapWord);
 
                 vm.gapCorrectMap = vm.gapCorrectMap || {};
@@ -4382,40 +4901,14 @@
             vm.onGapAudioShortcut(e);
         };
         vm.onGapInputChange = function (totalWords, index, fullText, gapWord) {
-            var currentInput = document.getElementById('gap-number-' + index);
-
-            // Đọc trực tiếp từ input để không bị chậm ng-model
-            var rawTyped = currentInput ? currentInput.value : '';
-
-            vm.gapValues = vm.gapValues || {};
-            vm.gapValues[index] = rawTyped;
-
-            var typed = normalizeGapAutoNext(rawTyped);
-            var answer = normalizeGapAutoNext(gapWord);
-
-            var isCorrect = typed && typed === answer;
-
-            vm.gapCorrectMap = vm.gapCorrectMap || {};
-            vm.gapCorrectMap[index] = isCorrect;
-
-            updateCurrentGapAnswerState(index, rawTyped, isCorrect);
-
-            if (currentInput) {
-                if (isCorrect) {
-                    currentInput.style.background = 'rgba(183, 244, 216, 0.7)';
-                } else {
-                    if (rawTyped == null || String(rawTyped).trim().length <= 0) {
-                        currentInput.style.background = '';
-                    } else {
-                        currentInput.style.background = 'rgba(255, 180, 180, 0.7)';
-                    }
-                }
-            }
+            var state = syncGapInputState(index, gapWord);
+            var currentInput = state.currentInput;
+            var isCorrect = state.isCorrect;
 
             if (isCorrect) {
-                // Mode 8: tự nhảy luôn
-                // Mode 11: chỉ điện thoại tự nhảy, máy tính dùng Space
-                if (vm.mode.id == 8 || isMobileDevice()) {
+                // Mode 8: tự nhảy luôn.
+                // Mode 11 + Mode 15: trên mobile tự nhảy khi đúng; trên desktop vẫn dùng Space.
+                if (vm.mode.id == 8 || ((vm.mode.id == 11 || vm.mode.id == 15) && isMobileDevice())) {
                     $timeout(function () {
                         if (currentInput) {
                             currentInput.blur();
@@ -4464,7 +4957,7 @@
 
             // mode 11: check tiếng Việt có dấu
             // mode 8: giữ logic cũ, check không dấu
-            vm.exactAnswer = (vm.mode.id == 11);
+            vm.exactAnswer = (vm.mode.id == 11 || vm.mode.id == 15);
 
             var result = processText(text);
 
@@ -5503,6 +5996,10 @@
         function processFillingGapsByMode(text, forceShowAnswer, shouldRegenerate) {
             if (!text) return '';
 
+            if (vm.mode.id == 15) {
+                return processFillingGapsVni2(text, forceShowAnswer, shouldRegenerate);
+            }
+
             if (vm.mode.id != 12) {
                 return processFillingGaps(text);
             }
@@ -5795,7 +6292,7 @@
         vm.showGapsTable = false;
 
         vm.syncCurrentFillingGapCard = function () {
-            if (!(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12)) {
+            if (!(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15 || vm.mode.id == 12)) {
                 return;
             }
 
