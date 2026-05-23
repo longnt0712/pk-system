@@ -23,6 +23,7 @@ public class PersonDateDto implements Serializable{
 	// 1: có đi học ; 2: không đi học; 3: muộn; 5: ca đoàn; 6: Phép (NK)
 
 	private String description;
+	private String modifiedBy;
 	private String textSearch;
 	private Date createDate;
 	private Date modifiedDate;
@@ -35,6 +36,12 @@ public class PersonDateDto implements Serializable{
 	private LocalDateTime startDate;
 	private LocalDateTime endDate;
 	
+	public String getModifiedBy() {
+		return modifiedBy;
+	}
+	public void setModifiedBy(String modifiedBy) {
+		this.modifiedBy = modifiedBy;
+	}
 	public Integer getExtraClass() {
 		return extraClass;
 	}
@@ -193,6 +200,7 @@ public class PersonDateDto implements Serializable{
 		this.statusClass = domain.getStatusClass();
 		this.extraClass = domain.getExtraClass();
 		this.description = domain.getDescription();
+		this.modifiedBy = domain.getModifiedBy();
 	}
 	
 }
