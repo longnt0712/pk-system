@@ -4144,13 +4144,25 @@
                     return false;
                 }
 
-                if (!startsWithLetter(trimmedWord) && !/^[0-9]/.test(trimmedWord)) {
+                // Mode 15: chỉ những token bắt đầu bằng chữ mới được đưa vào gap.
+                // Số, ngày tháng, mã có số, hoặc ký hiệu sẽ được giữ nguyên.
+                if (!startsWithLetter(trimmedWord)) {
                     return false;
                 }
 
                 var clean = processTextByMode(trimmedWord);
 
                 if (!clean) {
+                    return false;
+                }
+
+                // Sau khi bỏ dấu câu, token vẫn phải có chữ.
+                if (!/[A-Za-zÀ-ỹĂăÂâĐđÊêÔôƠơƯư]/.test(clean)) {
+                    return false;
+                }
+
+                // Không cho token có số đi vào gap, ví dụ: 2024, 3D, B2, A1.
+                if (/[0-9]/.test(clean)) {
                     return false;
                 }
 
@@ -4219,7 +4231,9 @@
                 var selected = {};
 
                 for (var i = 0; i < words.length; i++) {
-                    selected[i] = true;
+                    if (isGoodGapWord(words[i])) {
+                        selected[i] = true;
+                    }
                 }
 
                 return buildBlocksFromSelectedWords(words, selected, maxWordsPerGap);
@@ -4263,7 +4277,7 @@
                     return [];
                 }
 
-                var targetHiddenWords = Math.round(words.length * gapRate);
+                var targetHiddenWords = Math.round(goodIndexes.length * gapRate);
 
                 // 30% là mức ít gap nhất, nhưng vẫn tạo ít nhất 1 input nếu có từ hợp lệ.
                 targetHiddenWords = Math.max(1, targetHiddenWords);
