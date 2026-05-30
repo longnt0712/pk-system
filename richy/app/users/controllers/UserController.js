@@ -183,8 +183,8 @@
             {id: 20, name: "Thiếu nhi 1", old: "TS1"},
             {id: 21, name: "Thiếu nhi 2", old: "TS2"},
             {id: 22, name: "Thiếu nhi 3", old: "TS3"},
-            {id: 23, name: "Nghĩa sĩ 1", old: "SĐ1"},
-            {id: 24, name: "Nghĩa sĩ 2", old: "SĐ2"},
+            {id: 23, name: "Nghĩa sĩ 1", old: "TS3"},
+            
 
 
             {id: 1, name: "DCN1"},
@@ -299,15 +299,39 @@
         /**
          * Get all roles
          */
-        // if(vm.isRoleAdmin){
-            service.getAllRoles().then(function (data) {
-                if (data && data.length > 0) {
-                    vm.roles = data;
-                } else {
-                    vm.roles = [];
+        vm.roles = [];
+        vm.groups = [];
+
+        function findRoleByName(roleName) {
+            var foundRole = null;
+
+            angular.forEach(vm.roles, function (role) {
+                if (role && role.name === roleName) {
+                    foundRole = role;
                 }
-                vm.getUsers();
             });
+
+            return foundRole;
+        }
+
+        function getDefaultStudentRole() {
+            var studentRole = findRoleByName('ROLE_STUDENT');
+            return studentRole ? [studentRole] : [];
+        }
+        // if(vm.isRoleAdmin){
+        service.getAllRoles().then(function (data) {
+            if (data && data.length > 0) {
+                vm.roles = data;
+            } else {
+                vm.roles = [];
+            }
+
+            if (vm.user && vm.user.isNew === true && (!vm.user.roles || vm.user.roles.length === 0)) {
+                vm.user.roles = getDefaultStudentRole();
+            }
+
+            vm.getUsers();
+        });
         // }
 
 
@@ -563,15 +587,23 @@
         /**
          * Create a new user
          */
+        /**
+         * Create a new user
+         */
         vm.newUser = function () {
-            vm.user = {isNew: true};
+            vm.user = {
+                isNew: true,
+                active: true,
+                roles: getDefaultStudentRole(),
+                person: {}
+            };
 
             vm.modalInstance = modal.open({
                 animation: true,
                 templateUrl: 'edit_modal.html',
                 scope: $scope,
                 size: 'md',
-                backdrop: 'static',
+                backdrop: 'static'
             });
         };
 
