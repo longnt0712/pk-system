@@ -174,6 +174,19 @@
         vm.selectedUsers = [];
         
         vm.enrollmentClasses = [
+            {id: 14, name: "CHIÊN CON 1", old: "DCN1"},
+            {id: 15, name: "CHIÊN CON 2", old: "DNC2"},
+            {id: 16, name: "CHIÊN CON 3", old: "DCN3"},
+            {id: 17, name: "ẤU NHI 1", old: "HATT1"},
+            {id: 18, name: "ẤU NHI 2", old: "HATT2"},
+            {id: 19, name: "ẤU NHI 3", old: "HATT3"},
+            {id: 20, name: "Thiếu nhi 1", old: "TS1"},
+            {id: 21, name: "Thiếu nhi 2", old: "TS2"},
+            {id: 22, name: "Thiếu nhi 3", old: "TS3"},
+            {id: 23, name: "Nghĩa sĩ 1", old: "SĐ1"},
+            {id: 24, name: "Nghĩa sĩ 2", old: "SĐ2"},
+
+
             {id: 1, name: "DCN1"},
             {id: 2, name: "DCN2"},
             {id: 3, name: "HATT1A"},
@@ -188,6 +201,7 @@
             {id: 12, name: "HT"},
             {id: 13, name: "SĐ"},
             {id: 14, name: "KHÁC"}
+
         ];
         vm.genders = [
             {id: 'M', name: "NAM"},

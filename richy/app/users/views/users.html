@@ -59,6 +59,7 @@
                             <ui-select-match allow-clear="" placeholder="LỚP HỌC">{{$select.selected.name}}</ui-select-match>
                             <ui-select-choices repeat="so.id as so in vm.enrollmentClasses  | propsFilter: {name: $select.search}">
                                 <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
+                                <small>{{so.old}}</small>
                             </ui-select-choices>
                         </ui-select>
                     </div>
@@ -398,6 +399,7 @@
                         <ui-select-match allow-clear="true" placeholder="LỚP HỌC">{{$select.selected.name}}</ui-select-match>
                         <ui-select-choices repeat="so.id as so in vm.enrollmentClasses  | propsFilter: {name: $select.search}">
                             <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
+                            <small>{{so.old}}</small>
                         </ui-select-choices>
                     </ui-select>
                 </div>
@@ -406,7 +408,8 @@
                     <ui-select ng-model="vm.user.person.zaloStatus" data-ng-change="" sortable="true" close-on-select="true">
                         <ui-select-match allow-clear="true" placeholder="CÓ TRONG NHÓM ZALO KHÔNG?">{{$select.selected.name}}</ui-select-match>
                         <ui-select-choices repeat="so.id as so in vm.zaloStatuses  | propsFilter: {name: $select.search}">
-                            <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
+                            <div class="bold" ng-bind-html="so.name | highlight: $select.search">
+                            </div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
