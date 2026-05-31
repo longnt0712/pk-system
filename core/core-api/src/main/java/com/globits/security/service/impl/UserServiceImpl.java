@@ -48,6 +48,8 @@ import com.globits.security.repository.RoleRepository;
 import com.globits.security.repository.UserGroupRepository;
 import com.globits.security.repository.UserRepository;
 import com.globits.security.service.UserService;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Service
 public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements UserService {
@@ -186,6 +188,90 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 		return new PageImpl<>(content, pageable, page.getTotalElements());
 	}
 	
+	private static String normalizeSearchInput(String text) {
+	    if (text == null) {
+	        return "";
+	    }
+
+	    return text
+	            .toLowerCase()
+	            .replaceAll("\\s+", " ")
+	            .trim();
+	}
+
+	private static List<String> buildVietnameseToneSearchVariants(String keyword) {
+	    Set<String> result = new LinkedHashSet<>();
+
+	    String raw = normalizeSearchInput(keyword);
+	    if (raw.length() == 0) {
+	        return new ArrayList<>();
+	    }
+
+	    result.add(raw);
+
+	    String[][] pairs = new String[][]{
+	            // oa
+	            {"òa", "oà"},
+	            {"óa", "oá"},
+	            {"ỏa", "oả"},
+	            {"õa", "oã"},
+	            {"ọa", "oạ"},
+
+	            // oe
+	            {"òe", "oè"},
+	            {"óe", "oé"},
+	            {"ỏe", "oẻ"},
+	            {"õe", "oẽ"},
+	            {"ọe", "oẹ"},
+
+	            // uy
+	            {"ùy", "uỳ"},
+	            {"úy", "uý"},
+	            {"ủy", "uỷ"},
+	            {"ũy", "uỹ"},
+	            {"ụy", "uỵ"}
+	    };
+
+	    boolean changed = true;
+
+	    while (changed && result.size() < 100) {
+	        changed = false;
+
+	        List<String> currentList = new ArrayList<>(result);
+
+	        for (String item : currentList) {
+	            for (String[] pair : pairs) {
+	                String type1 = pair[0];
+	                String type2 = pair[1];
+
+	                if (item.contains(type1)) {
+	                    String variant = item.replace(type1, type2);
+	                    if (result.add(variant)) {
+	                        changed = true;
+	                    }
+	                }
+
+	                if (item.contains(type2)) {
+	                    String variant = item.replace(type2, type1);
+	                    if (result.add(variant)) {
+	                        changed = true;
+	                    }
+	                }
+
+	                if (result.size() >= 100) {
+	                    break;
+	                }
+	            }
+
+	            if (result.size() >= 100) {
+	                break;
+	            }
+	        }
+	    }
+
+	    return new ArrayList<>(result);
+	}
+	
 //	public static String removeAccent(String s) {
 //
 //	    if (s == null) {
@@ -316,20 +402,43 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 
 	    List<Long> roleIds = new ArrayList<>();
 	    List<Long> groupIds = new ArrayList<>();
+	    List<String> keywordVariants = new ArrayList<>();
 
 	    /*
 	     * KEYWORD
+	     * Cho phép Thúy = Thuý, Hòa = Hoà, Khỏe = Khoẻ...
 	     */
 	    if (!CommonUtils.isEmpty(filter.getKeyword())) {
-	        clause += " and ("
-	                + " lower(u.username) like :keyword "
-	                + " or lower(u.email) like :keyword "
-	                + " or lower(concat("
-	                + " coalesce(p.patron,''), ' ',"
-	                + " coalesce(p.lastName,''), ' ',"
-	                + " coalesce(p.firstName,'')"
-	                + " )) like :keyword "
-	                + ")";
+	        keywordVariants = buildVietnameseToneSearchVariants(filter.getKeyword());
+
+	        if (!keywordVariants.isEmpty()) {
+	            clause += " and (";
+
+	            for (int i = 0; i < keywordVariants.size(); i++) {
+	                if (i > 0) {
+	                    clause += " or ";
+	                }
+
+	                String paramName = "keyword" + i;
+
+	                clause += " lower(u.username) like :" + paramName
+	                        + " or lower(u.email) like :" + paramName
+	                        + " or lower(coalesce(p.patron,'')) like :" + paramName
+	                        + " or lower(coalesce(p.lastName,'')) like :" + paramName
+	                        + " or lower(coalesce(p.firstName,'')) like :" + paramName
+	                        + " or lower(concat("
+	                        + " coalesce(p.patron,''), ' ',"
+	                        + " coalesce(p.lastName,''), ' ',"
+	                        + " coalesce(p.firstName,'')"
+	                        + " )) like :" + paramName
+	                        + " or lower(concat("
+	                        + " coalesce(p.lastName,''), ' ',"
+	                        + " coalesce(p.firstName,'')"
+	                        + " )) like :" + paramName;
+	            }
+
+	            clause += " )";
+	        }
 	    }
 
 	    /*
@@ -399,12 +508,16 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	    Query qCount = manager.createQuery(sqlCount);
 
 	    /*
-	     * SET PARAMETER
+	     * SET KEYWORD PARAMETERS
 	     */
-	    if (!CommonUtils.isEmpty(filter.getKeyword())) {
-	        String keyword = "%" + filter.getKeyword().toLowerCase().trim() + "%";
-	        q.setParameter("keyword", keyword);
-	        qCount.setParameter("keyword", keyword);
+	    if (!keywordVariants.isEmpty()) {
+	        for (int i = 0; i < keywordVariants.size(); i++) {
+	            String paramName = "keyword" + i;
+	            String keywordValue = "%" + keywordVariants.get(i) + "%";
+
+	            q.setParameter(paramName, keywordValue);
+	            qCount.setParameter(paramName, keywordValue);
+	        }
 	    }
 
 	    if (filter.getActive() != null) {
