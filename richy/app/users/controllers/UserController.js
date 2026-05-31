@@ -200,7 +200,7 @@
             {id: 11, name: "TS3B"},
             {id: 12, name: "HT"},
             {id: 13, name: "SĐ"},
-            {id: 14, name: "KHÁC"}
+            {id: 99, name: "KHÁC"}
 
         ];
         vm.genders = [
