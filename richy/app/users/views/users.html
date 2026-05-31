@@ -479,7 +479,7 @@
                 <div class="col-md-6 margin-top-10">
                     <label class="bold">Tên đăng nhập</label>
                     <!--<input id="vm.user.username" ng-disabled="vm.user.id && vm.user.isNew == false" data-ng-model="vm.user.username" type="text" class="form-control" />-->
-                    <input id="vm.user.username" data-ng-model="vm.user.username" type="text" class="form-control" />
+                    <input id="vm.user.username" data-ng-disabled="!vm.isRoleAdmin" data-ng-model="vm.user.username" type="text" class="form-control" />
                 </div>
             </div>
             <div class="row">
