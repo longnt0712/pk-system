@@ -822,51 +822,26 @@
         /**
          * Perform search
          */
-        function hasAnyFilter() {
-            if (!vm.filter) {
-                return false;
-            }
-
-            var keyword = vm.filter.keyword != null
-                ? String(vm.filter.keyword).replace(/\s+/g, ' ').trim()
-                : '';
-
-            var hasKeyword = keyword !== '';
-            var hasGroups = vm.filter.groups && vm.filter.groups.length > 0;
-            var hasRoles = vm.filter.roles && vm.filter.roles.length > 0;
-
-            var hasEnrollmentClass =
-                vm.filter.enrollmentClass !== null &&
-                vm.filter.enrollmentClass !== undefined &&
-                vm.filter.enrollmentClass !== '';
-
-            var hasActive =
-                vm.filter.active !== null &&
-                vm.filter.active !== undefined &&
-                vm.filter.active !== '';
-
-            return hasKeyword || hasGroups || hasRoles || hasEnrollmentClass || hasActive;
-        }
-
-        function updateFilterStatusAndPageSize() {
+        vm.search = function () {
             if (vm.filter && vm.filter.keyword != null) {
                 vm.filter.keyword = String(vm.filter.keyword)
                     .replace(/\s+/g, ' ')
                     .trim();
             }
 
-            var filtered = hasAnyFilter();
-
-            vm.filter.filtered = filtered;
-
-            // Filter trắng => 25
-            // Có bất kỳ filter nào => 1000
-            vm.pageSize = filtered ? 1000 : 25;
-        }
-        vm.search = function () {
-            updateFilterStatusAndPageSize();
+            vm.filter.filtered =
+                (vm.filter.keyword && vm.filter.keyword.trim() !== '') ||
+                (vm.filter.groups && vm.filter.groups.length > 0) ||
+                (vm.filter.roles && vm.filter.roles.length > 0) ||
+                vm.filter.enrollmentClass != null;
 
             console.log(vm.filter);
+
+            if (vm.filter.enrollmentClass != null || (vm.filter.groups != null && vm.filter.groups.length > 0)) {
+                vm.pageSize = 1000;
+            } else {
+                vm.pageSize = 25;
+            }
 
             vm.pageIndex = 1;
             vm.getUsers();
@@ -908,9 +883,10 @@
             }
 
             // Update filter status
-            updateFilterStatusAndPageSize();
+            vm.filter.filtered = (vm.filter.keyword.trim() != '') || (vm.filter.groups.length > 0) || (vm.filter.roles.length > 0);
 
-            vm.pageIndex = 1;
+            // Update data
+            vm.pageIndex = 0;
             vm.getUsers();
         };
 
