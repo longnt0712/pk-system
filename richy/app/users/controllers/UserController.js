@@ -172,7 +172,7 @@
         vm.user = {};
         vm.users = [];
         vm.selectedUsers = [];
-        
+
         vm.enrollmentClasses = [
             {id: 14, name: "CHIÊN CON 1", old: "DCN1"},
             {id: 15, name: "CHIÊN CON 2", old: "DNC2"},
@@ -184,7 +184,7 @@
             {id: 21, name: "Thiếu nhi 2", old: "TS2"},
             {id: 22, name: "Thiếu nhi 3", old: "TS3"},
             {id: 23, name: "Nghĩa sĩ 1", old: "TS3"},
-            
+
 
 
             {id: 1, name: "DCN1"},
@@ -333,16 +333,7 @@
             vm.getUsers();
         });
         // }
-        vm.onEnrollmentClassChangedInModal = function (classId) {
-            console.log('Đã chọn lớp trong modal:', classId);
 
-            vm.filter.enrollmentClass = classId || null;
-            vm.pageIndex = 1;
-
-            $timeout(function () {
-                vm.search();
-            }, 0);
-        };
 
         vm.processEducationPrograms = function () {
             vm.educationPrograms = [];
@@ -382,120 +373,39 @@
          */
         vm.getUsers = function () {
 
-            if (vm.isRoleStudentManagerment === true || vm.isRoleEducationManagerment === true) {
-                vm.filter.roles = [];
-
-                angular.forEach(vm.roles, function (value1) {
-                    if (
-                        value1.name === "ROLE_STUDENT" ||
-                        value1.name === "ROLE_STUDENT_MANAGERMENT" ||
-                        value1.name === "ROLE_EDUCATION_MANAGERMENT"
-                    ) {
+            angular.forEach(vm.roles, function(value1, key1) {
+                if(value1.name === "ROLE_STUDENT" || value1.name === "ROLE_STUDENT_MANAGERMENT" || value1.name === "ROLE_EDUCATION_MANAGERMENT" ){
+                    // vm.filter.roles = [];
+                    if(vm.isRoleStudentManagerment == true || vm.isRoleEducationManagerment == true){
                         vm.filter.roles.push(value1);
+
                     }
-                });
-            }
-
-            console.log('Filter gửi lên API:', vm.filter);
-
+                }
+            });
+            console.log(vm.filter.roles);
             service.getUsers(vm.filter, vm.pageIndex, vm.pageSize).then(function (data) {
                 vm.users = data.content;
                 vm.users.totalElement = data.totalElements;
+                // vm.bsTableControl.options.data = vm.users;
+                // vm.bsTableControl.options.totalRows = data.totalElements;
+                // console.log(vm.bsTableControl.options.totalRows);
+
+                // angular.forEach(vm.users, function (user) {
+                //     var username = user?.username || '';
+                //     if (!username) return;
+                //
+                //     if (user.qrcodeByUsername) return; // cache
+                //
+                //     generateQrPro(username, vm.logoUrl, { qrSize: 240 }).then(function (url) {
+                //         $timeout(function () {
+                //             user.qrcodeByUsername = url;
+                //         }, 0);
+                //     }).catch(function (e) {
+                //         console.error('QR error:', e);
+                //     });
+                // });
+
             });
-        };
-
-        vm.sortKey = '';
-        vm.sortReverse = false;
-
-        vm.sortBy = function (key) {
-            if (vm.sortKey === key) {
-                vm.sortReverse = !vm.sortReverse;
-            } else {
-                vm.sortKey = key;
-                vm.sortReverse = false;
-            }
-        };
-
-        vm.getSortIcon = function (key) {
-            if (vm.sortKey !== key) {
-                return 'fa-sort';
-            }
-
-            return vm.sortReverse ? 'fa-sort-desc' : 'fa-sort-asc';
-        };
-
-        vm.getEnrollmentClassName = function (classId) {
-            var found = null;
-
-            angular.forEach(vm.enrollmentClasses, function (item) {
-                if (item.id === classId) {
-                    found = item;
-                }
-            });
-
-            return found ? found.name : '';
-        };
-
-        vm.getSortValue = function (user) {
-            if (!user) {
-                return '';
-            }
-
-            var person = user.person || {};
-
-            switch (vm.sortKey) {
-                case 'patron':
-                    return person.patron || '';
-
-                case 'fullName':
-                    return ((person.lastName || '') + ' ' + (person.firstName || '')).toLowerCase();
-
-                case 'birthDate':
-                    return person.birthDate ? new Date(person.birthDate).getTime() : 0;
-
-                case 'username':
-                    return user.username || '';
-
-                case 'motherFullName':
-                    return person.motherFullName || '';
-
-                case 'motherPhoneNumber':
-                    return person.motherPhoneNumber || '';
-
-                case 'fatherFullName':
-                    return person.fatherFullName || '';
-
-                case 'fatherPhoneNumber':
-                    return person.fatherPhoneNumber || '';
-
-                case 'phoneNumber':
-                    return person.phoneNumber || '';
-
-                case 'enrollmentClass':
-                    return vm.getEnrollmentClassName(person.enrollmentClass).toLowerCase();
-
-                case 'zaloStatus':
-                    return vm.getZaloStatusName(person.zaloStatus).toLowerCase();
-
-                case 'active':
-                    return user.active ? 1 : 0;
-
-                default:
-                    return '';
-            }
-        };
-
-        vm.reloadUserListFromModal = function () {
-            // Nếu trong modal đang chọn lớp, lấy lớp đó làm filter cho bảng phía sau
-            if (vm.user && vm.user.person && vm.user.person.enrollmentClass) {
-                vm.filter.enrollmentClass = vm.user.person.enrollmentClass;
-            }
-
-            vm.pageIndex = 1;
-
-            vm.search();
-
-            toastr.info('Đã load lại danh sách.', 'Thông báo');
         };
 
         $scope.pageChanged = function() {
@@ -584,6 +494,11 @@
 
                     }, function errorCallback(response) {
                         toastr.error('Có lỗi xảy ra khi lưu.', 'Thông báo');
+                    }).then(function () {
+                        // Close the modal
+                        if (vm.modalInstance) {
+                            vm.modalInstance.close();
+                        }
                     });
                 });
             });
@@ -901,32 +816,63 @@
         };
 
         vm.changeGroups = function () {
-            // vm.filter.groups = 
+            // vm.filter.groups =
         };
 
         /**
-         * Perform search
+         * Kiểm tra hiện tại có filter nào đang được nhập/chọn hay không.
+         * Filter trắng  => pageSize = 25
+         * Có filter     => pageSize = 1000
          */
-        vm.search = function () {
+        function hasAnyUserFilter() {
+            if (!vm.filter) {
+                return false;
+            }
+
+            var keyword = vm.filter.keyword != null
+                ? String(vm.filter.keyword).replace(/\s+/g, ' ').trim()
+                : '';
+
+            var hasKeyword = keyword !== '';
+            var hasGroups = vm.filter.groups && vm.filter.groups.length > 0;
+            var hasRoles = vm.filter.roles && vm.filter.roles.length > 0;
+
+            var hasEnrollmentClass =
+                vm.filter.enrollmentClass !== null &&
+                vm.filter.enrollmentClass !== undefined &&
+                vm.filter.enrollmentClass !== '';
+
+            var hasActive =
+                vm.filter.active !== null &&
+                vm.filter.active !== undefined &&
+                vm.filter.active !== '';
+
+            return hasKeyword || hasGroups || hasRoles || hasEnrollmentClass || hasActive;
+        }
+
+        function updateFilterStatusAndPageSize() {
             if (vm.filter && vm.filter.keyword != null) {
                 vm.filter.keyword = String(vm.filter.keyword)
                     .replace(/\s+/g, ' ')
                     .trim();
             }
 
-            vm.filter.filtered =
-                (vm.filter.keyword && vm.filter.keyword.trim() !== '') ||
-                (vm.filter.groups && vm.filter.groups.length > 0) ||
-                (vm.filter.roles && vm.filter.roles.length > 0) ||
-                vm.filter.enrollmentClass != null;
+            var filtered = hasAnyUserFilter();
+
+            vm.filter.filtered = filtered;
+
+            // Filter trắng thì lấy 25 dòng.
+            // Có bất kỳ filter nào thì lấy tối đa 1000 dòng.
+            vm.pageSize = filtered ? 1000 : 25;
+        }
+
+        /**
+         * Perform search
+         */
+        vm.search = function () {
+            updateFilterStatusAndPageSize();
 
             console.log(vm.filter);
-
-            if (vm.filter.enrollmentClass != null || (vm.filter.groups != null && vm.filter.groups.length > 0)) {
-                vm.pageSize = 1000;
-            } else {
-                vm.pageSize = 25;
-            }
 
             vm.pageIndex = 1;
             vm.getUsers();
@@ -940,7 +886,7 @@
          */
         vm.onFilterRemoved = function (type, item) {
 
-            if (!type || !item) {
+            if (!type) {
                 return;
             }
 
@@ -949,29 +895,39 @@
             switch (type) {
                 case '_keyword':
                     vm.filter.keyword = '';
-
                     break;
+
                 case '_roles':
-                    index = utils.indexOf(item, vm.filter.roles);
-                    if (index >= 0) {
-                        vm.filter.roles.splice(index, 1);
+                    if (item && vm.filter.roles) {
+                        index = utils.indexOf(item, vm.filter.roles);
+                        if (index >= 0) {
+                            vm.filter.roles.splice(index, 1);
+                        }
                     }
-
                     break;
-                case '_groups':
-                    index = utils.indexOf(item, vm.filter.groups);
-                    if (index >= 0) {
-                        vm.filter.groups.splice(index, 1);
-                    }
 
+                case '_groups':
+                    if (item && vm.filter.groups) {
+                        index = utils.indexOf(item, vm.filter.groups);
+                        if (index >= 0) {
+                            vm.filter.groups.splice(index, 1);
+                        }
+                    }
+                    break;
+
+                case '_enrollmentClass':
+                    vm.filter.enrollmentClass = null;
+                    break;
+
+                case '_active':
+                    vm.filter.active = null;
                     break;
             }
 
-            // Update filter status
-            vm.filter.filtered = (vm.filter.keyword.trim() != '') || (vm.filter.groups.length > 0) || (vm.filter.roles.length > 0);
+            updateFilterStatusAndPageSize();
 
             // Update data
-            vm.pageIndex = 0;
+            vm.pageIndex = 1;
             vm.getUsers();
         };
 
