@@ -373,38 +373,23 @@
          */
         vm.getUsers = function () {
 
-            angular.forEach(vm.roles, function(value1, key1) {
-                if(value1.name === "ROLE_STUDENT" || value1.name === "ROLE_STUDENT_MANAGERMENT" || value1.name === "ROLE_EDUCATION_MANAGERMENT" ){
-                    // vm.filter.roles = [];
-                    if(vm.isRoleStudentManagerment == true || vm.isRoleEducationManagerment == true){
-                        vm.filter.roles.push(value1);
+            if (vm.isRoleStudentManagerment === true || vm.isRoleEducationManagerment === true) {
+                vm.filter.roles = [];
 
+                angular.forEach(vm.roles, function (value1) {
+                    if (
+                        value1.name === "ROLE_STUDENT" ||
+                        value1.name === "ROLE_STUDENT_MANAGERMENT" ||
+                        value1.name === "ROLE_EDUCATION_MANAGERMENT"
+                    ) {
+                        vm.filter.roles.push(value1);
                     }
-                }
-            });
-            console.log(vm.filter.roles);
+                });
+            }
+
             service.getUsers(vm.filter, vm.pageIndex, vm.pageSize).then(function (data) {
                 vm.users = data.content;
                 vm.users.totalElement = data.totalElements;
-                // vm.bsTableControl.options.data = vm.users;
-                // vm.bsTableControl.options.totalRows = data.totalElements;
-                // console.log(vm.bsTableControl.options.totalRows);
-
-                // angular.forEach(vm.users, function (user) {
-                //     var username = user?.username || '';
-                //     if (!username) return;
-                //
-                //     if (user.qrcodeByUsername) return; // cache
-                //
-                //     generateQrPro(username, vm.logoUrl, { qrSize: 240 }).then(function (url) {
-                //         $timeout(function () {
-                //             user.qrcodeByUsername = url;
-                //         }, 0);
-                //     }).catch(function (e) {
-                //         console.error('QR error:', e);
-                //     });
-                // });
-                
             });
         };
 
@@ -494,11 +479,6 @@
 
                     }, function errorCallback(response) {
                         toastr.error('Có lỗi xảy ra khi lưu.', 'Thông báo');
-                    }).then(function () {
-                        // Close the modal
-                        if (vm.modalInstance) {
-                            vm.modalInstance.close();
-                        }
                     });
                 });
             });
@@ -574,11 +554,6 @@
 
                     }, function errorCallback(response) {
                         toastr.error('Có lỗi xảy ra khi lưu.', 'Thông báo');
-                    }).then(function () {
-                        // Close the modal
-                        if (vm.modalInstance) {
-                            vm.modalInstance.close();
-                        }
                     });
                 });
             });
@@ -822,6 +797,143 @@
         /**
          * Perform search
          */
+        vm.sortKey = '';
+        vm.sortReverse = false;
+
+        vm.sortBy = function (key) {
+            if (vm.sortKey === key) {
+                vm.sortReverse = !vm.sortReverse;
+            } else {
+                vm.sortKey = key;
+                vm.sortReverse = false;
+            }
+        };
+
+        vm.getSortIcon = function (key) {
+            if (vm.sortKey !== key) {
+                return 'fa-sort';
+            }
+
+            return vm.sortReverse ? 'fa-sort-desc' : 'fa-sort-asc';
+        };
+
+        vm.getEnrollmentClassName = function (classId) {
+            var found = null;
+
+            angular.forEach(vm.enrollmentClasses, function (item) {
+                if (item.id === classId) {
+                    found = item;
+                }
+            });
+
+            return found ? found.name : '';
+        };
+
+        vm.getSortValue = function (user) {
+            if (!user) {
+                return '';
+            }
+
+            var person = user.person || {};
+
+            switch (vm.sortKey) {
+                case 'patron':
+                    return person.patron || '';
+
+                case 'fullName':
+                    return ((person.lastName || '') + ' ' + (person.firstName || '')).toLowerCase();
+
+                case 'birthDate':
+                    return person.birthDate ? new Date(person.birthDate).getTime() : 0;
+
+                case 'username':
+                    return user.username || '';
+
+                case 'motherFullName':
+                    return person.motherFullName || '';
+
+                case 'motherPhoneNumber':
+                    return person.motherPhoneNumber || '';
+
+                case 'fatherFullName':
+                    return person.fatherFullName || '';
+
+                case 'fatherPhoneNumber':
+                    return person.fatherPhoneNumber || '';
+
+                case 'phoneNumber':
+                    return person.phoneNumber || '';
+
+                case 'enrollmentClass':
+                    return vm.getEnrollmentClassName(person.enrollmentClass).toLowerCase();
+
+                case 'zaloStatus':
+                    return vm.getZaloStatusName(person.zaloStatus).toLowerCase();
+
+                case 'active':
+                    return user.active ? 1 : 0;
+
+                default:
+                    return '';
+            }
+        };
+
+        vm.hasAnyFilterValue = function () {
+            var f = vm.filter || {};
+
+            var hasKeyword =
+                f.keyword != null &&
+                String(f.keyword).replace(/\s+/g, ' ').trim() !== '';
+
+            var hasGroups =
+                f.groups != null &&
+                f.groups.length > 0;
+
+            var hasRoles =
+                f.roles != null &&
+                f.roles.length > 0;
+
+            var hasEnrollmentClass =
+                f.enrollmentClass !== null &&
+                f.enrollmentClass !== undefined &&
+                f.enrollmentClass !== '';
+
+            var hasActive =
+                f.active !== null &&
+                f.active !== undefined &&
+                f.active !== '';
+
+            return hasKeyword || hasGroups || hasRoles || hasEnrollmentClass || hasActive;
+        };
+
+        vm.applyPageSizeByFilter = function () {
+            vm.pageSize = vm.hasAnyFilterValue() ? 1000 : 25;
+        };
+
+        vm.syncModalEnrollmentClassToFilter = function () {
+            var selectedClassId = null;
+
+            if (vm.user && vm.user.person) {
+                selectedClassId = vm.user.person.enrollmentClass;
+            }
+
+            if (selectedClassId === undefined || selectedClassId === '') {
+                selectedClassId = null;
+            }
+
+            // Cập nhật filter bên ngoài
+            vm.filter.enrollmentClass = selectedClassId;
+
+            // Về trang đầu
+            vm.pageIndex = 1;
+
+            console.log('Lớp trong modal:', selectedClassId);
+            console.log('Filter bên ngoài:', vm.filter.enrollmentClass);
+
+            // Gọi search để load lại bảng phía sau
+            vm.search();
+        };  
+
         vm.search = function () {
             if (vm.filter && vm.filter.keyword != null) {
                 vm.filter.keyword = String(vm.filter.keyword)
@@ -829,22 +941,30 @@
                     .trim();
             }
 
-            vm.filter.filtered =
-                (vm.filter.keyword && vm.filter.keyword.trim() !== '') ||
-                (vm.filter.groups && vm.filter.groups.length > 0) ||
-                (vm.filter.roles && vm.filter.roles.length > 0) ||
-                vm.filter.enrollmentClass != null;
+            var hasFilter = vm.hasAnyFilterValue();
 
-            console.log(vm.filter);
+            vm.filter.filtered = hasFilter ? 1 : 0;
 
-            if (vm.filter.enrollmentClass != null || (vm.filter.groups != null && vm.filter.groups.length > 0)) {
-                vm.pageSize = 1000;
-            } else {
-                vm.pageSize = 25;
-            }
+            vm.applyPageSizeByFilter();
+
+            console.log('Filter:', vm.filter);
+            console.log('Page size:', vm.pageSize);
 
             vm.pageIndex = 1;
             vm.getUsers();
+        };
+
+        vm.reloadUserListFromModal = function () {
+            // Nếu trong modal đang chọn lớp, lấy lớp đó làm filter cho bảng phía sau
+            if (vm.user && vm.user.person && vm.user.person.enrollmentClass) {
+                vm.filter.enrollmentClass = vm.user.person.enrollmentClass;
+            }
+
+            vm.pageIndex = 1;
+
+            vm.search();
+
+            toastr.info('Đã load lại danh sách.', 'Thông báo');
         };
 
         /**
@@ -882,12 +1002,7 @@
                     break;
             }
 
-            // Update filter status
-            vm.filter.filtered = (vm.filter.keyword.trim() != '') || (vm.filter.groups.length > 0) || (vm.filter.roles.length > 0);
-
-            // Update data
-            vm.pageIndex = 0;
-            vm.getUsers();
+            vm.search();
         };
 
         /**
