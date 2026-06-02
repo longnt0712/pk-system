@@ -2,6 +2,7 @@ package com.globits.richy.service.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
@@ -121,7 +122,6 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	    Long educationProgramId = searchDto.getEducationProgramId();
 	    String textSearch = searchDto.getTextSearch();
 
-	    // tìm user theo lớp
 	    List<UserDto> users = userRepository.getUsersDtoByEnrollmentClass(enrollmentClass);
 	    List<Mark> marks = markRepository.findMarkBy(educationProgramId);
 
@@ -129,12 +129,15 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	        return ret;
 	    }
 
+	    if (marks == null) {
+	        marks = new ArrayList<Mark>();
+	    }
+
 	    for (UserDto userDto : users) {
 	        if (userDto == null || userDto.getId() == null) {
 	            continue;
 	        }
 
-	        // lọc theo textSearch nếu có
 	        if (textSearch != null && textSearch.trim().length() > 0) {
 	            String keyword = textSearch.trim().toLowerCase();
 	            String displayName = userDto.getDisplayName() != null ? userDto.getDisplayName().toLowerCase() : "";
@@ -154,9 +157,14 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	        List<StudentMarkDto> studentMarks = new ArrayList<StudentMarkDto>();
 
 	        for (Mark mark : marks) {
-	            StudentMark studentMark = studentMarkRepository
-	                    .findStudentMarkBy(mark.getId(), userDto.getId())
-	                    .orElse(null);
+	            if (mark == null || mark.getId() == null) {
+	                continue;
+	            }
+
+	            List<StudentMark> existedStudentMarks = studentMarkRepository
+	                    .findStudentMarksByMarkIdAndUserId(mark.getId(), userDto.getId());
+
+	            StudentMark studentMark = getBestStudentMark(existedStudentMarks);
 
 	            StudentMarkDto studentMarkDto;
 
@@ -192,14 +200,15 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	}
 
 	@Override
+	@Transactional
 	public StudentMarkDto saveObject(StudentMarkDto dto) {
 	    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-	    User modifiedUser = null;
+
 	    LocalDateTime currentDate = LocalDateTime.now();
 	    String currentUserName = "Unknown User";
 
 	    if (authentication != null && authentication.getPrincipal() instanceof User) {
-	        modifiedUser = (User) authentication.getPrincipal();
+	        User modifiedUser = (User) authentication.getPrincipal();
 	        currentUserName = modifiedUser.getUsername();
 	    }
 
@@ -209,16 +218,30 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 
 	    StudentMark domain = null;
 
+	    Long userId = null;
+	    Long markId = null;
+
+	    if (dto.getUser() != null && dto.getUser().getId() != null) {
+	        userId = dto.getUser().getId();
+	    }
+
+	    if (dto.getMark() != null && dto.getMark().getId() != null) {
+	        markId = dto.getMark().getId();
+	    }
+
 	    if (dto.getId() != null) {
 	        domain = studentMarkRepository.findOne(dto.getId());
 	    }
-	    
-	    if(domain == null) { // tìm theo user và mark tránh save 2 lần 1 cái có trùng user mark ok chưa
-		    if (dto.getUser() != null && dto.getUser().getId() != null && dto.getMark() != null && dto.getMark().getId() != null) {
-		    	domain = studentMarkRepository
-	                    .findStudentMarkBy(dto.getMark().getId(), dto.getUser().getId())
-	                    .orElse(null);
-		    }
+
+	    /*
+	     * Nếu không tìm thấy theo id thì tìm theo user + mark.
+	     * Không dùng findStudentMarkBy nữa vì hàm đó sẽ lỗi nếu đang có dữ liệu trùng.
+	     */
+	    if (domain == null && userId != null && markId != null) {
+	        List<StudentMark> existedStudentMarks = studentMarkRepository
+	                .findStudentMarksByMarkIdAndUserId(markId, userId);
+
+	        domain = getBestStudentMark(existedStudentMarks);
 	    }
 
 	    if (domain == null) {
@@ -230,15 +253,15 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	        domain.setModifiedBy(currentUserName);
 	    }
 
-	    if (dto.getUser() != null && dto.getUser().getId() != null) {
-	        User user = userRepository.findOne(dto.getUser().getId());
+	    if (userId != null) {
+	        User user = userRepository.findOne(userId);
 	        if (user != null) {
 	            domain.setUser(user);
 	        }
 	    }
 
-	    if (dto.getMark() != null && dto.getMark().getId() != null) {
-	        Mark mark = markRepository.findOne(dto.getMark().getId());
+	    if (markId != null) {
+	        Mark mark = markRepository.findOne(markId);
 	        if (mark != null) {
 	            domain.setMark(mark);
 	        }
@@ -248,6 +271,25 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	    domain.setMarkText(dto.getMarkText());
 
 	    domain = studentMarkRepository.save(domain);
+
+	    /*
+	     * Sau khi lưu xong, dọn các dòng trùng cùng user + mark.
+	     * Giữ lại dòng vừa save.
+	     */
+	    if (domain.getId() != null
+	            && domain.getUser() != null
+	            && domain.getUser().getId() != null
+	            && domain.getMark() != null
+	            && domain.getMark().getId() != null) {
+
+	        List<StudentMark> duplicatedStudentMarks = studentMarkRepository
+	                .findStudentMarksByMarkIdAndUserId(
+	                        domain.getMark().getId(),
+	                        domain.getUser().getId()
+	                );
+
+	        deleteDuplicateStudentMarks(duplicatedStudentMarks, domain.getId());
+	    }
 
 	    return new StudentMarkDto(domain);
 	}
@@ -263,6 +305,78 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 		}
 		studentMarkRepository.delete(domain);
 		return true;
+	}
+	
+	private StudentMark getBestStudentMark(List<StudentMark> studentMarks) {
+	    if (studentMarks == null || studentMarks.isEmpty()) {
+	        return null;
+	    }
+
+	    StudentMark best = null;
+
+	    for (StudentMark item : studentMarks) {
+	        if (item == null) {
+	            continue;
+	        }
+
+	        if (best == null) {
+	            best = item;
+	            continue;
+	        }
+
+	        if (isBetterStudentMark(item, best)) {
+	            best = item;
+	        }
+	    }
+
+	    return best;
+	}
+
+	private boolean isBetterStudentMark(StudentMark candidate, StudentMark current) {
+	    boolean candidateHasMark = hasMarkValue(candidate);
+	    boolean currentHasMark = hasMarkValue(current);
+
+	    if (candidateHasMark && !currentHasMark) {
+	        return true;
+	    }
+
+	    if (!candidateHasMark && currentHasMark) {
+	        return false;
+	    }
+
+	    Long candidateId = candidate.getId() != null ? candidate.getId() : 0L;
+	    Long currentId = current.getId() != null ? current.getId() : 0L;
+
+	    return candidateId > currentId;
+	}
+
+	private boolean hasMarkValue(StudentMark studentMark) {
+	    if (studentMark == null) {
+	        return false;
+	    }
+
+	    if (studentMark.getMarkNumber() != null) {
+	        return true;
+	    }
+
+	    return studentMark.getMarkText() != null 
+	            && studentMark.getMarkText().trim().length() > 0;
+	}
+
+	private void deleteDuplicateStudentMarks(List<StudentMark> studentMarks, Long keepId) {
+	    if (studentMarks == null || studentMarks.isEmpty() || keepId == null) {
+	        return;
+	    }
+
+	    for (StudentMark item : studentMarks) {
+	        if (item == null || item.getId() == null) {
+	            continue;
+	        }
+
+	        if (!keepId.equals(item.getId())) {
+	            studentMarkRepository.delete(item);
+	        }
+	    }
 	}
 
 }
