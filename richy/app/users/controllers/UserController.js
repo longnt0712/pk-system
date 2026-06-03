@@ -172,7 +172,7 @@
         vm.user = {};
         vm.users = [];
         vm.selectedUsers = [];
-
+        
         vm.enrollmentClasses = [
             {id: 14, name: "CHIÊN CON 1", old: "DCN1"},
             {id: 15, name: "CHIÊN CON 2", old: "DNC2"},
@@ -184,7 +184,7 @@
             {id: 21, name: "Thiếu nhi 2", old: "TS2"},
             {id: 22, name: "Thiếu nhi 3", old: "TS3"},
             {id: 23, name: "Nghĩa sĩ 1", old: "TS3"},
-
+            
 
 
             {id: 1, name: "DCN1"},
@@ -373,38 +373,23 @@
          */
         vm.getUsers = function () {
 
-            angular.forEach(vm.roles, function(value1, key1) {
-                if(value1.name === "ROLE_STUDENT" || value1.name === "ROLE_STUDENT_MANAGERMENT" || value1.name === "ROLE_EDUCATION_MANAGERMENT" ){
-                    // vm.filter.roles = [];
-                    if(vm.isRoleStudentManagerment == true || vm.isRoleEducationManagerment == true){
-                        vm.filter.roles.push(value1);
+            if (vm.isRoleStudentManagerment === true || vm.isRoleEducationManagerment === true) {
+                vm.filter.roles = [];
 
+                angular.forEach(vm.roles, function (value1) {
+                    if (
+                        value1.name === "ROLE_STUDENT" ||
+                        value1.name === "ROLE_STUDENT_MANAGERMENT" ||
+                        value1.name === "ROLE_EDUCATION_MANAGERMENT"
+                    ) {
+                        vm.filter.roles.push(value1);
                     }
-                }
-            });
-            console.log(vm.filter.roles);
+                });
+            }
+
             service.getUsers(vm.filter, vm.pageIndex, vm.pageSize).then(function (data) {
                 vm.users = data.content;
                 vm.users.totalElement = data.totalElements;
-                // vm.bsTableControl.options.data = vm.users;
-                // vm.bsTableControl.options.totalRows = data.totalElements;
-                // console.log(vm.bsTableControl.options.totalRows);
-
-                // angular.forEach(vm.users, function (user) {
-                //     var username = user?.username || '';
-                //     if (!username) return;
-                //
-                //     if (user.qrcodeByUsername) return; // cache
-                //
-                //     generateQrPro(username, vm.logoUrl, { qrSize: 240 }).then(function (url) {
-                //         $timeout(function () {
-                //             user.qrcodeByUsername = url;
-                //         }, 0);
-                //     }).catch(function (e) {
-                //         console.error('QR error:', e);
-                //     });
-                // });
-
             });
         };
 
@@ -494,11 +479,6 @@
 
                     }, function errorCallback(response) {
                         toastr.error('Có lỗi xảy ra khi lưu.', 'Thông báo');
-                    }).then(function () {
-                        // Close the modal
-                        if (vm.modalInstance) {
-                            vm.modalInstance.close();
-                        }
                     });
                 });
             });
@@ -574,11 +554,6 @@
 
                     }, function errorCallback(response) {
                         toastr.error('Có lỗi xảy ra khi lưu.', 'Thông báo');
-                    }).then(function () {
-                        // Close the modal
-                        if (vm.modalInstance) {
-                            vm.modalInstance.close();
-                        }
                     });
                 });
             });
@@ -816,66 +791,180 @@
         };
 
         vm.changeGroups = function () {
-            // vm.filter.groups =
+            // vm.filter.groups = 
         };
 
         /**
-         * Kiểm tra hiện tại có filter nào đang được nhập/chọn hay không.
-         * Filter trắng  => pageSize = 25
-         * Có filter     => pageSize = 1000
+         * Perform search
          */
-        function hasAnyUserFilter() {
-            if (!vm.filter) {
-                return false;
+        vm.sortKey = '';
+        vm.sortReverse = false;
+
+        vm.sortBy = function (key) {
+            if (vm.sortKey === key) {
+                vm.sortReverse = !vm.sortReverse;
+            } else {
+                vm.sortKey = key;
+                vm.sortReverse = false;
+            }
+        };
+
+        vm.getSortIcon = function (key) {
+            if (vm.sortKey !== key) {
+                return 'fa-sort';
             }
 
-            var keyword = vm.filter.keyword != null
-                ? String(vm.filter.keyword).replace(/\s+/g, ' ').trim()
-                : '';
+            return vm.sortReverse ? 'fa-sort-desc' : 'fa-sort-asc';
+        };
 
-            var hasKeyword = keyword !== '';
-            var hasGroups = vm.filter.groups && vm.filter.groups.length > 0;
-            var hasRoles = vm.filter.roles && vm.filter.roles.length > 0;
+        vm.getEnrollmentClassName = function (classId) {
+            var found = null;
+
+            angular.forEach(vm.enrollmentClasses, function (item) {
+                if (item.id === classId) {
+                    found = item;
+                }
+            });
+
+            return found ? found.name : '';
+        };
+
+        vm.getSortValue = function (user) {
+            if (!user) {
+                return '';
+            }
+
+            var person = user.person || {};
+
+            switch (vm.sortKey) {
+                case 'patron':
+                    return person.patron || '';
+
+                case 'fullName':
+                    return ((person.lastName || '') + ' ' + (person.firstName || '')).toLowerCase();
+
+                case 'birthDate':
+                    return person.birthDate ? new Date(person.birthDate).getTime() : 0;
+
+                case 'username':
+                    return user.username || '';
+
+                case 'motherFullName':
+                    return person.motherFullName || '';
+
+                case 'motherPhoneNumber':
+                    return person.motherPhoneNumber || '';
+
+                case 'fatherFullName':
+                    return person.fatherFullName || '';
+
+                case 'fatherPhoneNumber':
+                    return person.fatherPhoneNumber || '';
+
+                case 'phoneNumber':
+                    return person.phoneNumber || '';
+
+                case 'enrollmentClass':
+                    return vm.getEnrollmentClassName(person.enrollmentClass).toLowerCase();
+
+                case 'zaloStatus':
+                    return vm.getZaloStatusName(person.zaloStatus).toLowerCase();
+
+                case 'active':
+                    return user.active ? 1 : 0;
+
+                default:
+                    return '';
+            }
+        };
+
+        vm.hasAnyFilterValue = function () {
+            var f = vm.filter || {};
+
+            var hasKeyword =
+                f.keyword != null &&
+                String(f.keyword).replace(/\s+/g, ' ').trim() !== '';
+
+            var hasGroups =
+                f.groups != null &&
+                f.groups.length > 0;
+
+            var hasRoles =
+                f.roles != null &&
+                f.roles.length > 0;
 
             var hasEnrollmentClass =
-                vm.filter.enrollmentClass !== null &&
-                vm.filter.enrollmentClass !== undefined &&
-                vm.filter.enrollmentClass !== '';
+                f.enrollmentClass !== null &&
+                f.enrollmentClass !== undefined &&
+                f.enrollmentClass !== '';
 
             var hasActive =
-                vm.filter.active !== null &&
-                vm.filter.active !== undefined &&
-                vm.filter.active !== '';
+                f.active !== null &&
+                f.active !== undefined &&
+                f.active !== '';
 
             return hasKeyword || hasGroups || hasRoles || hasEnrollmentClass || hasActive;
-        }
+        };
 
-        function updateFilterStatusAndPageSize() {
+        vm.applyPageSizeByFilter = function () {
+            vm.pageSize = vm.hasAnyFilterValue() ? 1000 : 25;
+        };
+
+        vm.syncModalEnrollmentClassToFilter = function () {
+            var selectedClassId = null;
+
+            if (vm.user && vm.user.person) {
+                selectedClassId = vm.user.person.enrollmentClass;
+            }
+
+            if (selectedClassId === undefined || selectedClassId === '') {
+                selectedClassId = null;
+            }
+
+            // Cập nhật filter bên ngoài
+            vm.filter.enrollmentClass = selectedClassId;
+
+            // Về trang đầu
+            vm.pageIndex = 1;
+
+            console.log('Lớp trong modal:', selectedClassId);
+            console.log('Filter bên ngoài:', vm.filter.enrollmentClass);
+
+            // Gọi search để load lại bảng phía sau
+            vm.search();
+        };  
+
+        vm.search = function () {
             if (vm.filter && vm.filter.keyword != null) {
                 vm.filter.keyword = String(vm.filter.keyword)
                     .replace(/\s+/g, ' ')
                     .trim();
             }
 
-            var filtered = hasAnyUserFilter();
+            var hasFilter = vm.hasAnyFilterValue();
 
-            vm.filter.filtered = filtered;
+            vm.filter.filtered = hasFilter ? 1 : 0;
 
-            // Filter trắng thì lấy 25 dòng.
-            // Có bất kỳ filter nào thì lấy tối đa 1000 dòng.
-            vm.pageSize = filtered ? 1000 : 25;
-        }
+            vm.applyPageSizeByFilter();
 
-        /**
-         * Perform search
-         */
-        vm.search = function () {
-            updateFilterStatusAndPageSize();
-
-            console.log(vm.filter);
+            console.log('Filter:', vm.filter);
+            console.log('Page size:', vm.pageSize);
 
             vm.pageIndex = 1;
             vm.getUsers();
+        };
+
+        vm.reloadUserListFromModal = function () {
+            // Nếu trong modal đang chọn lớp, lấy lớp đó làm filter cho bảng phía sau
+            if (vm.user && vm.user.person && vm.user.person.enrollmentClass) {
+                vm.filter.enrollmentClass = vm.user.person.enrollmentClass;
+            }
+
+            vm.pageIndex = 1;
+
+            vm.search();
+
+            toastr.info('Đã load lại danh sách.', 'Thông báo');
         };
 
         /**
@@ -886,7 +975,7 @@
          */
         vm.onFilterRemoved = function (type, item) {
 
-            if (!type) {
+            if (!type || !item) {
                 return;
             }
 
@@ -895,40 +984,25 @@
             switch (type) {
                 case '_keyword':
                     vm.filter.keyword = '';
-                    break;
 
+                    break;
                 case '_roles':
-                    if (item && vm.filter.roles) {
-                        index = utils.indexOf(item, vm.filter.roles);
-                        if (index >= 0) {
-                            vm.filter.roles.splice(index, 1);
-                        }
+                    index = utils.indexOf(item, vm.filter.roles);
+                    if (index >= 0) {
+                        vm.filter.roles.splice(index, 1);
                     }
-                    break;
 
+                    break;
                 case '_groups':
-                    if (item && vm.filter.groups) {
-                        index = utils.indexOf(item, vm.filter.groups);
-                        if (index >= 0) {
-                            vm.filter.groups.splice(index, 1);
-                        }
+                    index = utils.indexOf(item, vm.filter.groups);
+                    if (index >= 0) {
+                        vm.filter.groups.splice(index, 1);
                     }
-                    break;
 
-                case '_enrollmentClass':
-                    vm.filter.enrollmentClass = null;
-                    break;
-
-                case '_active':
-                    vm.filter.active = null;
                     break;
             }
 
-            updateFilterStatusAndPageSize();
-
-            // Update data
-            vm.pageIndex = 1;
-            vm.getUsers();
+            vm.search();
         };
 
         /**
