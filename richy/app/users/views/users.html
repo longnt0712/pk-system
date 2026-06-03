@@ -212,7 +212,7 @@
                                                 <!--<div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>-->
                                             <!--</ui-select-choices>-->
                                         <!--</ui-select>-->
-                                        {{ (vm.enrollmentClasses | filter:{id: user.person.enrollmentClass})[0].name }}
+                                        {{ vm.getEnrollmentClassName(user.person.enrollmentClass) }}
                                     </td>
                                     <td ng-class="vm.getZaloStatusClass(user.person.zaloStatus)">
                                         {{ vm.getZaloStatusName(user.person.zaloStatus) }}

@@ -203,6 +203,36 @@
             {id: 99, name: "KHÁC"}
 
         ];
+        function toNumberOrNull(value) {
+            if (value === null || value === undefined || value === '') {
+                return null;
+            }
+
+            var numberValue = Number(value);
+
+            return isNaN(numberValue) ? null : numberValue;
+        }
+
+        vm.findEnrollmentClass = function (classId) {
+            var normalizedClassId = toNumberOrNull(classId);
+
+            if (normalizedClassId === null) {
+                return null;
+            }
+
+            for (var i = 0; i < vm.enrollmentClasses.length; i++) {
+                if (toNumberOrNull(vm.enrollmentClasses[i].id) === normalizedClassId) {
+                    return vm.enrollmentClasses[i];
+                }
+            }
+
+            return null;
+        };
+
+        vm.getEnrollmentClassName = function (classId) {
+            var enrollmentClass = vm.findEnrollmentClass(classId);
+            return enrollmentClass ? enrollmentClass.name : '';
+        };
         vm.genders = [
             {id: 'M', name: "NAM"},
             {id: 'F', name: "NỮ"},
@@ -1706,10 +1736,7 @@
                 checked: true,
                 getter: function (user, index) {
                     if (!user || !user.person) return '';
-                    var found = (vm.enrollmentClasses || []).filter(function (item) {
-                        return item.id === user.person.enrollmentClass;
-                    });
-                    return found.length ? found[0].name : '';
+                    return vm.getEnrollmentClassName(user.person.enrollmentClass);
                 }
             }
             // ,
