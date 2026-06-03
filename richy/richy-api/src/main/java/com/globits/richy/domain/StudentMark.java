@@ -5,61 +5,70 @@ import javax.persistence.Entity;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import com.globits.core.domain.BaseObject;
 import com.globits.security.domain.User;
 
 @Entity
-@Table(name = "tbl_student_mark")
+@Table(
+    name = "tbl_student_mark",
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "UK_student_mark_user_mark",
+            columnNames = {"user_id", "mark_id"}
+        )
+    }
+)
 @XmlRootElement
-public class StudentMark extends BaseObject{
-	@ManyToOne
-	@JoinColumn(name="user_id")
-	private User user;
-	
-	@ManyToOne
-	@JoinColumn(name="mark_id")
-	private Mark mark;
-	
-//	//Điểm số
-	@Column(name="mark_number")
-	private Double markNumber;
-//	
-//	//Điểm chữ
-	@Column(name="mark_text")
-	private String markText;
+public class StudentMark extends BaseObject {
 
-	public User getUser() {
-		return user;
-	}
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
-	public void setUser(User user) {
-		this.user = user;
-	}
+    @ManyToOne
+    @JoinColumn(name = "mark_id")
+    private Mark mark;
 
-	public Mark getMark() {
-		return mark;
-	}
+    // Điểm số
+    @Column(name = "mark_number")
+    private Double markNumber;
 
-	public void setMark(Mark mark) {
-		this.mark = mark;
-	}
+    // Điểm chữ
+    @Column(name = "mark_text")
+    private String markText;
 
-	public Double getMarkNumber() {
-		return markNumber;
-	}
+    public User getUser() {
+        return user;
+    }
 
-	public void setMarkNumber(Double markNumber) {
-		this.markNumber = markNumber;
-	}
+    public void setUser(User user) {
+        this.user = user;
+    }
 
-	public String getMarkText() {
-		return markText;
-	}
+    public Mark getMark() {
+        return mark;
+    }
 
-	public void setMarkText(String markText) {
-		this.markText = markText;
-	}
-	
+    public void setMark(Mark mark) {
+        this.mark = mark;
+    }
+
+    public Double getMarkNumber() {
+        return markNumber;
+    }
+
+    public void setMarkNumber(Double markNumber) {
+        this.markNumber = markNumber;
+    }
+
+    public String getMarkText() {
+        return markText;
+    }
+
+    public void setMarkText(String markText) {
+        this.markText = markText;
+    }
 }
