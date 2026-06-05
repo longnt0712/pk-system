@@ -627,6 +627,7 @@
                         );
 
                         if (vm.mode.id == 12) {
+                            vm.showGaps3Question = false;
                             vm.lastSetCounter = 30;
                             $scope.counter = 30;
                         }
@@ -773,6 +774,10 @@
 
             vm.resetFillingGapsRun();
 
+            if (vm.mode.id == 12) {
+                vm.showGaps3Question = false;
+            }
+
             vm.fillingGapQuestion = processFillingGapsByMode(
                 vm.currentCard.motherTongue,
                 false,
@@ -788,8 +793,13 @@
         vm.fillingGapAllQuestions = '';
         vm.fillingGapQuestion = '';
         vm.showGapAnswers = false;
+        vm.showGaps3Question = false;
         vm.currentGapAnswers = [];
         vm.currentGapBlocks = null;
+
+        vm.toggleGaps3Question = function () {
+            vm.showGaps3Question = !vm.showGaps3Question;
+        };
 
         vm.minGapRatePercent = 30;
         vm.maxGapRatePercent = 100;

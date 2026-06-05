@@ -1292,19 +1292,21 @@
 
                                                     <h2 class="bold"
                                                             ng-class="{'gaps3-title': vm.mode.id == 12}"
+                                                            ng-style="vm.mode.id == 12 && !vm.showGaps3Question ? {'visibility':'hidden'} : {'visibility':'visible'}"
                                                             ng-bind-html="vm.currentCard.question"></h2>
 
                                                     <div ng-if="vm.mode.id == 12" class="gaps3-subtitle">
                                                         Cùng điền {{vm.gaps3Config.gapCount}} cụm còn thiếu nhé 💙
                                                     </div>
+                                                    <div style="margin-top: 10px;">
+                                                        <button
+                                                                ng-if="vm.mode.id == 12"
+                                                                class="btn btn-primary gaps3-btn gaps3-btn-question"
+                                                                ng-click="vm.toggleGaps3Question()">
+                                                            {{ vm.showGaps3Question ? '🙈 Ẩn câu hỏi' : '👀 Hiển thị câu hỏi' }}
+                                                        </button>
+                                                    </div>
 
-                                                    <button
-                                                            ng-if="vm.mode.id == 12"
-                                                            class="btn btn-warning gaps3-btn gaps3-btn-answer"
-                                                            ng-click="vm.toggleShowGapAnswers()"
-                                                            style="margin-top: 10px;">
-                                                        {{ vm.showGapAnswers ? '🙈 Ẩn đáp án' : '🎁 Hiển thị đáp án' }}
-                                                    </button>
 
                                                     <div ng-if="vm.mode.id == 12" style="margin-top: 12px;">
                                                         <button class="btn btn-info gaps3-btn gaps3-timer-btn timer-block"
@@ -1324,10 +1326,18 @@
                                                             </span>
                                                         </button>
 
-                                                        <button class="btn btn-warning gaps3-btn timer-block"
-                                                                ng-click="refreshTimer()"
+                                                        <div>
+                                                            <button class="btn btn-warning gaps3-btn" ng-click="vm.resetFillingGapsRun()">
+                                                                🔄 Reset
+                                                            </button>
+                                                        </div>
+
+                                                        <button
+                                                                ng-if="vm.mode.id == 12"
+                                                                class="btn btn-warning gaps3-btn gaps3-btn-answer"
+                                                                ng-click="vm.toggleShowGapAnswers()"
                                                                 style="margin-top: 10px;">
-                                                            🔄 Reset
+                                                            {{ vm.showGapAnswers ? '🙈 Ẩn đáp án' : '🎁 Hiển thị đáp án' }}
                                                         </button>
 
                                                         <div style="margin-top: 12px;">
@@ -1389,6 +1399,7 @@
                                             <div class="row margin-top-10 margin-bottom-10 filling-content-mode-gaps-3">
                                                 <div class="col-md-12">
                                                     <div class="bold"
+                                                            ng-if="vm.mode.id != 12 || vm.showGaps3Question"
                                                             ng-class="{'gaps3-content': vm.mode.id == 12}"
                                                             ng-style="vm.mode.id == 12 && {
                                                              'font-size': (vm.gaps3Config.fontSize || 40) + 'px',
