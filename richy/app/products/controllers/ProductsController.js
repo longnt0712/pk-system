@@ -559,7 +559,7 @@
         vm.bills = [];
         vm.resetBill = function () {
             vm.bill = {};
-            vm.bill.paymentMethod = 1;
+            vm.bill.paymentMethod = null; // không chọn sẵn nữa, đợi chọn trong modal
             vm.bill.billProduct = [];
             vm.bill.voided = false;
             vm.bill.user = vm.currentUser;
@@ -839,21 +839,50 @@
             vm.calBillAmount();
         };
 
+        vm.paymentModal = {
+            paymentMethod: null
+        };
+
         vm.saveBill = function () {
-            if(vm.bill.billProduct.length <= 0){
+            if (vm.bill.billProduct.length <= 0) {
                 toastr.warning('Hãy thêm sản phẩm', 'Thông báo');
                 return;
             }
+
+            // Mỗi lần bấm tạo hóa đơn thì bắt chọn lại phương thức thanh toán
+            vm.paymentModal.paymentMethod = null;
+
+            var modalInstance = modal.open({
+                animation: true,
+                templateUrl: 'payment_method_modal.html',
+                scope: $scope,
+                size: 'sm'
+            });
+
+            modalInstance.result.then(function (paymentMethod) {
+                if (!paymentMethod) {
+                    toastr.warning('Hãy chọn phương thức thanh toán', 'Thông báo');
+                    return;
+                }
+
+                vm.bill.paymentMethod = parseInt(paymentMethod, 10);
+                saveBillToServer();
+
+            }, function () {
+                // Người dùng tắt modal thì không lưu
+            });
+        };
+
+        function saveBillToServer() {
             service.saveBill(vm.bill, function success() {
                 vm.getPageBills();
                 vm.getPageProduct();
                 vm.resetBill();
-                toastr.info('Bạn đã tạo mới thành công một tài khoản.', 'Thông báo');
-                // vm.importedBill = {};
+                toastr.info('Bạn đã tạo mới hóa đơn thành công.', 'Thông báo');
             }, function failure() {
-                toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
+                toastr.error('Có lỗi xảy ra khi tạo hóa đơn.', 'Thông báo');
             });
-        };
+        }
 
         vm.updateStatusExchange = function (bill) {
             // if(vm.bill.billProduct.length <= 0){

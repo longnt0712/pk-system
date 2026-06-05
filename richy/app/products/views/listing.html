@@ -191,18 +191,7 @@
 
                                 <div class="dash"></div>
 
-                                <div class="meta-row">
-                                <span>Thanh toán:
-                                    <label>
-                                        <input ng-disabled="vm.bill.id != null" type="radio" ng-model="vm.bill.paymentMethod" value="1">
-                                        CHUYỂN KHOẢN 💳
-                                    </label>
-                                    <label>
-                                        <input ng-disabled="vm.bill.id != null" type="radio" ng-model="vm.bill.paymentMethod" value="2">
-                                        TIỀN MẶT 💵
-                                    </label>
-                              </span>
-                                </div>
+
 
                                 <div class="dash"></div>
 
@@ -860,6 +849,61 @@
         <div class="modal-footer">
             <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>
             <button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="payment_method_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
+            <h4 class="modal-title bold">
+                Chọn phương thức thanh toán
+            </h4>
+        </div>
+
+        <div class="modal-body">
+
+            <!-- TỔNG TIỀN -->
+            <div class="payment-total-box">
+                <div class="payment-total-label">TỔNG TIỀN HÓA ĐƠN</div>
+                <div class="payment-total-money">
+                    {{vm.bill.totalAmount | number:0}} đ
+                </div>
+            </div>
+
+            <div class="payment-method-box">
+                <label class="payment-method-option">
+                    <input type="radio"
+                            ng-model="vm.paymentModal.paymentMethod"
+                            ng-value="1">
+                    <span>CHUYỂN KHOẢN 💳</span>
+                </label>
+
+                <label class="payment-method-option">
+                    <input type="radio"
+                            ng-model="vm.paymentModal.paymentMethod"
+                            ng-value="2">
+                    <span>TIỀN MẶT 💵</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button"
+                    ng-click="$dismiss()"
+                    class="btn btn-default"
+                    data-dismiss="modal">
+                Hủy
+            </button>
+
+            <button type="button"
+                    ng-disabled="!vm.paymentModal.paymentMethod"
+                    ng-click="$close(vm.paymentModal.paymentMethod)"
+                    class="btn btn-primary"
+                    data-dismiss="modal">
+                Xác nhận & lưu hóa đơn
+            </button>
         </div>
     </div>
 </script>
@@ -1829,3 +1873,77 @@
     }
 </style>
 
+<style>
+    .payment-method-box {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .payment-method-option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px;
+        border: 2px dashed #333;
+        border-radius: 12px;
+        background: #fffdf3;
+        cursor: pointer;
+        font-weight: 800;
+    }
+
+    .payment-method-option:hover {
+        background: #fff3bf;
+    }
+
+    .payment-method-option input {
+        margin: 0;
+    }
+    .payment-total-box {
+        text-align: center;
+        padding: 16px;
+        margin-bottom: 18px;
+        border-radius: 14px;
+        background: #fff3bf;
+        border: 2px dashed #333;
+    }
+
+    .payment-total-label {
+        font-size: 13px;
+        font-weight: 800;
+        color: #555;
+        margin-bottom: 6px;
+    }
+
+    .payment-total-money {
+        font-size: 28px;
+        font-weight: 900;
+        color: #d35400;
+    }
+
+    .payment-method-box {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .payment-method-option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px;
+        border: 2px dashed #333;
+        border-radius: 12px;
+        background: #fffdf3;
+        cursor: pointer;
+        font-weight: 800;
+    }
+
+    .payment-method-option:hover {
+        background: #fff3bf;
+    }
+
+    .payment-method-option input {
+        margin: 0;
+    }
+</style>
