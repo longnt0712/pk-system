@@ -573,7 +573,7 @@
                     vm.questions1 = [];
 
                 } else if (vm.mode.id == 14) {
-                    vm.questions = buildMcqQuestions(data.content).slice().reverse();
+                    vm.questions = buildMcqQuestions(data.content, true).slice().reverse();
                     vm.questions1 = [];
 
                 } else {
@@ -701,6 +701,11 @@
         };
 
         vm.doShuffle = function() {
+            if (vm.mode && vm.mode.id == 13) {
+                vm.shuffleMcqQuestions();
+                return;
+            }
+
             // Ấn trộn câu hỏi thì trộn cả thứ tự câu hỏi và vị trí câu trả lời.
             vm.questions = shuffleArray(createQuestionsWithOptions(vm.rawQuestions, 4, true));
             vm.questions1 = shuffleArray(createQuestionsWithOptions(vm.rawQuestions, 4, true));
@@ -6500,10 +6505,12 @@
             });
         }
 
-        function buildMcqQuestions(source) {
+        function buildMcqQuestions(source, shouldShuffleAnswers) {
             if (!angular.isArray(source)) {
                 return [];
             }
+
+            shouldShuffleAnswers = shouldShuffleAnswers === true;
 
             var result = [];
 
@@ -6534,11 +6541,20 @@
                     return;
                 }
 
-                // Đảo đáp án trước
-                var displayAnswers = shuffleArray(answers.slice());
+                // Mặc định giữ nguyên thứ tự đáp án theo ordinalNumberQuestionAnswer.
+                // Nếu backend không có ordinalNumberQuestionAnswer thì index + 1 ở trên sẽ giữ đúng thứ tự dữ liệu gốc.
+                answers.sort(function (a, b) {
+                    return (a.ordinalNumberQuestionAnswer || 0) - (b.ordinalNumberQuestionAnswer || 0);
+                });
 
-                // Gán A/B/C/D SAU KHI đảo.
-                // Dòng đầu tiên luôn là A, dòng thứ hai luôn là B...
+                // Chỉ khi người dùng bấm "Trộn câu hỏi" trong MCQs thì mới trộn đáp án.
+                var displayAnswers = answers.slice();
+
+                if (shouldShuffleAnswers) {
+                    displayAnswers = shuffleArray(displayAnswers);
+                }
+
+                // Gán A/B/C/D theo vị trí hiển thị hiện tại.
                 angular.forEach(displayAnswers, function (item, index) {
                     item.label = String.fromCharCode(65 + index); // A, B, C, D
                 });
@@ -6679,7 +6695,7 @@
                 return;
             }
 
-            vm.questions = shuffleArray(buildMcqQuestions(vm.rawQuestions));
+            vm.questions = shuffleArray(buildMcqQuestions(vm.rawQuestions, true));
             vm.questions1 = [];
             vm.currentPosition = 0;
             vm.currentPosition1 = 0;
