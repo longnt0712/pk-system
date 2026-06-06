@@ -429,12 +429,13 @@
         vm.totalCard = 0;
         vm.showListFlashCard = false;
 
-        function createQuestionsWithOptions(parents, optionCount) {
+        function createQuestionsWithOptions(parents, optionCount, shouldShuffleAnswers) {
             if (!Array.isArray(parents)) {
                 throw new Error('parents phải là một array');
             }
 
             var totalOptions = optionCount || 4;
+            shouldShuffleAnswers = shouldShuffleAnswers === true;
 
             if (totalOptions < 2) {
                 throw new Error('optionCount phải >= 2');
@@ -451,16 +452,21 @@
                 return result;
             }
 
-            function pickRandomWrongAnswers(source, currentId, count) {
+            function pickWrongAnswers(source, currentId, count) {
                 var filtered = source.filter(function(item) {
                     return item.id !== currentId;
                 });
 
-                return shuffle(filtered).slice(0, count);
+                // Chỉ random đáp án sai khi người dùng ấn nút trộn câu hỏi.
+                if (shouldShuffleAnswers) {
+                    filtered = shuffle(filtered);
+                }
+
+                return filtered.slice(0, count);
             }
 
             return parents.map(function(parent) {
-                var wrongAnswers = pickRandomWrongAnswers(parents, parent.id, totalOptions - 1)
+                var wrongAnswers = pickWrongAnswers(parents, parent.id, totalOptions - 1)
                     .map(function(item) {
                         return {
                             id: item.id,
@@ -483,9 +489,17 @@
                     correct: true
                 };
 
+                var answers = [correctAnswer].concat(wrongAnswers);
+
+                // Mặc định đáp án giữ nguyên thứ tự: đáp án đúng ở vị trí 1, các đáp án sai theo thứ tự dữ liệu.
+                // Khi ấn trộn câu hỏi (vm.doShuffle), đáp án mới được trộn.
+                if (shouldShuffleAnswers) {
+                    answers = shuffle(answers);
+                }
+
                 return {
                     ...parent,
-                    questions: shuffle([correctAnswer].concat(wrongAnswers))
+                    questions: answers
             };
             });
         }
@@ -563,12 +577,10 @@
                     vm.questions1 = [];
 
                 } else {
-                    vm.questions = shuffleArray(createQuestionsWithOptions(data.content));
-                    vm.questions1 = shuffleArray(createQuestionsWithOptions(data.content));
-                }
-
-                if (vm.mode.id != 8 && vm.mode.id != 13 && vm.mode.id != 14) {
-                    vm.doShuffle();
+                    // Mặc định giữ nguyên thứ tự câu hỏi và thứ tự đáp án.
+                    // Chỉ khi người dùng ấn nút trộn câu hỏi mới trộn cả câu hỏi và đáp án.
+                    vm.questions = createQuestionsWithOptions(data.content);
+                    vm.questions1 = createQuestionsWithOptions(data.content);
                 }
 
                 if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15 || vm.mode.id == 12){
@@ -600,7 +612,7 @@
 
                 if(vm.mode.id == 1){
 
-                    vm.questionTable = buildQuestionTable(shuffleArray(createQuestionsWithOptions(data.content)));
+                    vm.questionTable = buildQuestionTable(createQuestionsWithOptions(data.content));
                 }
 
                 vm.totalCard = data.totalElements;
@@ -689,10 +701,15 @@
         };
 
         vm.doShuffle = function() {
-            vm.questions = shuffleArray(createQuestionsWithOptions(vm.rawQuestions));
-            vm.questions1 = shuffleArray(createQuestionsWithOptions(vm.rawQuestions));
+            // Ấn trộn câu hỏi thì trộn cả thứ tự câu hỏi và vị trí câu trả lời.
+            vm.questions = shuffleArray(createQuestionsWithOptions(vm.rawQuestions, 4, true));
+            vm.questions1 = shuffleArray(createQuestionsWithOptions(vm.rawQuestions, 4, true));
             shuffleArray(vm.questions);
             shuffleArray(vm.questions1);
+
+            if (vm.mode.id == 1) {
+                vm.questionTable = buildQuestionTable(vm.questions, true);
+            }
 
             if (vm.mode.id == 7) {
                 vm.assignTugEffects(vm.questions);
@@ -5496,7 +5513,8 @@
 
         //------------------ End Flash Card ---------------------------------//
 
-        function buildQuestionTable(data) {
+        function buildQuestionTable(data, shouldShuffleAnswers) {
+            shouldShuffleAnswers = shouldShuffleAnswers === true;
             function shuffleArray(arr) {
                 var array = angular.copy(arr || []);
                 for (var i = array.length - 1; i > 0; i--) {
@@ -5585,8 +5603,9 @@
                     });
                 }
 
-                // Lấy tối đa 3 đáp án sai + 1 đáp án đúng
-                var displayAnswers = wrongAnswers.slice(0, 3).concat(correctAnswersObj.slice(0, 1));
+                // Mặc định giữ thứ tự đáp án: đúng trước, sai sau.
+                // Khi ấn trộn câu hỏi, đáp án mới được random vị trí.
+                var displayAnswers = correctAnswersObj.slice(0, 1).concat(wrongAnswers.slice(0, 3));
 
                 // Nếu chưa đủ 4 thì thêm ô trống
                 while (displayAnswers.length < 4) {
@@ -5597,10 +5616,12 @@
                     });
                 }
 
-                // Random vị trí đáp án
-                displayAnswers = shuffleArray(displayAnswers);
+                // Chỉ random vị trí đáp án khi người dùng ấn nút trộn câu hỏi
+                if (shouldShuffleAnswers) {
+                    displayAnswers = shuffleArray(displayAnswers);
+                }
 
-                // Correct Answer(s) = vị trí sau khi random
+                // Correct Answer(s) = vị trí hiện tại
                 var correctAnswerIndexes = [];
                 angular.forEach(displayAnswers, function (q, index) {
                     if (q.correct === true) {
