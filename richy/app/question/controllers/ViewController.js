@@ -532,6 +532,10 @@
                 blockUI.stop();
                 vm.rawQuestions = data.content;
 
+                if (vm.mode.id == 13) {
+                    vm.rawQuestions = sortMcqQuestionsByCreatedFirst(vm.rawQuestions);
+                }
+
                 if (vm.mode.id == 9 || vm.mode.id == 10) {
                     vm.questions = data.content.splice(0, vm.numberFlipCard);
 
@@ -551,7 +555,7 @@
                     shuffleArray(vm.flippingQuestions);
 
                 } else if (vm.mode.id == 13) {
-                    vm.questions = shuffleArray(buildMcqQuestions(data.content));
+                    vm.questions = buildMcqQuestions(vm.rawQuestions);
                     vm.questions1 = [];
 
                 } else if (vm.mode.id == 14) {
@@ -627,7 +631,6 @@
                         );
 
                         if (vm.mode.id == 12) {
-                            vm.showGaps3Question = false;
                             vm.lastSetCounter = 30;
                             $scope.counter = 30;
                         }
@@ -774,10 +777,6 @@
 
             vm.resetFillingGapsRun();
 
-            if (vm.mode.id == 12) {
-                vm.showGaps3Question = false;
-            }
-
             vm.fillingGapQuestion = processFillingGapsByMode(
                 vm.currentCard.motherTongue,
                 false,
@@ -793,13 +792,8 @@
         vm.fillingGapAllQuestions = '';
         vm.fillingGapQuestion = '';
         vm.showGapAnswers = false;
-        vm.showGaps3Question = false;
         vm.currentGapAnswers = [];
         vm.currentGapBlocks = null;
-
-        vm.toggleGaps3Question = function () {
-            vm.showGaps3Question = !vm.showGaps3Question;
-        };
 
         vm.minGapRatePercent = 30;
         vm.maxGapRatePercent = 100;
@@ -6265,6 +6259,10 @@
             mytimeout = $timeout($scope.onTimeout, 1000);
         }
 
+        vm.sixtySeconds = function () {
+            startGameTimer(60);
+        };
+
         vm.fiveSeconds = function () {
             startGameTimer(5);
         };
@@ -6420,6 +6418,67 @@
         };
 
         // MCQs
+        function getMcqCreatedOrderValue(item, index) {
+            if (!item) {
+                return index;
+            }
+
+            var candidates = [
+                item.createdDate,
+                item.createDate,
+                item.creationTime,
+                item.createdAt,
+                item.createdOn,
+                item.dateCreated,
+                item.insertDate,
+                item.created,
+                item.ordinalNumberQuestion,
+                item.ordinalNumber,
+                item.id
+            ];
+
+            for (var i = 0; i < candidates.length; i++) {
+                var value = candidates[i];
+
+                if (value === undefined || value === null || value === '') {
+                    continue;
+                }
+
+                if (angular.isNumber(value)) {
+                    return value;
+                }
+
+                var dateValue = Date.parse(value);
+                if (!isNaN(dateValue)) {
+                    return dateValue;
+                }
+
+                var numberValue = parseInt(value, 10);
+                if (!isNaN(numberValue)) {
+                    return numberValue;
+                }
+            }
+
+            return index;
+        }
+
+        function sortMcqQuestionsByCreatedFirst(source) {
+            if (!angular.isArray(source)) {
+                return [];
+            }
+
+            return source.slice().sort(function (a, b) {
+                var aOrder = getMcqCreatedOrderValue(a, 0);
+                var bOrder = getMcqCreatedOrderValue(b, 0);
+
+                if (aOrder === bOrder) {
+                    return (a && a.id ? a.id : 0) - (b && b.id ? b.id : 0);
+                }
+
+                return aOrder - bOrder;
+            });
+        }
+
         function buildMcqQuestions(source) {
             if (!angular.isArray(source)) {
                 return [];
@@ -6530,6 +6589,84 @@
             $timeout(function () {
                 vm.nextCard();
             }, 800);
+        };
+
+        function openMcqConfirmModal(title, message) {
+            var icon = title && title.indexOf('trộn') >= 0 ? '🔀' : '🎁';
+            var confirmText = title && title.indexOf('trộn') >= 0 ? 'Có, trộn ngay' : 'Có, hiển thị';
+            var subtitle = title && title.indexOf('trộn') >= 0 ? 'Cùng sắp xếp lại câu hỏi nhé!' : 'Mở đáp án thật cẩn thận nhé!';
+
+            return modal.open({
+                animation: true,
+                size: 'md',
+                backdrop: 'static',
+                keyboard: false,
+                windowClass: 'mcq-tntt-confirm-window',
+                template:
+                    '<div class="mcq-tntt-confirm-modal">' +
+                    '   <button type="button" class="mcq-tntt-confirm-close" ng-click="cancel()" aria-label="Đóng">×</button>' +
+                    '   <div class="mcq-tntt-confirm-cloud cloud-left">☁️</div>' +
+                    '   <div class="mcq-tntt-confirm-cloud cloud-right">☁️</div>' +
+                    '   <div class="mcq-tntt-confirm-stars">⭐ ✨ 🌈 ✨ ⭐</div>' +
+                    '   <div class="mcq-tntt-confirm-badge">{{icon}}</div>' +
+                    '   <div class="mcq-tntt-confirm-title">{{title}}</div>' +
+                    '   <div class="mcq-tntt-confirm-subtitle">{{subtitle}}</div>' +
+                    '   <div class="mcq-tntt-confirm-message">{{message}}</div>' +
+                    '   <div class="mcq-tntt-confirm-actions">' +
+                    '       <button type="button" class="btn mcq-tntt-btn-no" ng-click="cancel()">🙈 Không</button>' +
+                    '       <button type="button" class="btn mcq-tntt-btn-yes" ng-click="ok()">{{confirmText}}</button>' +
+                    '   </div>' +
+                    '</div>',
+                controller: ['$scope', '$uibModalInstance', function ($scope, $uibModalInstance) {
+                    $scope.title = title;
+                    $scope.message = message;
+                    $scope.icon = icon;
+                    $scope.subtitle = subtitle;
+                    $scope.confirmText = confirmText;
+
+                    $scope.ok = function () {
+                        $uibModalInstance.close(true);
+                    };
+
+                    $scope.cancel = function () {
+                        $uibModalInstance.dismiss('cancel');
+                    };
+                }]
+            });
+        }
+
+        vm.confirmShowMcqAnswer = function () {
+            openMcqConfirmModal(
+                'Xác nhận hiển thị đáp án',
+                'Bạn có thật sự muốn hiển thị đáp án không?'
+            ).result.then(function () {
+                vm.showMcqAnswer();
+            }, function () {});
+        };
+
+        vm.confirmShuffleMcqQuestions = function () {
+            openMcqConfirmModal(
+                'Xác nhận trộn câu hỏi',
+                'Bạn có thật sự muốn trộn câu hỏi không?'
+            ).result.then(function () {
+                vm.shuffleMcqQuestions();
+            }, function () {});
+        };
+
+        vm.shuffleMcqQuestions = function () {
+            if (!vm.rawQuestions || !vm.rawQuestions.length) {
+                return;
+            }
+
+            vm.questions = shuffleArray(buildMcqQuestions(vm.rawQuestions));
+            vm.questions1 = [];
+            vm.currentPosition = 0;
+            vm.currentPosition1 = 0;
+            vm.currentCard = vm.questions[vm.currentPosition] || {};
+            vm.currentCard1 = {};
+            vm.showMcqQuestion = false;
+            vm.resetMcqGame();
+            vm.scrollToMcqTop();
         };
 
         vm.showMcqAnswer = function () {
