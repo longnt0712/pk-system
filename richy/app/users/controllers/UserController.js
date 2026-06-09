@@ -172,37 +172,42 @@
         vm.user = {};
         vm.users = [];
         vm.selectedUsers = [];
+
+
         
         vm.enrollmentClasses = [
-            {id: 14, name: "CHIÊN CON 1", old: "DCN1"},
-            {id: 15, name: "CHIÊN CON 2", old: "DNC2"},
-            {id: 16, name: "CHIÊN CON 3", old: "DCN3"},
-            {id: 17, name: "ẤU NHI 1", old: "HATT1"},
-            {id: 18, name: "ẤU NHI 2", old: "HATT2"},
-            {id: 19, name: "ẤU NHI 3", old: "HATT3"},
-            {id: 20, name: "Thiếu nhi 1", old: "TS1"},
-            {id: 21, name: "Thiếu nhi 2", old: "TS2"},
-            {id: 22, name: "Thiếu nhi 3", old: "TS3"},
-            {id: 23, name: "Nghĩa sĩ 1", old: "TS3"},
-            
-
-
-            {id: 1, name: "DCN1"},
-            {id: 2, name: "DCN2"},
-            {id: 3, name: "HATT1A"},
-            {id: 4, name: "HATT1B"},
-            {id: 5, name: "HATT2"},
-            {id: 6, name: "HATT3A"},
-            {id: 7, name: "HATT3B"},
-            {id: 8, name: "TS1"},
-            {id: 9, name: "TS2"},
-            {id: 10, name: "TS3A"},
-            {id: 11, name: "TS3B"},
-            {id: 12, name: "HT"},
-            {id: 13, name: "SĐ"},
-            {id: 99, name: "KHÁC"}
+            // {id: 14, name: "CHIÊN CON 1", old: "DCN1"},
+            // {id: 15, name: "CHIÊN CON 2", old: "DNC2"},
+            // {id: 16, name: "CHIÊN CON 3", old: "DCN3"},
+            // {id: 17, name: "ẤU NHI 1", old: "HATT1"},
+            // {id: 18, name: "ẤU NHI 2", old: "HATT2"},
+            // {id: 19, name: "ẤU NHI 3", old: "HATT3"},
+            // {id: 20, name: "Thiếu nhi 1", old: "TS1"},
+            // {id: 21, name: "Thiếu nhi 2", old: "TS2"},
+            // {id: 22, name: "Thiếu nhi 3", old: "TS3"},
+            // {id: 23, name: "Nghĩa sĩ 1", old: "TS3"},
+            //
+            //
+            //
+            // {id: 1, name: "DCN1"},
+            // {id: 2, name: "DCN2"},
+            // {id: 3, name: "HATT1A"},
+            // {id: 4, name: "HATT1B"},
+            // {id: 5, name: "HATT2"},
+            // {id: 6, name: "HATT3A"},
+            // {id: 7, name: "HATT3B"},
+            // {id: 8, name: "TS1"},
+            // {id: 9, name: "TS2"},
+            // {id: 10, name: "TS3A"},
+            // {id: 11, name: "TS3B"},
+            // {id: 12, name: "HT"},
+            // {id: 13, name: "SĐ"},
+            // {id: 24, name: "KHÁC"}
 
         ];
+        service.getEnrolmentClass(null, 1, 1000000).then(function (data) {
+            vm.enrollmentClasses = data.content;
+        });
         function toNumberOrNull(value) {
             if (value === null || value === undefined || value === '') {
                 return null;
