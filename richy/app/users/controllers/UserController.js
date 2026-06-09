@@ -446,6 +446,8 @@
 
         vm.saveUser = function () {
 
+            normalizeStudentAccountBeforeSave();
+
             if (!vm.user.person) {
                 vm.user.person = {};
             }
@@ -520,6 +522,8 @@
         };
 
         vm.saveUserBasicInfo = function () {
+
+            normalizeStudentAccountBeforeSave();
 
             if (!vm.user.person) {
                 vm.user.person = {};
@@ -620,28 +624,29 @@
             return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
 
-        function parseStudentCode(username) {
-            if (!username) {
+        function parseStudentCodeByPrefix(username, prefix) {
+            if (!username || !prefix) {
                 return null;
             }
 
             var code = String(username).trim();
+            var classPrefix = String(prefix).trim();
 
-            if (code.length <= 4) {
+            if (code.indexOf(classPrefix) !== 0) {
                 return null;
             }
 
-            var prefix = code.substring(0, code.length - 4);
-            var lastFourText = code.substring(code.length - 4);
+            var numberText = code.substring(classPrefix.length);
 
-            if (!/^\d{4}$/.test(lastFourText)) {
+            if (!/^\d+$/.test(numberText)) {
                 return null;
             }
 
             return {
                 originalCode: code,
-                prefix: prefix,
-                number: parseInt(lastFourText, 10)
+                prefix: classPrefix,
+                number: parseInt(numberText, 10),
+                numberLength: numberText.length
             };
         }
 
@@ -662,7 +667,23 @@
 
             return getIdValue(vm.user.person.enrollmentClass);
         }
+        function normalizeStudentAccountBeforeSave() {
+            if (!vm.user) {
+                return;
+            }
 
+            if (vm.user.username !== null && vm.user.username !== undefined) {
+                vm.user.username = String(vm.user.username)
+                    .trim()
+                    .toLowerCase();
+            }
+
+            if (vm.user.email !== null && vm.user.email !== undefined) {
+                vm.user.email = String(vm.user.email)
+                    .trim()
+                    .toLowerCase();
+            }
+        }
         vm.generateNextStudentAccount = function () {
             if (!vm.user) {
                 vm.user = {};
@@ -676,6 +697,13 @@
 
             if (classId === null || classId === undefined || classId === '') {
                 toastr.warning('Vui lòng chọn lớp trước khi load mã học sinh.', 'Thông báo');
+                return;
+            }
+
+            var classCode = getSelectedEnrollmentClassCodeForGenerateCode();
+
+            if (classCode === null || classCode === undefined || classCode === '') {
+                toastr.warning('Lớp đang chọn chưa có mã code. Vui lòng cập nhật enrollmentClass.code trước.', 'Thông báo');
                 return;
             }
 
@@ -702,7 +730,7 @@
                     vm.user.email = '';
 
                     toastr.warning(
-                        'Lớp này chưa có học sinh nào. Vui lòng nhập tay mã học sinh đầu tiên.',
+                        'Lớp này chưa có học sinh nào. Vui lòng nhập tay mã học sinh đầu tiên với prefix: ' + classCode,
                         'Thông báo'
                     );
                     return;
@@ -715,7 +743,7 @@
                         return;
                     }
 
-                    var codeInfo = parseStudentCode(user.username);
+                    var codeInfo = parseStudentCodeByPrefix(user.username, classCode);
 
                     if (!codeInfo) {
                         return;
@@ -731,19 +759,28 @@
                     vm.user.email = '';
 
                     toastr.warning(
-                        'Lớp này có học sinh nhưng chưa có mã hợp lệ. Vui lòng nhập tay mã học sinh đầu tiên.',
+                        'Lớp này chưa có mã học sinh hợp lệ theo prefix "' + classCode + '". Vui lòng nhập tay mã đầu tiên.',
                         'Thông báo'
                     );
                     return;
                 }
 
                 var nextNumber = maxCodeInfo.number + 1;
-                var nextCode = maxCodeInfo.prefix + leftPadNumber(nextNumber, 4);
+
+                /*
+                 * Giữ độ dài phần số theo mã lớn nhất hiện có.
+                 * Ví dụ gl20240122 => numberLength = 4 => next gl20240123.
+                 */
+                var nextNumberText = leftPadNumber(nextNumber, maxCodeInfo.numberLength);
+                var nextCode = classCode + nextNumberText;
 
                 vm.user.username = nextCode;
                 vm.user.email = nextCode + vm.studentEmailSuffix;
 
-                toastr.success('Đã tạo mã học sinh: ' + nextCode, 'Thông báo');
+                toastr.success(
+                    'Mã lớn nhất: ' + maxCodeInfo.originalCode + '. Đã tạo mã mới: ' + nextCode,
+                    'Thông báo'
+                );
             }, function () {
                 toastr.error('Không load được danh sách mã học sinh.', 'Thông báo');
             }).finally(function () {
@@ -761,6 +798,29 @@
                 classId !== undefined &&
                 classId !== '';
         };
+        function getSelectedEnrollmentClassForGenerateCode() {
+            var classId = getSelectedEnrollmentClassIdForGenerateCode();
+
+            if (classId === null || classId === undefined || classId === '') {
+                return null;
+            }
+
+            return vm.findEnrollmentClass(classId);
+        }
+
+        function getSelectedEnrollmentClassCodeForGenerateCode() {
+            var enrollmentClass = getSelectedEnrollmentClassForGenerateCode();
+
+            if (!enrollmentClass) {
+                return null;
+            }
+
+            if (!enrollmentClass.code || String(enrollmentClass.code).trim() === '') {
+                return null;
+            }
+
+            return String(enrollmentClass.code).trim();
+        }
         vm.newUser = function () {
             vm.user = {
                 isNew: true,
