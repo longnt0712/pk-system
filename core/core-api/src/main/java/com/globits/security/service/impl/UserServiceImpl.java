@@ -406,9 +406,8 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 
 	    /*
 	     * KEYWORD
-	     * Cho phép Thúy = Thuý, Hòa = Hoà, Khỏe = Khoẻ...
 	     */
-	    if (!CommonUtils.isEmpty(filter.getKeyword())) {
+	    if (filter != null && !CommonUtils.isEmpty(filter.getKeyword())) {
 	        keywordVariants = buildVietnameseToneSearchVariants(filter.getKeyword());
 
 	        if (!keywordVariants.isEmpty()) {
@@ -444,23 +443,35 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	    /*
 	     * ACTIVE
 	     */
-	    if (filter.getActive() != null) {
+	    if (filter != null && filter.getActive() != null) {
 	        clause += " and u.active = :active ";
 	    }
 
 	    /*
 	     * ENROLLMENT CLASS
+	     * Frontend gửi ID lớp, ví dụ 13.
+	     * Vì Person.enrollmentClass là object EnrolmentClass nên query phải so sánh theo .id.
 	     */
-	    if (filter.getEnrollmentClass() != null) {
-	        clause += " and p.enrollmentClass = :enrollmentClass ";
+	    Long enrollmentClassId = null;
+
+	    if (filter != null && filter.getEnrollmentClass() != null) {
+	        try {
+	            enrollmentClassId = Long.valueOf(filter.getEnrollmentClass().toString());
+	        } catch (Exception e) {
+	            enrollmentClassId = null;
+	        }
+	    }
+
+	    if (enrollmentClassId != null) {
+	        clause += " and p.enrollmentClass.id = :enrollmentClassId ";
 	    }
 
 	    /*
 	     * ROLE FILTER
 	     */
-	    if (filter.getRoles() != null && filter.getRoles().length > 0) {
+	    if (filter != null && filter.getRoles() != null && filter.getRoles().length > 0) {
 	        for (RoleDto dto : filter.getRoles()) {
-	            if (CommonUtils.isPositive(dto.getId(), true)) {
+	            if (dto != null && CommonUtils.isPositive(dto.getId(), true)) {
 	                roleIds.add(dto.getId());
 	            }
 	        }
@@ -476,9 +487,9 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	    /*
 	     * GROUP FILTER
 	     */
-	    if (filter.getGroups() != null && filter.getGroups().length > 0) {
+	    if (filter != null && filter.getGroups() != null && filter.getGroups().length > 0) {
 	        for (UserGroupDto dto : filter.getGroups()) {
-	            if (CommonUtils.isPositive(dto.getId(), true)) {
+	            if (dto != null && CommonUtils.isPositive(dto.getId(), true)) {
 	                groupIds.add(dto.getId());
 	            }
 	        }
@@ -520,14 +531,17 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	        }
 	    }
 
-	    if (filter.getActive() != null) {
+	    if (filter != null && filter.getActive() != null) {
 	        q.setParameter("active", filter.getActive());
 	        qCount.setParameter("active", filter.getActive());
 	    }
 
-	    if (filter.getEnrollmentClass() != null) {
-	        q.setParameter("enrollmentClass", filter.getEnrollmentClass());
-	        qCount.setParameter("enrollmentClass", filter.getEnrollmentClass());
+	    /*
+	     * SET ENROLLMENT CLASS PARAMETER
+	     */
+	    if (enrollmentClassId != null) {
+	        q.setParameter("enrollmentClassId", enrollmentClassId);
+	        qCount.setParameter("enrollmentClassId", enrollmentClassId);
 	    }
 
 	    if (!roleIds.isEmpty()) {
