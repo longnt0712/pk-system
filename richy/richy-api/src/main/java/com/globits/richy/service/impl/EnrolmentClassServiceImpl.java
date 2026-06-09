@@ -107,7 +107,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 		
 		if(dto.getCode() != null) {
-			domain.setName(dto.getCode().trim());
+			domain.setCode(dto.getCode().trim());
 		}
 		
 		
