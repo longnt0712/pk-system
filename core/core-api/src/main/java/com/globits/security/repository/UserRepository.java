@@ -41,12 +41,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
 	@Query("select new com.globits.security.dto.UserDto(u,true) from User u where u.active = true and u.person.displayName like %?1%")
 	List<UserDto> getAllUserWithDisplayNameAndUsername(String grade);
 	
-	@Query("select u from User u where u.person.enrollmentClass = ?1 and u.active = true")
+	@Query("select u from User u where u.person.enrollmentClassId = ?1 and u.active = true")
 	List<User> getUsersByEnrollmentClass(int enrollmentClass);
 	
-	@Query("select new com.globits.security.dto.UserDto(u) from User u where u.person.enrollmentClass = ?1 and u.active = true")
-	List<UserDto> getUsersDtoByEnrollmentClass(int enrollmentClass);
+	@Query("select new com.globits.security.dto.UserDto(u) from User u where u.person.enrollmentClassId = ?1 and u.active = true")
+	List<UserDto> getUsersDtoByEnrollmentClass(int enrollmentClassId);
 	
-	@Query("select u from User u where u.person.enrollmentClass != null and u.active = true")
+	@Query("select u from User u where u.person.enrollmentClassId != null and u.active = true")
 	List<User> getUsersByAllEnrollmentClass();
 }

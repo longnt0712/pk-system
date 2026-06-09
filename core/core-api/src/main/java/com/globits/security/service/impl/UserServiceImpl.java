@@ -1,6 +1,7 @@
 package com.globits.security.service.impl;
 
 import java.util.ArrayList;
+
 import java.util.Date;
 import java.util.List;
 
@@ -452,18 +453,18 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	     * Frontend gửi ID lớp, ví dụ 13.
 	     * Vì Person.enrollmentClass là object EnrolmentClass nên query phải so sánh theo .id.
 	     */
-	    Long enrollmentClassId = null;
+	    Integer enrollmentClassId = null;
 
 	    if (filter != null && filter.getEnrollmentClass() != null) {
 	        try {
-	            enrollmentClassId = Long.valueOf(filter.getEnrollmentClass().toString());
+	        	enrollmentClassId = Integer.valueOf(filter.getEnrollmentClass().toString());
 	        } catch (Exception e) {
 	            enrollmentClassId = null;
 	        }
 	    }
 
 	    if (enrollmentClassId != null) {
-	        clause += " and p.enrollmentClass.id = :enrollmentClassId ";
+	        clause += " and p.enrollmentClassId = :enrollmentClassId ";
 	    }
 
 	    /*
@@ -685,7 +686,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 			person.setAddressString(personDto.getAddressString());
 			person.setZaloStatus(personDto.getZaloStatus());
 			person.setDiocese(personDto.getDiocese());
-			person.setEnrollmentClass(personDto.getEnrollmentClass());
+			person.setEnrollmentClassId(personDto.getEnrollmentClassId());
 			person.setPatron(personDto.getPatron());
 			person.setSacrament(personDto.getSacrament());
 			person.setPhoneNumber(personDto.getPhoneNumber());
@@ -705,7 +706,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 			person.setIdNumberIssueBy(personDto.getIdNumberIssueBy());
 			person.setIdNumberIssueDate(personDto.getIdNumberIssueDate());
 		} else {
-			person = personDto.toEntity();
+		    person = personDto.toEntity();
 		}
 
 		user.setPerson(person);
@@ -798,7 +799,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 			person.setAddressString(personDto.getAddressString());
 			person.setZaloStatus(personDto.getZaloStatus());
 			person.setDiocese(personDto.getDiocese());
-			person.setEnrollmentClass(personDto.getEnrollmentClass());
+			person.setEnrollmentClassId(personDto.getEnrollmentClassId());
 			person.setPatron(personDto.getPatron());
 			person.setSacrament(personDto.getSacrament());
 			person.setPhoneNumber(personDto.getPhoneNumber());
@@ -818,7 +819,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 			person.setIdNumberIssueBy(personDto.getIdNumberIssueBy());
 			person.setIdNumberIssueDate(personDto.getIdNumberIssueDate());
 		} else {
-			person = personDto.toEntity();
+		    person = personDto.toEntity();
 		}
 
 		user.setPerson(person);
@@ -916,7 +917,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 			person.setAddressString(personDto.getAddressString());
 			person.setZaloStatus(personDto.getZaloStatus());
 			person.setDiocese(personDto.getDiocese());
-			person.setEnrollmentClass(personDto.getEnrollmentClass());
+			person.setEnrollmentClassId(personDto.getEnrollmentClassId());
 			person.setPatron(personDto.getPatron());
 			person.setSacrament(personDto.getSacrament());
 			person.setPhoneNumber(personDto.getPhoneNumber());
@@ -936,7 +937,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 			person.setIdNumberIssueBy(personDto.getIdNumberIssueBy());
 			person.setIdNumberIssueDate(personDto.getIdNumberIssueDate());
 		} else {
-			person = personDto.toEntity();
+		    person = personDto.toEntity();
 		}
 
 		user.setPerson(person);
@@ -1064,5 +1065,5 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 		User user = userRepository.findByUsername(username);
 		return user;
 	}
-
+	
 }

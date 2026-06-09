@@ -73,7 +73,7 @@ public class UserDto extends AuditableEntityDto {
 			this.person.setMotherPhoneNumber(entity.getPerson().getMotherPhoneNumber());
 			this.person.setAddressString(entity.getPerson().getAddressString());
 			this.person.setDiocese(entity.getPerson().getDiocese());
-			this.person.setEnrollmentClass(entity.getPerson().getEnrollmentClass());
+			this.person.setEnrollmentClassId(entity.getPerson().getEnrollmentClassId());
 			this.person.setPatron(entity.getPerson().getPatron());
 			this.person.setSacrament(entity.getPerson().getSacrament());
 			this.person.setBirthDate(entity.getPerson().getBirthDate());
