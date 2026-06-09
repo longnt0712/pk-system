@@ -35,7 +35,7 @@
             'Hrm.QuestionType',
             'Hrm.Item',
             'Hrm.VoucherCrocs',
-            'Hrm.DefaultPrice',
+            // 'Hrm.DefaultPrice',
             'Hrm.Shop',
             'Hrm.Topic',
             'Hrm.TestResult',
