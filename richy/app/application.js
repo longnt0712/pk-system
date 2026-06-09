@@ -45,6 +45,7 @@
             'Hrm.Mark',
             'Hrm.StudentMark',
             'Hrm.TopicCategory',
+            'Hrm.EnrolmentClass',
             // 'Hrm.Wine',
             // 'Hrm.Church',
             // 'Hrm.Folder',
