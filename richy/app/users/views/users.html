@@ -464,11 +464,6 @@
                         </ui-select-choices>
                     </ui-select>
                 </div>
-                <div class="col-md-12 margin-top-10">
-                    <label class="bold">Ghi chú thêm</label>
-                    <input id="vm.user.person.personNote" data-ng-model="vm.user.person.personNote" type="text" autofocus="autofocus" class="form-control" />
-                </div>
-
                 <!--<div class="col-md-12 margin-top-10 disable-remove-program text-center">-->
                     <!--<label class="bold">CHƯƠNG TRÌNH ĐÀO TẠO</label><br>-->
                     <!--<small>(tạm thời) đã thêm chương trình thì không xóa nữa (lỡ chọn nhầm mà chưa lưu thì tắt cửa sổ đi làm lại)</small>-->
@@ -485,10 +480,32 @@
                 <!--</div>-->
 
             </div>
+
+            <div class="row text-center">
+                <div class="col-xs-12">
+                    <div class="m-heading-1 border-green m-bordered narrow">
+                        <h4 class="block">Thông tin tài khoản</h4>
+                    </div>
+                </div>
+            </div>
             <div class="row">
                 <div class="col-md-6 margin-top-10">
                     <label class="bold">Địa chỉ email</label>
-                    <input id="vm.user.email" data-ng-model="vm.user.email" class="form-control" />
+
+                    <div class="input-group">
+                        <input id="vm.user.email"
+                                data-ng-model="vm.user.email"
+                                class="form-control" />
+
+                        <span class="input-group-btn">
+                            <button type="button"
+                                    class="btn btn-info"
+                                    ng-if="vm.user.isNew"
+                                    ng-click="vm.generateNextStudentAccount()">
+                                <i class="fa fa-refresh"></i> Load mã
+                            </button>
+                        </span>
+                    </div>
                 </div>
                 <div class="col-md-6 margin-top-10">
                     <label class="bold">Nhóm người dùng</label>
@@ -498,13 +515,6 @@
                             <div class="bold" ng-bind-html="group.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
-                </div>
-            </div>
-            <div class="row text-center">
-                <div class="col-xs-12">
-                    <div class="m-heading-1 border-green m-bordered narrow">
-                        <h4 class="block">Thông tin tài khoản</h4>
-                    </div>
                 </div>
             </div>
             <div class="row" ng-if="vm.user.username != 'admin'">
@@ -543,6 +553,10 @@
                 <div class="col-md-6 margin-top-10">
                     <label class="bold">Nhập lại mật khẩu</label>
                     <input id="vm.user.confirmPassword" ng-disabled="vm.user.id && vm.user.isNew == false" data-ng-model="vm.user.confirmPassword" type="password" class="form-control" />
+                </div>
+                <div class="col-md-12 margin-top-10">
+                    <label class="bold">Ghi chú thêm</label>
+                    <input id="vm.user.person.personNote" data-ng-model="vm.user.person.personNote" type="text" autofocus="autofocus" class="form-control" />
                 </div>
             </div>
 
@@ -932,12 +946,12 @@
         object-fit:cover;
         border-radius:50%;
         border:2px solid #eee;
-        transition: all 0.2s ease;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
     .avatar-user:hover{
-        transform: scale(1.05);
         border-color:#5bc0de;
+        box-shadow:0 0 0 2px rgba(91, 192, 222, 0.25);
     }
 
     .user-photo-preview{

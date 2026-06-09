@@ -600,6 +600,167 @@
         /**
          * Create a new user
          */
+        // vm.studentCodePrefix = 'gl52026';
+        // vm.studentCodeSerialLength = 4;
+        vm.studentEmailSuffix = '@';
+
+        function getIdValue(value) {
+            if (value === null || value === undefined || value === '') {
+                return null;
+            }
+
+            if (angular.isObject(value) && value.id !== undefined) {
+                return value.id;
+            }
+
+            return value;
+        }
+
+        function escapeRegExp(text) {
+            return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function parseStudentCode(username) {
+            if (!username) {
+                return null;
+            }
+
+            var code = String(username).trim();
+
+            if (code.length <= 4) {
+                return null;
+            }
+
+            var prefix = code.substring(0, code.length - 4);
+            var lastFourText = code.substring(code.length - 4);
+
+            if (!/^\d{4}$/.test(lastFourText)) {
+                return null;
+            }
+
+            return {
+                originalCode: code,
+                prefix: prefix,
+                number: parseInt(lastFourText, 10)
+            };
+        }
+
+        function leftPadNumber(numberValue, length) {
+            var text = String(numberValue);
+
+            while (text.length < length) {
+                text = '0' + text;
+            }
+
+            return text;
+        }
+
+        function getSelectedEnrollmentClassIdForGenerateCode() {
+            if (!vm.user || !vm.user.person) {
+                return null;
+            }
+
+            return getIdValue(vm.user.person.enrollmentClass);
+        }
+
+        vm.generateNextStudentAccount = function () {
+            if (!vm.user) {
+                vm.user = {};
+            }
+
+            if (!vm.user.person) {
+                vm.user.person = {};
+            }
+
+            var classId = getSelectedEnrollmentClassIdForGenerateCode();
+
+            if (classId === null || classId === undefined || classId === '') {
+                toastr.warning('Vui lòng chọn lớp trước khi load mã học sinh.', 'Thông báo');
+                return;
+            }
+
+            var searchFilter = {
+                keyword: '',
+                active: null,
+                roles: [],
+                groups: [],
+                filtered: 0,
+                enrollmentClass: classId
+            };
+
+            blockUI.start();
+
+            service.getUsers(searchFilter, 1, 1000000).then(function (data) {
+                var users = [];
+
+                if (data && data.content) {
+                    users = data.content;
+                }
+
+                if (!users || users.length === 0) {
+                    vm.user.username = '';
+                    vm.user.email = '';
+
+                    toastr.warning(
+                        'Lớp này chưa có học sinh nào. Vui lòng nhập tay mã học sinh đầu tiên.',
+                        'Thông báo'
+                    );
+                    return;
+                }
+
+                var maxCodeInfo = null;
+
+                angular.forEach(users, function (user) {
+                    if (!user || !user.username) {
+                        return;
+                    }
+
+                    var codeInfo = parseStudentCode(user.username);
+
+                    if (!codeInfo) {
+                        return;
+                    }
+
+                    if (maxCodeInfo === null || codeInfo.number > maxCodeInfo.number) {
+                        maxCodeInfo = codeInfo;
+                    }
+                });
+
+                if (maxCodeInfo === null) {
+                    vm.user.username = '';
+                    vm.user.email = '';
+
+                    toastr.warning(
+                        'Lớp này có học sinh nhưng chưa có mã hợp lệ. Vui lòng nhập tay mã học sinh đầu tiên.',
+                        'Thông báo'
+                    );
+                    return;
+                }
+
+                var nextNumber = maxCodeInfo.number + 1;
+                var nextCode = maxCodeInfo.prefix + leftPadNumber(nextNumber, 4);
+
+                vm.user.username = nextCode;
+                vm.user.email = nextCode + vm.studentEmailSuffix;
+
+                toastr.success('Đã tạo mã học sinh: ' + nextCode, 'Thông báo');
+            }, function () {
+                toastr.error('Không load được danh sách mã học sinh.', 'Thông báo');
+            }).finally(function () {
+                blockUI.stop();
+            });
+        };
+        vm.hasSelectedEnrollmentClass = function () {
+            if (!vm.user || !vm.user.person) {
+                return false;
+            }
+
+            var classId = getIdValue(vm.user.person.enrollmentClass);
+
+            return classId !== null &&
+                classId !== undefined &&
+                classId !== '';
+        };
         vm.newUser = function () {
             vm.user = {
                 isNew: true,
