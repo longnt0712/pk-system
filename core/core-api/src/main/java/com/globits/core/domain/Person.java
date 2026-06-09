@@ -23,6 +23,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import org.hibernate.annotations.Type;
 
+import com.globits.richy.domain.EnrolmentClass;
 import com.globits.security.domain.User;
 
 @Entity
@@ -165,8 +166,9 @@ public class Person extends BaseObject {
 	@Column(name = "mother_phone_number")
 	private String motherPhoneNumber; 
 	
-	@Column(name = "class_id")
-	private Integer enrollmentClass; // Lớp nhập học
+	@ManyToOne
+	@JoinColumn(name = "class_id")
+	private EnrolmentClass enrollmentClass; // Lớp nhập học
 	
 	@Column(name = "zalo_status")
 	private Integer zaloStatus;
@@ -230,11 +232,11 @@ public class Person extends BaseObject {
 		this.motherPhoneNumber = motherPhoneNumber;
 	}
 
-	public Integer getEnrollmentClass() {
+	public EnrolmentClass getEnrollmentClass() {
 		return enrollmentClass;
 	}
 
-	public void setEnrollmentClass(Integer enrollmentClass) {
+	public void setEnrollmentClass(EnrolmentClass enrollmentClass) {
 		this.enrollmentClass = enrollmentClass;
 	}
 

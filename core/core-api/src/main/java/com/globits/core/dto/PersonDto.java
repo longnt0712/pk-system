@@ -9,6 +9,7 @@ import javax.persistence.Column;
 
 import com.globits.core.domain.Person;
 import com.globits.core.domain.PersonAddress;
+import com.globits.richy.domain.EnrolmentClass;
 
 public class PersonDto extends AuditableEntityDto {
 
@@ -74,7 +75,7 @@ public class PersonDto extends AuditableEntityDto {
 	
 	private String motherPhoneNumber; 
 	
-	private Integer enrollmentClass; // Lớp nhập học
+	private EnrolmentClass enrollmentClass; // Lớp nhập học
 	
 	private Integer zaloStatus;
 	
@@ -421,13 +422,13 @@ public class PersonDto extends AuditableEntityDto {
 
 
 
-	public Integer getEnrollmentClass() {
+	public EnrolmentClass getEnrollmentClass() {
 		return enrollmentClass;
 	}
 
 
 
-	public void setEnrollmentClass(Integer enrollmentClass) {
+	public void setEnrollmentClass(EnrolmentClass enrollmentClass) {
 		this.enrollmentClass = enrollmentClass;
 	}
 
