@@ -1,6 +1,9 @@
 package com.globits.core.dto;
 
 import java.util.Date;
+import java.util.Map;
+
+import com.fasterxml.jackson.annotation.JsonSetter;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -9,7 +12,6 @@ import javax.persistence.Column;
 
 import com.globits.core.domain.Person;
 import com.globits.core.domain.PersonAddress;
-import com.globits.richy.domain.EnrolmentClass;
 
 public class PersonDto extends AuditableEntityDto {
 
@@ -75,7 +77,7 @@ public class PersonDto extends AuditableEntityDto {
 	
 	private String motherPhoneNumber; 
 	
-	private EnrolmentClass enrollmentClass; // Lớp nhập học
+	private Integer enrollmentClassId; // Lớp nhập học
 	
 	private Integer zaloStatus;
 	
@@ -125,6 +127,14 @@ public class PersonDto extends AuditableEntityDto {
 
 
 
+	public Integer getEnrollmentClassId() {
+		return enrollmentClassId;
+	}
+
+	public void setEnrollmentClassId(Integer enrollmentClassId) {
+		this.enrollmentClassId = enrollmentClassId;
+	}
+
 	public Person toEntity() {
 		Person person = new Person();
 
@@ -150,7 +160,7 @@ public class PersonDto extends AuditableEntityDto {
 		person.setMotherPhoneNumber(motherPhoneNumber);
 		person.setAddressString(addressString);
 		person.setZaloStatus(zaloStatus);
-		person.setEnrollmentClass(enrollmentClass);
+		person.setEnrollmentClassId(enrollmentClassId);
 		person.setPatron(patron);
 		person.setSacrament(sacrament);
 		person.setDiocese(diocese);
@@ -420,20 +430,6 @@ public class PersonDto extends AuditableEntityDto {
 		this.motherPhoneNumber = motherPhoneNumber;
 	}
 
-
-
-	public EnrolmentClass getEnrollmentClass() {
-		return enrollmentClass;
-	}
-
-
-
-	public void setEnrollmentClass(EnrolmentClass enrollmentClass) {
-		this.enrollmentClass = enrollmentClass;
-	}
-
-
-
 	public Integer getZaloStatus() {
 		return zaloStatus;
 	}
@@ -522,7 +518,7 @@ public class PersonDto extends AuditableEntityDto {
 			this.addressString = p.getAddressString();
 			this.zaloStatus = p.getZaloStatus();
 			this.diocese = p.getDiocese();
-			this.enrollmentClass = p.getEnrollmentClass();
+			this.enrollmentClassId = p.getEnrollmentClassId();
 			this.patron = p.getPatron();
 			this.personNote = p.getPersonNote();
 			if (p.getUser() != null) {
