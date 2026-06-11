@@ -665,7 +665,7 @@
                 return null;
             }
 
-            return getIdValue(vm.user.person.enrollmentClass);
+            return getIdValue(vm.user.person.enrollmentClassId);
         }
         function normalizeStudentAccountBeforeSave() {
             if (!vm.user) {
@@ -792,7 +792,7 @@
                 return false;
             }
 
-            var classId = getIdValue(vm.user.person.enrollmentClass);
+            var classId = getIdValue(vm.user.person.enrollmentClassId);
 
             return classId !== null &&
                 classId !== undefined &&
@@ -1074,10 +1074,16 @@
         };
 
         vm.getEnrollmentClassName = function (classId) {
+            var normalizedClassId = toNumberOrNull(classId);
+
+            if (normalizedClassId === null) {
+                return '';
+            }
+
             var found = null;
 
-            angular.forEach(vm.enrollmentClasses, function (item) {
-                if (item.id === classId) {
+            angular.forEach(vm.enrollmentClasses || [], function (item) {
+                if (toNumberOrNull(item.id) === normalizedClassId) {
                     found = item;
                 }
             });
@@ -1121,7 +1127,7 @@
                     return person.phoneNumber || '';
 
                 case 'enrollmentClass':
-                    return vm.getEnrollmentClassName(person.enrollmentClass).toLowerCase();
+                    return vm.getEnrollmentClassName(person.enrollmentClassId).toLowerCase();
 
                 case 'zaloStatus':
                     return vm.getZaloStatusName(person.zaloStatus).toLowerCase();
@@ -1170,7 +1176,7 @@
             var selectedClassId = null;
 
             if (vm.user && vm.user.person) {
-                selectedClassId = vm.user.person.enrollmentClass;
+                selectedClassId = vm.user.person.enrollmentClassId;
             }
 
             if (selectedClassId === undefined || selectedClassId === '') {
@@ -1212,8 +1218,8 @@
 
         vm.reloadUserListFromModal = function () {
             // Nếu trong modal đang chọn lớp, lấy lớp đó làm filter cho bảng phía sau
-            if (vm.user && vm.user.person && vm.user.person.enrollmentClass) {
-                vm.filter.enrollmentClass = vm.user.person.enrollmentClass;
+            if (vm.user && vm.user.person && vm.user.person.enrollmentClassId) {
+                vm.filter.enrollmentClass = vm.user.person.enrollmentClassId;
             }
 
             vm.pageIndex = 1;
@@ -1962,7 +1968,7 @@
                 checked: true,
                 getter: function (user, index) {
                     if (!user || !user.person) return '';
-                    return vm.getEnrollmentClassName(user.person.enrollmentClass);
+                    return vm.getEnrollmentClassName(user.person.enrollmentClassId);
                 }
             }
             // ,

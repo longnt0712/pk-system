@@ -206,13 +206,13 @@
                                         {{user.person.phoneNumber}}
                                     </td>
                                     <td>
-                                        <!--<ui-select data-ng-disabled="true" ng-model="user.person.enrollmentClass" data-ng-change="" sortable="true" close-on-select="true">-->
+                                        <!--<ui-select data-ng-disabled="true" ng-model="user.person.enrollmentClassId" data-ng-change="" sortable="true" close-on-select="true">-->
                                             <!--<ui-select-match allow-clear="" placeholder="LỚP HỌC">{{$select.selected.name}}</ui-select-match>-->
                                             <!--<ui-select-choices repeat="so.id as so in vm.enrollmentClasses  | propsFilter: {name: $select.search}">-->
                                                 <!--<div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>-->
                                             <!--</ui-select-choices>-->
                                         <!--</ui-select>-->
-                                        {{ vm.getEnrollmentClassName(user.person.enrollmentClass) }}
+                                        {{ vm.getEnrollmentClassName(user.person.enrollmentClassId) }}
                                     </td>
                                     <td ng-class="vm.getZaloStatusClass(user.person.zaloStatus)">
                                         {{ vm.getZaloStatusName(user.person.zaloStatus) }}
@@ -438,7 +438,7 @@
                 <div class="col-md-6 margin-top-10">
                     <label class="bold">LỚP</label>
 
-                    <ui-select ng-model="vm.user.person.enrollmentClass"
+                    <ui-select ng-model="vm.user.person.enrollmentClassId"
                                data-ng-change="vm.syncModalEnrollmentClassToFilter()"
                                sortable="true"
                                close-on-select="true">
