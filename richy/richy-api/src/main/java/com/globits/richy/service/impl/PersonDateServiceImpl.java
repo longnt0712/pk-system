@@ -172,7 +172,7 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 				&& searchDto.getUser() != null
 				&& searchDto.getUser().getPerson() != null
 				&& searchDto.getUser().getPerson().getEnrollmentClassId() != null) {
-			whereClause += " and (u.person.enrollmentClass = :enrollmentClass)";
+			whereClause += " and (u.person.enrollmentClassId = :enrollmentClassId)";
 		}
 
 		sql += whereClause;
@@ -213,8 +213,8 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 				&& searchDto.getUser() != null
 				&& searchDto.getUser().getPerson() != null
 				&& searchDto.getUser().getPerson().getEnrollmentClassId() != null) {
-			q.setParameter("enrollmentClass", searchDto.getUser().getPerson().getEnrollmentClassId());
-			qCount.setParameter("enrollmentClass", searchDto.getUser().getPerson().getEnrollmentClassId());
+			q.setParameter("enrollmentClassId", searchDto.getUser().getPerson().getEnrollmentClassId());
+			qCount.setParameter("enrollmentClassId", searchDto.getUser().getPerson().getEnrollmentClassId());
 		}
 
 		q.setFirstResult(pageIndex * pageSize);

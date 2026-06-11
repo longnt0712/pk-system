@@ -260,26 +260,31 @@
         vm.selectedPersonDates = [];
         vm.pageIndex = 1;
         vm.pageSize = 1000;
-        vm.searchDto = {};
+        vm.searchDto = vm.searchDto || {};
+        vm.searchDto.user = vm.searchDto.user || {};
+        vm.searchDto.user.person = vm.searchDto.user.person || {};
         vm.searchTextClient = '';
         vm.searchEnrollmentClass = 1;
         vm.enrollmentClasses = [
-            {id: 1, name: "DCN1"},
-            {id: 2, name: "DCN2"},
-            {id: 3, name: "HATT1A"},
-            {id: 4, name: "HATT1B"},
-            {id: 5, name: "HATT2"},
-            {id: 6, name: "HATT3A"},
-            {id: 7, name: "HATT3B"},
-            {id: 8, name: "TS1"},
-            {id: 9, name: "TS2"},
-            {id: 10, name: "TS3A"},
-            {id: 11, name: "TS3B"},
-            {id: 12, name: "HT"},
-            {id: 13, name: "SĐ"},
-            {id: 14, name: "KHÁC"},
-            {id: null, name: "Tất cả"}
+            // {id: 1, name: "DCN1"},
+            // {id: 2, name: "DCN2"},
+            // {id: 3, name: "HATT1A"},
+            // {id: 4, name: "HATT1B"},
+            // {id: 5, name: "HATT2"},
+            // {id: 6, name: "HATT3A"},
+            // {id: 7, name: "HATT3B"},
+            // {id: 8, name: "TS1"},
+            // {id: 9, name: "TS2"},
+            // {id: 10, name: "TS3A"},
+            // {id: 11, name: "TS3B"},
+            // {id: 12, name: "HT"},
+            // {id: 13, name: "SĐ"},
+            // {id: 14, name: "KHÁC"},
+            // {id: null, name: "Tất cả"}
         ];
+        
+        
+
 
         vm.searchDto.groupId = null;
         vm.groupChange = function () {
@@ -618,7 +623,7 @@
 
         vm.searchDto.user = {};
         vm.searchDto.user.person = {};
-        vm.searchDto.user.person.enrollmentClass = 1;
+        vm.searchDto.user.person.enrollmentClassId = 1;
 
         vm.resetSum = function () {
             vm.totalStudent = 0;
@@ -755,7 +760,18 @@
                 });
         };
 
-        vm.getPage();
+        service.getEnrolmentClass(null, 1, 1000000).then(function (data) {
+            vm.enrollmentClasses = data.content || [];
+
+            vm.enrollmentClassMap = {};
+            angular.forEach(vm.enrollmentClasses, function (cls) {
+                vm.enrollmentClassMap[cls.id] = cls.name;
+            });
+
+            if (vm.enrollmentClasses.length > 0) {
+                vm.searchDto.user.person.enrollmentClassId = vm.enrollmentClasses[0].id;
+            }
+        });
 
         /**
          * New event account
@@ -1351,7 +1367,7 @@
                 getter: function (personDate, index) {
                     return vm.enrollmentClassMap[
                             personDate && personDate.user && personDate.user.person
-                                ? personDate.user.person.enrollmentClass
+                                ? personDate.user.person.enrollmentClassId
                                 : null
                             ] || '';
                 }
@@ -1895,7 +1911,7 @@
                         userId: userId,
                         fullName: fullName,
                         birthDate: item.user.person.birthDate ? moment(item.user.person.birthDate).format('DD/MM/YYYY') : '',
-                        className: vm.enrollmentClassMap[item.user.person.enrollmentClass] || '',
+                        className: vm.enrollmentClassMap[item.user.person.enrollmentClassId] || '',
                         days: {}
                     };
 

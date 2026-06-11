@@ -101,8 +101,8 @@
                         </div>
 
                         <div class="col-md-2 margin-bottom-10">
-                            <ui-select ng-model="vm.searchDto.user.person.enrollmentClass"
-                                       ng-change=""
+                            <ui-select ng-model="vm.searchDto.user.person.enrollmentClassId"
+                                       ng-change="vm.getPage()"
                                        close-on-select="true">
                                 <ui-select-match allow-clear="false" placeholder="Chọn lớp để lọc">
                                     {{$select.selected.name}}
@@ -290,7 +290,7 @@
                                     </td>
 
                                     <td>
-                                        {{ vm.enrollmentClassMap[personDate.user.person.enrollmentClass] }}
+                                        {{ vm.enrollmentClassMap[personDate.user.person.enrollmentClassId] }}
                                     </td>
 
                                     <td style="min-width: 260px;">
@@ -383,7 +383,7 @@
                             </div>
 
                             <div class="col-md-2 margin-bottom-10">
-                                <ui-select ng-model="vm.searchDto.user.person.enrollmentClass"
+                                <ui-select ng-model="vm.searchDto.user.person.enrollmentClassId"
                                            ng-change=""
                                            close-on-select="true">
                                     <ui-select-match allow-clear="false" placeholder="Chọn lớp để lọc">
@@ -710,9 +710,9 @@
                     <span class="tntt-chip tntt-class-chip">
                         🎒 Lớp:
                         <ui-select ng-disabled="true"
-                                   ng-model="vm.checkPerson.user.person.enrollmentClass"
-                                   sortable="true"
-                                   close-on-select="true"
+                                    ng-model="vm.checkPerson.user.person.enrollmentClassId"
+                                    sortable="true"
+                                    close-on-select="true"
                                    class="tntt-inline-select">
                             <ui-select-match allow-clear="false" placeholder="LỚP HỌC">
                                 {{$select.selected.name}}
