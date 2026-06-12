@@ -278,22 +278,17 @@
             return normalizedFullNameAndCode.indexOf(normalizedKeyword) !== -1;
         };;
 
-        vm.enrollmentClasses = [
-            {id: 1, name: "DCN1"},
-            {id: 2, name: "DCN2"},
-            {id: 3, name: "HATT1A"},
-            {id: 4, name: "HATT1B"},
-            {id: 5, name: "HATT2"},
-            {id: 6, name: "HATT3A"},
-            {id: 7, name: "HATT3B"},
-            {id: 8, name: "TS1"},
-            {id: 9, name: "TS2"},
-            {id: 10, name: "TS3A"},
-            {id: 11, name: "TS3B"},
-            {id: 12, name: "HT"},
-            {id: 13, name: "SĐ"},
-            {id: 14, name: "KHÁC"}
-        ];
+        vm.enrollmentClasses = [];
+
+        service.getEnrolmentClass(null, 1, 1000000).then(function (data) {
+            vm.enrollmentClasses = data.content || [];
+
+            if (vm.enrollmentClasses.length > 0 && !vm.searchDisplayDto.enrollmentClass) {
+                vm.searchDisplayDto.enrollmentClass = vm.enrollmentClasses[0].id;
+            }
+
+            vm.getListDisplayStudentMark();
+        });
 
         service.getEducationPrograms(vm.filter, 1, 1000000).then(function (data) {
             vm.educationPrograms = data.content || [];
