@@ -2893,7 +2893,7 @@
 
             vm.tempWrong = vm.testResult.testTakerPerformance;
 
-            var isFillingGapMode = vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12;
+            var isFillingGapMode = vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 12 || vm.mode.id == 15;
             var isDailyVocabMode = vm.mode.id == 5;
 
             if (isFillingGapMode) {
