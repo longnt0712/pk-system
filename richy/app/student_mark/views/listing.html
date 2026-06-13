@@ -57,7 +57,7 @@
 
 
                 <div class="row">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <ui-select ng-model="vm.searchDisplayDto.enrollmentClass" data-ng-change="vm.getListDisplayStudentMark()" sortable="true" close-on-select="true">
                             <ui-select-match allow-clear="true" placeholder="LỚP HỌC">{{$select.selected.name}}</ui-select-match>
                             <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses  | propsFilter: {name: $select.search}">
@@ -87,7 +87,7 @@
                             </ui-select-choices>
                         </ui-select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <input type="text"
                                 class="form-control"
                                 ng-model="vm.keywordStudentName"
