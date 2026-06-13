@@ -14,8 +14,17 @@ public class DisplayStudentMarkDto implements Serializable {
     private String textSearch;
     private Integer enrollmentClass;
     private Long educationProgramId;
+    private Long groupId;
 
-    public DisplayStudentMarkDto() {
+    public Long getGroupId() {
+		return groupId;
+	}
+
+	public void setGroupId(Long groupId) {
+		this.groupId = groupId;
+	}
+
+	public DisplayStudentMarkDto() {
     }
 
     public DisplayStudentMarkDto(StudentMark domain) {

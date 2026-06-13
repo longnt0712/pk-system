@@ -24,7 +24,8 @@
         self.getOne = getOne;
         self.deleteObject = deleteObject;
         self.getTableDefinition = getTableDefinition;
-
+        self.getAllGroups = getAllGroups;
+        self.getEnrolmentClass = getEnrolmentClass;
 
         var restUrl = 'student_mark';
         function getPage(searchDto, pageIndex, pageSize, successCallback, errorCallback) {
@@ -37,7 +38,10 @@
                 'Content-Type': 'application/json; charset=utf-8'
             }, successCallback, errorCallback);
         }
-        self.getEnrolmentClass = getEnrolmentClass;
+        function getAllGroups() {
+            var url = baseUrl + 'usergroup/all';
+            return utils.resolve(url, 'GET', angular.noop, angular.noop);
+        }
         function getEnrolmentClass(searchDto, pageIndex, pageSize, successCallback, errorCallback) {
             var url = baseUrl + 'enrolment_class' + '/get_page';
             url += '/'+pageIndex;

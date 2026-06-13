@@ -22,12 +22,12 @@ public class RestEnrolmentClassController {
 	@Autowired
 	EnrolmentClassService service;
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
 	public Page<EnrolmentClassDto> getPage(@RequestBody EnrolmentClassDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
 		return service.getPageObject(searchDto, pageIndex, pageSize);
 	}
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)
 	public EnrolmentClassDto getOne(@PathVariable Long id) {
 		return service.getObjectById(id);

@@ -111,19 +111,82 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	
 	
 	@Override
-	public List<DisplayStudentMarkDto> getListDisplayStudentMark(DisplayStudentMarkDto searchDto) {
-	    List<DisplayStudentMarkDto> ret = new ArrayList<DisplayStudentMarkDto>();
+	public List<DisplayStudentMarkDto> getListDisplayStudentMark(
+	        DisplayStudentMarkDto searchDto) {
 
-	    if (searchDto == null || searchDto.getEnrollmentClass() == null || searchDto.getEducationProgramId() == null) {
+	    List<DisplayStudentMarkDto> ret =
+	            new ArrayList<DisplayStudentMarkDto>();
+
+	    /*
+	     * Chương trình đào tạo vẫn cần thiết vì dùng để lấy
+	     * danh sách loại điểm/cột điểm.
+	     */
+	    if (searchDto == null
+	            || searchDto.getEducationProgramId() == null) {
 	        return ret;
 	    }
 
-	    Integer enrollmentClass = searchDto.getEnrollmentClass();
-	    Long educationProgramId = searchDto.getEducationProgramId();
-	    String textSearch = searchDto.getTextSearch();
+	    Integer enrollmentClass =
+	            searchDto.getEnrollmentClass();
 
-	    List<UserDto> users = userRepository.getUsersDtoByEnrollmentClass(enrollmentClass);
-	    List<Mark> marks = markRepository.findMarkBy(educationProgramId);
+	    Long groupId =
+	            searchDto.getGroupId();
+
+	    Long educationProgramId =
+	            searchDto.getEducationProgramId();
+
+	    String textSearch =
+	            searchDto.getTextSearch();
+
+	    List<UserDto> users;
+
+	    /*
+	     * Trường hợp 1:
+	     * Có lớp và có group.
+	     * Lấy học sinh đồng thời thuộc lớp và group.
+	     */
+	    if (enrollmentClass != null && groupId != null) {
+
+	        users = userRepository
+	                .getUsersDtoByEnrollmentClassAndGroupId(
+	                        enrollmentClass,
+	                        groupId
+	                );
+
+	    /*
+	     * Trường hợp 2:
+	     * Chỉ chọn lớp.
+	     */
+	    } else if (enrollmentClass != null) {
+
+	        users = userRepository
+	                .getUsersDtoByEnrollmentClass(
+	                        enrollmentClass
+	                );
+
+	    /*
+	     * Trường hợp 3:
+	     * Chỉ chọn group.
+	     */
+	    } else if (groupId != null) {
+
+	        users = userRepository
+	                .getUsersDtoByGroupId(groupId);
+
+	    /*
+	     * Trường hợp 4:
+	     * Không chọn lớp và không chọn group.
+	     */
+	    } else {
+
+	        users = userRepository
+	                .getAllActiveStudentDtos();
+	    }
+
+	    List<Mark> marks =
+	            markRepository.findMarkBy(
+	                    educationProgramId
+	            );
 
 	    if (users == null || users.isEmpty()) {
 	        return ret;
@@ -133,48 +196,98 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	        marks = new ArrayList<Mark>();
 	    }
 
+	    String keyword = null;
+
+	    if (textSearch != null
+	            && textSearch.trim().length() > 0) {
+
+	        keyword = textSearch
+	                .trim()
+	                .toLowerCase();
+	    }
+
 	    for (UserDto userDto : users) {
-	        if (userDto == null || userDto.getId() == null) {
+
+	        if (userDto == null
+	                || userDto.getId() == null) {
 	            continue;
 	        }
 
-	        if (textSearch != null && textSearch.trim().length() > 0) {
-	            String keyword = textSearch.trim().toLowerCase();
-	            String displayName = userDto.getDisplayName() != null ? userDto.getDisplayName().toLowerCase() : "";
-	            String username = userDto.getUsername() != null ? userDto.getUsername().toLowerCase() : "";
+	        /*
+	         * Lọc thêm theo tên hoặc mã học sinh.
+	         */
+	        if (keyword != null) {
 
-	            if (!displayName.contains(keyword) && !username.contains(keyword)) {
+	            String displayName =
+	                    userDto.getDisplayName() != null
+	                            ? userDto.getDisplayName()
+	                                    .toLowerCase()
+	                            : "";
+
+	            String username =
+	                    userDto.getUsername() != null
+	                            ? userDto.getUsername()
+	                                    .toLowerCase()
+	                            : "";
+
+	            if (!displayName.contains(keyword)
+	                    && !username.contains(keyword)) {
 	                continue;
 	            }
 	        }
 
-	        DisplayStudentMarkDto dto = new DisplayStudentMarkDto();
+	        DisplayStudentMarkDto dto =
+	                new DisplayStudentMarkDto();
+
 	        dto.setId(userDto.getId());
 	        dto.setUser(userDto);
 	        dto.setEnrollmentClass(enrollmentClass);
-	        dto.setEducationProgramId(educationProgramId);
+	        dto.setGroupId(groupId);
+	        dto.setEducationProgramId(
+	                educationProgramId
+	        );
 
-	        List<StudentMarkDto> studentMarks = new ArrayList<StudentMarkDto>();
+	        List<StudentMarkDto> studentMarks =
+	                new ArrayList<StudentMarkDto>();
 
 	        for (Mark mark : marks) {
-	            if (mark == null || mark.getId() == null) {
+
+	            if (mark == null
+	                    || mark.getId() == null) {
 	                continue;
 	            }
 
-	            List<StudentMark> existedStudentMarks = studentMarkRepository
-	                    .findStudentMarksByMarkIdAndUserId(mark.getId(), userDto.getId());
+	            List<StudentMark> existedStudentMarks =
+	                    studentMarkRepository
+	                            .findStudentMarksByMarkIdAndUserId(
+	                                    mark.getId(),
+	                                    userDto.getId()
+	                            );
 
-	            StudentMark studentMark = getBestStudentMark(existedStudentMarks);
+	            StudentMark studentMark =
+	                    getBestStudentMark(
+	                            existedStudentMarks
+	                    );
 
 	            StudentMarkDto studentMarkDto;
 
 	            if (studentMark != null) {
-	                studentMarkDto = new StudentMarkDto(studentMark);
+
+	                studentMarkDto =
+	                        new StudentMarkDto(
+	                                studentMark
+	                        );
+
 	            } else {
-	                studentMarkDto = new StudentMarkDto();
+
+	                studentMarkDto =
+	                        new StudentMarkDto();
+
 	                studentMarkDto.setId(null);
 	                studentMarkDto.setUser(userDto);
-	                studentMarkDto.setMark(new MarkDto(mark));
+	                studentMarkDto.setMark(
+	                        new MarkDto(mark)
+	                );
 	                studentMarkDto.setMarkNumber(null);
 	                studentMarkDto.setMarkText(null);
 	            }

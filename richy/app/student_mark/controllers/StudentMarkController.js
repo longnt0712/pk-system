@@ -157,10 +157,14 @@
         vm.pageSize = 25;
         vm.searchDto = {};
 
-        vm.searchDisplayDto = {};
-        vm.searchDisplayDto.enrollmentClass = 1;
-        vm.searchDisplayDto.educationProgramId = 1;
-        vm.searchDisplayDto.textSearch = null;
+        vm.searchDisplayDto = {
+            enrollmentClass: 1,
+            educationProgramId: 1,
+            textSearch: null,
+            groupId: null
+        };
+
+        vm.selectedGroup = null;
 
         vm.markColumns = [];
         vm.keywordStudentName = '';
@@ -279,6 +283,24 @@
         };;
 
         vm.enrollmentClasses = [];
+
+        vm.groupChange = function () {
+            if (vm.selectedGroup && vm.selectedGroup.id) {
+                vm.searchDisplayDto.groupId = vm.selectedGroup.id;
+            } else {
+                vm.searchDisplayDto.groupId = null;
+            }
+
+            vm.getListDisplayStudentMark();
+        };
+        service.getAllGroups().then(function (data) {
+            if (data && data.length > 0) {
+                vm.groups = data;
+                // console.log(vm.groups);
+            } else {
+                vm.groups = [];
+            }
+        });
 
         service.getEnrolmentClass(null, 1, 1000000).then(function (data) {
             vm.enrollmentClasses = data.content || [];
