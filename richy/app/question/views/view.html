@@ -62,7 +62,7 @@
                     <div class="col-md-7 margin-bottom-10">
 
                         <ui-select multiple ng-change="" data-ng-model="vm.selectedTopicToSearch" sortable="true" close-on-select="true" style="width: 100% !important;">
-                            <ui-select-match allow-clear="true" placeholder="Chọn bài đó ấn tìm kiếm | Có thể chọn nhiều bài nhé :D">
+                            <ui-select-match allow-clear="true" placeholder="Chọn bài sau đó ấn tìm kiếm | Có thể chọn nhiều bài nhé :D">
                                 {{$item.name}}
                             </ui-select-match>
                             <ui-select-choices repeat="t in vm.topics | propsFilter: {name: $select.search}">
