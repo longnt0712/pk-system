@@ -515,6 +515,8 @@
         vm.modes = [
             {id:5,name: 'DAILY VOCAB'},
             {id:8,name: 'FILLING GAPS'},
+            {id:13,name: 'MCQs (TRẮC NGHIỆM)'},
+            {id:12,name: 'ĐIỀN TỪ'},
             {id:6,name: 'QUIZ BATTLE 2'},
             {id:7,name: 'QUIZ BATTLE TUG OF WAR'},
             {id:9,name: 'FLIPPING CARD'},
@@ -523,8 +525,6 @@
             {id:4,name: 'REWRITE'},
             {id:11,name: 'FILLING GAPS VNI'},
             {id:15,name: 'FILLING GAPS VNI 2'},
-            {id:12,name: 'FILLING GAPS 3'},
-            {id:13,name: 'MCQs'},
             {id:14, name: 'GUESS THE WORD'}
         ];
         vm.mode = {id:5,name: 'DAILY VOCAB'};
