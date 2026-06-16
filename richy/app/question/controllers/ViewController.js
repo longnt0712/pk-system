@@ -274,6 +274,12 @@
         vm.question = {};
         vm.questions = [];
         vm.questionTable = [];
+        vm.showQuestionTable = false;
+
+        vm.toggleQuestionTable = function () {
+            vm.showQuestionTable = !vm.showQuestionTable;
+        };
+
         vm.selectedQuestions = [];
         vm.gapTableSearchText = '';
         vm.allGapQuestions = [];
@@ -2482,6 +2488,10 @@
         var tuongLai = null;
         vm.modeChange = function () {
             vm.blockCopyPasteOnlyMode8 = vm.mode && vm.mode.id == 8;
+
+            if (vm.mode && vm.mode.id == 1) {
+                vm.showQuestionTable = false;
+            }
 
             vm.updateSpeechLangByMode();
             if(vm.mode.id == 4){
