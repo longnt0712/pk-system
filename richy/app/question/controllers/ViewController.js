@@ -536,11 +536,26 @@
         vm.mode = {id:5,name: 'DAILY VOCAB'};
         vm.rawQuestions = [];
 
+        // Danh sách "Hiển thị tất cả" của MCQ dùng state riêng,
+        // không thay đổi currentCard/currentPosition của giao diện câu hỏi cũ.
+        vm.showAllMcqQuestions = false;
+        vm.allMcqQuestions = [];
+        vm.allMcqWasShuffled = false;
+        vm.allMcqTopicNames = [];
+        vm.allMcqShowUnderFourAnswers = true;
+
         vm.getPageFlashCard = function () {
             vm.searchDto.questionType = {id: 6};
             vm.searchDto.userId = vm.selectedUser.id;
             vm.searchDto.pageSize = 5000;
             vm.resetFlipCard();
+
+            // Dữ liệu tìm kiếm mới phải đóng danh sách MCQ cũ ở phía dưới.
+            vm.showAllMcqQuestions = false;
+            vm.allMcqQuestions = [];
+            vm.allMcqWasShuffled = false;
+            vm.allMcqTopicNames = [];
+            vm.allMcqShowUnderFourAnswers = true;
 
             if(vm.searchDto.questionTopics == null || vm.searchDto.questionTopics.length <= 0){
                 alert('Phải chọn bài từ vựng cần học rồi ấn tìm kiếm');
@@ -2488,6 +2503,13 @@
 
         var tuongLai = null;
         vm.modeChange = function () {
+            // Mỗi lần đổi mode, khu vực "Hiển thị tất cả" trở về trạng thái ẩn mặc định.
+            vm.showAllMcqQuestions = false;
+            vm.allMcqQuestions = [];
+            vm.allMcqWasShuffled = false;
+            vm.allMcqTopicNames = [];
+            vm.allMcqShowUnderFourAnswers = true;
+
             vm.blockCopyPasteOnlyMode8 = vm.mode && vm.mode.id == 8;
 
             if (vm.mode && vm.mode.id == 1) {
@@ -6738,6 +6760,944 @@
                 }]
             });
         }
+
+        function openMcqShowAllOptionsModal() {
+            return modal.open({
+                animation: true,
+                size: 'md',
+                backdrop: 'static',
+                keyboard: false,
+                windowClass: 'mcq-tntt-confirm-window mcq-show-all-options-window',
+                template:
+                    '<div class="mcq-tntt-confirm-modal mcq-show-all-options-modal">' +
+                    '   <button type="button" class="mcq-tntt-confirm-close" ng-click="cancel()" aria-label="Đóng">×</button>' +
+                    '   <div class="mcq-tntt-confirm-cloud cloud-left">☁️</div>' +
+                    '   <div class="mcq-tntt-confirm-cloud cloud-right">☁️</div>' +
+                    '   <div class="mcq-tntt-confirm-stars">⭐ ✨ 🔀 ✨ ⭐</div>' +
+                    '   <div class="mcq-tntt-confirm-badge">📚</div>' +
+                    '   <div class="mcq-tntt-confirm-title">Hiển thị tất cả</div>' +
+                    '   <div class="mcq-tntt-confirm-subtitle">Bạn muốn trộn câu hỏi và câu trả lời hay không?</div>' +
+                    '   <div class="mcq-tntt-confirm-message">' +
+                    '       Chọn “Có, trộn” để trộn thứ tự câu hỏi và các phương án. ' +
+                    '       Chọn “Không trộn” để giữ nguyên thứ tự ban đầu.' +
+                    '   </div>' +
+                    '   <div class="mcq-tntt-confirm-actions mcq-show-all-modal-actions">' +
+                    '       <button type="button" class="btn mcq-tntt-btn-no" ng-click="cancel()">Hủy</button>' +
+                    '       <button type="button" class="btn mcq-keep-order-btn" ng-click="choose(false)">Không trộn</button>' +
+                    '       <button type="button" class="btn mcq-tntt-btn-yes" ng-click="choose(true)">Có, trộn</button>' +
+                    '   </div>' +
+                    '</div>',
+                controller: ['$scope', '$uibModalInstance', function ($scope, $uibModalInstance) {
+                    $scope.choose = function (shouldShuffle) {
+                        $uibModalInstance.close(shouldShuffle === true);
+                    };
+
+                    $scope.cancel = function () {
+                        $uibModalInstance.dismiss('cancel');
+                    };
+                }]
+            });
+        }
+
+        function openMcqUnderFourAnswersModal() {
+            return modal.open({
+                animation: true,
+                size: 'md',
+                backdrop: 'static',
+                keyboard: false,
+                windowClass: 'mcq-tntt-confirm-window mcq-show-all-options-window',
+                template:
+                    '<div class="mcq-tntt-confirm-modal mcq-show-all-options-modal">' +
+                    '   <button type="button" class="mcq-tntt-confirm-close" ng-click="cancel()" aria-label="Đóng">×</button>' +
+                    '   <div class="mcq-tntt-confirm-cloud cloud-left">☁️</div>' +
+                    '   <div class="mcq-tntt-confirm-cloud cloud-right">☁️</div>' +
+                    '   <div class="mcq-tntt-confirm-stars">⭐ ✨ 👁️ ✨ ⭐</div>' +
+                    '   <div class="mcq-tntt-confirm-badge">🔢</div>' +
+                    '   <div class="mcq-tntt-confirm-title">Câu hỏi có dưới 4 đáp án</div>' +
+                    '   <div class="mcq-tntt-confirm-subtitle">' +
+                    '       Bạn có muốn hiển thị đáp án của những câu hỏi có dưới 4 đáp án không?' +
+                    '   </div>' +
+                    '   <div class="mcq-tntt-confirm-message">' +
+                    '       Chọn “Có, hiển thị” để hiện các phương án của tất cả câu hỏi. ' +
+                    '       Chọn “Không hiển thị” để chỉ ẩn danh sách phương án của những câu có ít hơn 4 đáp án; ' +
+                    '       các câu có từ 4 đáp án trở lên vẫn hiển thị bình thường.' +
+                    '   </div>' +
+                    '   <div class="mcq-tntt-confirm-actions mcq-show-all-modal-actions">' +
+                    '       <button type="button" class="btn mcq-tntt-btn-no" ng-click="cancel()">Hủy</button>' +
+                    '       <button type="button" class="btn mcq-keep-order-btn" ng-click="choose(false)">' +
+                    '           Không hiển thị' +
+                    '       </button>' +
+                    '       <button type="button" class="btn mcq-tntt-btn-yes" ng-click="choose(true)">' +
+                    '           Có, hiển thị' +
+                    '       </button>' +
+                    '   </div>' +
+                    '</div>',
+                controller: ['$scope', '$uibModalInstance', function ($scope, $uibModalInstance) {
+                    $scope.choose = function (showUnderFourAnswers) {
+                        $uibModalInstance.close(showUnderFourAnswers === true);
+                    };
+
+                    $scope.cancel = function () {
+                        $uibModalInstance.dismiss('cancel');
+                    };
+                }]
+            });
+        }
+
+        function getSelectedMcqTopicNames() {
+            var names = [];
+            var seen = {};
+
+            function addName(value) {
+                var name = String(value || '').trim();
+
+                if (!name || seen[name]) {
+                    return;
+                }
+
+                seen[name] = true;
+                names.push(name);
+            }
+
+            angular.forEach(vm.selectedTopicToSearch || [], function (topic) {
+                if (!topic) {
+                    return;
+                }
+
+                addName(topic.name || topic.title || topic.code);
+            });
+
+            // Fallback cho trường hợp giao diện đã chuyển dữ liệu sang searchDto.
+            if (names.length <= 0 &&
+                    vm.searchDto &&
+                    vm.searchDto.questionTopics) {
+                angular.forEach(vm.searchDto.questionTopics, function (questionTopic) {
+                    var topic = questionTopic && questionTopic.topic
+                        ? questionTopic.topic
+                        : questionTopic;
+
+                    if (!topic) {
+                        return;
+                    }
+
+                    addName(topic.name || topic.title || topic.code);
+                });
+            }
+
+            // Fallback cuối cùng cho code cũ đang ghép tên bài vào vm.title.
+            if (names.length <= 0 && vm.title) {
+                addName(vm.title);
+            }
+
+            return names;
+        }
+
+        function escapeMcqPrintHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function createMcqPdfFileName(topicNames) {
+            var baseName = topicNames && topicNames.length > 0
+                ? topicNames.join(' - ')
+                : 'CÂU HỎI MCQ';
+
+            /*
+             * Giữ nguyên tiếng Việt và khoảng trắng để tên file giống tên bài.
+             * Chỉ thay các ký tự không hợp lệ trong tên file Windows/macOS.
+             */
+            baseName = baseName
+                .replace(/[\\/:*?"<>|]+/g, '-')
+                .replace(/\s+/g, ' ')
+                .replace(/\s*-\s*/g, ' - ')
+                .trim();
+
+            // Tránh tên file quá dài khi chọn nhiều bài.
+            if (baseName.length > 180) {
+                baseName = baseName.substring(0, 180).trim();
+            }
+
+            if (!baseName) {
+                baseName = 'CÂU HỎI MCQ';
+            }
+
+            return baseName;
+        }
+
+        vm.toggleAllMcqQuestions = function () {
+            // Khi đang hiển thị, nút chỉ ẩn danh sách; không mở modal.
+            if (vm.showAllMcqQuestions === true) {
+                vm.hideAllMcqQuestions();
+                return;
+            }
+
+            if (!vm.rawQuestions || vm.rawQuestions.length <= 0) {
+                toastr.warning('Chưa có dữ liệu MCQ. Hãy chọn bài và nhấn TÌM KIẾM.');
+                return;
+            }
+
+            openMcqShowAllOptionsModal().result.then(function (shouldShuffle) {
+                // Chỉ sau khi người dùng chọn trộn/không trộn mới mở modal thứ hai.
+                openMcqUnderFourAnswersModal().result.then(
+                    function (showUnderFourAnswers) {
+                        vm.showAllMcqQuestionsWithOption(
+                            shouldShuffle,
+                            showUnderFourAnswers
+                        );
+                    },
+                    function () {}
+                );
+            }, function () {});
+        };
+
+        vm.showAllMcqQuestionsWithOption = function (
+            shouldShuffle,
+            showUnderFourAnswers
+        ) {
+            var shuffleEnabled = shouldShuffle === true;
+            var showShortAnswersEnabled = showUnderFourAnswers === true;
+
+            // Luôn dựng một bản sao mới từ rawQuestions để phần danh sách phía dưới
+            // hoàn toàn độc lập với vm.questions/currentCard của giao diện cũ.
+            var source = sortMcqQuestionsByCreatedFirst(vm.rawQuestions || []);
+            var displayQuestions = buildMcqQuestions(source, shuffleEnabled);
+
+            if (shuffleEnabled) {
+                displayQuestions = shuffleArray(displayQuestions);
+            }
+
+            vm.allMcqQuestions = displayQuestions;
+            vm.allMcqWasShuffled = shuffleEnabled;
+            vm.allMcqShowUnderFourAnswers = showShortAnswersEnabled;
+
+            // Chụp lại tên bài tại đúng thời điểm dựng danh sách.
+            // PDF sau đó luôn khớp với bộ câu hỏi đang hiển thị.
+            vm.allMcqTopicNames = getSelectedMcqTopicNames();
+            vm.showAllMcqQuestions = true;
+
+            $timeout(function () {
+                var element = document.getElementById('mcq-all-questions-list');
+
+                if (element && element.scrollIntoView) {
+                    element.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            }, 100);
+        };
+
+        vm.hideAllMcqQuestions = function () {
+            vm.showAllMcqQuestions = false;
+            vm.allMcqQuestions = [];
+            vm.allMcqWasShuffled = false;
+            vm.allMcqTopicNames = [];
+            vm.allMcqShowUnderFourAnswers = true;
+        };
+
+        /**
+         * Hàm dùng chung cho hai nút PDF:
+         *
+         * - exportAnswerKey = false:
+         *   Xuất đúng câu hỏi/phương án đang hiển thị, không đánh dấu đáp án.
+         *
+         * - exportAnswerKey = true:
+         *   Luôn xuất tất cả phương án và đánh dấu đáp án đúng.
+         */
+        function exportMcqPdf(exportAnswerKey) {
+            if (vm.showAllMcqQuestions !== true ||
+                    !vm.allMcqQuestions ||
+                    vm.allMcqQuestions.length <= 0) {
+                toastr.warning('Chưa có danh sách MCQ đang hiển thị để xuất PDF.');
+                return;
+            }
+
+            var displayPrintContent = null;
+
+            if (exportAnswerKey !== true) {
+                displayPrintContent = document.getElementById(
+                    'mcq-all-questions-print-content'
+                );
+
+                if (!displayPrintContent) {
+                    toastr.error('Không tìm thấy nội dung MCQ cần xuất PDF.');
+                    return;
+                }
+            }
+
+            var now = new Date();
+
+            function padNumber(value) {
+                return value < 10 ? '0' + value : String(value);
+            }
+
+            var selectedTopicNames =
+                vm.allMcqTopicNames && vm.allMcqTopicNames.length > 0
+                    ? vm.allMcqTopicNames.slice()
+                    : getSelectedMcqTopicNames();
+
+            var basePdfTitle = createMcqPdfFileName(
+                selectedTopicNames,
+                now,
+                padNumber
+            );
+
+            // Tên file câu hỏi giống đúng tên bài đã chọn.
+            var displayPdfTitle = basePdfTitle;
+
+            // File đáp án luôn có chữ "ĐÁP ÁN" ở ngay đầu tên.
+            var answerKeyPdfTitle = 'ĐÁP ÁN - ' + basePdfTitle;
+
+            var pdfHeadingHtml = selectedTopicNames.length > 0
+                ? selectedTopicNames
+                    .map(function (topicName) {
+                        return '<span class="mcq-pdf-topic-name">' +
+                            escapeMcqPrintHtml(topicName) +
+                            '</span>';
+                    })
+                    .join('')
+                : '<span class="mcq-pdf-topic-name">' +
+                    'TOÀN BỘ CÂU HỎI MCQ' +
+                    '</span>';
+
+            var currentBaseUrl = String(
+                document.baseURI || $window.location.href
+            )
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            var orderText = vm.allMcqWasShuffled
+                ? 'Đã trộn câu hỏi và phương án'
+                : 'Giữ nguyên thứ tự ban đầu';
+
+            var underFourAnswersText = vm.allMcqShowUnderFourAnswers
+                ? 'Hiển thị đáp án của câu có dưới 4 đáp án'
+                : 'Ẩn đáp án của câu có dưới 4 đáp án';
+
+            var displayMetaText =
+                'BẢN ĐANG HIỂN THỊ - ' +
+                orderText + ' - ' +
+                underFourAnswersText + ' - Tổng cộng: ' +
+                vm.allMcqQuestions.length +
+                ' câu';
+
+            var answerKeyMetaText =
+                'BẢN ĐÁP ÁN ĐẦY ĐỦ - ' +
+                orderText +
+                ' - Luôn hiển thị tất cả phương án' +
+                ' - Đáp án đúng được đánh dấu' +
+                ' - Tổng cộng: ' +
+                vm.allMcqQuestions.length +
+                ' câu';
+
+            var printStyles =
+                '@page {' +
+                '  size: A4 portrait;' +
+                '  margin: 13mm 12mm 14mm;' +
+                '}' +
+                '* {' +
+                '  box-sizing: border-box;' +
+                '}' +
+                'html, body {' +
+                '  margin: 0;' +
+                '  padding: 0;' +
+                '  background: #ffffff;' +
+                '  color: #172033;' +
+                '  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;' +
+                '  font-size: 12pt;' +
+                '  -webkit-print-color-adjust: exact !important;' +
+                '  print-color-adjust: exact !important;' +
+                '}' +
+                '.mcq-pdf-document {' +
+                '  width: 100%;' +
+                '}' +
+                '.mcq-pdf-title {' +
+                '  margin: 0 0 7px;' +
+                '  color: #253b80;' +
+                '  font-size: 19pt;' +
+                '  line-height: 1.28;' +
+                '  text-align: center;' +
+                '  overflow-wrap: anywhere;' +
+                '}' +
+                '.mcq-pdf-topic-name {' +
+                '  display: block;' +
+                '  margin: 0 0 3px;' +
+                '}' +
+                '.mcq-pdf-topic-name:last-child {' +
+                '  margin-bottom: 0;' +
+                '}' +
+                '.mcq-pdf-meta {' +
+                '  margin: 0 0 18px;' +
+                '  color: #58657a;' +
+                '  font-size: 10.5pt;' +
+                '  line-height: 1.45;' +
+                '  text-align: center;' +
+                '}' +
+                '.mcq-answer-key-banner {' +
+                '  margin: 0 0 14px;' +
+                '  padding: 10px 12px;' +
+                '  border: 2px solid #2f855a;' +
+                '  border-radius: 7px;' +
+                '  background: #ecfdf3;' +
+                '  color: #17643d;' +
+                '  font-size: 11pt;' +
+                '  font-weight: 800;' +
+                '  text-align: center;' +
+                '}' +
+                '.mcq-all-status {' +
+                '  display: flex;' +
+                '  justify-content: space-between;' +
+                '  gap: 12px;' +
+                '  margin: 0 0 14px;' +
+                '  padding: 10px 12px;' +
+                '  border: 1px solid #b9c8e8;' +
+                '  border-radius: 7px;' +
+                '  background: #eef4ff;' +
+                '  color: #263d78;' +
+                '  font-size: 10.5pt;' +
+                '}' +
+                '.mcq-all-question-card {' +
+                '  break-inside: avoid-page;' +
+                '  page-break-inside: avoid;' +
+                '  margin: 0 0 13px;' +
+                '  padding: 13px 14px;' +
+                '  border: 1px solid #cfd7e6;' +
+                '  border-radius: 8px;' +
+                '  background: #ffffff;' +
+                '}' +
+                '.mcq-all-question-header {' +
+                '  margin: 0 0 8px;' +
+                '}' +
+                '.mcq-all-question-number {' +
+                '  display: inline-block;' +
+                '  padding: 4px 10px;' +
+                '  border-radius: 999px;' +
+                '  background: #4256b5;' +
+                '  color: #ffffff;' +
+                '  font-size: 10.5pt;' +
+                '  font-weight: 700;' +
+                '}' +
+                '.mcq-all-passage {' +
+                '  color: #251f1a;' +
+                '  font-size: 13pt;' +
+                '  font-weight: 700;' +
+                '  line-height: 1.45;' +
+                '  overflow-wrap: anywhere;' +
+                '}' +
+                '.mcq-all-passage p:first-child {' +
+                '  margin-top: 0;' +
+                '}' +
+                '.mcq-all-passage p:last-child {' +
+                '  margin-bottom: 0;' +
+                '}' +
+                '.mcq-all-question-text {' +
+                '  margin-top: 8px;' +
+                '  padding: 8px 10px;' +
+                '  border-left: 4px solid #e4b42b;' +
+                '  background: #fff9e8;' +
+                '  color: #253b80;' +
+                '  font-size: 11.5pt;' +
+                '  font-weight: 700;' +
+                '  line-height: 1.4;' +
+                '}' +
+                '.mcq-all-answer-list {' +
+                '  display: grid;' +
+                '  grid-template-columns: repeat(2, minmax(0, 1fr));' +
+                '  gap: 7px;' +
+                '  margin-top: 10px;' +
+                '}' +
+                '.mcq-all-answer-item {' +
+                '  display: flex;' +
+                '  align-items: flex-start;' +
+                '  gap: 7px;' +
+                '  min-height: 38px;' +
+                '  padding: 8px 9px;' +
+                '  border: 1px solid #d9dfeb;' +
+                '  border-radius: 6px;' +
+                '  background: #f8faff;' +
+                '  color: #243047;' +
+                '  line-height: 1.35;' +
+                '  overflow-wrap: anywhere;' +
+                '}' +
+                '.mcq-all-answer-label {' +
+                '  flex: 0 0 auto;' +
+                '  color: #4f46a8;' +
+                '  font-weight: 800;' +
+                '}' +
+                '.mcq-all-answer-text {' +
+                '  min-width: 0;' +
+                '}' +
+                '.mcq-answer-key-correct {' +
+                '  border: 2px solid #2f855a !important;' +
+                '  background: #dcfce7 !important;' +
+                '  color: #14532d !important;' +
+                '  font-weight: 700;' +
+                '}' +
+                '.mcq-answer-key-correct .mcq-all-answer-label {' +
+                '  color: #166534 !important;' +
+                '}' +
+                '.mcq-answer-key-badge {' +
+                '  display: inline-block;' +
+                '  flex: 0 0 auto;' +
+                '  margin-left: auto;' +
+                '  padding: 2px 6px;' +
+                '  border: 1px solid #2f855a;' +
+                '  border-radius: 999px;' +
+                '  background: #ffffff;' +
+                '  color: #166534;' +
+                '  font-size: 8.5pt;' +
+                '  font-weight: 900;' +
+                '  white-space: nowrap;' +
+                '}' +
+                '.mcq-all-empty {' +
+                '  padding: 12px;' +
+                '  border: 1px solid #b9c8e8;' +
+                '  border-radius: 6px;' +
+                '  background: #f8faff;' +
+                '}' +
+                'img {' +
+                '  max-width: 100% !important;' +
+                '  height: auto !important;' +
+                '}' +
+                'table {' +
+                '  max-width: 100% !important;' +
+                '  border-collapse: collapse;' +
+                '}' +
+                '@media print {' +
+                '  a {' +
+                '    color: inherit;' +
+                '    text-decoration: none;' +
+                '  }' +
+                '}';
+
+            function buildFullAnswerKeyHtml() {
+                var parts = [];
+
+                parts.push(
+                    '<div class="mcq-answer-key-banner">' +
+                    '✓ TẤT CẢ PHƯƠNG ÁN ĐƯỢC HIỂN THỊ — ' +
+                    'ĐÁP ÁN ĐÚNG ĐƯỢC ĐÁNH DẤU MÀU XANH' +
+                    '</div>'
+                );
+
+                angular.forEach(
+                    vm.allMcqQuestions,
+                    function (question, questionIndex) {
+                        if (!question) {
+                            return;
+                        }
+
+                        parts.push('<div class="mcq-all-question-card">');
+                        parts.push(
+                            '<div class="mcq-all-question-header">' +
+                            '<span class="mcq-all-question-number">' +
+                            'Câu ' + (questionIndex + 1) +
+                            '</span>' +
+                            '</div>'
+                        );
+
+                        /*
+                         * question.question đang được giao diện gốc hiển thị bằng
+                         * ng-bind-html, vì vậy giữ nguyên HTML để ảnh, đoạn văn,
+                         * bảng và định dạng tiếp tục xuất hiện trong bản PDF.
+                         */
+                        parts.push(
+                            '<div class="mcq-all-passage">' +
+                            String(question.question || '') +
+                            '</div>'
+                        );
+
+                        if (question.pronounce) {
+                            parts.push(
+                                '<div class="mcq-all-question-text">' +
+                                escapeMcqPrintHtml(question.pronounce) +
+                                '</div>'
+                            );
+                        }
+
+                        var answers = question.mcqAnswers || [];
+
+                        if (answers.length > 0) {
+                            parts.push('<div class="mcq-all-answer-list">');
+
+                            angular.forEach(
+                                answers,
+                                function (answer, answerIndex) {
+                                    if (!answer) {
+                                        return;
+                                    }
+
+                                    var answerLabel = answer.label ||
+                                        String.fromCharCode(65 + answerIndex);
+                                    var isCorrect = answer.correct === true;
+                                    var correctClass = isCorrect
+                                        ? ' mcq-answer-key-correct'
+                                        : '';
+
+                                    parts.push(
+                                        '<div class="mcq-all-answer-item' +
+                                        correctClass +
+                                        '">' +
+                                        '<span class="mcq-all-answer-label">' +
+                                        escapeMcqPrintHtml(answerLabel) +
+                                        '.</span>' +
+                                        '<span class="mcq-all-answer-text">' +
+                                        escapeMcqPrintHtml(answer.text || '') +
+                                        '</span>' +
+                                        (
+                                            isCorrect
+                                                ? '<span class="mcq-answer-key-badge">' +
+                                                    '✓ ĐÁP ÁN ĐÚNG' +
+                                                    '</span>'
+                                                : ''
+                                        ) +
+                                        '</div>'
+                                    );
+                                }
+                            );
+
+                            parts.push('</div>');
+                        } else {
+                            parts.push(
+                                '<div class="mcq-all-empty">' +
+                                'Câu hỏi này không có phương án trả lời.' +
+                                '</div>'
+                            );
+                        }
+
+                        parts.push('</div>');
+                    }
+                );
+
+                return parts.join('');
+            }
+
+            function buildPrintDocumentHtml(
+                documentTitle,
+                metaText,
+                contentHtml
+            ) {
+                return (
+                    '<!DOCTYPE html>' +
+                    '<html lang="vi">' +
+                    '<head>' +
+                    '<meta charset="UTF-8">' +
+                    '<meta name="viewport" ' +
+                    'content="width=device-width, initial-scale=1.0">' +
+                    '<base href="' + currentBaseUrl + '">' +
+                    '<title>' +
+                    escapeMcqPrintHtml(documentTitle) +
+                    '</title>' +
+                    '<style>' + printStyles + '</style>' +
+                    '</head>' +
+                    '<body>' +
+                    '<main class="mcq-pdf-document">' +
+                    '<h1 class="mcq-pdf-title">' +
+                    pdfHeadingHtml +
+                    '</h1>' +
+                    '<div class="mcq-pdf-meta">' +
+                    escapeMcqPrintHtml(metaText) +
+                    '</div>' +
+                    contentHtml +
+                    '</main>' +
+                    '</body>' +
+                    '</html>'
+                );
+            }
+
+            /*
+             * In bằng iframe ẩn trong chính trang hiện tại.
+             *
+             * Không mở popup about:blank, vì Chrome có thể giữ tham chiếu tới
+             * tài liệu trắng ban đầu và đưa chính trang trắng đó vào preview.
+             * Iframe được nạp đầy đủ HTML, CSS, ảnh và font trước khi print().
+             */
+            function loadAndPrintDocument(
+                documentTitle,
+                metaText,
+                contentHtml
+            ) {
+                var htmlDocument = buildPrintDocumentHtml(
+                    documentTitle,
+                    metaText,
+                    contentHtml
+                );
+
+                var oldFrame = document.getElementById(
+                    'mcq-hidden-print-frame'
+                );
+
+                if (oldFrame && oldFrame.parentNode) {
+                    oldFrame.parentNode.removeChild(oldFrame);
+                }
+
+                var printFrame = document.createElement('iframe');
+                printFrame.id = 'mcq-hidden-print-frame';
+                printFrame.setAttribute('aria-hidden', 'true');
+                printFrame.setAttribute('tabindex', '-1');
+                printFrame.style.position = 'fixed';
+                printFrame.style.right = '0';
+                printFrame.style.bottom = '0';
+                printFrame.style.width = '1px';
+                printFrame.style.height = '1px';
+                printFrame.style.border = '0';
+                printFrame.style.opacity = '0';
+                printFrame.style.pointerEvents = 'none';
+                printFrame.style.zIndex = '-1';
+
+                var printStarted = false;
+                var frameLoaded = false;
+                var cleanedUp = false;
+                var cleanupTimer = null;
+                var originalPageTitle = document.title;
+                var pageTitleWasChanged = false;
+
+                function cleanupPrintFrame() {
+                    if (cleanedUp) {
+                        return;
+                    }
+
+                    cleanedUp = true;
+
+                    if (cleanupTimer) {
+                        $window.clearTimeout(cleanupTimer);
+                    }
+
+                    if (pageTitleWasChanged) {
+                        document.title = originalPageTitle;
+                        pageTitleWasChanged = false;
+                    }
+
+                    $window.setTimeout(function () {
+                        if (printFrame && printFrame.parentNode) {
+                            printFrame.parentNode.removeChild(printFrame);
+                        }
+                    }, 300);
+                }
+
+                function runAfterPaint(frameWindow, callback) {
+                    var requestFrame =
+                        frameWindow.requestAnimationFrame ||
+                        $window.requestAnimationFrame;
+
+                    if (requestFrame) {
+                        requestFrame.call(frameWindow, function () {
+                            requestFrame.call(frameWindow, function () {
+                                // Cho Chrome thêm thời gian phân trang A4.
+                                $window.setTimeout(callback, 500);
+                            });
+                        });
+                    } else {
+                        $window.setTimeout(callback, 900);
+                    }
+                }
+
+                function startPrint(frameWindow) {
+                    if (printStarted) {
+                        return;
+                    }
+
+                    printStarted = true;
+
+                    runAfterPaint(frameWindow, function () {
+                        try {
+                            /*
+                             * Chrome có thể lấy tên file từ title của iframe
+                             * hoặc title của trang cha. Gán cả hai ngay trước
+                             * khi in để tên Save as PDF luôn đúng.
+                             */
+                            if (frameWindow.document) {
+                                frameWindow.document.title = documentTitle;
+                            }
+
+                            document.title = documentTitle;
+                            pageTitleWasChanged = true;
+
+                            frameWindow.focus();
+                            frameWindow.print();
+                        } catch (printError) {
+                            cleanupPrintFrame();
+                            toastr.error(
+                                'Không thể mở hộp thoại in PDF. ' +
+                                'Vui lòng tải lại trang và thử lại.'
+                            );
+                        }
+                    });
+                }
+
+                function waitForResources(frameWindow, frameDocument) {
+                    var images = frameDocument.images || [];
+                    var pendingImages = 0;
+                    var resourcesFinished = false;
+
+                    function finishResources() {
+                        if (resourcesFinished) {
+                            return;
+                        }
+
+                        resourcesFinished = true;
+
+                        if (
+                            frameDocument.fonts &&
+                            frameDocument.fonts.ready &&
+                            typeof frameDocument.fonts.ready.then === 'function'
+                        ) {
+                            frameDocument.fonts.ready.then(
+                                function () {
+                                    startPrint(frameWindow);
+                                },
+                                function () {
+                                    startPrint(frameWindow);
+                                }
+                            );
+                        } else {
+                            startPrint(frameWindow);
+                        }
+                    }
+
+                    function imageFinished() {
+                        pendingImages -= 1;
+
+                        if (pendingImages <= 0) {
+                            finishResources();
+                        }
+                    }
+
+                    for (
+                        var imageIndex = 0;
+                        imageIndex < images.length;
+                        imageIndex++
+                    ) {
+                        if (!images[imageIndex].complete) {
+                            pendingImages += 1;
+                            images[imageIndex].addEventListener(
+                                'load',
+                                imageFinished,
+                                { once: true }
+                            );
+                            images[imageIndex].addEventListener(
+                                'error',
+                                imageFinished,
+                                { once: true }
+                            );
+                        }
+                    }
+
+                    if (pendingImages <= 0) {
+                        finishResources();
+                    }
+
+                    // Ảnh lỗi không được làm treo chức năng in.
+                    $window.setTimeout(finishResources, 6000);
+                }
+
+                function onFrameLoaded() {
+                    if (frameLoaded) {
+                        return;
+                    }
+
+                    var frameWindow = printFrame.contentWindow;
+                    var frameDocument =
+                        printFrame.contentDocument ||
+                        (frameWindow && frameWindow.document);
+
+                    if (
+                        !frameWindow ||
+                        !frameDocument ||
+                        !frameDocument.body ||
+                        !frameDocument.querySelector('.mcq-pdf-document')
+                    ) {
+                        return;
+                    }
+
+                    frameLoaded = true;
+                    frameWindow.onafterprint = cleanupPrintFrame;
+
+                    waitForResources(frameWindow, frameDocument);
+
+                    /*
+                     * onafterprint đôi khi không chạy nếu người dùng hủy.
+                     * Timer này chỉ dọn iframe, không đóng hay thay đổi trang.
+                     */
+                    cleanupTimer = $window.setTimeout(
+                        cleanupPrintFrame,
+                        120000
+                    );
+                }
+
+                printFrame.addEventListener('load', onFrameLoaded);
+                document.body.appendChild(printFrame);
+
+                /*
+                 * srcdoc là tài liệu riêng hoàn chỉnh nhưng không tạo popup.
+                 * Chrome sẽ in contentWindow của iframe thay vì about:blank.
+                 */
+                if ('srcdoc' in printFrame) {
+                    printFrame.srcdoc = htmlDocument;
+                } else {
+                    var frameDocument =
+                        printFrame.contentDocument ||
+                        printFrame.contentWindow.document;
+
+                    frameDocument.open();
+                    frameDocument.write(htmlDocument);
+                    frameDocument.close();
+
+                    $window.setTimeout(onFrameLoaded, 500);
+                }
+
+                /*
+                 * Fallback nếu extension hoặc trình duyệt không phát load.
+                 */
+                $window.setTimeout(onFrameLoaded, 1500);
+            }
+
+            if (exportAnswerKey === true) {
+                /*
+                 * Bản đáp án được dựng trực tiếp từ dữ liệu để luôn có đủ
+                 * phương án, kể cả khi giao diện đang ẩn câu dưới 4 đáp án.
+                 */
+                loadAndPrintDocument(
+                    answerKeyPdfTitle,
+                    answerKeyMetaText,
+                    buildFullAnswerKeyHtml()
+                );
+
+                toastr.info(
+                    'Đang chuẩn bị bản đáp án đầy đủ. ' +
+                    'Đáp án đúng được đánh dấu màu xanh.'
+                );
+            } else {
+                /*
+                 * Bản câu hỏi lấy nguyên DOM đang hiển thị và không thêm
+                 * bất kỳ dấu hiệu nào cho đáp án đúng.
+                 */
+                loadAndPrintDocument(
+                    displayPdfTitle,
+                    displayMetaText,
+                    displayPrintContent.innerHTML
+                );
+
+                toastr.info(
+                    'Đang chuẩn bị bản câu hỏi. ' +
+                    'Vui lòng chờ nội dung tải xong trước khi hộp thoại in mở.'
+                );
+            }
+        }
+
+        vm.printAllMcqQuestionsPdf = function () {
+            exportMcqPdf(false);
+        };
+
+        vm.printAllMcqAnswersPdf = function () {
+            exportMcqPdf(true);
+        };
 
         vm.confirmShowMcqAnswer = function () {
             openMcqConfirmModal(
