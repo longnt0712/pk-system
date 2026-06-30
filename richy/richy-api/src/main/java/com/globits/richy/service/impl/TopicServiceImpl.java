@@ -163,7 +163,14 @@ public class TopicServiceImpl implements TopicService {
 			whereClause += " and s.topicCategory.id = :topicCategoryId ";
 		}
 		
-		whereClause += " and (s.isShow = true or s.isShow is null) ";
+		boolean isOwner = modifiedUser != null
+		        && modifiedUser.getId() != null
+		        && searchDto.getUserId() != null
+		        && modifiedUser.getId().equals(searchDto.getUserId());
+
+		if (!isOwner) {
+		    whereClause += " and (s.isShow = true or s.isShow is null) ";
+		}
 //		if(searchDto.getWebsite() != null) {
 //			whereClause += " and (s.website = :website) ";
 //		}
