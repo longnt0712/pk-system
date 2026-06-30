@@ -1712,6 +1712,127 @@
                     </div>
                 </div>
 
+                <!--
+                    KHU VỰC MCQ HIỂN THỊ TẤT CẢ
+                    Đây là div độc lập, nằm phía dưới giao diện câu hỏi MCQ cũ.
+                    Mặc định chỉ hiện nút; danh sách câu hỏi được ẩn.
+                -->
+                <div id="mcq-all-questions-section"
+                        ng-if="vm.mode.id == 13"
+                        class="row mcq-all-questions-section">
+
+                    <div class="col-md-12">
+                        <div class="mcq-all-questions-toolbar">
+                            <div class="mcq-all-questions-toolbar-text">
+                                <div class="mcq-all-questions-eyebrow">📚 DANH SÁCH MCQ ĐỘC LẬP</div>
+                                <h3 class="bold">Toàn bộ câu hỏi</h3>
+                                <div class="mcq-all-questions-description">
+                                    Khu vực này không thay đổi câu hỏi đang hiển thị, vị trí hiện tại hoặc điểm số phía trên.
+                                </div>
+                            </div>
+
+                            <div class="mcq-all-toolbar-actions">
+                                <button type="button"
+                                        class="btn btn-danger mcq-all-print-btn"
+                                        ng-if="vm.showAllMcqQuestions"
+                                        ng-click="vm.printAllMcqQuestionsPdf()"
+                                        ng-disabled="!vm.allMcqQuestions || vm.allMcqQuestions.length <= 0"
+                                        title="Xuất câu hỏi theo đúng nội dung đang hiển thị, không đánh dấu đáp án đúng">
+                                    <i class="fa fa-file-pdf-o"></i>
+                                    XUẤT FILE PDF
+                                </button>
+
+                                <button type="button"
+                                        class="btn btn-success mcq-all-answer-print-btn" style="margin-left: 8px;"
+                                        ng-if="vm.showAllMcqQuestions"
+                                        ng-click="vm.printAllMcqAnswersPdf()"
+                                        ng-disabled="!vm.allMcqQuestions || vm.allMcqQuestions.length <= 0"
+                                        title="Xuất toàn bộ câu hỏi, toàn bộ phương án và đánh dấu đáp án đúng">
+                                    <i class="fa fa-check-circle"></i>
+                                    XUẤT ĐÁP ÁN
+                                </button>
+
+                                <button type="button"
+                                        class="btn btn-primary mcq-all-toggle-btn"
+                                        ng-click="vm.toggleAllMcqQuestions()"
+                                        ng-disabled="!vm.rawQuestions || vm.rawQuestions.length <= 0"
+                                        aria-controls="mcq-all-questions-list"
+                                        aria-expanded="{{vm.showAllMcqQuestions}}">
+                                    <i class="fa"
+                                            ng-class="vm.showAllMcqQuestions ? 'fa-eye-slash' : 'fa-eye'"></i>
+                                    {{vm.showAllMcqQuestions ? 'ẨN TẤT CẢ' : 'HIỂN THỊ TẤT CẢ'}}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="mcq-all-questions-list"
+                                class="mcq-all-questions-list"
+                                ng-if="vm.showAllMcqQuestions">
+
+                            <!-- Chỉ phần bên trong div này được đưa sang cửa sổ in PDF. -->
+                            <div id="mcq-all-questions-print-content">
+                                <div class="alert mcq-all-status"
+                                        ng-class="vm.allMcqWasShuffled ? 'alert-warning' : 'alert-info'">
+                                    <strong ng-if="vm.allMcqWasShuffled">
+                                        🔀 Đã trộn thứ tự câu hỏi và các phương án trả lời.
+                                    </strong>
+                                    <strong ng-if="!vm.allMcqWasShuffled">
+                                        📋 Đang giữ nguyên thứ tự câu hỏi và phương án ban đầu.
+                                    </strong>
+                                    <strong ng-if="vm.allMcqShowUnderFourAnswers">
+                                        👁️ Đang hiển thị đáp án của các câu có dưới 4 đáp án.
+                                    </strong>
+                                    <strong ng-if="!vm.allMcqShowUnderFourAnswers">
+                                        🙈 Đã ẩn đáp án của các câu có dưới 4 đáp án.
+                                    </strong>
+                                    <span>
+                                        Tổng cộng: {{vm.allMcqQuestions.length}} câu.
+                                    </span>
+                                </div>
+
+                                <div class="mcq-all-empty alert alert-info"
+                                        ng-if="!vm.allMcqQuestions || vm.allMcqQuestions.length <= 0">
+                                    Không có câu hỏi MCQ để hiển thị.
+                                </div>
+
+                                <div class="mcq-all-question-card"
+                                        ng-repeat="allQuestion in vm.allMcqQuestions track by $index">
+
+                                    <div class="mcq-all-question-header">
+                                        <span class="mcq-all-question-number">
+                                            Câu {{$index + 1}}
+                                        </span>
+                                    </div>
+
+                                    <div class="mcq-all-passage"
+                                            ng-bind-html="allQuestion.question">
+                                    </div>
+
+                                    <div class="mcq-all-question-text"
+                                            ng-if="allQuestion.pronounce">
+                                        {{allQuestion.pronounce}}
+                                    </div>
+
+                                    <div class="mcq-all-answer-list"
+                                            ng-if="vm.allMcqShowUnderFourAnswers ||
+                                                (allQuestion.mcqAnswers &&
+                                                allQuestion.mcqAnswers.length >= 4)">
+                                        <div class="mcq-all-answer-item"
+                                                ng-repeat="answer in allQuestion.mcqAnswers track by $index">
+                                            <span class="mcq-all-answer-label">
+                                                {{answer.label}}.
+                                            </span>
+                                            <span class="mcq-all-answer-text">
+                                                {{answer.text}}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="guess-word-game-top"
                         ng-if="vm.mode.id == 14"
                         class="row gaps3-cate-theme mcq-mode-wrap guess-word-mode-wrap">
@@ -6823,3 +6944,216 @@
         }
     }
 </style>
+
+<style>
+    /* ===== MCQ - DIV HIỂN THỊ TOÀN BỘ CÂU HỎI (ĐỘC LẬP) ===== */
+    .mcq-all-questions-section {
+        margin-top: 24px;
+        margin-left: 0;
+        margin-right: 0;
+        padding: 20px 5px;
+        border: 3px solid #74b9ff;
+        border-radius: 22px;
+        background:
+            radial-gradient(circle at top right, rgba(255, 216, 107, 0.25), transparent 32%),
+            linear-gradient(135deg, #f7fbff 0%, #fff9ef 100%);
+        box-shadow: 0 12px 32px rgba(40, 80, 130, 0.14);
+    }
+
+    .mcq-all-questions-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 4px 14px 18px;
+    }
+
+    .mcq-all-questions-toolbar h3 {
+        margin: 5px 0;
+        color: #3246a8;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 28px;
+    }
+
+    .mcq-all-questions-eyebrow {
+        color: #e35f91;
+        font-weight: 800;
+        letter-spacing: 1px;
+    }
+
+    .mcq-all-questions-description {
+        color: #5f6f82;
+        font-size: 15px;
+    }
+
+    .mcq-all-toggle-btn {
+        flex: 0 0 auto;
+        min-width: 180px;
+        min-height: 46px;
+        border: 0;
+        border-radius: 999px;
+        font-weight: 800;
+        box-shadow: 0 7px 16px rgba(50, 70, 168, 0.22);
+    }
+
+    .mcq-all-toolbar-actions {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .mcq-all-print-btn {
+        min-width: 155px;
+        min-height: 46px;
+        border: 0;
+        border-radius: 999px;
+        font-weight: 800;
+        box-shadow: 0 7px 16px rgba(190, 45, 45, 0.22);
+    }
+
+
+    .mcq-all-questions-list {
+        scroll-margin-top: 15px;
+        padding: 4px 14px 8px;
+    }
+
+    .mcq-all-status {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 8px 20px;
+        border-radius: 14px;
+        font-size: 15px;
+    }
+
+    .mcq-all-question-card {
+        margin-bottom: 18px;
+        padding: 22px;
+        border: 2px solid #d9e8f6;
+        border-radius: 18px;
+        background: #ffffff;
+        box-shadow: 0 7px 18px rgba(39, 74, 115, 0.09);
+    }
+
+    .mcq-all-question-header {
+        margin-bottom: 10px;
+    }
+
+    .mcq-all-question-number {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #5ac8fa, #6f5bd8);
+        color: #ffffff;
+        font-weight: 800;
+        font-size: 15px;
+    }
+
+    .mcq-all-passage {
+        color: #412f25;
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    .mcq-all-question-text {
+        margin-top: 10px;
+        padding: 12px 15px;
+        border-left: 5px solid #ffd45c;
+        border-radius: 8px;
+        background: #fffaf0;
+        color: #3246a8;
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1.45;
+    }
+
+    .mcq-all-answer-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+    }
+
+    .mcq-all-answer-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        min-height: 58px;
+        padding: 14px 16px;
+        border: 2px solid #e5e9f4;
+        border-radius: 14px;
+        background: #f9fbff;
+        color: #2f3c50;
+        font-size: 18px;
+        line-height: 1.4;
+    }
+
+    .mcq-all-answer-label {
+        flex: 0 0 auto;
+        color: #6f5bd8;
+        font-weight: 900;
+    }
+
+    .mcq-all-answer-text {
+        overflow-wrap: anywhere;
+    }
+
+    .mcq-show-all-modal-actions {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .mcq-keep-order-btn {
+        background: linear-gradient(135deg, #f0ad4e, #e8872e);
+    }
+
+    @media (max-width: 768px) {
+        .mcq-all-questions-section {
+            padding: 14px 0;
+        }
+
+        .mcq-all-questions-toolbar {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .mcq-all-toggle-btn {
+            width: 100%;
+        }
+
+        .mcq-all-toolbar-actions {
+            width: 100%;
+        }
+
+        .mcq-all-toolbar-actions .btn {
+            width: 100%;
+        }
+
+        .mcq-all-answer-list {
+            grid-template-columns: 1fr;
+        }
+
+        .mcq-all-passage {
+            font-size: 20px;
+        }
+
+        .mcq-all-question-text {
+            font-size: 18px;
+        }
+
+        .mcq-all-question-card {
+            padding: 16px;
+        }
+
+        .mcq-show-all-modal-actions {
+            display: block;
+        }
+    }
+</style>
+
