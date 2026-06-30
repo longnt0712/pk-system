@@ -815,6 +815,7 @@
 
             vm.setUpAudio();
             vm.setUpTestResult();
+            vm.speakCurrentVni2Question();
         };
 
         vm.fillingGapAllQuestions = '';
@@ -1160,7 +1161,7 @@
                         vm.syncCurrentFillingGapCard();
                     }
 
-                    if(!vm.isMuted && vm.mode.id !=4){
+                    if(!vm.isMuted && vm.mode.id != 4 && vm.mode.id != 15){
                         $scope.sayIt(vm.currentCard.question);
                     }
                 }
@@ -1195,7 +1196,7 @@
                         vm.syncCurrentFillingGapCard();
                     }
 
-                    if(!vm.isMuted){
+                    if(!vm.isMuted && vm.mode.id != 15){
                         $scope.sayIt(vm.currentCard.question);
                     }
                 }
@@ -2721,6 +2722,61 @@
                 window.speechSynthesis.cancel();
             }
         };
+
+        function getPlainSpeechText(value) {
+            var temp = document.createElement('div');
+            temp.innerHTML = String(value || '');
+
+            return (temp.textContent || temp.innerText || '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        vm.speakCurrentVni2Question = function () {
+            if (!vm.mode || vm.mode.id != 15 || vm.isMuted || !vm.currentCard) {
+                return;
+            }
+
+            var questionText = getPlainSpeechText(vm.currentCard.question);
+            var currentCardId = vm.currentCard.id;
+
+            if (!questionText) {
+                return;
+            }
+
+            vm.updateSpeechLangByMode();
+
+            $timeout(function () {
+                var isSameCard =
+                    vm.currentCard &&
+                    (
+                        angular.isUndefined(currentCardId) ||
+                        vm.currentCard.id === currentCardId
+                    );
+
+                if (
+                    vm.mode &&
+                    vm.mode.id == 15 &&
+                    !vm.isMuted &&
+                    isSameCard
+                ) {
+                    $scope.sayIt(questionText);
+                }
+            }, 50);
+        };
+
+        vm.toggleVni2Mute = function () {
+            vm.isMuted = !vm.isMuted;
+
+            if (vm.isMuted) {
+                $scope.shutUp();
+                return;
+            }
+
+            // Khi bật âm thanh trở lại, đọc ngay câu hiện tại một lần.
+            vm.speakCurrentVni2Question();
+        };
+
         $scope.shutUp();
 
         vm.clickAnswerRewriteWord = function () {
@@ -6370,6 +6426,7 @@
 
             vm.setUpAudio();
             vm.setUpTestResult();
+            vm.speakCurrentVni2Question();
 
             if (vm.bsTableControl && vm.bsTableControl.options) {
                 vm.bsTableControl.options.data = angular.copy(vm.questions || []);

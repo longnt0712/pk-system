@@ -1067,6 +1067,16 @@
                                            ng-model-options="{ debounce: 500 }"
                                            class="form-control input-sm gap-rate-input" />
                                 </span>
+                                <button ng-if="vm.mode.id == 15"
+                                        type="button"
+                                        class="btn btn-sm"
+                                        ng-class="vm.isMuted ? 'btn-danger' : 'btn-success'"
+                                        ng-click="vm.toggleVni2Mute()"
+                                        title="{{vm.isMuted ? 'Bật tự động đọc câu hỏi' : 'Tắt tự động đọc câu hỏi'}}"
+                                        aria-label="{{vm.isMuted ? 'Bật tự động đọc câu hỏi' : 'Tắt tự động đọc câu hỏi'}}">
+                                    <i ng-class="vm.isMuted ? 'fa-solid fa-volume-xmark' : 'fa fa-volume-up'"></i>
+                                    {{vm.isMuted ? 'MUTED' : 'AUTO READ'}}
+                                </button>
                                 </div>
                             </div>
 
