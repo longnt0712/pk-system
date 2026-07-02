@@ -6994,8 +6994,14 @@
          */
         vm.answerAllMcqQuestion = function (
             question,
-            selectedAnswer
+            selectedAnswer,
+            event
         ) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
             if (
                 !question ||
                 !selectedAnswer ||
