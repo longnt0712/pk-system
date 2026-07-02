@@ -6757,6 +6757,298 @@
             return result;
         }
 
+        /**
+         * Chuẩn hóa nội dung để nhận biết các đáp án:
+         * Đúng, Sai, True, False, Yes, No.
+         */
+        function normalizeMcqBooleanText(value) {
+            var text = String(value || '')
+                .toLowerCase()
+                .trim();
+
+            if (text.normalize) {
+                text = text
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '');
+            }
+
+            return text
+                .replace(/[.!?,:;]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        /**
+         * Xác định đáp án "Đúng" có phải là đáp án đúng hay không
+         * đối với câu có dưới 4 phương án.
+         */
+        function getGeneratedTrueAnswerCorrect(question, originalAnswers) {
+            var trueAnswer = null;
+            var falseAnswer = null;
+
+            angular.forEach(originalAnswers || [], function (answer) {
+                if (!answer) {
+                    return;
+                }
+
+                var normalizedText = normalizeMcqBooleanText(answer.text);
+
+                if (
+                    normalizedText === 'dung' ||
+                    normalizedText === 'true' ||
+                    normalizedText === 'yes'
+                ) {
+                    trueAnswer = answer;
+                }
+
+                if (
+                    normalizedText === 'sai' ||
+                    normalizedText === 'false' ||
+                    normalizedText === 'no'
+                ) {
+                    falseAnswer = answer;
+                }
+            });
+
+            /*
+             * Nếu dữ liệu gốc đã có đáp án Đúng/True,
+             * sử dụng trực tiếp giá trị correct của đáp án đó.
+             */
+            if (trueAnswer) {
+                return trueAnswer.correct === true;
+            }
+
+            /*
+             * Nếu dữ liệu gốc chỉ tìm thấy Sai/False:
+             * - Sai là đáp án đúng thì Đúng phải là false.
+             * - Sai không đúng thì Đúng phải là true.
+             */
+            if (falseAnswer) {
+                return falseAnswer.correct !== true;
+            }
+
+            /*
+             * Nếu chính câu hỏi có thuộc tính correct thì ưu tiên sử dụng.
+             */
+            if (
+                question &&
+                typeof question.correct === 'boolean'
+            ) {
+                return question.correct === true;
+            }
+
+            /*
+             * Trường hợp thông thường:
+             * dùng thuộc tính correct của đáp án gốc đầu tiên.
+             */
+            if (originalAnswers && originalAnswers.length > 0) {
+                return originalAnswers[0].correct === true;
+            }
+
+            return false;
+        }
+
+        /**
+         * Chuẩn bị một câu hỏi trong khu vực "Toàn bộ câu hỏi".
+         *
+         * - Có >= 4 đáp án: giữ nguyên đáp án.
+         * - Có < 4 đáp án: chuyển thành Đúng/Sai.
+         */
+        function prepareAllMcqQuestionForAnswering(
+            question,
+            shouldShuffleAnswers
+        ) {
+            if (!question) {
+                return question;
+            }
+
+            var originalAnswers = angular.copy(
+                question.mcqAnswers || []
+            );
+
+            question.mcqOriginalAnswers = originalAnswers;
+            question.mcqCorrectAnswerTexts =
+                getOriginalCorrectAnswerTexts(question);
+            question.mcqGeneratedTrueFalse =
+                originalAnswers.length < 4;
+
+            var displayAnswers = [];
+
+            if (question.mcqGeneratedTrueFalse) {
+                var trueIsCorrect =
+                    getGeneratedTrueAnswerCorrect(
+                        question,
+                        originalAnswers
+                    );
+
+                displayAnswers = [
+                    {
+                        id: 'generated-true-' + (question.id || ''),
+                        text: 'Đúng',
+                        correct: trueIsCorrect,
+                        chosen: false,
+                        showCorrect: false,
+                        revealed: false
+                    },
+                    {
+                        id: 'generated-false-' + (question.id || ''),
+                        text: 'Sai',
+                        correct: !trueIsCorrect,
+                        chosen: false,
+                        showCorrect: false,
+                        revealed: false
+                    }
+                ];
+
+                /*
+                 * Nếu người dùng chọn trộn đáp án ở modal,
+                 * Đúng/Sai cũng sẽ được trộn vị trí.
+                 */
+                if (shouldShuffleAnswers === true) {
+                    displayAnswers = shuffleArray(
+                        displayAnswers
+                    );
+                }
+            } else {
+                displayAnswers = question.mcqAnswers || [];
+            }
+
+            angular.forEach(
+                displayAnswers,
+                function (answer, index) {
+                    answer.label =
+                        String.fromCharCode(65 + index);
+
+                    answer.chosen = false;
+                    answer.showCorrect = false;
+                    answer.revealed = false;
+                }
+            );
+
+            question.mcqAnswers = displayAnswers;
+            question.mcqAnswered = false;
+            question.mcqResult = null;
+            question.mcqSelectedAnswer = null;
+
+            return question;
+        }
+
+        function isCorrectMcqAnswer(answer) {
+            if (!answer) {
+                return false;
+            }
+
+            return (
+                answer.correct === true ||
+                answer.correct === 1 ||
+                String(answer.correct).toLowerCase() === 'true'
+            );
+        }
+
+        function getMcqAnswerDisplayText(answer) {
+            if (!answer) {
+                return '';
+            }
+
+            return (
+                answer.text ||
+                answer.answer ||
+                answer.content ||
+                answer.title ||
+                answer.name ||
+                ''
+            );
+        }
+
+        function getOriginalCorrectAnswerTexts(question) {
+            var originalAnswers =
+                question.mcqOriginalAnswers || [];
+
+            var correctAnswers =
+                originalAnswers.filter(function (answer) {
+                    return isCorrectMcqAnswer(answer);
+                });
+
+            /*
+             * Một số câu chỉ có duy nhất một đáp án gốc
+             * nhưng dữ liệu không có thuộc tính correct.
+             */
+            if (
+                correctAnswers.length === 0 &&
+                originalAnswers.length === 1
+            ) {
+                correctAnswers = originalAnswers.slice();
+            }
+
+            return correctAnswers
+                .map(function (answer) {
+                    return getMcqAnswerDisplayText(answer);
+                })
+                .filter(function (text) {
+                    return String(text || '').trim().length > 0;
+                });
+        }
+
+        /**
+         * Người dùng chọn đáp án tại khu vực "Toàn bộ câu hỏi".
+         */
+        vm.answerAllMcqQuestion = function (
+            question,
+            selectedAnswer
+        ) {
+            if (
+                !question ||
+                !selectedAnswer ||
+                question.mcqAnswered === true
+            ) {
+                return;
+            }
+
+            angular.forEach(
+                question.mcqAnswers || [],
+                function (answer) {
+                    answer.chosen =
+                        answer === selectedAnswer;
+
+                    answer.showCorrect = false;
+                }
+            );
+
+            question.mcqSelectedAnswer =
+                selectedAnswer;
+
+            question.mcqAnswered = true;
+
+            question.mcqResult =
+                selectedAnswer.correct === true
+                    ? 'Correct'
+                    : 'Wrong';
+
+            /*
+             * Câu dưới 4 phương án:
+             * chỉ đánh dấu đáp án người dùng chọn.
+             * Không tô Đúng/Sai và không hiện thông báo đúng/sai.
+             */
+            if (question.mcqGeneratedTrueFalse === true) {
+                question.mcqCorrectAnswerTexts =
+                    getOriginalCorrectAnswerTexts(question);
+
+                return;
+            }
+
+            /*
+             * Câu có từ 4 phương án:
+             * vẫn hiển thị đáp án đúng như bình thường.
+             */
+            angular.forEach(
+                question.mcqAnswers || [],
+                function (answer) {
+                    answer.showCorrect =
+                        answer.correct === true;
+                }
+            );
+        };
+
         vm.revealMcqChoice = function (answer) {
             if (!answer) {
                 return;
@@ -7149,17 +7441,15 @@
         }
 
         vm.toggleAllMcqQuestions = function () {
-            /*
-             * Khi danh sách đang mở, nút chỉ đóng danh sách.
-             * Không cần hỏi lại modal.
-             */
             if (vm.showAllMcqQuestions === true) {
                 vm.hideAllMcqQuestions();
                 return;
             }
 
-            if (!vm.rawQuestions ||
-                vm.rawQuestions.length <= 0) {
+            if (
+                !vm.rawQuestions ||
+                vm.rawQuestions.length <= 0
+            ) {
                 toastr.warning(
                     'Chưa có dữ liệu MCQ. Hãy chọn bài và nhấn TÌM KIẾM.'
                 );
@@ -7168,83 +7458,78 @@
             }
 
             /*
-             * Modal thứ nhất:
-             * hỏi có muốn trộn câu trả lời hay không.
+             * Modal hỏi:
+             * Có muốn trộn cả các câu trả lời không?
              */
             openMcqShowAllOptionsModal().result.then(
                 function (shouldShuffleAnswers) {
-                    /*
-                     * Modal thứ hai đang có sẵn:
-                     * hỏi về các câu có dưới 4 đáp án.
-                     */
-                    openMcqUnderFourAnswersModal().result.then(
-                        function (showUnderFourAnswers) {
-                            vm.showAllMcqQuestionsWithOption(
-                                shouldShuffleAnswers,
-                                showUnderFourAnswers
-                            );
-                        },
-
-                        function () {
-                            // Người dùng hủy modal thứ hai.
-                        }
+                    vm.showAllMcqQuestionsWithOption(
+                        shouldShuffleAnswers
                     );
                 },
-
                 function () {
-                    // Người dùng hủy modal trộn đáp án.
+                    // Người dùng bấm Hủy.
                 }
             );
         };
 
         vm.showAllMcqQuestionsWithOption = function (
-            shouldShuffleAnswers,
-            showUnderFourAnswers
+            shouldShuffleAnswers
         ) {
             var shuffleAnswers =
                 shouldShuffleAnswers === true;
 
-            var showShortAnswersEnabled =
-                showUnderFourAnswers === true;
+            var source =
+                sortMcqQuestionsByCreatedFirst(
+                    vm.rawQuestions || []
+                );
 
             /*
-             * Lấy bản sao của dữ liệu gốc.
-             * Không tác động đến currentCard hoặc câu hỏi đang chơi phía trên.
+             * buildMcqQuestions:
+             * - true: trộn các phương án gốc.
+             * - false: giữ nguyên vị trí phương án gốc.
              */
-            var source = sortMcqQuestionsByCreatedFirst(
-                vm.rawQuestions || []
-            );
+            var displayQuestions =
+                buildMcqQuestions(
+                    source,
+                    shuffleAnswers
+                );
 
             /*
-             * shuffleAnswers = true:
-             * buildMcqQuestions sẽ trộn vị trí các câu trả lời.
+             * Trộn thứ tự câu hỏi.
              *
-             * shuffleAnswers = false:
-             * buildMcqQuestions giữ nguyên vị trí các câu trả lời.
+             * Nếu bạn chỉ muốn trộn câu hỏi trong trường hợp
+             * người dùng chọn "Có", hãy giữ if này.
              */
-            var displayQuestions = buildMcqQuestions(
-                source,
-                shuffleAnswers
-            );
+            if (shuffleAnswers) {
+                displayQuestions =
+                    shuffleArray(displayQuestions);
+            }
 
             /*
-             * Luôn trộn thứ tự câu hỏi.
-             *
-             * Dòng này chỉ đảo các phần tử câu hỏi,
-             * không đảo mảng mcqAnswers bên trong từng câu.
+             * Chuẩn bị trạng thái chọn đáp án cho từng câu.
+             * Câu dưới 4 đáp án được chuyển thành Đúng/Sai.
              */
-            shuffleArray(displayQuestions);
+            angular.forEach(
+                displayQuestions,
+                function (question) {
+                    prepareAllMcqQuestionForAnswering(
+                        question,
+                        shuffleAnswers
+                    );
+                }
+            );
 
             vm.allMcqQuestions = displayQuestions;
 
-            // Câu hỏi đã được trộn.
-            vm.allMcqWasShuffled = true;
+            vm.allMcqWasShuffled =
+                shuffleAnswers;
 
-            // Ghi nhớ riêng việc có trộn đáp án hay không.
-            vm.allMcqAnswersWereShuffled = shuffleAnswers;
-
-            vm.allMcqShowUnderFourAnswers =
-                showShortAnswersEnabled;
+            /*
+             * Các câu dưới 4 đáp án luôn được hiển thị
+             * bằng hai lựa chọn Đúng/Sai.
+             */
+            vm.allMcqShowUnderFourAnswers = true;
 
             vm.allMcqTopicNames =
                 getSelectedMcqTopicNames();
@@ -7252,11 +7537,15 @@
             vm.showAllMcqQuestions = true;
 
             $timeout(function () {
-                var element = document.getElementById(
-                    'mcq-all-questions-list'
-                );
+                var element =
+                    document.getElementById(
+                        'mcq-all-questions-list'
+                    );
 
-                if (element && element.scrollIntoView) {
+                if (
+                    element &&
+                    element.scrollIntoView
+                ) {
                     element.scrollIntoView({
                         behavior: 'smooth',
                         block: 'start'

@@ -1823,19 +1823,117 @@
                                         {{allQuestion.pronounce}}
                                     </div>
 
+                                    <div class="mcq-all-generated-note"
+                                            ng-if="allQuestion.mcqGeneratedTrueFalse">
+                                        ☑️ Câu này có dưới 4 phương án nên đã được chuyển
+                                        thành lựa chọn Đúng hoặc Sai.
+                                    </div>
+
                                     <div class="mcq-all-answer-list"
-                                            ng-if="vm.allMcqShowUnderFourAnswers ||
-                                                (allQuestion.mcqAnswers &&
-                                                allQuestion.mcqAnswers.length >= 4)">
-                                        <div class="mcq-all-answer-item"
-                                                ng-repeat="answer in allQuestion.mcqAnswers track by $index">
-                                            <span class="mcq-all-answer-label">
-                                                {{answer.label}}.
-                                            </span>
-                                            <span class="mcq-all-answer-text">
-                                                {{answer.text}}
-                                            </span>
+                                            ng-if="allQuestion.mcqAnswers &&
+                                            allQuestion.mcqAnswers.length > 0">
+
+
+                                        <button type="button"
+                                                class="mcq-all-answer-item mcq-all-answer-button"
+                                                ng-repeat="answer in allQuestion.mcqAnswers track by $index"
+                                                ng-click="vm.answerAllMcqQuestion(allQuestion, answer)"
+                                                ng-disabled="allQuestion.mcqAnswered === true"
+                                                ng-class="{
+            'mcq-all-answer-selected':
+                answer.chosen === true,
+
+            'mcq-all-answer-correct':
+                allQuestion.mcqGeneratedTrueFalse !== true &&
+                allQuestion.mcqAnswered === true &&
+                answer.correct === true,
+
+            'mcq-all-answer-wrong':
+                allQuestion.mcqGeneratedTrueFalse !== true &&
+                allQuestion.mcqAnswered === true &&
+                answer.chosen === true &&
+                answer.correct !== true
+        }">
+
+    <span class="mcq-all-answer-label">
+        {{answer.label}}.
+    </span>
+
+    <span class="mcq-all-answer-text">
+        {{answer.text}}
+    </span>
+
+    <span class="mcq-all-answer-badges"
+            ng-if="allQuestion.mcqAnswered === true">
+
+        <!-- Chỉ đánh dấu đáp án người dùng vừa chọn -->
+        <span class="mcq-all-selected-badge"
+                ng-if="answer.chosen === true">
+            Bạn chọn
+        </span>
+
+        <!--
+            Chỉ hiện nhãn trên phương án đối với câu có từ 4 đáp án.
+            Câu Đúng/Sai không hiện nhãn đáp án đúng tại A/B.
+        -->
+        <span class="mcq-all-correct-badge"
+                ng-if="
+                allQuestion.mcqGeneratedTrueFalse !== true &&
+                answer.correct === true
+              ">
+            ✓ Đáp án đúng
+        </span>
+    </span>
+                                        </button>
+                                        <div class="mcq-all-original-correct-answer"
+                                                ng-if="
+        allQuestion.mcqGeneratedTrueFalse === true &&
+        allQuestion.mcqAnswered === true
+     ">
+
+                                            <div class="mcq-all-original-correct-title">
+                                                ✅ Đáp án đúng của câu hỏi:
+                                            </div>
+
+                                            <div class="mcq-all-original-correct-content"
+                                                    ng-repeat="correctText in allQuestion.mcqCorrectAnswerTexts track by $index">
+                                                {{correctText}}
+                                            </div>
+
+                                            <div class="mcq-all-original-correct-empty"
+                                                    ng-if="
+            !allQuestion.mcqCorrectAnswerTexts ||
+            allQuestion.mcqCorrectAnswerTexts.length === 0
+         ">
+                                                Chưa tìm thấy nội dung đáp án đúng trong dữ liệu của câu hỏi.
+                                            </div>
                                         </div>
+                                    </div>
+
+                                    <!--
+                                    Chỉ hiện thông báo đúng/sai với câu có từ 4 phương án trở lên.
+                                    Câu Đúng/Sai tự sinh sẽ không hiện dòng thông báo phía dưới.
+                                    -->
+                                                                        <div class="mcq-all-answer-result"
+                                                                                ng-if="
+                                            allQuestion.mcqAnswered === true &&
+                                            allQuestion.mcqGeneratedTrueFalse !== true
+                                         "
+                                                                                ng-class="{
+                                             'mcq-all-result-correct':
+                                                 allQuestion.mcqResult === 'Correct',
+
+                                             'mcq-all-result-wrong':
+                                                 allQuestion.mcqResult === 'Wrong'
+                                         }">
+
+                                        <span ng-if="allQuestion.mcqResult === 'Correct'">
+                                            ✅ Bạn đã chọn đúng.
+                                        </span>
+
+                                        <span ng-if="allQuestion.mcqResult === 'Wrong'">
+                                            ❌ Bạn đã chọn sai. Đáp án đúng đã được đánh dấu màu xanh.
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -7164,6 +7262,194 @@
         .mcq-show-all-modal-actions {
             display: block;
         }
+    }
+</style>
+
+<style>
+    .mcq-all-answer-button {
+        width: 100%;
+        font-family: inherit;
+        text-align: left;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        transition:
+                transform 0.15s ease,
+                border-color 0.15s ease,
+                background 0.15s ease,
+                box-shadow 0.15s ease;
+    }
+
+    .mcq-all-answer-button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        border-color: #6f5bd8;
+        box-shadow: 0 7px 16px rgba(79, 70, 168, 0.15);
+    }
+
+    .mcq-all-answer-button:disabled {
+        cursor: default;
+        opacity: 1;
+    }
+
+    .mcq-all-answer-text {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .mcq-all-answer-item.mcq-all-answer-selected {
+        border-color: #378ad3;
+        box-shadow: 0 0 0 3px rgba(55, 138, 211, 0.14);
+    }
+
+    /* Đáp án đúng luôn được tô xanh sau khi người dùng chọn. */
+    .mcq-all-answer-item.mcq-all-answer-correct {
+        border-color: #20a05a;
+        background: linear-gradient(
+                135deg,
+                #effff5,
+                #c8f2d8
+        );
+        color: #14532d;
+        box-shadow: 0 7px 16px rgba(32, 160, 90, 0.18);
+    }
+
+    .mcq-all-answer-item.mcq-all-answer-correct
+    .mcq-all-answer-label {
+        color: #16803b;
+    }
+
+    /* Chỉ phương án sai mà người dùng đã chọn mới được tô đỏ. */
+    .mcq-all-answer-item.mcq-all-answer-wrong {
+        border-color: #dc3f3f;
+        background: linear-gradient(
+                135deg,
+                #fff3f3,
+                #ffd5d5
+        );
+        color: #7f1d1d;
+        box-shadow: 0 7px 16px rgba(220, 63, 63, 0.17);
+    }
+
+    .mcq-all-answer-item.mcq-all-answer-wrong
+    .mcq-all-answer-label {
+        color: #b91c1c;
+    }
+
+    .mcq-all-answer-badges {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-left: auto;
+    }
+
+    .mcq-all-selected-badge,
+    .mcq-all-correct-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
+    .mcq-all-selected-badge {
+        border: 1px solid #378ad3;
+        background: #e9f5ff;
+        color: #186ba8;
+    }
+
+    .mcq-all-correct-badge {
+        border: 1px solid #20a05a;
+        background: #ffffff;
+        color: #16803b;
+    }
+
+    .mcq-all-answer-result {
+        margin-top: 13px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 800;
+    }
+
+    .mcq-all-result-correct {
+        border: 1px solid #20a05a;
+        background: #effff5;
+        color: #14532d;
+    }
+
+    .mcq-all-result-wrong {
+        border: 1px solid #dc3f3f;
+        background: #fff3f3;
+        color: #7f1d1d;
+    }
+
+    .mcq-all-generated-note {
+        margin-top: 13px;
+        padding: 9px 12px;
+        border-left: 4px solid #f0ad4e;
+        border-radius: 7px;
+        background: #fff9e8;
+        color: #76520b;
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    @media (max-width: 768px) {
+        .mcq-all-answer-badges {
+            width: 100%;
+            justify-content: flex-start;
+            margin-top: 6px;
+            margin-left: 0;
+        }
+
+        .mcq-all-answer-button {
+            flex-wrap: wrap;
+        }
+    }
+    .mcq-all-original-correct-answer {
+        margin-top: 14px;
+        padding: 14px 16px;
+        border: 2px solid #18a558;
+        border-radius: 12px;
+        background: linear-gradient(
+                135deg,
+                #effff5,
+                #dcf8e7
+        );
+        color: #14532d;
+    }
+
+    .mcq-all-original-correct-title {
+        margin-bottom: 7px;
+        font-size: 16px;
+        font-weight: 900;
+    }
+
+    .mcq-all-original-correct-content {
+        padding: 5px 0;
+        font-size: 17px;
+        font-weight: 700;
+        line-height: 1.5;
+    }
+
+    .mcq-all-original-correct-empty {
+        color: #8a5b00;
+        font-style: italic;
+    }
+
+    /*
+     * Câu Đúng/Sai chỉ đánh dấu lựa chọn bằng màu xanh dương,
+     * không dùng màu xanh lá hoặc đỏ để thể hiện kết quả.
+     */
+    .mcq-all-answer-item.mcq-all-answer-selected {
+        border-color: #2f80ed;
+        background: #eef7ff;
+        box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.14);
     }
 </style>
 
