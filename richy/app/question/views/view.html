@@ -6,7 +6,7 @@
 
                 <div class="row">
 
-                    <div class="col-md-12 bold margin-bottom-10 " >
+                    <div class="col-md-12 bold margin-bottom-10 ">
                         <ui-select ng-change="vm.chooseUsers()" data-ng-model="vm.selectedUser" sortable="true" close-on-select="true" style="width: 100% !important;">
                             <ui-select-match allow-clear="false" placeholder="">{{$select.selected.name}}
                             </ui-select-match>
@@ -58,16 +58,13 @@
 
                     <div ng-if="vm.mode.id == 1" class="col-md-12 margin-bottom-10">
                         <button ng-click="vm.toggleQuestionTable()" class="btn btn-default" type="button">
-                            <i class="fa" ng-class="vm.showQuestionTable ? 'fa-eye-slash' : 'fa-eye'"></i>
-                            {{vm.showQuestionTable ? 'ẨN BẢNG' : 'HIỆN BẢNG'}}
+                            <i class="fa" ng-class="vm.showQuestionTable ? 'fa-eye-slash' : 'fa-eye'"></i> {{vm.showQuestionTable ? 'ẨN BẢNG' : 'HIỆN BẢNG'}}
                         </button>
                     </div>
 
-                    <div ng-if="vm.mode.id == 1 && vm.showQuestionTable"
-                         class="col-md-12 margin-bottom-10">
+                    <div ng-if="vm.mode.id == 1 && vm.showQuestionTable" class="col-md-12 margin-bottom-10">
                         <div class="table-responsive">
-                            <table class="table table-bordered table-striped"
-                                   ng-if="vm.questionTable && vm.questionTable.length > 0">
+                            <table class="table table-bordered table-striped" ng-if="vm.questionTable && vm.questionTable.length > 0">
                                 <thead>
                                 <tr>
                                     <th>Từ vựng</th>
@@ -92,8 +89,7 @@
                                 </tbody>
                             </table>
 
-                            <div class="alert alert-info margin-top-10"
-                                 ng-if="!vm.questionTable || vm.questionTable.length == 0">
+                            <div class="alert alert-info margin-top-10" ng-if="!vm.questionTable || vm.questionTable.length == 0">
                                 Chưa có dữ liệu bảng. Hãy chọn bài và nhấn TÌM KIẾM.
                             </div>
                         </div>
@@ -119,32 +115,17 @@
                                 <form class="form-inline">
                                     <div class="form-group mb-2">
                                         <label class="bold" for="setNumberCard">Number card (total: {{vm.totalCard}}): &ensp;</label>
-                                        <input id="setNumberCard"
-                                                onkeydown="javascript: return event.keyCode == 69 ? false : true"
-                                                placeholder="Set number card..."
-                                                class="form-control input-underline-only-score"
-                                                ng-model="vm.numberFlipCard"/>
+                                        <input id="setNumberCard" onkeydown="javascript: return event.keyCode == 69 ? false : true" placeholder="Set number card..." class="form-control input-underline-only-score" ng-model="vm.numberFlipCard"/>
 
                                         &ensp;&ensp;
 
                                         <label class="bold" for="cardScale">Card height (%): &ensp;</label>
-                                        <input id="cardScale"
-                                                type="number"
-                                                min="30"
-                                                max="100"
-                                                class="form-control input-underline-only-score"
-                                                ng-model="vm.cardScale"/>
+                                        <input id="cardScale" type="number" min="30" max="100" class="form-control input-underline-only-score" ng-model="vm.cardScale"/>
 
                                         &ensp;&ensp;
 
                                         <label class="bold" for="timeReset"> Time reset (%): &ensp;</label>
-                                        <input style="width: 100px !important" id="timeReset"
-                                                type="number"
-                                                min="2000"
-                                                max="10000"
-                                                step="1000"
-                                                class="form-control input-underline-only-score"
-                                                ng-model="vm.timeReset"/>
+                                        <input style="width: 100px !important" id="timeReset" type="number" min="2000" max="10000" step="1000" class="form-control input-underline-only-score" ng-model="vm.timeReset"/>
                                     </div>
                                 </form>
                             </div>
@@ -694,9 +675,7 @@
                 </div>
 
                 <div class="row" ng-if="vm.mode.id == 10" style="min-height:1000px">
-                    <div id="flip-excel-board-top"
-                            class="flip-excel-board"
-                            style="scroll-margin-top: 10px;">
+                    <div id="flip-excel-board-top" class="flip-excel-board" style="scroll-margin-top: 10px;">
 
                         <div class="excel-corner"></div>
 
@@ -706,26 +685,17 @@
                         <div class="excel-col-header">D</div>
                         <div class="excel-col-header">E</div>
 
-                        <div ng-repeat-start="item in vm.flippingQuestions track by $index"
-                                ng-if="$index < vm.numberFlipCard*2 && $index % 5 == 0"
-                                class="excel-row-header">
+                        <div ng-repeat-start="item in vm.flippingQuestions track by $index" ng-if="$index < vm.numberFlipCard*2 && $index % 5 == 0" class="excel-row-header">
                             {{ ($index / 5) + 1 }}
                         </div>
 
-                        <div ng-repeat-end
-                                ng-if="$index < vm.numberFlipCard*2"
-                                class="flip excel-flip-card"
-                                ng-class="{'matched-card': item.display === false}"
-                                ng-style="{
+                        <div ng-repeat-end ng-if="$index < vm.numberFlipCard*2" class="flip excel-flip-card" ng-class="{'matched-card': item.display === false}" ng-style="{
                                  'width': '100%',
                                  'margin': '0',
                                  'height': (((vm.cardBaseHeight || 260) * (vm.cardScale || 100)) / 100) + 'px'
-                             }"
-                                ng-click="item.display !== false && vm.clickFlipCardImage(item,$index)">
+                             }" ng-click="item.display !== false && vm.clickFlipCardImage(item,$index)">
 
-                            <div class="card"
-                                    ng-class="{'flipped': item.flipped}"
-                                    ng-click="item.display !== false && (item.flipped = !item.flipped)">
+                            <div class="card" ng-class="{'flipped': item.flipped}" ng-click="item.display !== false && (item.flipped = !item.flipped)">
 
                                 <div class="face front excel-face-front">
                                     <img src="assets/images/lien-doan.jpg" class="excel-front-img" alt="lien-doan">
@@ -752,12 +722,7 @@
                     <div class="col-md-12 margin-top-10 beam-control-bar" ng-if="vm.totalCard > 0">
                         <div class="beam-control-left">
                             <label class="beam-control-label" style="color: black">WIN PULLS</label>
-                            <select
-                                    ng-model="vm.tugWinPulls"
-                                    ng-options="n for n in [5,6,7,8,9,10,15,20]"
-                                    ng-change="vm.resetTugOfWar()"
-                                    class="beam-control-select">
-                            </select>
+                            <select ng-model="vm.tugWinPulls" ng-options="n for n in [5,6,7,8,9,10,15,20]" ng-change="vm.resetTugOfWar()" class="beam-control-select"> </select>
                             <div data-ng-click="startCount()" class="btn btn-brown beam-control-btn beam-control-btn-timer">
                                 {{counter}}
                             </div>
@@ -841,25 +806,20 @@
                     </div>
 
                     <div class="row text-center">
-                        <div class="col-xs-6">
-                        </div>
+                        <div class="col-xs-6"></div>
 
-                        <div class="col-xs-6">
-                        </div>
+                        <div class="col-xs-6"></div>
                     </div>
 
                     <div class="row beam-player-row">
 
-                        <div class="col-xs-6 col-md-6 beam-player-zone beam-player-zone-left tug-mobile-half"
-                                style="padding-right:10px; margin-bottom:10px; margin-top:15px;">
+                        <div class="col-xs-6 col-md-6 beam-player-zone beam-player-zone-left tug-mobile-half" style="padding-right:10px; margin-bottom:10px; margin-top:15px;">
 
                             <div class="flip" ng-if="vm.showMotherTongue === true">
-                                <div class="card beam-question-card"
-                                        ng-class="[
+                                <div class="card beam-question-card" ng-class="[
                                                 {'flipped':isFlipped},
                                                 vm.getTugQuestionEffectClass(vm.currentCard)
-                                             ]"
-                                        ng-click="isFlipped=!isFlipped">
+                                             ]" ng-click="isFlipped=!isFlipped">
                                     <div class="face front beam-question-face beam-question-front" style="display:flex">
                                         <h2 style="margin:auto auto;">
                                             <span ng-show="vm.blindMode == false">{{vm.currentCard.question}}</span><br>
@@ -875,29 +835,20 @@
                                 </div>
                             </div>
 
-                            <div ng-if="vm.endGame == false"
-                                    class="col-xs-12 col-md-6 margin-top-10 margin-bottom-5 tug-answer-item"
-                                    ng-repeat="item in vm.currentCard.questions"
-                                    ng-show="vm.showMotherTongue === true">
-                                <button id="answer-quiz-1-{{$index}}"
-                                        ng-disabled="vm.isPulling1 || vm.endGame"
-                                        class="btn btn-brown button-screen-pre-wrap beam-answer-btn beam-answer-btn-left beam-answer-tone-{{$index}}"
-                                        ng-click="vm.answerQuizBattle3(item.correct,item,vm.currentCard.questions,1)">
+                            <div ng-if="vm.endGame == false" class="col-xs-12 col-md-6 margin-top-10 margin-bottom-5 tug-answer-item" ng-repeat="item in vm.currentCard.questions" ng-show="vm.showMotherTongue === true">
+                                <button id="answer-quiz-1-{{$index}}" ng-disabled="vm.isPulling1 || vm.endGame" class="btn btn-brown button-screen-pre-wrap beam-answer-btn beam-answer-btn-left beam-answer-tone-{{$index}}" ng-click="vm.answerQuizBattle3(item.correct,item,vm.currentCard.questions,1)">
                                     {{item.motherTongue}}
                                 </button>
                             </div>
                         </div>
 
-                        <div class="col-xs-6 col-md-6 beam-player-zone beam-player-zone-right tug-mobile-half"
-                                style="padding-left:10px; margin-bottom:10px; margin-top:15px;">
+                        <div class="col-xs-6 col-md-6 beam-player-zone beam-player-zone-right tug-mobile-half" style="padding-left:10px; margin-bottom:10px; margin-top:15px;">
 
                             <div class="flip" ng-if="vm.showMotherTongue === true">
-                                <div class="card beam-question-card"
-                                        ng-class="[
+                                <div class="card beam-question-card" ng-class="[
                                                 {'flipped':isFlipped},
                                                 vm.getTugQuestionEffectClass(vm.currentCard1)
-                                             ]"
-                                        ng-click="isFlipped=!isFlipped">
+                                             ]" ng-click="isFlipped=!isFlipped">
                                     <div class="face front beam-question-face beam-question-front" style="display:flex">
                                         <h2 style="margin:auto auto;">
                                             <span ng-show="vm.blindMode == false">{{vm.currentCard1.question}}</span><br>
@@ -913,14 +864,8 @@
                                 </div>
                             </div>
 
-                            <div ng-if="vm.endGame == false"
-                                    class="col-xs-12 col-md-6 margin-top-10 margin-bottom-5 tug-answer-item"
-                                    ng-repeat="item in vm.currentCard1.questions"
-                                    ng-show="vm.showMotherTongue === true">
-                                <button id="answer-quiz-2-{{$index}}"
-                                        ng-disabled="vm.isPulling2 || vm.endGame"
-                                        class="btn btn-brown button-screen-pre-wrap beam-answer-btn beam-answer-btn-right beam-answer-tone-{{$index}}"
-                                        ng-click="vm.answerQuizBattle3(item.correct,item,vm.currentCard1.questions,2)">
+                            <div ng-if="vm.endGame == false" class="col-xs-12 col-md-6 margin-top-10 margin-bottom-5 tug-answer-item" ng-repeat="item in vm.currentCard1.questions" ng-show="vm.showMotherTongue === true">
+                                <button id="answer-quiz-2-{{$index}}" ng-disabled="vm.isPulling2 || vm.endGame" class="btn btn-brown button-screen-pre-wrap beam-answer-btn beam-answer-btn-right beam-answer-tone-{{$index}}" ng-click="vm.answerQuizBattle3(item.correct,item,vm.currentCard1.questions,2)">
                                     {{item.motherTongue}}
                                 </button>
                             </div>
@@ -974,9 +919,7 @@
 
                 </div>
 
-                <div ng-if="vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15"
-                        class="row"
-                        ng-class="{
+                <div ng-if="vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15" class="row" ng-class="{
                             'gap-english-theme': vm.mode.id == 8,
                             'gap-vni-tntt-theme': vm.mode.id == 11 || vm.mode.id == 15
                          }">
@@ -984,17 +927,9 @@
                         <div ng-if="vm.showGapTitleTable" class="col-md-3 gap-left-list-col">
 
                             <div class="gap-table-search-inner margin-bottom-10">
-                                <input type="text"
-                                       class="gap-table-search-input"
-                                       ng-model="vm.gapTableSearchText"
-                                       ng-change="vm.searchGapTableByName()"
-                                       placeholder="Tìm theo tên bài..."
-                                       autocomplete="off">
+                                <input type="text" class="gap-table-search-input" ng-model="vm.gapTableSearchText" ng-change="vm.searchGapTableByName()" placeholder="Tìm theo tên bài..." autocomplete="off">
 
-                                <button class="gap-table-clear-btn"
-                                        type="button"
-                                        ng-click="vm.clearGapTableSearch()"
-                                        ng-show="vm.gapTableSearchText">
+                                <button class="gap-table-clear-btn" type="button" ng-click="vm.clearGapTableSearch()" ng-show="vm.gapTableSearchText">
                                     <i class="fa fa-times"></i>
                                 </button>
                             </div>
@@ -1002,18 +937,13 @@
                             <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
                         </div>
 
-                        <div class="gap-right-filling-col"
-                             ng-class="[vm.showGapTitleTable ? 'col-md-9' : 'col-md-12', !vm.showGapTitleTable ? 'gap-right-filling-col-full' : '']">
+                        <div class="gap-right-filling-col" ng-class="[vm.showGapTitleTable ? 'col-md-9' : 'col-md-12', !vm.showGapTitleTable ? 'gap-right-filling-col-full' : '']">
                             <div class="gap-top-info-box">
                                 <h2 class="bold" ng-bind-html="vm.currentCard.question"></h2>
 
                                 <div class="gap-top-info-line">
-                                    <button type="button"
-                                            class="btn btn-default gap-toggle-title-btn"
-                                            ng-click="vm.toggleGapTitleTable()"
-                                            title="{{vm.showGapTitleTable ? 'Ẩn bảng Title' : 'Hiện bảng Title'}}">
-                                        <i ng-class="vm.showGapTitleTable ? 'fa fa-eye-slash' : 'fa fa-list'"></i>
-                                        {{ vm.showGapTitleTable ? 'Ẩn Title' : 'Hiện Title' }}
+                                    <button type="button" class="btn btn-default gap-toggle-title-btn" ng-click="vm.toggleGapTitleTable()" title="{{vm.showGapTitleTable ? 'Ẩn bảng Title' : 'Hiện bảng Title'}}">
+                                        <i ng-class="vm.showGapTitleTable ? 'fa fa-eye-slash' : 'fa fa-list'"></i> {{ vm.showGapTitleTable ? 'Ẩn Title' : 'Hiện Title' }}
                                     </button>
 
                                     <span>Progress: {{vm.percentage}}%</span>
@@ -1025,85 +955,42 @@
                                 <span ng-if="vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15" class="gap-rate-control">
                                     <label class="bold gap-rate-label">Gap rate:</label>
 
-                                    <button type="button"
-                                            class="btn btn-default btn-sm gap-rate-btn"
-                                            ng-click="vm.adjustGapRate(-5)"
-                                            ng-disabled="vm.gapRatePercent <= vm.minGapRatePercent"
-                                            title="Giảm 5%"
-                                            aria-label="Giảm Gap rate 5%">
+                                    <button type="button" class="btn btn-default btn-sm gap-rate-btn" ng-click="vm.adjustGapRate(-5)" ng-disabled="vm.gapRatePercent <= vm.minGapRatePercent" title="Giảm 5%" aria-label="Giảm Gap rate 5%">
                                         <i class="fa-solid fa-chevron-down"></i>
                                     </button>
 
-                                    <input type="number"
-                                           min="30"
-                                           max="100"
-                                           step="5"
-                                           inputmode="numeric"
-                                           ng-model="vm.gapRatePercent"
-                                           ng-change="vm.changeGapRate()"
-                                           ng-model-options="{ debounce: 500 }"
-                                           class="form-control input-sm gap-rate-input" />
+                                    <input type="number" min="30" max="100" step="5" inputmode="numeric" ng-model="vm.gapRatePercent" ng-change="vm.changeGapRate()" ng-model-options="{ debounce: 500 }" class="form-control input-sm gap-rate-input"/>
 
                                     <span class="gap-rate-percent">%</span>
 
-                                    <button type="button"
-                                            class="btn btn-default btn-sm gap-rate-btn"
-                                            ng-click="vm.adjustGapRate(5)"
-                                            ng-disabled="vm.gapRatePercent >= vm.maxGapRatePercent"
-                                            title="Tăng 5%"
-                                            aria-label="Tăng Gap rate 5%">
+                                    <button type="button" class="btn btn-default btn-sm gap-rate-btn" ng-click="vm.adjustGapRate(5)" ng-disabled="vm.gapRatePercent >= vm.maxGapRatePercent" title="Tăng 5%" aria-label="Tăng Gap rate 5%">
                                         <i class="fa-solid fa-chevron-up"></i>
                                     </button>
                                 </span>
                                 <span ng-if="vm.mode.id == 15" class="gap-rate-control gap-vni2-max-words-control">
                                     <label class="bold gap-rate-label">Max từ / gap:</label>
 
-                                    <input type="number"
-                                           min="2"
-                                           step="1"
-                                           inputmode="numeric"
-                                           ng-model="vm.vni2MaxWordsPerGap"
-                                           ng-change="vm.changeVni2MaxWordsPerGap()"
-                                           ng-model-options="{ debounce: 500 }"
-                                           class="form-control input-sm gap-rate-input" />
+                                    <input type="number" min="2" step="1" inputmode="numeric" ng-model="vm.vni2MaxWordsPerGap" ng-change="vm.changeVni2MaxWordsPerGap()" ng-model-options="{ debounce: 500 }" class="form-control input-sm gap-rate-input"/>
                                 </span>
-                                <button ng-if="vm.mode.id == 15"
-                                        type="button"
-                                        class="btn btn-sm"
-                                        ng-class="vm.isMuted ? 'btn-danger' : 'btn-success'"
-                                        ng-click="vm.toggleVni2Mute()"
-                                        title="{{vm.isMuted ? 'Bật tự động đọc câu hỏi' : 'Tắt tự động đọc câu hỏi'}}"
-                                        aria-label="{{vm.isMuted ? 'Bật tự động đọc câu hỏi' : 'Tắt tự động đọc câu hỏi'}}">
-                                    <i ng-class="vm.isMuted ? 'fa-solid fa-volume-xmark' : 'fa fa-volume-up'"></i>
-                                    {{vm.isMuted ? 'MUTED' : 'AUTO READ'}}
-                                </button>
+                                    <button ng-if="vm.mode.id == 15" type="button" class="btn btn-sm" ng-class="vm.isMuted ? 'btn-danger' : 'btn-success'" ng-click="vm.toggleVni2Mute()" title="{{vm.isMuted ? 'Bật tự động đọc câu hỏi' : 'Tắt tự động đọc câu hỏi'}}" aria-label="{{vm.isMuted ? 'Bật tự động đọc câu hỏi' : 'Tắt tự động đọc câu hỏi'}}">
+                                        <i ng-class="vm.isMuted ? 'fa-solid fa-volume-xmark' : 'fa fa-volume-up'"></i> {{vm.isMuted ? 'MUTED' : 'AUTO READ'}}
+                                    </button>
                                 </div>
                             </div>
 
                             <!-- MOBILE FIXED AUDIO/YOUTUBE CONTROLS -->
-                            <div class="gap-mobile-fixed-audio-controls"
-                                 ng-if="vm.mode.id == 8">
+                            <div class="gap-mobile-fixed-audio-controls" ng-if="vm.mode.id == 8">
 
-                                <button type="button"
-                                        class="gap-mobile-audio-btn gap-mobile-back-btn"
-                                        ng-click="vm.backwardAudio($event)"
-                                        aria-label="Playback 3 seconds">
+                                <button type="button" class="gap-mobile-audio-btn gap-mobile-back-btn" ng-click="vm.backwardAudio($event)" aria-label="Playback 3 seconds">
                                     <i class="fa fa-backward" aria-hidden="true"></i>
                                 </button>
 
-                                <button type="button"
-                                        class="gap-mobile-audio-btn gap-mobile-play-btn"
-                                        ng-click="vm.togglePauseAudio($event)"
-                                        aria-label="Pause or resume">
-                                    <i class="fa fa-pause" aria-hidden="true"></i>
-                                    /
+                                <button type="button" class="gap-mobile-audio-btn gap-mobile-play-btn" ng-click="vm.togglePauseAudio($event)" aria-label="Pause or resume">
+                                    <i class="fa fa-pause" aria-hidden="true"></i> /
                                     <i class="fa fa-play" aria-hidden="true"></i>
                                 </button>
 
-                                <button type="button"
-                                        class="gap-mobile-audio-btn gap-mobile-forward-btn"
-                                        ng-click="vm.forwardAudio($event)"
-                                        aria-label="Forward 3 seconds">
+                                <button type="button" class="gap-mobile-audio-btn gap-mobile-forward-btn" ng-click="vm.forwardAudio($event)" aria-label="Forward 3 seconds">
                                     <i class="fa fa-forward" aria-hidden="true"></i>
                                 </button>
 
@@ -1115,24 +1002,14 @@
                                     YouTube mode: dùng nút dưới đây để pause / back 3s / forward 3s
                                 </div>
 
-                                <audio id="main-audio"
-                                       ng-show="!vm.isYoutubeAudio"
-                                       controls
-                                       controlsList="nodownload"
-                                       style="width: 70%; margin-bottom: 10px;">
+                                <audio id="main-audio" ng-show="!vm.isYoutubeAudio" controls controlsList="nodownload" style="width: 70%; margin-bottom: 10px;">
                                     Your browser does not support the audio element.
                                 </audio>
 
                                 <br ng-if="!vm.isYoutubeAudio">
                                 <div class="gap-main-control-row">
                                     Speed:
-                                    <input class="input-underline-only"
-                                           style="width:70px;text-align: center"
-                                           ng-disabled="true"
-                                           type="number"
-                                           min="0.5"
-                                           max="4"
-                                           ng-value="vm.playbackValue | number : 1"/>
+                                    <input class="input-underline-only" style="width:70px;text-align: center" ng-disabled="true" type="number" min="0.5" max="4" ng-value="vm.playbackValue | number : 1"/>
 
                                     <button ng-click="vm.increaseSpeed()">
                                         <i class="fa fa-arrow-up" aria-hidden="true"></i>
@@ -1143,13 +1020,7 @@
                                     </button>
 
                                     Volume:
-                                    <input class="input-underline-only"
-                                           style="width:70px;text-align: center"
-                                           ng-disabled="true"
-                                           type="number"
-                                           min="0"
-                                           max="1"
-                                           ng-value="vm.volumeValue | number : 2"/>
+                                    <input class="input-underline-only" style="width:70px;text-align: center" ng-disabled="true" type="number" min="0" max="1" ng-value="vm.volumeValue | number : 2"/>
 
                                     <button ng-click="vm.increaseVolume()">
                                         <i class="fa fa-arrow-up" aria-hidden="true"></i>
@@ -1163,40 +1034,23 @@
 
                                 </div>
                                 <span class="global-mobile-audio-seek-controls">
-                                    <button type="button"
-                                            class="global-mobile-audio-seek-btn global-mobile-audio-back-btn"
-                                            ng-click="vm.backwardAudio($event)"
-                                            aria-label="Playback 3 seconds">
+                                    <button type="button" class="global-mobile-audio-seek-btn global-mobile-audio-back-btn" ng-click="vm.backwardAudio($event)" aria-label="Playback 3 seconds">
                                         <i class="fa fa-backward" aria-hidden="true"></i>
                                     </button>
 
-                                    <button type="button"
-                                            class="global-mobile-audio-seek-btn"
-                                            ng-click="vm.togglePauseAudio($event)"
-                                            aria-label="Pause or resume">
-                                        <i class="fa fa-pause" aria-hidden="true"></i>
-                                        /
+                                    <button type="button" class="global-mobile-audio-seek-btn" ng-click="vm.togglePauseAudio($event)" aria-label="Pause or resume">
+                                        <i class="fa fa-pause" aria-hidden="true"></i> /
                                         <i class="fa fa-play" aria-hidden="true"></i>
                                     </button>
 
-                                    <button type="button"
-                                            class="global-mobile-audio-seek-btn global-mobile-audio-forward-btn"
-                                            ng-click="vm.forwardAudio($event)"
-                                            aria-label="Forward 3 seconds">
+                                    <button type="button" class="global-mobile-audio-seek-btn global-mobile-audio-forward-btn" ng-click="vm.forwardAudio($event)" aria-label="Forward 3 seconds">
                                         <i class="fa fa-forward" aria-hidden="true"></i>
                                     </button>
                                 </span>
 
 
-
-
-
                                 <div class="gap-shortcut-text" style="margin-top: 10px;">
-                                    (hit '<i class="fa fa-chevron-left bold"></i>' playback 3s)
-                                    |
-                                    (hit '<i class="bold fa fa-chevron-right"></i>' forward 3s)
-                                    |
-                                    (hit 'space' to pause/resume)
+                                    (hit '<i class="fa fa-chevron-left bold"></i>' playback 3s) | (hit '<i class="bold fa fa-chevron-right"></i>' forward 3s) | (hit 'space' to pause/resume)
                                 </div>
 
                             </div>
@@ -1208,12 +1062,10 @@
 
                                 <div class="row margin-top-10 margin-bottom-10 filling-content gap-filling-scroll-box">
                                     <div class="col-md-12">
-                                        <div class="bold"
-                                             ng-class="{
+                                        <div class="bold" ng-class="{
                                                  'gap-english-content': vm.mode.id == 8,
                                                  'gap-vni-tntt-content': vm.mode.id == 11 || vm.mode.id == 15
-                                             }"
-                                             compile="vm.fillingGapQuestion"></div>
+                                             }" compile="vm.fillingGapQuestion"></div>
                                     </div>
                                 </div>
 
@@ -1243,12 +1095,10 @@
 
                                     <div class="row margin-top-10 margin-bottom-10 filling-content">
                                         <div class="col-md-12">
-                                            <div class="bold"
-                                                 ng-class="{
+                                            <div class="bold" ng-class="{
                                                      'gap-english-content': vm.mode.id == 8,
                                                      'gap-vni-tntt-content': vm.mode.id == 11 || vm.mode.id == 15
-                                                 }"
-                                                 compile="vm.fillingGapQuestion"></div>
+                                                 }" compile="vm.fillingGapQuestion"></div>
                                         </div>
                                     </div>
 
@@ -1262,46 +1112,32 @@
 
                 </div>
 
-                <div id="filling-gaps-top"
-                        ng-if="vm.mode.id == 12"
-                        class="row"
-                        style="scroll-margin-top: 20px;"
-                        ng-class="{'gaps3-cate-theme': vm.mode.id == 12}">
+                <div id="filling-gaps-top" ng-if="vm.mode.id == 12" class="row" style="scroll-margin-top: 20px;" ng-class="{'gaps3-cate-theme': vm.mode.id == 12}">
                     <div class="row">
                         <div class="col-md-12" style="padding-left: 20px">
                             <div ng-if="vm.mode.id == 12" class="gaps3-side-tools">
-                                <button class="btn btn-primary gaps3-btn"
-                                        ng-click="vm.toggleGapsTable()">
+                                <button class="btn btn-primary gaps3-btn" ng-click="vm.toggleGapsTable()">
                                     {{ vm.showGapsTable ? '🙈 Ẩn danh sách' : '📋 Hiện danh sách' }}
                                 </button>
 
-                                <button class="btn btn-info gaps3-btn"
-                                        ng-click="vm.selectAllFillingGaps()"
-                                        ng-disabled="!vm.questions || !vm.questions.length">
+                                <button class="btn btn-info gaps3-btn" ng-click="vm.selectAllFillingGaps()" ng-disabled="!vm.questions || !vm.questions.length">
                                     {{ vm.isShowAllFillingGaps ? '🙈 Ẩn toàn bộ' : '📖 Hiển thị toàn bộ' }}
                                 </button>
 
-                                <button class="btn btn-warning gaps3-btn"
-                                        ng-click="vm.shuffleGapsTable()"
-                                        ng-disabled="!vm.questions || !vm.questions.length">
+                                <button class="btn btn-warning gaps3-btn" ng-click="vm.shuffleGapsTable()" ng-disabled="!vm.questions || !vm.questions.length">
                                     🔀 Trộn
                                 </button>
 
-                                <button class="btn btn-brown gaps3-btn"
-                                        ng-click="vm.backCard()"
-                                        ng-disabled="vm.currentPosition <= 0">
+                                <button class="btn btn-brown gaps3-btn" ng-click="vm.backCard()" ng-disabled="vm.currentPosition <= 0">
                                     ⬅ Back
                                 </button>
 
-                                <button class="btn btn-success gaps3-btn"
-                                        ng-click="vm.nextCard()"
-                                        ng-disabled="vm.currentPosition + 1 >= vm.totalCard">
+                                <button class="btn btn-success gaps3-btn" ng-click="vm.nextCard()" ng-disabled="vm.currentPosition + 1 >= vm.totalCard">
                                     Next ➡
                                 </button>
                             </div>
 
-                            <div ng-if="vm.mode.id != 12 || vm.showGapsTable"
-                                    ng-class="{'gaps3-side-card': vm.mode.id == 12}">
+                            <div ng-if="vm.mode.id != 12 || vm.showGapsTable" ng-class="{'gaps3-side-card': vm.mode.id == 12}">
                                 <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
                             </div>
                         </div>
@@ -1318,43 +1154,32 @@
                                                         🌈 ✨ Thiếu Nhi Thánh Thể ✨ 🌈
                                                     </div>
 
-                                                    <h2 class="bold"
-                                                            ng-class="{'gaps3-title': vm.mode.id == 12}"
-                                                            ng-bind-html="vm.currentCard.question"></h2>
+                                                    <h2 class="bold" ng-class="{'gaps3-title': vm.mode.id == 12}" ng-bind-html="vm.currentCard.question"></h2>
 
                                                     <div ng-if="vm.mode.id == 12" class="gaps3-subtitle">
                                                         Cùng điền {{vm.gaps3Config.gapCount}} cụm còn thiếu nhé 💙
                                                     </div>
 
-                                                    <button
-                                                            ng-if="vm.mode.id == 12"
-                                                            class="btn btn-warning gaps3-btn gaps3-btn-answer"
-                                                            ng-click="vm.toggleShowGapAnswers()"
-                                                            style="margin-top: 10px;">
+                                                    <button ng-if="vm.mode.id == 12" class="btn btn-warning gaps3-btn gaps3-btn-answer" ng-click="vm.toggleShowGapAnswers()" style="margin-top: 10px;">
                                                         {{ vm.showGapAnswers ? '🙈 Ẩn đáp án' : '🎁 Hiển thị đáp án' }}
                                                     </button>
 
                                                     <div ng-if="vm.mode.id == 12" style="margin-top: 12px;">
-                                                        <button class="btn btn-info gaps3-btn gaps3-timer-btn timer-block"
-                                                                ng-click="vm.thirtySeconds()">
+                                                        <button class="btn btn-info gaps3-btn gaps3-timer-btn timer-block" ng-click="vm.thirtySeconds()">
                                                             ⏳
                                                             <span class="gaps3-timer-text">
                                                                 {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
                                                             </span>
                                                         </button>
 
-                                                        <button class="btn btn-success gaps3-btn gaps3-timer-btn timer-block"
-                                                                ng-click="vm.twentySeconds()"
-                                                                style="margin-top: 10px;">
+                                                        <button class="btn btn-success gaps3-btn gaps3-timer-btn timer-block" ng-click="vm.twentySeconds()" style="margin-top: 10px;">
                                                             ⚡
                                                             <span class="gaps3-timer-text">
                                                                 {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
                                                             </span>
                                                         </button>
 
-                                                        <button class="btn btn-warning gaps3-btn timer-block"
-                                                                ng-click="refreshTimer()"
-                                                                style="margin-top: 10px;">
+                                                        <button class="btn btn-warning gaps3-btn timer-block" ng-click="refreshTimer()" style="margin-top: 10px;">
                                                             🔄 Reset
                                                         </button>
 
@@ -1362,47 +1187,24 @@
                                                             <div class="row gaps3-setting-row">
                                                                 <div class="col-xs-6">
                                                                     <label class="bold gaps3-label-nowrap" for="gap-count-input">Số gaps:</label>
-                                                                    <input id="gap-count-input"
-                                                                            type="number"
-                                                                            min="1"
-                                                                            max="20"
-                                                                            class="form-control"
-                                                                            ng-model="vm.gaps3Config.gapCount"
-                                                                            ng-change="vm.updateGaps3Preview()" />
+                                                                    <input id="gap-count-input" type="number" min="1" max="20" class="form-control" ng-model="vm.gaps3Config.gapCount" ng-change="vm.updateGaps3Preview()"/>
                                                                 </div>
 
                                                                 <div class="col-xs-6">
                                                                     <label class="bold gaps3-label-nowrap" for="gap-max-words-input">Số từ tối đa / gap:</label>
-                                                                    <input id="gap-max-words-input"
-                                                                            type="number"
-                                                                            min="2"
-                                                                            max="10"
-                                                                            class="form-control"
-                                                                            ng-model="vm.gaps3Config.maxWordsPerGap"
-                                                                            ng-change="vm.updateGaps3Preview()" />
+                                                                    <input id="gap-max-words-input" type="number" min="2" max="10" class="form-control" ng-model="vm.gaps3Config.maxWordsPerGap" ng-change="vm.updateGaps3Preview()"/>
                                                                 </div>
                                                             </div>
 
                                                             <div class="row gaps3-setting-row" style="margin-top: 10px;">
                                                                 <div class="col-xs-6">
                                                                     <label class="bold gaps3-label-nowrap" for="gap-font-size-input">Cỡ chữ (px):</label>
-                                                                    <input id="gap-font-size-input"
-                                                                            type="number"
-                                                                            min="20"
-                                                                            max="100"
-                                                                            class="form-control"
-                                                                            ng-model="vm.gaps3Config.fontSize" />
+                                                                    <input id="gap-font-size-input" type="number" min="20" max="100" class="form-control" ng-model="vm.gaps3Config.fontSize"/>
                                                                 </div>
 
                                                                 <div class="col-xs-6">
                                                                     <label class="bold gaps3-label-nowrap" for="gap-line-height-input">Line height:</label>
-                                                                    <input id="gap-line-height-input"
-                                                                            type="number"
-                                                                            min="1"
-                                                                            max="3"
-                                                                            step="0.1"
-                                                                            class="form-control"
-                                                                            ng-model="vm.gaps3Config.lineHeight" />
+                                                                    <input id="gap-line-height-input" type="number" min="1" max="3" step="0.1" class="form-control" ng-model="vm.gaps3Config.lineHeight"/>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1416,13 +1218,10 @@
                                         <div class="gaps3-main-fill">
                                             <div class="row margin-top-10 margin-bottom-10 filling-content-mode-gaps-3">
                                                 <div class="col-md-12">
-                                                    <div class="bold"
-                                                            ng-class="{'gaps3-content': vm.mode.id == 12}"
-                                                            ng-style="vm.mode.id == 12 && {
+                                                    <div class="bold" ng-class="{'gaps3-content': vm.mode.id == 12}" ng-style="vm.mode.id == 12 && {
                                                              'font-size': (vm.gaps3Config.fontSize || 40) + 'px',
                                                              'line-height': (vm.gaps3Config.lineHeight || 1.8)
-                                                         }"
-                                                            compile="vm.fillingGapQuestion"></div>
+                                                         }" compile="vm.fillingGapQuestion"></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1432,42 +1231,32 @@
                         </div>
 
                         <div class="col-md-12 margin-top-10" ng-if="vm.isShowAllFillingGaps">
-                            <div class="bold gaps3-all-questions-content"
-                                    ng-class="{'gaps3-all-content': vm.mode.id == 12}">
+                            <div class="bold gaps3-all-questions-content" ng-class="{'gaps3-all-content': vm.mode.id == 12}">
 
-                                <div class="gaps3-question-item"
-                                        ng-repeat="item in vm.questions track by $index">
+                                <div class="gaps3-question-item" ng-repeat="item in vm.questions track by $index">
 
                                     <div class="gaps3-question-number">
                                         Câu {{$index + 1}}
                                     </div>
 
-                                    <div class="gaps3-question-text"
-                                            compile="item.question">
-                                    </div>
-                                    <div class="gaps3-question-text" style="font-weight: normal !important"
-                                            compile="item.motherTongue">
-                                    </div>
+                                    <div class="gaps3-question-text" compile="item.question"></div>
+                                    <div class="gaps3-question-text" style="font-weight: normal !important" compile="item.motherTongue"></div>
 
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-md-12 margin-top-20"
-                                ng-if="vm.isShowAllFillingGaps && vm.fillingGapAllQuestionsPrintable">
+                        <div class="col-md-12 margin-top-20" ng-if="vm.isShowAllFillingGaps && vm.fillingGapAllQuestionsPrintable">
                             <div class="gaps3-print-title">
                                 🖨️ Bản in có chỗ trống
                             </div>
 
-                            <div class="bold gaps3-all-content gaps3-print-content"
-                                    compile="vm.fillingGapAllQuestionsPrintable"></div>
+                            <div class="bold gaps3-all-content gaps3-print-content" compile="vm.fillingGapAllQuestionsPrintable"></div>
                         </div>
                     </div>
                 </div>
 
-                <div id="mcq-game-top"
-                        ng-if="vm.mode.id == 13"
-                        class="row gaps3-cate-theme mcq-mode-wrap">
+                <div id="mcq-game-top" ng-if="vm.mode.id == 13" class="row gaps3-cate-theme mcq-mode-wrap">
 
                     <div class="row">
 
@@ -1479,69 +1268,55 @@
                                 </div>
 
                                 <h2 class="bold gaps3-title mcq-tntt-question-number">
-                                    Câu số {{vm.currentPosition + 1}}
-                                </h2>
+                                    Câu số {{vm.currentPosition + 1}} </h2>
 
                                 <div class="gaps3-subtitle">
                                     Chọn đáp án đúng nhé 💙
                                 </div>
 
                                 <div style="margin-top: 12px;">
-                                    <button class="btn btn-brown gaps3-btn"
-                                            ng-click="vm.toggleMcqQuestion()"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-brown gaps3-btn" ng-click="vm.toggleMcqQuestion()" style="margin-top: 10px;">
                                         {{ vm.showMcqQuestion ? 'Ẩn câu hỏi' : 'Hiển thị câu hỏi' }}
                                     </button>
                                 </div>
                                 <div style="margin-top: 12px;">
 
-                                    <button class="btn btn-danger gaps3-btn gaps3-timer-btn timer-block"
-                                            ng-click="vm.sixtySeconds()">
+                                    <button class="btn btn-danger gaps3-btn gaps3-timer-btn timer-block" ng-click="vm.sixtySeconds()">
                                         ⏰
                                         <span class="gaps3-timer-text">
                                             {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 60 ? counter + 's' : '60s'}}
                                         </span>
                                     </button>
 
-                                    <button class="btn btn-info gaps3-btn gaps3-timer-btn timer-block"
-                                            ng-click="vm.thirtySeconds()"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-info gaps3-btn gaps3-timer-btn timer-block" ng-click="vm.thirtySeconds()" style="margin-top: 10px;">
                                         ⏳
                                         <span class="gaps3-timer-text">
                                             {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
                                         </span>
                                     </button>
 
-                                    <button class="btn btn-success gaps3-btn gaps3-timer-btn timer-block"
-                                            ng-click="vm.twentySeconds()"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-success gaps3-btn gaps3-timer-btn timer-block" ng-click="vm.twentySeconds()" style="margin-top: 10px;">
                                         ⚡
                                         <span class="gaps3-timer-text">
                                             {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
                                         </span>
                                     </button>
 
-                                    <button class="btn btn-primary gaps3-btn gaps3-timer-btn timer-block"
-                                            ng-click="vm.tenSeconds()"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-primary gaps3-btn gaps3-timer-btn timer-block" ng-click="vm.tenSeconds()" style="margin-top: 10px;">
                                         🎯
                                         <span class="gaps3-timer-text">
                                             {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 10 ? counter + 's' : '10s'}}
                                         </span>
                                     </button>
 
-                                    <button class="btn btn-brown gaps3-btn gaps3-timer-btn timer-block"
-                                            ng-click="vm.fiveSeconds()"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-brown gaps3-btn gaps3-timer-btn timer-block" ng-click="vm.fiveSeconds()" style="margin-top: 10px;">
                                         🚀
                                         <span class="gaps3-timer-text">
                                             {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 5 ? counter + 's' : '5s'}}
                                         </span>
                                     </button>
 
-                                    <button class="btn btn-warning gaps3-btn timer-block"
-                                            ng-click="refreshTimer()"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-warning gaps3-btn timer-block" ng-click="refreshTimer()" style="margin-top: 10px;">
                                         🔄 Reset
                                     </button>
                                 </div>
@@ -1551,98 +1326,66 @@
                                         <strong>{{vm.currentPosition + 1}} / {{vm.questions.length}}</strong>
                                     </div>
 
-                                    <button class="btn btn-danger gaps3-btn"
-                                            ng-click="vm.confirmShowMcqAnswer()"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-danger gaps3-btn" ng-click="vm.confirmShowMcqAnswer()" style="margin-top: 10px;">
                                         🎁 Hiển thị đáp án
                                     </button>
 
                                 </div>
 
                                 <div style="margin-top: 15px;">
-                                    <button class="btn btn-default gaps3-btn"
-                                            ng-click="vm.backCard()"
-                                            ng-disabled="vm.currentPosition <= 0">
+                                    <button class="btn btn-default gaps3-btn" ng-click="vm.backCard()" ng-disabled="vm.currentPosition <= 0">
                                         ⬅ Back
                                     </button>
 
-                                    <button class="btn btn-success gaps3-btn"
-                                            ng-click="vm.nextCard()"
-                                            ng-disabled="vm.currentPosition + 1 >= vm.questions.length"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-success gaps3-btn" ng-click="vm.nextCard()" ng-disabled="vm.currentPosition + 1 >= vm.questions.length" style="margin-top: 10px;">
                                         Next ➡
                                     </button>
                                 </div>
 
                                 <div style="margin-top: 10px;">
-                                    <button class="btn btn-warning gaps3-btn"
-                                            ng-click="vm.confirmShuffleMcqQuestions()"
-                                            ng-disabled="!vm.questions || vm.questions.length <= 1">
+                                    <button class="btn btn-warning gaps3-btn" ng-click="vm.confirmShuffleMcqQuestions()" ng-disabled="!vm.questions || vm.questions.length <= 1">
                                         🔀 Trộn câu hỏi
                                     </button>
                                 </div>
                                 <div class="col-md-12 text-center margin-bottom-10 mcq-font-control">
                                     <label class="bold">Đoạn lớn:</label>
-                                    <input type="number"
-                                            min="20"
-                                            max="120"
-                                            class="input-underline-only-score mcq-font-input"
-                                            ng-model="vm.mcqPassageFontSize"
-                                            ng-change="vm.changeMcqFontSize()">
+                                    <input type="number" min="20" max="120" class="input-underline-only-score mcq-font-input" ng-model="vm.mcqPassageFontSize" ng-change="vm.changeMcqFontSize()">
 
                                     &ensp;&ensp;
 
                                     <label class="bold">Câu hỏi:</label>
-                                    <input type="number"
-                                            min="12"
-                                            max="80"
-                                            class="input-underline-only-score mcq-font-input"
-                                            ng-model="vm.mcqQuestionFontSize"
-                                            ng-change="vm.changeMcqFontSize()">
+                                    <input type="number" min="12" max="80" class="input-underline-only-score mcq-font-input" ng-model="vm.mcqQuestionFontSize" ng-change="vm.changeMcqFontSize()">
 
                                     &ensp;&ensp;
 
                                     <label class="bold">Đáp án:</label>
-                                    <input type="number"
-                                            min="12"
-                                            max="80"
-                                            class="input-underline-only-score mcq-font-input"
-                                            ng-model="vm.mcqAnswerFontSize"
-                                            ng-change="vm.changeMcqFontSize()">
+                                    <input type="number" min="12" max="80" class="input-underline-only-score mcq-font-input" ng-model="vm.mcqAnswerFontSize" ng-change="vm.changeMcqFontSize()">
                                 </div>
 
                             </div>
                         </div>
 
                         <div class="col-xs-12 col-md-9" style="padding-right: 20px;">
-                            <div class="gaps3-main-card"  >
+                            <div class="gaps3-main-card">
 
                                 <div class="row margin-bottom-10" ng-if="vm.showMcqQuestion">
                                     <div class="col-md-12 text-center">
-                                        <div class="bold mcq-passage-text"
-                                                ng-style="{
+                                        <div class="bold mcq-passage-text" ng-style="{
                                                 'font-size': vm.mcqPassageFontSize + 'px'
-                                             }"
-                                                ng-bind-html="vm.currentCard.question">
-                                        </div>
+                                             }" ng-bind-html="vm.currentCard.question"></div>
 
-                                        <div ng-if="vm.currentCard.pronounce"
-                                                class="mcq-question-text"
-                                                ng-style="{
+                                        <div ng-if="vm.currentCard.pronounce" class="mcq-question-text" ng-style="{
                                                 'font-size': vm.mcqQuestionFontSize + 'px'
                                              }">
                                             {{vm.currentCard.pronounce}}
                                         </div>
 
-                                        <div ng-if="vm.currentCard.mcqResult"
-                                                style="margin-top: 10px; font-size: 22px;">
-                                            <span ng-if="vm.currentCard.mcqResult == 'Correct'"
-                                                    style="color: green;">
+                                        <div ng-if="vm.currentCard.mcqResult" style="margin-top: 10px; font-size: 22px;">
+                                            <span ng-if="vm.currentCard.mcqResult == 'Correct'" style="color: green;">
                                                 ✅ Correct
                                             </span>
 
-                                            <span ng-if="vm.currentCard.mcqResult == 'Wrong'"
-                                                    style="color: red;">
+                                            <span ng-if="vm.currentCard.mcqResult == 'Wrong'" style="color: red;">
                                                 ❌ Wrong
                                             </span>
                                         </div>
@@ -1650,12 +1393,9 @@
                                 </div>
 
                                 <div class="row margin-top-10" ng-if="vm.showMcqQuestion">
-                                    <div class="col-md-12 margin-bottom-15"
-                                            ng-repeat="answer in vm.currentCard.mcqAnswers track by $index">
+                                    <div class="col-md-12 margin-bottom-15" ng-repeat="answer in vm.currentCard.mcqAnswers track by $index">
 
-                                        <button class="btn btn-brown button-screen-pre-wrap mcq-answer-btn"
-                                                ng-click="vm.revealMcqChoice(answer)"
-                                                ng-class="{
+                                        <button class="btn btn-brown button-screen-pre-wrap mcq-answer-btn" ng-click="vm.revealMcqChoice(answer)" ng-class="{
                                                         'mcq-answer-correct': answer.showCorrect === true && !vm.currentCard.mcqRevealMode,
                                                         'mcq-answer-wrong': answer.chosen === true && answer.correct !== true && !vm.currentCard.mcqRevealMode,
                                                         'mcq-answer-reveal-correct': vm.currentCard.mcqRevealMode === true && answer.correct === true
@@ -1665,43 +1405,24 @@
                                                     {{answer.label}}.
                                                 </span>
 
-                                                <span class="mcq-answer-text"
-                                                        ng-if="answer.revealed || vm.currentCard.mcqRevealMode"
-                                                        ng-style="{'font-size': vm.mcqAnswerFontSize + 'px'}">
+                                                <span class="mcq-answer-text" ng-if="answer.revealed || vm.currentCard.mcqRevealMode" ng-style="{'font-size': vm.mcqAnswerFontSize + 'px'}">
                                                     {{answer.text}}
                                                 </span>
                                         </button>
                                     </div>
-                                    <small class="mcq-mother-tongue-small"
-                                            ng-if="vm.currentCard.mcqRevealMode === true && vm.currentCard.motherTongue"
-                                            ng-bind-html="vm.currentCard.motherTongue">
-                                    </small>
+                                    <small class="mcq-mother-tongue-small" ng-if="vm.currentCard.mcqRevealMode === true && vm.currentCard.motherTongue" ng-bind-html="vm.currentCard.motherTongue"></small>
                                 </div>
 
                                 <div class="row margin-top-20">
                                     <div class="col-md-12 text-center">
-                                        <i class="fa fa-volume-up"
-                                                ng-if="vm.isMuted === false"
-                                                ng-click="sayIt(vm.currentCard.question + '. ' + vm.currentCard.pronounce)"
-                                                title="Đọc"
-                                                style="cursor:pointer; font-size: 24px; margin-right: 10px;">
-                                        </i>
+                                        <i class="fa fa-volume-up" ng-if="vm.isMuted === false" ng-click="sayIt(vm.currentCard.question + '. ' + vm.currentCard.pronounce)" title="Đọc" style="cursor:pointer; font-size: 24px; margin-right: 10px;"> </i>
 
-                                        <i class="fa fa-stop-circle"
-                                                ng-click="shutUp()"
-                                                title="Dừng đọc"
-                                                style="cursor:pointer; font-size: 24px; margin-right: 10px; color: #d9534f;">
-                                        </i>
+                                        <i class="fa fa-stop-circle" ng-click="shutUp()" title="Dừng đọc" style="cursor:pointer; font-size: 24px; margin-right: 10px; color: #d9534f;"> </i>
 
-                                        <label for="mute-button-mcq"
-                                                ng-if="vm.isMuted === true"
-                                                class="bold">
-                                            <i class="fa-solid fa-volume-xmark"></i>
-                                        </label>
+                                        <label for="mute-button-mcq" ng-if="vm.isMuted === true" class="bold">
+                                            <i class="fa-solid fa-volume-xmark"></i> </label>
 
-                                        <input id="mute-button-mcq"
-                                                type="checkbox"
-                                                ng-model="vm.isMuted"/>
+                                        <input id="mute-button-mcq" type="checkbox" ng-model="vm.isMuted"/>
 
                                     </div>
                                 </div>
@@ -1717,9 +1438,7 @@
                     Đây là div độc lập, nằm phía dưới giao diện câu hỏi MCQ cũ.
                     Mặc định chỉ hiện nút; danh sách câu hỏi được ẩn.
                 -->
-                <div id="mcq-all-questions-section"
-                        ng-if="vm.mode.id == 13"
-                        class="row mcq-all-questions-section">
+                <div id="mcq-all-questions-section" ng-if="vm.mode.id == 13" class="row mcq-all-questions-section">
 
                     <div class="col-md-12">
                         <div class="mcq-all-questions-toolbar">
@@ -1732,81 +1451,46 @@
                             </div>
 
                             <div class="mcq-all-toolbar-actions">
-                                <button type="button"
-                                        class="btn btn-danger mcq-all-print-btn"
-                                        ng-if="vm.showAllMcqQuestions"
-                                        ng-click="vm.printAllMcqQuestionsPdf()"
-                                        ng-disabled="!vm.allMcqQuestions || vm.allMcqQuestions.length <= 0"
-                                        title="Xuất câu hỏi theo đúng nội dung đang hiển thị, không đánh dấu đáp án đúng">
-                                    <i class="fa fa-file-pdf-o"></i>
-                                    XUẤT FILE PDF
+                                <button type="button" class="btn btn-danger mcq-all-print-btn" ng-if="vm.showAllMcqQuestions" ng-click="vm.printAllMcqQuestionsPdf()" ng-disabled="!vm.allMcqQuestions || vm.allMcqQuestions.length <= 0" title="Xuất câu hỏi theo đúng nội dung đang hiển thị, không đánh dấu đáp án đúng">
+                                    <i class="fa fa-file-pdf-o"></i> XUẤT FILE PDF
                                 </button>
 
-                                <button type="button"
-                                        class="btn btn-success mcq-all-answer-print-btn" style="margin-left: 8px;"
-                                        ng-if="vm.showAllMcqQuestions"
-                                        ng-click="vm.printAllMcqAnswersPdf()"
-                                        ng-disabled="!vm.allMcqQuestions || vm.allMcqQuestions.length <= 0"
-                                        title="Xuất toàn bộ câu hỏi, toàn bộ phương án và đánh dấu đáp án đúng">
-                                    <i class="fa fa-check-circle"></i>
-                                    XUẤT ĐÁP ÁN
+                                <button type="button" class="btn btn-success mcq-all-answer-print-btn" style="margin-left: 8px;" ng-if="vm.showAllMcqQuestions" ng-click="vm.printAllMcqAnswersPdf()" ng-disabled="!vm.allMcqQuestions || vm.allMcqQuestions.length <= 0" title="Xuất toàn bộ câu hỏi, toàn bộ phương án và đánh dấu đáp án đúng">
+                                    <i class="fa fa-check-circle"></i> XUẤT ĐÁP ÁN
                                 </button>
 
-                                <button type="button"
-                                        class="btn btn-primary mcq-all-toggle-btn"
-                                        ng-click="vm.toggleAllMcqQuestions()"
-                                        ng-disabled="!vm.rawQuestions || vm.rawQuestions.length <= 0"
-                                        aria-controls="mcq-all-questions-list"
-                                        aria-expanded="{{vm.showAllMcqQuestions}}">
-                                    <i class="fa"
-                                            ng-class="vm.showAllMcqQuestions ? 'fa-eye-slash' : 'fa-eye'"></i>
-                                    {{vm.showAllMcqQuestions ? 'ẨN TẤT CẢ' : 'HIỂN THỊ TẤT CẢ'}}
+                                <button type="button" class="btn btn-primary mcq-all-toggle-btn" ng-click="vm.toggleAllMcqQuestions()" ng-disabled="!vm.rawQuestions || vm.rawQuestions.length <= 0" aria-controls="mcq-all-questions-list" aria-expanded="{{vm.showAllMcqQuestions}}">
+                                    <i class="fa" ng-class="vm.showAllMcqQuestions ? 'fa-eye-slash' : 'fa-eye'"></i> {{vm.showAllMcqQuestions ? 'ẨN TẤT CẢ' : 'HIỂN THỊ TẤT CẢ'}}
                                 </button>
                             </div>
                         </div>
 
-                        <div id="mcq-all-questions-list"
-                                class="mcq-all-questions-list"
-                                ng-if="vm.showAllMcqQuestions">
+                        <div id="mcq-all-questions-list" class="mcq-all-questions-list" ng-if="vm.showAllMcqQuestions">
 
                             <!-- Chỉ phần bên trong div này được đưa sang cửa sổ in PDF. -->
                             <div id="mcq-all-questions-print-content">
-                                <div class="alert mcq-all-status"
-                                        ng-class="vm.allMcqWasShuffled ? 'alert-warning' : 'alert-info'">
-                                    <div class="alert mcq-all-status"
-                                            ng-class="vm.allMcqAnswersWereShuffled
+                                <div class="alert mcq-all-status" ng-class="vm.allMcqWasShuffled ? 'alert-warning' : 'alert-info'">
+                                    <div class="alert mcq-all-status" ng-class="vm.allMcqAnswersWereShuffled
                                         ? 'alert-warning'
                                         : 'alert-info'">
 
-                                        <strong ng-if="vm.allMcqAnswersWereShuffled">
-                                            🔀 Đã trộn thứ tự câu hỏi và vị trí các câu trả lời.
-                                        </strong>
+                                        <strong ng-if="vm.allMcqAnswersWereShuffled"> 🔀 Đã trộn thứ tự câu hỏi và vị trí các câu trả lời. </strong>
 
-                                        <strong ng-if="!vm.allMcqAnswersWereShuffled">
-                                            🔀 Đã trộn thứ tự câu hỏi nhưng giữ nguyên vị trí các câu trả lời.
-                                        </strong>
+                                        <strong ng-if="!vm.allMcqAnswersWereShuffled"> 🔀 Đã trộn thứ tự câu hỏi nhưng giữ nguyên vị trí các câu trả lời. </strong>
                                     </div>
-                                    <strong ng-if="!vm.allMcqWasShuffled">
-                                        📋 Đang giữ nguyên thứ tự câu hỏi và phương án ban đầu.
-                                    </strong>
-                                    <strong ng-if="vm.allMcqShowUnderFourAnswers">
-                                        👁️ Đang hiển thị đáp án của các câu có dưới 4 đáp án.
-                                    </strong>
-                                    <strong ng-if="!vm.allMcqShowUnderFourAnswers">
-                                        🙈 Đã ẩn đáp án của các câu có dưới 4 đáp án.
-                                    </strong>
+                                    <strong ng-if="!vm.allMcqWasShuffled"> 📋 Đang giữ nguyên thứ tự câu hỏi và phương án ban đầu. </strong>
+                                    <strong ng-if="vm.allMcqShowUnderFourAnswers"> 👁️ Đang hiển thị đáp án của các câu có dưới 4 đáp án. </strong>
+                                    <strong ng-if="!vm.allMcqShowUnderFourAnswers"> 🙈 Đã ẩn đáp án của các câu có dưới 4 đáp án. </strong>
                                     <span>
                                         Tổng cộng: {{vm.allMcqQuestions.length}} câu.
                                     </span>
                                 </div>
 
-                                <div class="mcq-all-empty alert alert-info"
-                                        ng-if="!vm.allMcqQuestions || vm.allMcqQuestions.length <= 0">
+                                <div class="mcq-all-empty alert alert-info" ng-if="!vm.allMcqQuestions || vm.allMcqQuestions.length <= 0">
                                     Không có câu hỏi MCQ để hiển thị.
                                 </div>
 
-                                <div class="mcq-all-question-card"
-                                        ng-repeat="allQuestion in vm.allMcqQuestions track by $index">
+                                <div class="mcq-all-question-card" ng-repeat="allQuestion in vm.allMcqQuestions track by $index">
 
                                     <div class="mcq-all-question-header">
                                         <span class="mcq-all-question-number">
@@ -1814,32 +1498,21 @@
                                         </span>
                                     </div>
 
-                                    <div class="mcq-all-passage"
-                                            ng-bind-html="allQuestion.question">
-                                    </div>
+                                    <div class="mcq-all-passage" ng-bind-html="allQuestion.question"></div>
 
-                                    <div class="mcq-all-question-text"
-                                            ng-if="allQuestion.pronounce">
+                                    <div class="mcq-all-question-text" ng-if="allQuestion.pronounce">
                                         {{allQuestion.pronounce}}
                                     </div>
 
-                                    <div class="mcq-all-generated-note"
-                                            ng-if="allQuestion.mcqGeneratedTrueFalse">
-                                        ☑️ Câu này có dưới 4 phương án nên đã được chuyển
-                                        thành lựa chọn Đúng hoặc Sai.
+                                    <div class="mcq-all-generated-note" ng-if="allQuestion.mcqGeneratedTrueFalse">
+                                        ☑️ Câu này có dưới 4 phương án nên đã được chuyển thành lựa chọn Đúng hoặc Sai.
                                     </div>
 
-                                    <div class="mcq-all-answer-list"
-                                            ng-if="allQuestion.mcqAnswers &&
+                                    <div class="mcq-all-answer-list" ng-if="allQuestion.mcqAnswers &&
                                             allQuestion.mcqAnswers.length > 0">
 
 
-                                        <button type="button"
-                                                class="mcq-all-answer-item mcq-all-answer-button"
-                                                ng-repeat="answer in allQuestion.mcqAnswers track by $index"
-                                                ng-click="vm.answerAllMcqQuestion(allQuestion, answer)"
-                                                ng-disabled="allQuestion.mcqAnswered === true"
-                                                ng-class="{
+                                        <button type="button" class="mcq-all-answer-item mcq-all-answer-button" ng-repeat="answer in allQuestion.mcqAnswers track by $index" ng-click="vm.answerAllMcqQuestion(allQuestion, answer)" ng-disabled="allQuestion.mcqAnswered === true" ng-class="{
             'mcq-all-answer-selected':
                 answer.chosen === true,
 
@@ -1863,12 +1536,10 @@
         {{answer.text}}
     </span>
 
-    <span class="mcq-all-answer-badges"
-            ng-if="allQuestion.mcqAnswered === true">
+    <span class="mcq-all-answer-badges" ng-if="allQuestion.mcqAnswered === true">
 
         <!-- Chỉ đánh dấu đáp án người dùng vừa chọn -->
-        <span class="mcq-all-selected-badge"
-                ng-if="answer.chosen === true">
+        <span class="mcq-all-selected-badge" ng-if="answer.chosen === true">
             Bạn chọn
         </span>
 
@@ -1876,8 +1547,7 @@
             Chỉ hiện nhãn trên phương án đối với câu có từ 4 đáp án.
             Câu Đúng/Sai không hiện nhãn đáp án đúng tại A/B.
         -->
-        <span class="mcq-all-correct-badge"
-                ng-if="
+        <span class="mcq-all-correct-badge" ng-if="
                 allQuestion.mcqGeneratedTrueFalse !== true &&
                 answer.correct === true
               ">
@@ -1885,8 +1555,7 @@
         </span>
     </span>
                                         </button>
-                                        <div class="mcq-all-original-correct-answer"
-                                                ng-if="
+                                        <div class="mcq-all-original-correct-answer" ng-if="
         allQuestion.mcqGeneratedTrueFalse === true &&
         allQuestion.mcqAnswered === true
      ">
@@ -1895,13 +1564,11 @@
                                                 ✅ Đáp án đúng của câu hỏi:
                                             </div>
 
-                                            <div class="mcq-all-original-correct-content"
-                                                    ng-repeat="correctText in allQuestion.mcqCorrectAnswerTexts track by $index">
+                                            <div class="mcq-all-original-correct-content" ng-repeat="correctText in allQuestion.mcqCorrectAnswerTexts track by $index">
                                                 {{correctText}}
                                             </div>
 
-                                            <div class="mcq-all-original-correct-empty"
-                                                    ng-if="
+                                            <div class="mcq-all-original-correct-empty" ng-if="
             !allQuestion.mcqCorrectAnswerTexts ||
             allQuestion.mcqCorrectAnswerTexts.length === 0
          ">
@@ -1914,12 +1581,10 @@
                                     Chỉ hiện thông báo đúng/sai với câu có từ 4 phương án trở lên.
                                     Câu Đúng/Sai tự sinh sẽ không hiện dòng thông báo phía dưới.
                                     -->
-                                                                        <div class="mcq-all-answer-result"
-                                                                                ng-if="
+                                    <div class="mcq-all-answer-result" ng-if="
                                             allQuestion.mcqAnswered === true &&
                                             allQuestion.mcqGeneratedTrueFalse !== true
-                                         "
-                                                                                ng-class="{
+                                         " ng-class="{
                                              'mcq-all-result-correct':
                                                  allQuestion.mcqResult === 'Correct',
 
@@ -1941,35 +1606,28 @@
                     </div>
                 </div>
 
-                <div id="guess-word-game-top"
-                        ng-if="vm.mode.id == 14"
-                        class="row gaps3-cate-theme mcq-mode-wrap guess-word-mode-wrap">
+                <div id="guess-word-game-top" ng-if="vm.mode.id == 14" class="row gaps3-cate-theme mcq-mode-wrap guess-word-mode-wrap">
 
                     <div class="row">
 
                         <div id="guess-word-question-area" class="col-xs-12 col-md-9" style="padding-left: 20px;">
-                            <div class="gaps3-main-card"  >
+                            <div class="gaps3-main-card">
 
                                 <div class="row margin-bottom-10" ng-if="vm.showMcqQuestion">
                                     <div class="col-md-12 text-center">
 
-                                        <div ng-if="vm.currentCard.pronounce"
-                                                class="mcq-question-text"
-                                                ng-style="{
+                                        <div ng-if="vm.currentCard.pronounce" class="mcq-question-text" ng-style="{
                                                 'font-size': vm.mcqQuestionFontSize + 'px'
                                              }">
                                             {{vm.currentCard.pronounce}}
                                         </div>
 
-                                        <div ng-if="vm.currentCard.mcqResult"
-                                                style="margin-top: 10px; font-size: 22px;">
-                                            <span ng-if="vm.currentCard.mcqResult == 'Correct'"
-                                                    style="color: green;">
+                                        <div ng-if="vm.currentCard.mcqResult" style="margin-top: 10px; font-size: 22px;">
+                                            <span ng-if="vm.currentCard.mcqResult == 'Correct'" style="color: green;">
                                                 ✅ Correct
                                             </span>
 
-                                            <span ng-if="vm.currentCard.mcqResult == 'Wrong'"
-                                                    style="color: red;">
+                                            <span ng-if="vm.currentCard.mcqResult == 'Wrong'" style="color: red;">
                                                 ❌ Wrong
                                             </span>
                                         </div>
@@ -1977,54 +1635,32 @@
                                 </div>
 
                                 <div class="row margin-top-10" ng-if="vm.showMcqQuestion">
-                                    <div class="col-xs-12 col-sm-4 col-md-4 margin-bottom-15"
-                                            ng-repeat="answer in vm.currentCard.mcqAnswers track by $index">
+                                    <div class="col-xs-12 col-sm-4 col-md-4 margin-bottom-15" ng-repeat="answer in vm.currentCard.mcqAnswers track by $index">
 
-                                        <button class="btn btn-brown button-screen-pre-wrap mcq-answer-btn guess-word-answer-btn"
-                                                ng-attr-style="height: {{vm.guessWordAnswerHeight}}px !important; min-height: {{vm.guessWordAnswerHeight}}px !important; max-height: {{vm.guessWordAnswerHeight}}px !important;"
-                                                ng-click="vm.revealMcqChoice(answer)"
-                                                ng-class="{
+                                        <button class="btn btn-brown button-screen-pre-wrap mcq-answer-btn guess-word-answer-btn" ng-attr-style="height: {{vm.guessWordAnswerHeight}}px !important; min-height: {{vm.guessWordAnswerHeight}}px !important; max-height: {{vm.guessWordAnswerHeight}}px !important;" ng-click="vm.revealMcqChoice(answer)" ng-class="{
                                                         'mcq-answer-correct': answer.showCorrect === true && !vm.currentCard.mcqRevealMode,
                                                         'mcq-answer-wrong': answer.chosen === true && answer.correct !== true && !vm.currentCard.mcqRevealMode,
                                                         'mcq-answer-reveal-correct': vm.currentCard.mcqRevealMode === true && answer.correct === true
                                                     }">
 
-                                                <span class="mcq-answer-text"
-                                                        ng-style="{'font-size': vm.mcqAnswerFontSize + 'px'}">
+                                                <span class="mcq-answer-text" ng-style="{'font-size': vm.mcqAnswerFontSize + 'px'}">
                                                     {{answer.text}}
                                                 </span>
                                         </button>
                                     </div>
-                                    <small class="mcq-mother-tongue-small"
-                                            ng-if="vm.currentCard.mcqRevealMode === true && vm.currentCard.motherTongue"
-                                            ng-bind-html="vm.currentCard.motherTongue">
-                                    </small>
+                                    <small class="mcq-mother-tongue-small" ng-if="vm.currentCard.mcqRevealMode === true && vm.currentCard.motherTongue" ng-bind-html="vm.currentCard.motherTongue"></small>
                                 </div>
 
                                 <div class="row margin-top-20">
                                     <div class="col-md-12 text-center">
-                                        <i class="fa fa-volume-up"
-                                                ng-if="vm.isMuted === false"
-                                                ng-click="sayIt(vm.currentCard.question + '. ' + vm.currentCard.pronounce)"
-                                                title="Đọc"
-                                                style="cursor:pointer; font-size: 24px; margin-right: 10px;">
-                                        </i>
+                                        <i class="fa fa-volume-up" ng-if="vm.isMuted === false" ng-click="sayIt(vm.currentCard.question + '. ' + vm.currentCard.pronounce)" title="Đọc" style="cursor:pointer; font-size: 24px; margin-right: 10px;"> </i>
 
-                                        <i class="fa fa-stop-circle"
-                                                ng-click="shutUp()"
-                                                title="Dừng đọc"
-                                                style="cursor:pointer; font-size: 24px; margin-right: 10px; color: #d9534f;">
-                                        </i>
+                                        <i class="fa fa-stop-circle" ng-click="shutUp()" title="Dừng đọc" style="cursor:pointer; font-size: 24px; margin-right: 10px; color: #d9534f;"> </i>
 
-                                        <label for="mute-button-mcq"
-                                                ng-if="vm.isMuted === true"
-                                                class="bold">
-                                            <i class="fa-solid fa-volume-xmark"></i>
-                                        </label>
+                                        <label for="mute-button-mcq" ng-if="vm.isMuted === true" class="bold">
+                                            <i class="fa-solid fa-volume-xmark"></i> </label>
 
-                                        <input id="mute-button-mcq"
-                                                type="checkbox"
-                                                ng-model="vm.isMuted"/>
+                                        <input id="mute-button-mcq" type="checkbox" ng-model="vm.isMuted"/>
 
                                     </div>
                                 </div>
@@ -2039,69 +1675,53 @@
                                     🌈 ✨ THIẾU NHI THÁNH THỂ ✨ 🌈
                                 </div>
 
-                                <div ng-if="vm.showMcqQuestion" class="bold mcq-passage-text"
-                                        ng-style="{
+                                <div ng-if="vm.showMcqQuestion" class="bold mcq-passage-text" ng-style="{
                                     'font-size': vm.mcqPassageFontSize + 'px'
-                                    }"
-                                        ng-bind-html="vm.currentCard.question">
-                                </div>
+                                    }" ng-bind-html="vm.currentCard.question"></div>
 
                                 <div style="margin-top: 12px;">
-                                    <button class="btn btn-brown gaps3-btn"
-                                            ng-click="vm.toggleMcqQuestion()"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-brown gaps3-btn" ng-click="vm.toggleMcqQuestion()" style="margin-top: 10px;">
                                         {{ vm.showMcqQuestion ? 'Ẩn câu hỏi' : 'Hiển thị câu hỏi' }}
                                     </button>
                                 </div>
                                 <div style="margin-top: 12px;">
 
-                                    <button class="btn btn-info gaps3-btn gaps3-timer-btn timer-block"
-                                            ng-click="vm.thirtySeconds()">
+                                    <button class="btn btn-info gaps3-btn gaps3-timer-btn timer-block" ng-click="vm.thirtySeconds()">
                                         ⏳
                                         <span class="gaps3-timer-text">
                                             {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 30 ? counter + 's' : '30s'}}
                                         </span>
                                     </button>
 
-                                    <button class="btn btn-success gaps3-btn gaps3-timer-btn timer-block"
-                                            ng-click="vm.twentySeconds()"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-success gaps3-btn gaps3-timer-btn timer-block" ng-click="vm.twentySeconds()" style="margin-top: 10px;">
                                         ⚡
                                         <span class="gaps3-timer-text">
                                             {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 20 ? counter + 's' : '20s'}}
                                         </span>
                                     </button>
 
-                                    <button class="btn btn-info gaps3-btn gaps3-timer-btn timer-block"
-                                            ng-click="vm.fifteenSeconds()"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-info gaps3-btn gaps3-timer-btn timer-block" ng-click="vm.fifteenSeconds()" style="margin-top: 10px;">
                                         ⏱
                                         <span class="gaps3-timer-text">
                                             {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 15 ? counter + 's' : '15s'}}
                                         </span>
                                     </button>
 
-                                    <button class="btn btn-primary gaps3-btn gaps3-timer-btn timer-block"
-                                            ng-click="vm.tenSeconds()"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-primary gaps3-btn gaps3-timer-btn timer-block" ng-click="vm.tenSeconds()" style="margin-top: 10px;">
                                         🎯
                                         <span class="gaps3-timer-text">
                                             {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 10 ? counter + 's' : '10s'}}
                                         </span>
                                     </button>
 
-                                    <button class="btn btn-danger gaps3-btn gaps3-timer-btn timer-block"
-                                            ng-click="vm.fiveSeconds()"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-danger gaps3-btn gaps3-timer-btn timer-block" ng-click="vm.fiveSeconds()" style="margin-top: 10px;">
                                         🔥
                                         <span class="gaps3-timer-text">
                                             {{(vm.timerRunning || vm.timerPaused) && vm.lastSetCounter == 5 ? counter + 's' : '5s'}}
                                         </span>
                                     </button>
 
-                                    <button class="btn btn-warning gaps3-btn timer-block"
-                                            ng-click="refreshTimer()"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-warning gaps3-btn timer-block" ng-click="refreshTimer()" style="margin-top: 10px;">
                                         🔄 Reset
                                     </button>
 
@@ -2112,65 +1732,38 @@
                                         <strong>{{vm.currentPosition + 1}} / {{vm.questions.length}}</strong>
                                     </div>
 
-                                    <button class="btn btn-danger gaps3-btn"
-                                            ng-click="vm.showMcqAnswer()"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-danger gaps3-btn" ng-click="vm.showMcqAnswer()" style="margin-top: 10px;">
                                         🎁 Hiển thị đáp án
                                     </button>
 
                                 </div>
 
                                 <div style="margin-top: 15px;">
-                                    <button class="btn btn-default gaps3-btn"
-                                            ng-click="vm.backCard()"
-                                            ng-disabled="vm.currentPosition <= 0">
+                                    <button class="btn btn-default gaps3-btn" ng-click="vm.backCard()" ng-disabled="vm.currentPosition <= 0">
                                         ⬅ Back
                                     </button>
 
-                                    <button class="btn btn-success gaps3-btn"
-                                            ng-click="vm.nextCard()"
-                                            ng-disabled="vm.currentPosition + 1 >= vm.questions.length"
-                                            style="margin-top: 10px;">
+                                    <button class="btn btn-success gaps3-btn" ng-click="vm.nextCard()" ng-disabled="vm.currentPosition + 1 >= vm.questions.length" style="margin-top: 10px;">
                                         Next ➡
                                     </button>
                                 </div>
                                 <div class="col-md-12 text-center margin-bottom-10 mcq-font-control">
                                     <label class="bold">Đoạn lớn:</label>
-                                    <input type="number"
-                                            min="20"
-                                            max="120"
-                                            class="input-underline-only-score mcq-font-input"
-                                            ng-model="vm.mcqPassageFontSize"
-                                            ng-change="vm.changeMcqFontSize()">
+                                    <input type="number" min="20" max="120" class="input-underline-only-score mcq-font-input" ng-model="vm.mcqPassageFontSize" ng-change="vm.changeMcqFontSize()">
 
                                     &ensp;&ensp;
 
                                     <label class="bold">Câu hỏi:</label>
-                                    <input type="number"
-                                            min="12"
-                                            max="80"
-                                            class="input-underline-only-score mcq-font-input"
-                                            ng-model="vm.mcqQuestionFontSize"
-                                            ng-change="vm.changeMcqFontSize()">
+                                    <input type="number" min="12" max="80" class="input-underline-only-score mcq-font-input" ng-model="vm.mcqQuestionFontSize" ng-change="vm.changeMcqFontSize()">
 
                                     &ensp;&ensp;
 
                                     <label class="bold">Đáp án:</label>
-                                    <input type="number"
-                                            min="12"
-                                            max="80"
-                                            class="input-underline-only-score mcq-font-input"
-                                            ng-model="vm.mcqAnswerFontSize"
-                                            ng-change="vm.changeMcqFontSize()">
+                                    <input type="number" min="12" max="80" class="input-underline-only-score mcq-font-input" ng-model="vm.mcqAnswerFontSize" ng-change="vm.changeMcqFontSize()">
 
                                     <span>
                                         Chiều cao:
-                                        <input type="number"
-                                                ng-model="vm.guessWordAnswerHeight"
-                                                min="80"
-                                                max="250"
-                                                class="input-underline-only-score mcq-font-input"
-                                                style="width: 60px;">
+                                        <input type="number" ng-model="vm.guessWordAnswerHeight" min="80" max="250" class="input-underline-only-score mcq-font-input" style="width: 60px;">
                                     </span>
 
                                 </div>
@@ -2258,8 +1851,7 @@
                             <div class="col-md-2">
 
                                 <i ng-show="item.showDetail == false" class="fa-solid fa-circle-info" style="cursor:pointer;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.showDetailFlashCard(item)"></i>
-                                <i ng-show="item.showDetail == true" class="fa-solid fa-circle-info" style="cursor:pointer;color: gold;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.hideDetailFlashCard(item)"></i>
-                                &nbsp; &nbsp;<i class="fa fa-volume-up" style="cursor:pointer;font-size: 18px; padding-top: 12px" ng-click="sayIt(item.question)" style=""></i>
+                                <i ng-show="item.showDetail == true" class="fa-solid fa-circle-info" style="cursor:pointer;color: gold;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.hideDetailFlashCard(item)"></i> &nbsp; &nbsp;<i class="fa fa-volume-up" style="cursor:pointer;font-size: 18px; padding-top: 12px" ng-click="sayIt(item.question)" style=""></i>
                             </div>
 
                             <div class="col-md-12" ng-if="item.showDetail == true">
@@ -2341,17 +1933,11 @@
                     <div class="col-md-4">
                         <div class="option">
 
-                            <button
-                                    class="btn"
-                                    ng-class="vm.speechLang === 'en-US' ? 'btn-primary' : 'btn-default'"
-                                    ng-click="vm.speechLang='en-US'">
+                            <button class="btn" ng-class="vm.speechLang === 'en-US' ? 'btn-primary' : 'btn-default'" ng-click="vm.speechLang='en-US'">
                                 EN
                             </button>
 
-                            <button
-                                    class="btn"
-                                    ng-class="vm.speechLang === 'vi-VN' ? 'btn-primary' : 'btn-default'"
-                                    ng-click="vm.speechLang='vi-VN'">
+                            <button class="btn" ng-class="vm.speechLang === 'vi-VN' ? 'btn-primary' : 'btn-default'" ng-click="vm.speechLang='vi-VN'">
                                 VI
                             </button>
                         </div>
@@ -2523,8 +2109,7 @@
             <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
 
             <h2 class="modal-title bold">
-                <i class="fa fa-reward"></i> Congratulations
-            </h2>
+                <i class="fa fa-reward"></i> Congratulations </h2>
 
             <div class="reward-time-buttons">
                 <button class="btn btn-danger btn-sm" ng-click="vm.fiveSeconds()">
@@ -2993,15 +2578,14 @@
 
 <style>
     .wrap-total {
-        border-radius:20px;
-        background:
-                linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)),
-                linear-gradient(90deg, rgba(80,180,255,.08), rgba(255,255,255,.02) 50%, rgba(150,255,100,.08));
-        border:1px solid rgba(255,255,255,.08);
-        box-shadow:
-                0 10px 24px rgba(0,0,0,.22),
-                inset 0 1px 0 rgba(255,255,255,.06);
+        border-radius: 20px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02)),
+        linear-gradient(90deg, rgba(80, 180, 255, .08), rgba(255, 255, 255, .02) 50%, rgba(150, 255, 100, .08));
+        border: 1px solid rgba(255, 255, 255, .08);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, .22),
+        inset 0 1px 0 rgba(255, 255, 255, .06);
     }
+
     .beam-war-wrap {
         position: relative;
         max-width: 1120px;
@@ -3581,13 +3165,13 @@
     }
 
     /*aaaaaaaaa*/
-    .beam-control-bar{
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        gap:14px;
-        margin-bottom:12px;
-        padding:14px 18px;
+    .beam-control-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        margin-bottom: 12px;
+        padding: 14px 18px;
         /*border-radius:20px;*/
         /*background:*/
         /*linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)),*/
@@ -3596,808 +3180,747 @@
         /*box-shadow:*/
         /*0 10px 24px rgba(0,0,0,.22),*/
         /*inset 0 1px 0 rgba(255,255,255,.06);*/
-        position:relative;
-        overflow:hidden;
+        position: relative;
+        overflow: hidden;
     }
 
-    .beam-control-bar:before{
-        content:"";
-        position:absolute;
-        inset:0;
-        background:
-                radial-gradient(circle at 20% 50%, rgba(106,206,255,.10), transparent 28%),
-                radial-gradient(circle at 80% 50%, rgba(171,255,119,.10), transparent 28%);
-        pointer-events:none;
+    .beam-control-bar:before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 20% 50%, rgba(106, 206, 255, .10), transparent 28%),
+        radial-gradient(circle at 80% 50%, rgba(171, 255, 119, .10), transparent 28%);
+        pointer-events: none;
     }
 
     .beam-control-left,
-    .beam-control-right{
-        position:relative;
-        z-index:2;
-        display:flex;
-        align-items:center;
-        gap:12px;
+    .beam-control-right {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
 
-    .beam-control-label{
-        margin:0;
-        font-size:12px;
-        font-weight:900;
-        letter-spacing:1.2px;
-        text-transform:uppercase;
-        color:#eef6ff;
-        text-shadow:0 0 8px rgba(255,255,255,.15);
+    .beam-control-label {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: #eef6ff;
+        text-shadow: 0 0 8px rgba(255, 255, 255, .15);
     }
 
-    .beam-control-select{
-        min-width:88px;
-        height:40px;
-        padding:0 14px;
-        border-radius:999px;
-        border:1px solid rgba(255,255,255,.14);
-        outline:none;
-        color:#f4fbff;
-        font-weight:900;
-        background:
-                linear-gradient(180deg, rgba(22,29,48,.96), rgba(10,14,24,.96));
-        box-shadow:
-                inset 0 0 12px rgba(255,255,255,.04),
-                0 0 14px rgba(92,182,255,.08);
-        transition:all .25s ease;
-        appearance:none;
-        -webkit-appearance:none;
-        -moz-appearance:none;
-        cursor:pointer;
+    .beam-control-select {
+        min-width: 88px;
+        height: 40px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, .14);
+        outline: none;
+        color: #f4fbff;
+        font-weight: 900;
+        background: linear-gradient(180deg, rgba(22, 29, 48, .96), rgba(10, 14, 24, .96));
+        box-shadow: inset 0 0 12px rgba(255, 255, 255, .04),
+        0 0 14px rgba(92, 182, 255, .08);
+        transition: all .25s ease;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        cursor: pointer;
     }
 
     .beam-control-select:hover,
-    .beam-control-select:focus{
-        border-color:rgba(120,210,255,.45);
-        box-shadow:
-                inset 0 0 12px rgba(255,255,255,.05),
-                0 0 18px rgba(92,182,255,.18);
+    .beam-control-select:focus {
+        border-color: rgba(120, 210, 255, .45);
+        box-shadow: inset 0 0 12px rgba(255, 255, 255, .05),
+        0 0 18px rgba(92, 182, 255, .18);
     }
 
-    .beam-control-select option{
-        color:#ffffff;
-        background:#0f1626;
+    .beam-control-select option {
+        color: #ffffff;
+        background: #0f1626;
     }
 
-    .beam-control-btn{
-        display:inline-flex !important;
-        align-items:center;
-        justify-content:center;
-        width:52px;
-        height:52px;
-        border-radius:50% !important;
-        border:1px solid rgba(255,255,255,.14) !important;
-        color:#eef6ff !important;
-        font-weight:900;
-        font-size:16px;
-        background:
-                linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02)),
-                linear-gradient(180deg, rgba(20,27,45,.98), rgba(9,13,24,.98)) !important;
-        box-shadow:
-                0 8px 18px rgba(0,0,0,.28),
-                inset 0 1px 0 rgba(255,255,255,.07);
-        transition:
-                transform .18s ease,
-                box-shadow .25s ease,
-                border-color .25s ease;
-        line-height:1 !important;
-        padding:0 !important;
+    .beam-control-btn {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 52px;
+        height: 52px;
+        border-radius: 50% !important;
+        border: 1px solid rgba(255, 255, 255, .14) !important;
+        color: #eef6ff !important;
+        font-weight: 900;
+        font-size: 16px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .02)),
+        linear-gradient(180deg, rgba(20, 27, 45, .98), rgba(9, 13, 24, .98)) !important;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, .28),
+        inset 0 1px 0 rgba(255, 255, 255, .07);
+        transition: transform .18s ease,
+        box-shadow .25s ease,
+        border-color .25s ease;
+        line-height: 1 !important;
+        padding: 0 !important;
     }
 
-    .beam-control-btn:hover{
-        transform:translateY(-1px) scale(1.03);
-        border-color:rgba(255,255,255,.24) !important;
-        box-shadow:
-                0 10px 24px rgba(0,0,0,.34),
-                0 0 16px rgba(255,255,255,.08),
-                inset 0 1px 0 rgba(255,255,255,.09);
+    .beam-control-btn:hover {
+        transform: translateY(-1px) scale(1.03);
+        border-color: rgba(255, 255, 255, .24) !important;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, .34),
+        0 0 16px rgba(255, 255, 255, .08),
+        inset 0 1px 0 rgba(255, 255, 255, .09);
     }
 
-    .beam-control-btn:active{
-        transform:scale(.97);
+    .beam-control-btn:active {
+        transform: scale(.97);
     }
 
-    .beam-control-btn-timer{
-        box-shadow:
-                0 8px 18px rgba(0,0,0,.28),
-                0 0 14px rgba(90,190,255,.16),
-                inset 0 1px 0 rgba(255,255,255,.07);
+    .beam-control-btn-timer {
+        box-shadow: 0 8px 18px rgba(0, 0, 0, .28),
+        0 0 14px rgba(90, 190, 255, .16),
+        inset 0 1px 0 rgba(255, 255, 255, .07);
     }
 
-    .beam-control-btn-refresh{
-        box-shadow:
-                0 8px 18px rgba(0,0,0,.28),
-                0 0 14px rgba(150,255,100,.14),
-                inset 0 1px 0 rgba(255,255,255,.07);
+    .beam-control-btn-refresh {
+        box-shadow: 0 8px 18px rgba(0, 0, 0, .28),
+        0 0 14px rgba(150, 255, 100, .14),
+        inset 0 1px 0 rgba(255, 255, 255, .07);
     }
 
-    .beam-control-btn-refresh i{
-        font-size:18px;
+    .beam-control-btn-refresh i {
+        font-size: 18px;
     }
 
-    @media (max-width: 768px){
-        .beam-control-bar{
-            flex-direction:column;
-            align-items:stretch;
-            padding:12px;
+    @media (max-width: 768px) {
+        .beam-control-bar {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 12px;
         }
 
         .beam-control-left,
-        .beam-control-right{
-            justify-content:center;
+        .beam-control-right {
+            justify-content: center;
         }
     }
 
     /* ===== STATS ===== */
-    .beam-stat-card{
-        position:relative;
-        margin-top:8px;
-        padding:14px 18px;
-        border-radius:20px;
-        overflow:hidden;
-        background:
-                linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)),
-                linear-gradient(180deg, rgba(15,20,34,.98), rgba(8,11,22,.98));
-        border:1px solid rgba(255,255,255,.08);
-        box-shadow:
-                0 10px 24px rgba(0,0,0,.22),
-                inset 0 1px 0 rgba(255,255,255,.06);
+    .beam-stat-card {
+        position: relative;
+        margin-top: 8px;
+        padding: 14px 18px;
+        border-radius: 20px;
+        overflow: hidden;
+        background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02)),
+        linear-gradient(180deg, rgba(15, 20, 34, .98), rgba(8, 11, 22, .98));
+        border: 1px solid rgba(255, 255, 255, .08);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, .22),
+        inset 0 1px 0 rgba(255, 255, 255, .06);
     }
 
-    .beam-stat-card:before{
-        content:"";
-        position:absolute;
-        inset:0;
-        pointer-events:none;
-        opacity:.95;
+    .beam-stat-card:before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: .95;
     }
 
-    .beam-stat-card-left:before{
-        background: radial-gradient(circle at 18% 50%, rgba(102,208,255,.14), transparent 32%);
+    .beam-stat-card-left:before {
+        background: radial-gradient(circle at 18% 50%, rgba(102, 208, 255, .14), transparent 32%);
     }
 
-    .beam-stat-card-right:before{
-        background: radial-gradient(circle at 82% 50%, rgba(156,255,97,.14), transparent 32%);
+    .beam-stat-card-right:before {
+        background: radial-gradient(circle at 82% 50%, rgba(156, 255, 97, .14), transparent 32%);
     }
 
-    .beam-stat-title{
-        position:relative;
-        z-index:1;
-        margin-bottom:8px;
-        font-size:16px;
-        font-weight:900;
-        letter-spacing:1px;
+    .beam-stat-title {
+        position: relative;
+        z-index: 1;
+        margin-bottom: 8px;
+        font-size: 16px;
+        font-weight: 900;
+        letter-spacing: 1px;
     }
 
-    .beam-stat-card-left .beam-stat-title{
-        color:#a9e3ff;
-        text-shadow:0 0 12px rgba(102,208,255,.25);
+    .beam-stat-card-left .beam-stat-title {
+        color: #a9e3ff;
+        text-shadow: 0 0 12px rgba(102, 208, 255, .25);
     }
 
-    .beam-stat-card-right .beam-stat-title{
-        color:#d0ffad;
-        text-shadow:0 0 12px rgba(156,255,97,.25);
+    .beam-stat-card-right .beam-stat-title {
+        color: #d0ffad;
+        text-shadow: 0 0 12px rgba(156, 255, 97, .25);
     }
 
-    .beam-stat-line{
-        position:relative;
-        z-index:1;
-        display:flex;
-        gap:10px;
-        flex-wrap:wrap;
-        justify-content:center;
+    .beam-stat-line {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
     }
 
-    .beam-stat-line span{
-        padding:7px 12px;
-        border-radius:999px;
-        font-size:12px;
-        font-weight:800;
-        letter-spacing:.6px;
-        color:#eef6ff;
-        background:rgba(255,255,255,.05);
-        border:1px solid rgba(255,255,255,.08);
-        box-shadow:inset 0 0 10px rgba(255,255,255,.03);
+    .beam-stat-line span {
+        padding: 7px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .6px;
+        color: #eef6ff;
+        background: rgba(255, 255, 255, .05);
+        border: 1px solid rgba(255, 255, 255, .08);
+        box-shadow: inset 0 0 10px rgba(255, 255, 255, .03);
     }
 
     /* ===== PLAYER ZONE ===== */
-    .beam-player-zone{
-        position:relative;
-        padding-top:14px;
-        padding-bottom:16px;
-        border-radius:26px;
+    .beam-player-zone {
+        position: relative;
+        padding-top: 14px;
+        padding-bottom: 16px;
+        border-radius: 26px;
         /*background:*/
         /*linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015)),*/
         /*linear-gradient(180deg, rgba(12,16,29,.98), rgba(7,10,20,.98));*/
-        border:1px solid rgba(255,255,255,.07);
-        box-shadow:
-                0 18px 36px rgba(0,0,0,.26),
-                inset 0 1px 0 rgba(255,255,255,.05);
-        overflow:hidden;
+        border: 1px solid rgba(255, 255, 255, .07);
+        box-shadow: 0 18px 36px rgba(0, 0, 0, .26),
+        inset 0 1px 0 rgba(255, 255, 255, .05);
+        overflow: hidden;
     }
 
-    .beam-player-zone:before{
-        content:"";
-        position:absolute;
-        inset:0;
-        pointer-events:none;
+    .beam-player-zone:before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
     }
 
-    .beam-player-zone-left:before{
-        background:
-                radial-gradient(circle at 20% 12%, rgba(102,208,255,.10), transparent 30%),
-                radial-gradient(circle at 30% 70%, rgba(102,208,255,.06), transparent 35%);
+    .beam-player-zone-left:before {
+        background: radial-gradient(circle at 20% 12%, rgba(102, 208, 255, .10), transparent 30%),
+        radial-gradient(circle at 30% 70%, rgba(102, 208, 255, .06), transparent 35%);
     }
 
-    .beam-player-zone-right:before{
-        background:
-                radial-gradient(circle at 80% 12%, rgba(156,255,97,.10), transparent 30%),
-                radial-gradient(circle at 70% 70%, rgba(156,255,97,.06), transparent 35%);
+    .beam-player-zone-right:before {
+        background: radial-gradient(circle at 80% 12%, rgba(156, 255, 97, .10), transparent 30%),
+        radial-gradient(circle at 70% 70%, rgba(156, 255, 97, .06), transparent 35%);
     }
 
     /* ===== QUESTION CARD ===== */
-    .beam-question-card{
-        border-radius:24px !important;
-        overflow:hidden;
-        box-shadow:
-                0 18px 32px rgba(0,0,0,.30),
-                inset 0 1px 0 rgba(255,255,255,.06);
+    .beam-question-card {
+        border-radius: 24px !important;
+        overflow: hidden;
+        box-shadow: 0 18px 32px rgba(0, 0, 0, .30),
+        inset 0 1px 0 rgba(255, 255, 255, .06);
     }
 
-    .beam-question-card-gold{
-        box-shadow:
-                0 0 12px rgba(255, 215, 0, .35),
-                0 0 28px rgba(255, 215, 0, .28),
-                0 0 48px rgba(255, 193, 7, .18) !important;
+    .beam-question-card-gold {
+        box-shadow: 0 0 12px rgba(255, 215, 0, .35),
+        0 0 28px rgba(255, 215, 0, .28),
+        0 0 48px rgba(255, 193, 7, .18) !important;
         animation: beamGoldPulse 1.8s ease-in-out infinite;
     }
 
-    .beam-question-card-gold .beam-question-face{
+    .beam-question-card-gold .beam-question-face {
         border-color: rgba(255, 215, 0, .45) !important;
-        box-shadow:
-                inset 0 0 24px rgba(255, 215, 0, .10),
-                0 0 22px rgba(255, 215, 0, .12);
+        box-shadow: inset 0 0 24px rgba(255, 215, 0, .10),
+        0 0 22px rgba(255, 215, 0, .12);
     }
 
-    .beam-question-card-red{
-        box-shadow:
-                0 0 12px rgba(255, 77, 77, .35),
-                0 0 28px rgba(255, 77, 77, .28),
-                0 0 48px rgba(255, 0, 0, .18) !important;
+    .beam-question-card-red {
+        box-shadow: 0 0 12px rgba(255, 77, 77, .35),
+        0 0 28px rgba(255, 77, 77, .28),
+        0 0 48px rgba(255, 0, 0, .18) !important;
         animation: beamRedPulse 1.8s ease-in-out infinite;
     }
 
-    .beam-question-card-red .beam-question-face{
+    .beam-question-card-red .beam-question-face {
         border-color: rgba(255, 90, 90, .42) !important;
-        box-shadow:
-                inset 0 0 24px rgba(255, 77, 77, .10),
-                0 0 22px rgba(255, 77, 77, .12);
+        box-shadow: inset 0 0 24px rgba(255, 77, 77, .10),
+        0 0 22px rgba(255, 77, 77, .12);
     }
 
-    @keyframes beamGoldPulse{
-        0%,100%{
-            box-shadow:
-                    0 0 10px rgba(255, 215, 0, .22),
-                    0 0 24px rgba(255, 215, 0, .18),
-                    0 0 40px rgba(255, 193, 7, .10);
+    @keyframes beamGoldPulse {
+        0%, 100% {
+            box-shadow: 0 0 10px rgba(255, 215, 0, .22),
+            0 0 24px rgba(255, 215, 0, .18),
+            0 0 40px rgba(255, 193, 7, .10);
         }
-        50%{
-            box-shadow:
-                    0 0 16px rgba(255, 215, 0, .45),
-                    0 0 36px rgba(255, 215, 0, .34),
-                    0 0 58px rgba(255, 193, 7, .22);
+        50% {
+            box-shadow: 0 0 16px rgba(255, 215, 0, .45),
+            0 0 36px rgba(255, 215, 0, .34),
+            0 0 58px rgba(255, 193, 7, .22);
         }
     }
 
-    @keyframes beamRedPulse{
-        0%,100%{
-            box-shadow:
-                    0 0 10px rgba(255, 77, 77, .22),
-                    0 0 24px rgba(255, 77, 77, .18),
-                    0 0 40px rgba(255, 0, 0, .10);
+    @keyframes beamRedPulse {
+        0%, 100% {
+            box-shadow: 0 0 10px rgba(255, 77, 77, .22),
+            0 0 24px rgba(255, 77, 77, .18),
+            0 0 40px rgba(255, 0, 0, .10);
         }
-        50%{
-            box-shadow:
-                    0 0 16px rgba(255, 77, 77, .45),
-                    0 0 36px rgba(255, 77, 77, .34),
-                    0 0 58px rgba(255, 0, 0, .22);
+        50% {
+            box-shadow: 0 0 16px rgba(255, 77, 77, .45),
+            0 0 36px rgba(255, 77, 77, .34),
+            0 0 58px rgba(255, 0, 0, .22);
         }
     }
 
-    .beam-question-face{
-        border-radius:24px !important;
-        border:1px solid rgba(255,255,255,.08);
-        box-shadow:
-                inset 0 1px 0 rgba(255,255,255,.06),
-                inset 0 -24px 40px rgba(0,0,0,.18);
+    .beam-question-face {
+        border-radius: 24px !important;
+        border: 1px solid rgba(255, 255, 255, .08);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06),
+        inset 0 -24px 40px rgba(0, 0, 0, .18);
     }
 
-    .beam-question-front{
-        background:
-                radial-gradient(circle at 30% 20%, rgba(255,255,255,.08), transparent 28%),
-                linear-gradient(180deg, rgba(16,20,35,.98), rgba(8,11,22,.98)) !important;
+    .beam-question-front {
+        background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, .08), transparent 28%),
+        linear-gradient(180deg, rgba(16, 20, 35, .98), rgba(8, 11, 22, .98)) !important;
     }
 
-    .beam-question-back{
-        background:
-                radial-gradient(circle at 70% 25%, rgba(255,255,255,.08), transparent 28%),
-                linear-gradient(180deg, rgba(18,24,40,.98), rgba(8,11,22,.98)) !important;
+    .beam-question-back {
+        background: radial-gradient(circle at 70% 25%, rgba(255, 255, 255, .08), transparent 28%),
+        linear-gradient(180deg, rgba(18, 24, 40, .98), rgba(8, 11, 22, .98)) !important;
     }
 
-    .beam-question-face h2{
-        color:#eef6ff;
-        text-shadow:0 0 10px rgba(255,255,255,.08);
-        padding:18px;
+    .beam-question-face h2 {
+        color: #eef6ff;
+        text-shadow: 0 0 10px rgba(255, 255, 255, .08);
+        padding: 18px;
     }
 
-    .beam-question-face small{
-        color:#cfe6ff !important;
-        opacity:.92;
+    .beam-question-face small {
+        color: #cfe6ff !important;
+        opacity: .92;
     }
 
     /* ===== QUESTION CARD COLOR BY SIDE ===== */
 
     /* base chung cho cả 2 mặt */
-    .beam-question-face{
+    .beam-question-face {
         position: relative;
         overflow: hidden;
         border-radius: 22px !important;
-        border: 1px solid rgba(255,255,255,.10);
-        box-shadow:
-                0 14px 34px rgba(0,0,0,.26),
-                inset 0 1px 0 rgba(255,255,255,.06),
-                inset 0 0 26px rgba(255,255,255,.03);
+        border: 1px solid rgba(255, 255, 255, .10);
+        box-shadow: 0 14px 34px rgba(0, 0, 0, .26),
+        inset 0 1px 0 rgba(255, 255, 255, .06),
+        inset 0 0 26px rgba(255, 255, 255, .03);
     }
 
     /* lớp glow nền */
-    .beam-question-face:before{
-        content:"";
-        position:absolute;
-        inset:0;
-        border-radius:inherit;
-        pointer-events:none;
-        z-index:0;
-        opacity:.95;
+    .beam-question-face:before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        z-index: 0;
+        opacity: .95;
     }
 
     /* vệt sáng chạy ngang */
-    .beam-question-face:after{
-        content:"";
-        position:absolute;
-        top:-30%;
-        bottom:-30%;
-        width:42%;
-        border-radius:999px;
-        pointer-events:none;
-        z-index:1;
-        filter:blur(12px);
-        opacity:.5;
+    .beam-question-face:after {
+        content: "";
+        position: absolute;
+        top: -30%;
+        bottom: -30%;
+        width: 42%;
+        border-radius: 999px;
+        pointer-events: none;
+        z-index: 1;
+        filter: blur(12px);
+        opacity: .5;
         animation: beamCardSweep 2.6s linear infinite;
     }
 
     /* text nằm trên hiệu ứng */
-    .beam-question-face > *{
-        position:relative;
-        z-index:2;
+    .beam-question-face > * {
+        position: relative;
+        z-index: 2;
     }
 
     /* ===== LEFT SIDE / PLAYER 1 : BLUE ===== */
-    .beam-player-zone-left .beam-question-front{
-        background:
-                linear-gradient(135deg, rgba(10,34,68,.96), rgba(38,118,168,.88) 55%, rgba(205,240,248,.92));
-        border-color: rgba(120,220,255,.28);
-        box-shadow:
-                0 16px 36px rgba(0,0,0,.28),
-                0 0 22px rgba(79,190,255,.14),
-                inset 0 1px 0 rgba(255,255,255,.08),
-                inset 0 0 28px rgba(120,220,255,.05);
+    .beam-player-zone-left .beam-question-front {
+        background: linear-gradient(135deg, rgba(10, 34, 68, .96), rgba(38, 118, 168, .88) 55%, rgba(205, 240, 248, .92));
+        border-color: rgba(120, 220, 255, .28);
+        box-shadow: 0 16px 36px rgba(0, 0, 0, .28),
+        0 0 22px rgba(79, 190, 255, .14),
+        inset 0 1px 0 rgba(255, 255, 255, .08),
+        inset 0 0 28px rgba(120, 220, 255, .05);
     }
 
-    .beam-player-zone-left .beam-question-front:before{
-        background:
-                radial-gradient(circle at 16% 50%, rgba(80,220,255,.16), transparent 34%),
-                linear-gradient(90deg, rgba(80,180,255,.10), transparent 46%, rgba(220,245,255,.18));
+    .beam-player-zone-left .beam-question-front:before {
+        background: radial-gradient(circle at 16% 50%, rgba(80, 220, 255, .16), transparent 34%),
+        linear-gradient(90deg, rgba(80, 180, 255, .10), transparent 46%, rgba(220, 245, 255, .18));
     }
 
-    .beam-player-zone-left .beam-question-front:after{
+    .beam-player-zone-left .beam-question-front:after {
         background: linear-gradient(90deg,
-        rgba(70,170,255,0) 0%,
-        rgba(105,205,255,.10) 18%,
-        rgba(225,248,255,.78) 50%,
-        rgba(105,205,255,.12) 82%,
-        rgba(70,170,255,0) 100%);
-        box-shadow:
-                0 0 16px rgba(180,235,255,.24),
-                0 0 34px rgba(79,190,255,.12);
+        rgba(70, 170, 255, 0) 0%,
+        rgba(105, 205, 255, .10) 18%,
+        rgba(225, 248, 255, .78) 50%,
+        rgba(105, 205, 255, .12) 82%,
+        rgba(70, 170, 255, 0) 100%);
+        box-shadow: 0 0 16px rgba(180, 235, 255, .24),
+        0 0 34px rgba(79, 190, 255, .12);
     }
 
     /* mặt sau trái: cùng tông nhưng đậm hơn */
-    .beam-player-zone-left .beam-question-back{
-        background:
-                linear-gradient(135deg, rgba(7,24,48,.98), rgba(25,86,135,.90) 52%, rgba(145,210,225,.82));
-        border-color: rgba(120,220,255,.22);
-        box-shadow:
-                0 16px 36px rgba(0,0,0,.28),
-                0 0 18px rgba(79,190,255,.10),
-                inset 0 1px 0 rgba(255,255,255,.07),
-                inset 0 0 24px rgba(120,220,255,.04);
+    .beam-player-zone-left .beam-question-back {
+        background: linear-gradient(135deg, rgba(7, 24, 48, .98), rgba(25, 86, 135, .90) 52%, rgba(145, 210, 225, .82));
+        border-color: rgba(120, 220, 255, .22);
+        box-shadow: 0 16px 36px rgba(0, 0, 0, .28),
+        0 0 18px rgba(79, 190, 255, .10),
+        inset 0 1px 0 rgba(255, 255, 255, .07),
+        inset 0 0 24px rgba(120, 220, 255, .04);
     }
 
-    .beam-player-zone-left .beam-question-back:before{
-        background:
-                radial-gradient(circle at 20% 48%, rgba(70,210,255,.14), transparent 34%),
-                linear-gradient(90deg, rgba(58,155,255,.08), transparent 48%, rgba(200,240,255,.14));
+    .beam-player-zone-left .beam-question-back:before {
+        background: radial-gradient(circle at 20% 48%, rgba(70, 210, 255, .14), transparent 34%),
+        linear-gradient(90deg, rgba(58, 155, 255, .08), transparent 48%, rgba(200, 240, 255, .14));
     }
 
-    .beam-player-zone-left .beam-question-back:after{
+    .beam-player-zone-left .beam-question-back:after {
         background: linear-gradient(90deg,
-        rgba(70,170,255,0) 0%,
-        rgba(95,195,255,.08) 18%,
-        rgba(220,246,255,.62) 50%,
-        rgba(95,195,255,.10) 82%,
-        rgba(70,170,255,0) 100%);
+        rgba(70, 170, 255, 0) 0%,
+        rgba(95, 195, 255, .08) 18%,
+        rgba(220, 246, 255, .62) 50%,
+        rgba(95, 195, 255, .10) 82%,
+        rgba(70, 170, 255, 0) 100%);
     }
 
     /* ===== RIGHT SIDE / PLAYER 2 : GREEN ===== */
-    .beam-player-zone-right .beam-question-front{
-        background:
-                linear-gradient(135deg, rgba(236,244,222,.96), rgba(131,166,95,.90) 52%, rgba(33,80,28,.92));
-        border-color: rgba(184,255,124,.28);
-        box-shadow:
-                0 16px 36px rgba(0,0,0,.28),
-                0 0 22px rgba(150,255,92,.14),
-                inset 0 1px 0 rgba(255,255,255,.10),
-                inset 0 0 28px rgba(184,255,124,.05);
+    .beam-player-zone-right .beam-question-front {
+        background: linear-gradient(135deg, rgba(236, 244, 222, .96), rgba(131, 166, 95, .90) 52%, rgba(33, 80, 28, .92));
+        border-color: rgba(184, 255, 124, .28);
+        box-shadow: 0 16px 36px rgba(0, 0, 0, .28),
+        0 0 22px rgba(150, 255, 92, .14),
+        inset 0 1px 0 rgba(255, 255, 255, .10),
+        inset 0 0 28px rgba(184, 255, 124, .05);
     }
 
-    .beam-player-zone-right .beam-question-front:before{
-        background:
-                radial-gradient(circle at 84% 50%, rgba(195,255,140,.16), transparent 34%),
-                linear-gradient(270deg, rgba(170,255,112,.10), transparent 46%, rgba(244,255,214,.18));
+    .beam-player-zone-right .beam-question-front:before {
+        background: radial-gradient(circle at 84% 50%, rgba(195, 255, 140, .16), transparent 34%),
+        linear-gradient(270deg, rgba(170, 255, 112, .10), transparent 46%, rgba(244, 255, 214, .18));
     }
 
-    .beam-player-zone-right .beam-question-front:after{
+    .beam-player-zone-right .beam-question-front:after {
         background: linear-gradient(270deg,
-        rgba(170,255,110,0) 0%,
-        rgba(196,255,134,.10) 18%,
-        rgba(248,255,221,.76) 50%,
-        rgba(196,255,134,.12) 82%,
-        rgba(170,255,110,0) 100%);
-        box-shadow:
-                0 0 16px rgba(220,255,178,.22),
-                0 0 34px rgba(150,255,92,.12);
+        rgba(170, 255, 110, 0) 0%,
+        rgba(196, 255, 134, .10) 18%,
+        rgba(248, 255, 221, .76) 50%,
+        rgba(196, 255, 134, .12) 82%,
+        rgba(170, 255, 110, 0) 100%);
+        box-shadow: 0 0 16px rgba(220, 255, 178, .22),
+        0 0 34px rgba(150, 255, 92, .12);
     }
 
     /* mặt sau phải: cùng tông nhưng đậm hơn */
-    .beam-player-zone-right .beam-question-back{
-        background:
-                linear-gradient(135deg, rgba(223,235,200,.94), rgba(103,144,72,.90) 50%, rgba(20,62,20,.96));
-        border-color: rgba(184,255,124,.22);
-        box-shadow:
-                0 16px 36px rgba(0,0,0,.28),
-                0 0 18px rgba(150,255,92,.10),
-                inset 0 1px 0 rgba(255,255,255,.08),
-                inset 0 0 24px rgba(184,255,124,.04);
+    .beam-player-zone-right .beam-question-back {
+        background: linear-gradient(135deg, rgba(223, 235, 200, .94), rgba(103, 144, 72, .90) 50%, rgba(20, 62, 20, .96));
+        border-color: rgba(184, 255, 124, .22);
+        box-shadow: 0 16px 36px rgba(0, 0, 0, .28),
+        0 0 18px rgba(150, 255, 92, .10),
+        inset 0 1px 0 rgba(255, 255, 255, .08),
+        inset 0 0 24px rgba(184, 255, 124, .04);
     }
 
-    .beam-player-zone-right .beam-question-back:before{
-        background:
-                radial-gradient(circle at 80% 48%, rgba(195,255,140,.14), transparent 34%),
-                linear-gradient(270deg, rgba(170,255,112,.08), transparent 48%, rgba(244,255,214,.14));
+    .beam-player-zone-right .beam-question-back:before {
+        background: radial-gradient(circle at 80% 48%, rgba(195, 255, 140, .14), transparent 34%),
+        linear-gradient(270deg, rgba(170, 255, 112, .08), transparent 48%, rgba(244, 255, 214, .14));
     }
 
-    .beam-player-zone-right .beam-question-back:after{
+    .beam-player-zone-right .beam-question-back:after {
         background: linear-gradient(270deg,
-        rgba(170,255,110,0) 0%,
-        rgba(196,255,134,.08) 18%,
-        rgba(248,255,221,.60) 50%,
-        rgba(196,255,134,.10) 82%,
-        rgba(170,255,110,0) 100%);
+        rgba(170, 255, 110, 0) 0%,
+        rgba(196, 255, 134, .08) 18%,
+        rgba(248, 255, 221, .60) 50%,
+        rgba(196, 255, 134, .10) 82%,
+        rgba(170, 255, 110, 0) 100%);
     }
 
     /* chữ trên nền sáng bên phải dễ đọc hơn */
     .beam-player-zone-right .beam-question-face h2,
-    .beam-player-zone-right .beam-question-face small{
-        color:#f7fff0 !important;
-        text-shadow: 0 1px 8px rgba(0,0,0,.28);
+    .beam-player-zone-right .beam-question-face small {
+        color: #f7fff0 !important;
+        text-shadow: 0 1px 8px rgba(0, 0, 0, .28);
     }
 
     /* trái giữ tone trắng xanh */
     .beam-player-zone-left .beam-question-face h2,
-    .beam-player-zone-left .beam-question-face small{
-        color:#eefbff !important;
-        text-shadow: 0 1px 8px rgba(0,0,0,.30);
+    .beam-player-zone-left .beam-question-face small {
+        color: #eefbff !important;
+        text-shadow: 0 1px 8px rgba(0, 0, 0, .30);
     }
 
-    @keyframes beamCardSweep{
-        0%{
-            transform:translateX(-170%) skewX(-18deg);
-            opacity:.10;
+    @keyframes beamCardSweep {
+        0% {
+            transform: translateX(-170%) skewX(-18deg);
+            opacity: .10;
         }
-        35%{
-            opacity:.45;
+        35% {
+            opacity: .45;
         }
-        100%{
-            transform:translateX(340%) skewX(-18deg);
-            opacity:.08;
+        100% {
+            transform: translateX(340%) skewX(-18deg);
+            opacity: .08;
         }
     }
 
     /* ===== ANSWER BUTTONS ===== */
-    .beam-answer-btn{
-        position:relative;
-        isolation:isolate;
-        overflow:hidden;
-        width:100%;
-        min-height:56px !important;
-        height:auto !important;
-        margin-bottom:8px;
-        padding:14px 16px !important;
-        border-radius:18px !important;
-        border:1px solid rgba(255,255,255,.10) !important;
-        color:#eef6ff !important;
-        font-size:16px !important;
-        font-weight:800 !important;
-        letter-spacing:.2px;
-        text-align:center;
+    .beam-answer-btn {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        width: 100%;
+        min-height: 56px !important;
+        height: auto !important;
+        margin-bottom: 8px;
+        padding: 14px 16px !important;
+        border-radius: 18px !important;
+        border: 1px solid rgba(255, 255, 255, .10) !important;
+        color: #eef6ff !important;
+        font-size: 16px !important;
+        font-weight: 800 !important;
+        letter-spacing: .2px;
+        text-align: center;
         /*white-space:normal !important;*/
-        background:
-                linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.015)),
-                linear-gradient(180deg, rgba(14,20,34,.98), rgba(8,11,22,.98)) !important;
-        box-shadow:
-                0 10px 22px rgba(0,0,0,.24),
-                inset 0 1px 0 rgba(255,255,255,.06),
-                inset 0 0 18px rgba(255,255,255,.03);
-        transition:
-                transform .18s ease,
-                box-shadow .25s ease,
-                border-color .25s ease,
-                filter .25s ease;
+        background: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .015)),
+        linear-gradient(180deg, rgba(14, 20, 34, .98), rgba(8, 11, 22, .98)) !important;
+        box-shadow: 0 10px 22px rgba(0, 0, 0, .24),
+        inset 0 1px 0 rgba(255, 255, 255, .06),
+        inset 0 0 18px rgba(255, 255, 255, .03);
+        transition: transform .18s ease,
+        box-shadow .25s ease,
+        border-color .25s ease,
+        filter .25s ease;
     }
 
     /* lớp aura nền */
-    .beam-answer-btn:before{
-        content:"";
-        position:absolute;
-        inset:0;
-        border-radius:18px;
-        pointer-events:none;
-        z-index:0;
-        opacity:.95;
+    .beam-answer-btn:before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 18px;
+        pointer-events: none;
+        z-index: 0;
+        opacity: .95;
     }
 
     /* lớp ánh sáng chạy ngang kiểu thanh năng lượng */
-    .beam-answer-btn:after{
-        content:"";
-        position:absolute;
-        top:-35%;
-        bottom:-35%;
-        width:42%;
-        border-radius:999px;
-        pointer-events:none;
-        z-index:1;
-        filter:blur(10px);
-        opacity:.65;
+    .beam-answer-btn:after {
+        content: "";
+        position: absolute;
+        top: -35%;
+        bottom: -35%;
+        width: 42%;
+        border-radius: 999px;
+        pointer-events: none;
+        z-index: 1;
+        filter: blur(10px);
+        opacity: .65;
         animation: beamAnswerSweep 2.2s linear infinite;
     }
 
     /* nội dung luôn nằm trên hiệu ứng */
-    .beam-answer-btn > *{
-        position:relative;
-        z-index:2;
+    .beam-answer-btn > * {
+        position: relative;
+        z-index: 2;
     }
 
     /* bên trái: tông xanh - tím */
-    .beam-answer-btn-left{
-        border-color:rgba(133,213,255,.22) !important;
-        box-shadow:
-                0 10px 22px rgba(0,0,0,.24),
-                0 0 18px rgba(90,190,255,.10),
-                inset 0 1px 0 rgba(255,255,255,.06),
-                inset 0 0 18px rgba(90,190,255,.05);
+    .beam-answer-btn-left {
+        border-color: rgba(133, 213, 255, .22) !important;
+        box-shadow: 0 10px 22px rgba(0, 0, 0, .24),
+        0 0 18px rgba(90, 190, 255, .10),
+        inset 0 1px 0 rgba(255, 255, 255, .06),
+        inset 0 0 18px rgba(90, 190, 255, .05);
         animation: beamAnswerGlowLeft 1.6s ease-in-out infinite;
     }
 
-    .beam-answer-btn-left:before{
-        background:
-                radial-gradient(circle at 18% 50%, rgba(110,220,255,.18), transparent 38%),
-                linear-gradient(90deg, rgba(72,120,255,.08), transparent 42%, rgba(120,235,255,.10));
+    .beam-answer-btn-left:before {
+        background: radial-gradient(circle at 18% 50%, rgba(110, 220, 255, .18), transparent 38%),
+        linear-gradient(90deg, rgba(72, 120, 255, .08), transparent 42%, rgba(120, 235, 255, .10));
     }
 
-    .beam-answer-btn-left:after{
-        left:-22%;
+    .beam-answer-btn-left:after {
+        left: -22%;
         background: linear-gradient(90deg,
-        rgba(80,170,255,0) 0%,
-        rgba(95,200,255,.10) 18%,
-        rgba(180,245,255,.80) 50%,
-        rgba(95,200,255,.12) 82%,
-        rgba(80,170,255,0) 100%);
-        box-shadow:
-                0 0 14px rgba(150,230,255,.30),
-                0 0 28px rgba(90,190,255,.16);
+        rgba(80, 170, 255, 0) 0%,
+        rgba(95, 200, 255, .10) 18%,
+        rgba(180, 245, 255, .80) 50%,
+        rgba(95, 200, 255, .12) 82%,
+        rgba(80, 170, 255, 0) 100%);
+        box-shadow: 0 0 14px rgba(150, 230, 255, .30),
+        0 0 28px rgba(90, 190, 255, .16);
     }
 
     /* bên phải: tông cam - hồng */
-    .beam-answer-btn-right{
-        border-color:rgba(255,186,122,.22) !important;
-        box-shadow:
-                0 10px 22px rgba(0,0,0,.24),
-                0 0 18px rgba(255,164,94,.10),
-                inset 0 1px 0 rgba(255,255,255,.06),
-                inset 0 0 18px rgba(255,164,94,.05);
+    .beam-answer-btn-right {
+        border-color: rgba(255, 186, 122, .22) !important;
+        box-shadow: 0 10px 22px rgba(0, 0, 0, .24),
+        0 0 18px rgba(255, 164, 94, .10),
+        inset 0 1px 0 rgba(255, 255, 255, .06),
+        inset 0 0 18px rgba(255, 164, 94, .05);
         animation: beamAnswerGlowRight 1.6s ease-in-out infinite;
     }
 
-    .beam-answer-btn-right:before{
-        background:
-                radial-gradient(circle at 82% 50%, rgba(255,187,116,.18), transparent 38%),
-                linear-gradient(270deg, rgba(255,106,136,.08), transparent 42%, rgba(255,210,120,.10));
+    .beam-answer-btn-right:before {
+        background: radial-gradient(circle at 82% 50%, rgba(255, 187, 116, .18), transparent 38%),
+        linear-gradient(270deg, rgba(255, 106, 136, .08), transparent 42%, rgba(255, 210, 120, .10));
     }
 
-    .beam-answer-btn-right:after{
-        right:-22%;
+    .beam-answer-btn-right:after {
+        right: -22%;
         background: linear-gradient(270deg,
-        rgba(255,170,100,0) 0%,
-        rgba(255,170,105,.10) 18%,
-        rgba(255,238,180,.78) 50%,
-        rgba(255,170,105,.12) 82%,
-        rgba(255,170,100,0) 100%);
-        box-shadow:
-                0 0 14px rgba(255,225,170,.28),
-                0 0 28px rgba(255,153,102,.16);
+        rgba(255, 170, 100, 0) 0%,
+        rgba(255, 170, 105, .10) 18%,
+        rgba(255, 238, 180, .78) 50%,
+        rgba(255, 170, 105, .12) 82%,
+        rgba(255, 170, 100, 0) 100%);
+        box-shadow: 0 0 14px rgba(255, 225, 170, .28),
+        0 0 28px rgba(255, 153, 102, .16);
     }
 
     /* hover */
-    .beam-answer-btn:hover{
-        transform:translateY(-2px) scale(1.01);
-        filter:brightness(1.04);
+    .beam-answer-btn:hover {
+        transform: translateY(-2px) scale(1.01);
+        filter: brightness(1.04);
     }
 
-    .beam-answer-btn-left:hover{
-        border-color:rgba(150,225,255,.40) !important;
-        box-shadow:
-                0 16px 30px rgba(0,0,0,.30),
-                0 0 24px rgba(90,190,255,.18),
-                0 0 42px rgba(90,190,255,.10),
-                inset 0 1px 0 rgba(255,255,255,.08);
+    .beam-answer-btn-left:hover {
+        border-color: rgba(150, 225, 255, .40) !important;
+        box-shadow: 0 16px 30px rgba(0, 0, 0, .30),
+        0 0 24px rgba(90, 190, 255, .18),
+        0 0 42px rgba(90, 190, 255, .10),
+        inset 0 1px 0 rgba(255, 255, 255, .08);
     }
 
-    .beam-answer-btn-right:hover{
-        border-color:rgba(255,204,145,.40) !important;
-        box-shadow:
-                0 16px 30px rgba(0,0,0,.30),
-                0 0 24px rgba(255,164,94,.18),
-                0 0 42px rgba(255,120,120,.08),
-                inset 0 1px 0 rgba(255,255,255,.08);
+    .beam-answer-btn-right:hover {
+        border-color: rgba(255, 204, 145, .40) !important;
+        box-shadow: 0 16px 30px rgba(0, 0, 0, .30),
+        0 0 24px rgba(255, 164, 94, .18),
+        0 0 42px rgba(255, 120, 120, .08),
+        inset 0 1px 0 rgba(255, 255, 255, .08);
     }
 
-    .beam-answer-btn:active{
-        transform:scale(.985);
+    .beam-answer-btn:active {
+        transform: scale(.985);
     }
 
-    .beam-answer-btn:disabled{
-        opacity:.58;
-        filter:grayscale(.15);
-        cursor:not-allowed;
+    .beam-answer-btn:disabled {
+        opacity: .58;
+        filter: grayscale(.15);
+        cursor: not-allowed;
     }
 
-    .beam-answer-btn:disabled:after{
-        animation:none;
-        opacity:.2;
+    .beam-answer-btn:disabled:after {
+        animation: none;
+        opacity: .2;
     }
 
-    @keyframes beamAnswerSweep{
-        0%{
-            transform:translateX(-160%) skewX(-18deg);
-            opacity:.15;
+    @keyframes beamAnswerSweep {
+        0% {
+            transform: translateX(-160%) skewX(-18deg);
+            opacity: .15;
         }
-        25%{
-            opacity:.55;
+        25% {
+            opacity: .55;
         }
-        50%{
-            opacity:.8;
+        50% {
+            opacity: .8;
         }
-        100%{
-            transform:translateX(340%) skewX(-18deg);
-            opacity:.12;
+        100% {
+            transform: translateX(340%) skewX(-18deg);
+            opacity: .12;
         }
     }
 
-    @keyframes beamAnswerGlowLeft{
-        0%,100%{
-            box-shadow:
-                    0 10px 22px rgba(0,0,0,.24),
-                    0 0 16px rgba(90,190,255,.08),
-                    inset 0 1px 0 rgba(255,255,255,.06),
-                    inset 0 0 18px rgba(90,190,255,.04);
+    @keyframes beamAnswerGlowLeft {
+        0%, 100% {
+            box-shadow: 0 10px 22px rgba(0, 0, 0, .24),
+            0 0 16px rgba(90, 190, 255, .08),
+            inset 0 1px 0 rgba(255, 255, 255, .06),
+            inset 0 0 18px rgba(90, 190, 255, .04);
         }
-        50%{
-            box-shadow:
-                    0 14px 28px rgba(0,0,0,.28),
-                    0 0 26px rgba(90,190,255,.18),
-                    0 0 40px rgba(160,235,255,.08),
-                    inset 0 1px 0 rgba(255,255,255,.08),
-                    inset 0 0 24px rgba(110,220,255,.08);
+        50% {
+            box-shadow: 0 14px 28px rgba(0, 0, 0, .28),
+            0 0 26px rgba(90, 190, 255, .18),
+            0 0 40px rgba(160, 235, 255, .08),
+            inset 0 1px 0 rgba(255, 255, 255, .08),
+            inset 0 0 24px rgba(110, 220, 255, .08);
         }
     }
 
-    @keyframes beamAnswerGlowRight{
-        0%,100%{
-            box-shadow:
-                    0 10px 22px rgba(0,0,0,.24),
-                    0 0 16px rgba(255,164,94,.08),
-                    inset 0 1px 0 rgba(255,255,255,.06),
-                    inset 0 0 18px rgba(255,164,94,.04);
+    @keyframes beamAnswerGlowRight {
+        0%, 100% {
+            box-shadow: 0 10px 22px rgba(0, 0, 0, .24),
+            0 0 16px rgba(255, 164, 94, .08),
+            inset 0 1px 0 rgba(255, 255, 255, .06),
+            inset 0 0 18px rgba(255, 164, 94, .04);
         }
-        50%{
-            box-shadow:
-                    0 14px 28px rgba(0,0,0,.28),
-                    0 0 26px rgba(255,164,94,.18),
-                    0 0 40px rgba(255,210,140,.08),
-                    inset 0 1px 0 rgba(255,255,255,.08),
-                    inset 0 0 24px rgba(255,190,120,.08);
+        50% {
+            box-shadow: 0 14px 28px rgba(0, 0, 0, .28),
+            0 0 26px rgba(255, 164, 94, .18),
+            0 0 40px rgba(255, 210, 140, .08),
+            inset 0 1px 0 rgba(255, 255, 255, .08),
+            inset 0 0 24px rgba(255, 190, 120, .08);
         }
     }
 
     /* tone variations */
-    .beam-answer-tone-0{
-        background:
-                linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015)),
-                linear-gradient(180deg, rgba(18,28,48,.98), rgba(8,11,22,.98)) !important;
+    .beam-answer-tone-0 {
+        background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .015)),
+        linear-gradient(180deg, rgba(18, 28, 48, .98), rgba(8, 11, 22, .98)) !important;
     }
 
-    .beam-answer-tone-1{
-        background:
-                linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015)),
-                linear-gradient(180deg, rgba(16,30,34,.98), rgba(8,11,22,.98)) !important;
+    .beam-answer-tone-1 {
+        background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .015)),
+        linear-gradient(180deg, rgba(16, 30, 34, .98), rgba(8, 11, 22, .98)) !important;
     }
 
-    .beam-answer-tone-2{
-        background:
-                linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.02)),
-                linear-gradient(180deg, rgba(36,31,20,.98), rgba(10,12,18,.98)) !important;
-        color:#fff7d7 !important;
+    .beam-answer-tone-2 {
+        background: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .02)),
+        linear-gradient(180deg, rgba(36, 31, 20, .98), rgba(10, 12, 18, .98)) !important;
+        color: #fff7d7 !important;
     }
 
-    .beam-answer-tone-3{
-        background:
-                linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015)),
-                linear-gradient(180deg, rgba(22,18,42,.98), rgba(8,11,22,.98)) !important;
+    .beam-answer-tone-3 {
+        background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .015)),
+        linear-gradient(180deg, rgba(22, 18, 42, .98), rgba(8, 11, 22, .98)) !important;
     }
 
     /* ===== MOBILE ===== */
-    @media (max-width: 768px){
-        .beam-stat-card{
-            margin-top:10px;
-            padding:12px;
+    @media (max-width: 768px) {
+        .beam-stat-card {
+            margin-top: 10px;
+            padding: 12px;
         }
 
-        .beam-stat-line{
-            justify-content:center;
+        .beam-stat-line {
+            justify-content: center;
         }
 
-        .beam-player-zone{
-            margin-top:14px;
-            border-radius:20px;
+        .beam-player-zone {
+            margin-top: 14px;
+            border-radius: 20px;
         }
 
-        .beam-question-face h2{
-            font-size:22px;
-            padding:14px;
+        .beam-question-face h2 {
+            font-size: 22px;
+            padding: 14px;
         }
 
-        .beam-answer-btn{
-            min-height:52px !important;
-            font-size:15px !important;
-            padding:12px 14px !important;
+        .beam-answer-btn {
+            min-height: 52px !important;
+            font-size: 15px !important;
+            padding: 12px 14px !important;
         }
     }
 
-    .ui-select-match-item{
+    .ui-select-match-item {
         white-space: normal;
     }
 
@@ -4439,53 +3962,53 @@
         }
 
         .beam-answer-btn {
-            white-space:normal !important;
+            white-space: normal !important;
         }
 
     }
 
-    .beam-score-row{
-        display:flex;
-        flex-wrap:wrap;
-        margin-left:-4px;
-        margin-right:-4px;
+    .beam-score-row {
+        display: flex;
+        flex-wrap: wrap;
+        margin-left: -4px;
+        margin-right: -4px;
     }
 
-    .beam-score-half{
-        padding-left:4px !important;
-        padding-right:4px !important;
+    .beam-score-half {
+        padding-left: 4px !important;
+        padding-right: 4px !important;
     }
 
-    @media (max-width: 768px){
-        .beam-score-row{
-            display:flex;
-            flex-wrap:nowrap;
+    @media (max-width: 768px) {
+        .beam-score-row {
+            display: flex;
+            flex-wrap: nowrap;
         }
 
-        .beam-score-half{
-            width:50%;
-            float:left;
+        .beam-score-half {
+            width: 50%;
+            float: left;
         }
 
-        .beam-stat-card{
-            margin-top:8px;
-            min-height:92px;
-            padding:10px 8px;
-            border-radius:14px;
+        .beam-stat-card {
+            margin-top: 8px;
+            min-height: 92px;
+            padding: 10px 8px;
+            border-radius: 14px;
         }
 
-        .beam-stat-line-mobile{
-            display:flex;
-            flex-direction:column;
-            gap:4px;
-            font-size:12px;
-            line-height:1.25;
+        .beam-stat-line-mobile {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 12px;
+            line-height: 1.25;
         }
 
-        .beam-stat-line-mobile .beam-stat-title{
-            font-size:13px;
-            font-weight:700;
-            margin-bottom:2px;
+        .beam-stat-line-mobile .beam-stat-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 2px;
         }
     }
 </style>
@@ -4513,7 +4036,7 @@
         border-radius: 20px;
     }
 
-    .image-card-text-overlay{
+    .image-card-text-overlay {
         position: absolute;
         left: 6px;
         right: 6px;
@@ -4618,7 +4141,7 @@
         overflow: hidden;
     }
 
-    .excel-face-front{
+    .excel-face-front {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -4735,7 +4258,7 @@
         overflow: hidden;
     }
 
-    .excel-front-img{
+    .excel-front-img {
         width: 100%;
         height: 100%;
         display: block;
@@ -4823,7 +4346,7 @@
         padding: 10px 18px !important;
         font-size: 18px !important;
         font-weight: 700 !important;
-        box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
         transition: all 0.2s ease;
     }
 
@@ -4871,7 +4394,7 @@
         border-radius: 16px !important;
         min-height: 44px;
         vertical-align: middle;
-        box-shadow: 0 4px 10px rgba(110,197,255,0.18);
+        box-shadow: 0 4px 10px rgba(110, 197, 255, 0.18);
         position: relative;
     }
 
@@ -4890,7 +4413,7 @@
         background: #fff0f0;
         border-radius: 12px;
         padding: 2px 8px;
-        box-shadow: 0 2px 8px rgba(229,57,53,0.12);
+        box-shadow: 0 2px 8px rgba(229, 57, 53, 0.12);
     }
 
     /* Bảng bên trái */
@@ -4946,14 +4469,14 @@
         border-radius: 18px !important;
         min-height: 46px;
         vertical-align: middle;
-        box-shadow: 0 6px 14px rgba(110,197,255,0.18);
+        box-shadow: 0 6px 14px rgba(110, 197, 255, 0.18);
         position: relative;
         transition: all 0.2s ease;
     }
 
     .gaps3-cate-theme .filling-gap-3-answer:hover {
         transform: translateY(-1px);
-        box-shadow: 0 10px 20px rgba(110,197,255,0.24);
+        box-shadow: 0 10px 20px rgba(110, 197, 255, 0.24);
         border-color: #69c3ff !important;
     }
 
@@ -5021,38 +4544,38 @@
         border: 2px solid #ffb3b3;
         color: #d93c54;
         font-weight: 700;
-        box-shadow: 0 4px 10px rgba(229,57,53,0.10);
+        box-shadow: 0 4px 10px rgba(229, 57, 53, 0.10);
     }
 
-    .gaps3-side-tools{
-        display:flex;
-        flex-wrap:wrap;
-        gap:8px;
-        margin-bottom:12px;
-        justify-content:center;
+    .gaps3-side-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+        justify-content: center;
     }
 
     /* layout 2 cột cho gaps3 */
-    .gaps3-layout{
+    .gaps3-layout {
         display: flex;
         flex-wrap: wrap;
         align-items: stretch;
     }
 
     .gaps3-left-col,
-    .gaps3-right-col{
+    .gaps3-right-col {
         display: flex;
         flex-direction: column;
     }
 
-    .gaps3-main-fill{
+    .gaps3-main-fill {
         flex: 1;
         min-height: calc(100vh - 20px);
         height: 100%;
     }
 
     /* sticky cột trái trên desktop */
-    .gaps3-left-sticky{
+    .gaps3-left-sticky {
         position: sticky;
         top: 10px;
         align-self: flex-start;
@@ -5060,48 +4583,48 @@
 
     /* giúp card/phần phải kéo đủ chiều cao */
     .gaps3-right-col > .gaps3-main-fill,
-    .gaps3-right-col .filling-content-mode-gaps-3{
+    .gaps3-right-col .filling-content-mode-gaps-3 {
         height: 100%;
     }
 
     /* mobile: tự xuống 12/12, bỏ sticky */
-    @media (max-width: 991px){
-        .gaps3-layout{
+    @media (max-width: 991px) {
+        .gaps3-layout {
             display: block;
         }
 
-        .gaps3-left-sticky{
+        .gaps3-left-sticky {
             position: static;
             top: auto;
         }
 
-        .gaps3-main-fill{
+        .gaps3-main-fill {
             min-height: auto;
         }
 
-        .gaps3-left-col{
+        .gaps3-left-col {
             margin-bottom: 16px;
         }
     }
 
-    .gaps3-label-nowrap{
+    .gaps3-label-nowrap {
         display: block;
         white-space: nowrap;
         margin-bottom: 6px;
     }
 
-    .gaps3-setting-row .form-control{
+    .gaps3-setting-row .form-control {
         width: 100%;
     }
 
-    .gaps3-print-title{
+    .gaps3-print-title {
         font-size: 22px;
         font-weight: 700;
         margin-bottom: 12px;
         color: #3047a5;
     }
 
-    .gaps3-print-content{
+    .gaps3-print-content {
         background: #fff;
         border: 2px dashed #f2c94c;
         border-radius: 16px;
@@ -5109,7 +4632,7 @@
         line-height: 1.9;
     }
 
-    .gaps3-print-gap{
+    .gaps3-print-gap {
         display: inline-block;
         min-width: 70px;
         text-align: center;
@@ -5118,24 +4641,24 @@
         font-weight: 700;
     }
 
-    @media print{
-        .gaps3-print-content{
+    @media print {
+        .gaps3-print-content {
             border: none;
             background: #fff;
             padding: 0;
         }
 
-        .gaps3-print-title{
+        .gaps3-print-title {
             color: #000;
         }
 
-        .gaps3-print-gap{
+        .gaps3-print-gap {
             min-width: 90px;
             border-bottom: 1px solid #000;
         }
     }
 
-    .gap-inline-wrap{
+    .gap-inline-wrap {
         display: inline-flex;
         align-items: center;
         white-space: nowrap;
@@ -5143,13 +4666,13 @@
         margin: 0 2px;
     }
 
-    .gap-inline-input{
+    .gap-inline-input {
         width: 70px !important;
         min-width: 70px;
         vertical-align: middle;
     }
 
-    .gap-inline-speaker{
+    .gap-inline-speaker {
         margin-left: 3px;
         cursor: pointer;
         font-size: 10px;
@@ -5184,9 +4707,8 @@
     }
 
     .mcq-mode-wrap.gaps3-cate-theme {
-        background:
-                radial-gradient(circle at top left, rgba(255,255,255,0.95), rgba(255,246,252,0.88)),
-                linear-gradient(135deg, #fff8e7 0%, #fff4fb 45%, #eef7ff 100%);
+        background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), rgba(255, 246, 252, 0.88)),
+        linear-gradient(135deg, #fff8e7 0%, #fff4fb 45%, #eef7ff 100%);
         border: 4px solid #f6c642;
         border-radius: 22px;
         box-shadow: 0 12px 35px rgba(108, 72, 20, 0.18);
@@ -5256,9 +4778,8 @@
         text-align: left;
         white-space: normal;
 
-        box-shadow:
-                0 6px 14px rgba(90, 60, 30, 0.12),
-                inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+        box-shadow: 0 6px 14px rgba(90, 60, 30, 0.12),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.7);
 
         transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     }
@@ -5277,9 +4798,8 @@
     .mcq-mode-wrap .mcq-answer-btn:hover:not([disabled]) {
         transform: translateY(-2px);
         border-color: #f2b705;
-        box-shadow:
-                0 10px 22px rgba(90, 60, 30, 0.18),
-                inset 0 0 0 1px rgba(255, 255, 255, 0.85);
+        box-shadow: 0 10px 22px rgba(90, 60, 30, 0.18),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.85);
     }
 
     /* Nhãn A B C D */
@@ -5373,11 +4893,21 @@
     }
 
     @keyframes mcqAnswerBounce {
-        0%   { transform: translateY(0) scale(1); }
-        20%  { transform: translateY(-6px) scale(1.02); }
-        40%  { transform: translateY(0) scale(1); }
-        60%  { transform: translateY(-3px) scale(1.01); }
-        100% { transform: translateY(0) scale(1); }
+        0% {
+            transform: translateY(0) scale(1);
+        }
+        20% {
+            transform: translateY(-6px) scale(1.02);
+        }
+        40% {
+            transform: translateY(0) scale(1);
+        }
+        60% {
+            transform: translateY(-3px) scale(1.01);
+        }
+        100% {
+            transform: translateY(0) scale(1);
+        }
     }
 
     .mcq-passage-text {
@@ -5541,6 +5071,7 @@
         line-height: 1.25;
         text-align: center;
     }
+
     #guess-word-game-top {
         width: 100% !important;
         height: calc(100vh - 10px) !important;
@@ -5616,15 +5147,13 @@
     .gap-vni-tntt-theme {
         padding: 22px 14px 30px;
         border-radius: 28px;
-        background:
-                radial-gradient(circle at top left, rgba(255, 215, 0, 0.35), transparent 28%),
-                radial-gradient(circle at top right, rgba(0, 92, 185, 0.18), transparent 30%),
-                radial-gradient(circle at bottom left, rgba(220, 20, 60, 0.16), transparent 32%),
-                linear-gradient(135deg, #fffdf3 0%, #ffffff 45%, #eef7ff 100%);
+        background: radial-gradient(circle at top left, rgba(255, 215, 0, 0.35), transparent 28%),
+        radial-gradient(circle at top right, rgba(0, 92, 185, 0.18), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(220, 20, 60, 0.16), transparent 32%),
+        linear-gradient(135deg, #fffdf3 0%, #ffffff 45%, #eef7ff 100%);
         border: 3px solid rgba(255, 213, 79, 0.75);
-        box-shadow:
-                0 18px 40px rgba(0, 58, 120, 0.12),
-                inset 0 0 0 4px rgba(255, 255, 255, 0.75);
+        box-shadow: 0 18px 40px rgba(0, 58, 120, 0.12),
+        inset 0 0 0 4px rgba(255, 255, 255, 0.75);
         position: relative;
         overflow: hidden;
     }
@@ -5727,13 +5256,11 @@
         padding: 26px 28px;
         margin-top: 20px;
         border-radius: 30px;
-        background:
-                linear-gradient(#ffffff, #ffffff) padding-box,
-                linear-gradient(135deg, #ffc107, #d71920, #005bbb) border-box;
+        background: linear-gradient(#ffffff, #ffffff) padding-box,
+        linear-gradient(135deg, #ffc107, #d71920, #005bbb) border-box;
         border: 4px solid transparent;
-        box-shadow:
-                0 18px 38px rgba(0, 58, 120, 0.12),
-                inset 0 0 0 2px rgba(255, 255, 255, 0.9);
+        box-shadow: 0 18px 38px rgba(0, 58, 120, 0.12),
+        inset 0 0 0 2px rgba(255, 255, 255, 0.9);
     }
 
     .gap-vni-tntt-theme .filling-content-mode-gaps::before,
@@ -5762,7 +5289,7 @@
         word-spacing: 5px;
         text-align: justify;
         text-align-last: left;
-        text-shadow: 0 1px 0 rgba(255,255,255,0.95);
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.95);
     }
 
     .gap-vni-tntt-content::first-letter {
@@ -5902,15 +5429,13 @@
         padding: 24px 16px 32px;
         border-radius: 30px;
         overflow: hidden;
-        background:
-                radial-gradient(circle at 12% 10%, rgba(255, 214, 102, 0.45), transparent 24%),
-                radial-gradient(circle at 88% 18%, rgba(78, 205, 196, 0.26), transparent 28%),
-                radial-gradient(circle at 50% 100%, rgba(91, 141, 239, 0.18), transparent 32%),
-                linear-gradient(135deg, #f7fbff 0%, #ffffff 46%, #fff9e8 100%);
+        background: radial-gradient(circle at 12% 10%, rgba(255, 214, 102, 0.45), transparent 24%),
+        radial-gradient(circle at 88% 18%, rgba(78, 205, 196, 0.26), transparent 28%),
+        radial-gradient(circle at 50% 100%, rgba(91, 141, 239, 0.18), transparent 32%),
+        linear-gradient(135deg, #f7fbff 0%, #ffffff 46%, #fff9e8 100%);
         border: 3px solid rgba(91, 141, 239, 0.28);
-        box-shadow:
-                0 20px 45px rgba(30, 70, 130, 0.12),
-                inset 0 0 0 5px rgba(255, 255, 255, 0.65);
+        box-shadow: 0 20px 45px rgba(30, 70, 130, 0.12),
+        inset 0 0 0 5px rgba(255, 255, 255, 0.65);
     }
 
     /* Decorative English classroom text */
@@ -5940,8 +5465,7 @@
 
     /* Left table panel */
     .gap-english-theme .col-md-3 {
-        background:
-                linear-gradient(180deg, rgba(255,255,255,0.96), rgba(247,251,255,0.92));
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 255, 0.92));
         border: 2px solid rgba(91, 141, 239, 0.35);
         border-radius: 26px;
         padding-top: 16px;
@@ -5951,8 +5475,7 @@
 
     /* Main exercise panel */
     .gap-english-theme .col-md-9 {
-        background:
-                linear-gradient(180deg, rgba(255,255,255,0.97), rgba(255,252,242,0.95));
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(255, 252, 242, 0.95));
         border: 2px solid rgba(255, 193, 7, 0.45);
         border-radius: 30px;
         padding-top: 22px;
@@ -5965,8 +5488,7 @@
         margin-bottom: 14px;
         padding: 12px;
         border-radius: 20px;
-        background:
-                linear-gradient(135deg, #ffffff 0%, #eef6ff 100%);
+        background: linear-gradient(135deg, #ffffff 0%, #eef6ff 100%);
         border: 2px solid rgba(91, 141, 239, 0.35);
         box-shadow: 0 8px 18px rgba(30, 70, 130, 0.08);
     }
@@ -6006,8 +5528,7 @@
         margin: 0 0 22px;
         padding: 16px 14px;
         border-radius: 24px;
-        background:
-                linear-gradient(135deg, #eef6ff 0%, #ffffff 50%, #fff7d8 100%);
+        background: linear-gradient(135deg, #eef6ff 0%, #ffffff 50%, #fff7d8 100%);
         border: 2px dashed rgba(63, 126, 232, 0.45);
         box-shadow: 0 10px 22px rgba(30, 70, 130, 0.10);
     }
@@ -6077,13 +5598,11 @@
         padding: 28px 30px;
         margin-top: 22px;
         border-radius: 32px;
-        background:
-                linear-gradient(#ffffff, #ffffff) padding-box,
-                linear-gradient(135deg, #3f7ee8, #4ecdc4, #ffca3a, #ff6b6b) border-box;
+        background: linear-gradient(#ffffff, #ffffff) padding-box,
+        linear-gradient(135deg, #3f7ee8, #4ecdc4, #ffca3a, #ff6b6b) border-box;
         border: 4px solid transparent;
-        box-shadow:
-                0 18px 40px rgba(30, 70, 130, 0.12),
-                inset 0 0 0 2px rgba(255, 255, 255, 0.95);
+        box-shadow: 0 18px 40px rgba(30, 70, 130, 0.12),
+        inset 0 0 0 2px rgba(255, 255, 255, 0.95);
     }
 
     /* English ribbon */
@@ -6114,7 +5633,7 @@
         word-spacing: 4px;
         text-align: justify;
         text-align-last: left;
-        text-shadow: 0 1px 0 rgba(255,255,255,0.95);
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.95);
     }
 
     .gap-english-content::first-letter {
@@ -6889,9 +6408,8 @@
         border: 4px solid #ffd45c;
         border-radius: 28px;
         padding: 30px 28px 24px;
-        background:
-            radial-gradient(circle at 15% 10%, rgba(255, 255, 255, 0.98) 0, rgba(255, 255, 255, 0.98) 22%, transparent 23%),
-            linear-gradient(135deg, #fffdf4 0%, #fff6fb 52%, #f0fbff 100%);
+        background: radial-gradient(circle at 15% 10%, rgba(255, 255, 255, 0.98) 0, rgba(255, 255, 255, 0.98) 22%, transparent 23%),
+        linear-gradient(135deg, #fffdf4 0%, #fff6fb 52%, #f0fbff 100%);
         box-shadow: 0 18px 40px rgba(88, 54, 12, 0.22);
         font-family: Georgia, "Times New Roman", serif;
     }
@@ -7062,9 +6580,8 @@
         padding: 20px 5px;
         border: 3px solid #74b9ff;
         border-radius: 22px;
-        background:
-            radial-gradient(circle at top right, rgba(255, 216, 107, 0.25), transparent 32%),
-            linear-gradient(135deg, #f7fbff 0%, #fff9ef 100%);
+        background: radial-gradient(circle at top right, rgba(255, 216, 107, 0.25), transparent 32%),
+        linear-gradient(135deg, #f7fbff 0%, #fff9ef 100%);
         box-shadow: 0 12px 32px rgba(40, 80, 130, 0.14);
     }
 
@@ -7121,7 +6638,6 @@
         font-weight: 800;
         box-shadow: 0 7px 16px rgba(190, 45, 45, 0.22);
     }
-
 
     .mcq-all-questions-list {
         scroll-margin-top: 15px;
@@ -7273,11 +6789,10 @@
         cursor: pointer;
         appearance: none;
         -webkit-appearance: none;
-        transition:
-                transform 0.15s ease,
-                border-color 0.15s ease,
-                background 0.15s ease,
-                box-shadow 0.15s ease;
+        transition: transform 0.15s ease,
+        border-color 0.15s ease,
+        background 0.15s ease,
+        box-shadow 0.15s ease;
     }
 
     .mcq-all-answer-button:hover:not(:disabled) {
@@ -7411,6 +6926,7 @@
             flex-wrap: wrap;
         }
     }
+
     .mcq-all-original-correct-answer {
         margin-top: 14px;
         padding: 14px 16px;
