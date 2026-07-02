@@ -541,6 +541,7 @@
         vm.showAllMcqQuestions = false;
         vm.allMcqQuestions = [];
         vm.allMcqWasShuffled = false;
+        vm.allMcqAnswersWereShuffled = false;
         vm.allMcqTopicNames = [];
         vm.allMcqShowUnderFourAnswers = true;
 
@@ -556,6 +557,7 @@
             vm.allMcqWasShuffled = false;
             vm.allMcqTopicNames = [];
             vm.allMcqShowUnderFourAnswers = true;
+            vm.allMcqAnswersWereShuffled = false;
 
             if(vm.searchDto.questionTopics == null || vm.searchDto.questionTopics.length <= 0){
                 alert('Phải chọn bài từ vựng cần học rồi ấn tìm kiếm');
@@ -721,33 +723,92 @@
             }
         };
 
-        vm.doShuffle = function() {
-            if (vm.mode && vm.mode.id == 13) {
-                vm.shuffleMcqQuestions();
-                return;
+        vm.doShuffle = function () {
+            if (!vm.rawQuestions || vm.rawQuestions.length === 0) {
+                toastr.warning(
+                    'Chưa có dữ liệu để trộn. Hãy chọn bài và nhấn TÌM KIẾM.'
+                );
+
+                return null;
             }
 
-            // Ấn trộn câu hỏi thì trộn cả thứ tự câu hỏi và vị trí câu trả lời.
-            vm.questions = shuffleArray(createQuestionsWithOptions(vm.rawQuestions, 4, true));
-            vm.questions1 = shuffleArray(createQuestionsWithOptions(vm.rawQuestions, 4, true));
-            shuffleArray(vm.questions);
-            shuffleArray(vm.questions1);
+            return openShuffleAnswersConfirmModal().result.then(
+                function (shouldShuffleAnswers) {
+                    var shuffleAnswers = shouldShuffleAnswers === true;
 
-            if (vm.mode.id == 1) {
-                vm.questionTable = buildQuestionTable(vm.questions, true);
-            }
+                    /*
+                     * MCQ sử dụng cấu trúc dữ liệu riêng.
+                     */
+                    if (vm.mode && vm.mode.id == 13) {
+                        vm.shuffleMcqQuestions(shuffleAnswers);
+                        return true;
+                    }
 
-            if (vm.mode.id == 7) {
-                vm.assignTugEffects(vm.questions);
-                vm.assignTugEffects(vm.questions1);
-            }
+                    /*
+                     * shuffleAnswers = true:
+                     * - Trộn câu hỏi.
+                     * - Trộn vị trí câu trả lời.
+                     *
+                     * shuffleAnswers = false:
+                     * - Trộn câu hỏi.
+                     * - Giữ nguyên vị trí câu trả lời.
+                     */
+                    vm.questions = createQuestionsWithOptions(
+                        vm.rawQuestions,
+                        4,
+                        shuffleAnswers
+                    );
 
-            vm.currentPosition = 0;
-            vm.currentPosition1 = 0;
-            vm.currentCard = vm.questions[vm.currentPosition];
-            vm.currentCard1 = vm.questions1[vm.currentPosition1];
-            vm.isShowDetail = false;
-            vm.answerRewriteWord = '';
+                    vm.questions1 = createQuestionsWithOptions(
+                        vm.rawQuestions,
+                        4,
+                        shuffleAnswers
+                    );
+
+                    // Luôn trộn thứ tự câu hỏi.
+                    shuffleArray(vm.questions);
+                    shuffleArray(vm.questions1);
+
+                    /*
+                     * Bảng của NORMAL MODE.
+                     * Khi shuffleAnswers = false, bảng cũng không được trộn đáp án.
+                     */
+                    if (vm.mode && vm.mode.id == 1) {
+                        vm.questionTable = buildQuestionTable(
+                            vm.questions,
+                            shuffleAnswers
+                        );
+                    }
+
+                    if (vm.mode && vm.mode.id == 7) {
+                        vm.assignTugEffects(vm.questions);
+                        vm.assignTugEffects(vm.questions1);
+                    }
+
+                    vm.currentPosition = 0;
+                    vm.currentPosition1 = 0;
+
+                    vm.currentCard =
+                        vm.questions.length > 0
+                            ? vm.questions[0]
+                            : {};
+
+                    vm.currentCard1 =
+                        vm.questions1.length > 0
+                            ? vm.questions1[0]
+                            : {};
+
+                    vm.isShowDetail = false;
+                    vm.answerRewriteWord = '';
+
+                    return true;
+                },
+
+                function () {
+                    // Người dùng đóng modal hoặc bấm Hủy.
+                    return false;
+                }
+            );
         };
 
         var shuffleArray = function(array) {
@@ -1840,73 +1901,109 @@
         };
 
         vm.finishDailyVocab = "Unfinished";
-        $scope.startCount = function() {
-
-            if(vm.tempCounter > 9999){
+        $scope.startCount = function () {
+            if (vm.tempCounter > 9999) {
                 vm.tempCounter = 900;
                 $scope.counter = vm.tempCounter;
+
                 alert('Timer should not be greater than 9999');
                 return;
-            }else if (vm.tempCounter <=0) {
+            }
+
+            if (vm.tempCounter <= 0) {
                 vm.tempCounter = 900;
                 $scope.counter = vm.tempCounter;
+
                 alert('Timer should not be lower than 0');
                 return;
-            } else {
             }
 
-            vm.finishDailyVocab = "Unfinished";
+            /*
+             * Mở modal trước.
+             * Chỉ khi người dùng chọn Có hoặc Không thì mới tiếp tục.
+             */
+            var shufflePromise = vm.doShuffle();
 
-            if (vm.mode.id == 5) {
-                vm.resetDailyVocabSaveState();
-                vm.setUpTestResult();
+            if (!shufflePromise ||
+                !angular.isFunction(shufflePromise.then)) {
+                return;
             }
 
-            vm.allowChangeInformation = false;
+            shufflePromise.then(function (shouldContinue) {
+                /*
+                 * Người dùng bấm Hủy hoặc đóng modal.
+                 */
+                if (shouldContinue !== true) {
+                    return;
+                }
 
-            $scope.refreshTimer();
-            vm.doShuffle();
-            $scope.isRunning = false;
-            mytimeout = $timeout($scope.onTimeout, 1000);
-            audio.load();
-            if(vm.noBGMusic == false){
-                audio.play();
-            }
+                vm.finishDailyVocab = 'Unfinished';
 
-            audio.loop = true;
+                if (vm.mode.id == 5) {
+                    vm.resetDailyVocabSaveState();
+                    vm.setUpTestResult();
+                }
 
-            vm.endGame = false;
-            vm.endGamePlayer1 = false;
-            vm.endGamePlayer2 = false;
-            vm.blindMode = false;
-            vm.streak = 0;
-            vm.streakPlayer1 = 0;
-            vm.streakPlayer2 = 0;
-            vm.wrong = 0;
-            vm.wrongPlayer1 = 0;
-            vm.wrongPlayer2 = 0;
+                vm.allowChangeInformation = false;
 
-            vm.score1 = 0;
-            vm.score2 = 0;
+                $scope.refreshTimer();
 
-            if(vm.mode.id != 4){
-                $scope.sayIt(vm.currentCard.question);
-            }
+                $scope.isRunning = false;
 
-            if (vm.mode.id == 7) {
-                vm.resetTugOfWarDefault();
+                mytimeout = $timeout(
+                    $scope.onTimeout,
+                    1000
+                );
+
+                audio.load();
+
+                if (vm.noBGMusic == false) {
+                    audio.play();
+                }
+
+                audio.loop = true;
 
                 vm.endGame = false;
                 vm.endGamePlayer1 = false;
                 vm.endGamePlayer2 = false;
 
-                tuongLai.load();
-                tuongLai.play();
+                vm.blindMode = false;
 
-                mytimeout = $timeout($scope.onTimeout, 1000);
+                vm.streak = 0;
+                vm.streakPlayer1 = 0;
+                vm.streakPlayer2 = 0;
 
-            }
+                vm.wrong = 0;
+                vm.wrongPlayer1 = 0;
+                vm.wrongPlayer2 = 0;
 
+                vm.score1 = 0;
+                vm.score2 = 0;
+
+                if (vm.mode.id != 4 &&
+                    vm.currentCard &&
+                    vm.currentCard.question) {
+                    $scope.sayIt(vm.currentCard.question);
+                }
+
+                if (vm.mode.id == 7) {
+                    vm.resetTugOfWarDefault();
+
+                    vm.endGame = false;
+                    vm.endGamePlayer1 = false;
+                    vm.endGamePlayer2 = false;
+
+                    if (tuongLai) {
+                        tuongLai.load();
+                        tuongLai.play();
+                    }
+
+                    mytimeout = $timeout(
+                        $scope.onTimeout,
+                        1000
+                    );
+                }
+            });
         };
 
         $scope.refreshTimer = function () {
@@ -6717,6 +6814,86 @@
             }, 800);
         };
 
+        function openShuffleAnswersConfirmModal() {
+            return modal.open({
+                animation: true,
+                size: 'md',
+                backdrop: 'static',
+                keyboard: false,
+                windowClass: 'mcq-tntt-confirm-window mcq-show-all-options-window',
+
+                template:
+                '<div class="mcq-tntt-confirm-modal mcq-show-all-options-modal">' +
+
+                '   <button type="button"' +
+                '           class="mcq-tntt-confirm-close"' +
+                '           ng-click="cancel()"' +
+                '           aria-label="Đóng">×</button>' +
+
+                '   <div class="mcq-tntt-confirm-cloud cloud-left">☁️</div>' +
+                '   <div class="mcq-tntt-confirm-cloud cloud-right">☁️</div>' +
+
+                '   <div class="mcq-tntt-confirm-stars">' +
+                '       ⭐ ✨ 🔀 ✨ ⭐' +
+                '   </div>' +
+
+                '   <div class="mcq-tntt-confirm-badge">🔀</div>' +
+
+                '   <div class="mcq-tntt-confirm-title">' +
+                '       Tùy chọn trộn câu hỏi' +
+                '   </div>' +
+
+                '   <div class="mcq-tntt-confirm-subtitle">' +
+                '       Bạn có muốn trộn cả các câu trả lời không?' +
+                '   </div>' +
+
+                '   <div class="mcq-tntt-confirm-message">' +
+                '       Chọn “Có” để trộn cả câu hỏi và vị trí câu trả lời. ' +
+                '       Chọn “Không” để chỉ trộn câu hỏi và giữ nguyên vị trí câu trả lời.' +
+                '   </div>' +
+
+                '   <div class="mcq-tntt-confirm-actions mcq-show-all-modal-actions">' +
+
+                '       <button type="button"' +
+                '               class="btn mcq-tntt-btn-no"' +
+                '               ng-click="cancel()">' +
+                '           Hủy' +
+                '       </button>' +
+
+                '       <button type="button"' +
+                '               class="btn mcq-keep-order-btn"' +
+                '               ng-click="choose(false)">' +
+                '           Không, giữ nguyên đáp án' +
+                '       </button>' +
+
+                '       <button type="button"' +
+                '               class="btn mcq-tntt-btn-yes"' +
+                '               ng-click="choose(true)">' +
+                '           Có, trộn câu trả lời' +
+                '       </button>' +
+
+                '   </div>' +
+                '</div>',
+
+                controller: [
+                    '$scope',
+                    '$uibModalInstance',
+
+                    function ($scope, $uibModalInstance) {
+                        $scope.choose = function (shouldShuffleAnswers) {
+                            $uibModalInstance.close(
+                                shouldShuffleAnswers === true
+                            );
+                        };
+
+                        $scope.cancel = function () {
+                            $uibModalInstance.dismiss('cancel');
+                        };
+                    }
+                ]
+            });
+        }
+
         function openMcqConfirmModal(title, message) {
             var icon = title && title.indexOf('trộn') >= 0 ? '🔀' : '🎁';
             var confirmText = title && title.indexOf('trộn') >= 0 ? 'Có, trộn ngay' : 'Có, hiển thị';
@@ -6767,35 +6944,78 @@
                 size: 'md',
                 backdrop: 'static',
                 keyboard: false,
-                windowClass: 'mcq-tntt-confirm-window mcq-show-all-options-window',
-                template:
-                    '<div class="mcq-tntt-confirm-modal mcq-show-all-options-modal">' +
-                    '   <button type="button" class="mcq-tntt-confirm-close" ng-click="cancel()" aria-label="Đóng">×</button>' +
-                    '   <div class="mcq-tntt-confirm-cloud cloud-left">☁️</div>' +
-                    '   <div class="mcq-tntt-confirm-cloud cloud-right">☁️</div>' +
-                    '   <div class="mcq-tntt-confirm-stars">⭐ ✨ 🔀 ✨ ⭐</div>' +
-                    '   <div class="mcq-tntt-confirm-badge">📚</div>' +
-                    '   <div class="mcq-tntt-confirm-title">Hiển thị tất cả</div>' +
-                    '   <div class="mcq-tntt-confirm-subtitle">Bạn muốn trộn câu hỏi và câu trả lời hay không?</div>' +
-                    '   <div class="mcq-tntt-confirm-message">' +
-                    '       Chọn “Có, trộn” để trộn thứ tự câu hỏi và các phương án. ' +
-                    '       Chọn “Không trộn” để giữ nguyên thứ tự ban đầu.' +
-                    '   </div>' +
-                    '   <div class="mcq-tntt-confirm-actions mcq-show-all-modal-actions">' +
-                    '       <button type="button" class="btn mcq-tntt-btn-no" ng-click="cancel()">Hủy</button>' +
-                    '       <button type="button" class="btn mcq-keep-order-btn" ng-click="choose(false)">Không trộn</button>' +
-                    '       <button type="button" class="btn mcq-tntt-btn-yes" ng-click="choose(true)">Có, trộn</button>' +
-                    '   </div>' +
-                    '</div>',
-                controller: ['$scope', '$uibModalInstance', function ($scope, $uibModalInstance) {
-                    $scope.choose = function (shouldShuffle) {
-                        $uibModalInstance.close(shouldShuffle === true);
-                    };
+                windowClass:
+                    'mcq-tntt-confirm-window mcq-show-all-options-window',
 
-                    $scope.cancel = function () {
-                        $uibModalInstance.dismiss('cancel');
-                    };
-                }]
+                template:
+                '<div class="mcq-tntt-confirm-modal mcq-show-all-options-modal">' +
+
+                '   <button type="button"' +
+                '           class="mcq-tntt-confirm-close"' +
+                '           ng-click="cancel()"' +
+                '           aria-label="Đóng">×</button>' +
+
+                '   <div class="mcq-tntt-confirm-cloud cloud-left">☁️</div>' +
+                '   <div class="mcq-tntt-confirm-cloud cloud-right">☁️</div>' +
+
+                '   <div class="mcq-tntt-confirm-stars">' +
+                '       ⭐ ✨ 🔀 ✨ ⭐' +
+                '   </div>' +
+
+                '   <div class="mcq-tntt-confirm-badge">🔀</div>' +
+
+                '   <div class="mcq-tntt-confirm-title">' +
+                '       Trộn câu trả lời' +
+                '   </div>' +
+
+                '   <div class="mcq-tntt-confirm-subtitle">' +
+                '       Bạn có muốn trộn cả các câu trả lời không?' +
+                '   </div>' +
+
+                '   <div class="mcq-tntt-confirm-message">' +
+                '       Chọn “Có” để trộn cả thứ tự câu hỏi và vị trí các câu trả lời. ' +
+                '       Chọn “Không” để chỉ trộn thứ tự câu hỏi, còn vị trí câu trả lời được giữ nguyên.' +
+                '   </div>' +
+
+                '   <div class="mcq-tntt-confirm-actions mcq-show-all-modal-actions">' +
+
+                '       <button type="button"' +
+                '               class="btn mcq-tntt-btn-no"' +
+                '               ng-click="cancel()">' +
+                '           Hủy' +
+                '       </button>' +
+
+                '       <button type="button"' +
+                '               class="btn mcq-keep-order-btn"' +
+                '               ng-click="choose(false)">' +
+                '           Không, giữ nguyên đáp án' +
+                '       </button>' +
+
+                '       <button type="button"' +
+                '               class="btn mcq-tntt-btn-yes"' +
+                '               ng-click="choose(true)">' +
+                '           Có, trộn câu trả lời' +
+                '       </button>' +
+
+                '   </div>' +
+                '</div>',
+
+                controller: [
+                    '$scope',
+                    '$uibModalInstance',
+
+                    function ($scope, $uibModalInstance) {
+                        $scope.choose = function (shouldShuffleAnswers) {
+                            $uibModalInstance.close(
+                                shouldShuffleAnswers === true
+                            );
+                        };
+
+                        $scope.cancel = function () {
+                            $uibModalInstance.dismiss('cancel');
+                        };
+                    }
+                ]
             });
         }
 
@@ -6929,58 +7149,112 @@
         }
 
         vm.toggleAllMcqQuestions = function () {
-            // Khi đang hiển thị, nút chỉ ẩn danh sách; không mở modal.
+            /*
+             * Khi danh sách đang mở, nút chỉ đóng danh sách.
+             * Không cần hỏi lại modal.
+             */
             if (vm.showAllMcqQuestions === true) {
                 vm.hideAllMcqQuestions();
                 return;
             }
 
-            if (!vm.rawQuestions || vm.rawQuestions.length <= 0) {
-                toastr.warning('Chưa có dữ liệu MCQ. Hãy chọn bài và nhấn TÌM KIẾM.');
+            if (!vm.rawQuestions ||
+                vm.rawQuestions.length <= 0) {
+                toastr.warning(
+                    'Chưa có dữ liệu MCQ. Hãy chọn bài và nhấn TÌM KIẾM.'
+                );
+
                 return;
             }
 
-            openMcqShowAllOptionsModal().result.then(function (shouldShuffle) {
-                // Chỉ sau khi người dùng chọn trộn/không trộn mới mở modal thứ hai.
-                openMcqUnderFourAnswersModal().result.then(
-                    function (showUnderFourAnswers) {
-                        vm.showAllMcqQuestionsWithOption(
-                            shouldShuffle,
-                            showUnderFourAnswers
-                        );
-                    },
-                    function () {}
-                );
-            }, function () {});
+            /*
+             * Modal thứ nhất:
+             * hỏi có muốn trộn câu trả lời hay không.
+             */
+            openMcqShowAllOptionsModal().result.then(
+                function (shouldShuffleAnswers) {
+                    /*
+                     * Modal thứ hai đang có sẵn:
+                     * hỏi về các câu có dưới 4 đáp án.
+                     */
+                    openMcqUnderFourAnswersModal().result.then(
+                        function (showUnderFourAnswers) {
+                            vm.showAllMcqQuestionsWithOption(
+                                shouldShuffleAnswers,
+                                showUnderFourAnswers
+                            );
+                        },
+
+                        function () {
+                            // Người dùng hủy modal thứ hai.
+                        }
+                    );
+                },
+
+                function () {
+                    // Người dùng hủy modal trộn đáp án.
+                }
+            );
         };
 
         vm.showAllMcqQuestionsWithOption = function (
-            shouldShuffle,
+            shouldShuffleAnswers,
             showUnderFourAnswers
         ) {
-            var shuffleEnabled = shouldShuffle === true;
-            var showShortAnswersEnabled = showUnderFourAnswers === true;
+            var shuffleAnswers =
+                shouldShuffleAnswers === true;
 
-            // Luôn dựng một bản sao mới từ rawQuestions để phần danh sách phía dưới
-            // hoàn toàn độc lập với vm.questions/currentCard của giao diện cũ.
-            var source = sortMcqQuestionsByCreatedFirst(vm.rawQuestions || []);
-            var displayQuestions = buildMcqQuestions(source, shuffleEnabled);
+            var showShortAnswersEnabled =
+                showUnderFourAnswers === true;
 
-            if (shuffleEnabled) {
-                displayQuestions = shuffleArray(displayQuestions);
-            }
+            /*
+             * Lấy bản sao của dữ liệu gốc.
+             * Không tác động đến currentCard hoặc câu hỏi đang chơi phía trên.
+             */
+            var source = sortMcqQuestionsByCreatedFirst(
+                vm.rawQuestions || []
+            );
+
+            /*
+             * shuffleAnswers = true:
+             * buildMcqQuestions sẽ trộn vị trí các câu trả lời.
+             *
+             * shuffleAnswers = false:
+             * buildMcqQuestions giữ nguyên vị trí các câu trả lời.
+             */
+            var displayQuestions = buildMcqQuestions(
+                source,
+                shuffleAnswers
+            );
+
+            /*
+             * Luôn trộn thứ tự câu hỏi.
+             *
+             * Dòng này chỉ đảo các phần tử câu hỏi,
+             * không đảo mảng mcqAnswers bên trong từng câu.
+             */
+            shuffleArray(displayQuestions);
 
             vm.allMcqQuestions = displayQuestions;
-            vm.allMcqWasShuffled = shuffleEnabled;
-            vm.allMcqShowUnderFourAnswers = showShortAnswersEnabled;
 
-            // Chụp lại tên bài tại đúng thời điểm dựng danh sách.
-            // PDF sau đó luôn khớp với bộ câu hỏi đang hiển thị.
-            vm.allMcqTopicNames = getSelectedMcqTopicNames();
+            // Câu hỏi đã được trộn.
+            vm.allMcqWasShuffled = true;
+
+            // Ghi nhớ riêng việc có trộn đáp án hay không.
+            vm.allMcqAnswersWereShuffled = shuffleAnswers;
+
+            vm.allMcqShowUnderFourAnswers =
+                showShortAnswersEnabled;
+
+            vm.allMcqTopicNames =
+                getSelectedMcqTopicNames();
+
             vm.showAllMcqQuestions = true;
 
             $timeout(function () {
-                var element = document.getElementById('mcq-all-questions-list');
+                var element = document.getElementById(
+                    'mcq-all-questions-list'
+                );
 
                 if (element && element.scrollIntoView) {
                     element.scrollIntoView({
@@ -6995,6 +7269,7 @@
             vm.showAllMcqQuestions = false;
             vm.allMcqQuestions = [];
             vm.allMcqWasShuffled = false;
+            vm.allMcqAnswersWereShuffled = false;
             vm.allMcqTopicNames = [];
             vm.allMcqShowUnderFourAnswers = true;
         };
@@ -7709,28 +7984,53 @@
         };
 
         vm.confirmShuffleMcqQuestions = function () {
-            openMcqConfirmModal(
-                'Xác nhận trộn câu hỏi',
-                'Bạn có thật sự muốn trộn câu hỏi không?'
-            ).result.then(function () {
-                vm.shuffleMcqQuestions();
-            }, function () {});
+            return vm.doShuffle();
         };
 
-        vm.shuffleMcqQuestions = function () {
-            if (!vm.rawQuestions || !vm.rawQuestions.length) {
-                return;
+        vm.shuffleMcqQuestions = function (shouldShuffleAnswers) {
+            if (!vm.rawQuestions || vm.rawQuestions.length === 0) {
+                toastr.warning(
+                    'Chưa có dữ liệu MCQ để trộn.'
+                );
+
+                return false;
             }
 
-            vm.questions = shuffleArray(buildMcqQuestions(vm.rawQuestions, true));
+            var shuffleAnswers = shouldShuffleAnswers === true;
+
+            /*
+             * buildMcqQuestions(..., true):
+             * Trộn vị trí đáp án.
+             *
+             * buildMcqQuestions(..., false):
+             * Giữ nguyên vị trí đáp án.
+             */
+            vm.questions = buildMcqQuestions(
+                vm.rawQuestions,
+                shuffleAnswers
+            );
+
+            // Câu hỏi luôn được trộn.
+            shuffleArray(vm.questions);
+
             vm.questions1 = [];
+
             vm.currentPosition = 0;
             vm.currentPosition1 = 0;
-            vm.currentCard = vm.questions[vm.currentPosition] || {};
+
+            vm.currentCard =
+                vm.questions.length > 0
+                    ? vm.questions[0]
+                    : {};
+
             vm.currentCard1 = {};
+
             vm.showMcqQuestion = false;
+
             vm.resetMcqGame();
             vm.scrollToMcqTop();
+
+            return true;
         };
 
         vm.showMcqAnswer = function () {

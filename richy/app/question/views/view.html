@@ -149,11 +149,11 @@
                                 </form>
                             </div>
 
-                            <div class="col-md-12">
+                            <dfiv class="col-md-12">
                                 <button class="btn btn-default" ng-click="vm.setUpReward();vm.getPageFlashCard();">
                                     START
                                 </button>
-                            </div>
+                            </dfiv>
                         </div>
 
                         <form ng-show="!vm.isShowHidesetUpReward" class="form-inline">
@@ -1773,9 +1773,19 @@
                             <div id="mcq-all-questions-print-content">
                                 <div class="alert mcq-all-status"
                                         ng-class="vm.allMcqWasShuffled ? 'alert-warning' : 'alert-info'">
-                                    <strong ng-if="vm.allMcqWasShuffled">
-                                        🔀 Đã trộn thứ tự câu hỏi và các phương án trả lời.
-                                    </strong>
+                                    <div class="alert mcq-all-status"
+                                            ng-class="vm.allMcqAnswersWereShuffled
+                                        ? 'alert-warning'
+                                        : 'alert-info'">
+
+                                        <strong ng-if="vm.allMcqAnswersWereShuffled">
+                                            🔀 Đã trộn thứ tự câu hỏi và vị trí các câu trả lời.
+                                        </strong>
+
+                                        <strong ng-if="!vm.allMcqAnswersWereShuffled">
+                                            🔀 Đã trộn thứ tự câu hỏi nhưng giữ nguyên vị trí các câu trả lời.
+                                        </strong>
+                                    </div>
                                     <strong ng-if="!vm.allMcqWasShuffled">
                                         📋 Đang giữ nguyên thứ tự câu hỏi và phương án ban đầu.
                                     </strong>
