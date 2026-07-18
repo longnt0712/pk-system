@@ -82,6 +82,16 @@
                         </div>
                         <!--<input type="text" data-ng-model="vm.filter.keyword" dl-enter-key="vm.search()" class="form-control" placeholder="Tìm kiếm nhanh" name="search">-->
                     </div>
+
+                    <div class="col-md-3">
+                        <label class="checkbox-inline"
+                               style="padding-top: 7px; font-weight: 600; cursor: pointer;">
+                            <input type="checkbox"
+                                   ng-model="vm.showInactiveUsers"
+                                   ng-change="vm.changeInactiveUsersVisibility()">
+                            Hiển thị tài khoản không kích hoạt
+                        </label>
+                    </div>
                 </div>
                 <div class="row support-panel" ng-if="vm.filter.filtered == 1">
                     <div class="col-md-12">

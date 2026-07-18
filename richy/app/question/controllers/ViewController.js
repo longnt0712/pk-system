@@ -723,6 +723,77 @@
             }
         };
 
+        function applyQuestionShuffle(shouldShuffleAnswers) {
+            var shuffleAnswers = shouldShuffleAnswers === true;
+
+            /*
+             * MCQ sử dụng cấu trúc dữ liệu riêng.
+             */
+            if (vm.mode && vm.mode.id == 13) {
+                vm.shuffleMcqQuestions(shuffleAnswers);
+                return true;
+            }
+
+            /*
+             * shuffleAnswers = true:
+             * - Trộn câu hỏi.
+             * - Trộn vị trí câu trả lời.
+             *
+             * shuffleAnswers = false:
+             * - Trộn câu hỏi.
+             * - Giữ nguyên vị trí câu trả lời.
+             */
+            vm.questions = createQuestionsWithOptions(
+                vm.rawQuestions,
+                4,
+                shuffleAnswers
+            );
+
+            vm.questions1 = createQuestionsWithOptions(
+                vm.rawQuestions,
+                4,
+                shuffleAnswers
+            );
+
+            // Luôn trộn thứ tự câu hỏi.
+            shuffleArray(vm.questions);
+            shuffleArray(vm.questions1);
+
+            /*
+             * Bảng của NORMAL MODE.
+             * Khi shuffleAnswers = false, bảng cũng không được trộn đáp án.
+             */
+            if (vm.mode && vm.mode.id == 1) {
+                vm.questionTable = buildQuestionTable(
+                    vm.questions,
+                    shuffleAnswers
+                );
+            }
+
+            if (vm.mode && vm.mode.id == 7) {
+                vm.assignTugEffects(vm.questions);
+                vm.assignTugEffects(vm.questions1);
+            }
+
+            vm.currentPosition = 0;
+            vm.currentPosition1 = 0;
+
+            vm.currentCard =
+                vm.questions.length > 0
+                    ? vm.questions[0]
+                    : {};
+
+            vm.currentCard1 =
+                vm.questions1.length > 0
+                    ? vm.questions1[0]
+                    : {};
+
+            vm.isShowDetail = false;
+            vm.answerRewriteWord = '';
+
+            return true;
+        }
+
         vm.doShuffle = function () {
             if (!vm.rawQuestions || vm.rawQuestions.length === 0) {
                 toastr.warning(
@@ -734,74 +805,7 @@
 
             return openShuffleAnswersConfirmModal().result.then(
                 function (shouldShuffleAnswers) {
-                    var shuffleAnswers = shouldShuffleAnswers === true;
-
-                    /*
-                     * MCQ sử dụng cấu trúc dữ liệu riêng.
-                     */
-                    if (vm.mode && vm.mode.id == 13) {
-                        vm.shuffleMcqQuestions(shuffleAnswers);
-                        return true;
-                    }
-
-                    /*
-                     * shuffleAnswers = true:
-                     * - Trộn câu hỏi.
-                     * - Trộn vị trí câu trả lời.
-                     *
-                     * shuffleAnswers = false:
-                     * - Trộn câu hỏi.
-                     * - Giữ nguyên vị trí câu trả lời.
-                     */
-                    vm.questions = createQuestionsWithOptions(
-                        vm.rawQuestions,
-                        4,
-                        shuffleAnswers
-                    );
-
-                    vm.questions1 = createQuestionsWithOptions(
-                        vm.rawQuestions,
-                        4,
-                        shuffleAnswers
-                    );
-
-                    // Luôn trộn thứ tự câu hỏi.
-                    shuffleArray(vm.questions);
-                    shuffleArray(vm.questions1);
-
-                    /*
-                     * Bảng của NORMAL MODE.
-                     * Khi shuffleAnswers = false, bảng cũng không được trộn đáp án.
-                     */
-                    if (vm.mode && vm.mode.id == 1) {
-                        vm.questionTable = buildQuestionTable(
-                            vm.questions,
-                            shuffleAnswers
-                        );
-                    }
-
-                    if (vm.mode && vm.mode.id == 7) {
-                        vm.assignTugEffects(vm.questions);
-                        vm.assignTugEffects(vm.questions1);
-                    }
-
-                    vm.currentPosition = 0;
-                    vm.currentPosition1 = 0;
-
-                    vm.currentCard =
-                        vm.questions.length > 0
-                            ? vm.questions[0]
-                            : {};
-
-                    vm.currentCard1 =
-                        vm.questions1.length > 0
-                            ? vm.questions1[0]
-                            : {};
-
-                    vm.isShowDetail = false;
-                    vm.answerRewriteWord = '';
-
-                    return true;
+                    return applyQuestionShuffle(shouldShuffleAnswers);
                 },
 
                 function () {
@@ -1918,25 +1922,7 @@
                 return;
             }
 
-            /*
-             * Mở modal trước.
-             * Chỉ khi người dùng chọn Có hoặc Không thì mới tiếp tục.
-             */
-            var shufflePromise = vm.doShuffle();
-
-            if (!shufflePromise ||
-                !angular.isFunction(shufflePromise.then)) {
-                return;
-            }
-
-            shufflePromise.then(function (shouldContinue) {
-                /*
-                 * Người dùng bấm Hủy hoặc đóng modal.
-                 */
-                if (shouldContinue !== true) {
-                    return;
-                }
-
+            function startTimerAfterShuffle() {
                 vm.finishDailyVocab = 'Unfinished';
 
                 if (vm.mode.id == 5) {
@@ -2003,6 +1989,46 @@
                         1000
                     );
                 }
+            }
+
+            /*
+             * DAILY VOCAB:
+             * - Không mở modal hỏi trộn đáp án.
+             * - Tự động trộn câu hỏi và vị trí câu trả lời.
+             */
+            if (vm.mode && vm.mode.id == 5) {
+                if (!vm.rawQuestions || vm.rawQuestions.length === 0) {
+                    toastr.warning(
+                        'Chưa có dữ liệu để trộn. Hãy chọn bài và nhấn TÌM KIẾM.'
+                    );
+
+                    return;
+                }
+
+                applyQuestionShuffle(true);
+                startTimerAfterShuffle();
+                return;
+            }
+
+            /*
+             * Các mode còn lại vẫn hỏi người dùng như trước.
+             */
+            var shufflePromise = vm.doShuffle();
+
+            if (!shufflePromise ||
+                !angular.isFunction(shufflePromise.then)) {
+                return;
+            }
+
+            shufflePromise.then(function (shouldContinue) {
+                /*
+                 * Người dùng bấm Hủy hoặc đóng modal.
+                 */
+                if (shouldContinue !== true) {
+                    return;
+                }
+
+                startTimerAfterShuffle();
             });
         };
 

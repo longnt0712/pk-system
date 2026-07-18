@@ -161,12 +161,28 @@
         // });
 
         // search user by username
+        /*
+         * Mặc định chỉ hiển thị người dùng đang kích hoạt.
+         *
+         * - Checkbox chưa tích: active = true.
+         * - Checkbox đã tích: active = null để backend trả về cả active=true và active=false.
+         */
+        vm.showInactiveUsers = false;
+
         vm.filter = {
             keyword: '',
-            active: null,
+            active: true,
             roles: [],
             groups: [],
             filtered: 0
+        };
+
+        vm.changeInactiveUsersVisibility = function () {
+            vm.filter.active = vm.showInactiveUsers === true
+                ? null
+                : true;
+
+            vm.search();
         };
 
         vm.user = {};
@@ -1160,12 +1176,12 @@
                 f.enrollmentClass !== undefined &&
                 f.enrollmentClass !== '';
 
-            var hasActive =
-                f.active !== null &&
-                f.active !== undefined &&
-                f.active !== '';
-
-            return hasKeyword || hasGroups || hasRoles || hasEnrollmentClass || hasActive;
+            /*
+             * active=true là bộ lọc mặc định của màn hình, không phải điều kiện
+             * tìm kiếm do người dùng nhập. Vì vậy không dùng active để đổi
+             * pageSize từ 25 lên 1000 hoặc bật khung thông báo bộ lọc.
+             */
+            return hasKeyword || hasGroups || hasRoles || hasEnrollmentClass;
         };
 
         vm.applyPageSizeByFilter = function () {
