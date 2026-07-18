@@ -5704,117 +5704,81 @@
         //------------------ End Flash Card ---------------------------------//
 
         function buildQuestionTable(data, shouldShuffleAnswers) {
-            shouldShuffleAnswers = shouldShuffleAnswers === true;
             function shuffleArray(arr) {
                 var array = angular.copy(arr || []);
+
                 for (var i = array.length - 1; i > 0; i--) {
                     var j = Math.floor(Math.random() * (i + 1));
                     var temp = array[i];
                     array[i] = array[j];
                     array[j] = temp;
                 }
+
                 return array;
             }
 
-            return (data || []).map(function (item) {
-                var rawQuestions = angular.copy(Array.isArray(item.questions) ? item.questions : []);
-                var questions = [];
+            function getCardKey(card) {
+                if (!card) return '';
 
-                // Chuẩn hóa dữ liệu từ item.questions
-                angular.forEach(rawQuestions, function (q) {
-                    if (!q) return;
-
-                    questions.push({
-                        id: q.id || null,
-                        question: q.question || '',
-                        motherTongue: q.motherTongue || '',
-                        correct: q.correct === true || q.result === true
-                    });
-                });
-
-                // Nếu đáp án đúng chưa có trong questions thì thêm từ object cha
-                var hasMainQuestion = false;
-
-                angular.forEach(questions, function (q) {
-                    if (
-                        (q.id != null && item.id != null && q.id === item.id) ||
-                        ((q.question || '').trim().toLowerCase() === (item.question || '').trim().toLowerCase())
-                    ) {
-                        hasMainQuestion = true;
-                        q.correct = true;
-                        q.question = q.question || item.question || '';
-                        q.motherTongue = q.motherTongue || item.motherTongue || '';
-                    }
-                });
-
-                if (!hasMainQuestion) {
-                    questions.push({
-                        id: item.id || null,
-                        question: item.question || '',
-                        motherTongue: item.motherTongue || '',
-                        correct: true
-                    });
+                if (card.id != null) {
+                    return 'id_' + card.id;
                 }
 
-                // Loại trùng nhưng giữ thứ tự
-                var uniqueQuestions = [];
-                var seen = {};
+                return 'q_' + (card.question || '').trim().toLowerCase();
+            }
 
-                angular.forEach(questions, function (q) {
-                    var key = q.id != null
-                        ? 'id_' + q.id
-                        : 'q_' + (q.question || '').trim().toLowerCase();
+            function createAnswerFromCard(card, isCorrect) {
+                return {
+                    id: card && card.id != null ? card.id : null,
+                    question: card && card.question ? card.question : '',
+                    motherTongue: card && card.motherTongue ? card.motherTongue : '',
+                    correct: isCorrect === true
+                };
+            }
 
-                    if (!seen[key]) {
-                        seen[key] = true;
-                        uniqueQuestions.push(q);
-                    }
+            var sourceCards = angular.copy(data || []);
+
+            return sourceCards.map(function (item) {
+                var currentKey = getCardKey(item);
+
+                /*
+                 * NORMAL MODE:
+                 * - Đáp án đúng luôn lấy từ card chính của dòng hiện tại.
+                 * - Ba đáp án sai được lấy ngẫu nhiên từ các card khác.
+                 * - Sau khi đủ 4 đáp án, luôn trộn để đáp án đúng có thể nằm
+                 *   ở bất kỳ vị trí nào từ 1 đến 4.
+                 */
+                var wrongAnswerPool = sourceCards.filter(function (otherCard) {
+                    return getCardKey(otherCard) !== currentKey;
                 });
 
-                // Tách đúng / sai
-                var wrongAnswers = [];
-                var correctAnswersObj = [];
+                wrongAnswerPool = shuffleArray(wrongAnswerPool);
 
-                angular.forEach(uniqueQuestions, function (q) {
-                    if (q.correct === true) {
-                        correctAnswersObj.push(q);
-                    } else {
-                        wrongAnswers.push(q);
-                    }
+                var displayAnswers = [
+                    createAnswerFromCard(item, true)
+                ];
+
+                angular.forEach(wrongAnswerPool.slice(0, 3), function (wrongCard) {
+                    displayAnswers.push(createAnswerFromCard(wrongCard, false));
                 });
 
-                // Fallback nếu vẫn chưa có đáp án đúng
-                if (correctAnswersObj.length === 0) {
-                    correctAnswersObj.push({
-                        id: item.id || null,
-                        question: item.question || '',
-                        motherTongue: item.motherTongue || '',
-                        correct: true
-                    });
-                }
-
-                // Mặc định giữ thứ tự đáp án: đúng trước, sai sau.
-                // Khi ấn trộn câu hỏi, đáp án mới được random vị trí.
-                var displayAnswers = correctAnswersObj.slice(0, 1).concat(wrongAnswers.slice(0, 3));
-
-                // Nếu chưa đủ 4 thì thêm ô trống
+                // Trường hợp dữ liệu có ít hơn 4 card thì thêm ô trống cho đủ cột.
                 while (displayAnswers.length < 4) {
                     displayAnswers.push({
+                        id: null,
                         question: '',
                         motherTongue: '',
                         correct: false
                     });
                 }
 
-                // Chỉ random vị trí đáp án khi người dùng ấn nút trộn câu hỏi
-                if (shouldShuffleAnswers) {
-                    displayAnswers = shuffleArray(displayAnswers);
-                }
+                // Luôn random vị trí đáp án đúng từ 1 đến 4.
+                displayAnswers = shuffleArray(displayAnswers);
 
-                // Correct Answer(s) = vị trí hiện tại
                 var correctAnswerIndexes = [];
-                angular.forEach(displayAnswers, function (q, index) {
-                    if (q.correct === true) {
+
+                angular.forEach(displayAnswers, function (answer, index) {
+                    if (answer.correct === true) {
                         correctAnswerIndexes.push(index + 1);
                     }
                 });
