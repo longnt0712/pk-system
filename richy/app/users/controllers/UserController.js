@@ -20,7 +20,8 @@
         'UserService',
         '$q',
         'Upload',
-        '$cookies'
+        '$cookies',
+        '$filter'
     ];
 
     angular.module('Hrm.User').directive('cropperSource', ['$timeout', function ($timeout) {
@@ -140,7 +141,7 @@
         };
     });
 
-    function UserController($rootScope, $scope, $timeout, settings, modal, toastr, blockUI, bsTableAPI, utils, focus, service,$q,Upload,$cookies) {
+    function UserController($rootScope, $scope, $timeout, settings, modal, toastr, blockUI, bsTableAPI, utils, focus, service,$q,Upload,$cookies,$filter) {
         $scope.$on('$viewContentLoaded', function () {
             // initialize core components
             App.initAjax();
@@ -1069,7 +1070,11 @@
         /**
          * Perform search
          */
-        vm.sortKey = '';
+        /*
+         * Mặc định mỗi lần vào màn hình hoặc load lại danh sách
+         * sẽ sắp xếp theo tên.
+         */
+        vm.sortKey = 'fullName';
         vm.sortReverse = false;
 
         vm.sortBy = function (key) {
@@ -1119,7 +1124,7 @@
                     return person.patron || '';
 
                 case 'fullName':
-                    return ((person.lastName || '') + ' ' + (person.firstName || '')).toLowerCase();
+                    return buildVietnameseNameSortKey(person);
 
                 case 'birthDate':
                     return person.birthDate ? new Date(person.birthDate).getTime() : 0;
@@ -1155,6 +1160,113 @@
                     return '';
             }
         };
+        /*
+         * Lấy danh sách đúng theo thứ tự đang hiển thị trên bảng.
+         *
+         * Không thay đổi mảng vm.users gốc.
+         */
+        vm.getDisplayedUsers = function () {
+            var source = angular.isArray(vm.users)
+                ? vm.users
+                : [];
+
+            return $filter('orderBy')(
+                source,
+                vm.getSortValue,
+                vm.sortReverse
+            );
+        };
+
+        function normalizeVietnameseText(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+
+            var text = String(value)
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toLowerCase();
+
+            /*
+             * Chuẩn hóa các trường hợp:
+             * Nguyễn và Nguyễn
+             * Thủy và Thủy
+             */
+            if (text.normalize) {
+                text = text.normalize('NFC');
+            }
+
+            return text;
+        }
+
+        /*
+         * Xóa ghi chú ở cuối tên.
+         *
+         * Hải Đăng (nghỉ học) => Hải Đăng
+         * Hoàng Long (15/3)   => Hoàng Long
+         * Đức Phúc [bỏ]       => Đức Phúc
+         */
+        function removeNameNote(value) {
+            var text = normalizeVietnameseText(value);
+            var oldText;
+
+            do {
+                oldText = text;
+
+                text = text
+                    .replace(/\s*\([^()]*\)\s*$/g, '')
+                    .replace(/\s*\[[^\[\]]*\]\s*$/g, '')
+                    .trim();
+            } while (text !== oldText);
+
+            return text;
+        }
+
+        /*
+         * Tạo khóa sort từ cuối tên về đầu.
+         *
+         * lastName  = Nguyễn Thị
+         * firstName = Lan Anh
+         *
+         * fullName:
+         * Nguyễn Thị Lan Anh
+         *
+         * sortKey:
+         * anh | lan | thị | nguyễn
+         */
+        function buildVietnameseNameSortKey(person) {
+            if (!person) {
+                return '';
+            }
+
+            var lastName = normalizeVietnameseText(person.lastName);
+            var firstName = removeNameNote(person.firstName);
+
+            var fullName = normalizeVietnameseText(
+                lastName + ' ' + firstName
+            );
+
+            if (!fullName) {
+                return '';
+            }
+
+            var nameParts = fullName.split(' ');
+            var reversedParts = [];
+
+            for (var i = nameParts.length - 1; i >= 0; i--) {
+                var part = normalizeVietnameseText(nameParts[i]);
+
+                if (part) {
+                    reversedParts.push(part);
+                }
+            }
+
+            /*
+             * Dùng ký tự phân cách để tránh trường hợp các từ
+             * bị nối liền nhau.
+             */
+            return reversedParts.join('|');
+        }
 
         vm.hasAnyFilterValue = function () {
             var f = vm.filter || {};
@@ -2016,13 +2128,19 @@
 
         vm.buildExportPreviewRows = function () {
             var selectedColumns = vm.getSelectedExportColumns();
-            var previewSource = (vm.users || []).slice(0, 5);
+
+            /*
+             * Preview theo đúng thứ tự đang hiển thị.
+             */
+            var previewSource = vm.getDisplayedUsers().slice(0, 5);
 
             vm.exportPreviewRows = previewSource.map(function (user, rowIndex) {
                 var row = {};
+
                 angular.forEach(selectedColumns, function (col) {
                     row[col.key] = col.getter(user, rowIndex);
                 });
+
                 return row;
             });
         };
@@ -2077,7 +2195,12 @@
         vm.buildExportRowsBySelectedColumns = function () {
             var selectedColumns = vm.getSelectedExportColumns();
 
-            return (vm.users || []).map(function (user, index) {
+            /*
+             * Dùng danh sách đã sort giống bảng đang hiển thị.
+             */
+            var displayedUsers = vm.getDisplayedUsers();
+
+            return displayedUsers.map(function (user, index) {
                 var row = {};
 
                 angular.forEach(selectedColumns, function (col) {
@@ -2096,7 +2219,12 @@
                 return;
             }
 
-            var rows = (vm.users || []).map(function (user, index) {
+            /*
+             * Lấy đúng danh sách đang được nhìn thấy trên bảng.
+             */
+            var displayedUsers = vm.getDisplayedUsers();
+
+            var rows = displayedUsers.map(function (user, index) {
                 var row = {};
 
                 angular.forEach(selectedColumns, function (col) {

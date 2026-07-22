@@ -123,7 +123,10 @@
                                         <i class="fa" ng-class="vm.getSortIcon('patron')"></i>
                                     </th>
 
-                                    <th scope="col" class="sortable" ng-click="vm.sortBy('fullName')">
+                                    <th scope="col"
+                                            class="sortable"
+                                            style="text-align: right;"
+                                            ng-click="vm.sortBy('fullName')">
                                         TÊN
                                         <i class="fa" ng-class="vm.getSortIcon('fullName')"></i>
                                     </th>
@@ -189,7 +192,9 @@
 
                                     <th scope="row">{{$index + 1}}</th>
                                     <td>{{user.person.patron}}</td>
-                                    <td>{{user.person.lastName}} {{user.person.firstName}}</td>
+                                    <td style="text-align: right;">
+                                        {{user.person.lastName}} {{user.person.firstName}}
+                                    </td>
                                     <!--<td></td>-->
                                     <td>{{user.person.birthDate | date:'dd/MM/yyyy' }}</td>
                                     <td>
