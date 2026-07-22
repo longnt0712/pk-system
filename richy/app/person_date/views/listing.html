@@ -6,6 +6,9 @@
             <div class="portlet-body">
                 <div class="row">
                     <div class="col-md-12 text-center margin-bottom-10 margin-top-10">
+
+                        <br>
+
                         <label style="margin-right: 20px">
                             <input type="radio"
                                    name="checkType"
@@ -24,7 +27,7 @@
                             ĐIỂM DANH GIÁO LÝ
                         </label>
 
-                        <label>
+                        <label ng-if="vm.showExtraFeatures">
                             <input type="radio"
                                    name="checkType"
                                    ng-model="vm.checkType"
@@ -157,6 +160,15 @@
                             (Vắng) {{vm.totalClass2}} + (Vắng (P)) {{vm.totalClass6}} = <strong>Tổng nghỉ:</strong> {{vm.totalAbsentClass}}
                             <br>
                         </div>
+                        <div class="col-md-12">
+                            <label class="bold"
+                                    style="display:inline-block; margin-right:25px; margin-bottom:15px;">
+                                <input type="checkbox"
+                                        ng-model="vm.showExtraFeatures"
+                                        ng-change="vm.onExtraFeatureVisibilityChange()">
+                                HIỂN THỊ NGOẠI KHÓA
+                            </label>
+                        </div>
 
                         <div class="clearfix"></div>
                     </div>
@@ -170,7 +182,8 @@
                                     <th scope="col">TÊN</th>
                                     <th scope="col">LỄ</th>
                                     <th scope="col">GL</th>
-                                    <th scope="col">NGOẠI KHÓA</th>
+                                    <th scope="col"
+                                        ng-if="vm.showExtraFeatures">NGOẠI KHÓA</th>
                                     <th scope="col">LỚP</th>
                                     <th scope="col">GHI CHÚ</th>
                                     <th scope="col">NDD</th>
@@ -200,12 +213,14 @@
                                             <i class="fa fa-chalkboard-teacher"></i>
                                         </button>
 
-                                        <button class="btn btn-primary margin-bottom-10"
+                                        <button ng-if="vm.showExtraFeatures"
+                                                class="btn btn-primary margin-bottom-10"
                                                 ng-click="vm.saveByClick(personDate, personDate.user,3,1)">
                                             <i class="fa fa fa-bicycle"></i>
                                         </button>
 
-                                        <button class="btn btn-danger margin-bottom-10"
+                                        <button ng-if="vm.showExtraFeatures"
+                                                class="btn btn-danger margin-bottom-10"
                                                 ng-click="vm.saveByClick(personDate, personDate.user,3,2)">
                                             <i class="fa fa fa-bicycle"></i>
                                         </button>
@@ -270,7 +285,8 @@
                                         </small>
                                     </td>
 
-                                    <td ng-class="{
+                                    <td ng-if="vm.showExtraFeatures"
+                                        ng-class="{
                                             'status-class-green': personDate.extraClass == 1,
                                             'status-class-red': personDate.extraClass == 2,
                                             'status-class-warning': personDate.extraClass == 6,
@@ -460,12 +476,6 @@
                                     GL
                                 </label>
 
-                                <label style="margin-right: 15px;">
-                                    <input type="checkbox"
-                                           ng-model="vm.showExtra"
-                                           ng-change="vm.updateVisibleStatisticDates()">
-                                    NK
-                                </label>
                                 <br>
                                 <button class="btn btn-success"
                                         ng-click="vm.exportDailyStatisticExcel()"
@@ -834,7 +844,8 @@
                     <label class="bold margin-bottom-10">Chọn cột và sắp thứ tự</label>
 
                     <div class="export-column-item"
-                            ng-repeat="col in vm.exportColumns track by col.key">
+                            ng-repeat="col in vm.exportColumns track by col.key"
+                            ng-if="!col.extraOnly || vm.showExtraFeatures">
                         <div class="row">
                             <div class="col-xs-7">
                                 <label style="font-weight: normal; margin-bottom: 0;">

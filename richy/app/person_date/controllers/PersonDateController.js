@@ -1255,6 +1255,13 @@
         };
 
         vm.saveByClick = function (personDate,user,checkType,status) {
+            if (
+                checkType == 3 &&
+                vm.showExtraFeatures !== true
+            ) {
+                return;
+            }
+
             // console.log(username);
             vm.checkType = checkType;
             vm.resetPersonDate(user,status,null);
@@ -1412,6 +1419,14 @@
         vm.checkDate = new Date();
 
         vm.checkTypeChange = function () {
+            if (
+                vm.checkType == 3 &&
+                vm.showExtraFeatures !== true
+            ) {
+                vm.checkType = null;
+                return;
+            }
+
             if(vm.checkType == 1){
                 vm.checkDate.setHours(8, 0, 0, 0);
             }
@@ -1444,9 +1459,57 @@
         vm.exportSelectedColumns = [];
         vm.exportAllRows = [];
 
+        /*
+         * Mặc định ẩn toàn bộ phần liên quan đến ngoại khóa.
+         * Chỉ checkbox "HIỂN THỊ NGOẠI KHÓA" mới bật lại tất cả.
+         */
+        vm.showExtraFeatures = false;
+
         vm.showMass = true;
         vm.showClass = true;
-        vm.showExtra = true;
+        vm.showExtra = false;
+
+        vm.onExtraFeatureVisibilityChange = function () {
+            var enabled = vm.showExtraFeatures === true;
+
+            /*
+             * Phần thống kê dùng vm.showExtra.
+             * Đồng bộ biến này với checkbox tổng.
+             */
+            vm.showExtra = enabled;
+
+            /*
+             * Nếu đang chọn điểm danh ngoại khóa rồi tắt tính năng,
+             * bỏ lựa chọn để tránh camera tiếp tục lưu loại ngoại khóa.
+             */
+            if (!enabled && vm.checkType == 3) {
+                vm.checkType = null;
+
+                if (vm.scanning && angular.isFunction(vm.stop)) {
+                    vm.stop();
+                }
+            }
+
+            /*
+             * Ẩn/hiện các cột ngoại khóa trong modal xuất file.
+             */
+            angular.forEach(vm.exportColumns || [], function (col) {
+                if (!col.extraOnly) {
+                    return;
+                }
+
+                col.checked = enabled &&
+                    col.defaultCheckedWhenExtraVisible === true;
+            });
+
+            if (angular.isFunction(vm.updateVisibleStatisticDates)) {
+                vm.updateVisibleStatisticDates();
+            }
+
+            if (angular.isFunction(vm.refreshExportData)) {
+                vm.refreshExportData();
+            }
+        };
 
         vm.exportColumns = [
             {
@@ -1514,7 +1577,9 @@
             {
                 key: 'extraClass',
                 title: 'NGOẠI KHÓA',
-                checked: true,
+                checked: false,
+                extraOnly: true,
+                defaultCheckedWhenExtraVisible: true,
                 width: 18,
                 align: 'center',
                 getter: function (personDate, index) {
@@ -1579,6 +1644,8 @@
                 key: 'timeGoToExtraClass',
                 title: 'GIỜ ĐI NGOẠI KHÓA',
                 checked: false,
+                extraOnly: true,
+                defaultCheckedWhenExtraVisible: false,
                 width: 22,
                 align: 'center',
                 getter: function (personDate, index) {
@@ -1591,6 +1658,10 @@
 
         vm.getSelectedExportColumns = function () {
             return (vm.exportColumns || []).filter(function (col) {
+                if (col.extraOnly && vm.showExtraFeatures !== true) {
+                    return false;
+                }
+
                 return col.checked;
             });
         };
@@ -1968,9 +2039,8 @@
         vm.refreshExportData = function () {
             var rows = vm.getFilteredPersonDates() || [];
 
-            vm.exportSelectedColumns = (vm.exportColumns || []).filter(function (col) {
-                return col.checked;
-            });
+            vm.exportSelectedColumns =
+                vm.getSelectedExportColumns();
 
             vm.exportPreviewHeaders = vm.exportSelectedColumns.slice();
 
