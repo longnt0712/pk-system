@@ -695,6 +695,163 @@
             };
         }
 
+
+        /*
+         * =========================
+         * SORT TÊN GIỐNG BẢNG USER
+         * =========================
+         *
+         * Không dùng patron vì patron là tên thánh.
+         *
+         * Ví dụ:
+         * lastName  = Nguyễn Thị
+         * firstName = Lan Anh
+         *
+         * Khóa sắp xếp:
+         * anh | lan | thị | nguyễn
+         *
+         * Quan trọng:
+         * Dùng chính AngularJS orderBy giống bảng User.
+         * Không dùng Intl.Collator vì có thể cho thứ tự khác
+         * với bảng User ở các tên như Linh A, An, Anh, Linh B.
+         */
+        function normalizeVietnameseNameSortText(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+
+            var text = String(value)
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toLowerCase();
+
+            /*
+             * Chuẩn hóa Unicode:
+             * Nguyễn và Nguyễn có thể nhìn giống nhau
+             * nhưng được lưu bằng mã Unicode khác nhau.
+             */
+            if (typeof text.normalize === 'function') {
+                text = text.normalize('NFC');
+            }
+
+            return text;
+        }
+
+        function removeTrailingNameNoteForSort(value) {
+            var text = normalizeVietnameseNameSortText(value);
+            var oldText;
+
+            /*
+             * Loại bỏ ghi chú ở cuối tên:
+             * Hải Đăng (nghỉ học) -> Hải Đăng
+             * Hoàng Long (15/3)   -> Hoàng Long
+             * Đức Phúc [bỏ]       -> Đức Phúc
+             */
+            do {
+                oldText = text;
+
+                text = text
+                    .replace(/\s*\([^()]*\)\s*$/g, '')
+                    .replace(/\s*\[[^\[\]]*\]\s*$/g, '')
+                    .trim();
+            } while (text !== oldText);
+
+            return text;
+        }
+
+        function buildVietnameseNameSortKey(person) {
+            if (!person) {
+                return '';
+            }
+
+            var lastName = normalizeVietnameseNameSortText(person.lastName);
+            var firstName = removeTrailingNameNoteForSort(person.firstName);
+
+            var fullName = normalizeVietnameseNameSortText(
+                lastName + ' ' + firstName
+            );
+
+            if (!fullName) {
+                return '';
+            }
+
+            var nameParts = fullName.split(' ');
+            var reversedParts = [];
+
+            for (var i = nameParts.length - 1; i >= 0; i--) {
+                var part = normalizeVietnameseNameSortText(nameParts[i]);
+
+                if (part) {
+                    reversedParts.push(part);
+                }
+            }
+
+            /*
+             * Giống chính xác cách tạo khóa bên bảng User.
+             */
+            return reversedParts.join('|');
+        }
+
+        vm.getPersonDateNameSortValue = function (personDate) {
+            if (
+                !personDate ||
+                !personDate.user ||
+                !personDate.user.person
+            ) {
+                return '';
+            }
+
+            return buildVietnameseNameSortKey(
+                personDate.user.person
+            );
+        };
+
+        vm.sortPersonDatesLikeUserTable = function (personDates) {
+            var source = angular.isArray(personDates)
+                ? personDates
+                : [];
+
+            /*
+             * $filter('orderBy') là cùng cơ chế đang dùng ở bảng User:
+             *
+             * user in vm.users
+             * | orderBy:vm.getSortValue:vm.sortReverse
+             */
+            return $filter('orderBy')(
+                source,
+                vm.getPersonDateNameSortValue,
+                false
+            );
+        };
+
+        /*
+         * Sort phần thống kê bằng đúng quy tắc của bảng User.
+         * Không dùng tên Thánh (patron) làm khóa sắp xếp.
+         */
+        vm.getStatisticNameSortValue = function (row) {
+            if (!row) {
+                return '';
+            }
+
+            if (row._person) {
+                return buildVietnameseNameSortKey(row._person);
+            }
+
+            return row.nameSortKey || '';
+        };
+
+        vm.sortStatisticRowsLikeUserTable = function (rows) {
+            var source = angular.isArray(rows)
+                ? rows
+                : [];
+
+            return $filter('orderBy')(
+                source,
+                vm.getStatisticNameSortValue,
+                false
+            );
+        };
+
         vm.getPage = function () {
             var selectedDate = parseDateOnly(vm.attendanceDate);
 
@@ -714,7 +871,19 @@
 
             service.getPage(vm.searchDto, vm.pageIndex, vm.pageSize)
                 .then(function (data) {
-                    vm.personDates = data.content || [];
+                    /*
+                     * Mỗi lần tải hoặc tải lại danh sách đều sắp xếp
+                     * bằng đúng AngularJS orderBy giống bảng User.
+                     *
+                     * vm.personDates được gán bằng mảng đã sắp xếp nên:
+                     * - bảng hiển thị đúng thứ tự;
+                     * - tìm kiếm client giữ đúng thứ tự;
+                     * - xuất Excel và PNG cũng theo đúng thứ tự hiển thị.
+                     */
+                    vm.personDates = vm.sortPersonDatesLikeUserTable(
+                        data.content || []
+                    );
+
                     vm.totalStudent = data.totalElements || 0;
 
                     angular.forEach(vm.personDates, function (value) {
@@ -1465,13 +1634,19 @@
             vm.exportPreviewRows = vm.buildExportRows().slice(0, 5);
         };
 
-        vm.openExportModal = function () {
+        vm.exportMode = 'excel';
+
+        function openExportModalByMode(mode) {
             var rows = vm.getFilteredPersonDates();
 
             if (!rows || rows.length === 0) {
                 toastr.warning('Không có dữ liệu để xuất.', 'Thông báo');
                 return;
             }
+
+            vm.exportMode = mode === 'image'
+                ? 'image'
+                : 'excel';
 
             vm.refreshExportData();
 
@@ -1482,6 +1657,21 @@
                 size: 'lg',
                 backdrop: 'static'
             });
+        }
+
+        vm.openExportExcelModal = function () {
+            openExportModalByMode('excel');
+        };
+
+        vm.openExportImageModal = function () {
+            openExportModalByMode('image');
+        };
+
+        /*
+         * Giữ lại hàm cũ để các vị trí cũ nếu còn gọi sẽ không bị lỗi.
+         */
+        vm.openExportModal = function () {
+            openExportModalByMode('excel');
         };
 
         $scope.$watch(function () {
@@ -1493,7 +1683,16 @@
         });
 
         vm.getFilteredPersonDates = function () {
-            return $filter('filter')(vm.personDates || [], vm.searchClient);
+            var filteredRows = $filter('filter')(
+                vm.personDates || [],
+                vm.searchClient
+            );
+
+            /*
+             * Xuất Excel/PNG và preview luôn theo đúng thứ tự
+             * đang hiển thị ở bảng User.
+             */
+            return vm.sortPersonDatesLikeUserTable(filteredRows);
         };
 
         vm.getFullName = function (personDate) {
@@ -1912,6 +2111,14 @@
                         fullName: fullName,
                         birthDate: item.user.person.birthDate ? moment(item.user.person.birthDate).format('DD/MM/YYYY') : '',
                         className: vm.enrollmentClassMap[item.user.person.enrollmentClassId] || '',
+
+                        /*
+                         * Giữ person và sort key để phần thống kê,
+                         * Excel và ảnh dùng đúng thứ tự như bảng User.
+                         */
+                        _person: item.user.person,
+                        nameSortKey: buildVietnameseNameSortKey(item.user.person),
+
                         days: {}
                     };
 
@@ -1949,7 +2156,7 @@
                 return map[key];
             });
 
-            return rows;
+            return vm.sortStatisticRowsLikeUserTable(rows);
         }
 
         function buildSundaySummary(days, dateColumns) {
@@ -2187,6 +2394,10 @@
         };
 
         vm.exportDailyStatisticExcel = async function () {
+            vm.dailyStatisticRows = vm.sortStatisticRowsLikeUserTable(
+                vm.dailyStatisticRows || []
+            );
+
             if (!vm.dailyStatisticRows || !vm.dailyStatisticRows.length) {
                 toastr.warning("Không có dữ liệu để xuất Excel", "Thông báo");
                 return;
@@ -2417,6 +2628,10 @@
         };
 
         vm.exportDailyStatisticImage = function () {
+            vm.dailyStatisticRows = vm.sortStatisticRowsLikeUserTable(
+                vm.dailyStatisticRows || []
+            );
+
             if (!vm.dailyStatisticRows || !vm.dailyStatisticRows.length) {
                 toastr.warning("Không có dữ liệu để xuất ảnh", "Thông báo");
                 return;
@@ -2427,28 +2642,35 @@
                 return;
             }
 
-            var table = document.getElementById("daily-statistic-wrapper");
-            if (!table) {
-                toastr.error("Không tìm thấy bảng thống kê", "Lỗi");
-                return;
-            }
+            /*
+             * Chờ Angular cập nhật lại thứ tự DOM sau khi sort,
+             * rồi mới chụp ảnh.
+             */
+            $timeout(function () {
+                var table = document.getElementById("daily-statistic-wrapper");
 
-            html2canvas(table, {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: "#ffffff"
-            }).then(function (canvas) {
-                var image = canvas.toDataURL("image/png");
-                var link = document.createElement("a");
-                link.href = image;
-                link.download = buildDailyStatisticFileName("png");
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }).catch(function (err) {
-                console.error(err);
-                toastr.error("Xuất ảnh thất bại", "Lỗi");
-            });
+                if (!table) {
+                    toastr.error("Không tìm thấy bảng thống kê", "Lỗi");
+                    return;
+                }
+
+                html2canvas(table, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: "#ffffff"
+                }).then(function (canvas) {
+                    var image = canvas.toDataURL("image/png");
+                    var link = document.createElement("a");
+                    link.href = image;
+                    link.download = buildDailyStatisticFileName("png");
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }).catch(function (err) {
+                    console.error(err);
+                    toastr.error("Xuất ảnh thất bại", "Lỗi");
+                });
+            }, 100);
         };
 
         function buildDailyStatisticFileName(ext) {
