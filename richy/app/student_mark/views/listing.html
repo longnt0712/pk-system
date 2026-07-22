@@ -141,7 +141,10 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr ng-repeat="student in vm.studentMarks | filter: vm.filterStudentByName track by $index">
+                        <tr ng-repeat="student in vm.studentMarks
+                                | filter:vm.filterStudentByName
+                                | orderBy:vm.getStudentNameSortValue:false
+                                track by $index">
                             <td>{{$index + 1}}
                             </td>
                             <td class="text-left">

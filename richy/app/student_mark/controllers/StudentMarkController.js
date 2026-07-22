@@ -14,6 +14,7 @@
         'StudentMarkService',
         'Upload',
         'blockUI',
+        '$filter'
     ];
 
     angular.module('Hrm.StudentMark').directive('fileDownload', function () {
@@ -138,7 +139,19 @@
         };
     });
 
-    function StudentMarkController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, Upload,blockUI) {
+    function StudentMarkController(
+        $rootScope,
+        $scope,
+        toastr,
+        $timeout,
+        settings,
+        utils,
+        modal,
+        service,
+        Upload,
+        blockUI,
+        $filter
+    ) {
         $scope.$on('$viewContentLoaded', function () {
             App.initAjax();
         });
@@ -258,6 +271,127 @@
                 .trim();
         }
 
+        /*
+         * ==========================================================
+         * SORT TÊN GIỐNG BẢNG USER
+         * ==========================================================
+         *
+         * Không dùng patron vì patron là tên Thánh.
+         *
+         * Ví dụ:
+         * lastName  = Nguyễn Thị
+         * firstName = Lan Anh
+         *
+         * Khóa sort:
+         * anh | lan | thị | nguyễn
+         *
+         * Dùng AngularJS orderBy giống bảng User để các trường hợp
+         * Linh A, An, Anh, Linh B có đúng cùng một thứ tự.
+         */
+        function normalizeVietnameseNameSortText(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+
+            var text = String(value)
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toLowerCase();
+
+            /*
+             * Chuẩn hóa Unicode:
+             * Nguyễn và Nguyễn có thể nhìn giống nhau
+             * nhưng được lưu bằng mã Unicode khác nhau.
+             */
+            if (typeof text.normalize === 'function') {
+                text = text.normalize('NFC');
+            }
+
+            return text;
+        }
+
+        function removeTrailingNameNoteForSort(value) {
+            var text = normalizeVietnameseNameSortText(value);
+            var oldText;
+
+            /*
+             * Loại bỏ ghi chú ở cuối tên:
+             * Hải Đăng (nghỉ học) -> Hải Đăng
+             * Hoàng Long (15/3)   -> Hoàng Long
+             * Đức Phúc [bỏ]       -> Đức Phúc
+             */
+            do {
+                oldText = text;
+
+                text = text
+                    .replace(/\s*\([^()]*\)\s*$/g, '')
+                    .replace(/\s*\[[^\[\]]*\]\s*$/g, '')
+                    .trim();
+            } while (text !== oldText);
+
+            return text;
+        }
+
+        function buildVietnameseNameSortKey(person) {
+            if (!person) {
+                return '';
+            }
+
+            var lastName = normalizeVietnameseNameSortText(person.lastName);
+            var firstName = removeTrailingNameNoteForSort(person.firstName);
+
+            var fullName = normalizeVietnameseNameSortText(
+                lastName + ' ' + firstName
+            );
+
+            if (!fullName) {
+                return '';
+            }
+
+            var nameParts = fullName.split(' ');
+            var reversedParts = [];
+
+            for (var i = nameParts.length - 1; i >= 0; i--) {
+                var part = normalizeVietnameseNameSortText(nameParts[i]);
+
+                if (part) {
+                    reversedParts.push(part);
+                }
+            }
+
+            return reversedParts.join('|');
+        }
+
+        vm.getStudentNameSortValue = function (student) {
+            if (
+                !student ||
+                !student.user ||
+                !student.user.person
+            ) {
+                return '';
+            }
+
+            return buildVietnameseNameSortKey(
+                student.user.person
+            );
+        };
+
+        /*
+         * Trả về mảng mới đã sắp xếp.
+         * Không làm mất liên kết tới các object điểm đang sửa.
+         */
+        vm.sortStudentMarksLikeUserTable = function (students) {
+            var source = angular.isArray(students)
+                ? students
+                : [];
+
+            return $filter('orderBy')(
+                source,
+                vm.getStudentNameSortValue,
+                false
+            );
+        };
+
         vm.filterStudentByName = function (student) {
             if (!vm.keywordStudentName || vm.keywordStudentName.trim() === '') {
                 return true;
@@ -333,7 +467,13 @@
             blockUI.start();
             service.getListDisplayStudentMark(vm.searchDisplayDto).then(function (data) {
                 blockUI.stop();
-                vm.studentMarks = data || [];
+                /*
+                 * Mỗi lần tải hoặc tải lại dữ liệu đều sort mặc định
+                 * theo đúng AngularJS orderBy của bảng User.
+                 */
+                vm.studentMarks = vm.sortStudentMarksLikeUserTable(
+                    data || []
+                );
 
                 angular.forEach(vm.studentMarks, function(value, key) {
                     value.allowEdit = false;
@@ -602,9 +742,16 @@
         }
 
         function getFilteredStudentMarksForExport() {
-            return (vm.studentMarks || []).filter(function (student) {
+            var filteredStudents = (vm.studentMarks || []).filter(function (student) {
                 return vm.filterStudentByName(student);
             });
+
+            /*
+             * Excel, ảnh và dữ liệu table dùng chung đúng thứ tự.
+             */
+            return vm.sortStudentMarksLikeUserTable(
+                filteredStudents
+            );
         }
 
         function getMarkValueByMarkId(student, markId) {
