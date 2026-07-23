@@ -88,6 +88,22 @@
                 <div class="row">
                     <div class="col-md-12 sticky-search-bar">
 
+                        <div class="col-md-12">
+                            <label class="bold"
+                                    style="display:inline-block; margin-right:25px; margin-bottom:15px;">
+                                <input type="checkbox"
+                                        ng-model="vm.showExtraFeatures"
+                                        ng-change="vm.onExtraFeatureVisibilityChange()">
+                                HIỂN THỊ NGOẠI KHÓA
+                            </label>
+                            <label class="bold"
+                                    style="display:inline-block; margin-right:25px; margin-bottom:15px;">
+                                <input type="checkbox"
+                                        ng-model="vm.showStat">
+                                HIỂN THỊ THỐNG KÊ THEO NGÀY
+                            </label>
+                        </div>
+
                         <div class="col-md-12 margin-bottom-10">
                             <button class="btn btn-primary" ng-click="vm.getPage()">
                                 TẢI LẠI DANH SÁCH
@@ -146,22 +162,6 @@
                                    placeholder="Gõ tên vào đây để tìm...">
                         </div>
 
-                        <div class="col-md-12">
-                            <label class="bold"
-                                   style="display:inline-block; margin-right:25px; margin-bottom:15px;">
-                                <input type="checkbox"
-                                       ng-model="vm.showExtraFeatures"
-                                       ng-change="vm.onExtraFeatureVisibilityChange()">
-                                HIỂN THỊ NGOẠI KHÓA
-                            </label>
-                            <label class="bold"
-                                   style="display:inline-block; margin-right:25px; margin-bottom:15px;">
-                                <input type="checkbox"
-                                       ng-model="vm.showStat">
-                                HIỂN THỊ THỐNG KÊ THEO NGÀY
-                            </label>
-                        </div>
-
                         <div class="col-md-12" ng-if="vm.showStat == true">
                             <strong class="text-primary">Tổng học sinh:</strong> {{vm.totalStudent}} <br>
                             <strong class="text-red">THÁNH LỄ ✝ => </strong>
@@ -186,8 +186,7 @@
                             <table class="table table-hover table-striped table-bordered text-center order-table">
                                 <thead>
                                 <tr>
-                                    <th scope="col">ĐIỂM DANH</th>
-                                    <th scope="col">TÊN</th>
+<th scope="col">TÊN</th>
                                     <th scope="col">LỄ</th>
                                     <th scope="col">GL</th>
                                     <th scope="col"
@@ -200,39 +199,7 @@
 
                                 <tbody>
                                 <tr ng-repeat="personDate in vm.personDates | filter:vm.searchClient">
-                                    <td>
-                                        <button class="btn btn-primary margin-bottom-10"
-                                                ng-click="vm.saveByClick(personDate, personDate.user,1,1)">
-                                            <i class="fa fa-church"></i>
-                                        </button>
-
-                                        <button class="btn btn-danger margin-bottom-10"
-                                                ng-click="vm.saveByClick(personDate, personDate.user,1,2)">
-                                            <i class="fa fa-church"></i>
-                                        </button>
-
-                                        <button class="btn btn-primary margin-bottom-10"
-                                                ng-click="vm.saveByClick(personDate, personDate.user,2,1)">
-                                            <i class="fa fa-chalkboard-teacher"></i>
-                                        </button>
-
-                                        <button class="btn btn-danger margin-bottom-10"
-                                                ng-click="vm.saveByClick(personDate, personDate.user,2,2)">
-                                            <i class="fa fa-chalkboard-teacher"></i>
-                                        </button>
-
-                                        <button ng-if="vm.showExtraFeatures"
-                                                class="btn btn-primary margin-bottom-10"
-                                                ng-click="vm.saveByClick(personDate, personDate.user,3,1)">
-                                            <i class="fa fa fa-bicycle"></i>
-                                        </button>
-
-                                        <button ng-if="vm.showExtraFeatures"
-                                                class="btn btn-danger margin-bottom-10"
-                                                ng-click="vm.saveByClick(personDate, personDate.user,3,2)">
-                                            <i class="fa fa fa-bicycle"></i>
-                                        </button>
-                                    </td>
+                                    
 
                                     <td>
                                         {{$index + 1}}.
@@ -263,6 +230,17 @@
                                                 </div>
                                             </ui-select-choices>
                                         </ui-select>
+                                        <div class="attendance-status-actions">
+                                            <button class="btn btn-primary margin-bottom-10"
+                                                                                            ng-click="vm.saveByClick(personDate, personDate.user,1,1)">
+                                                                                        <i class="fa fa-church"></i>
+                                                                                    </button>
+
+                                            <button class="btn btn-danger margin-bottom-10"
+                                                                                            ng-click="vm.saveByClick(personDate, personDate.user,1,2)">
+                                                                                        <i class="fa fa-church"></i>
+                                                                                    </button>
+                                        </div>
                                         <small class="text-red">
                                             {{personDate.timeGoToChurch | date:'dd/MM HH:mm'}}
                                         </small>
@@ -288,6 +266,17 @@
                                                 </div>
                                             </ui-select-choices>
                                         </ui-select>
+                                        <div class="attendance-status-actions">
+                                            <button class="btn btn-primary margin-bottom-10"
+                                                                                            ng-click="vm.saveByClick(personDate, personDate.user,2,1)">
+                                                                                        <i class="fa fa-chalkboard-teacher"></i>
+                                                                                    </button>
+
+                                            <button class="btn btn-danger margin-bottom-10"
+                                                                                            ng-click="vm.saveByClick(personDate, personDate.user,2,2)">
+                                                                                        <i class="fa fa-chalkboard-teacher"></i>
+                                                                                    </button>
+                                        </div>
                                         <small class="text-red">
                                             {{personDate.timeGoToClass | date:'dd/MM HH:mm'}}
                                         </small>
@@ -314,6 +303,19 @@
                                                 </div>
                                             </ui-select-choices>
                                         </ui-select>
+                                        <div class="attendance-status-actions">
+                                            <button ng-if="vm.showExtraFeatures"
+                                                                                            class="btn btn-primary margin-bottom-10"
+                                                                                            ng-click="vm.saveByClick(personDate, personDate.user,3,1)">
+                                                                                        <i class="fa fa fa-bicycle"></i>
+                                                                                    </button>
+
+                                            <button ng-if="vm.showExtraFeatures"
+                                                                                            class="btn btn-danger margin-bottom-10"
+                                                                                            ng-click="vm.saveByClick(personDate, personDate.user,3,2)">
+                                                                                        <i class="fa fa fa-bicycle"></i>
+                                                                                    </button>
+                                        </div>
                                         <small class="text-red">
                                             {{personDate.timeGoToExtraClass | date:'dd/MM HH:mm'}}
                                         </small>
@@ -1582,3 +1584,35 @@
         line-height: 1.8;
     }
 </style>
+
+
+<style>
+    .attendance-status-actions {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+        margin-bottom: 5px;
+    }
+
+    .attendance-status-actions .btn {
+        min-width: 42px;
+        min-height: 36px;
+        margin-bottom: 0 !important;
+    }
+
+    @media (max-width: 767px) {
+        .attendance-status-actions {
+            gap: 6px;
+        }
+
+        .attendance-status-actions .btn {
+            flex: 1;
+            min-width: 44px;
+            min-height: 42px;
+        }
+    }
+</style>
+
