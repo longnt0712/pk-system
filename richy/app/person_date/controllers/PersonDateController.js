@@ -2229,6 +2229,8 @@
             return vm.sortStatisticRowsLikeUserTable(rows);
         }
 
+        vm.showStat = false;
+
         function buildSundaySummary(days, dateColumns) {
             var summary = {
                 massYes: 0,
