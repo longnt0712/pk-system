@@ -22,6 +22,10 @@
         self.getPageForGames = getPageForGames;
         self.getPageForTests = getPageForTests;
         self.getPageOnlyQuestion = getPageOnlyQuestion;
+
+        // Excel import
+        self.previewExcelImport = previewExcelImport;
+        self.confirmExcelImport = confirmExcelImport;
         
         self.saveObject = saveObject;
         self.saveMaterial = saveMaterial;
@@ -131,6 +135,63 @@
         }
 
         var restUrl = 'question';
+
+        /**
+         * Upload Excel lên server để đọc và trả về dữ liệu preview.
+         * Topic ID được server đọc trực tiếp trong file Excel.
+         */
+        function previewExcelImport(file, topicId) {
+            if (!file) {
+                return $q.reject({
+                    data: {
+                        message: 'Please choose an Excel file.'
+                    }
+                });
+            }
+
+            if (!topicId) {
+                return $q.reject({
+                    data: {
+                        message: 'Please choose a topic.'
+                    }
+                });
+            }
+
+            var formData = new FormData();
+            formData.append('file', file);
+            formData.append('topicId', topicId);
+
+            return $http.post(
+                baseUrl + restUrl + '/import_excel/preview',
+                formData,
+                {
+                    transformRequest: angular.identity,
+                    headers: {
+                        // Để browser tự sinh multipart boundary.
+                        'Content-Type': undefined
+                    }
+                }
+            ).then(function (response) {
+                return response.data;
+            });
+        }
+
+        /**
+         * Xác nhận các dòng được người dùng chọn trong popup preview.
+         */
+        function confirmExcelImport(importDto) {
+            return $http.post(
+                baseUrl + restUrl + '/import_excel/confirm',
+                importDto,
+                {
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+            ).then(function (response) {
+                return response.data;
+            });
+        }
         function getPage(searchDto, pageIndex, pageSize, successCallback, errorCallback) {
             var url = baseUrl + restUrl + '/get_page';
             url += '/'+pageIndex;

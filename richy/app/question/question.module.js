@@ -31,6 +31,7 @@
                             files: [
                                 'question/controllers/QuestionController.js?v=' + window.APP_VERSION,
                                 'question/business/QuestionService.js?v=' + window.APP_VERSION,
+                                'question/controllers/QuestionExcelImportController.js?v=' + window.APP_VERSION,
                                 'topic/business/TopicService.js?v=' + window.APP_VERSION
                             ]
                         });

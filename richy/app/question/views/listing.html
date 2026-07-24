@@ -692,10 +692,28 @@
                                 </button>
                             </div>
 
-                            <div class="col-md-12 text-right">
-                                <button class="btn btn-brown margin-left-10" style="width: 30%" data-ng-click="vm.newFlashCard()"> <i class="fa-solid fa-file-circle-plus"></i> <strong>New card</strong></button>
+                            <div class="col-md-12" style="margin-top: 10px">
+                                <div class="row">
+                                    <div class="col-xs-6 text-left">
+                                        <button type="button"
+                                                class="btn btn-success"
+                                                question-excel-import
+                                                topics="vm.topics"
+                                                on-imported="vm.getPageFlashCard()">
+                                            <i class="fa fa-file-excel-o"></i>
+                                            Import Excel
+                                        </button>
+                                    </div>
 
-                                <!--<i class="fa-solid fa-file-circle-plus"></i>-->
+                                    <div class="col-xs-6 text-right">
+                                        <button type="button"
+                                                class="btn btn-brown margin-left-10"
+                                                data-ng-click="vm.newFlashCard()">
+                                            <i class="fa-solid fa-file-circle-plus"></i>
+                                            <strong>New card</strong>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             <!--<div class="col-md-12" ng-show="">-->
                                 <!--Số lần xem lại: {{vm.question.timeReviewd}}/Số lần đúng: {{vm.question.correctAnswer}}/Số lần sai: {{vm.question.wrongAnswer}}-->
@@ -749,6 +767,247 @@
 
 <!-- END MAIN CONTENT -->
 <!-- BEGIN MAIN JS-->
+
+<script type="text/ng-template" id="question_excel_import_modal.html">
+    <div>
+        <div class="modal-header">
+            <button type="button"
+                    class="close"
+                    aria-hidden="true"
+                    ng-disabled="importVm.loadingPreview || importVm.loadingConfirm"
+                    ng-click="importVm.cancel()">
+                &times;
+            </button>
+
+            <h4 class="modal-title bold">
+                <i class="fa fa-file-excel-o"></i>
+                IMPORT WORDS FROM EXCEL
+            </h4>
+        </div>
+
+        <div class="modal-body">
+            <div ng-if="!importVm.preview">
+                <div class="alert alert-info">
+                    <strong>Excel format</strong>
+                    <div style="margin-top: 6px">
+                        Row 1: <strong>word | pronounce | first language</strong>
+                    </div>
+                    <div>Data starts from row 2.</div>
+                    <div>Topic is selected below; the Excel file does not need a Topic ID.</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="bold">Topic</label>
+
+                    <select class="form-control"
+                            ng-model="importVm.selectedTopic"
+                            ng-options="topic as topic.name for topic in importVm.topics track by topic.id">
+                        <option value="">-- Choose topic --</option>
+                    </select>
+
+                    <div class="text-danger"
+                         ng-if="!importVm.topics || importVm.topics.length === 0"
+                         style="margin-top: 5px;">
+                        No topic is available. Please load or create a topic first.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="bold">Excel file (.xlsx or .xls)</label>
+
+                    <input type="file"
+                           class="form-control"
+                           accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                           question-file-select="importVm.onFileSelected(file)">
+                </div>
+
+                <div class="alert alert-default"
+                     ng-if="importVm.fileName"
+                     style="border: 1px solid #ddd;">
+                    Selected file:
+                    <strong>{{importVm.fileName}}</strong>
+                </div>
+            </div>
+
+            <div ng-if="importVm.preview">
+                <div class="row margin-bottom-10">
+                    <div class="col-md-6">
+                        <strong>Topic:</strong>
+                        {{importVm.preview.topicName || 'Unknown'}}
+                    </div>
+
+                    <div class="col-md-6 text-right">
+                        <strong>Topic ID:</strong>
+                        {{importVm.preview.topicId}}
+                    </div>
+                </div>
+
+                <div class="row margin-bottom-10">
+                    <div class="col-sm-2 col-xs-6">
+                        <div class="well well-sm text-center">
+                            <div class="bold">{{importVm.preview.summary.total}}</div>
+                            <small>Total</small>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-2 col-xs-6">
+                        <div class="well well-sm text-center">
+                            <div class="bold text-success">
+                                {{importVm.preview.summary.newCount}}
+                            </div>
+                            <small>New</small>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-2 col-xs-6">
+                        <div class="well well-sm text-center">
+                            <div class="bold text-info">
+                                {{importVm.preview.summary.addTopicCount}}
+                            </div>
+                            <small>Add topic</small>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-2 col-xs-6">
+                        <div class="well well-sm text-center">
+                            <div class="bold">
+                                {{importVm.preview.summary.alreadyInTopicCount}}
+                            </div>
+                            <small>Already added</small>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-2 col-xs-6">
+                        <div class="well well-sm text-center">
+                            <div class="bold text-warning">
+                                {{importVm.preview.summary.duplicateInFileCount}}
+                            </div>
+                            <small>Duplicate</small>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-2 col-xs-6">
+                        <div class="well well-sm text-center">
+                            <div class="bold text-danger">
+                                {{importVm.preview.summary.invalidCount + importVm.preview.summary.conflictCount}}
+                            </div>
+                            <small>Invalid</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="checkbox">
+                    <label>
+                        <input type="checkbox"
+                               ng-model="importVm.updateEmptyFields">
+                        Fill pronounce and first language only when existing values are empty
+                    </label>
+                </div>
+
+                <div class="table-responsive"
+                     style="max-height: 420px; overflow-y: auto; border: 1px solid #ddd;">
+                    <table class="table table-bordered table-striped table-hover"
+                           style="margin-bottom: 0;">
+                        <thead>
+                        <tr>
+                            <th class="text-center" style="width: 45px">
+                                <input type="checkbox"
+                                       ng-model="importVm.selectAll"
+                                       ng-change="importVm.toggleAllRows()">
+                            </th>
+                            <th style="width: 65px">Row</th>
+                            <th>Word</th>
+                            <th>Pronounce</th>
+                            <th>First language</th>
+                            <th style="width: 180px">Status</th>
+                            <th>Message</th>
+                        </tr>
+                        </thead>
+
+                        <tbody>
+                        <tr ng-repeat="row in importVm.preview.rows track by $index">
+                            <td class="text-center">
+                                <input type="checkbox"
+                                       ng-model="row.selected"
+                                       ng-disabled="!importVm.isImportable(row)"
+                                       ng-change="importVm.onRowSelectionChanged()">
+                            </td>
+
+                            <td>{{row.rowNumber}}</td>
+                            <td class="bold">{{row.word}}</td>
+                            <td>{{row.pronounce}}</td>
+                            <td>{{row.firstLanguage}}</td>
+
+                            <td>
+                                <span ng-class="importVm.getStatusClass(row)">
+                                    {{importVm.getStatusText(row)}}
+                                </span>
+                            </td>
+
+                            <td>{{row.message}}</td>
+                        </tr>
+
+                        <tr ng-if="!importVm.preview.rows.length">
+                            <td colspan="7" class="text-center text-muted">
+                                No data found in the Excel file.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-info"
+                     style="margin-top: 10px; margin-bottom: 0;">
+                    Selected:
+                    <strong>{{importVm.getSelectedCount()}}</strong>
+                    valid row(s).
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button"
+                    class="btn btn-default"
+                    ng-disabled="importVm.loadingPreview || importVm.loadingConfirm"
+                    ng-click="importVm.cancel()">
+                Close
+            </button>
+
+            <button type="button"
+                    class="btn btn-default"
+                    ng-if="importVm.preview"
+                    ng-disabled="importVm.loadingConfirm"
+                    ng-click="importVm.backToFileSelection()">
+                <i class="fa fa-arrow-left"></i>
+                Choose another file
+            </button>
+
+            <button type="button"
+                    class="btn btn-primary"
+                    ng-if="!importVm.preview"
+                    ng-disabled="!importVm.selectedTopic || !importVm.file || importVm.loadingPreview"
+                    ng-click="importVm.loadPreview()">
+                <i class="fa fa-spinner fa-spin"
+                   ng-if="importVm.loadingPreview"></i>
+                <i class="fa fa-search"
+                   ng-if="!importVm.loadingPreview"></i>
+                Read and preview
+            </button>
+
+            <button type="button"
+                    class="btn btn-success"
+                    ng-if="importVm.preview"
+                    ng-disabled="importVm.getSelectedCount() === 0 || importVm.loadingConfirm"
+                    ng-click="importVm.confirmImport()">
+                <i class="fa fa-spinner fa-spin"
+                   ng-if="importVm.loadingConfirm"></i>
+                <i class="fa fa-check"
+                   ng-if="!importVm.loadingConfirm"></i>
+                Confirm import ({{importVm.getSelectedCount()}})
+            </button>
+        </div>
+    </div>
+</script>
 
 <script type="text/ng-template" id="review_flash_card_modal.html">
     <div modal-movable>
