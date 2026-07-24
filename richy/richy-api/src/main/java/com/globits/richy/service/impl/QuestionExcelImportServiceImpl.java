@@ -42,7 +42,7 @@ import com.globits.richy.repository.TopicRepository;
 import com.globits.richy.service.QuestionExcelImportService;
 import com.globits.security.domain.User;
 import com.globits.security.repository.UserRepository;
-
+import com.globits.richy.dto.QuestionImportCandidateDto;
 @Service
 public class QuestionExcelImportServiceImpl
         implements QuestionExcelImportService {
@@ -146,12 +146,46 @@ public class QuestionExcelImportServiceImpl
             }
 
             if (existingQuestions.size() > 1) {
+
+                List<QuestionImportCandidateDto> candidates =
+                        new ArrayList<QuestionImportCandidateDto>();
+
+                for (QuestionImportExistingDto existing
+                        : existingQuestions) {
+
+                    QuestionImportCandidateDto candidate =
+                            new QuestionImportCandidateDto();
+
+                    candidate.setId(existing.getId());
+                    candidate.setWord(existing.getQuestion());
+                    candidate.setPronounce(existing.getPronounce());
+                    candidate.setMotherTongue(
+                            existing.getMotherTongue()
+                    );
+
+                    candidate.setAlreadyInTopic(
+                            questionIdsInTopic.contains(
+                                    existing.getId()
+                            )
+                    );
+
+                    candidates.add(candidate);
+                }
+
+                row.setCandidates(candidates);
+
+                /*
+                 * Chưa chọn candidate nên chưa cho import.
+                 */
+                row.setSelectedExistingQuestionId(null);
+
                 setRowStatus(
                         row,
                         QuestionImportStatus.CONFLICT,
-                        "Có nhiều flashcard cùng word trong dữ liệu",
+                        "Có nhiều flashcard trùng. Hãy chọn một flashcard bên dưới",
                         false
                 );
+
                 continue;
             }
 
@@ -318,9 +352,171 @@ public class QuestionExcelImportServiceImpl
             if (existingQuestions != null
                     && existingQuestions.size() > 1) {
 
-                result.setErrorCount(
-                        result.getErrorCount() + 1
+                Long selectedQuestionId =
+                        row.getSelectedExistingQuestionId();
+
+                /*
+                 * Người dùng chưa chọn Question.
+                 */
+                if (selectedQuestionId == null) {
+                    result.setErrorCount(
+                            result.getErrorCount() + 1
+                    );
+                    continue;
+                }
+
+                /*
+                 * Kiểm tra ID được chọn có thực sự thuộc nhóm
+                 * các Question trùng word hay không.
+                 */
+                QuestionImportExistingDto selectedCandidate = null;
+
+                for (QuestionImportExistingDto candidate
+                        : existingQuestions) {
+
+                    if (selectedQuestionId.equals(
+                            candidate.getId())) {
+
+                        selectedCandidate = candidate;
+                        break;
+                    }
+                }
+
+                if (selectedCandidate == null) {
+                    result.setErrorCount(
+                            result.getErrorCount() + 1
+                    );
+                    continue;
+                }
+
+                Question selectedQuestion =
+                        questionRepository.findOne(
+                                selectedQuestionId
+                        );
+
+                if (selectedQuestion == null) {
+                    result.setErrorCount(
+                            result.getErrorCount() + 1
+                    );
+                    continue;
+                }
+
+                /*
+                 * Không cho chọn Question của user khác.
+                 */
+                if (selectedQuestion.getUser() == null
+                        || selectedQuestion.getUser().getId() == null
+                        || !currentUser.getId().equals(
+                                selectedQuestion.getUser().getId()
+                        )) {
+
+                    result.setErrorCount(
+                            result.getErrorCount() + 1
+                    );
+                    continue;
+                }
+
+                /*
+                 * Question phải là flashcard.
+                 */
+                if (selectedQuestion.getQuestionType() == null
+                        || selectedQuestion.getQuestionType().getId() == null
+                        || !FLASH_CARD_TYPE_ID.equals(
+                                selectedQuestion
+                                        .getQuestionType()
+                                        .getId()
+                        )) {
+
+                    result.setErrorCount(
+                            result.getErrorCount() + 1
+                    );
+                    continue;
+                }
+
+                /*
+                 * Word của Question được chọn phải giống word import.
+                 */
+                if (!normalizedWord.equals(
+                        normalizeWord(
+                                selectedQuestion.getQuestion()
+                        ))) {
+
+                    result.setErrorCount(
+                            result.getErrorCount() + 1
+                    );
+                    continue;
+                }
+
+                Long topicCount =
+                        questionTopicRepository
+                                .countByQuestionIdAndTopicId(
+                                        selectedQuestion.getId(),
+                                        topic.getId()
+                                );
+
+                /*
+                 * Đã có topic thì không tạo QuestionTopic mới.
+                 */
+                if (topicCount != null && topicCount > 0) {
+                    result.setSkippedCount(
+                            result.getSkippedCount() + 1
+                    );
+                    continue;
+                }
+
+                /*
+                 * Chỉ điền dữ liệu nếu trường cũ đang trống.
+                 * Không ghi đè nghĩa và phát âm đã tồn tại.
+                 */
+                if (dto.isUpdateEmptyFields()) {
+
+                    boolean changed = false;
+
+                    if (isBlank(selectedQuestion.getPronounce())
+                            && !isBlank(row.getPronounce())) {
+
+                        selectedQuestion.setPronounce(
+                                cleanText(row.getPronounce())
+                        );
+
+                        changed = true;
+                    }
+
+                    String importedMotherTongue =
+                            getImportedMotherTongue(row);
+
+                    if (isBlank(
+                            selectedQuestion.getMotherTongue())
+                            && !isBlank(importedMotherTongue)) {
+
+                        selectedQuestion.setMotherTongue(
+                                cleanText(importedMotherTongue)
+                        );
+
+                        changed = true;
+                    }
+
+                    if (changed) {
+                        selectedQuestion.setModifiedBy(username);
+                        selectedQuestion.setModifyDate(now);
+
+                        questionRepository.save(
+                                selectedQuestion
+                        );
+                    }
+                }
+
+                createQuestionTopic(
+                        selectedQuestion,
+                        topic,
+                        username,
+                        now
                 );
+
+                result.setTopicAddedCount(
+                        result.getTopicAddedCount() + 1
+                );
+
                 continue;
             }
 

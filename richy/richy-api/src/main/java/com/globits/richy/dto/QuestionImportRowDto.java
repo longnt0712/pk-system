@@ -1,6 +1,8 @@
 package com.globits.richy.dto;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 public class QuestionImportRowDto implements Serializable {
 
@@ -27,6 +29,29 @@ public class QuestionImportRowDto implements Serializable {
     private Boolean importable;
 
     private Long existingQuestionId;
+    
+    private Long selectedExistingQuestionId;
+
+    private List<QuestionImportCandidateDto> candidates =
+            new ArrayList<QuestionImportCandidateDto>();
+    
+    public Long getSelectedExistingQuestionId() {
+        return selectedExistingQuestionId;
+    }
+
+    public void setSelectedExistingQuestionId(
+            Long selectedExistingQuestionId) {
+        this.selectedExistingQuestionId = selectedExistingQuestionId;
+    }
+
+    public List<QuestionImportCandidateDto> getCandidates() {
+        return candidates;
+    }
+
+    public void setCandidates(
+            List<QuestionImportCandidateDto> candidates) {
+        this.candidates = candidates;
+    }
 
     public Integer getRowNumber() {
         return rowNumber;
