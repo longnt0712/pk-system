@@ -93,22 +93,22 @@
                         </label>
                     </div>
                 </div>
-                <div class="row support-panel" ng-if="vm.filter.filtered == 1">
-                    <div class="col-md-12">
-                        <div class="support-container">
-                            <div class="row filter-panel">
-                                <div class="col-xs-1"><i class="icon-directions"></i></div>
-                                <div class="col-xs-11">
-                                    <ul class="tags">
-                                        <li ng-if="vm.filter.keyword && vm.filter.keyword.trim() != ''"><span class="tag red" href="#">&mdash; {{vm.filter.keyword}} <a href="#" ng-click="vm.onFilterRemoved('_keyword', vm.filter.keyword);"><i class="fa fa-remove"></i></a></span></li>
-                                        <li ng-if="vm.filter.groups.length > 0" ng-repeat="group in vm.filter.groups"><span class="tag red" href="#">&mdash; {{group.name}} <a href="#" ng-click="vm.onFilterRemoved('_groups', group);"><i class="fa fa-remove"></i></a></span></li>
-                                        <li ng-if="vm.filter.roles.length > 0" ng-repeat="role in vm.filter.roles"><span class="tag red" href="#">&mdash; {{role.name}} <a href="#" ng-click="vm.onFilterRemoved('_roles', role);"><i class="fa fa-remove"></i></a></span></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!--<div class="row support-panel" ng-if="vm.filter.filtered == 1">-->
+                    <!--<div class="col-md-12">-->
+                        <!--<div class="support-container">-->
+                            <!--<div class="row filter-panel">-->
+                                <!--<div class="col-xs-1"><i class="icon-directions"></i></div>-->
+                                <!--<div class="col-xs-11">-->
+                                    <!--<ul class="tags">-->
+                                        <!--<li ng-if="vm.filter.keyword && vm.filter.keyword.trim() != ''"><span class="tag red" href="#">&mdash; {{vm.filter.keyword}} <a href="#" ng-click="vm.onFilterRemoved('_keyword', vm.filter.keyword);"><i class="fa fa-remove"></i></a></span></li>-->
+                                        <!--<li ng-if="vm.filter.groups.length > 0" ng-repeat="group in vm.filter.groups"><span class="tag red" href="#">&mdash; {{group.name}} <a href="#" ng-click="vm.onFilterRemoved('_groups', group);"><i class="fa fa-remove"></i></a></span></li>-->
+                                        <!--<li ng-if="vm.filter.roles.length > 0" ng-repeat="role in vm.filter.roles"><span class="tag red" href="#">&mdash; {{role.name}} <a href="#" ng-click="vm.onFilterRemoved('_roles', role);"><i class="fa fa-remove"></i></a></span></li>-->
+                                    <!--</ul>-->
+                                <!--</div>-->
+                            <!--</div>-->
+                        <!--</div>-->
+                    <!--</div>-->
+                <!--</div>-->
                 <!--<table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>-->
                 <div class="row">
                     <div class="col-md-12">
