@@ -282,8 +282,8 @@
             // {id: 14, name: "KHÁC"},
             // {id: null, name: "Tất cả"}
         ];
-        
-        
+
+
 
 
         vm.searchDto.groupId = null;
@@ -1252,6 +1252,55 @@
                 }
                 vm.confirmCheck();
             });
+        };
+
+        /**
+         * Kiểm tra mục này đang được tính là "đã điểm danh" hay chưa.
+         *
+         * Lễ:
+         *   1 = Có đi lễ, 3 = Muộn, 5 = Ca đoàn.
+         *
+         * Giáo lý / Ngoại khóa:
+         *   1 = Có đi, 3 = Muộn.
+         *
+         * Các trạng thái null, 2 (không đi) và 6 (phép) được xem là
+         * chưa điểm danh để nút màu xanh được hiển thị.
+         */
+        vm.isAttendanceChecked = function (personDate, checkType) {
+            if (!personDate) {
+                return false;
+            }
+
+            var status = null;
+
+            if (checkType == 1) {
+                status = personDate.statusMass;
+            } else if (checkType == 2) {
+                status = personDate.statusClass;
+            } else if (checkType == 3) {
+                status = personDate.extraClass;
+            }
+
+            status = parseInt(status, 10);
+
+            if (checkType == 1) {
+                return status === 1 || status === 3 || status === 5;
+            }
+
+            return status === 1 || status === 3;
+        };
+
+        /**
+         * Chỉ dùng một nút:
+         * - Chưa điểm danh: nút xanh, bấm để lưu trạng thái 1.
+         * - Đã điểm danh: nút đỏ, bấm để hủy về trạng thái 2.
+         */
+        vm.toggleAttendanceByClick = function (personDate, user, checkType) {
+            var nextStatus = vm.isAttendanceChecked(personDate, checkType)
+                ? 2
+                : 1;
+
+            vm.saveByClick(personDate, user, checkType, nextStatus);
         };
 
         vm.saveByClick = function (personDate,user,checkType,status) {
