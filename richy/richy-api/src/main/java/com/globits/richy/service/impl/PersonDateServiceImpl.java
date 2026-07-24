@@ -42,7 +42,7 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 	@Autowired
 	private UserRepository userRepository;
 	
-	@Override
+//	@Override
 //	public Page<PersonDateDto> getPageObject(PersonDateDto searchDto, int pageIndex, int pageSize) {
 //		if (pageIndex > 0)
 //			pageIndex = pageIndex - 1;
@@ -122,108 +122,244 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 //		return page;
 //	}
 	
-	public Page<PersonDateDto> getPageObject(PersonDateDto searchDto, int pageIndex, int pageSize) {
-		if (pageIndex > 0) {
-			pageIndex = pageIndex - 1;
-		} else {
-			pageIndex = 0;
-		}
+	@Override
+	public Page<PersonDateDto> getPageObject(
+	        PersonDateDto searchDto,
+	        int pageIndex,
+	        int pageSize
+	) {
+	    if (pageIndex > 0) {
+	        pageIndex = pageIndex - 1;
+	    } else {
+	        pageIndex = 0;
+	    }
 
-		Pageable pageable = new PageRequest(pageIndex, pageSize);
+	    Pageable pageable = new PageRequest(
+	            pageIndex,
+	            pageSize
+	    );
 
-		String textSearch = searchDto.getTextSearch();
+	    String textSearch = null;
 
-		String sql = "select distinct new com.globits.richy.dto.PersonDateDto(s) "
-				+ "from PersonDate s "
-				+ "join s.user u "
-				+ "left join u.groups g "
-				+ "where (1=1)";
+	    if (searchDto != null) {
+	        textSearch = searchDto.getTextSearch();
+	    }
 
-		String sqlCount = "select count(distinct s.id) "
-				+ "from PersonDate s "
-				+ "join s.user u "
-				+ "left join u.groups g "
-				+ "where (1=1)";
+	    String sql =
+	            "select distinct " +
+	            "new com.globits.richy.dto.PersonDateDto(s) " +
+	            "from PersonDate s " +
+	            "join s.user u " +
+	            "left join u.groups g " +
+	            "where (1=1)";
 
-		String whereClause = "";
+	    String sqlCount =
+	            "select count(distinct s.id) " +
+	            "from PersonDate s " +
+	            "join s.user u " +
+	            "left join u.groups g " +
+	            "where (1=1)";
 
-		// lọc theo group id
-		if (searchDto != null && searchDto.getGroupId() != null) {
-			whereClause += " and g.id = :groupId";
-		}
+	    String whereClause = "";
 
-		// textSearch
-		if (textSearch != null && textSearch.trim().length() > 0) {
-			whereClause += " and ("
-					+ "lower(u.username) like :textSearch "
-					+ "or lower(u.person.displayName) like :textSearch "
-					+ "or lower(u.person.firstName) like :textSearch "
-					+ "or lower(u.person.lastName) like :textSearch"
-					+ ")";
-		}
+	    /*
+	     * Chỉ lấy user đang hoạt động.
+	     */
+	    whereClause += " and u.active = true";
 
-		// lọc theo ngày
-		if (searchDto != null && searchDto.getStartDate() != null && searchDto.getEndDate() != null) {
-			whereClause += " and (s.createDate >= :startDate and s.createDate < :endDate)";
-		}
+	    /*
+	     * Lọc nhóm.
+	     */
+	    if (
+	            searchDto != null &&
+	            searchDto.getGroupId() != null
+	    ) {
+	        whereClause += " and g.id = :groupId";
+	    }
 
-		// lọc theo lớp
-		if (searchDto != null
-				&& searchDto.getUser() != null
-				&& searchDto.getUser().getPerson() != null
-				&& searchDto.getUser().getPerson().getEnrollmentClassId() != null) {
-			whereClause += " and (u.person.enrollmentClassId = :enrollmentClassId)";
-		}
+	    /*
+	     * Tìm kiếm.
+	     */
+	    if (
+	            textSearch != null &&
+	            textSearch.trim().length() > 0
+	    ) {
+	        whereClause +=
+	                " and (" +
+	                "lower(u.username) like :textSearch " +
+	                "or lower(u.person.displayName) like :textSearch " +
+	                "or lower(u.person.firstName) like :textSearch " +
+	                "or lower(u.person.lastName) like :textSearch" +
+	                ")";
+	    }
 
-		sql += whereClause;
-		sqlCount += whereClause;
+	    /*
+	     * Lọc ngày.
+	     */
+	    if (
+	            searchDto != null &&
+	            searchDto.getStartDate() != null &&
+	            searchDto.getEndDate() != null
+	    ) {
+	        whereClause +=
+	                " and (" +
+	                "s.createDate >= :startDate " +
+	                "and s.createDate < :endDate" +
+	                ")";
+	    }
 
-		Query q = manager.createQuery(sql, PersonDateDto.class);
-		Query qCount = manager.createQuery(sqlCount);
+	    /*
+	     * Lọc lớp.
+	     */
+	    if (
+	            searchDto != null &&
+	            searchDto.getUser() != null &&
+	            searchDto.getUser().getPerson() != null &&
+	            searchDto.getUser()
+	                    .getPerson()
+	                    .getEnrollmentClassId() != null
+	    ) {
+	        whereClause +=
+	                " and u.person.enrollmentClassId = " +
+	                ":enrollmentClassId";
+	    }
 
-		// set groupId
-		if (searchDto != null && searchDto.getGroupId() != null) {
-			q.setParameter("groupId", searchDto.getGroupId());
-			qCount.setParameter("groupId", searchDto.getGroupId());
-		}
+	    sql += whereClause;
+	    sqlCount += whereClause;
 
-		// set textSearch
-		if (textSearch != null && textSearch.trim().length() > 0) {
-			q.setParameter("textSearch", "%" + textSearch.trim().toLowerCase() + "%");
-			qCount.setParameter("textSearch", "%" + textSearch.trim().toLowerCase() + "%");
-		}
+	    Query q = manager.createQuery(
+	            sql,
+	            PersonDateDto.class
+	    );
 
-		// set ngày
-		if (searchDto != null && searchDto.getStartDate() != null && searchDto.getEndDate() != null) {
-			LocalDateTime startDate = searchDto.getStartDate();
-			startDate = startDate.plusDays(1).withHourOfDay(0);
+	    Query qCount = manager.createQuery(sqlCount);
 
-			LocalDateTime endDate = searchDto.getEndDate();
-			endDate = endDate.plusDays(2).withHourOfDay(0);
+	    /*
+	     * Set group.
+	     */
+	    if (
+	            searchDto != null &&
+	            searchDto.getGroupId() != null
+	    ) {
+	        q.setParameter(
+	                "groupId",
+	                searchDto.getGroupId()
+	        );
 
-			q.setParameter("startDate", startDate);
-			qCount.setParameter("startDate", startDate);
+	        qCount.setParameter(
+	                "groupId",
+	                searchDto.getGroupId()
+	        );
+	    }
 
-			q.setParameter("endDate", endDate);
-			qCount.setParameter("endDate", endDate);
-		}
+	    /*
+	     * Set tìm kiếm.
+	     */
+	    if (
+	            textSearch != null &&
+	            textSearch.trim().length() > 0
+	    ) {
+	        String keyword =
+	                "%" +
+	                textSearch.trim().toLowerCase() +
+	                "%";
 
-		// set lớp
-		if (searchDto != null
-				&& searchDto.getUser() != null
-				&& searchDto.getUser().getPerson() != null
-				&& searchDto.getUser().getPerson().getEnrollmentClassId() != null) {
-			q.setParameter("enrollmentClassId", searchDto.getUser().getPerson().getEnrollmentClassId());
-			qCount.setParameter("enrollmentClassId", searchDto.getUser().getPerson().getEnrollmentClassId());
-		}
+	        q.setParameter(
+	                "textSearch",
+	                keyword
+	        );
 
-		q.setFirstResult(pageIndex * pageSize);
-		q.setMaxResults(pageSize);
+	        qCount.setParameter(
+	                "textSearch",
+	                keyword
+	        );
+	    }
 
-		Long numberResult = (Long) qCount.getSingleResult();
+	    /*
+	     * Set ngày.
+	     */
+	    if (
+	            searchDto != null &&
+	            searchDto.getStartDate() != null &&
+	            searchDto.getEndDate() != null
+	    ) {
+	        LocalDateTime startDate =
+	                searchDto.getStartDate()
+	                        .plusDays(1)
+	                        .withHourOfDay(0);
 
-		Page<PersonDateDto> page = new PageImpl<PersonDateDto>(q.getResultList(), pageable, numberResult);
-		return page;
+	        LocalDateTime endDate =
+	                searchDto.getEndDate()
+	                        .plusDays(2)
+	                        .withHourOfDay(0);
+
+	        q.setParameter(
+	                "startDate",
+	                startDate
+	        );
+
+	        qCount.setParameter(
+	                "startDate",
+	                startDate
+	        );
+
+	        q.setParameter(
+	                "endDate",
+	                endDate
+	        );
+
+	        qCount.setParameter(
+	                "endDate",
+	                endDate
+	        );
+	    }
+
+	    /*
+	     * Set lớp.
+	     *
+	     * Getter trả về Integer.
+	     */
+	    if (
+	            searchDto != null &&
+	            searchDto.getUser() != null &&
+	            searchDto.getUser().getPerson() != null &&
+	            searchDto.getUser()
+	                    .getPerson()
+	                    .getEnrollmentClassId() != null
+	    ) {
+	        Integer enrollmentClassId =
+	                searchDto.getUser()
+	                        .getPerson()
+	                        .getEnrollmentClassId();
+
+	        q.setParameter(
+	                "enrollmentClassId",
+	                enrollmentClassId
+	        );
+
+	        qCount.setParameter(
+	                "enrollmentClassId",
+	                enrollmentClassId
+	        );
+	    }
+
+	    q.setFirstResult(
+	            pageIndex * pageSize
+	    );
+
+	    q.setMaxResults(pageSize);
+
+	    Long numberResult =
+	            (Long) qCount.getSingleResult();
+
+	    List<PersonDateDto> content =
+	            q.getResultList();
+
+	    return new PageImpl<PersonDateDto>(
+	            content,
+	            pageable,
+	            numberResult
+	    );
 	}
 
 
@@ -434,6 +570,17 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 	    List<PersonDate> personDates = new ArrayList<PersonDate>();
 
 	    for (User user : users) {
+	        /*
+	         * Không tạo bản ghi điểm danh cho user
+	         * đã ngừng hoạt động hoặc active bị null.
+	         */
+	        if (
+	                user == null ||
+	                !Boolean.TRUE.equals(user.getActive())
+	        ) {
+	            continue;
+	        }
+
 	        PersonDate personDate = new PersonDate();
 
 	        personDate.setUser(user);
@@ -441,7 +588,6 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 	        personDate.setStatusMass(2);
 	        personDate.setExtraClass(2);
 
-	        // Set trước vẫn giữ, nhưng có thể bị audit listener ghi đè khi insert
 	        personDate.setCreateDate(startOfSelectedDate);
 	        personDate.setModifyDate(startOfSelectedDate);
 	        personDate.setCreatedBy(currentUserName);
