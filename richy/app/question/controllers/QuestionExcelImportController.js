@@ -129,6 +129,24 @@
         importVm.getStatusText = getStatusText;
         importVm.getStatusClass = getStatusClass;
         importVm.cancel = cancel;
+        importVm.downloadStaticTemplate = downloadStaticTemplate;
+
+        function downloadStaticTemplate(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            var link = document.createElement('a');
+
+            link.href = '/question/templates/flashcard_import_template.xlsx';
+            link.download = 'flashcard_import_template.xlsx';
+            link.target = '_blank';
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
 
         function onFileSelected(file) {
             importVm.file = file;

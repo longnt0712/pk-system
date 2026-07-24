@@ -816,13 +816,12 @@
                     <label class="bold">Excel template</label>
 
                     <div>
-                        <a class="btn btn-default"
-                           href="question/templates/flashcard_import_template.xlsx"
-                           download="flashcard_import_template.xlsx">
-
+                        <button type="button"
+                                class="btn btn-default"
+                                ng-click="importVm.downloadStaticTemplate($event)">
                             <i class="fa fa-download"></i>
                             Download Excel template
-                        </a>
+                        </button>
                     </div>
 
                     <p class="help-block">
