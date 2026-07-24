@@ -124,12 +124,43 @@
         importVm.backToFileSelection = backToFileSelection;
         importVm.toggleAllRows = toggleAllRows;
         importVm.onRowSelectionChanged = onRowSelectionChanged;
+        importVm.onConflictCandidateChanged =
+            onConflictCandidateChanged;
         importVm.getSelectedCount = getSelectedCount;
         importVm.isImportable = isImportable;
         importVm.getStatusText = getStatusText;
         importVm.getStatusClass = getStatusClass;
         importVm.cancel = cancel;
         importVm.downloadStaticTemplate = downloadStaticTemplate;
+
+        function onConflictCandidateChanged(row) {
+            if (!row) {
+                return;
+            }
+
+            if (row.selectedExistingQuestionId) {
+                row.importable = true;
+
+                /*
+                 * Tự tick sau khi chọn candidate.
+                 * Người dùng vẫn có thể bỏ tick.
+                 */
+                row.selected = true;
+
+                row.message =
+                    'Đã chọn flashcard ID '
+                    + row.selectedExistingQuestionId
+                    + ' để gán topic';
+            } else {
+                row.importable = false;
+                row.selected = false;
+
+                row.message =
+                    'Hãy chọn một flashcard để gán topic';
+            }
+
+            onRowSelectionChanged();
+        }
 
         function downloadStaticTemplate(event) {
             if (event) {
@@ -223,7 +254,15 @@
                         pronounce: row.pronounce,
                         motherTongue: row.firstLanguage,
                         status: row.status,
-                        existingQuestionId: row.existingQuestionId || row.questionId || null
+
+                        existingQuestionId:
+                        row.existingQuestionId ||
+                        row.questionId ||
+                        null,
+
+                        selectedExistingQuestionId:
+                        row.selectedExistingQuestionId ||
+                        null
                     });
                 }
             });
@@ -282,30 +321,126 @@
             data.rows = rows;
             data.topicId = data.topicId || topic.id || null;
             data.topicName = data.topicName || topic.name || '';
+
             data.totalRows = angular.isDefined(data.totalRows)
                 ? data.totalRows
                 : rows.length;
 
             angular.forEach(rows, function (row) {
-                row.rowNumber = row.rowNumber || row.excelRow || row.index || '';
-                row.word = row.word || row.question || '';
-                row.pronounce = row.pronounce || row.pronunciation || '';
+
+                /*
+                 * Chuẩn hóa dữ liệu chính của từng dòng.
+                 */
+                row.rowNumber =
+                    row.rowNumber ||
+                    row.excelRow ||
+                    row.index ||
+                    '';
+
+                row.word =
+                    row.word ||
+                    row.question ||
+                    '';
+
+                row.pronounce =
+                    row.pronounce ||
+                    row.pronunciation ||
+                    '';
+
                 row.firstLanguage =
                     row.firstLanguage ||
                     row.motherTongue ||
                     row.first_language ||
                     '';
 
-                row.status = (row.status || 'INVALID').toUpperCase();
+                row.status =
+                    (row.status || 'INVALID').toUpperCase();
 
-                if (!angular.isDefined(row.importable)) {
-                    row.importable = isImportableStatus(row.status);
+                /*
+                 * Backend trả candidates khi có nhiều word trùng.
+                 * Nếu không có thì dùng mảng rỗng để tránh lỗi.
+                 */
+                row.candidates = row.candidates || [];
+
+                /*
+                 * Tạo nội dung hiển thị trong dropdown.
+                 */
+                angular.forEach(
+                    row.candidates,
+                    function (candidate) {
+
+                        var candidateWord =
+                            candidate.word ||
+                            candidate.question ||
+                            '';
+
+                        var candidatePronounce =
+                            candidate.pronounce ||
+                            'No pronunciation';
+
+                        var candidateMeaning =
+                            candidate.motherTongue ||
+                            candidate.firstLanguage ||
+                            'No first language';
+
+                        var topicStatus =
+                            candidate.alreadyInTopic === true
+                                ? ' | Already in topic'
+                                : '';
+
+                        candidate.displayText =
+                            'ID ' + candidate.id
+                            + ' | ' + candidateWord
+                            + ' | ' + candidatePronounce
+                            + ' | ' + candidateMeaning
+                            + topicStatus;
+                    }
+                );
+
+                /*
+                 * Với dòng CONFLICT:
+                 * - Chưa chọn candidate: không cho tick.
+                 * - Đã chọn candidate: cho tick.
+                 */
+                if (row.status === 'CONFLICT') {
+
+                    row.importable =
+                        !!row.selectedExistingQuestionId;
+
+                    /*
+                     * Khi mới preview thì mặc định không tick.
+                     */
+                    if (!angular.isDefined(row.selected)) {
+                        row.selected = false;
+                    }
+
+                    /*
+                     * Nếu backend trả selected=true nhưng chưa chọn candidate
+                     * thì vẫn phải bỏ tick.
+                     */
+                    if (!row.selectedExistingQuestionId) {
+                        row.selected = false;
+                    }
+
+                } else {
+
+                    /*
+                     * Các trạng thái bình thường:
+                     * NEW, ADD_TOPIC...
+                     */
+                    if (!angular.isDefined(row.importable)) {
+                        row.importable =
+                            isImportableStatus(row.status);
+                    }
+
+                    if (!angular.isDefined(row.selected)) {
+                        row.selected = row.importable;
+                    }
                 }
 
-                if (!angular.isDefined(row.selected)) {
-                    row.selected = row.importable;
-                }
-
+                /*
+                 * Nếu backend không trả message thì frontend tự tạo.
+                 */
                 if (!row.message) {
                     row.message = getStatusText(row);
                 }
@@ -434,6 +569,10 @@
         function isImportable(row) {
             if (!row) {
                 return false;
+            }
+
+            if (row.status === 'CONFLICT') {
+                return !!row.selectedExistingQuestionId;
             }
 
             if (angular.isDefined(row.importable)) {
