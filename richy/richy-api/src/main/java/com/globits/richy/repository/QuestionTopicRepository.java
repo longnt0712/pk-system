@@ -18,4 +18,18 @@ public interface QuestionTopicRepository extends JpaRepository<QuestionTopic, Lo
 	
 	@Query("select distinct qt.question.id from QuestionTopic qt where qt.topic.id in ?1")
 	List<Long> getListIdQuestionByListIdTopicDistinct(List<Long> ids);
+	
+	@Query("select qt.question.id "
+	        + "from QuestionTopic qt "
+	        + "where qt.topic.id = ?1")
+	List<Long> findQuestionIdsByTopicId(Long topicId);
+
+	@Query("select count(qt.id) "
+	        + "from QuestionTopic qt "
+	        + "where qt.question.id = ?1 "
+	        + "and qt.topic.id = ?2")
+	Long countByQuestionIdAndTopicId(
+	        Long questionId,
+	        Long topicId
+	);
 }
