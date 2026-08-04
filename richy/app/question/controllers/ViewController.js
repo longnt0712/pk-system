@@ -611,7 +611,7 @@
                     if (vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15) {
                         vm.showGapTitleTable = true;
                     }
-                    
+
                     if (vm.mode.id == 12) {
                         vm.showGapsTable = false;
                     }
@@ -7194,20 +7194,20 @@
                 keyboard: false,
                 windowClass: 'mcq-tntt-confirm-window',
                 template:
-                    '<div class="mcq-tntt-confirm-modal">' +
-                    '   <button type="button" class="mcq-tntt-confirm-close" ng-click="cancel()" aria-label="Đóng">×</button>' +
-                    '   <div class="mcq-tntt-confirm-cloud cloud-left">☁️</div>' +
-                    '   <div class="mcq-tntt-confirm-cloud cloud-right">☁️</div>' +
-                    '   <div class="mcq-tntt-confirm-stars">⭐ ✨ 🌈 ✨ ⭐</div>' +
-                    '   <div class="mcq-tntt-confirm-badge">{{icon}}</div>' +
-                    '   <div class="mcq-tntt-confirm-title">{{title}}</div>' +
-                    '   <div class="mcq-tntt-confirm-subtitle">{{subtitle}}</div>' +
-                    '   <div class="mcq-tntt-confirm-message">{{message}}</div>' +
-                    '   <div class="mcq-tntt-confirm-actions">' +
-                    '       <button type="button" class="btn mcq-tntt-btn-no" ng-click="cancel()">🙈 Không</button>' +
-                    '       <button type="button" class="btn mcq-tntt-btn-yes" ng-click="ok()">{{confirmText}}</button>' +
-                    '   </div>' +
-                    '</div>',
+                '<div class="mcq-tntt-confirm-modal">' +
+                '   <button type="button" class="mcq-tntt-confirm-close" ng-click="cancel()" aria-label="Đóng">×</button>' +
+                '   <div class="mcq-tntt-confirm-cloud cloud-left">☁️</div>' +
+                '   <div class="mcq-tntt-confirm-cloud cloud-right">☁️</div>' +
+                '   <div class="mcq-tntt-confirm-stars">⭐ ✨ 🌈 ✨ ⭐</div>' +
+                '   <div class="mcq-tntt-confirm-badge">{{icon}}</div>' +
+                '   <div class="mcq-tntt-confirm-title">{{title}}</div>' +
+                '   <div class="mcq-tntt-confirm-subtitle">{{subtitle}}</div>' +
+                '   <div class="mcq-tntt-confirm-message">{{message}}</div>' +
+                '   <div class="mcq-tntt-confirm-actions">' +
+                '       <button type="button" class="btn mcq-tntt-btn-no" ng-click="cancel()">🙈 Không</button>' +
+                '       <button type="button" class="btn mcq-tntt-btn-yes" ng-click="ok()">{{confirmText}}</button>' +
+                '   </div>' +
+                '</div>',
                 controller: ['$scope', '$uibModalInstance', function ($scope, $uibModalInstance) {
                     $scope.title = title;
                     $scope.message = message;
@@ -7315,31 +7315,31 @@
                 keyboard: false,
                 windowClass: 'mcq-tntt-confirm-window mcq-show-all-options-window',
                 template:
-                    '<div class="mcq-tntt-confirm-modal mcq-show-all-options-modal">' +
-                    '   <button type="button" class="mcq-tntt-confirm-close" ng-click="cancel()" aria-label="Đóng">×</button>' +
-                    '   <div class="mcq-tntt-confirm-cloud cloud-left">☁️</div>' +
-                    '   <div class="mcq-tntt-confirm-cloud cloud-right">☁️</div>' +
-                    '   <div class="mcq-tntt-confirm-stars">⭐ ✨ 👁️ ✨ ⭐</div>' +
-                    '   <div class="mcq-tntt-confirm-badge">🔢</div>' +
-                    '   <div class="mcq-tntt-confirm-title">Câu hỏi có dưới 4 đáp án</div>' +
-                    '   <div class="mcq-tntt-confirm-subtitle">' +
-                    '       Bạn có muốn hiển thị đáp án của những câu hỏi có dưới 4 đáp án không?' +
-                    '   </div>' +
-                    '   <div class="mcq-tntt-confirm-message">' +
-                    '       Chọn “Có, hiển thị” để hiện các phương án của tất cả câu hỏi. ' +
-                    '       Chọn “Không hiển thị” để chỉ ẩn danh sách phương án của những câu có ít hơn 4 đáp án; ' +
-                    '       các câu có từ 4 đáp án trở lên vẫn hiển thị bình thường.' +
-                    '   </div>' +
-                    '   <div class="mcq-tntt-confirm-actions mcq-show-all-modal-actions">' +
-                    '       <button type="button" class="btn mcq-tntt-btn-no" ng-click="cancel()">Hủy</button>' +
-                    '       <button type="button" class="btn mcq-keep-order-btn" ng-click="choose(false)">' +
-                    '           Không hiển thị' +
-                    '       </button>' +
-                    '       <button type="button" class="btn mcq-tntt-btn-yes" ng-click="choose(true)">' +
-                    '           Có, hiển thị' +
-                    '       </button>' +
-                    '   </div>' +
-                    '</div>',
+                '<div class="mcq-tntt-confirm-modal mcq-show-all-options-modal">' +
+                '   <button type="button" class="mcq-tntt-confirm-close" ng-click="cancel()" aria-label="Đóng">×</button>' +
+                '   <div class="mcq-tntt-confirm-cloud cloud-left">☁️</div>' +
+                '   <div class="mcq-tntt-confirm-cloud cloud-right">☁️</div>' +
+                '   <div class="mcq-tntt-confirm-stars">⭐ ✨ 👁️ ✨ ⭐</div>' +
+                '   <div class="mcq-tntt-confirm-badge">🔢</div>' +
+                '   <div class="mcq-tntt-confirm-title">Câu hỏi có dưới 4 đáp án</div>' +
+                '   <div class="mcq-tntt-confirm-subtitle">' +
+                '       Bạn có muốn hiển thị đáp án của những câu hỏi có dưới 4 đáp án không?' +
+                '   </div>' +
+                '   <div class="mcq-tntt-confirm-message">' +
+                '       Chọn “Có, hiển thị” để hiện các phương án của tất cả câu hỏi. ' +
+                '       Chọn “Không hiển thị” để chỉ ẩn danh sách phương án của những câu có ít hơn 4 đáp án; ' +
+                '       các câu có từ 4 đáp án trở lên vẫn hiển thị bình thường.' +
+                '   </div>' +
+                '   <div class="mcq-tntt-confirm-actions mcq-show-all-modal-actions">' +
+                '       <button type="button" class="btn mcq-tntt-btn-no" ng-click="cancel()">Hủy</button>' +
+                '       <button type="button" class="btn mcq-keep-order-btn" ng-click="choose(false)">' +
+                '           Không hiển thị' +
+                '       </button>' +
+                '       <button type="button" class="btn mcq-tntt-btn-yes" ng-click="choose(true)">' +
+                '           Có, hiển thị' +
+                '       </button>' +
+                '   </div>' +
+                '</div>',
                 controller: ['$scope', '$uibModalInstance', function ($scope, $uibModalInstance) {
                     $scope.choose = function (showUnderFourAnswers) {
                         $uibModalInstance.close(showUnderFourAnswers === true);
@@ -7377,8 +7377,8 @@
 
             // Fallback cho trường hợp giao diện đã chuyển dữ liệu sang searchDto.
             if (names.length <= 0 &&
-                    vm.searchDto &&
-                    vm.searchDto.questionTopics) {
+                vm.searchDto &&
+                vm.searchDto.questionTopics) {
                 angular.forEach(vm.searchDto.questionTopics, function (questionTopic) {
                     var topic = questionTopic && questionTopic.topic
                         ? questionTopic.topic
@@ -7570,8 +7570,8 @@
          */
         function exportMcqPdf(exportAnswerKey) {
             if (vm.showAllMcqQuestions !== true ||
-                    !vm.allMcqQuestions ||
-                    vm.allMcqQuestions.length <= 0) {
+                !vm.allMcqQuestions ||
+                vm.allMcqQuestions.length <= 0) {
                 toastr.warning('Chưa có danh sách MCQ đang hiển thị để xuất PDF.');
                 return;
             }
@@ -7614,15 +7614,15 @@
 
             var pdfHeadingHtml = selectedTopicNames.length > 0
                 ? selectedTopicNames
-                    .map(function (topicName) {
-                        return '<span class="mcq-pdf-topic-name">' +
-                            escapeMcqPrintHtml(topicName) +
-                            '</span>';
-                    })
-                    .join('')
+                .map(function (topicName) {
+                    return '<span class="mcq-pdf-topic-name">' +
+                        escapeMcqPrintHtml(topicName) +
+                        '</span>';
+                })
+                .join('')
                 : '<span class="mcq-pdf-topic-name">' +
-                    'TOÀN BỘ CÂU HỎI MCQ' +
-                    '</span>';
+            'TOÀN BỘ CÂU HỎI MCQ' +
+            '</span>';
 
             var currentBaseUrl = String(
                 document.baseURI || $window.location.href
@@ -7765,6 +7765,36 @@
                 '  font-size: 11.5pt;' +
                 '  font-weight: 700;' +
                 '  line-height: 1.4;' +
+                '}' +
+                '.mcq-all-original-correct {' +
+                '  margin-top: 10px;' +
+                '  padding: 9px 10px;' +
+                '  border: 1px solid #7bc79a;' +
+                '  border-left: 4px solid #2f855a;' +
+                '  border-radius: 6px;' +
+                '  background: #ecfdf3;' +
+                '  color: #14532d;' +
+                '  break-inside: avoid;' +
+                '  page-break-inside: avoid;' +
+                '}' +
+                '.mcq-all-original-correct-title {' +
+                '  margin: 0 0 5px;' +
+                '  color: #166534;' +
+                '  font-size: 10.5pt;' +
+                '  font-weight: 900;' +
+                '  line-height: 1.35;' +
+                '  text-transform: uppercase;' +
+                '}' +
+                '.mcq-all-original-correct-list {' +
+                '  margin: 0;' +
+                '  padding-left: 20px;' +
+                '}' +
+                '.mcq-all-original-correct-item {' +
+                '  margin: 3px 0;' +
+                '  font-size: 11pt;' +
+                '  font-weight: 700;' +
+                '  line-height: 1.4;' +
+                '  overflow-wrap: anywhere;' +
                 '}' +
                 '.mcq-all-answer-list {' +
                 '  display: grid;' +
@@ -7913,8 +7943,8 @@
                                         (
                                             isCorrect
                                                 ? '<span class="mcq-answer-key-badge">' +
-                                                    '✓ ĐÁP ÁN ĐÚNG' +
-                                                    '</span>'
+                                            '✓ ĐÁP ÁN ĐÚNG' +
+                                            '</span>'
                                                 : ''
                                         ) +
                                         '</div>'
@@ -7923,6 +7953,47 @@
                             );
 
                             parts.push('</div>');
+
+                            /*
+                             * Chỉ bản PDF "XUẤT ĐÁP ÁN" dùng hàm này.
+                             * Với câu dưới 4 phương án đã được đổi thành
+                             * Đúng/Sai, in thêm đáp án đúng gốc giống phần:
+                             * <div class="mcq-all-original-correct-title">
+                             * trên giao diện.
+                             */
+                            if (question.mcqGeneratedTrueFalse === true) {
+                                var originalCorrectAnswerTexts =
+                                    question.mcqCorrectAnswerTexts ||
+                                    getOriginalCorrectAnswerTexts(question);
+
+                                if (
+                                    originalCorrectAnswerTexts &&
+                                    originalCorrectAnswerTexts.length > 0
+                                ) {
+                                    parts.push(
+                                        '<div class="mcq-all-original-correct">' +
+                                        '<div class="mcq-all-original-correct-title">' +
+                                        'ĐÁP ÁN ĐÚNG GỐC' +
+                                        '</div>' +
+                                        '<ul class="mcq-all-original-correct-list">'
+                                    );
+
+                                    angular.forEach(
+                                        originalCorrectAnswerTexts,
+                                        function (correctAnswerText) {
+                                            parts.push(
+                                                '<li class="mcq-all-original-correct-item">' +
+                                                escapeMcqPrintHtml(
+                                                    correctAnswerText || ''
+                                                ) +
+                                                '</li>'
+                                            );
+                                        }
+                                    );
+
+                                    parts.push('</ul></div>');
+                                }
+                            }
                         } else {
                             parts.push(
                                 '<div class="mcq-all-empty">' +
