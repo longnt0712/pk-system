@@ -862,36 +862,19 @@
          */
         vm.editUser = function (userId) {
 
-            // vm.processEducationPrograms();
             service.getUser(userId).then(function (data) {
+
                 if (data && data.id) {
+
                     vm.user = data;
                     vm.user.isNew = false;
-
-                    // var normalized = [];
-                    //
-                    // if (vm.user.userEducationPrograms && vm.userEducationPrograms) {
-                    //     angular.forEach(vm.user.userEducationPrograms, function (selectedItem) {
-                    //         angular.forEach(vm.userEducationPrograms, function (option) {
-                    //             if (
-                    //                 selectedItem.educationProgram &&
-                    //                 option.educationProgram &&
-                    //                 selectedItem.educationProgram.id === option.educationProgram.id
-                    //             ) {
-                    //                 normalized.push(option);
-                    //             }
-                    //         });
-                    //     });
-                    // }
-                    //
-                    // vm.user.userEducationPrograms = normalized;
 
                     vm.modalInstance = modal.open({
                         animation: true,
                         templateUrl: 'edit_modal.html',
                         scope: $scope,
                         size: 'md',
-                        backdrop: 'static',
+                        backdrop: 'static'
                     });
                 }
             });
@@ -1398,24 +1381,44 @@
         /**
          * Get Firstname & Lastname from fullname
          */
-        $scope.$watch('vm.user.person.displayName', function (newVal, oldVal) {
-
-            if (!newVal) {
-                return;
-            }
-
-            var fullname = String(newVal).trim();
-            if (fullname.length <= 0) {
-                return;
-            }
-
-            var spaceIndex = fullname.indexOf(' ');
-
-            if (spaceIndex > 0) {
-                vm.user.person.firstName = fullname.substr(0, spaceIndex);
-                vm.user.person.lastName = fullname.substr(spaceIndex + 1);
-            }
-        });
+        // $scope.$watch('vm.user.person.displayName', function (newVal, oldVal) {
+        //
+        //     console.log(
+        //         '[WATCH person.displayName]',
+        //         'OLD =', oldVal,
+        //         'NEW =', newVal
+        //     );
+        //
+        //     if (!newVal) {
+        //         return;
+        //     }
+        //
+        //     var fullname = String(newVal).trim();
+        //
+        //     if (fullname.length <= 0) {
+        //         return;
+        //     }
+        //
+        //     var spaceIndex = fullname.indexOf(' ');
+        //
+        //     if (spaceIndex > 0) {
+        //
+        //         console.log(
+        //             '[WATCH] TRƯỚC:',
+        //             vm.user.person.firstName,
+        //             vm.user.person.lastName
+        //         );
+        //
+        //         vm.user.person.firstName = fullname.substr(0, spaceIndex);
+        //         vm.user.person.lastName = fullname.substr(spaceIndex + 1);
+        //
+        //         console.log(
+        //             '[WATCH] SAU:',
+        //             vm.user.person.firstName,
+        //             vm.user.person.lastName
+        //         );
+        //     }
+        // });
 
         /**
          * Table definition
