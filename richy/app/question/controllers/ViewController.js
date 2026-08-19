@@ -2694,136 +2694,190 @@
 
         vm.changeImageForAnswer();
 
-        vm.answerDailyVocab = function (correct,item,questions,player) {
-            // Khóa ở controller để không thể chọn đáp án khi chưa bắt đầu / đã hết giờ.
+        vm.answerDailyVocab = function (correct, item, questions, player) {
+            /*
+             * DAILY VOCAB dùng state riêng hoàn toàn.
+             * Không dùng vm.endGame / vm.endGamePlayer1 làm điều kiện chặn click,
+             * vì các biến legacy này còn được nhiều mode/hàm timer cũ thay đổi.
+             */
             if (!vm.mode || vm.mode.id != 5) {
                 return;
             }
 
             if (vm.dailyVocabRunning !== true ||
                 vm.dailyVocabAnswersEnabled !== true ||
-                vm.dailyVocabCounter <= 0 ||
-                vm.endGame === true) {
+                Number(vm.dailyVocabCounter) <= 0) {
                 return;
             }
 
-            angular.forEach(questions, function(value, key) {
+            if (!angular.isArray(questions) || !item) {
+                return;
+            }
+
+            /*
+             * Hỗ trợ correct ở dạng boolean, số hoặc chuỗi.
+             */
+            var isCorrect =
+                correct === true ||
+                correct === 1 ||
+                String(correct).toLowerCase() === 'true';
+
+            angular.forEach(questions, function (value) {
                 value.chosen = false;
             });
 
-            if(correct == true){
+            item.chosen = true;
+
+            /*
+             * Đồng bộ lại state legacy để các phần cũ không vô tình
+             * coi DAILY VOCAB là đã kết thúc trong khi timer riêng vẫn chạy.
+             */
+            vm.endGame = false;
+
+            if (player == 1) {
+                vm.endGamePlayer1 = false;
+            } else if (player == 2) {
+                vm.endGamePlayer2 = false;
+            }
+
+            if (isCorrect) {
                 vm.changeImageForAnswer();
                 vm.showStart = false;
                 vm.showWrong = false;
                 vm.showCorrect = true;
 
-                if(player == 1){
+                if (player == 1) {
                     stillInAQuestion1 = false;
-                    if((vm.currentPosition + 1) >= vm.totalCard){
-                        if(vm.endGamePlayer1 == false){
-                            vm.streakPlayer1 = vm.streakPlayer1 + 1;
+                    vm.streakPlayer1 = Number(vm.streakPlayer1 || 0) + 1;
 
-                            if(vm.streakPlayer1 >= 5){
-                                vm.score1 = vm.score1 + parseInt(vm.streakPlayer1/3);
-                            }else{
-                                vm.score1 = vm.score1 + 1;
-                            }
+                    if (vm.streakPlayer1 >= 5) {
+                        vm.score1 =
+                            Number(vm.score1 || 0) +
+                            parseInt(vm.streakPlayer1 / 3, 10);
+                    } else {
+                        vm.score1 = Number(vm.score1 || 0) + 1;
+                    }
 
-                            vm.score1 = vm.score1 + (vm.dailyVocabCounter)/12;
-                            vm.score1 = vm.score1.toFixed(2);
-                            vm.currentPosition = vm.currentPosition + 1;
-                        }
+                    if ((vm.currentPosition + 1) >= vm.totalCard) {
+                        vm.score1 =
+                            Number(vm.score1 || 0) +
+                            (Number(vm.dailyVocabCounter) / 12);
+
+                        vm.score1 = Number(vm.score1).toFixed(2);
+                        vm.currentPosition = vm.currentPosition + 1;
 
                         vm.endGamePlayer1 = true;
+                        vm.endGame = true;
 
-                        if(vm.endGamePlayer1){
-                            window.speechSynthesis.speak(new SpeechSynthesisUtterance("Player one is OVER"));
-                            vm.endGame = true;
-
-                            if(vm.isSaveTestResult == false){
-                                vm.saveTestResult();
-                            }
-
-                            vm.stopDailyVocabTimer();
+                        try {
+                            window.speechSynthesis.speak(
+                                new SpeechSynthesisUtterance("Player one is OVER")
+                            );
+                        } catch (speechError) {
+                            // Speech lỗi không được làm hỏng xử lý đáp án.
                         }
 
-                    }else{
-                        if(vm.endGamePlayer1 == false) {
-                            vm.streakPlayer1 = vm.streakPlayer1 + 1;
-
-                            if(vm.streakPlayer1 >= 5){
-                                vm.score1 = vm.score1 + parseInt(vm.streakPlayer1/3);
-                            }else{
-                                vm.score1 = vm.score1 + 1;
-                            }
-
-                            vm.nextCard();
+                        if (vm.isSaveTestResult == false) {
+                            vm.saveTestResult();
                         }
+
+                        vm.stopDailyVocabTimer();
+                        return;
                     }
-                } else if(player == 2){
-                    stillInAQuestion2 = false;
-                    if((vm.currentPosition1 + 1) >= vm.totalCard){
-                        window.speechSynthesis.speak(new SpeechSynthesisUtterance("Player two is OVER"));
-                        if(vm.endGamePlayer2 == false){
-                            vm.score2 = vm.score2 + (vm.dailyVocabCounter)/12;
-                        }
 
-                        vm.endGamePlayer2 = true;
-                        if(vm.endGamePlayer1 && vm.endGamePlayer2){
-                            vm.endGame = true;
-                            vm.stopDailyVocabTimer();
-                        }
-                    }else{
-                        if(vm.endGamePlayer2 == false) {
-                            vm.streakPlayer2 = vm.streakPlayer2 + 1;
-
-                            if(vm.streakPlayer2 >= 5){
-                                vm.score2 = vm.score2 + parseInt(vm.streakPlayer2/3);
-                            }else{
-                                vm.score2 = vm.score2 + 1;
-
-                            }
-
-                            vm.nextCard(2);
-                        }
-                    }
+                    vm.nextCard();
+                    return;
                 }
 
-            }else{
-                if(player == 1){
-                    vm.changeImageForAnswer();
-                    vm.showStart = false;
-                    vm.showWrong = true;
-                    vm.showCorrect = false;
+                if (player == 2) {
+                    stillInAQuestion2 = false;
+                    vm.streakPlayer2 = Number(vm.streakPlayer2 || 0) + 1;
 
-                    if(vm.endGame == false) {
-                        if(player == 1){
-                            vm.streakPlayer1 = 0;
-                            vm.score1 = vm.score1 - 0.5;
-                            if(stillInAQuestion1 == false){
-                                vm.wrongPlayer1 = vm.wrongPlayer1 + 1;
-                                stillInAQuestion1 = true;
-                                vm.testResult.testTakerPerformance = vm.testResult.testTakerPerformance + vm.currentCard.question + ' --- ' + vm.currentCard.motherTongue + ' <br> ';
-                                vm.tempWrong = vm.testResult.testTakerPerformance;
-                            }
-                        }
-                        vm.sayingWhenWrong();
+                    if (vm.streakPlayer2 >= 5) {
+                        vm.score2 =
+                            Number(vm.score2 || 0) +
+                            parseInt(vm.streakPlayer2 / 3, 10);
+                    } else {
+                        vm.score2 = Number(vm.score2 || 0) + 1;
                     }
-                } else if(player == 2){
-                    if(vm.endGame == false) {
-                        if(player == 2){
-                            vm.streakPlayer2 = 0;
-                            vm.score2 = vm.score2 - 0.5;
-                            if(stillInAQuestion2 == false){
-                                vm.wrongPlayer2 = vm.wrongPlayer2 + 1;
-                                stillInAQuestion2 = true;
-                            }
-                        }
-                        vm.sayingWhenWrong();
+
+                    if ((vm.currentPosition1 + 1) >= vm.totalCard) {
+                        vm.score2 =
+                            Number(vm.score2 || 0) +
+                            (Number(vm.dailyVocabCounter) / 12);
+
+                        vm.endGamePlayer2 = true;
+                        vm.endGame = true;
+                        vm.stopDailyVocabTimer();
+                        return;
                     }
+
+                    vm.nextCard(2);
+                }
+
+                return;
+            }
+
+            /*
+             * Trả lời sai.
+             */
+            vm.changeImageForAnswer();
+            vm.showStart = false;
+            vm.showWrong = true;
+            vm.showCorrect = false;
+
+            if (player == 1) {
+                vm.streakPlayer1 = 0;
+                vm.score1 = Number(vm.score1 || 0) - 0.5;
+
+                if (stillInAQuestion1 == false) {
+                    vm.wrongPlayer1 = Number(vm.wrongPlayer1 || 0) + 1;
+                    stillInAQuestion1 = true;
+
+                    if (!vm.testResult) {
+                        vm.setUpTestResult();
+                    }
+
+                    if (!vm.testResult.testTakerPerformance) {
+                        vm.testResult.testTakerPerformance = '';
+                    }
+
+                    vm.testResult.testTakerPerformance =
+                        vm.testResult.testTakerPerformance +
+                        ((vm.currentCard && vm.currentCard.question) || '') +
+                        ' --- ' +
+                        ((vm.currentCard && vm.currentCard.motherTongue) || '') +
+                        ' <br> ';
+
+                    vm.tempWrong = vm.testResult.testTakerPerformance;
+                }
+
+                try {
+                    vm.sayingWhenWrong();
+                } catch (wrongSoundError) {
+                    // Audio lỗi không được làm hỏng nút đáp án.
+                }
+
+                return;
+            }
+
+            if (player == 2) {
+                vm.streakPlayer2 = 0;
+                vm.score2 = Number(vm.score2 || 0) - 0.5;
+
+                if (stillInAQuestion2 == false) {
+                    vm.wrongPlayer2 = Number(vm.wrongPlayer2 || 0) + 1;
+                    stillInAQuestion2 = true;
+                }
+
+                try {
+                    vm.sayingWhenWrong();
+                } catch (wrongSoundError2) {
+                    // Audio lỗi không được làm hỏng nút đáp án.
                 }
             }
         };
+
 
         vm.sayingWhenWrong = function () {
             if(getRndInteger(1,7) == 1){
