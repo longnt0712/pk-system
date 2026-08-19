@@ -57,7 +57,7 @@
                     <div class="col-md-3">
                         <ui-select data-ng-disabled="" ng-model="vm.filter.enrollmentClass" data-ng-change="vm.search()" sortable="true" close-on-select="true">
                             <ui-select-match allow-clear="" placeholder="LỚP HỌC">{{$select.selected.name}}</ui-select-match>
-                            <ui-select-choices repeat="so.id as so in vm.enrollmentClasses  | propsFilter: {name: $select.search}">
+                            <ui-select-choices repeat="so.id as so in vm.enrollmentClasses | filter:{schoolId: 2} | propsFilter: {name: $select.search}">
                                 <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
                                 <small>{{so.old}}</small>
                             </ui-select-choices>
@@ -462,7 +462,7 @@
                             {{$select.selected.name}}
                         </ui-select-match>
 
-                        <ui-select-choices repeat="so.id as so in vm.enrollmentClasses | propsFilter: {name: $select.search}">
+                        <ui-select-choices repeat="so.id as so in vm.enrollmentClasses | filter:{schoolId: 2} | propsFilter: {name: $select.search}">
                             <div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>
                             <small>{{so.old}}</small>
                         </ui-select-choices>
