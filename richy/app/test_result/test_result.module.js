@@ -10,29 +10,41 @@
         'Hrm.Common'
     ]);
 
-    	Hrm.TestResult.config(['$stateProvider', function ($stateProvider) {
+    Hrm.TestResult.config(['$stateProvider', function ($stateProvider) {
+
+        var version = window.APP_VERSION || new Date().getTime();
 
         $stateProvider
 
-            // Event priority
             .state('application.test_results', {
                 url: '/test_results',
-                templateUrl: 'test_result/views/listing.html',
-                data: {pageTitle: 'TestResult'},
+
+                // chống cache listing.html
+                templateUrl: 'test_result/views/listing.html?v=' + version,
+
+                data: {
+                    pageTitle: 'TestResult'
+                },
+
                 controller: 'TestResultController as vm',
+
                 resolve: {
                     deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+
                         return $ocLazyLoad.load({
                             name: 'Hrm.TestResult',
                             insertBefore: '#ng_load_plugins_before',
+
                             files: [
-                                'test_result/controllers/TestResultController.js',
-                                'test_result/business/TestResultService.js'
+                                'test_result/controllers/TestResultController.js?v=' + version,
+                                'test_result/business/TestResultService.js?v=' + version
                             ]
                         });
+
                     }]
                 }
             });
+
     }]);
 
 })();
