@@ -136,6 +136,13 @@
                     switchable: false,
                     cellStyle: _cellNowrap
                 }
+                , {
+                    field: 'schoolId',
+                    title: 'Mã trường',
+                    sortable: true,
+                    switchable: false,
+                    cellStyle: _cellNowrap
+                }
             ]
         }
     }
