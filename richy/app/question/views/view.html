@@ -343,12 +343,17 @@
                                     <img ng-if="vm.showCorrect" class="show-image-answer-screen" src="{{vm.linkImageCorrect}}">
                                 </td>
                                 <td class="" style="padding-left:15px">
-                                    <div data-ng-click="startCount()" class="btn btn-clock"><strong>{{counter}}</strong>
+                                    <div data-ng-click="vm.startDailyVocab()"
+                                         class="btn btn-clock"
+                                         ng-class="{'disabled': vm.dailyVocabRunning}">
+                                        <strong>{{vm.dailyVocabCounter}}</strong>
                                     </div>
                                 </td>
                                 <td class="" style="padding-left:15px">
-                                    <div data-ng-click="refreshTimer()" class="btn" style="line-height:43px;height: 50px; width: 50px;">
-                                        <i style="font-size: 22px;" class="fa fa-refresh"></i>
+                                    <div data-ng-click="vm.resetDailyVocabTimer()"
+                                         class="btn"
+                                         style="line-height:43px;height: 50px;width:50px;">
+                                        <i style="font-size:22px;" class="fa fa-refresh"></i>
                                     </div>
                                 </td>
                                 <td class="">
@@ -359,10 +364,16 @@
                             </tr>
                         </table>
 
-                        <div data-ng-click="startCount()" class="btn btn-clock show-normal"><strong>{{counter}}</strong>
+                        <div data-ng-click="vm.startDailyVocab()"
+                             class="btn btn-clock show-normal"
+                             ng-class="{'disabled': vm.dailyVocabRunning}">
+                            <strong>{{vm.dailyVocabCounter}}</strong>
                         </div>
-                        <div data-ng-click="refreshTimer()" class="btn show-normal" style="line-height:43px;height: 50px; width: 50px;">
-                            <i style="font-size: 22px;" class="fa fa-refresh"></i></div>
+                        <div data-ng-click="vm.resetDailyVocabTimer()"
+                             class="btn show-normal"
+                             style="line-height:43px;height:50px;width:50px;">
+                            <i style="font-size:22px;" class="fa fa-refresh"></i>
+                        </div>
                     </div>
 
                     <div class="col-md-2 ">
@@ -395,17 +406,33 @@
                             </div>
                         </div>
 
-                        <div class="col-md-6 margin-top-10 margin-bottom-5" ng-repeat="item in vm.currentCard.questions" ng-show="vm.showMotherTongue === true && vm.endGame == false">
-                            <button id="answer-quiz-1-{{$index}}" style="width:100%;height: auto!important;min-height: 50px!important;font-size: 16px!important;" ng-style="
-                                    $index == 0 && {'background':'#641E1E'}
-                                    || $index == 1 && {'background':'#2a623d'}
-                                    || $index == 2 && {'background':'#ecb939','color':'black'}
-                                    || $index == 3 && {'background':'#0e1a40'}
-                                    || {'background': '#5b4739'}"
-
-                                    class="btn btn-brown" ng-click="vm.answerDailyVocab(item.correct,item,vm.currentCard.questions,1)">
-                                {{item.motherTongue}}
-                            </button>
+                        <!--
+                            DAILY VOCAB:
+                            Chỉ tạo 4 đáp án sau khi bấm đồng hồ 900.
+                            Khi timer về 0, ng-if xóa toàn bộ khu vực đáp án khỏi DOM.
+                        -->
+                        <div ng-if="vm.dailyVocabAnswersEnabled === true
+                                    && vm.dailyVocabRunning === true
+                                    && vm.dailyVocabCounter > 0">
+                            <div class="col-md-6 margin-top-10 margin-bottom-5"
+                                 ng-repeat="item in vm.currentCard.questions"
+                                 ng-show="vm.showMotherTongue === true">
+                                <button id="answer-quiz-1-{{$index}}"
+                                        style="width:100%;height:auto!important;min-height:50px!important;font-size:16px!important;"
+                                        ng-style="
+                                            $index == 0 && {'background':'#641E1E'}
+                                            || $index == 1 && {'background':'#2a623d'}
+                                            || $index == 2 && {'background':'#ecb939','color':'black'}
+                                            || $index == 3 && {'background':'#0e1a40'}
+                                            || {'background':'#5b4739'}"
+                                        class="btn btn-brown"
+                                        ng-disabled="vm.dailyVocabAnswersEnabled !== true
+                                                     || vm.dailyVocabRunning !== true
+                                                     || vm.dailyVocabCounter <= 0"
+                                        ng-click="vm.answerDailyVocab(item.correct,item,vm.currentCard.questions,1)">
+                                    {{item.motherTongue}}
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-2">
@@ -1916,7 +1943,33 @@
                         <form class="form-inline">
                             <div class="form-group mb-2">
                                 <label class="bold" for="setTimer">SET TIMER: &ensp;</label>
-                                <input id="setTimer" onkeydown="javascript: return event.keyCode == 69 ? false : true" ng-change="vm.counterChange()" placeholder="Set timer..." class="form-control input-underline-only" ng-model="vm.tempCounter"/>
+
+                                <!--
+                                    DAILY VOCAB dùng timer riêng.
+                                    Thay số tại đây sẽ cập nhật ngay đồng hồ DAILY VOCAB phía trên,
+                                    không thay đổi vm.tempCounter / $scope.counter của mode khác.
+                                -->
+                                <input
+                                    ng-if="vm.mode.id == 5"
+                                    id="setTimer"
+                                    type="number"
+                                    min="1"
+                                    max="9999"
+                                    onkeydown="javascript: return event.keyCode == 69 ? false : true"
+                                    ng-change="vm.dailyVocabTimerSettingChange()"
+                                    placeholder="Set timer..."
+                                    class="form-control input-underline-only"
+                                    ng-model="vm.dailyVocabDuration"/>
+
+                                <!-- Các mode khác giữ nguyên SET TIMER cũ. -->
+                                <input
+                                    ng-if="vm.mode.id != 5"
+                                    id="setTimer"
+                                    onkeydown="javascript: return event.keyCode == 69 ? false : true"
+                                    ng-change="vm.counterChange()"
+                                    placeholder="Set timer..."
+                                    class="form-control input-underline-only"
+                                    ng-model="vm.tempCounter"/>
                             </div>
                         </form>
                     </div>

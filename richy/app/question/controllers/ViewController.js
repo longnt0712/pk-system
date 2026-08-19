@@ -1181,24 +1181,11 @@
 
         vm.topicCategories = [];
         vm.searchTopicCategory = {};
-        vm.getPageTopicCategory = function () {
-            blockUI.start();
-            service.getPageTopicCategory(vm.searchTopicCategory,1, 100).then(function (data) {
-                blockUI.stop();
-                vm.topicCategories = data.content;
-
-                if(vm.topicCategories != null && vm.topicCategories != []){
-                    vm.searchTopicDto.topicCategory = vm.topicCategories[0];
-                }
-            });
-        };
-        vm.getPageTopicCategory();
 
         vm.topics = [];
         vm.topic = {};
         vm.topic.userId = vm.currentUser.id;
         vm.searchTopicDto = {};
-
         vm.searchTopicDto.userId = vm.selectedUser.id;
 
         vm.getTopics = function () {
@@ -1208,6 +1195,79 @@
                 blockUI.stop();
             });
         };
+
+        /*
+         * MẶC ĐỊNH KHI LOAD TRANG:
+         * - Tự chọn category Grade 6.
+         * - Tự load danh sách bài thuộc Grade 6.
+         * - Nếu hệ thống không có Grade 6 thì fallback về category đầu tiên.
+         *
+         * Chỉ tác động phần chọn Topic Category / Topics,
+         * không tự chạy DAILY VOCAB và không ảnh hưởng timer/game khác.
+         */
+        vm.getPageTopicCategory = function () {
+            blockUI.start();
+
+            service.getPageTopicCategory(vm.searchTopicCategory, 1, 100).then(
+                function (data) {
+                    vm.topicCategories = (data && data.content) ? data.content : [];
+
+                    if (vm.topicCategories.length > 0) {
+                        var grade6Category = null;
+
+                        angular.forEach(vm.topicCategories, function (category) {
+                            if (grade6Category) {
+                                return;
+                            }
+
+                            var name = ((category && category.name) || '')
+                                .toString()
+                                .toLowerCase()
+                                .trim();
+
+                            var code = ((category && category.code) || '')
+                                .toString()
+                                .toLowerCase()
+                                .trim();
+
+                            var compactName = name.replace(/\s+/g, '');
+
+                            if (
+                                name === 'grade 6' ||
+                                compactName === 'grade6' ||
+                                name === 'lớp 6' ||
+                                name === 'lop 6' ||
+                                code === 'grade6' ||
+                                code === 'grade 6'
+                            ) {
+                                grade6Category = category;
+                            }
+                        });
+
+                        vm.searchTopicDto.topicCategory =
+                            grade6Category || vm.topicCategories[0];
+
+                        /*
+                         * Category đã được set xong mới gọi getTopics,
+                         * nên ngay khi load trang dropdown bài học sẽ có
+                         * danh sách của Grade 6.
+                         */
+                        vm.getTopics();
+                    } else {
+                        vm.topics = [];
+                    }
+
+                    blockUI.stop();
+                },
+                function () {
+                    vm.topicCategories = [];
+                    vm.topics = [];
+                    blockUI.stop();
+                }
+            );
+        };
+
+        vm.getPageTopicCategory();
 
         vm.changePageSize = function () {
 
@@ -1792,6 +1852,216 @@
         vm.timerRunning = false;
         vm.timerPaused = false;
         vm.timeUpInGaps3 = false;
+
+        // =====================================================
+        // DAILY VOCAB TIMER - RIÊNG HOÀN TOÀN CHO MODE ID = 5
+        // Không dùng mytimeout / $scope.counter của các mode khác.
+        // =====================================================
+        var dailyVocabTimeout = null;
+
+        vm.dailyVocabDuration = 900;
+        vm.dailyVocabCounter = vm.dailyVocabDuration;
+        vm.dailyVocabRunning = false;
+        vm.dailyVocabAnswersEnabled = false;
+
+        /*
+         * SET TIMER riêng cho DAILY VOCAB.
+         * Ô SET TIMER của mode 5 bind trực tiếp vào vm.dailyVocabDuration,
+         * nên thay đổi ở phía dưới sẽ cập nhật ngay đồng hồ phía trên.
+         *
+         * Không dùng vm.tempCounter / $scope.counter, vì hai biến đó
+         * vẫn dành cho timer chung của các mode khác.
+         */
+        vm.dailyVocabTimerSettingChange = function () {
+            var value = parseInt(vm.dailyVocabDuration, 10);
+
+            // Khi người dùng đang xóa/gõ lại input, tạm thời không đổi đồng hồ.
+            if (isNaN(value)) {
+                return;
+            }
+
+            if (value > 9999) {
+                alert('Not greater than 9999');
+                return;
+            }
+
+            if (value <= 0) {
+                alert('Not lower than 0');
+                return;
+            }
+
+            vm.dailyVocabDuration = value;
+            vm.dailyVocabCounter = value;
+        };
+
+        function cancelDailyVocabTimeout() {
+            if (dailyVocabTimeout !== null) {
+                $timeout.cancel(dailyVocabTimeout);
+                dailyVocabTimeout = null;
+            }
+        }
+
+        vm.stopDailyVocabTimer = function () {
+            cancelDailyVocabTimeout();
+
+            vm.dailyVocabRunning = false;
+            vm.dailyVocabAnswersEnabled = false;
+
+            if (audio) {
+                try {
+                    audio.pause();
+                    audio.currentTime = 0;
+                } catch (e) {
+                    // Browser có thể chặn thao tác media trong một số trường hợp.
+                }
+            }
+        };
+
+        vm.resetDailyVocabTimer = function () {
+            vm.stopDailyVocabTimer();
+
+            vm.dailyVocabCounter = vm.dailyVocabDuration;
+            vm.dailyVocabRunning = false;
+            vm.dailyVocabAnswersEnabled = false;
+
+            if (vm.mode && vm.mode.id == 5) {
+                vm.endGame = true;
+                vm.endGamePlayer1 = true;
+                vm.endGamePlayer2 = true;
+            }
+
+            $scope.shutUp();
+        };
+
+        function dailyVocabTimeUp() {
+            cancelDailyVocabTimeout();
+
+            vm.dailyVocabCounter = 0;
+            vm.dailyVocabRunning = false;
+            vm.dailyVocabAnswersEnabled = false;
+
+            vm.endGame = true;
+            vm.endGamePlayer1 = true;
+            vm.endGamePlayer2 = true;
+
+            $scope.shutUp();
+
+            if (audio) {
+                try {
+                    audio.pause();
+                    audio.currentTime = 0;
+                } catch (e) {
+                    // Không làm gì.
+                }
+            }
+
+            if (boomSound) {
+                try {
+                    boomSound.pause();
+                    boomSound.currentTime = 0;
+                    boomSound.play();
+                } catch (e) {
+                    // Không làm gì.
+                }
+            }
+        }
+
+        function dailyVocabTick() {
+            if (vm.dailyVocabRunning !== true) {
+                return;
+            }
+
+            if (vm.dailyVocabCounter <= 1) {
+                dailyVocabTimeUp();
+                return;
+            }
+
+            vm.dailyVocabCounter = vm.dailyVocabCounter - 1;
+            dailyVocabTimeout = $timeout(dailyVocabTick, 1000);
+        }
+
+        vm.startDailyVocab = function () {
+            // Hàm này chỉ dành cho DAILY VOCAB.
+            if (!vm.mode || vm.mode.id != 5) {
+                return;
+            }
+
+            // Không tạo thêm một timer nếu timer hiện tại đang chạy.
+            if (vm.dailyVocabRunning === true) {
+                return;
+            }
+
+            if (!vm.rawQuestions || vm.rawQuestions.length === 0) {
+                toastr.warning(
+                    'Chưa có dữ liệu. Hãy chọn bài và nhấn TÌM KIẾM trước.'
+                );
+                return;
+            }
+
+            $scope.shutUp();
+            cancelDailyVocabTimeout();
+
+            // Giữ nguyên hành vi DAILY VOCAB cũ:
+            // bắt đầu bài thì trộn câu hỏi và vị trí đáp án.
+            applyQuestionShuffle(true);
+
+            vm.resetDailyVocabSaveState();
+            vm.setUpTestResult();
+
+            vm.finishDailyVocab = 'Unfinished';
+            vm.allowChangeInformation = false;
+
+            vm.dailyVocabCounter = vm.dailyVocabDuration;
+            vm.dailyVocabRunning = true;
+            vm.dailyVocabAnswersEnabled = true;
+
+            vm.endGame = false;
+            vm.endGamePlayer1 = false;
+            vm.endGamePlayer2 = false;
+
+            vm.blindMode = false;
+
+            vm.streak = 0;
+            vm.streakPlayer1 = 0;
+            vm.streakPlayer2 = 0;
+
+            vm.wrong = 0;
+            vm.wrongPlayer1 = 0;
+            vm.wrongPlayer2 = 0;
+
+            vm.score1 = 0;
+            vm.score2 = 0;
+            vm.tempWrong = '';
+
+            vm.showStart = true;
+            vm.showWrong = false;
+            vm.showCorrect = false;
+
+            vm.resetBackgroundMusic();
+
+            if (audio) {
+                try {
+                    audio.load();
+
+                    if (vm.noBGMusic == false) {
+                        audio.play();
+                    }
+
+                    audio.loop = true;
+                } catch (e) {
+                    // Không làm gì.
+                }
+            }
+
+            if (!vm.isMuted &&
+                vm.currentCard &&
+                vm.currentCard.question) {
+                $scope.sayIt(vm.currentCard.question);
+            }
+
+            // Giữ 900 ngay lúc bấm; sau 1 giây mới chuyển thành 899.
+            dailyVocabTimeout = $timeout(dailyVocabTick, 1000);
+        };
 
         function playTickTockLoop() {
             if (tickTock) {
@@ -2425,6 +2695,17 @@
         vm.changeImageForAnswer();
 
         vm.answerDailyVocab = function (correct,item,questions,player) {
+            // Khóa ở controller để không thể chọn đáp án khi chưa bắt đầu / đã hết giờ.
+            if (!vm.mode || vm.mode.id != 5) {
+                return;
+            }
+
+            if (vm.dailyVocabRunning !== true ||
+                vm.dailyVocabAnswersEnabled !== true ||
+                vm.dailyVocabCounter <= 0 ||
+                vm.endGame === true) {
+                return;
+            }
 
             angular.forEach(questions, function(value, key) {
                 value.chosen = false;
@@ -2448,7 +2729,7 @@
                                 vm.score1 = vm.score1 + 1;
                             }
 
-                            vm.score1 = vm.score1 + ($scope.counter)/12;
+                            vm.score1 = vm.score1 + (vm.dailyVocabCounter)/12;
                             vm.score1 = vm.score1.toFixed(2);
                             vm.currentPosition = vm.currentPosition + 1;
                         }
@@ -2463,7 +2744,7 @@
                                 vm.saveTestResult();
                             }
 
-                            $scope.refreshTimer();
+                            vm.stopDailyVocabTimer();
                         }
 
                     }else{
@@ -2484,13 +2765,13 @@
                     if((vm.currentPosition1 + 1) >= vm.totalCard){
                         window.speechSynthesis.speak(new SpeechSynthesisUtterance("Player two is OVER"));
                         if(vm.endGamePlayer2 == false){
-                            vm.score2 = vm.score2 + ($scope.counter)/12;
+                            vm.score2 = vm.score2 + (vm.dailyVocabCounter)/12;
                         }
 
                         vm.endGamePlayer2 = true;
                         if(vm.endGamePlayer1 && vm.endGamePlayer2){
                             vm.endGame = true;
-                            $scope.refreshTimer();
+                            vm.stopDailyVocabTimer();
                         }
                     }else{
                         if(vm.endGamePlayer2 == false) {
@@ -2528,7 +2809,7 @@
                         }
                         vm.sayingWhenWrong();
                     }
-                } else if (player == 2){
+                } else if(player == 2){
                     if(vm.endGame == false) {
                         if(player == 2){
                             vm.streakPlayer2 = 0;
@@ -2626,6 +2907,16 @@
 
         var tuongLai = null;
         vm.modeChange = function () {
+            // DAILY VOCAB có timer riêng. Đổi khỏi mode 5 thì chỉ dừng timer riêng này.
+            if (!vm.mode || vm.mode.id != 5) {
+                vm.stopDailyVocabTimer();
+            }
+
+            // Khi chuyển vào DAILY VOCAB: luôn bắt đầu ở 900 và đáp án vẫn ẩn.
+            if (vm.mode && vm.mode.id == 5) {
+                vm.resetDailyVocabTimer();
+            }
+
             // Mỗi lần đổi mode, khu vực "Hiển thị tất cả" trở về trạng thái ẩn mặc định.
             vm.showAllMcqQuestions = false;
             vm.allMcqQuestions = [];
@@ -3119,7 +3410,7 @@
                     vm.totalCard.toString() + ' WORD(s)|' +
                     vm.score1.toString() + 'pt' +
                     '|INCORRECT: ' + vm.wrongPlayer1.toString() +
-                    '|TIME: ' + $scope.counter + '/' + vm.tempCounter;
+                    '|TIME: ' + vm.dailyVocabCounter + '/' + vm.dailyVocabDuration;
 
                 vm.testResult.numberOfWords = vm.totalCard - vm.wrongPlayer1;
                 vm.testResult.totalWord = vm.totalCard;
@@ -3174,13 +3465,16 @@
         };
 
         vm.resetDailyVocabRun = function () {
+            // Reset riêng DAILY VOCAB: về 900 và chưa cho hiện/chọn đáp án.
+            vm.resetDailyVocabTimer();
+
             vm.isSaveTestResult = false;
             vm.savingTestResult = false;
             vm.finishDailyVocab = "Unfinished";
 
-            vm.endGame = false;
-            vm.endGamePlayer1 = false;
-            vm.endGamePlayer2 = false;
+            vm.endGame = true;
+            vm.endGamePlayer1 = true;
+            vm.endGamePlayer2 = true;
 
             vm.currentPosition = 0;
             vm.currentPosition1 = 0;
@@ -3200,6 +3494,9 @@
             vm.showStart = true;
             vm.showWrong = false;
             vm.showCorrect = false;
+
+            vm.dailyVocabRunning = false;
+            vm.dailyVocabAnswersEnabled = false;
         };
 
         // ===============================
