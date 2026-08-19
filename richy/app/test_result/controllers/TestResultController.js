@@ -429,6 +429,10 @@
             });
         }, 1000);
 
+        service.getEnrolmentClass(null, 1, 1000000).then(function (data) {
+            vm.enrollmentClasses = data.content;
+        });
+
 
     }
 

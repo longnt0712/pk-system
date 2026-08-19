@@ -27,6 +27,19 @@
         self.getRanking = getRanking;
 
         var restUrl = 'test_result';
+
+        self.getEnrolmentClass = getEnrolmentClass;
+        function getEnrolmentClass(searchDto, pageIndex, pageSize, successCallback, errorCallback) {
+            var url = baseUrl + 'enrolment_class' + '/get_page';
+            url += '/'+pageIndex;
+            url += '/' + ((pageSize > 0) ? pageSize : 25);
+            // console.log(url);
+
+            return utils.resolveAlt(url, 'POST', null, searchDto, {
+                'Content-Type': 'application/json; charset=utf-8'
+            }, successCallback, errorCallback);
+        }
+        
         function getPage(searchDto, pageIndex, pageSize, successCallback, errorCallback) {
             var url = baseUrl + restUrl + '/get_page';
             url += '/'+pageIndex;

@@ -56,93 +56,131 @@ public class TestResultServiceImpl implements TestResultService {
 	
 	@Override
 	public Page<TestResultDto> getPageObject(TestResultDto searchDto, int pageIndex, int pageSize) {
-		if (pageIndex > 0)
-			pageIndex = pageIndex - 1;
-		else
-			pageIndex = 0;
-		Pageable pageable = new PageRequest(pageIndex, pageSize);
 
-		String textSearch = searchDto.getTextSearch(); // tìm test name thôi
-		String grade = searchDto.getGrade(); // tạm thời
-		
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		User modifiedUser = null;
-		if (authentication != null) {
-			modifiedUser = (User) authentication.getPrincipal();
-		}
+	    if (pageIndex > 0)
+	        pageIndex = pageIndex - 1;
+	    else
+	        pageIndex = 0;
 
-		String sql = "select new com.globits.richy.dto.TestResultDto(s) from TestResult s where (1=1)";
-		String sqlCount = "select count(s.id) from TestResult s where (1=1)";
-		String whereClause = "";
-		
-		if(searchDto.getUser() != null) {
-			whereClause += " and s.user.id = :userId ";
-		}
-		
-		if(searchDto.getTestType() != null && searchDto.getTestType() != 0) {
-			whereClause += " and s.testType = :testType ";
-		}
+	    Pageable pageable = new PageRequest(pageIndex, pageSize);
 
-		if (textSearch != null && textSearch.length() > 0) {
-			whereClause += " and (s.testName like :textSearch)";
-		}
-		
-		if (grade != null && grade.length() > 0) {
-			whereClause += " and ( s.user.person.displayName like :grade )";
-		}
-		
-		if (searchDto != null && searchDto.getStartDate() != null && searchDto.getEndDate() != null) {	
-			whereClause += " and (s.createDate >= :startDate and s.createDate < :endDate)";
-		}
+	    String textSearch = searchDto.getTextSearch();
+	    String grade = searchDto.getGrade();
+	    Integer schoolId = searchDto.getSchoolId();
+	    Integer enrollmentClassId = searchDto.getEnrollmentClassId();
 
-		sql += whereClause + " order by s.createDate DESC";
-		sqlCount += whereClause;
+	    String sql =
+	            "select new com.globits.richy.dto.TestResultDto(s) "
+	            + "from TestResult s where (1=1)";
 
-		Query q = manager.createQuery(sql, TestResultDto.class);
-		Query qCount = manager.createQuery(sqlCount);
-		
-		if(searchDto.getTestType() != null && searchDto.getTestType() != 0) {
-			q.setParameter("testType",  searchDto.getTestType());
-			qCount.setParameter("testType",  searchDto.getTestType());
-		}
-		
-		if(searchDto.getUser() != null) {
-			q.setParameter("userId",  searchDto.getUser().getId());
-			qCount.setParameter("userId", searchDto.getUser().getId());
-		}
+	    String sqlCount =
+	            "select count(s.id) "
+	            + "from TestResult s where (1=1)";
 
-		if (textSearch != null && textSearch.length() > 0) {
-			q.setParameter("textSearch", '%' + textSearch + '%');
-			qCount.setParameter("textSearch", '%' + textSearch + '%');
-		}
-		
-		if (grade != null && grade.length() > 0) {
-			q.setParameter("grade", '%' + grade + '%');
-			qCount.setParameter("grade", '%' + grade + '%');
-		}
-		
-		if (searchDto != null && searchDto.getStartDate() != null && searchDto.getEndDate() != null) {
-			
-			LocalDateTime startDate = searchDto.getStartDate();
-			startDate = startDate.plusDays(1).withHourOfDay(0);
-			LocalDateTime endDate = searchDto.getEndDate();
-			endDate = endDate.plusDays(2).withHourOfDay(0);
-			
-			q.setParameter("startDate", startDate);
-			qCount.setParameter("startDate", startDate);
-			
-			q.setParameter("endDate", endDate);
-			qCount.setParameter("endDate", endDate);
-		}
+	    String whereClause = "";
 
-		q.setFirstResult((pageIndex) * pageSize);
-		q.setMaxResults(pageSize);
+	    if (searchDto.getUser() != null) {
+	        whereClause += " and s.user.id = :userId ";
+	    }
 
-		Long numberResult = (Long) qCount.getSingleResult();
+	    if (searchDto.getTestType() != null
+	            && searchDto.getTestType() != 0) {
+	        whereClause += " and s.testType = :testType ";
+	    }
 
-		Page<TestResultDto> page = new PageImpl<TestResultDto>(q.getResultList(), pageable, numberResult);
-		
-		return page;
+	    if (textSearch != null && textSearch.length() > 0) {
+	        whereClause += " and s.testName like :textSearch ";
+	    }
+
+	    if (grade != null && grade.length() > 0) {
+	        whereClause += " and s.user.person.displayName like :grade ";
+	    }
+	    
+	    if (enrollmentClassId != null && enrollmentClassId != 0) {
+	        whereClause += " and s.user.person.enrollmentClassId = :enrollmentClassId ";
+	    }
+
+	    // ===== FILTER SCHOOL =====
+	    if (schoolId != null && schoolId != 0) {
+	        whereClause +=
+	                " and s.user.person.enrollmentClassId in "
+	                + "(select ec.id from EnrolmentClass ec "
+	                + "where ec.schoolId = :schoolId) ";
+	    }
+
+	    if (searchDto.getStartDate() != null
+	            && searchDto.getEndDate() != null) {
+
+	        whereClause +=
+	                " and (s.createDate >= :startDate "
+	                + "and s.createDate < :endDate)";
+	    }
+
+	    sql += whereClause + " order by s.createDate DESC";
+	    sqlCount += whereClause;
+
+	    Query q = manager.createQuery(sql, TestResultDto.class);
+	    Query qCount = manager.createQuery(sqlCount);
+
+	    if (searchDto.getTestType() != null
+	            && searchDto.getTestType() != 0) {
+
+	        q.setParameter("testType", searchDto.getTestType());
+	        qCount.setParameter("testType", searchDto.getTestType());
+	    }
+
+	    if (searchDto.getUser() != null) {
+	        q.setParameter("userId", searchDto.getUser().getId());
+	        qCount.setParameter("userId", searchDto.getUser().getId());
+	    }
+
+	    if (textSearch != null && textSearch.length() > 0) {
+	        q.setParameter("textSearch", "%" + textSearch + "%");
+	        qCount.setParameter("textSearch", "%" + textSearch + "%");
+	    }
+
+	    if (grade != null && grade.length() > 0) {
+	        q.setParameter("grade", "%" + grade + "%");
+	        qCount.setParameter("grade", "%" + grade + "%");
+	    }
+	    
+	    if (enrollmentClassId != null && enrollmentClassId != 0) {
+	        q.setParameter("enrollmentClassId", enrollmentClassId);
+	        qCount.setParameter("enrollmentClassId", enrollmentClassId);
+	    }
+
+	    // ===== SCHOOL PARAM =====
+	    if (schoolId != null && schoolId != 0) {
+	        q.setParameter("schoolId", schoolId);
+	        qCount.setParameter("schoolId", schoolId);
+	    }
+
+	    if (searchDto.getStartDate() != null
+	            && searchDto.getEndDate() != null) {
+
+	        LocalDateTime startDate = searchDto.getStartDate();
+	        startDate = startDate.plusDays(1).withHourOfDay(0);
+
+	        LocalDateTime endDate = searchDto.getEndDate();
+	        endDate = endDate.plusDays(2).withHourOfDay(0);
+
+	        q.setParameter("startDate", startDate);
+	        qCount.setParameter("startDate", startDate);
+
+	        q.setParameter("endDate", endDate);
+	        qCount.setParameter("endDate", endDate);
+	    }
+
+	    q.setFirstResult(pageIndex * pageSize);
+	    q.setMaxResults(pageSize);
+
+	    Long numberResult = (Long) qCount.getSingleResult();
+
+	    return new PageImpl<TestResultDto>(
+	            q.getResultList(),
+	            pageable,
+	            numberResult
+	    );
 	}
 	
 	public class sortByTimes implements Comparator<TestResultDto> {
@@ -161,123 +199,170 @@ public class TestResultServiceImpl implements TestResultService {
 	
 	@Override
 	public List<TestResultDto> getRanking(TestResultDto searchDto) {
-		
-		String grade = searchDto.getGrade();
-		
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		User modifiedUser = null;
-		if (authentication != null) {
-			modifiedUser = (User) authentication.getPrincipal();
-		}
-		
-		List<TestResultDto> ret = new ArrayList<TestResultDto>();
-		List<UserDto> users = new ArrayList<UserDto>(); 
-		if (grade != null && grade.length() > 0) {
-			users = userRepository.getAllUserWithDisplayNameAndUsername(grade); //tạm thời ném cái grade text vào đây
-		}else {
-			users = userRepository.getAllUserWithDisplayNameAndUsername(); //find all users to count	
-		}
-		
-		for (UserDto userDto : users) {
-			TestResultDto dto = new TestResultDto();
-			dto.setUser(userDto);
-			dto.setTestTakerName(userDto.getDisplayName());	
 
-			String sqlCount = "select count(s.id) from TestResult s where (1=1)";
-			String sqlSum = "select sum(s.numberOfWords) from TestResult s where (1=1)";
-			String whereClause = "";
-			
-			if(userDto != null) {
-				whereClause += " and s.user.id = :userId ";
-//				if (textSearch != null && textSearch.length() > 0) {
-//					whereClause += " and (s.user.username like :textSearch )"; // grade
-//				}
-			}
-			
-//			if(searchDto.getTestType() != null && searchDto.getTestType() != 0) {
-				whereClause += " and s.testType = 1 "; //daily vocab
-//			}
-			
-			if (searchDto != null && searchDto.getStartDate() != null && searchDto.getEndDate() != null) {	
-				whereClause += " and (s.createDate >= :startDate and s.createDate < :endDate)";
-			}
-			
-			sqlCount += whereClause;
-			sqlSum += whereClause;
+	    String grade = searchDto.getGrade();
+	    Integer enrollmentClassId = searchDto.getEnrollmentClassId();
 
-			Query qCount = manager.createQuery(sqlCount);
-			Query qSum = manager.createQuery(sqlSum);
+	    Authentication authentication =
+	            SecurityContextHolder.getContext().getAuthentication();
 
-			
-//			if(searchDto.getTestType() != null && searchDto.getTestType() != 0) {
-//				qCount.setParameter("testType",  searchDto.getTestType());
-//				qSum.setParameter("testType",  searchDto.getTestType());
-//			}
-			
-			if(userDto != null) {
-				qCount.setParameter("userId", userDto.getId());
-				qSum.setParameter("userId", userDto.getId());
+	    User modifiedUser = null;
 
-//				if (textSearch != null && textSearch.length() > 0) {
-//					qCount.setParameter("textSearch", '%' + textSearch + '%');
-//					qSum.setParameter("textSearch", '%' + textSearch + '%');
-//				}
-			}
-			
-			if (searchDto != null && searchDto.getStartDate() != null && searchDto.getEndDate() != null) {
-				
-				LocalDateTime startDate = searchDto.getStartDate();
-				startDate = startDate.plusDays(1).withHourOfDay(0);
-				LocalDateTime endDate = searchDto.getEndDate();
-				endDate = endDate.plusDays(2).withHourOfDay(0);
-				
-				qSum.setParameter("startDate", startDate);
-				qCount.setParameter("startDate", startDate);
-				
-				qSum.setParameter("endDate", endDate);
-				qCount.setParameter("endDate", endDate);
-			}
-				
-			Integer times = null;
-			Integer sum = null;
-			
-			Long a = (Long) qCount.getSingleResult(); // số lần làm bài
-			if(a != null) {
-				times = a.intValue();	
-			}
-			
-			Long b = (Long) qSum.getSingleResult(); // tổng số từ
-			if(b != null) {
-				sum = b.intValue();	
-			}
-			if(sum == null) {
-				sum = 0;
-			}
+	    if (authentication != null) {
+	        modifiedUser = (User) authentication.getPrincipal();
+	    }
 
-			dto.setTimes(times);
-			dto.setNumberOfWords(sum);
-			
-			ret.add(dto);
-		}
-		
-		Collections.sort(ret, new sortByTimes());
-		List<TestResultDto> ret2 = new ArrayList<TestResultDto>(); // số lần làm bài
+	    List<TestResultDto> ret = new ArrayList<TestResultDto>();
+	    List<UserDto> users = new ArrayList<UserDto>();
 
-		if(ret.size() < searchDto.getNumberOfRanking()) {
-			searchDto.setNumberOfRanking(ret.size());
-		}
-		
-		for(int i = 0; i < searchDto.getNumberOfRanking(); i++) {
-			ret2.add(ret.get(i));
-		}
-		
-		Collections.sort(ret, new sortByWords());
-		
-		for(int i = 0; i < searchDto.getNumberOfRanking(); i++) {
-			ret2.add(ret.get(i));
-		}
-		
-		return ret2;
+	    if (grade != null && grade.length() > 0) {
+	        users = userRepository.getAllUserWithDisplayNameAndUsername(grade);
+	    } else {
+	        users = userRepository.getAllUserWithDisplayNameAndUsername();
+	    }
+
+	    for (UserDto userDto : users) {
+
+	        // ===============================
+	        // FILTER THEO LỚP
+	        // ===============================
+	        if (enrollmentClassId != null && enrollmentClassId != 0) {
+
+	            User user = userRepository.getOne(userDto.getId());
+
+	            if (user == null
+	                    || user.getPerson() == null
+	                    || user.getPerson().getEnrollmentClassId() == null
+	                    || !enrollmentClassId.equals(
+	                            user.getPerson().getEnrollmentClassId())) {
+
+	                continue;
+	            }
+	        }
+
+	        TestResultDto dto = new TestResultDto();
+
+	        dto.setUser(userDto);
+	        dto.setTestTakerName(userDto.getDisplayName());
+
+	        String sqlCount =
+	                "select count(s.id) from TestResult s where (1=1)";
+
+	        String sqlSum =
+	                "select sum(s.numberOfWords) from TestResult s where (1=1)";
+
+	        String whereClause = "";
+
+	        if (userDto != null) {
+	            whereClause += " and s.user.id = :userId ";
+	        }
+
+	        // ===============================
+	        // FILTER THEO LỚP
+	        // ===============================
+	        if (enrollmentClassId != null && enrollmentClassId != 0) {
+	            whereClause +=
+	                    " and s.user.person.enrollmentClassId = :enrollmentClassId ";
+	        }
+
+	        whereClause += " and s.testType = 1 ";
+
+	        if (searchDto != null
+	                && searchDto.getStartDate() != null
+	                && searchDto.getEndDate() != null) {
+
+	            whereClause +=
+	                    " and (s.createDate >= :startDate "
+	                    + "and s.createDate < :endDate)";
+	        }
+
+	        sqlCount += whereClause;
+	        sqlSum += whereClause;
+
+	        Query qCount = manager.createQuery(sqlCount);
+	        Query qSum = manager.createQuery(sqlSum);
+
+	        if (userDto != null) {
+	            qCount.setParameter("userId", userDto.getId());
+	            qSum.setParameter("userId", userDto.getId());
+	        }
+
+	        // ===============================
+	        // PARAMETER LỚP
+	        // ===============================
+	        if (enrollmentClassId != null && enrollmentClassId != 0) {
+	            qCount.setParameter(
+	                    "enrollmentClassId",
+	                    enrollmentClassId
+	            );
+
+	            qSum.setParameter(
+	                    "enrollmentClassId",
+	                    enrollmentClassId
+	            );
+	        }
+
+	        if (searchDto != null
+	                && searchDto.getStartDate() != null
+	                && searchDto.getEndDate() != null) {
+
+	            LocalDateTime startDate = searchDto.getStartDate();
+	            startDate = startDate.plusDays(1).withHourOfDay(0);
+
+	            LocalDateTime endDate = searchDto.getEndDate();
+	            endDate = endDate.plusDays(2).withHourOfDay(0);
+
+	            qSum.setParameter("startDate", startDate);
+	            qCount.setParameter("startDate", startDate);
+
+	            qSum.setParameter("endDate", endDate);
+	            qCount.setParameter("endDate", endDate);
+	        }
+
+	        Integer times = null;
+	        Integer sum = null;
+
+	        Long a = (Long) qCount.getSingleResult();
+
+	        if (a != null) {
+	            times = a.intValue();
+	        }
+
+	        Long b = (Long) qSum.getSingleResult();
+
+	        if (b != null) {
+	            sum = b.intValue();
+	        }
+
+	        if (sum == null) {
+	            sum = 0;
+	        }
+
+	        dto.setTimes(times);
+	        dto.setNumberOfWords(sum);
+
+	        ret.add(dto);
+	    }
+
+	    Collections.sort(ret, new sortByTimes());
+
+	    List<TestResultDto> ret2 = new ArrayList<TestResultDto>();
+
+	    if (ret.size() < searchDto.getNumberOfRanking()) {
+	        searchDto.setNumberOfRanking(ret.size());
+	    }
+
+	    for (int i = 0; i < searchDto.getNumberOfRanking(); i++) {
+	        ret2.add(ret.get(i));
+	    }
+
+	    Collections.sort(ret, new sortByWords());
+
+	    for (int i = 0; i < searchDto.getNumberOfRanking(); i++) {
+	        ret2.add(ret.get(i));
+	    }
+
+	    return ret2;
 	}
 
 	@Override

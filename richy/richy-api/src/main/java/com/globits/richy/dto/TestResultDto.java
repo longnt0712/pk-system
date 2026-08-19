@@ -49,7 +49,24 @@ public class TestResultDto implements Serializable{
 	private Integer totalTime = 0;
 	private Integer timeLeft = 0;
 	private Integer messageCode = 0; // code 0: chúc mừng thành công; code 1: sai nhiều quá, không thành công
-	
+	private Integer schoolId;
+	private Integer enrollmentClassId;
+
+	public Integer getEnrollmentClassId() {
+	    return enrollmentClassId;
+	}
+
+	public void setEnrollmentClassId(Integer enrollmentClassId) {
+	    this.enrollmentClassId = enrollmentClassId;
+	}
+
+	public Integer getSchoolId() {
+	    return schoolId;
+	}
+
+	public void setSchoolId(Integer schoolId) {
+	    this.schoolId = schoolId;
+	}
 	public Integer getTotalWord() {
 		return totalWord;
 	}
