@@ -195,35 +195,72 @@
         vm.getPage();
 
         vm.rankings = [];
+        vm.isRankingLoading = false;
+
         vm.getRanking = function () {
+
+            vm.isRankingLoading = true;
+
             service.getRanking(vm.searchDto).then(function (data) {
-                vm.rankings = data;
+
+                vm.rankings = data || [];
+
+                if (vm.rankings.length === 0) {
+                    vm.isRankingLoading = false;
+                    return;
+                }
+
+                var half = Math.floor(vm.rankings.length / 2);
                 var rank = 1;
-                vm.rankings[0].rank = 1;
-                // console.log(vm.rankings.length);
-                for(var i = 1; i < vm.rankings.length/2; i++){
-                    if(vm.rankings[i].times < vm.rankings[i-1].times){
-                        rank = rank + 1;
-                        vm.rankings[i].rank = rank;
-                    } else {
-                        vm.rankings[i].rank = vm.rankings[i-1].rank;
-                    }
 
+                // TIMES DO TEST
+                if (half > 0 && vm.rankings[0]) {
+                    vm.rankings[0].rank = 1;
+
+                    for (var i = 1; i < half; i++) {
+                        if (!vm.rankings[i] || !vm.rankings[i - 1]) {
+                            continue;
+                        }
+
+                        if (vm.rankings[i].times < vm.rankings[i - 1].times) {
+                            rank++;
+                            vm.rankings[i].rank = rank;
+                        } else {
+                            vm.rankings[i].rank = vm.rankings[i - 1].rank;
+                        }
+                    }
                 }
 
+                // WORDS LEARNED
                 rank = 1;
-                vm.rankings[vm.rankings.length/2].rank = 1;
-                for(var i = vm.rankings.length/2+1; i < vm.rankings.length; i++){
-                    if(vm.rankings[i].numberOfWords < vm.rankings[i-1].numberOfWords){
-                        rank = rank + 1;
-                        vm.rankings[i].rank = rank;
-                    } else {
-                        vm.rankings[i].rank = vm.rankings[i-1].rank;
-                    }
 
+                if (half < vm.rankings.length && vm.rankings[half]) {
+                    vm.rankings[half].rank = 1;
+
+                    for (var j = half + 1; j < vm.rankings.length; j++) {
+                        if (!vm.rankings[j] || !vm.rankings[j - 1]) {
+                            continue;
+                        }
+
+                        if (
+                            vm.rankings[j].numberOfWords <
+                            vm.rankings[j - 1].numberOfWords
+                        ) {
+                            rank++;
+                            vm.rankings[j].rank = rank;
+                        } else {
+                            vm.rankings[j].rank = vm.rankings[j - 1].rank;
+                        }
+                    }
                 }
-                
-                console.log(vm.rankings);
+
+                vm.isRankingLoading = false;
+
+            }, function () {
+
+                vm.rankings = [];
+                vm.isRankingLoading = false;
+
             });
         };
 

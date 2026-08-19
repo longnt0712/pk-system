@@ -87,49 +87,140 @@
                     <!--<button class="btn btn-default" data-ng-click="vm.newObject()"><i class="fa fa-plus-circle"></i>Thêm mới</button>-->
                     <!--<button class="btn btn-danger margin-left-10" data-ng-click="vm.deletequestionTypes()" data-ng-disabled="vm.selectedquestionTypes.length <= 0"><i class="fa fa-trash"></i>Xóa</button>-->
 
-                <div class="row">
-                    <div class="col-md-5">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <table class="table table-striped ">
-                                    <tr class="text-center">
-                                        <h1 class="text-center" style="font-family: cursive">RANKINGS <br>TIMES DO TEST</h1>
-                                    </tr>
-                                    <tr ng-repeat="item in vm.rankings" ng-if="$index < vm.rankings.length/2">
-                                        <td style="width: 15%" class="text-center">
-                                            <image ng-show="item.rank == 1" ng-src="assets/images/1st.png" style="width: 50%; height: auto;"/>
-                                            <image ng-show="item.rank == 2" ng-src="assets/images/2nd.png" style="width: 50%; height: auto;"/>
-                                            <image ng-show="item.rank == 3" ng-src="assets/images/3rd.png" style="width: 50%; height: auto;"/>
-                                            <span ng-hide="item.rank < 4">Top {{item.rank}}:</span>
-                                        </td>
-                                        <td>{{item.user.displayName}} - Số lần học: {{item.times}} </td>
-                                    </tr>
-                                </table>
+                <!-- RANKING: FULL WIDTH -->
+                <div class="row ranking-main-row">
+                    <div class="ranking-loading" ng-if="vm.isRankingLoading">
+                        <div class="ranking-spinner"></div>
+                        <div class="ranking-loading-text">
+                            Đang tải bảng xếp hạng...
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="ranking-section">
+                            <div class="ranking-section-heading">
+                                <div class="ranking-heading-icon">🏆</div>
+                                <div>
+                                    <div class="ranking-heading-title">BẢNG XẾP HẠNG</div>
+                                    <div class="ranking-heading-subtitle">Cùng xem ai đang dẫn đầu lớp nhé!</div>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <table class="table table-striped ">
-                                    <tr class="text-center">
-                                        <h1 class="text-center" style="font-family: cursive">RANKINGS <br>WORDS LEARNED</h1>
-                                    </tr>
-                                    <tr ng-repeat="item in vm.rankings" ng-if="$index >= vm.rankings.length/2">
-                                        <td style="width: 15%" class="text-center">
-                                            <image ng-show="item.rank == 1" ng-src="assets/images/1st.png" style="width: 50%; height: auto;"/>
-                                            <image ng-show="item.rank == 2" ng-src="assets/images/2nd.png" style="width: 50%; height: auto;"/>
-                                            <image ng-show="item.rank == 3" ng-src="assets/images/3rd.png" style="width: 50%; height: auto;"/>
-                                            <span ng-hide="item.rank < 4">Top {{item.rank}}:</span>
-                                        </td>
-                                        <td>{{item.user.displayName}} - Số từ đã học: {{item.numberOfWords}} </td>
-                                    </tr>
-                                </table>
+
+                            <div ng-if="!vm.isRankingLoading">
+                            <div class="row ranking-columns">
+                                <!-- TIMES DO TEST -->
+                                <div class="col-md-6 col-sm-12">
+                                    <div class="ranking-board ranking-board-times">
+                                        <div class="ranking-board-title">
+                                            <span class="ranking-board-emoji">🔥</span>
+                                            <div>
+                                                <div class="ranking-board-title-main">CHĂM CHỈ NHẤT</div>
+                                                <div class="ranking-board-title-sub">Số lần học</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="ranking-list">
+                                            <div class="ranking-item"
+                                                 ng-repeat="item in vm.rankings"
+                                                 ng-if="$index < vm.rankings.length/2"
+                                                 ng-class="{
+                                                     'ranking-first': item.rank == 1,
+                                                     'ranking-second': item.rank == 2,
+                                                     'ranking-third': item.rank == 3
+                                                 }">
+
+                                                <span class="ranking-sparkle sparkle-one" ng-if="item.rank == 1">✦</span>
+                                                <span class="ranking-sparkle sparkle-two" ng-if="item.rank == 1">✨</span>
+                                                <span class="ranking-sparkle sparkle-three" ng-if="item.rank == 1">✦</span>
+
+                                                <div class="ranking-medal">
+                                                    <img ng-if="item.rank == 1" ng-src="assets/images/1st.png" alt="Top 1" />
+                                                    <img ng-if="item.rank == 2" ng-src="assets/images/2nd.png" alt="Top 2" />
+                                                    <img ng-if="item.rank == 3" ng-src="assets/images/3rd.png" alt="Top 3" />
+                                                    <span class="ranking-number" ng-if="item.rank > 3">{{item.rank}}</span>
+                                                </div>
+
+                                                <div class="ranking-student">
+                                                    <div class="ranking-student-name">
+                                                        {{item.testTakerName || item.user.displayName}}
+                                                    </div>
+                                                    <div class="ranking-student-label">
+                                                        <span ng-if="item.rank == 1">👑 Nhà vô địch chăm chỉ</span>
+                                                        <span ng-if="item.rank != 1">Tiếp tục cố gắng nhé!</span>
+                                                    </div>
+                                                </div>
+
+                                                <div class="ranking-score">
+                                                    <div class="ranking-score-value">{{item.times}}</div>
+                                                    <div class="ranking-score-label">lần học</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- WORDS LEARNED -->
+                                <div class="col-md-6 col-sm-12">
+                                    <div class="ranking-board ranking-board-words">
+                                        <div class="ranking-board-title">
+                                            <span class="ranking-board-emoji">📚</span>
+                                            <div>
+                                                <div class="ranking-board-title-main">HỌC NHIỀU TỪ NHẤT</div>
+                                                <div class="ranking-board-title-sub">Tổng số từ đã học</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="ranking-list">
+                                            <div class="ranking-item"
+                                                 ng-repeat="item in vm.rankings"
+                                                 ng-if="$index >= vm.rankings.length/2"
+                                                 ng-class="{
+                                                     'ranking-first': item.rank == 1,
+                                                     'ranking-second': item.rank == 2,
+                                                     'ranking-third': item.rank == 3
+                                                 }">
+
+                                                <span class="ranking-sparkle sparkle-one" ng-if="item.rank == 1">✦</span>
+                                                <span class="ranking-sparkle sparkle-two" ng-if="item.rank == 1">✨</span>
+                                                <span class="ranking-sparkle sparkle-three" ng-if="item.rank == 1">✦</span>
+
+                                                <div class="ranking-medal">
+                                                    <img ng-if="item.rank == 1" ng-src="assets/images/1st.png" alt="Top 1" />
+                                                    <img ng-if="item.rank == 2" ng-src="assets/images/2nd.png" alt="Top 2" />
+                                                    <img ng-if="item.rank == 3" ng-src="assets/images/3rd.png" alt="Top 3" />
+                                                    <span class="ranking-number" ng-if="item.rank > 3">{{item.rank}}</span>
+                                                </div>
+
+                                                <div class="ranking-student">
+                                                    <div class="ranking-student-name">
+                                                        {{item.testTakerName || item.user.displayName}}
+                                                    </div>
+                                                    <div class="ranking-student-label">
+                                                        <span ng-if="item.rank == 1">🌟 Siêu sao từ vựng</span>
+                                                        <span ng-if="item.rank != 1">Mỗi ngày thêm một chút!</span>
+                                                    </div>
+                                                </div>
+
+                                                <div class="ranking-score">
+                                                    <div class="ranking-score-value">{{item.numberOfWords}}</div>
+                                                    <div class="ranking-score-label">từ đã học</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             </div>
                         </div>
-
-
                     </div>
-                    <div class="col-md-7">
-                        <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
-                    </div>
+                </div>
 
+                <!-- LISTING: FULL WIDTH, BELOW RANKING -->
+                <div class="row listing-main-row">
+                    <div class="col-md-12">
+                        <div class="test-result-listing-wrap">
+                            <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
+                        </div>
+                    </div>
                 </div>
 
             </div>
@@ -639,5 +730,734 @@
 
     /*!*-- change font size --*!*/
 
+
+
+    /* =========================================================
+       TEST RESULT RANKING - DESKTOP + MOBILE
+       ========================================================= */
+
+    .ranking-main-row {
+        margin-top: 8px;
+        margin-bottom: 20px;
+    }
+
+    .ranking-section {
+        position: relative;
+        overflow: hidden;
+        padding: 22px;
+        border: 1px solid #e7ecf2;
+        border-radius: 22px;
+        background:
+            radial-gradient(circle at 10% 0%, rgba(111, 92, 255, 0.10), transparent 30%),
+            radial-gradient(circle at 90% 0%, rgba(0, 190, 255, 0.10), transparent 32%),
+            linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+        box-shadow: 0 12px 35px rgba(35, 55, 80, 0.10);
+    }
+
+    .ranking-section-heading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 18px;
+        text-align: left;
+    }
+
+    .ranking-heading-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 54px;
+        height: 54px;
+        flex: 0 0 54px;
+        border-radius: 18px;
+        background: linear-gradient(145deg, #fff7c2, #ffd86b);
+        box-shadow: 0 8px 22px rgba(244, 185, 40, 0.28);
+        font-size: 29px;
+    }
+
+    .ranking-heading-title {
+        color: #182133;
+        font-size: 25px;
+        line-height: 1.12;
+        font-weight: 900;
+        letter-spacing: 0.5px;
+    }
+
+    .ranking-heading-subtitle {
+        margin-top: 4px;
+        color: #7a8598;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .ranking-columns {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .ranking-columns > [class*="col-"] {
+        display: flex;
+    }
+
+    .ranking-board {
+        width: 100%;
+        overflow: hidden;
+        border: 1px solid #e8edf4;
+        border-radius: 20px;
+        background: #ffffff;
+        box-shadow: 0 8px 24px rgba(36, 54, 80, 0.08);
+    }
+
+    .ranking-board-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 74px;
+        padding: 15px 18px;
+        border-bottom: 1px solid rgba(255,255,255,0.55);
+    }
+
+    .ranking-board-times .ranking-board-title {
+        background: linear-gradient(135deg, #fff1e6 0%, #ffe6ca 100%);
+    }
+
+    .ranking-board-words .ranking-board-title {
+        background: linear-gradient(135deg, #eaf7ff 0%, #e9efff 100%);
+    }
+
+    .ranking-board-emoji {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        border-radius: 14px;
+        background: rgba(255,255,255,0.78);
+        box-shadow: 0 5px 16px rgba(31, 48, 72, 0.08);
+        font-size: 23px;
+    }
+
+    .ranking-board-title-main {
+        color: #263249;
+        font-size: 17px;
+        font-weight: 900;
+        letter-spacing: 0.3px;
+    }
+
+    .ranking-board-title-sub {
+        margin-top: 2px;
+        color: #7d8797;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .ranking-list {
+        padding: 12px;
+    }
+
+    .ranking-item {
+        position: relative;
+        display: flex;
+        align-items: center;
+        min-height: 72px;
+        margin-bottom: 10px;
+        padding: 10px 12px;
+        overflow: hidden;
+        border: 1px solid #edf0f5;
+        border-radius: 16px;
+        background: #ffffff;
+        box-shadow: 0 3px 10px rgba(35, 48, 68, 0.04);
+        transition: transform .18s ease, box-shadow .18s ease;
+    }
+
+    .ranking-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .ranking-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 18px rgba(35, 48, 68, 0.10);
+    }
+
+    .ranking-medal {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 54px;
+        min-width: 54px;
+        height: 54px;
+        margin-right: 11px;
+    }
+
+    .ranking-medal img {
+        display: block;
+        max-width: 48px;
+        max-height: 48px;
+        width: auto;
+        height: auto;
+        filter: drop-shadow(0 4px 6px rgba(0,0,0,0.12));
+    }
+
+    .ranking-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: #f1f4f8;
+        color: #68748a;
+        font-size: 15px;
+        font-weight: 900;
+    }
+
+    .ranking-student {
+        position: relative;
+        z-index: 2;
+        flex: 1 1 auto;
+        min-width: 0;
+        padding-right: 8px;
+    }
+
+    .ranking-student-name {
+        overflow: hidden;
+        color: #283248;
+        font-size: 15px;
+        line-height: 1.25;
+        font-weight: 800;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ranking-student-label {
+        margin-top: 4px;
+        overflow: hidden;
+        color: #8993a4;
+        font-size: 11px;
+        line-height: 1.25;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ranking-score {
+        position: relative;
+        z-index: 2;
+        min-width: 82px;
+        padding: 7px 10px;
+        border-radius: 13px;
+        background: #f5f7fa;
+        text-align: center;
+    }
+
+    .ranking-score-value {
+        color: #263249;
+        font-size: 20px;
+        line-height: 1;
+        font-weight: 900;
+    }
+
+    .ranking-score-label {
+        margin-top: 4px;
+        color: #8690a0;
+        font-size: 10px;
+        line-height: 1;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    /* TOP 1 - GOLD / SPARKLE */
+    .ranking-item.ranking-first {
+        min-height: 88px;
+        border: 1px solid #f6ce54;
+        background:
+            radial-gradient(circle at 12% 20%, rgba(255,255,255,0.92), transparent 18%),
+            linear-gradient(115deg, #fff6b7 0%, #ffe17a 36%, #fff4b0 68%, #ffd55f 100%);
+        box-shadow:
+            0 0 0 2px rgba(255, 224, 102, 0.26),
+            0 10px 26px rgba(219, 166, 24, 0.25),
+            0 0 28px rgba(255, 224, 102, 0.22);
+        animation: rankingGoldPulse 2.3s ease-in-out infinite;
+    }
+
+    .ranking-item.ranking-first::before {
+        content: "";
+        position: absolute;
+        top: -45%;
+        left: -50%;
+        width: 38%;
+        height: 190%;
+        z-index: 1;
+        transform: rotate(18deg);
+        background: linear-gradient(
+            90deg,
+            rgba(255,255,255,0) 0%,
+            rgba(255,255,255,0.80) 48%,
+            rgba(255,255,255,0) 100%
+        );
+        animation: rankingShine 2.8s ease-in-out infinite;
+        pointer-events: none;
+    }
+
+    .ranking-item.ranking-first .ranking-medal {
+        width: 64px;
+        min-width: 64px;
+        height: 64px;
+    }
+
+    .ranking-item.ranking-first .ranking-medal img {
+        max-width: 61px;
+        max-height: 61px;
+        animation: rankingMedalFloat 1.9s ease-in-out infinite;
+    }
+
+    .ranking-item.ranking-first .ranking-student-name {
+        color: #754c00;
+        font-size: 17px;
+        text-shadow: 0 1px 0 rgba(255,255,255,0.75);
+    }
+
+    .ranking-item.ranking-first .ranking-student-label {
+        color: #9a6907;
+        font-weight: 800;
+    }
+
+    .ranking-item.ranking-first .ranking-score {
+        border: 1px solid rgba(181, 124, 7, 0.18);
+        background: rgba(255,255,255,0.68);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+
+    .ranking-item.ranking-first .ranking-score-value {
+        color: #8c5b00;
+        font-size: 24px;
+    }
+
+    .ranking-item.ranking-first .ranking-score-label {
+        color: #a06f11;
+    }
+
+    .ranking-sparkle {
+        position: absolute;
+        z-index: 3;
+        color: #ffffff;
+        text-shadow:
+            0 0 5px #ffffff,
+            0 0 10px #ffd642,
+            0 0 15px #ffc107;
+        pointer-events: none;
+        animation: rankingSparkle 1.4s ease-in-out infinite;
+    }
+
+    .sparkle-one {
+        top: 6px;
+        left: 8px;
+        font-size: 14px;
+        animation-delay: 0s;
+    }
+
+    .sparkle-two {
+        top: 8px;
+        right: 10px;
+        font-size: 18px;
+        animation-delay: .38s;
+    }
+
+    .sparkle-three {
+        bottom: 7px;
+        left: 42%;
+        font-size: 12px;
+        animation-delay: .78s;
+    }
+
+    /* TOP 2 - SILVER */
+    .ranking-item.ranking-second {
+        border-color: #d7dce5;
+        background: linear-gradient(135deg, #ffffff 0%, #f1f4f8 55%, #e8edf3 100%);
+        box-shadow: 0 5px 14px rgba(97, 109, 126, 0.10);
+    }
+
+    .ranking-item.ranking-second .ranking-score {
+        background: #eef1f5;
+    }
+
+    /* TOP 3 - BRONZE */
+    .ranking-item.ranking-third {
+        border-color: #ead1bd;
+        background: linear-gradient(135deg, #fffaf6 0%, #f8e8db 100%);
+        box-shadow: 0 5px 14px rgba(157, 101, 57, 0.09);
+    }
+
+    .ranking-item.ranking-third .ranking-score {
+        background: #f7e9dd;
+    }
+
+    .listing-main-row {
+        margin-top: 6px;
+    }
+
+    .test-result-listing-wrap {
+        width: 100%;
+        padding-top: 4px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    @keyframes rankingGoldPulse {
+        0%, 100% {
+            box-shadow:
+                0 0 0 2px rgba(255, 224, 102, 0.20),
+                0 10px 24px rgba(219, 166, 24, 0.20),
+                0 0 22px rgba(255, 224, 102, 0.16);
+        }
+        50% {
+            box-shadow:
+                0 0 0 3px rgba(255, 224, 102, 0.34),
+                0 13px 31px rgba(219, 166, 24, 0.30),
+                0 0 36px rgba(255, 224, 102, 0.34);
+        }
+    }
+
+    @keyframes rankingShine {
+        0%   { left: -55%; opacity: 0; }
+        15%  { opacity: .9; }
+        48%  { opacity: .8; }
+        72%  { left: 118%; opacity: 0; }
+        100% { left: 118%; opacity: 0; }
+    }
+
+    @keyframes rankingMedalFloat {
+        0%, 100% { transform: translateY(0) rotate(-2deg); }
+        50%      { transform: translateY(-3px) rotate(2deg); }
+    }
+
+    @keyframes rankingSparkle {
+        0%, 100% { opacity: .25; transform: scale(.65) rotate(0deg); }
+        50%      { opacity: 1; transform: scale(1.22) rotate(20deg); }
+    }
+
+    /* TABLET */
+    @media (max-width: 991px) {
+        .ranking-columns {
+            display: block;
+        }
+
+        .ranking-columns > [class*="col-"] {
+            display: block;
+            width: 100%;
+        }
+
+        .ranking-columns > [class*="col-"] + [class*="col-"] {
+            margin-top: 16px;
+        }
+
+        .ranking-section {
+            padding: 18px;
+        }
+    }
+
+    /* MOBILE FIRST VIEW */
+    @media (max-width: 767px) {
+        .portlet.light.bordered {
+            padding-left: 8px;
+            padding-right: 8px;
+        }
+
+        .ranking-main-row {
+            margin-left: -8px;
+            margin-right: -8px;
+            margin-top: 5px;
+            margin-bottom: 14px;
+        }
+
+        .ranking-main-row > .col-md-12 {
+            padding-left: 8px;
+            padding-right: 8px;
+        }
+
+        .ranking-section {
+            padding: 12px 10px 14px;
+            border-radius: 18px;
+            box-shadow: 0 8px 23px rgba(35, 55, 80, 0.10);
+        }
+
+        .ranking-section-heading {
+            justify-content: flex-start;
+            margin: 2px 4px 13px;
+        }
+
+        .ranking-heading-icon {
+            width: 44px;
+            height: 44px;
+            flex-basis: 44px;
+            border-radius: 14px;
+            font-size: 23px;
+        }
+
+        .ranking-heading-title {
+            font-size: 19px;
+        }
+
+        .ranking-heading-subtitle {
+            font-size: 11px;
+        }
+
+        .ranking-board {
+            border-radius: 17px;
+        }
+
+        .ranking-board-title {
+            min-height: 62px;
+            padding: 11px 13px;
+        }
+
+        .ranking-board-emoji {
+            width: 38px;
+            height: 38px;
+            flex-basis: 38px;
+            border-radius: 12px;
+            font-size: 20px;
+        }
+
+        .ranking-board-title-main {
+            font-size: 14px;
+        }
+
+        .ranking-board-title-sub {
+            font-size: 10px;
+        }
+
+        .ranking-list {
+            padding: 8px;
+        }
+
+        .ranking-item {
+            min-height: 64px;
+            margin-bottom: 7px;
+            padding: 8px 9px;
+            border-radius: 14px;
+        }
+
+        .ranking-medal {
+            width: 46px;
+            min-width: 46px;
+            height: 46px;
+            margin-right: 7px;
+        }
+
+        .ranking-medal img {
+            max-width: 42px;
+            max-height: 42px;
+        }
+
+        .ranking-number {
+            width: 34px;
+            height: 34px;
+            font-size: 13px;
+        }
+
+        .ranking-student {
+            padding-right: 5px;
+        }
+
+        .ranking-student-name {
+            font-size: 13px;
+        }
+
+        .ranking-student-label {
+            margin-top: 3px;
+            font-size: 9px;
+        }
+
+        .ranking-score {
+            min-width: 68px;
+            padding: 6px 7px;
+            border-radius: 11px;
+        }
+
+        .ranking-score-value {
+            font-size: 17px;
+        }
+
+        .ranking-score-label {
+            font-size: 8px;
+        }
+
+        .ranking-item.ranking-first {
+            min-height: 77px;
+        }
+
+        .ranking-item.ranking-first .ranking-medal {
+            width: 54px;
+            min-width: 54px;
+            height: 54px;
+        }
+
+        .ranking-item.ranking-first .ranking-medal img {
+            max-width: 52px;
+            max-height: 52px;
+        }
+
+        .ranking-item.ranking-first .ranking-student-name {
+            font-size: 15px;
+        }
+
+        .ranking-item.ranking-first .ranking-score-value {
+            font-size: 21px;
+        }
+
+        .listing-main-row {
+            margin-left: -8px;
+            margin-right: -8px;
+        }
+
+        .listing-main-row > .col-md-12 {
+            padding-left: 8px;
+            padding-right: 8px;
+        }
+
+        .test-result-listing-wrap {
+            border-radius: 12px;
+        }
+
+        /* Bootstrap-table trên điện thoại: giữ bảng dùng được, cho vuốt ngang nếu cần */
+        .test-result-listing-wrap .fixed-table-container,
+        .test-result-listing-wrap .fixed-table-body,
+        .test-result-listing-wrap .bootstrap-table {
+            max-width: 100%;
+        }
+
+        .test-result-listing-wrap .fixed-table-body {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .test-result-listing-wrap table {
+            font-size: 12px;
+        }
+
+        .test-result-listing-wrap .pagination-detail,
+        .test-result-listing-wrap .pagination {
+            font-size: 11px;
+        }
+    }
+
+    @media (max-width: 380px) {
+        .ranking-section {
+            padding-left: 7px;
+            padding-right: 7px;
+        }
+
+        .ranking-item {
+            padding-left: 6px;
+            padding-right: 6px;
+        }
+
+        .ranking-medal {
+            width: 42px;
+            min-width: 42px;
+            margin-right: 5px;
+        }
+
+        .ranking-medal img {
+            max-width: 39px;
+            max-height: 39px;
+        }
+
+        .ranking-student-name {
+            font-size: 12px;
+        }
+
+        .ranking-student-label {
+            display: none;
+        }
+
+        .ranking-score {
+            min-width: 61px;
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+
+        .ranking-item.ranking-first .ranking-medal {
+            width: 49px;
+            min-width: 49px;
+        }
+
+        .ranking-item.ranking-first .ranking-medal img {
+            max-width: 47px;
+            max-height: 47px;
+        }
+
+        .ranking-item.ranking-first .ranking-student-name {
+            font-size: 14px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .ranking-item,
+        .ranking-item.ranking-first,
+        .ranking-item.ranking-first::before,
+        .ranking-item.ranking-first .ranking-medal img,
+        .ranking-sparkle {
+            animation: none !important;
+            transition: none !important;
+        }
+    }
+
+    .ranking-loading {
+        min-height: 180px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 30px 15px;
+    }
+
+    .ranking-spinner {
+        width: 52px;
+        height: 52px;
+        border: 5px solid #eeeeee;
+        border-top-color: #f5b301;
+        border-radius: 50%;
+        animation: rankingSpin 0.8s linear infinite;
+    }
+
+    .ranking-loading-text {
+        margin-top: 14px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #666;
+    }
+
+    @keyframes rankingSpin {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    @media (max-width: 767px) {
+        .ranking-loading {
+            min-height: 140px;
+            padding: 22px 10px;
+        }
+
+        .ranking-spinner {
+            width: 44px;
+            height: 44px;
+            border-width: 4px;
+        }
+
+        .ranking-loading-text {
+            font-size: 14px;
+        }
+    }
 
 </style>
