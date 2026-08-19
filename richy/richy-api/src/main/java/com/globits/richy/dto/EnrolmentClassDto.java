@@ -9,7 +9,14 @@ public class EnrolmentClassDto implements Serializable{
 	private Long id;
 	private String name;
 	private String code;
-	
+	private Integer schoolId;
+
+	public Integer getSchoolId() {
+		return schoolId;
+	}
+	public void setSchoolId(Integer schoolId) {
+		this.schoolId = schoolId;
+	}
 	private String textSearch;
 	public Long getId() {
 		return id;
@@ -43,6 +50,7 @@ public class EnrolmentClassDto implements Serializable{
 		this.id = domain.getId();
 		this.name = domain.getName();
 		this.code = domain.getCode();
+		this.schoolId = domain.getSchoolId();
 	}
 	
 }

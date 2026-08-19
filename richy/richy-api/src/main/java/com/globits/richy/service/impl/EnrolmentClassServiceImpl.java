@@ -110,6 +110,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			domain.setCode(dto.getCode().trim());
 		}
 		
+		if(dto.getSchoolId() != null) {
+			domain.setSchoolId(dto.getSchoolId());
+		}
 		
 		domain = enrolmentClassRepository.save(domain);
 		
