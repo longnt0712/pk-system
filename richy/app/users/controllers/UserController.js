@@ -2542,6 +2542,20 @@
             vm.buildExportPreviewRows();
         });
 
+        vm.filterEnrollmentClassByRole = function (so) {
+            if (!so) {
+                return false;
+            }
+
+            // Admin nhìn thấy tất cả lớp
+            if (vm.isRoleAdmin) {
+                return true;
+            }
+
+            // Không phải admin thì ẩn schoolId = 1
+            return Number(so.schoolId) !== 1;
+        };
+
     }
 
 })();
