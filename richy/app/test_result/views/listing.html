@@ -5,101 +5,179 @@
     
         <div class="portlet light bordered">
             <div class="portlet-body">
-                    <div class="row">
-                        <div class="col-md-1">
-                            <input data-ng-model="vm.startDate" type="text" class="form-control" placeholder="Start date" my-date-picker />
-                        </div>
-
-                        <div class="col-md-1">
-                            <input data-ng-model="vm.endDate" type="text" class="form-control" placeholder="End date" my-date-picker />
-                        </div>
-                        <!--<div class="col-md-2 margin-bottom-20">-->
-                            <!--<div class="input-group">-->
-                                <!--<input ng-model="vm.searchDto.grade" ng-keyup="vm.enterSearchCode(e)" type="text"  class="form-control" placeholder="Find by grade...">-->
-                                <!--<div class="input-group-btn">-->
-                                    <!--<button ng-click="vm.codeChange()" class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>-->
-                                <!--</div>-->
+                <!-- FILTER / SEARCH -->
+                <div class="test-result-filter-panel">
+                    <!--<div class="test-result-filter-heading">-->
+                        <!--<div class="test-result-filter-heading-icon">-->
+                            <!--<i class="fa fa-sliders"></i>-->
+                        <!--</div>-->
+                        <!--<div class="test-result-filter-heading-text">-->
+                            <!--<div class="test-result-filter-title">BỘ LỌC KẾT QUẢ</div>-->
+                            <!--<div class="test-result-filter-subtitle">-->
+                                <!--Chọn thời gian, lớp học, học sinh hoặc loại bài để xem nhanh kết quả.-->
                             <!--</div>-->
                         <!--</div>-->
-                        <div class="col-md-2 margin-bottom-20">
+                    <!--</div>-->
 
-                            <ui-select ng-model="vm.searchDto.enrollmentClassId"
-                                       ng-change="vm.enrollmentClassChange()"
-                                       sortable="true"
-                                       close-on-select="true">
+                    <div class="row test-result-filter-grid">
 
-                                <ui-select-match allow-clear="true" placeholder="LỚP HỌC">
-                                    {{$select.selected.name}}
-                                </ui-select-match>
-
-                                <ui-select-choices repeat="so.id as so in vm.enrollmentClasses
-                                    | filter:{schoolId: 1}
-                                    | propsFilter:{name: $select.search}">
-
-                                    <div class="bold"
-                                         ng-bind-html="so.name | highlight: $select.search">
-                                    </div>
-
-                                    <small>{{so.old}}</small>
-
-                                </ui-select-choices>
-
-                            </ui-select>
-
+                        <div class="col-lg-2 col-md-3 col-sm-6 col-xs-6 test-result-filter-col">
+                            <div class="test-result-filter-field">
+                                <label class="test-result-filter-label">
+                                    <i class="fa fa-calendar"></i> TỪ NGÀY
+                                </label>
+                                <input data-ng-model="vm.startDate"
+                                       type="text"
+                                       class="form-control test-result-filter-control"
+                                       placeholder="Từ ngày"
+                                       my-date-picker />
+                            </div>
                         </div>
-                        <div class="col-md-2 margin-bottom-20">
-                            <div class="input-group">
-                                <input ng-model="vm.searchDto.textSearch" ng-keyup="vm.enterSearchCode(e)" type="text"  class="form-control" placeholder="Find by test name...">
-                                <div class="input-group-btn">
-                                    <button ng-click="vm.codeChange()" class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>
+
+                        <div class="col-lg-2 col-md-3 col-sm-6 col-xs-6 test-result-filter-col">
+                            <div class="test-result-filter-field">
+                                <label class="test-result-filter-label">
+                                    <i class="fa fa-calendar"></i> ĐẾN NGÀY
+                                </label>
+                                <input data-ng-model="vm.endDate"
+                                       type="text"
+                                       class="form-control test-result-filter-control"
+                                       placeholder="Đến ngày"
+                                       my-date-picker />
+                            </div>
+                        </div>
+
+                        <div class="col-lg-2 col-md-3 col-sm-6 col-xs-12 test-result-filter-col">
+                            <div class="test-result-filter-field">
+                                <label class="test-result-filter-label">
+                                    <i class="fa fa-graduation-cap"></i> LỚP HỌC
+                                </label>
+
+                                <ui-select ng-model="vm.searchDto.enrollmentClassId"
+                                           ng-change="vm.enrollmentClassChange()"
+                                           sortable="true"
+                                           close-on-select="true"
+                                           class="test-result-ui-select">
+
+                                    <ui-select-match allow-clear="true" placeholder="Chọn lớp học">
+                                        {{$select.selected.name}}
+                                    </ui-select-match>
+
+                                    <ui-select-choices repeat="so.id as so in vm.enrollmentClasses
+                                        | filter:{schoolId: 1}
+                                        | propsFilter:{name: $select.search}">
+                                        <div class="bold"
+                                             ng-bind-html="so.name | highlight: $select.search">
+                                        </div>
+                                        <small>{{so.old}}</small>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-2 col-md-3 col-sm-6 col-xs-12 test-result-filter-col">
+                            <div class="test-result-filter-field">
+                                <label class="test-result-filter-label">
+                                    <i class="fa fa-user"></i> HỌC SINH
+                                </label>
+
+                                <ui-select ng-change="vm.codeChange()"
+                                           data-ng-model="vm.searchDto.user"
+                                           sortable="true"
+                                           close-on-select="true"
+                                           class="test-result-ui-select"
+                                           style="width: 100% !important;">
+
+                                    <ui-select-match allow-clear="true" placeholder="Chọn học sinh">
+                                        {{$select.selected.displayName}}
+                                    </ui-select-match>
+
+                                    <ui-select-choices repeat="mode in vm.users | propsFilter: {displayName: $select.search}">
+                                        <div class="bold"
+                                             ng-bind-html="mode.displayName | highlight: $select.search">
+                                        </div>
+                                        <small>{{mode.username}}</small>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-2 col-md-3 col-sm-6 col-xs-12 test-result-filter-col">
+                            <div class="test-result-filter-field">
+                                <label class="test-result-filter-label">
+                                    <i class="fa fa-book"></i> LOẠI BÀI
+                                </label>
+
+                                <ui-select ng-change="vm.codeChange()"
+                                           data-ng-model="vm.searchDto.testType"
+                                           sortable="true"
+                                           close-on-select="true"
+                                           class="test-result-ui-select"
+                                           style="width: 100% !important;">
+
+                                    <ui-select-match allow-clear="true" placeholder="Chọn loại bài">
+                                        {{$select.selected.name}}
+                                    </ui-select-match>
+
+                                    <ui-select-choices repeat="mode.id as mode in vm.testTypes | propsFilter: {name: $select.search}">
+                                        <div class="bold"
+                                             ng-bind-html="mode.name | highlight: $select.search">
+                                        </div>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-2 col-md-3 col-sm-6 col-xs-12 test-result-filter-col">
+                            <div class="test-result-filter-field">
+                                <label class="test-result-filter-label">
+                                    <i class="fa fa-search"></i> TÊN BÀI TEST
+                                </label>
+
+                                <div class="input-group test-result-search-group">
+                                    <input ng-model="vm.searchDto.textSearch"
+                                           ng-keyup="vm.enterSearchCode(e)"
+                                           type="text"
+                                           class="form-control test-result-filter-control"
+                                           placeholder="Nhập tên bài test...">
+
+                                    <div class="input-group-btn">
+                                        <button ng-click="vm.codeChange()"
+                                                class="btn test-result-search-btn"
+                                                type="submit"
+                                                aria-label="Tìm kiếm">
+                                            <i class="glyphicon glyphicon-search"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <!--<div class="col-md-2 margin-bottom-20">-->
-                            <!--<div class="input-group">-->
-                                <!--<input ng-model="vm.searchDto.userDisplayName" ng-keyup="vm.enterSearchCode(e)" type="text"  class="form-control" placeholder="Find by name (new)...">-->
-                                <!--<div class="input-group-btn">-->
-                                    <!--<button ng-click="vm.codeChange()" class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>-->
-                                <!--</div>-->
-                            <!--</div>-->
-                        <!--</div>-->
-                        <div class="col-md-2 margin-bottom-20">
-                            <ui-select ng-change="vm.codeChange()" data-ng-model="vm.searchDto.user" sortable="true" close-on-select="true" style="width: 100% !important;">
-                                <ui-select-match allow-clear="true" placeholder="user...">{{$select.selected.displayName}}</ui-select-match>
-                                <ui-select-choices repeat="mode in vm.users | propsFilter: {displayName: $select.search}">
-                                    <div class="bold" ng-bind-html="mode.displayName | highlight: $select.search">
-                                    </div>
-                                    <small>{{mode.username}}</small>
-                                </ui-select-choices>
-                            </ui-select>
-                        </div>
-                        <div class="col-md-2 margin-bottom-20">
-                            <ui-select ng-change="vm.codeChange()" data-ng-model="vm.searchDto.testType" sortable="true" close-on-select="true" style="width: 100% !important;">
-                                <ui-select-match allow-clear="true" placeholder="Daily, gaps?">{{$select.selected.name}}</ui-select-match>
-                                <ui-select-choices repeat="mode.id as mode in vm.testTypes | propsFilter: {name: $select.search}">
-                                    <div class="bold" ng-bind-html="mode.name | highlight: $select.search">
-                                    </div>
-                                </ui-select-choices>
-                            </ui-select>
-                        </div>
+
                     </div>
+                </div>
 
-                    <!--<button class="btn btn-default" data-ng-click="vm.newObject()"><i class="fa fa-plus-circle"></i>Thêm mới</button>-->
-                    <!--<button class="btn btn-danger margin-left-10" data-ng-click="vm.deletequestionTypes()" data-ng-disabled="vm.selectedquestionTypes.length <= 0"><i class="fa fa-trash"></i>Xóa</button>-->
-
-                <!-- RANKING: FULL WIDTH -->
+<!-- RANKING: FULL WIDTH -->
                 <div class="row ranking-main-row">
 
                     <div class="col-md-12">
                         <div class="ranking-section">
                             <div class="ranking-section-heading">
-                                <div class="ranking-heading-icon">🏆</div>
+                                <div class="ranking-heading-icon ranking-heading-toggle"
+                                     ng-click="vm.toggleRanking()"
+                                     ng-class="{'ranking-heading-collapsed': vm.isRankingCollapsed}"
+                                     title="{{vm.isRankingCollapsed ? 'Hiện bảng xếp hạng' : 'Ẩn bảng xếp hạng'}}"
+                                     role="button"
+                                     tabindex="0"
+                                     ng-keydown="$event.keyCode === 13 && vm.toggleRanking()">
+                                    🏆
+                                </div>
                                 <div>
                                     <div class="ranking-heading-title">BẢNG XẾP HẠNG</div>
                                     <div class="ranking-heading-subtitle">Cùng xem ai đang dẫn đầu lớp nhé!</div>
                                 </div>
                             </div>
-                            <div class="ranking-loading" ng-if="vm.isRankingLoading">
+                            <div class="ranking-collapsible" ng-show="!vm.isRankingCollapsed">
+                                <div class="ranking-loading" ng-if="vm.isRankingLoading">
                                 <div class="ranking-spinner"></div>
                                 <div class="ranking-loading-text">
                                     Đang tải bảng xếp hạng...
@@ -211,6 +289,7 @@
                                 </div>
                             </div>
                             </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -218,8 +297,29 @@
                 <!-- LISTING: FULL WIDTH, BELOW RANKING -->
                 <div class="row listing-main-row">
                     <div class="col-md-12">
-                        <div class="test-result-listing-wrap">
-                            <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
+                        <div class="test-result-listing-card">
+                            <div class="test-result-listing-heading">
+                                <div class="test-result-listing-heading-left">
+                                    <div class="test-result-listing-icon">
+                                        <i class="fa fa-list-alt"></i>
+                                    </div>
+                                    <div>
+                                        <div class="test-result-listing-title">KẾT QUẢ LÀM BÀI</div>
+                                        <div class="test-result-listing-subtitle">
+                                            Danh sách chi tiết theo bộ lọc phía trên
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="test-result-listing-hint">
+                                    <i class="fa fa-arrows-h"></i>
+                                    <span>Vuốt ngang để xem thêm</span>
+                                </div>
+                            </div>
+
+                            <div class="test-result-listing-wrap">
+                                <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1458,6 +1558,903 @@
 
         .ranking-loading-text {
             font-size: 14px;
+        }
+    }
+
+
+
+    /* =========================================================
+       FILTER PANEL - POLISHED DESKTOP + MOBILE
+       ========================================================= */
+    .test-result-filter-panel {
+        position: relative;
+        margin-bottom: 18px;
+        padding: 18px 18px 8px;
+        border: 1px solid #e8edf5;
+        border-radius: 20px;
+        background:
+            radial-gradient(circle at 0% 0%, rgba(77,132,255,.08), transparent 28%),
+            linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+        box-shadow: 0 8px 26px rgba(35,55,80,.08);
+    }
+
+    .test-result-filter-heading {
+        display: flex;
+        align-items: center;
+        margin-bottom: 14px;
+    }
+
+    .test-result-filter-heading-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        margin-right: 11px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #eef4ff 0%, #e7efff 100%);
+        color: #4b72d8;
+        box-shadow: 0 5px 14px rgba(75,114,216,.13);
+        font-size: 18px;
+    }
+
+    .test-result-filter-title {
+        color: #253047;
+        font-size: 16px;
+        line-height: 1.15;
+        font-weight: 900;
+        letter-spacing: .4px;
+    }
+
+    .test-result-filter-subtitle {
+        margin-top: 3px;
+        color: #8791a2;
+        font-size: 11px;
+        line-height: 1.35;
+        font-weight: 600;
+    }
+
+    .test-result-filter-grid {
+        margin-left: -6px;
+        margin-right: -6px;
+    }
+
+    .test-result-filter-col {
+        padding-left: 6px;
+        padding-right: 6px;
+        margin-bottom: 12px;
+    }
+
+    .test-result-filter-label {
+        display: flex;
+        align-items: center;
+        min-height: 18px;
+        margin: 0 0 6px 2px;
+        color: #667085;
+        font-size: 10px;
+        line-height: 1;
+        font-weight: 800;
+        letter-spacing: .45px;
+    }
+
+    .test-result-filter-label i {
+        width: 15px;
+        margin-right: 4px;
+        color: #6f82a8;
+        text-align: center;
+        font-size: 11px;
+    }
+
+    .test-result-filter-control,
+    .test-result-ui-select .ui-select-match .btn {
+        height: 42px !important;
+        min-height: 42px !important;
+        border: 1px solid #dfe5ee !important;
+        border-radius: 12px !important;
+        background: #fff !important;
+        color: #283248 !important;
+        box-shadow: 0 2px 8px rgba(36,54,80,.04) !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        transition: border-color .18s ease, box-shadow .18s ease;
+    }
+
+    .test-result-filter-control {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .test-result-filter-control:focus,
+    .test-result-ui-select.open .ui-select-match .btn,
+    .test-result-ui-select .ui-select-match .btn:focus {
+        border-color: #8aa9f6 !important;
+        box-shadow:
+            0 0 0 3px rgba(91,130,230,.10),
+            0 5px 14px rgba(36,54,80,.06) !important;
+        outline: none !important;
+    }
+
+    .test-result-ui-select,
+    .test-result-ui-select .ui-select-match {
+        width: 100% !important;
+    }
+
+    .test-result-ui-select .ui-select-match .btn {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        padding: 9px 31px 9px 12px !important;
+        text-align: left;
+    }
+
+    .test-result-ui-select .ui-select-match-text {
+        display: block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .test-result-ui-select .ui-select-toggle > .caret {
+        right: 12px;
+        color: #8b95a6;
+    }
+
+    .test-result-ui-select .ui-select-choices {
+        margin-top: 5px;
+        padding: 6px 0;
+        border: 1px solid #e2e7ef;
+        border-radius: 12px;
+        box-shadow: 0 12px 28px rgba(30,45,70,.14);
+    }
+
+    .test-result-ui-select .ui-select-choices-row > span {
+        padding: 9px 12px;
+        font-size: 13px;
+    }
+
+    .test-result-ui-select .ui-select-choices-row.active > span {
+        background: #edf3ff;
+        color: #345cb8;
+    }
+
+    .test-result-search-group {
+        width: 100%;
+    }
+
+    .test-result-search-group .form-control {
+        height: 42px !important;
+        border-radius: 12px 0 0 12px !important;
+        border-right: 0 !important;
+    }
+
+    .test-result-search-btn {
+        height: 42px;
+        min-width: 44px;
+        padding: 0 13px;
+        border: 1px solid #dfe5ee;
+        border-left: 0;
+        border-radius: 0 12px 12px 0 !important;
+        background: linear-gradient(135deg, #5c7de7 0%, #4768ce 100%);
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(71,104,206,.18);
+    }
+
+    .test-result-search-btn:hover,
+    .test-result-search-btn:focus {
+        background: linear-gradient(135deg, #6788ee 0%, #4d70da 100%);
+        color: #fff;
+        outline: none;
+    }
+
+    /* =========================================================
+       LISTING CARD / BOOTSTRAP TABLE
+       ========================================================= */
+    .test-result-listing-card {
+        overflow: hidden;
+        border: 1px solid #e7ecf3;
+        border-radius: 20px;
+        background: #fff;
+        box-shadow: 0 10px 28px rgba(35,55,80,.08);
+    }
+
+    .test-result-listing-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 68px;
+        padding: 13px 16px;
+        border-bottom: 1px solid #edf0f5;
+        background:
+            radial-gradient(circle at 100% 0%, rgba(74,117,226,.08), transparent 30%),
+            linear-gradient(180deg, #fff 0%, #fafcff 100%);
+    }
+
+    .test-result-listing-heading-left {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+    }
+
+    .test-result-listing-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        margin-right: 10px;
+        border-radius: 13px;
+        background: linear-gradient(135deg, #eaf2ff 0%, #e5edff 100%);
+        color: #506fd0;
+        box-shadow: 0 5px 14px rgba(80,111,208,.13);
+        font-size: 17px;
+    }
+
+    .test-result-listing-title {
+        color: #253047;
+        font-size: 16px;
+        line-height: 1.15;
+        font-weight: 900;
+        letter-spacing: .35px;
+    }
+
+    .test-result-listing-subtitle {
+        margin-top: 3px;
+        color: #8791a2;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .test-result-listing-hint {
+        display: none;
+        align-items: center;
+        margin-left: 12px;
+        padding: 6px 9px;
+        border-radius: 999px;
+        background: #f1f5fb;
+        color: #778399;
+        font-size: 10px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .test-result-listing-hint i {
+        margin-right: 5px;
+    }
+
+    .test-result-listing-wrap {
+        width: 100%;
+        padding: 0 !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: #c7d0df transparent;
+    }
+
+    .test-result-listing-wrap::-webkit-scrollbar {
+        height: 7px;
+    }
+
+    .test-result-listing-wrap::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: #c7d0df;
+    }
+
+    .test-result-listing-wrap .bootstrap-table,
+    .test-result-listing-wrap .fixed-table-container {
+        margin: 0;
+        border: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    .test-result-listing-wrap .fixed-table-toolbar {
+        margin: 0;
+        padding: 10px 12px 0;
+    }
+
+    .test-result-listing-wrap .fixed-table-header {
+        border: 0 !important;
+        background: #f6f8fc;
+    }
+
+    .test-result-listing-wrap .fixed-table-body {
+        border: 0 !important;
+    }
+
+    .test-result-listing-wrap table {
+        margin-bottom: 0 !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        background: #fff;
+        font-size: 13px;
+    }
+
+    .test-result-listing-wrap table > thead > tr > th {
+        padding: 12px 11px !important;
+        border-top: 0 !important;
+        border-bottom: 1px solid #e4e9f0 !important;
+        background: #f6f8fc !important;
+        color: #526076 !important;
+        vertical-align: middle !important;
+        font-size: 11px !important;
+        line-height: 1.25 !important;
+        font-weight: 900 !important;
+        letter-spacing: .25px;
+        white-space: nowrap;
+    }
+
+    .test-result-listing-wrap table > tbody > tr > td {
+        padding: 11px 11px !important;
+        border-top: 0 !important;
+        border-bottom: 1px solid #eef1f5 !important;
+        background: #fff;
+        color: #364152;
+        vertical-align: middle !important;
+        font-size: 12px;
+        line-height: 1.35;
+        font-weight: 600;
+    }
+
+    .test-result-listing-wrap table > tbody > tr:nth-child(even) > td {
+        background: #fbfcfe;
+    }
+
+    .test-result-listing-wrap table > tbody > tr:hover > td {
+        background: #f2f6ff !important;
+    }
+
+    .test-result-listing-wrap .fixed-table-pagination {
+        margin: 0;
+        padding: 11px 12px 12px;
+        border-top: 1px solid #edf0f5;
+        background: #fbfcfe;
+    }
+
+    .test-result-listing-wrap .pagination-detail,
+    .test-result-listing-wrap .pagination {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+
+    .test-result-listing-wrap .pagination > li > a,
+    .test-result-listing-wrap .pagination > li > span {
+        min-width: 34px;
+        height: 34px;
+        margin: 0 2px;
+        padding: 7px 9px;
+        border: 1px solid #e0e5ed;
+        border-radius: 9px !important;
+        background: #fff;
+        color: #65728a;
+        font-size: 12px;
+        font-weight: 800;
+        text-align: center;
+    }
+
+    .test-result-listing-wrap .pagination > .active > a,
+    .test-result-listing-wrap .pagination > .active > span {
+        border-color: #5676df;
+        background: linear-gradient(135deg, #6685ea 0%, #4e6fd6 100%);
+        color: #fff;
+        box-shadow: 0 4px 10px rgba(78,111,214,.24);
+    }
+
+    .test-result-listing-wrap .page-list .btn {
+        height: 34px;
+        border: 1px solid #e0e5ed;
+        border-radius: 9px;
+        background: #fff;
+        color: #59667d;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    /* MOBILE */
+    @media (max-width: 767px) {
+        .test-result-filter-panel {
+            margin-bottom: 13px;
+            padding: 12px 10px 4px;
+            border-radius: 17px;
+            box-shadow: 0 7px 20px rgba(35,55,80,.08);
+        }
+
+        .test-result-filter-heading {
+            margin-bottom: 11px;
+        }
+
+        .test-result-filter-heading-icon {
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
+            margin-right: 8px;
+            border-radius: 12px;
+            font-size: 16px;
+        }
+
+        .test-result-filter-title {
+            font-size: 14px;
+        }
+
+        .test-result-filter-subtitle {
+            display: none;
+        }
+
+        .test-result-filter-grid {
+            margin-left: -4px;
+            margin-right: -4px;
+        }
+
+        .test-result-filter-col {
+            padding-left: 4px;
+            padding-right: 4px;
+            margin-bottom: 8px;
+        }
+
+        .test-result-filter-label {
+            margin-left: 1px;
+            margin-bottom: 5px;
+            font-size: 9px;
+            letter-spacing: .25px;
+        }
+
+        .test-result-filter-control,
+        .test-result-ui-select .ui-select-match .btn,
+        .test-result-search-group .form-control {
+            height: 44px !important;
+            min-height: 44px !important;
+            font-size: 13px !important;
+        }
+
+        .test-result-ui-select .ui-select-match .btn {
+            padding-top: 10px !important;
+            padding-bottom: 10px !important;
+        }
+
+        .test-result-search-btn {
+            height: 44px;
+            min-width: 46px;
+        }
+
+        .test-result-ui-select .ui-select-choices {
+            max-height: 46vh;
+            border-radius: 12px;
+        }
+
+        .test-result-listing-card {
+            border-radius: 17px;
+            box-shadow: 0 7px 21px rgba(35,55,80,.08);
+        }
+
+        .test-result-listing-heading {
+            min-height: 60px;
+            padding: 10px 11px;
+        }
+
+        .test-result-listing-icon {
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
+            margin-right: 8px;
+            border-radius: 12px;
+            font-size: 15px;
+        }
+
+        .test-result-listing-title {
+            font-size: 14px;
+        }
+
+        .test-result-listing-subtitle {
+            font-size: 9px;
+        }
+
+        .test-result-listing-hint {
+            display: flex;
+        }
+
+        .test-result-listing-wrap .fixed-table-body {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+        }
+
+        .test-result-listing-wrap table {
+            min-width: 760px;
+            font-size: 11px;
+        }
+
+        .test-result-listing-wrap table > thead > tr > th {
+            padding: 10px 9px !important;
+            font-size: 10px !important;
+        }
+
+        .test-result-listing-wrap table > tbody > tr > td {
+            padding: 10px 9px !important;
+            font-size: 11px;
+        }
+
+        .test-result-listing-wrap .fixed-table-pagination {
+            padding: 9px 8px 10px;
+        }
+
+        .test-result-listing-wrap .pagination-detail {
+            float: none !important;
+            width: 100%;
+            margin-bottom: 8px !important;
+            color: #7a8598;
+            font-size: 10px !important;
+            text-align: center;
+        }
+
+        .test-result-listing-wrap .pagination {
+            float: none !important;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .test-result-listing-wrap .pagination > li > a,
+        .test-result-listing-wrap .pagination > li > span {
+            min-width: 32px;
+            height: 32px;
+            margin: 2px;
+            padding: 6px 8px;
+            font-size: 11px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .test-result-listing-hint span {
+            display: none;
+        }
+
+        .test-result-listing-hint {
+            width: 29px;
+            height: 29px;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .test-result-listing-hint i {
+            margin: 0;
+        }
+    }
+
+    @media (max-width: 380px) {
+        .test-result-filter-panel {
+            padding-left: 8px;
+            padding-right: 8px;
+        }
+
+        .test-result-filter-label {
+            font-size: 8px;
+        }
+
+        .test-result-filter-control,
+        .test-result-ui-select .ui-select-match .btn,
+        .test-result-search-group .form-control {
+            font-size: 12px !important;
+        }
+
+        .test-result-listing-title {
+            font-size: 13px;
+        }
+    }
+
+
+
+    /* =========================================================
+       HOTFIX 2026-08-19 - SEARCH ALIGNMENT + ACTION ICON HOVER
+       ========================================================= */
+
+    /* Search input + button luôn thành 1 khối, không bị thò xuống */
+    .test-result-search-group {
+        display: flex !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border-collapse: initial !important;
+    }
+
+    .test-result-search-group > .form-control,
+    .test-result-search-group .test-result-filter-control {
+        display: block !important;
+        float: none !important;
+        flex: 1 1 auto !important;
+        width: 1% !important;
+        min-width: 0 !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        margin: 0 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        line-height: 40px !important;
+        box-sizing: border-box !important;
+        border: 1px solid #dfe5ee !important;
+        border-right: 0 !important;
+        border-radius: 12px 0 0 12px !important;
+        vertical-align: top !important;
+    }
+
+    .test-result-search-group > .input-group-btn {
+        position: static !important;
+        display: flex !important;
+        align-items: stretch !important;
+        float: none !important;
+        flex: 0 0 48px !important;
+        width: 48px !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        vertical-align: top !important;
+        white-space: normal !important;
+    }
+
+    .test-result-search-group .test-result-search-btn {
+        position: static !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        float: none !important;
+        width: 48px !important;
+        min-width: 48px !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+        border: 1px solid #5676df !important;
+        border-left: 0 !important;
+        border-radius: 0 12px 12px 0 !important;
+        vertical-align: top !important;
+        background: linear-gradient(135deg, #5c7de7 0%, #4768ce 100%) !important;
+        color: #ffffff !important;
+        line-height: 1 !important;
+    }
+
+    .test-result-search-group .test-result-search-btn .glyphicon,
+    .test-result-search-group .test-result-search-btn i {
+        position: static !important;
+        margin: 0 !important;
+        color: #ffffff !important;
+        line-height: 1 !important;
+    }
+
+    /* Action icon trong listing: hover row không được biến thành trắng */
+    .test-result-listing-wrap table > tbody > tr > td a,
+    .test-result-listing-wrap table > tbody > tr > td a:link,
+    .test-result-listing-wrap table > tbody > tr > td a:visited,
+    .test-result-listing-wrap table > tbody > tr > td button.btn-link {
+        color: #337ab7 !important;
+        opacity: 1 !important;
+        text-decoration: none !important;
+    }
+
+    .test-result-listing-wrap table > tbody > tr > td a i,
+    .test-result-listing-wrap table > tbody > tr > td a .fa,
+    .test-result-listing-wrap table > tbody > tr > td a .glyphicon,
+    .test-result-listing-wrap table > tbody > tr > td button i,
+    .test-result-listing-wrap table > tbody > tr > td button .fa,
+    .test-result-listing-wrap table > tbody > tr > td button .glyphicon {
+        color: #337ab7 !important;
+        opacity: 1 !important;
+        text-shadow: none !important;
+    }
+
+    .test-result-listing-wrap table > tbody > tr:hover > td a,
+    .test-result-listing-wrap table > tbody > tr:hover > td a:hover,
+    .test-result-listing-wrap table > tbody > tr:hover > td a:focus,
+    .test-result-listing-wrap table > tbody > tr:hover > td button.btn-link,
+    .test-result-listing-wrap table > tbody > tr:hover > td button.btn-link:hover,
+    .test-result-listing-wrap table > tbody > tr:hover > td button.btn-link:focus,
+    .test-result-listing-wrap table > tbody > tr.selected > td a,
+    .test-result-listing-wrap table > tbody > tr.selected > td button.btn-link {
+        color: #2176bd !important;
+        opacity: 1 !important;
+        background: transparent !important;
+    }
+
+    .test-result-listing-wrap table > tbody > tr:hover > td a i,
+    .test-result-listing-wrap table > tbody > tr:hover > td a .fa,
+    .test-result-listing-wrap table > tbody > tr:hover > td a .glyphicon,
+    .test-result-listing-wrap table > tbody > tr:hover > td button i,
+    .test-result-listing-wrap table > tbody > tr:hover > td button .fa,
+    .test-result-listing-wrap table > tbody > tr:hover > td button .glyphicon,
+    .test-result-listing-wrap table > tbody > tr.selected > td a i,
+    .test-result-listing-wrap table > tbody > tr.selected > td a .fa,
+    .test-result-listing-wrap table > tbody > tr.selected > td a .glyphicon {
+        color: #2176bd !important;
+        opacity: 1 !important;
+        filter: none !important;
+    }
+
+    @media (max-width: 767px) {
+        .test-result-search-group {
+            height: 44px !important;
+            min-height: 44px !important;
+        }
+
+        .test-result-search-group > .form-control,
+        .test-result-search-group .test-result-filter-control {
+            height: 44px !important;
+            min-height: 44px !important;
+            line-height: 42px !important;
+        }
+
+        .test-result-search-group > .input-group-btn,
+        .test-result-search-group .test-result-search-btn {
+            height: 44px !important;
+            min-height: 44px !important;
+        }
+    }
+
+
+
+    /* =========================================================
+       HOTFIX 2 - ALL FILTER CONTROLS SAME VISUAL HEIGHT
+       ========================================================= */
+
+    /* Desktop: ngày / ui-select / search đều cao đúng 40px */
+    .test-result-filter-panel .test-result-filter-control,
+    .test-result-filter-panel .test-result-ui-select .ui-select-match .btn,
+    .test-result-filter-panel .test-result-search-group,
+    .test-result-filter-panel .test-result-search-group > .form-control,
+    .test-result-filter-panel .test-result-search-group .test-result-filter-control,
+    .test-result-filter-panel .test-result-search-group > .input-group-btn,
+    .test-result-filter-panel .test-result-search-group .test-result-search-btn {
+        height: 40px !important;
+        min-height: 40px !important;
+        max-height: 40px !important;
+        box-sizing: border-box !important;
+    }
+
+    .test-result-filter-panel .test-result-ui-select .ui-select-match .btn {
+        padding-top: 8px !important;
+        padding-bottom: 8px !important;
+        line-height: 22px !important;
+    }
+
+    .test-result-filter-panel .test-result-filter-control {
+        line-height: 20px !important;
+        padding-top: 9px !important;
+        padding-bottom: 9px !important;
+    }
+
+    .test-result-filter-panel .test-result-search-group {
+        display: flex !important;
+        align-items: stretch !important;
+    }
+
+    .test-result-filter-panel .test-result-search-group > .form-control,
+    .test-result-filter-panel .test-result-search-group .test-result-filter-control {
+        flex: 1 1 auto !important;
+        width: 1% !important;
+        line-height: 20px !important;
+        padding-top: 9px !important;
+        padding-bottom: 9px !important;
+    }
+
+    .test-result-filter-panel .test-result-search-group > .input-group-btn {
+        display: flex !important;
+        flex: 0 0 42px !important;
+        width: 42px !important;
+    }
+
+    .test-result-filter-panel .test-result-search-group .test-result-search-btn {
+        width: 42px !important;
+        min-width: 42px !important;
+        padding: 0 !important;
+        line-height: 1 !important;
+    }
+
+    /* Mobile: tăng nhẹ cho dễ bấm nhưng tất cả vẫn bằng nhau */
+    @media (max-width: 767px) {
+        .test-result-filter-panel .test-result-filter-control,
+        .test-result-filter-panel .test-result-ui-select .ui-select-match .btn,
+        .test-result-filter-panel .test-result-search-group,
+        .test-result-filter-panel .test-result-search-group > .form-control,
+        .test-result-filter-panel .test-result-search-group .test-result-filter-control,
+        .test-result-filter-panel .test-result-search-group > .input-group-btn,
+        .test-result-filter-panel .test-result-search-group .test-result-search-btn {
+            height: 42px !important;
+            min-height: 42px !important;
+            max-height: 42px !important;
+        }
+
+        .test-result-filter-panel .test-result-ui-select .ui-select-match .btn {
+            padding-top: 9px !important;
+            padding-bottom: 9px !important;
+            line-height: 22px !important;
+        }
+
+        .test-result-filter-panel .test-result-filter-control,
+        .test-result-filter-panel .test-result-search-group > .form-control,
+        .test-result-filter-panel .test-result-search-group .test-result-filter-control {
+            line-height: 20px !important;
+            padding-top: 10px !important;
+            padding-bottom: 10px !important;
+        }
+
+        .test-result-filter-panel .test-result-search-group > .input-group-btn,
+        .test-result-filter-panel .test-result-search-group .test-result-search-btn {
+            width: 42px !important;
+            min-width: 42px !important;
+            flex-basis: 42px !important;
+        }
+    }
+
+
+
+    /* =========================================================
+       RANKING TOGGLE - CUP CLICK
+       ========================================================= */
+    .ranking-heading-toggle {
+        position: relative;
+        cursor: pointer;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+    }
+
+    .ranking-heading-toggle:hover {
+        transform: translateY(-1px) scale(1.06);
+        box-shadow: 0 10px 26px rgba(244,185,40,.38);
+        filter: saturate(1.08);
+    }
+
+    .ranking-heading-toggle:active {
+        transform: scale(.94);
+    }
+
+    .ranking-heading-toggle:focus {
+        outline: none;
+        box-shadow:
+            0 0 0 3px rgba(255,205,55,.24),
+            0 8px 22px rgba(244,185,40,.28);
+    }
+
+    .ranking-heading-toggle::after {
+        content: "−";
+        position: absolute;
+        right: -5px;
+        bottom: -5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        background: #4f6ed7;
+        color: #fff;
+        box-shadow: 0 3px 8px rgba(46,67,125,.22);
+        font-size: 15px;
+        line-height: 1;
+        font-weight: 900;
+    }
+
+    .ranking-heading-toggle.ranking-heading-collapsed::after {
+        content: "+";
+    }
+
+    .ranking-collapsible {
+        width: 100%;
+    }
+
+    @media (max-width: 767px) {
+        .ranking-heading-toggle::after {
+            right: -4px;
+            bottom: -4px;
+            width: 18px;
+            height: 18px;
+            font-size: 13px;
         }
     }
 

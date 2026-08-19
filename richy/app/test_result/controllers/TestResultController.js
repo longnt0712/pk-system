@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Created by nguyen the dat on 23/4/2018.
  */
 (function () {
@@ -197,6 +197,13 @@
         vm.rankings = [];
         vm.isRankingLoading = false;
 
+        // Ẩn / hiện bảng xếp hạng khi bấm vào cup
+        vm.isRankingCollapsed = false;
+
+        vm.toggleRanking = function () {
+            vm.isRankingCollapsed = !vm.isRankingCollapsed;
+        };
+
         vm.getRanking = function () {
 
             vm.isRankingLoading = true;
@@ -387,7 +394,7 @@
 
             modalInstance.result.then(function (confirm) {
                 if (confirm == 'yes') {
-                	console.log(vm.selectedTestResults);
+                   console.log(vm.selectedTestResults);
                     service.deleteObject(id, function success() {
                         toastr.info('Bạn đã xóa thành công', 'Thông báo');
                         vm.getPage();
