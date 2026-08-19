@@ -422,16 +422,42 @@
             }
         });
 
-        $timeout(function () {
+        // $timeout(function () {
+        //     service.getUsers(vm.filter, 1, 1000000).then(function (data) {
+        //         vm.users = data.content;
+        //         console.log(vm.users);
+        //     });
+        // }, 1000);
+
+        vm.loadUsers = function () {
             service.getUsers(vm.filter, 1, 1000000).then(function (data) {
-                vm.users = data.content;
-                console.log(vm.users);
+                vm.users = data.content || [];
             });
+        };
+
+        $timeout(function () {
+            vm.loadUsers();
         }, 1000);
 
         service.getEnrolmentClass(null, 1, 1000000).then(function (data) {
             vm.enrollmentClasses = data.content;
         });
+
+        vm.enrollmentClassChange = function () {
+
+            // User đã chọn có thể thuộc lớp cũ => clear
+            vm.searchDto.user = null;
+
+            // Filter danh sách user theo lớp
+            vm.filter.enrollmentClass =
+                vm.searchDto.enrollmentClassId || null;
+
+            // Load lại dropdown user
+            vm.loadUsers();
+
+            // Load TestResult + Ranking
+            vm.codeChange();
+        };
 
 
     }
