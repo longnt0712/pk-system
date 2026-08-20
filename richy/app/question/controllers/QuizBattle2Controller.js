@@ -156,7 +156,11 @@
             upper: 100,
             lower: 0,
             type: 100,
-            pageSize: 5000,
+            /*
+             * QUIZ BATTLE 2 LAZY LOAD:
+             * chỉ lấy 50 câu mỗi request.
+             */
+            pageSize: 50,
             pageIndex: 1,
             questionType: {id: 6},
             userId: vm.selectedUser.id
@@ -308,6 +312,11 @@
             vm.timerDuration = 0;
             vm.counter = 0;
 
+            /*
+             * Ignore mọi request nền của user/bài cũ.
+             */
+            resetLazyQuestionState(true);
+
             vm.resetBattle(true);
             vm.getPageTopicCategory();
         };
@@ -334,64 +343,211 @@
             return result;
         }
 
-        function createQuestionsWithOptions(
-            parents,
+        /*
+         * =====================================================
+         * FAST QUESTION BUILDER
+         * =====================================================
+         *
+         * Bản cũ filter toàn bộ source cho từng câu.
+         * Bản mới random trực tiếp 3 đáp án sai.
+         */
+        function isSameQuestion(left, right) {
+            if (!left || !right) {
+                return false;
+            }
+
+            if (
+                left.id != null &&
+                right.id != null
+            ) {
+                return left.id == right.id;
+            }
+
+            return left === right;
+        }
+
+        function pickFastWrongAnswers(
+            source,
+            current,
+            count,
+            shouldShuffle
+        ) {
+            var pool = source || [];
+            var result = [];
+            var usedIndexes = {};
+            var needed = Math.max(0, count || 0);
+
+            if (
+                needed <= 0 ||
+                pool.length <= 1
+            ) {
+                return result;
+            }
+
+            if (shouldShuffle === true) {
+                var maxAttempts =
+                    Math.max(
+                        20,
+                        pool.length * 3
+                    );
+
+                var attempts = 0;
+
+                while (
+                    result.length < needed &&
+                    attempts < maxAttempts
+                ) {
+                    attempts = attempts + 1;
+
+                    var randomIndex =
+                        Math.floor(
+                            Math.random() *
+                            pool.length
+                        );
+
+                    if (usedIndexes[randomIndex]) {
+                        continue;
+                    }
+
+                    var candidate =
+                        pool[randomIndex];
+
+                    if (
+                        !candidate ||
+                        isSameQuestion(
+                            candidate,
+                            current
+                        )
+                    ) {
+                        continue;
+                    }
+
+                    usedIndexes[randomIndex] = true;
+                    result.push(candidate);
+                }
+            }
+
+            if (result.length < needed) {
+                var index;
+
+                for (
+                    index = 0;
+                    index < pool.length;
+                    index = index + 1
+                ) {
+                    if (result.length >= needed) {
+                        break;
+                    }
+
+                    if (usedIndexes[index]) {
+                        continue;
+                    }
+
+                    var fallback =
+                        pool[index];
+
+                    if (
+                        !fallback ||
+                        isSameQuestion(
+                            fallback,
+                            current
+                        )
+                    ) {
+                        continue;
+                    }
+
+                    usedIndexes[index] = true;
+                    result.push(fallback);
+                }
+            }
+
+            return result;
+        }
+
+        function createOneQuestionWithOptions(
+            parent,
+            answerSource,
             optionCount,
             shouldShuffleAnswers
         ) {
-            var source = parents || [];
-            var totalOptions = optionCount || 4;
-            var shuffleAnswers = shouldShuffleAnswers === true;
-
-            function pickWrongAnswers(currentId, count) {
-                var filtered = source.filter(function (item) {
-                    return item.id !== currentId;
-                });
-
-                if (shuffleAnswers) {
-                    filtered = shuffleArray(filtered);
-                }
-
-                return filtered.slice(0, count);
+            if (!parent) {
+                return {};
             }
 
+            var totalOptions =
+                optionCount || 4;
+
+            var shuffleAnswers =
+                shouldShuffleAnswers === true;
+
+            var wrongAnswers =
+                pickFastWrongAnswers(
+                    answerSource || [],
+                    parent,
+                    totalOptions - 1,
+                    shuffleAnswers
+                )
+                .map(function (item) {
+                    return {
+                        id: item.id,
+                        question: item.question,
+                        motherTongue: item.motherTongue,
+                        pronounce: item.pronounce,
+                        ordinalNumber: item.ordinalNumber,
+                        result: false,
+                        chosen: false,
+                        correct: false
+                    };
+                });
+
+            var correctAnswer = {
+                id: parent.id,
+                question: parent.question,
+                motherTongue: parent.motherTongue,
+                pronounce: parent.pronounce,
+                ordinalNumber: parent.ordinalNumber,
+                result: false,
+                chosen: false,
+                correct: true
+            };
+
+            var answers =
+                [correctAnswer].concat(
+                    wrongAnswers
+                );
+
+            if (shuffleAnswers) {
+                answers =
+                    shuffleArray(answers);
+            }
+
+            var question =
+                angular.copy(parent);
+
+            question.questions = answers;
+
+            return question;
+        }
+
+        function createQuestionsWithOptions(
+            parents,
+            optionCount,
+            shouldShuffleAnswers,
+            answerSource
+        ) {
+            var source =
+                parents || [];
+
+            var answerPool =
+                answerSource || source;
+
             return source.map(function (parent) {
-                var wrongAnswers =
-                    pickWrongAnswers(parent.id, totalOptions - 1)
-                        .map(function (item) {
-                            return {
-                                id: item.id,
-                                question: item.question,
-                                motherTongue: item.motherTongue,
-                                pronounce: item.pronounce,
-                                ordinalNumber: item.ordinalNumber,
-                                result: false,
-                                chosen: false,
-                                correct: false
-                            };
-                        });
-
-                var correctAnswer = {
-                    id: parent.id,
-                    question: parent.question,
-                    motherTongue: parent.motherTongue,
-                    pronounce: parent.pronounce,
-                    ordinalNumber: parent.ordinalNumber,
-                    result: false,
-                    chosen: false,
-                    correct: true
-                };
-
-                var answers = [correctAnswer].concat(wrongAnswers);
-
-                if (shuffleAnswers) {
-                    answers = shuffleArray(answers);
-                }
-
-                var question = angular.copy(parent);
-                question.questions = answers;
-
-                return question;
+                return createOneQuestionWithOptions(
+                    parent,
+                    answerPool,
+                    optionCount,
+                    shouldShuffleAnswers
+                );
             });
         }
 
@@ -887,87 +1043,235 @@
             );
         }
 
-        function prepareBattleQuestions(shouldShuffleAnswers) {
-            vm.questions = createQuestionsWithOptions(
-                vm.rawQuestions,
-                4,
-                shouldShuffleAnswers
+        /*
+         * =====================================================
+         * LAZY LOAD / BUFFER
+         * =====================================================
+         */
+        var LAZY_PAGE_SIZE = 50;
+        var PREFETCH_THRESHOLD = 20;
+        var PREPARE_CHUNK_SIZE = 8;
+        var PREPARE_CHUNK_DELAY = 12;
+
+        var lazyGeneration = 0;
+        var lazyNextPage = 1;
+        var lazyPrepareTimer = null;
+        var lazyRetryTimer = null;
+        var lazyRetryCount = 0;
+
+        vm.loadedCardCount = 0;
+        vm.loadingMoreQuestions = false;
+        vm.allQuestionsLoaded = false;
+        vm.lazyLoadError = false;
+
+        vm.player1BufferWaiting = false;
+        vm.player2BufferWaiting = false;
+
+        var battleFreezePositions = [];
+        var battleBreakStreakPositions = [];
+        var battleStealScorePositions = [];
+
+        var battleFreezeMap = {};
+        var battleBreakStreakMap = {};
+        var battleStealScoreMap = {};
+
+        function cancelLazyTimers() {
+            if (lazyPrepareTimer !== null) {
+                $timeout.cancel(lazyPrepareTimer);
+                lazyPrepareTimer = null;
+            }
+
+            if (lazyRetryTimer !== null) {
+                $timeout.cancel(lazyRetryTimer);
+                lazyRetryTimer = null;
+            }
+        }
+
+        function positionsToMap(positions) {
+            var result = {};
+
+            angular.forEach(
+                positions || [],
+                function (position) {
+                    result[position] = true;
+                }
             );
 
-            vm.questions1 = createQuestionsWithOptions(
-                vm.rawQuestions,
-                4,
-                shouldShuffleAnswers
-            );
+            return result;
+        }
 
-            /*
-             * Câu hỏi của 2 bên vẫn shuffle độc lập.
-             * Đáp án cũng shuffle khi START.
-             */
-            vm.questions = shuffleArray(vm.questions);
-            vm.questions1 = shuffleArray(vm.questions1);
-
-            /*
-             * Nhưng mốc skill được chia công bằng theo
-             * tiến trình câu hỏi của trận.
-             */
-            var freezePositions =
+        function buildBattleSkillPlan() {
+            battleFreezePositions =
                 buildBalancedFreezePositions(
-                    vm.rawQuestions.length
+                    vm.totalCard
                 );
 
-            applyFreezePositions(
-                vm.questions,
-                freezePositions
-            );
-
-            applyFreezePositions(
-                vm.questions1,
-                freezePositions
-            );
-
-            /*
-             * BREAK STREAK dùng cùng mốc cho cả 2 bên
-             * và tránh trùng với FREEZE.
-             */
-            var breakStreakPositions =
+            battleBreakStreakPositions =
                 buildBalancedBreakStreakPositions(
-                    vm.rawQuestions.length,
-                    freezePositions
+                    vm.totalCard,
+                    battleFreezePositions
                 );
 
-            applyBreakStreakPositions(
-                vm.questions,
-                breakStreakPositions
-            );
-
-            applyBreakStreakPositions(
-                vm.questions1,
-                breakStreakPositions
-            );
-
-            /*
-             * CƯỚP ĐIỂM tránh trùng cả FREEZE lẫn BREAK STREAK.
-             */
-            var blockedSkillPositions =
-                freezePositions.concat(
-                    breakStreakPositions
+            var blocked =
+                battleFreezePositions.concat(
+                    battleBreakStreakPositions
                 );
 
-            var stealScorePositions =
+            battleStealScorePositions =
                 buildBalancedStealScorePositions(
-                    vm.rawQuestions.length,
-                    blockedSkillPositions
+                    vm.totalCard,
+                    blocked
                 );
 
-            applyStealScorePositions(
+            battleFreezeMap =
+                positionsToMap(
+                    battleFreezePositions
+                );
+
+            battleBreakStreakMap =
+                positionsToMap(
+                    battleBreakStreakPositions
+                );
+
+            battleStealScoreMap =
+                positionsToMap(
+                    battleStealScorePositions
+                );
+        }
+
+        function applyBattleSkillsToQuestion(
+            question,
+            globalIndex
+        ) {
+            if (!question) {
+                return;
+            }
+
+            question.hasFreezeSkill =
+                battleFreezeMap[globalIndex] === true;
+
+            question.freezeConsumed = false;
+
+            question.hasBreakStreakSkill =
+                battleBreakStreakMap[globalIndex] === true;
+
+            question.breakStreakConsumed = false;
+
+            question.hasStealScoreSkill =
+                battleStealScoreMap[globalIndex] === true;
+
+            question.stealScoreConsumed = false;
+        }
+
+        function applyBattleSkillsToQuestions(
+            questions,
+            globalStartIndex
+        ) {
+            angular.forEach(
+                questions || [],
+                function (question, index) {
+                    applyBattleSkillsToQuestion(
+                        question,
+                        globalStartIndex + index
+                    );
+                }
+            );
+        }
+
+        function updateLazyLoadedCount() {
+            vm.loadedCardCount =
+                Math.min(
+                    vm.questions
+                        ? vm.questions.length
+                        : 0,
+                    vm.questions1
+                        ? vm.questions1.length
+                        : 0
+                );
+        }
+
+        function resetLazyQuestionState(
+            clearQuestions
+        ) {
+            lazyGeneration =
+                lazyGeneration + 1;
+
+            cancelLazyTimers();
+
+            lazyNextPage = 1;
+            lazyRetryCount = 0;
+
+            vm.loadingMoreQuestions = false;
+            vm.allQuestionsLoaded = false;
+            vm.lazyLoadError = false;
+
+            vm.player1BufferWaiting = false;
+            vm.player2BufferWaiting = false;
+
+            vm.loadedCardCount = 0;
+
+            battleFreezePositions = [];
+            battleBreakStreakPositions = [];
+            battleStealScorePositions = [];
+
+            battleFreezeMap = {};
+            battleBreakStreakMap = {};
+            battleStealScoreMap = {};
+
+            if (clearQuestions === true) {
+                vm.rawQuestions = [];
+                vm.questions = [];
+                vm.questions1 = [];
+
+                vm.currentCard = {};
+                vm.currentCard1 = {};
+
+                vm.currentPosition = 0;
+                vm.currentPosition1 = 0;
+
+                vm.totalCard = 0;
+            }
+        }
+
+        function prepareBattleQuestions(
+            shouldShuffleAnswers
+        ) {
+            buildBattleSkillPlan();
+
+            var player1Parents =
+                shuffleArray(
+                    vm.rawQuestions || []
+                );
+
+            var player2Parents =
+                shuffleArray(
+                    vm.rawQuestions || []
+                );
+
+            vm.questions =
+                createQuestionsWithOptions(
+                    player1Parents,
+                    4,
+                    shouldShuffleAnswers,
+                    vm.rawQuestions
+                );
+
+            vm.questions1 =
+                createQuestionsWithOptions(
+                    player2Parents,
+                    4,
+                    shouldShuffleAnswers,
+                    vm.rawQuestions
+                );
+
+            applyBattleSkillsToQuestions(
                 vm.questions,
-                stealScorePositions
+                0
             );
 
-            applyStealScorePositions(
+            applyBattleSkillsToQuestions(
                 vm.questions1,
-                stealScorePositions
+                0
             );
 
             vm.currentPosition = 0;
@@ -983,7 +1287,573 @@
                     ? vm.questions1[0]
                     : {};
 
-            vm.totalCard = vm.rawQuestions.length;
+            vm.player1BufferWaiting = false;
+            vm.player2BufferWaiting = false;
+
+            updateLazyLoadedCount();
+        }
+
+        function getRemainingReadyQuestions(
+            player
+        ) {
+            if (player === 2) {
+                return Math.max(
+                    0,
+                    vm.questions1.length -
+                    vm.currentPosition1 -
+                    1
+                );
+            }
+
+            return Math.max(
+                0,
+                vm.questions.length -
+                vm.currentPosition -
+                1
+            );
+        }
+
+        function shouldPrefetchQuestions() {
+            if (
+                vm.timerRunning !== true ||
+                vm.endGame === true ||
+                vm.battleTimeUp === true ||
+                vm.loadingMoreQuestions === true ||
+                vm.allQuestionsLoaded === true
+            ) {
+                return false;
+            }
+
+            var remaining1 =
+                vm.endGamePlayer1 === true
+                    ? 999999
+                    : getRemainingReadyQuestions(1);
+
+            var remaining2 =
+                vm.endGamePlayer2 === true
+                    ? 999999
+                    : getRemainingReadyQuestions(2);
+
+            return (
+                Math.min(
+                    remaining1,
+                    remaining2
+                ) <= PREFETCH_THRESHOLD
+            );
+        }
+
+        function setCurrentPlayerCard(
+            player,
+            position
+        ) {
+            if (player === 2) {
+                vm.currentPosition1 = position;
+
+                vm.currentCard1 =
+                    vm.questions1[position] || {};
+
+                vm.flipped2 = false;
+                vm.player2BufferWaiting = false;
+
+                sayIt(
+                    vm.currentCard1 &&
+                    vm.currentCard1.question
+                );
+
+                return;
+            }
+
+            vm.currentPosition = position;
+
+            vm.currentCard =
+                vm.questions[position] || {};
+
+            vm.flipped1 = false;
+            vm.player1BufferWaiting = false;
+
+            sayIt(
+                vm.currentCard &&
+                vm.currentCard.question
+            );
+        }
+
+        function resumeWaitingPlayers() {
+            if (
+                vm.player1BufferWaiting === true &&
+                vm.currentPosition + 1 <
+                    vm.questions.length
+            ) {
+                setCurrentPlayerCard(
+                    1,
+                    vm.currentPosition + 1
+                );
+            }
+
+            if (
+                vm.player2BufferWaiting === true &&
+                vm.currentPosition1 + 1 <
+                    vm.questions1.length
+            ) {
+                setCurrentPlayerCard(
+                    2,
+                    vm.currentPosition1 + 1
+                );
+            }
+        }
+
+        function prepareBackgroundBatch(
+            batch,
+            requestGeneration,
+            done
+        ) {
+            if (
+                requestGeneration !== lazyGeneration
+            ) {
+                done();
+                return;
+            }
+
+            var source =
+                vm.rawQuestions || [];
+
+            var parents1 =
+                shuffleArray(batch || []);
+
+            var parents2 =
+                shuffleArray(batch || []);
+
+            var startIndex =
+                Math.min(
+                    vm.questions.length,
+                    vm.questions1.length
+                );
+
+            var index = 0;
+
+            function processChunk() {
+                if (
+                    requestGeneration !== lazyGeneration
+                ) {
+                    lazyPrepareTimer = null;
+                    done();
+                    return;
+                }
+
+                if (
+                    vm.timerRunning !== true ||
+                    vm.endGame === true
+                ) {
+                    lazyPrepareTimer = null;
+                    done();
+                    return;
+                }
+
+                var end =
+                    Math.min(
+                        index + PREPARE_CHUNK_SIZE,
+                        batch.length
+                    );
+
+                var localIndex;
+
+                for (
+                    localIndex = index;
+                    localIndex < end;
+                    localIndex = localIndex + 1
+                ) {
+                    var globalIndex =
+                        startIndex + localIndex;
+
+                    var question1 =
+                        createOneQuestionWithOptions(
+                            parents1[localIndex],
+                            source,
+                            4,
+                            true
+                        );
+
+                    var question2 =
+                        createOneQuestionWithOptions(
+                            parents2[localIndex],
+                            source,
+                            4,
+                            true
+                        );
+
+                    applyBattleSkillsToQuestion(
+                        question1,
+                        globalIndex
+                    );
+
+                    applyBattleSkillsToQuestion(
+                        question2,
+                        globalIndex
+                    );
+
+                    vm.questions.push(question1);
+                    vm.questions1.push(question2);
+                }
+
+                index = end;
+
+                updateLazyLoadedCount();
+                resumeWaitingPlayers();
+
+                if (index < batch.length) {
+                    lazyPrepareTimer =
+                        $timeout(
+                            processChunk,
+                            PREPARE_CHUNK_DELAY
+                        );
+
+                    return;
+                }
+
+                lazyPrepareTimer = null;
+                done();
+            }
+
+            lazyPrepareTimer =
+                $timeout(
+                    processChunk,
+                    0
+                );
+        }
+
+        function appendUniqueRawQuestions(batch) {
+            var existing = {};
+            var result = [];
+
+            angular.forEach(
+                vm.rawQuestions || [],
+                function (question) {
+                    if (
+                        question &&
+                        question.id != null
+                    ) {
+                        existing[
+                            String(question.id)
+                        ] = true;
+                    }
+                }
+            );
+
+            angular.forEach(
+                batch || [],
+                function (question) {
+                    if (!question) {
+                        return;
+                    }
+
+                    if (question.id == null) {
+                        vm.rawQuestions.push(question);
+                        result.push(question);
+                        return;
+                    }
+
+                    var key =
+                        String(question.id);
+
+                    if (existing[key]) {
+                        return;
+                    }
+
+                    existing[key] = true;
+
+                    vm.rawQuestions.push(question);
+                    result.push(question);
+                }
+            );
+
+            return result;
+        }
+
+        function scheduleLazyRetry() {
+            if (
+                vm.timerRunning !== true ||
+                vm.endGame === true ||
+                vm.allQuestionsLoaded === true
+            ) {
+                return;
+            }
+
+            if (lazyRetryCount >= 3) {
+                return;
+            }
+
+            lazyRetryCount =
+                lazyRetryCount + 1;
+
+            if (lazyRetryTimer !== null) {
+                $timeout.cancel(
+                    lazyRetryTimer
+                );
+            }
+
+            lazyRetryTimer =
+                $timeout(
+                    function () {
+                        lazyRetryTimer = null;
+                        loadNextQuestionPage();
+                    },
+                    1200 * lazyRetryCount
+                );
+        }
+
+        function loadNextQuestionPage() {
+            if (
+                vm.loadingMoreQuestions === true ||
+                vm.allQuestionsLoaded === true ||
+                vm.timerRunning !== true ||
+                vm.endGame === true
+            ) {
+                return;
+            }
+
+            var requestGeneration =
+                lazyGeneration;
+
+            var page =
+                lazyNextPage;
+
+            vm.loadingMoreQuestions = true;
+            vm.lazyLoadError = false;
+
+            service.getPageForGames(
+                vm.searchDto,
+                page,
+                LAZY_PAGE_SIZE
+            ).then(
+                function (data) {
+                    if (
+                        requestGeneration !==
+                        lazyGeneration
+                    ) {
+                        return;
+                    }
+
+                    var content =
+                        data && data.content
+                            ? data.content
+                            : [];
+
+                    if (
+                        data &&
+                        angular.isDefined(
+                            data.totalElements
+                        )
+                    ) {
+                        vm.totalCard =
+                            Number(
+                                data.totalElements
+                            ) || vm.totalCard;
+                    }
+
+                    lazyNextPage =
+                        page + 1;
+
+                    var appended =
+                        appendUniqueRawQuestions(
+                            content
+                        );
+
+                    if (
+                        vm.rawQuestions.length >=
+                            vm.totalCard ||
+                        content.length <
+                            LAZY_PAGE_SIZE ||
+                        content.length === 0
+                    ) {
+                        vm.allQuestionsLoaded = true;
+                    }
+
+                    if (appended.length === 0) {
+                        vm.loadingMoreQuestions = false;
+                        updateLazyLoadedCount();
+                        resumeWaitingPlayers();
+                        return;
+                    }
+
+                    prepareBackgroundBatch(
+                        appended,
+                        requestGeneration,
+                        function () {
+                            if (
+                                requestGeneration !==
+                                lazyGeneration
+                            ) {
+                                return;
+                            }
+
+                            vm.loadingMoreQuestions = false;
+                            vm.lazyLoadError = false;
+                            lazyRetryCount = 0;
+
+                            updateLazyLoadedCount();
+                            resumeWaitingPlayers();
+
+                            if (
+                                shouldPrefetchQuestions()
+                            ) {
+                                loadNextQuestionPage();
+                            }
+                        }
+                    );
+                },
+                function () {
+                    if (
+                        requestGeneration !==
+                        lazyGeneration
+                    ) {
+                        return;
+                    }
+
+                    vm.loadingMoreQuestions = false;
+                    vm.lazyLoadError = true;
+
+                    scheduleLazyRetry();
+                }
+            );
+        }
+
+        function scheduleQuestionPrefetch(force) {
+            if (
+                vm.timerRunning !== true ||
+                vm.endGame === true ||
+                vm.battleTimeUp === true ||
+                vm.allQuestionsLoaded === true ||
+                vm.loadingMoreQuestions === true
+            ) {
+                return;
+            }
+
+            if (
+                force === true ||
+                shouldPrefetchQuestions()
+            ) {
+                loadNextQuestionPage();
+            }
+        }
+
+        function loadInitialQuestionPage() {
+            var requestGeneration =
+                lazyGeneration;
+
+            vm.loadingMoreQuestions = true;
+            vm.lazyLoadError = false;
+
+            blockUI.start();
+
+            service.getPageForGames(
+                vm.searchDto,
+                1,
+                LAZY_PAGE_SIZE
+            ).then(
+                function (data) {
+                    if (
+                        requestGeneration !==
+                        lazyGeneration
+                    ) {
+                        return;
+                    }
+
+                    var content =
+                        data && data.content
+                            ? data.content
+                            : [];
+
+                    vm.rawQuestions =
+                        content.slice();
+
+                    vm.totalCard =
+                        data &&
+                        angular.isDefined(
+                            data.totalElements
+                        )
+                            ? Number(
+                                data.totalElements
+                            ) || content.length
+                            : content.length;
+
+                    lazyNextPage = 2;
+
+                    vm.allQuestionsLoaded =
+                        (
+                            vm.rawQuestions.length >=
+                            vm.totalCard
+                        ) ||
+                        content.length <
+                            LAZY_PAGE_SIZE;
+
+                    vm.questions =
+                        createQuestionsWithOptions(
+                            content,
+                            4,
+                            false,
+                            content
+                        );
+
+                    vm.questions1 =
+                        createQuestionsWithOptions(
+                            content,
+                            4,
+                            false,
+                            content
+                        );
+
+                    vm.currentPosition = 0;
+                    vm.currentPosition1 = 0;
+
+                    vm.currentCard =
+                        vm.questions.length > 0
+                            ? vm.questions[0]
+                            : {};
+
+                    vm.currentCard1 =
+                        vm.questions1.length > 0
+                            ? vm.questions1[0]
+                            : {};
+
+                    updateLazyLoadedCount();
+
+                    applyDefaultBattleTimer();
+
+                    vm.loadingMoreQuestions = false;
+
+                    vm.resetBattle(true);
+                },
+                function () {
+                    if (
+                        requestGeneration !==
+                        lazyGeneration
+                    ) {
+                        return;
+                    }
+
+                    vm.loadingMoreQuestions = false;
+                    vm.lazyLoadError = true;
+
+                    vm.rawQuestions = [];
+                    vm.questions = [];
+                    vm.questions1 = [];
+
+                    vm.currentCard = {};
+                    vm.currentCard1 = {};
+
+                    vm.totalCard = 0;
+                    vm.loadedCardCount = 0;
+
+                    vm.timerDuration = 0;
+                    vm.counter = 0;
+
+                    toastr.error(
+                        'Không tải được dữ liệu QUIZ BATTLE 2.',
+                        'Thông báo'
+                    );
+                }
+            ).finally(function () {
+                blockUI.stop();
+            });
         }
 
         vm.getPageFlashCard = function () {
@@ -998,70 +1868,17 @@
             }
 
             vm.searchDto.questionType = {id: 6};
-            vm.searchDto.userId = vm.selectedUser.id;
-            vm.searchDto.pageSize = 5000;
+            vm.searchDto.userId =
+                vm.selectedUser.id;
+
+            vm.searchDto.pageSize =
+                LAZY_PAGE_SIZE;
+
             vm.searchDto.pageIndex = 1;
 
-            blockUI.start();
+            resetLazyQuestionState(true);
 
-            service.getPageForGames(
-                vm.searchDto,
-                vm.searchDto.pageIndex,
-                vm.searchDto.pageSize
-            ).then(
-                function (data) {
-                    vm.rawQuestions =
-                        data && data.content ? data.content : [];
-
-                    vm.questions = createQuestionsWithOptions(
-                        vm.rawQuestions,
-                        4,
-                        false
-                    );
-
-                    vm.questions1 = createQuestionsWithOptions(
-                        vm.rawQuestions,
-                        4,
-                        false
-                    );
-
-                    vm.currentPosition = 0;
-                    vm.currentPosition1 = 0;
-                    vm.totalCard = vm.rawQuestions.length;
-
-                    /*
-                     * Mỗi lần search ra bộ từ mới:
-                     * timer tự về mặc định = totalCard x 5.
-                     */
-                    applyDefaultBattleTimer();
-
-                    vm.currentCard =
-                        vm.questions.length > 0 ? vm.questions[0] : {};
-
-                    vm.currentCard1 =
-                        vm.questions1.length > 0 ? vm.questions1[0] : {};
-
-                    vm.resetBattle(true);
-                },
-                function () {
-                    vm.rawQuestions = [];
-                    vm.questions = [];
-                    vm.questions1 = [];
-                    vm.currentCard = {};
-                    vm.currentCard1 = {};
-                    vm.totalCard = 0;
-
-                    vm.timerDuration = 0;
-                    vm.counter = 0;
-
-                    toastr.error(
-                        'Không tải được dữ liệu QUIZ BATTLE 2.',
-                        'Thông báo'
-                    );
-                }
-            ).finally(function () {
-                blockUI.stop();
-            });
+            loadInitialQuestionPage();
         };
 
         vm.searchTopicChange = function () {
@@ -2057,6 +2874,11 @@
 
             startBackgroundMusic();
 
+            /*
+             * Chơi ngay batch đầu, đồng thời tải batch kế tiếp.
+             */
+            scheduleQuestionPrefetch(true);
+
             sayIt(vm.currentCard && vm.currentCard.question);
 
             battleTimer = $timeout(battleTick, 1000);
@@ -2157,6 +2979,9 @@
             vm.flipped1 = false;
             vm.flipped2 = false;
 
+            vm.player1BufferWaiting = false;
+            vm.player2BufferWaiting = false;
+
             if (
                 keepLoadedQuestions === true &&
                 vm.rawQuestions &&
@@ -2185,27 +3010,61 @@
         vm.flipped1 = false;
         vm.flipped2 = false;
 
+        function isPlayerWaitingForBuffer(player) {
+            return (
+                player === 2
+                    ? vm.player2BufferWaiting
+                    : vm.player1BufferWaiting
+            ) === true;
+        }
+
         vm.nextCard = function (player) {
             shutUp();
 
             if (player === 2) {
-                if (vm.currentPosition1 + 1 < vm.questions1.length) {
-                    vm.currentPosition1 = vm.currentPosition1 + 1;
-                    vm.currentCard1 =
-                        vm.questions1[vm.currentPosition1];
-                    vm.flipped2 = false;
-                    sayIt(vm.currentCard1.question);
+                if (
+                    vm.currentPosition1 + 1 <
+                    vm.questions1.length
+                ) {
+                    setCurrentPlayerCard(
+                        2,
+                        vm.currentPosition1 + 1
+                    );
+
+                    scheduleQuestionPrefetch(false);
+                    return;
+                }
+
+                if (
+                    vm.currentPosition1 + 1 <
+                    vm.totalCard
+                ) {
+                    vm.player2BufferWaiting = true;
+                    scheduleQuestionPrefetch(true);
                 }
 
                 return;
             }
 
-            if (vm.currentPosition + 1 < vm.questions.length) {
-                vm.currentPosition = vm.currentPosition + 1;
-                vm.currentCard =
-                    vm.questions[vm.currentPosition];
-                vm.flipped1 = false;
-                sayIt(vm.currentCard.question);
+            if (
+                vm.currentPosition + 1 <
+                vm.questions.length
+            ) {
+                setCurrentPlayerCard(
+                    1,
+                    vm.currentPosition + 1
+                );
+
+                scheduleQuestionPrefetch(false);
+                return;
+            }
+
+            if (
+                vm.currentPosition + 1 <
+                vm.totalCard
+            ) {
+                vm.player1BufferWaiting = true;
+                scheduleQuestionPrefetch(true);
             }
         };
 
@@ -2244,7 +3103,8 @@
                 vm.battleTimeUp === true ||
                 vm.timerRunning !== true ||
                 Number(vm.counter) <= 0 ||
-                isPlayerFrozen(player)
+                isPlayerFrozen(player) ||
+                isPlayerWaitingForBuffer(player)
             ) {
                 return;
             }
@@ -2525,6 +3385,8 @@
 
         $scope.$on('$destroy', function () {
             cancelBattleTimer();
+            cancelLazyTimers();
+
             clearBattleEffects();
             stopBackgroundMusic();
             shutUp();

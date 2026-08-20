@@ -652,7 +652,25 @@
 
         <div class="quiz-battle-2-controls">
             <div class="quiz-battle-2-total">
-                TOTAL: <span>{{vm.totalCard}}</span>
+                TOTAL:
+                <span>{{vm.totalCard}}</span>
+
+                <span class="quiz-battle-2-lazy-status"
+                      ng-if="vm.totalCard > 0">
+                    <span class="quiz-battle-2-lazy-dot"
+                          ng-class="{
+                              'is-loading': vm.loadingMoreQuestions,
+                              'is-ready': vm.allQuestionsLoaded
+                          }">
+                    </span>
+
+                    READY
+                    {{vm.loadedCardCount}}/{{vm.totalCard}}
+
+                    <span ng-if="vm.loadingMoreQuestions">
+                        • đang nạp...
+                    </span>
+                </span>
             </div>
 
             <button type="button"
@@ -792,6 +810,13 @@
 
                 <div class="quiz-battle-2-question">
 
+                    <div class="quiz-battle-2-buffer-waiting"
+                         ng-if="vm.player1BufferWaiting">
+                        <i class="fa fa-circle-o-notch fa-spin"></i>
+                        <strong>ĐANG NẠP CÂU TIẾP THEO</strong>
+                        <span>Trận đấu vẫn tiếp tục...</span>
+                    </div>
+
                     <div class="quiz-battle-2-taunt-bubble quiz-battle-2-taunt-from-p2"
                          ng-if="vm.tauntOnPlayer1">
                         <span class="quiz-battle-2-taunt-source">P2</span>
@@ -881,6 +906,7 @@
                             ng-repeat="item in vm.currentCard.questions track by $index"
                             class="btn quiz-battle-2-answer answer-{{$index}}"
                             ng-disabled="vm.player1Frozen ||
+                                         vm.player1BufferWaiting ||
                                          vm.battleTimeUp ||
                                          !vm.timerRunning"
                             ng-click="vm.answerQuizBattle2(item.correct,item,vm.currentCard.questions,1)">
@@ -941,6 +967,13 @@
                 </div>
 
                 <div class="quiz-battle-2-question">
+
+                    <div class="quiz-battle-2-buffer-waiting"
+                         ng-if="vm.player2BufferWaiting">
+                        <i class="fa fa-circle-o-notch fa-spin"></i>
+                        <strong>ĐANG NẠP CÂU TIẾP THEO</strong>
+                        <span>Trận đấu vẫn tiếp tục...</span>
+                    </div>
 
                     <div class="quiz-battle-2-taunt-bubble quiz-battle-2-taunt-from-p1"
                          ng-if="vm.tauntOnPlayer2">
@@ -1031,6 +1064,7 @@
                             ng-repeat="item in vm.currentCard1.questions track by $index"
                             class="btn quiz-battle-2-answer answer-{{$index}}"
                             ng-disabled="vm.player2Frozen ||
+                                         vm.player2BufferWaiting ||
                                          vm.battleTimeUp ||
                                          !vm.timerRunning"
                             ng-click="vm.answerQuizBattle2(item.correct,item,vm.currentCard1.questions,2)">
@@ -4185,6 +4219,138 @@
         .quiz-battle-2-steal-score-skill,
         .quiz-battle-2-page
         .quiz-battle-2-steal-score-hit {
+            animation: none !important;
+        }
+    }
+</style>
+
+<style>
+    /* =========================================================
+       QUIZ BATTLE 2 - SMOOTH LAZY BUFFER V11
+       ========================================================= */
+
+    .quiz-battle-2-page .quiz-battle-2-lazy-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: 8px;
+        padding: 4px 7px;
+        border: 1px solid rgba(255,151,62,.18);
+        border-radius: 999px;
+        color: #cbb7a7;
+        background: rgba(255,255,255,.035);
+        font-size: 8px;
+        font-weight: 900;
+        vertical-align: middle;
+    }
+
+    .quiz-battle-2-page .quiz-battle-2-lazy-dot {
+        width: 6px;
+        height: 6px;
+        display: inline-block;
+        border-radius: 50%;
+        background: #7d8797;
+        box-shadow: 0 0 6px rgba(125,135,151,.30);
+    }
+
+    .quiz-battle-2-page .quiz-battle-2-lazy-dot.is-loading {
+        background: #ff9d42;
+        box-shadow: 0 0 8px rgba(255,157,66,.65);
+        animation: qb2LazyDotPulse .72s ease-in-out infinite alternate;
+    }
+
+    .quiz-battle-2-page .quiz-battle-2-lazy-dot.is-ready {
+        background: #4ade80;
+        box-shadow: 0 0 8px rgba(74,222,128,.52);
+        animation: none;
+    }
+
+    @keyframes qb2LazyDotPulse {
+        from {
+            opacity: .45;
+            transform: scale(.86);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1.16);
+        }
+    }
+
+    .quiz-battle-2-page .quiz-battle-2-buffer-waiting {
+        position: absolute;
+        z-index: 95;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 12px;
+        border: 1px solid rgba(255,167,76,.35);
+        border-radius: 18px;
+        color: #fff4e8;
+        background:
+            radial-gradient(
+                circle at 50% 30%,
+                rgba(255,119,42,.15),
+                transparent 35%
+            ),
+            rgba(8,9,14,.91);
+        box-shadow:
+            inset 0 0 26px rgba(255,103,36,.06),
+            0 0 16px rgba(0,0,0,.28);
+        text-align: center;
+        pointer-events: all;
+    }
+
+    .quiz-battle-2-page .quiz-battle-2-buffer-waiting i {
+        color: #ffac61;
+        font-size: 20px;
+        text-shadow: 0 0 9px rgba(255,143,58,.55);
+    }
+
+    .quiz-battle-2-page .quiz-battle-2-buffer-waiting strong {
+        font-size: 10px;
+        font-weight: 1000;
+        letter-spacing: .4px;
+    }
+
+    .quiz-battle-2-page .quiz-battle-2-buffer-waiting span {
+        color: #b8c0ce;
+        font-size: 8px;
+        font-weight: 800;
+    }
+
+    @media (max-width: 640px) {
+        .quiz-battle-2-page .quiz-battle-2-lazy-status {
+            display: flex;
+            width: max-content;
+            margin: 4px 0 0;
+            padding: 3px 5px;
+            font-size: 6.5px;
+        }
+
+        .quiz-battle-2-page .quiz-battle-2-buffer-waiting {
+            border-radius: 13px;
+            padding: 8px;
+        }
+
+        .quiz-battle-2-page .quiz-battle-2-buffer-waiting i {
+            font-size: 16px;
+        }
+
+        .quiz-battle-2-page .quiz-battle-2-buffer-waiting strong {
+            font-size: 8px;
+        }
+
+        .quiz-battle-2-page .quiz-battle-2-buffer-waiting span {
+            font-size: 6.5px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .quiz-battle-2-page .quiz-battle-2-lazy-dot.is-loading {
             animation: none !important;
         }
     }
