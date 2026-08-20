@@ -1,154 +1,1295 @@
 <!-- BEGIN MAIN CONTENT -->
-<div class="row">
-    <div class="row">
-        <div class="col-md-12" ng-if="vm.permissionsLoaded">
+<div class="learning-hub-page">
 
-            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
-                 ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
-                <div class="dash-let" style="background: #eeba30!important">
-                    <a href="view/3" style="background: #641E1E !important">
-                        <i class="fa fa-gamepad"></i>
-                        <i class="fa fa-gamepad" style="color: #eeba30"></i>
-                        <span style="color: #eeba30">GAME MODES</span>
-                    </a>
-                </div>
+    <!-- =========================
+         HERO
+         ========================= -->
+    <section class="learning-hub-hero">
+        <div class="learning-hub-hero-copy">
+            <div class="learning-hub-kicker">
+                <span class="learning-hub-kicker-dot"></span>
+                LEARNING HUB
             </div>
 
-            <div class="col-md-6 col-sm-4 col-xs-12 margin-top-10"
-                 ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
-                <div class="dash-let" style="background: #1a472a !important">
-                    <a href="question/3" style="background: #2a623d !important">
-                        <i class="fa fa-diamond"></i>
-                        <i class="fa fa-diamond" style="color: #1a472a"></i>
-                        <span style="color: white">FLASHCARDS</span>
-                    </a>
-                </div>
-            </div>
+            <h1>Hôm nay mình học gì nhỉ? ✨</h1>
 
-            <div class="col-md-6 col-sm-4 col-xs-12 margin-top-10"
-                 ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
-                <div class="dash-let" style="background: #726255 !important">
-                    <a href="create_ielts_reading_test" style="background: #ecb939 !important">
-                        <i class="fa fa-book"></i>
-                        <i class="fa fa-book" style="color: #946b2d"></i>
-                        <span style="color: white">IELTS TEST</span>
-                    </a>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-sm-4 col-xs-12 margin-top-10"
-                 ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
-                <div class="dash-let" style="background: #946b2d !important">
-                    <a href="test_results" style="background: #0e1a40 !important">
-                        <i class="fa fa-award"></i>
-                        <i class="fa fa-award" style="color: #946b2d"></i>
-                        <span style="color: white">RESULTS</span>
-                    </a>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-sm-4 col-xs-12 margin-top-10"
-                 ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
-                <div class="dash-let">
-                    <a href="topics">
-                        <i class="fa fa-list-ul"></i>
-                        <i class="fa fa-list-ul"></i>
-                        <span>Topic</span>
-                    </a>
-                </div>
-            </div>
-
-            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
-                 ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
-                <div class="dash-let">
-                    <a href="person_dates">
-                        <i class="fa fa-id-card"></i>
-                        <i class="fa fa-id-card"></i>
-                        <span>ĐIỂM DANH</span>
-                    </a>
-                </div>
-            </div>
-
-            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
-                 ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
-                <div class="dash-let" style="background: #946b2d !important">
-                    <a href="user/accounts" style="background: #0e1a40 !important">
-                        <i class="fa fa-list"></i>
-                        <i class="fa fa-list" style="color: #946b2d"></i>
-                        <span style="color: white">DANH SÁCH HỌC SINH</span>
-                    </a>
-                </div>
-            </div>
-
-            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
-                 ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
-                <div class="dash-let" style="background: #726255 !important">
-                    <a href="student_marks" style="background: #ecb939 !important">
-                        <i class="fa fa-graduation-cap"></i>
-                        <i class="fa fa-graduation-cap" style="color: #946b2d"></i>
-                        <span style="color: white">ĐIỂM HS</span>
-                    </a>
-                </div>
-            </div>
-
-            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
-                 ng-if="vm.isEducationManagerment || vm.isRoleAdmin">
-                <div class="dash-let" style="background: #1a472a !important">
-                    <a href="education_programs" style="background: #2a623d !important">
-                        <i class="fa fa fa-tasks"></i>
-                        <i class="fa fa fa-tasks" style="color: #946b2d"></i>
-                        <span style="color: white">CHƯƠNG TRÌNH ĐÀO TẠO</span>
-                    </a>
-                </div>
-            </div>
-
-            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
-                 ng-if="vm.isEducationManagerment || vm.isRoleAdmin">
-                <div class="dash-let" style="background: #eeba30!important">
-                    <a href="mark" style="background: #641E1E !important">
-                        <i class="fa fa-puzzle-piece"></i>
-                        <i class="fa fa-puzzle-piece" style="color: #946b2d"></i>
-                        <span style="color: white">THIẾT LẬP ĐIỂM</span>
-                    </a>
-                </div>
-            </div>
-
-            <div class="col-md-12 col-sm-4 col-xs-12 margin-top-10"
-                 ng-if="vm.isRoleStaff || vm.isRoleStaffManagement || vm.isRoleAdmin">
-                <div class="dash-let" style="background: #726255 !important">
-                    <a href="product" style="background: #ecb939 !important">
-                        <i class="fa fa-book"></i>
-                        <i class="fa fa-book" style="color: #946b2d"></i>
-                        <span style="color: white">BÁN HÀNG</span>
-                    </a>
-                </div>
-            </div>
-
+            <p>
+                Chọn một hoạt động và bắt đầu học theo cách vui hơn.
+            </p>
         </div>
 
-        <div class="col-md-12 text-center margin-top-20" ng-if="!vm.permissionsLoaded">
-            <i class="fa fa-spinner fa-spin"></i> Đang tải quyền người dùng...
+        <div class="learning-hub-hero-art" aria-hidden="true">
+            <span class="learning-hub-star star-1">★</span>
+            <span class="learning-hub-star star-2">✦</span>
+            <span class="learning-hub-star star-3">✎</span>
+
+            <div class="learning-hub-book">
+                <i class="fa fa-book"></i>
+            </div>
         </div>
+    </section>
+
+
+    <!-- =========================
+         MENU
+         ========================= -->
+    <section
+        class="learning-hub-menu"
+        ng-if="vm.permissionsLoaded">
+
+        <!-- DAILY VOCAB - LUÔN Ở ĐẦU -->
+        <div
+            class="learning-tile-wrap"
+            ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+
+            <a
+                ui-sref="application.daily_vocab({listFlashCard: 0})"
+                href="daily-vocab/0"
+                class="learning-tile learning-tile-daily">
+
+                <span class="learning-tile-tag">MỖI NGÀY</span>
+
+                <span class="learning-tile-icon">
+                    <i class="fa fa-language"></i>
+                </span>
+
+                <span class="learning-tile-title">
+                    DAILY VOCAB
+                </span>
+
+                <span class="learning-tile-desc">
+                    Học từ mới nhanh, vui và có streak
+                </span>
+
+                <span class="learning-tile-go">
+                    <i class="fa fa-arrow-right"></i>
+                </span>
+
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+
+        <!-- GAME MODES -->
+        <div
+            class="learning-tile-wrap"
+            ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+
+            <a
+                href="view/3"
+                class="learning-tile learning-tile-games">
+
+                <span class="learning-tile-icon">
+                    <i class="fa fa-gamepad"></i>
+                </span>
+
+                <span class="learning-tile-title">
+                    GAME MODES
+                </span>
+
+                <span class="learning-tile-desc">
+                    Học bằng trò chơi
+                </span>
+
+                <span class="learning-tile-go">
+                    <i class="fa fa-arrow-right"></i>
+                </span>
+
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+
+        <!-- FLASHCARDS -->
+        <div
+            class="learning-tile-wrap"
+            ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+
+            <a
+                href="question/3"
+                class="learning-tile learning-tile-flashcards">
+
+                <span class="learning-tile-icon">
+                    <i class="fa fa-clone"></i>
+                </span>
+
+                <span class="learning-tile-title">
+                    FLASHCARDS
+                </span>
+
+                <span class="learning-tile-desc">
+                    Ôn từ thật nhanh
+                </span>
+
+                <span class="learning-tile-go">
+                    <i class="fa fa-arrow-right"></i>
+                </span>
+
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+
+        <!-- IELTS -->
+        <div
+            class="learning-tile-wrap"
+            ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+
+            <a
+                href="create_ielts_reading_test"
+                class="learning-tile learning-tile-ielts">
+
+                <span class="learning-tile-icon">
+                    <i class="fa fa-book"></i>
+                </span>
+
+                <span class="learning-tile-title">
+                    IELTS TEST
+                </span>
+
+                <span class="learning-tile-desc">
+                    Luyện đề mỗi ngày
+                </span>
+
+                <span class="learning-tile-go">
+                    <i class="fa fa-arrow-right"></i>
+                </span>
+
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+
+        <!-- RESULTS -->
+        <div
+            class="learning-tile-wrap"
+            ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+
+            <a
+                href="test_results"
+                class="learning-tile learning-tile-results">
+
+                <span class="learning-tile-icon">
+                    <i class="fa fa-trophy"></i>
+                </span>
+
+                <span class="learning-tile-title">
+                    RESULTS
+                </span>
+
+                <span class="learning-tile-desc">
+                    Xem lại thành tích
+                </span>
+
+                <span class="learning-tile-go">
+                    <i class="fa fa-arrow-right"></i>
+                </span>
+
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+
+        <!-- TOPIC -->
+        <div
+            class="learning-tile-wrap"
+            ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+
+            <a
+                href="topics"
+                class="learning-tile learning-tile-topic">
+
+                <span class="learning-tile-icon">
+                    <i class="fa fa-list-ul"></i>
+                </span>
+
+                <span class="learning-tile-title">
+                    TOPIC
+                </span>
+
+                <span class="learning-tile-desc">
+                    Quản lý chủ đề học
+                </span>
+
+                <span class="learning-tile-go">
+                    <i class="fa fa-arrow-right"></i>
+                </span>
+
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+
+        <!-- ĐIỂM DANH -->
+        <div
+            class="learning-tile-wrap"
+            ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
+
+            <a
+                href="person_dates"
+                class="learning-tile learning-tile-attendance">
+
+                <span class="learning-tile-icon">
+                    <i class="fa fa-id-card"></i>
+                </span>
+
+                <span class="learning-tile-title">
+                    ĐIỂM DANH
+                </span>
+
+                <span class="learning-tile-desc">
+                    Theo dõi buổi học
+                </span>
+
+                <span class="learning-tile-go">
+                    <i class="fa fa-arrow-right"></i>
+                </span>
+
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+
+        <!-- HỌC SINH -->
+        <div
+            class="learning-tile-wrap"
+            ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
+
+            <a
+                href="user/accounts"
+                class="learning-tile learning-tile-students">
+
+                <span class="learning-tile-icon">
+                    <i class="fa fa-users"></i>
+                </span>
+
+                <span class="learning-tile-title">
+                    HỌC SINH
+                </span>
+
+                <span class="learning-tile-desc">
+                    Danh sách học sinh
+                </span>
+
+                <span class="learning-tile-go">
+                    <i class="fa fa-arrow-right"></i>
+                </span>
+
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+
+        <!-- ĐIỂM HS -->
+        <div
+            class="learning-tile-wrap"
+            ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
+
+            <a
+                href="student_marks"
+                class="learning-tile learning-tile-marks">
+
+                <span class="learning-tile-icon">
+                    <i class="fa fa-graduation-cap"></i>
+                </span>
+
+                <span class="learning-tile-title">
+                    ĐIỂM HS
+                </span>
+
+                <span class="learning-tile-desc">
+                    Kết quả học tập
+                </span>
+
+                <span class="learning-tile-go">
+                    <i class="fa fa-arrow-right"></i>
+                </span>
+
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+
+        <!-- CHƯƠNG TRÌNH -->
+        <div
+            class="learning-tile-wrap"
+            ng-if="vm.isEducationManagerment || vm.isRoleAdmin">
+
+            <a
+                href="education_programs"
+                class="learning-tile learning-tile-program">
+
+                <span class="learning-tile-icon">
+                    <i class="fa fa-tasks"></i>
+                </span>
+
+                <span class="learning-tile-title">
+                    CHƯƠNG TRÌNH
+                </span>
+
+                <span class="learning-tile-desc">
+                    Quản lý đào tạo
+                </span>
+
+                <span class="learning-tile-go">
+                    <i class="fa fa-arrow-right"></i>
+                </span>
+
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+
+        <!-- THIẾT LẬP ĐIỂM -->
+        <div
+            class="learning-tile-wrap"
+            ng-if="vm.isEducationManagerment || vm.isRoleAdmin">
+
+            <a
+                href="mark"
+                class="learning-tile learning-tile-score">
+
+                <span class="learning-tile-icon">
+                    <i class="fa fa-puzzle-piece"></i>
+                </span>
+
+                <span class="learning-tile-title">
+                    THIẾT LẬP ĐIỂM
+                </span>
+
+                <span class="learning-tile-desc">
+                    Cấu hình thang điểm
+                </span>
+
+                <span class="learning-tile-go">
+                    <i class="fa fa-arrow-right"></i>
+                </span>
+
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+
+        <!-- BÁN HÀNG -->
+        <div
+            class="learning-tile-wrap"
+            ng-if="vm.isRoleStaff || vm.isRoleStaffManagement || vm.isRoleAdmin">
+
+            <a
+                href="product"
+                class="learning-tile learning-tile-shop">
+
+                <span class="learning-tile-icon">
+                    <i class="fa fa-shopping-bag"></i>
+                </span>
+
+                <span class="learning-tile-title">
+                    BÁN HÀNG
+                </span>
+
+                <span class="learning-tile-desc">
+                    Sản phẩm & cửa hàng
+                </span>
+
+                <span class="learning-tile-go">
+                    <i class="fa fa-arrow-right"></i>
+                </span>
+
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+    </section>
+
+
+    <!-- LOADING -->
+    <div
+        class="learning-hub-loading"
+        ng-if="!vm.permissionsLoaded">
+
+        <div class="learning-loading-bubble">
+            <i class="fa fa-spinner fa-spin"></i>
+        </div>
+
+        <span>Đang tải quyền người dùng...</span>
     </div>
+
 </div>
 <!-- END MAIN CONTENT -->
 
+
 <style>
-    .donate-not-media{
-        display: block;
+    /* =====================================================
+       LEARNING HUB
+       New layout - không dùng dash-let cũ
+       Mobile first
+       ===================================================== */
+
+    .learning-hub-page,
+    .learning-hub-page * {
+        box-sizing: border-box;
     }
 
-    .donate-media{
+    .learning-hub-page {
+        --hub-ink: #26324b;
+        --hub-muted: #7e879a;
+        --hub-bg: #f7f8ff;
+
+        width: 100%;
+        max-width: 1180px;
+
+        margin: 0 auto;
+        padding: 12px;
+
+        color: var(--hub-ink);
+
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+
+        background:
+            radial-gradient(circle at 4% 2%, rgba(255,215,80,.18), transparent 23%),
+            radial-gradient(circle at 96% 7%, rgba(130,97,255,.12), transparent 25%),
+            var(--hub-bg);
+
+        min-height: 100vh;
+    }
+
+
+    /* =====================================================
+       HERO
+       ===================================================== */
+
+    .learning-hub-hero {
+        position: relative;
+        overflow: hidden;
+
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        gap: 14px;
+
+        padding: 18px;
+
+        border-radius: 26px;
+
+        color: #fff;
+
+        background:
+            linear-gradient(
+                135deg,
+                #5c7cfa 0%,
+                #745ff2 55%,
+                #9b5cf0 100%
+            );
+
+        box-shadow:
+            0 16px 34px rgba(78, 76, 174, .20);
+    }
+
+    .learning-hub-hero:before {
+        content: "";
+
+        position: absolute;
+        right: -55px;
+        bottom: -90px;
+
+        width: 190px;
+        height: 190px;
+
+        border-radius: 50%;
+
+        background: rgba(255,255,255,.10);
+    }
+
+    .learning-hub-hero-copy {
+        position: relative;
+        z-index: 2;
+
+        min-width: 0;
+    }
+
+    .learning-hub-kicker {
+        display: flex;
+        align-items: center;
+
+        gap: 7px;
+
+        margin-bottom: 5px;
+
+        font-size: 9px;
+        font-weight: 900;
+        letter-spacing: 1.4px;
+
+        opacity: .86;
+    }
+
+    .learning-hub-kicker-dot {
+        width: 7px;
+        height: 7px;
+
+        border-radius: 50%;
+
+        background: #ffd84f;
+
+        box-shadow:
+            0 0 0 4px rgba(255,216,79,.16);
+    }
+
+    .learning-hub-hero h1 {
+        margin: 0;
+
+        color: #fff;
+
+        font-size: 24px;
+        line-height: 1.12;
+        font-weight: 900;
+
+        letter-spacing: -.5px;
+    }
+
+    .learning-hub-hero p {
+        margin: 6px 0 0;
+
+        color: rgba(255,255,255,.84);
+
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    .learning-hub-hero-art {
+        position: relative;
+        z-index: 2;
+
+        flex: 0 0 58px;
+
+        width: 58px;
+        height: 58px;
+    }
+
+    .learning-hub-book {
+        width: 58px;
+        height: 58px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        border-radius: 19px;
+
+        color: #6459df;
+
+        background: #fff;
+
+        font-size: 24px;
+
+        box-shadow:
+            0 8px 20px rgba(40,42,100,.20);
+
+        transform: rotate(5deg);
+    }
+
+    .learning-hub-star {
+        position: absolute;
+        z-index: 4;
+
+        pointer-events: none;
+
+        color: #fff6a8;
+
+        text-shadow:
+            0 2px 5px rgba(49,45,116,.20);
+    }
+
+    .star-1 {
+        top: -12px;
+        left: -13px;
+
+        font-size: 15px;
+    }
+
+    .star-2 {
+        top: 0;
+        right: -9px;
+
+        font-size: 10px;
+    }
+
+    .star-3 {
         display: none;
     }
 
-    @media only screen and (max-width: 1290px){
-        .donate-not-media{
-            display: none !important;
+
+    /* =====================================================
+       GRID
+       ===================================================== */
+
+    .learning-hub-menu {
+        display: grid;
+
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+
+        gap: 10px;
+
+        margin-top: 12px;
+    }
+
+    .learning-tile-wrap {
+        min-width: 0;
+    }
+
+
+    /* =====================================================
+       TILE
+       ===================================================== */
+
+    .learning-tile {
+        position: relative;
+        overflow: hidden;
+
+        width: 100%;
+        height: 148px;
+
+        display: flex;
+        flex-direction: column;
+
+        align-items: flex-start;
+        justify-content: flex-end;
+
+        padding: 13px;
+
+        border-radius: 22px;
+
+        text-decoration: none !important;
+
+        box-shadow:
+            0 10px 24px rgba(52,62,102,.10);
+
+        transform: translateZ(0);
+
+        transition:
+            transform .16s ease,
+            box-shadow .16s ease,
+            filter .16s ease;
+
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .learning-tile:hover,
+    .learning-tile:focus {
+        text-decoration: none !important;
+
+        transform: translateY(-2px);
+
+        box-shadow:
+            0 14px 28px rgba(52,62,102,.15);
+    }
+
+    .learning-tile:active {
+        transform: scale(.985);
+    }
+
+    .learning-tile-icon {
+        position: absolute;
+        z-index: 3;
+
+        top: 12px;
+        left: 12px;
+
+        width: 43px;
+        height: 43px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        border-radius: 15px;
+
+        color: #fff;
+
+        background: rgba(255,255,255,.22);
+
+        box-shadow:
+            inset 0 0 0 1px rgba(255,255,255,.22),
+            0 6px 14px rgba(50,56,97,.12);
+
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+    }
+
+    .learning-tile-icon i {
+        font-size: 20px;
+        line-height: 1;
+    }
+
+    .learning-tile-title,
+    .learning-tile-desc {
+        position: relative;
+        z-index: 3;
+    }
+
+    .learning-tile-title {
+        display: block;
+
+        max-width: calc(100% - 26px);
+
+        color: #fff;
+
+        font-size: 12px;
+        line-height: 1.15;
+        font-weight: 900;
+
+        letter-spacing: .1px;
+    }
+
+    .learning-tile-desc {
+        display: block;
+
+        max-width: calc(100% - 18px);
+
+        margin-top: 4px;
+
+        color: rgba(255,255,255,.80);
+
+        font-size: 8.5px;
+        line-height: 1.25;
+        font-weight: 600;
+    }
+
+    .learning-tile-go {
+        position: absolute;
+        z-index: 3;
+
+        right: 10px;
+        bottom: 10px;
+
+        width: 25px;
+        height: 25px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        border-radius: 9px;
+
+        color: #fff;
+
+        background: rgba(255,255,255,.18);
+
+        font-size: 9px;
+    }
+
+    .learning-tile-tag {
+        position: absolute;
+        z-index: 4;
+
+        top: 11px;
+        right: 10px;
+
+        padding: 4px 7px;
+
+        border-radius: 999px;
+
+        color: #5d4dca;
+
+        background: rgba(255,255,255,.94);
+
+        font-size: 7px;
+        line-height: 1;
+        font-weight: 900;
+
+        letter-spacing: .5px;
+    }
+
+
+    /* =====================================================
+       DECORATION
+       ===================================================== */
+
+    .learning-blob {
+        position: absolute;
+        z-index: 1;
+
+        display: block;
+
+        border-radius: 50%;
+
+        pointer-events: none;
+    }
+
+    .learning-blob-1 {
+        width: 94px;
+        height: 94px;
+
+        top: -42px;
+        right: -35px;
+
+        background: rgba(255,255,255,.12);
+    }
+
+    .learning-blob-2 {
+        width: 56px;
+        height: 56px;
+
+        left: -22px;
+        bottom: -25px;
+
+        background: rgba(255,255,255,.08);
+    }
+
+
+    /* =====================================================
+       COLORS
+       ===================================================== */
+
+    .learning-tile-daily {
+        background:
+            linear-gradient(
+                135deg,
+                #6b5cf4 0%,
+                #8f5cf4 52%,
+                #b45eee 100%
+            );
+    }
+
+    .learning-tile-games {
+        background:
+            linear-gradient(
+                135deg,
+                #527cf6 0%,
+                #3d64e8 100%
+            );
+    }
+
+    .learning-tile-flashcards {
+        background:
+            linear-gradient(
+                135deg,
+                #39cda3 0%,
+                #22af83 100%
+            );
+    }
+
+    .learning-tile-ielts {
+        background:
+            linear-gradient(
+                135deg,
+                #ffbd4b 0%,
+                #ff8e5a 100%
+            );
+    }
+
+    .learning-tile-results {
+        background:
+            linear-gradient(
+                135deg,
+                #ff7596 0%,
+                #eb5579 100%
+            );
+    }
+
+    .learning-tile-topic {
+        background:
+            linear-gradient(
+                135deg,
+                #4abcf2 0%,
+                #4d82ea 100%
+            );
+    }
+
+    .learning-tile-attendance {
+        background:
+            linear-gradient(
+                135deg,
+                #9a73f4 0%,
+                #6f58d8 100%
+            );
+    }
+
+    .learning-tile-students {
+        background:
+            linear-gradient(
+                135deg,
+                #ff8c68 0%,
+                #ef686d 100%
+            );
+    }
+
+    .learning-tile-marks {
+        background:
+            linear-gradient(
+                135deg,
+                #39caa6 0%,
+                #45b6c6 100%
+            );
+    }
+
+    .learning-tile-program {
+        background:
+            linear-gradient(
+                135deg,
+                #6579ea 0%,
+                #5362cb 100%
+            );
+    }
+
+    .learning-tile-score {
+        background:
+            linear-gradient(
+                135deg,
+                #f7bd48 0%,
+                #db8d2c 100%
+            );
+    }
+
+    .learning-tile-shop {
+        background:
+            linear-gradient(
+                135deg,
+                #df6daf 0%,
+                #b35bd3 100%
+            );
+    }
+
+
+    /* =====================================================
+       DAILY VOCAB - FEATURED
+       ===================================================== */
+
+    .learning-tile-daily {
+        box-shadow:
+            0 12px 26px rgba(119,91,224,.20);
+    }
+
+    .learning-tile-daily .learning-tile-icon {
+        width: 47px;
+        height: 47px;
+
+        border-radius: 16px;
+    }
+
+    .learning-tile-daily .learning-tile-icon i {
+        font-size: 22px;
+    }
+
+
+    /* =====================================================
+       LOADING
+       ===================================================== */
+
+    .learning-hub-loading {
+        min-height: 180px;
+
+        display: flex;
+        flex-direction: column;
+
+        align-items: center;
+        justify-content: center;
+
+        gap: 10px;
+
+        color: #7e8798;
+
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .learning-loading-bubble {
+        width: 46px;
+        height: 46px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        border-radius: 16px;
+
+        color: #6b5cf4;
+
+        background: #efedff;
+
+        font-size: 17px;
+    }
+
+
+    /* =====================================================
+       VERY SMALL MOBILE
+       ===================================================== */
+
+    @media (max-width: 360px) {
+        .learning-hub-page {
+            padding: 8px;
         }
 
-        .donate-media{
-            display: block !important;
+        .learning-hub-hero {
+            padding: 14px;
+            border-radius: 21px;
         }
+
+        .learning-hub-hero h1 {
+            font-size: 20px;
+        }
+
+        .learning-hub-hero p {
+            font-size: 10px;
+        }
+
+        .learning-hub-hero-art,
+        .learning-hub-book {
+            width: 49px;
+            height: 49px;
+        }
+
+        .learning-hub-book {
+            border-radius: 16px;
+            font-size: 20px;
+        }
+
+        .learning-hub-menu {
+            gap: 7px;
+        }
+
+        .learning-tile {
+            height: 132px;
+
+            padding: 10px;
+
+            border-radius: 18px;
+        }
+
+        .learning-tile-icon {
+            top: 10px;
+            left: 10px;
+
+            width: 39px;
+            height: 39px;
+
+            border-radius: 13px;
+        }
+
+        .learning-tile-icon i {
+            font-size: 18px;
+        }
+
+        .learning-tile-title {
+            font-size: 11px;
+        }
+
+        .learning-tile-desc {
+            display: none;
+        }
+
+        .learning-tile-go {
+            right: 8px;
+            bottom: 8px;
+        }
+    }
+
+
+    /* =====================================================
+       TABLET
+       ===================================================== */
+
+    @media (min-width: 600px) {
+        .learning-hub-page {
+            padding: 16px;
+        }
+
+        .learning-hub-hero {
+            padding: 22px 24px;
+        }
+
+        .learning-hub-hero h1 {
+            font-size: 30px;
+        }
+
+        .learning-hub-hero p {
+            font-size: 13px;
+        }
+
+        .learning-hub-menu {
+            grid-template-columns:
+                repeat(3, minmax(0, 1fr));
+
+            gap: 12px;
+        }
+
+        .learning-tile {
+            height: 164px;
+
+            padding: 14px;
+        }
+
+        .learning-tile-title {
+            font-size: 14px;
+        }
+
+        .learning-tile-desc {
+            font-size: 10px;
+        }
+    }
+
+
+    /* =====================================================
+       DESKTOP
+       ===================================================== */
+
+    @media (min-width: 992px) {
+        .learning-hub-page {
+            padding: 20px;
+        }
+
+        .learning-hub-hero {
+            padding: 25px 28px;
+
+            border-radius: 30px;
+        }
+
+        .learning-hub-hero h1 {
+            font-size: 34px;
+        }
+
+        .learning-hub-hero-art,
+        .learning-hub-book {
+            width: 70px;
+            height: 70px;
+        }
+
+        .learning-hub-book {
+            border-radius: 22px;
+            font-size: 29px;
+        }
+
+        .learning-hub-menu {
+            grid-template-columns:
+                repeat(4, minmax(0, 1fr));
+
+            gap: 14px;
+
+            margin-top: 16px;
+        }
+
+        /*
+         * Daily Vocab nổi bật nhưng không phá grid:
+         * chiếm 2 cột trên desktop.
+         */
+        .learning-tile-wrap:first-child {
+            grid-column: span 2;
+        }
+
+        .learning-tile {
+            height: 176px;
+
+            padding: 16px;
+
+            border-radius: 24px;
+        }
+
+        .learning-tile-icon {
+            width: 50px;
+            height: 50px;
+
+            border-radius: 16px;
+        }
+
+        .learning-tile-icon i {
+            font-size: 23px;
+        }
+
+        .learning-tile-title {
+            font-size: 15px;
+        }
+
+        .learning-tile-desc {
+            font-size: 10.5px;
+        }
+
+        .learning-tile-daily .learning-tile-title {
+            font-size: 18px;
+        }
+
+        .learning-tile-daily .learning-tile-desc {
+            font-size: 11px;
+        }
+    }
+
+
+    /* =====================================================
+       REDUCED MOTION
+       ===================================================== */
+
+    @media (prefers-reduced-motion: reduce) {
+        .learning-hub-page *,
+        .learning-hub-page *:before,
+        .learning-hub-page *:after {
+            transition: none !important;
+            animation: none !important;
+        }
+    }
+</style>
+
+<style>
+    /* VIETNAMESE SAFE FONT V5 */
+    .learning-hub-page,
+    .learning-hub-page h1,
+    .learning-hub-page h2,
+    .learning-hub-page h3,
+    .learning-hub-page p,
+    .learning-hub-page a,
+    .learning-hub-page span,
+    .learning-hub-page button {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+    }
+
+    .learning-hub-hero h1 {
+        font-weight: 800 !important;
+        letter-spacing: -0.7px !important;
+    }
+
+    .learning-hub-kicker {
+        font-weight: 750 !important;
+        letter-spacing: 1.1px !important;
+    }
+
+    .learning-tile-title {
+        font-weight: 750 !important;
+        letter-spacing: 0 !important;
+    }
+
+    .learning-tile-desc,
+    .learning-hub-hero p {
+        font-weight: 450 !important;
+        letter-spacing: 0 !important;
+    }
+</style>
+
+<style>
+    /* ICON FONT PROTECTION V6 - LEARNING HUB */
+    .learning-hub-page .fa,
+    .learning-hub-page .fa:before {
+        font-family: FontAwesome !important;
+        font-style: normal !important;
+        font-weight: normal !important;
+    }
+
+    .learning-hub-page [class^="icon-"],
+    .learning-hub-page [class*=" icon-"],
+    .learning-hub-page [class^="icon-"]:before,
+    .learning-hub-page [class*=" icon-"]:before {
+        font-family: "simple-line-icons" !important;
+        font-style: normal !important;
+        font-weight: normal !important;
     }
 </style>

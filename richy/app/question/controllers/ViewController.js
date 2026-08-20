@@ -519,7 +519,6 @@
         vm.numberFlipCard = 6;
 
         vm.modes = [
-            {id:5,name: 'DAILY VOCAB'},
             {id:8,name: 'FILLING GAPS'},
             {id:13,name: 'MCQs (TRẮC NGHIỆM)'},
             {id:12,name: 'ĐIỀN TỪ'},
@@ -533,7 +532,7 @@
             {id:15,name: 'FILLING GAPS VNI 2'},
             {id:14, name: 'GUESS THE WORD'}
         ];
-        vm.mode = {id:5,name: 'DAILY VOCAB'};
+        vm.mode = {id:8,name: 'FILLING GAPS'};
         vm.rawQuestions = [];
 
         // Danh sách "Hiển thị tất cả" của MCQ dùng state riêng,

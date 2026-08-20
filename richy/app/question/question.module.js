@@ -273,6 +273,26 @@
                 }
             })
 
+
+            .state('application.daily_vocab', {
+                url: '/daily-vocab/:listFlashCard',
+                templateUrl: 'question/views/daily_vocab.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'DAILY VOCAB'},
+                controller: 'DailyVocabController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({
+                            name: 'Hrm.Question',
+                            insertBefore: '#ng_load_plugins_before',
+                            files: [
+                                'question/controllers/DailyVocabController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
+                            ]
+                        });
+                    }]
+                }
+            })
+
             .state('application.view', {
                 url: '/view/:listFlashCard',
                 templateUrl: 'question/views/view.html',

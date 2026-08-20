@@ -1,4 +1,4 @@
-<nav id="navscroll" class="navbar navbar-default ">
+<nav id="navscroll" class="navbar navbar-default learning-public-nav">
 <!--<nav id="bottom" class="navbar navbar-default navbar-fixed-top">-->
     <div class="container-fluid">
         <!-- Brand and toggle get grouped for better mobile display -->
@@ -12,8 +12,24 @@
 
 
             <!--<a class="navbar-brand" id="church-title" href="dashboards"> SAINT PAUL ACADEMY</a>-->
-            <a ng-if="settings.ieltsRoom == true" class="navbar-brand" id="church-title" href="dashboards"> SAINT PAUL ACADEMY</a>
-            <a ng-if="settings.chapter == true" class="navbar-brand" id="church-title" href="dashboards"> Chapter</a>
+            <a ng-if="!settings.ieltsRoom || !settings.chapter || settings.ieltsRoom == true"
+               class="navbar-brand learning-public-brand"
+               id="church-title"
+               href="dashboards">
+                <span class="learning-public-brand-icon">
+                    <i class="fa fa-graduation-cap"></i>
+                </span>
+                <span class="learning-public-brand-text">SAINT PAUL ACADEMY</span>
+            </a>
+            <a ng-if="settings.chapter == true"
+               class="navbar-brand learning-public-brand"
+               id="church-title"
+               href="dashboards">
+                <span class="learning-public-brand-icon">
+                    <i class="fa fa-book"></i>
+                </span>
+                <span class="learning-public-brand-text">Chapter</span>
+            </a>
             <!--<a class="icon-for-media" target="_blank" href="fb://page/?id=105689154802913"><i class="fa fa-facebook-square " aria-hidden="true"></i></a>-->
 
         </div>
@@ -41,7 +57,7 @@
             <!--</ul>-->
 
 
-            <!--<ul class="nav navbar-nav for-media">-->
+            <!--<ul class="nav navbar-nav for-media learning-mobile-login">-->
                 <!--<li class="dropdown">-->
                     <!--<a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">-->
                         <!--LOGIN-->
@@ -49,7 +65,7 @@
                 <!--</li>-->
             <!--</ul>-->
 
-            <ul class="nav navbar-nav for-media">
+            <ul class="nav navbar-nav for-media learning-mobile-login">
                 <li class="dropdown">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         <input on-key-press="vm.login()" when-key-code="13" class="form-control form-control-solid placeholder-no-fix" type="text" autocomplete="off" placeholder="Tên đăng nhập" id="username" data-ng-model="vm.user.username" autofocus />
@@ -57,7 +73,7 @@
                 </li>
             </ul>
 
-            <ul class="nav navbar-nav for-media">
+            <ul class="nav navbar-nav for-media learning-mobile-login learning-mobile-login-action">
                 <li class="dropdown">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         <input on-key-press="vm.login()" when-key-code="13" class="form-control form-control-solid placeholder-no-fix" type="password" autocomplete="off" placeholder="Mật khẩu" id="password" data-ng-model="vm.user.password" />
@@ -68,28 +84,49 @@
             <ul class="nav navbar-nav for-media">
                 <li class="dropdown">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="ta hrefria-expanded="false">
-                        <button type="button" data-ng-click="vm.login()" class="btn green uppercase">Đăng nhập</button>
+                        <button type="button" data-ng-click="vm.login()" class="btn green uppercase learning-login-submit"><i class="fa fa-sign-in"></i><span>Đăng nhập</span></button>
                     </a>
                 </li>
             </ul>
 
 
 
-            <ul class="nav navbar-nav navbar-right not-for-media" >
+            <ul class="nav navbar-nav navbar-right not-for-media learning-desktop-login">
                 <li  class="menu-dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><i class="fa-solid fa-user"></i> LOGIN <span class="caret"></span></a>
-                    <ul class="dropdown-menu" >
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><i class="fa fa-user"></i> LOGIN <span class="caret"></span></a>
+                    <ul class="dropdown-menu learning-login-dropdown">
                         <li>
                             <a  href="javascript: void(0)">
-                                <form class="login-form" novalidate>
-                                    <div class="form-group">
+                                <form class="login-form learning-login-form" novalidate>
+                                    <div class="form-group learning-login-field">
                                         <label class="control-label visible-ie8 visible-ie9">Tên đăng nhập</label>
-                                        <input on-key-press="vm.login()" when-key-code="13" class="form-control form-control-solid placeholder-no-fix" type="text" autocomplete="off" placeholder="Tên đăng nhập" id="username" data-ng-model="vm.user.username" autofocus /> </div>
-                                    <div class="form-group margin-top-20">
+                                        <span class="learning-login-field-icon">
+                                            <i class="fa fa-user"></i>
+                                        </span>
+                                        <input on-key-press="vm.login()" when-key-code="13"
+                                               class="form-control form-control-solid placeholder-no-fix"
+                                               type="text"
+                                               autocomplete="off"
+                                               placeholder="Tên đăng nhập"
+                                               id="username"
+                                               data-ng-model="vm.user.username"
+                                               autofocus />
+                                    </div>
+                                    <div class="form-group margin-top-12 learning-login-field">
                                         <label class="control-label visible-ie8 visible-ie9">Mật khẩu</label>
-                                        <input on-key-press="vm.login()" when-key-code="13" class="form-control form-control-solid placeholder-no-fix" type="password" autocomplete="off" placeholder="Mật khẩu" id="password" data-ng-model="vm.user.password" /> </div>
+                                        <span class="learning-login-field-icon">
+                                            <i class="fa fa-lock"></i>
+                                        </span>
+                                        <input on-key-press="vm.login()" when-key-code="13"
+                                               class="form-control form-control-solid placeholder-no-fix"
+                                               type="password"
+                                               autocomplete="off"
+                                               placeholder="Mật khẩu"
+                                               id="password"
+                                               data-ng-model="vm.user.password" />
+                                    </div>
                                     <div class="form-actions">
-                                        <button type="button" data-ng-click="vm.login()" class="btn green uppercase">Đăng nhập</button>
+                                        <button type="button" data-ng-click="vm.login()" class="btn green uppercase learning-login-submit"><i class="fa fa-sign-in"></i><span>Đăng nhập</span></button>
                                     </div>
                                 </form>
                             </a>
@@ -221,128 +258,548 @@
 </script>
 
 <style>
-    #navscroll{
-        transition: 0.3s;
+    /* =========================================================
+       PUBLIC LOGIN NAV
+       Đồng bộ Learning Hub / hỗ trợ tiếng Việt / mobile-first
+       ========================================================= */
+
+    .learning-public-nav,
+    .learning-public-nav * {
+        box-sizing: border-box;
     }
 
-    .navbar-default .navbar-nav>li>a {
-        font-size: 18px;
-        font-weight: 700;
+    .learning-public-nav {
+        --public-blue: #5b7cfa;
+        --public-purple: #8b5cf6;
+        --public-ink: #26324b;
+        --public-muted: #7b8499;
+        --public-border: #e4e8f5;
+        --public-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+
+        margin: 8px 10px 12px !important;
+
+        border: 1px solid var(--public-border) !important;
+        border-radius: 22px !important;
+
+        background:
+            linear-gradient(
+                180deg,
+                rgba(255,255,255,.99),
+                rgba(250,251,255,.99)
+            ) !important;
+
+        box-shadow:
+            0 10px 28px rgba(62,72,112,.10) !important;
+
+        overflow: visible !important;
     }
 
-    .navbar-default .navbar-nav>li>a:hover {
-        font-size: 18px;
-        font-weight: 700;
-        /*background-color: #1c2529;*/
+    /*
+     * Font hệ thống cho chữ.
+     * Không dùng wildcard lên icon font.
+     */
+    .learning-public-nav,
+    .learning-public-nav a,
+    .learning-public-nav span,
+    .learning-public-nav input,
+    .learning-public-nav button,
+    .learning-public-nav label,
+    .learning-public-nav li {
+        font-family: var(--public-font) !important;
     }
 
-    .navbar {
-        margin-bottom: 10px;
-        border: none !important;
+    .learning-public-nav > .container-fluid,
+    .learning-public-nav .container-fluid {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+
+        background: transparent !important;
     }
 
-    .header-icon {
-        font-size: 17px;
+    .learning-public-nav .navbar-header {
+        min-height: 60px;
     }
 
-    .container-content{
-        padding: 0;
-        margin: 0;
+    /* ---------- BRAND ---------- */
+
+    .learning-public-nav .learning-public-brand {
+        height: 60px !important;
+
+        display: inline-flex !important;
+        align-items: center !important;
+
+        gap: 10px;
+
+        margin: 0 !important;
+        padding: 7px 8px !important;
+
+        color: var(--public-ink) !important;
+
+        font-size: 15px !important;
+        font-weight: 800 !important;
+
+        letter-spacing: -0.25px !important;
+
+        text-decoration: none !important;
     }
 
-    #church-title {
-        font-size: 22px;
-        font-weight: 700;
-        letter-spacing: 3px;
-        font-family: Cambria;
-        margin-left: 30px !important;
+    .learning-public-brand-icon {
+        width: 42px;
+        height: 42px;
+
+        flex: 0 0 42px;
+
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+
+        border-radius: 15px;
+
+        color: #fff;
+
+        background:
+            linear-gradient(
+                135deg,
+                var(--public-blue),
+                var(--public-purple)
+            );
+
+        box-shadow:
+            0 7px 16px rgba(91,124,250,.22);
     }
 
-    .dropdown-menu > li > a{
-        font-family: Cambria !important;
-        font-size: 16px;
+    .learning-public-brand-icon .fa {
+        font-size: 18px !important;
     }
 
-    .navbar-form {
-        margin-right: 3px !important;
-        margin-left: 3px !important;
-        border: none;
+    .learning-public-brand-text {
+        white-space: nowrap;
+    }
+
+    /* ---------- NAV ---------- */
+
+    .learning-public-nav .navbar-collapse {
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .learning-public-nav .navbar-nav {
+        margin-top: 8px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .learning-public-nav .navbar-nav > li > a {
+        min-height: 44px;
+
+        display: flex !important;
+        align-items: center !important;
+
+        gap: 7px;
+
+        padding: 0 13px !important;
+
+        border-radius: 14px !important;
+
+        color: #536079 !important;
+        background: #f8f9fe !important;
+
+        font-size: 12px !important;
+        font-weight: 650 !important;
+
+        text-decoration: none !important;
+
+        transition:
+            background .16s ease,
+            color .16s ease,
+            transform .16s ease !important;
+    }
+
+    .learning-public-nav .navbar-nav > li > a:hover,
+    .learning-public-nav .navbar-nav > li > a:focus,
+    .learning-public-nav .navbar-nav > .open > a,
+    .learning-public-nav .navbar-nav > .open > a:hover,
+    .learning-public-nav .navbar-nav > .open > a:focus {
+        color: #4c57cc !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #eef1ff,
+                #f5efff
+            ) !important;
+
+        transform: translateY(-1px);
+    }
+
+    /* ---------- DESKTOP LOGIN ---------- */
+
+    .learning-public-nav .learning-desktop-login {
+        margin-left: auto !important;
+    }
+
+    .learning-public-nav .learning-desktop-login > li > a {
+        color: #fff !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                var(--public-blue),
+                var(--public-purple)
+            ) !important;
+
+        box-shadow:
+            0 7px 16px rgba(91,124,250,.20) !important;
+    }
+
+    .learning-public-nav .learning-desktop-login > li > a:hover,
+    .learning-public-nav .learning-desktop-login > li > a:focus {
+        color: #fff !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #526fe7,
+                #7a4fe5
+            ) !important;
+    }
+
+    .learning-public-nav .learning-login-dropdown {
+        right: 0 !important;
+        left: auto !important;
+
+        min-width: 290px !important;
+
+        margin-top: 8px !important;
+        padding: 10px !important;
+
+        border: 1px solid var(--public-border) !important;
+        border-radius: 18px !important;
+
+        background: #fff !important;
+
+        box-shadow:
+            0 18px 42px rgba(55,65,103,.17) !important;
+    }
+
+    .learning-public-nav .learning-login-dropdown > li > a {
+        padding: 0 !important;
+
+        background: transparent !important;
+    }
+
+    .learning-public-nav .learning-login-form {
         width: 100%;
+
+        padding: 6px;
     }
 
-    #church-icon{
-        height: 22px;
-        width: 17px;
-        display: inline-block;
-        margin-bottom: 3px;
+    .learning-public-nav .learning-login-field {
+        position: relative;
+
+        margin-bottom: 10px !important;
     }
 
-    .icon-for-media{
+    .learning-public-nav .learning-login-field-icon {
+        position: absolute;
+        z-index: 3;
+
+        top: 50%;
+        left: 12px;
+
+        width: 28px;
+        height: 28px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        transform: translateY(-50%);
+
+        border-radius: 9px;
+
+        color: #6674df;
+
+        background: #eef1ff;
+    }
+
+    .learning-public-nav .learning-login-form .form-control {
+        width: 100%;
+        height: 44px !important;
+        min-height: 44px !important;
+
+        padding: 0 12px 0 48px !important;
+
+        border: 1px solid #dfe4f2 !important;
+        border-radius: 12px !important;
+
+        color: var(--public-ink) !important;
+        background: #fbfcff !important;
+
+        font-size: 13px !important;
+
+        box-shadow: none !important;
+    }
+
+    .learning-public-nav .learning-login-form .form-control:focus {
+        border-color: #8e9cff !important;
+
+        box-shadow:
+            0 0 0 3px rgba(91,124,250,.10) !important;
+    }
+
+    .learning-public-nav .learning-login-form .form-actions {
+        margin-top: 10px;
+    }
+
+    .learning-public-nav .learning-login-submit {
+        width: 100% !important;
+        min-height: 44px !important;
+
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+
+        gap: 8px;
+
+        border: 0 !important;
+        border-radius: 12px !important;
+
+        color: #fff !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                var(--public-blue),
+                var(--public-purple)
+            ) !important;
+
+        font-size: 13px !important;
+        font-weight: 750 !important;
+
+        box-shadow:
+            0 8px 18px rgba(91,124,250,.22) !important;
+    }
+
+    /* ---------- MOBILE TOGGLE ---------- */
+
+    .learning-public-nav .navbar-toggle {
+        width: 42px;
+        height: 42px;
+
+        margin: 9px 2px 0 0 !important;
+        padding: 10px !important;
+
+        border: 0 !important;
+        border-radius: 14px !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #eef1ff,
+                #f4edff
+            ) !important;
+    }
+
+    .learning-public-nav .navbar-toggle .icon-bar {
+        width: 20px !important;
+        height: 2px !important;
+
+        margin: 3px auto !important;
+
+        border-radius: 2px;
+
+        background: #5f65d8 !important;
+    }
+
+    /* ---------- ICON FONT PROTECTION ---------- */
+
+    .learning-public-nav .fa,
+    .learning-public-nav .fa:before {
+        font-family: FontAwesome !important;
+        font-style: normal !important;
+        font-weight: normal !important;
+    }
+
+    .learning-public-nav [class^="icon-"],
+    .learning-public-nav [class*=" icon-"],
+    .learning-public-nav [class^="icon-"]:before,
+    .learning-public-nav [class*=" icon-"]:before {
+        font-family: "simple-line-icons" !important;
+        font-style: normal !important;
+        font-weight: normal !important;
+    }
+
+    .learning-public-nav .im,
+    .learning-public-nav [class^="im-"],
+    .learning-public-nav [class*=" im-"] {
+        font-family: "iconsmind" !important;
+        font-style: normal !important;
+        font-weight: normal !important;
+    }
+
+    /* =========================================================
+       MOBILE LOGIN
+       ========================================================= */
+
+    .learning-public-nav .for-media {
         display: none;
     }
 
-    .not-for-media{
+    .learning-public-nav .not-for-media {
         display: block;
     }
 
-    @media only screen and (max-width: 767px){
-        .navbar-nav .open .dropdown-menu{
+    @media only screen and (max-width: 767px) {
+        .learning-public-nav {
+            margin: 6px 7px 10px !important;
+
+            border-radius: 18px !important;
+        }
+
+        .learning-public-nav > .container-fluid,
+        .learning-public-nav .container-fluid {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+        }
+
+        .learning-public-nav .navbar-header {
+            min-height: 58px;
+        }
+
+        .learning-public-nav .learning-public-brand {
+            height: 58px !important;
+
+            padding: 7px 4px !important;
+
+            font-size: 13px !important;
+        }
+
+        .learning-public-nav .learning-public-brand-icon {
+            width: 38px;
+            height: 38px;
+
+            flex-basis: 38px;
+
+            border-radius: 13px;
+        }
+
+        .learning-public-nav .learning-public-brand-text {
+            max-width: 190px;
+
+            overflow: hidden;
+
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .learning-public-nav .navbar-collapse {
+            margin: 0 !important;
+            padding: 8px 0 10px !important;
+
+            border-top: 1px solid #edf0f7 !important;
+        }
+
+        .learning-public-nav .for-media {
+            display: block !important;
+
+            width: 100% !important;
+
+            margin: 0 0 7px !important;
+        }
+
+        .learning-public-nav .not-for-media {
+            display: none !important;
+        }
+
+        .learning-public-nav .learning-mobile-login > li {
             width: 100% !important;
         }
 
-        #church-title{
-            margin-left: 0 !important;
-            font-size: 2.5vh !important;
+        .learning-public-nav .learning-mobile-login > li > a {
+            width: 100% !important;
+            min-height: 0 !important;
+
+            padding: 0 !important;
+
+            background: transparent !important;
         }
 
-        .navbar-default .navbar-nav>li>a {
-            font-size: 2.5vh !important;;
+        .learning-public-nav .learning-mobile-login input.form-control {
+            width: 100% !important;
+            height: 46px !important;
+            min-height: 46px !important;
+
+            padding: 0 13px !important;
+
+            border: 1px solid #dfe4f2 !important;
+            border-radius: 13px !important;
+
+            color: var(--public-ink) !important;
+            background: #fbfcff !important;
+
+            font-size: 13px !important;
+
+            box-shadow: none !important;
         }
 
-        .navbar-default .navbar-nav>li>a:hover {
-            font-size: 2.5vh !important;;
+        .learning-public-nav .learning-mobile-login input.form-control:focus {
+            border-color: #8e9cff !important;
+
+            box-shadow:
+                0 0 0 3px rgba(91,124,250,.10) !important;
         }
 
-        .dropdown-menu > li > a{
-            font-size: 2.5vh !important;;
-        }
+        .learning-public-nav .learning-mobile-login-action .learning-login-submit,
+        .learning-public-nav .learning-mobile-login-action button {
+            width: 100% !important;
+            min-height: 46px !important;
 
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
 
-        .dropdown-menu > li > a{
-            font-family: Cambria !important;
-            font-size: 2.5vh;
-            font-weight: 500!important;
-        }
+            gap: 8px;
 
-        .header-icon {
-            font-size: 2.5vh !important;;
+            border: 0 !important;
+            border-radius: 13px !important;
+
+            color: #fff !important;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    var(--public-blue),
+                    var(--public-purple)
+                ) !important;
+
+            font-size: 13px !important;
+            font-weight: 750 !important;
+
+            box-shadow:
+                0 8px 18px rgba(91,124,250,.20) !important;
         }
     }
 
-    .navbar-default .navbar-toggle{
-        margin-right: 5px;
-        margin-top: 2px;
+    /* ---------- SMALL PHONE ---------- */
 
-    }
-
-    .navbar-default .navbar-nav>li>a {
-        font-family: Cambria;
-        /*padding-top: 20px;*/
-    }
-
-    .for-media {
-        display: none;
-    }
-
-
-    @media only screen and (max-width: 767px) {
-        .for-media {
-            display: block;
+    @media only screen and (max-width: 360px) {
+        .learning-public-nav .learning-public-brand-text {
+            max-width: 150px;
         }
 
-        .not-for-media{
-            display: none;
+        .learning-public-nav .learning-public-brand {
+            font-size: 12px !important;
         }
+    }
 
+    /* ---------- REDUCED MOTION ---------- */
+
+    @media (prefers-reduced-motion: reduce) {
+        .learning-public-nav *,
+        .learning-public-nav *:before,
+        .learning-public-nav *:after {
+            transition: none !important;
+            animation: none !important;
+        }
     }
 </style>

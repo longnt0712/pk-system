@@ -1,7 +1,17 @@
-<nav id="navscroll" class="navbar navbar-default ">
+<nav id="navscroll" class="navbar navbar-default learning-login-nav">
     <div class="container-fluid">
         <div class="navbar-header">
-            <button type="button"
+                        <button
+                type="button"
+                class="mobile-global-theme-toggle"
+                onclick="(function(){var w=window,d=document,k='ieltsroom.globalDarkMode';if(w.IeltsRoomTheme&&typeof w.IeltsRoomTheme.toggle==='function'){w.IeltsRoomTheme.toggle();return;}if(typeof w.toggleGlobalDarkMode==='function'){w.toggleGlobalDarkMode();return;}var r=d.documentElement,b=d.body,on=!r.classList.contains('global-dark-mode');if(on){r.classList.add('global-dark-mode');if(b){b.classList.add('global-dark-mode');}}else{r.classList.remove('global-dark-mode');if(b){b.classList.remove('global-dark-mode');}}try{w.localStorage.setItem(k,on?'true':'false');}catch(e){}})(); return false;"
+                title="Bật / tắt Dark mode"
+                aria-label="Bật / tắt Dark mode">
+                <span class="mobile-theme-icon mobile-theme-icon-moon">☾</span>
+                <span class="mobile-theme-icon mobile-theme-icon-sun">☀</span>
+            </button>
+
+<button type="button"
                     class="navbar-toggle collapsed"
                     data-toggle="collapse"
                     data-target="#bs-example-navbar-collapse-1"
@@ -12,8 +22,20 @@
                 <span class="icon-bar"></span>
             </button>
 
-            <a ng-if="settings.ieltsRoom == true" class="navbar-brand" id="church-title" href="dashboard">IELTS ROOM</a>
-            <a ng-if="settings.chapter == true" class="navbar-brand" id="church-title" href="dashboard">Chapter</a>
+            <a ng-if="!settings.ieltsRoom || settings.ieltsRoom == true"
+               class="navbar-brand learning-nav-brand"
+               id="church-title"
+               href="dashboard">
+                <span class="learning-brand-icon"><i class="fa fa-graduation-cap"></i></span>
+                <span class="learning-brand-text">IELTS ROOM</span>
+            </a>
+            <a ng-if="settings.chapter == true"
+               class="navbar-brand learning-nav-brand"
+               id="church-title"
+               href="dashboard">
+                <span class="learning-brand-icon"><i class="fa fa-book"></i></span>
+                <span class="learning-brand-text">CHAPTER</span>
+            </a>
         </div>
 
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1" ng-if="settings.permissionsLoaded">
@@ -23,10 +45,17 @@
                         Vocabulary <span class="caret"></span>
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a href="question/3"><i class="fa fa-caret-right"></i>YOUR FLASHCARDS</a></li>
-                        <li><a href="view/3"><i class="fa fa-caret-right"></i>GAME MODES</a></li>
-                        <li><a href="topics"><i class="fa fa-caret-right"></i>TOPIC</a></li>
-                        <li ng-if="settings.isAdmin"><a href="topic_categories"><i class="fa fa-caret-right"></i>TOPIC CATEGORIES</a></li>
+                        <li>
+                            <a ui-sref="application.daily_vocab({listFlashCard: 0})"
+                               href="daily-vocab/0">
+                                <i class="fa fa-language"></i>
+                                DAILY VOCAB
+                            </a>
+                        </li>
+                        <li><a href="question/3"><i class="fa fa-clone"></i> YOUR FLASHCARDS</a></li>
+                        <li><a href="view/3"><i class="fa fa-gamepad"></i> GAME MODES</a></li>
+                        <li><a href="topics"><i class="fa fa-list-ul"></i> TOPIC</a></li>
+                        <li ng-if="settings.isAdmin"><a href="topic_categories"><i class="fa fa-folder-open"></i> TOPIC CATEGORIES</a></li>
                     </ul>
                 </li>
 
@@ -140,6 +169,21 @@
                     </ul>
                 </li>
 
+
+                <li class="global-theme-toggle-item">
+                    <a href=""
+                       class="global-theme-toggle"
+                       onclick="(function(){var w=window,d=document,k='ieltsroom.globalDarkMode';if(w.IeltsRoomTheme&&typeof w.IeltsRoomTheme.toggle==='function'){w.IeltsRoomTheme.toggle();return;}if(typeof w.toggleGlobalDarkMode==='function'){w.toggleGlobalDarkMode();return;}var r=d.documentElement,b=d.body,on=!r.classList.contains('global-dark-mode');if(on){r.classList.add('global-dark-mode');if(b){b.classList.add('global-dark-mode');}}else{r.classList.remove('global-dark-mode');if(b){b.classList.remove('global-dark-mode');}}try{w.localStorage.setItem(k,on?'true':'false');}catch(e){}})(); return false;"
+                       title="Bật / tắt Dark mode"
+                       aria-label="Bật / tắt Dark mode">
+                        <i class="fa fa-adjust global-theme-toggle-icon"></i>
+                        <span class="global-theme-toggle-label">SETUP</span>
+                        <span class="global-theme-switch" aria-hidden="true">
+                            <span class="global-theme-switch-dot"></span>
+                        </span>
+                    </a>
+                </li>
+
                 <!--<li ng-show="settings.isAdmin == true" class="menu-dropdown">-->
                     <!--<a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">-->
                         <!--<i class="icon-equalizer"></i> Create Test <span class="caret"></span>-->
@@ -178,21 +222,21 @@
                 <li class="dropdown user-dropdown-mobile">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" data-close-others="true">
                         <span class="username username-hide-on-mobile user-dropdown-label" data-ng-cloak="">
-                            {{currentUser.person.lastName}} {{currentUser.person.firstName}} | {{currentUser.username}} <span class="caret"></span>
+                            {{currentUser.person.lastName | uppercase}} {{currentUser.person.firstName | uppercase}} | {{currentUser.username | uppercase}} <span class="caret"></span>
                         </span>
                     </a>
                     <ul class="dropdown-menu user-dropdown-menu">
                         <li class="user-photo" ng-if="!currentUser.hasPhoto && !settings.isViewer">
                             <a href="" ng-click="profilePhoto.showUploadModal()">
                                 <img class="img-circle" alt="User" ng-src="{{settings.assetsPath}}/images/no-profile-photo.png" />
-                                <span>cập nhật ảnh</span>
+                                <span>CẬP NHẬT ẢNH</span>
                             </a>
                         </li>
 
                         <li class="user-photo" ng-if="currentUser.hasPhoto && !settings.isViewer">
                             <a href="" ng-click="profilePhoto.showUploadModal()">
                                 <img id="_user_profile_photo_big" class="img-circle" alt="User" ng-src="{{settings.api.baseUrl}}public/users/photo/{{currentUser.username}}" />
-                                <span>cập nhật ảnh</span>
+                                <span>CẬP NHẬT ẢNH</span>
                             </a>
                         </li>
 
@@ -374,219 +418,1251 @@
             Bạn đã thay đổi mật khẩu thành công. Bạn vui lòng đóng phiên làm việc hiện tại và đăng nhập lại bằng mật khẩu mới để tiếp tục.
         </div>
         <div class="modal-footer">
-            <button type="button" ng-click="$close(); logout();" class="btn blue-dark" data-dismiss="modal">Đóng phiên làm việc</button>
+            <button type="button" ng-click="$close(); logout();" class="btn blue-dark" data-dismiss="modal">ĐÓNG PHIÊN LÀM VIỆC</button>
         </div>
     </div>
 </script>
 
 <style>
-    .navbar-nav.navbar-right .open .dropdown-menu{
-        background: #371009 !important;
-    }
-    #navscroll{
-        transition: 0.3s;
+    /* =========================================================
+       LEARNING LOGIN NAV
+       Đồng bộ với Learning Hub - bright / playful / mobile-first
+       ========================================================= */
+
+    .learning-login-nav,
+    .learning-login-nav * {
+        box-sizing: border-box;
     }
 
-    .navbar-default .navbar-nav>li>a {
-        font-size: 18px;
-        font-weight: 700;
+    .learning-login-nav {
+        --nav-blue: #5b7cfa;
+        --nav-purple: #8b5cf6;
+        --nav-pink: #ff6f91;
+        --nav-yellow: #ffd84d;
+        --nav-ink: #26324b;
+        --nav-muted: #7b8499;
+        --nav-border: #e7eafb;
+
+        margin: 8px 10px 12px !important;
+        border: 1px solid var(--nav-border) !important;
+        border-radius: 22px !important;
+
+        background:
+            linear-gradient(180deg, rgba(255,255,255,.98), rgba(250,251,255,.98)) !important;
+
+        box-shadow:
+            0 10px 28px rgba(62,72,112,.10) !important;
+
+        transition:
+            box-shadow .2s ease,
+            transform .2s ease !important;
+
+        overflow: visible !important;
     }
 
-    .navbar-default .navbar-nav>li>a:hover {
-        font-size: 18px;
-        font-weight: 700;
+    .learning-login-nav .container-fluid {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
     }
 
-    .navbar {
-        margin-bottom: 10px;
-        border: none !important;
+    /* ---------- BRAND ---------- */
+
+    .learning-login-nav .navbar-header {
+        min-height: 58px;
     }
 
-    .header-icon {
-        font-size: 17px;
+    .learning-login-nav .learning-nav-brand {
+        height: 58px !important;
+
+        display: inline-flex !important;
+        align-items: center !important;
+
+        gap: 9px;
+
+        margin: 0 !important;
+        padding: 7px 8px !important;
+
+        color: var(--nav-ink) !important;
+
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+        font-size: 15px !important;
+        font-weight: 900 !important;
+
+        letter-spacing: .2px !important;
+
+        text-decoration: none !important;
     }
 
-    .container-content{
-        padding: 0;
-        margin: 0;
-    }
+    .learning-login-nav .learning-brand-icon {
+        width: 40px;
+        height: 40px;
 
-    #church-title {
-        font-size: 22px;
-        font-weight: 700;
-        letter-spacing: 3px;
-        font-family: Cambria;
-        margin-left: 30px !important;
-    }
-
-    .dropdown-menu > li > a{
-        font-family: Cambria !important;
-        font-size: 16px;
-    }
-
-    .navbar-form {
-        margin-right: 3px !important;
-        margin-left: 3px !important;
-        border: none;
-        width: 100%;
-    }
-
-    #church-icon{
-        height: 22px;
-        width: 17px;
-        display: inline-block;
-        margin-bottom: 3px;
-    }
-
-    .icon-for-media{
-        display: none;
-    }
-
-    .not-for-media{
-        display: block;
-    }
-
-    .user-dropdown-label {
-        padding-left: 27px;
-        padding-right: 27px;
-    }
-
-    .user-dropdown-menu {
-        min-width: 240px;
-    }
-
-    .user-photo a {
-        display: flex;
+        display: inline-flex;
         align-items: center;
+        justify-content: center;
+
+        flex: 0 0 40px;
+
+        border-radius: 14px;
+
+        color: #fff;
+
+        background:
+            linear-gradient(135deg, var(--nav-blue), var(--nav-purple));
+
+        box-shadow:
+            0 7px 16px rgba(91,124,250,.22);
+    }
+
+    .learning-login-nav .learning-brand-icon i {
+        font-size: 18px;
+    }
+
+    .learning-login-nav .learning-brand-text {
+        white-space: nowrap;
+    }
+
+    /* ---------- DESKTOP NAV ITEMS ---------- */
+
+    .learning-login-nav .navbar-collapse {
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .learning-login-nav .navbar-nav {
+        margin-top: 8px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .learning-login-nav .navbar-nav > li {
+        margin: 0 3px;
+    }
+
+    .learning-login-nav .navbar-nav > li > a {
+        min-height: 42px;
+
+        display: flex !important;
+        align-items: center !important;
+
+        gap: 6px;
+
+        padding: 0 12px !important;
+
+        border-radius: 13px !important;
+
+        color: #536079 !important;
+
+        background: transparent !important;
+
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+
+        transition:
+            color .16s ease,
+            background .16s ease,
+            transform .16s ease !important;
+    }
+
+    .learning-login-nav .navbar-nav > li > a:hover,
+    .learning-login-nav .navbar-nav > li > a:focus {
+        color: #4d58cc !important;
+
+        background: #eef1ff !important;
+
+        transform: translateY(-1px);
+    }
+
+    .learning-login-nav .navbar-nav > .open > a,
+    .learning-login-nav .navbar-nav > .open > a:hover,
+    .learning-login-nav .navbar-nav > .open > a:focus {
+        color: #4d58cc !important;
+
+        background:
+            linear-gradient(135deg, #eef1ff, #f3edff) !important;
+
+        box-shadow:
+            inset 0 0 0 1px rgba(91,124,250,.10) !important;
+    }
+
+    .learning-login-nav .caret {
+        margin-left: 2px !important;
+        color: #8a92a5;
+    }
+
+    /* ---------- DROPDOWN ---------- */
+
+    .learning-login-nav .dropdown-menu {
+        min-width: 220px !important;
+
+        margin-top: 7px !important;
+        padding: 8px !important;
+
+        border: 1px solid #e5e8f5 !important;
+        border-radius: 16px !important;
+
+        background: #fff !important;
+
+        box-shadow:
+            0 16px 34px rgba(57,68,108,.16) !important;
+    }
+
+    .learning-login-nav .dropdown-menu > li {
+        margin: 2px 0 !important;
+    }
+
+    .learning-login-nav .dropdown-menu > li > a {
+        min-height: 40px;
+
+        display: flex !important;
+        align-items: center !important;
+
+        gap: 9px;
+
+        padding: 8px 10px !important;
+
+        border-radius: 11px !important;
+
+        color: #4f5a72 !important;
+
+        background: transparent !important;
+
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+
+        line-height: 1.3 !important;
+
+        white-space: normal !important;
+    }
+
+    .learning-login-nav .dropdown-menu > li > a:hover,
+    .learning-login-nav .dropdown-menu > li > a:focus {
+        color: #4d58cc !important;
+        background: #f0f3ff !important;
+    }
+
+    .learning-login-nav .dropdown-menu > li > a i {
+        width: 26px;
+        height: 26px;
+
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+
+        flex: 0 0 26px;
+
+        border-radius: 9px;
+
+        color: #626ee7;
+
+        background: #eef1ff;
+
+        font-size: 11px !important;
+    }
+
+    .learning-login-nav .dropdown-menu .divider {
+        margin: 6px 4px !important;
+        background: #edf0f7 !important;
+    }
+
+    /* DAILY VOCAB item nổi bật nhẹ */
+    .learning-login-nav .navbar-nav > li:first-child .dropdown-menu > li:first-child > a {
+        color: #674fc9 !important;
+
+        background:
+            linear-gradient(135deg, #f1efff, #f8efff) !important;
+    }
+
+    .learning-login-nav .navbar-nav > li:first-child .dropdown-menu > li:first-child > a i {
+        color: #fff !important;
+
+        background:
+            linear-gradient(135deg, #6b5cf4, #9a5cf0) !important;
+    }
+
+    /* ---------- USER ---------- */
+
+    .learning-login-nav .navbar-right > li > a {
+        color: #45516a !important;
+
+        background: #f5f7fc !important;
+
+        border-radius: 14px !important;
+    }
+
+    .learning-login-nav .user-dropdown-label {
+        display: block !important;
+
+        max-width: 260px;
+
+        overflow: hidden;
+
+        padding: 0 !important;
+
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        font-size: 11px !important;
+        font-weight: 800 !important;
+    }
+
+    .learning-login-nav .user-dropdown-menu {
+        min-width: 250px !important;
+    }
+
+    .learning-login-nav .user-photo a {
+        display: flex !important;
+        align-items: center !important;
+
         gap: 10px;
     }
 
-    .user-photo img.img-circle {
-        width: 48px;
-        height: 48px;
-        object-fit: cover;
+    .learning-login-nav .user-photo img.img-circle {
+        width: 46px !important;
+        height: 46px !important;
+
+        object-fit: cover !important;
+
+        border: 3px solid #eef1ff;
+
+        box-shadow:
+            0 5px 12px rgba(60,70,110,.12);
     }
 
-    @media only screen and (max-width: 767px){
-        .navbar-nav .open .dropdown-menu{
+    /* ---------- MOBILE TOGGLE ---------- */
+
+    .learning-login-nav .navbar-toggle {
+        width: 42px;
+        height: 42px;
+
+        margin: 8px 2px 0 0 !important;
+        padding: 10px !important;
+
+        border: 0 !important;
+        border-radius: 14px !important;
+
+        background:
+            linear-gradient(135deg, #eef1ff, #f4edff) !important;
+    }
+
+    .learning-login-nav .navbar-toggle:hover,
+    .learning-login-nav .navbar-toggle:focus {
+        background:
+            linear-gradient(135deg, #e8edff, #efe6ff) !important;
+    }
+
+    .learning-login-nav .navbar-toggle .icon-bar {
+        width: 20px !important;
+        height: 2px !important;
+
+        margin: 3px auto !important;
+
+        border-radius: 2px;
+
+        background: #5f65d8 !important;
+    }
+
+    /* ---------- LOADING ---------- */
+
+    .learning-login-nav .fa-spinner {
+        color: var(--nav-purple);
+    }
+
+    /* =========================================================
+       MOBILE
+       ========================================================= */
+
+    @media (max-width: 767px) {
+        .learning-login-nav {
+            margin: 6px 7px 10px !important;
+
+            border-radius: 18px !important;
+        }
+
+        .learning-login-nav .container-fluid {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+        }
+
+        .learning-login-nav .navbar-header {
+            min-height: 56px;
+        }
+
+        .learning-login-nav .learning-nav-brand {
+            height: 56px !important;
+
+            padding: 7px 5px !important;
+
+            font-size: 13px !important;
+        }
+
+        .learning-login-nav .learning-brand-icon {
+            width: 38px;
+            height: 38px;
+
+            flex-basis: 38px;
+
+            border-radius: 13px;
+        }
+
+        .learning-login-nav .navbar-collapse {
+            margin: 0 !important;
+            padding: 7px 0 10px !important;
+
+            border-top: 1px solid #edf0f7 !important;
+        }
+
+        .learning-login-nav .navbar-nav {
             width: 100% !important;
+
+            margin: 0 !important;
         }
 
-        #church-title{
-            margin-left: 0 !important;
-            font-size: 2.5vh !important;
-        }
-
-        .navbar-default .navbar-nav>li>a {
-            font-size: 2.5vh !important;
-        }
-
-        .navbar-default .navbar-nav>li>a:hover {
-            font-size: 2.5vh !important;
-        }
-
-        .dropdown-menu > li > a{
-            font-size: 2.5vh !important;
-        }
-
-        .dropdown-menu > li > a{
-            font-family: Cambria !important;
-            font-size: 2.5vh;
-            font-weight: 500!important;
-        }
-
-        .header-icon {
-            font-size: 2.5vh !important;
-        }
-
-        .navbar-nav .open .dropdown-menu {
+        .learning-login-nav .navbar-nav > li {
             width: 100% !important;
-            /*background: #fff !important;*/
-            /*border: 1px solid #ddd !important;*/
-            padding: 10px 0 !important;
-            margin-top: 5px !important;
+
+            margin: 3px 0 !important;
         }
 
-        .navbar-nav.navbar-right .open .dropdown-menu {
+        .learning-login-nav .navbar-nav > li > a {
+            width: 100% !important;
+            min-height: 44px;
+
+            justify-content: space-between;
+
+            padding: 0 12px !important;
+
+            border-radius: 12px !important;
+
+            color: #4d5870 !important;
+
+            background: #fafbff !important;
+
+            font-size: 12px !important;
+        }
+
+        .learning-login-nav .navbar-nav > li > a:hover,
+        .learning-login-nav .navbar-nav > li > a:focus,
+        .learning-login-nav .navbar-nav > .open > a,
+        .learning-login-nav .navbar-nav > .open > a:hover,
+        .learning-login-nav .navbar-nav > .open > a:focus {
+            color: #4d58cc !important;
+
+            background:
+                linear-gradient(135deg, #eef1ff, #f5efff) !important;
+
+            transform: none !important;
+        }
+
+        .learning-login-nav .navbar-nav .open .dropdown-menu,
+        .learning-login-nav .navbar-nav.navbar-right .open .dropdown-menu {
             position: static !important;
+
             float: none !important;
+
             width: 100% !important;
             min-width: 100% !important;
+
+            margin: 5px 0 7px !important;
+            padding: 5px !important;
+
+            border: 1px solid #e8ebf5 !important;
+            border-radius: 13px !important;
+
+            background: #fff !important;
+
             box-shadow: none !important;
-            /*border-radius: 6px !important;*/
         }
 
-        .navbar-nav.navbar-right .open .dropdown-menu > li > a {
-            padding: 12px 20px !important;
+        .learning-login-nav .navbar-nav .open .dropdown-menu > li > a {
+            min-height: 42px;
+
+            padding: 7px 9px !important;
+
+            font-size: 11.5px !important;
+
             white-space: normal !important;
         }
 
-        .navbar-nav.navbar-right > li {
+        .learning-login-nav .navbar-nav.navbar-right {
+            margin-top: 6px !important;
+            padding-top: 6px !important;
+
+            border-top: 1px dashed #e1e5f0;
+        }
+
+        .learning-login-nav .navbar-nav.navbar-right > li {
             width: 100% !important;
         }
 
-        .navbar-nav.navbar-right > li > a {
+        .learning-login-nav .navbar-nav.navbar-right > li > a {
             width: 100% !important;
+
+            display: flex !important;
+            justify-content: flex-start !important;
+
+            min-height: 44px;
+
+            background:
+                linear-gradient(135deg, #f4f6ff, #faf7ff) !important;
+        }
+
+        .learning-login-nav .user-dropdown-label,
+        .learning-login-nav .username-hide-on-mobile {
+            width: 100% !important;
+            max-width: none !important;
+
             display: block !important;
+
+            padding: 0 !important;
+
+            font-size: 11.5px !important;
+
+            text-align: left !important;
         }
 
-        .user-dropdown-mobile {
+        .learning-login-nav .user-photo a {
             width: 100% !important;
         }
 
-        .user-dropdown-mobile > a {
-            width: 100% !important;
-            display: block !important;
+        .learning-login-nav .user-photo img.img-circle {
+            width: 44px !important;
+            height: 44px !important;
+        }
+    }
+
+    /* =========================================================
+       SMALL PHONE
+       ========================================================= */
+
+    @media (max-width: 360px) {
+        .learning-login-nav .learning-brand-text {
+            max-width: 150px;
+
+            overflow: hidden;
+
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
-        .user-dropdown-label {
-            display: block !important;
-            width: 100% !important;
-            padding-left: 15px !important;
-            padding-right: 15px !important;
+        .learning-login-nav .navbar-nav > li > a {
+            font-size: 11px !important;
         }
 
-        .user-dropdown-mobile.open .dropdown-menu {
-            width: 100% !important;
-            min-width: 100% !important;
-            position: static !important;
-            float: none !important;
-            background: #ffffff !important;
-            /*border: 1px solid #dcdcdc !important;*/
-            /*border-radius: 6px !important;*/
-            margin-top: 8px !important;
+        .learning-login-nav .dropdown-menu > li > a {
+            font-size: 10.5px !important;
+        }
+    }
+
+    /* =========================================================
+       REDUCED MOTION
+       ========================================================= */
+
+    @media (prefers-reduced-motion: reduce) {
+        .learning-login-nav *,
+        .learning-login-nav *:before,
+        .learning-login-nav *:after {
+            transition: none !important;
+            animation: none !important;
+        }
+    }
+</style>
+
+<style>
+    /* VIETNAMESE SAFE FONT V5 */
+    .learning-login-nav,
+    .learning-login-nav a,
+    .learning-login-nav span,
+    .learning-login-nav button,
+    .learning-login-nav li {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+    }
+
+    .learning-login-nav .learning-nav-brand {
+        font-weight: 800 !important;
+        letter-spacing: -0.25px !important;
+    }
+
+    .learning-login-nav .navbar-nav > li > a {
+        font-weight: 650 !important;
+        letter-spacing: 0 !important;
+    }
+
+    .learning-login-nav .dropdown-menu > li > a {
+        font-weight: 600 !important;
+        letter-spacing: 0 !important;
+    }
+</style>
+
+<style>
+    /* ICON FONT PROTECTION V6 - HEADER */
+    .learning-login-nav .fa,
+    .learning-login-nav .fa:before {
+        font-family: FontAwesome !important;
+        font-style: normal !important;
+        font-weight: normal !important;
+    }
+
+    .learning-login-nav [class^="icon-"],
+    .learning-login-nav [class*=" icon-"],
+    .learning-login-nav [class^="icon-"]:before,
+    .learning-login-nav [class*=" icon-"]:before {
+        font-family: "simple-line-icons" !important;
+        font-style: normal !important;
+        font-weight: normal !important;
+    }
+
+    .learning-login-nav .glyphicon,
+    .learning-login-nav .glyphicon:before {
+        font-family: "Glyphicons Halflings" !important;
+    }
+</style>
+
+<style>
+    /* NAV ICON CONTRAST FIX V7 - LOCAL */
+    .learning-login-nav .dropdown-menu > li > a > i,
+    .learning-login-nav .dropdown-menu > li > a > i.fa,
+    .learning-login-nav .dropdown-menu > li > a > [class^="fa-"],
+    .learning-login-nav .dropdown-menu > li > a > [class*=" fa-"],
+    .learning-login-nav .dropdown-menu > li > a > [class^="icon-"],
+    .learning-login-nav .dropdown-menu > li > a > [class*=" icon-"] {
+        width: 30px !important;
+        height: 30px !important;
+
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+
+        flex: 0 0 30px !important;
+
+        border-radius: 10px !important;
+
+        color: #5968e8 !important;
+        background: #edf0ff !important;
+
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    .learning-login-nav .dropdown-menu > li > a:hover > i,
+    .learning-login-nav .dropdown-menu > li > a:focus > i {
+        color: #fff !important;
+        background: linear-gradient(135deg, #6578f4, #8660ef) !important;
+    }
+
+    .learning-login-nav
+    .navbar-nav > li:first-child
+    .dropdown-menu > li:first-child > a > i {
+        color: #fff !important;
+        background: linear-gradient(135deg, #695cf2, #965bf0) !important;
+    }
+</style>
+
+<style>
+    /* =========================================================
+       GLOBAL DARK MODE - HEADER SETUP BUTTON
+       ========================================================= */
+
+    .learning-login-nav .global-theme-toggle-item {
+        margin-left: 4px !important;
+    }
+
+    .learning-login-nav .global-theme-toggle {
+        display: flex !important;
+        align-items: center !important;
+        gap: 7px !important;
+
+        min-height: 42px !important;
+        padding: 0 10px !important;
+
+        border-radius: 13px !important;
+
+        color: #59647c !important;
+        background: #f5f7fc !important;
+
+        text-decoration: none !important;
+    }
+
+    .learning-login-nav .global-theme-toggle:hover,
+    .learning-login-nav .global-theme-toggle:focus {
+        color: #4d58cc !important;
+        background:
+            linear-gradient(
+                135deg,
+                #eef1ff,
+                #f4efff
+            ) !important;
+    }
+
+    .learning-login-nav .global-theme-toggle-icon,
+    .learning-login-nav .global-theme-toggle-icon:before {
+        font-family: FontAwesome !important;
+        font-style: normal !important;
+        font-weight: normal !important;
+    }
+
+    .learning-login-nav .global-theme-toggle-icon {
+        color: #6573e5 !important;
+        font-size: 13px !important;
+    }
+
+    .learning-login-nav .global-theme-toggle-label {
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        letter-spacing: .15px !important;
+    }
+
+    .learning-login-nav .global-theme-switch {
+        position: relative;
+
+        width: 34px;
+        height: 19px;
+
+        flex: 0 0 34px;
+
+        display: inline-block;
+
+        margin-left: 1px;
+
+        border-radius: 999px;
+
+        background: #d9deeb;
+
+        box-shadow:
+            inset 0 0 0 1px rgba(67,76,104,.05);
+
+        transition: background .18s ease;
+    }
+
+    .learning-login-nav .global-theme-switch-dot {
+        position: absolute;
+
+        top: 3px;
+        left: 3px;
+
+        width: 13px;
+        height: 13px;
+
+        border-radius: 50%;
+
+        background: #fff;
+
+        box-shadow:
+            0 2px 5px rgba(50,58,83,.22);
+
+        transition: transform .18s ease;
+    }
+
+    html.global-dark-mode
+    .learning-login-nav .global-theme-toggle {
+        color: #f0f3ff !important;
+        background:
+            linear-gradient(
+                135deg,
+                #263451,
+                #31294b
+            ) !important;
+    }
+
+    html.global-dark-mode
+    .learning-login-nav .global-theme-toggle-icon {
+        color: #c8c2ff !important;
+    }
+
+    html.global-dark-mode
+    .learning-login-nav .global-theme-switch {
+        background:
+            linear-gradient(
+                135deg,
+                #637cff,
+                #8d60f4
+            );
+    }
+
+    html.global-dark-mode
+    .learning-login-nav .global-theme-switch-dot {
+        transform: translateX(15px);
+    }
+
+    @media (max-width: 767px) {
+        .learning-login-nav .global-theme-toggle-item {
+            margin-left: 0 !important;
         }
 
-        .username-hide-on-mobile {
-            display: block !important;
+        .learning-login-nav .global-theme-toggle {
             width: 100% !important;
-            padding-left: 15px !important;
-            padding-right: 15px !important;
+            justify-content: flex-start !important;
+
+            min-height: 44px !important;
+            padding: 0 12px !important;
         }
 
-        .user-photo a {
+        .learning-login-nav .global-theme-switch {
+            margin-left: auto;
+        }
+    }
+</style>
+
+<style>
+    /* =========================================================
+       MOBILE GLOBAL DARK MODE BUTTON V6
+       Nằm ngay cạnh hamburger, luôn hiện trên mobile.
+       ========================================================= */
+
+    .learning-login-nav .mobile-global-theme-toggle {
+        display: none;
+    }
+
+    @media (max-width: 767px) {
+        .learning-login-nav .navbar-header {
+            position: relative;
+        }
+
+        .learning-login-nav .mobile-global-theme-toggle {
+            width: 42px;
+            height: 42px;
+
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+
+            float: right;
+
+            margin: 8px 7px 0 0;
+            padding: 0;
+
+            border: 1px solid #dfe4f2;
+            border-radius: 14px;
+
+            color: #5968df;
+            background:
+                linear-gradient(
+                    135deg,
+                    #eef1ff,
+                    #f4edff
+                );
+
+            box-shadow:
+                0 5px 12px rgba(72,82,130,.10);
+
+            outline: none !important;
+
+            transition:
+                transform .15s ease,
+                background .18s ease,
+                border-color .18s ease,
+                box-shadow .18s ease;
+        }
+
+        .learning-login-nav .mobile-global-theme-toggle:hover,
+        .learning-login-nav .mobile-global-theme-toggle:focus {
+            color: #4d58cc;
+
+            border-color: #cfd6f2;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #e8edff,
+                    #efe7ff
+                );
+        }
+
+        .learning-login-nav .mobile-global-theme-toggle:active {
+            transform: scale(.96);
+        }
+
+        .learning-login-nav .mobile-theme-icon,
+        .learning-login-nav .mobile-theme-icon:before {
+            font-family: FontAwesome !important;
+            font-style: normal !important;
+            font-weight: normal !important;
+        }
+
+        .learning-login-nav .mobile-theme-icon {
+            font-size: 17px !important;
+            line-height: 1 !important;
+        }
+
+        /* Light mode: moon */
+        .learning-login-nav .mobile-theme-icon-moon {
+            display: inline-block;
+        }
+
+        .learning-login-nav .mobile-theme-icon-sun {
+            display: none;
+        }
+
+        /* Dark mode: sun */
+        html.global-dark-mode
+        .learning-login-nav .mobile-global-theme-toggle {
+            color: #f5d86b;
+
+            border-color: #35435e;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #202d47,
+                    #302a4d
+                );
+
+            box-shadow:
+                0 5px 13px rgba(0,0,0,.22);
+        }
+
+        html.global-dark-mode
+        .learning-login-nav .mobile-theme-icon-moon {
+            display: none;
+        }
+
+        html.global-dark-mode
+        .learning-login-nav .mobile-theme-icon-sun {
+            display: inline-block;
+        }
+
+        /* Hamburger giữ nguyên style hiện tại */
+        .learning-login-nav .navbar-toggle {
+            float: right;
+            margin-right: 2px !important;
+        }
+    }
+
+    @media (max-width: 360px) {
+        .learning-login-nav .mobile-global-theme-toggle {
+            width: 40px;
+            height: 40px;
+
+            margin-top: 9px;
+            margin-right: 5px;
+
+            border-radius: 13px;
+        }
+    }
+</style>
+
+<style>
+    /* =========================================================
+       MOBILE HEADER BUTTON ORDER FIX V7
+       Logo -> Dark mode -> Hamburger
+       ========================================================= */
+
+    @media (max-width: 767px) {
+        .learning-login-nav .navbar-header {
             display: flex !important;
             align-items: center !important;
-            gap: 10px !important;
+
             width: 100% !important;
+            min-height: 58px !important;
         }
 
-        .user-photo img.img-circle {
-            width: 48px !important;
-            height: 48px !important;
-            object-fit: cover !important;
+        /*
+         * Brand chiếm phần bên trái.
+         * Hai nút nằm sát nhau bên phải.
+         */
+        .learning-login-nav .learning-nav-brand,
+        .learning-login-nav .navbar-brand {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+
+            margin-right: auto !important;
+        }
+
+        .learning-login-nav .mobile-global-theme-toggle,
+        .learning-login-nav .navbar-toggle {
+            float: none !important;
+
+            flex: 0 0 42px !important;
+
+            width: 42px !important;
+            height: 42px !important;
+
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
+        /*
+         * Thứ tự:
+         * 1. Brand
+         * 2. Dark mode
+         * 3. Hamburger
+         */
+        .learning-login-nav .mobile-global-theme-toggle {
+            order: 2 !important;
+
+            margin-left: 6px !important;
+            margin-right: 6px !important;
+        }
+
+        .learning-login-nav .navbar-toggle {
+            order: 3 !important;
+
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        /*
+         * System symbol nên không phụ thuộc FontAwesome.
+         */
+        .learning-login-nav .mobile-theme-icon {
+            font-family:
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI Symbol",
+                "Apple Symbols",
+                Arial,
+                sans-serif !important;
+
+            font-style: normal !important;
+            font-weight: 700 !important;
+
+            line-height: 1 !important;
+        }
+
+        .learning-login-nav .mobile-theme-icon-moon {
+            display: inline-block !important;
+
+            color: #5968df !important;
+
+            font-size: 23px !important;
+
+            transform: translateY(-1px);
+        }
+
+        .learning-login-nav .mobile-theme-icon-sun {
+            display: none !important;
+
+            color: #ffd95e !important;
+
+            font-size: 21px !important;
+        }
+
+        html.global-dark-mode
+        .learning-login-nav .mobile-theme-icon-moon {
+            display: none !important;
+        }
+
+        html.global-dark-mode
+        .learning-login-nav .mobile-theme-icon-sun {
+            display: inline-block !important;
         }
     }
 
-    .navbar-default .navbar-toggle{
-        margin-right: 5px;
-        margin-top: 2px;
+    @media (max-width: 360px) {
+        .learning-login-nav .mobile-global-theme-toggle,
+        .learning-login-nav .navbar-toggle {
+            flex-basis: 40px !important;
+
+            width: 40px !important;
+            height: 40px !important;
+        }
+
+        .learning-login-nav .mobile-global-theme-toggle {
+            margin-left: 5px !important;
+            margin-right: 5px !important;
+        }
+    }
+</style>
+
+<style>
+    /* =========================================================
+       DARK MODE DROPDOWN SYNC FIX V8
+       Đồng bộ dropdown header với dark mode.
+       ========================================================= */
+
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu,
+    html.global-dark-mode
+    .learning-login-nav .navbar-nav .open .dropdown-menu,
+    html.global-dark-mode
+    .learning-login-nav .navbar-nav.navbar-right .open .dropdown-menu {
+        border-color: #2d3a52 !important;
+
+        background:
+            linear-gradient(
+                180deg,
+                #151f31 0%,
+                #111a2a 100%
+            ) !important;
+
+        box-shadow:
+            0 18px 42px rgba(0,0,0,.36) !important;
     }
 
-    .navbar-default .navbar-nav>li>a {
-        font-family: Cambria;
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li > a,
+    html.global-dark-mode
+    .learning-login-nav ul.dropdown-menu > li > a,
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li > a:visited {
+        color: #d6deec !important;
+        background: transparent !important;
     }
 
-    .navbar-brand {
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li > a:hover,
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li > a:focus,
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li.active > a,
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li:hover > a {
+        color: #ffffff !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #263451 0%,
+                #332c50 100%
+            ) !important;
+    }
+
+    /* Icon box trong dropdown */
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li > a > i,
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li > a > i.fa,
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li > a > [class^="fa-"],
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li > a > [class*=" fa-"],
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li > a > [class^="icon-"],
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li > a > [class*=" icon-"] {
+        color: #aeb9ff !important;
+
+        border: 1px solid #34415b !important;
+
+        background:
+            linear-gradient(
+                145deg,
+                #202b43,
+                #1a2438
+            ) !important;
+
+        box-shadow:
+            inset 0 0 0 1px rgba(255,255,255,.02) !important;
+    }
+
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li > a:hover > i,
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li > a:focus > i {
+        color: #ffffff !important;
+
+        border-color: #586994 !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #586de5,
+                #7e5de7
+            ) !important;
+    }
+
+    /* DAILY VOCAB item đầu tiên vẫn nổi bật nhưng dark */
+    html.global-dark-mode
+    .learning-login-nav
+    .navbar-nav > li:first-child
+    .dropdown-menu > li:first-child > a {
+        color: #cfc9ff !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #252848,
+                #302545
+            ) !important;
+    }
+
+    html.global-dark-mode
+    .learning-login-nav
+    .navbar-nav > li:first-child
+    .dropdown-menu > li:first-child > a > i {
+        color: #ffffff !important;
+
+        border-color: transparent !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #695cf2,
+                #965bf0
+            ) !important;
+    }
+
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu .divider {
+        background: #2c3850 !important;
+    }
+
+    @media (max-width: 767px) {
+        html.global-dark-mode
+        .learning-login-nav .navbar-nav .open .dropdown-menu,
+        html.global-dark-mode
+        .learning-login-nav .navbar-nav.navbar-right .open .dropdown-menu {
+            border-color: #2d3a52 !important;
+            background: #151f31 !important;
+        }
+    }
+</style>
+
+<style>
+    /* =========================================================
+       HEADER TEXT UPPERCASE V9
+       Chỉ đổi chữ thành UPPERCASE.
+       Không ảnh hưởng icon / switch / dark mode / layout.
+       ========================================================= */
+
+    .learning-login-nav .navbar-brand,
+    .learning-login-nav .learning-nav-brand,
+    .learning-login-nav .learning-brand-text,
+
+    .learning-login-nav .navbar-nav > li > a,
+    .learning-login-nav .navbar-nav > li > a > span,
+
+    .learning-login-nav .dropdown-menu > li > a,
+    .learning-login-nav .dropdown-menu > li > a > span,
+
+    .learning-login-nav .global-theme-toggle-label,
+
+    .learning-login-nav .user-dropdown-label,
+    .learning-login-nav .username-hide-on-mobile,
+
+    .learning-login-nav .user-photo a,
+    .learning-login-nav .user-photo a > span,
+
+    .learning-login-nav button,
+    .learning-login-nav label {
+        text-transform: uppercase !important;
+    }
+
+    /*
+     * Không tác động vào icon fonts.
+     */
+    .learning-login-nav .fa,
+    .learning-login-nav [class^="icon-"],
+    .learning-login-nav [class*=" icon-"],
+    .learning-login-nav .glyphicon,
+    .learning-login-nav .im {
+        text-transform: none !important;
+    }
+</style>
+
+<style>
+    /* GLOBAL DARK MODE BUTTON RUNTIME FIX V9
+       Không đổi layout/màu hiện tại; chỉ đảm bảo state switch bám class html. */
+
+    html.global-dark-mode
+    .learning-login-nav .global-theme-switch-dot {
+        transform: translateX(15px);
+    }
+
+    html:not(.global-dark-mode)
+    .learning-login-nav .global-theme-switch-dot {
+        transform: translateX(0);
     }
 </style>

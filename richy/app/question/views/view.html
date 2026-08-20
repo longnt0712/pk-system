@@ -25,6 +25,16 @@
                         </ui-select>
 
                     </div>
+
+                    <div class="col-md-2 margin-bottom-10">
+                        <a
+                            ui-sref="application.daily_vocab({listFlashCard: vm.listFlashCard})"
+                            class="btn btn-primary"
+                            style="width:100%;">
+                            <i class="fa fa-book"></i>
+                            DAILY VOCAB
+                        </a>
+                    </div>
                     <div class="col-md-2" style="margin-bottom: 10px">
                         <ui-select data-ng-change="vm.getTopics()" ng-model="vm.searchTopicDto.topicCategory" sortable="true" close-on-select="true">
                             <ui-select-match allow-clear="false" placeholder="Chọn cái này đầu tiên nhé...">{{$select.selected.name}}</ui-select-match>
@@ -34,7 +44,7 @@
                         </ui-select>
                     </div>
 
-                    <div class="col-md-7 margin-bottom-10">
+                    <div class="col-md-5 margin-bottom-10">
 
                         <ui-select multiple ng-change="" data-ng-model="vm.selectedTopicToSearch" sortable="true" close-on-select="true" style="width: 100% !important;">
                             <ui-select-match allow-clear="true" placeholder="Chọn bài sau đó ấn tìm kiếm | Có thể chọn nhiều bài nhé :D">
@@ -324,128 +334,9 @@
                     </div>
                 </div>
 
-                <div ng-if="vm.mode.id == 5" class="row bold text-center">
-                    <div class="col-md-12">
-                        <span ng-class="{
-                              'streak-box-shadow': vm.streakPlayer1 < 5,
-                              'streak-box-shadow-blue': vm.streakPlayer1 >= 5,
-                              'streak-box-shadow-yellow': vm.streakPlayer1 >= 10,
-                              'streak-box-shadow-red': vm.streakPlayer1 >= 20,
-                              }">{{vm.currentPosition}}/{{vm.totalCard}} WORD(s) | SCORE: {{vm.score1}} | STREAK: {{vm.streakPlayer1}} | INCORRECT: {{vm.wrongPlayer1}} | {{vm.finishDailyVocab}}</span>
-                    </div>
-                    <div class="col-md-12 margin-top-10" ng-show="vm.showTimer">
-
-                        <table style="width:100%" class="show-screen">
-                            <tr>
-                                <td class="">
-                                    <img ng-if="vm.showStart" class="show-image-answer-screen" src="{{vm.linkStart1}}">
-                                    <img ng-if="vm.showWrong" class="show-image-answer-screen" src="{{vm.linkImageWrong}}">
-                                    <img ng-if="vm.showCorrect" class="show-image-answer-screen" src="{{vm.linkImageCorrect}}">
-                                </td>
-                                <td class="" style="padding-left:15px">
-                                    <div data-ng-click="vm.startDailyVocab()"
-                                         class="btn btn-clock"
-                                         ng-class="{'disabled': vm.dailyVocabRunning}">
-                                        <strong>{{vm.dailyVocabCounter}}</strong>
-                                    </div>
-                                </td>
-                                <td class="" style="padding-left:15px">
-                                    <div data-ng-click="vm.resetDailyVocabTimer()"
-                                         class="btn"
-                                         style="line-height:43px;height: 50px;width:50px;">
-                                        <i style="font-size:22px;" class="fa fa-refresh"></i>
-                                    </div>
-                                </td>
-                                <td class="">
-                                    <img ng-if="vm.showStart" class="show-image-answer-screen" src="{{vm.linkStart1}}">
-                                    <img ng-if="vm.showWrong" class="show-image-answer-screen" src="{{vm.linkImageWrong}}">
-                                    <img ng-if="vm.showCorrect" class="show-image-answer-screen" src="{{vm.linkImageCorrect}}">
-                                </td>
-                            </tr>
-                        </table>
-
-                        <div data-ng-click="vm.startDailyVocab()"
-                             class="btn btn-clock show-normal"
-                             ng-class="{'disabled': vm.dailyVocabRunning}">
-                            <strong>{{vm.dailyVocabCounter}}</strong>
-                        </div>
-                        <div data-ng-click="vm.resetDailyVocabTimer()"
-                             class="btn show-normal"
-                             style="line-height:43px;height:50px;width:50px;">
-                            <i style="font-size:22px;" class="fa fa-refresh"></i>
-                        </div>
-                    </div>
-
-                    <div class="col-md-2 ">
-                        <img ng-if="vm.showStart" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkStart1}}">
-                        <img ng-if="vm.showWrong" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkImageWrong}}">
-                        <img ng-if="vm.showCorrect" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkImageCorrect}}">
-                    </div>
-                    <div class="col-md-8" style="padding:0;margin-bottom:10px;margin-top:5px" ng-class="{
-                              'streak-box-shadow': vm.streakPlayer1 < 5,
-                              'streak-box-shadow-blue': vm.streakPlayer1 >= 5,
-                              'streak-box-shadow-yellow': vm.streakPlayer1 >= 10,
-                              'streak-box-shadow-red': vm.streakPlayer1 >= 20,
-                              }">
-
-                        <div class="flip" ng-if="vm.showMotherTongue === true">
-                            <div class="card" ng-class="{'flipped':isFlipped}" ng-click="isFlipped=!isFlipped">
-                                <div class="face front" style="display: flex">
-                                    <h2 style="margin: auto auto;" class="text-center">
-                                        <span ng-show="vm.blindMode == false">{{vm.currentCard.question}}</span> <br>
-                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
-                                    </h2>
-                                </div>
-                                <div class="face back" style="display: flex">
-                                    <h2 style="margin: auto auto;">
-                                        {{vm.currentCard.question}} <br>
-                                        <small style="color: white">{{vm.currentCard.pronounce}}</small>
-                                    </h2>
-
-                                </div>
-                            </div>
-                        </div>
-
-                        <!--
-                            DAILY VOCAB:
-                            Chỉ tạo 4 đáp án sau khi bấm đồng hồ 900.
-                            Khi timer về 0, ng-if xóa toàn bộ khu vực đáp án khỏi DOM.
-                        -->
-                        <div ng-if="vm.dailyVocabAnswersEnabled === true
-                                    && vm.dailyVocabRunning === true
-                                    && vm.dailyVocabCounter > 0">
-                            <div class="col-md-6 margin-top-10 margin-bottom-5"
-                                 ng-repeat="item in vm.currentCard.questions"
-                                 ng-show="vm.showMotherTongue === true">
-                                <button id="answer-quiz-1-{{$index}}"
-                                        style="width:100%;height:auto!important;min-height:50px!important;font-size:16px!important;"
-                                        ng-style="
-                                            $index == 0 && {'background':'#641E1E'}
-                                            || $index == 1 && {'background':'#2a623d'}
-                                            || $index == 2 && {'background':'#ecb939','color':'black'}
-                                            || $index == 3 && {'background':'#0e1a40'}
-                                            || {'background':'#5b4739'}"
-                                        class="btn btn-brown"
-                                        ng-disabled="vm.dailyVocabAnswersEnabled !== true
-                                                     || vm.dailyVocabRunning !== true
-                                                     || vm.dailyVocabCounter <= 0"
-                                        ng-click="vm.answerDailyVocab(item.correct,item,vm.currentCard.questions,1)">
-                                    {{item.motherTongue}}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <img ng-if="vm.showStart" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkStart2}}">
-                        <img ng-if="vm.showWrong" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkImageWrong}}">
-                        <img ng-if="vm.showCorrect" class="show-image-answer-normal" style="width:100%;padding: 5px;" src="{{vm.linkImageCorrect}}">
-                    </div>
-
-                    <div class="col-md-12" ng-bind-html="vm.tempWrong">
-
-                    </div>
-
-                </div>
+                <!-- DAILY VOCAB đã được tách sang:
+     question/views/daily_vocab.html
+     question/controllers/DailyVocabController.js -->
 
                 <div ng-if="vm.mode.id == 6" class="row bold text-center">
                     <div class="col-md-12 margin-top-10">
@@ -1944,26 +1835,10 @@
                             <div class="form-group mb-2">
                                 <label class="bold" for="setTimer">SET TIMER: &ensp;</label>
 
-                                <!--
-                                    DAILY VOCAB dùng timer riêng.
-                                    Thay số tại đây sẽ cập nhật ngay đồng hồ DAILY VOCAB phía trên,
-                                    không thay đổi vm.tempCounter / $scope.counter của mode khác.
-                                -->
-                                <input
-                                    ng-if="vm.mode.id == 5"
-                                    id="setTimer"
-                                    type="number"
-                                    min="1"
-                                    max="9999"
-                                    onkeydown="javascript: return event.keyCode == 69 ? false : true"
-                                    ng-change="vm.dailyVocabTimerSettingChange()"
-                                    placeholder="Set timer..."
-                                    class="form-control input-underline-only"
-                                    ng-model="vm.dailyVocabDuration"/>
+                                
 
-                                <!-- Các mode khác giữ nguyên SET TIMER cũ. -->
+                                <!-- SET TIMER của các game còn lại trong ViewController. -->
                                 <input
-                                    ng-if="vm.mode.id != 5"
                                     id="setTimer"
                                     onkeydown="javascript: return event.keyCode == 69 ? false : true"
                                     ng-change="vm.counterChange()"

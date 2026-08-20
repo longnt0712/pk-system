@@ -6,6 +6,132 @@
 <!--<![endif]-->
     <head>
 
+        <!-- =====================================================
+             GLOBAL DARK MODE V9 - ROBUST GLOBAL RUNTIME
+             - Runs before first paint
+             - Persists across routes/reload/login
+             - Safe if loaded more than once
+             ===================================================== -->
+        <script>
+            (function (window, document) {
+                'use strict';
+
+                var STORAGE_KEY = 'ieltsroom.globalDarkMode';
+
+                function readStoredTheme() {
+                    try {
+                        return window.localStorage.getItem(STORAGE_KEY) === 'true';
+                    } catch (e) {
+                        return false;
+                    }
+                }
+
+                function applyTheme(enabled) {
+                    enabled = enabled === true;
+
+                    var root = document.documentElement;
+
+                    if (root) {
+                        if (enabled) {
+                            root.classList.add('global-dark-mode');
+                        } else {
+                            root.classList.remove('global-dark-mode');
+                        }
+                    }
+
+                    if (document.body) {
+                        if (enabled) {
+                            document.body.classList.add('global-dark-mode');
+                        } else {
+                            document.body.classList.remove('global-dark-mode');
+                        }
+                    }
+
+                    return enabled;
+                }
+
+                function saveTheme(enabled) {
+                    try {
+                        window.localStorage.setItem(
+                            STORAGE_KEY,
+                            enabled ? 'true' : 'false'
+                        );
+                    } catch (e) {
+                        /* localStorage blocked - theme still works this session */
+                    }
+                }
+
+                /*
+                 * One global object instead of several loose functions.
+                 * Header can always call this object when available.
+                 */
+                window.IeltsRoomTheme = window.IeltsRoomTheme || {};
+
+                window.IeltsRoomTheme.get = function () {
+                    return readStoredTheme();
+                };
+
+                window.IeltsRoomTheme.apply = function (enabled) {
+                    return applyTheme(enabled);
+                };
+
+                window.IeltsRoomTheme.set = function (enabled) {
+                    enabled = enabled === true;
+
+                    saveTheme(enabled);
+                    applyTheme(enabled);
+
+                    return enabled;
+                };
+
+                window.IeltsRoomTheme.toggle = function () {
+                    var enabled =
+                        !document.documentElement.classList.contains(
+                            'global-dark-mode'
+                        );
+
+                    return window.IeltsRoomTheme.set(enabled);
+                };
+
+                /*
+                 * Backward-compatible aliases.
+                 * Old header versions can still call these functions.
+                 */
+                window.getGlobalDarkMode = function () {
+                    return window.IeltsRoomTheme.get();
+                };
+
+                window.setGlobalDarkMode = function (enabled) {
+                    return window.IeltsRoomTheme.set(enabled);
+                };
+
+                window.toggleGlobalDarkMode = function () {
+                    return window.IeltsRoomTheme.toggle();
+                };
+
+                /* Apply immediately to prevent a white flash. */
+                applyTheme(readStoredTheme());
+
+                document.addEventListener(
+                    'DOMContentLoaded',
+                    function () {
+                        applyTheme(readStoredTheme());
+                    }
+                );
+
+                window.addEventListener(
+                    'storage',
+                    function (event) {
+                        if (event.key === STORAGE_KEY) {
+                            applyTheme(event.newValue === 'true');
+                        }
+                    }
+                );
+
+            })(window, document);
+        </script>
+
+
         <title ng-if="settings.ieltsRoom == true" data-ng-bind="'IELTS ROOM | ' + $state.current.data.pageTitle"></title>
         <title ng-if="settings.chapter == true" data-ng-bind="'TNTT PK | ' + $state.current.data.pageTitle"></title>
 
@@ -85,6 +211,510 @@
         <link href="assets/css/layout-hoz.min.css" rel="stylesheet" type="text/css" />
         <link href="assets/css/default.min.css" rel="stylesheet" type="text/css" />
         <link href="assets/css/custom.css" rel="stylesheet" type="text/css" />
+
+        <style>
+            /* =====================================================
+               GLOBAL DARK MODE THEME
+               Class is placed on <html> by index.html.
+               ===================================================== */
+
+            html.global-dark-mode {
+                color-scheme: dark;
+                background: #0b1020 !important;
+            }
+
+            html.global-dark-mode body {
+                color: #e8edf8 !important;
+                background:
+                    radial-gradient(circle at 7% 3%, rgba(91,124,250,.10), transparent 23%),
+                    radial-gradient(circle at 94% 8%, rgba(139,92,246,.09), transparent 26%),
+                    #0b1020 !important;
+            }
+
+            /* ---------- APP SHELL ---------- */
+
+            html.global-dark-mode .page-wrapper,
+            html.global-dark-mode .page-wrapper .page-wrapper-middle,
+            html.global-dark-mode .page-container,
+            html.global-dark-mode .page-content-wrapper,
+            html.global-dark-mode .page-content,
+            html.global-dark-mode .page-wrapper-bottom,
+            html.global-dark-mode .container-content {
+                background:
+                    radial-gradient(circle at 7% 3%, rgba(91,124,250,.08), transparent 23%),
+                    radial-gradient(circle at 94% 8%, rgba(139,92,246,.07), transparent 26%),
+                    #0b1020 !important;
+            }
+
+            html.global-dark-mode hr {
+                border-color: #28334a !important;
+            }
+
+            /* ---------- NORMAL TEXT ---------- */
+
+            html.global-dark-mode .portlet-title,
+            html.global-dark-mode .portlet-title .caption,
+            html.global-dark-mode .panel-title,
+            html.global-dark-mode .control-label,
+            html.global-dark-mode label,
+            html.global-dark-mode .help-block {
+                color: #dce3f1 !important;
+            }
+
+            html.global-dark-mode .text-muted,
+            html.global-dark-mode .help-block,
+            html.global-dark-mode small {
+                color: #9da9bd !important;
+            }
+
+            /* ---------- HEADER / NAV ---------- */
+
+            html.global-dark-mode .navbar,
+            html.global-dark-mode .navbar-default,
+            html.global-dark-mode .learning-login-nav,
+            html.global-dark-mode .learning-public-nav {
+                border-color: #26324a !important;
+                background:
+                    linear-gradient(
+                        180deg,
+                        rgba(17,24,39,.99),
+                        rgba(13,20,34,.99)
+                    ) !important;
+                box-shadow: 0 10px 28px rgba(0,0,0,.26) !important;
+            }
+
+            html.global-dark-mode .learning-login-nav .learning-nav-brand,
+            html.global-dark-mode .learning-login-nav #church-title,
+            html.global-dark-mode .learning-public-nav .learning-public-brand,
+            html.global-dark-mode .learning-public-nav #church-title {
+                color: #f3f6ff !important;
+            }
+
+            html.global-dark-mode .learning-login-nav .navbar-nav > li > a,
+            html.global-dark-mode .learning-public-nav .navbar-nav > li > a,
+            html.global-dark-mode .navbar-default .navbar-nav > li > a {
+                color: #c7d0e1 !important;
+                background: transparent !important;
+            }
+
+            html.global-dark-mode .learning-login-nav .navbar-nav > li > a:hover,
+            html.global-dark-mode .learning-login-nav .navbar-nav > li > a:focus,
+            html.global-dark-mode .learning-login-nav .navbar-nav > .open > a,
+            html.global-dark-mode .learning-login-nav .navbar-nav > .open > a:hover,
+            html.global-dark-mode .learning-login-nav .navbar-nav > .open > a:focus,
+            html.global-dark-mode .learning-public-nav .navbar-nav > li > a:hover,
+            html.global-dark-mode .learning-public-nav .navbar-nav > li > a:focus {
+                color: #ffffff !important;
+                background:
+                    linear-gradient(
+                        135deg,
+                        #263553,
+                        #30294c
+                    ) !important;
+            }
+
+            html.global-dark-mode .learning-login-nav .caret,
+            html.global-dark-mode .learning-public-nav .caret {
+                color: #9aa6bd !important;
+            }
+
+            /* ---------- DROPDOWNS ---------- */
+
+            html.global-dark-mode .dropdown-menu,
+            html.global-dark-mode .learning-login-nav .dropdown-menu,
+            html.global-dark-mode .learning-public-nav .dropdown-menu,
+            html.global-dark-mode .btn-group > .dropdown-menu {
+                border-color: #303c54 !important;
+                background: #151e30 !important;
+                box-shadow: 0 18px 40px rgba(0,0,0,.38) !important;
+            }
+
+            html.global-dark-mode .dropdown-menu > li > a,
+            html.global-dark-mode .learning-login-nav .dropdown-menu > li > a,
+            html.global-dark-mode .learning-public-nav .dropdown-menu > li > a {
+                color: #d7deeb !important;
+                background: transparent !important;
+            }
+
+            html.global-dark-mode .dropdown-menu > li > a:hover,
+            html.global-dark-mode .dropdown-menu > li > a:focus,
+            html.global-dark-mode .dropdown-menu > li.active > a,
+            html.global-dark-mode .learning-login-nav .dropdown-menu > li > a:hover,
+            html.global-dark-mode .learning-login-nav .dropdown-menu > li > a:focus {
+                color: #ffffff !important;
+                background: #25324d !important;
+            }
+
+            html.global-dark-mode .dropdown-menu .divider {
+                background: #2c3850 !important;
+            }
+
+            /* ---------- PORTLET / PANEL / WELL / MODAL ---------- */
+
+            html.global-dark-mode .portlet,
+            html.global-dark-mode .portlet.light,
+            html.global-dark-mode .panel,
+            html.global-dark-mode .well,
+            html.global-dark-mode .modal-content {
+                color: #e3e8f3 !important;
+                border-color: #29364d !important;
+                background: #141d2e !important;
+                box-shadow: 0 12px 30px rgba(0,0,0,.24) !important;
+            }
+
+            html.global-dark-mode .portlet.light > .portlet-title,
+            html.global-dark-mode .panel-heading,
+            html.global-dark-mode .modal-header,
+            html.global-dark-mode .modal-footer {
+                color: #e8edf8 !important;
+                border-color: #2a3750 !important;
+                background: #182337 !important;
+            }
+
+            html.global-dark-mode .modal-title {
+                color: #f4f7ff !important;
+            }
+
+            /* ---------- FORMS ---------- */
+
+            html.global-dark-mode .form-control,
+            html.global-dark-mode input.form-control,
+            html.global-dark-mode textarea.form-control,
+            html.global-dark-mode select.form-control,
+            html.global-dark-mode .btn-default.ui-select-toggle,
+            html.global-dark-mode .ui-select-bootstrap > .ui-select-match > .btn,
+            html.global-dark-mode .ui-select-bootstrap .ui-select-search,
+            html.global-dark-mode .ui-select-multiple.ui-select-bootstrap {
+                color: #eef2fb !important;
+                border-color: #36445d !important;
+                background: #111a2a !important;
+                box-shadow: none !important;
+            }
+
+            html.global-dark-mode .form-control::placeholder,
+            html.global-dark-mode input::placeholder,
+            html.global-dark-mode textarea::placeholder {
+                color: #7e8aa1 !important;
+                opacity: 1;
+            }
+
+            html.global-dark-mode .form-control:focus,
+            html.global-dark-mode .ui-select-container.open > .ui-select-match > .btn {
+                border-color: #7187ff !important;
+                box-shadow: 0 0 0 3px rgba(91,124,250,.14) !important;
+            }
+
+            html.global-dark-mode .ui-select-match-item {
+                color: #cbd3ff !important;
+                border-color: #3b4666 !important;
+                background: #2a3658 !important;
+            }
+
+            html.global-dark-mode .ui-select-choices,
+            html.global-dark-mode .ui-select-choices-content,
+            html.global-dark-mode .ui-select-container .dropdown-menu {
+                color: #e7ebf5 !important;
+                border-color: #344158 !important;
+                background: #151f31 !important;
+            }
+
+            html.global-dark-mode .ui-select-choices-row > span,
+            html.global-dark-mode .ui-select-choices-row-inner {
+                color: #e7ebf5 !important;
+                background: #151f31 !important;
+            }
+
+            html.global-dark-mode .ui-select-choices-row.active > span,
+            html.global-dark-mode .ui-select-choices-row:hover > span,
+            html.global-dark-mode .ui-select-choices-row-inner:hover {
+                color: #ffffff !important;
+                background: #293755 !important;
+            }
+
+            /* ---------- TABLES ---------- */
+
+            html.global-dark-mode .table,
+            html.global-dark-mode table,
+            html.global-dark-mode .fixed-table-container,
+            html.global-dark-mode .bootstrap-table {
+                color: #dbe2ee !important;
+                background: #111a29 !important;
+            }
+
+            html.global-dark-mode .table > thead > tr > th,
+            html.global-dark-mode .table thead tr th,
+            html.global-dark-mode .table thead tr th a {
+                color: #e6ebf6 !important;
+                border-color: #334057 !important;
+                background: #1d2940 !important;
+            }
+
+            html.global-dark-mode .table > tbody > tr > td,
+            html.global-dark-mode .table > tbody > tr > th {
+                color: #d9e0ec !important;
+                border-color: #28344a !important;
+                background: #121b2b !important;
+            }
+
+            html.global-dark-mode .table-striped > tbody > tr:nth-of-type(odd) > td,
+            html.global-dark-mode .table-striped > tbody > tr:nth-of-type(odd) > th {
+                background: #162135 !important;
+            }
+
+            html.global-dark-mode .table-hover > tbody > tr:hover > td,
+            html.global-dark-mode .table-hover > tbody > tr:hover > th {
+                color: #ffffff !important;
+                background: #22304a !important;
+            }
+
+            /* ---------- DEFAULT BUTTONS ---------- */
+
+            html.global-dark-mode .btn-default {
+                color: #d6deec !important;
+                border-color: #3a475d !important;
+                background: #1c2739 !important;
+            }
+
+            html.global-dark-mode .btn-default:hover,
+            html.global-dark-mode .btn-default:focus {
+                color: #ffffff !important;
+                border-color: #50607d !important;
+                background: #26344d !important;
+            }
+
+            /* ---------- ALERTS ---------- */
+
+            html.global-dark-mode .alert-info {
+                color: #b8c9ff !important;
+                border-color: #304b78 !important;
+                background: #162944 !important;
+            }
+
+            html.global-dark-mode .alert-success {
+                color: #a5e2cf !important;
+                border-color: #285748 !important;
+                background: #17362e !important;
+            }
+
+            html.global-dark-mode .alert-warning {
+                color: #f5d67a !important;
+                border-color: #685a2f !important;
+                background: #3a321c !important;
+            }
+
+            html.global-dark-mode .alert-danger {
+                color: #ffb3c0 !important;
+                border-color: #693442 !important;
+                background: #3c2029 !important;
+            }
+
+            /* ---------- PAGINATION / TABS ---------- */
+
+            html.global-dark-mode .pagination > li > a,
+            html.global-dark-mode .pagination > li > span {
+                color: #cbd4e4 !important;
+                border-color: #344157 !important;
+                background: #182235 !important;
+            }
+
+            html.global-dark-mode .nav-tabs {
+                border-color: #2f3c53 !important;
+            }
+
+            html.global-dark-mode .nav-tabs > li > a {
+                color: #abb6c9 !important;
+            }
+
+            html.global-dark-mode .nav-tabs > li.active > a,
+            html.global-dark-mode .nav-tabs > li.active > a:hover,
+            html.global-dark-mode .nav-tabs > li.active > a:focus {
+                color: #ffffff !important;
+                border-color: #3b4961 #3b4961 #182235 !important;
+                background: #182235 !important;
+            }
+
+            /* =================================================
+               LEARNING HUB
+               Keep colorful activity tiles; darken the shell only.
+               ================================================= */
+
+            html.global-dark-mode .learning-hub-page {
+                color: #edf2fb !important;
+                background:
+                    radial-gradient(circle at 4% 2%, rgba(255,216,77,.06), transparent 23%),
+                    radial-gradient(circle at 96% 7%, rgba(139,92,246,.10), transparent 25%),
+                    #0b1020 !important;
+            }
+
+            html.global-dark-mode .learning-hub-loading {
+                color: #aab4c7 !important;
+            }
+
+            /* =================================================
+               DAILY VOCAB
+               Global dark mode works even if page-local toggle is off.
+               ================================================= */
+
+            html.global-dark-mode .daily-vocab-page {
+                --daily-ink: #f4f7ff !important;
+                --daily-muted: #a8b2c8 !important;
+                --daily-bg: #0b1020 !important;
+                --daily-card: #151f31 !important;
+                --daily-border: #29364d !important;
+
+                color: #f4f7ff !important;
+                background: #0b1020 !important;
+            }
+
+            html.global-dark-mode .daily-vocab-page .daily-panel,
+            html.global-dark-mode .daily-vocab-page .daily-game-shell,
+            html.global-dark-mode .daily-vocab-page .daily-setting-card {
+                color: #eef2fb !important;
+                border-color: #2d394f !important;
+                background: #151f31 !important;
+            }
+
+            html.global-dark-mode .daily-vocab-page .daily-section-heading h2,
+            html.global-dark-mode .daily-vocab-page .daily-setting-copy label,
+            html.global-dark-mode .daily-vocab-page .daily-setting-copy span {
+                color: #f4f7ff !important;
+            }
+
+            html.global-dark-mode .daily-vocab-page .daily-section-heading p,
+            html.global-dark-mode .daily-vocab-page .daily-setting-copy small,
+            html.global-dark-mode .daily-vocab-page .daily-field-label {
+                color: #a6b0c4 !important;
+            }
+
+            html.global-dark-mode .daily-vocab-page .daily-question-card {
+                color: #f6f8ff !important;
+                border-color: #334057 !important;
+                background:
+                    linear-gradient(
+                        180deg,
+                        #192438,
+                        #131d2f
+                    ) !important;
+            }
+
+            html.global-dark-mode .daily-vocab-page .daily-question-text {
+                color: #ffffff !important;
+            }
+
+            html.global-dark-mode .daily-vocab-page .daily-pronounce {
+                color: #aab5c9 !important;
+            }
+
+            html.global-dark-mode .daily-vocab-page .daily-start-hint {
+                color: #bac4d5 !important;
+                border-color: #35425a !important;
+                background: #172235 !important;
+            }
+
+            /* =================================================
+               STUDENT NOTEBOOK FOOTER
+               ================================================= */
+
+            html.global-dark-mode .student-footer-board {
+                background:
+                    radial-gradient(circle at 8% 15%, rgba(255,216,77,.07), transparent 24%),
+                    radial-gradient(circle at 92% 14%, rgba(139,92,246,.11), transparent 25%),
+                    #11192a !important;
+                box-shadow: 0 12px 30px rgba(0,0,0,.24) !important;
+            }
+
+            html.global-dark-mode .student-notebook {
+                color: #e8edf7 !important;
+                border-color: #2b3850 !important;
+                background:
+                    repeating-linear-gradient(
+                        to bottom,
+                        transparent 0,
+                        transparent 27px,
+                        rgba(112,132,190,.08) 28px
+                    ),
+                    #151f31 !important;
+            }
+
+            html.global-dark-mode .student-footer-brand-copy strong {
+                color: #f1f4fb !important;
+            }
+
+            html.global-dark-mode .student-footer-brand-copy small,
+            html.global-dark-mode .student-footer-meta {
+                color: #a6b0c3 !important;
+            }
+
+            html.global-dark-mode .student-footer-note {
+                color: #f4e2a0 !important;
+                background:
+                    linear-gradient(
+                        135deg,
+                        #3b341e,
+                        #302b1b
+                    ) !important;
+                box-shadow: 0 7px 16px rgba(0,0,0,.18) !important;
+            }
+
+            html.global-dark-mode .student-footer-note-copy strong {
+                color: #ffe999 !important;
+            }
+
+            html.global-dark-mode .student-footer-note-copy small,
+            html.global-dark-mode .student-note-title {
+                color: #d7bd68 !important;
+            }
+
+            html.global-dark-mode .student-footer-facebook {
+                color: #c9d8ff !important;
+                border-color: #304363 !important;
+                background:
+                    linear-gradient(
+                        135deg,
+                        #182842,
+                        #172135
+                    ) !important;
+            }
+
+            html.global-dark-mode .student-footer-facebook-copy strong {
+                color: #d7e2ff !important;
+            }
+
+            /* ---------- SCROLLBAR ---------- */
+
+            html.global-dark-mode * {
+                scrollbar-color: #46546f #101827;
+            }
+
+            html.global-dark-mode *::-webkit-scrollbar-track {
+                background: #101827;
+            }
+
+            html.global-dark-mode *::-webkit-scrollbar-thumb {
+                border-color: #101827;
+                background: #46546f;
+            }
+
+            /* Smooth theme change after first load. */
+            body,
+            .navbar,
+            .dropdown-menu,
+            .portlet,
+            .panel,
+            .modal-content,
+            .form-control,
+            .page-content,
+            .daily-vocab-page,
+            .learning-hub-page {
+                transition:
+                    background-color .20s ease,
+                    background .20s ease,
+                    color .20s ease,
+                    border-color .20s ease,
+                    box-shadow .20s ease;
+            }
+        </style>
+
         <!--endbuild-->
 
         <link ng-if="settings.ieltsRoom == true" rel="shortcut icon" content="" href="assets/images/troop.jpg" />
@@ -98,20 +728,235 @@
         <script src="assets/scripts/ui-select-ielt9.js" type="text/javascript"></script>
 
         <![endif]-->
-    </head>
+    
+        <style>
+            /* =====================================================
+               DARK MODE - HEADER BACKGROUND STRIP FIX V4
+               CHỈ đổi dải nền trắng/xám phía sau navbar.
+               KHÔNG đổi button / card / navbar item.
+               ===================================================== */
+
+            html.global-dark-mode body,
+            html.global-dark-mode .page-wrapper,
+            html.global-dark-mode .page-header,
+            html.global-dark-mode .page-header-top,
+            html.global-dark-mode .page-header-menu,
+            html.global-dark-mode .page-header .container,
+            html.global-dark-mode .page-header .container-fluid,
+            html.global-dark-mode .page-header-top .container,
+            html.global-dark-mode .page-header-menu .container,
+            html.global-dark-mode .page-header-menu .container-fluid,
+            html.global-dark-mode .page-wrapper > .page-header,
+            html.global-dark-mode .page-wrapper > header,
+            html.global-dark-mode header {
+                background: #0b1020 !important;
+                background-color: #0b1020 !important;
+            }
+
+            /*
+             * Một số template Metronic để khoảng trống của header
+             * ở pseudo-element / wrapper ngoài navbar.
+             */
+            html.global-dark-mode .page-header:before,
+            html.global-dark-mode .page-header:after,
+            html.global-dark-mode .page-header-top:before,
+            html.global-dark-mode .page-header-top:after,
+            html.global-dark-mode .page-header-menu:before,
+            html.global-dark-mode .page-header-menu:after {
+                background: #0b1020 !important;
+                background-color: #0b1020 !important;
+            }
+
+            /*
+             * Nếu navbar có margin trên/dưới, phần margin sẽ lộ màu
+             * của wrapper này thay vì màu trắng/xám.
+             */
+            html.global-dark-mode #navscroll {
+                outline-color: transparent !important;
+            }
+
+            /*
+             * Không sửa màu nền bên trong navbar.
+             * Navbar tiếp tục dùng CSS hiện tại của bạn.
+             */
+        </style>
+
+
+        <style>
+            /* =====================================================
+               DARK MODE - FOOTER TOP LINE FIX V5
+               Chỉ đổi đường kẻ sáng phía trên footer sang dark.
+               ===================================================== */
+
+            html.global-dark-mode .page-footer,
+            html.global-dark-mode .student-desk-footer,
+            html.global-dark-mode footer.page-footer {
+                border-top-color: #243149 !important;
+            }
+
+            /*
+             * Nếu global CSS đang khai báo border-top trực tiếp,
+             * ép lại đúng 1px màu dark để không còn vệt trắng.
+             */
+            html.global-dark-mode .page-footer {
+                border-top: 1px solid #243149 !important;
+            }
+
+            /*
+             * Các divider/hr ngay sát footer cũng không được trắng.
+             */
+            html.global-dark-mode .page-footer + hr,
+            html.global-dark-mode hr.footer-divider,
+            html.global-dark-mode .page-wrapper-bottom {
+                border-color: #243149 !important;
+            }
+        </style>
+
+
+<style>
+    /* =====================================================
+       DARK MODE - DAILY VOCAB SELECT SYNC V8
+       Chỉ làm tối các ô select/input đang còn trắng.
+       ===================================================== */
+
+    html.global-dark-mode
+    .daily-vocab-page .daily-single-select.ui-select-bootstrap
+    > .ui-select-match
+    > .btn.ui-select-toggle,
+    html.global-dark-mode
+    .daily-vocab-page .daily-single-select.ui-select-bootstrap
+    > .ui-select-match
+    > .btn-default.ui-select-toggle,
+    html.global-dark-mode
+    .daily-vocab-page .daily-topic-select.ui-select-multiple.ui-select-bootstrap,
+    html.global-dark-mode
+    .daily-vocab-page .ui-select-multiple.ui-select-bootstrap,
+    html.global-dark-mode
+    .daily-vocab-page .daily-timer-input {
+        color: #edf2fb !important;
+
+        border-color: #344158 !important;
+
+        background:
+            linear-gradient(
+                180deg,
+                #182235,
+                #141e2f
+            ) !important;
+
+        box-shadow: none !important;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-single-select.ui-select-bootstrap
+    .ui-select-match-text {
+        color: #edf2fb !important;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-single-select.ui-select-bootstrap
+    .ui-select-placeholder {
+        color: #8f9bb1 !important;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-single-select.ui-select-bootstrap
+    .ui-select-toggle > .caret {
+        color: #9da9bf !important;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-topic-select.ui-select-multiple.ui-select-bootstrap
+    .ui-select-match-item {
+        color: #d3d9ff !important;
+        background: #2c385b !important;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-topic-select.ui-select-multiple.ui-select-bootstrap
+    input.ui-select-search,
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-single-select.ui-select-bootstrap
+    input.ui-select-search,
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-single-select.ui-select-bootstrap
+    .ui-select-search {
+        color: #eef2fb !important;
+
+        border-color: #46567a !important;
+
+        background: #151f31 !important;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-topic-select.ui-select-multiple.ui-select-bootstrap
+    .ui-select-choices,
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-single-select.ui-select-bootstrap
+    .ui-select-choices,
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-topic-select.ui-select-multiple.ui-select-bootstrap
+    .dropdown-menu,
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-single-select.ui-select-bootstrap
+    .dropdown-menu {
+        border-color: #344158 !important;
+        background: #151f31 !important;
+        box-shadow: 0 16px 34px rgba(0,0,0,.34) !important;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-topic-select .ui-select-choices-row > span,
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-single-select .ui-select-choices-row > span {
+        color: #dbe2ef !important;
+        background: #151f31 !important;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-topic-select .ui-select-choices-row.active > span,
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-topic-select .ui-select-choices-row:hover > span,
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-single-select .ui-select-choices-row.active > span,
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-single-select .ui-select-choices-row:hover > span {
+        color: #ffffff !important;
+        background: #293755 !important;
+    }
+</style>
+
+</head>
     <body ng-controller="AppController"  class="page-container-bg-solid">
 
 
         <!--<svg ng-spinner-bar width="300px" height="200px" viewBox="0 0 187.3 93.7" preserveAspectRatio="xMidYMid meet" style="left: 50%; top: 50%; position: absolute; transform: translate(-50%, -50%) matrix(1, 0, 0, 1, 0, 0);">-->
-            <!--<path stroke="#dc143c" id="outline" fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="M93.9,46.4c9.3,9.5,13.8,17.9,23.5,17.9s17.5-7.8,17.5-17.5s-7.8-17.6-17.5-17.5c-9.7,0.1-13.3,7.2-22.1,17.1 				c-8.9,8.8-15.7,17.9-25.4,17.9s-17.5-7.8-17.5-17.5s7.8-17.5,17.5-17.5S86.2,38.6,93.9,46.4z" />-->
-            <!--<path id="outline-bg" opacity="0.1" fill="none" stroke="#ccc" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="				M93.9,46.4c9.3,9.5,13.8,17.9,23.5,17.9s17.5-7.8,17.5-17.5s-7.8-17.6-17.5-17.5c-9.7,0.1-13.3,7.2-22.1,17.1 				c-8.9,8.8-15.7,17.9-25.4,17.9s-17.5-7.8-17.5-17.5s7.8-17.5,17.5-17.5S86.2,38.6,93.9,46.4z" />-->
+            <!--<path stroke="#dc143c" id="outline" fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="M93.9,46.4c9.3,9.5,13.8,17.9,23.5,17.9s17.5-7.8,17.5-17.5s-7.8-17.6-17.5-17.5c-9.7,0.1-13.3,7.2-22.1,17.1             c-8.9,8.8-15.7,17.9-25.4,17.9s-17.5-7.8-17.5-17.5s7.8-17.5,17.5-17.5S86.2,38.6,93.9,46.4z" />-->
+            <!--<path id="outline-bg" opacity="0.1" fill="none" stroke="#ccc" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="            M93.9,46.4c9.3,9.5,13.8,17.9,23.5,17.9s17.5-7.8,17.5-17.5s-7.8-17.6-17.5-17.5c-9.7,0.1-13.3,7.2-22.1,17.1           c-8.9,8.8-15.7,17.9-25.4,17.9s-17.5-7.8-17.5-17.5s7.8-17.5,17.5-17.5S86.2,38.6,93.9,46.4z" />-->
         <!--</svg>-->
 
         <ui-view></ui-view>
 
         <script>
-//            window.APP_VERSION = '<?php echo time(); ?>';
-            window.APP_VERSION = '20260819-04';
+//            window.APP_VERSION = '20260819-06';
+            window.APP_VERSION = '20260819-05';
         </script>
 
         <!--<script async defer crossorigin="anonymous" src="https://connect.facebook.net/vi_VN/sdk.js#xfbml=1&version=v13.0&appId=1832244337163521&autoLogAppEvents=1" nonce="HLSuRQaX"></script>-->
@@ -206,8 +1051,8 @@
         <script src="users/user.module.js" type="text/javascript"></script>
 
         <script src="account/account.module.js" type="text/javascript"></script>
-		<script src="calendar/calendar.module.js" type="text/javascript"></script>
-		<script src="users/business/UserService.js" type="text/javascript"></script>
+      <script src="calendar/calendar.module.js" type="text/javascript"></script>
+      <script src="users/business/UserService.js" type="text/javascript"></script>
         <script src="users/business/UserService.js" type="text/javascript"></script>
 
         <script src="answer/answer.module.js" type="text/javascript"></script>
