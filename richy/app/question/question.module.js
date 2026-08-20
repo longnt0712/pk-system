@@ -293,6 +293,26 @@
                 }
             })
 
+
+            .state('application.quiz_battle_2', {
+                url: '/quiz-battle-2/:listFlashCard',
+                templateUrl: 'question/views/quiz_battle_2.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'QUIZ BATTLE 2'},
+                controller: 'QuizBattle2Controller as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({
+                            name: 'Hrm.Question',
+                            insertBefore: '#ng_load_plugins_before',
+                            files: [
+                                'question/controllers/QuizBattle2Controller.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
+                            ]
+                        });
+                    }]
+                }
+            })
+
             .state('application.view', {
                 url: '/view/:listFlashCard',
                 templateUrl: 'question/views/view.html',

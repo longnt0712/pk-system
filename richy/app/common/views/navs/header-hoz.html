@@ -59,6 +59,32 @@
                     </ul>
                 </li>
 
+                <!-- BATTLE MODES -->
+                <li class="dropdown battle-modes-nav"
+                    ng-if="settings.isViewer || settings.isAdmin">
+
+                    <a href=""
+                       class="dropdown-toggle"
+                       data-toggle="dropdown"
+                       role="button"
+                       aria-haspopup="true"
+                       aria-expanded="false">
+                        BATTLE MODES
+                        <span class="caret"></span>
+                    </a>
+
+                    <ul class="dropdown-menu battle-modes-dropdown">
+                        <li>
+                            <a ui-sref="application.quiz_battle_2({listFlashCard: 3})"
+                               href="quiz-battle-2/3">
+                                <i class="fa fa-bolt"></i>
+                                QUIZ BATTLE 2
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+
                 <li class="dropdown" ng-if="settings.isViewer || settings.isAdmin">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         TEST ROOM <span class="caret"></span>
@@ -1664,5 +1690,182 @@
     html:not(.global-dark-mode)
     .learning-login-nav .global-theme-switch-dot {
         transform: translateX(0);
+    }
+</style>
+
+<style>
+    /* =========================================================
+       BATTLE MODES NAV V1
+       VOCABULARY | BATTLE MODES | TEST ROOM
+       ========================================================= */
+
+    /* Top-level battle item */
+    .learning-login-nav
+    .battle-modes-nav > a {
+        position: relative;
+    }
+
+    .learning-login-nav
+    .battle-modes-nav > a:before {
+        content: "";
+
+        width: 7px;
+        height: 7px;
+
+        display: inline-block;
+
+        margin-right: 1px;
+
+        border-radius: 50%;
+
+        background:
+            linear-gradient(
+                135deg,
+                #705cf5,
+                #b15be3
+            );
+
+        box-shadow:
+            0 0 0 3px rgba(112,92,245,.10);
+    }
+
+    /* Dropdown slightly wider for the game title */
+    .learning-login-nav
+    .battle-modes-dropdown {
+        min-width: 230px !important;
+    }
+
+    /* Quiz Battle 2 item */
+    .learning-login-nav
+    .battle-modes-dropdown > li > a {
+        color: #5b4cc8 !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #f2efff,
+                #f9f1ff
+            ) !important;
+    }
+
+    .learning-login-nav
+    .battle-modes-dropdown > li > a > i {
+        color: #fff !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #6659f4,
+                #a457e5
+            ) !important;
+
+        box-shadow:
+            0 5px 12px rgba(105,85,220,.16);
+    }
+
+    .learning-login-nav
+    .battle-modes-dropdown > li > a:hover,
+    .learning-login-nav
+    .battle-modes-dropdown > li > a:focus {
+        color: #4939bd !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #eae6ff,
+                #f4e8ff
+            ) !important;
+    }
+
+    .learning-login-nav
+    .battle-modes-dropdown > li > a:hover > i,
+    .learning-login-nav
+    .battle-modes-dropdown > li > a:focus > i {
+        color: #fff !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #5d70ef,
+                #9159eb
+            ) !important;
+    }
+
+    /* DARK MODE */
+    html.global-dark-mode
+    .learning-login-nav
+    .battle-modes-dropdown > li > a {
+        color: #d4cbff !important;
+
+        border: 1px solid transparent !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #242a48,
+                #312443
+            ) !important;
+    }
+
+    html.global-dark-mode
+    .learning-login-nav
+    .battle-modes-dropdown > li > a:hover,
+    html.global-dark-mode
+    .learning-login-nav
+    .battle-modes-dropdown > li > a:focus {
+        color: #ffffff !important;
+
+        border-color: #465474 !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #2d3958,
+                #3a2d53
+            ) !important;
+    }
+
+    html.global-dark-mode
+    .learning-login-nav
+    .battle-modes-dropdown > li > a > i {
+        color: #ffffff !important;
+
+        border-color: transparent !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #6659f4,
+                #9d58e7
+            ) !important;
+    }
+
+    /* MOBILE */
+    @media (max-width: 767px) {
+        .learning-login-nav
+        .battle-modes-nav > a:before {
+            margin-right: 7px;
+        }
+
+        .learning-login-nav
+        .battle-modes-dropdown {
+            min-width: 100% !important;
+        }
+
+        .learning-login-nav
+        .battle-modes-dropdown > li > a {
+            min-height: 44px !important;
+        }
+
+        html.global-dark-mode
+        .learning-login-nav
+        .battle-modes-dropdown > li > a {
+            background:
+                linear-gradient(
+                    135deg,
+                    #202b43,
+                    #2d2541
+                ) !important;
+        }
     }
 </style>
