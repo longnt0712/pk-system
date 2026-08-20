@@ -1817,31 +1817,95 @@
 </style>
 
 <script>
+    /*
+     * SAFE EDGE-SWIPE GUARD
+     *
+     * Không can thiệp vào các vùng scroll riêng như:
+     * .product-scroll / .items-scroll / .table-scroll.
+     * Nhờ vậy touch-scroll không còn bị preventDefault giữa chừng.
+     */
     (function () {
-        let startX = 0;
-        let startY = 0;
+        var startX = 0;
+        var startY = 0;
+        var touchStartedInsideScroller = false;
 
-        document.addEventListener('touchstart', function (e) {
-            if (e.touches.length === 1) {
+        function closestScrollableElement(target) {
+            while (target && target !== document.body) {
+                if (target.classList &&
+                    (
+                        target.classList.contains('product-scroll') ||
+                        target.classList.contains('items-scroll') ||
+                        target.classList.contains('table-scroll')
+                    )) {
+                    return target;
+                }
+
+                target = target.parentNode;
+            }
+
+            return null;
+        }
+
+        document.addEventListener(
+            'touchstart',
+            function (e) {
+                if (!e.touches || e.touches.length !== 1) {
+                    return;
+                }
+
                 startX = e.touches[0].clientX;
                 startY = e.touches[0].clientY;
-            }
-        }, { passive: true });
 
-        document.addEventListener('touchmove', function (e) {
-            if (!startX) return;
+                touchStartedInsideScroller =
+                    !!closestScrollableElement(e.target);
+            },
+            { passive: true }
+        );
 
-            const currentX = e.touches[0].clientX;
-            const currentY = e.touches[0].clientY;
+        document.addEventListener(
+            'touchmove',
+            function (e) {
+                /*
+                 * Native browser scrolling phải được ưu tiên
+                 * nếu gesture bắt đầu bên trong vùng scroll.
+                 */
+                if (touchStartedInsideScroller) {
+                    return;
+                }
 
-            const diffX = currentX - startX;
-            const diffY = Math.abs(currentY - startY);
+                if (!startX || !e.touches || e.touches.length !== 1) {
+                    return;
+                }
 
-            /* Nếu vuốt từ mép trái màn hình + chủ yếu là ngang → CHẶN */
-            if (startX < 20 && diffX > 30 && diffY < 40) {
-                e.preventDefault();
-            }
-        }, { passive: false });
+                var currentX = e.touches[0].clientX;
+                var currentY = e.touches[0].clientY;
+
+                var diffX = currentX - startX;
+                var diffY = Math.abs(currentY - startY);
+
+                /*
+                 * Chỉ chặn back-swipe rõ ràng từ mép trái.
+                 */
+                if (
+                    startX < 16 &&
+                    diffX > 45 &&
+                    diffY < 28
+                ) {
+                    e.preventDefault();
+                }
+            },
+            { passive: false }
+        );
+
+        document.addEventListener(
+            'touchend',
+            function () {
+                startX = 0;
+                startY = 0;
+                touchStartedInsideScroller = false;
+            },
+            { passive: true }
+        );
     })();
 </script>
 
@@ -1945,5 +2009,826 @@
 
     .payment-method-option input {
         margin: 0;
+    }
+</style>
+
+<!-- =========================================================
+     PRODUCT LISTING - GLOBAL DARK MODE V1
+     Chỉ kích hoạt khi <html> có class .global-dark-mode.
+     Light mode giữ nguyên toàn bộ giao diện hiện tại.
+     ========================================================= -->
+<style>
+    /* =====================================================
+       PAGE / PORTLET
+       ===================================================== */
+
+    html.global-dark-mode .portlet.light.bordered,
+    html.global-dark-mode .portlet.light.bordered > .portlet-body {
+        color: #e7edf8 !important;
+        border-color: #2b3951 !important;
+        background: #111a2b !important;
+    }
+
+    html.global-dark-mode .portlet.light.bordered {
+        box-shadow: 0 10px 28px rgba(0, 0, 0, .20) !important;
+    }
+
+    /* =====================================================
+       CATEGORY IMAGE CARDS - HÀNG TRÊN
+       ===================================================== */
+
+    html.global-dark-mode .custom-card .panel {
+        border: 1px solid #314058 !important;
+        background: #172236 !important;
+        box-shadow: 0 7px 16px rgba(0, 0, 0, .23) !important;
+    }
+
+    html.global-dark-mode .custom-card .panel-image {
+        background:
+            linear-gradient(
+                145deg,
+                #1b263a,
+                #141e30
+            ) !important;
+    }
+
+    html.global-dark-mode .custom-card:hover .panel {
+        border-color: #4c5d7d !important;
+        box-shadow:
+            0 14px 28px rgba(0, 0, 0, .34),
+            0 0 0 1px rgba(109, 102, 255, .08) !important;
+    }
+
+    /*
+     * Ảnh sản phẩm là file ảnh thật nên giữ nguyên màu ảnh,
+     * chỉ làm tối khung xung quanh.
+     */
+    html.global-dark-mode .panel-image img {
+        background: transparent !important;
+    }
+
+    /* =====================================================
+       PRODUCT LIST
+       ===================================================== */
+
+    html.global-dark-mode .product-scroll,
+    html.global-dark-mode .product-grid {
+        color: #e8edf7 !important;
+        background: transparent !important;
+    }
+
+    html.global-dark-mode .p-card-inner {
+        color: #e8edf7 !important;
+
+        border: 2px dashed #3a4962 !important;
+
+        background:
+            linear-gradient(
+                180deg,
+                #182337 0%,
+                #141e30 100%
+            ) !important;
+
+        box-shadow:
+            0 9px 20px rgba(0, 0, 0, .24) !important;
+    }
+
+    html.global-dark-mode .p-card-inner:hover {
+        border-color: #586b90 !important;
+
+        box-shadow:
+            0 16px 30px rgba(0, 0, 0, .34),
+            0 0 0 1px rgba(111, 102, 241, .08) !important;
+    }
+
+    html.global-dark-mode .p-image {
+        border-bottom: 1px solid #2c3950 !important;
+
+        background:
+            linear-gradient(
+                145deg,
+                #202b3e,
+                #182235
+            ) !important;
+    }
+
+    html.global-dark-mode .p-body {
+        color: #e5ebf6 !important;
+    }
+
+    html.global-dark-mode .p-name {
+        color: #f4f7ff !important;
+    }
+
+    html.global-dark-mode .p-code {
+        color: #9eabc0 !important;
+        opacity: 1 !important;
+    }
+
+    html.global-dark-mode .p-price {
+        color: #7fa7ff !important;
+    }
+
+    html.global-dark-mode .p-note {
+        color: #aab6c9 !important;
+        border-top-color: #344158 !important;
+    }
+
+    /* Badge vẫn vui tươi nhưng không chói */
+    html.global-dark-mode .p-badge.type {
+        color: #f2d77d !important;
+
+        border-color: #5b5130 !important;
+
+        background: #3a321d !important;
+
+        box-shadow: 0 4px 10px rgba(0,0,0,.20) !important;
+    }
+
+    html.global-dark-mode .p-badge.stock {
+        color: #8ee2bd !important;
+
+        border-color: #315c4d !important;
+
+        background: #17372d !important;
+
+        box-shadow: 0 4px 10px rgba(0,0,0,.20) !important;
+    }
+
+    /*
+     * ng-style tồn kho = 0 đang set inline #ffa6a5.
+     * !important ở đây đảm bảo dark mode không bị mảng sáng.
+     */
+    html.global-dark-mode .p-badge.stock[style*="background-color"] {
+        color: #ffb4be !important;
+        border-color: #693643 !important;
+        background: #43242d !important;
+        background-color: #43242d !important;
+    }
+
+    html.global-dark-mode .p-action {
+        color: #f3d782 !important;
+
+        border-color: #76683d !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #39321f,
+                #2d291d
+            ) !important;
+    }
+
+    html.global-dark-mode .p-action:hover,
+    html.global-dark-mode .p-action:focus {
+        color: #ffe79e !important;
+        border-color: #a38a45 !important;
+        background: #453b20 !important;
+    }
+
+    /* =====================================================
+       RECEIPT - HÓA ĐƠN
+       ===================================================== */
+
+    html.global-dark-mode .receipt-wrap {
+        color: #e8edf7 !important;
+        background: transparent !important;
+    }
+
+    html.global-dark-mode .receipt {
+        color: #e8edf7 !important;
+
+        border-color: #55647f !important;
+
+        background:
+            radial-gradient(
+                circle at 90% 8%,
+                rgba(115, 92, 246, .07),
+                transparent 24%
+            ),
+            linear-gradient(
+                180deg,
+                #172235 0%,
+                #121c2d 100%
+            ) !important;
+
+        box-shadow:
+            0 13px 30px rgba(0, 0, 0, .30) !important;
+    }
+
+    /* Răng cưa hóa đơn */
+    html.global-dark-mode .receipt:before,
+    html.global-dark-mode .receipt:after {
+        background:
+            radial-gradient(
+                circle at 5px 0,
+                transparent 6px,
+                #172235 6px
+            ) repeat-x !important;
+
+        background-size: 10px 10px !important;
+    }
+
+    html.global-dark-mode .receipt-title {
+        color: #f5f7ff !important;
+    }
+
+    html.global-dark-mode .receipt-sub {
+        color: #9eabc0 !important;
+        opacity: 1 !important;
+    }
+
+    html.global-dark-mode .receipt-meta,
+    html.global-dark-mode .meta-row {
+        color: #d8dfec !important;
+    }
+
+    html.global-dark-mode .meta-row span {
+        color: #9da9bd !important;
+        opacity: 1 !important;
+    }
+
+    html.global-dark-mode .dash {
+        border-top-color: #526079 !important;
+        opacity: .85 !important;
+    }
+
+    html.global-dark-mode .items-head {
+        color: #b8c4d8 !important;
+        opacity: 1 !important;
+    }
+
+    html.global-dark-mode .item {
+        color: #e5ebf5 !important;
+        border-bottom-color: #344159 !important;
+    }
+
+    html.global-dark-mode .item-name {
+        color: #eef2fa !important;
+    }
+
+    html.global-dark-mode .item-code {
+        color: #94a1b7 !important;
+        opacity: 1 !important;
+    }
+
+    html.global-dark-mode .receipt-input {
+        color: #eef3fb !important;
+
+        border-bottom-color: #4a5871 !important;
+
+        background: #0f1828 !important;
+
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.025) !important;
+    }
+
+    html.global-dark-mode .receipt-input::placeholder {
+        color: #718099 !important;
+    }
+
+    html.global-dark-mode .receipt-input:focus {
+        color: #ffffff !important;
+
+        border-bottom-color: #7f91ff !important;
+
+        background: #152136 !important;
+
+        box-shadow: 0 0 0 3px rgba(91,124,250,.10) !important;
+    }
+
+    html.global-dark-mode .receipt-input:disabled {
+        color: #8693a9 !important;
+        background: #111a28 !important;
+        opacity: .75 !important;
+    }
+
+    html.global-dark-mode .total,
+    html.global-dark-mode .total-row,
+    html.global-dark-mode .total-row.grand {
+        color: #edf2fb !important;
+    }
+
+    html.global-dark-mode .receipt-foot {
+        color: #b7c1d2 !important;
+    }
+
+    html.global-dark-mode .tiny {
+        color: #8592a8 !important;
+        opacity: 1 !important;
+    }
+
+    /* Stamp OK / Cancel */
+    html.global-dark-mode .stamp {
+        color: #8ee2b4 !important;
+        border-color: #42745f !important;
+        background: #18362d !important;
+    }
+
+    html.global-dark-mode .stamp-cancel {
+        color: #e7bd8a !important;
+        border-color: #6e573a !important;
+        background: #3b2d1f !important;
+    }
+
+    /* =====================================================
+       STICKY NOTE
+       ===================================================== */
+
+    html.global-dark-mode .note-wrap {
+        color: #e9edf6 !important;
+
+        border-color: #655a36 !important;
+
+        background:
+            linear-gradient(
+                0deg,
+                rgba(48, 43, 28, .98),
+                rgba(48, 43, 28, .98)
+            ),
+            repeating-linear-gradient(
+                to bottom,
+                rgba(225, 201, 115, .10) 0,
+                rgba(225, 201, 115, .10) 1px,
+                transparent 1px,
+                transparent 32px
+            ) !important;
+
+        box-shadow:
+            0 18px 32px rgba(0,0,0,.27),
+            0 2px 0 rgba(255,255,255,.02) !important;
+    }
+
+    html.global-dark-mode .note-wrap:hover {
+        box-shadow:
+            0 26px 44px rgba(0,0,0,.34),
+            0 3px 0 rgba(255,255,255,.02) !important;
+    }
+
+    html.global-dark-mode .note-wrap:before {
+        border-color: #796a34 !important;
+        background: rgba(174, 144, 57, .76) !important;
+        box-shadow: 0 10px 18px rgba(0,0,0,.20) !important;
+    }
+
+    html.global-dark-mode .note-title {
+        color: #f3e5b0 !important;
+    }
+
+    html.global-dark-mode .note-tip {
+        color: #c2b58d !important;
+        opacity: 1 !important;
+    }
+
+    html.global-dark-mode .note-input {
+        color: #ece5cb !important;
+
+        border-color: #6f6241 !important;
+
+        background: rgba(13, 18, 28, .46) !important;
+    }
+
+    html.global-dark-mode .note-input::placeholder {
+        color: #a79d7c !important;
+    }
+
+    html.global-dark-mode .note-input:focus {
+        border-color: #9f8a50 !important;
+
+        background: rgba(13, 18, 28, .64) !important;
+
+        box-shadow: 0 10px 22px rgba(0,0,0,.24) !important;
+    }
+
+    html.global-dark-mode .note-lines {
+        background:
+            radial-gradient(
+                circle at 26px 26px,
+                rgba(255,255,255,.04),
+                transparent 70%
+            ),
+            radial-gradient(
+                circle at 85% 30%,
+                rgba(255,216,102,.035),
+                transparent 55%
+            ),
+            radial-gradient(
+                circle at 40% 120%,
+                rgba(0,0,0,.12),
+                transparent 55%
+            ) !important;
+    }
+
+    /* =====================================================
+       RECEIPT ACTION BUTTONS
+       ===================================================== */
+
+    html.global-dark-mode .btn-save {
+        color: #f3df98 !important;
+
+        border-color: #75663d !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #3a321e,
+                #2d291c
+            ) !important;
+
+        box-shadow: 0 5px 13px rgba(0,0,0,.18) !important;
+    }
+
+    html.global-dark-mode .btn-save:hover {
+        color: #fff0b0 !important;
+
+        border-color: #9c8545 !important;
+
+        background: #44391d !important;
+
+        box-shadow: 0 8px 18px rgba(0,0,0,.28) !important;
+    }
+
+    html.global-dark-mode .btn-remove {
+        color: #ff9ead !important;
+        border-color: #6d3945 !important;
+        background: #3c2029 !important;
+    }
+
+    html.global-dark-mode .btn-remove:hover {
+        color: #ffc1ca !important;
+        background: #522833 !important;
+    }
+
+    /* =====================================================
+       SCROLLBARS
+       ===================================================== */
+
+    html.global-dark-mode .product-scroll,
+    html.global-dark-mode .items-scroll,
+    html.global-dark-mode .table-scroll {
+        scrollbar-color: #46556f transparent !important;
+    }
+
+    html.global-dark-mode .product-scroll::-webkit-scrollbar-thumb,
+    html.global-dark-mode .items-scroll::-webkit-scrollbar-thumb,
+    html.global-dark-mode .table-scroll::-webkit-scrollbar-thumb {
+        background: #46556f !important;
+    }
+
+    html.global-dark-mode .product-scroll::-webkit-scrollbar-track,
+    html.global-dark-mode .items-scroll::-webkit-scrollbar-track,
+    html.global-dark-mode .table-scroll::-webkit-scrollbar-track {
+        background: transparent !important;
+    }
+
+    /* =====================================================
+       BILL LIST / TABLE / DATEPICKER
+       ===================================================== */
+
+    html.global-dark-mode h1.text-center {
+        color: #eef3fb !important;
+    }
+
+    html.global-dark-mode .order-table,
+    html.global-dark-mode .order-table tbody,
+    html.global-dark-mode .order-table tr,
+    html.global-dark-mode .table-scroll {
+        color: #dde5f2 !important;
+        background: #111a2a !important;
+    }
+
+    html.global-dark-mode .order-table thead th {
+        color: #e9eef8 !important;
+
+        border-color: #354158 !important;
+
+        background: #1c2940 !important;
+    }
+
+    html.global-dark-mode .order-table tbody td,
+    html.global-dark-mode .order-table tbody th {
+        color: #dbe3f0 !important;
+        border-color: #2d394f !important;
+        background: #131d2f !important;
+    }
+
+    html.global-dark-mode .order-table tbody tr:nth-child(odd) td,
+    html.global-dark-mode .order-table tbody tr:nth-child(odd) th {
+        background: #172237 !important;
+    }
+
+    html.global-dark-mode .datepicker {
+        color: #e7edf8 !important;
+        border-color: #344158 !important;
+        background: #151f31 !important;
+    }
+
+    /* =====================================================
+       PAYMENT MODAL / PAYMENT OPTIONS
+       ===================================================== */
+
+    html.global-dark-mode .payment-total-box {
+        color: #f0e4b6 !important;
+
+        border-color: #685a34 !important;
+
+        background: #382f1d !important;
+    }
+
+    html.global-dark-mode .payment-total-label {
+        color: #c9bb89 !important;
+    }
+
+    html.global-dark-mode .payment-total-money {
+        color: #ffb66e !important;
+    }
+
+    html.global-dark-mode .payment-method-option {
+        color: #e9edf6 !important;
+
+        border-color: #46536d !important;
+
+        background: #182337 !important;
+    }
+
+    html.global-dark-mode .payment-method-option:hover {
+        color: #ffffff !important;
+
+        border-color: #637297 !important;
+
+        background: #22304a !important;
+    }
+
+    /* =====================================================
+       MODALS ON THIS PAGE
+       ===================================================== */
+
+    html.global-dark-mode .modal-body,
+    html.global-dark-mode .modal-footer,
+    html.global-dark-mode .modal-header {
+        border-color: #2e3a52 !important;
+        background: #121c2d !important;
+    }
+
+    html.global-dark-mode .modal-body .p-card-inner {
+        background:
+            linear-gradient(
+                180deg,
+                #182337,
+                #141e30
+            ) !important;
+    }
+
+    /* =====================================================
+       UI-SELECT / FORM CONTROLS ON PRODUCT PAGE
+       ===================================================== */
+
+    html.global-dark-mode .portlet-body .form-control,
+    html.global-dark-mode .modal-body .form-control,
+    html.global-dark-mode .portlet-body .ui-select-toggle,
+    html.global-dark-mode .portlet-body .ui-select-search,
+    html.global-dark-mode .modal-body .ui-select-toggle,
+    html.global-dark-mode .modal-body .ui-select-search {
+        color: #edf2fa !important;
+
+        border-color: #344158 !important;
+
+        background: #111a2a !important;
+    }
+
+    html.global-dark-mode .portlet-body .form-control::placeholder,
+    html.global-dark-mode .modal-body .form-control::placeholder {
+        color: #7e8ba2 !important;
+    }
+
+    html.global-dark-mode .portlet-body .ui-select-choices,
+    html.global-dark-mode .modal-body .ui-select-choices,
+    html.global-dark-mode .portlet-body .ui-select-choices-content,
+    html.global-dark-mode .modal-body .ui-select-choices-content {
+        color: #e4eaf5 !important;
+
+        border-color: #344158 !important;
+
+        background: #151f31 !important;
+    }
+
+    html.global-dark-mode .portlet-body .ui-select-choices-row > span,
+    html.global-dark-mode .modal-body .ui-select-choices-row > span {
+        color: #dce4f1 !important;
+        background: #151f31 !important;
+    }
+
+    html.global-dark-mode .portlet-body .ui-select-choices-row.active > span,
+    html.global-dark-mode .portlet-body .ui-select-choices-row:hover > span,
+    html.global-dark-mode .modal-body .ui-select-choices-row.active > span,
+    html.global-dark-mode .modal-body .ui-select-choices-row:hover > span {
+        color: #ffffff !important;
+        background: #293755 !important;
+    }
+
+    /* =====================================================
+       PRINT PHẢI GIỮ NỀN SÁNG
+       ===================================================== */
+
+    @media print {
+        html.global-dark-mode .receipt {
+            color: #222 !important;
+            border-color: #222 !important;
+            background: #fff !important;
+            box-shadow: none !important;
+        }
+
+        html.global-dark-mode .receipt:before,
+        html.global-dark-mode .receipt:after {
+            background:
+                radial-gradient(
+                    circle at 5px 0,
+                    transparent 6px,
+                    #fff 6px
+                ) repeat-x !important;
+
+            background-size: 10px 10px !important;
+        }
+
+        html.global-dark-mode .receipt-title,
+        html.global-dark-mode .receipt-meta,
+        html.global-dark-mode .meta-row,
+        html.global-dark-mode .items-head,
+        html.global-dark-mode .item,
+        html.global-dark-mode .total,
+        html.global-dark-mode .total-row,
+        html.global-dark-mode .receipt-foot {
+            color: #222 !important;
+        }
+
+        html.global-dark-mode .note-wrap {
+            color: #2b1e18 !important;
+            background:
+                linear-gradient(
+                    0deg,
+                    rgba(255, 249, 219, 1),
+                    rgba(255, 249, 219, 1)
+                ) !important;
+        }
+
+        html.global-dark-mode .note-title {
+            color: #2b1e18 !important;
+        }
+    }
+</style>
+
+<!-- =========================================================
+     PRODUCT LIST - STABLE SCROLL FIX V2
+     Fix scroll giật / scroll-chain / hover movement.
+     ========================================================= -->
+<style>
+    /*
+     * Native vertical scrolling.
+     *
+     * overflow-y: scroll:
+     * - luôn dành sẵn chiều rộng scrollbar
+     * - tránh card/grid thay đổi width khi scrollbar xuất hiện/mất đi.
+     */
+    .product-scroll {
+        height: 482px !important;
+
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+
+        padding-right: 6px !important;
+
+        /*
+         * Không cho wheel ở cuối danh sách nhảy sang scroll cả page.
+         */
+        overscroll-behavior-y: contain !important;
+        overscroll-behavior-x: none !important;
+
+        /*
+         * Trang này không cần smooth-scroll bằng CSS.
+         * Native browser scroll cho cảm giác chắc và ít lag nhất.
+         */
+        scroll-behavior: auto !important;
+
+        /*
+         * Khi Angular cập nhật tồn kho/DOM hoặc ảnh load,
+         * Chrome không tự thay đổi scrollTop để giữ anchor.
+         */
+        overflow-anchor: none !important;
+
+        /*
+         * Cố định gutter của scrollbar trên browser hỗ trợ.
+         */
+        scrollbar-gutter: stable !important;
+
+        /*
+         * Không dùng momentum mode desktop.
+         * Mobile được bật riêng bên dưới.
+         */
+        -webkit-overflow-scrolling: auto !important;
+
+        /*
+         * Giảm phạm vi repaint khi cuộn grid lớn.
+         */
+        contain: layout paint !important;
+
+        touch-action: pan-y !important;
+    }
+
+    .product-scroll .product-grid,
+    .product-scroll .p-card,
+    .product-scroll .p-card-inner {
+        overflow-anchor: none !important;
+    }
+
+    /*
+     * Card cũ nhấc lên 4px mỗi khi con trỏ đi qua.
+     * Khi wheel-scroll, pointer đứng yên nhưng card phía dưới
+     * liên tục thay đổi => nhìn giống scroll bị giật.
+     *
+     * Giữ hiệu ứng hover bằng border + shadow,
+     * KHÔNG dịch card lên/xuống nữa.
+     */
+    .product-scroll .p-card-inner:hover {
+        transform: none !important;
+
+        box-shadow:
+            0 12px 24px rgba(0,0,0,.16) !important;
+    }
+
+    html.global-dark-mode
+    .product-scroll .p-card-inner:hover {
+        transform: none !important;
+
+        border-color: #586b90 !important;
+
+        box-shadow:
+            0 13px 27px rgba(0,0,0,.30),
+            0 0 0 1px rgba(111,102,241,.08) !important;
+    }
+
+    /*
+     * Chỉ animate những property không tác động cảm giác vị trí.
+     */
+    .product-scroll .p-card-inner {
+        transition:
+            border-color .15s ease,
+            box-shadow .15s ease,
+            background-color .15s ease !important;
+    }
+
+    /*
+     * Ảnh không scale theo hover trong khung đang scroll.
+     * Giảm repaint/GPU churn rõ rệt khi wheel nhanh.
+     */
+    .product-scroll .p-card-inner:hover img {
+        transform: none !important;
+    }
+
+    /* Scrollbar ổn định */
+    .product-scroll::-webkit-scrollbar {
+        width: 8px !important;
+    }
+
+    .product-scroll::-webkit-scrollbar-track {
+        background: transparent !important;
+    }
+
+    .product-scroll::-webkit-scrollbar-thumb {
+        border-radius: 999px !important;
+
+        background: rgba(100,110,135,.42) !important;
+    }
+
+    html.global-dark-mode
+    .product-scroll::-webkit-scrollbar-thumb {
+        background: #46556f !important;
+    }
+
+    /* Mobile: cho native momentum scrolling */
+    @media (max-width: 768px) {
+        .product-scroll {
+            height: 30vh !important;
+            max-height: 280px !important;
+
+            -webkit-overflow-scrolling: touch !important;
+
+            overscroll-behavior-y: contain !important;
+            touch-action: pan-y !important;
+
+            contain: layout paint !important;
+        }
+    }
+
+    /*
+     * Nếu người dùng muốn giảm chuyển động,
+     * tắt hoàn toàn animation trong danh sách.
+     */
+    @media (prefers-reduced-motion: reduce) {
+        .product-scroll *,
+        .product-scroll *:before,
+        .product-scroll *:after {
+            scroll-behavior: auto !important;
+            transition: none !important;
+            animation: none !important;
+        }
     }
 </style>

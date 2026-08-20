@@ -1348,3 +1348,618 @@
         text-align: center;
     }
 </style><!-- BEGIN MAIN JS -->
+
+<!-- =========================================================
+     QUESTION / FLASHCARD LISTING - GLOBAL DARK MODE V1
+     Chỉ kích hoạt khi <html> có class .global-dark-mode.
+     Light mode giữ nguyên.
+     ========================================================= -->
+<style>
+    /* =====================================================
+       MAIN PAGE / PORTLETS
+       ===================================================== */
+
+    html.global-dark-mode .portlet.light.bordered,
+    html.global-dark-mode .portlet.light.bordered > .portlet-body {
+        color: #e7edf8 !important;
+        border-color: #2d3a52 !important;
+        background:
+            linear-gradient(
+                180deg,
+                #151f31 0%,
+                #111a2a 100%
+            ) !important;
+        box-shadow: 0 10px 28px rgba(0,0,0,.22) !important;
+    }
+
+    html.global-dark-mode .portlet-body,
+    html.global-dark-mode #new-item {
+        color: #e3eaf5 !important;
+    }
+
+    html.global-dark-mode .portlet-body label,
+    html.global-dark-mode .portlet-body .bold,
+    html.global-dark-mode .portlet-body h1,
+    html.global-dark-mode .portlet-body h2,
+    html.global-dark-mode .portlet-body h3,
+    html.global-dark-mode .portlet-body h4,
+    html.global-dark-mode .portlet-body h5,
+    html.global-dark-mode .portlet-body h6 {
+        color: #eef3fb !important;
+    }
+
+    html.global-dark-mode .portlet-body small,
+    html.global-dark-mode .portlet-body .text-muted {
+        color: #9aa7bc !important;
+    }
+
+    /* =====================================================
+       NORMAL INPUTS / UNDERLINE INPUTS
+       ===================================================== */
+
+    html.global-dark-mode .portlet-body .form-control,
+    html.global-dark-mode #new-item .form-control,
+    html.global-dark-mode .modal-body .form-control,
+    html.global-dark-mode .modal-body select.form-control {
+        color: #edf2fb !important;
+
+        border-color: #37455d !important;
+
+        background:
+            linear-gradient(
+                180deg,
+                #111a2a,
+                #0f1827
+            ) !important;
+
+        box-shadow:
+            inset 0 0 0 1px rgba(255,255,255,.02) !important;
+    }
+
+    html.global-dark-mode .portlet-body .form-control::placeholder,
+    html.global-dark-mode #new-item .form-control::placeholder,
+    html.global-dark-mode .modal-body .form-control::placeholder {
+        color: #7f8ca2 !important;
+        opacity: 1 !important;
+    }
+
+    html.global-dark-mode .portlet-body .form-control:focus,
+    html.global-dark-mode #new-item .form-control:focus,
+    html.global-dark-mode .modal-body .form-control:focus {
+        color: #ffffff !important;
+
+        border-color: #7187ef !important;
+
+        background: #142036 !important;
+
+        box-shadow:
+            0 0 0 3px rgba(91,124,250,.11) !important;
+    }
+
+    /*
+     * File cũ đang dùng border-bottom:black cho input-underline-only.
+     */
+    html.global-dark-mode .input-underline-only,
+    html.global-dark-mode .input-underline-only-score,
+    html.global-dark-mode .page-size-input {
+        color: #edf2fb !important;
+
+        border-color: #526078 !important;
+        border-bottom-color: #526078 !important;
+
+        background: transparent !important;
+
+        outline: none !important;
+    }
+
+    html.global-dark-mode .input-underline-only:focus,
+    html.global-dark-mode .input-underline-only-score:focus,
+    html.global-dark-mode .page-size-input:focus {
+        border-bottom-color: #8194ff !important;
+    }
+
+    /* =====================================================
+       UI-SELECT
+       ===================================================== */
+
+    html.global-dark-mode .portlet-body .ui-select-match > .btn,
+    html.global-dark-mode .portlet-body .ui-select-toggle,
+    html.global-dark-mode #new-item .ui-select-match > .btn,
+    html.global-dark-mode #new-item .ui-select-toggle,
+    html.global-dark-mode .modal-body .ui-select-match > .btn,
+    html.global-dark-mode .modal-body .ui-select-toggle {
+        color: #edf2fb !important;
+
+        border-color: #37455d !important;
+
+        background:
+            linear-gradient(
+                180deg,
+                #111a2a,
+                #0f1827
+            ) !important;
+
+        box-shadow:
+            inset 0 0 0 1px rgba(255,255,255,.02) !important;
+    }
+
+    html.global-dark-mode .ui-select-match-text {
+        color: #edf2fb !important;
+    }
+
+    html.global-dark-mode .ui-select-placeholder {
+        color: #8794aa !important;
+    }
+
+    html.global-dark-mode .ui-select-toggle > .caret {
+        color: #9aa8bd !important;
+    }
+
+    html.global-dark-mode .ui-select-choices,
+    html.global-dark-mode .ui-select-choices-content,
+    html.global-dark-mode .ui-select-container .dropdown-menu {
+        color: #dce4f1 !important;
+
+        border-color: #344158 !important;
+
+        background: #151f31 !important;
+
+        box-shadow:
+            0 15px 32px rgba(0,0,0,.34) !important;
+    }
+
+    html.global-dark-mode .ui-select-choices-row > span,
+    html.global-dark-mode .ui-select-choices-row-inner {
+        color: #dce4f1 !important;
+        background: #151f31 !important;
+    }
+
+    html.global-dark-mode .ui-select-choices-row.active > span,
+    html.global-dark-mode .ui-select-choices-row:hover > span,
+    html.global-dark-mode .ui-select-choices-row-inner:hover {
+        color: #ffffff !important;
+        background: #293755 !important;
+    }
+
+    /* multiple-select tags */
+    html.global-dark-mode .ui-select-multiple.ui-select-bootstrap {
+        color: #e7edf8 !important;
+        border-color: #37455d !important;
+        background: #111a2a !important;
+    }
+
+    html.global-dark-mode .ui-select-multiple.ui-select-bootstrap .ui-select-match-item {
+        color: #d8ddff !important;
+
+        border-color: #465477 !important;
+
+        background: #293657 !important;
+    }
+
+    html.global-dark-mode .ui-select-multiple.ui-select-bootstrap input.ui-select-search {
+        color: #eef3fb !important;
+        background: transparent !important;
+    }
+
+    /* =====================================================
+       SEARCH GROUP / EXACT WORD
+       ===================================================== */
+
+    html.global-dark-mode .input-group .input-group-btn .btn-default {
+        color: #dbe3f1 !important;
+
+        border-color: #3a485f !important;
+
+        background: #1c273a !important;
+    }
+
+    html.global-dark-mode .input-group .input-group-btn .btn-default:hover,
+    html.global-dark-mode .input-group .input-group-btn .btn-default:focus {
+        color: #ffffff !important;
+        background: #27354d !important;
+    }
+
+    html.global-dark-mode #exact-word + input,
+    html.global-dark-mode input[type="checkbox"],
+    html.global-dark-mode input[type="radio"] {
+        accent-color: #6c7ff1;
+    }
+
+    /* =====================================================
+       SHOW/HIDE LIST + FLASHCARD EDIT ROWS
+       ===================================================== */
+
+    html.global-dark-mode .hover-item {
+        color: #dfe6f2 !important;
+
+        border-color: #2e3b52 !important;
+
+        background: transparent !important;
+    }
+
+    /*
+     * CSS cũ: .hover-item:hover { background:whitesmoke; }
+     */
+    html.global-dark-mode .hover-item:hover {
+        color: #ffffff !important;
+
+        background:
+            linear-gradient(
+                90deg,
+                #1b273c,
+                #202b42
+            ) !important;
+    }
+
+    html.global-dark-mode .hover-item .form-control {
+        color: #eef3fb !important;
+    }
+
+    html.global-dark-mode .hover-item .fa,
+    html.global-dark-mode .hover-item .fa-solid {
+        color: #b8c5dd;
+    }
+
+    /*
+     * Một số icon có inline color:black.
+     * Dark mode ép lại để icon không biến mất.
+     */
+    html.global-dark-mode .hover-item [style*="color: black"],
+    html.global-dark-mode .hover-item [style*="color:black"] {
+        color: #aebbd1 !important;
+    }
+
+    html.global-dark-mode .hover-item [style*="color: gold"],
+    html.global-dark-mode .hover-item [style*="color:gold"] {
+        color: #ffd95e !important;
+    }
+
+    /* =====================================================
+       FLASHCARD FLIP
+       Giữ tone maroon hiện tại, chỉ làm viền/shadow hợp dark.
+       ===================================================== */
+
+    html.global-dark-mode .flip .card .front,
+    html.global-dark-mode .flip .card .back {
+        color: #f5f2e7 !important;
+
+        border: 1px solid #5b3448 !important;
+
+        background:
+            linear-gradient(
+                145deg,
+                #3b142a,
+                #2d1021
+            ) !important;
+
+        box-shadow:
+            0 18px 36px rgba(0,0,0,.38),
+            0 0 0 1px rgba(255,255,255,.02) !important;
+    }
+
+    html.global-dark-mode .flip .card .front small,
+    html.global-dark-mode .flip .card .back small {
+        color: #f4edf2 !important;
+    }
+
+    /* =====================================================
+       NEW WORD PANEL
+       ===================================================== */
+
+    html.global-dark-mode #new-item .portlet.light.bordered {
+        border-color: #344159 !important;
+
+        background:
+            radial-gradient(
+                circle at 100% 0%,
+                rgba(139,92,246,.08),
+                transparent 28%
+            ),
+            linear-gradient(
+                180deg,
+                #172236,
+                #121c2d
+            ) !important;
+
+        box-shadow:
+            0 12px 30px rgba(0,0,0,.24) !important;
+    }
+
+    html.global-dark-mode #new-item h4.bold {
+        color: #f3f6ff !important;
+    }
+
+    /* =====================================================
+       QUESTION ANSWERS TABLES
+       ===================================================== */
+
+    html.global-dark-mode .portlet-body .table,
+    html.global-dark-mode #new-item .table,
+    html.global-dark-mode .modal-body .table {
+        color: #dce4f1 !important;
+
+        border-color: #344159 !important;
+
+        background: #111a2a !important;
+    }
+
+    html.global-dark-mode .portlet-body .table > thead > tr > th,
+    html.global-dark-mode #new-item .table > thead > tr > th,
+    html.global-dark-mode .modal-body .table > thead > tr > th {
+        color: #eef3fb !important;
+
+        border-color: #354159 !important;
+
+        background: #1b2941 !important;
+    }
+
+    html.global-dark-mode .portlet-body .table > tbody > tr > td,
+    html.global-dark-mode #new-item .table > tbody > tr > td,
+    html.global-dark-mode .modal-body .table > tbody > tr > td {
+        color: #dce4f1 !important;
+
+        border-color: #2d394f !important;
+
+        background: #131d2f !important;
+    }
+
+    html.global-dark-mode .portlet-body .table-striped > tbody > tr:nth-of-type(odd) > td,
+    html.global-dark-mode #new-item .table-striped > tbody > tr:nth-of-type(odd) > td,
+    html.global-dark-mode .modal-body .table-striped > tbody > tr:nth-of-type(odd) > td {
+        background: #172237 !important;
+    }
+
+    html.global-dark-mode .portlet-body .table-hover > tbody > tr:hover > td,
+    html.global-dark-mode .modal-body .table-hover > tbody > tr:hover > td {
+        color: #ffffff !important;
+        background: #22304a !important;
+    }
+
+    /* =====================================================
+       DEFAULT / BROWN BUTTONS
+       ===================================================== */
+
+    html.global-dark-mode .btn-default {
+        color: #dbe3f1 !important;
+
+        border-color: #3a485f !important;
+
+        background: #1b2639 !important;
+    }
+
+    html.global-dark-mode .btn-default:hover,
+    html.global-dark-mode .btn-default:focus {
+        color: #ffffff !important;
+
+        border-color: #50607d !important;
+
+        background: #27354d !important;
+    }
+
+    /*
+     * btn-brown là style gameplay riêng.
+     * Giữ tone nâu nhưng giảm cảm giác light.
+     */
+    html.global-dark-mode .btn-brown {
+        color: #f2e8df !important;
+
+        border-color: #65483a !important;
+
+        background: #4a342b !important;
+    }
+
+    html.global-dark-mode .btn-brown:hover,
+    html.global-dark-mode .btn-brown:focus {
+        color: #ffffff !important;
+        background: #5a4034 !important;
+    }
+
+    /* =====================================================
+       PAGINATION / PAGE INFO
+       ===================================================== */
+
+    html.global-dark-mode .pagination > li > a,
+    html.global-dark-mode .pagination > li > span {
+        color: #cbd5e4 !important;
+
+        border-color: #38465e !important;
+
+        background: #1b2639 !important;
+    }
+
+    html.global-dark-mode .pagination > li > a:hover,
+    html.global-dark-mode .pagination > li > span:hover {
+        color: #ffffff !important;
+        background: #293755 !important;
+    }
+
+    html.global-dark-mode .pagination > .active > a,
+    html.global-dark-mode .pagination > .active > span,
+    html.global-dark-mode .pagination > .active > a:hover,
+    html.global-dark-mode .pagination > .active > span:hover {
+        color: #ffffff !important;
+
+        border-color: #5b75df !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #6685ea,
+                #4e6fd6
+            ) !important;
+    }
+
+    html.global-dark-mode pre {
+        color: #aeb9cc !important;
+        border-color: transparent !important;
+        background: transparent !important;
+    }
+
+    /* =====================================================
+       TINYMCE SHELL
+       ===================================================== */
+
+    html.global-dark-mode .mce-panel,
+    html.global-dark-mode .mce-container,
+    html.global-dark-mode .mce-container-body,
+    html.global-dark-mode .mce-toolbar-grp,
+    html.global-dark-mode .mce-statusbar,
+    html.global-dark-mode .mce-edit-area {
+        color: #dce4f1 !important;
+
+        border-color: #344159 !important;
+
+        background: #151f31 !important;
+    }
+
+    html.global-dark-mode .mce-btn {
+        border-color: #344159 !important;
+        background: #1b273b !important;
+    }
+
+    html.global-dark-mode .mce-btn button,
+    html.global-dark-mode .mce-ico {
+        color: #cbd5e4 !important;
+    }
+
+    html.global-dark-mode .mce-btn:hover,
+    html.global-dark-mode .mce-btn:focus {
+        background: #293755 !important;
+    }
+
+    html.global-dark-mode .mce-edit-area iframe {
+        background: #111a2a !important;
+    }
+
+    /* =====================================================
+       MODALS
+       Import Excel / Review / Edit / Confirm
+       ===================================================== */
+
+    html.global-dark-mode .modal-content,
+    html.global-dark-mode .modal-header,
+    html.global-dark-mode .modal-body,
+    html.global-dark-mode .modal-footer {
+        color: #e7edf8 !important;
+
+        border-color: #2e3b52 !important;
+
+        background: #131d2f !important;
+    }
+
+    html.global-dark-mode .modal-header,
+    html.global-dark-mode .modal-footer {
+        background: #172236 !important;
+    }
+
+    html.global-dark-mode .modal-title,
+    html.global-dark-mode .modal-body label,
+    html.global-dark-mode .modal-body strong {
+        color: #eef3fb !important;
+    }
+
+    html.global-dark-mode .modal-header .close,
+    html.global-dark-mode .modal-header .close span {
+        color: #dbe3f1 !important;
+        opacity: .85 !important;
+    }
+
+    /* Import preview wells */
+    html.global-dark-mode .modal-body .well {
+        color: #dce4f1 !important;
+
+        border-color: #344159 !important;
+
+        background: #182337 !important;
+    }
+
+    html.global-dark-mode .modal-body .alert-default {
+        color: #cbd5e4 !important;
+
+        border-color: #3a475f !important;
+
+        background: #172236 !important;
+    }
+
+    html.global-dark-mode .modal-body .alert-info {
+        color: #bfd0ff !important;
+
+        border-color: #36517c !important;
+
+        background: #172b48 !important;
+    }
+
+    html.global-dark-mode .modal-body .help-block {
+        color: #9ca9bd !important;
+    }
+
+    /* File input */
+    html.global-dark-mode .modal-body input[type="file"].form-control {
+        color: #cbd5e4 !important;
+        background: #111a2a !important;
+    }
+
+    /* =====================================================
+       PLAYER / QUIZ TEXT
+       ===================================================== */
+
+    html.global-dark-mode .portlet-body .text-center,
+    html.global-dark-mode .portlet-body .text-left,
+    html.global-dark-mode .portlet-body .text-right {
+        color: inherit;
+    }
+
+    html.global-dark-mode .portlet-body [style*="color: darkred"] {
+        color: #ff8f9f !important;
+    }
+
+    /* =====================================================
+       MOBILE
+       ===================================================== */
+
+    @media (max-width: 767px) {
+        html.global-dark-mode .portlet.light.bordered {
+            border-color: #29364d !important;
+
+            background: #111a2a !important;
+        }
+
+        html.global-dark-mode #new-item {
+            margin-top: 12px;
+        }
+
+        html.global-dark-mode .hover-item {
+            border-radius: 10px;
+        }
+
+        html.global-dark-mode .hover-item:hover {
+            background: #1b273c !important;
+        }
+    }
+
+    /* =====================================================
+       SCROLLBARS
+       ===================================================== */
+
+    html.global-dark-mode .portlet-body,
+    html.global-dark-mode .modal-body,
+    html.global-dark-mode .ui-select-choices,
+    html.global-dark-mode .table-responsive {
+        scrollbar-color: #46556f #111a2a;
+    }
+
+    html.global-dark-mode .portlet-body::-webkit-scrollbar-track,
+    html.global-dark-mode .modal-body::-webkit-scrollbar-track,
+    html.global-dark-mode .ui-select-choices::-webkit-scrollbar-track,
+    html.global-dark-mode .table-responsive::-webkit-scrollbar-track {
+        background: #111a2a !important;
+    }
+
+    html.global-dark-mode .portlet-body::-webkit-scrollbar-thumb,
+    html.global-dark-mode .modal-body::-webkit-scrollbar-thumb,
+    html.global-dark-mode .ui-select-choices::-webkit-scrollbar-thumb,
+    html.global-dark-mode .table-responsive::-webkit-scrollbar-thumb {
+        background: #46556f !important;
+    }
+
+</style>

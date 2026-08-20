@@ -2459,3 +2459,329 @@
     }
 
 </style>
+
+<!-- =========================================================
+     TEST RESULT - DARK MODE PATCH V1
+     CHỈ sửa:
+     1) Filter panel
+     2) KẾT QUẢ LÀM BÀI
+     KHÔNG đụng .ranking-*
+     ========================================================= -->
+<style>
+
+    /* =====================================================
+       1. FILTER PANEL
+       ===================================================== */
+
+    html.global-dark-mode .test-result-filter-panel {
+        border-color: #2f3c53 !important;
+
+        background:
+            radial-gradient(
+                circle at 0% 0%,
+                rgba(91,124,250,.09),
+                transparent 30%
+            ),
+            linear-gradient(
+                180deg,
+                #172236 0%,
+                #131d2f 100%
+            ) !important;
+
+        box-shadow:
+            0 10px 28px rgba(0,0,0,.22) !important;
+    }
+
+    html.global-dark-mode .test-result-filter-label {
+        color: #b5bfd1 !important;
+    }
+
+    html.global-dark-mode .test-result-filter-label i {
+        color: #8fa4df !important;
+    }
+
+    /* Input ngày + ô search */
+    html.global-dark-mode .test-result-filter-control,
+    html.global-dark-mode
+    .test-result-search-group > .form-control,
+    html.global-dark-mode
+    .test-result-search-group .test-result-filter-control {
+        color: #eef3fb !important;
+
+        border-color: #37455d !important;
+
+        background:
+            linear-gradient(
+                180deg,
+                #111a2a,
+                #0f1827
+            ) !important;
+
+        box-shadow:
+            inset 0 0 0 1px rgba(255,255,255,.02) !important;
+    }
+
+    html.global-dark-mode .test-result-filter-control::placeholder,
+    html.global-dark-mode
+    .test-result-search-group .form-control::placeholder {
+        color: #77849b !important;
+        opacity: 1 !important;
+    }
+
+    html.global-dark-mode .test-result-filter-control:focus,
+    html.global-dark-mode
+    .test-result-search-group .form-control:focus {
+        border-color: #6f86ef !important;
+
+        background: #142036 !important;
+
+        box-shadow:
+            0 0 0 3px rgba(91,124,250,.11) !important;
+    }
+
+    /* UI SELECT */
+    html.global-dark-mode
+    .test-result-ui-select .ui-select-match .btn,
+    html.global-dark-mode
+    .test-result-ui-select .ui-select-match .btn-default {
+        color: #eef3fb !important;
+
+        border-color: #37455d !important;
+
+        background:
+            linear-gradient(
+                180deg,
+                #111a2a,
+                #0f1827
+            ) !important;
+
+        box-shadow:
+            inset 0 0 0 1px rgba(255,255,255,.02) !important;
+    }
+
+    html.global-dark-mode
+    .test-result-ui-select .ui-select-match-text {
+        color: #eef3fb !important;
+    }
+
+    html.global-dark-mode
+    .test-result-ui-select .ui-select-placeholder {
+        color: #8794aa !important;
+    }
+
+    html.global-dark-mode
+    .test-result-ui-select .ui-select-toggle > .caret {
+        color: #9aa8bf !important;
+    }
+
+    html.global-dark-mode
+    .test-result-ui-select .ui-select-choices,
+    html.global-dark-mode
+    .test-result-ui-select .dropdown-menu {
+        border-color: #354158 !important;
+
+        background: #151f31 !important;
+
+        box-shadow:
+            0 14px 30px rgba(0,0,0,.32) !important;
+    }
+
+    html.global-dark-mode
+    .test-result-ui-select
+    .ui-select-choices-row > span {
+        color: #dce4f1 !important;
+        background: #151f31 !important;
+    }
+
+    html.global-dark-mode
+    .test-result-ui-select
+    .ui-select-choices-row.active > span,
+    html.global-dark-mode
+    .test-result-ui-select
+    .ui-select-choices-row:hover > span {
+        color: #ffffff !important;
+        background: #293755 !important;
+    }
+
+    /* Search button giữ gradient xanh hiện tại */
+    html.global-dark-mode .test-result-search-btn {
+        color: #fff !important;
+
+        border-color: #526fda !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #5c7de7,
+                #4768ce
+            ) !important;
+    }
+
+    /* =====================================================
+       2. KẾT QUẢ LÀM BÀI
+       ===================================================== */
+
+    html.global-dark-mode .test-result-listing-card {
+        border-color: #2f3c53 !important;
+
+        background: #131d2f !important;
+
+        box-shadow:
+            0 10px 28px rgba(0,0,0,.22) !important;
+    }
+
+    html.global-dark-mode .test-result-listing-heading {
+        border-bottom-color: #2d3a51 !important;
+
+        background:
+            radial-gradient(
+                circle at 100% 0%,
+                rgba(91,124,250,.08),
+                transparent 30%
+            ),
+            linear-gradient(
+                180deg,
+                #172236 0%,
+                #141e30 100%
+            ) !important;
+    }
+
+    html.global-dark-mode .test-result-listing-icon {
+        color: #9eb0ff !important;
+
+        border: 1px solid #34425b !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #263451,
+                #202b43
+            ) !important;
+
+        box-shadow:
+            0 5px 14px rgba(0,0,0,.18) !important;
+    }
+
+    html.global-dark-mode .test-result-listing-title {
+        color: #f1f5fd !important;
+    }
+
+    html.global-dark-mode .test-result-listing-subtitle {
+        color: #98a5ba !important;
+    }
+
+    html.global-dark-mode .test-result-listing-hint {
+        color: #aab6c9 !important;
+        background: #202b3f !important;
+    }
+
+    html.global-dark-mode .test-result-listing-wrap {
+        background: #111a2a !important;
+        scrollbar-color: #46556f transparent !important;
+    }
+
+    html.global-dark-mode
+    .test-result-listing-wrap::-webkit-scrollbar-thumb {
+        background: #46556f !important;
+    }
+
+    /* Bootstrap table */
+    html.global-dark-mode
+    .test-result-listing-wrap .bootstrap-table,
+    html.global-dark-mode
+    .test-result-listing-wrap .fixed-table-container,
+    html.global-dark-mode
+    .test-result-listing-wrap .fixed-table-header,
+    html.global-dark-mode
+    .test-result-listing-wrap .fixed-table-body {
+        border-color: #2f3b51 !important;
+        background: #111a2a !important;
+    }
+
+    html.global-dark-mode
+    .test-result-listing-wrap table {
+        color: #dce4f1 !important;
+        background: #111a2a !important;
+    }
+
+    html.global-dark-mode
+    .test-result-listing-wrap table > thead > tr > th {
+        color: #cbd5e5 !important;
+
+        border-bottom-color: #344159 !important;
+
+        background: #1b273d !important;
+    }
+
+    html.global-dark-mode
+    .test-result-listing-wrap table > tbody > tr > td {
+        color: #dbe3ef !important;
+
+        border-bottom-color: #2b374d !important;
+
+        background: #131d2f !important;
+    }
+
+    html.global-dark-mode
+    .test-result-listing-wrap
+    table > tbody > tr:nth-child(even) > td {
+        background: #172237 !important;
+    }
+
+    html.global-dark-mode
+    .test-result-listing-wrap
+    table > tbody > tr:hover > td {
+        background: #22304a !important;
+    }
+
+    /* Pagination */
+    html.global-dark-mode
+    .test-result-listing-wrap .fixed-table-pagination {
+        color: #aab5c7 !important;
+
+        border-top-color: #2d3a51 !important;
+
+        background: #141e30 !important;
+    }
+
+    html.global-dark-mode
+    .test-result-listing-wrap .pagination-detail {
+        color: #9ca8bb !important;
+    }
+
+    html.global-dark-mode
+    .test-result-listing-wrap .pagination > li > a,
+    html.global-dark-mode
+    .test-result-listing-wrap .pagination > li > span,
+    html.global-dark-mode
+    .test-result-listing-wrap .page-list .btn {
+        color: #cbd5e3 !important;
+
+        border-color: #38465e !important;
+
+        background: #1b2639 !important;
+    }
+
+    html.global-dark-mode
+    .test-result-listing-wrap .pagination > .active > a,
+    html.global-dark-mode
+    .test-result-listing-wrap .pagination > .active > span {
+        color: #ffffff !important;
+
+        border-color: #5676df !important;
+
+        background:
+            linear-gradient(
+                135deg,
+                #6685ea,
+                #4e6fd6
+            ) !important;
+    }
+
+    /* =====================================================
+       QUAN TRỌNG:
+       Không có selector .ranking-* trong patch này.
+       Bảng xếp hạng giữ nguyên giao diện hiện tại.
+       ===================================================== */
+
+</style>

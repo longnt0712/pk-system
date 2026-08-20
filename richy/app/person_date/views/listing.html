@@ -1928,3 +1928,613 @@
     }
 </style>
 
+<!-- =========================================================
+     PERSON DATE / ATTENDANCE - GLOBAL DARK MODE V1
+     Light mode giữ nguyên.
+     Export PNG vẫn giữ nền trắng.
+     ========================================================= -->
+<style>
+    /* =====================================================
+       PAGE TEXT / HEADINGS
+       ===================================================== */
+
+    html.global-dark-mode .portlet.light.bordered,
+    html.global-dark-mode .portlet.light.bordered > .portlet-body {
+        color: #e7edf8 !important;
+        border-color: #2b3951 !important;
+        background: #111a2b !important;
+    }
+
+    html.global-dark-mode .portlet-body label,
+    html.global-dark-mode .portlet-body small,
+    html.global-dark-mode .portlet-body .bold {
+        color: #d9e1ee;
+    }
+
+    html.global-dark-mode .portlet-body h1,
+    html.global-dark-mode .portlet-body h2,
+    html.global-dark-mode .portlet-body h3,
+    html.global-dark-mode .portlet-body h4,
+    html.global-dark-mode .portlet-body h5,
+    html.global-dark-mode .portlet-body h6 {
+        color: #f2f6ff !important;
+    }
+
+    /* PHẦN THỐNG KÊ đang bị tối chữ */
+    html.global-dark-mode .portlet-body > .row h1.text-center.bold,
+    html.global-dark-mode h1.text-center.bold {
+        color: #eef3ff !important;
+        text-shadow: none !important;
+    }
+
+    /* =====================================================
+       2 STICKY SEARCH BARS
+       ===================================================== */
+
+    html.global-dark-mode .sticky-search-bar {
+        color: #e4eaf5 !important;
+
+        border: 1px solid #2e3b53 !important;
+        border-bottom-color: #344159 !important;
+
+        background:
+            radial-gradient(
+                circle at 0% 0%,
+                rgba(91,124,250,.07),
+                transparent 28%
+            ),
+            linear-gradient(
+                180deg,
+                #172236 0%,
+                #131d2f 100%
+            ) !important;
+
+        box-shadow:
+            0 8px 22px rgba(0,0,0,.18) !important;
+    }
+
+    html.global-dark-mode .sticky-search-bar label,
+    html.global-dark-mode .sticky-search-bar span,
+    html.global-dark-mode .sticky-search-bar strong {
+        color: #dce4f1;
+    }
+
+    /* Giữ các utility màu có ý nghĩa */
+    html.global-dark-mode .sticky-search-bar .text-red,
+    html.global-dark-mode .sticky-search-bar .text-danger {
+        color: #ff8f9f !important;
+    }
+
+    html.global-dark-mode .sticky-search-bar .text-primary {
+        color: #82a8ff !important;
+    }
+
+    html.global-dark-mode .sticky-search-bar .text-success {
+        color: #73d8ad !important;
+    }
+
+    /* =====================================================
+       FORMS / DATE / SEARCH
+       ===================================================== */
+
+    html.global-dark-mode .sticky-search-bar .form-control,
+    html.global-dark-mode .portlet-body input.form-control,
+    html.global-dark-mode .portlet-body textarea.form-control {
+        color: #eef3fb !important;
+
+        border-color: #37455d !important;
+
+        background:
+            linear-gradient(
+                180deg,
+                #111a2a,
+                #0f1827
+            ) !important;
+
+        box-shadow:
+            inset 0 0 0 1px rgba(255,255,255,.02) !important;
+    }
+
+    html.global-dark-mode .sticky-search-bar .form-control::placeholder,
+    html.global-dark-mode .portlet-body input.form-control::placeholder,
+    html.global-dark-mode .portlet-body textarea.form-control::placeholder {
+        color: #7f8ba1 !important;
+        opacity: 1 !important;
+    }
+
+    html.global-dark-mode .sticky-search-bar .form-control:focus,
+    html.global-dark-mode .portlet-body input.form-control:focus,
+    html.global-dark-mode .portlet-body textarea.form-control:focus {
+        color: #ffffff !important;
+
+        border-color: #7187f2 !important;
+
+        background: #142036 !important;
+
+        box-shadow:
+            0 0 0 3px rgba(91,124,250,.11) !important;
+    }
+
+    /* File đang có .datepicker { background:white!important } */
+    html.global-dark-mode .datepicker,
+    html.global-dark-mode .datepicker.dropdown-menu {
+        color: #dce4f1 !important;
+
+        border-color: #344159 !important;
+
+        background: #151f31 !important;
+
+        box-shadow:
+            0 14px 30px rgba(0,0,0,.32) !important;
+    }
+
+    html.global-dark-mode .datepicker table tr td,
+    html.global-dark-mode .datepicker table tr th {
+        color: #cbd5e4 !important;
+        background: transparent !important;
+    }
+
+    html.global-dark-mode .datepicker table tr td.day:hover,
+    html.global-dark-mode .datepicker table tr td.focused {
+        color: #ffffff !important;
+        background: #293755 !important;
+    }
+
+    html.global-dark-mode .datepicker table tr td.active,
+    html.global-dark-mode .datepicker table tr td.active:hover {
+        color: #ffffff !important;
+        background: #5874df !important;
+    }
+
+    html.global-dark-mode .datepicker table tr td.old,
+    html.global-dark-mode .datepicker table tr td.new {
+        color: #68768d !important;
+    }
+
+    /* =====================================================
+       UI SELECT
+       ===================================================== */
+
+    html.global-dark-mode .sticky-search-bar .ui-select-match > .btn,
+    html.global-dark-mode .sticky-search-bar .ui-select-toggle,
+    html.global-dark-mode .portlet-body .ui-select-match > .btn,
+    html.global-dark-mode .portlet-body .ui-select-toggle {
+        color: #edf2fb !important;
+
+        border-color: #37455d !important;
+
+        background:
+            linear-gradient(
+                180deg,
+                #111a2a,
+                #0f1827
+            ) !important;
+
+        box-shadow:
+            inset 0 0 0 1px rgba(255,255,255,.02) !important;
+    }
+
+    html.global-dark-mode .portlet-body .ui-select-match-text {
+        color: #edf2fb !important;
+    }
+
+    html.global-dark-mode .portlet-body .ui-select-placeholder {
+        color: #8794aa !important;
+    }
+
+    html.global-dark-mode .portlet-body .ui-select-toggle > .caret {
+        color: #9aa7bb !important;
+    }
+
+    html.global-dark-mode .portlet-body .ui-select-choices,
+    html.global-dark-mode .portlet-body .ui-select-choices-content,
+    html.global-dark-mode .portlet-body .ui-select-container .dropdown-menu {
+        color: #dce4f1 !important;
+
+        border-color: #344158 !important;
+
+        background: #151f31 !important;
+
+        box-shadow:
+            0 14px 30px rgba(0,0,0,.32) !important;
+    }
+
+    html.global-dark-mode .portlet-body .ui-select-choices-row > span,
+    html.global-dark-mode .portlet-body .ui-select-choices-row-inner {
+        color: #dce4f1 !important;
+        background: #151f31 !important;
+    }
+
+    html.global-dark-mode .portlet-body .ui-select-choices-row.active > span,
+    html.global-dark-mode .portlet-body .ui-select-choices-row:hover > span,
+    html.global-dark-mode .portlet-body .ui-select-choices-row-inner:hover {
+        color: #ffffff !important;
+        background: #293755 !important;
+    }
+
+    /* =====================================================
+       MAIN ATTENDANCE TABLE
+       ===================================================== */
+
+    html.global-dark-mode .table-scroll {
+        color: #dbe3ef !important;
+        background: #111a2a !important;
+        scrollbar-color: #46556f transparent !important;
+    }
+
+    html.global-dark-mode .order-table {
+        color: #dbe3ef !important;
+
+        border-color: #354159 !important;
+
+        background: #111a2a !important;
+    }
+
+    html.global-dark-mode .order-table > thead > tr > th {
+        color: #eef3fb !important;
+
+        border-color: #354159 !important;
+
+        background: #1b2941 !important;
+    }
+
+    html.global-dark-mode .order-table > tbody > tr > td {
+        color: #dce4f1;
+
+        border-color: #2c394f !important;
+
+        background: #131d2f;
+    }
+
+    html.global-dark-mode
+    .order-table.table-striped > tbody > tr:nth-of-type(odd) > td:not(.status-class-green):not(.status-class-red):not(.status-class-warning):not(.status-class-info) {
+        background: #172237 !important;
+    }
+
+    html.global-dark-mode
+    .order-table.table-striped > tbody > tr:nth-of-type(even) > td:not(.status-class-green):not(.status-class-red):not(.status-class-warning):not(.status-class-info) {
+        background: #131d2f !important;
+    }
+
+    /* Hover dark nhưng KHÔNG đè màu trạng thái */
+    html.global-dark-mode
+    .order-table.table-hover > tbody > tr:hover > td:not(.status-class-green):not(.status-class-red):not(.status-class-warning):not(.status-class-info) {
+        color: #ffffff !important;
+        background: #202e47 !important;
+
+        box-shadow:
+            inset 0 3px 0 #4d91dd,
+            inset 0 -3px 0 #4d91dd !important;
+    }
+
+    html.global-dark-mode
+    .order-table.table-hover > tbody > tr:hover > td:first-child {
+        border-left-color: #4d91dd !important;
+    }
+
+    html.global-dark-mode
+    .order-table.table-hover > tbody > tr:hover > td:last-child {
+        border-right-color: #4d91dd !important;
+    }
+
+    /* =====================================================
+       STATUS CELLS - GIỮ NGUYÊN Ý NGHĨA MÀU
+       ===================================================== */
+
+    html.global-dark-mode .status-class-green {
+        color: #164f3e !important;
+        background: #bcefdc !important;
+    }
+
+    html.global-dark-mode .status-class-red {
+        color: #ffffff !important;
+        background: #c95f52 !important;
+    }
+
+    html.global-dark-mode .status-class-warning {
+        color: #332800 !important;
+        background: #eab308 !important;
+    }
+
+    html.global-dark-mode .status-class-info {
+        color: #ffffff !important;
+        background: #168ca0 !important;
+    }
+
+    html.global-dark-mode .attendance-name-cell small,
+    html.global-dark-mode .attendance-mass-cell small,
+    html.global-dark-mode .attendance-class-cell small,
+    html.global-dark-mode .attendance-extra-cell small {
+        color: inherit;
+    }
+
+    /* =====================================================
+       STATISTICS TABLE
+       ===================================================== */
+
+    html.global-dark-mode #daily-statistic-wrapper {
+        color: #dce4f1 !important;
+        background: #111a2a !important;
+    }
+
+    html.global-dark-mode #daily-statistic-table {
+        color: #dce4f1 !important;
+
+        border-color: #354159 !important;
+
+        background: #111a2a !important;
+    }
+
+    html.global-dark-mode #daily-statistic-table th {
+        color: #eef3fb !important;
+        border-color: #354159 !important;
+        background: #1b2941 !important;
+    }
+
+    html.global-dark-mode #daily-statistic-table td {
+        color: #dce4f1;
+        border-color: #2c394f !important;
+        background: #131d2f !important;
+    }
+
+    html.global-dark-mode
+    #daily-statistic-table.table-striped > tbody > tr:nth-of-type(odd) > td {
+        background: #172237 !important;
+    }
+
+    /* Cuối tuần vẫn có phân biệt màu, nhưng chuyển sang dark */
+    html.global-dark-mode #daily-statistic-table th.sunday-column {
+        color: #f6df8e !important;
+        background: #44391d !important;
+    }
+
+    html.global-dark-mode #daily-statistic-table td.sunday-column {
+        color: #eadca8 !important;
+        background: #302a1c !important;
+    }
+
+    html.global-dark-mode #daily-statistic-table th.saturday-column {
+        color: #b8d9ff !important;
+        background: #1e3450 !important;
+    }
+
+    html.global-dark-mode #daily-statistic-table td.saturday-column {
+        color: #c8e1ff !important;
+        background: #172a41 !important;
+    }
+
+    html.global-dark-mode #daily-statistic-table .summary-range-column,
+    html.global-dark-mode #daily-statistic-table .summary-range-cell {
+        color: #d7cffc !important;
+        background: #28243e !important;
+    }
+
+    /* =====================================================
+       MOBILE ATTENDANCE CARDS
+       CSS cũ đang hard-code #fff / #fafafa
+       ===================================================== */
+
+    @media (max-width: 767px) {
+        html.global-dark-mode .order-table > tbody > tr {
+            border-color: #344159 !important;
+
+            background: #131d2f !important;
+
+            box-shadow:
+                0 7px 18px rgba(0,0,0,.23) !important;
+        }
+
+        html.global-dark-mode .order-table > tbody > tr > td {
+            border-bottom-color: #344159 !important;
+        }
+
+        html.global-dark-mode
+        .order-table .attendance-name-cell {
+            color: #f1f5fd !important;
+            background: #1b2941 !important;
+        }
+
+        html.global-dark-mode
+        .order-table .attendance-classroom-cell,
+        html.global-dark-mode
+        .order-table .attendance-modified-cell {
+            color: #dce4f1 !important;
+            background: #182337 !important;
+        }
+
+        html.global-dark-mode
+        .order-table .attendance-mass-cell {
+            border-right-color: #47556d !important;
+        }
+
+        /*
+         * CSS mobile cũ có hover background:inherit;
+         * ép lại để không quay về trắng.
+         */
+        html.global-dark-mode
+        .order-table.table-hover > tbody > tr:hover > td:not(.status-class-green):not(.status-class-red):not(.status-class-warning):not(.status-class-info) {
+            color: #e7edf7 !important;
+            background: #182337 !important;
+            box-shadow: none !important;
+        }
+
+        html.global-dark-mode
+        .order-table.table-hover > tbody > tr:hover
+        > .attendance-name-cell {
+            background: #1b2941 !important;
+        }
+    }
+
+    /* =====================================================
+       STATUS / CAMERA
+       ===================================================== */
+
+    html.global-dark-mode .status {
+        color: #cbd5e4 !important;
+
+        border: 1px solid #344159 !important;
+
+        background: #172236 !important;
+    }
+
+    /* =====================================================
+       MODALS / EXPORT PREVIEW
+       ===================================================== */
+
+    html.global-dark-mode .modal-content,
+    html.global-dark-mode .modal-header,
+    html.global-dark-mode .modal-body,
+    html.global-dark-mode .modal-footer {
+        color: #e7edf8 !important;
+        border-color: #2e3b52 !important;
+        background: #131d2f !important;
+    }
+
+    html.global-dark-mode .modal-title {
+        color: #f2f6ff !important;
+    }
+
+    html.global-dark-mode .export-column-item {
+        color: #dce4f1 !important;
+
+        border-color: #354159 !important;
+
+        background: #172236 !important;
+    }
+
+    html.global-dark-mode .export-preview-box {
+        border-color: #354159 !important;
+        background: #111a2a !important;
+    }
+
+    html.global-dark-mode .export-preview-box table th {
+        color: #edf2fb !important;
+        border-color: #354159 !important;
+        background: #1b2941 !important;
+    }
+
+    html.global-dark-mode .export-preview-box table td {
+        color: #dce4f1 !important;
+        border-color: #2c394f !important;
+        background: #131d2f !important;
+    }
+
+    /* =====================================================
+       TNTT PROFILE MODAL
+       Giữ phong cách vui nhưng giảm chói trong dark mode.
+       ===================================================== */
+
+    html.global-dark-mode .tntt-card.tntt-card--stack {
+        border-color: #725438 !important;
+
+        background:
+            radial-gradient(
+                circle at top left,
+                rgba(255,255,255,.06),
+                transparent 35%
+            ),
+            radial-gradient(
+                circle at bottom right,
+                rgba(255,255,255,.04),
+                transparent 30%
+            ),
+            linear-gradient(
+                135deg,
+                #2d271f 0%,
+                #18313a 30%,
+                #233425 45%,
+                #39301f 62%,
+                #38252c 78%,
+                #342226 90%,
+                #24212a 100%
+            ) !important;
+
+        box-shadow:
+            0 16px 38px rgba(0,0,0,.35),
+            inset 0 1px 0 rgba(255,255,255,.05) !important;
+    }
+
+    html.global-dark-mode .tntt-chip,
+    html.global-dark-mode .tntt-time {
+        color: #e7dfd3 !important;
+
+        border-color: rgba(196,153,105,.20) !important;
+
+        background: rgba(20,26,35,.72) !important;
+    }
+
+    html.global-dark-mode .tntt-stack-name,
+    html.global-dark-mode .tntt-time__value,
+    html.global-dark-mode .tntt-footer {
+        color: #f0d7b8 !important;
+        text-shadow: none !important;
+    }
+
+    html.global-dark-mode .tntt-time__label,
+    html.global-dark-mode .tntt-stack-name:after {
+        color: #d5a86d !important;
+    }
+
+    /* =====================================================
+       QUAN TRỌNG: EXPORT PNG/IMAGE LUÔN GIỮ LIGHT
+       ===================================================== */
+
+    html.global-dark-mode .attendance-export-wrapper,
+    html.global-dark-mode .attendance-export-card {
+        color: #222 !important;
+        background: #ffffff !important;
+    }
+
+    html.global-dark-mode .attendance-export-title {
+        color: #243b53 !important;
+    }
+
+    html.global-dark-mode .attendance-export-subtitle {
+        color: #666 !important;
+    }
+
+    html.global-dark-mode .attendance-export-table th {
+        color: #ffffff !important;
+        background: #4472C4 !important;
+    }
+
+    html.global-dark-mode .attendance-export-table td {
+        color: #222 !important;
+        background: #ffffff !important;
+    }
+
+    /* =====================================================
+       BUTTONS GIỮ MÀU BOOTSTRAP HIỆN TẠI
+       Chỉ làm nút default tối hơn.
+       ===================================================== */
+
+    html.global-dark-mode .portlet-body .btn-default,
+    html.global-dark-mode .modal-body .btn-default,
+    html.global-dark-mode .modal-footer .btn-default {
+        color: #dbe3f1 !important;
+        border-color: #3a485f !important;
+        background: #1b2639 !important;
+    }
+
+    html.global-dark-mode .portlet-body .btn-default:hover,
+    html.global-dark-mode .modal-body .btn-default:hover,
+    html.global-dark-mode .modal-footer .btn-default:hover {
+        color: #ffffff !important;
+        background: #27354d !important;
+    }
+
+    /* =====================================================
+       SCROLLBAR
+       ===================================================== */
+
+    html.global-dark-mode .table-scroll::-webkit-scrollbar-thumb,
+    html.global-dark-mode .export-preview-box::-webkit-scrollbar-thumb {
+        background: #46556f !important;
+    }
+
+    html.global-dark-mode .table-scroll::-webkit-scrollbar-track,
+    html.global-dark-mode .export-preview-box::-webkit-scrollbar-track {
+        background: #111a2a !important;
+    }
+
+</style>
