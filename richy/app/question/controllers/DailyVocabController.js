@@ -1,0 +1,1496 @@
+(function () {
+    'use strict';
+
+    angular.module('Hrm.Question').controller(
+        'DailyVocabController',
+        DailyVocabController
+    );
+
+    DailyVocabController.$inject = [
+        '$rootScope',
+        '$scope',
+        'toastr',
+        '$timeout',
+        'settings',
+        'QuestionService',
+        '$stateParams',
+        'blockUI',
+        '$cookies'
+    ];
+
+    function DailyVocabController(
+        $rootScope,
+        $scope,
+        toastr,
+        $timeout,
+        settings,
+        service,
+        $stateParams,
+        blockUI,
+        $cookies
+    ) {
+        var vm = this;
+
+        $scope.$on('$viewContentLoaded', function () {
+            if (window.App && App.initAjax) {
+                App.initAjax();
+            }
+        });
+
+        $rootScope.settings.layout.pageContentWhite = true;
+        $rootScope.settings.layout.pageBodySolid = false;
+        $rootScope.settings.layout.pageSidebarClosed = false;
+
+        /*
+         * DAILY VOCAB là một controller riêng.
+         * mode chỉ giữ lại để tương thích với một số tên state cũ,
+         * không còn dùng ViewController.
+         */
+        vm.mode = {
+            id: 5,
+            name: 'DAILY VOCAB'
+        };
+
+        vm.listFlashCard = $stateParams.listFlashCard || 0;
+
+        // =====================================================
+        // USER
+        // =====================================================
+
+        function getCurrentUser() {
+            var raw = $cookies.get('education.user');
+
+            if (!raw) {
+                return {};
+            }
+
+            try {
+                return JSON.parse(raw);
+            } catch (e) {
+                return {};
+            }
+        }
+
+        function getFullName(user) {
+            if (user && user.person) {
+                var firstName = user.person.firstName || '';
+                var lastName = user.person.lastName || '';
+                var fullName = (lastName + ' ' + firstName).trim();
+
+                if (fullName) {
+                    return fullName;
+                }
+            }
+
+            return (
+                (user && user.displayName) ||
+                (user && user.username) ||
+                ''
+            );
+        }
+
+        vm.currentUser = getCurrentUser();
+
+        vm.myUser = {
+            id: vm.currentUser.id,
+            name: getFullName(vm.currentUser),
+            roles: vm.currentUser.roles || []
+        };
+
+        vm.isRoleView = false;
+        vm.isRoleUser = false;
+        vm.isRoleAdmin = false;
+
+        angular.forEach(vm.myUser.roles, function (role) {
+            if (role.name === 'ROLE_VIEWER') {
+                vm.isRoleView = true;
+            }
+
+            if (role.name === 'ROLE_USER') {
+                vm.isRoleUser = true;
+            }
+
+            if (role.name === 'ROLE_ADMIN') {
+                vm.isRoleAdmin = true;
+            }
+        });
+
+        vm.users = [
+            {id: 26, name: 'EM YÊU INH LÍCH'},
+            {id: 33, name: 'CHURCH'}
+        ];
+
+        var userAlreadyExists = false;
+
+        angular.forEach(vm.users, function (user) {
+            if (user.id == vm.myUser.id) {
+                userAlreadyExists = true;
+            }
+        });
+
+        if (!userAlreadyExists && vm.myUser.id != null) {
+            vm.users.push(vm.myUser);
+        }
+
+        if (vm.isRoleUser === true) {
+            vm.selectedUser = vm.myUser;
+        } else if (vm.isRoleView === true) {
+            vm.selectedUser = {
+                id: 26,
+                name: 'EM YÊU INH LÍCH'
+            };
+        } else {
+            vm.selectedUser = vm.myUser.id != null
+                ? vm.myUser
+                : vm.users[0];
+        }
+
+        // =====================================================
+        // SEARCH / TOPIC
+        // =====================================================
+
+        vm.searchDto = {
+            upper: 100,
+            lower: 0,
+            type: 100,
+            pageSize: 5000,
+            pageIndex: 1,
+            questionType: {id: 6},
+            userId: vm.selectedUser.id
+        };
+
+        vm.searchTopicDto = {
+            userId: vm.selectedUser.id
+        };
+
+        vm.searchTopicCategory = {};
+        vm.topicCategories = [];
+        vm.topics = [];
+        vm.selectedTopicToSearch = [];
+
+        vm.rawQuestions = [];
+        vm.questions = [];
+        vm.currentCard = {};
+        vm.currentPosition = 0;
+        vm.totalCard = 0;
+
+        vm.title = '';
+        vm.showTimer = false;
+
+        function pushTopic(selectedTopics) {
+            var result = [];
+
+            angular.forEach(selectedTopics || [], function (topic) {
+                result.push({
+                    topic: topic
+                });
+            });
+
+            return result;
+        }
+
+        function normalizeCategoryText(value) {
+            return String(value || '')
+                .toLowerCase()
+                .trim();
+        }
+
+        function findGrade6Category(categories) {
+            var found = null;
+
+            angular.forEach(categories || [], function (category) {
+                if (found) {
+                    return;
+                }
+
+                var name = normalizeCategoryText(category && category.name);
+                var code = normalizeCategoryText(category && category.code);
+                var compactName = name.replace(/\s+/g, '');
+
+                if (
+                    name === 'grade 6' ||
+                    compactName === 'grade6' ||
+                    name === 'lớp 6' ||
+                    name === 'lop 6' ||
+                    code === 'grade6' ||
+                    code === 'grade 6'
+                ) {
+                    found = category;
+                }
+            });
+
+            return found;
+        }
+
+        vm.getTopics = function () {
+            if (!vm.searchTopicDto.topicCategory) {
+                vm.topics = [];
+                return;
+            }
+
+            blockUI.start();
+
+            service.getTopicsForGames(
+                vm.searchTopicDto,
+                1,
+                10000000
+            ).then(
+                function (data) {
+                    vm.topics =
+                        data && data.content
+                            ? data.content
+                            : [];
+                },
+                function () {
+                    vm.topics = [];
+                    toastr.error(
+                        'Không tải được danh sách bài.',
+                        'Thông báo'
+                    );
+                }
+            ).finally(function () {
+                blockUI.stop();
+            });
+        };
+
+        vm.getPageTopicCategory = function () {
+            blockUI.start();
+
+            service.getPageTopicCategory(
+                vm.searchTopicCategory,
+                1,
+                100
+            ).then(
+                function (data) {
+                    vm.topicCategories =
+                        data && data.content
+                            ? data.content
+                            : [];
+
+                    if (vm.topicCategories.length === 0) {
+                        vm.topics = [];
+                        return;
+                    }
+
+                    /*
+                     * Mặc định Grade 6 giống yêu cầu hiện tại.
+                     */
+                    vm.searchTopicDto.topicCategory =
+                        findGrade6Category(vm.topicCategories) ||
+                        vm.topicCategories[0];
+
+                    vm.getTopics();
+                },
+                function () {
+                    vm.topicCategories = [];
+                    vm.topics = [];
+
+                    toastr.error(
+                        'Không tải được Grade.',
+                        'Thông báo'
+                    );
+                }
+            ).finally(function () {
+                blockUI.stop();
+            });
+        };
+
+        vm.chooseUsers = function () {
+            vm.searchDto.userId = vm.selectedUser.id;
+            vm.searchTopicDto.userId = vm.selectedUser.id;
+
+            vm.selectedTopicToSearch = [];
+            vm.rawQuestions = [];
+            vm.questions = [];
+            vm.currentCard = {};
+            vm.totalCard = 0;
+
+            vm.resetDailyVocabRun();
+            vm.getTopics();
+        };
+
+        // =====================================================
+        // QUESTIONS / 4 ANSWERS
+        // =====================================================
+
+        function shuffleArray(array) {
+            var result = (array || []).slice();
+            var i;
+            var j;
+            var temp;
+
+            for (i = result.length - 1; i > 0; i--) {
+                j = Math.floor(Math.random() * (i + 1));
+
+                temp = result[i];
+                result[i] = result[j];
+                result[j] = temp;
+            }
+
+            return result;
+        }
+
+        function createQuestionsWithOptions(
+            parents,
+            optionCount,
+            shouldShuffleAnswers
+        ) {
+            if (!Array.isArray(parents)) {
+                return [];
+            }
+
+            var totalOptions = optionCount || 4;
+            var shuffleAnswers =
+                shouldShuffleAnswers === true;
+
+            return parents.map(function (parent) {
+                var wrongSource = parents.filter(function (item) {
+                    return item.id !== parent.id;
+                });
+
+                if (shuffleAnswers) {
+                    wrongSource = shuffleArray(wrongSource);
+                }
+
+                var wrongAnswers = wrongSource
+                    .slice(0, totalOptions - 1)
+                    .map(function (item) {
+                        return {
+                            id: item.id,
+                            question: item.question,
+                            motherTongue: item.motherTongue,
+                            pronounce: item.pronounce,
+                            ordinalNumber: item.ordinalNumber,
+                            result: false,
+                            chosen: false,
+                            correct: false
+                        };
+                    });
+
+                var correctAnswer = {
+                    id: parent.id,
+                    question: parent.question,
+                    motherTongue: parent.motherTongue,
+                    pronounce: parent.pronounce,
+                    ordinalNumber: parent.ordinalNumber,
+                    result: false,
+                    chosen: false,
+                    correct: true
+                };
+
+                var answers =
+                    [correctAnswer].concat(wrongAnswers);
+
+                if (shuffleAnswers) {
+                    answers = shuffleArray(answers);
+                }
+
+                var question = angular.copy(parent);
+                question.questions = answers;
+
+                return question;
+            });
+        }
+
+        function buildDailyQuestions(shuffleAnswers) {
+            vm.questions = createQuestionsWithOptions(
+                vm.rawQuestions,
+                4,
+                shuffleAnswers === true
+            );
+
+            vm.questions = shuffleArray(vm.questions);
+
+            vm.currentPosition = 0;
+            vm.currentCard =
+                vm.questions.length > 0
+                    ? vm.questions[0]
+                    : {};
+        }
+
+        vm.getPageFlashCard = function () {
+            vm.searchDto.questionType = {id: 6};
+            vm.searchDto.userId = vm.selectedUser.id;
+            vm.searchDto.pageSize = 5000;
+            vm.searchDto.pageIndex = 1;
+
+            if (
+                !vm.searchDto.questionTopics ||
+                vm.searchDto.questionTopics.length <= 0
+            ) {
+                toastr.warning(
+                    'Phải chọn bài từ vựng cần học rồi ấn TÌM KIẾM.'
+                );
+                return;
+            }
+
+            blockUI.start();
+
+            service.getPageForGames(
+                vm.searchDto,
+                vm.searchDto.pageIndex,
+                vm.searchDto.pageSize
+            ).then(
+                function (data) {
+                    vm.rawQuestions =
+                        data && data.content
+                            ? data.content
+                            : [];
+
+                    vm.totalCard =
+                        data && angular.isDefined(data.totalElements)
+                            ? data.totalElements
+                            : vm.rawQuestions.length;
+
+                    /*
+                     * Sau khi tìm kiếm:
+                     * - Có câu hỏi.
+                     * - Chưa hiện 4 đáp án.
+                     * - Chưa chạy timer.
+                     */
+                    buildDailyQuestions(false);
+
+                    vm.showTimer = true;
+                    vm.resetDailyVocabRun();
+                },
+                function () {
+                    vm.rawQuestions = [];
+                    vm.questions = [];
+                    vm.currentCard = {};
+                    vm.totalCard = 0;
+
+                    toastr.error(
+                        'Không tải được dữ liệu DAILY VOCAB.',
+                        'Thông báo'
+                    );
+                }
+            ).finally(function () {
+                blockUI.stop();
+            });
+        };
+
+        vm.searchTopicChange = function () {
+            vm.searchDto.questionTopics =
+                pushTopic(vm.selectedTopicToSearch);
+
+            if (
+                !vm.searchDto.questionTopics ||
+                vm.searchDto.questionTopics.length === 0
+            ) {
+                toastr.warning(
+                    'Phải chọn bài từ vựng cần học rồi ấn TÌM KIẾM.'
+                );
+                return;
+            }
+
+            vm.title = '';
+
+            angular.forEach(
+                vm.searchDto.questionTopics,
+                function (questionTopic) {
+                    if (
+                        questionTopic &&
+                        questionTopic.topic &&
+                        questionTopic.topic.name
+                    ) {
+                        vm.title +=
+                            ' ' + questionTopic.topic.name;
+                    }
+                }
+            );
+
+            vm.getPageFlashCard();
+        };
+
+        vm.nextCard = function () {
+            shutUp();
+
+            if (vm.currentPosition + 1 >= vm.questions.length) {
+                return;
+            }
+
+            vm.currentPosition += 1;
+            vm.currentCard =
+                vm.questions[vm.currentPosition];
+
+            stillInAQuestion1 = false;
+
+            if (vm.voiceEnabled === true) {
+                sayIt(vm.currentCard.question);
+            }
+        };
+
+        // =====================================================
+        // TIMER RIÊNG DAILY VOCAB
+        // =====================================================
+
+        var dailyVocabTimeout = null;
+
+        vm.dailyVocabDuration = 900;
+        vm.dailyVocabCounter = 900;
+        vm.dailyVocabRunning = false;
+        vm.dailyVocabAnswersEnabled = false;
+
+        function cancelDailyVocabTimeout() {
+            if (dailyVocabTimeout !== null) {
+                $timeout.cancel(dailyVocabTimeout);
+                dailyVocabTimeout = null;
+            }
+        }
+
+        vm.dailyVocabTimerSettingChange = function () {
+            var value =
+                parseInt(vm.dailyVocabDuration, 10);
+
+            if (isNaN(value) || value < 1) {
+                value = 1;
+            }
+
+            if (value > 9999) {
+                value = 9999;
+            }
+
+            vm.dailyVocabDuration = value;
+
+            /*
+             * Khi chưa chạy, sửa SET TIMER là đồng hồ phía trên
+             * đổi ngay lập tức.
+             */
+            if (vm.dailyVocabRunning !== true) {
+                vm.dailyVocabCounter = value;
+            }
+        };
+
+        vm.stopDailyVocabTimer = function () {
+            cancelDailyVocabTimeout();
+
+            vm.dailyVocabRunning = false;
+            vm.dailyVocabAnswersEnabled = false;
+
+            stopBackgroundMusic();
+            shutUp();
+        };
+
+        vm.resetDailyVocabTimer = function () {
+            vm.stopDailyVocabTimer();
+
+            vm.dailyVocabCounter =
+                parseInt(vm.dailyVocabDuration, 10) || 900;
+
+            vm.dailyVocabRunning = false;
+            vm.dailyVocabAnswersEnabled = false;
+        };
+
+        function dailyVocabTimeUp() {
+            cancelDailyVocabTimeout();
+
+            vm.dailyVocabCounter = 0;
+            vm.dailyVocabRunning = false;
+            vm.dailyVocabAnswersEnabled = false;
+
+            stopBackgroundMusic();
+            shutUp();
+
+            playAudioById('boom-sound', false);
+        }
+
+        function dailyVocabTick() {
+            if (vm.dailyVocabRunning !== true) {
+                return;
+            }
+
+            if (Number(vm.dailyVocabCounter) <= 1) {
+                dailyVocabTimeUp();
+                return;
+            }
+
+            vm.dailyVocabCounter =
+                Number(vm.dailyVocabCounter) - 1;
+
+            dailyVocabTimeout =
+                $timeout(dailyVocabTick, 1000);
+        }
+
+        vm.startDailyVocab = function () {
+            if (vm.dailyVocabRunning === true) {
+                return;
+            }
+
+            if (!vm.rawQuestions || vm.rawQuestions.length === 0) {
+                toastr.warning(
+                    'Chưa có dữ liệu. Hãy chọn bài và nhấn TÌM KIẾM trước.'
+                );
+                return;
+            }
+
+            cancelDailyVocabTimeout();
+            shutUp();
+
+            /*
+             * Chỉ khi bấm đồng hồ mới bắt đầu:
+             * - Trộn câu.
+             * - Trộn 4 đáp án.
+             * - Hiện đáp án.
+             */
+            buildDailyQuestions(true);
+
+            vm.resetDailyVocabSaveState();
+
+            vm.finishDailyVocab = 'Unfinished';
+            vm.dailyVocabCounter =
+                parseInt(vm.dailyVocabDuration, 10) || 900;
+
+            vm.dailyVocabRunning = true;
+            vm.dailyVocabAnswersEnabled = true;
+
+            vm.score1 = 0;
+            vm.streakPlayer1 = 0;
+            vm.wrongPlayer1 = 0;
+            vm.tempWrong = '';
+
+            stillInAQuestion1 = false;
+
+            vm.showStart = true;
+            vm.showWrong = false;
+            vm.showCorrect = false;
+
+            startBackgroundMusic();
+
+            if (vm.voiceEnabled === true && vm.currentCard) {
+                sayIt(vm.currentCard.question);
+            }
+
+            /*
+             * Giữ nguyên số ban đầu trong 1 giây đầu.
+             */
+            dailyVocabTimeout =
+                $timeout(dailyVocabTick, 1000);
+        };
+
+        // =====================================================
+        // AUDIO / SPEECH
+        // =====================================================
+
+        /*
+         * DAILY VOCAB - trạng thái ÂM THANH theo nghĩa dương:
+         *
+         * true  = BẬT
+         * false = TẮT
+         *
+         * Như vậy trạng thái switch trên giao diện khớp hoàn toàn
+         * với hành vi mà người dùng nhìn thấy.
+         */
+        vm.voiceEnabled = true;
+        vm.backgroundMusicEnabled = false;
+        vm.speechLang = 'en-US';
+
+        // =====================================================
+        // DARK MODE - chỉ dành cho DAILY VOCAB
+        // =====================================================
+
+        var dailyVocabDarkModeStorageKey =
+            'dailyVocab.darkMode';
+
+        function loadDailyVocabDarkMode() {
+            try {
+                var saved =
+                    window.localStorage.getItem(
+                        dailyVocabDarkModeStorageKey
+                    );
+
+                vm.darkModeEnabled =
+                    saved === 'true';
+            } catch (e) {
+                /*
+                 * Nếu browser chặn localStorage,
+                 * vẫn cho dark mode hoạt động trong phiên hiện tại.
+                 */
+                vm.darkModeEnabled = false;
+            }
+        }
+
+        vm.toggleDarkMode = function () {
+            vm.darkModeEnabled =
+                vm.darkModeEnabled === true;
+
+            try {
+                window.localStorage.setItem(
+                    dailyVocabDarkModeStorageKey,
+                    vm.darkModeEnabled
+                        ? 'true'
+                        : 'false'
+                );
+            } catch (e) {
+                // Không để lỗi storage ảnh hưởng game.
+            }
+        };
+
+        loadDailyVocabDarkMode();
+
+        var backgroundAudio = null;
+
+        function getAudio(id) {
+            return document.getElementById(id);
+        }
+
+        function playAudioById(id, loop) {
+            var element = getAudio(id);
+
+            if (!element) {
+                return;
+            }
+
+            try {
+                element.pause();
+                element.currentTime = 0;
+                element.loop = loop === true;
+
+                var promise = element.play();
+
+                if (
+                    promise &&
+                    angular.isFunction(promise.catch)
+                ) {
+                    promise.catch(angular.noop);
+                }
+            } catch (e) {
+                // Browser có thể chặn autoplay.
+            }
+        }
+
+        function stopBackgroundMusic() {
+            if (!backgroundAudio) {
+                return;
+            }
+
+            try {
+                backgroundAudio.pause();
+                backgroundAudio.currentTime = 0;
+                backgroundAudio.loop = false;
+            } catch (e) {
+                // Không làm gì.
+            }
+
+            backgroundAudio = null;
+        }
+
+        function startBackgroundMusic() {
+            stopBackgroundMusic();
+
+            if (vm.backgroundMusicEnabled !== true) {
+                return;
+            }
+
+            var ids = [
+                'audio-1',
+                'audio-5',
+                'audio-6',
+                'audio-7'
+            ];
+
+            var randomId =
+                ids[Math.floor(Math.random() * ids.length)];
+
+            backgroundAudio = getAudio(randomId);
+
+            if (!backgroundAudio) {
+                return;
+            }
+
+            try {
+                backgroundAudio.currentTime = 0;
+                backgroundAudio.loop = true;
+
+                var promise = backgroundAudio.play();
+
+                if (
+                    promise &&
+                    angular.isFunction(promise.catch)
+                ) {
+                    promise.catch(angular.noop);
+                }
+            } catch (e) {
+                // Không làm gì.
+            }
+        }
+
+        function sayIt(text) {
+            if (
+                vm.voiceEnabled !== true ||
+                !text ||
+                !window.speechSynthesis
+            ) {
+                return;
+            }
+
+            try {
+                window.speechSynthesis.cancel();
+
+                var utterance =
+                    new SpeechSynthesisUtterance(
+                        String(text)
+                    );
+
+                utterance.lang = 'en-US';
+                utterance.rate = 1;
+                utterance.pitch = 1;
+                utterance.volume = 1;
+
+                var voices =
+                    window.speechSynthesis.getVoices() || [];
+
+                var selectedVoice = null;
+
+                angular.forEach(voices, function (voice) {
+                    if (
+                        !selectedVoice &&
+                        voice &&
+                        voice.lang &&
+                        (
+                            voice.lang === 'en-US' ||
+                            voice.lang.indexOf('en-') === 0
+                        )
+                    ) {
+                        selectedVoice = voice;
+                    }
+                });
+
+                if (selectedVoice) {
+                    utterance.voice = selectedVoice;
+                }
+
+                window.speechSynthesis.speak(
+                    utterance
+                );
+            } catch (e) {
+                // Speech lỗi không làm hỏng game.
+            }
+        }
+
+        function shutUp() {
+            if (!window.speechSynthesis) {
+                return;
+            }
+
+            try {
+                window.speechSynthesis.cancel();
+            } catch (e) {
+                // Không làm gì.
+            }
+        }
+
+        vm.sayCurrentWord = function () {
+            if (vm.currentCard) {
+                sayIt(vm.currentCard.question);
+            }
+        };
+
+        /*
+         * GIỌNG ĐỌC
+         * Switch ON  -> voiceEnabled = true  -> được phép nói.
+         * Switch OFF -> voiceEnabled = false -> dừng speech ngay.
+         */
+        vm.toggleVoice = function () {
+            if (vm.voiceEnabled !== true) {
+                shutUp();
+                return;
+            }
+
+            /*
+             * Nếu đang làm bài và vừa bật lại giọng đọc,
+             * đọc luôn từ hiện tại để user thấy switch có tác dụng ngay.
+             */
+            if (
+                vm.dailyVocabRunning === true &&
+                vm.currentCard &&
+                vm.currentCard.question
+            ) {
+                sayIt(vm.currentCard.question);
+            }
+        };
+
+        /*
+         * NHẠC NỀN
+         * Switch ON  -> backgroundMusicEnabled = true.
+         * Switch OFF -> backgroundMusicEnabled = false và dừng nhạc ngay.
+         */
+        vm.toggleBackgroundMusic = function () {
+            if (vm.backgroundMusicEnabled !== true) {
+                stopBackgroundMusic();
+                return;
+            }
+
+            /*
+             * Chỉ tự phát nhạc khi game đang chạy.
+             * Nếu chưa bấm START thì chỉ lưu trạng thái ON,
+             * tới lúc bắt đầu game nhạc mới chạy.
+             */
+            if (vm.dailyVocabRunning === true) {
+                startBackgroundMusic();
+            }
+        };
+
+        vm.sayingWhenWrong = function () {
+            var wrongAudioIds = [
+                'sai',
+                'phai-chiu',
+                'quec',
+                'dung-co-keu',
+                'stupid'
+            ];
+
+            var randomId =
+                wrongAudioIds[
+                    Math.floor(
+                        Math.random() *
+                        wrongAudioIds.length
+                    )
+                ];
+
+            playAudioById(randomId, false);
+        };
+
+        // =====================================================
+        // FEEDBACK IMAGE
+        // =====================================================
+
+        vm.showStart = true;
+        vm.showWrong = false;
+        vm.showCorrect = false;
+
+        vm.linkStart1 =
+            'https://lh3.googleusercontent.com/pw/AP1GczPEqogicPymXIHsXPhJdbo0Mg6-d5MJE8aJ1w4XbxXWe295w-ZDBc_HmtgDy_iwALkaM_yM99TedpZYmdvz5wbhl4QhdvbL8yEWZBs35wLU7y-iiM4VA-mAYRUmq9JfpUt5fJlaZC4C9P5qhjbcoKgB=w919-h919-s-no-gm?authuser=1';
+
+        vm.linkStart2 =
+            'https://lh3.googleusercontent.com/pw/AP1GczMlQpFC5mxUfomDjlskHiy-_wKfnSN_YBmA8iWr-f17Ypb5siqavs308dIOTsrDYbQHIA2Ia3__A9jOwMDcP4-NBkJYB4X3iOzJzjfrwxGBzRFunsZof5okn6_0CBTTcHbHFNGrPan_cfnvY6WFLWiR=w919-h919-s-no-gm?authuser=1';
+
+        var correctImages = [
+            'https://lh3.googleusercontent.com/pw/AP1GczMWD3uVqUpqROszj5p_a0W5j2lvpD_Nuh8P0rCmeh03DNmj1CE-XOttzUpK7vWtBgjtbbdsuw_X-i3jskTDSxMloH5U_2scXD-B5BTpTchPfv8h1RQGIgx5PG0e22SHpYo5Pcf4GEIWi-TIxLvOkXMj=w989-h989-s-no-gm?authuser=1',
+            'https://lh3.googleusercontent.com/pw/AP1GczPL-li6WBV1fJoowvP5987OYY389QGXS01oLKysc4LAW-bljOk4B1wzGhyVRZNdEfP0aX3ajQYvZEFQTWFHQwsWnn1HvgGSOrjdtBamVUbn8BAACuoEXVNQalmz-IlFshHL3d_qYwoVuInT4i8nLVrN=w989-h989-s-no-gm?authuser=1',
+            'https://lh3.googleusercontent.com/pw/AP1GczPrexogtWayS4t4D5VRWp3UswdLhwuurFtsvqUe-Qy3HUELJ-N6D8_qSL0PYjemP14C3AcKMo4VO960W_8oaeQxuF5oB5L-9bw6MFkI1BPf6SNmda8y7cK15XqyPx3gul-HKaJKAA58XWRvbrSZu2d2=w989-h989-s-no-gm?authuser=1',
+            vm.linkStart2
+        ];
+
+        var wrongImages = [
+            'https://lh3.googleusercontent.com/pw/AP1GczMUHTKwnGcAhVh37rguI5kYNzMR-dOPYNhaBRpzswBtoOsZoqBeuhRquwkh0lWUbxUQo4DoKo3fRB5Rr_0JwpD3L7V5_LIGwp81X866DIWdzqHAFLX6fc2Y-_Vzzl3iemRkC8gRe8nPLHiVHifRotM2=w989-h989-s-no-gm?authuser=1',
+            'https://lh3.googleusercontent.com/pw/AP1GczMjCTwNZ8YxHbhBnhF09K6XlW1HUJ4jeNHgE6wn_Rj2TxKGikeSXYx__oUL7xPWCVNOaPTETUvMJDSIEFgmA4msqSZQ3byIaY37oPaCXOOgxL-XdHqf-glIIIwiN8S1U47I3z3R6z_sq0TtH8T9lpO_=w989-h989-s-no-gm?authuser=1',
+            'https://lh3.googleusercontent.com/pw/AP1GczMLB7Qj4lPY1GHl8v__m74-K0sEdJXzLN7Os2wgIcy3UxNRmMiX0BYXM1AB4PjPIwMVMehIoALtnrxoBL8T9O433ZmHh5g94--u4B6yz1BKrKp3bbBVRezoaP8bU1Aedfos5r89SZwni1oz-btiCcbO=w989-h989-s-no-gm?authuser=1'
+        ];
+
+        vm.changeImageForAnswer = function () {
+            vm.linkImageCorrect =
+                correctImages[
+                    Math.floor(
+                        Math.random() *
+                        correctImages.length
+                    )
+                ];
+
+            vm.linkImageWrong =
+                wrongImages[
+                    Math.floor(
+                        Math.random() *
+                        wrongImages.length
+                    )
+                ];
+        };
+
+        vm.changeImageForAnswer();
+
+        // =====================================================
+        // KEYBOARD SHORTCUTS - DAILY VOCAB
+        //
+        // 1 -> Q
+        // 2 -> W / Ư
+        // 3 -> A
+        // 4 -> S
+        //
+        // Dùng event.code thay vì event.key để vẫn hoạt động
+        // khi UniKey / Telex đang bật.
+        // =====================================================
+
+        var dailyVocabKeyboardMap = {
+            KeyQ: 0,
+            KeyW: 1,
+            KeyA: 2,
+            KeyS: 3
+        };
+
+        function isEditableKeyboardTarget(target) {
+            if (!target) {
+                return false;
+            }
+
+            var tagName =
+                String(target.tagName || '')
+                    .toLowerCase();
+
+            if (
+                tagName === 'input' ||
+                tagName === 'textarea' ||
+                tagName === 'select'
+            ) {
+                return true;
+            }
+
+            if (
+                target.isContentEditable === true ||
+                target.getAttribute('contenteditable') === 'true'
+            ) {
+                return true;
+            }
+
+            return false;
+        }
+
+        function dailyVocabKeyboardHandler(event) {
+            event = event || window.event;
+
+            if (!event) {
+                return;
+            }
+
+            /*
+             * Không cho giữ phím tạo nhiều lần answer liên tiếp.
+             */
+            if (event.repeat === true) {
+                return;
+            }
+
+            /*
+             * Ctrl / Alt / Meta có thể là shortcut của browser/OS.
+             */
+            if (
+                event.ctrlKey === true ||
+                event.altKey === true ||
+                event.metaKey === true
+            ) {
+                return;
+            }
+
+            /*
+             * Khi user đang nhập text/search/timer thì KHÔNG bắt
+             * Q/W/A/S để tránh phá việc gõ chữ bằng UniKey.
+             */
+            if (isEditableKeyboardTarget(event.target)) {
+                return;
+            }
+
+            var answerIndex =
+                dailyVocabKeyboardMap[event.code];
+
+            /*
+             * Fallback cho UniKey / Telex / browser cũ:
+             * Nếu event.code không cho kết quả, đọc thêm event.key.
+             *
+             * Đặc biệt:
+             *   W / w / Ư / ư  => đáp án 2
+             */
+            if (answerIndex === undefined) {
+                var pressedKey =
+                    String(event.key || '')
+                        .toLowerCase();
+
+                var dailyVocabKeyboardKeyMap = {
+                    q: 0,
+                    w: 1,
+                    'ư': 1,
+                    a: 2,
+                    s: 3
+                };
+
+                answerIndex =
+                    dailyVocabKeyboardKeyMap[pressedKey];
+            }
+
+            if (answerIndex === undefined) {
+                return;
+            }
+
+            /*
+             * Chỉ nhận shortcut khi game thực sự đang chạy
+             * và 4 đáp án đang được phép chọn.
+             */
+            if (
+                vm.dailyVocabRunning !== true ||
+                vm.dailyVocabAnswersEnabled !== true ||
+                Number(vm.dailyVocabCounter) <= 0
+            ) {
+                return;
+            }
+
+            if (
+                !vm.currentCard ||
+                !angular.isArray(vm.currentCard.questions) ||
+                !vm.currentCard.questions[answerIndex]
+            ) {
+                return;
+            }
+
+            var selectedAnswer =
+                vm.currentCard.questions[answerIndex];
+
+            /*
+             * Ngăn browser xử lý phím theo cách khác sau khi
+             * đã xác định đây là shortcut của DAILY VOCAB.
+             */
+            if (event.preventDefault) {
+                event.preventDefault();
+            }
+
+            if (event.stopPropagation) {
+                event.stopPropagation();
+            }
+
+            /*
+             * Listener chạy ngoài Angular digest.
+             */
+            $scope.$evalAsync(function () {
+                vm.answerDailyVocab(
+                    selectedAnswer.correct,
+                    selectedAnswer,
+                    vm.currentCard.questions
+                );
+            });
+        }
+
+        document.addEventListener(
+            'keydown',
+            dailyVocabKeyboardHandler,
+            false
+        );
+
+        /*
+         * Khi rời DAILY VOCAB phải gỡ listener,
+         * tránh shortcut tiếp tục chạy ở trang khác.
+         */
+        $scope.$on('$destroy', function () {
+            document.removeEventListener(
+                'keydown',
+                dailyVocabKeyboardHandler,
+                false
+            );
+        });
+
+        // =====================================================
+        // SCORE / ANSWER
+        // =====================================================
+
+        var stillInAQuestion1 = false;
+
+        vm.score1 = 0;
+        vm.streakPlayer1 = 0;
+        vm.wrongPlayer1 = 0;
+        vm.finishDailyVocab = 'Unfinished';
+        vm.tempWrong = '';
+
+        vm.answerDailyVocab = function (
+            correct,
+            item,
+            questions
+        ) {
+            /*
+             * Khi 4 đáp án đang hiện thì click phải được xử lý.
+             */
+            if (
+                vm.dailyVocabRunning !== true ||
+                vm.dailyVocabAnswersEnabled !== true ||
+                Number(vm.dailyVocabCounter) <= 0
+            ) {
+                return;
+            }
+
+            if (!angular.isArray(questions) || !item) {
+                return;
+            }
+
+            var isCorrect =
+                correct === true ||
+                correct === 1 ||
+                String(correct).toLowerCase() === 'true';
+
+            angular.forEach(
+                questions,
+                function (answer) {
+                    answer.chosen = false;
+                }
+            );
+
+            item.chosen = true;
+
+            vm.changeImageForAnswer();
+
+            if (isCorrect) {
+                vm.showStart = false;
+                vm.showWrong = false;
+                vm.showCorrect = true;
+
+                stillInAQuestion1 = false;
+
+                vm.streakPlayer1 =
+                    Number(vm.streakPlayer1 || 0) + 1;
+
+                if (vm.streakPlayer1 >= 5) {
+                    vm.score1 =
+                        Number(vm.score1 || 0) +
+                        parseInt(
+                            vm.streakPlayer1 / 3,
+                            10
+                        );
+                } else {
+                    vm.score1 =
+                        Number(vm.score1 || 0) + 1;
+                }
+
+                /*
+                 * Câu cuối.
+                 */
+                if (
+                    vm.currentPosition + 1 >=
+                    vm.totalCard
+                ) {
+                    vm.score1 =
+                        Number(vm.score1 || 0) +
+                        (
+                            Number(
+                                vm.dailyVocabCounter
+                            ) / 12
+                        );
+
+                    vm.score1 =
+                        Number(vm.score1).toFixed(2);
+
+                    vm.currentPosition += 1;
+
+                    try {
+                        window.speechSynthesis.speak(
+                            new SpeechSynthesisUtterance(
+                                'Player one is OVER'
+                            )
+                        );
+                    } catch (e) {
+                        // Không làm gì.
+                    }
+
+                    if (
+                        vm.isSaveTestResult !== true
+                    ) {
+                        vm.saveTestResult();
+                    }
+
+                    vm.stopDailyVocabTimer();
+                    return;
+                }
+
+                vm.nextCard();
+                return;
+            }
+
+            /*
+             * Sai.
+             */
+            vm.showStart = false;
+            vm.showWrong = true;
+            vm.showCorrect = false;
+
+            vm.streakPlayer1 = 0;
+            vm.score1 =
+                Number(vm.score1 || 0) - 0.5;
+
+            if (stillInAQuestion1 === false) {
+                vm.wrongPlayer1 =
+                    Number(vm.wrongPlayer1 || 0) + 1;
+
+                stillInAQuestion1 = true;
+
+                if (!vm.testResult) {
+                    vm.setUpTestResult();
+                }
+
+                if (
+                    !vm.testResult
+                        .testTakerPerformance
+                ) {
+                    vm.testResult
+                        .testTakerPerformance = '';
+                }
+
+                vm.testResult
+                    .testTakerPerformance +=
+                    (
+                        (
+                            vm.currentCard &&
+                            vm.currentCard.question
+                        ) || ''
+                    ) +
+                    ' --- ' +
+                    (
+                        (
+                            vm.currentCard &&
+                            vm.currentCard.motherTongue
+                        ) || ''
+                    ) +
+                    ' <br> ';
+
+                vm.tempWrong =
+                    vm.testResult
+                        .testTakerPerformance;
+            }
+
+            vm.sayingWhenWrong();
+        };
+
+        // =====================================================
+        // TEST RESULT
+        // =====================================================
+
+        vm.testResult = {};
+        vm.isSaveTestResult = false;
+        vm.savingTestResult = false;
+
+        vm.setUpTestResult = function () {
+            vm.testResult = {
+                user: vm.currentUser,
+                testTakerPerformance: '',
+                totalWord: vm.totalCard
+            };
+
+            vm.isSaveTestResult = false;
+        };
+
+        vm.resetDailyVocabSaveState = function () {
+            vm.isSaveTestResult = false;
+            vm.savingTestResult = false;
+            vm.finishDailyVocab = 'Unfinished';
+            vm.tempWrong = '';
+
+            vm.setUpTestResult();
+        };
+
+        vm.saveTestResult = function () {
+            if (
+                vm.savingTestResult === true ||
+                vm.isSaveTestResult === true
+            ) {
+                return;
+            }
+
+            vm.savingTestResult = true;
+
+            if (!vm.testResult) {
+                vm.setUpTestResult();
+            }
+
+            vm.testResult.testType = 1;
+            vm.testResult.testName =
+                (vm.title || 'DAILY VOCAB')
+                    .substring(0, 50);
+
+            vm.testResult.testTime =
+                vm.totalCard.toString() +
+                ' WORD(s)|' +
+                vm.score1.toString() +
+                'pt' +
+                '|INCORRECT: ' +
+                vm.wrongPlayer1.toString() +
+                '|TIME: ' +
+                vm.dailyVocabCounter +
+                '/' +
+                vm.dailyVocabDuration;
+
+            vm.testResult.numberOfWords =
+                Math.max(
+                    0,
+                    vm.totalCard -
+                    vm.wrongPlayer1
+                );
+
+            vm.testResult.totalWord =
+                vm.totalCard;
+
+            blockUI.start();
+
+            service.saveTestResult(
+                vm.testResult
+            ).then(
+                function (data) {
+                    if (
+                        data &&
+                        data.messageCode == 1
+                    ) {
+                        toastr.error(
+                            'Sai quá nhiều => chưa đạt',
+                            'Thông báo'
+                        );
+
+                        vm.finishDailyVocab =
+                            'Not Passed';
+                    } else {
+                        toastr.info(
+                            'Lưu thành công',
+                            'Thông báo'
+                        );
+
+                        vm.finishDailyVocab =
+                            'Finished';
+                    }
+
+                    if (data) {
+                        vm.testResult.id = data.id;
+                    }
+
+                    vm.isSaveTestResult = true;
+                },
+                function () {
+                    toastr.error(
+                        'Có lỗi xảy ra.',
+                        'Thông báo'
+                    );
+                }
+            ).finally(function () {
+                vm.savingTestResult = false;
+                blockUI.stop();
+            });
+        };
+
+        vm.resetDailyVocabRun = function () {
+            vm.resetDailyVocabTimer();
+
+            vm.resetDailyVocabSaveState();
+
+            vm.currentPosition = 0;
+            vm.score1 = 0;
+            vm.streakPlayer1 = 0;
+            vm.wrongPlayer1 = 0;
+            vm.tempWrong = '';
+
+            stillInAQuestion1 = false;
+
+            vm.showStart = true;
+            vm.showWrong = false;
+            vm.showCorrect = false;
+
+            if (vm.questions.length > 0) {
+                vm.currentCard =
+                    vm.questions[0];
+            }
+        };
+
+        vm.setUpTestResult();
+
+        // =====================================================
+        // CLEANUP
+        // =====================================================
+
+        $scope.$on('$destroy', function () {
+            cancelDailyVocabTimeout();
+            stopBackgroundMusic();
+            shutUp();
+        });
+
+        /*
+         * Load Grade 6 + danh sách bài ngay khi vào trang.
+         */
+        vm.getPageTopicCategory();
+    }
+})();
