@@ -219,6 +219,23 @@
 
             <button
                 type="button"
+                class="daily-running-man-btn"
+                ng-class="{'is-active': vm.runningManEnabled}"
+                ng-click="vm.openRunningManDifficulty()"
+                ng-disabled="vm.dailyVocabRunning"
+                title="Chọn chế độ RUNNING MAN">
+                <span class="daily-running-man-btn-icon">🏃</span>
+                <span class="daily-running-man-btn-copy">
+                    <strong>RUNNING MAN</strong>
+                    <small ng-if="!vm.runningManEnabled">CHỌN ĐỘ KHÓ</small>
+                    <small ng-if="vm.runningManEnabled">
+                        {{vm.runningManDifficultyName}}
+                    </small>
+                </span>
+            </button>
+
+            <button
+                type="button"
                 class="daily-clock"
                 ng-click="vm.startDailyVocab()"
                 ng-disabled="vm.dailyVocabRunning">
@@ -246,6 +263,131 @@
                 <i class="fa fa-rotate-right"></i>
             </button>
         </div>
+
+
+        <!-- =================================================
+             RUNNING MAN TRACK
+             ================================================= -->
+        <section
+            class="daily-running-man-card"
+            ng-if="vm.showTimer && vm.runningManEnabled"
+            ng-class="{
+                'is-running': vm.runningManActive,
+                'is-lost': vm.runningManLost,
+                'is-won': vm.runningManWon
+            }">
+
+            <div class="daily-running-man-head">
+                <div class="daily-running-man-title">
+                    <span class="daily-running-man-title-icon">🏃</span>
+
+                    <div>
+                        <strong>RUNNING MAN</strong>
+                        <small>
+                            {{vm.runningManDifficultyName}}
+                            • NGU tiến mỗi {{vm.runningManChaseIntervalLabel}}
+                        </small>
+                    </div>
+                </div>
+
+                <div class="daily-running-man-gap">
+                    <span>KHOẢNG CÁCH</span>
+                    <strong>{{vm.runningManGap}}</strong>
+                </div>
+            </div>
+
+            <div class="daily-running-track">
+                <div class="daily-running-track-road"></div>
+
+                <span class="daily-running-track-mark mark-1"></span>
+                <span class="daily-running-track-mark mark-2"></span>
+                <span class="daily-running-track-mark mark-3"></span>
+                <span class="daily-running-track-mark mark-4"></span>
+                <span class="daily-running-track-mark mark-5"></span>
+                <span class="daily-running-track-mark mark-6"></span>
+                <span class="daily-running-track-mark mark-7"></span>
+                <span class="daily-running-track-mark mark-8"></span>
+                <span class="daily-running-track-mark mark-9"></span>
+
+                <div class="daily-running-chaser">
+                    <div
+                        class="daily-running-devil-taunt"
+                        ng-if="vm.runningManDevilTaunt && !vm.runningManLost">
+                        {{vm.runningManDevilTaunt}}
+                    </div>
+
+                    <div
+                        class="daily-running-result-quote daily-running-result-quote-devil"
+                        ng-if="vm.runningManLost && vm.runningManDevilLoseQuote">
+                        <span class="daily-running-result-speaker">NGU 😈</span>
+                        {{vm.runningManDevilLoseQuote}}
+                    </div>
+
+                    <span class="daily-running-character-icon daily-running-devil-icon">😈</span>
+                    <strong>NGU</strong>
+                </div>
+
+                <div
+                    class="daily-running-student"
+                    ng-style="{'left': vm.runningManStudentLeft + '%'}">
+
+                    <div
+                        class="daily-running-result-quote daily-running-result-quote-student"
+                        ng-if="vm.runningManWon && vm.runningManStudentVictoryQuote">
+                        <span class="daily-running-result-speaker">HỌC SINH 💪</span>
+                        {{vm.runningManStudentVictoryQuote}}
+                    </div>
+
+                    <span class="daily-running-character-icon daily-running-student-icon">🏃</span>
+                    <strong>HỌC SINH</strong>
+                </div>
+            </div>
+
+            <div class="daily-running-man-footer">
+                <span>
+                    ✅ Đúng:
+                    <b>+1 khoảng</b>
+                </span>
+
+                <span>
+                    ❌ Sai:
+                    <b>-1 khoảng</b>
+                </span>
+
+                <span ng-if="!vm.dailyVocabRunning && !vm.runningManLost && !vm.runningManWon">
+                    Bấm đồng hồ để bắt đầu cuộc đuổi bắt.
+                </span>
+
+                <span
+                    class="daily-running-status-running"
+                    ng-if="vm.runningManActive">
+                    ⚠ NGU ĐANG ĐUỔI!
+                </span>
+
+                <span
+                    class="daily-running-status-lost"
+                    ng-if="vm.runningManLost">
+                    💥 BỊ BẮT! BẠN THUA!
+                </span>
+
+                <span
+                    class="daily-running-status-won"
+                    ng-if="vm.runningManWon">
+                    🏁 VỀ ĐÍCH! BẠN THẮNG!
+                </span>
+
+                <span
+                    ng-if="
+                        vm.runningManEnabled &&
+                        !vm.runningManActive &&
+                        !vm.runningManLost &&
+                        !vm.runningManWon &&
+                        vm.dailyVocabCounter == 0
+                    ">
+                    ⏱ HẾT GIỜ
+                </span>
+            </div>
+        </section>
 
 
         <!-- QUESTION + FEEDBACK -->
@@ -535,6 +677,94 @@
             </label>
         </div>
     </section>
+
+    <!-- =====================================================
+         RUNNING MAN - CHỌN ĐỘ KHÓ
+         ===================================================== -->
+    <div
+        class="daily-running-modal-backdrop"
+        ng-if="vm.runningManDifficultyModal"
+        ng-click="vm.closeRunningManDifficulty()">
+
+        <div
+            class="daily-running-modal"
+            ng-click="$event.stopPropagation()">
+
+            <div class="daily-running-modal-head">
+                <div class="daily-running-modal-icon">🏃</div>
+
+                <div>
+                    <span>RUNNING MAN</span>
+                    <h3>Chọn độ khó</h3>
+                    <p>
+                        HỌC SINH bắt đầu cách NGU 5 khoảng.
+                        Trả lời đúng để chạy xa hơn.
+                    </p>
+                </div>
+            </div>
+
+            <div class="daily-running-difficulty-grid">
+                <button
+                    type="button"
+                    class="daily-running-difficulty difficulty-easy"
+                    ng-click="vm.selectRunningManDifficulty('easy')">
+                    <span class="daily-running-difficulty-emoji">🌱</span>
+                    <strong>DỄ</strong>
+                    <small>NGU tiến mỗi 8 giây</small>
+                </button>
+
+                <button
+                    type="button"
+                    class="daily-running-difficulty difficulty-medium"
+                    ng-click="vm.selectRunningManDifficulty('medium')">
+                    <span class="daily-running-difficulty-emoji">⚡</span>
+                    <strong>TRUNG BÌNH</strong>
+                    <small>NGU tiến mỗi 6 giây</small>
+                </button>
+
+                <button
+                    type="button"
+                    class="daily-running-difficulty difficulty-hard"
+                    ng-click="vm.selectRunningManDifficulty('hard')">
+                    <span class="daily-running-difficulty-emoji">🔥</span>
+                    <strong>KHÓ</strong>
+                    <small>NGU tiến mỗi 4.5 giây</small>
+                </button>
+
+                <button
+                    type="button"
+                    class="daily-running-difficulty difficulty-insane"
+                    ng-click="vm.selectRunningManDifficulty('insane')">
+                    <span class="daily-running-difficulty-emoji">💀</span>
+                    <strong>SIÊU KHÓ</strong>
+                    <small>NGU tiến mỗi 3.2 giây</small>
+                </button>
+            </div>
+
+            <div class="daily-running-modal-note">
+                <i class="fa fa-lightbulb"></i>
+                Mỗi câu đúng +1 khoảng, mỗi câu sai -1 khoảng.
+                Độ khó chỉ làm NGU chạy nhanh hơn.
+            </div>
+
+            <div class="daily-running-modal-actions">
+                <button
+                    type="button"
+                    class="daily-running-modal-cancel"
+                    ng-click="vm.closeRunningManDifficulty()">
+                    HỦY
+                </button>
+
+                <button
+                    type="button"
+                    class="daily-running-modal-off"
+                    ng-if="vm.runningManEnabled"
+                    ng-click="vm.disableRunningMan()">
+                    TẮT RUNNING MAN
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 
@@ -3984,6 +4214,1694 @@
 
             border-width: 3px !important;
             border-radius: 15px !important;
+        }
+    }
+</style>
+
+<style>
+    /* =========================================================
+       DAILY VOCAB - RUNNING MAN MODE V1
+       ========================================================= */
+
+    /* ---------- MODE BUTTON ---------- */
+
+    .daily-vocab-page .daily-running-man-btn {
+        min-height: 58px;
+
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+
+        gap: 9px;
+
+        padding: 8px 13px;
+
+        border: 1px solid rgba(99,102,241,.18);
+        border-radius: 16px;
+
+        color: #4338ca;
+
+        background:
+            linear-gradient(
+                135deg,
+                #eef2ff,
+                #f5f3ff
+            );
+
+        box-shadow:
+            0 8px 18px rgba(67,56,202,.10);
+
+        cursor: pointer;
+
+        transition:
+            transform .16s ease,
+            box-shadow .16s ease,
+            filter .16s ease;
+    }
+
+    .daily-vocab-page
+    .daily-running-man-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+
+        box-shadow:
+            0 10px 23px rgba(67,56,202,.16);
+
+        filter: brightness(1.02);
+    }
+
+    .daily-vocab-page .daily-running-man-btn.is-active {
+        border-color: rgba(249,115,22,.28);
+
+        color: #9a3412;
+
+        background:
+            linear-gradient(
+                135deg,
+                #fff7ed,
+                #ffedd5
+            );
+
+        box-shadow:
+            0 8px 18px rgba(249,115,22,.13),
+            0 0 0 2px rgba(251,146,60,.06);
+    }
+
+    .daily-vocab-page .daily-running-man-btn:disabled {
+        opacity: .58;
+        cursor: default;
+    }
+
+    .daily-vocab-page .daily-running-man-btn-icon {
+        font-size: 22px;
+        line-height: 1;
+    }
+
+    .daily-vocab-page .daily-running-man-btn-copy {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+
+        gap: 2px;
+
+        line-height: 1.05;
+    }
+
+    .daily-vocab-page .daily-running-man-btn-copy strong {
+        font-size: 11px;
+        font-weight: 1000;
+        letter-spacing: .35px;
+    }
+
+    .daily-vocab-page .daily-running-man-btn-copy small {
+        font-size: 8px;
+        font-weight: 900;
+        opacity: .72;
+    }
+
+
+    /* ---------- TRACK CARD ---------- */
+
+    .daily-vocab-page .daily-running-man-card {
+        max-width: 920px;
+
+        margin: 4px auto 18px;
+        padding: 13px;
+
+        border: 1px solid #dbe3ef;
+        border-radius: 20px;
+
+        background:
+            radial-gradient(
+                circle at 90% 0%,
+                rgba(59,130,246,.08),
+                transparent 28%
+            ),
+            radial-gradient(
+                circle at 5% 100%,
+                rgba(249,115,22,.08),
+                transparent 28%
+            ),
+            #ffffff;
+
+        box-shadow:
+            0 12px 28px rgba(15,23,42,.07);
+
+        overflow: hidden;
+    }
+
+    .daily-vocab-page .daily-running-man-card.is-running {
+        border-color: rgba(249,115,22,.24);
+
+        box-shadow:
+            0 12px 28px rgba(15,23,42,.07),
+            0 0 24px rgba(249,115,22,.08);
+    }
+
+    .daily-vocab-page .daily-running-man-card.is-lost {
+        border-color: rgba(239,68,68,.42);
+
+        box-shadow:
+            0 12px 28px rgba(15,23,42,.07),
+            0 0 25px rgba(239,68,68,.14);
+    }
+
+    .daily-vocab-page .daily-running-man-card.is-won {
+        border-color: rgba(34,197,94,.40);
+
+        box-shadow:
+            0 12px 28px rgba(15,23,42,.07),
+            0 0 25px rgba(34,197,94,.13);
+    }
+
+    .daily-vocab-page .daily-running-man-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        gap: 10px;
+
+        margin-bottom: 11px;
+    }
+
+    .daily-vocab-page .daily-running-man-title {
+        min-width: 0;
+
+        display: flex;
+        align-items: center;
+
+        gap: 8px;
+    }
+
+    .daily-vocab-page .daily-running-man-title-icon {
+        flex: 0 0 34px;
+
+        width: 34px;
+        height: 34px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        border-radius: 11px;
+
+        background: #eef2ff;
+
+        font-size: 18px;
+    }
+
+    .daily-vocab-page .daily-running-man-title > div {
+        min-width: 0;
+
+        display: flex;
+        flex-direction: column;
+
+        gap: 2px;
+    }
+
+    .daily-vocab-page .daily-running-man-title strong {
+        color: #1e293b;
+
+        font-size: 12px;
+        font-weight: 1000;
+
+        letter-spacing: .4px;
+    }
+
+    .daily-vocab-page .daily-running-man-title small {
+        color: #64748b;
+
+        font-size: 9px;
+        font-weight: 800;
+
+        white-space: normal;
+    }
+
+    .daily-vocab-page .daily-running-man-gap {
+        flex: 0 0 auto;
+
+        min-width: 68px;
+
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+
+        padding: 6px 9px;
+
+        border: 1px solid #fed7aa;
+        border-radius: 12px;
+
+        background: #fff7ed;
+
+        line-height: 1;
+    }
+
+    .daily-vocab-page .daily-running-man-gap span {
+        color: #9a3412;
+
+        font-size: 7px;
+        font-weight: 1000;
+    }
+
+    .daily-vocab-page .daily-running-man-gap strong {
+        margin-top: 3px;
+
+        color: #ea580c;
+
+        font-size: 20px;
+        font-weight: 1000;
+    }
+
+
+    /* ---------- TRACK ---------- */
+
+    .daily-vocab-page .daily-running-track {
+        position: relative;
+
+        height: 92px;
+
+        margin: 4px 0 9px;
+
+        border: 1px solid #cad5e3;
+        border-radius: 17px;
+
+        background:
+            linear-gradient(
+                180deg,
+                #e0f2fe 0%,
+                #f0f9ff 50%,
+                #d9f99d 51%,
+                #bef264 100%
+            );
+
+        overflow: hidden;
+    }
+
+    .daily-vocab-page .daily-running-track-road {
+        position: absolute;
+
+        left: 0;
+        right: 0;
+        bottom: 13px;
+
+        height: 29px;
+
+        background:
+            linear-gradient(
+                180deg,
+                #64748b,
+                #475569
+            );
+
+        box-shadow:
+            inset 0 2px 0 rgba(255,255,255,.12),
+            0 -4px 0 rgba(132,204,22,.30);
+    }
+
+    .daily-vocab-page .daily-running-track-road:after {
+        content: "";
+
+        position: absolute;
+
+        left: 0;
+        right: 0;
+        top: 13px;
+
+        height: 2px;
+
+        background:
+            repeating-linear-gradient(
+                90deg,
+                #f8fafc 0,
+                #f8fafc 16px,
+                transparent 16px,
+                transparent 31px
+            );
+
+        opacity: .78;
+    }
+
+    .daily-vocab-page .daily-running-track-mark {
+        position: absolute;
+
+        top: 10px;
+        bottom: 8px;
+
+        width: 1px;
+
+        border-left: 1px dashed rgba(71,85,105,.15);
+    }
+
+    .daily-vocab-page .mark-1 { left: 10%; }
+    .daily-vocab-page .mark-2 { left: 20%; }
+    .daily-vocab-page .mark-3 { left: 30%; }
+    .daily-vocab-page .mark-4 { left: 40%; }
+    .daily-vocab-page .mark-5 { left: 50%; }
+    .daily-vocab-page .mark-6 { left: 60%; }
+    .daily-vocab-page .mark-7 { left: 70%; }
+    .daily-vocab-page .mark-8 { left: 80%; }
+    .daily-vocab-page .mark-9 { left: 90%; }
+
+
+    /* ---------- CHARACTERS ---------- */
+
+    .daily-vocab-page .daily-running-chaser,
+    .daily-vocab-page .daily-running-student {
+        position: absolute;
+        z-index: 6;
+
+        top: 22px;
+
+        min-width: 58px;
+
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+
+        gap: 1px;
+
+        padding: 5px 7px;
+
+        transform: translateX(-50%);
+
+        border-radius: 12px;
+
+        font-weight: 1000;
+
+        line-height: 1;
+
+        pointer-events: none;
+    }
+
+    .daily-vocab-page .daily-running-chaser {
+        left: 8%;
+
+        border: 1px solid rgba(239,68,68,.32);
+
+        color: #991b1b;
+
+        background: rgba(254,226,226,.94);
+
+        box-shadow:
+            0 6px 13px rgba(127,29,29,.12);
+
+        animation:
+            dailyRunningChaserBounce .55s ease-in-out infinite alternate;
+    }
+
+    .daily-vocab-page .daily-running-student {
+        border: 1px solid rgba(37,99,235,.30);
+
+        color: #1d4ed8;
+
+        background: rgba(219,234,254,.95);
+
+        box-shadow:
+            0 7px 15px rgba(29,78,216,.13);
+
+        transition:
+            left .32s cubic-bezier(.2,.8,.2,1);
+
+        animation:
+            dailyRunningStudentBounce .48s ease-in-out infinite alternate;
+    }
+
+    .daily-vocab-page .daily-running-character-icon {
+        font-size: 20px;
+    }
+
+    .daily-vocab-page .daily-running-chaser strong,
+    .daily-vocab-page .daily-running-student strong {
+        font-size: 8px;
+        letter-spacing: .2px;
+    }
+
+    @keyframes dailyRunningChaserBounce {
+        from {
+            margin-top: 0;
+        }
+
+        to {
+            margin-top: -3px;
+        }
+    }
+
+    @keyframes dailyRunningStudentBounce {
+        from {
+            margin-top: -1px;
+        }
+
+        to {
+            margin-top: -4px;
+        }
+    }
+
+
+    /* ---------- FOOTER ---------- */
+
+    .daily-vocab-page .daily-running-man-footer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+
+        gap: 5px 10px;
+
+        color: #64748b;
+
+        font-size: 9px;
+        font-weight: 800;
+
+        text-align: center;
+    }
+
+    .daily-vocab-page .daily-running-man-footer b {
+        color: #334155;
+    }
+
+    .daily-vocab-page .daily-running-status-running {
+        color: #c2410c;
+
+        font-weight: 1000;
+
+        animation:
+            dailyRunningWarning .75s ease-in-out infinite alternate;
+    }
+
+    .daily-vocab-page .daily-running-status-lost {
+        color: #dc2626;
+
+        font-weight: 1000;
+    }
+
+    .daily-vocab-page .daily-running-status-won {
+        color: #16a34a;
+
+        font-weight: 1000;
+    }
+
+    @keyframes dailyRunningWarning {
+        from {
+            opacity: .62;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+
+    /* =========================================================
+       DIFFICULTY MODAL
+       ========================================================= */
+
+    .daily-vocab-page .daily-running-modal-backdrop {
+        position: fixed;
+        z-index: 20050;
+
+        inset: 0;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        padding: 14px;
+
+        background: rgba(15,23,42,.62);
+
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+    }
+
+    .daily-vocab-page .daily-running-modal {
+        width: min(560px, 100%);
+
+        padding: 18px;
+
+        border: 1px solid rgba(255,255,255,.45);
+        border-radius: 24px;
+
+        background: #ffffff;
+
+        box-shadow:
+            0 24px 70px rgba(15,23,42,.32);
+
+        animation:
+            dailyRunningModalIn .20s ease both;
+    }
+
+    @keyframes dailyRunningModalIn {
+        from {
+            opacity: 0;
+
+            transform:
+                translateY(8px)
+                scale(.97);
+        }
+
+        to {
+            opacity: 1;
+
+            transform:
+                translateY(0)
+                scale(1);
+        }
+    }
+
+    .daily-vocab-page .daily-running-modal-head {
+        display: flex;
+        align-items: flex-start;
+
+        gap: 11px;
+
+        margin-bottom: 14px;
+    }
+
+    .daily-vocab-page .daily-running-modal-icon {
+        flex: 0 0 46px;
+
+        width: 46px;
+        height: 46px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        border-radius: 15px;
+
+        background:
+            linear-gradient(
+                135deg,
+                #eef2ff,
+                #ffedd5
+            );
+
+        font-size: 25px;
+    }
+
+    .daily-vocab-page .daily-running-modal-head > div:last-child {
+        min-width: 0;
+    }
+
+    .daily-vocab-page .daily-running-modal-head span {
+        color: #6366f1;
+
+        font-size: 9px;
+        font-weight: 1000;
+
+        letter-spacing: .7px;
+    }
+
+    .daily-vocab-page .daily-running-modal-head h3 {
+        margin: 2px 0 3px;
+
+        color: #172033;
+
+        font-size: 21px;
+        font-weight: 1000;
+    }
+
+    .daily-vocab-page .daily-running-modal-head p {
+        margin: 0;
+
+        color: #64748b;
+
+        font-size: 11px;
+        font-weight: 700;
+
+        line-height: 1.45;
+    }
+
+    .daily-vocab-page .daily-running-difficulty-grid {
+        display: grid;
+
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+
+        gap: 8px;
+    }
+
+    .daily-vocab-page .daily-running-difficulty {
+        min-height: 92px;
+
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+
+        gap: 3px;
+
+        padding: 12px;
+
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+
+        background: #f8fafc;
+
+        color: #1e293b;
+
+        cursor: pointer;
+
+        text-align: left;
+
+        transition:
+            transform .15s ease,
+            box-shadow .15s ease,
+            filter .15s ease;
+    }
+
+    .daily-vocab-page .daily-running-difficulty:hover {
+        transform: translateY(-2px);
+
+        box-shadow:
+            0 9px 20px rgba(15,23,42,.10);
+
+        filter: brightness(1.02);
+    }
+
+    .daily-vocab-page .daily-running-difficulty-emoji {
+        font-size: 19px;
+    }
+
+    .daily-vocab-page .daily-running-difficulty strong {
+        font-size: 12px;
+        font-weight: 1000;
+    }
+
+    .daily-vocab-page .daily-running-difficulty small {
+        color: #64748b;
+
+        font-size: 9px;
+        font-weight: 800;
+    }
+
+    .daily-vocab-page .difficulty-easy {
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+    }
+
+    .daily-vocab-page .difficulty-medium {
+        border-color: #bfdbfe;
+        background: #eff6ff;
+    }
+
+    .daily-vocab-page .difficulty-hard {
+        border-color: #fed7aa;
+        background: #fff7ed;
+    }
+
+    .daily-vocab-page .difficulty-insane {
+        border-color: #fecaca;
+        background: #fef2f2;
+    }
+
+    .daily-vocab-page .daily-running-modal-note {
+        margin-top: 10px;
+        padding: 9px 10px;
+
+        border: 1px dashed #cbd5e1;
+        border-radius: 12px;
+
+        color: #475569;
+        background: #f8fafc;
+
+        font-size: 9px;
+        font-weight: 800;
+
+        line-height: 1.4;
+    }
+
+    .daily-vocab-page .daily-running-modal-note i {
+        margin-right: 4px;
+
+        color: #f59e0b;
+    }
+
+    .daily-vocab-page .daily-running-modal-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+
+        gap: 7px;
+
+        margin-top: 12px;
+    }
+
+    .daily-vocab-page .daily-running-modal-cancel,
+    .daily-vocab-page .daily-running-modal-off {
+        min-height: 34px;
+
+        padding: 7px 10px;
+
+        border-radius: 10px;
+
+        font-size: 9px;
+        font-weight: 1000;
+    }
+
+    .daily-vocab-page .daily-running-modal-cancel {
+        border: 1px solid #dbe3ef;
+
+        color: #475569;
+        background: #ffffff;
+    }
+
+    .daily-vocab-page .daily-running-modal-off {
+        border: 1px solid #fecaca;
+
+        color: #b91c1c;
+        background: #fef2f2;
+    }
+
+
+    /* =========================================================
+       DARK MODE
+       ========================================================= */
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-man-btn {
+        border-color: #384766;
+
+        color: #dbeafe;
+
+        background:
+            linear-gradient(
+                135deg,
+                #172238,
+                #151d30
+            );
+
+        box-shadow:
+            0 8px 18px rgba(0,0,0,.24);
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-man-btn.is-active {
+        border-color: rgba(251,146,60,.38);
+
+        color: #fed7aa;
+
+        background:
+            linear-gradient(
+                135deg,
+                #3b2319,
+                #271c1b
+            );
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-man-card {
+        border-color: #2b3a55;
+
+        background:
+            radial-gradient(
+                circle at 90% 0%,
+                rgba(59,130,246,.13),
+                transparent 30%
+            ),
+            radial-gradient(
+                circle at 5% 100%,
+                rgba(249,115,22,.12),
+                transparent 30%
+            ),
+            #101929;
+
+        box-shadow:
+            0 12px 28px rgba(0,0,0,.28);
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-man-title strong {
+        color: #edf3ff;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-man-title small,
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-man-footer {
+        color: #9eacc3;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-man-footer b {
+        color: #e5edf9;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-modal {
+        border-color: #33435f;
+
+        background: #121c2f;
+
+        box-shadow:
+            0 24px 70px rgba(0,0,0,.55);
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-modal-head h3 {
+        color: #edf3ff;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-modal-head p {
+        color: #9eacc3;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-difficulty,
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-modal-note {
+        border-color: #33435f;
+
+        color: #edf3ff;
+        background: #172238;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-difficulty small,
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-modal-note {
+        color: #aebbd0;
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-modal-cancel {
+        border-color: #33435f;
+
+        color: #dce6f5;
+        background: #172238;
+    }
+
+
+    /* =========================================================
+       MOBILE FIRST
+       ========================================================= */
+
+    @media (max-width: 599px) {
+        .daily-vocab-page .daily-timer-zone {
+            gap: 7px;
+        }
+
+        .daily-vocab-page .daily-running-man-btn {
+            min-height: 50px;
+
+            padding: 6px 8px;
+
+            border-radius: 13px;
+        }
+
+        .daily-vocab-page .daily-running-man-btn-icon {
+            font-size: 17px;
+        }
+
+        .daily-vocab-page .daily-running-man-btn-copy strong {
+            font-size: 8px;
+        }
+
+        .daily-vocab-page .daily-running-man-btn-copy small {
+            font-size: 6px;
+        }
+
+        .daily-vocab-page .daily-running-man-card {
+            margin-bottom: 13px;
+            padding: 9px;
+
+            border-radius: 16px;
+        }
+
+        .daily-vocab-page .daily-running-man-title-icon {
+            flex-basis: 28px;
+
+            width: 28px;
+            height: 28px;
+
+            font-size: 14px;
+        }
+
+        .daily-vocab-page .daily-running-man-title strong {
+            font-size: 9px;
+        }
+
+        .daily-vocab-page .daily-running-man-title small {
+            font-size: 7px;
+        }
+
+        .daily-vocab-page .daily-running-man-gap {
+            min-width: 55px;
+
+            padding: 5px 6px;
+        }
+
+        .daily-vocab-page .daily-running-man-gap span {
+            font-size: 6px;
+        }
+
+        .daily-vocab-page .daily-running-man-gap strong {
+            font-size: 16px;
+        }
+
+        .daily-vocab-page .daily-running-track {
+            height: 78px;
+
+            border-radius: 14px;
+        }
+
+        .daily-vocab-page .daily-running-track-road {
+            bottom: 10px;
+            height: 25px;
+        }
+
+        .daily-vocab-page .daily-running-track-road:after {
+            top: 11px;
+        }
+
+        .daily-vocab-page .daily-running-chaser,
+        .daily-vocab-page .daily-running-student {
+            top: 18px;
+
+            min-width: 46px;
+
+            padding: 4px 5px;
+
+            border-radius: 9px;
+        }
+
+        .daily-vocab-page .daily-running-character-icon {
+            font-size: 16px;
+        }
+
+        .daily-vocab-page .daily-running-chaser strong,
+        .daily-vocab-page .daily-running-student strong {
+            font-size: 6px;
+        }
+
+        .daily-vocab-page .daily-running-man-footer {
+            gap: 4px 7px;
+
+            font-size: 7px;
+        }
+
+        .daily-vocab-page .daily-running-modal {
+            padding: 13px;
+
+            border-radius: 19px;
+        }
+
+        .daily-vocab-page .daily-running-modal-head h3 {
+            font-size: 18px;
+        }
+
+        .daily-vocab-page .daily-running-difficulty-grid {
+            gap: 6px;
+        }
+
+        .daily-vocab-page .daily-running-difficulty {
+            min-height: 78px;
+
+            padding: 9px;
+
+            border-radius: 13px;
+        }
+
+        .daily-vocab-page .daily-running-difficulty strong {
+            font-size: 9px;
+        }
+
+        .daily-vocab-page .daily-running-difficulty small {
+            font-size: 7px;
+        }
+    }
+
+
+    @media (prefers-reduced-motion: reduce) {
+        .daily-vocab-page .daily-running-chaser,
+        .daily-vocab-page .daily-running-student,
+        .daily-vocab-page .daily-running-status-running,
+        .daily-vocab-page .daily-running-modal {
+            animation: none !important;
+        }
+
+        .daily-vocab-page .daily-running-student {
+            transition: none !important;
+        }
+    }
+</style>
+
+<style>
+    /* =========================================================
+       RUNNING MAN - DIRECTION + DEVIL TAUNT V2
+       ========================================================= */
+
+    /*
+     * HỌC SINH phải nhìn/chạy về PHÍA TRƯỚC (bên phải).
+     *
+     * Emoji 🏃 trên nhiều hệ điều hành mặc định quay mặt sang trái,
+     * nên flip ngang riêng icon của HỌC SINH.
+     */
+    .daily-vocab-page
+    .daily-running-student-icon {
+        display: inline-block !important;
+
+        transform:
+            scaleX(-1) !important;
+
+        transform-origin:
+            center center !important;
+    }
+
+    /*
+     * NGU cũng hướng về bên phải để tạo cảm giác đang đuổi theo
+     * HỌC SINH, không phải hai nhân vật chạy vào nhau.
+     */
+    .daily-vocab-page
+    .daily-running-devil-icon {
+        display: inline-block !important;
+
+        transform:
+            translateX(1px) !important;
+    }
+
+
+    /* =========================================================
+       DEVIL TAUNT BUBBLE
+       ========================================================= */
+
+    .daily-vocab-page
+    .daily-running-devil-taunt {
+        position: absolute;
+
+        left: 50%;
+        bottom: calc(100% + 8px);
+
+        width: max-content;
+        max-width: 220px;
+
+        padding: 7px 9px;
+
+        transform:
+            translateX(-18%);
+
+        border: 1px solid rgba(239,68,68,.28);
+        border-radius: 11px;
+
+        color: #7f1d1d;
+
+        background:
+            rgba(255,247,247,.97);
+
+        box-shadow:
+            0 8px 19px rgba(127,29,29,.15),
+            0 0 14px rgba(239,68,68,.08);
+
+        font-size: 9px;
+        font-weight: 900;
+
+        line-height: 1.35;
+
+        white-space: normal;
+
+        pointer-events: none;
+
+        animation:
+            dailyRunningDevilTauntPop 2.2s ease both;
+    }
+
+    .daily-vocab-page
+    .daily-running-devil-taunt:after {
+        content: "";
+
+        position: absolute;
+
+        left: 19px;
+        bottom: -6px;
+
+        width: 11px;
+        height: 11px;
+
+        border-right: 1px solid rgba(239,68,68,.22);
+        border-bottom: 1px solid rgba(239,68,68,.22);
+
+        background:
+            rgba(255,247,247,.97);
+
+        transform:
+            rotate(45deg);
+    }
+
+    @keyframes dailyRunningDevilTauntPop {
+        0% {
+            opacity: 0;
+
+            transform:
+                translateX(-18%)
+                translateY(5px)
+                scale(.78);
+        }
+
+        12% {
+            opacity: 1;
+
+            transform:
+                translateX(-18%)
+                translateY(-2px)
+                scale(1.05);
+        }
+
+        22%,
+        78% {
+            opacity: 1;
+
+            transform:
+                translateX(-18%)
+                translateY(0)
+                scale(1);
+        }
+
+        100% {
+            opacity: 0;
+
+            transform:
+                translateX(-18%)
+                translateY(-5px)
+                scale(.95);
+        }
+    }
+
+
+    /* DARK MODE */
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-devil-taunt {
+        border-color:
+            rgba(248,113,113,.30);
+
+        color:
+            #fecaca;
+
+        background:
+            rgba(49,18,24,.98);
+
+        box-shadow:
+            0 8px 19px rgba(0,0,0,.34),
+            0 0 15px rgba(239,68,68,.12);
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-devil-taunt:after {
+        border-color:
+            rgba(248,113,113,.20);
+
+        background:
+            rgba(49,18,24,.98);
+    }
+
+
+    /* MOBILE */
+    @media (max-width: 599px) {
+        .daily-vocab-page
+        .daily-running-devil-taunt {
+            max-width: 145px;
+
+            padding:
+                5px 6px;
+
+            font-size:
+                7px;
+
+            transform:
+                translateX(-12%);
+        }
+
+        @keyframes dailyRunningDevilTauntPop {
+            0% {
+                opacity: 0;
+
+                transform:
+                    translateX(-12%)
+                    translateY(4px)
+                    scale(.78);
+            }
+
+            12% {
+                opacity: 1;
+
+                transform:
+                    translateX(-12%)
+                    translateY(-2px)
+                    scale(1.04);
+            }
+
+            22%,
+            78% {
+                opacity: 1;
+
+                transform:
+                    translateX(-12%)
+                    translateY(0)
+                    scale(1);
+            }
+
+            100% {
+                opacity: 0;
+
+                transform:
+                    translateX(-12%)
+                    translateY(-4px)
+                    scale(.95);
+            }
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .daily-vocab-page
+        .daily-running-devil-taunt {
+            animation:
+                none !important;
+        }
+    }
+</style>
+
+<style>
+    /* =========================================================
+       RUNNING MAN - TAUNT OVERFLOW FIX V3
+       Bubble của NGU không còn bị cắt bởi track/card.
+       ========================================================= */
+
+    .daily-vocab-page
+    .daily-running-man-card {
+        overflow: visible !important;
+    }
+
+    .daily-vocab-page
+    .daily-running-track {
+        overflow: visible !important;
+
+        /*
+         * Giữ background/bo góc của track vẫn đẹp dù overflow visible.
+         */
+        isolation: isolate;
+    }
+
+    .daily-vocab-page
+    .daily-running-chaser {
+        z-index: 80 !important;
+    }
+
+    .daily-vocab-page
+    .daily-running-student {
+        z-index: 20 !important;
+    }
+
+    .daily-vocab-page
+    .daily-running-devil-taunt {
+        z-index: 120 !important;
+
+        bottom: calc(100% + 12px) !important;
+
+        /*
+         * Cho bubble rộng hơn và không bị bó trong track.
+         */
+        width: max-content !important;
+        max-width: min(260px, 72vw) !important;
+
+        overflow: visible !important;
+
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
+
+        box-sizing: border-box !important;
+    }
+
+    /*
+     * Nếu NGU đang ở gần mép trái, bubble dịch sang phải thêm
+     * để không bị khuất khỏi màn hình.
+     */
+    .daily-vocab-page
+    .daily-running-chaser
+    .daily-running-devil-taunt {
+        left: 0 !important;
+
+        transform: translateX(0) !important;
+    }
+
+    .daily-vocab-page
+    .daily-running-devil-taunt:after {
+        left: 18px !important;
+    }
+
+    @keyframes dailyRunningDevilTauntPop {
+        0% {
+            opacity: 0;
+
+            transform:
+                translateX(0)
+                translateY(5px)
+                scale(.78);
+        }
+
+        12% {
+            opacity: 1;
+
+            transform:
+                translateX(0)
+                translateY(-2px)
+                scale(1.05);
+        }
+
+        22%,
+        78% {
+            opacity: 1;
+
+            transform:
+                translateX(0)
+                translateY(0)
+                scale(1);
+        }
+
+        100% {
+            opacity: 0;
+
+            transform:
+                translateX(0)
+                translateY(-5px)
+                scale(.95);
+        }
+    }
+
+    @media (max-width: 599px) {
+        .daily-vocab-page
+        .daily-running-devil-taunt {
+            bottom: calc(100% + 9px) !important;
+
+            max-width: 180px !important;
+
+            font-size: 7.5px !important;
+        }
+    }
+</style>
+
+<style>
+    /* =========================================================
+       RUNNING MAN - WIN / LOSE QUOTES V4
+       ========================================================= */
+
+    .daily-vocab-page
+    .daily-running-result-quote {
+        position: absolute;
+
+        bottom: calc(100% + 13px);
+
+        width: max-content;
+        max-width: min(300px, 75vw);
+
+        padding: 10px 12px;
+
+        border-radius: 13px;
+
+        white-space: normal;
+        overflow-wrap: anywhere;
+
+        font-size: 10px;
+        font-weight: 900;
+
+        line-height: 1.4;
+
+        pointer-events: none;
+
+        z-index: 150;
+
+        animation:
+            dailyRunningResultQuoteIn .35s ease both;
+    }
+
+    .daily-vocab-page
+    .daily-running-result-speaker {
+        display: block;
+
+        margin-bottom: 3px;
+
+        font-size: 8px;
+        font-weight: 1000;
+
+        letter-spacing: .3px;
+
+        opacity: .78;
+    }
+
+
+    /* ---------- STUDENT WIN ---------- */
+
+    .daily-vocab-page
+    .daily-running-result-quote-student {
+        right: 0;
+
+        color: #14532d;
+
+        background:
+            rgba(240,253,244,.98);
+
+        border:
+            1px solid rgba(34,197,94,.35);
+
+        box-shadow:
+            0 10px 24px rgba(21,128,61,.14),
+            0 0 18px rgba(34,197,94,.12);
+    }
+
+    .daily-vocab-page
+    .daily-running-result-quote-student:after {
+        content: "";
+
+        position: absolute;
+
+        right: 18px;
+        bottom: -6px;
+
+        width: 11px;
+        height: 11px;
+
+        border-right:
+            1px solid rgba(34,197,94,.30);
+
+        border-bottom:
+            1px solid rgba(34,197,94,.30);
+
+        background:
+            rgba(240,253,244,.98);
+
+        transform:
+            rotate(45deg);
+    }
+
+
+    /* ---------- DEVIL LOSE ---------- */
+
+    .daily-vocab-page
+    .daily-running-result-quote-devil {
+        left: 0;
+
+        color: #7f1d1d;
+
+        background:
+            rgba(254,242,242,.98);
+
+        border:
+            1px solid rgba(239,68,68,.38);
+
+        box-shadow:
+            0 10px 24px rgba(127,29,29,.18),
+            0 0 19px rgba(239,68,68,.13);
+    }
+
+    .daily-vocab-page
+    .daily-running-result-quote-devil:after {
+        content: "";
+
+        position: absolute;
+
+        left: 18px;
+        bottom: -6px;
+
+        width: 11px;
+        height: 11px;
+
+        border-right:
+            1px solid rgba(239,68,68,.28);
+
+        border-bottom:
+            1px solid rgba(239,68,68,.28);
+
+        background:
+            rgba(254,242,242,.98);
+
+        transform:
+            rotate(45deg);
+    }
+
+    @keyframes dailyRunningResultQuoteIn {
+        from {
+            opacity: 0;
+
+            transform:
+                translateY(7px)
+                scale(.82);
+        }
+
+        to {
+            opacity: 1;
+
+            transform:
+                translateY(0)
+                scale(1);
+        }
+    }
+
+
+    /* =========================================================
+       EXTRA RESULT FEEL
+       ========================================================= */
+
+    .daily-vocab-page
+    .daily-running-man-card.is-won
+    .daily-running-student {
+        box-shadow:
+            0 7px 15px rgba(29,78,216,.13),
+            0 0 19px rgba(34,197,94,.32);
+
+        animation:
+            dailyRunningWinnerBounce .55s ease-in-out infinite alternate;
+    }
+
+    .daily-vocab-page
+    .daily-running-man-card.is-lost
+    .daily-running-chaser {
+        box-shadow:
+            0 6px 13px rgba(127,29,29,.15),
+            0 0 20px rgba(239,68,68,.30);
+
+        animation:
+            dailyRunningDevilWinBounce .48s ease-in-out infinite alternate;
+    }
+
+    @keyframes dailyRunningWinnerBounce {
+        from {
+            margin-top: -1px;
+        }
+
+        to {
+            margin-top: -6px;
+        }
+    }
+
+    @keyframes dailyRunningDevilWinBounce {
+        from {
+            margin-top: 0;
+        }
+
+        to {
+            margin-top: -5px;
+        }
+    }
+
+
+    /* DARK MODE */
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-result-quote-student {
+        color: #bbf7d0;
+
+        background:
+            rgba(19,55,35,.98);
+
+        border-color:
+            rgba(74,222,128,.34);
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-result-quote-student:after {
+        background:
+            rgba(19,55,35,.98);
+
+        border-color:
+            rgba(74,222,128,.28);
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-result-quote-devil {
+        color: #fecaca;
+
+        background:
+            rgba(58,20,25,.98);
+
+        border-color:
+            rgba(248,113,113,.34);
+    }
+
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-running-result-quote-devil:after {
+        background:
+            rgba(58,20,25,.98);
+
+        border-color:
+            rgba(248,113,113,.26);
+    }
+
+
+    /* MOBILE */
+
+    @media (max-width: 599px) {
+        .daily-vocab-page
+        .daily-running-result-quote {
+            max-width: 190px;
+
+            padding:
+                7px 8px;
+
+            font-size:
+                8px;
+
+            line-height:
+                1.35;
+        }
+
+        .daily-vocab-page
+        .daily-running-result-speaker {
+            font-size:
+                6.5px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .daily-vocab-page
+        .daily-running-result-quote,
+        .daily-vocab-page
+        .daily-running-man-card.is-won
+        .daily-running-student,
+        .daily-vocab-page
+        .daily-running-man-card.is-lost
+        .daily-running-chaser {
+            animation:
+                none !important;
         }
     }
 </style>

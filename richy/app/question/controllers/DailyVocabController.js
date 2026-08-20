@@ -531,6 +531,476 @@
         vm.dailyVocabRunning = false;
         vm.dailyVocabAnswersEnabled = false;
 
+        // =====================================================
+        // RUNNING MAN MODE
+        // =====================================================
+
+        /*
+         * Luật chung:
+         *
+         * - HỌC SINH bắt đầu cách NGU đúng 5 khoảng.
+         * - Trả lời ĐÚNG: +1 khoảng.
+         * - Trả lời SAI: đứng yên.
+         * - NGU tự tiến theo thời gian: -1 khoảng.
+         * - gap <= 0: bị bắt -> thua.
+         *
+         * Độ khó chỉ thay đổi tốc độ của NGU,
+         * còn phần thưởng câu đúng luôn +1 để trọng tâm
+         * vẫn là học thuộc và trả lời nhanh.
+         */
+        var runningManTimeout = null;
+        var runningManTauntTimeout = null;
+
+        vm.runningManDevilTaunt = '';
+
+        /*
+         * Thoại khi kết thúc RUNNING MAN.
+         */
+        vm.runningManStudentVictoryQuote = '';
+        vm.runningManDevilLoseQuote = '';
+
+        var runningManStudentVictoryQuotes = [
+            'Mình làm được rồi! Cứ cố gắng là sẽ tiến bộ 💪',
+            'Không có từ nào khó nếu mình chịu học mỗi ngày ✨',
+            'Học một chút mỗi ngày, rồi mình sẽ giỏi hơn hôm qua 😎',
+            'Kiên trì thật sự có tác dụng. Mình đã làm được! 🏆',
+            'Chậm cũng được, miễn là mình không bỏ cuộc 💙',
+            'Học chăm thì chẳng có con quỷ nào đuổi kịp mình 😏',
+            'Mỗi từ nhớ được là một bước tiến về phía trước 🚀',
+            'Mình thắng vì mình đã chịu học. Quá đã! 🔥'
+        ];
+
+        var runningManDevilLoseQuotes = [
+            'Lười học thì sẽ bị ta ăn thịt! Hahaha 😈',
+            'Không học thì chạy mấy cũng không thoát đâu! Hahaha 👿',
+            'Ta đã bảo rồi, không nhớ từ là ta bắt được ngay 😏',
+            'Học đi rồi quay lại đấu với ta nhé! Hahaha 😈',
+            'Chạy nhanh mà không thuộc bài thì cũng vô ích thôi 👿',
+            'Ta bắt được rồi! Lần sau nhớ học chăm hơn nhé 😈',
+            'Không học là thành bữa tối của ta đấy! Hahaha 🍴😈',
+            'Hahaha! Muốn thoát ta thì phải học thuộc trước đã 👿'
+        ];
+
+        function getRandomRunningManQuote(list) {
+            if (!list || list.length === 0) {
+                return '';
+            }
+
+            var index =
+                Math.floor(
+                    Math.random() *
+                    list.length
+                );
+
+            return list[index];
+        }
+
+        var runningManDevilTaunts = [
+            'Không học thì chạy mấy cũng bị bắt 😈',
+            'Không thuộc từ là ta dí kịp ngay 😏',
+            'Chạy nhanh chưa đủ, phải nhớ từ nữa nhé 😈',
+            'Sai nhiều là khoảng cách ngắn lại đấy 😎',
+            'Học đi rồi hãy mong thoát khỏi ta 😈',
+            'Không nhớ từ thì chuẩn bị bị bắt nhé 👿',
+            'Cố lên, ta đang ở ngay phía sau 😏',
+            'Đừng chỉ chạy, nhớ đáp án nữa chứ 😈'
+        ];
+
+        function cancelRunningManTauntTimeout() {
+            if (runningManTauntTimeout !== null) {
+                $timeout.cancel(runningManTauntTimeout);
+                runningManTauntTimeout = null;
+            }
+
+            vm.runningManDevilTaunt = '';
+        }
+
+        function scheduleRunningManTaunt() {
+            cancelRunningManTauntTimeout();
+
+            if (
+                vm.runningManEnabled !== true ||
+                vm.runningManActive !== true ||
+                vm.runningManLost === true ||
+                vm.runningManWon === true
+            ) {
+                return;
+            }
+
+            /*
+             * Taunt xuất hiện ngẫu nhiên khoảng 9 - 15 giây/lần.
+             * Không quá dày để không làm mất tập trung khi học.
+             */
+            var delay =
+                9000 +
+                Math.floor(Math.random() * 6001);
+
+            runningManTauntTimeout =
+                $timeout(
+                    function () {
+                        if (
+                            vm.runningManEnabled !== true ||
+                            vm.runningManActive !== true ||
+                            vm.runningManLost === true ||
+                            vm.runningManWon === true
+                        ) {
+                            runningManTauntTimeout = null;
+                            return;
+                        }
+
+                        var index =
+                            Math.floor(
+                                Math.random() *
+                                runningManDevilTaunts.length
+                            );
+
+                        vm.runningManDevilTaunt =
+                            runningManDevilTaunts[index];
+
+                        runningManTauntTimeout =
+                            $timeout(
+                                function () {
+                                    vm.runningManDevilTaunt = '';
+                                    runningManTauntTimeout = null;
+
+                                    scheduleRunningManTaunt();
+                                },
+                                2200
+                            );
+                    },
+                    delay
+                );
+        }
+
+        vm.runningManEnabled = false;
+        vm.runningManDifficultyModal = false;
+        vm.runningManDifficulty = null;
+        vm.runningManDifficultyName = '';
+        vm.runningManChaseInterval = 0;
+        vm.runningManChaseIntervalLabel = '';
+
+        vm.runningManInitialGap = 5;
+        vm.runningManGap = 5;
+        vm.runningManStudentLeft = 48;
+
+        vm.runningManActive = false;
+        vm.runningManLost = false;
+        vm.runningManWon = false;
+
+        var runningManDifficultyMap = {
+            easy: {
+                id: 'easy',
+                name: 'DỄ',
+                interval: 8000,
+                intervalLabel: '8 giây'
+            },
+            medium: {
+                id: 'medium',
+                name: 'TRUNG BÌNH',
+                interval: 6000,
+                intervalLabel: '6 giây'
+            },
+            hard: {
+                id: 'hard',
+                name: 'KHÓ',
+                interval: 4500,
+                intervalLabel: '4.5 giây'
+            },
+            insane: {
+                id: 'insane',
+                name: 'SIÊU KHÓ',
+                interval: 3200,
+                intervalLabel: '3.2 giây'
+            }
+        };
+
+        function cancelRunningManTimeout() {
+            if (runningManTimeout !== null) {
+                $timeout.cancel(runningManTimeout);
+                runningManTimeout = null;
+            }
+        }
+
+        function updateRunningManPosition() {
+            var gap = Number(vm.runningManGap || 0);
+
+            if (gap < 0) {
+                gap = 0;
+            }
+
+            /*
+             * Track hiển thị tối đa 10 khoảng để HỌC SINH
+             * không chạy ra khỏi thanh.
+             *
+             * Gap thật vẫn có thể > 10 và vẫn được hiển thị bằng số.
+             */
+            var visualGap = Math.min(gap, 10);
+
+            vm.runningManStudentLeft =
+                8 + (visualGap * 8);
+
+            if (vm.runningManStudentLeft > 88) {
+                vm.runningManStudentLeft = 88;
+            }
+
+            if (vm.runningManStudentLeft < 8) {
+                vm.runningManStudentLeft = 8;
+            }
+        }
+
+        function resetRunningManRound() {
+            cancelRunningManTimeout();
+            cancelRunningManTauntTimeout();
+
+            vm.runningManGap =
+                vm.runningManInitialGap;
+
+            vm.runningManActive = false;
+            vm.runningManLost = false;
+            vm.runningManWon = false;
+
+            vm.runningManStudentVictoryQuote = '';
+            vm.runningManDevilLoseQuote = '';
+
+            updateRunningManPosition();
+        }
+
+        vm.openRunningManDifficulty = function () {
+            if (vm.dailyVocabRunning === true) {
+                toastr.warning(
+                    'Hãy reset lượt chơi trước khi đổi chế độ RUNNING MAN.',
+                    'RUNNING MAN'
+                );
+                return;
+            }
+
+            vm.runningManDifficultyModal = true;
+        };
+
+        vm.closeRunningManDifficulty = function () {
+            vm.runningManDifficultyModal = false;
+        };
+
+        vm.selectRunningManDifficulty = function (level) {
+            if (vm.dailyVocabRunning === true) {
+                return;
+            }
+
+            var config =
+                runningManDifficultyMap[level];
+
+            if (!config) {
+                return;
+            }
+
+            vm.runningManEnabled = true;
+            vm.runningManDifficulty = config.id;
+            vm.runningManDifficultyName = config.name;
+            vm.runningManChaseInterval =
+                config.interval;
+            vm.runningManChaseIntervalLabel =
+                config.intervalLabel;
+
+            vm.runningManDifficultyModal = false;
+
+            resetRunningManRound();
+
+            toastr.info(
+                'RUNNING MAN ' +
+                config.name +
+                ': NGU tiến 1 khoảng mỗi ' +
+                config.intervalLabel +
+                '.',
+                'RUNNING MAN'
+            );
+        };
+
+        vm.disableRunningMan = function () {
+            if (vm.dailyVocabRunning === true) {
+                toastr.warning(
+                    'Hãy reset lượt chơi trước khi tắt RUNNING MAN.',
+                    'RUNNING MAN'
+                );
+                return;
+            }
+
+            cancelRunningManTimeout();
+
+            vm.runningManEnabled = false;
+            vm.runningManDifficulty = null;
+            vm.runningManDifficultyName = '';
+            vm.runningManChaseInterval = 0;
+            vm.runningManChaseIntervalLabel = '';
+            vm.runningManDifficultyModal = false;
+
+            resetRunningManRound();
+        };
+
+        function runningManLose() {
+            if (
+                vm.runningManEnabled !== true ||
+                vm.runningManLost === true
+            ) {
+                return;
+            }
+
+            cancelRunningManTimeout();
+            cancelRunningManTauntTimeout();
+            cancelDailyVocabTimeout();
+
+            vm.runningManGap = 0;
+            vm.runningManActive = false;
+            vm.runningManLost = true;
+            vm.runningManWon = false;
+
+            vm.runningManStudentVictoryQuote = '';
+            vm.runningManDevilLoseQuote =
+                getRandomRunningManQuote(
+                    runningManDevilLoseQuotes
+                );
+
+            updateRunningManPosition();
+
+            vm.dailyVocabRunning = false;
+            vm.dailyVocabAnswersEnabled = false;
+
+            vm.finishDailyVocab = 'BỊ BẮT';
+
+            stopBackgroundMusic();
+            shutUp();
+
+            playAudioById('boom-sound', false);
+
+            toastr.error(
+                'NGU đã bắt kịp HỌC SINH! Reset để thử lại.',
+                'RUNNING MAN'
+            );
+        }
+
+        function runningManTick() {
+            if (
+                vm.runningManEnabled !== true ||
+                vm.runningManActive !== true ||
+                vm.dailyVocabRunning !== true
+            ) {
+                runningManTimeout = null;
+                return;
+            }
+
+            vm.runningManGap =
+                Number(vm.runningManGap || 0) - 1;
+
+            updateRunningManPosition();
+
+            if (vm.runningManGap <= 0) {
+                runningManLose();
+                return;
+            }
+
+            runningManTimeout =
+                $timeout(
+                    runningManTick,
+                    vm.runningManChaseInterval
+                );
+        }
+
+        function startRunningManRound() {
+            cancelRunningManTimeout();
+
+            if (
+                vm.runningManEnabled !== true ||
+                !vm.runningManDifficulty ||
+                vm.runningManChaseInterval <= 0
+            ) {
+                return;
+            }
+
+            vm.runningManGap =
+                vm.runningManInitialGap;
+
+            vm.runningManLost = false;
+            vm.runningManWon = false;
+            vm.runningManActive = true;
+
+            updateRunningManPosition();
+
+            runningManTimeout =
+                $timeout(
+                    runningManTick,
+                    vm.runningManChaseInterval
+                );
+
+            /*
+             * NGU bắt đầu thỉnh thoảng cà khịa sau khi cuộc đuổi
+             * bắt thực sự bắt đầu.
+             */
+            scheduleRunningManTaunt();
+        }
+
+        function runningManCorrectAnswer() {
+            if (
+                vm.runningManEnabled !== true ||
+                vm.runningManActive !== true ||
+                vm.runningManLost === true
+            ) {
+                return;
+            }
+
+            /*
+             * Câu đúng = chạy xa thêm 1 khoảng.
+             */
+            vm.runningManGap =
+                Number(vm.runningManGap || 0) + 1;
+
+            updateRunningManPosition();
+        }
+
+        function runningManWrongAnswer() {
+            if (
+                vm.runningManEnabled !== true ||
+                vm.runningManActive !== true ||
+                vm.runningManLost === true
+            ) {
+                return;
+            }
+
+            /*
+             * Câu sai = mất 1 khoảng.
+             */
+            vm.runningManGap =
+                Number(vm.runningManGap || 0) - 1;
+
+            updateRunningManPosition();
+
+            /*
+             * Sai mà khoảng cách về 0 thì NGU bắt được ngay.
+             */
+            if (vm.runningManGap <= 0) {
+                runningManLose();
+            }
+        }
+
+        function runningManFinishWin() {
+            if (
+                vm.runningManEnabled !== true ||
+                vm.runningManLost === true
+            ) {
+                return;
+            }
+
+            cancelRunningManTimeout();
+            cancelRunningManTauntTimeout();
+
+            vm.runningManActive = false;
+            vm.runningManWon = true;
+
+            vm.runningManDevilLoseQuote = '';
+            vm.runningManStudentVictoryQuote =
+                getRandomRunningManQuote(
+                    runningManStudentVictoryQuotes
+                );
+        }
+
         function cancelDailyVocabTimeout() {
             if (dailyVocabTimeout !== null) {
                 $timeout.cancel(dailyVocabTimeout);
@@ -563,9 +1033,12 @@
 
         vm.stopDailyVocabTimer = function () {
             cancelDailyVocabTimeout();
+            cancelRunningManTimeout();
+            cancelRunningManTauntTimeout();
 
             vm.dailyVocabRunning = false;
             vm.dailyVocabAnswersEnabled = false;
+            vm.runningManActive = false;
 
             stopBackgroundMusic();
             shutUp();
@@ -579,14 +1052,18 @@
 
             vm.dailyVocabRunning = false;
             vm.dailyVocabAnswersEnabled = false;
+
+            resetRunningManRound();
         };
 
         function dailyVocabTimeUp() {
             cancelDailyVocabTimeout();
+            cancelRunningManTimeout();
 
             vm.dailyVocabCounter = 0;
             vm.dailyVocabRunning = false;
             vm.dailyVocabAnswersEnabled = false;
+            vm.runningManActive = false;
 
             stopBackgroundMusic();
             shutUp();
@@ -655,6 +1132,12 @@
             vm.showCorrect = false;
 
             startBackgroundMusic();
+
+            /*
+             * Nếu đã chọn RUNNING MAN thì cuộc đuổi bắt
+             * bắt đầu cùng lúc với đồng hồ DAILY VOCAB.
+             */
+            startRunningManRound();
 
             if (vm.voiceEnabled === true && vm.currentCard) {
                 sayIt(vm.currentCard.question);
@@ -1230,6 +1713,12 @@
                 vm.streakPlayer1 =
                     Number(vm.streakPlayer1 || 0) + 1;
 
+                /*
+                 * RUNNING MAN:
+                 * đúng thì HỌC SINH chạy xa thêm 1 khoảng.
+                 */
+                runningManCorrectAnswer();
+
                 if (vm.streakPlayer1 >= 5) {
                     vm.score1 =
                         Number(vm.score1 || 0) +
@@ -1262,6 +1751,12 @@
 
                     vm.currentPosition += 1;
 
+                    /*
+                     * Hoàn thành toàn bộ từ trước khi bị bắt
+                     * = thắng RUNNING MAN.
+                     */
+                    runningManFinishWin();
+
                     try {
                         window.speechSynthesis.speak(
                             new SpeechSynthesisUtterance(
@@ -1292,6 +1787,20 @@
             vm.showStart = false;
             vm.showWrong = true;
             vm.showCorrect = false;
+
+            /*
+             * RUNNING MAN:
+             * trả lời sai thì bị NGU thu hẹp 1 khoảng ngay.
+             */
+            runningManWrongAnswer();
+
+            /*
+             * runningManWrongAnswer() có thể làm thua ngay
+             * và dừng lượt chơi nếu khoảng cách <= 0.
+             */
+            if (vm.runningManLost === true) {
+                return;
+            }
 
             vm.streakPlayer1 = 0;
             vm.score1 =
@@ -1456,6 +1965,8 @@
         vm.resetDailyVocabRun = function () {
             vm.resetDailyVocabTimer();
 
+            resetRunningManRound();
+
             vm.resetDailyVocabSaveState();
 
             vm.currentPosition = 0;
@@ -1484,6 +1995,8 @@
 
         $scope.$on('$destroy', function () {
             cancelDailyVocabTimeout();
+            cancelRunningManTimeout();
+            cancelRunningManTauntTimeout();
             stopBackgroundMusic();
             shutUp();
         });
