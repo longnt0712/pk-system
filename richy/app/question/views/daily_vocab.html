@@ -664,14 +664,14 @@
                     <label for="dailyVocabSetTimer">
                         Thời gian
                     </label>
-                    <small>Số giây cho một lượt chơi</small>
+                    <small>Mặc định: tổng số từ × 7 giây</small>
                 </div>
 
                 <input
                     id="dailyVocabSetTimer"
                     type="number"
                     min="1"
-                    max="9999"
+                    max="999999"
                     class="daily-timer-input"
                     ng-model="vm.dailyVocabDuration"
                     ng-change="vm.dailyVocabTimerSettingChange()">

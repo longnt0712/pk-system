@@ -573,6 +573,21 @@
         var DAILY_PREPARE_CHUNK_SIZE = 8;
         var DAILY_PREPARE_CHUNK_DELAY = 12;
 
+        /*
+         * TIMER MẶC ĐỊNH:
+         * tổng số từ x 7 giây.
+         */
+        var DAILY_SECONDS_PER_WORD = 7;
+
+        /*
+         * Số raw question đã được biến thành question chơi
+         * trong RUN hiện tại.
+         *
+         * Khi chơi lại, dù cache đã có 1000 từ,
+         * START vẫn chỉ build 50 từ đầu.
+         */
+        var dailyPreparedRawCount = 0;
+
         var dailyLazyGeneration = 0;
         var dailyLazyNextPage = 1;
 
@@ -604,6 +619,53 @@
             }
         }
 
+        function stopDailyLazyBackgroundWork() {
+            /*
+             * Invalidate callback/request của RUN cũ.
+             * Request HTTP có thể vẫn hoàn tất ở browser,
+             * nhưng callback cũ sẽ không được phép append/build.
+             */
+            dailyLazyGeneration =
+                dailyLazyGeneration + 1;
+
+            cancelDailyLazyTimers();
+
+            vm.loadingMoreQuestions = false;
+            vm.dailyLazyLoadError = false;
+            vm.dailyBufferWaiting = false;
+        }
+
+        function getDefaultDailyVocabTimerSeconds() {
+            var total =
+                parseInt(vm.totalCard, 10);
+
+            if (isNaN(total) || total <= 0) {
+                return 0;
+            }
+
+            var seconds =
+                total *
+                DAILY_SECONDS_PER_WORD;
+
+            if (seconds > 999999) {
+                seconds = 999999;
+            }
+
+            return seconds;
+        }
+
+        function applyDefaultDailyVocabTimer() {
+            var seconds =
+                getDefaultDailyVocabTimerSeconds();
+
+            if (seconds <= 0) {
+                return;
+            }
+
+            vm.dailyVocabDuration = seconds;
+            vm.dailyVocabCounter = seconds;
+        }
+
         function resetDailyLazyState(
             clearQuestions
         ) {
@@ -620,6 +682,8 @@
             vm.allQuestionsLoaded = false;
             vm.dailyLazyLoadError = false;
             vm.dailyBufferWaiting = false;
+
+            dailyPreparedRawCount = 0;
 
             if (clearQuestions === true) {
                 vm.rawQuestions = [];
@@ -641,17 +705,22 @@
             shuffleAnswers
         ) {
             /*
-             * Chỉ build số rawQuestions đang có trong RAM.
-             *
-             * Search mới bình thường chỉ có batch đầu 50 từ,
-             * nên START không còn phải xử lý 1000 từ cùng lúc.
+             * Mỗi lần START chỉ build tối đa 50 từ đầu.
+             * Nếu cache đã có 500 / 1000 từ, phần còn lại
+             * được chuẩn bị nền theo chunk.
              */
+            var initialSource =
+                (vm.rawQuestions || []).slice(
+                    0,
+                    DAILY_LAZY_PAGE_SIZE
+                );
+
             var parents =
                 shuffleAnswers === true
                     ? shuffleArray(
-                        vm.rawQuestions || []
+                        initialSource
                     )
-                    : (vm.rawQuestions || []).slice();
+                    : initialSource.slice();
 
             vm.questions =
                 createQuestionsWithOptions(
@@ -660,6 +729,9 @@
                     shuffleAnswers === true,
                     vm.rawQuestions
                 );
+
+            dailyPreparedRawCount =
+                initialSource.length;
 
             vm.currentPosition = 0;
             vm.currentCard =
@@ -781,6 +853,30 @@
 
             var index = 0;
 
+            function finishBatch() {
+                if (
+                    requestGeneration !==
+                    dailyLazyGeneration ||
+                    vm.dailyVocabRunning !== true
+                ) {
+                    done();
+                    return;
+                }
+
+                dailyPreparedRawCount =
+                    dailyPreparedRawCount +
+                    parents.length;
+
+                /*
+                 * Chỉ digest một lần khi xong batch.
+                 */
+                $scope.$evalAsync(function () {
+                    updateDailyLoadedCount();
+                    resumeDailyBufferIfNeeded();
+                    done();
+                });
+            }
+
             function processChunk() {
                 if (
                     requestGeneration !==
@@ -791,11 +887,6 @@
                     return;
                 }
 
-                /*
-                 * Nếu user đã dừng game trong lúc request về,
-                 * không tốn CPU build tiếp.
-                 * rawQuestions vẫn giữ để lần START sau dùng được.
-                 */
                 if (
                     vm.dailyVocabRunning !== true
                 ) {
@@ -830,30 +921,30 @@
 
                 index = end;
 
-                updateDailyLoadedCount();
-                resumeDailyBufferIfNeeded();
-
                 if (index < parents.length) {
+                    /*
+                     * invokeApply = false:
+                     * không ép Angular digest sau từng chunk.
+                     */
                     dailyLazyPrepareTimer =
                         $timeout(
                             processChunk,
-                            DAILY_PREPARE_CHUNK_DELAY
+                            DAILY_PREPARE_CHUNK_DELAY,
+                            false
                         );
 
                     return;
                 }
 
                 dailyLazyPrepareTimer = null;
-                done();
+                finishBatch();
             }
 
-            /*
-             * Yield trước khi build batch.
-             */
             dailyLazyPrepareTimer =
                 $timeout(
                     processChunk,
-                    0
+                    0,
+                    false
                 );
         }
 
@@ -866,12 +957,41 @@
             );
         }
 
+        function hasCachedDailyQuestionsToPrepare() {
+            return (
+                dailyPreparedRawCount <
+                (vm.rawQuestions || []).length
+            );
+        }
+
+        function getNextCachedDailyBatch() {
+            if (
+                !hasCachedDailyQuestionsToPrepare()
+            ) {
+                return [];
+            }
+
+            return (
+                vm.rawQuestions || []
+            ).slice(
+                dailyPreparedRawCount,
+                Math.min(
+                    dailyPreparedRawCount +
+                        DAILY_LAZY_PAGE_SIZE,
+                    vm.rawQuestions.length
+                )
+            );
+        }
+
         function shouldPrefetchDailyQuestions() {
             if (
                 vm.dailyVocabRunning !== true ||
                 vm.dailyVocabAnswersEnabled !== true ||
                 vm.loadingMoreQuestions === true ||
-                vm.allQuestionsLoaded === true
+                (
+                    vm.allQuestionsLoaded === true &&
+                    !hasCachedDailyQuestionsToPrepare()
+                )
             ) {
                 return false;
             }
@@ -916,7 +1036,6 @@
         function loadNextDailyQuestionPage() {
             if (
                 vm.loadingMoreQuestions === true ||
-                vm.allQuestionsLoaded === true ||
                 vm.dailyVocabRunning !== true
             ) {
                 return;
@@ -924,6 +1043,55 @@
 
             var requestGeneration =
                 dailyLazyGeneration;
+
+            /*
+             * Nếu cache từ lượt trước còn dữ liệu chưa prepare,
+             * dùng RAM trước, không request server lại.
+             */
+            if (
+                hasCachedDailyQuestionsToPrepare()
+            ) {
+                var cachedBatch =
+                    getNextCachedDailyBatch();
+
+                if (cachedBatch.length <= 0) {
+                    return;
+                }
+
+                vm.loadingMoreQuestions = true;
+                vm.dailyLazyLoadError = false;
+
+                prepareDailyBackgroundBatch(
+                    cachedBatch,
+                    requestGeneration,
+                    function () {
+                        if (
+                            requestGeneration !==
+                            dailyLazyGeneration
+                        ) {
+                            return;
+                        }
+
+                        vm.loadingMoreQuestions = false;
+                        vm.dailyLazyLoadError = false;
+
+                        updateDailyLoadedCount();
+                        resumeDailyBufferIfNeeded();
+
+                        if (
+                            shouldPrefetchDailyQuestions()
+                        ) {
+                            loadNextDailyQuestionPage();
+                        }
+                    }
+                );
+
+                return;
+            }
+
+            if (vm.allQuestionsLoaded === true) {
+                return;
+            }
 
             var page =
                 dailyLazyNextPage;
@@ -992,6 +1160,14 @@
 
                         updateDailyLoadedCount();
                         resumeDailyBufferIfNeeded();
+
+                        if (
+                            reachedLastPage !== true &&
+                            vm.dailyVocabRunning === true
+                        ) {
+                            loadNextDailyQuestionPage();
+                        }
+
                         return;
                     }
 
@@ -1051,7 +1227,10 @@
             if (
                 vm.dailyVocabRunning !== true ||
                 vm.dailyVocabAnswersEnabled !== true ||
-                vm.allQuestionsLoaded === true ||
+                (
+                    vm.allQuestionsLoaded === true &&
+                    !hasCachedDailyQuestionsToPrepare()
+                ) ||
                 vm.loadingMoreQuestions === true
             ) {
                 return;
@@ -1115,6 +1294,12 @@
                         ) ||
                         content.length <
                             DAILY_LAZY_PAGE_SIZE;
+
+                    /*
+                     * Timer mặc định = TOTAL x 7 giây.
+                     * 1000 từ -> 7000 giây.
+                     */
+                    applyDefaultDailyVocabTimer();
 
                     /*
                      * Preview chỉ build 50 từ đầu.
@@ -1591,6 +1776,8 @@
             cancelRunningManTauntTimeout();
             cancelDailyVocabTimeout();
 
+            stopDailyLazyBackgroundWork();
+
             vm.runningManGap = 0;
             vm.runningManActive = false;
             vm.runningManLost = true;
@@ -1773,8 +1960,8 @@
                 value = 1;
             }
 
-            if (value > 9999) {
-                value = 9999;
+            if (value > 999999) {
+                value = 999999;
             }
 
             vm.dailyVocabDuration = value;
@@ -1793,6 +1980,8 @@
             cancelRunningManTimeout();
             cancelRunningManTauntTimeout();
 
+            stopDailyLazyBackgroundWork();
+
             vm.dailyVocabRunning = false;
             vm.dailyVocabAnswersEnabled = false;
             vm.dailyBufferWaiting = false;
@@ -1806,7 +1995,12 @@
             vm.stopDailyVocabTimer();
 
             vm.dailyVocabCounter =
-                parseInt(vm.dailyVocabDuration, 10) || 900;
+                parseInt(
+                    vm.dailyVocabDuration,
+                    10
+                ) ||
+                getDefaultDailyVocabTimerSeconds() ||
+                900;
 
             vm.dailyVocabRunning = false;
             vm.dailyVocabAnswersEnabled = false;
@@ -1817,6 +2011,8 @@
         function dailyVocabTimeUp() {
             cancelDailyVocabTimeout();
             cancelRunningManTimeout();
+
+            stopDailyLazyBackgroundWork();
 
             vm.dailyVocabCounter = 0;
             vm.dailyVocabRunning = false;
@@ -1874,6 +2070,12 @@
             }
 
             cancelDailyVocabTimeout();
+
+            /*
+             * Loại bỏ callback nền của lượt trước.
+             */
+            stopDailyLazyBackgroundWork();
+
             shutUp();
 
             /*
@@ -1888,7 +2090,12 @@
 
             vm.finishDailyVocab = 'Unfinished';
             vm.dailyVocabCounter =
-                parseInt(vm.dailyVocabDuration, 10) || 900;
+                parseInt(
+                    vm.dailyVocabDuration,
+                    10
+                ) ||
+                getDefaultDailyVocabTimerSeconds() ||
+                900;
 
             vm.dailyVocabRunning = true;
             vm.dailyVocabAnswersEnabled = true;

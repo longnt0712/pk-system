@@ -322,7 +322,10 @@
         };
 
         vm.categoryChange = function () {
-            vm.selectedTopicToSearch = [];
+            /*
+             * Đổi Category vẫn tải danh sách Topic của Category mới,
+             * nhưng KHÔNG xóa các Topic đã chọn trước đó.
+             */
             vm.getTopics();
         };
 
