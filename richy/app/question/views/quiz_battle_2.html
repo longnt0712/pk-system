@@ -814,6 +814,20 @@
                         <span>BREAK STREAK</span>
                     </div>
 
+                    <div class="quiz-battle-2-steal-score-skill"
+                         ng-if="vm.endGame == false &&
+                                vm.currentCard.hasStealScoreSkill &&
+                                !vm.currentCard.stealScoreConsumed">
+                        <span class="quiz-battle-2-steal-score-icon">💰</span>
+                        <span>CƯỚP 5% ĐIỂM</span>
+                    </div>
+
+                    <div class="quiz-battle-2-steal-score-hit"
+                         ng-if="vm.stealScoreHit1">
+                        <span class="quiz-battle-2-steal-score-hit-icon">💸</span>
+                        <strong>BỊ CƯỚP {{vm.stealScoreAmount1}} ĐIỂM!</strong>
+                    </div>
+
                     <div class="quiz-battle-2-break-streak-hit"
                          ng-if="vm.breakStreakHit1">
                         <span class="quiz-battle-2-break-streak-hit-icon">💥</span>
@@ -948,6 +962,20 @@
                                 !vm.currentCard1.breakStreakConsumed">
                         <span class="quiz-battle-2-break-streak-icon">💥</span>
                         <span>BREAK STREAK</span>
+                    </div>
+
+                    <div class="quiz-battle-2-steal-score-skill"
+                         ng-if="vm.endGame == false &&
+                                vm.currentCard1.hasStealScoreSkill &&
+                                !vm.currentCard1.stealScoreConsumed">
+                        <span class="quiz-battle-2-steal-score-icon">💰</span>
+                        <span>CƯỚP 5% ĐIỂM</span>
+                    </div>
+
+                    <div class="quiz-battle-2-steal-score-hit"
+                         ng-if="vm.stealScoreHit2">
+                        <span class="quiz-battle-2-steal-score-hit-icon">💸</span>
+                        <strong>BỊ CƯỚP {{vm.stealScoreAmount2}} ĐIỂM!</strong>
                     </div>
 
                     <div class="quiz-battle-2-break-streak-hit"
@@ -3939,6 +3967,225 @@
         .quiz-battle-2-time-up-banner {
             animation:
                 none !important;
+        }
+    }
+</style>
+
+<style>
+    /* =========================================================
+       QUIZ BATTLE 2 - STEAL 5% SCORE + SKILL LOST ON WRONG V10
+       ========================================================= */
+
+    /* ---------------- STEAL SKILL BADGE ---------------- */
+
+    .quiz-battle-2-page
+    .quiz-battle-2-steal-score-skill {
+        position: absolute;
+        z-index: 62;
+
+        top: 8px;
+        right: 9px;
+
+        display: inline-flex;
+        align-items: center;
+
+        gap: 5px;
+
+        padding: 5px 8px;
+
+        border: 1px solid rgba(255,235,135,.82);
+        border-radius: 999px;
+
+        color: #fffbe8;
+
+        background:
+            linear-gradient(
+                135deg,
+                #c99113,
+                #8d5b08 58%,
+                #574006
+            );
+
+        box-shadow:
+            0 0 8px rgba(255,245,188,.50),
+            0 0 18px rgba(255,193,37,.48),
+            0 0 30px rgba(255,151,15,.22);
+
+        font-size: 9px;
+        font-weight: 1000;
+
+        letter-spacing: .25px;
+
+        pointer-events: none;
+
+        animation:
+            qb2StealSkillGlow 1s ease-in-out infinite alternate;
+    }
+
+    .quiz-battle-2-page
+    .quiz-battle-2-steal-score-icon {
+        font-size: 14px;
+
+        filter:
+            drop-shadow(
+                0 0 6px rgba(255,237,123,.86)
+            );
+    }
+
+    @keyframes qb2StealSkillGlow {
+        from {
+            filter: brightness(.94);
+
+            transform: scale(.97);
+        }
+
+        to {
+            filter: brightness(1.18);
+
+            transform: scale(1.04);
+
+            box-shadow:
+                0 0 11px rgba(255,250,207,.76),
+                0 0 24px rgba(255,202,53,.64),
+                0 0 38px rgba(255,143,17,.31);
+        }
+    }
+
+
+    /* ---------------- STEAL HIT ---------------- */
+
+    .quiz-battle-2-page
+    .quiz-battle-2-steal-score-hit {
+        position: absolute;
+        z-index: 78;
+
+        left: 50%;
+        top: 50%;
+
+        min-width: 160px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        gap: 6px;
+
+        padding: 9px 12px;
+
+        transform:
+            translate(-50%, -50%);
+
+        border: 1px solid rgba(255,240,157,.88);
+        border-radius: 13px;
+
+        color: #fff9d9;
+
+        background:
+            linear-gradient(
+                135deg,
+                rgba(155,103,13,.97),
+                rgba(82,48,8,.98)
+            );
+
+        box-shadow:
+            0 0 10px rgba(255,247,200,.68),
+            0 0 24px rgba(255,190,39,.60),
+            0 0 40px rgba(255,133,13,.32);
+
+        font-size: 11px;
+        font-weight: 1000;
+
+        pointer-events: none;
+
+        animation:
+            qb2StealScoreHit 1.5s ease both;
+    }
+
+    .quiz-battle-2-page
+    .quiz-battle-2-steal-score-hit-icon {
+        font-size: 20px;
+    }
+
+    @keyframes qb2StealScoreHit {
+        0% {
+            opacity: 0;
+
+            transform:
+                translate(-50%, -50%)
+                scale(.55)
+                rotate(-5deg);
+        }
+
+        13% {
+            opacity: 1;
+
+            transform:
+                translate(-50%, -50%)
+                scale(1.12)
+                rotate(2deg);
+
+            filter: brightness(1.25);
+        }
+
+        25%,
+        75% {
+            opacity: 1;
+
+            transform:
+                translate(-50%, -50%)
+                scale(1);
+        }
+
+        100% {
+            opacity: 0;
+
+            transform:
+                translate(-50%, -50%)
+                translateY(-9px)
+                scale(.92);
+        }
+    }
+
+
+    /* ---------------- MOBILE ---------------- */
+
+    @media (max-width: 640px) {
+        .quiz-battle-2-page
+        .quiz-battle-2-steal-score-skill {
+            top: 5px;
+            right: 5px;
+
+            padding: 4px 5px;
+
+            font-size: 7px;
+        }
+
+        .quiz-battle-2-page
+        .quiz-battle-2-steal-score-icon {
+            font-size: 10px;
+        }
+
+        .quiz-battle-2-page
+        .quiz-battle-2-steal-score-hit {
+            min-width: 118px;
+
+            padding: 6px 7px;
+
+            font-size: 8px;
+        }
+
+        .quiz-battle-2-page
+        .quiz-battle-2-steal-score-hit-icon {
+            font-size: 14px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .quiz-battle-2-page
+        .quiz-battle-2-steal-score-skill,
+        .quiz-battle-2-page
+        .quiz-battle-2-steal-score-hit {
+            animation: none !important;
         }
     }
 </style>

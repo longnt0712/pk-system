@@ -725,6 +725,168 @@
             );
         }
 
+        /*
+         * =====================================================
+         * STEAL SCORE SKILL - CƯỚP 5% ĐIỂM
+         * =====================================================
+         *
+         * Hiếm hơn FREEZE / BREAK STREAK:
+         * 12 - 29 câu : ~2%
+         * 30 - 49 câu : ~3%
+         * 50 - 79 câu : ~4%
+         * 80+ câu     : ~5%
+         *
+         * Tối đa 4 skill / player / trận.
+         * Hai bên dùng chung mốc tiến trình.
+         * Không trùng FREEZE và BREAK STREAK.
+         */
+        function getStealScoreSkillCount(totalQuestions) {
+            var total = parseInt(totalQuestions, 10);
+
+            if (isNaN(total) || total < 12) {
+                return 0;
+            }
+
+            var rate = 0.02;
+
+            if (total >= 80) {
+                rate = 0.05;
+            } else if (total >= 50) {
+                rate = 0.04;
+            } else if (total >= 30) {
+                rate = 0.03;
+            }
+
+            var count = Math.round(total * rate);
+
+            if (count < 1) {
+                count = 1;
+            }
+
+            if (count > 4) {
+                count = 4;
+            }
+
+            return count;
+        }
+
+        function buildBalancedStealScorePositions(
+            totalQuestions,
+            blockedPositions
+        ) {
+            var total = parseInt(totalQuestions, 10);
+            var positions = [];
+            var blockedMap = {};
+
+            angular.forEach(
+                blockedPositions || [],
+                function (position) {
+                    blockedMap[position] = true;
+                }
+            );
+
+            var skillCount =
+                getStealScoreSkillCount(total);
+
+            if (skillCount <= 0) {
+                return positions;
+            }
+
+            var firstAllowed = 3;
+            var lastAllowed = total - 3;
+
+            if (lastAllowed < firstAllowed) {
+                return positions;
+            }
+
+            var candidates = [];
+            var index;
+
+            for (
+                index = firstAllowed;
+                index <= lastAllowed;
+                index = index + 1
+            ) {
+                if (blockedMap[index] !== true) {
+                    candidates.push(index);
+                }
+            }
+
+            if (candidates.length <= 0) {
+                return positions;
+            }
+
+            if (skillCount > candidates.length) {
+                skillCount = candidates.length;
+            }
+
+            var segmentSize =
+                candidates.length / skillCount;
+
+            var segmentIndex;
+
+            for (
+                segmentIndex = 0;
+                segmentIndex < skillCount;
+                segmentIndex = segmentIndex + 1
+            ) {
+                var start = Math.floor(
+                    segmentIndex * segmentSize
+                );
+
+                var end = Math.floor(
+                    (segmentIndex + 1) * segmentSize
+                ) - 1;
+
+                if (segmentIndex === skillCount - 1) {
+                    end = candidates.length - 1;
+                }
+
+                if (end < start) {
+                    end = start;
+                }
+
+                var pickedArrayIndex =
+                    start +
+                    Math.floor(
+                        Math.random() *
+                        (end - start + 1)
+                    );
+
+                if (candidates[pickedArrayIndex] != null) {
+                    positions.push(
+                        candidates[pickedArrayIndex]
+                    );
+                }
+            }
+
+            return positions;
+        }
+
+        function applyStealScorePositions(
+            questions,
+            positions
+        ) {
+            var positionMap = {};
+
+            angular.forEach(
+                positions || [],
+                function (position) {
+                    positionMap[position] = true;
+                }
+            );
+
+            angular.forEach(
+                questions || [],
+                function (question, index) {
+                    question.hasStealScoreSkill =
+                        positionMap[index] === true;
+
+                    question.stealScoreConsumed = false;
+                }
+            );
+        }
+
         function prepareBattleQuestions(shouldShuffleAnswers) {
             vm.questions = createQuestionsWithOptions(
                 vm.rawQuestions,
@@ -782,6 +944,30 @@
             applyBreakStreakPositions(
                 vm.questions1,
                 breakStreakPositions
+            );
+
+            /*
+             * CƯỚP ĐIỂM tránh trùng cả FREEZE lẫn BREAK STREAK.
+             */
+            var blockedSkillPositions =
+                freezePositions.concat(
+                    breakStreakPositions
+                );
+
+            var stealScorePositions =
+                buildBalancedStealScorePositions(
+                    vm.rawQuestions.length,
+                    blockedSkillPositions
+                );
+
+            applyStealScorePositions(
+                vm.questions,
+                stealScorePositions
+            );
+
+            applyStealScorePositions(
+                vm.questions1,
+                stealScorePositions
             );
 
             vm.currentPosition = 0;
@@ -1627,6 +1813,186 @@
             }
         }
 
+        /*
+         * =====================================================
+         * STEAL SCORE EFFECT
+         * =====================================================
+         *
+         * Trả lời đúng câu 💰:
+         * - lấy 5% điểm HIỆN TẠI của đối thủ
+         * - trừ đúng số đó khỏi đối thủ
+         * - cộng đúng số đó cho người kích hoạt
+         * - không tự sinh thêm điểm
+         *
+         * Nếu đối thủ <= 0 điểm thì skill vẫn bị tiêu hao,
+         * nhưng không cướp điểm âm.
+         */
+        vm.stealScoreHit1 = false;
+        vm.stealScoreHit2 = false;
+
+        vm.stealScoreAmount1 = 0;
+        vm.stealScoreAmount2 = 0;
+
+        var stealScoreFxTimer1 = null;
+        var stealScoreFxTimer2 = null;
+
+        function roundBattleScore(value) {
+            var number = Number(value);
+
+            if (isNaN(number)) {
+                number = 0;
+            }
+
+            return Math.round(number * 100) / 100;
+        }
+
+        function clearStealScoreFx(player) {
+            if (player === 1) {
+                cancelTimeoutSafe(stealScoreFxTimer1);
+                stealScoreFxTimer1 = null;
+                vm.stealScoreHit1 = false;
+                vm.stealScoreAmount1 = 0;
+                return;
+            }
+
+            cancelTimeoutSafe(stealScoreFxTimer2);
+            stealScoreFxTimer2 = null;
+            vm.stealScoreHit2 = false;
+            vm.stealScoreAmount2 = 0;
+        }
+
+        function showStealScoreFx(
+            targetPlayer,
+            amount
+        ) {
+            clearStealScoreFx(targetPlayer);
+
+            if (targetPlayer === 1) {
+                vm.stealScoreHit1 = true;
+                vm.stealScoreAmount1 = amount;
+
+                stealScoreFxTimer1 = $timeout(
+                    function () {
+                        vm.stealScoreHit1 = false;
+                        vm.stealScoreAmount1 = 0;
+                        stealScoreFxTimer1 = null;
+                    },
+                    1500
+                );
+
+                return;
+            }
+
+            vm.stealScoreHit2 = true;
+            vm.stealScoreAmount2 = amount;
+
+            stealScoreFxTimer2 = $timeout(
+                function () {
+                    vm.stealScoreHit2 = false;
+                    vm.stealScoreAmount2 = 0;
+                    stealScoreFxTimer2 = null;
+                },
+                1500
+            );
+        }
+
+        function triggerStealScoreSkill(player) {
+            var card =
+                player === 1
+                    ? vm.currentCard
+                    : vm.currentCard1;
+
+            if (
+                !card ||
+                card.hasStealScoreSkill !== true ||
+                card.stealScoreConsumed === true
+            ) {
+                return;
+            }
+
+            card.stealScoreConsumed = true;
+
+            var opponentScore =
+                player === 1
+                    ? Number(vm.score2 || 0)
+                    : Number(vm.score1 || 0);
+
+            if (
+                isNaN(opponentScore) ||
+                opponentScore <= 0
+            ) {
+                return;
+            }
+
+            var stolen =
+                roundBattleScore(
+                    opponentScore * 0.05
+                );
+
+            if (stolen <= 0) {
+                return;
+            }
+
+            if (player === 1) {
+                vm.score2 =
+                    roundBattleScore(
+                        Number(vm.score2 || 0) -
+                        stolen
+                    );
+
+                vm.score1 =
+                    roundBattleScore(
+                        Number(vm.score1 || 0) +
+                        stolen
+                    );
+
+                showStealScoreFx(2, stolen);
+                return;
+            }
+
+            vm.score1 =
+                roundBattleScore(
+                    Number(vm.score1 || 0) -
+                    stolen
+                );
+
+            vm.score2 =
+                roundBattleScore(
+                    Number(vm.score2 || 0) +
+                    stolen
+                );
+
+            showStealScoreFx(1, stolen);
+        }
+
+        /*
+         * Nếu trả lời SAI câu có skill:
+         * skill biến mất ngay và không thể kích hoạt lại
+         * dù sau đó trả lời đúng cùng câu.
+         */
+        function consumeCurrentCardSkillsOnWrong(player) {
+            var card =
+                player === 1
+                    ? vm.currentCard
+                    : vm.currentCard1;
+
+            if (!card) {
+                return;
+            }
+
+            if (card.hasFreezeSkill === true) {
+                card.freezeConsumed = true;
+            }
+
+            if (card.hasBreakStreakSkill === true) {
+                card.breakStreakConsumed = true;
+            }
+
+            if (card.hasStealScoreSkill === true) {
+                card.stealScoreConsumed = true;
+            }
+        }
+
         function clearBattleEffects() {
             clearFreezeState(1);
             clearFreezeState(2);
@@ -1645,6 +2011,9 @@
 
             clearBreakStreakFx(1);
             clearBreakStreakFx(2);
+
+            clearStealScoreFx(1);
+            clearStealScoreFx(2);
         }
 
         function startBattleAfterShuffle(shouldShuffleAnswers) {
@@ -1888,6 +2257,7 @@
                 if (player == 1) {
                     triggerFreezeSkill(1);
                     triggerBreakStreakSkill(1);
+                    triggerStealScoreSkill(1);
 
                     stillInAQuestion1 = false;
 
@@ -1927,6 +2297,7 @@
                 } else if (player == 2) {
                     triggerFreezeSkill(2);
                     triggerBreakStreakSkill(2);
+                    triggerStealScoreSkill(2);
 
                     stillInAQuestion2 = false;
 
@@ -1967,6 +2338,11 @@
 
                 return;
             }
+
+            /*
+             * Sai câu có skill => mất skill ngay.
+             */
+            consumeCurrentCardSkillsOnWrong(player);
 
             if (player == 1 && vm.endGamePlayer1 == false) {
                 if (stillInAQuestion1 == false) {
