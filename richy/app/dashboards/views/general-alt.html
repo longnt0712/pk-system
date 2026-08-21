@@ -34,18 +34,18 @@
          MENU
          ========================= -->
     <section
-        class="learning-hub-menu"
-        ng-if="vm.permissionsLoaded">
+            class="learning-hub-menu"
+            ng-if="vm.permissionsLoaded">
 
         <!-- DAILY VOCAB - LUÔN Ở ĐẦU -->
         <div
-            class="learning-tile-wrap"
-            ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+                class="learning-tile-wrap"
+                ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
 
             <a
-                ui-sref="application.daily_vocab({listFlashCard: 0})"
-                href="daily-vocab/0"
-                class="learning-tile learning-tile-daily">
+                    ui-sref="application.daily_vocab({listFlashCard: 0})"
+                    href="daily-vocab/0"
+                    class="learning-tile learning-tile-daily">
 
                 <span class="learning-tile-tag">MỖI NGÀY</span>
 
@@ -76,14 +76,14 @@
              Click để mở / đóng các battle game bên dưới.
              ================================================= -->
         <div
-            class="learning-tile-wrap learning-battle-group"
-            ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+                class="learning-tile-wrap learning-battle-group"
+                ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
 
             <button
-                type="button"
-                class="learning-tile learning-tile-battle learning-battle-toggle"
-                ng-click="battleModesOpen = !battleModesOpen"
-                ng-attr-aria-expanded="{{battleModesOpen ? 'true' : 'false'}}">
+                    type="button"
+                    class="learning-tile learning-tile-battle learning-battle-toggle"
+                    ng-click="battleModesOpen = !battleModesOpen"
+                    ng-attr-aria-expanded="{{battleModesOpen ? 'true' : 'false'}}">
 
                 <span class="learning-tile-tag learning-battle-tag">
                     2 PLAYERS
@@ -102,8 +102,8 @@
                 </span>
 
                 <span
-                    class="learning-tile-go learning-battle-chevron"
-                    ng-class="{'is-open': battleModesOpen}">
+                        class="learning-tile-go learning-battle-chevron"
+                        ng-class="{'is-open': battleModesOpen}">
                     <i class="fa fa-chevron-down"></i>
                 </span>
 
@@ -113,13 +113,13 @@
 
             <!-- QUIZ BATTLE 2 -->
             <div
-                class="learning-battle-submenu"
-                ng-if="battleModesOpen">
+                    class="learning-battle-submenu"
+                    ng-if="battleModesOpen">
 
                 <a
-                    ui-sref="application.quiz_battle_2({listFlashCard: 3})"
-                    href="quiz-battle-2/3"
-                    class="learning-battle-subtile">
+                        ui-sref="application.quiz_battle_2({listFlashCard: 3})"
+                        href="quiz-battle-2/3"
+                        class="learning-battle-subtile">
 
                     <span class="learning-battle-subtile-icon">
                         <i class="fa fa-gamepad"></i>
@@ -140,6 +140,32 @@
                         <i class="fa fa-arrow-right"></i>
                     </span>
                 </a>
+
+                <!-- QUIZ BATTLE ONLINE -->
+                <a
+                        ui-sref="application.battle_quiz_online"
+                        href="battle-quiz-online"
+                        class="learning-battle-subtile learning-battle-subtile-online">
+
+                    <span class="learning-battle-subtile-icon learning-battle-online-icon">
+                        <i class="fa fa-globe"></i>
+                    </span>
+
+                    <span class="learning-battle-subtile-copy">
+                        <strong>QUIZ BATTLE ONLINE</strong>
+
+                        <small>
+                            MULTIPLAYER • TẠO PHÒNG • JOIN PHÒNG
+                            <span class="learning-battle-keyboard learning-battle-online-status">
+                                ONLINE
+                            </span>
+                        </small>
+                    </span>
+
+                    <span class="learning-battle-subtile-go learning-battle-online-go">
+                        <i class="fa fa-arrow-right"></i>
+                    </span>
+                </a>
             </div>
 
         </div>
@@ -147,12 +173,12 @@
 
         <!-- GAME MODES -->
         <div
-            class="learning-tile-wrap"
-            ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+                class="learning-tile-wrap"
+                ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
 
             <a
-                href="view/3"
-                class="learning-tile learning-tile-games">
+                    href="view/3"
+                    class="learning-tile learning-tile-games">
 
                 <span class="learning-tile-icon">
                     <i class="fa fa-gamepad"></i>
@@ -178,12 +204,12 @@
 
         <!-- FLASHCARDS -->
         <div
-            class="learning-tile-wrap"
-            ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+                class="learning-tile-wrap"
+                ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
 
             <a
-                href="question/3"
-                class="learning-tile learning-tile-flashcards">
+                    href="question/3"
+                    class="learning-tile learning-tile-flashcards">
 
                 <span class="learning-tile-icon">
                     <i class="fa fa-clone"></i>
@@ -209,12 +235,12 @@
 
         <!-- IELTS -->
         <div
-            class="learning-tile-wrap"
-            ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+                class="learning-tile-wrap"
+                ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
 
             <a
-                href="create_ielts_reading_test"
-                class="learning-tile learning-tile-ielts">
+                    href="create_ielts_reading_test"
+                    class="learning-tile learning-tile-ielts">
 
                 <span class="learning-tile-icon">
                     <i class="fa fa-book"></i>
@@ -240,12 +266,12 @@
 
         <!-- RESULTS -->
         <div
-            class="learning-tile-wrap"
-            ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+                class="learning-tile-wrap"
+                ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
 
             <a
-                href="test_results"
-                class="learning-tile learning-tile-results">
+                    href="test_results"
+                    class="learning-tile learning-tile-results">
 
                 <span class="learning-tile-icon">
                     <i class="fa fa-trophy"></i>
@@ -271,12 +297,12 @@
 
         <!-- TOPIC -->
         <div
-            class="learning-tile-wrap"
-            ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+                class="learning-tile-wrap"
+                ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
 
             <a
-                href="topics"
-                class="learning-tile learning-tile-topic">
+                    href="topics"
+                    class="learning-tile learning-tile-topic">
 
                 <span class="learning-tile-icon">
                     <i class="fa fa-list-ul"></i>
@@ -302,12 +328,12 @@
 
         <!-- ĐIỂM DANH -->
         <div
-            class="learning-tile-wrap"
-            ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
+                class="learning-tile-wrap"
+                ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
 
             <a
-                href="person_dates"
-                class="learning-tile learning-tile-attendance">
+                    href="person_dates"
+                    class="learning-tile learning-tile-attendance">
 
                 <span class="learning-tile-icon">
                     <i class="fa fa-id-card"></i>
@@ -333,12 +359,12 @@
 
         <!-- HỌC SINH -->
         <div
-            class="learning-tile-wrap"
-            ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
+                class="learning-tile-wrap"
+                ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
 
             <a
-                href="user/accounts"
-                class="learning-tile learning-tile-students">
+                    href="user/accounts"
+                    class="learning-tile learning-tile-students">
 
                 <span class="learning-tile-icon">
                     <i class="fa fa-users"></i>
@@ -364,12 +390,12 @@
 
         <!-- ĐIỂM HS -->
         <div
-            class="learning-tile-wrap"
-            ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
+                class="learning-tile-wrap"
+                ng-if="vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleAdmin">
 
             <a
-                href="student_marks"
-                class="learning-tile learning-tile-marks">
+                    href="student_marks"
+                    class="learning-tile learning-tile-marks">
 
                 <span class="learning-tile-icon">
                     <i class="fa fa-graduation-cap"></i>
@@ -395,12 +421,12 @@
 
         <!-- CHƯƠNG TRÌNH -->
         <div
-            class="learning-tile-wrap"
-            ng-if="vm.isEducationManagerment || vm.isRoleAdmin">
+                class="learning-tile-wrap"
+                ng-if="vm.isEducationManagerment || vm.isRoleAdmin">
 
             <a
-                href="education_programs"
-                class="learning-tile learning-tile-program">
+                    href="education_programs"
+                    class="learning-tile learning-tile-program">
 
                 <span class="learning-tile-icon">
                     <i class="fa fa-tasks"></i>
@@ -426,12 +452,12 @@
 
         <!-- THIẾT LẬP ĐIỂM -->
         <div
-            class="learning-tile-wrap"
-            ng-if="vm.isEducationManagerment || vm.isRoleAdmin">
+                class="learning-tile-wrap"
+                ng-if="vm.isEducationManagerment || vm.isRoleAdmin">
 
             <a
-                href="mark"
-                class="learning-tile learning-tile-score">
+                    href="mark"
+                    class="learning-tile learning-tile-score">
 
                 <span class="learning-tile-icon">
                     <i class="fa fa-puzzle-piece"></i>
@@ -457,12 +483,12 @@
 
         <!-- BÁN HÀNG -->
         <div
-            class="learning-tile-wrap"
-            ng-if="vm.isRoleStaff || vm.isRoleStaffManagement || vm.isRoleAdmin">
+                class="learning-tile-wrap"
+                ng-if="vm.isRoleStaff || vm.isRoleStaffManagement || vm.isRoleAdmin">
 
             <a
-                href="product"
-                class="learning-tile learning-tile-shop">
+                    href="product"
+                    class="learning-tile learning-tile-shop">
 
                 <span class="learning-tile-icon">
                     <i class="fa fa-shopping-bag"></i>
@@ -490,8 +516,8 @@
 
     <!-- LOADING -->
     <div
-        class="learning-hub-loading"
-        ng-if="!vm.permissionsLoaded">
+            class="learning-hub-loading"
+            ng-if="!vm.permissionsLoaded">
 
         <div class="learning-loading-bubble">
             <i class="fa fa-spinner fa-spin"></i>
@@ -532,9 +558,9 @@
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 
         background:
-            radial-gradient(circle at 4% 2%, rgba(255,215,80,.18), transparent 23%),
-            radial-gradient(circle at 96% 7%, rgba(130,97,255,.12), transparent 25%),
-            var(--hub-bg);
+                radial-gradient(circle at 4% 2%, rgba(255,215,80,.18), transparent 23%),
+                radial-gradient(circle at 96% 7%, rgba(130,97,255,.12), transparent 25%),
+                var(--hub-bg);
 
         min-height: 100vh;
     }
@@ -561,15 +587,15 @@
         color: #fff;
 
         background:
-            linear-gradient(
-                135deg,
-                #5c7cfa 0%,
-                #745ff2 55%,
-                #9b5cf0 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #5c7cfa 0%,
+                        #745ff2 55%,
+                        #9b5cf0 100%
+                );
 
         box-shadow:
-            0 16px 34px rgba(78, 76, 174, .20);
+                0 16px 34px rgba(78, 76, 174, .20);
     }
 
     .learning-hub-hero:before {
@@ -618,7 +644,7 @@
         background: #ffd84f;
 
         box-shadow:
-            0 0 0 4px rgba(255,216,79,.16);
+                0 0 0 4px rgba(255,216,79,.16);
     }
 
     .learning-hub-hero h1 {
@@ -669,7 +695,7 @@
         font-size: 24px;
 
         box-shadow:
-            0 8px 20px rgba(40,42,100,.20);
+                0 8px 20px rgba(40,42,100,.20);
 
         transform: rotate(5deg);
     }
@@ -683,7 +709,7 @@
         color: #fff6a8;
 
         text-shadow:
-            0 2px 5px rgba(49,45,116,.20);
+                0 2px 5px rgba(49,45,116,.20);
     }
 
     .star-1 {
@@ -713,7 +739,7 @@
         display: grid;
 
         grid-template-columns:
-            repeat(2, minmax(0, 1fr));
+                repeat(2, minmax(0, 1fr));
 
         gap: 10px;
 
@@ -749,14 +775,14 @@
         text-decoration: none !important;
 
         box-shadow:
-            0 10px 24px rgba(52,62,102,.10);
+                0 10px 24px rgba(52,62,102,.10);
 
         transform: translateZ(0);
 
         transition:
-            transform .16s ease,
-            box-shadow .16s ease,
-            filter .16s ease;
+                transform .16s ease,
+                box-shadow .16s ease,
+                filter .16s ease;
 
         -webkit-tap-highlight-color: transparent;
     }
@@ -768,7 +794,7 @@
         transform: translateY(-2px);
 
         box-shadow:
-            0 14px 28px rgba(52,62,102,.15);
+                0 14px 28px rgba(52,62,102,.15);
     }
 
     .learning-tile:active {
@@ -796,8 +822,8 @@
         background: rgba(255,255,255,.22);
 
         box-shadow:
-            inset 0 0 0 1px rgba(255,255,255,.22),
-            0 6px 14px rgba(50,56,97,.12);
+                inset 0 0 0 1px rgba(255,255,255,.22),
+                0 6px 14px rgba(50,56,97,.12);
 
         backdrop-filter: blur(4px);
         -webkit-backdrop-filter: blur(4px);
@@ -930,21 +956,21 @@
 
     .learning-tile-daily {
         background:
-            linear-gradient(
-                135deg,
-                #6b5cf4 0%,
-                #8f5cf4 52%,
-                #b45eee 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #6b5cf4 0%,
+                        #8f5cf4 52%,
+                        #b45eee 100%
+                );
     }
 
     .learning-tile-games {
         background:
-            linear-gradient(
-                135deg,
-                #527cf6 0%,
-                #3d64e8 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #527cf6 0%,
+                        #3d64e8 100%
+                );
     }
 
     /*
@@ -957,12 +983,12 @@
         color: #fff;
 
         background:
-            linear-gradient(
-                135deg,
-                #5b53f2 0%,
-                #7c4ce7 52%,
-                #a94ed8 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #5b53f2 0%,
+                        #7c4ce7 52%,
+                        #a94ed8 100%
+                );
 
         text-align: left;
 
@@ -981,92 +1007,92 @@
 
     .learning-tile-flashcards {
         background:
-            linear-gradient(
-                135deg,
-                #39cda3 0%,
-                #22af83 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #39cda3 0%,
+                        #22af83 100%
+                );
     }
 
     .learning-tile-ielts {
         background:
-            linear-gradient(
-                135deg,
-                #ffbd4b 0%,
-                #ff8e5a 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #ffbd4b 0%,
+                        #ff8e5a 100%
+                );
     }
 
     .learning-tile-results {
         background:
-            linear-gradient(
-                135deg,
-                #ff7596 0%,
-                #eb5579 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #ff7596 0%,
+                        #eb5579 100%
+                );
     }
 
     .learning-tile-topic {
         background:
-            linear-gradient(
-                135deg,
-                #4abcf2 0%,
-                #4d82ea 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #4abcf2 0%,
+                        #4d82ea 100%
+                );
     }
 
     .learning-tile-attendance {
         background:
-            linear-gradient(
-                135deg,
-                #9a73f4 0%,
-                #6f58d8 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #9a73f4 0%,
+                        #6f58d8 100%
+                );
     }
 
     .learning-tile-students {
         background:
-            linear-gradient(
-                135deg,
-                #ff8c68 0%,
-                #ef686d 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #ff8c68 0%,
+                        #ef686d 100%
+                );
     }
 
     .learning-tile-marks {
         background:
-            linear-gradient(
-                135deg,
-                #39caa6 0%,
-                #45b6c6 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #39caa6 0%,
+                        #45b6c6 100%
+                );
     }
 
     .learning-tile-program {
         background:
-            linear-gradient(
-                135deg,
-                #6579ea 0%,
-                #5362cb 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #6579ea 0%,
+                        #5362cb 100%
+                );
     }
 
     .learning-tile-score {
         background:
-            linear-gradient(
-                135deg,
-                #f7bd48 0%,
-                #db8d2c 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #f7bd48 0%,
+                        #db8d2c 100%
+                );
     }
 
     .learning-tile-shop {
         background:
-            linear-gradient(
-                135deg,
-                #df6daf 0%,
-                #b35bd3 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #df6daf 0%,
+                        #b35bd3 100%
+                );
     }
 
 
@@ -1076,7 +1102,7 @@
 
     .learning-tile-daily {
         box-shadow:
-            0 12px 26px rgba(119,91,224,.20);
+                0 12px 26px rgba(119,91,224,.20);
     }
 
     .learning-tile-daily .learning-tile-icon {
@@ -1227,7 +1253,7 @@
 
         .learning-hub-menu {
             grid-template-columns:
-                repeat(3, minmax(0, 1fr));
+                    repeat(3, minmax(0, 1fr));
 
             gap: 12px;
         }
@@ -1280,7 +1306,7 @@
 
         .learning-hub-menu {
             grid-template-columns:
-                repeat(4, minmax(0, 1fr));
+                    repeat(4, minmax(0, 1fr));
 
             gap: 14px;
 
@@ -1358,8 +1384,8 @@
 
     .learning-battle-chevron {
         transition:
-            transform .20s ease,
-            background .20s ease;
+                transform .20s ease,
+                background .20s ease;
     }
 
     .learning-battle-chevron.is-open {
@@ -1374,7 +1400,7 @@
         margin-top: 8px;
 
         animation:
-            learningBattleDrop .20s ease both;
+                learningBattleDrop .20s ease both;
     }
 
     @keyframes learningBattleDrop {
@@ -1410,20 +1436,20 @@
         color: #3d356f;
 
         background:
-            linear-gradient(
-                135deg,
-                #ffffff 0%,
-                #f4f1ff 58%,
-                #ece8ff 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #ffffff 0%,
+                        #f4f1ff 58%,
+                        #ece8ff 100%
+                );
 
         box-shadow:
-            0 9px 22px rgba(76,67,143,.11);
+                0 9px 22px rgba(76,67,143,.11);
 
         transition:
-            transform .16s ease,
-            box-shadow .16s ease,
-            border-color .16s ease;
+                transform .16s ease,
+                box-shadow .16s ease,
+                border-color .16s ease;
     }
 
     .learning-battle-subtile:before {
@@ -1455,7 +1481,7 @@
         border-color: rgba(105,85,220,.25);
 
         box-shadow:
-            0 13px 26px rgba(76,67,143,.16);
+                0 13px 26px rgba(76,67,143,.16);
     }
 
     .learning-battle-subtile:active {
@@ -1480,14 +1506,14 @@
         color: #fff;
 
         background:
-            linear-gradient(
-                135deg,
-                #6558f5,
-                #9856e8
-            );
+                linear-gradient(
+                        135deg,
+                        #6558f5,
+                        #9856e8
+                );
 
         box-shadow:
-            0 7px 15px rgba(105,85,220,.22);
+                0 7px 15px rgba(105,85,220,.22);
 
         font-size: 20px;
     }
@@ -1554,16 +1580,16 @@
         color: #fff;
 
         background:
-            linear-gradient(
-                135deg,
-                #6558f5,
-                #9656e7
-            );
+                linear-gradient(
+                        135deg,
+                        #6558f5,
+                        #9656e7
+                );
 
         font-size: 10px;
 
         box-shadow:
-            0 6px 13px rgba(105,85,220,.18);
+                0 6px 13px rgba(105,85,220,.18);
     }
 
 
@@ -1577,14 +1603,14 @@
         border-color: #35415d;
 
         background:
-            linear-gradient(
-                135deg,
-                #182337 0%,
-                #20213c 100%
-            );
+                linear-gradient(
+                        135deg,
+                        #182337 0%,
+                        #20213c 100%
+                );
 
         box-shadow:
-            0 10px 23px rgba(0,0,0,.24);
+                0 10px 23px rgba(0,0,0,.24);
     }
 
     html.global-dark-mode
@@ -1615,10 +1641,10 @@
             min-height: 70px;
 
             padding:
-                10px
-                46px
-                10px
-                10px;
+                    10px
+                    46px
+                    10px
+                    10px;
 
             border-radius: 17px;
         }
@@ -1679,6 +1705,77 @@
         .learning-battle-subtile-copy small {
             font-size: 10px;
         }
+    }
+
+
+
+    /* =====================================================
+       QUIZ BATTLE ONLINE - SUB TILE
+       ===================================================== */
+
+    .learning-hub-page
+    .learning-battle-subtile-online {
+        margin-top: 8px;
+
+        border-color: rgba(43,179,190,.18);
+
+        background:
+                linear-gradient(
+                        135deg,
+                        #ffffff 0%,
+                        #eefcff 58%,
+                        #e7f7ff 100%
+                );
+    }
+
+    .learning-hub-page
+    .learning-battle-online-icon {
+        background:
+                linear-gradient(
+                        135deg,
+                        #26b6c7,
+                        #4d7df3
+                );
+
+        box-shadow:
+                0 7px 15px rgba(38,182,199,.22);
+    }
+
+    .learning-hub-page
+    .learning-battle-online-go {
+        background:
+                linear-gradient(
+                        135deg,
+                        #26b6c7,
+                        #4d7df3
+                );
+
+        box-shadow:
+                0 6px 13px rgba(38,182,199,.18);
+    }
+
+    .learning-hub-page
+    .learning-battle-online-status {
+        color: #1599a8;
+    }
+
+    html.global-dark-mode
+    .learning-hub-page
+    .learning-battle-subtile-online {
+        border-color: #31536a;
+
+        background:
+                linear-gradient(
+                        135deg,
+                        #152735 0%,
+                        #18263d 100%
+                );
+    }
+
+    html.global-dark-mode
+    .learning-hub-page
+    .learning-battle-online-status {
+        color: #71e8ef;
     }
 
 
@@ -1794,23 +1891,23 @@
         color: #fffbe6 !important;
 
         background:
-            radial-gradient(
-                circle at 50% 45%,
-                rgba(255,255,255,.34) 0%,
-                rgba(255,232,112,.24) 42%,
-                rgba(255,255,255,.10) 100%
-            ) !important;
+                radial-gradient(
+                        circle at 50% 45%,
+                        rgba(255,255,255,.34) 0%,
+                        rgba(255,232,112,.24) 42%,
+                        rgba(255,255,255,.10) 100%
+                ) !important;
 
         border: 1px solid rgba(255,245,190,.54) !important;
 
         box-shadow:
-            inset 0 0 0 1px rgba(255,255,255,.16),
-            0 0 8px rgba(255,255,255,.48),
-            0 0 15px rgba(255,225,83,.38),
-            0 0 24px rgba(255,197,35,.20) !important;
+                inset 0 0 0 1px rgba(255,255,255,.16),
+                0 0 8px rgba(255,255,255,.48),
+                0 0 15px rgba(255,225,83,.38),
+                0 0 24px rgba(255,197,35,.20) !important;
 
         animation:
-            battleLightningBoxGlow 1.65s ease-in-out infinite alternate;
+                battleLightningBoxGlow 1.65s ease-in-out infinite alternate;
     }
 
 
@@ -1824,35 +1921,35 @@
         color: #fffdf1 !important;
 
         text-shadow:
-            0 0 3px rgba(255,255,255,1),
-            0 0 7px rgba(255,250,205,.95),
-            0 0 12px rgba(255,225,75,.86),
-            0 0 18px rgba(255,188,20,.62);
+                0 0 3px rgba(255,255,255,1),
+                0 0 7px rgba(255,250,205,.95),
+                0 0 12px rgba(255,225,75,.86),
+                0 0 18px rgba(255,188,20,.62);
 
         filter:
-            drop-shadow(0 0 3px rgba(255,255,255,.80))
-            drop-shadow(0 0 7px rgba(255,218,55,.65));
+                drop-shadow(0 0 3px rgba(255,255,255,.80))
+                drop-shadow(0 0 7px rgba(255,218,55,.65));
 
         animation:
-            battleLightningBoltGlow 1.05s ease-in-out infinite alternate;
+                battleLightningBoltGlow 1.05s ease-in-out infinite alternate;
     }
 
 
     @keyframes battleLightningBoxGlow {
         from {
             box-shadow:
-                inset 0 0 0 1px rgba(255,255,255,.14),
-                0 0 6px rgba(255,255,255,.34),
-                0 0 12px rgba(255,226,92,.28),
-                0 0 18px rgba(255,196,30,.14) !important;
+                    inset 0 0 0 1px rgba(255,255,255,.14),
+                    0 0 6px rgba(255,255,255,.34),
+                    0 0 12px rgba(255,226,92,.28),
+                    0 0 18px rgba(255,196,30,.14) !important;
         }
 
         to {
             box-shadow:
-                inset 0 0 0 1px rgba(255,255,255,.24),
-                0 0 10px rgba(255,255,255,.70),
-                0 0 20px rgba(255,229,86,.58),
-                0 0 30px rgba(255,188,18,.30) !important;
+                    inset 0 0 0 1px rgba(255,255,255,.24),
+                    0 0 10px rgba(255,255,255,.70),
+                    0 0 20px rgba(255,229,86,.58),
+                    0 0 30px rgba(255,188,18,.30) !important;
         }
     }
 
@@ -1862,28 +1959,28 @@
             opacity: .88;
 
             transform:
-                translateZ(0)
-                scale(.96);
+                    translateZ(0)
+                    scale(.96);
 
             text-shadow:
-                0 0 2px rgba(255,255,255,.95),
-                0 0 6px rgba(255,244,180,.82),
-                0 0 10px rgba(255,220,75,.68),
-                0 0 15px rgba(255,183,20,.48);
+                    0 0 2px rgba(255,255,255,.95),
+                    0 0 6px rgba(255,244,180,.82),
+                    0 0 10px rgba(255,220,75,.68),
+                    0 0 15px rgba(255,183,20,.48);
         }
 
         to {
             opacity: 1;
 
             transform:
-                translateZ(0)
-                scale(1.08);
+                    translateZ(0)
+                    scale(1.08);
 
             text-shadow:
-                0 0 4px rgba(255,255,255,1),
-                0 0 9px rgba(255,250,215,1),
-                0 0 15px rgba(255,226,73,.96),
-                0 0 23px rgba(255,186,12,.72);
+                    0 0 4px rgba(255,255,255,1),
+                    0 0 9px rgba(255,250,215,1),
+                    0 0 15px rgba(255,226,73,.96),
+                    0 0 23px rgba(255,186,12,.72);
         }
     }
 
@@ -1905,10 +2002,10 @@
     .learning-tile-battle
     .learning-tile-icon {
         box-shadow:
-            inset 0 0 0 1px rgba(255,255,255,.18),
-            0 0 9px rgba(255,255,255,.60),
-            0 0 18px rgba(255,226,76,.52),
-            0 0 28px rgba(255,190,20,.28) !important;
+                inset 0 0 0 1px rgba(255,255,255,.18),
+                0 0 9px rgba(255,255,255,.60),
+                0 0 18px rgba(255,226,76,.52),
+                0 0 28px rgba(255,190,20,.28) !important;
     }
 
 
@@ -1938,10 +2035,10 @@
     .learning-hub-page
     .learning-tile-battle {
         border:
-            1px solid rgba(255,255,255,.10) !important;
+                1px solid rgba(255,255,255,.10) !important;
 
         animation:
-            battleCardSparkGlow 3.2s ease-in-out infinite !important;
+                battleCardSparkGlow 3.2s ease-in-out infinite !important;
     }
 
     @keyframes battleCardSparkGlow {
@@ -1954,12 +2051,12 @@
         78%,
         100% {
             border-color:
-                rgba(255,255,255,.10) !important;
+                    rgba(255,255,255,.10) !important;
 
             box-shadow:
-                0 10px 24px rgba(52,62,102,.10),
-                0 0 0 rgba(255,255,255,0),
-                0 0 0 rgba(255,220,75,0) !important;
+                    0 10px 24px rgba(52,62,102,.10),
+                    0 0 0 rgba(255,255,255,0),
+                    0 0 0 rgba(255,220,75,0) !important;
         }
 
         /*
@@ -1967,13 +2064,13 @@
          */
         7% {
             border-color:
-                rgba(255,255,255,.92) !important;
+                    rgba(255,255,255,.92) !important;
 
             box-shadow:
-                0 12px 27px rgba(52,62,102,.13),
-                0 0 7px rgba(255,255,255,.95),
-                0 0 15px rgba(255,255,255,.72),
-                0 0 23px rgba(255,241,174,.46) !important;
+                    0 12px 27px rgba(52,62,102,.13),
+                    0 0 7px rgba(255,255,255,.95),
+                    0 0 15px rgba(255,255,255,.72),
+                    0 0 23px rgba(255,241,174,.46) !important;
         }
 
         /*
@@ -1981,11 +2078,11 @@
          */
         11% {
             border-color:
-                rgba(255,255,255,.16) !important;
+                    rgba(255,255,255,.16) !important;
 
             box-shadow:
-                0 10px 24px rgba(52,62,102,.10),
-                0 0 2px rgba(255,255,255,.12) !important;
+                    0 10px 24px rgba(52,62,102,.10),
+                    0 0 2px rgba(255,255,255,.12) !important;
         }
 
         /*
@@ -1993,13 +2090,13 @@
          */
         30% {
             border-color:
-                rgba(255,242,160,.62) !important;
+                    rgba(255,242,160,.62) !important;
 
             box-shadow:
-                0 12px 27px rgba(52,62,102,.12),
-                0 0 7px rgba(255,255,255,.42),
-                0 0 16px rgba(255,230,93,.52),
-                0 0 26px rgba(255,196,30,.28) !important;
+                    0 12px 27px rgba(52,62,102,.12),
+                    0 0 7px rgba(255,255,255,.42),
+                    0 0 16px rgba(255,230,93,.52),
+                    0 0 26px rgba(255,196,30,.28) !important;
         }
 
         /*
@@ -2007,14 +2104,14 @@
          */
         38% {
             border-color:
-                rgba(255,249,207,.98) !important;
+                    rgba(255,249,207,.98) !important;
 
             box-shadow:
-                0 13px 30px rgba(52,62,102,.14),
-                0 0 9px rgba(255,255,255,.92),
-                0 0 20px rgba(255,239,118,.88),
-                0 0 34px rgba(255,204,41,.58),
-                0 0 48px rgba(255,176,14,.28) !important;
+                    0 13px 30px rgba(52,62,102,.14),
+                    0 0 9px rgba(255,255,255,.92),
+                    0 0 20px rgba(255,239,118,.88),
+                    0 0 34px rgba(255,204,41,.58),
+                    0 0 48px rgba(255,176,14,.28) !important;
         }
 
         /*
@@ -2022,11 +2119,11 @@
          */
         45% {
             border-color:
-                rgba(255,255,255,.12) !important;
+                    rgba(255,255,255,.12) !important;
 
             box-shadow:
-                0 10px 24px rgba(52,62,102,.10),
-                0 0 1px rgba(255,255,255,.08) !important;
+                    0 10px 24px rgba(52,62,102,.10),
+                    0 0 1px rgba(255,255,255,.08) !important;
         }
 
         /*
@@ -2034,13 +2131,13 @@
          */
         64% {
             border-color:
-                rgba(255,255,255,.90) !important;
+                    rgba(255,255,255,.90) !important;
 
             box-shadow:
-                0 12px 28px rgba(52,62,102,.13),
-                0 0 8px rgba(255,255,255,.90),
-                0 0 18px rgba(255,244,171,.76),
-                0 0 30px rgba(255,218,65,.44) !important;
+                    0 12px 28px rgba(52,62,102,.13),
+                    0 0 8px rgba(255,255,255,.90),
+                    0 0 18px rgba(255,244,171,.76),
+                    0 0 30px rgba(255,218,65,.44) !important;
         }
 
         /*
@@ -2048,22 +2145,22 @@
          */
         68% {
             border-color:
-                rgba(255,235,130,.78) !important;
+                    rgba(255,235,130,.78) !important;
 
             box-shadow:
-                0 12px 28px rgba(52,62,102,.12),
-                0 0 6px rgba(255,255,255,.58),
-                0 0 15px rgba(255,225,77,.62),
-                0 0 27px rgba(255,190,24,.36) !important;
+                    0 12px 28px rgba(52,62,102,.12),
+                    0 0 6px rgba(255,255,255,.58),
+                    0 0 15px rgba(255,225,77,.62),
+                    0 0 27px rgba(255,190,24,.36) !important;
         }
 
         72% {
             border-color:
-                rgba(255,255,255,.14) !important;
+                    rgba(255,255,255,.14) !important;
 
             box-shadow:
-                0 10px 24px rgba(52,62,102,.10),
-                0 0 1px rgba(255,255,255,.06) !important;
+                    0 10px 24px rgba(52,62,102,.10),
+                    0 0 1px rgba(255,255,255,.06) !important;
         }
 
         /*
@@ -2071,13 +2168,13 @@
          */
         89% {
             border-color:
-                rgba(255,241,150,.58) !important;
+                    rgba(255,241,150,.58) !important;
 
             box-shadow:
-                0 11px 25px rgba(52,62,102,.11),
-                0 0 5px rgba(255,255,255,.34),
-                0 0 13px rgba(255,226,84,.45),
-                0 0 22px rgba(255,195,34,.22) !important;
+                    0 11px 25px rgba(52,62,102,.11),
+                    0 0 5px rgba(255,255,255,.34),
+                    0 0 13px rgba(255,226,84,.45),
+                    0 0 22px rgba(255,195,34,.22) !important;
         }
     }
 
@@ -2090,7 +2187,7 @@
     .learning-tile-battle
     .learning-tile-icon {
         animation:
-            battleIconSparkBox 2.35s ease-in-out infinite !important;
+                battleIconSparkBox 2.35s ease-in-out infinite !important;
     }
 
     @keyframes battleIconSparkBox {
@@ -2100,99 +2197,99 @@
         84%,
         100% {
             border-color:
-                rgba(255,255,255,.18) !important;
+                    rgba(255,255,255,.18) !important;
 
             background:
-                rgba(255,255,255,.16) !important;
+                    rgba(255,255,255,.16) !important;
 
             box-shadow:
-                inset 0 0 0 1px rgba(255,255,255,.10),
-                0 0 0 rgba(255,255,255,0),
-                0 0 0 rgba(255,225,65,0) !important;
+                    inset 0 0 0 1px rgba(255,255,255,.10),
+                    0 0 0 rgba(255,255,255,0),
+                    0 0 0 rgba(255,225,65,0) !important;
         }
 
         9% {
             border-color:
-                rgba(255,255,255,.95) !important;
+                    rgba(255,255,255,.95) !important;
 
             background:
-                radial-gradient(
-                    circle,
-                    rgba(255,255,255,.42),
-                    rgba(255,238,146,.20)
-                ) !important;
+                    radial-gradient(
+                            circle,
+                            rgba(255,255,255,.42),
+                            rgba(255,238,146,.20)
+                    ) !important;
 
             box-shadow:
-                inset 0 0 0 1px rgba(255,255,255,.28),
-                0 0 8px rgba(255,255,255,.92),
-                0 0 17px rgba(255,250,210,.72) !important;
+                    inset 0 0 0 1px rgba(255,255,255,.28),
+                    0 0 8px rgba(255,255,255,.92),
+                    0 0 17px rgba(255,250,210,.72) !important;
         }
 
         13% {
             border-color:
-                rgba(255,255,255,.26) !important;
+                    rgba(255,255,255,.26) !important;
 
             box-shadow:
-                inset 0 0 0 1px rgba(255,255,255,.12),
-                0 0 2px rgba(255,255,255,.16) !important;
+                    inset 0 0 0 1px rgba(255,255,255,.12),
+                    0 0 2px rgba(255,255,255,.16) !important;
         }
 
         39% {
             border-color:
-                rgba(255,241,151,.78) !important;
+                    rgba(255,241,151,.78) !important;
 
             background:
-                radial-gradient(
-                    circle,
-                    rgba(255,255,255,.40),
-                    rgba(255,220,78,.26)
-                ) !important;
+                    radial-gradient(
+                            circle,
+                            rgba(255,255,255,.40),
+                            rgba(255,220,78,.26)
+                    ) !important;
 
             box-shadow:
-                inset 0 0 0 1px rgba(255,255,255,.24),
-                0 0 7px rgba(255,255,255,.70),
-                0 0 16px rgba(255,230,95,.72),
-                0 0 25px rgba(255,190,25,.38) !important;
+                    inset 0 0 0 1px rgba(255,255,255,.24),
+                    0 0 7px rgba(255,255,255,.70),
+                    0 0 16px rgba(255,230,95,.72),
+                    0 0 25px rgba(255,190,25,.38) !important;
         }
 
         46% {
             border-color:
-                rgba(255,250,210,.98) !important;
+                    rgba(255,250,210,.98) !important;
 
             box-shadow:
-                inset 0 0 0 1px rgba(255,255,255,.32),
-                0 0 10px rgba(255,255,255,1),
-                0 0 21px rgba(255,238,130,.92),
-                0 0 33px rgba(255,202,39,.55) !important;
+                    inset 0 0 0 1px rgba(255,255,255,.32),
+                    0 0 10px rgba(255,255,255,1),
+                    0 0 21px rgba(255,238,130,.92),
+                    0 0 33px rgba(255,202,39,.55) !important;
         }
 
         52% {
             border-color:
-                rgba(255,255,255,.20) !important;
+                    rgba(255,255,255,.20) !important;
 
             box-shadow:
-                inset 0 0 0 1px rgba(255,255,255,.10),
-                0 0 1px rgba(255,255,255,.08) !important;
+                    inset 0 0 0 1px rgba(255,255,255,.10),
+                    0 0 1px rgba(255,255,255,.08) !important;
         }
 
         70% {
             border-color:
-                rgba(255,255,255,.86) !important;
+                    rgba(255,255,255,.86) !important;
 
             box-shadow:
-                inset 0 0 0 1px rgba(255,255,255,.26),
-                0 0 8px rgba(255,255,255,.82),
-                0 0 18px rgba(255,228,94,.68) !important;
+                    inset 0 0 0 1px rgba(255,255,255,.26),
+                    0 0 8px rgba(255,255,255,.82),
+                    0 0 18px rgba(255,228,94,.68) !important;
         }
 
         76% {
             border-color:
-                rgba(255,235,125,.74) !important;
+                    rgba(255,235,125,.74) !important;
 
             box-shadow:
-                inset 0 0 0 1px rgba(255,255,255,.18),
-                0 0 5px rgba(255,255,255,.48),
-                0 0 13px rgba(255,220,70,.50) !important;
+                    inset 0 0 0 1px rgba(255,255,255,.18),
+                    0 0 5px rgba(255,255,255,.48),
+                    0 0 13px rgba(255,220,70,.50) !important;
         }
     }
 
@@ -2205,10 +2302,10 @@
     .learning-tile-battle
     .learning-tile-icon .fa-bolt {
         animation:
-            battleBoltSpark 1.72s ease-in-out infinite !important;
+                battleBoltSpark 1.72s ease-in-out infinite !important;
 
         transform-origin:
-            50% 50%;
+                50% 50%;
     }
 
     @keyframes battleBoltSpark {
@@ -2218,131 +2315,131 @@
         82%,
         100% {
             color:
-                rgba(255,250,222,.84) !important;
+                    rgba(255,250,222,.84) !important;
 
             opacity:
-                .78;
+                    .78;
 
             transform:
-                scale(.96);
+                    scale(.96);
 
             text-shadow:
-                0 0 1px rgba(255,255,255,.18) !important;
+                    0 0 1px rgba(255,255,255,.18) !important;
 
             filter:
-                none;
+                    none;
         }
 
         8% {
             color:
-                #ffffff !important;
+                    #ffffff !important;
 
             opacity:
-                1;
+                    1;
 
             transform:
-                scale(1.10);
+                    scale(1.10);
 
             text-shadow:
-                0 0 3px rgba(255,255,255,1),
-                0 0 8px rgba(255,255,255,1),
-                0 0 15px rgba(255,244,172,.85) !important;
+                    0 0 3px rgba(255,255,255,1),
+                    0 0 8px rgba(255,255,255,1),
+                    0 0 15px rgba(255,244,172,.85) !important;
 
             filter:
-                drop-shadow(0 0 4px rgba(255,255,255,.88));
+                    drop-shadow(0 0 4px rgba(255,255,255,.88));
         }
 
         12% {
             opacity:
-                .68;
+                    .68;
 
             transform:
-                scale(.94);
+                    scale(.94);
 
             text-shadow:
-                none !important;
+                    none !important;
         }
 
         37% {
             color:
-                #fffad0 !important;
+                    #fffad0 !important;
 
             opacity:
-                .96;
+                    .96;
 
             transform:
-                scale(1.04);
+                    scale(1.04);
 
             text-shadow:
-                0 0 3px rgba(255,255,255,.92),
-                0 0 8px rgba(255,236,125,.82),
-                0 0 14px rgba(255,214,55,.68) !important;
+                    0 0 3px rgba(255,255,255,.92),
+                    0 0 8px rgba(255,236,125,.82),
+                    0 0 14px rgba(255,214,55,.68) !important;
         }
 
         43% {
             color:
-                #fff3a5 !important;
+                    #fff3a5 !important;
 
             opacity:
-                1;
+                    1;
 
             transform:
-                scale(1.13);
+                    scale(1.13);
 
             text-shadow:
-                0 0 4px rgba(255,255,255,1),
-                0 0 10px rgba(255,246,190,1),
-                0 0 18px rgba(255,224,75,.95),
-                0 0 27px rgba(255,188,18,.60) !important;
+                    0 0 4px rgba(255,255,255,1),
+                    0 0 10px rgba(255,246,190,1),
+                    0 0 18px rgba(255,224,75,.95),
+                    0 0 27px rgba(255,188,18,.60) !important;
 
             filter:
-                drop-shadow(0 0 5px rgba(255,230,84,.82));
+                    drop-shadow(0 0 5px rgba(255,230,84,.82));
         }
 
         49% {
             opacity:
-                .70;
+                    .70;
 
             transform:
-                scale(.95);
+                    scale(.95);
 
             text-shadow:
-                none !important;
+                    none !important;
 
             filter:
-                none;
+                    none;
         }
 
         68% {
             color:
-                #ffffff !important;
+                    #ffffff !important;
 
             opacity:
-                1;
+                    1;
 
             transform:
-                scale(1.08);
+                    scale(1.08);
 
             text-shadow:
-                0 0 4px rgba(255,255,255,1),
-                0 0 9px rgba(255,255,255,.92),
-                0 0 16px rgba(255,235,128,.82) !important;
+                    0 0 4px rgba(255,255,255,1),
+                    0 0 9px rgba(255,255,255,.92),
+                    0 0 16px rgba(255,235,128,.82) !important;
         }
 
         73% {
             color:
-                #ffe96e !important;
+                    #ffe96e !important;
 
             opacity:
-                .98;
+                    .98;
 
             transform:
-                scale(1.04);
+                    scale(1.04);
 
             text-shadow:
-                0 0 3px rgba(255,255,255,.84),
-                0 0 9px rgba(255,225,73,.82),
-                0 0 17px rgba(255,192,20,.55) !important;
+                    0 0 3px rgba(255,255,255,.84),
+                    0 0 9px rgba(255,225,73,.82),
+                    0 0 17px rgba(255,192,20,.55) !important;
         }
     }
 
@@ -2355,7 +2452,7 @@
     .learning-hub-page
     .learning-tile-battle {
         animation:
-            battleCardSparkGlowDark 3.2s ease-in-out infinite !important;
+                battleCardSparkGlowDark 3.2s ease-in-out infinite !important;
     }
 
     @keyframes battleCardSparkGlowDark {
@@ -2365,43 +2462,43 @@
         78%,
         100% {
             box-shadow:
-                0 11px 24px rgba(0,0,0,.24),
-                0 0 0 rgba(255,255,255,0) !important;
+                    0 11px 24px rgba(0,0,0,.24),
+                    0 0 0 rgba(255,255,255,0) !important;
         }
 
         7%,
         64% {
             box-shadow:
-                0 12px 27px rgba(0,0,0,.26),
-                0 0 9px rgba(255,255,255,.94),
-                0 0 20px rgba(255,244,173,.78),
-                0 0 34px rgba(255,214,67,.48) !important;
+                    0 12px 27px rgba(0,0,0,.26),
+                    0 0 9px rgba(255,255,255,.94),
+                    0 0 20px rgba(255,244,173,.78),
+                    0 0 34px rgba(255,214,67,.48) !important;
         }
 
         30%,
         89% {
             box-shadow:
-                0 12px 27px rgba(0,0,0,.25),
-                0 0 6px rgba(255,255,255,.42),
-                0 0 16px rgba(255,226,82,.58),
-                0 0 28px rgba(255,188,21,.32) !important;
+                    0 12px 27px rgba(0,0,0,.25),
+                    0 0 6px rgba(255,255,255,.42),
+                    0 0 16px rgba(255,226,82,.58),
+                    0 0 28px rgba(255,188,21,.32) !important;
         }
 
         38% {
             box-shadow:
-                0 13px 30px rgba(0,0,0,.28),
-                0 0 10px rgba(255,255,255,1),
-                0 0 23px rgba(255,240,129,.92),
-                0 0 39px rgba(255,204,37,.62),
-                0 0 55px rgba(255,170,9,.30) !important;
+                    0 13px 30px rgba(0,0,0,.28),
+                    0 0 10px rgba(255,255,255,1),
+                    0 0 23px rgba(255,240,129,.92),
+                    0 0 39px rgba(255,204,37,.62),
+                    0 0 55px rgba(255,170,9,.30) !important;
         }
 
         11%,
         45%,
         72% {
             box-shadow:
-                0 11px 24px rgba(0,0,0,.24),
-                0 0 1px rgba(255,255,255,.07) !important;
+                    0 11px 24px rgba(0,0,0,.24),
+                    0 0 1px rgba(255,255,255,.07) !important;
         }
     }
 
@@ -2420,7 +2517,7 @@
         .learning-tile-battle
         .learning-tile-icon .fa-bolt {
             animation-duration:
-                5s !important;
+                    5s !important;
         }
     }
 </style>
