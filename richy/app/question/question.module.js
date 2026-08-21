@@ -294,6 +294,47 @@
             })
 
 
+            .state('application.battle_quiz_online', {
+                url: '/battle-quiz-online',
+                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'BATTLE QUIZ ONLINE'},
+                controller: 'BattleQuizOnlineController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({
+                            name: 'Hrm.Question',
+                            insertBefore: '#ng_load_plugins_before',
+                            files: [
+                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION,
+                                'question/business/BattleQuizOnlineService.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
+                            ]
+                        });
+                    }]
+                }
+            })
+
+            .state('application.battle_quiz_online_room', {
+                url: '/battle-quiz-online/:roomCode',
+                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'BATTLE QUIZ ONLINE'},
+                controller: 'BattleQuizOnlineController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({
+                            name: 'Hrm.Question',
+                            insertBefore: '#ng_load_plugins_before',
+                            files: [
+                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION,
+                                'question/business/BattleQuizOnlineService.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
+                            ]
+                        });
+                    }]
+                }
+            })
+
+
             .state('application.quiz_battle_2', {
                 url: '/quiz-battle-2/:listFlashCard',
                 templateUrl: 'question/views/quiz_battle_2.html?v=' + window.APP_VERSION,
