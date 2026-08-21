@@ -254,6 +254,14 @@
 			<artifactId>poi-ooxml</artifactId>
 			<version>3.17</version>
 		</dependency>
+		<!-- =====================================================
+	     BATTLE QUIZ ONLINE - REALTIME MESSAGING
+	     Needed by BattleOnlineServiceImpl -> SimpMessagingTemplate
+	     ===================================================== -->
+		<dependency>
+		    <groupId>org.springframework</groupId>
+		    <artifactId>spring-messaging</artifactId>
+		</dependency>
 
 	</dependencies>
 
