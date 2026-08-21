@@ -1,0 +1,135 @@
+package com.globits.richy.dto;
+
+import java.io.Serializable;
+
+public class BattleOnlinePlayerDto implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private String username;
+    private String displayName;
+
+    private boolean host;
+    private boolean ready;
+    private boolean connected;
+    private boolean answeredCurrentQuestion;
+
+    private int score;
+    private int streak;
+    private int correctCount;
+    private int wrongCount;
+    private int rank;
+
+    /*
+     * COUNTDOWN progress:
+     * số từ khác nhau người chơi đã gặp ít nhất 1 lần.
+     */
+    private int uniqueWordsSeen;
+    private int totalLessonWords;
+
+    public BattleOnlinePlayerDto() {
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public boolean isHost() {
+        return host;
+    }
+
+    public void setHost(boolean host) {
+        this.host = host;
+    }
+
+    public boolean isReady() {
+        return ready;
+    }
+
+    public void setReady(boolean ready) {
+        this.ready = ready;
+    }
+
+    public boolean isConnected() {
+        return connected;
+    }
+
+    public void setConnected(boolean connected) {
+        this.connected = connected;
+    }
+
+    public boolean isAnsweredCurrentQuestion() {
+        return answeredCurrentQuestion;
+    }
+
+    public void setAnsweredCurrentQuestion(boolean answeredCurrentQuestion) {
+        this.answeredCurrentQuestion = answeredCurrentQuestion;
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public void setScore(int score) {
+        this.score = score;
+    }
+
+    public int getStreak() {
+        return streak;
+    }
+
+    public void setStreak(int streak) {
+        this.streak = streak;
+    }
+
+    public int getCorrectCount() {
+        return correctCount;
+    }
+
+    public void setCorrectCount(int correctCount) {
+        this.correctCount = correctCount;
+    }
+
+    public int getWrongCount() {
+        return wrongCount;
+    }
+
+    public void setWrongCount(int wrongCount) {
+        this.wrongCount = wrongCount;
+    }
+
+    public int getRank() {
+        return rank;
+    }
+
+    public void setRank(int rank) {
+        this.rank = rank;
+    }
+
+    public int getUniqueWordsSeen() {
+        return uniqueWordsSeen;
+    }
+
+    public void setUniqueWordsSeen(int uniqueWordsSeen) {
+        this.uniqueWordsSeen = uniqueWordsSeen;
+    }
+
+    public int getTotalLessonWords() {
+        return totalLessonWords;
+    }
+
+    public void setTotalLessonWords(int totalLessonWords) {
+        this.totalLessonWords = totalLessonWords;
+    }
+}
