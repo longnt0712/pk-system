@@ -474,6 +474,8 @@
                         blockUI.stop();
                     }
                 );
+
+
         }
 
 
@@ -1440,11 +1442,24 @@
             }
         }
 
+        function qrRoom(room) {
+            const text = window.location.hostname  + '/' + room.code;
+            const canvas = document.getElementById('canvas');
+
+
+            QRCode.toCanvas(canvas, text, { width: 200 }, function (error) {
+                if (error) console.error(error);
+                console.log('Tạo mã QR thành công!');
+            });
+            console.log(text);
+        }
 
         function copyRoomLink() {
             if (!vm.room) {
                 return;
             }
+
+            qrRoom(vm.room);
 
             var link =
                 $window.location.origin +
@@ -1689,5 +1704,20 @@
                 0
             );
         }
+
+
+
+
+
+
+    //     QRCode.toDataURL('Nội dung văn bản cần tạo')
+    //         .then(url => {
+    //         document.getElementById('qr-img').src = url;
+    // })
+    // .catch(err => {
+    //         console.error(err);
+    // });
+
+
     }
 })();
