@@ -820,11 +820,13 @@
                     vm.hostSettings
                         .secondsPerQuestion;
 
-                vm.hostSettings.countdownMinutes =
-                    incoming.settings
-                        .countdownMinutes ||
-                    vm.hostSettings
-                        .countdownMinutes;
+                if (
+                    !vm.hostSettings.countdownMinutesDirty &&
+                    incoming.settings.countdownMinutes != null
+                ) {
+                    vm.hostSettings.countdownMinutes =
+                        incoming.settings.countdownMinutes;
+                }
 
                 /*
                  * Classic mặc định = toàn bộ bài.
@@ -1043,6 +1045,7 @@
                          * room.settings.mode trở lại bình thường.
                          */
                         vm.hostModeDirty = false;
+                        vm.hostSettings.countdownMinutesDirty = false;
 
                         applyRoom(
                             room,

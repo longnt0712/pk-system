@@ -448,7 +448,8 @@
                        min="1"
                        max="180"
                        class="form-control"
-                       ng-model="vm.hostSettings.countdownMinutes">
+                       ng-model="vm.hostSettings.countdownMinutes"
+                       ng-change="vm.hostSettings.countdownMinutesDirty = true">
 
                 <p>
                     Mỗi account nhận thứ tự từ ngẫu nhiên riêng. Trả lời xong là có câu tiếp ngay, không chờ người khác. Hết số phút là kết thúc.
