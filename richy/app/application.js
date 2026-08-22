@@ -203,18 +203,18 @@
             // =========================
             // Domain mode
             // =========================
-            var hostname = window.location.hostname;
+            var hostname = (window.location.hostname || '')
+                .toLowerCase()
+                .replace(/^www\./, '');
 
-            settings.chapter = false;
-            settings.ieltsRoom = false;
+            // Chi tnttphungkhoang.com (va subdomain cua no) dung giao dien Chapter.
+            // ieltsroom.com, localhost va moi domain khac deu mac dinh Saint Paul Academy.
+            var isChapterDomain = hostname === 'tnttphungkhoang.com'
+                || /\.tnttphungkhoang\.com$/.test(hostname);
 
-            if (hostname === "giaoxuphungkhoang.org" || hostname === "tnttphungkhoang.com") {
-                settings.chapter = true;
-            }
-
-            if (hostname === "ieltsroom.com") {
-                settings.ieltsRoom = true;
-            }
+            // Hai co luon doi nghich de khong bao gio hien dong thoi hai thuong hieu.
+            settings.chapter = isChapterDomain;
+            settings.ieltsRoom = !isChapterDomain;
 
             // =========================
             // OAuth errors
