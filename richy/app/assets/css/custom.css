@@ -2697,3 +2697,898 @@ h6 {
 /* =========================================================
    END NAV ICON CONTRAST FIX V7
    ========================================================= */
+
+
+/* =========================================================
+   GLOBAL DROPDOWN + TABLE HOVER REFRESH V8
+   Loại bỏ theme nâu legacy khỏi toàn bộ dropdown/select.
+   Đặt cuối file để thắng các rule #371009 / #2d1f17 cũ.
+   ========================================================= */
+
+/* Khung dropdown dùng chung: Bootstrap, ui-select, Select2, bootstrap-select. */
+.dropdown-menu,
+.btn-group > .dropdown-menu,
+.bootstrap-select > .dropdown-menu,
+.ui-select-bootstrap > .ui-select-choices,
+.ui-select-choices,
+.select2-drop,
+.select2-dropdown,
+.select2-results,
+.select2-results__options,
+.chosen-container .chosen-drop {
+    padding: 7px !important;
+
+    border: 1px solid #dfe5f3 !important;
+    border-radius: 14px !important;
+
+    color: #34405a !important;
+    background: #ffffff !important;
+
+    box-shadow:
+        0 16px 40px rgba(48, 60, 105, .16),
+        0 3px 10px rgba(48, 60, 105, .08) !important;
+}
+
+/* Item mặc định tuyệt đối không nhận lại nền nâu từ theme cũ. */
+.dropdown-menu > li,
+.dropdown-menu > li > a,
+.bootstrap-select .dropdown-menu > li > a,
+.ui-select-bootstrap .ui-select-choices-row,
+.ui-select-bootstrap .ui-select-choices-row > span,
+.ui-select-choices-row,
+.ui-select-choices-row > span,
+.ui-select-choices-row-inner,
+.select2-results li,
+.select2-results__option,
+.chosen-container .chosen-results li {
+    color: #46536d !important;
+    background: transparent !important;
+}
+
+.dropdown-menu > li > a,
+.bootstrap-select .dropdown-menu > li > a,
+.ui-select-bootstrap .ui-select-choices-row > span,
+.ui-select-choices-row > span,
+.select2-results li,
+.select2-results__option,
+.chosen-container .chosen-results li {
+    min-height: 38px;
+
+    padding: 9px 11px !important;
+
+    border: 1px solid transparent !important;
+    border-radius: 10px !important;
+
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    line-height: 1.35 !important;
+
+    transition:
+        color .14s ease,
+        background-color .14s ease,
+        border-color .14s ease,
+        box-shadow .14s ease !important;
+}
+
+.ui-select-choices-row-inner,
+.ui-select-choices-row-inner * {
+    color: inherit !important;
+    background: transparent !important;
+}
+
+/* Hover/keyboard focus: xanh tím nhạt, không giật hoặc đổi sang nâu. */
+.dropdown-menu > li > a:hover,
+.dropdown-menu > li > a:focus,
+.dropdown-menu > li > a:active,
+.dropdown-menu > li:hover > a,
+.dropdown-menu > li.active > a,
+.dropdown-menu > li.active:hover > a,
+.bootstrap-select .dropdown-menu > li > a:hover,
+.bootstrap-select .dropdown-menu > li > a:focus,
+.bootstrap-select .dropdown-menu > li.selected > a,
+.ui-select-bootstrap .ui-select-choices-row > span:hover,
+.ui-select-bootstrap .ui-select-choices-row > span:focus,
+.ui-select-bootstrap .ui-select-choices-row.active > span,
+.ui-select-choices-row:hover > span,
+.ui-select-choices-row:focus > span,
+.ui-select-choices-row.active > span,
+.select2-results li:hover,
+.select2-results li.select2-highlighted,
+.select2-results__option:hover,
+.select2-results__option--highlighted,
+.select2-results__option[aria-selected="true"],
+.chosen-container .chosen-results li:hover,
+.chosen-container .chosen-results li.highlighted {
+    color: #3f4fc4 !important;
+    background: linear-gradient(135deg, #eef2ff, #f4efff) !important;
+    border-color: #dce2ff !important;
+    box-shadow: inset 3px 0 0 #6f72ed !important;
+}
+
+.ui-select-bootstrap .ui-select-choices-row.active .ui-select-choices-row-inner,
+.ui-select-bootstrap .ui-select-choices-row.active .ui-select-choices-row-inner *,
+.ui-select-choices-row:hover .ui-select-choices-row-inner,
+.ui-select-choices-row:hover .ui-select-choices-row-inner * {
+    color: #3f4fc4 !important;
+    background: transparent !important;
+}
+
+/* Match/toggle: hover chỉ đổi viền và glow nhẹ, không nhấc nút lên. */
+.btn-default.ui-select-toggle,
+.ui-select-bootstrap .ui-select-toggle,
+.bootstrap-select > .dropdown-toggle,
+.select2-container .select2-choice,
+.select2-container--default .select2-selection,
+.chosen-container-single .chosen-single {
+    border: 1px solid #dfe5f3 !important;
+    border-radius: 11px !important;
+    color: #35415b !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+}
+
+.btn-default.ui-select-toggle:hover,
+.btn-default.ui-select-toggle:focus,
+.ui-select-bootstrap.open .ui-select-toggle,
+.bootstrap-select.open > .dropdown-toggle,
+.bootstrap-select > .dropdown-toggle:hover,
+.select2-container-active .select2-choice,
+.select2-container--open .select2-selection,
+.chosen-container-active .chosen-single {
+    transform: none !important;
+    border-color: #8998f7 !important;
+    color: #3546ba !important;
+    background: #fbfcff !important;
+    box-shadow: 0 0 0 3px rgba(91, 111, 232, .12) !important;
+}
+
+.ui-select-highlight,
+.select2-match {
+    color: #5a50d6 !important;
+    background: #fff2a8 !important;
+    border-radius: 3px;
+}
+
+.select-search,
+.ui-select-search,
+.ui-select-placeholder {
+    color: #69758d !important;
+    background: #ffffff !important;
+}
+
+/* Native select vẫn cùng màu khi trình duyệt cho phép style option. */
+select.form-control,
+select.form-control option {
+    color: #35415b !important;
+    background-color: #ffffff !important;
+}
+
+select.form-control:hover,
+select.form-control:focus {
+    border-color: #8998f7 !important;
+    box-shadow: 0 0 0 3px rgba(91, 111, 232, .12) !important;
+}
+
+select.form-control option:checked {
+    color: #3f4fc4 !important;
+    background-color: #eef2ff !important;
+}
+
+/* Scrollbar gọn cho danh sách dài. */
+.dropdown-menu,
+.ui-select-choices-content,
+.select2-results,
+.chosen-container .chosen-results {
+    scrollbar-width: thin;
+    scrollbar-color: #b8c1e9 #f4f6fc;
+}
+
+.dropdown-menu::-webkit-scrollbar,
+.ui-select-choices-content::-webkit-scrollbar,
+.select2-results::-webkit-scrollbar,
+.chosen-container .chosen-results::-webkit-scrollbar {
+    width: 8px;
+}
+
+.dropdown-menu::-webkit-scrollbar-thumb,
+.ui-select-choices-content::-webkit-scrollbar-thumb,
+.select2-results::-webkit-scrollbar-thumb,
+.chosen-container .chosen-results::-webkit-scrollbar-thumb {
+    border: 2px solid #f4f6fc;
+    border-radius: 999px;
+    background: #b8c1e9;
+}
+
+/* Table: bỏ hover nâu ở cả ô header và dòng dữ liệu. */
+.table > thead > tr > th,
+.table thead tr th,
+.bootstrap-table .table > thead > tr > th,
+.fixed-table-container thead th {
+    color: #45516b !important;
+    background: #f2f4ff !important;
+    border-color: #e3e8f5 !important;
+}
+
+.table > thead > tr > th:hover,
+.table > thead > tr > th:focus,
+.table thead tr th:hover,
+.bootstrap-table .table > thead > tr > th:hover,
+.fixed-table-container thead th:hover,
+.fixed-table-container thead th:focus-within {
+    color: #3446b4 !important;
+    background: linear-gradient(135deg, #e9eeff, #f2edff) !important;
+    box-shadow: inset 0 -3px 0 #7377ec !important;
+}
+
+.table-hover > tbody > tr:hover,
+.table-hover > tbody > tr:hover > td,
+.bootstrap-table .table-hover > tbody > tr:hover > td {
+    color: #34405a !important;
+    background: #f0f4ff !important;
+}
+
+.table-hover > tbody > tr:hover > td > a,
+.table-hover > tbody > tr:hover > td a,
+.table-hover > tbody > tr:hover > td span {
+    color: inherit;
+}
+
+/* Dark mode: vẫn trung tính xanh, tuyệt đối không quay về theme nâu. */
+html.global-dark-mode .dropdown-menu,
+html.global-dark-mode .btn-group > .dropdown-menu,
+html.global-dark-mode .bootstrap-select > .dropdown-menu,
+html.global-dark-mode .ui-select-bootstrap > .ui-select-choices,
+html.global-dark-mode .ui-select-choices,
+html.global-dark-mode .select2-drop,
+html.global-dark-mode .select2-dropdown,
+html.global-dark-mode .select2-results,
+html.global-dark-mode .chosen-container .chosen-drop {
+    border-color: #34415c !important;
+    color: #dbe4f5 !important;
+    background: #172033 !important;
+    box-shadow: 0 18px 45px rgba(0, 0, 0, .34) !important;
+}
+
+html.global-dark-mode .dropdown-menu > li > a,
+html.global-dark-mode .ui-select-bootstrap .ui-select-choices-row > span,
+html.global-dark-mode .ui-select-choices-row-inner,
+html.global-dark-mode .ui-select-choices-row-inner *,
+html.global-dark-mode .select2-results li,
+html.global-dark-mode .select2-results__option,
+html.global-dark-mode .chosen-container .chosen-results li {
+    color: #d5deef !important;
+    background: transparent !important;
+}
+
+html.global-dark-mode .dropdown-menu > li > a:hover,
+html.global-dark-mode .dropdown-menu > li.active > a,
+html.global-dark-mode .ui-select-bootstrap .ui-select-choices-row.active > span,
+html.global-dark-mode .ui-select-choices-row:hover > span,
+html.global-dark-mode .select2-results li.select2-highlighted,
+html.global-dark-mode .select2-results__option--highlighted,
+html.global-dark-mode .chosen-container .chosen-results li.highlighted {
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #29375c, #352c59) !important;
+    border-color: #485b8c !important;
+    box-shadow: inset 3px 0 0 #8d91ff !important;
+}
+
+html.global-dark-mode .table > thead > tr > th,
+html.global-dark-mode .table thead tr th,
+html.global-dark-mode .bootstrap-table .table > thead > tr > th {
+    color: #d8e1f1 !important;
+    background: #202b42 !important;
+    border-color: #34415a !important;
+}
+
+html.global-dark-mode .table > thead > tr > th:hover,
+html.global-dark-mode .table thead tr th:hover,
+html.global-dark-mode .table-hover > tbody > tr:hover > td {
+    color: #ffffff !important;
+    background: #2a3755 !important;
+}
+
+/* =========================================================
+   END GLOBAL DROPDOWN + TABLE HOVER REFRESH V8
+   ========================================================= */
+
+/* =========================================================
+   UIB DATEPICKER READABILITY FIX V9
+   Popup lich cua Angular UI Bootstrap la mot dropdown-menu,
+   nen can tach mau rieng de khong bi den chu den trong dark mode.
+   ========================================================= */
+
+/* Khung lich chung: ro rang, gon va khong ke thua mau dropdown thuong. */
+.uib-datepicker-popup.dropdown-menu,
+.dropdown-menu[uib-datepicker-popup],
+.dropdown-menu[datepicker-popup] {
+    min-width: 218px !important;
+    padding: 9px !important;
+    border: 1px solid #dfe5f3 !important;
+    border-radius: 13px !important;
+    color: #35415b !important;
+    background: #ffffff !important;
+    box-shadow: 0 18px 42px rgba(31, 45, 79, .20) !important;
+}
+
+.uib-datepicker-popup .uib-datepicker,
+.uib-datepicker-popup .uib-daypicker,
+.uib-datepicker-popup .uib-monthpicker,
+.uib-datepicker-popup .uib-yearpicker,
+.uib-datepicker-popup table,
+.uib-datepicker-popup table > thead,
+.uib-datepicker-popup table > tbody,
+.uib-datepicker-popup table > tfoot,
+.uib-datepicker-popup table tr,
+.uib-datepicker-popup table th,
+.uib-datepicker-popup table td {
+    color: #35415b !important;
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+.uib-datepicker-popup table {
+    width: 100% !important;
+    margin: 0 !important;
+}
+
+.uib-datepicker-popup table th,
+.uib-datepicker-popup table td {
+    padding: 1px !important;
+    text-align: center !important;
+}
+
+/* Tat ca nut dieu huong, ngay, thang va nam. */
+.uib-datepicker-popup .btn,
+.uib-datepicker-popup .btn-default,
+.uib-datepicker-popup button {
+    min-width: 29px !important;
+    min-height: 29px !important;
+    margin: 0 !important;
+    padding: 5px 7px !important;
+    border: 1px solid transparent !important;
+    border-radius: 8px !important;
+    color: #35415b !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    transform: none !important;
+    text-shadow: none !important;
+    transition: color .16s ease, background-color .16s ease,
+                border-color .16s ease, box-shadow .16s ease !important;
+}
+
+.uib-datepicker-popup .btn *,
+.uib-datepicker-popup button * {
+    color: inherit !important;
+    background: transparent !important;
+}
+
+.uib-datepicker-popup thead .btn,
+.uib-datepicker-popup thead .btn strong,
+.uib-datepicker-popup thead button,
+.uib-datepicker-popup thead button strong {
+    color: #273755 !important;
+    font-weight: 800 !important;
+}
+
+.uib-datepicker-popup thead small,
+.uib-datepicker-popup .uib-daypicker thead small {
+    color: #72809a !important;
+    font-weight: 700 !important;
+}
+
+.uib-datepicker-popup .btn:hover,
+.uib-datepicker-popup .btn:focus,
+.uib-datepicker-popup button:hover,
+.uib-datepicker-popup button:focus {
+    border-color: #d9e1ff !important;
+    color: #3f4fc4 !important;
+    background: #eef2ff !important;
+    box-shadow: 0 0 0 2px rgba(91, 111, 232, .10) !important;
+    outline: none !important;
+}
+
+/* Ngay dang chon. */
+.uib-datepicker-popup .btn.active,
+.uib-datepicker-popup .btn.active:hover,
+.uib-datepicker-popup .btn.active:focus,
+.uib-datepicker-popup button.active,
+.uib-datepicker-popup button.active:hover,
+.uib-datepicker-popup button.active:focus {
+    border-color: #5b6fe8 !important;
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #4f79eb, #6e5ce7) !important;
+    box-shadow: 0 5px 13px rgba(78, 93, 213, .30) !important;
+}
+
+.uib-datepicker-popup .btn.active *,
+.uib-datepicker-popup button.active * {
+    color: #ffffff !important;
+}
+
+/* Hom nay, ngay ngoai thang va ngay bi khoa. */
+.uib-datepicker-popup .text-info {
+    color: #4f62d4 !important;
+    font-weight: 800 !important;
+}
+
+.uib-datepicker-popup .text-muted {
+    color: #9aa5b8 !important;
+}
+
+.uib-datepicker-popup .btn[disabled],
+.uib-datepicker-popup button[disabled] {
+    opacity: .42 !important;
+    cursor: not-allowed !important;
+}
+
+.uib-datepicker-popup .uib-button-bar {
+    margin-top: 7px !important;
+    padding-top: 7px !important;
+    border-top: 1px solid #e7ebf5 !important;
+}
+
+/* Dark mode: dung xanh slate sang, khong dung nen den va chu den. */
+html.global-dark-mode .uib-datepicker-popup.dropdown-menu,
+html.global-dark-mode .dropdown-menu[uib-datepicker-popup],
+html.global-dark-mode .dropdown-menu[datepicker-popup] {
+    border-color: #405475 !important;
+    color: #eef3ff !important;
+    background: linear-gradient(145deg, #253650, #1f2e47) !important;
+    box-shadow: 0 20px 48px rgba(0, 0, 0, .38) !important;
+}
+
+html.global-dark-mode .uib-datepicker-popup .uib-datepicker,
+html.global-dark-mode .uib-datepicker-popup .uib-daypicker,
+html.global-dark-mode .uib-datepicker-popup .uib-monthpicker,
+html.global-dark-mode .uib-datepicker-popup .uib-yearpicker,
+html.global-dark-mode .uib-datepicker-popup table,
+html.global-dark-mode .uib-datepicker-popup table > thead,
+html.global-dark-mode .uib-datepicker-popup table > tbody,
+html.global-dark-mode .uib-datepicker-popup table > tfoot,
+html.global-dark-mode .uib-datepicker-popup table tr,
+html.global-dark-mode .uib-datepicker-popup table th,
+html.global-dark-mode .uib-datepicker-popup table td {
+    color: #eef3ff !important;
+    background: transparent !important;
+    border-color: transparent !important;
+}
+
+html.global-dark-mode .uib-datepicker-popup .btn,
+html.global-dark-mode .uib-datepicker-popup .btn-default,
+html.global-dark-mode .uib-datepicker-popup button,
+html.global-dark-mode .uib-datepicker-popup .btn *,
+html.global-dark-mode .uib-datepicker-popup button * {
+    border-color: transparent !important;
+    color: #eef3ff !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+html.global-dark-mode .uib-datepicker-popup thead .btn,
+html.global-dark-mode .uib-datepicker-popup thead .btn strong,
+html.global-dark-mode .uib-datepicker-popup thead button,
+html.global-dark-mode .uib-datepicker-popup thead button strong {
+    color: #ffffff !important;
+}
+
+html.global-dark-mode .uib-datepicker-popup thead small,
+html.global-dark-mode .uib-datepicker-popup .uib-daypicker thead small {
+    color: #b8c7e3 !important;
+}
+
+html.global-dark-mode .uib-datepicker-popup .btn:hover,
+html.global-dark-mode .uib-datepicker-popup .btn:focus,
+html.global-dark-mode .uib-datepicker-popup button:hover,
+html.global-dark-mode .uib-datepicker-popup button:focus {
+    border-color: #52698f !important;
+    color: #ffffff !important;
+    background: #354b6d !important;
+    box-shadow: 0 0 0 2px rgba(143, 158, 255, .13) !important;
+}
+
+html.global-dark-mode .uib-datepicker-popup .btn.active,
+html.global-dark-mode .uib-datepicker-popup .btn.active:hover,
+html.global-dark-mode .uib-datepicker-popup .btn.active:focus,
+html.global-dark-mode .uib-datepicker-popup button.active,
+html.global-dark-mode .uib-datepicker-popup button.active:hover,
+html.global-dark-mode .uib-datepicker-popup button.active:focus {
+    border-color: #8192ff !important;
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #4d7cf0, #735fe9) !important;
+    box-shadow: 0 5px 15px rgba(43, 55, 151, .46) !important;
+}
+
+html.global-dark-mode .uib-datepicker-popup .btn.active *,
+html.global-dark-mode .uib-datepicker-popup button.active * {
+    color: #ffffff !important;
+}
+
+html.global-dark-mode .uib-datepicker-popup .text-info {
+    color: #9fb1ff !important;
+}
+
+html.global-dark-mode .uib-datepicker-popup .text-muted {
+    color: #8ea0bd !important;
+}
+
+html.global-dark-mode .uib-datepicker-popup .uib-button-bar {
+    border-top-color: #405170 !important;
+}
+
+@media (max-width: 480px) {
+    .uib-datepicker-popup.dropdown-menu,
+    .dropdown-menu[uib-datepicker-popup],
+    .dropdown-menu[datepicker-popup] {
+        max-width: calc(100vw - 24px) !important;
+    }
+}
+
+/* =========================================================
+   END UIB DATEPICKER READABILITY FIX V9
+   ========================================================= */
+
+/* =========================================================
+   BOOTSTRAP DATEPICKER READABILITY FIX V9.1
+   my-date-picker trong cac controller dang goi element.datepicker().
+   ========================================================= */
+
+.datepicker.datepicker-dropdown.dropdown-menu,
+.datepicker-dropdown.dropdown-menu,
+.datepicker-dropdown {
+    min-width: 218px !important;
+    padding: 9px !important;
+    border: 1px solid #dfe5f3 !important;
+    border-radius: 13px !important;
+    color: #35415b !important;
+    background: #ffffff !important;
+    box-shadow: 0 18px 42px rgba(31, 45, 79, .20) !important;
+}
+
+.datepicker table,
+.datepicker table > thead,
+.datepicker table > tbody,
+.datepicker table tr,
+.datepicker table tr th,
+.datepicker table tr td {
+    color: #35415b !important;
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+.datepicker table {
+    width: 100% !important;
+    margin: 0 !important;
+}
+
+.datepicker table tr th,
+.datepicker table tr td {
+    min-width: 29px !important;
+    height: 29px !important;
+    padding: 4px !important;
+    border-radius: 8px !important;
+    text-align: center !important;
+    text-shadow: none !important;
+    transition: color .16s ease, background-color .16s ease,
+                box-shadow .16s ease !important;
+}
+
+.datepicker .datepicker-switch,
+.datepicker .prev,
+.datepicker .next {
+    color: #273755 !important;
+    font-weight: 800 !important;
+}
+
+.datepicker .dow {
+    color: #72809a !important;
+    font-weight: 700 !important;
+}
+
+.datepicker table tr td.day,
+.datepicker table tr td span {
+    color: #35415b !important;
+    background: transparent !important;
+}
+
+.datepicker table tr td.day:hover,
+.datepicker table tr td.day.focused,
+.datepicker table tr td span:hover,
+.datepicker thead tr:first-child th:hover,
+.datepicker .datepicker-switch:hover,
+.datepicker .prev:hover,
+.datepicker .next:hover {
+    color: #3f4fc4 !important;
+    background: #eef2ff !important;
+    box-shadow: 0 0 0 2px rgba(91, 111, 232, .10) !important;
+}
+
+.datepicker table tr td.active,
+.datepicker table tr td.active:hover,
+.datepicker table tr td.active.disabled,
+.datepicker table tr td.active.disabled:hover,
+.datepicker table tr td span.active,
+.datepicker table tr td span.active:hover,
+.datepicker table tr td span.active.disabled,
+.datepicker table tr td span.active.disabled:hover {
+    border-color: #5b6fe8 !important;
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #4f79eb, #6e5ce7) !important;
+    box-shadow: 0 5px 13px rgba(78, 93, 213, .30) !important;
+}
+
+.datepicker table tr td.today,
+.datepicker table tr td.today:hover,
+.datepicker table tr td.today.disabled,
+.datepicker table tr td.today.disabled:hover {
+    border-color: #f0c85b !important;
+    color: #73510b !important;
+    background: #fff1b7 !important;
+    box-shadow: none !important;
+}
+
+.datepicker table tr td.today.active,
+.datepicker table tr td.today.active:hover {
+    border-color: #5b6fe8 !important;
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #4f79eb, #6e5ce7) !important;
+}
+
+.datepicker table tr td.old,
+.datepicker table tr td.new,
+.datepicker table tr td.disabled,
+.datepicker table tr td.disabled:hover,
+.datepicker table tr td span.disabled,
+.datepicker table tr td span.disabled:hover {
+    color: #9aa5b8 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.datepicker table tr td.disabled,
+.datepicker table tr td span.disabled {
+    opacity: .48 !important;
+    cursor: not-allowed !important;
+}
+
+.datepicker .datepicker-days,
+.datepicker .datepicker-months,
+.datepicker .datepicker-years,
+.datepicker .datepicker-decades,
+.datepicker .datepicker-centuries {
+    color: inherit !important;
+    background: transparent !important;
+}
+
+/* Dark mode: slate blue de lich sang ro, khong con nen den chu den. */
+html.global-dark-mode .datepicker.datepicker-dropdown.dropdown-menu,
+html.global-dark-mode .datepicker-dropdown.dropdown-menu,
+html.global-dark-mode .datepicker-dropdown {
+    border-color: #405475 !important;
+    color: #eef3ff !important;
+    background: linear-gradient(145deg, #253650, #1f2e47) !important;
+    box-shadow: 0 20px 48px rgba(0, 0, 0, .38) !important;
+}
+
+html.global-dark-mode .datepicker table,
+html.global-dark-mode .datepicker table > thead,
+html.global-dark-mode .datepicker table > tbody,
+html.global-dark-mode .datepicker table tr,
+html.global-dark-mode .datepicker table tr th,
+html.global-dark-mode .datepicker table tr td {
+    color: #eef3ff !important;
+    background: transparent !important;
+    border-color: transparent !important;
+}
+
+html.global-dark-mode .datepicker .datepicker-switch,
+html.global-dark-mode .datepicker .prev,
+html.global-dark-mode .datepicker .next {
+    color: #ffffff !important;
+}
+
+html.global-dark-mode .datepicker .dow {
+    color: #b8c7e3 !important;
+}
+
+html.global-dark-mode .datepicker table tr td.day,
+html.global-dark-mode .datepicker table tr td span {
+    color: #eef3ff !important;
+    background: transparent !important;
+}
+
+html.global-dark-mode .datepicker table tr td.day:hover,
+html.global-dark-mode .datepicker table tr td.day.focused,
+html.global-dark-mode .datepicker table tr td span:hover,
+html.global-dark-mode .datepicker thead tr:first-child th:hover,
+html.global-dark-mode .datepicker .datepicker-switch:hover,
+html.global-dark-mode .datepicker .prev:hover,
+html.global-dark-mode .datepicker .next:hover {
+    color: #ffffff !important;
+    background: #354b6d !important;
+    box-shadow: 0 0 0 2px rgba(143, 158, 255, .13) !important;
+}
+
+html.global-dark-mode .datepicker table tr td.active,
+html.global-dark-mode .datepicker table tr td.active:hover,
+html.global-dark-mode .datepicker table tr td.active.disabled,
+html.global-dark-mode .datepicker table tr td.active.disabled:hover,
+html.global-dark-mode .datepicker table tr td span.active,
+html.global-dark-mode .datepicker table tr td span.active:hover,
+html.global-dark-mode .datepicker table tr td span.active.disabled,
+html.global-dark-mode .datepicker table tr td span.active.disabled:hover {
+    border-color: #8192ff !important;
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #4d7cf0, #735fe9) !important;
+    box-shadow: 0 5px 15px rgba(43, 55, 151, .46) !important;
+}
+
+html.global-dark-mode .datepicker table tr td.today,
+html.global-dark-mode .datepicker table tr td.today:hover,
+html.global-dark-mode .datepicker table tr td.today.disabled,
+html.global-dark-mode .datepicker table tr td.today.disabled:hover {
+    border-color: #d4ad4e !important;
+    color: #fff2bd !important;
+    background: #59491f !important;
+}
+
+html.global-dark-mode .datepicker table tr td.today.active,
+html.global-dark-mode .datepicker table tr td.today.active:hover {
+    border-color: #8192ff !important;
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #4d7cf0, #735fe9) !important;
+}
+
+html.global-dark-mode .datepicker table tr td.old,
+html.global-dark-mode .datepicker table tr td.new,
+html.global-dark-mode .datepicker table tr td.disabled,
+html.global-dark-mode .datepicker table tr td.disabled:hover,
+html.global-dark-mode .datepicker table tr td span.disabled,
+html.global-dark-mode .datepicker table tr td span.disabled:hover {
+    color: #8ea0bd !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* =========================================================
+   END BOOTSTRAP DATEPICKER READABILITY FIX V9.1
+   ========================================================= */
+
+/* =========================================================
+   DARK MODE SELECT CONTROL FIX V10
+   Sua phan match/toggle bi trang trong cac man hinh dark mode.
+   ========================================================= */
+
+html.global-dark-mode .btn-default.ui-select-toggle,
+html.global-dark-mode .ui-select-bootstrap .ui-select-toggle,
+html.global-dark-mode .ui-select-bootstrap .ui-select-match .btn,
+html.global-dark-mode .bootstrap-select > .dropdown-toggle,
+html.global-dark-mode .select2-container .select2-choice,
+html.global-dark-mode .select2-container--default .select2-selection,
+html.global-dark-mode .chosen-container-single .chosen-single,
+html.global-dark-mode .test-result-filter-panel .test-result-ui-select .ui-select-match .btn {
+    border-color: #405170 !important;
+    color: #eaf0ff !important;
+    background: #17233a !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .12) !important;
+}
+
+html.global-dark-mode .btn-default.ui-select-toggle:hover,
+html.global-dark-mode .btn-default.ui-select-toggle:focus,
+html.global-dark-mode .ui-select-bootstrap.open .ui-select-toggle,
+html.global-dark-mode .ui-select-bootstrap .ui-select-toggle:hover,
+html.global-dark-mode .ui-select-bootstrap .ui-select-toggle:focus,
+html.global-dark-mode .bootstrap-select.open > .dropdown-toggle,
+html.global-dark-mode .bootstrap-select > .dropdown-toggle:hover,
+html.global-dark-mode .select2-container-active .select2-choice,
+html.global-dark-mode .select2-container--open .select2-selection,
+html.global-dark-mode .chosen-container-active .chosen-single,
+html.global-dark-mode .test-result-filter-panel .test-result-ui-select.open .ui-select-match .btn,
+html.global-dark-mode .test-result-filter-panel .test-result-ui-select .ui-select-match .btn:hover,
+html.global-dark-mode .test-result-filter-panel .test-result-ui-select .ui-select-match .btn:focus {
+    border-color: #7185f0 !important;
+    color: #ffffff !important;
+    background: #1e2d48 !important;
+    box-shadow: 0 0 0 3px rgba(113, 133, 240, .16) !important;
+    transform: none !important;
+}
+
+html.global-dark-mode .ui-select-bootstrap .ui-select-match-text,
+html.global-dark-mode .ui-select-bootstrap .ui-select-match-text span,
+html.global-dark-mode .ui-select-bootstrap .ui-select-toggle > span,
+html.global-dark-mode .bootstrap-select > .dropdown-toggle .filter-option,
+html.global-dark-mode .select2-container .select2-chosen,
+html.global-dark-mode .select2-container--default .select2-selection__rendered,
+html.global-dark-mode .chosen-container-single .chosen-single span,
+html.global-dark-mode .test-result-filter-panel .test-result-ui-select .ui-select-match-text,
+html.global-dark-mode .test-result-filter-panel .test-result-ui-select .ui-select-match-text span {
+    color: #eaf0ff !important;
+    background: transparent !important;
+}
+
+html.global-dark-mode .ui-select-placeholder,
+html.global-dark-mode .ui-select-bootstrap .ui-select-placeholder,
+html.global-dark-mode .select2-default,
+html.global-dark-mode .select2-container--default .select2-selection__placeholder,
+html.global-dark-mode .chosen-container-single .chosen-default span,
+html.global-dark-mode .test-result-filter-panel .test-result-ui-select .ui-select-placeholder {
+    color: #aebbd1 !important;
+    background: transparent !important;
+    opacity: 1 !important;
+}
+
+html.global-dark-mode .ui-select-toggle > .caret,
+html.global-dark-mode .ui-select-bootstrap .ui-select-toggle > .caret,
+html.global-dark-mode .bootstrap-select > .dropdown-toggle .caret,
+html.global-dark-mode .select2-container .select2-arrow b,
+html.global-dark-mode .test-result-filter-panel .test-result-ui-select .ui-select-toggle > .caret {
+    color: #aebbd1 !important;
+    border-top-color: #aebbd1 !important;
+}
+
+html.global-dark-mode .ui-select-toggle > .btn.btn-link,
+html.global-dark-mode .ui-select-toggle > .btn.btn-link i,
+html.global-dark-mode .ui-select-bootstrap .ui-select-toggle .glyphicon,
+html.global-dark-mode .select2-container .select2-search-choice-close {
+    color: #aebbd1 !important;
+    background: transparent !important;
+}
+
+html.global-dark-mode .select-search,
+html.global-dark-mode .ui-select-search,
+html.global-dark-mode .ui-select-bootstrap input.ui-select-search,
+html.global-dark-mode .select2-search input,
+html.global-dark-mode .chosen-container .chosen-search input {
+    border-color: #405170 !important;
+    color: #eef3ff !important;
+    background: #17233a !important;
+    caret-color: #9fb1ff !important;
+}
+
+html.global-dark-mode .select-search::placeholder,
+html.global-dark-mode .ui-select-search::placeholder,
+html.global-dark-mode .select2-search input::placeholder,
+html.global-dark-mode .chosen-container .chosen-search input::placeholder {
+    color: #9eacc4 !important;
+    opacity: 1 !important;
+}
+
+html.global-dark-mode .ui-select-multiple.ui-select-bootstrap,
+html.global-dark-mode .select2-container-multi .select2-choices {
+    border-color: #405170 !important;
+    color: #eaf0ff !important;
+    background: #17233a !important;
+}
+
+html.global-dark-mode .ui-select-multiple.ui-select-bootstrap .ui-select-match-item,
+html.global-dark-mode .select2-container-multi .select2-search-choice {
+    border-color: #526589 !important;
+    color: #eef3ff !important;
+    background: #293a59 !important;
+}
+
+html.global-dark-mode select.form-control,
+html.global-dark-mode select.form-control option {
+    border-color: #405170 !important;
+    color: #eaf0ff !important;
+    background-color: #17233a !important;
+}
+
+html.global-dark-mode select.form-control:hover,
+html.global-dark-mode select.form-control:focus {
+    border-color: #7185f0 !important;
+    color: #ffffff !important;
+    background-color: #1e2d48 !important;
+    box-shadow: 0 0 0 3px rgba(113, 133, 240, .16) !important;
+}
+
+html.global-dark-mode select.form-control option:checked {
+    color: #ffffff !important;
+    background-color: #33466d !important;
+}
+
+/* =========================================================
+   END DARK MODE SELECT CONTROL FIX V10
+   ========================================================= */

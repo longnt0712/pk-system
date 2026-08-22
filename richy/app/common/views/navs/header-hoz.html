@@ -22,12 +22,12 @@
                 <span class="icon-bar"></span>
             </button>
 
-            <a ng-if="!settings.ieltsRoom || settings.ieltsRoom == true"
+            <a ng-if="settings.ieltsRoom == true"
                class="navbar-brand learning-nav-brand"
                id="church-title"
                href="dashboard">
                 <span class="learning-brand-icon"><i class="fa fa-graduation-cap"></i></span>
-                <span class="learning-brand-text">IELTS ROOM</span>
+                <span class="learning-brand-text">SAINT PAUL ACADEMY</span>
             </a>
             <a ng-if="settings.chapter == true"
                class="navbar-brand learning-nav-brand"
@@ -79,6 +79,13 @@
                                href="quiz-battle-2/3">
                                 <i class="fa fa-bolt"></i>
                                 QUIZ BATTLE 2
+                            </a>
+                        </li>
+                        <li>
+                            <a ui-sref="application.battle_quiz_online"
+                               href="battle-quiz-online">
+                                <i class="fa fa-globe"></i>
+                                BATTLE ONLINE 2
                             </a>
                         </li>
                     </ul>
