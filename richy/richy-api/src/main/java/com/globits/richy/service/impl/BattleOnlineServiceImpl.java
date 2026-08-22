@@ -1510,7 +1510,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         return isBlank(player.displayName)
-                ? safe(player.username)
+                ? "Người chơi"
                 : player.displayName;
     }
 
@@ -3192,7 +3192,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         if (isBlank(identity.displayName)) {
-            identity.displayName = username;
+            identity.displayName = "Người chơi";
         }
 
         return identity;
