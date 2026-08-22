@@ -32,6 +32,12 @@ public class BattleOnlinePlayerDto implements Serializable {
      */
     private long frozenUntil;
 
+    /*
+     * COUNTDOWN skill FIRE_UP.
+     * Trong thời gian này, điểm của mỗi câu đúng được nhân 1.5.
+     */
+    private long burningUntil;
+
     public BattleOnlinePlayerDto() {
     }
 
@@ -145,5 +151,13 @@ public class BattleOnlinePlayerDto implements Serializable {
 
     public void setFrozenUntil(long frozenUntil) {
         this.frozenUntil = frozenUntil;
+    }
+
+    public long getBurningUntil() {
+        return burningUntil;
+    }
+
+    public void setBurningUntil(long burningUntil) {
+        this.burningUntil = burningUntil;
     }
 }

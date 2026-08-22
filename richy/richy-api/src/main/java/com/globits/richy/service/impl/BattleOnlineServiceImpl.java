@@ -58,8 +58,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String SKILL_FREEZE = "FREEZE";
     private static final String SKILL_BREAK_STREAK = "BREAK_STREAK";
     private static final String SKILL_STEAL_SCORE = "STEAL_SCORE";
+    private static final String SKILL_FIRE_UP = "FIRE_UP";
 
     private static final long FREEZE_DURATION_MS = 3000L;
+    private static final long FIRE_UP_DURATION_MS = 15000L;
+    private static final double FIRE_UP_SCORE_MULTIPLIER = 1.5D;
     private static final int MAX_RECENT_EVENTS = 12;
 
     private static final int MAX_PLAYERS = 20;
@@ -143,6 +146,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             );
         }
 
+        PlayerIdentity identity =
+                findPlayerIdentity(username);
+
         detachFromOldRooms(username);
 
         RoomState room = new RoomState();
@@ -150,7 +156,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.code = newRoomCode();
         room.status = LOBBY;
         room.hostUsername = username;
-        room.ownerUserId = findUserId(username);
+        room.ownerUserId = identity.userId;
 
         room.settings.topicIds = topicIds;
         room.settings.topicNames =
@@ -163,7 +169,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         PlayerState host = new PlayerState();
         host.username = username;
-        host.displayName = username;
+        host.displayName = identity.displayName;
         host.host = true;
         host.ready = true;
         host.connected = true;
@@ -193,6 +199,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         username = requireUsername(username);
 
+        PlayerIdentity identity =
+                findPlayerIdentity(username);
+
         RoomState room = requireRoom(roomCode);
         BattleOnlineRoomDto dto;
 
@@ -202,6 +211,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             if (existing != null) {
                 existing.connected = true;
+                existing.displayName = identity.displayName;
 
                 /*
                  * COUNTDOWN reconnect:
@@ -238,7 +248,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
                 PlayerState player = new PlayerState();
                 player.username = username;
-                player.displayName = username;
+                player.displayName = identity.displayName;
                 player.connected = true;
                 player.ready = false;
 
@@ -727,16 +737,20 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.answeredClassicIndex =
                     room.classicQuestionIndex;
 
-            applyScore(
+            double scoreDelta = applyScore(
                     player,
                     correct,
-                    false
+                    false,
+                    System.currentTimeMillis()
             );
 
             fillAnswerResult(
                     result,
                     player,
-                    correct
+                    correct,
+                    scoreDelta,
+                    false,
+                    false
             );
 
             expectedIndex =
@@ -773,8 +787,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         synchronized (room) {
             requirePlaying(room);
 
+            long now = System.currentTimeMillis();
+
             if (
-                System.currentTimeMillis() >=
+                now >=
                 room.matchEndsAt
             ) {
                 finishMatchLocked(room);
@@ -796,10 +812,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
-            if (System.currentTimeMillis() < player.frozenUntil) {
+            if (now < player.frozenUntil) {
                 long seconds = Math.max(
                         1L,
-                        (player.frozenUntil - System.currentTimeMillis() + 999L) / 1000L
+                        (player.frozenUntil - now + 999L) / 1000L
                 );
 
                 throw new BattleOnlineException(
@@ -843,16 +859,46 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             ? player.currentSkillType
                             : null;
 
-            applyScore(
+            boolean fireBoostApplied =
+                    correct &&
+                    now < player.burningUntil;
+
+            double scoreDelta = applyScore(
                     player,
                     correct,
-                    true
+                    true,
+                    now
             );
+
+            boolean fireActivated =
+                    SKILL_FIRE_UP.equals(earnedSkill);
+
+            if (fireActivated) {
+                /*
+                 * Trả lời đúng câu FIRE_UP sẽ kích hoạt buff cho
+                 * những câu tiếp theo trong đúng 15 giây.
+                 * Nếu đang cháy, lần nhận mới sẽ làm mới mốc 15 giây.
+                 */
+                player.burningUntil =
+                        now + FIRE_UP_DURATION_MS;
+
+                addSkillEventLocked(
+                        room,
+                        SKILL_FIRE_UP,
+                        player,
+                        player,
+                        0D,
+                        now
+                );
+            }
 
             fillAnswerResult(
                     result,
                     player,
-                    correct
+                    correct,
+                    scoreDelta,
+                    fireBoostApplied,
+                    fireActivated
             );
 
             /*
@@ -862,7 +908,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.currentQuestion = null;
             player.currentSkillType = null;
 
-            if (
+            if (fireActivated) {
+                assignNextCountdownQuestionLocked(
+                        room,
+                        player
+                );
+            } else if (
                 earnedSkill != null &&
                 countSkillTargetsLocked(room, player) > 0
             ) {
@@ -1039,10 +1090,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
-    private void applyScore(
+    private double applyScore(
             PlayerState player,
             boolean correct,
-            boolean quizBattle2Scoring) {
+            boolean quizBattle2Scoring,
+            long scoreAt) {
+
+        double scoreDelta = 0D;
 
         if (correct) {
             player.streak += 1;
@@ -1052,36 +1106,61 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 quizBattle2Scoring &&
                 player.streak >= 5
             ) {
-                player.score +=
+                scoreDelta =
                         Math.floor(player.streak / 3D);
             } else {
-                player.score += 1D;
+                scoreDelta = 1D;
             }
+
+            if (
+                quizBattle2Scoring &&
+                scoreAt < player.burningUntil
+            ) {
+                scoreDelta *=
+                        FIRE_UP_SCORE_MULTIPLIER;
+            }
+
+            player.score += scoreDelta;
         } else {
             player.streak = 0;
             player.wrongCount += 1;
 
             if (quizBattle2Scoring) {
-                player.score -= 0.5D;
+                scoreDelta = -0.5D;
+                player.score += scoreDelta;
             }
         }
+
+        return scoreDelta;
     }
 
 
     private void fillAnswerResult(
             BattleOnlineAnswerResultDto result,
             PlayerState player,
-            boolean correct) {
+            boolean correct,
+            double scoreDelta,
+            boolean fireBoostApplied,
+            boolean fireActivated) {
 
         result.setAccepted(true);
         result.setCorrect(correct);
         result.setScore(player.score);
         result.setStreak(player.streak);
-        result.setMessage(
-                correct
-                        ? "CHÍNH XÁC!"
-                        : "SAI RỒI!"
-        );
+        if (!correct) {
+            result.setMessage("SAI RỒI!");
+        } else if (fireActivated) {
+            result.setMessage(
+                    "CHÍNH XÁC! CHÁY LÊN đã bật trong 15 giây."
+            );
+        } else if (fireBoostApplied) {
+            result.setMessage(
+                    "CHÍNH XÁC! CHÁY LÊN x1.5: +" +
+                    formatScore(scoreDelta) + " điểm."
+            );
+        } else {
+            result.setMessage("CHÍNH XÁC!");
+        }
     }
 
 
@@ -1241,6 +1320,18 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         for (Integer position : stealPositions) {
             room.countdownSkillPlan.put(position, SKILL_STEAL_SCORE);
+            blocked.add(position);
+        }
+
+        List<Integer> firePositions =
+                buildBalancedSkillPositions(
+                    total,
+                    getFireUpSkillCount(total),
+                    blocked
+                );
+
+        for (Integer position : firePositions) {
+            room.countdownSkillPlan.put(position, SKILL_FIRE_UP);
         }
     }
 
@@ -1284,6 +1375,20 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 total >= 30 ? 0.03D : 0.02D;
 
         return Math.min(4, Math.max(1, (int) Math.round(total * rate)));
+    }
+
+
+    private int getFireUpSkillCount(int total) {
+        if (total < 10) {
+            return 0;
+        }
+
+        double rate =
+                total >= 80 ? 0.06D :
+                total >= 50 ? 0.05D :
+                total >= 30 ? 0.04D : 0.03D;
+
+        return Math.min(5, Math.max(1, (int) Math.round(total * rate)));
     }
 
 
@@ -1380,10 +1485,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             event.setMessage(
                     actorName + " vừa phá streak của " + targetName + "."
             );
-        } else {
+        } else if (SKILL_STEAL_SCORE.equals(skillType)) {
             event.setMessage(
                     actorName + " vừa cướp " + formatScore(amount) +
                     " điểm của " + targetName + "."
+            );
+        } else if (SKILL_FIRE_UP.equals(skillType)) {
+            event.setMessage(
+                    actorName + " vừa kích hoạt CHÁY LÊN x1.5 trong 15 giây."
             );
         }
 
@@ -1693,6 +1802,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.currentSkillType = null;
             player.pendingSkillType = null;
             player.frozenUntil = 0L;
+            player.burningUntil = 0L;
         }
     }
 
@@ -2525,6 +2635,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     state.frozenUntil
             );
 
+            player.setBurningUntil(
+                    state.burningUntil
+            );
+
             player.setAnsweredCurrentQuestion(
                     MODE_CLASSIC.equals(
                         room.settings.mode
@@ -2725,6 +2839,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         player.currentSkillType = null;
         player.pendingSkillType = null;
         player.frozenUntil = 0L;
+        player.burningUntil = 0L;
 
         player.pendingWordIds.clear();
         player.uniqueWordIds.clear();
@@ -3002,13 +3117,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
        UTIL
        ========================================================= */
 
-    private Long findUserId(
+    private PlayerIdentity findPlayerIdentity(
             String username) {
 
         Query query =
                 entityManager.createQuery(
-                    "select u.id " +
-                    "from User u " +
+                    "select u.id, p.lastName, p.firstName, p.displayName " +
+                    "from User u left join u.person p " +
                     "where u.username = :username"
                 );
 
@@ -3020,12 +3135,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         query.setMaxResults(1);
 
         @SuppressWarnings("unchecked")
-        List<Long> ids =
+        List<Object[]> rows =
                 query.getResultList();
 
         if (
-            ids == null ||
-            ids.isEmpty()
+            rows == null ||
+            rows.isEmpty()
         ) {
             throw new BattleOnlineException(
                     HttpStatus.UNAUTHORIZED,
@@ -3033,7 +3148,54 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             );
         }
 
-        return ids.get(0);
+        Object[] row = rows.get(0);
+
+        PlayerIdentity identity =
+                new PlayerIdentity();
+
+        identity.userId =
+                row[0] instanceof Number
+                        ? ((Number) row[0]).longValue()
+                        : null;
+
+        if (identity.userId == null) {
+            throw new BattleOnlineException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Không xác định được account hiện tại."
+            );
+        }
+
+        String lastName =
+                row.length > 1 && row[1] != null
+                        ? String.valueOf(row[1])
+                        : "";
+
+        String firstName =
+                row.length > 2 && row[2] != null
+                        ? String.valueOf(row[2])
+                        : "";
+
+        String personDisplayName =
+                row.length > 3 && row[3] != null
+                        ? String.valueOf(row[3])
+                        : "";
+
+        /*
+         * Bảng xếp hạng ưu tiên đúng thứ tự Last name + First name.
+         */
+        identity.displayName =
+                clean(lastName + " " + firstName);
+
+        if (isBlank(identity.displayName)) {
+            identity.displayName =
+                    clean(personDisplayName);
+        }
+
+        if (isBlank(identity.displayName)) {
+            identity.displayName = username;
+        }
+
+        return identity;
     }
 
 
@@ -3315,6 +3477,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
        INTERNAL STATE
        ========================================================= */
 
+    private static class PlayerIdentity {
+        Long userId;
+        String displayName;
+    }
+
     private static class RoomState {
         String code;
         String status;
@@ -3423,6 +3590,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         String currentSkillType;
         String pendingSkillType;
         long frozenUntil = 0L;
+        long burningUntil = 0L;
     }
 
 
