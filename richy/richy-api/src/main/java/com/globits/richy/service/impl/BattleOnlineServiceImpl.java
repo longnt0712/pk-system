@@ -737,12 +737,31 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.answeredClassicIndex =
                     room.classicQuestionIndex;
 
-            double scoreDelta = applyScore(
-                    player,
-                    correct,
-                    false,
-                    System.currentTimeMillis()
-            );
+            int correctOrder = 0;
+            double scoreDelta;
+
+            if (correct) {
+                /*
+                 * Mọi request CLASSIC đều đi qua synchronized(room),
+                 * nên thứ tự này chính là thứ tự backend nhận đáp án
+                 * đúng và được đồng bộ cho toàn bộ phòng.
+                 */
+                room.classicCorrectAnswerCount += 1;
+                correctOrder =
+                        room.classicCorrectAnswerCount;
+
+                scoreDelta = applyClassicSpeedScore(
+                        player,
+                        correctOrder
+                );
+            } else {
+                scoreDelta = applyScore(
+                        player,
+                        false,
+                        false,
+                        System.currentTimeMillis()
+                );
+            }
 
             fillAnswerResult(
                     result,
@@ -752,6 +771,22 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     false,
                     false
             );
+
+            if (correct) {
+                if (correctOrder == 1) {
+                    result.setMessage(
+                            "CHÍNH XÁC! NHANH NHẤT: +3 điểm."
+                    );
+                } else if (correctOrder == 2) {
+                    result.setMessage(
+                            "CHÍNH XÁC! HẠNG TỐC ĐỘ 2: +2 điểm."
+                    );
+                } else {
+                    result.setMessage(
+                            "CHÍNH XÁC! +1 điểm."
+                    );
+                }
+            }
 
             expectedIndex =
                     room.classicQuestionIndex;
@@ -1135,6 +1170,29 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
+    private double applyClassicSpeedScore(
+            PlayerState player,
+            int correctOrder) {
+
+        player.streak += 1;
+        player.correctCount += 1;
+
+        double scoreDelta;
+
+        if (correctOrder == 1) {
+            scoreDelta = 3D;
+        } else if (correctOrder == 2) {
+            scoreDelta = 2D;
+        } else {
+            scoreDelta = 1D;
+        }
+
+        player.score += scoreDelta;
+
+        return scoreDelta;
+    }
+
+
     private void fillAnswerResult(
             BattleOnlineAnswerResultDto result,
             PlayerState player,
@@ -1183,6 +1241,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         for (PlayerState player : room.players.values()) {
             player.answeredClassicIndex = -1;
         }
+
+        room.classicCorrectAnswerCount = 0;
 
         room.questionEndsAt =
                 System.currentTimeMillis() +
@@ -3525,6 +3585,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         int classicQuestionIndex = -1;
         long questionEndsAt = 0L;
+        int classicCorrectAnswerCount = 0;
 
         /*
          * COUNTDOWN.
