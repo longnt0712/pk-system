@@ -71,6 +71,14 @@
         vm.usingSkill = false;
         vm.availableSkillTargets = [];
         vm.personalSkillNotice = null;
+        vm.skillHitEffect = null;
+        vm.rankingModalOpen = false;
+        vm.qrModalOpen = false;
+        vm.scannerModalOpen = false;
+        vm.roomLink = '';
+        vm.qrImageUrl = '';
+        vm.cameraStarting = false;
+        vm.cameraError = '';
 
         /*
          * CLASSIC: số giây của câu hiện tại.
@@ -123,6 +131,10 @@
 
         var pollingTimer = null;
         var countdownTimer = null;
+        var skillHitEffectTimer = null;
+        var qrScanner = null;
+        var qrScannerRunning = false;
+        var qrScanHandled = false;
         var destroyed = false;
 
         /*
@@ -170,6 +182,18 @@
         vm.isPlayerBurning = isPlayerBurning;
         vm.getBurnRemaining = getBurnRemaining;
         vm.dismissPersonalSkillNotice = dismissPersonalSkillNotice;
+        vm.getPlayerDisplayName = getPlayerDisplayName;
+        vm.getSkillEventMessage = getSkillEventMessage;
+        vm.getActiveSkillEffectType = getActiveSkillEffectType;
+        vm.getActiveSkillEffectIcon = getActiveSkillEffectIcon;
+        vm.getActiveSkillEffectTitle = getActiveSkillEffectTitle;
+        vm.getActiveSkillEffectActor = getActiveSkillEffectActor;
+        vm.openRankingModal = openRankingModal;
+        vm.closeRankingModal = closeRankingModal;
+        vm.openQrModal = openQrModal;
+        vm.closeQrModal = closeQrModal;
+        vm.openScannerModal = openScannerModal;
+        vm.closeScannerModal = closeScannerModal;
         vm.formatScore = formatScore;
 
         vm.copyRoomLink = copyRoomLink;
@@ -228,13 +252,46 @@
                 }
             }
 
-            return (
-                user &&
-                (
-                    user.displayName ||
-                    user.username
-                )
-            ) || '';
+            var displayName = String(
+                user && user.displayName || ''
+            ).trim();
+
+            var username = String(
+                user && user.username || ''
+            ).trim();
+
+            return displayName &&
+                displayName.toLowerCase() !== username.toLowerCase()
+                    ? displayName
+                    : 'Người chơi';
+        }
+
+
+        function getPlayerDisplayName(player) {
+            var displayName = String(
+                player && player.displayName || ''
+            ).trim();
+
+            var username = String(
+                player && player.username || ''
+            ).trim();
+
+            if (
+                displayName &&
+                displayName.toLowerCase() !== username.toLowerCase()
+            ) {
+                return displayName;
+            }
+
+            if (
+                username &&
+                username === vm.currentUser.username &&
+                vm.currentUserDisplayName !== 'Người chơi'
+            ) {
+                return vm.currentUserDisplayName;
+            }
+
+            return 'Người chơi';
         }
 
 
@@ -1071,6 +1128,7 @@
                 vm.lastAnswerCorrect = null;
                 vm.lastAnswerMessage = '';
                 vm.personalSkillNotice = null;
+                clearSkillHitEffect();
             }
 
             updateCountdown();
@@ -1615,6 +1673,8 @@
                         icon: getSkillIcon(event.type),
                         message: buildPersonalSkillMessage(event)
                     };
+
+                    showSkillHitEffect(event);
                 }
             }
 
@@ -1624,9 +1684,11 @@
 
         function buildPersonalSkillMessage(event) {
             var actor =
-                event.actorDisplayName ||
-                event.actorUsername ||
-                'Ai đó';
+                safeEventName(
+                    event.actorDisplayName,
+                    event.actorUsername,
+                    'Một người chơi'
+                );
 
             if (event.type === 'FREEZE') {
                 return actor + ' vừa đóng băng bạn trong 3 giây.';
@@ -1644,6 +1706,137 @@
 
         function dismissPersonalSkillNotice() {
             vm.personalSkillNotice = null;
+        }
+
+
+        function safeEventName(displayName, username, fallback) {
+            displayName = String(displayName || '').trim();
+            username = String(username || '').trim();
+
+            return displayName &&
+                displayName.toLowerCase() !== username.toLowerCase()
+                    ? displayName
+                    : fallback;
+        }
+
+
+        function getSkillEventMessage(event) {
+            event = event || {};
+
+            var actor = safeEventName(
+                event.actorDisplayName,
+                event.actorUsername,
+                'Một người chơi'
+            );
+
+            var target = safeEventName(
+                event.targetDisplayName,
+                event.targetUsername,
+                'người chơi khác'
+            );
+
+            if (event.type === 'FREEZE') {
+                return actor + ' vừa đóng băng ' + target + ' trong 3 giây.';
+            }
+
+            if (event.type === 'BREAK_STREAK') {
+                return actor + ' vừa phá streak của ' + target + '.';
+            }
+
+            if (event.type === 'STEAL_SCORE') {
+                return actor + ' vừa cướp ' +
+                    formatScore(event.amount) + ' điểm của ' + target + '.';
+            }
+
+            return actor + ' vừa kích hoạt CHÁY LÊN x1.5 trong 15 giây.';
+        }
+
+
+        function clearSkillHitEffect() {
+            if (skillHitEffectTimer) {
+                $timeout.cancel(skillHitEffectTimer);
+                skillHitEffectTimer = null;
+            }
+
+            vm.skillHitEffect = null;
+        }
+
+
+        function showSkillHitEffect(event) {
+            clearSkillHitEffect();
+
+            vm.skillHitEffect = {
+                id: event.id,
+                type: event.type,
+                amount: event.amount,
+                actorName: safeEventName(
+                    event.actorDisplayName,
+                    event.actorUsername,
+                    'Một người chơi'
+                )
+            };
+
+            var duration = event.type === 'FREEZE'
+                ? Math.max(3200, getFreezeRemaining() * 1000 + 350)
+                : 2200;
+
+            skillHitEffectTimer = $timeout(
+                function () {
+                    vm.skillHitEffect = null;
+                    skillHitEffectTimer = null;
+                },
+                duration
+            );
+        }
+
+
+        function getActiveSkillEffectType() {
+            return isMeFrozen()
+                ? 'FREEZE'
+                : vm.skillHitEffect && vm.skillHitEffect.type || '';
+        }
+
+
+        function getActiveSkillEffectIcon() {
+            return getSkillIcon(getActiveSkillEffectType());
+        }
+
+
+        function getActiveSkillEffectTitle() {
+            var type = getActiveSkillEffectType();
+
+            if (type === 'FREEZE') {
+                return 'ĐÓNG BĂNG';
+            }
+
+            if (type === 'BREAK_STREAK') {
+                return 'STREAK BỊ PHÁ';
+            }
+
+            if (type === 'STEAL_SCORE') {
+                return 'BỊ CƯỚP ' + formatScore(
+                    vm.skillHitEffect && vm.skillHitEffect.amount
+                ) + ' ĐIỂM';
+            }
+
+            return 'TRÚNG SKILL';
+        }
+
+
+        function getActiveSkillEffectActor() {
+            return vm.skillHitEffect && vm.skillHitEffect.actorName
+                ? vm.skillHitEffect.actorName + ' vừa dùng skill lên bạn'
+                : '';
+        }
+
+
+        function openRankingModal() {
+            vm.rankingModalOpen = true;
+        }
+
+
+        function closeRankingModal() {
+            vm.rankingModalOpen = false;
         }
 
 
@@ -1816,15 +2009,25 @@
         }
 
 
-        function copyRoomLink() {
+        function getRoomLink() {
             if (!vm.room) {
-                return;
+                return '';
             }
 
-            var link =
+            return (
                 $window.location.origin +
                 '/battle-quiz-online/' +
-                vm.room.code;
+                vm.room.code
+            );
+        }
+
+
+        function copyRoomLink() {
+            var link = getRoomLink();
+
+            if (!link) {
+                return;
+            }
 
             if (
                 $window.navigator &&
@@ -1884,6 +2087,359 @@
                 .removeChild(
                     temp
                 );
+        }
+
+
+        function openQrModal() {
+            vm.roomLink = getRoomLink();
+
+            if (!vm.roomLink) {
+                return;
+            }
+
+            /*
+             * QR luôn lấy origin hiện tại, vì vậy đổi giữa các domain
+             * triển khai không cần sửa code hay cấu hình cố định.
+             */
+            vm.qrImageUrl =
+                'https://api.qrserver.com/v1/create-qr-code/' +
+                '?size=300x300&margin=12&format=png&data=' +
+                encodeURIComponent(vm.roomLink);
+
+            vm.qrModalOpen = true;
+        }
+
+
+        function closeQrModal() {
+            vm.qrModalOpen = false;
+        }
+
+
+        function openScannerModal() {
+            vm.cameraStarting = true;
+            vm.cameraError = '';
+            vm.scannerModalOpen = true;
+            qrScanHandled = false;
+
+            $timeout(
+                startQrScanner,
+                80
+            );
+        }
+
+
+        function closeScannerModal() {
+            vm.scannerModalOpen = false;
+            stopQrScanner();
+        }
+
+
+        function loadQrScannerLibrary() {
+            if ($window.Html5Qrcode) {
+                return $window.Promise.resolve();
+            }
+
+            return new $window.Promise(
+                function (resolve, reject) {
+                    var scriptId =
+                        'battle-online-html5-qrcode';
+
+                    var existing =
+                        $window.document.getElementById(scriptId);
+
+                    if (existing) {
+                        if (
+                            existing.getAttribute('data-load-failed') === 'true' ||
+                            existing.getAttribute('data-loaded') === 'true'
+                        ) {
+                            existing.parentNode.removeChild(existing);
+                            existing = null;
+                        }
+                    }
+
+                    if (existing) {
+                        existing.addEventListener('load', resolve, {once: true});
+                        existing.addEventListener('error', reject, {once: true});
+                        return;
+                    }
+
+                    var script =
+                        $window.document.createElement('script');
+
+                    script.id = scriptId;
+                    script.async = true;
+                    script.src =
+                        'https://unpkg.com/html5-qrcode@2.3.8/' +
+                        'html5-qrcode.min.js';
+
+                    script.onload = function () {
+                        script.setAttribute('data-loaded', 'true');
+                        resolve();
+                    };
+
+                    script.onerror = function (error) {
+                        script.setAttribute('data-load-failed', 'true');
+                        reject(error);
+                    };
+
+                    $window.document.head.appendChild(script);
+                }
+            );
+        }
+
+
+        function startQrScanner() {
+            if (
+                !vm.scannerModalOpen ||
+                destroyed
+            ) {
+                return;
+            }
+
+            if (
+                !$window.navigator ||
+                !$window.navigator.mediaDevices ||
+                !$window.navigator.mediaDevices.getUserMedia
+            ) {
+                vm.cameraStarting = false;
+                vm.cameraError =
+                    'Trình duyệt không hỗ trợ camera. Hãy mở trang bằng HTTPS và cho phép quyền camera.';
+                return;
+            }
+
+            loadQrScannerLibrary()
+                .then(
+                    function () {
+                        if (
+                            !vm.scannerModalOpen ||
+                            destroyed
+                        ) {
+                            return null;
+                        }
+
+                        var scanner = new $window.Html5Qrcode(
+                            'battle-online-qr-reader',
+                            false
+                        );
+
+                        qrScanner = scanner;
+
+                        return scanner.start(
+                            {
+                                facingMode: 'environment'
+                            },
+                            {
+                                fps: 10,
+                                aspectRatio: 1,
+                                qrbox: function (width, height) {
+                                    var size = Math.floor(
+                                        Math.min(width, height) * 0.72
+                                    );
+
+                                    return {
+                                        width: size,
+                                        height: size
+                                    };
+                                }
+                            },
+                            handleScannedRoom,
+                            angular.noop
+                        ).then(
+                            function () {
+                                return scanner;
+                            }
+                        );
+                    }
+                )
+                .then(
+                    function (scanner) {
+                        if (!scanner) {
+                            return null;
+                        }
+
+                        if (
+                            !vm.scannerModalOpen ||
+                            destroyed ||
+                            qrScanner !== scanner
+                        ) {
+                            return scanner.stop()
+                                .catch(angular.noop)
+                                .then(
+                                    function () {
+                                        try {
+                                            scanner.clear();
+                                        } catch (e) {
+                                            // Ignore cleanup.
+                                        }
+                                    }
+                                );
+                        }
+
+                        qrScannerRunning = true;
+
+                        $scope.$evalAsync(
+                            function () {
+                                vm.cameraStarting = false;
+                            }
+                        );
+                    }
+                )
+                .catch(
+                    function () {
+                        qrScannerRunning = false;
+
+                        if (
+                            destroyed ||
+                            !vm.scannerModalOpen
+                        ) {
+                            return;
+                        }
+
+                        $scope.$evalAsync(
+                            function () {
+                                vm.cameraStarting = false;
+                                vm.cameraError =
+                                    'Không mở được camera. Hãy kiểm tra HTTPS, quyền camera và kết nối mạng rồi thử lại.';
+                            }
+                        );
+                    }
+                );
+        }
+
+
+        function stopQrScanner() {
+            var scanner = qrScanner;
+
+            qrScanner = null;
+
+            if (!scanner) {
+                qrScannerRunning = false;
+                return $window.Promise.resolve();
+            }
+
+            var stopped = qrScannerRunning
+                ? scanner.stop()
+                : $window.Promise.resolve();
+
+            qrScannerRunning = false;
+
+            return stopped
+                .catch(angular.noop)
+                .then(
+                    function () {
+                        try {
+                            scanner.clear();
+                        } catch (e) {
+                            // Ignore cleanup.
+                        }
+                    }
+                );
+        }
+
+
+        function parseScannedRoom(value) {
+            value = String(value || '').trim();
+
+            if (!value) {
+                return null;
+            }
+
+            if (/^[A-Z0-9]{4,12}$/i.test(value)) {
+                value =
+                    $window.location.origin +
+                    '/battle-quiz-online/' +
+                    value;
+            }
+
+            try {
+                var parsed = new $window.URL(
+                    value,
+                    $window.location.origin
+                );
+
+                if (
+                    parsed.protocol !== 'https:' &&
+                    parsed.protocol !== 'http:'
+                ) {
+                    return null;
+                }
+
+                var matched = parsed.pathname.match(
+                    /^\/battle-quiz-online\/([A-Z0-9]{4,12})\/?$/i
+                );
+
+                if (!matched) {
+                    return null;
+                }
+
+                var code = normalizeRoomCode(matched[1]);
+
+                return {
+                    code: code,
+                    link:
+                        parsed.origin +
+                        '/battle-quiz-online/' +
+                        code
+                };
+            } catch (e) {
+                return null;
+            }
+        }
+
+
+        function handleScannedRoom(decodedText) {
+            if (qrScanHandled) {
+                return;
+            }
+
+            var scanned = parseScannedRoom(decodedText);
+
+            if (!scanned) {
+                qrScanHandled = true;
+
+                stopQrScanner().then(
+                    function () {
+                        if (destroyed) {
+                            return;
+                        }
+
+                        $scope.$evalAsync(
+                            function () {
+                                vm.scannerModalOpen = false;
+                                toastr.warning(
+                                    'Mã QR này không phải link phòng Battle Online.'
+                                );
+                            }
+                        );
+                    }
+                );
+
+                return;
+            }
+
+            qrScanHandled = true;
+
+            var shouldJoin = $window.confirm(
+                'Đã quét được phòng ' + scanned.code +
+                '. Bạn có muốn vào room không?'
+            );
+
+            stopQrScanner().then(
+                function () {
+                    if (shouldJoin) {
+                        $window.location.assign(scanned.link);
+                        return;
+                    }
+
+                    if (!destroyed) {
+                        $scope.$evalAsync(
+                            function () {
+                                vm.scannerModalOpen = false;
+                            }
+                        );
+                    }
+                }
+            );
         }
 
 
@@ -2031,6 +2587,9 @@
                     countdownTimer =
                         null;
                 }
+
+                clearSkillHitEffect();
+                stopQrScanner();
 
                 angular.element(
                     $window.document

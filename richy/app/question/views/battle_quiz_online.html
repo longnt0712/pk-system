@@ -136,7 +136,7 @@
         <div class="battle-online-vs">VS</div>
 
 
-        <div class="battle-online-card battle-online-home-card">
+        <div class="battle-online-card battle-online-home-card battle-online-join-card">
 
             <div class="battle-online-big-icon">🚪</div>
 
@@ -153,14 +153,23 @@
                    placeholder="VD: A7K2Q9"
                    ng-keyup="$event.keyCode === 13 && vm.joinRoom()">
 
-            <button type="button"
-                    class="battle-online-btn battle-online-btn-green"
-                    ng-click="vm.joinRoom()">
+            <div class="battle-online-join-actions">
+                <button type="button"
+                        class="battle-online-btn battle-online-btn-green"
+                        ng-click="vm.joinRoom()">
 
-                <i class="fa fa-sign-in"></i>
+                    <i class="fa fa-sign-in"></i>
+                    JOIN
+                </button>
 
-                JOIN
-            </button>
+                <button type="button"
+                        class="battle-online-btn battle-online-btn-scan"
+                        ng-click="vm.openScannerModal()">
+
+                    <i class="fa fa-camera"></i>
+                    QUÉT QR
+                </button>
+            </div>
         </div>
 
     </section>
@@ -188,11 +197,19 @@
                 <i class="fa fa-copy"></i>
                 COPY LINK
             </button>
+
+            <button type="button"
+                    class="battle-online-copy-btn battle-online-qr-btn"
+                    ng-click="vm.openQrModal()">
+                <i class="fa fa-qrcode"></i>
+                MÃ QR
+            </button>
+
         </div>
 
         <div class="battle-online-room-actions">
             <span class="battle-online-account">
-                👤 {{vm.currentUserDisplayName || vm.currentUser.username}}
+                👤 {{vm.currentUserDisplayName}}
             </span>
 
             <button type="button"
@@ -305,12 +322,8 @@
 
                     <div class="battle-online-player-copy">
                         <strong>
-                            {{player.displayName || player.username}}
+                            {{vm.getPlayerDisplayName(player)}}
                         </strong>
-
-                        <small>
-                            @{{player.username}}
-                        </small>
                     </div>
 
                     <span class="battle-online-ready-badge"
@@ -588,18 +601,23 @@
                   'is-player-burning': vm.isMeBurning()
               }">
 
-            <div class="battle-online-personal-skill-alert"
-                 ng-if="vm.personalSkillNotice">
-                <span>{{vm.personalSkillNotice.icon}}</span>
-                <strong>{{vm.personalSkillNotice.message}}</strong>
-                <button type="button"
-                        ng-click="vm.dismissPersonalSkillNotice()">×</button>
-            </div>
+            <div class="battle-online-skill-hit-overlay"
+                 ng-if="vm.isMeFrozen() || vm.skillHitEffect"
+                 ng-class="'is-' + vm.getActiveSkillEffectType().toLowerCase()">
+                <div class="battle-online-skill-hit-crystals"
+                     aria-hidden="true">◆ ❄ ◆</div>
 
-            <div class="battle-online-frozen-alert"
-                 ng-if="vm.isMeFrozen()">
-                ❄️ BẠN ĐANG BỊ ĐÓNG BĂNG — CÒN
-                <b>{{vm.getFreezeRemaining()}}</b> GIÂY
+                <div class="battle-online-skill-hit-panel">
+                    <span>{{vm.getActiveSkillEffectIcon()}}</span>
+                    <strong>{{vm.getActiveSkillEffectTitle()}}</strong>
+                    <b ng-if="vm.getActiveSkillEffectType() === 'FREEZE'">
+                        {{vm.getFreezeRemaining()}}s
+                    </b>
+                </div>
+
+                <small ng-if="vm.getActiveSkillEffectActor()">
+                    {{vm.getActiveSkillEffectActor()}}
+                </small>
             </div>
 
             <div class="battle-online-burning-alert"
@@ -660,9 +678,15 @@
                 <div class="battle-online-question-skill"
                      ng-if="vm.room.currentQuestion.skillType"
                      ng-class="'is-' + vm.room.currentQuestion.skillType.toLowerCase()">
-                    {{vm.getSkillIcon(vm.room.currentQuestion.skillType)}}
-                    TRẢ LỜI ĐÚNG ĐỂ NHẬN
-                    {{vm.getSkillLabel(vm.room.currentQuestion.skillType)}}
+                    <span ng-if="vm.room.currentQuestion.skillType === 'FIRE_UP'">
+                        🔥 BONUS 15S
+                    </span>
+
+                    <span ng-if="vm.room.currentQuestion.skillType !== 'FIRE_UP'">
+                        {{vm.getSkillIcon(vm.room.currentQuestion.skillType)}}
+                        TRẢ LỜI ĐÚNG ĐỂ NHẬN
+                        {{vm.getSkillLabel(vm.room.currentQuestion.skillType)}}
+                    </span>
                 </div>
 
                 <button type="button"
@@ -758,7 +782,7 @@
                             ng-disabled="vm.usingSkill || !player.connected"
                             ng-click="vm.useSkill(player)">
                         <span>🎯</span>
-                        <strong>{{player.displayName || player.username}}</strong>
+                        <strong>{{vm.getPlayerDisplayName(player)}}</strong>
                         <small>
                             🔥 {{player.streak}} • {{vm.formatScore(player.score)}} điểm
                         </small>
@@ -798,7 +822,8 @@
 
 
         <!-- RANKING -->
-        <aside class="battle-online-card battle-online-ranking-card">
+        <aside id="battle-online-ranking-card"
+               class="battle-online-card battle-online-ranking-card">
 
             <div class="battle-online-title-row">
                 <div>
@@ -821,7 +846,7 @@
 
                 <div>
                     <strong>
-                        {{player.displayName || player.username}}
+                        {{vm.getPlayerDisplayName(player)}}
                     </strong>
 
                     <span class="battle-online-burning-badge"
@@ -858,7 +883,7 @@
                      ng-repeat="event in vm.room.recentEvents track by event.id"
                      ng-class="'is-' + (event.type || '').toLowerCase()">
                     <span>{{vm.getSkillIcon(event.type)}}</span>
-                    <p>{{event.message}}</p>
+                    <p>{{vm.getSkillEventMessage(event)}}</p>
                 </div>
             </div>
 
@@ -911,7 +936,7 @@
 
                 <div>
                     <strong>
-                        {{player.displayName || player.username}}
+                        {{vm.getPlayerDisplayName(player)}}
                     </strong>
 
                     <span class="battle-online-burning-badge"
@@ -956,6 +981,167 @@
         </button>
 
     </section>
+
+    <button type="button"
+            class="battle-online-mobile-ranking-fab"
+            ng-if="vm.room && vm.room.status === 'PLAYING'"
+            ng-click="vm.openRankingModal()"
+            aria-label="Mở bảng xếp hạng">
+        <span>🏆</span>
+        <small>BXH</small>
+    </button>
+
+    <div class="battle-online-ranking-modal-backdrop"
+         ng-if="vm.rankingModalOpen && vm.room && vm.room.status === 'PLAYING'"
+         ng-click="vm.closeRankingModal()">
+
+        <section class="battle-online-ranking-modal"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="Bảng xếp hạng"
+                 ng-click="$event.stopPropagation()">
+
+            <div class="battle-online-ranking-modal-header">
+                <div>
+                    <span class="battle-online-small-title">
+                        🏆 LIVE RANKING
+                    </span>
+                    <h2>Bảng xếp hạng</h2>
+                </div>
+
+                <button type="button"
+                        ng-click="vm.closeRankingModal()"
+                        aria-label="Đóng bảng xếp hạng">×</button>
+            </div>
+
+            <div class="battle-online-ranking-modal-scroll">
+                <div class="battle-online-ranking-row"
+                     ng-repeat="player in vm.room.players track by player.username"
+                     ng-class="vm.getPlayerClass(player)">
+
+                    <span class="battle-online-rank">
+                        {{player.rank}}
+                    </span>
+
+                    <div>
+                        <strong>{{vm.getPlayerDisplayName(player)}}</strong>
+
+                        <span class="battle-online-burning-badge"
+                              ng-if="vm.isPlayerBurning(player)">
+                            🔥 x1.5
+                        </span>
+
+                        <small ng-if="vm.room.settings.mode === 'CLASSIC'">
+                            🔥 {{player.streak}}
+                            • ✅ {{player.correctCount}}
+                            • ❌ {{player.wrongCount}}
+                        </small>
+
+                        <small ng-if="vm.room.settings.mode === 'COUNTDOWN'">
+                            🔥 {{player.streak}}
+                            • 📚 {{player.uniqueWordsSeen}}/{{player.totalLessonWords}}
+                            • ✅ {{player.correctCount}}
+                            • ❌ {{player.wrongCount}}
+                        </small>
+                    </div>
+
+                    <b class="battle-online-score">
+                        {{vm.formatScore(player.score)}}
+                    </b>
+                </div>
+
+                <div class="battle-online-event-board"
+                     ng-if="vm.room.recentEvents.length">
+                    <div class="battle-online-event-title">
+                        ⚡ HOẠT ĐỘNG SKILL
+                    </div>
+
+                    <div class="battle-online-event-row"
+                         ng-repeat="event in vm.room.recentEvents track by event.id"
+                         ng-class="'is-' + (event.type || '').toLowerCase()">
+                        <span>{{vm.getSkillIcon(event.type)}}</span>
+                        <p>{{vm.getSkillEventMessage(event)}}</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="battle-online-qr-modal-backdrop"
+         ng-if="vm.qrModalOpen"
+         ng-click="vm.closeQrModal()">
+
+        <section class="battle-online-qr-modal"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="Mã QR phòng"
+                 ng-click="$event.stopPropagation()">
+
+            <div class="battle-online-qr-modal-header">
+                <div>
+                    <span class="battle-online-small-title">📱 JOIN ROOM</span>
+                    <h2>Mã QR phòng {{vm.room.code}}</h2>
+                </div>
+
+                <button type="button"
+                        ng-click="vm.closeQrModal()"
+                        aria-label="Đóng mã QR">×</button>
+            </div>
+
+            <div class="battle-online-qr-modal-body">
+                <img ng-src="{{vm.qrImageUrl}}"
+                     alt="Mã QR vào phòng {{vm.room.code}}">
+
+                <strong class="battle-online-qr-room-code">
+                    {{vm.room.code}}
+                </strong>
+
+                <p>Quét mã để mở đúng link phòng trên domain hiện tại.</p>
+                <small>{{vm.roomLink}}</small>
+            </div>
+        </section>
+    </div>
+
+    <div class="battle-online-qr-modal-backdrop"
+         ng-if="vm.scannerModalOpen"
+         ng-click="vm.closeScannerModal()">
+
+        <section class="battle-online-qr-modal battle-online-scanner-modal"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="Quét mã QR phòng"
+                 ng-click="$event.stopPropagation()">
+
+            <div class="battle-online-qr-modal-header">
+                <div>
+                    <span class="battle-online-small-title">📷 QR SCANNER</span>
+                    <h2>Quét mã vào phòng</h2>
+                </div>
+
+                <button type="button"
+                        ng-click="vm.closeScannerModal()"
+                        aria-label="Đóng camera">×</button>
+            </div>
+
+            <div class="battle-online-qr-modal-body">
+                <div class="battle-online-camera-loading"
+                     ng-if="vm.cameraStarting">
+                    <i class="fa fa-circle-o-notch fa-spin"></i>
+                    Đang mở camera...
+                </div>
+
+                <div id="battle-online-qr-reader"
+                     class="battle-online-qr-reader"></div>
+
+                <div class="battle-online-camera-error"
+                     ng-if="vm.cameraError">
+                    {{vm.cameraError}}
+                </div>
+
+                <p>Đưa mã QR vào giữa khung hình. Hệ thống sẽ hỏi lại trước khi vào room.</p>
+            </div>
+        </section>
+    </div>
 
 </div>
 
@@ -1091,7 +1277,7 @@
         max-width: 980px;
 
         display: grid;
-        grid-template-columns: 1.2fr auto .8fr;
+        grid-template-columns: .8fr auto 1.2fr;
 
         gap: 15px;
         align-items: stretch;
@@ -1115,9 +1301,14 @@
     }
 
     .battle-online-create-card {
+        order: 3;
         align-items: stretch;
 
         text-align: left;
+    }
+
+    .battle-online-join-card {
+        order: 1;
     }
 
     .battle-online-create-card
@@ -1152,6 +1343,7 @@
     }
 
     .battle-online-vs {
+        order: 2;
         display: flex;
         align-items: center;
 
@@ -1327,6 +1519,22 @@
             );
     }
 
+    .battle-online-join-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .battle-online-btn-scan {
+        background:
+            linear-gradient(
+                135deg,
+                #4c78ff,
+                #7558f6
+            );
+    }
+
     button[disabled] {
         cursor: not-allowed;
         opacity: .55;
@@ -1368,9 +1576,17 @@
 
         color: var(--bo-purple);
 
-        font-family: Orbitron, monospace;
+        font-family:
+            "Cascadia Mono",
+            Consolas,
+            "DejaVu Sans Mono",
+            "Liberation Mono",
+            monospace;
         font-size: 19px;
-        letter-spacing: 2px;
+        font-weight: 800;
+        font-variant-ligatures: none;
+        font-variant-numeric: tabular-nums slashed-zero;
+        letter-spacing: 1.5px;
     }
 
     .battle-online-copy-btn {
@@ -1382,6 +1598,19 @@
 
         font-size: 9px;
     }
+
+    .battle-online-room-main {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .battle-online-qr-btn {
+        color: #6941c6;
+        background: #f0ebff;
+    }
+
 
     .battle-online-room-actions {
         display: flex;
@@ -1531,11 +1760,338 @@
 
     .battle-online-question-card {
         position: relative;
-        overflow: visible;
+        overflow: hidden;
         transition:
             border-color .22s ease,
             box-shadow .22s ease,
             filter .22s ease;
+    }
+
+    .battle-online-mobile-ranking-fab {
+        display: none;
+    }
+
+    .battle-online-ranking-modal-backdrop {
+        position: fixed;
+        z-index: 1100;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(11, 18, 38, .64);
+        backdrop-filter: blur(4px);
+        animation: battle-online-modal-fade .18s ease-out both;
+    }
+
+    .battle-online-ranking-modal {
+        width: min(430px, 100%);
+        max-height: calc(100vh - 32px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid var(--bo-line);
+        border-radius: 20px;
+        color: var(--bo-text);
+        background: var(--bo-card);
+        box-shadow: 0 24px 70px rgba(7, 14, 35, .38);
+        animation: battle-online-modal-pop .22s ease-out both;
+    }
+
+    .battle-online-ranking-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 16px 10px;
+        border-bottom: 1px solid var(--bo-line);
+    }
+
+    .battle-online-ranking-modal-header h2 {
+        margin: 2px 0 0;
+        font-size: 22px;
+    }
+
+    .battle-online-ranking-modal-header button {
+        width: 38px;
+        height: 38px;
+        flex: 0 0 38px;
+        border: 0;
+        border-radius: 50%;
+        color: #fff;
+        background: linear-gradient(135deg, #667eea, #7652ed);
+        font-size: 25px;
+        line-height: 1;
+    }
+
+    .battle-online-ranking-modal-scroll {
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        padding: 12px;
+    }
+
+    .battle-online-ranking-modal-scroll .battle-online-event-board {
+        margin-bottom: 2px;
+    }
+
+    @keyframes battle-online-modal-fade {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes battle-online-modal-pop {
+        from { opacity: 0; transform: translateY(12px) scale(.96); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .battle-online-qr-modal-backdrop {
+        position: fixed;
+        z-index: 1120;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(9, 15, 33, .70);
+        backdrop-filter: blur(5px);
+        animation: battle-online-modal-fade .18s ease-out both;
+    }
+
+    .battle-online-qr-modal {
+        width: min(390px, 100%);
+        max-height: calc(100vh - 32px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid var(--bo-line);
+        border-radius: 22px;
+        color: var(--bo-text);
+        background: var(--bo-card);
+        box-shadow: 0 24px 75px rgba(4, 10, 28, .45);
+        animation: battle-online-modal-pop .22s ease-out both;
+    }
+
+    .battle-online-qr-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 15px 16px 11px;
+        border-bottom: 1px solid var(--bo-line);
+    }
+
+    .battle-online-qr-modal-header h2 {
+        margin: 2px 0 0;
+        font-size: 20px;
+    }
+
+    .battle-online-qr-modal-header button {
+        width: 38px;
+        height: 38px;
+        flex: 0 0 38px;
+        border: 0;
+        border-radius: 50%;
+        color: #fff;
+        background: linear-gradient(135deg, #667eea, #7652ed);
+        font-size: 25px;
+        line-height: 1;
+    }
+
+    .battle-online-qr-modal-body {
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 16px;
+        text-align: center;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .battle-online-qr-modal-body > img {
+        width: min(280px, 86vw);
+        height: auto;
+        display: block;
+        margin: 0 auto 12px;
+        border: 10px solid #fff;
+        border-radius: 18px;
+        box-shadow: 0 10px 30px rgba(47, 65, 130, .16);
+    }
+
+    .battle-online-qr-room-code {
+        display: block;
+        margin: 6px 0;
+        color: var(--bo-purple);
+        font-family:
+            "Cascadia Mono",
+            Consolas,
+            "DejaVu Sans Mono",
+            "Liberation Mono",
+            monospace;
+        font-size: 25px;
+        font-weight: 900;
+        font-variant-ligatures: none;
+        font-variant-numeric: tabular-nums slashed-zero;
+        letter-spacing: 2px;
+    }
+
+    .battle-online-qr-modal-body p {
+        margin: 8px 0 5px;
+        color: var(--bo-muted);
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .battle-online-qr-modal-body > small {
+        display: block;
+        overflow-wrap: anywhere;
+        color: var(--bo-muted);
+        font-size: 9px;
+    }
+
+    .battle-online-qr-reader {
+        width: 100%;
+        min-height: 260px;
+        overflow: hidden;
+        border: 2px solid #7c67ed !important;
+        border-radius: 18px;
+        background: #111827;
+    }
+
+    .battle-online-qr-reader video {
+        border-radius: 14px;
+        object-fit: cover;
+    }
+
+    .battle-online-camera-loading,
+    .battle-online-camera-error {
+        margin-bottom: 10px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 800;
+    }
+
+    .battle-online-camera-loading {
+        color: #503bb8;
+        background: #f0edff;
+    }
+
+    .battle-online-camera-error {
+        color: #b42318;
+        background: #feeceb;
+    }
+
+    .battle-online-skill-hit-overlay {
+        position: absolute;
+        z-index: 200;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        padding: 24px;
+        border-radius: inherit;
+        color: #fff;
+        background: rgba(4, 10, 28, .78);
+        backdrop-filter: blur(3px) saturate(.65);
+        pointer-events: none;
+        animation: battle-online-skill-impact .28s ease-out both;
+    }
+
+    .battle-online-skill-hit-panel {
+        min-width: min(330px, 86%);
+        min-height: 118px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        padding: 22px 28px;
+        border: 2px solid rgba(255,255,255,.75);
+        border-radius: 28px;
+        font-size: 26px;
+        letter-spacing: .04em;
+        text-align: center;
+        animation: battle-online-skill-panel-pulse .72s ease-in-out infinite alternate;
+    }
+
+    .battle-online-skill-hit-panel > span {
+        font-size: 44px;
+        filter: drop-shadow(0 0 12px currentColor);
+    }
+
+    .battle-online-skill-hit-panel > strong {
+        max-width: 210px;
+        font-size: 23px;
+        line-height: 1.12;
+    }
+
+    .battle-online-skill-hit-panel > b {
+        font-size: 24px;
+        white-space: nowrap;
+    }
+
+    .battle-online-skill-hit-overlay > small {
+        padding: 7px 14px;
+        border-radius: 999px;
+        color: #fff;
+        background: rgba(0,0,0,.38);
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .battle-online-skill-hit-crystals {
+        position: absolute;
+        top: 10%;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 28px;
+        letter-spacing: 18px;
+        text-shadow: 0 0 7px #fff, 0 0 18px currentColor;
+    }
+
+    .battle-online-skill-hit-overlay.is-freeze {
+        color: #dffbff;
+        background:
+            radial-gradient(circle at 50% 45%, rgba(30,144,255,.42), transparent 45%),
+            rgba(4, 18, 38, .82);
+        box-shadow: inset 0 0 65px rgba(55,184,255,.48);
+    }
+
+    .battle-online-skill-hit-overlay.is-freeze .battle-online-skill-hit-panel {
+        background: linear-gradient(135deg, rgba(18,91,211,.88), rgba(43,161,255,.90));
+        box-shadow: 0 0 20px #59d6ff, 0 0 65px rgba(32,125,255,.85);
+    }
+
+    .battle-online-skill-hit-overlay.is-break_streak {
+        background: radial-gradient(circle, rgba(220,38,38,.38), rgba(20,5,15,.86));
+    }
+
+    .battle-online-skill-hit-overlay.is-break_streak .battle-online-skill-hit-panel {
+        background: linear-gradient(135deg, #7f1d1d, #ef4444);
+        box-shadow: 0 0 24px rgba(255,67,67,.9), 0 0 60px rgba(239,68,68,.55);
+    }
+
+    .battle-online-skill-hit-overlay.is-steal_score {
+        background: radial-gradient(circle, rgba(245,158,11,.30), rgba(20,12,2,.86));
+    }
+
+    .battle-online-skill-hit-overlay.is-steal_score .battle-online-skill-hit-panel {
+        color: #3b2200;
+        background: linear-gradient(135deg, #fde68a, #f59e0b);
+        box-shadow: 0 0 24px rgba(251,191,36,.9), 0 0 60px rgba(245,158,11,.5);
+    }
+
+    @keyframes battle-online-skill-impact {
+        from { opacity: 0; transform: scale(1.04); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes battle-online-skill-panel-pulse {
+        from { transform: scale(.98); filter: brightness(.92); }
+        to { transform: scale(1.025); filter: brightness(1.16); }
     }
 
     .battle-online-title-row {
@@ -2335,6 +2891,8 @@
         font-size: 9px;
         font-weight: 900;
         letter-spacing: .04em;
+        line-height: 1.2;
+        white-space: nowrap;
     }
 
     .battle-online-question-skill.is-fire_up {
@@ -2344,6 +2902,12 @@
             0 0 12px rgba(255,98,49,.58),
             0 0 25px rgba(239,68,68,.30);
         animation: battle-online-fire-skill-glow .76s ease-in-out infinite alternate;
+    }
+
+    .battle-online-question-skill.is-fire_up span {
+        display: block;
+        min-width: 86px;
+        text-align: center;
     }
 
     @keyframes battle-online-fire-skill-glow {
@@ -2821,6 +3385,37 @@
 
         .battle-online-vs {
             justify-content: center;
+        }
+
+        .battle-online-mobile-ranking-fab {
+            position: fixed;
+            z-index: 999;
+            left: 18px;
+            bottom: 22px;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            border: 4px solid #fff;
+            border-radius: 50%;
+            color: #fff;
+            background: linear-gradient(135deg, #4f7df3, #7652ed);
+            box-shadow: 0 8px 24px rgba(79,70,229,.38);
+            line-height: 1;
+        }
+
+        .battle-online-mobile-ranking-fab span {
+            font-size: 22px;
+        }
+
+        .battle-online-mobile-ranking-fab small {
+            margin-top: 2px;
+            color: inherit;
+            font-size: 8px;
+            font-weight: 900;
         }
     }
 
