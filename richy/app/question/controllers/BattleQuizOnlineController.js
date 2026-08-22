@@ -82,9 +82,11 @@
         vm.topics = [];
 
         /*
-         * Bài được chọn TRƯỚC khi CREATE ROOM.
+         * Có thể gom nhiều bài từ nhiều category trước khi CREATE ROOM.
+         * selectedTopicToCreate chỉ là bài đang đứng trong ô chọn.
          */
         vm.selectedTopicToCreate = null;
+        vm.selectedTopicsToCreate = [];
 
         vm.searchTopicDto = {};
         vm.searchTopicCategory = {};
@@ -142,6 +144,9 @@
         vm.leaveRoom = leaveRoom;
 
         vm.getTopics = getTopics;
+        vm.addTopicToCreate = addTopicToCreate;
+        vm.removeTopicToCreate = removeTopicToCreate;
+        vm.formatTopicNames = formatTopicNames;
 
         vm.selectMode = selectMode;
         vm.markClassicQuestionCountTouched =
@@ -161,6 +166,9 @@
         vm.getSkillIcon = getSkillIcon;
         vm.isMeFrozen = isMeFrozen;
         vm.getFreezeRemaining = getFreezeRemaining;
+        vm.isMeBurning = isMeBurning;
+        vm.isPlayerBurning = isPlayerBurning;
+        vm.getBurnRemaining = getBurnRemaining;
         vm.dismissPersonalSkillNotice = dismissPersonalSkillNotice;
         vm.formatScore = formatScore;
 
@@ -426,6 +434,88 @@
         }
 
 
+        function addTopicToCreate() {
+            var topic = vm.selectedTopicToCreate;
+
+            if (!topic || topic.id == null) {
+                toastr.warning(
+                    'Chọn một bài rồi bấm THÊM BÀI.',
+                    'BATTLE ONLINE'
+                );
+                return;
+            }
+
+            var duplicate = false;
+
+            angular.forEach(
+                vm.selectedTopicsToCreate,
+                function (selected) {
+                    if (
+                        selected &&
+                        String(selected.id) === String(topic.id)
+                    ) {
+                        duplicate = true;
+                    }
+                }
+            );
+
+            if (duplicate) {
+                toastr.info(
+                    'Bài này đã có trong danh sách.',
+                    'BATTLE ONLINE'
+                );
+                vm.selectedTopicToCreate = null;
+                return;
+            }
+
+            var category =
+                vm.searchTopicDto.topicCategory || {};
+
+            vm.selectedTopicsToCreate.push({
+                id: topic.id,
+                name: topic.name || '',
+                categoryId: category.id,
+                categoryName: category.name || '',
+                displayName:
+                    (category.name
+                        ? category.name + ' — '
+                        : '') +
+                    (topic.name || 'Bài từ vựng')
+            });
+
+            vm.selectedTopicToCreate = null;
+        }
+
+
+        function removeTopicToCreate(topic) {
+            if (!topic) {
+                return;
+            }
+
+            for (
+                var index = vm.selectedTopicsToCreate.length - 1;
+                index >= 0;
+                index -= 1
+            ) {
+                if (
+                    String(vm.selectedTopicsToCreate[index].id) ===
+                    String(topic.id)
+                ) {
+                    vm.selectedTopicsToCreate.splice(index, 1);
+                }
+            }
+        }
+
+
+        function formatTopicNames(topicNames) {
+            var names = topicNames || [];
+
+            return names.length
+                ? names.join(' • ')
+                : 'Bài từ vựng';
+        }
+
+
         /* =====================================================
            CREATE / JOIN
            ===================================================== */
@@ -436,11 +526,11 @@
             }
 
             if (
-                !vm.selectedTopicToCreate ||
-                vm.selectedTopicToCreate.id == null
+                !vm.selectedTopicsToCreate ||
+                vm.selectedTopicsToCreate.length === 0
             ) {
                 toastr.warning(
-                    'Chọn bài từ vựng trước khi tạo phòng.',
+                    'Thêm ít nhất một bài từ vựng trước khi tạo phòng.',
                     'BATTLE ONLINE'
                 );
                 return;
@@ -450,15 +540,25 @@
             blockUI.start();
 
             var createDto = {
-                topicIds: [
-                    vm.selectedTopicToCreate.id
-                ],
-
-                topicNames: [
-                    vm.selectedTopicToCreate.name ||
-                    ''
-                ]
+                topicIds: [],
+                topicNames: []
             };
+
+            angular.forEach(
+                vm.selectedTopicsToCreate,
+                function (topic) {
+                    if (!topic || topic.id == null) {
+                        return;
+                    }
+
+                    createDto.topicIds.push(topic.id);
+                    createDto.topicNames.push(
+                        topic.displayName ||
+                        topic.name ||
+                        ''
+                    );
+                }
+            );
 
             battleService
                 .createRoom(
@@ -1398,6 +1498,10 @@
                 return 'CƯỚP 5% ĐIỂM';
             }
 
+            if (type === 'FIRE_UP') {
+                return 'CHÁY LÊN x1.5 TRONG 15 GIÂY';
+            }
+
             return 'SKILL';
         }
 
@@ -1413,6 +1517,10 @@
 
             if (type === 'STEAL_SCORE') {
                 return '💰';
+            }
+
+            if (type === 'FIRE_UP') {
+                return '🔥';
             }
 
             return '⚡';
@@ -1446,6 +1554,38 @@
                 Math.ceil(
                     (
                         Number(me.frozenUntil || 0) -
+                        serverNow()
+                    ) / 1000
+                )
+            );
+        }
+
+
+        function isPlayerBurning(player) {
+            return !!(
+                player &&
+                Number(player.burningUntil || 0) > serverNow()
+            );
+        }
+
+
+        function isMeBurning() {
+            return isPlayerBurning(getMe());
+        }
+
+
+        function getBurnRemaining() {
+            var me = getMe();
+
+            if (!me) {
+                return 0;
+            }
+
+            return Math.max(
+                0,
+                Math.ceil(
+                    (
+                        Number(me.burningUntil || 0) -
                         serverNow()
                     ) / 1000
                 )
@@ -1749,22 +1889,17 @@
 
         function getPlayerClass(player) {
             if (!player) {
-                return '';
+                return {};
             }
 
-            if (player.rank === 1) {
-                return 'is-rank-1';
-            }
-
-            if (player.rank === 2) {
-                return 'is-rank-2';
-            }
-
-            if (player.rank === 3) {
-                return 'is-rank-3';
-            }
-
-            return '';
+            return {
+                'is-rank-1': player.rank === 1,
+                'is-rank-2': player.rank === 2,
+                'is-rank-3': player.rank === 3,
+                'is-player-burning': isPlayerBurning(player),
+                'is-player-frozen':
+                    Number(player.frozenUntil || 0) > serverNow()
+            };
         }
 
 

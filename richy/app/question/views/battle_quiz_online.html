@@ -54,19 +54,19 @@
             <h2>TẠO PHÒNG</h2>
 
             <p class="battle-online-create-hint">
-                Chọn đúng bài từ vựng trước. Server sẽ bắt đầu preload bài ngay khi phòng được tạo.
+                Có thể thêm nhiều bài từ nhiều Grade/Category khác nhau. Server sẽ trộn câu của tất cả bài đã chọn.
             </p>
 
             <div class="battle-online-create-form">
 
-                <label>GRADE</label>
+                <label>GRADE / CATEGORY</label>
 
                 <ui-select
                     ng-model="vm.searchTopicDto.topicCategory"
                     ng-change="vm.getTopics()"
                     theme="bootstrap">
 
-                    <ui-select-match placeholder="Chọn Grade">
+                    <ui-select-match placeholder="Chọn Grade / Category">
                         {{$select.selected.name}}
                     </ui-select-match>
 
@@ -80,31 +80,55 @@
 
                 <label>BÀI TỪ VỰNG</label>
 
-                <ui-select
-                    ng-model="vm.selectedTopicToCreate"
-                    theme="bootstrap">
+                <div class="battle-online-topic-picker-row">
+                    <ui-select
+                        ng-model="vm.selectedTopicToCreate"
+                        theme="bootstrap">
 
-                    <ui-select-match placeholder="Chọn bài muốn thi">
-                        {{$select.selected.name}}
-                    </ui-select-match>
+                        <ui-select-match placeholder="Chọn bài muốn thêm">
+                            {{$select.selected.name}}
+                        </ui-select-match>
 
-                    <ui-select-choices
-                        repeat="topic in vm.topics | filter:$select.search">
+                        <ui-select-choices
+                            repeat="topic in vm.topics | filter:$select.search">
 
-                        <div ng-bind-html="topic.name | highlight:$select.search"></div>
-                    </ui-select-choices>
-                </ui-select>
+                            <div ng-bind-html="topic.name | highlight:$select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+
+                    <button type="button"
+                            class="battle-online-add-topic-btn"
+                            ng-disabled="!vm.selectedTopicToCreate"
+                            ng-click="vm.addTopicToCreate()">
+                        <i class="fa fa-plus"></i>
+                        THÊM BÀI
+                    </button>
+                </div>
+
+                <div class="battle-online-selected-topics"
+                     ng-if="vm.selectedTopicsToCreate.length">
+                    <div class="battle-online-selected-topic"
+                         ng-repeat="topic in vm.selectedTopicsToCreate track by topic.id">
+                        <span>
+                            <small>{{topic.categoryName}}</small>
+                            <strong>{{topic.name}}</strong>
+                        </span>
+                        <button type="button"
+                                title="Bỏ bài này"
+                                ng-click="vm.removeTopicToCreate(topic)">×</button>
+                    </div>
+                </div>
 
             </div>
 
             <button type="button"
                     class="battle-online-btn battle-online-btn-primary"
                     ng-click="vm.createRoom()"
-                    ng-disabled="vm.creatingRoom || !vm.selectedTopicToCreate">
+                    ng-disabled="vm.creatingRoom || !vm.selectedTopicsToCreate.length">
 
                 <i class="fa fa-plus-circle"></i>
 
-                TẠO PHÒNG VỚI BÀI NÀY
+                TẠO PHÒNG VỚI {{vm.selectedTopicsToCreate.length || 0}} BÀI
             </button>
         </div>
 
@@ -190,7 +214,7 @@
             <span>📘 BÀI ĐÃ CHỌN</span>
 
             <strong>
-                {{vm.room.settings.topicNames[0] || 'Bài từ vựng'}}
+                {{vm.formatTopicNames(vm.room.settings.topicNames)}}
             </strong>
         </div>
 
@@ -558,7 +582,11 @@
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING'">
 
-        <main class="battle-online-card battle-online-question-card">
+        <main class="battle-online-card battle-online-question-card"
+              ng-class="{
+                  'is-player-frozen': vm.isMeFrozen(),
+                  'is-player-burning': vm.isMeBurning()
+              }">
 
             <div class="battle-online-personal-skill-alert"
                  ng-if="vm.personalSkillNotice">
@@ -572,6 +600,12 @@
                  ng-if="vm.isMeFrozen()">
                 ❄️ BẠN ĐANG BỊ ĐÓNG BĂNG — CÒN
                 <b>{{vm.getFreezeRemaining()}}</b> GIÂY
+            </div>
+
+            <div class="battle-online-burning-alert"
+                 ng-if="vm.isMeBurning()">
+                🔥 CHÁY LÊN — ĐIỂM ĐÚNG x1.5 — CÒN
+                <b>{{vm.getBurnRemaining()}}</b> GIÂY
             </div>
 
 
@@ -624,7 +658,8 @@
                  ng-if="vm.room.currentQuestion">
 
                 <div class="battle-online-question-skill"
-                     ng-if="vm.room.currentQuestion.skillType">
+                     ng-if="vm.room.currentQuestion.skillType"
+                     ng-class="'is-' + vm.room.currentQuestion.skillType.toLowerCase()">
                     {{vm.getSkillIcon(vm.room.currentQuestion.skillType)}}
                     TRẢ LỜI ĐÚNG ĐỂ NHẬN
                     {{vm.getSkillLabel(vm.room.currentQuestion.skillType)}}
@@ -789,6 +824,11 @@
                         {{player.displayName || player.username}}
                     </strong>
 
+                    <span class="battle-online-burning-badge"
+                          ng-if="vm.isPlayerBurning(player)">
+                        🔥 x1.5
+                    </span>
+
                     <small ng-if="vm.room.settings.mode === 'CLASSIC'">
                         🔥 {{player.streak}}
                         • ✅ {{player.correctCount}}
@@ -854,7 +894,7 @@
             </span>
 
             <small>
-                {{vm.room.settings.topicNames[0]}}
+                {{vm.formatTopicNames(vm.room.settings.topicNames)}}
             </small>
         </div>
 
@@ -873,6 +913,11 @@
                     <strong>
                         {{player.displayName || player.username}}
                     </strong>
+
+                    <span class="battle-online-burning-badge"
+                          ng-if="vm.isPlayerBurning(player)">
+                        🔥 x1.5
+                    </span>
 
                     <small>
                         🔥 {{player.streak}}
@@ -1142,6 +1187,84 @@
         width: 100% !important;
     }
 
+    .battle-online-topic-picker-row {
+        display: grid;
+        grid-template-columns: minmax(0,1fr) auto;
+        gap: 7px;
+        align-items: stretch;
+    }
+
+    .battle-online-add-topic-btn {
+        min-width: 102px;
+        padding: 0 12px;
+        border: 0;
+        border-radius: 10px;
+        color: #fff;
+        background: linear-gradient(135deg, #5b68ed, #8059eb);
+        font-size: 9px;
+        font-weight: 900;
+    }
+
+    .battle-online-add-topic-btn:disabled {
+        opacity: .45;
+    }
+
+    .battle-online-selected-topics {
+        max-height: 180px;
+        display: grid;
+        gap: 6px;
+        margin-top: 8px;
+        overflow-y: auto;
+    }
+
+    .battle-online-selected-topic {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 7px 8px 7px 10px;
+        border: 1px solid #dfe4f3;
+        border-radius: 11px;
+        background: #f7f8fd;
+        text-align: left;
+    }
+
+    .battle-online-selected-topic span {
+        min-width: 0;
+    }
+
+    .battle-online-selected-topic small,
+    .battle-online-selected-topic strong {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .battle-online-selected-topic small {
+        color: var(--bo-muted);
+        font-size: 8px;
+        font-weight: 800;
+    }
+
+    .battle-online-selected-topic strong {
+        color: var(--bo-text);
+        font-size: 10px;
+        font-weight: 900;
+    }
+
+    .battle-online-selected-topic button {
+        flex: 0 0 25px;
+        width: 25px;
+        height: 25px;
+        border: 0;
+        border-radius: 50%;
+        color: #a82f4a;
+        background: #ffe5eb;
+        font-size: 17px;
+        line-height: 1;
+    }
+
     .battle-online-room-input {
         max-width: 230px;
 
@@ -1404,6 +1527,15 @@
         padding: 16px;
 
         border-radius: 22px;
+    }
+
+    .battle-online-question-card {
+        position: relative;
+        overflow: visible;
+        transition:
+            border-color .22s ease,
+            box-shadow .22s ease,
+            filter .22s ease;
     }
 
     .battle-online-title-row {
@@ -2048,7 +2180,8 @@
     }
 
     .battle-online-personal-skill-alert,
-    .battle-online-frozen-alert {
+    .battle-online-frozen-alert,
+    .battle-online-burning-alert {
         display: flex;
         align-items: center;
         gap: 9px;
@@ -2090,6 +2223,106 @@
         to { box-shadow: 0 0 20px rgba(14, 165, 233, .35); }
     }
 
+    .battle-online-burning-alert {
+        justify-content: center;
+        border-color: #fb7185;
+        color: #fff;
+        background: linear-gradient(135deg, #7f1d1d, #dc2626, #f97316);
+        box-shadow: 0 0 22px rgba(239, 68, 68, .34);
+        font-weight: 900;
+        animation: battle-online-burning-alert-pulse .72s ease-in-out infinite alternate;
+    }
+
+    @keyframes battle-online-burning-alert-pulse {
+        from {
+            filter: brightness(.93);
+            box-shadow: 0 0 10px rgba(239, 68, 68, .22);
+        }
+        to {
+            filter: brightness(1.14);
+            box-shadow:
+                0 0 18px rgba(255, 82, 48, .58),
+                0 0 34px rgba(239, 68, 68, .30);
+        }
+    }
+
+    /* Đồng bộ cảm giác đóng băng với Quiz Battle 2. */
+    .battle-online-question-card.is-player-frozen {
+        border-color: rgba(133,225,255,.88) !important;
+        box-shadow:
+            0 0 0 2px rgba(140,230,255,.32),
+            0 0 22px rgba(94,211,255,.58),
+            0 0 42px rgba(57,128,255,.30) !important;
+    }
+
+    .battle-online-question-card.is-player-frozen
+    .battle-online-word {
+        border: 1px solid rgba(164,238,255,.84);
+        background:
+            radial-gradient(circle at 50% 8%, rgba(195,248,255,.22), transparent 35%),
+            linear-gradient(135deg, #11283f, #0a1728) !important;
+        box-shadow:
+            inset 0 0 38px rgba(76,192,255,.16),
+            0 0 17px rgba(129,224,255,.64),
+            0 0 36px rgba(65,136,255,.32) !important;
+    }
+
+    .battle-online-question-card.is-player-frozen
+    .battle-online-answer-btn {
+        outline: 1px solid rgba(153,233,255,.72);
+        box-shadow:
+            inset 0 0 20px rgba(140,230,255,.13),
+            0 0 11px rgba(125,220,255,.54),
+            0 0 24px rgba(70,139,255,.24) !important;
+        filter: saturate(.58) brightness(.89);
+        cursor: not-allowed !important;
+    }
+
+    .battle-online-question-card.is-player-frozen:before,
+    .battle-online-question-card.is-player-frozen:after {
+        content: "◆  ❄  ◆  ❄  ◆";
+        position: absolute;
+        z-index: 65;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #d9faff;
+        white-space: nowrap;
+        text-shadow:
+            0 0 4px #fff,
+            0 0 10px rgba(103,224,255,.95),
+            0 0 18px rgba(61,129,255,.70);
+        pointer-events: none;
+        animation: battle-online-ice-shimmer .65s ease-in-out infinite alternate;
+    }
+
+    .battle-online-question-card.is-player-frozen:before {
+        top: 52px;
+    }
+
+    .battle-online-question-card.is-player-frozen:after {
+        bottom: 38px;
+        transform: translateX(-50%) rotate(180deg);
+    }
+
+    @keyframes battle-online-ice-shimmer {
+        from { opacity: .55; filter: brightness(.92); }
+        to { opacity: 1; filter: brightness(1.28); }
+    }
+
+    .battle-online-question-card.is-player-burning {
+        border-color: rgba(248,113,113,.74);
+        box-shadow:
+            0 0 0 2px rgba(239,68,68,.20),
+            0 0 24px rgba(239,68,68,.34);
+    }
+
+    .battle-online-question-card.is-player-burning.is-player-frozen {
+        box-shadow:
+            0 0 0 2px rgba(140,230,255,.32),
+            0 0 24px rgba(94,211,255,.58),
+            0 0 45px rgba(239,68,68,.34) !important;
+    }
+
     .battle-online-question-skill {
         position: absolute;
         top: 10px;
@@ -2102,6 +2335,20 @@
         font-size: 9px;
         font-weight: 900;
         letter-spacing: .04em;
+    }
+
+    .battle-online-question-skill.is-fire_up {
+        border-color: rgba(255,229,163,.75);
+        background: linear-gradient(135deg, #991b1b, #ef4444, #f97316);
+        box-shadow:
+            0 0 12px rgba(255,98,49,.58),
+            0 0 25px rgba(239,68,68,.30);
+        animation: battle-online-fire-skill-glow .76s ease-in-out infinite alternate;
+    }
+
+    @keyframes battle-online-fire-skill-glow {
+        from { transform: scale(.98); filter: brightness(.95); }
+        to { transform: scale(1.04); filter: brightness(1.18); }
     }
 
     .battle-online-skill-target-panel {
@@ -2233,6 +2480,14 @@
         color: #92400e;
     }
 
+    .battle-online-event-row.is-fire_up {
+        background: #fee2e2;
+    }
+
+    .battle-online-event-row.is-fire_up p {
+        color: #991b1b;
+    }
+
     .battle-online-countdown-tip {
         margin-top: 9px;
         padding: 7px 9px;
@@ -2308,6 +2563,46 @@
 
     .battle-online-ranking-row.is-rank-3 {
         background: #fff0e7;
+    }
+
+    .battle-online-ranking-row.is-player-burning {
+        border-color: rgba(248,113,113,.90);
+        background: linear-gradient(135deg, #fff1f2, #ffedd5);
+        animation: battle-online-ranking-fire-glow .82s ease-in-out infinite alternate;
+    }
+
+    .battle-online-ranking-row.is-player-burning strong {
+        color: #991b1b;
+        text-shadow: 0 0 8px rgba(239,68,68,.32);
+    }
+
+    .battle-online-burning-badge {
+        display: inline-flex;
+        width: max-content;
+        margin-top: 3px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        color: #fff;
+        background: linear-gradient(135deg, #b91c1c, #f97316);
+        box-shadow: 0 0 10px rgba(239,68,68,.35);
+        font-size: 7px;
+        font-weight: 900;
+    }
+
+    @keyframes battle-online-ranking-fire-glow {
+        from {
+            transform: translateY(0);
+            box-shadow:
+                0 0 7px rgba(239,68,68,.28),
+                inset 0 0 9px rgba(249,115,22,.08);
+        }
+        to {
+            transform: translateY(-1px);
+            box-shadow:
+                0 0 15px rgba(255,68,68,.70),
+                0 0 28px rgba(249,115,22,.38),
+                inset 0 0 14px rgba(239,68,68,.13);
+        }
     }
 
     .battle-online-rank {
@@ -2502,6 +2797,11 @@
     }
 
     html.global-dark-mode
+    .battle-online-ranking-row.is-player-burning {
+        background: linear-gradient(135deg, #451a1a, #3f1d15);
+    }
+
+    html.global-dark-mode
     .battle-online-rank {
         color: #d9e0ec;
         background: #263248;
@@ -2574,6 +2874,14 @@
 
         .battle-online-mode-grid {
             grid-template-columns: 1fr;
+        }
+
+        .battle-online-topic-picker-row {
+            grid-template-columns: 1fr;
+        }
+
+        .battle-online-add-topic-btn {
+            min-height: 38px;
         }
 
         .battle-online-mode-card {
