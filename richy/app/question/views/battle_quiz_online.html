@@ -164,7 +164,6 @@
                 <i class="fa fa-copy"></i>
                 COPY LINK
             </button>
-            <!--<canvas id="canvas" style="width:350px;width:350px"></canvas>-->
         </div>
 
         <div class="battle-online-room-actions">
@@ -449,8 +448,8 @@
                        min="1"
                        max="180"
                        class="form-control"
-                       ng-model="vm.hostSettings.countdownMinutes"
-                       ng-change="vm.hostSettings.countdownMinutesDirty = true">
+                       ng-change="vm.markCountdownMinutesTouched()"
+                       ng-model="vm.hostSettings.countdownMinutes">
 
                 <p>
                     Mỗi account nhận thứ tự từ ngẫu nhiên riêng. Trả lời xong là có câu tiếp ngay, không chờ người khác. Hết số phút là kết thúc.
@@ -561,6 +560,20 @@
 
         <main class="battle-online-card battle-online-question-card">
 
+            <div class="battle-online-personal-skill-alert"
+                 ng-if="vm.personalSkillNotice">
+                <span>{{vm.personalSkillNotice.icon}}</span>
+                <strong>{{vm.personalSkillNotice.message}}</strong>
+                <button type="button"
+                        ng-click="vm.dismissPersonalSkillNotice()">×</button>
+            </div>
+
+            <div class="battle-online-frozen-alert"
+                 ng-if="vm.isMeFrozen()">
+                ❄️ BẠN ĐANG BỊ ĐÓNG BĂNG — CÒN
+                <b>{{vm.getFreezeRemaining()}}</b> GIÂY
+            </div>
+
 
             <!-- CLASSIC TOP -->
             <div class="battle-online-game-topline"
@@ -610,6 +623,13 @@
             <div class="battle-online-word"
                  ng-if="vm.room.currentQuestion">
 
+                <div class="battle-online-question-skill"
+                     ng-if="vm.room.currentQuestion.skillType">
+                    {{vm.getSkillIcon(vm.room.currentQuestion.skillType)}}
+                    TRẢ LỜI ĐÚNG ĐỂ NHẬN
+                    {{vm.getSkillLabel(vm.room.currentQuestion.skillType)}}
+                </div>
+
                 <button type="button"
                         class="battle-online-speak-btn"
                         ng-click="vm.sayCurrentQuestion()">
@@ -627,7 +647,7 @@
 
 
             <div class="battle-online-private-loading"
-                 ng-if="!vm.room.currentQuestion">
+                 ng-if="!vm.room.currentQuestion && !vm.room.pendingSkillType">
 
                 <i class="fa fa-circle-o-notch fa-spin"></i>
 
@@ -641,7 +661,7 @@
                 <button type="button"
                         ng-repeat="option in vm.room.currentQuestion.answers track by option.key"
                         class="battle-online-answer-btn answer-{{$index}}"
-                        ng-disabled="vm.answerLocked || vm.countdown <= 0"
+                        ng-disabled="vm.answerLocked || vm.countdown <= 0 || vm.isMeFrozen() || vm.room.pendingSkillType"
                         ng-click="vm.answer(option)">
 
                     <span class="battle-online-answer-key">
@@ -682,6 +702,40 @@
                  ">
 
                 ⏳ Chờ người chơi khác / câu tiếp theo...
+            </div>
+
+            <div class="battle-online-skill-target-panel"
+                 ng-if="vm.room.pendingSkillType">
+
+                <div class="battle-online-skill-target-title">
+                    <span>{{vm.getSkillIcon(vm.room.pendingSkillType)}}</span>
+                    <div>
+                        <small>BẠN VỪA NHẬN SKILL</small>
+                        <strong>{{vm.getSkillLabel(vm.room.pendingSkillType)}}</strong>
+                    </div>
+                </div>
+
+                <p>Chọn một người chơi để sử dụng skill:</p>
+
+                <div class="battle-online-skill-target-list">
+                    <button type="button"
+                            ng-repeat="player in vm.availableSkillTargets track by player.username"
+                            ng-disabled="vm.usingSkill || !player.connected"
+                            ng-click="vm.useSkill(player)">
+                        <span>🎯</span>
+                        <strong>{{player.displayName || player.username}}</strong>
+                        <small>
+                            🔥 {{player.streak}} • {{vm.formatScore(player.score)}} điểm
+                        </small>
+                    </button>
+                </div>
+
+                <button type="button"
+                        class="battle-online-skill-skip"
+                        ng-disabled="vm.usingSkill"
+                        ng-click="vm.useSkill(null)">
+                    Bỏ qua skill và nhận câu tiếp theo
+                </button>
             </div>
 
 
@@ -742,15 +796,30 @@
                     </small>
 
                     <small ng-if="vm.room.settings.mode === 'COUNTDOWN'">
-                        📚 {{player.uniqueWordsSeen}}/{{player.totalLessonWords}}
+                        🔥 {{player.streak}}
+                        • 📚 {{player.uniqueWordsSeen}}/{{player.totalLessonWords}}
                         • ✅ {{player.correctCount}}
                         • ❌ {{player.wrongCount}}
                     </small>
                 </div>
 
                 <b class="battle-online-score">
-                    {{player.score}}
+                    {{vm.formatScore(player.score)}}
                 </b>
+            </div>
+
+            <div class="battle-online-event-board"
+                 ng-if="vm.room.recentEvents.length">
+                <div class="battle-online-event-title">
+                    ⚡ HOẠT ĐỘNG SKILL
+                </div>
+
+                <div class="battle-online-event-row"
+                     ng-repeat="event in vm.room.recentEvents track by event.id"
+                     ng-class="'is-' + (event.type || '').toLowerCase()">
+                    <span>{{vm.getSkillIcon(event.type)}}</span>
+                    <p>{{event.message}}</p>
+                </div>
             </div>
 
         </aside>
@@ -806,6 +875,8 @@
                     </strong>
 
                     <small>
+                        🔥 {{player.streak}}
+                        •
                         ✅ {{player.correctCount}}
                         • ❌ {{player.wrongCount}}
 
@@ -816,7 +887,7 @@
                 </div>
 
                 <b class="battle-online-score">
-                    {{player.score}}
+                    {{vm.formatScore(player.score)}}
                 </b>
             </div>
 
@@ -1976,6 +2047,192 @@
         background: #eef1f8;
     }
 
+    .battle-online-personal-skill-alert,
+    .battle-online-frozen-alert {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-bottom: 10px;
+        padding: 11px 13px;
+        border: 1px solid #f4bf55;
+        border-radius: 14px;
+        color: #713f12;
+        background: #fff4cf;
+        font-size: 12px;
+    }
+
+    .battle-online-personal-skill-alert strong {
+        flex: 1;
+    }
+
+    .battle-online-personal-skill-alert button {
+        width: 28px;
+        height: 28px;
+        border: 0;
+        border-radius: 50%;
+        color: #713f12;
+        background: rgba(113, 63, 18, .10);
+        font-size: 19px;
+        line-height: 1;
+    }
+
+    .battle-online-frozen-alert {
+        justify-content: center;
+        border-color: #7dd3fc;
+        color: #075985;
+        background: #e0f2fe;
+        font-weight: 900;
+        animation: battle-online-freeze-pulse 1s infinite alternate;
+    }
+
+    @keyframes battle-online-freeze-pulse {
+        from { box-shadow: 0 0 0 rgba(14, 165, 233, 0); }
+        to { box-shadow: 0 0 20px rgba(14, 165, 233, .35); }
+    }
+
+    .battle-online-question-skill {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        padding: 6px 9px;
+        border: 1px solid rgba(255,255,255,.22);
+        border-radius: 999px;
+        color: #fff;
+        background: rgba(124, 58, 237, .88);
+        font-size: 9px;
+        font-weight: 900;
+        letter-spacing: .04em;
+    }
+
+    .battle-online-skill-target-panel {
+        margin-top: 12px;
+        padding: 14px;
+        border: 2px solid #8b5cf6;
+        border-radius: 18px;
+        background: linear-gradient(145deg, #f5f0ff, #fff);
+    }
+
+    .battle-online-skill-target-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .battle-online-skill-target-title > span {
+        font-size: 32px;
+    }
+
+    .battle-online-skill-target-title small,
+    .battle-online-skill-target-title strong {
+        display: block;
+    }
+
+    .battle-online-skill-target-title small {
+        color: var(--bo-muted);
+        font-size: 9px;
+        font-weight: 900;
+    }
+
+    .battle-online-skill-target-title strong {
+        color: #6d28d9;
+        font-size: 16px;
+    }
+
+    .battle-online-skill-target-panel > p {
+        margin: 10px 0 8px;
+        color: var(--bo-muted);
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .battle-online-skill-target-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 7px;
+    }
+
+    .battle-online-skill-target-list button {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        gap: 2px 8px;
+        padding: 9px;
+        border: 1px solid #ddd6fe;
+        border-radius: 12px;
+        color: #312e81;
+        background: #fff;
+        text-align: left;
+    }
+
+    .battle-online-skill-target-list button > span {
+        grid-row: 1 / 3;
+    }
+
+    .battle-online-skill-target-list button small {
+        color: var(--bo-muted);
+        font-size: 9px;
+    }
+
+    .battle-online-skill-skip {
+        width: 100%;
+        margin-top: 8px;
+        padding: 8px;
+        border: 0;
+        border-radius: 10px;
+        color: var(--bo-muted);
+        background: #ede9fe;
+        font-size: 10px;
+        font-weight: 800;
+    }
+
+    .battle-online-event-board {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--bo-line);
+    }
+
+    .battle-online-event-title {
+        margin-bottom: 7px;
+        color: var(--bo-muted);
+        font-size: 9px;
+        font-weight: 900;
+        letter-spacing: .08em;
+    }
+
+    .battle-online-event-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 7px;
+        margin-top: 5px;
+        padding: 7px 8px;
+        border-radius: 10px;
+        background: #f5f3ff;
+    }
+
+    .battle-online-event-row p {
+        margin: 0;
+        color: #4c1d95;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1.35;
+    }
+
+    .battle-online-event-row.is-freeze {
+        background: #e0f2fe;
+    }
+
+    .battle-online-event-row.is-freeze p {
+        color: #075985;
+    }
+
+    .battle-online-event-row.is-steal_score {
+        background: #fef3c7;
+    }
+
+    .battle-online-event-row.is-steal_score p {
+        color: #92400e;
+    }
+
     .battle-online-countdown-tip {
         margin-top: 9px;
         padding: 7px 9px;
@@ -2335,6 +2592,10 @@
             grid-template-columns: 1fr;
 
             gap: 6px;
+        }
+
+        .battle-online-skill-target-list {
+            grid-template-columns: 1fr;
         }
 
         .battle-online-answer-btn {

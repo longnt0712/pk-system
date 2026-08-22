@@ -13,7 +13,7 @@ public class BattleOnlinePlayerDto implements Serializable {
     private boolean connected;
     private boolean answeredCurrentQuestion;
 
-    private int score;
+    private double score;
     private int streak;
     private int correctCount;
     private int wrongCount;
@@ -25,6 +25,12 @@ public class BattleOnlinePlayerDto implements Serializable {
      */
     private int uniqueWordsSeen;
     private int totalLessonWords;
+
+    /*
+     * COUNTDOWN skill FREEZE.
+     * Epoch milliseconds; client tự tính số giây còn lại theo serverTime.
+     */
+    private long frozenUntil;
 
     public BattleOnlinePlayerDto() {
     }
@@ -77,11 +83,11 @@ public class BattleOnlinePlayerDto implements Serializable {
         this.answeredCurrentQuestion = answeredCurrentQuestion;
     }
 
-    public int getScore() {
+    public double getScore() {
         return score;
     }
 
-    public void setScore(int score) {
+    public void setScore(double score) {
         this.score = score;
     }
 
@@ -131,5 +137,13 @@ public class BattleOnlinePlayerDto implements Serializable {
 
     public void setTotalLessonWords(int totalLessonWords) {
         this.totalLessonWords = totalLessonWords;
+    }
+
+    public long getFrozenUntil() {
+        return frozenUntil;
+    }
+
+    public void setFrozenUntil(long frozenUntil) {
+        this.frozenUntil = frozenUntil;
     }
 }

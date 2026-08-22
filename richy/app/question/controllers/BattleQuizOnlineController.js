@@ -68,6 +68,10 @@
         vm.lastAnswerCorrect = null;
         vm.lastAnswerMessage = '';
 
+        vm.usingSkill = false;
+        vm.availableSkillTargets = [];
+        vm.personalSkillNotice = null;
+
         /*
          * CLASSIC: số giây của câu hiện tại.
          * COUNTDOWN: tổng số giây còn lại của trận.
@@ -102,6 +106,7 @@
          * Flag sẽ được clear sau khi saveSettings thành công.
          */
         vm.hostModeDirty = false;
+        vm.hostCountdownMinutesDirty = false;
 
         vm.currentUser =
             readCurrentUser();
@@ -122,6 +127,7 @@
          * Đồng bộ clock client/server.
          */
         var serverTimeOffset = 0;
+        var lastSeenEventId = 0;
 
 
         /* =====================================================
@@ -140,6 +146,8 @@
         vm.selectMode = selectMode;
         vm.markClassicQuestionCountTouched =
             markClassicQuestionCountTouched;
+        vm.markCountdownMinutesTouched =
+            markCountdownMinutesTouched;
 
         vm.saveSettings = saveSettings;
 
@@ -148,6 +156,13 @@
         vm.restartMatch = restartMatch;
 
         vm.answer = answer;
+        vm.useSkill = useSkill;
+        vm.getSkillLabel = getSkillLabel;
+        vm.getSkillIcon = getSkillIcon;
+        vm.isMeFrozen = isMeFrozen;
+        vm.getFreezeRemaining = getFreezeRemaining;
+        vm.dismissPersonalSkillNotice = dismissPersonalSkillNotice;
+        vm.formatScore = formatScore;
 
         vm.copyRoomLink = copyRoomLink;
         vm.sayCurrentQuestion =
@@ -474,8 +489,6 @@
                         blockUI.stop();
                     }
                 );
-
-
         }
 
 
@@ -787,7 +800,41 @@
                         .currentQuestionIndex;
             }
 
+            /*
+             * pendingSkillType cũng là state riêng của account.
+             * Broadcast generic không được làm mất popup chọn mục tiêu.
+             */
+            if (
+                fromGenericSocket === true &&
+                incoming.status === 'PLAYING' &&
+                incoming.settings &&
+                incoming.settings.mode === 'COUNTDOWN' &&
+                !incoming.pendingSkillType &&
+                previousRoom &&
+                previousRoom.pendingSkillType
+            ) {
+                incoming.pendingSkillType =
+                    previousRoom.pendingSkillType;
+            }
+
             vm.room = incoming;
+
+            vm.availableSkillTargets = [];
+
+            angular.forEach(
+                incoming.players || [],
+                function (player) {
+                    if (
+                        player &&
+                        player.connected === true &&
+                        player.username !== vm.currentUser.username
+                    ) {
+                        vm.availableSkillTargets.push(player);
+                    }
+                }
+            );
+
+            processSkillEvents(incoming.recentEvents || []);
 
             if (incoming.serverTime) {
                 serverTimeOffset =
@@ -823,11 +870,15 @@
                         .secondsPerQuestion;
 
                 if (
-                    !vm.hostSettings.countdownMinutesDirty &&
-                    incoming.settings.countdownMinutes != null
+                    !isHost() ||
+                    incoming.status !== 'LOBBY' ||
+                    vm.hostCountdownMinutesDirty !== true
                 ) {
                     vm.hostSettings.countdownMinutes =
-                        incoming.settings.countdownMinutes;
+                        incoming.settings
+                            .countdownMinutes ||
+                        vm.hostSettings
+                            .countdownMinutes;
                 }
 
                 /*
@@ -901,7 +952,8 @@
                 incoming.settings &&
                 incoming.settings.mode ===
                     'COUNTDOWN' &&
-                !incoming.currentQuestion
+                !incoming.currentQuestion &&
+                !incoming.pendingSkillType
             ) {
                 refreshPrivateRoomState();
             }
@@ -918,6 +970,7 @@
             ) {
                 vm.lastAnswerCorrect = null;
                 vm.lastAnswerMessage = '';
+                vm.personalSkillNotice = null;
             }
 
             updateCountdown();
@@ -949,6 +1002,11 @@
         function markClassicQuestionCountTouched() {
             vm.classicQuestionCountTouched =
                 true;
+        }
+
+
+        function markCountdownMinutesTouched() {
+            vm.hostCountdownMinutesDirty = true;
         }
 
 
@@ -1047,7 +1105,7 @@
                          * room.settings.mode trở lại bình thường.
                          */
                         vm.hostModeDirty = false;
-                        vm.hostSettings.countdownMinutesDirty = false;
+                        vm.hostCountdownMinutesDirty = false;
 
                         applyRoom(
                             room,
@@ -1186,6 +1244,14 @@
                         vm.hostModeDirty =
                             false;
 
+                        vm.hostCountdownMinutesDirty =
+                            false;
+
+                        vm.personalSkillNotice =
+                            null;
+
+                        lastSeenEventId = 0;
+
                         applyRoom(
                             room,
                             false
@@ -1207,7 +1273,9 @@
                     'PLAYING' ||
                 !vm.room.currentQuestion ||
                 !option ||
-                vm.answerLocked
+                vm.answerLocked ||
+                vm.room.pendingSkillType ||
+                isMeFrozen()
             ) {
                 return;
             }
@@ -1271,6 +1339,8 @@
                         }
                     },
                     function (error) {
+                        vm.answerLocked = false;
+
                         showRequestError(
                             error
                         );
@@ -1282,6 +1352,169 @@
                         }
                     }
                 );
+        }
+
+
+        function useSkill(player) {
+            if (
+                !vm.room ||
+                !vm.room.pendingSkillType ||
+                vm.usingSkill
+            ) {
+                return;
+            }
+
+            vm.usingSkill = true;
+
+            battleService
+                .useSkill(
+                    vm.room.code,
+                    player && player.username
+                )
+                .then(
+                    function (room) {
+                        applyRoom(room, false);
+                    },
+                    showRequestError
+                )
+                .finally(
+                    function () {
+                        vm.usingSkill = false;
+                    }
+                );
+        }
+
+
+        function getSkillLabel(type) {
+            if (type === 'FREEZE') {
+                return 'ĐÓNG BĂNG 3 GIÂY';
+            }
+
+            if (type === 'BREAK_STREAK') {
+                return 'PHÁ STREAK';
+            }
+
+            if (type === 'STEAL_SCORE') {
+                return 'CƯỚP 5% ĐIỂM';
+            }
+
+            return 'SKILL';
+        }
+
+
+        function getSkillIcon(type) {
+            if (type === 'FREEZE') {
+                return '❄️';
+            }
+
+            if (type === 'BREAK_STREAK') {
+                return '💥';
+            }
+
+            if (type === 'STEAL_SCORE') {
+                return '💰';
+            }
+
+            return '⚡';
+        }
+
+
+        function serverNow() {
+            return new Date().getTime() + serverTimeOffset;
+        }
+
+
+        function isMeFrozen() {
+            var me = getMe();
+
+            return !!(
+                me &&
+                Number(me.frozenUntil || 0) > serverNow()
+            );
+        }
+
+
+        function getFreezeRemaining() {
+            var me = getMe();
+
+            if (!me) {
+                return 0;
+            }
+
+            return Math.max(
+                0,
+                Math.ceil(
+                    (
+                        Number(me.frozenUntil || 0) -
+                        serverNow()
+                    ) / 1000
+                )
+            );
+        }
+
+
+        function processSkillEvents(events) {
+            var newestId = lastSeenEventId;
+
+            for (var index = events.length - 1; index >= 0; index -= 1) {
+                var event = events[index];
+                var eventId = Number(event && event.id || 0);
+
+                if (eventId <= lastSeenEventId) {
+                    continue;
+                }
+
+                newestId = Math.max(newestId, eventId);
+
+                if (
+                    event.targetUsername === vm.currentUser.username &&
+                    event.actorUsername !== vm.currentUser.username
+                ) {
+                    vm.personalSkillNotice = {
+                        id: eventId,
+                        icon: getSkillIcon(event.type),
+                        message: buildPersonalSkillMessage(event)
+                    };
+                }
+            }
+
+            lastSeenEventId = newestId;
+        }
+
+
+        function buildPersonalSkillMessage(event) {
+            var actor =
+                event.actorDisplayName ||
+                event.actorUsername ||
+                'Ai đó';
+
+            if (event.type === 'FREEZE') {
+                return actor + ' vừa đóng băng bạn trong 3 giây.';
+            }
+
+            if (event.type === 'BREAK_STREAK') {
+                return actor + ' vừa phá streak của bạn.';
+            }
+
+            return actor + ' vừa cướp ' +
+                formatScore(event.amount) +
+                ' điểm của bạn.';
+        }
+
+
+        function dismissPersonalSkillNotice() {
+            vm.personalSkillNotice = null;
+        }
+
+
+        function formatScore(value) {
+            value = Number(value || 0);
+
+            if (Math.floor(value) === value) {
+                return String(value);
+            }
+
+            return value.toFixed(1);
         }
 
 
@@ -1442,24 +1675,11 @@
             }
         }
 
-        function qrRoom(room) {
-            const text = window.location.hostname  + '/' + room.code;
-            const canvas = document.getElementById('canvas');
-
-
-            QRCode.toCanvas(canvas, text, { width: 200 }, function (error) {
-                if (error) console.error(error);
-                console.log('Tạo mã QR thành công!');
-            });
-            console.log(text);
-        }
 
         function copyRoomLink() {
             if (!vm.room) {
                 return;
             }
-
-            qrRoom(vm.room);
 
             var link =
                 $window.location.origin +
@@ -1573,7 +1793,9 @@
                 vm.room.status !==
                     'PLAYING' ||
                 !vm.room.currentQuestion ||
-                vm.answerLocked
+                vm.answerLocked ||
+                vm.room.pendingSkillType ||
+                isMeFrozen()
             ) {
                 return;
             }
@@ -1704,20 +1926,5 @@
                 0
             );
         }
-
-
-
-
-
-
-    //     QRCode.toDataURL('Nội dung văn bản cần tạo')
-    //         .then(url => {
-    //         document.getElementById('qr-img').src = url;
-    // })
-    // .catch(err => {
-    //         console.error(err);
-    // });
-
-
     }
 })();

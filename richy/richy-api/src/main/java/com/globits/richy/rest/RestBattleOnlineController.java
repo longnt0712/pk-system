@@ -21,6 +21,7 @@ import com.globits.richy.dto.BattleOnlineCreateRoomDto;
 import com.globits.richy.dto.BattleOnlineReadyDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
+import com.globits.richy.dto.BattleOnlineUseSkillDto;
 import com.globits.richy.service.BattleOnlineException;
 import com.globits.richy.service.BattleOnlineService;
 
@@ -112,6 +113,18 @@ public class RestBattleOnlineController {
             @RequestBody BattleOnlineAnswerDto dto) {
 
         return battleOnlineService.answer(
+                roomCode,
+                currentUsername(),
+                dto
+        );
+    }
+
+    @RequestMapping(value = "/rooms/{roomCode}/skill", method = RequestMethod.POST)
+    public BattleOnlineRoomDto useSkill(
+            @PathVariable String roomCode,
+            @RequestBody BattleOnlineUseSkillDto dto) {
+
+        return battleOnlineService.useSkill(
                 roomCode,
                 currentUsername(),
                 dto

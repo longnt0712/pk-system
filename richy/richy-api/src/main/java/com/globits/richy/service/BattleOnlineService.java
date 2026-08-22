@@ -5,6 +5,7 @@ import com.globits.richy.dto.BattleOnlineAnswerResultDto;
 import com.globits.richy.dto.BattleOnlineCreateRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
+import com.globits.richy.dto.BattleOnlineUseSkillDto;
 
 public interface BattleOnlineService {
 
@@ -54,5 +55,11 @@ public interface BattleOnlineService {
             String roomCode,
             String username,
             BattleOnlineAnswerDto answerDto
+    );
+
+    BattleOnlineRoomDto useSkill(
+            String roomCode,
+            String username,
+            BattleOnlineUseSkillDto skillDto
     );
 }

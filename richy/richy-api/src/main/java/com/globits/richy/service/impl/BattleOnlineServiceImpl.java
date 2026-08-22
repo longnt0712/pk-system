@@ -30,10 +30,12 @@ import com.globits.richy.dto.BattleOnlineAnswerDto;
 import com.globits.richy.dto.BattleOnlineAnswerOptionDto;
 import com.globits.richy.dto.BattleOnlineAnswerResultDto;
 import com.globits.richy.dto.BattleOnlineCreateRoomDto;
+import com.globits.richy.dto.BattleOnlineEventDto;
 import com.globits.richy.dto.BattleOnlinePlayerDto;
 import com.globits.richy.dto.BattleOnlineQuestionDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
+import com.globits.richy.dto.BattleOnlineUseSkillDto;
 import com.globits.richy.dto.QuestionDto;
 import com.globits.richy.dto.QuestionForGamesDto;
 import com.globits.richy.dto.QuestionTopicDto;
@@ -52,6 +54,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private static final String MODE_CLASSIC = "CLASSIC";
     private static final String MODE_COUNTDOWN = "COUNTDOWN";
+
+    private static final String SKILL_FREEZE = "FREEZE";
+    private static final String SKILL_BREAK_STREAK = "BREAK_STREAK";
+    private static final String SKILL_STEAL_SCORE = "STEAL_SCORE";
+
+    private static final long FREEZE_DURATION_MS = 3000L;
+    private static final int MAX_RECENT_EVENTS = 12;
 
     private static final int MAX_PLAYERS = 20;
 
@@ -441,6 +450,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             resetScoresLocked(room);
+            room.recentEvents.clear();
 
             if (MODE_COUNTDOWN.equals(room.settings.mode)) {
                 startCountdownLocked(room);
@@ -595,6 +605,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     1000L
                 );
 
+        buildCountdownSkillPlanLocked(room);
+
         for (PlayerState player : room.players.values()) {
             player.pendingWordIds.clear();
             player.uniqueWordIds.clear();
@@ -717,7 +729,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             applyScore(
                     player,
-                    correct
+                    correct,
+                    false
             );
 
             fillAnswerResult(
@@ -776,6 +789,25 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             player.connected = true;
 
+            if (player.pendingSkillType != null) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Hãy chọn người chơi để dùng skill trước khi trả lời câu tiếp theo."
+                );
+            }
+
+            if (System.currentTimeMillis() < player.frozenUntil) {
+                long seconds = Math.max(
+                        1L,
+                        (player.frozenUntil - System.currentTimeMillis() + 999L) / 1000L
+                );
+
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Bạn đang bị đóng băng. Còn " + seconds + " giây."
+                );
+            }
+
             if (player.currentQuestion == null) {
                 assignNextCountdownQuestionLocked(
                         room,
@@ -806,9 +838,15 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         question.correctKey
                     );
 
+            String earnedSkill =
+                    correct
+                            ? player.currentSkillType
+                            : null;
+
             applyScore(
                     player,
-                    correct
+                    correct,
+                    true
             );
 
             fillAnswerResult(
@@ -821,10 +859,20 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
              * COUNTDOWN không chờ người khác:
              * mỗi account nhận câu random riêng ngay sau answer.
              */
-            assignNextCountdownQuestionLocked(
-                    room,
-                    player
-            );
+            player.currentQuestion = null;
+            player.currentSkillType = null;
+
+            if (
+                earnedSkill != null &&
+                countSkillTargetsLocked(room, player) > 0
+            ) {
+                player.pendingSkillType = earnedSkill;
+            } else {
+                assignNextCountdownQuestionLocked(
+                        room,
+                        player
+                );
+            }
 
             result.setRoom(
                     snapshotLocked(
@@ -837,6 +885,116 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         broadcastGeneric(room);
 
         return result;
+    }
+
+
+    @Override
+    public BattleOnlineRoomDto useSkill(
+            String roomCode,
+            String username,
+            BattleOnlineUseSkillDto skillDto) {
+
+        username = requireUsername(username);
+
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto dto;
+
+        synchronized (room) {
+            requirePlaying(room);
+
+            if (!MODE_COUNTDOWN.equals(room.settings.mode)) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Skill chỉ sử dụng trong COUNTDOWN."
+                );
+            }
+
+            if (System.currentTimeMillis() >= room.matchEndsAt) {
+                finishMatchLocked(room);
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Hết thời gian trận."
+                );
+            }
+
+            PlayerState actor = requirePlayer(room, username);
+
+            if (actor.pendingSkillType == null) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Bạn không có skill đang chờ sử dụng."
+                );
+            }
+
+            String targetUsername =
+                    skillDto != null
+                            ? clean(skillDto.getTargetUsername())
+                            : "";
+
+            if (targetUsername.length() > 0) {
+                PlayerState target = room.players.get(targetUsername);
+
+                if (
+                    target == null ||
+                    target == actor ||
+                    !target.connected
+                ) {
+                    throw new BattleOnlineException(
+                            HttpStatus.BAD_REQUEST,
+                            "Người chơi được chọn không hợp lệ hoặc đã mất kết nối."
+                    );
+                }
+
+                String skillType = actor.pendingSkillType;
+                double amount = 0D;
+                long now = System.currentTimeMillis();
+
+                if (SKILL_FREEZE.equals(skillType)) {
+                    target.frozenUntil =
+                            Math.max(now, target.frozenUntil) +
+                            FREEZE_DURATION_MS;
+                } else if (SKILL_BREAK_STREAK.equals(skillType)) {
+                    /*
+                     * Luôn cho phép phá, kể cả streak hiện đang bằng 0.
+                     */
+                    target.streak = 0;
+                } else if (SKILL_STEAL_SCORE.equals(skillType)) {
+                    amount = Math.floor(
+                            Math.max(0D, target.score) * 0.05D
+                    );
+
+                    target.score -= amount;
+                    actor.score += amount;
+                } else {
+                    throw new BattleOnlineException(
+                            HttpStatus.CONFLICT,
+                            "Skill không hợp lệ."
+                    );
+                }
+
+                addSkillEventLocked(
+                        room,
+                        skillType,
+                        actor,
+                        target,
+                        amount,
+                        now
+                );
+            }
+
+            actor.pendingSkillType = null;
+
+            assignNextCountdownQuestionLocked(
+                    room,
+                    actor
+            );
+
+            dto = snapshotLocked(room, username);
+        }
+
+        broadcastGeneric(room);
+
+        return dto;
     }
 
 
@@ -883,15 +1041,29 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private void applyScore(
             PlayerState player,
-            boolean correct) {
+            boolean correct,
+            boolean quizBattle2Scoring) {
 
         if (correct) {
-            player.score += 1;
             player.streak += 1;
             player.correctCount += 1;
+
+            if (
+                quizBattle2Scoring &&
+                player.streak >= 5
+            ) {
+                player.score +=
+                        Math.floor(player.streak / 3D);
+            } else {
+                player.score += 1D;
+            }
         } else {
             player.streak = 0;
             player.wrongCount += 1;
+
+            if (quizBattle2Scoring) {
+                player.score -= 0.5D;
+            }
         }
     }
 
@@ -1025,9 +1197,232 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
        COUNTDOWN PLAYER RANDOM QUESTION
        ========================================================= */
 
+    private void buildCountdownSkillPlanLocked(RoomState room) {
+        room.countdownSkillPlan.clear();
+
+        int total = displayTotal(room);
+
+        if (total <= 0) {
+            return;
+        }
+
+        Set<Integer> blocked = new LinkedHashSet<Integer>();
+
+        List<Integer> freezePositions =
+                buildBalancedSkillPositions(
+                    total,
+                    getFreezeSkillCount(total),
+                    blocked
+                );
+
+        for (Integer position : freezePositions) {
+            room.countdownSkillPlan.put(position, SKILL_FREEZE);
+            blocked.add(position);
+        }
+
+        List<Integer> breakPositions =
+                buildBalancedSkillPositions(
+                    total,
+                    getBreakStreakSkillCount(total),
+                    blocked
+                );
+
+        for (Integer position : breakPositions) {
+            room.countdownSkillPlan.put(position, SKILL_BREAK_STREAK);
+            blocked.add(position);
+        }
+
+        List<Integer> stealPositions =
+                buildBalancedSkillPositions(
+                    total,
+                    getStealScoreSkillCount(total),
+                    blocked
+                );
+
+        for (Integer position : stealPositions) {
+            room.countdownSkillPlan.put(position, SKILL_STEAL_SCORE);
+        }
+    }
+
+
+    private int getFreezeSkillCount(int total) {
+        if (total < 10) {
+            return 0;
+        }
+
+        double rate =
+                total >= 80 ? 0.10D :
+                total >= 50 ? 0.09D :
+                total >= 30 ? 0.08D : 0.07D;
+
+        return Math.min(8, Math.max(1, (int) Math.round(total * rate)));
+    }
+
+
+    private int getBreakStreakSkillCount(int total) {
+        if (total < 12) {
+            return 0;
+        }
+
+        double rate =
+                total >= 80 ? 0.07D :
+                total >= 50 ? 0.06D :
+                total >= 30 ? 0.05D : 0.04D;
+
+        return Math.min(6, Math.max(1, (int) Math.round(total * rate)));
+    }
+
+
+    private int getStealScoreSkillCount(int total) {
+        if (total < 12) {
+            return 0;
+        }
+
+        double rate =
+                total >= 80 ? 0.05D :
+                total >= 50 ? 0.04D :
+                total >= 30 ? 0.03D : 0.02D;
+
+        return Math.min(4, Math.max(1, (int) Math.round(total * rate)));
+    }
+
+
+    private List<Integer> buildBalancedSkillPositions(
+            int total,
+            int skillCount,
+            Set<Integer> blocked) {
+
+        List<Integer> candidates = new ArrayList<Integer>();
+
+        if (skillCount <= 0) {
+            return candidates;
+        }
+
+        int firstAllowed = 3;
+        int lastAllowed = total - 3;
+
+        for (int index = firstAllowed; index <= lastAllowed; index++) {
+            if (blocked == null || !blocked.contains(index)) {
+                candidates.add(index);
+            }
+        }
+
+        if (candidates.isEmpty()) {
+            return candidates;
+        }
+
+        skillCount = Math.min(skillCount, candidates.size());
+
+        List<Integer> result = new ArrayList<Integer>();
+        double segmentSize = candidates.size() / (double) skillCount;
+
+        for (int segmentIndex = 0; segmentIndex < skillCount; segmentIndex++) {
+            int start = (int) Math.floor(segmentIndex * segmentSize);
+            int end = (int) Math.floor((segmentIndex + 1) * segmentSize) - 1;
+
+            if (segmentIndex == skillCount - 1) {
+                end = candidates.size() - 1;
+            }
+
+            end = Math.max(start, end);
+
+            int picked = start + random.nextInt(end - start + 1);
+            result.add(candidates.get(picked));
+        }
+
+        return result;
+    }
+
+
+    private int countSkillTargetsLocked(
+            RoomState room,
+            PlayerState actor) {
+
+        int count = 0;
+
+        for (PlayerState player : room.players.values()) {
+            if (player != actor && player.connected) {
+                count += 1;
+            }
+        }
+
+        return count;
+    }
+
+
+    private void addSkillEventLocked(
+            RoomState room,
+            String skillType,
+            PlayerState actor,
+            PlayerState target,
+            double amount,
+            long createdAt) {
+
+        BattleOnlineEventDto event = new BattleOnlineEventDto();
+
+        event.setId(++room.nextEventId);
+        event.setType(skillType);
+        event.setActorUsername(actor.username);
+        event.setActorDisplayName(actor.displayName);
+        event.setTargetUsername(target.username);
+        event.setTargetDisplayName(target.displayName);
+        event.setAmount(amount);
+        event.setCreatedAt(createdAt);
+
+        String actorName = displayName(actor);
+        String targetName = displayName(target);
+
+        if (SKILL_FREEZE.equals(skillType)) {
+            event.setMessage(
+                    actorName + " vừa đóng băng " + targetName + " trong 3 giây."
+            );
+        } else if (SKILL_BREAK_STREAK.equals(skillType)) {
+            event.setMessage(
+                    actorName + " vừa phá streak của " + targetName + "."
+            );
+        } else {
+            event.setMessage(
+                    actorName + " vừa cướp " + formatScore(amount) +
+                    " điểm của " + targetName + "."
+            );
+        }
+
+        room.recentEvents.add(0, event);
+
+        while (room.recentEvents.size() > MAX_RECENT_EVENTS) {
+            room.recentEvents.remove(room.recentEvents.size() - 1);
+        }
+    }
+
+
+    private String displayName(PlayerState player) {
+        if (player == null) {
+            return "Người chơi";
+        }
+
+        return isBlank(player.displayName)
+                ? safe(player.username)
+                : player.displayName;
+    }
+
+
+    private String formatScore(double value) {
+        if (value == Math.floor(value)) {
+            return String.valueOf((long) value);
+        }
+
+        return String.valueOf(value);
+    }
+
     private void assignNextCountdownQuestionLocked(
             RoomState room,
             PlayerState player) {
+
+        if (player.pendingSkillType != null) {
+            player.currentQuestion = null;
+            player.currentSkillType = null;
+            return;
+        }
 
         if (
             !PLAYING.equals(room.status) ||
@@ -1110,6 +1505,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.currentQuestion =
                     question;
 
+            int skillCycleSize = Math.max(1, displayTotal(room));
+            int skillPosition =
+                    (int) ((player.currentQuestionSequence - 1L) % skillCycleSize);
+
+            player.currentSkillType =
+                    room.countdownSkillPlan.get(skillPosition);
+
             player.uniqueWordIds.add(
                     wordId
             );
@@ -1121,6 +1523,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
          * Không recurse vô hạn nếu dữ liệu có quá nhiều nghĩa trùng.
          */
         player.currentQuestion = null;
+        player.currentSkillType = null;
     }
 
 
@@ -1287,6 +1690,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         for (PlayerState player : room.players.values()) {
             player.currentQuestion = null;
+            player.currentSkillType = null;
+            player.pendingSkillType = null;
+            player.frozenUntil = 0L;
         }
     }
 
@@ -1965,6 +2371,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 room.preparedQuestions.size() >= 4
         );
 
+        dto.setRecentEvents(
+                new ArrayList<BattleOnlineEventDto>(
+                    room.recentEvents
+                )
+        );
+
         if (
             PLAYING.equals(room.status) &&
             MODE_CLASSIC.equals(
@@ -1986,7 +2398,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             question,
                             sequence,
                             room.classicQuestionIndex + 1,
-                            room.classicQuestions.size()
+                            room.classicQuestions.size(),
+                            null
                         )
                 );
 
@@ -2016,6 +2429,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             viewerUsername
                         );
 
+                if (viewer != null) {
+                    dto.setPendingSkillType(
+                            viewer.pendingSkillType
+                    );
+                }
+
                 if (
                     viewer != null &&
                     viewer.currentQuestion != null
@@ -2025,7 +2444,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                                 viewer.currentQuestion,
                                 viewer.currentQuestionSequence,
                                 (int) viewer.currentQuestionSequence,
-                                displayTotal(room)
+                                displayTotal(room),
+                                viewer.currentSkillType
                             )
                     );
 
@@ -2101,6 +2521,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     displayTotal(room)
             );
 
+            player.setFrozenUntil(
+                    state.frozenUntil
+            );
+
             player.setAnsweredCurrentQuestion(
                     MODE_CLASSIC.equals(
                         room.settings.mode
@@ -2127,7 +2551,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             QuestionState state,
             long sequence,
             int index,
-            int total) {
+            int total,
+            String skillType) {
 
         BattleOnlineQuestionDto dto =
                 new BattleOnlineQuestionDto();
@@ -2143,6 +2568,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         dto.setSequence(sequence);
         dto.setIndex(index);
         dto.setTotal(total);
+        dto.setSkillType(skillType);
 
         List<BattleOnlineAnswerOptionDto> answers =
                 new ArrayList<BattleOnlineAnswerOptionDto>();
@@ -2203,8 +2629,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             left.getScore() !=
                             right.getScore()
                         ) {
-                            return right.getScore() -
-                                    left.getScore();
+                            return Double.compare(
+                                    right.getScore(),
+                                    left.getScore()
+                            );
                         }
 
                         if (
@@ -2294,6 +2722,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         player.currentQuestion = null;
         player.currentQuestionSequence = 0L;
+        player.currentSkillType = null;
+        player.pendingSkillType = null;
+        player.frozenUntil = 0L;
 
         player.pendingWordIds.clear();
         player.uniqueWordIds.clear();
@@ -2932,6 +3363,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
          * COUNTDOWN.
          */
         long matchEndsAt = 0L;
+
+        Map<Integer, String> countdownSkillPlan =
+                new LinkedHashMap<Integer, String>();
+
+        List<BattleOnlineEventDto> recentEvents =
+                new ArrayList<BattleOnlineEventDto>();
+
+        long nextEventId = 0L;
     }
 
 
@@ -2959,7 +3398,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         boolean ready;
         boolean connected;
 
-        int score;
+        double score;
         int streak;
         int correctCount;
         int wrongCount;
@@ -2980,6 +3419,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         Set<Long> uniqueWordIds =
                 new LinkedHashSet<Long>();
+
+        String currentSkillType;
+        String pendingSkillType;
+        long frozenUntil = 0L;
     }
 
 

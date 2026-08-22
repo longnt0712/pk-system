@@ -8,7 +8,7 @@ public class BattleOnlineAnswerResultDto implements Serializable {
     private boolean accepted;
     private boolean correct;
 
-    private int score;
+    private double score;
     private int streak;
 
     private String message;
@@ -38,11 +38,11 @@ public class BattleOnlineAnswerResultDto implements Serializable {
         this.correct = correct;
     }
 
-    public int getScore() {
+    public double getScore() {
         return score;
     }
 
-    public void setScore(int score) {
+    public void setScore(double score) {
         this.score = score;
     }
 

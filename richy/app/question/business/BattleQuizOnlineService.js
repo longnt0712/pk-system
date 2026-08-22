@@ -95,6 +95,15 @@
             ).then(function (response) { return response.data; });
         };
 
+        self.useSkill = function (roomCode, targetUsername) {
+            return $http.post(
+                apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/skill',
+                {
+                    targetUsername: targetUsername
+                }
+            ).then(function (response) { return response.data; });
+        };
+
         self.connectRealtime = connectRealtime;
         self.disconnectRealtime = disconnectRealtime;
 

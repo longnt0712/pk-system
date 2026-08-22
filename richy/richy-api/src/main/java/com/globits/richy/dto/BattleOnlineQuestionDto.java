@@ -20,6 +20,12 @@ public class BattleOnlineQuestionDto implements Serializable {
     private int total;
 
     /*
+     * COUNTDOWN: FREEZE | BREAK_STREAK | STEAL_SCORE | null.
+     * Chỉ công khai loại skill, không công khai đáp án đúng.
+     */
+    private String skillType;
+
+    /*
      * Không có thông tin đáp án đúng trong DTO public.
      */
     private List<BattleOnlineAnswerOptionDto> answers =
@@ -74,6 +80,14 @@ public class BattleOnlineQuestionDto implements Serializable {
 
     public void setTotal(int total) {
         this.total = total;
+    }
+
+    public String getSkillType() {
+        return skillType;
+    }
+
+    public void setSkillType(String skillType) {
+        this.skillType = skillType;
     }
 
     public List<BattleOnlineAnswerOptionDto> getAnswers() {

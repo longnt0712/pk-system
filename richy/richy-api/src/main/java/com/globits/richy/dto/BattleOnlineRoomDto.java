@@ -50,6 +50,18 @@ public class BattleOnlineRoomDto implements Serializable {
     private int loadedQuestionCount;
     private int totalLessonWords;
 
+    /*
+     * COUNTDOWN: chỉ REST snapshot riêng của account mới có pendingSkillType.
+     * WebSocket generic luôn để null để không lộ state cá nhân.
+     */
+    private String pendingSkillType;
+
+    /*
+     * Nhật ký skill chung, mới nhất đứng trước.
+     */
+    private List<BattleOnlineEventDto> recentEvents =
+            new ArrayList<BattleOnlineEventDto>();
+
     public BattleOnlineRoomDto() {
     }
 
@@ -187,5 +199,21 @@ public class BattleOnlineRoomDto implements Serializable {
 
     public void setTotalLessonWords(int totalLessonWords) {
         this.totalLessonWords = totalLessonWords;
+    }
+
+    public String getPendingSkillType() {
+        return pendingSkillType;
+    }
+
+    public void setPendingSkillType(String pendingSkillType) {
+        this.pendingSkillType = pendingSkillType;
+    }
+
+    public List<BattleOnlineEventDto> getRecentEvents() {
+        return recentEvents;
+    }
+
+    public void setRecentEvents(List<BattleOnlineEventDto> recentEvents) {
+        this.recentEvents = recentEvents;
     }
 }
