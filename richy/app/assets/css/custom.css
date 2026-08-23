@@ -3592,3 +3592,124 @@ html.global-dark-mode select.form-control option:checked {
 /* =========================================================
    END DARK MODE SELECT CONTROL FIX V10
    ========================================================= */
+
+/* =========================================================
+   DROPDOWN LAYER + MODAL CLIPPING FIX V11
+   z-index khong the thoat khoi parent overflow:hidden, vi vay
+   phai sua ca clipping cua modal va tang hien thi cua dropdown.
+   ========================================================= */
+
+/* Modal content cu dang overflow:hidden lam ui-select bi cat o mep duoi. */
+.modal .modal-dialog,
+.modal .modal-content,
+.modal .modal-content > [modal-movable],
+.modal .modal-body,
+.modal .modal-body > .row,
+.modal .modal-body [class*="col-"] {
+    overflow: visible !important;
+}
+
+/* Giu bo goc dep sau khi modal-content duoc chuyen sang overflow:visible. */
+.modal-content > .modal-header:first-child,
+.modal-content > [modal-movable] > .modal-header:first-child {
+    border-radius: 20px 20px 0 0 !important;
+}
+
+.modal-content > .modal-footer:last-child,
+.modal-content > [modal-movable] > .modal-footer:last-child {
+    border-radius: 0 0 20px 20px !important;
+}
+
+/* Control dang mo tao mot tang rieng nam tren cac field ben duoi. */
+.ui-select-bootstrap.open,
+.dropdown.open,
+.btn-group.open,
+.bootstrap-select.open,
+.select2-container--open,
+.select2-container-active,
+.chosen-container-active {
+    position: relative !important;
+    z-index: 20000 !important;
+}
+
+/* Danh sach lua chon luon nam tren form, table, sticky header va modal footer. */
+.ui-select-bootstrap.open > .ui-select-choices,
+.ui-select-bootstrap.open .ui-select-choices,
+.ui-select-choices.dropdown-menu,
+.dropdown.open > .dropdown-menu,
+.btn-group.open > .dropdown-menu,
+.bootstrap-select.open > .dropdown-menu,
+.select2-drop,
+.select2-dropdown,
+.select2-container--open .select2-dropdown,
+.chosen-container-active .chosen-drop,
+.datepicker-dropdown.dropdown-menu,
+.uib-datepicker-popup.dropdown-menu {
+    z-index: 20010 !important;
+}
+
+/* Trong modal tang them mot lop de chac chan nam tren footer/header cua modal. */
+.modal .ui-select-bootstrap.open,
+.modal .dropdown.open,
+.modal .btn-group.open,
+.modal .bootstrap-select.open,
+.modal .select2-container--open,
+.modal .select2-container-active,
+.modal .chosen-container-active {
+    z-index: 30000 !important;
+}
+
+.modal .ui-select-bootstrap.open > .ui-select-choices,
+.modal .ui-select-bootstrap.open .ui-select-choices,
+.modal .ui-select-choices.dropdown-menu,
+.modal .dropdown.open > .dropdown-menu,
+.modal .btn-group.open > .dropdown-menu,
+.modal .bootstrap-select.open > .dropdown-menu,
+.modal .select2-drop,
+.modal .select2-dropdown,
+.modal .chosen-container-active .chosen-drop,
+.modal .datepicker-dropdown.dropdown-menu,
+.modal .uib-datepicker-popup.dropdown-menu {
+    z-index: 30010 !important;
+}
+
+/* Dropdown dai se cuon ben trong, khong lam modal vuot qua man hinh. */
+.modal .ui-select-choices-content,
+.modal .bootstrap-select .dropdown-menu .inner,
+.modal .select2-results,
+.modal .chosen-container .chosen-results {
+    max-height: min(320px, calc(100vh - 120px)) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+}
+
+/* Modal ngoai van duoc phep cuon neu form cao hon viewport. */
+.modal.in,
+.modal.show {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+}
+
+@media (max-width: 767px) {
+    .modal-content > .modal-header:first-child,
+    .modal-content > [modal-movable] > .modal-header:first-child {
+        border-radius: 16px 16px 0 0 !important;
+    }
+
+    .modal-content > .modal-footer:last-child,
+    .modal-content > [modal-movable] > .modal-footer:last-child {
+        border-radius: 0 0 16px 16px !important;
+    }
+
+    .modal .ui-select-choices-content,
+    .modal .bootstrap-select .dropdown-menu .inner,
+    .modal .select2-results,
+    .modal .chosen-container .chosen-results {
+        max-height: min(260px, calc(100vh - 96px)) !important;
+    }
+}
+
+/* =========================================================
+   END DROPDOWN LAYER + MODAL CLIPPING FIX V11
+   ========================================================= */
