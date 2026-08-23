@@ -324,8 +324,14 @@ public class QuestionExcelImportServiceImpl
             currentQuestionCount = 0L;
         }
 
-        if (currentQuestionCount + numberToCreate
-                > MAX_QUESTIONS_PER_USER) {
+        /*
+         * ADMIN được import không giới hạn.
+         * Tài khoản thường chỉ bị tính các flashcard tạo mới;
+         * các flashcard chỉ gán thêm topic không làm tăng hạn mức.
+         */
+        if (!isAdmin(authentication)
+                && currentQuestionCount + numberToCreate
+                        > MAX_QUESTIONS_PER_USER) {
 
             throw new IllegalArgumentException(
                     "Import này vượt quá giới hạn 20.000 words"

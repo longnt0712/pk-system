@@ -1128,11 +1128,15 @@ public class QuestionServiceImpl implements QuestionService {
 	public QuestionDto saveObject(QuestionDto dto) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		User modifiedUser = null;
+		boolean isAdmin = false;
 		LocalDateTime currentDate = LocalDateTime.now();
 		String currentUserName = "Unknown User";
 		if (authentication != null) {
 			modifiedUser = (User) authentication.getPrincipal();
 			currentUserName = modifiedUser.getUsername();
+			isAdmin = authentication.getAuthorities() != null
+					&& authentication.getAuthorities().stream()
+							.anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
 		}
 		QuestionDto ret = new QuestionDto();
 		String message = "Successfully";
@@ -1164,11 +1168,11 @@ public class QuestionServiceImpl implements QuestionService {
 			domain.setCreateDate(currentDate);
 			domain.setCreatedBy(currentUserName);
 			
-			//1 người chỉ được 10,000 words mà thôi
+			// Tài khoản thường bị giới hạn số từ; ADMIN không bị giới hạn.
 			Long numberOfQuestions = (long) 0;
-			if(modifiedUser.getId() != null) {
+			if(!isAdmin && modifiedUser != null && modifiedUser.getId() != null) {
 				numberOfQuestions = questionRepository.countByUserId(modifiedUser.getId());
-				if(numberOfQuestions > 20000) {
+				if(numberOfQuestions >= 20000) {
 					ret.setMessage("You can only create no more than 20.000 words");
 					return ret;
 				}
