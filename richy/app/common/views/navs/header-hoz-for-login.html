@@ -10,6 +10,15 @@
                 <span class="icon-bar"></span>
             </button>
 
+            <button type="button"
+                    class="public-mobile-theme-toggle"
+                    onclick="(function(){var w=window,d=document,k='ieltsroom.globalDarkMode';if(w.IeltsRoomTheme&&typeof w.IeltsRoomTheme.toggle==='function'){w.IeltsRoomTheme.toggle();return;}if(typeof w.toggleGlobalDarkMode==='function'){w.toggleGlobalDarkMode();return;}var r=d.documentElement,b=d.body,on=!r.classList.contains('global-dark-mode');if(on){r.classList.add('global-dark-mode');if(b){b.classList.add('global-dark-mode');}}else{r.classList.remove('global-dark-mode');if(b){b.classList.remove('global-dark-mode');}}try{w.localStorage.setItem(k,on?'true':'false');}catch(e){}})(); return false;"
+                    title="Chuyển Light / Dark mode"
+                    aria-label="Chuyển Light / Dark mode">
+                <span class="public-theme-icon public-theme-icon-moon" aria-hidden="true">☾</span>
+                <span class="public-theme-icon public-theme-icon-sun" aria-hidden="true">☀</span>
+            </button>
+
 
             <!--<a class="navbar-brand" id="church-title" href="dashboards"> SAINT PAUL ACADEMY</a>-->
             <a ng-if="settings.ieltsRoom == true"
@@ -318,6 +327,31 @@
 
     .learning-public-nav .navbar-header {
         min-height: 60px;
+    }
+
+    /* Chỉ hiện trên mobile, nằm bên trái nút hamburger. */
+    .learning-public-nav .public-mobile-theme-toggle {
+        display: none;
+    }
+
+    .learning-public-nav .public-theme-icon {
+        line-height: 1;
+    }
+
+    .learning-public-nav .public-theme-icon-sun {
+        display: none;
+    }
+
+    html.global-dark-mode
+    .learning-public-nav
+    .public-theme-icon-moon {
+        display: none;
+    }
+
+    html.global-dark-mode
+    .learning-public-nav
+    .public-theme-icon-sun {
+        display: inline-flex;
     }
 
     /* ---------- BRAND ---------- */
@@ -663,7 +697,74 @@
         }
 
         .learning-public-nav .navbar-header {
+            position: relative;
             min-height: 58px;
+        }
+
+        .learning-public-nav .public-mobile-theme-toggle {
+            position: absolute;
+            z-index: 4;
+            top: 9px;
+            right: 52px;
+
+            width: 42px;
+            height: 42px;
+
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+
+            margin: 0 !important;
+            padding: 0 !important;
+
+            border: 0 !important;
+            border-radius: 14px !important;
+
+            color: #5f65d8 !important;
+            background:
+                linear-gradient(
+                    135deg,
+                    #eef1ff,
+                    #f4edff
+                ) !important;
+
+            font-size: 23px !important;
+            cursor: pointer;
+
+            box-shadow: none !important;
+
+            transition:
+                transform .16s ease,
+                background .16s ease,
+                color .16s ease !important;
+        }
+
+        .learning-public-nav .public-mobile-theme-toggle:hover,
+        .learning-public-nav .public-mobile-theme-toggle:focus {
+            color: #4d54ca !important;
+            background:
+                linear-gradient(
+                    135deg,
+                    #e7ebff,
+                    #eee5ff
+                ) !important;
+            outline: 0 !important;
+        }
+
+        .learning-public-nav .public-mobile-theme-toggle:active {
+            transform: scale(.94);
+        }
+
+        html.global-dark-mode
+        .learning-public-nav
+        .public-mobile-theme-toggle {
+            color: #ffd166 !important;
+            background:
+                linear-gradient(
+                    135deg,
+                    #202a43,
+                    #2b2447
+                ) !important;
         }
 
         .learning-public-nav .learning-public-brand {
