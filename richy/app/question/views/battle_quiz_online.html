@@ -54,10 +54,28 @@
             <h2>TẠO PHÒNG</h2>
 
             <p class="battle-online-create-hint">
-                Có thể thêm nhiều bài từ nhiều Grade/Category khác nhau. Server sẽ trộn câu của tất cả bài đã chọn.
+                Chọn từ của bạn hoặc EM YÊU INH LÍCH, sau đó thêm nhiều bài từ nhiều Grade/Category khác nhau.
             </p>
 
             <div class="battle-online-create-form">
+
+                <label>NGUỒN TỪ VỰNG</label>
+
+                <ui-select
+                    ng-model="vm.selectedTopicOwner"
+                    ng-change="vm.chooseTopicOwner()"
+                    theme="bootstrap">
+
+                    <ui-select-match placeholder="Chọn nguồn từ vựng">
+                        {{$select.selected.name}}
+                    </ui-select-match>
+
+                    <ui-select-choices
+                        repeat="owner in vm.topicOwners | filter:$select.search">
+
+                        <div ng-bind-html="owner.name | highlight:$select.search"></div>
+                    </ui-select-choices>
+                </ui-select>
 
                 <label>GRADE / CATEGORY</label>
 
@@ -110,7 +128,9 @@
                     <div class="battle-online-selected-topic"
                          ng-repeat="topic in vm.selectedTopicsToCreate track by topic.id">
                         <span>
-                            <small>{{topic.categoryName}}</small>
+                            <small>
+                                {{topic.ownerName}} • {{topic.categoryName}}
+                            </small>
                             <strong>{{topic.name}}</strong>
                         </span>
                         <button type="button"

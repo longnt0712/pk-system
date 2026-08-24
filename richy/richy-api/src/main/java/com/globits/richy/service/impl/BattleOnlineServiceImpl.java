@@ -62,10 +62,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private static final long FREEZE_DURATION_MS = 3000L;
     private static final long FIRE_UP_DURATION_MS = 15000L;
-    private static final double FIRE_UP_SCORE_MULTIPLIER = 1.5D;
+    private static final double FIRE_UP_SCORE_MULTIPLIER = 1.2D;
     private static final int MAX_RECENT_EVENTS = 12;
 
     private static final int MAX_PLAYERS = 20;
+
+    /* Tài khoản bộ từ dùng chung "EM YÊU INH LÍCH" giống DAILY VOCAB. */
+    private static final Long SHARED_VOCAB_USER_ID = 26L;
 
     /*
      * Lazy preload server-side.
@@ -149,6 +152,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         PlayerIdentity identity =
                 findPlayerIdentity(username);
 
+        Long questionOwnerUserId =
+                resolveQuestionOwnerUserId(
+                        identity.userId,
+                        createDto.getQuestionOwnerUserId()
+                );
+
         detachFromOldRooms(username);
 
         RoomState room = new RoomState();
@@ -156,7 +165,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.code = newRoomCode();
         room.status = LOBBY;
         room.hostUsername = username;
-        room.ownerUserId = identity.userId;
+        room.ownerUserId = questionOwnerUserId;
 
         room.settings.topicIds = topicIds;
         room.settings.topicNames =
@@ -189,6 +198,40 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         broadcastGeneric(room);
 
         return dto;
+    }
+
+
+    /**
+     * HOST chỉ được tạo phòng bằng bộ từ của chính mình hoặc bộ từ dùng
+     * chung của tài khoản EM YÊU INH LÍCH (ID 26). Nếu frontend cũ chưa gửi
+     * questionOwnerUserId thì giữ nguyên hành vi cũ: dùng từ của HOST.
+     */
+    private Long resolveQuestionOwnerUserId(
+            Long hostUserId,
+            Long requestedOwnerUserId) {
+
+        Long ownerUserId = requestedOwnerUserId != null
+                ? requestedOwnerUserId
+                : hostUserId;
+
+        if (ownerUserId == null) {
+            throw new BattleOnlineException(
+                    HttpStatus.BAD_REQUEST,
+                    "Không xác định được chủ sở hữu bộ từ."
+            );
+        }
+
+        if (
+            !ownerUserId.equals(hostUserId) &&
+            !SHARED_VOCAB_USER_ID.equals(ownerUserId)
+        ) {
+            throw new BattleOnlineException(
+                    HttpStatus.FORBIDDEN,
+                    "Bạn chỉ có thể chọn từ của mình hoặc bộ từ EM YÊU INH LÍCH."
+            );
+        }
+
+        return ownerUserId;
     }
 
 
@@ -1151,8 +1194,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 quizBattle2Scoring &&
                 scoreAt < player.burningUntil
             ) {
-                scoreDelta *=
-                        FIRE_UP_SCORE_MULTIPLIER;
+                /*
+                 * CHÁY LÊN nhân trực tiếp số điểm vừa tính của câu hiện tại
+                 * (bao gồm điểm theo streak), không cộng một lượng điểm cố
+                 * định. Làm tròn 1 chữ số để tránh sai số double kiểu 3.5999.
+                 */
+                scoreDelta = roundScoreToOneDecimal(
+                        scoreDelta * FIRE_UP_SCORE_MULTIPLIER
+                );
             }
 
             player.score += scoreDelta;
@@ -1213,7 +1262,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             );
         } else if (fireBoostApplied) {
             result.setMessage(
-                    "CHÍNH XÁC! CHÁY LÊN x1.5: +" +
+                    "CHÍNH XÁC! CHÁY LÊN x1.2: +" +
                     formatScore(scoreDelta) + " điểm."
             );
         } else {
@@ -1346,11 +1395,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         Set<Integer> blocked = new LinkedHashSet<Integer>();
+        int[] skillCounts = getCountdownSkillCounts(total);
 
         List<Integer> freezePositions =
                 buildBalancedSkillPositions(
                     total,
-                    getFreezeSkillCount(total),
+                    skillCounts[0],
                     blocked
                 );
 
@@ -1362,7 +1412,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         List<Integer> breakPositions =
                 buildBalancedSkillPositions(
                     total,
-                    getBreakStreakSkillCount(total),
+                    skillCounts[1],
                     blocked
                 );
 
@@ -1374,7 +1424,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         List<Integer> stealPositions =
                 buildBalancedSkillPositions(
                     total,
-                    getStealScoreSkillCount(total),
+                    skillCounts[2],
                     blocked
                 );
 
@@ -1386,7 +1436,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         List<Integer> firePositions =
                 buildBalancedSkillPositions(
                     total,
-                    getFireUpSkillCount(total),
+                    skillCounts[3],
                     blocked
                 );
 
@@ -1396,59 +1446,62 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
-    private int getFreezeSkillCount(int total) {
+    /**
+     * Số câu càng lớn thì TỔNG tỉ lệ xuất hiện skill càng tăng.
+     *
+     * 10-14 câu: 10% | 15-29: 16% | 30-49: 20%
+     * 50-69: 24% | 70-89: 28% | 90-109: 32% | >=110: 36%.
+     *
+     * Không đặt trần số lượng tuyệt đối, nên phòng 200 câu luôn có nhiều
+     * skill hơn phòng 100 câu và không còn bị tụt tỉ lệ vì chạm giới hạn.
+     * Bốn loại skill được chia theo vòng ưu tiên để khi có đủ từ 4 skill
+     * trở lên thì FREEZE, FIRE_UP, BREAK_STREAK và STEAL_SCORE đều xuất hiện.
+     */
+    private int[] getCountdownSkillCounts(int total) {
+        int[] counts = new int[] {0, 0, 0, 0};
+
         if (total < 10) {
-            return 0;
+            return counts;
         }
 
-        double rate =
-                total >= 80 ? 0.10D :
-                total >= 50 ? 0.09D :
-                total >= 30 ? 0.08D : 0.07D;
+        double totalRate =
+                total >= 110 ? 0.36D :
+                total >= 90 ? 0.32D :
+                total >= 70 ? 0.28D :
+                total >= 50 ? 0.24D :
+                total >= 30 ? 0.20D :
+                total >= 15 ? 0.16D : 0.10D;
 
-        return Math.min(8, Math.max(1, (int) Math.round(total * rate)));
-    }
+        /* buildBalancedSkillPositions dùng các vị trí từ 3 đến total - 3. */
+        int availablePositions = Math.max(0, total - 5);
+        int totalSkillCount = Math.min(
+                availablePositions,
+                Math.max(1, (int) Math.round(total * totalRate))
+        );
 
+        /* FREEZE, FIRE_UP, BREAK_STREAK, STEAL_SCORE. */
+        int[] firstRound = new int[] {0, 3, 1, 2};
+        int assigned = 0;
 
-    private int getBreakStreakSkillCount(int total) {
-        if (total < 12) {
-            return 0;
+        while (assigned < totalSkillCount && assigned < firstRound.length) {
+            counts[firstRound[assigned]] += 1;
+            assigned += 1;
         }
 
-        double rate =
-                total >= 80 ? 0.07D :
-                total >= 50 ? 0.06D :
-                total >= 30 ? 0.05D : 0.04D;
+        /*
+         * Vòng lặp sau giữ FREEZE phổ biến nhất, FIRE_UP/BREAK_STREAK ở mức
+         * trung bình và STEAL_SCORE hiếm nhất.
+         */
+        int[] weightedCycle = new int[] {0, 3, 1, 0, 3, 2, 1, 0};
+        int cycleIndex = 0;
 
-        return Math.min(6, Math.max(1, (int) Math.round(total * rate)));
-    }
-
-
-    private int getStealScoreSkillCount(int total) {
-        if (total < 12) {
-            return 0;
+        while (assigned < totalSkillCount) {
+            counts[weightedCycle[cycleIndex]] += 1;
+            assigned += 1;
+            cycleIndex = (cycleIndex + 1) % weightedCycle.length;
         }
 
-        double rate =
-                total >= 80 ? 0.05D :
-                total >= 50 ? 0.04D :
-                total >= 30 ? 0.03D : 0.02D;
-
-        return Math.min(4, Math.max(1, (int) Math.round(total * rate)));
-    }
-
-
-    private int getFireUpSkillCount(int total) {
-        if (total < 10) {
-            return 0;
-        }
-
-        double rate =
-                total >= 80 ? 0.06D :
-                total >= 50 ? 0.05D :
-                total >= 30 ? 0.04D : 0.03D;
-
-        return Math.min(5, Math.max(1, (int) Math.round(total * rate)));
+        return counts;
     }
 
 
@@ -1552,7 +1605,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             );
         } else if (SKILL_FIRE_UP.equals(skillType)) {
             event.setMessage(
-                    actorName + " vừa kích hoạt CHÁY LÊN x1.5 trong 15 giây."
+                    actorName + " vừa kích hoạt CHÁY LÊN x1.2 trong 15 giây."
             );
         }
 
@@ -1581,6 +1634,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         return String.valueOf(value);
+    }
+
+
+    private double roundScoreToOneDecimal(double value) {
+        return Math.round(value * 10D) / 10D;
     }
 
     private void assignNextCountdownQuestionLocked(

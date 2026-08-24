@@ -88,6 +88,8 @@
 
         vm.topicCategories = [];
         vm.topics = [];
+        vm.topicOwners = [];
+        vm.selectedTopicOwner = null;
 
         /*
          * Có thể gom nhiều bài từ nhiều category trước khi CREATE ROOM.
@@ -126,8 +128,15 @@
                 vm.currentUser
             );
 
+        vm.topicOwners = buildTopicOwners();
+        vm.selectedTopicOwner = vm.topicOwners.length
+            ? vm.topicOwners[0]
+            : null;
+
         vm.searchTopicDto.userId =
-            vm.currentUser.id;
+            vm.selectedTopicOwner
+                ? vm.selectedTopicOwner.id
+                : vm.currentUser.id;
 
         var pollingTimer = null;
         var countdownTimer = null;
@@ -156,6 +165,7 @@
         vm.leaveRoom = leaveRoom;
 
         vm.getTopics = getTopics;
+        vm.chooseTopicOwner = chooseTopicOwner;
         vm.addTopicToCreate = addTopicToCreate;
         vm.removeTopicToCreate = removeTopicToCreate;
         vm.formatTopicNames = formatTopicNames;
@@ -292,6 +302,30 @@
             }
 
             return 'Người chơi';
+        }
+
+
+        function buildTopicOwners() {
+            var owners = [];
+            var currentUserId = vm.currentUser && vm.currentUser.id;
+
+            if (currentUserId != null) {
+                owners.push({
+                    id: currentUserId,
+                    name: currentUserId == 26
+                        ? 'EM YÊU INH LÍCH — TỪ CỦA TÔI'
+                        : 'TỪ CỦA TÔI'
+                });
+            }
+
+            if (String(currentUserId || '') !== '26') {
+                owners.push({
+                    id: 26,
+                    name: 'EM YÊU INH LÍCH'
+                });
+            }
+
+            return owners;
         }
 
 
@@ -491,6 +525,20 @@
         }
 
 
+        function chooseTopicOwner() {
+            vm.searchTopicDto.userId =
+                vm.selectedTopicOwner
+                    ? vm.selectedTopicOwner.id
+                    : vm.currentUser.id;
+
+            vm.selectedTopicToCreate = null;
+            vm.selectedTopicsToCreate = [];
+            vm.topics = [];
+
+            getTopics();
+        }
+
+
         function addTopicToCreate() {
             var topic = vm.selectedTopicToCreate;
 
@@ -528,12 +576,20 @@
             var category =
                 vm.searchTopicDto.topicCategory || {};
 
+            var owner =
+                vm.selectedTopicOwner || {};
+
             vm.selectedTopicsToCreate.push({
                 id: topic.id,
                 name: topic.name || '',
+                ownerId: owner.id,
+                ownerName: owner.name || 'TỪ CỦA TÔI',
                 categoryId: category.id,
                 categoryName: category.name || '',
                 displayName:
+                    (owner.name
+                        ? owner.name + ' — '
+                        : '') +
                     (category.name
                         ? category.name + ' — '
                         : '') +
@@ -598,7 +654,11 @@
 
             var createDto = {
                 topicIds: [],
-                topicNames: []
+                topicNames: [],
+                questionOwnerUserId:
+                    vm.selectedTopicOwner
+                        ? vm.selectedTopicOwner.id
+                        : vm.currentUser.id
             };
 
             angular.forEach(

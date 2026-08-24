@@ -1,182 +1,219 @@
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\FolderService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\QuestionServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestQuestionControllerForClient.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\BillProductRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestPersonDateController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\AnswerRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestQuestionTypeController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\ShoesDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\EducationProgramRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestBodyController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\TaskManConstant.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\Folder.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\AllSizes.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\PersonDateRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\CategoryQuestionService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestAnswerController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\QuestionAnswerService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\Shoes.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\TopicRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\QuestionAnswerTestResult.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\ImageUrlsRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestQuestionController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\AllSizesServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\Brand.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\QuestionAnswer.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\Question.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\ShoesSizesRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\AllSizesDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\QuestionTypeRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\BillService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\BillShoesSize.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\BillShoesSizeRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\ProductDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\MarkServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestBrandControllerForClient.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\CategoryDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\MarkDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\ShoesImageUrlsRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\StudentMarkRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\CategoryServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\QuestionService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\FolderDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\FolderServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\ShoesImageUrlsDisplayDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\BodyServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\Article.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\BillShoesSizeDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\ShoesImageUrlsDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\Passage.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\BodyDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\ShowPageTestResultDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionTypeDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestMarkController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\BillRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestFolderControllerForClient.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\ArticleServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\QuestionTopicService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestFolderController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\StudentMarkService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestArticleController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\ArticleRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\QuestionAnswerServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionForGamesDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\Body.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\BillProductDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\QuestionTopic.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\BrandDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\PassageDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\PassageRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\ShoesDisplayDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\CategoryQuestion.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\ShoesService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\EducationProgramServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestStudentMarkController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\EducationProgram.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\AllSizesController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\CategoryQuestionDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\BrandRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\AnswerDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\BillDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestFileUploadController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\Material.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\PersonDateService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\CategoryService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\BandScoreDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestClassicalLearningController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\TestResultServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\ListArticleForCategoryDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\BillProduct.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\BrandDisplayDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionAnswerTestResultDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\PersonDateDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\QuestionTopicServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\AllSizesService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\WebContentService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\DisplayStudentMarkDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestArticleControllerForClient.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\TestResultService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\QuestionAnswerTestResultRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionForTestsDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\TopicServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\ProductRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\QuestionTypeServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestBillController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\EducationProgramService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestBillControllerForClient.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\ArticleService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestBrandController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\BillServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\CategoryQuestionServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\ShoesRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\Product.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\ShoesSizesDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestWebContentControllerForClient.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\test.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\TestResult.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\BodyService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\Mark.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionAnswerDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestTestResultController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\ProductServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\QuestionTopicRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\ShoesServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\QuestionTypeService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestShoesController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\Category.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\WebContentDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\ImageUrls.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\MarkRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\ArticlePassage.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\ImageUrlsDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\QuestionAnswerRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\BrandWithChildrenDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\AnswerService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\BodyRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestEducationProgramController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestTopicController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\QuestionType.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\PersonDate.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\QuestionRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\ProductService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\ProductControllerForClient.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\TopicService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\Answer.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\TestResultDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestShoesControllerForClient.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\ShoesImageUrls.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\AnswerServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\AllSizesRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\EducationProgramDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\Bill.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionOnlyQuestionDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\BillStatisticsDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\WebContentRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestWebContentController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\FolderRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\PersonDateServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\StudentMarkDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\RestTopicControllerForClient.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\CategoryQuestionRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\rest\ProductController.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\QuizDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\TopicDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\BrandService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\utils\ImportExportExcelXLSX.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\ShoesSizes.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\ArchitectureDisplayDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\TestResultRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\Topic.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\repository\CategoryRepository.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\StudentMarkServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\WebContentServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\MarkService.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\WebContent.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\service\impl\BrandServiceImpl.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\ArticleDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionTopicDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionUserDto.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\ChurchConstant.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\MaterialUser.java
-D:\JAVA - SQL SERVER\Oxy_WorkSpace - new\globits-ecosystem\richy\richy-api\src\main\java\com\globits\richy\domain\StudentMark.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\Shoes.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\StudentMarkServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BattleOnlineAnswerResultDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\PersonDateServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\Category.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\TopicDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\TopicRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\ShoesSizesDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\QuestionTopicService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\Article.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\QuestionAnswerRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\ArticleRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\BattleOnlineService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\ShoesDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\MarkService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\StudentMark.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\FolderService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\EducationProgramRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestClassicalLearningController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BillStatisticsDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\EducationProgram.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\CategoryQuestionServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\PersonDate.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\WebContentRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionImportResultDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\QuestionAnswerTestResultRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\QuestionExcelImportServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BrandDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\AllSizesDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestStudentMarkController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BillShoesSizeDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\QuestionRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\TestResultService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\MarkRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\CategoryServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\AnswerDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\ChurchConstant.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\FolderServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\AnswerService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\AllSizesRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\CategoryQuestionDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\BattleOnlineException.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestTestResultController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BattleOnlineRoomDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\ProductRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\QuestionTypeRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionAnswerDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\BrandService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\ArchitectureDisplayDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\WebContentService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\DisplayStudentMarkDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionTopicDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestQuestionTypeController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\Answer.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\BillProductRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\FolderDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\StudentMarkRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BillProductDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\ShoesRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\ShoesImageUrlsRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\BodyRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\PersonDateRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestFolderControllerForClient.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\QuestionTopicServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BandScoreDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\TopicCategoryRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\BillShoesSize.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\QuestionAnswerTestResult.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuizDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\BillProduct.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\CategoryRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionImportExistingDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionOnlyQuestionDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BattleOnlineEventDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\ListArticleForCategoryDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\CategoryService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\PassageRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\AllSizesController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BrandWithChildrenDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionForGamesDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\TopicCategoryServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\QuestionService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestTopicController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\QuestionAnswer.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\QuestionTypeServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\Body.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\ImageUrls.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\ProductControllerForClient.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\BrandRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BattleOnlineRoomSettingsDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestFileUploadController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestAnswerController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\TestResultDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\StudentMarkService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestTopicControllerForClient.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestShoesControllerForClient.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BattleOnlineCreateRoomDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\AnswerRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\EducationProgramDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\ArticlePassage.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestArticleController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\CategoryQuestionRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionTypeDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\TaskManConstant.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\PassageDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestBrandControllerForClient.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\Mark.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestQuestionController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestFolderController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\TopicServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\BillRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\ProductController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestBillController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionImportPreviewDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\ProductDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\MarkDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BillDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\BattleOnlineServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\StudentMarkDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestBillControllerForClient.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\EducationProgramService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\TestResultRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BrandDisplayDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\QuestionTopic.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BattleOnlineAnswerOptionDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\WebContentServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionUserDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\ShoesImageUrls.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\test.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\Material.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionForTestsDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\WebContent.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\TopicCategoryService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestWebContentControllerForClient.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\PersonDateDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\BillServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\ImageUrlsDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\Bill.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\Brand.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\CategoryQuestion.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\EnrolmentClassRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionImportConfirmDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestWebContentController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\BillService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\QuestionType.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\ShoesImageUrlsDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\QuestionTypeService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\AllSizesService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\EnrolmentClassServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\Passage.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\AllSizesServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BattleOnlineAnswerDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\TopicService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\BillShoesSizeRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\PersonDateService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\ShoesSizesRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\ProductServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\QuestionExcelImportService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\ArticleService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\ImageUrlsRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestEnrolmentClassController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\ShoesServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\Folder.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\QuestionAnswerServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\FolderRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionImportStatus.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\EnrolmentClassDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\AllSizes.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestBattleOnlineController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\QuestionServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\EnrolmentClass.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestPersonDateController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionImportCandidateDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\ArticleDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestArticleControllerForClient.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\CategoryQuestionService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\BodyServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\ShoesImageUrlsDisplayDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestBrandController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\CategoryDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\BodyService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\QuestionAnswerService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\utils\ImportExportExcelXLSX.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\TopicCategory.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestTopicCategoryController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\MaterialUser.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\EnrolmentClassService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\ShoesService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\ShoesSizes.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\BrandServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestShoesController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionImportRowDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\Product.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\QuestionAnswerTestResultDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\ShowPageTestResultDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\TopicForListAllDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\Question.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\Topic.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BattleOnlineUseSkillDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestQuestionControllerForClient.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\AnswerServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\TestResultServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\ArticleServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\MarkServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BattleOnlineReadyDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\impl\EducationProgramServiceImpl.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\repository\QuestionTopicRepository.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestMarkController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\ShoesDisplayDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestEducationProgramController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BattleOnlineQuestionDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\TopicCategoryDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\WebContentDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\service\ProductService.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\rest\RestBodyController.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\domain\TestResult.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BattleOnlinePlayerDto.java
+C:\workspace-pk\pk-system\richy\richy-api\src\main\java\com\globits\richy\dto\BodyDto.java

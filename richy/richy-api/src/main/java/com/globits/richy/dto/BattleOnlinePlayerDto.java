@@ -34,7 +34,7 @@ public class BattleOnlinePlayerDto implements Serializable {
 
     /*
      * COUNTDOWN skill FIRE_UP.
-     * Trong thời gian này, điểm của mỗi câu đúng được nhân 1.5.
+     * Trong thời gian này, điểm vừa nhận của mỗi câu đúng được nhân 1.2.
      */
     private long burningUntil;
 
