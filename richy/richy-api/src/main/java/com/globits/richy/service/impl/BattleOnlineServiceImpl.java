@@ -368,7 +368,26 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         RoomState room = requireRoom(roomCode);
 
         synchronized (room) {
-            requirePlayer(room, username);
+            PlayerState player =
+                    requirePlayer(room, username);
+
+            /*
+             * Tự phục hồi câu riêng của COUNTDOWN khi một lần cấp
+             * câu trước đó không tìm được ứng viên. Frontend đang
+             * polling getRoom nên người chơi sẽ không bị đứng mãi
+             * ở màn hình "Đang lấy câu của bạn...".
+             */
+            if (
+                PLAYING.equals(room.status) &&
+                MODE_COUNTDOWN.equals(room.settings.mode) &&
+                player.currentQuestion == null &&
+                player.pendingSkillType == null
+            ) {
+                assignNextCountdownQuestionLocked(
+                        room,
+                        player
+                );
+            }
 
             return snapshotLocked(
                     room,
@@ -1709,14 +1728,19 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             ) {
                 /*
                  * Nếu pool đủ lớn, tránh 2 người đang nhìn
-                 * cùng một từ ở COUNTDOWN.
+                 * cùng một từ ở COUNTDOWN. Tuy nhiên khi đây là
+                 * từ cuối cùng trong vòng của người chơi thì phải
+                 * phát luôn; đưa lại vào danh sách lúc này sẽ lặp
+                 * đến maxAttempts và làm currentQuestion = null.
                  */
-                player.pendingWordIds.add(
-                        0,
-                        wordId
-                );
+                if (!player.pendingWordIds.isEmpty()) {
+                    player.pendingWordIds.add(
+                            0,
+                            wordId
+                    );
 
-                continue;
+                    continue;
+                }
             }
 
             QuestionState question =
