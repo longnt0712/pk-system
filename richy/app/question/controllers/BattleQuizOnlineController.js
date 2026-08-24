@@ -1557,7 +1557,7 @@
             }
 
             if (type === 'FIRE_UP') {
-                return 'CHÁY LÊN x1.5 TRONG 15 GIÂY';
+                return 'CHÁY LÊN x1.2 TRONG 15 GIÂY';
             }
 
             return 'SKILL';
@@ -1748,7 +1748,7 @@
                     formatScore(event.amount) + ' điểm của ' + target + '.';
             }
 
-            return actor + ' vừa kích hoạt CHÁY LÊN x1.5 trong 15 giây.';
+            return actor + ' vừa kích hoạt CHÁY LÊN x1.2 trong 15 giây.';
         }
 
 
