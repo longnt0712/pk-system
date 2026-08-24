@@ -336,7 +336,9 @@
                 <span class="daily-running-track-mark mark-8"></span>
                 <span class="daily-running-track-mark mark-9"></span>
 
-                <div class="daily-running-chaser">
+                <div
+                    class="daily-running-chaser"
+                    ng-style="{'left': vm.runningManDevilLeft + '%'}">
                     <div
                         class="daily-running-devil-taunt"
                         ng-if="vm.runningManDevilTaunt && !vm.runningManLost">
@@ -4623,7 +4625,15 @@
 
         padding: 5px 7px;
 
-        transform: translateX(-50%);
+        transform: translate3d(-50%, 0, 0);
+
+        transition:
+            left .82s cubic-bezier(.22,.78,.18,1),
+            filter .25s ease,
+            opacity .25s ease;
+
+        will-change: left, transform;
+        backface-visibility: hidden;
 
         border-radius: 12px;
 
@@ -4635,8 +4645,6 @@
     }
 
     .daily-vocab-page .daily-running-chaser {
-        left: 8%;
-
         border: 1px solid rgba(239,68,68,.32);
 
         color: #991b1b;
@@ -4647,7 +4655,7 @@
             0 6px 13px rgba(127,29,29,.12);
 
         animation:
-            dailyRunningChaserBounce .55s ease-in-out infinite alternate;
+            dailyRunningChaserRun .44s linear infinite;
     }
 
     .daily-vocab-page .daily-running-student {
@@ -4660,11 +4668,8 @@
         box-shadow:
             0 7px 15px rgba(29,78,216,.13);
 
-        transition:
-            left .32s cubic-bezier(.2,.8,.2,1);
-
         animation:
-            dailyRunningStudentBounce .48s ease-in-out infinite alternate;
+            dailyRunningStudentRun .40s linear infinite;
     }
 
     .daily-vocab-page .daily-running-character-icon {
@@ -4677,23 +4682,83 @@
         letter-spacing: .2px;
     }
 
-    @keyframes dailyRunningChaserBounce {
-        from {
-            margin-top: 0;
+    @keyframes dailyRunningChaserRun {
+        0%, 100% {
+            transform: translate3d(-50%, 0, 0) rotate(-1deg);
         }
 
-        to {
-            margin-top: -3px;
+        50% {
+            transform: translate3d(-50%, -4px, 0) rotate(2deg);
         }
     }
 
-    @keyframes dailyRunningStudentBounce {
+    @keyframes dailyRunningStudentRun {
+        0%, 100% {
+            transform: translate3d(-50%, -1px, 0) rotate(1deg);
+        }
+
+        50% {
+            transform: translate3d(-50%, -5px, 0) rotate(-2deg);
+        }
+    }
+
+    /* Vệt gió làm rõ hướng chạy và cảm giác NGU đang bám đuổi. */
+    .daily-vocab-page
+    .daily-running-man-card.is-running
+    .daily-running-chaser:before,
+    .daily-vocab-page
+    .daily-running-man-card.is-running
+    .daily-running-student:before {
+        content: "";
+
+        position: absolute;
+        right: calc(100% + 3px);
+        top: 29px;
+
+        width: 18px;
+        height: 5px;
+
+        border-radius: 999px;
+
+        background:
+            linear-gradient(
+                90deg,
+                transparent,
+                rgba(255,255,255,.82)
+            );
+
+        opacity: .72;
+
+        animation:
+            dailyRunningSpeedTrail .40s ease-out infinite;
+    }
+
+    @keyframes dailyRunningSpeedTrail {
+        0% {
+            opacity: .2;
+            transform: translate3d(6px, 0, 0) scaleX(.45);
+        }
+
+        100% {
+            opacity: 0;
+            transform: translate3d(-7px, 0, 0) scaleX(1.1);
+        }
+    }
+
+    .daily-vocab-page
+    .daily-running-man-card.is-running
+    .daily-running-track-road:after {
+        animation:
+            dailyRunningRoadMove .58s linear infinite;
+    }
+
+    @keyframes dailyRunningRoadMove {
         from {
-            margin-top: -1px;
+            background-position-x: 0;
         }
 
         to {
-            margin-top: -4px;
+            background-position-x: -31px;
         }
     }
 
@@ -5299,6 +5364,14 @@
 
         .daily-vocab-page .daily-running-student {
             transition: none !important;
+        }
+
+        .daily-vocab-page .daily-running-chaser,
+        .daily-vocab-page .daily-running-track-road:after,
+        .daily-vocab-page .daily-running-chaser:before,
+        .daily-vocab-page .daily-running-student:before {
+            transition: none !important;
+            animation: none !important;
         }
     }
 </style>

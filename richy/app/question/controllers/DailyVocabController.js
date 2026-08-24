@@ -1609,7 +1609,19 @@
 
         vm.runningManInitialGap = 5;
         vm.runningManGap = 5;
+        vm.runningManDevilLeft = 8;
         vm.runningManStudentLeft = 48;
+
+        /*
+         * Tọa độ "thế giới" của hai nhân vật.
+         *
+         * Trước đây NGU đứng yên ở 8%, chỉ HỌC SINH nhảy qua lại nên chưa
+         * tạo được cảm giác rượt đuổi. Hai biến step cho phép mỗi nhân vật
+         * thật sự tiến lên, còn updateRunningManPosition() đóng vai trò
+         * camera để cả hai luôn nằm gọn trong đường chạy.
+         */
+        var runningManDevilStep = 0;
+        var runningManStudentStep = 5;
 
         vm.runningManActive = false;
         vm.runningManLost = false;
@@ -1656,24 +1668,37 @@
                 gap = 0;
             }
 
+            var visualWidth = 10;
+            var furthestStep = Math.max(
+                runningManDevilStep,
+                runningManStudentStep
+            );
+
             /*
-             * Track hiển thị tối đa 10 khoảng để HỌC SINH
-             * không chạy ra khỏi thanh.
-             *
-             * Gap thật vẫn có thể > 10 và vẫn được hiển thị bằng số.
+             * Camera bắt đầu cuộn khi người chạy đầu tiên vượt quá 10 bước.
+             * Nhờ vậy NGU vẫn tiến về phía HỌC SINH thay vì đứng yên, nhưng
+             * không nhân vật nào chạy ra khỏi mép phải của track.
              */
-            var visualGap = Math.min(gap, 10);
+            var cameraStart = Math.max(
+                0,
+                furthestStep - visualWidth
+            );
+
+            vm.runningManDevilLeft =
+                8 + ((runningManDevilStep - cameraStart) * 8);
 
             vm.runningManStudentLeft =
-                8 + (visualGap * 8);
+                8 + ((runningManStudentStep - cameraStart) * 8);
 
-            if (vm.runningManStudentLeft > 88) {
-                vm.runningManStudentLeft = 88;
-            }
+            vm.runningManDevilLeft = Math.max(
+                8,
+                Math.min(88, vm.runningManDevilLeft)
+            );
 
-            if (vm.runningManStudentLeft < 8) {
-                vm.runningManStudentLeft = 8;
-            }
+            vm.runningManStudentLeft = Math.max(
+                8,
+                Math.min(88, vm.runningManStudentLeft)
+            );
         }
 
         function resetRunningManRound() {
@@ -1681,6 +1706,10 @@
             cancelRunningManTauntTimeout();
 
             vm.runningManGap =
+                vm.runningManInitialGap;
+
+            runningManDevilStep = 0;
+            runningManStudentStep =
                 vm.runningManInitialGap;
 
             vm.runningManActive = false;
@@ -1779,6 +1808,9 @@
             stopDailyLazyBackgroundWork();
 
             vm.runningManGap = 0;
+
+            /* Cho NGU chạm đúng vị trí HỌC SINH khi bắt được. */
+            runningManDevilStep = runningManStudentStep;
             vm.runningManActive = false;
             vm.runningManLost = true;
             vm.runningManWon = false;
@@ -1834,6 +1866,9 @@
             vm.runningManGap =
                 Number(vm.runningManGap || 0) - 1;
 
+            /* Hết một nhịp: NGU thật sự chạy lên một bước. */
+            runningManDevilStep += 1;
+
             updateRunningManPosition();
 
             if (vm.runningManGap <= 0) {
@@ -1860,6 +1895,10 @@
             }
 
             vm.runningManGap =
+                vm.runningManInitialGap;
+
+            runningManDevilStep = 0;
+            runningManStudentStep =
                 vm.runningManInitialGap;
 
             vm.runningManLost = false;
@@ -1896,6 +1935,9 @@
             vm.runningManGap =
                 Number(vm.runningManGap || 0) + 1;
 
+            /* Trả lời đúng: HỌC SINH lao lên một bước. */
+            runningManStudentStep += 1;
+
             updateRunningManPosition();
         }
 
@@ -1913,6 +1955,9 @@
              */
             vm.runningManGap =
                 Number(vm.runningManGap || 0) - 1;
+
+            /* Trả lời sai: NGU chớp thời cơ tiến sát thêm một bước. */
+            runningManDevilStep += 1;
 
             updateRunningManPosition();
 
