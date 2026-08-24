@@ -101,6 +101,17 @@
 
 
             <ul class="nav navbar-nav navbar-right not-for-media learning-desktop-login">
+                <li class="public-desktop-theme-toggle-item">
+                    <button type="button"
+                            class="public-desktop-theme-toggle"
+                            onclick="(function(){var w=window,d=document,k='ieltsroom.globalDarkMode';if(w.IeltsRoomTheme&&typeof w.IeltsRoomTheme.toggle==='function'){w.IeltsRoomTheme.toggle();return;}if(typeof w.toggleGlobalDarkMode==='function'){w.toggleGlobalDarkMode();return;}var r=d.documentElement,b=d.body,on=!r.classList.contains('global-dark-mode');if(on){r.classList.add('global-dark-mode');if(b){b.classList.add('global-dark-mode');}}else{r.classList.remove('global-dark-mode');if(b){b.classList.remove('global-dark-mode');}}try{w.localStorage.setItem(k,on?'true':'false');}catch(e){}})(); return false;"
+                            title="Chuyển Light / Dark mode"
+                            aria-label="Chuyển Light / Dark mode">
+                        <span class="public-theme-icon public-theme-icon-moon" aria-hidden="true">☾</span>
+                        <span class="public-theme-icon public-theme-icon-sun" aria-hidden="true">☀</span>
+                    </button>
+                </li>
+
                 <li  class="menu-dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><i class="fa fa-user"></i> LOGIN <span class="caret"></span></a>
                     <ul class="dropdown-menu learning-login-dropdown">
@@ -469,6 +480,76 @@
 
     .learning-public-nav .learning-desktop-login {
         margin-left: auto !important;
+    }
+
+    .learning-public-nav .public-desktop-theme-toggle-item {
+        margin-right: 8px;
+    }
+
+    .learning-public-nav .public-desktop-theme-toggle {
+        width: 44px;
+        height: 44px;
+
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+
+        margin: 0;
+        padding: 0;
+
+        border: 1px solid #e1e5f4;
+        border-radius: 14px;
+
+        color: #5f65d8;
+        background:
+            linear-gradient(
+                135deg,
+                #eef1ff,
+                #f4edff
+            );
+
+        font-size: 23px !important;
+        cursor: pointer;
+
+        box-shadow: 0 6px 14px rgba(91,124,250,.12);
+
+        transition:
+            transform .16s ease,
+            background .16s ease,
+            color .16s ease,
+            box-shadow .16s ease !important;
+    }
+
+    .learning-public-nav .public-desktop-theme-toggle:hover,
+    .learning-public-nav .public-desktop-theme-toggle:focus {
+        color: #4d54ca;
+        background:
+            linear-gradient(
+                135deg,
+                #e7ebff,
+                #eee5ff
+            );
+        outline: 0;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 18px rgba(91,124,250,.18);
+    }
+
+    .learning-public-nav .public-desktop-theme-toggle:active {
+        transform: scale(.94);
+    }
+
+    html.global-dark-mode
+    .learning-public-nav
+    .public-desktop-theme-toggle {
+        border-color: #35415d;
+        color: #ffd166;
+        background:
+            linear-gradient(
+                135deg,
+                #202a43,
+                #2b2447
+            );
+        box-shadow: 0 6px 16px rgba(0,0,0,.24);
     }
 
     .learning-public-nav .learning-desktop-login > li > a {

@@ -3592,3 +3592,70 @@ html.global-dark-mode select.form-control option:checked {
 /* =========================================================
    END DARK MODE SELECT CONTROL FIX V10
    ========================================================= */
+
+/* =========================================================
+   UI-SELECT OVERLAY / CLIPPING FIX
+   Dropdown must float above modal, table and following sections.
+   ========================================================= */
+
+/* Keep the modal itself scrollable, but do not crop ui-select choices at the
+   rounded modal-content / modal-body boundary. */
+.modal-dialog,
+.modal-content,
+.modal-body,
+.modal-body .row,
+.modal-body [class*="col-"] {
+    overflow: visible !important;
+}
+
+.modal.in,
+.modal.show {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+}
+
+/* Create a high stacking layer as soon as ui-select is opened. */
+.ui-select-container.open,
+.ui-select-container.ui-select-open,
+.ui-select-bootstrap.open {
+    position: relative !important;
+    z-index: 10050 !important;
+}
+
+.ui-select-bootstrap.open > .ui-select-choices,
+.ui-select-container.open .ui-select-choices,
+.ui-select-container.ui-select-open .ui-select-choices,
+.ui-select-choices.dropdown-menu {
+    z-index: 10060 !important;
+    max-height: min(320px, 45vh) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+}
+
+/* Filter bars are stacking contexts. Raise the complete bar while a dropdown
+   is open so the list cannot fall behind tables or the next page section. */
+.sticky-search-bar {
+    overflow: visible !important;
+    z-index: 1040 !important;
+}
+
+.sticky-search-bar .row,
+.sticky-search-bar [class*="col-"],
+.portlet-body,
+.portlet-body > .row {
+    overflow: visible;
+}
+
+/* Keep rounded corners visually clean after modal-content stops clipping. */
+.modal-header {
+    border-radius: 20px 20px 0 0;
+}
+
+.modal-footer {
+    border-radius: 0 0 20px 20px;
+}
+
+/* =========================================================
+   END UI-SELECT OVERLAY / CLIPPING FIX
+   ========================================================= */
