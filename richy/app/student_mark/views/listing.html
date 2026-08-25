@@ -125,13 +125,13 @@
                     </div>
                 </div>
 
-                <div class="table-responsive margin-top-10">
-                    <table class="table table-bordered table-hover table-striped text-center product-table">
+                <div class="table-responsive margin-top-10 student-mark-table-wrap">
+                    <table class="table table-bordered table-hover table-striped text-center product-table student-mark-table">
                         <thead>
                         <tr>
-                            <th style="min-width: 60px;">STT</th>
-                            <th style="min-width: 220px;">Tên học sinh</th>
-                            <th style="min-width: 50px;">Thao tác</th>
+                            <th class="student-mark-sticky-col student-mark-col-stt">STT</th>
+                            <th class="student-mark-sticky-col student-mark-col-name">Tên học sinh</th>
+                            <th class="student-mark-sticky-col student-mark-col-action">Thao tác</th>
 
                             <th ng-repeat="mark in vm.markColumns track by mark.id" style="min-width: 70px;">
                                 {{mark.name}}
@@ -145,15 +145,15 @@
                                 | filter:vm.filterStudentByName
                                 | orderBy:vm.getStudentNameSortValue:false
                                 track by $index">
-                            <td>{{$index + 1}}
+                            <td class="student-mark-sticky-col student-mark-col-stt">{{$index + 1}}
                             </td>
-                            <td class="text-left">
+                            <td class="text-left student-mark-sticky-col student-mark-col-name">
                                 {{student.user.person.patron}} {{student.user.person.lastName}} {{student.user.person.firstName}}
                                 <small>
                                     <br>({{student.user.username}})
                                 </small>
                             </td>
-                            <td>
+                            <td class="student-mark-sticky-col student-mark-col-action">
                                 <button ng-click="vm.allowEdit(student)" class="btn btn-primary"><i class="fa fa-pencil"></i></button>
                             </td>
 
@@ -292,5 +292,172 @@
     .mark-good {
         color: #0a8f08 !important;
         font-weight: 700;
+    }
+
+    /* =====================================================
+       STICKY COLUMNS: STT + TEN HOC SINH + THAO TAC
+       Cac cot diem van cuon ngang binh thuong.
+       ===================================================== */
+
+    .student-mark-table-wrap {
+        --student-mark-stt-width: 60px;
+        --student-mark-name-width: 220px;
+        --student-mark-action-width: 72px;
+
+        position: relative;
+        max-height: calc(100vh - 240px);
+        overflow-x: auto !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-gutter: stable;
+    }
+
+    .student-mark-table {
+        min-width: max-content;
+        margin-bottom: 0;
+        border-collapse: separate !important;
+        border-spacing: 0;
+    }
+
+    .student-mark-table > thead > tr > th,
+    .student-mark-table > tbody > tr > td {
+        box-sizing: border-box;
+        vertical-align: middle;
+    }
+
+    /* Toan bo dong tieu de co dinh khi cuon doc trong bang. */
+    .student-mark-table > thead > tr > th {
+        position: sticky !important;
+        top: 0;
+        z-index: 7 !important;
+        color: #45516b !important;
+        background: #f2f4ff !important;
+        background-clip: padding-box !important;
+        box-shadow: inset 0 -1px 0 #dfe5f3;
+    }
+
+    .student-mark-table .student-mark-sticky-col {
+        position: sticky !important;
+        background: #ffffff !important;
+        background-clip: padding-box !important;
+    }
+
+    .student-mark-table > thead .student-mark-sticky-col {
+        z-index: 12 !important;
+        color: #45516b !important;
+        background: #f2f4ff !important;
+    }
+
+    .student-mark-table > tbody .student-mark-sticky-col {
+        z-index: 4 !important;
+    }
+
+    .student-mark-table .student-mark-col-stt {
+        left: 0;
+        width: var(--student-mark-stt-width);
+        min-width: var(--student-mark-stt-width);
+        max-width: var(--student-mark-stt-width);
+        text-align: center;
+    }
+
+    .student-mark-table .student-mark-col-name {
+        left: var(--student-mark-stt-width);
+        width: var(--student-mark-name-width);
+        min-width: var(--student-mark-name-width);
+        max-width: var(--student-mark-name-width);
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .student-mark-table .student-mark-col-action {
+        left: calc(var(--student-mark-stt-width) + var(--student-mark-name-width));
+        width: var(--student-mark-action-width);
+        min-width: var(--student-mark-action-width);
+        max-width: var(--student-mark-action-width);
+        text-align: center;
+        border-right: 1px solid #dfe5f3 !important;
+        box-shadow: 8px 0 12px -11px rgba(43, 55, 91, .72);
+    }
+
+    .student-mark-table .student-mark-col-action .btn {
+        min-width: 36px;
+        min-height: 34px;
+        padding: 6px 10px;
+    }
+
+    /* Nen sticky phai giong row de noi dung dang cuon khong lo ra phia sau. */
+    .student-mark-table.table-striped > tbody > tr:nth-of-type(odd) > .student-mark-sticky-col {
+        background: #f8f9ff !important;
+    }
+
+    .student-mark-table.table-striped > tbody > tr:nth-of-type(even) > .student-mark-sticky-col {
+        background: #ffffff !important;
+    }
+
+    .student-mark-table.table-hover > tbody > tr:hover > .student-mark-sticky-col {
+        background: #f0f4ff !important;
+    }
+
+    /* Dark mode. */
+    html.global-dark-mode .student-mark-table > thead > tr > th {
+        color: #d8e1f1 !important;
+        background: #202b42 !important;
+        border-color: #34415a !important;
+        box-shadow: inset 0 -1px 0 #43516a;
+    }
+
+    html.global-dark-mode .student-mark-table > thead .student-mark-sticky-col {
+        color: #d8e1f1 !important;
+        background: #202b42 !important;
+        border-color: #34415a !important;
+    }
+
+    html.global-dark-mode .student-mark-table > tbody > tr:nth-of-type(odd) > .student-mark-sticky-col {
+        color: #dce4f1 !important;
+        background: #172237 !important;
+        border-color: #2b374d !important;
+    }
+
+    html.global-dark-mode .student-mark-table > tbody > tr:nth-of-type(even) > .student-mark-sticky-col {
+        color: #dce4f1 !important;
+        background: #131d2f !important;
+        border-color: #2b374d !important;
+    }
+
+    html.global-dark-mode .student-mark-table.table-hover > tbody > tr:hover > .student-mark-sticky-col {
+        color: #ffffff !important;
+        background: #22304a !important;
+    }
+
+    html.global-dark-mode .student-mark-table .student-mark-col-action {
+        border-right-color: #43516a !important;
+        box-shadow: 9px 0 14px -11px rgba(0, 0, 0, .95);
+    }
+
+    @media (max-width: 767px) {
+        .student-mark-table-wrap {
+            --student-mark-stt-width: 48px;
+            --student-mark-name-width: 160px;
+            --student-mark-action-width: 58px;
+            max-height: calc(100vh - 190px);
+        }
+
+        .student-mark-table .student-mark-col-name {
+            font-size: 12px;
+        }
+
+        .student-mark-table .student-mark-col-action .btn {
+            min-width: 32px;
+            min-height: 32px;
+            padding: 5px 8px;
+        }
+    }
+
+    @media (max-width: 380px) {
+        .student-mark-table-wrap {
+            --student-mark-stt-width: 44px;
+            --student-mark-name-width: 142px;
+            --student-mark-action-width: 54px;
+        }
     }
 </style>
