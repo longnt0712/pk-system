@@ -260,6 +260,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 existing.connected = true;
                 existing.displayName = identity.displayName;
 
+                if (PLAYING.equals(room.status)) {
+                    existing.ready = true;
+                }
+
                 /*
                  * COUNTDOWN reconnect:
                  * nếu chưa có câu cá nhân thì cấp lại.
@@ -277,13 +281,6 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
                 dto = snapshotLocked(room, username);
             } else {
-                if (PLAYING.equals(room.status)) {
-                    throw new BattleOnlineException(
-                            HttpStatus.CONFLICT,
-                            "Trận đã bắt đầu. Chỉ người chơi cũ mới có thể reconnect."
-                    );
-                }
-
                 if (room.players.size() >= MAX_PLAYERS) {
                     throw new BattleOnlineException(
                             HttpStatus.CONFLICT,
@@ -297,9 +294,26 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 player.username = username;
                 player.displayName = identity.displayName;
                 player.connected = true;
-                player.ready = false;
+                player.ready = PLAYING.equals(room.status);
 
                 room.players.put(username, player);
+
+                /*
+                 * Late join:
+                 * - Không reset room, đồng hồ hay điểm của người đang chơi.
+                 * - Người mới bắt đầu với score/streak/progress bằng 0.
+                 * - COUNTDOWN nhận ngay một câu cá nhân trong phần thời gian
+                 *   còn lại; CLASSIC tham gia ngay câu chung đang hiển thị.
+                 */
+                if (
+                    PLAYING.equals(room.status) &&
+                    MODE_COUNTDOWN.equals(room.settings.mode)
+                ) {
+                    assignNextCountdownQuestionLocked(
+                            room,
+                            player
+                    );
+                }
 
                 dto = snapshotLocked(room, username);
             }
