@@ -393,6 +393,16 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
+            /*
+             * Không còn nút bỏ qua skill trên giao diện. Nếu tất cả
+             * đối thủ đã rời phòng thì tự nhả skill để người chơi không
+             * bị kẹt ở modal không có mục tiêu.
+             */
+            releasePendingSkillWhenNoTargetLocked(
+                    room,
+                    player
+            );
+
             return snapshotLocked(
                     room,
                     username
@@ -1092,7 +1102,22 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             ? clean(skillDto.getTargetUsername())
                             : "";
 
-            if (targetUsername.length() > 0) {
+            if (
+                actor.pendingSkillTargetUsernames.isEmpty() &&
+                countSkillTargetsLocked(room, actor) == 0
+            ) {
+                releasePendingSkillWhenNoTargetLocked(
+                        room,
+                        actor
+                );
+            } else {
+                if (targetUsername.length() == 0) {
+                    throw new BattleOnlineException(
+                            HttpStatus.BAD_REQUEST,
+                            "Bạn phải chọn một mục tiêu để sử dụng skill."
+                    );
+                }
+
                 if (
                     !actor.pendingSkillTargetUsernames.contains(
                         targetUsername
@@ -1152,15 +1177,15 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         amount,
                         now
                 );
+
+                actor.pendingSkillType = null;
+                actor.pendingSkillTargetUsernames.clear();
+
+                assignNextCountdownQuestionLocked(
+                        room,
+                        actor
+                );
             }
-
-            actor.pendingSkillType = null;
-            actor.pendingSkillTargetUsernames.clear();
-
-            assignNextCountdownQuestionLocked(
-                    room,
-                    actor
-            );
 
             dto = snapshotLocked(room, username);
         }
@@ -1620,6 +1645,29 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         return count;
+    }
+
+
+    private boolean releasePendingSkillWhenNoTargetLocked(
+            RoomState room,
+            PlayerState actor) {
+
+        if (
+            actor.pendingSkillType == null ||
+            countSkillTargetsLocked(room, actor) > 0
+        ) {
+            return false;
+        }
+
+        actor.pendingSkillType = null;
+        actor.pendingSkillTargetUsernames.clear();
+
+        assignNextCountdownQuestionLocked(
+                room,
+                actor
+        );
+
+        return true;
     }
 
 

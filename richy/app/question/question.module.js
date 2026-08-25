@@ -305,7 +305,7 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION,
+                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION + '&qrCameraFix=20260825_2',
                                 'question/business/BattleQuizOnlineService.js?v=' + window.APP_VERSION,
                                 'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
@@ -325,7 +325,7 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION,
+                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION + '&qrCameraFix=20260825_2',
                                 'question/business/BattleQuizOnlineService.js?v=' + window.APP_VERSION,
                                 'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]

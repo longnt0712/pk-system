@@ -80,6 +80,13 @@
         vm.qrImageUrl = '';
         vm.cameraStarting = false;
         vm.cameraError = '';
+        vm.cameraActive = false;
+        vm.cameraAwaitingPermission = true;
+        vm.cameraZoomSupported = false;
+        vm.cameraZoom = 1;
+        vm.cameraZoomMin = 1;
+        vm.cameraZoomMax = 1;
+        vm.cameraZoomStep = 0.1;
 
         /*
          * CLASSIC: số giây của câu hiện tại.
@@ -145,6 +152,7 @@
         var qrScanner = null;
         var qrScannerRunning = false;
         var qrScanHandled = false;
+        var qrZoomApplyTimer = null;
         var destroyed = false;
 
         /*
@@ -205,6 +213,8 @@
         vm.closeQrModal = closeQrModal;
         vm.openScannerModal = openScannerModal;
         vm.closeScannerModal = closeScannerModal;
+        vm.requestCameraAccess = requestCameraAccess;
+        vm.applyCameraZoom = applyCameraZoom;
         vm.formatScore = formatScore;
 
         vm.copyRoomLink = copyRoomLink;
@@ -1621,7 +1631,9 @@
             if (
                 !vm.room ||
                 !vm.room.pendingSkillType ||
-                vm.usingSkill
+                vm.usingSkill ||
+                !player ||
+                !player.username
             ) {
                 return;
             }
@@ -2223,21 +2235,163 @@
 
 
         function openScannerModal() {
-            vm.cameraStarting = true;
+            vm.cameraStarting = false;
             vm.cameraError = '';
+            vm.cameraActive = false;
+            vm.cameraAwaitingPermission = true;
+            resetCameraZoomState();
             vm.scannerModalOpen = true;
             qrScanHandled = false;
-
-            $timeout(
-                startQrScanner,
-                80
-            );
         }
 
 
         function closeScannerModal() {
             vm.scannerModalOpen = false;
+            vm.cameraStarting = false;
+            vm.cameraActive = false;
+            vm.cameraAwaitingPermission = true;
             stopQrScanner();
+        }
+
+
+        /*
+         * iOS Safari chỉ hiện hộp xin quyền camera ổn định khi
+         * getUserMedia được gọi trực tiếp từ thao tác chạm của người dùng.
+         * Vì vậy không tự mở camera bằng $timeout sau khi mở modal nữa.
+         */
+        function requestCameraAccess() {
+            if (
+                vm.cameraStarting ||
+                vm.cameraActive ||
+                !vm.scannerModalOpen
+            ) {
+                return;
+            }
+
+            if (
+                !$window.navigator ||
+                !$window.navigator.mediaDevices ||
+                !$window.navigator.mediaDevices.getUserMedia
+            ) {
+                vm.cameraError = getCameraErrorMessage({
+                    name: 'NotSupportedError'
+                });
+                return;
+            }
+
+            /*
+             * Không gọi getUserMedia để "thử quyền" trước nữa.
+             * html5-qrcode phải nhận chính luồng camera đầu tiên;
+             * iOS dễ lỗi khi camera bị mở -> đóng -> mở lại liên tiếp.
+             */
+            if (!$window.Html5Qrcode) {
+                vm.cameraStarting = true;
+                vm.cameraError = '';
+
+                loadQrScannerLibrary()
+                    .then(
+                        function () {
+                            $scope.$evalAsync(
+                                function () {
+                                    vm.cameraStarting = false;
+                                    vm.cameraAwaitingPermission = true;
+                                    vm.cameraError =
+                                        'Đã tải xong bộ quét. Chạm BẬT CAMERA một lần nữa.';
+                                }
+                            );
+                        }
+                    )
+                    .catch(
+                        function () {
+                            $scope.$evalAsync(
+                                function () {
+                                    vm.cameraStarting = false;
+                                    vm.cameraAwaitingPermission = true;
+                                    vm.cameraError =
+                                        'Không tải được bộ quét QR. Hãy tải lại trang rồi thử lại.';
+                                }
+                            );
+                        }
+                    );
+
+                return;
+            }
+
+            vm.cameraStarting = true;
+            vm.cameraActive = false;
+            vm.cameraAwaitingPermission = false;
+            vm.cameraError = '';
+
+            /*
+             * Gọi scanner.start ngay trong lần chạm này để Safari
+             * hiện hộp xin quyền và giữ nguyên cùng một camera stream.
+             */
+            startQrScanner();
+        }
+
+
+        function getCameraErrorMessage(error) {
+            var errorName =
+                error && error.name
+                    ? String(error.name)
+                    : '';
+
+            var errorText =
+                String(
+                    error && (error.message || error)
+                        ? (error.message || error)
+                        : ''
+                ).toLowerCase();
+
+            if (
+                errorName === 'NotAllowedError' ||
+                errorName === 'PermissionDeniedError' ||
+                errorName === 'SecurityError' ||
+                errorText.indexOf('notallowed') >= 0 ||
+                errorText.indexOf('permission denied') >= 0 ||
+                errorText.indexOf('permission dismissed') >= 0
+            ) {
+                return (
+                    'Safari đang chặn quyền camera. Nhấn biểu tượng bên trái ' +
+                    'thanh địa chỉ → Cài đặt trang web → Camera → Cho phép, ' +
+                    'sau đó tải lại trang. Nếu vẫn bị chặn, vào Cài đặt ' +
+                    'iPhone → Ứng dụng → Safari → Camera → Hỏi.'
+                );
+            }
+
+            if (
+                errorName === 'NotFoundError' ||
+                errorName === 'DevicesNotFoundError' ||
+                errorText.indexOf('notfound') >= 0 ||
+                errorText.indexOf('no camera') >= 0
+            ) {
+                return 'Không tìm thấy camera trên thiết bị này.';
+            }
+
+            if (
+                errorName === 'NotReadableError' ||
+                errorName === 'TrackStartError' ||
+                errorName === 'AbortError' ||
+                errorText.indexOf('notreadable') >= 0 ||
+                errorText.indexOf('could not start video') >= 0
+            ) {
+                return (
+                    'Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng ' +
+                    'camera/video rồi thử lại.'
+                );
+            }
+
+            if (errorName === 'NotSupportedError') {
+                return (
+                    'Trình duyệt không hỗ trợ camera. Hãy mở trang bằng HTTPS ' +
+                    'trong Safari hoặc Chrome mới nhất.'
+                );
+            }
+
+            return (
+                'Không mở được camera. Hãy kiểm tra HTTPS, quyền camera ' +
+                'và thử lại.'
+            );
         }
 
 
@@ -2309,61 +2463,47 @@
                 !$window.navigator.mediaDevices.getUserMedia
             ) {
                 vm.cameraStarting = false;
+                vm.cameraActive = false;
+                vm.cameraAwaitingPermission = true;
                 vm.cameraError =
-                    'Trình duyệt không hỗ trợ camera. Hãy mở trang bằng HTTPS và cho phép quyền camera.';
+                    getCameraErrorMessage({
+                        name: 'NotSupportedError'
+                    });
                 return;
             }
 
-            loadQrScannerLibrary()
+            var scanner;
+
+            try {
+                scanner = new $window.Html5Qrcode(
+                    'battle-online-qr-reader',
+                    {
+                        experimentalFeatures: {
+                            useBarCodeDetectorIfSupported: true
+                        }
+                    },
+                    false
+                );
+            } catch (createError) {
+                vm.cameraStarting = false;
+                vm.cameraActive = false;
+                vm.cameraAwaitingPermission = true;
+                vm.cameraError =
+                    getCameraErrorMessage(createError);
+                return;
+            }
+
+            qrScanner = scanner;
+
+            /*
+             * Phiên bản html5-qrcode đang dùng chỉ chấp nhận đúng 1 key
+             * trong cameraIdOrConfig. Vì vậy phải truyền chính xác
+             * {facingMode: 'environment'}; thêm width/height ở đây sẽ
+             * làm thư viện từ chối trước khi camera được mở.
+             */
+            startQrScannerCamera(scanner)
                 .then(
                     function () {
-                        if (
-                            !vm.scannerModalOpen ||
-                            destroyed
-                        ) {
-                            return null;
-                        }
-
-                        var scanner = new $window.Html5Qrcode(
-                            'battle-online-qr-reader',
-                            false
-                        );
-
-                        qrScanner = scanner;
-
-                        return scanner.start(
-                            {
-                                facingMode: 'environment'
-                            },
-                            {
-                                fps: 10,
-                                aspectRatio: 1,
-                                qrbox: function (width, height) {
-                                    var size = Math.floor(
-                                        Math.min(width, height) * 0.72
-                                    );
-
-                                    return {
-                                        width: size,
-                                        height: size
-                                    };
-                                }
-                            },
-                            handleScannedRoom,
-                            angular.noop
-                        ).then(
-                            function () {
-                                return scanner;
-                            }
-                        );
-                    }
-                )
-                .then(
-                    function (scanner) {
-                        if (!scanner) {
-                            return null;
-                        }
-
                         if (
                             !vm.scannerModalOpen ||
                             destroyed ||
@@ -2383,17 +2523,42 @@
                         }
 
                         qrScannerRunning = true;
+                        configureRunningCamera(scanner);
 
                         $scope.$evalAsync(
                             function () {
                                 vm.cameraStarting = false;
+                                vm.cameraActive = true;
+                                vm.cameraAwaitingPermission = false;
                             }
                         );
                     }
                 )
                 .catch(
-                    function () {
+                    function (error) {
                         qrScannerRunning = false;
+
+                        if (qrScanner === scanner) {
+                            qrScanner = null;
+                        }
+
+                        try {
+                            scanner.clear();
+                        } catch (e) {
+                            // Ignore cleanup after a failed start.
+                        }
+
+                        if (
+                            $window.console &&
+                            angular.isFunction(
+                                $window.console.error
+                            )
+                        ) {
+                            $window.console.error(
+                                '[Battle Online QR] Camera start failed:',
+                                error
+                            );
+                        }
 
                         if (
                             destroyed ||
@@ -2405,8 +2570,10 @@
                         $scope.$evalAsync(
                             function () {
                                 vm.cameraStarting = false;
+                                vm.cameraActive = false;
+                                vm.cameraAwaitingPermission = true;
                                 vm.cameraError =
-                                    'Không mở được camera. Hãy kiểm tra HTTPS, quyền camera và kết nối mạng rồi thử lại.';
+                                    getCameraErrorMessage(error);
                             }
                         );
                     }
@@ -2414,10 +2581,43 @@
         }
 
 
+        function startQrScannerCamera(scanner) {
+            return scanner.start(
+                {
+                    facingMode: 'environment'
+                },
+                {
+                    fps: 12,
+                    qrbox: function (width, height) {
+                        var available = Math.max(
+                            180,
+                            Math.min(width, height) - 24
+                        );
+
+                        var size = Math.min(
+                            520,
+                            Math.floor(available * 0.86)
+                        );
+
+                        return {
+                            width: size,
+                            height: size
+                        };
+                    }
+                },
+                handleScannedRoom,
+                angular.noop
+            );
+        }
+
+
         function stopQrScanner() {
             var scanner = qrScanner;
 
             qrScanner = null;
+            cancelCameraZoomApply();
+            resetCameraZoomState();
+            vm.cameraActive = false;
 
             if (!scanner) {
                 qrScannerRunning = false;
@@ -2441,6 +2641,208 @@
                         }
                     }
                 );
+        }
+
+
+        function configureRunningCamera(scanner) {
+            if (
+                !scanner ||
+                !angular.isFunction(
+                    scanner.getRunningTrackCapabilities
+                )
+            ) {
+                return;
+            }
+
+            var capabilities;
+            var settings = {};
+
+            try {
+                capabilities =
+                    scanner.getRunningTrackCapabilities() || {};
+
+                if (
+                    angular.isFunction(
+                        scanner.getRunningTrackSettings
+                    )
+                ) {
+                    settings =
+                        scanner.getRunningTrackSettings() || {};
+                }
+            } catch (e) {
+                return;
+            }
+
+            /*
+             * Camera đã mở thành công rồi mới xin tăng chất lượng.
+             * Constraint nào Safari không hỗ trợ sẽ bị bỏ qua mà không
+             * làm tắt luồng quét đang chạy.
+             */
+            var qualityConstraints = {};
+            var advancedConstraints = {};
+
+            if (
+                capabilities.width &&
+                isFinite(capabilities.width.max)
+            ) {
+                qualityConstraints.width = {
+                    ideal: Math.min(
+                        1920,
+                        capabilities.width.max
+                    )
+                };
+            }
+
+            if (
+                capabilities.height &&
+                isFinite(capabilities.height.max)
+            ) {
+                qualityConstraints.height = {
+                    ideal: Math.min(
+                        1080,
+                        capabilities.height.max
+                    )
+                };
+            }
+
+            if (
+                angular.isArray(capabilities.focusMode) &&
+                capabilities.focusMode.indexOf('continuous') >= 0
+            ) {
+                advancedConstraints.focusMode = 'continuous';
+            }
+
+            var zoomSupported = (
+                capabilities.zoom &&
+                isFinite(capabilities.zoom.min) &&
+                isFinite(capabilities.zoom.max) &&
+                capabilities.zoom.max > capabilities.zoom.min
+            );
+
+            var initialZoom = 1;
+
+            if (zoomSupported) {
+                initialZoom = Math.min(
+                    capabilities.zoom.max,
+                    Math.max(
+                        capabilities.zoom.min,
+                        Math.max(
+                            Number(settings.zoom) ||
+                                capabilities.zoom.min,
+                            1.5
+                        )
+                    )
+                );
+
+                advancedConstraints.zoom = initialZoom;
+
+                $scope.$evalAsync(
+                    function () {
+                        vm.cameraZoomSupported = true;
+                        vm.cameraZoomMin = capabilities.zoom.min;
+                        vm.cameraZoomMax = capabilities.zoom.max;
+                        vm.cameraZoomStep =
+                            capabilities.zoom.step || 0.1;
+                        vm.cameraZoom = initialZoom;
+                    }
+                );
+            }
+
+            if (Object.keys(advancedConstraints).length > 0) {
+                qualityConstraints.advanced = [
+                    advancedConstraints
+                ];
+            }
+
+            if (
+                Object.keys(qualityConstraints).length > 0 &&
+                angular.isFunction(
+                    scanner.applyVideoConstraints
+                )
+            ) {
+                scanner.applyVideoConstraints(
+                    qualityConstraints
+                ).catch(
+                    function (error) {
+                        if (
+                            $window.console &&
+                            angular.isFunction(
+                                $window.console.info
+                            )
+                        ) {
+                            $window.console.info(
+                                '[Battle Online QR] Giữ chất lượng camera mặc định:',
+                                error
+                            );
+                        }
+                    }
+                );
+            }
+        }
+
+
+        function applyCameraZoom() {
+            if (
+                !vm.cameraZoomSupported ||
+                !qrScanner ||
+                !qrScannerRunning ||
+                !angular.isFunction(
+                    qrScanner.applyVideoConstraints
+                )
+            ) {
+                return;
+            }
+
+            cancelCameraZoomApply();
+
+            qrZoomApplyTimer = $timeout(
+                function () {
+                    qrZoomApplyTimer = null;
+
+                    if (
+                        !qrScanner ||
+                        !qrScannerRunning
+                    ) {
+                        return;
+                    }
+
+                    var zoom = Math.min(
+                        vm.cameraZoomMax,
+                        Math.max(
+                            vm.cameraZoomMin,
+                            Number(vm.cameraZoom) ||
+                                vm.cameraZoomMin
+                        )
+                    );
+
+                    vm.cameraZoom = zoom;
+
+                    qrScanner.applyVideoConstraints({
+                        advanced: [{
+                            zoom: zoom
+                        }]
+                    }).catch(angular.noop);
+                },
+                80,
+                false
+            );
+        }
+
+
+        function cancelCameraZoomApply() {
+            if (qrZoomApplyTimer) {
+                $timeout.cancel(qrZoomApplyTimer);
+                qrZoomApplyTimer = null;
+            }
+        }
+
+
+        function resetCameraZoomState() {
+            vm.cameraZoomSupported = false;
+            vm.cameraZoom = 1;
+            vm.cameraZoomMin = 1;
+            vm.cameraZoomMax = 1;
+            vm.cameraZoomStep = 0.1;
         }
 
 
