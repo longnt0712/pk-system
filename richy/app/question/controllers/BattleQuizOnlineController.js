@@ -2222,7 +2222,7 @@
              */
             vm.qrImageUrl =
                 'https://api.qrserver.com/v1/create-qr-code/' +
-                '?size=300x300&margin=12&format=png&data=' +
+                '?size=1000x1000&margin=20&format=png&data=' +
                 encodeURIComponent(vm.roomLink);
 
             vm.qrModalOpen = true;
