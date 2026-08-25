@@ -70,6 +70,7 @@
 
         vm.usingSkill = false;
         vm.availableSkillTargets = [];
+        vm.skillTargetModalOpen = false;
         vm.personalSkillNotice = null;
         vm.skillHitEffect = null;
         vm.rankingModalOpen = false;
@@ -1034,22 +1035,65 @@
                     previousRoom.pendingSkillType;
             }
 
+            /*
+             * Danh sách 4 mục tiêu là state riêng do backend random.
+             * Generic WebSocket không được làm mất danh sách đang hiện
+             * trong modal của account hiện tại.
+             */
+            if (
+                fromGenericSocket === true &&
+                incoming.status === 'PLAYING' &&
+                incoming.settings &&
+                incoming.settings.mode === 'COUNTDOWN' &&
+                incoming.pendingSkillType &&
+                (
+                    !incoming.pendingSkillTargetUsernames ||
+                    !incoming.pendingSkillTargetUsernames.length
+                ) &&
+                previousRoom &&
+                previousRoom.pendingSkillTargetUsernames &&
+                previousRoom.pendingSkillTargetUsernames.length
+            ) {
+                incoming.pendingSkillTargetUsernames =
+                    previousRoom.pendingSkillTargetUsernames.slice(0);
+            }
+
             vm.room = incoming;
 
             vm.availableSkillTargets = [];
+
+            var playersByUsername = {};
 
             angular.forEach(
                 incoming.players || [],
                 function (player) {
                     if (
                         player &&
-                        player.connected === true &&
-                        player.username !== vm.currentUser.username
+                        player.username
                     ) {
-                        vm.availableSkillTargets.push(player);
+                        playersByUsername[player.username] = player;
                     }
                 }
             );
+
+            angular.forEach(
+                incoming.pendingSkillTargetUsernames || [],
+                function (targetUsername) {
+                    var target = playersByUsername[targetUsername];
+
+                    if (
+                        target &&
+                        target.connected === true &&
+                        target.username !== vm.currentUser.username
+                    ) {
+                        vm.availableSkillTargets.push(target);
+                    }
+                }
+            );
+
+            vm.skillTargetModalOpen =
+                incoming.status === 'PLAYING' &&
+                !!incoming.pendingSkillType;
 
             processSkillEvents(incoming.recentEvents || []);
 
@@ -1593,7 +1637,10 @@
                     function (room) {
                         applyRoom(room, false);
                     },
-                    showRequestError
+                    function (error) {
+                        showRequestError(error);
+                        refreshPrivateRoomState();
+                    }
                 )
                 .finally(
                     function () {

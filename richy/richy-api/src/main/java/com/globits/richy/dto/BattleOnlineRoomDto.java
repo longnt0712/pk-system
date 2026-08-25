@@ -57,6 +57,13 @@ public class BattleOnlineRoomDto implements Serializable {
     private String pendingSkillType;
 
     /*
+     * COUNTDOWN: tối đa 4 username được backend random làm mục tiêu
+     * cho skill đang chờ. Đây cũng là state riêng của account.
+     */
+    private List<String> pendingSkillTargetUsernames =
+            new ArrayList<String>();
+
+    /*
      * Nhật ký skill chung, mới nhất đứng trước.
      */
     private List<BattleOnlineEventDto> recentEvents =
@@ -207,6 +214,15 @@ public class BattleOnlineRoomDto implements Serializable {
 
     public void setPendingSkillType(String pendingSkillType) {
         this.pendingSkillType = pendingSkillType;
+    }
+
+    public List<String> getPendingSkillTargetUsernames() {
+        return pendingSkillTargetUsernames;
+    }
+
+    public void setPendingSkillTargetUsernames(
+            List<String> pendingSkillTargetUsernames) {
+        this.pendingSkillTargetUsernames = pendingSkillTargetUsernames;
     }
 
     public List<BattleOnlineEventDto> getRecentEvents() {

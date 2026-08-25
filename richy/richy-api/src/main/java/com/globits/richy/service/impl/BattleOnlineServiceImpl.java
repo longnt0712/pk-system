@@ -63,6 +63,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final long FREEZE_DURATION_MS = 3000L;
     private static final long FIRE_UP_DURATION_MS = 15000L;
     private static final double FIRE_UP_SCORE_MULTIPLIER = 1.2D;
+    private static final double COUNTDOWN_SKILL_RATE_FACTOR = 0.75D;
+    private static final int SKILL_TARGET_CANDIDATE_COUNT = 4;
+    private static final int SKILL_TARGET_RANDOM_SLOT_COUNT = 2;
+    private static final double SKILL_TOP_RANK_WEIGHT = 1.4D;
     private static final int MAX_RECENT_EVENTS = 12;
 
     private static final int MAX_PLAYERS = 20;
@@ -1015,6 +1019,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 countSkillTargetsLocked(room, player) > 0
             ) {
                 player.pendingSkillType = earnedSkill;
+                preparePendingSkillTargetsLocked(
+                        room,
+                        player
+                );
             } else {
                 assignNextCountdownQuestionLocked(
                         room,
@@ -1074,12 +1082,28 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
+            ensurePendingSkillTargetsLocked(
+                    room,
+                    actor
+            );
+
             String targetUsername =
                     skillDto != null
                             ? clean(skillDto.getTargetUsername())
                             : "";
 
             if (targetUsername.length() > 0) {
+                if (
+                    !actor.pendingSkillTargetUsernames.contains(
+                        targetUsername
+                    )
+                ) {
+                    throw new BattleOnlineException(
+                            HttpStatus.BAD_REQUEST,
+                            "Người chơi này không nằm trong 4 mục tiêu được random."
+                    );
+                }
+
                 PlayerState target = room.players.get(targetUsername);
 
                 if (
@@ -1131,6 +1155,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             actor.pendingSkillType = null;
+            actor.pendingSkillTargetUsernames.clear();
 
             assignNextCountdownQuestionLocked(
                     room,
@@ -1468,8 +1493,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     /**
      * Số câu càng lớn thì TỔNG tỉ lệ xuất hiện skill càng tăng.
      *
+     * Tỉ lệ gốc:
      * 10-14 câu: 10% | 15-29: 16% | 30-49: 20%
      * 50-69: 24% | 70-89: 28% | 90-109: 32% | >=110: 36%.
+     *
+     * Tổng số skill thực tế được nhân 0.75, tương đương khoảng:
+     * 7.5% | 12% | 15% | 18% | 21% | 24% | 27%.
      *
      * Không đặt trần số lượng tuyệt đối, nên phòng 200 câu luôn có nhiều
      * skill hơn phòng 100 câu và không còn bị tụt tỉ lệ vì chạm giới hạn.
@@ -1495,7 +1524,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         int availablePositions = Math.max(0, total - 5);
         int totalSkillCount = Math.min(
                 availablePositions,
-                Math.max(1, (int) Math.round(total * totalRate))
+                Math.max(
+                    1,
+                    (int) Math.round(
+                        total *
+                        totalRate *
+                        COUNTDOWN_SKILL_RATE_FACTOR
+                    )
+                )
         );
 
         /* FREEZE, FIRE_UP, BREAK_STREAK, STEAL_SCORE. */
@@ -1584,6 +1620,275 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         return count;
+    }
+
+
+    /**
+     * Tạo tối đa 4 mục tiêu và lưu trong state của người nhận skill:
+     * - 2 slot đầu random đều giữa mọi đối thủ đang online.
+     * - các slot còn lại random theo trọng số; hạng 1 và hạng 2 có
+     *   trọng số 1.4, các hạng khác có trọng số 1.0.
+     *
+     * Danh sách được lưu server-side để refresh trình duyệt không thể
+     * random lại và useSkill chỉ chấp nhận đúng một trong các mục tiêu này.
+     */
+    private void preparePendingSkillTargetsLocked(
+            RoomState room,
+            PlayerState actor) {
+
+        actor.pendingSkillTargetUsernames.clear();
+
+        List<PlayerState> rankedPlayers =
+                rankedPlayerStatesLocked(room);
+
+        Map<String, Integer> rankByUsername =
+                new LinkedHashMap<String, Integer>();
+
+        List<PlayerState> pool =
+                new ArrayList<PlayerState>();
+
+        for (int index = 0; index < rankedPlayers.size(); index++) {
+            PlayerState candidate = rankedPlayers.get(index);
+
+            rankByUsername.put(
+                    candidate.username,
+                    index + 1
+            );
+
+            if (
+                candidate != actor &&
+                candidate.connected
+            ) {
+                pool.add(candidate);
+            }
+        }
+
+        int targetCount = Math.min(
+                SKILL_TARGET_CANDIDATE_COUNT,
+                pool.size()
+        );
+
+        List<String> selected =
+                new ArrayList<String>();
+
+        int pureRandomSlots = Math.min(
+                SKILL_TARGET_RANDOM_SLOT_COUNT,
+                targetCount
+        );
+
+        while (
+            selected.size() < pureRandomSlots &&
+            !pool.isEmpty()
+        ) {
+            PlayerState picked = pool.remove(
+                    random.nextInt(pool.size())
+            );
+
+            selected.add(picked.username);
+        }
+
+        while (
+            selected.size() < targetCount &&
+            !pool.isEmpty()
+        ) {
+            PlayerState picked =
+                    removeWeightedSkillTarget(
+                        pool,
+                        rankByUsername
+                    );
+
+            if (picked == null) {
+                break;
+            }
+
+            selected.add(picked.username);
+        }
+
+        /* Không để UI biết slot nào là random đều / random trọng số. */
+        Collections.shuffle(selected, random);
+
+        actor.pendingSkillTargetUsernames.addAll(selected);
+    }
+
+
+    private void ensurePendingSkillTargetsLocked(
+            RoomState room,
+            PlayerState actor) {
+
+        if (actor.pendingSkillType == null) {
+            actor.pendingSkillTargetUsernames.clear();
+            return;
+        }
+
+        List<PlayerState> rankedPlayers =
+                rankedPlayerStatesLocked(room);
+
+        Map<String, PlayerState> eligibleByUsername =
+                new LinkedHashMap<String, PlayerState>();
+
+        Map<String, Integer> rankByUsername =
+                new LinkedHashMap<String, Integer>();
+
+        for (int index = 0; index < rankedPlayers.size(); index++) {
+            PlayerState candidate = rankedPlayers.get(index);
+
+            rankByUsername.put(
+                    candidate.username,
+                    index + 1
+            );
+
+            if (
+                candidate != actor &&
+                candidate.connected
+            ) {
+                eligibleByUsername.put(
+                        candidate.username,
+                        candidate
+                );
+            }
+        }
+
+        int targetCount = Math.min(
+                SKILL_TARGET_CANDIDATE_COUNT,
+                eligibleByUsername.size()
+        );
+
+        List<String> validExisting =
+                new ArrayList<String>();
+
+        for (String targetUsername : actor.pendingSkillTargetUsernames) {
+            if (
+                eligibleByUsername.containsKey(targetUsername) &&
+                !validExisting.contains(targetUsername)
+            ) {
+                validExisting.add(targetUsername);
+            }
+        }
+
+        actor.pendingSkillTargetUsernames.clear();
+        actor.pendingSkillTargetUsernames.addAll(validExisting);
+
+        if (
+            actor.pendingSkillTargetUsernames.isEmpty() &&
+            targetCount > 0
+        ) {
+            preparePendingSkillTargetsLocked(room, actor);
+            return;
+        }
+
+        List<PlayerState> refillPool =
+                new ArrayList<PlayerState>();
+
+        for (PlayerState candidate : eligibleByUsername.values()) {
+            if (
+                !actor.pendingSkillTargetUsernames.contains(
+                    candidate.username
+                )
+            ) {
+                refillPool.add(candidate);
+            }
+        }
+
+        while (
+            actor.pendingSkillTargetUsernames.size() < targetCount &&
+            !refillPool.isEmpty()
+        ) {
+            PlayerState picked =
+                    removeWeightedSkillTarget(
+                        refillPool,
+                        rankByUsername
+                    );
+
+            if (picked == null) {
+                break;
+            }
+
+            actor.pendingSkillTargetUsernames.add(
+                    picked.username
+            );
+        }
+    }
+
+
+    private List<PlayerState> rankedPlayerStatesLocked(
+            RoomState room) {
+
+        List<PlayerState> players =
+                new ArrayList<PlayerState>(
+                    room.players.values()
+                );
+
+        Collections.sort(
+                players,
+                new Comparator<PlayerState>() {
+                    @Override
+                    public int compare(
+                            PlayerState left,
+                            PlayerState right) {
+
+                        if (left.score != right.score) {
+                            return Double.compare(
+                                    right.score,
+                                    left.score
+                            );
+                        }
+
+                        if (
+                            left.correctCount !=
+                            right.correctCount
+                        ) {
+                            return right.correctCount -
+                                    left.correctCount;
+                        }
+
+                        return safe(left.username)
+                                .compareToIgnoreCase(
+                                    safe(right.username)
+                                );
+                    }
+                }
+        );
+
+        return players;
+    }
+
+
+    private PlayerState removeWeightedSkillTarget(
+            List<PlayerState> pool,
+            Map<String, Integer> rankByUsername) {
+
+        if (pool == null || pool.isEmpty()) {
+            return null;
+        }
+
+        double totalWeight = 0D;
+
+        for (PlayerState candidate : pool) {
+            Integer rank = rankByUsername.get(candidate.username);
+
+            totalWeight +=
+                    rank != null && rank <= 2
+                            ? SKILL_TOP_RANK_WEIGHT
+                            : 1D;
+        }
+
+        double ticket = random.nextDouble() * totalWeight;
+
+        for (int index = 0; index < pool.size(); index++) {
+            PlayerState candidate = pool.get(index);
+            Integer rank = rankByUsername.get(candidate.username);
+
+            ticket -=
+                    rank != null && rank <= 2
+                            ? SKILL_TOP_RANK_WEIGHT
+                            : 1D;
+
+            if (ticket < 0D) {
+                return pool.remove(index);
+            }
+        }
+
+        return pool.remove(pool.size() - 1);
     }
 
 
@@ -1943,6 +2248,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.currentQuestion = null;
             player.currentSkillType = null;
             player.pendingSkillType = null;
+            player.pendingSkillTargetUsernames.clear();
             player.frozenUntil = 0L;
             player.burningUntil = 0L;
         }
@@ -2682,8 +2988,19 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         );
 
                 if (viewer != null) {
+                    ensurePendingSkillTargetsLocked(
+                            room,
+                            viewer
+                    );
+
                     dto.setPendingSkillType(
                             viewer.pendingSkillType
+                    );
+
+                    dto.setPendingSkillTargetUsernames(
+                            new ArrayList<String>(
+                                viewer.pendingSkillTargetUsernames
+                            )
                     );
                 }
 
@@ -2980,6 +3297,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         player.currentQuestionSequence = 0L;
         player.currentSkillType = null;
         player.pendingSkillType = null;
+        player.pendingSkillTargetUsernames.clear();
         player.frozenUntil = 0L;
         player.burningUntil = 0L;
 
@@ -3732,6 +4050,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         String currentSkillType;
         String pendingSkillType;
+
+        List<String> pendingSkillTargetUsernames =
+                new ArrayList<String>();
+
         long frozenUntil = 0L;
         long burningUntil = 0L;
     }
