@@ -296,7 +296,7 @@
 
             .state('application.battle_quiz_online', {
                 url: '/battle-quiz-online',
-                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION,
+                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION + '&fireUi=20260825_1',
                 data: {pageTitle: 'BATTLE QUIZ ONLINE'},
                 controller: 'BattleQuizOnlineController as vm',
                 resolve: {
@@ -316,7 +316,7 @@
 
             .state('application.battle_quiz_online_room', {
                 url: '/battle-quiz-online/:roomCode',
-                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION,
+                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION + '&fireUi=20260825_1',
                 data: {pageTitle: 'BATTLE QUIZ ONLINE'},
                 controller: 'BattleQuizOnlineController as vm',
                 resolve: {
