@@ -10,14 +10,16 @@
         'Hrm.Common'
     ]);
 
-    	Hrm.StudentMark.config(['$stateProvider', function ($stateProvider) {
+	Hrm.StudentMark.config(['$stateProvider', function ($stateProvider) {
+
+        var version = window.APP_VERSION || new Date().getTime();
 
         $stateProvider
 
             // Event priority
             .state('application.student_mark', {
                 url: '/student_marks',
-                templateUrl: 'student_mark/views/listing.html',
+                templateUrl: 'student_mark/views/listing.html?v=' + version,
                 data: {pageTitle: 'StudentMark'},
                 controller: 'StudentMarkController as vm',
                 resolve: {
@@ -26,8 +28,8 @@
                             name: 'Hrm.StudentMark',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'student_mark/controllers/StudentMarkController.js',
-                                'student_mark/business/StudentMarkService.js'
+                                'student_mark/controllers/StudentMarkController.js?v=' + version,
+                                'student_mark/business/StudentMarkService.js?v=' + version
                             ]
                         });
                     }]

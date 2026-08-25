@@ -13,12 +13,14 @@
 
     Hrm.User.config(['$stateProvider', function ($stateProvider) {
 
+        var version = window.APP_VERSION || new Date().getTime();
+
         $stateProvider
 
         // User Listing
             .state('application.user_accounts', {
                 url: '/user/accounts',
-                templateUrl: 'users/views/users.html',
+                templateUrl: 'users/views/users.html?v=' + version,
                 data: {
                     icon: 'icon-equalizer',
                     pageTitle: 'Hệ thống',
@@ -31,7 +33,7 @@
                             name: 'Hrm.User',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'users/controllers/UserController.js',
+                                'users/controllers/UserController.js?v=' + version,
                             ]
                         });
                     }]
@@ -41,7 +43,7 @@
             // User Group Listing
             .state('application.user_groups', {
                 url: '/user/groups',
-                templateUrl: 'users/views/user_groups.html',
+                templateUrl: 'users/views/user_groups.html?v=' + version,
                 data: {
                     icon: 'icon-equalizer',
                     pageTitle: 'Hệ thống',
@@ -54,8 +56,8 @@
                             name: 'Hrm.User',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'users/controllers/UserGroupController.js',
-                                'users/business/UserGroupService.js'
+                                'users/controllers/UserGroupController.js?v=' + version,
+                                'users/business/UserGroupService.js?v=' + version
                             ]
                         });
                     }]
@@ -65,7 +67,7 @@
             // Role Listing
             .state('application.user_roles', {
                 url: '/user/roles',
-                templateUrl: 'users/views/roles.html',
+                templateUrl: 'users/views/roles.html?v=' + version,
                 data: {
                     icon: 'icon-equalizer',
                     pageTitle: 'Hệ thống',
@@ -78,8 +80,8 @@
                             name: 'Hrm.User',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'users/controllers/UserRoleController.js',
-                                'users/business/UserRoleService.js'
+                                'users/controllers/UserRoleController.js?v=' + version,
+                                'users/business/UserRoleService.js?v=' + version
                             ]
                         });
                     }]
@@ -89,7 +91,7 @@
             // Permission Granting
             .state('application.user_permissions', {
                 url: '/user/permissions',
-                templateUrl: 'users/views/permissions.html',
+                templateUrl: 'users/views/permissions.html?v=' + version,
                 data: {
                     icon: 'icon-equalizer',
                     pageTitle: 'Hệ thống',
@@ -102,8 +104,8 @@
                             name: 'Hrm.User',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'users/controllers/PermissionController.js',
-                                'users/business/PermissionService.js'
+                                'users/controllers/PermissionController.js?v=' + version,
+                                'users/business/PermissionService.js?v=' + version
                             ]
                         });
                     }]

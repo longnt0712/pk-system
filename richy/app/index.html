@@ -131,6 +131,42 @@
             })(window, document);
         </script>
 
+        <!--
+            APP ASSET VERSION
+            Mỗi lần deploy frontend, chỉ cần tăng giá trị APP_VERSION bên dưới.
+            Các CSS/JS nội bộ dùng helper sẽ tự nhận ?v=APP_VERSION để trình
+            duyệt tải bản mới. Không gắn version vào thư viện external để tránh
+            tải lại các file lớn không thay đổi.
+        -->
+        <script>
+            (function (window, document) {
+                'use strict';
+
+                window.APP_VERSION = '20260825-01';
+
+                function versionedUrl(url) {
+                    var separator = url.indexOf('?') >= 0 ? '&' : '?';
+
+                    return url + separator + 'v=' +
+                        encodeURIComponent(window.APP_VERSION);
+                }
+
+                window.writeVersionedStylesheet = function (href) {
+                    document.write(
+                        '<link href="' + versionedUrl(href) +
+                        '" rel="stylesheet" type="text/css" />'
+                    );
+                };
+
+                window.writeVersionedScript = function (src) {
+                    document.write(
+                        '<script src="' + versionedUrl(src) +
+                        '" type="text/javascript"><\/script>'
+                    );
+                };
+            })(window, document);
+        </script>
+
 
         <title ng-if="settings.ieltsRoom == true" data-ng-bind="'IELTS ROOM | ' + $state.current.data.pageTitle"></title>
         <title ng-if="settings.chapter == true" data-ng-bind="'TNTT PK | ' + $state.current.data.pageTitle"></title>
@@ -206,11 +242,11 @@
         <link id="ng_load_plugins_before" />
 
         <!--build:css assets/css/client.min.css-->
-        <link href="assets/css/components-md.min.css" rel="stylesheet" type="text/css" />
-        <link href="assets/css/plugins-md.min.css" rel="stylesheet" type="text/css" />
-        <link href="assets/css/layout-hoz.min.css" rel="stylesheet" type="text/css" />
-        <link href="assets/css/default.min.css" rel="stylesheet" type="text/css" />
-        <link href="assets/css/custom.css" rel="stylesheet" type="text/css" />
+        <script>writeVersionedStylesheet('assets/css/components-md.min.css');</script>
+        <script>writeVersionedStylesheet('assets/css/plugins-md.min.css');</script>
+        <script>writeVersionedStylesheet('assets/css/layout-hoz.min.css');</script>
+        <script>writeVersionedStylesheet('assets/css/default.min.css');</script>
+        <script>writeVersionedStylesheet('assets/css/custom.css');</script>
 
         <style>
             /* =====================================================
@@ -954,11 +990,6 @@
 
         <ui-view></ui-view>
 
-        <script>
-//            window.APP_VERSION = '20260819-06';
-            window.APP_VERSION = '20260819-07';
-        </script>
-
         <!--<script async defer crossorigin="anonymous" src="https://connect.facebook.net/vi_VN/sdk.js#xfbml=1&version=v13.0&appId=1832244337163521&autoLogAppEvents=1" nonce="HLSuRQaX"></script>-->
 
         <!--build:js assets/scripts/core-jquery.min.js-->
@@ -1040,52 +1071,51 @@
         <!--endbuild-->
 
         <!--build:js assets/scripts/application.min.js-->
-        <script src="/application.js?v=20260413"></script>
-        <script src="application.configs.js" type="text/javascript"></script>
-        <script src="application.services.js" type="text/javascript"></script>
-        <script src="application.controllers.js" type="text/javascript"></script>
+        <script>writeVersionedScript('/application.js');</script>
+        <script>writeVersionedScript('application.configs.js');</script>
+        <script>writeVersionedScript('application.services.js');</script>
+        <script>writeVersionedScript('application.controllers.js');</script>
 
-        <script src="common/common.module.js?v=<?php echo time(); ?>" type="text/javascript"></script>
-        <script src="dashboards/dashboard.module.js" type="text/javascript"></script>
-        <script src="settings/setting.module.js" type="text/javascript"></script>
-        <script src="users/user.module.js" type="text/javascript"></script>
+        <script>writeVersionedScript('common/common.module.js');</script>
+        <script>writeVersionedScript('dashboards/dashboard.module.js');</script>
+        <script>writeVersionedScript('settings/setting.module.js');</script>
+        <script>writeVersionedScript('users/user.module.js');</script>
 
-        <script src="account/account.module.js" type="text/javascript"></script>
-      <script src="calendar/calendar.module.js" type="text/javascript"></script>
-      <script src="users/business/UserService.js" type="text/javascript"></script>
-        <script src="users/business/UserService.js" type="text/javascript"></script>
+        <script>writeVersionedScript('account/account.module.js');</script>
+        <script>writeVersionedScript('calendar/calendar.module.js');</script>
+        <script>writeVersionedScript('users/business/UserService.js');</script>
+        <script>writeVersionedScript('users/business/UserService.js');</script>
 
-        <script src="answer/answer.module.js" type="text/javascript"></script>
-        <script src="question/question.module.js?v=<?php echo time(); ?>" type="text/javascript"></script>
-        <script src="classical_learning/classical_learning.module.js" type="text/javascript"></script>
-        <script src="body/body.module.js" type="text/javascript"></script>
-        <script src="body_learning/body_learning.module.js" type="text/javascript"></script>
-        <script src="question_types/question_type.module.js" type="text/javascript"></script>
-        <script src="products/products.module.js" type="text/javascript"></script>
-        <script src="item/item.module.js" type="text/javascript"></script>
-        <script src="voucher_crocs/voucher_crocs.module.js" type="text/javascript"></script>
+        <script>writeVersionedScript('answer/answer.module.js');</script>
+        <script>writeVersionedScript('question/question.module.js');</script>
+        <script>writeVersionedScript('classical_learning/classical_learning.module.js');</script>
+        <script>writeVersionedScript('body/body.module.js');</script>
+        <script>writeVersionedScript('body_learning/body_learning.module.js');</script>
+        <script>writeVersionedScript('question_types/question_type.module.js');</script>
+        <script>writeVersionedScript('products/products.module.js');</script>
+        <script>writeVersionedScript('item/item.module.js');</script>
+        <script>writeVersionedScript('voucher_crocs/voucher_crocs.module.js');</script>
         <!--<script src="default_price/default_price.module.js" type="text/javascript"></script>-->
-        <script src="shop/shop.module.js" type="text/javascript"></script>
-        <script src="topic/topic.module.js" type="text/javascript"></script>
-        <script src="test_result/test_result.module.js?v=20260819-01"
-                type="text/javascript"></script>
-        <script src="person_date/person_date.module.js" type="text/javascript"></script>
-        <script src="education_program/education.module.js" type="text/javascript"></script>
-        <script src="mark/mark.module.js" type="text/javascript"></script>
-        <script src="student_mark/student_mark.module.js" type="text/javascript"></script>
-        <script src="topic_category/topic_category.module.js" type="text/javascript"></script>
-        <script src="enrolment_class/enrolment_class.module.js  " type="text/javascript"></script>
+        <script>writeVersionedScript('shop/shop.module.js');</script>
+        <script>writeVersionedScript('topic/topic.module.js');</script>
+        <script>writeVersionedScript('test_result/test_result.module.js');</script>
+        <script>writeVersionedScript('person_date/person_date.module.js');</script>
+        <script>writeVersionedScript('education_program/education.module.js');</script>
+        <script>writeVersionedScript('mark/mark.module.js');</script>
+        <script>writeVersionedScript('student_mark/student_mark.module.js');</script>
+        <script>writeVersionedScript('topic_category/topic_category.module.js');</script>
+        <script>writeVersionedScript('enrolment_class/enrolment_class.module.js');</script>
 
         <!--<script src="wine/wine.module.js" type="text/javascript"></script>-->
         <!--<script src="church/church.module.js" type="text/javascript"></script>-->
         <!--<script src="folder/folder.module.js" type="text/javascript"></script>-->
         <!--<script src="article/article.module.js" type="text/javascript"></script>-->
 
-        <script src="common/utils/directives.js" type="text/javascript"></script>
-        <script src="common/utils/utilities.js" type="text/javascript"></script>
-        <script src="common/utils/filters.js" type="text/javascript"></script>
-        <script src="assets/scripts/app.js" type="text/javascript"></script>
-        <script src="assets/scripts/layout-hoz.js" type="text/javascript"></script>
+        <script>writeVersionedScript('common/utils/directives.js');</script>
+        <script>writeVersionedScript('common/utils/utilities.js');</script>
+        <script>writeVersionedScript('common/utils/filters.js');</script>
+        <script>writeVersionedScript('assets/scripts/app.js');</script>
+        <script>writeVersionedScript('assets/scripts/layout-hoz.js');</script>
         <!--endbuild-->
 
         <!--build:js dx-->
