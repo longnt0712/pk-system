@@ -58,6 +58,22 @@
             ).then(function (response) { return response.data; });
         };
 
+        self.setSpectator = function (roomCode, spectator) {
+            return $http.post(
+                apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/spectator',
+                {spectator: spectator === true}
+            ).then(function (response) { return response.data; });
+        };
+
+        self.kickPlayer = function (roomCode, targetUsername) {
+            return $http.post(
+                apiUrl + '/rooms/' + normalizeRoomCode(roomCode) +
+                '/players/' + encodeURIComponent(String(targetUsername || '')) +
+                '/kick',
+                {}
+            ).then(function (response) { return response.data; });
+        };
+
         self.updateSettings = function (roomCode, dto) {
             return $http.put(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/settings',
