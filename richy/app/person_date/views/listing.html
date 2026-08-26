@@ -85,8 +85,8 @@
                     </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-12 sticky-search-bar">
+                <div class="row attendance-main-section">
+                    <div class="col-md-12 sticky-search-bar attendance-filter-bar">
 
                         <div class="col-md-12">
                             <label class="bold"
@@ -134,7 +134,7 @@
                                 <ui-select-match allow-clear="true" placeholder="Chọn lớp để lọc">
                                     {{$select.selected.name}}
                                 </ui-select-match>
-                                <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | propsFilter:{name:$select.search}">
+                                <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | filter:{schoolId: 2} | propsFilter:{name:$select.search}">
                                     <div ng-bind-html="cls.name | highlight:$select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -388,10 +388,10 @@
                     </div>
                 </div>
 
-                <div class="row">
+                <div class="row attendance-statistics-section">
                     <h1 class="text-center bold">PHẦN THỐNG KÊ</h1>
 
-                    <div class="col-md-12 sticky-search-bar">
+                    <div class="col-md-12 sticky-search-bar attendance-statistics-filter-bar">
                         <!-- Hàng chọn ngày + nút thống kê màu cam nằm ngay cạnh -->
                         <div class="row" ng-show="!vm.startSetUp">
                             <div class="col-md-2 margin-bottom-10">
@@ -418,7 +418,7 @@
                                         {{$select.selected.name}}
                                     </ui-select-match>
 
-                                    <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | propsFilter:{name:$select.search}">
+                                    <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | filter:{schoolId: 2} | propsFilter:{name:$select.search}">
                                         <div ng-bind-html="cls.name | highlight:$select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
@@ -999,6 +999,55 @@
         background: #fff;
         padding: 10px 0;
         border-bottom: 1px solid rgba(0, 0, 0, .08);
+    }
+
+    /*
+     * Hai thanh lọc đều là sticky. Nếu dùng cùng z-index, thanh thống kê
+     * (nằm sau trong DOM) sẽ che dropdown của thanh điểm danh phía trên.
+     */
+    .attendance-filter-bar {
+        z-index: 1100;
+    }
+
+    .attendance-statistics-filter-bar {
+        z-index: 1050;
+    }
+
+    /*
+     * Nâng cả khối cha, vì z-index của dropdown không thể vượt qua
+     * stacking context của khối thống kê nằm sau nó.
+     */
+    .attendance-main-section {
+        position: relative;
+        z-index: 20;
+    }
+
+    .attendance-statistics-section {
+        position: relative;
+        z-index: 10;
+    }
+
+    .attendance-main-section:focus-within,
+    .attendance-statistics-section:focus-within {
+        z-index: 13000;
+    }
+
+    /* Khi người dùng mở bất kỳ ui-select nào, đưa cả thanh chứa nó lên trên. */
+    .sticky-search-bar:focus-within {
+        z-index: 12000;
+    }
+
+    .sticky-search-bar .ui-select-container.open,
+    .sticky-search-bar .ui-select-container.open .ui-select-choices,
+    .sticky-search-bar .ui-select-container.open .dropdown-menu {
+        z-index: 13010 !important;
+    }
+
+    /* Không để portlet/row cắt phần dropdown tràn ra ngoài chiều cao của thanh. */
+    .portlet.light.bordered,
+    .portlet.light.bordered > .portlet-body,
+    .portlet.light.bordered > .portlet-body > .row {
+        overflow: visible !important;
     }
 
     .status-class-green {
