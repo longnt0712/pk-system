@@ -464,10 +464,16 @@
 
                         <i class="fa fa-circle-o-notch fa-spin"></i>
 
-                        <strong>ĐANG NẠP CÂU TIẾP THEO</strong>
+                        <strong>
+                            {{vm.dailyLazyLoadError
+                                ? 'MẠNG CHẬM — ĐANG TỰ THỬ LẠI'
+                                : 'ĐANG NẠP CÂU TIẾP THEO'}}
+                        </strong>
 
                         <span>
-                            Dữ liệu đang được tải nền...
+                            {{vm.dailyLazyLoadError
+                                ? 'Thời gian đã tạm dừng, bạn không bị mất lượt.'
+                                : 'Dữ liệu đang được tải nền...'}}
                         </span>
                     </div>
 

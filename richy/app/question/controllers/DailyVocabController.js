@@ -554,6 +554,28 @@
             });
         }
 
+        /*
+         * Không đưa bản ghi thiếu từ hoặc thiếu nghĩa vào lượt chơi.
+         * Backend vẫn có thể tính các bản ghi này trong totalElements;
+         * nếu giữ lại, giao diện sẽ chuyển tới một "câu trắng".
+         */
+        function isPlayableDailyQuestion(question) {
+            if (!question) {
+                return false;
+            }
+
+            var word = String(question.question || '').trim();
+            var meaning = String(question.motherTongue || '').trim();
+
+            return word.length > 0 && meaning.length > 0;
+        }
+
+        function getPlayableDailyQuestions(questions) {
+            return (questions || []).filter(
+                isPlayableDailyQuestion
+            );
+        }
+
 
         // =====================================================
         // DAILY VOCAB - LAZY LOAD / BUFFER
@@ -767,7 +789,7 @@
             angular.forEach(
                 batch || [],
                 function (question) {
-                    if (!question) {
+                    if (!isPlayableDailyQuestion(question)) {
                         return;
                     }
 
@@ -809,6 +831,21 @@
                 vm.currentPosition + 1 >=
                 vm.questions.length
             ) {
+                /*
+                 * Server đã hết trang nhưng totalElements có thể lớn hơn
+                 * số câu hợp lệ/không trùng thực tế. Người chơi vừa trả lời
+                 * câu cuối của buffer thật, vì vậy phải kết thúc thay vì
+                 * đứng mãi ở "ĐANG NẠP CÂU TIẾP THEO".
+                 */
+                if (
+                    vm.allQuestionsLoaded === true &&
+                    !hasCachedDailyQuestionsToPrepare() &&
+                    vm.loadingMoreQuestions !== true
+                ) {
+                    vm.totalCard = vm.questions.length;
+                    finishDailyVocabSuccessfully();
+                }
+
                 return;
             }
 
@@ -1005,8 +1042,7 @@
         function scheduleDailyLazyRetry() {
             if (
                 vm.dailyVocabRunning !== true ||
-                vm.allQuestionsLoaded === true ||
-                dailyLazyRetryCount >= 3
+                vm.allQuestionsLoaded === true
             ) {
                 return;
             }
@@ -1028,8 +1064,10 @@
                         dailyLazyRetryTimer = null;
                         loadNextDailyQuestionPage();
                     },
-                    1200 *
-                        dailyLazyRetryCount
+                    Math.min(
+                        5000,
+                        1200 * dailyLazyRetryCount
+                    )
                 );
         }
 
@@ -1121,6 +1159,9 @@
                             ? data.content
                             : [];
 
+                    var playableContent =
+                        getPlayableDailyQuestions(content);
+
                     if (
                         data &&
                         angular.isDefined(
@@ -1139,13 +1180,15 @@
 
                     var appended =
                         appendUniqueDailyRawQuestions(
-                            content
+                            playableContent
                         );
 
                     var reachedLastPage =
+                        (data && data.last === true) ||
                         (
-                            vm.rawQuestions.length >=
-                            vm.totalCard
+                            data &&
+                            angular.isDefined(data.totalPages) &&
+                            page >= Number(data.totalPages)
                         ) ||
                         content.length <
                             DAILY_LAZY_PAGE_SIZE ||
@@ -1156,6 +1199,7 @@
 
                         if (reachedLastPage) {
                             vm.allQuestionsLoaded = true;
+                            vm.totalCard = vm.rawQuestions.length;
                         }
 
                         updateDailyLoadedCount();
@@ -1188,6 +1232,7 @@
 
                             if (reachedLastPage) {
                                 vm.allQuestionsLoaded = true;
+                                vm.totalCard = vm.rawQuestions.length;
                             }
 
                             updateDailyLoadedCount();
@@ -1272,7 +1317,7 @@
                             : [];
 
                     vm.rawQuestions =
-                        content.slice();
+                        getPlayableDailyQuestions(content);
 
                     vm.totalCard =
                         data &&
@@ -1288,12 +1333,18 @@
                     dailyLazyNextPage = 2;
 
                     vm.allQuestionsLoaded =
+                        (data && data.last === true) ||
                         (
-                            vm.rawQuestions.length >=
-                            vm.totalCard
+                            data &&
+                            angular.isDefined(data.totalPages) &&
+                            Number(data.totalPages) <= 1
                         ) ||
                         content.length <
                             DAILY_LAZY_PAGE_SIZE;
+
+                    if (vm.allQuestionsLoaded === true) {
+                        vm.totalCard = vm.rawQuestions.length;
+                    }
 
                     /*
                      * Timer mặc định = TOTAL x 7 giây.
@@ -1447,6 +1498,43 @@
                 );
             }
         };
+
+        function finishDailyVocabSuccessfully() {
+            if (vm.dailyVocabRunning !== true) {
+                return;
+            }
+
+            vm.score1 =
+                Number(vm.score1 || 0) +
+                (Number(vm.dailyVocabCounter) / 12);
+
+            vm.score1 = Number(vm.score1).toFixed(2);
+
+            vm.currentPosition = Math.max(
+                vm.currentPosition + 1,
+                vm.totalCard
+            );
+
+            vm.dailyBufferWaiting = false;
+
+            runningManFinishWin();
+
+            try {
+                window.speechSynthesis.speak(
+                    new SpeechSynthesisUtterance(
+                        'Player one is OVER'
+                    )
+                );
+            } catch (e) {
+                // Không làm gì.
+            }
+
+            if (vm.isSaveTestResult !== true) {
+                vm.saveTestResult();
+            }
+
+            vm.stopDailyVocabTimer();
+        }
 
         // =====================================================
         // TIMER RIÊNG DAILY VOCAB
@@ -2771,42 +2859,7 @@
                     vm.currentPosition + 1 >=
                     vm.totalCard
                 ) {
-                    vm.score1 =
-                        Number(vm.score1 || 0) +
-                        (
-                            Number(
-                                vm.dailyVocabCounter
-                            ) / 12
-                        );
-
-                    vm.score1 =
-                        Number(vm.score1).toFixed(2);
-
-                    vm.currentPosition += 1;
-
-                    /*
-                     * Hoàn thành toàn bộ từ trước khi bị bắt
-                     * = thắng RUNNING MAN.
-                     */
-                    runningManFinishWin();
-
-                    try {
-                        window.speechSynthesis.speak(
-                            new SpeechSynthesisUtterance(
-                                'Player one is OVER'
-                            )
-                        );
-                    } catch (e) {
-                        // Không làm gì.
-                    }
-
-                    if (
-                        vm.isSaveTestResult !== true
-                    ) {
-                        vm.saveTestResult();
-                    }
-
-                    vm.stopDailyVocabTimer();
+                    finishDailyVocabSuccessfully();
                     return;
                 }
 

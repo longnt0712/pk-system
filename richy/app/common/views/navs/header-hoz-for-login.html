@@ -1,13 +1,23 @@
 <nav id="navscroll" class="navbar navbar-default learning-public-nav">
 <!--<nav id="bottom" class="navbar navbar-default navbar-fixed-top">-->
     <div class="container-fluid">
-        <!-- Brand and toggle get grouped for qbetter mobile display -->
+        <!-- Brand and toggle get grouped for better mobile display -->
         <div class="navbar-header">
             <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
                 <span class="sr-only">Toggle navigation</span>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
+            </button>
+
+            <button
+                    type="button"
+                    class="learning-public-theme-toggle learning-public-mobile-theme-toggle"
+                    onclick="(function(){var w=window,d=document,k='ieltsroom.globalDarkMode';if(w.IeltsRoomTheme&&typeof w.IeltsRoomTheme.toggle==='function'){w.IeltsRoomTheme.toggle();return;}if(typeof w.toggleGlobalDarkMode==='function'){w.toggleGlobalDarkMode();return;}var r=d.documentElement,b=d.body,on=!r.classList.contains('global-dark-mode');if(on){r.classList.add('global-dark-mode');if(b){b.classList.add('global-dark-mode');}}else{r.classList.remove('global-dark-mode');if(b){b.classList.remove('global-dark-mode');}}try{w.localStorage.setItem(k,on?'true':'false');}catch(e){}})(); return false;"
+                    title="Bật / tắt Dark mode"
+                    aria-label="Bật / tắt Dark mode">
+                <span class="learning-public-theme-icon learning-public-theme-moon" aria-hidden="true">☾</span>
+                <span class="learning-public-theme-icon learning-public-theme-sun" aria-hidden="true">☀</span>
             </button>
 
 
@@ -530,6 +540,11 @@
         display: none;
     }
 
+    /* Nút riêng cho mobile; mặc định ẩn ở desktop. */
+    .learning-public-nav .learning-public-mobile-theme-toggle {
+        display: none !important;
+    }
+
     html.global-dark-mode
     .learning-public-nav .learning-public-theme-toggle {
         color: #ffe28a;
@@ -780,6 +795,20 @@
 
         .learning-public-nav .navbar-header {
             min-height: 58px;
+        }
+
+        /*
+         * Hamburger đứng sát phải; do cùng float:right, nút theme được đặt
+         * sau hamburger trong HTML nên sẽ nằm ngay bên trái ba sọc.
+         */
+        .learning-public-nav .learning-public-mobile-theme-toggle {
+            width: 42px;
+            height: 42px;
+
+            display: inline-flex !important;
+            float: right;
+
+            margin: 9px 7px 0 0 !important;
         }
 
         .learning-public-nav .learning-public-brand {
