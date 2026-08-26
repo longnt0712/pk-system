@@ -9,6 +9,7 @@ public class BattleOnlinePlayerDto implements Serializable {
     private String displayName;
 
     private boolean host;
+    private boolean spectator;
     private boolean ready;
     private boolean connected;
     private boolean answeredCurrentQuestion;
@@ -63,6 +64,14 @@ public class BattleOnlinePlayerDto implements Serializable {
 
     public void setHost(boolean host) {
         this.host = host;
+    }
+
+    public boolean isSpectator() {
+        return spectator;
+    }
+
+    public void setSpectator(boolean spectator) {
+        this.spectator = spectator;
     }
 
     public boolean isReady() {

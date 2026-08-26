@@ -316,7 +316,10 @@
                 </div>
 
                 <span class="battle-online-player-count">
-                    {{vm.room.players.length}} người
+                    {{vm.getActivePlayerCount()}} người chơi
+                    <span ng-if="vm.getSpectatorCount()">
+                        • {{vm.getSpectatorCount()}} khán giả
+                    </span>
                 </span>
             </div>
 
@@ -332,12 +335,13 @@
                      ng-repeat="player in vm.room.players track by player.username"
                      ng-class="{
                          'is-host': player.host,
+                         'is-spectator': player.spectator,
                          'is-ready': player.ready,
                          'is-offline': !player.connected
                      }">
 
                     <div class="battle-online-avatar">
-                        {{player.host ? '👑' : '🎮'}}
+                        {{player.spectator ? '👁️' : (player.host ? '👑' : '🎮')}}
                     </div>
 
                     <div class="battle-online-player-copy">
@@ -351,22 +355,35 @@
                         HOST
                     </span>
 
+                    <span class="battle-online-ready-badge is-spectator"
+                          ng-if="player.spectator">
+                        KHÁN GIẢ
+                    </span>
+
                     <span class="battle-online-ready-badge is-ready"
-                          ng-if="!player.host && player.ready">
+                          ng-if="!player.host && !player.spectator && player.ready">
                         READY
                     </span>
 
                     <span class="battle-online-ready-badge is-waiting"
-                          ng-if="!player.host && !player.ready">
+                          ng-if="!player.host && !player.spectator && !player.ready">
                         WAITING
                     </span>
+
+                    <button type="button"
+                            class="battle-online-kick-mini-btn"
+                            ng-if="vm.canKickPlayer(player)"
+                            ng-click="vm.openKickConfirm(player); $event.stopPropagation()"
+                            aria-label="Kích người chơi khỏi phòng">
+                        KÍCH
+                    </button>
                 </div>
 
             </div>
 
 
             <div class="battle-online-ready-zone"
-                 ng-if="!vm.isHost()">
+                 ng-if="!vm.isHost() && !vm.isSpectator()">
 
                 <button type="button"
                         class="battle-online-ready-btn"
@@ -404,6 +421,22 @@
                     <h2>Thiết lập trận</h2>
                 </div>
             </div>
+
+            <button type="button"
+                    class="battle-online-spectator-toggle"
+                    ng-class="{'is-active': vm.isSpectator()}"
+                    ng-click="vm.toggleSpectator()"
+                    ng-disabled="vm.changingSpectator">
+                <span>{{vm.isSpectator() ? '👁️' : '🎮'}}</span>
+                <strong>
+                    {{vm.isSpectator() ? 'ĐANG LÀ KHÁN GIẢ' : 'THAM GIA CHƠI'}}
+                </strong>
+                <small>
+                    {{vm.isSpectator()
+                        ? 'Bạn chỉ xem trận và vẫn giữ quyền HOST.'
+                        : 'Bật để xem người khác chơi, không nhận câu và không tính điểm.'}}
+                </small>
+            </button>
 
 
             <div class="battle-online-mode-grid">
@@ -616,6 +649,7 @@
          ng-if="vm.room && vm.room.status === 'PLAYING'">
 
         <main class="battle-online-card battle-online-question-card"
+              ng-if="!vm.isSpectator()"
               ng-class="{
                   'is-player-frozen': vm.isMeFrozen(),
                   'is-player-burning': vm.isMeBurning()
@@ -695,14 +729,16 @@
                     <b>{{vm.getBurnRemaining()}}s</b>
                 </div>
 
-                <div class="battle-online-question-skill"
-                     ng-if="vm.room.currentQuestion.skillType"
-                     ng-class="'is-' + vm.room.currentQuestion.skillType.toLowerCase()">
-                    <span ng-if="vm.room.currentQuestion.skillType === 'FIRE_UP'">
-                        🔥 BONUS 15S
-                    </span>
+                <div class="battle-online-fire-question-icon"
+                     ng-if="vm.room.currentQuestion.skillType === 'FIRE_UP'"
+                     aria-label="Trả lời đúng để nhận Cháy lên">
+                    🔥
+                </div>
 
-                    <span ng-if="vm.room.currentQuestion.skillType !== 'FIRE_UP'">
+                <div class="battle-online-question-skill"
+                     ng-if="vm.room.currentQuestion.skillType && vm.room.currentQuestion.skillType !== 'FIRE_UP'"
+                     ng-class="'is-' + vm.room.currentQuestion.skillType.toLowerCase()">
+                    <span>
                         {{vm.getSkillIcon(vm.room.currentQuestion.skillType)}}
                         TRẢ LỜI ĐÚNG ĐỂ NHẬN
                         {{vm.getSkillLabel(vm.room.currentQuestion.skillType)}}
@@ -807,6 +843,32 @@
 
         </main>
 
+        <main class="battle-online-card battle-online-spectator-panel"
+              ng-if="vm.isSpectator()">
+            <div class="battle-online-spectator-icon">👁️</div>
+            <span class="battle-online-small-title">CHẾ ĐỘ KHÁN GIẢ</span>
+            <h2>Bạn đang xem trận đấu</h2>
+            <p>
+                Bạn không nhận câu riêng, không trả lời, không tính điểm
+                và không thể trở thành mục tiêu của skill.
+            </p>
+
+            <div class="battle-online-spectator-question"
+                 ng-if="vm.room.settings.mode === 'CLASSIC' && vm.room.currentQuestion">
+                <small>CÂU HIỆN TẠI</small>
+                <strong>{{vm.room.currentQuestion.question}}</strong>
+                <span>{{vm.room.currentQuestion.pronounce}}</span>
+                <b>⏱ {{vm.countdown}}s</b>
+            </div>
+
+            <div class="battle-online-spectator-question"
+                 ng-if="vm.room.settings.mode === 'COUNTDOWN'">
+                <small>THỜI GIAN CÒN LẠI</small>
+                <strong>⏳ {{vm.formatTime(vm.countdown)}}</strong>
+                <span>Mỗi người chơi đang nhận câu hỏi riêng.</span>
+            </div>
+        </main>
+
 
         <!-- RANKING -->
         <aside id="battle-online-ranking-card"
@@ -824,8 +886,9 @@
 
 
             <div class="battle-online-ranking-row"
-                 ng-repeat="player in vm.room.players track by player.username"
-                 ng-class="vm.getPlayerClass(player)">
+                 ng-repeat="player in (vm.room.players | filter:{spectator:false}) track by player.username"
+                 ng-class="vm.getPlayerClass(player)"
+                 ng-click="vm.openKickConfirm(player)">
 
                 <span class="battle-online-rank">
                     {{player.rank}}
@@ -861,6 +924,7 @@
             </div>
 
             <div class="battle-online-event-board"
+                 ng-class="{'is-mobile-modal-only': vm.room.settings.mode === 'COUNTDOWN'}"
                  ng-if="vm.room.recentEvents.length">
                 <div class="battle-online-event-title">
                     ⚡ HOẠT ĐỘNG SKILL
@@ -914,7 +978,7 @@
         <div class="battle-online-final-ranking">
 
             <div class="battle-online-ranking-row"
-                 ng-repeat="player in vm.room.players track by player.username"
+                 ng-repeat="player in (vm.room.players | filter:{spectator:false}) track by player.username"
                  ng-class="vm.getPlayerClass(player)">
 
                 <span class="battle-online-rank">
@@ -969,14 +1033,36 @@
 
     </section>
 
-    <button type="button"
-            class="battle-online-mobile-ranking-fab"
-            ng-if="vm.room && vm.room.status === 'PLAYING'"
-            ng-click="vm.openRankingModal()"
-            aria-label="Mở bảng xếp hạng">
-        <span>🏆</span>
-        <small>BXH</small>
-    </button>
+    <div class="battle-online-mobile-tools"
+         ng-if="vm.room && vm.room.status === 'PLAYING'">
+        <button type="button"
+                class="battle-online-mobile-tool is-ranking"
+                ng-click="vm.openRankingModal()"
+                aria-label="Mở bảng xếp hạng">
+            <span>🏆</span>
+            <small>BXH</small>
+        </button>
+
+        <button type="button"
+                class="battle-online-mobile-tool is-skills"
+                ng-if="vm.room.settings.mode === 'COUNTDOWN'"
+                ng-click="vm.openSkillActivityModal()"
+                aria-label="Mở hoạt động skill">
+            <span>⚡</span>
+            <small>SKILL</small>
+            <b ng-if="vm.room.recentEvents.length">{{vm.room.recentEvents.length}}</b>
+        </button>
+
+        <button type="button"
+                class="battle-online-mobile-tool is-wrong"
+                ng-if="vm.room.settings.mode === 'COUNTDOWN'"
+                ng-click="vm.openWrongQuestionsModal()"
+                aria-label="Mở các câu trả lời sai">
+            <span>❌</span>
+            <small>CÂU SAI</small>
+            <b ng-if="vm.wrongQuestions.length">{{vm.wrongQuestions.length}}</b>
+        </button>
+    </div>
 
     <div class="battle-online-skill-modal-backdrop"
          ng-if="vm.skillTargetModalOpen && vm.room && vm.room.pendingSkillType">
@@ -1066,8 +1152,9 @@
 
             <div class="battle-online-ranking-modal-scroll">
                 <div class="battle-online-ranking-row"
-                     ng-repeat="player in vm.room.players track by player.username"
-                     ng-class="vm.getPlayerClass(player)">
+                     ng-repeat="player in (vm.room.players | filter:{spectator:false}) track by player.username"
+                     ng-class="vm.getPlayerClass(player)"
+                     ng-click="vm.openKickConfirm(player)">
 
                     <span class="battle-online-rank">
                         {{player.rank}}
@@ -1101,6 +1188,7 @@
                 </div>
 
                 <div class="battle-online-event-board"
+                     ng-class="{'is-mobile-modal-only': vm.room.settings.mode === 'COUNTDOWN'}"
                      ng-if="vm.room.recentEvents.length">
                     <div class="battle-online-event-title">
                         ⚡ HOẠT ĐỘNG SKILL
@@ -1112,6 +1200,119 @@
                         <span>{{vm.getSkillIcon(event.type)}}</span>
                         <p>{{vm.getSkillEventMessage(event)}}</p>
                     </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="battle-online-ranking-modal-backdrop battle-online-kick-backdrop"
+         ng-if="vm.kickConfirmModalOpen && vm.playerToKick"
+         ng-click="vm.closeKickConfirm()">
+        <section class="battle-online-kick-modal"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="Xác nhận kích người chơi"
+                 ng-click="$event.stopPropagation()">
+            <div class="battle-online-kick-modal-icon">🚫</div>
+            <span class="battle-online-small-title">QUẢN LÝ PHÒNG</span>
+            <h2>Kích người chơi?</h2>
+            <p>
+                Bạn có chắc muốn kích
+                <strong>{{vm.getPlayerDisplayName(vm.playerToKick)}}</strong>
+                khỏi phòng không?
+            </p>
+
+            <div class="battle-online-kick-modal-actions">
+                <button type="button"
+                        class="battle-online-kick-cancel-btn"
+                        ng-click="vm.closeKickConfirm()"
+                        ng-disabled="vm.kickingPlayer">
+                    HỦY
+                </button>
+                <button type="button"
+                        class="battle-online-kick-confirm-btn"
+                        ng-click="vm.confirmKickPlayer()"
+                        ng-disabled="vm.kickingPlayer">
+                    {{vm.kickingPlayer ? 'ĐANG KÍCH...' : 'KÍCH KHỎI PHÒNG'}}
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <div class="battle-online-ranking-modal-backdrop"
+         ng-if="vm.skillActivityModalOpen && vm.room && vm.room.status === 'PLAYING'"
+         ng-click="vm.closeSkillActivityModal()">
+        <section class="battle-online-ranking-modal battle-online-history-modal"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="Hoạt động skill"
+                 ng-click="$event.stopPropagation()">
+            <div class="battle-online-ranking-modal-header">
+                <div>
+                    <span class="battle-online-small-title">⚡ COUNTDOWN</span>
+                    <h2>Hoạt động skill</h2>
+                </div>
+                <button type="button"
+                        ng-click="vm.closeSkillActivityModal()"
+                        aria-label="Đóng hoạt động skill">×</button>
+            </div>
+
+            <div class="battle-online-ranking-modal-scroll">
+                <div class="battle-online-event-board is-modal-board"
+                     ng-if="vm.room.recentEvents.length">
+                    <div class="battle-online-event-row"
+                         ng-repeat="event in vm.room.recentEvents track by event.id"
+                         ng-class="'is-' + (event.type || '').toLowerCase()">
+                        <span>{{vm.getSkillIcon(event.type)}}</span>
+                        <p>{{vm.getSkillEventMessage(event)}}</p>
+                    </div>
+                </div>
+
+                <div class="battle-online-history-empty"
+                     ng-if="!vm.room.recentEvents.length">
+                    <span>⚡</span>
+                    <strong>Chưa có hoạt động skill</strong>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="battle-online-ranking-modal-backdrop"
+         ng-if="vm.wrongQuestionsModalOpen && vm.room && vm.room.status === 'PLAYING'"
+         ng-click="vm.closeWrongQuestionsModal()">
+        <section class="battle-online-ranking-modal battle-online-history-modal"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="Các câu trả lời sai"
+                 ng-click="$event.stopPropagation()">
+            <div class="battle-online-ranking-modal-header">
+                <div>
+                    <span class="battle-online-small-title">❌ ÔN LẠI</span>
+                    <h2>Câu trả lời sai</h2>
+                </div>
+                <button type="button"
+                        ng-click="vm.closeWrongQuestionsModal()"
+                        aria-label="Đóng danh sách câu sai">×</button>
+            </div>
+
+            <div class="battle-online-ranking-modal-scroll">
+                <article class="battle-online-wrong-question"
+                         ng-repeat="item in vm.wrongQuestions track by item.questionKey">
+                    <h3>{{item.question}}</h3>
+                    <p class="battle-online-wrong-pronounce"
+                       ng-if="item.pronounce">
+                        {{item.pronounce}}
+                    </p>
+                    <p class="battle-online-correct-answer">
+                        <span>ĐÁP ÁN ĐÚNG</span>
+                        <strong>{{item.correctAnswer}}</strong>
+                    </p>
+                </article>
+
+                <div class="battle-online-history-empty"
+                     ng-if="!vm.wrongQuestions.length">
+                    <span>🎉</span>
+                    <strong>Chưa có câu trả lời sai</strong>
                 </div>
             </div>
         </section>
@@ -1853,8 +2054,152 @@
             filter .22s ease;
     }
 
-    .battle-online-mobile-ranking-fab {
+    .battle-online-spectator-panel {
+        min-height: 430px;
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-radius: 22px;
+        text-align: center;
+    }
+
+    .battle-online-spectator-icon {
+        width: 66px;
+        height: 66px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 21px;
+        background: linear-gradient(135deg, rgba(99,102,241,.18), rgba(168,85,247,.20));
+        box-shadow: 0 12px 28px rgba(99,102,241,.16);
+        font-size: 32px;
+    }
+
+    .battle-online-spectator-panel h2 {
+        margin: 7px 0 5px;
+        color: var(--bo-text);
+        font-size: 27px;
+        font-weight: 900;
+    }
+
+    .battle-online-spectator-panel > p {
+        max-width: 520px;
+        margin: 0 0 18px;
+        color: var(--bo-muted);
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .battle-online-spectator-question {
+        width: min(520px, 100%);
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        border: 1px solid var(--bo-line);
+        border-radius: 18px;
+        background: var(--bo-soft);
+    }
+
+    .battle-online-spectator-question small {
+        color: var(--bo-purple);
+        font-size: 8px;
+        font-weight: 900;
+        letter-spacing: .08em;
+    }
+
+    .battle-online-spectator-question strong {
+        color: var(--bo-text);
+        font-size: 24px;
+        font-weight: 900;
+    }
+
+    .battle-online-spectator-question span {
+        color: var(--bo-muted);
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .battle-online-spectator-question b {
+        color: var(--bo-purple);
+        font-size: 18px;
+    }
+
+    .battle-online-mobile-ranking-fab,
+    .battle-online-mobile-tools {
         display: none;
+    }
+
+    .battle-online-history-modal {
+        width: min(480px, 100%);
+    }
+
+    .battle-online-event-board.is-modal-board {
+        margin: 0;
+        padding-top: 0;
+        border-top: 0;
+    }
+
+    .battle-online-history-empty {
+        min-height: 180px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: var(--bo-muted);
+        text-align: center;
+    }
+
+    .battle-online-history-empty span {
+        font-size: 38px;
+    }
+
+    .battle-online-wrong-question {
+        margin-bottom: 10px;
+        padding: 14px;
+        border: 1px solid var(--bo-line);
+        border-radius: 16px;
+        background: var(--bo-soft);
+    }
+
+    .battle-online-wrong-question h3 {
+        margin: 0 0 3px;
+        color: var(--bo-text);
+        font-size: 17px;
+        line-height: 1.35;
+    }
+
+    .battle-online-wrong-pronounce {
+        margin: 0 0 11px;
+        color: var(--bo-muted);
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .battle-online-correct-answer {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        margin: 0;
+        padding: 10px 12px;
+        border: 1px solid rgba(38, 174, 112, .28);
+        border-radius: 11px;
+        color: #116d48;
+        background: rgba(50, 197, 160, .12);
+    }
+
+    .battle-online-correct-answer span {
+        font-size: 8px;
+        font-weight: 900;
+        letter-spacing: .08em;
+    }
+
+    .battle-online-correct-answer strong {
+        font-size: 14px;
     }
 
     .battle-online-ranking-modal-backdrop {
@@ -1921,6 +2266,79 @@
 
     .battle-online-ranking-modal-scroll .battle-online-event-board {
         margin-bottom: 2px;
+    }
+
+    .battle-online-kick-backdrop {
+        z-index: 1135;
+    }
+
+    .battle-online-kick-modal {
+        width: min(420px, 100%);
+        padding: 24px;
+        border: 1px solid var(--bo-line);
+        border-radius: 22px;
+        color: var(--bo-text);
+        background: var(--bo-card);
+        box-shadow: 0 26px 80px rgba(7,14,35,.44);
+        text-align: center;
+        animation: battle-online-modal-pop .22s ease-out both;
+    }
+
+    .battle-online-kick-modal-icon {
+        width: 62px;
+        height: 62px;
+        margin: 0 auto 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 20px;
+        color: #be123c;
+        background: #fff1f2;
+        font-size: 31px;
+    }
+
+    .battle-online-kick-modal h2 {
+        margin: 6px 0 8px;
+        color: var(--bo-text);
+        font-size: 25px;
+        font-weight: 900;
+    }
+
+    .battle-online-kick-modal p {
+        margin: 0;
+        color: var(--bo-muted);
+        font-size: 12px;
+        line-height: 1.55;
+    }
+
+    .battle-online-kick-modal p strong {
+        color: var(--bo-text);
+    }
+
+    .battle-online-kick-modal-actions {
+        margin-top: 20px;
+        display: grid;
+        grid-template-columns: 1fr 1.35fr;
+        gap: 9px;
+    }
+
+    .battle-online-kick-modal-actions button {
+        min-height: 43px;
+        border-radius: 12px;
+        font-size: 9px;
+        font-weight: 900;
+    }
+
+    .battle-online-kick-cancel-btn {
+        color: var(--bo-text);
+        background: var(--bo-soft);
+        border: 1px solid var(--bo-line);
+    }
+
+    .battle-online-kick-confirm-btn {
+        color: #fff;
+        background: linear-gradient(135deg, #e11d48, #f43f5e);
+        box-shadow: 0 9px 22px rgba(225,29,72,.24);
     }
 
     @keyframes battle-online-modal-fade {
@@ -2348,6 +2766,7 @@
     }
 
     .battle-online-player-card {
+        position: relative;
         display: flex;
         align-items: center;
 
@@ -2367,6 +2786,11 @@
 
     .battle-online-player-card.is-ready {
         border-color: rgba(40,185,128,.34);
+    }
+
+    .battle-online-player-card.is-spectator {
+        border-color: rgba(124,92,238,.48);
+        background: linear-gradient(135deg, var(--bo-soft), rgba(124,92,238,.10));
     }
 
     .battle-online-player-card.is-offline {
@@ -2437,6 +2861,75 @@
     .battle-online-ready-badge.is-waiting {
         color: #7d879b;
         background: #eef1f7;
+    }
+
+    .battle-online-ready-badge.is-spectator {
+        color: #5b3cc4;
+        background: #eee9ff;
+    }
+
+    .battle-online-kick-mini-btn {
+        flex: 0 0 auto;
+        min-height: 28px;
+        padding: 5px 8px;
+        border: 1px solid rgba(225,29,72,.24);
+        border-radius: 9px;
+        color: #be123c;
+        background: #fff1f2;
+        font-size: 7px;
+        font-weight: 900;
+        transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+    }
+
+    .battle-online-kick-mini-btn:hover {
+        color: #fff;
+        background: #e11d48;
+        box-shadow: 0 7px 16px rgba(225,29,72,.22);
+        transform: translateY(-1px);
+    }
+
+    .battle-online-spectator-toggle {
+        width: 100%;
+        margin-top: 10px;
+        padding: 10px 12px;
+        display: grid;
+        grid-template-columns: 34px minmax(0,1fr);
+        column-gap: 9px;
+        align-items: center;
+        text-align: left;
+        border: 1px solid var(--bo-line);
+        border-radius: 13px;
+        color: var(--bo-text);
+        background: var(--bo-soft);
+        transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+
+    .battle-online-spectator-toggle > span {
+        grid-row: 1 / span 2;
+        font-size: 22px;
+        text-align: center;
+    }
+
+    .battle-online-spectator-toggle strong,
+    .battle-online-spectator-toggle small {
+        display: block;
+    }
+
+    .battle-online-spectator-toggle strong {
+        font-size: 9px;
+        font-weight: 900;
+    }
+
+    .battle-online-spectator-toggle small {
+        color: var(--bo-muted);
+        font-size: 7px;
+        font-weight: 700;
+    }
+
+    .battle-online-spectator-toggle.is-active {
+        border-color: rgba(124,92,238,.62);
+        background: linear-gradient(135deg, rgba(99,102,241,.14), rgba(168,85,247,.14));
+        box-shadow: 0 8px 20px rgba(99,102,241,.14);
     }
 
     .battle-online-ready-zone {
@@ -3186,6 +3679,36 @@
         white-space: nowrap;
     }
 
+    .battle-online-fire-question-icon {
+        position: absolute;
+        z-index: 5;
+        top: 10px;
+        left: 10px;
+        width: 42px;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 202, 151, .72);
+        border-radius: 14px;
+        color: #fff;
+        background: rgba(100, 17, 20, .82);
+        box-shadow:
+            inset 0 0 12px rgba(255, 111, 45, .24),
+            0 0 12px rgba(255, 81, 47, .70),
+            0 0 26px rgba(239, 68, 68, .38);
+        font-size: 25px;
+        line-height: 1;
+        pointer-events: none;
+        filter: drop-shadow(0 0 6px rgba(255, 91, 39, .70));
+        animation: battle-online-fire-skill-glow .76s ease-in-out infinite alternate;
+    }
+
+    .battle-online-question-card.is-player-burning
+    .battle-online-fire-question-icon {
+        left: 84px;
+    }
+
     .battle-online-question-skill.is-fire_up {
         border-color: rgba(255,229,163,.75);
         background: linear-gradient(135deg, #991b1b, #ef4444, #f97316);
@@ -3524,6 +4047,17 @@
         background: var(--bo-soft);
     }
 
+    .battle-online-ranking-row.is-kickable {
+        cursor: pointer;
+        transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+    }
+
+    .battle-online-ranking-row.is-kickable:hover {
+        border-color: rgba(225,29,72,.40);
+        box-shadow: 0 8px 18px rgba(225,29,72,.12);
+        transform: translateY(-1px);
+    }
+
     .battle-online-ranking-row.is-rank-1 {
         border-color: rgba(245,188,59,.6);
         background: #fff8df;
@@ -3774,9 +4308,30 @@
     }
 
     html.global-dark-mode
+    .battle-online-ready-badge.is-spectator {
+        color: #d7c9ff;
+        background: #322a54;
+    }
+
+    html.global-dark-mode
+    .battle-online-kick-mini-btn,
+    html.global-dark-mode
+    .battle-online-kick-modal-icon {
+        color: #ffb5c4;
+        background: #482532;
+    }
+
+    html.global-dark-mode
     .battle-online-rank {
         color: #d9e0ec;
         background: #263248;
+    }
+
+    html.global-dark-mode
+    .battle-online-correct-answer {
+        border-color: rgba(82, 211, 160, .28);
+        color: #92e6c2;
+        background: rgba(25, 117, 83, .22);
     }
 
     /* ---------- CREATE ROOM / SELECTED LESSONS ---------- */
@@ -3833,18 +4388,32 @@
             justify-content: center;
         }
 
-        .battle-online-mobile-ranking-fab {
+        .battle-online-event-board.is-mobile-modal-only {
+            display: none;
+        }
+
+        #battle-online-ranking-card {
+            display: none;
+        }
+
+        .battle-online-mobile-tools {
             position: fixed;
             z-index: 999;
             left: 18px;
             bottom: 22px;
-            width: 60px;
-            height: 60px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .battle-online-mobile-tool {
+            position: relative;
+            width: 58px;
+            height: 58px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 0;
             border: 4px solid #fff;
             border-radius: 50%;
             color: #fff;
@@ -3853,14 +4422,40 @@
             line-height: 1;
         }
 
-        .battle-online-mobile-ranking-fab span {
-            font-size: 22px;
+        .battle-online-mobile-tool.is-skills {
+            background: linear-gradient(135deg, #ff9f43, #ed6b2f);
         }
 
-        .battle-online-mobile-ranking-fab small {
+        .battle-online-mobile-tool.is-wrong {
+            background: linear-gradient(135deg, #ef6a70, #c93654);
+        }
+
+        .battle-online-mobile-tool > span {
+            font-size: 20px;
+        }
+
+        .battle-online-mobile-tool > small {
             margin-top: 2px;
             color: inherit;
-            font-size: 8px;
+            font-size: 7px;
+            font-weight: 900;
+        }
+
+        .battle-online-mobile-tool > b {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            min-width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 5px;
+            border: 2px solid #fff;
+            border-radius: 999px;
+            color: #fff;
+            background: #17233d;
+            font-size: 9px;
             font-weight: 900;
         }
     }
@@ -3979,10 +4574,20 @@
         .battle-online-main-card,
         .battle-online-side-card,
         .battle-online-question-card,
+        .battle-online-spectator-panel,
         .battle-online-ranking-card {
             padding: 10px;
 
             border-radius: 16px;
+        }
+
+        .battle-online-spectator-panel {
+            min-height: 330px;
+        }
+
+        .battle-online-kick-modal {
+            padding: 20px;
+            border-radius: 19px;
         }
 
         .battle-online-mode-grid {

@@ -21,6 +21,7 @@ import com.globits.richy.dto.BattleOnlineCreateRoomDto;
 import com.globits.richy.dto.BattleOnlineReadyDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
+import com.globits.richy.dto.BattleOnlineSpectatorDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
 import com.globits.richy.service.BattleOnlineException;
 import com.globits.richy.service.BattleOnlineService;
@@ -76,6 +77,33 @@ public class RestBattleOnlineController {
                 roomCode,
                 currentUsername(),
                 dto != null && dto.isReady()
+        );
+    }
+
+    @RequestMapping(value = "/rooms/{roomCode}/spectator", method = RequestMethod.POST)
+    public BattleOnlineRoomDto setSpectator(
+            @PathVariable String roomCode,
+            @RequestBody BattleOnlineSpectatorDto dto) {
+
+        return battleOnlineService.setSpectator(
+                roomCode,
+                currentUsername(),
+                dto != null && dto.isSpectator()
+        );
+    }
+
+    @RequestMapping(
+            value = "/rooms/{roomCode}/players/{targetUsername}/kick",
+            method = RequestMethod.POST
+    )
+    public BattleOnlineRoomDto kickPlayer(
+            @PathVariable String roomCode,
+            @PathVariable String targetUsername) {
+
+        return battleOnlineService.kickPlayer(
+                roomCode,
+                currentUsername(),
+                targetUsername
         );
     }
 

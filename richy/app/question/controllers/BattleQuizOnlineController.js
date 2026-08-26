@@ -60,6 +60,8 @@
         vm.savingSettings = false;
         vm.startingMatch = false;
         vm.refreshingPrivateState = false;
+        vm.changingSpectator = false;
+        vm.kickingPlayer = false;
 
         vm.realtimeConnected = false;
         vm.connectionMode = 'CONNECTING';
@@ -74,6 +76,11 @@
         vm.personalSkillNotice = null;
         vm.skillHitEffect = null;
         vm.rankingModalOpen = false;
+        vm.skillActivityModalOpen = false;
+        vm.wrongQuestionsModalOpen = false;
+        vm.wrongQuestions = [];
+        vm.kickConfirmModalOpen = false;
+        vm.playerToKick = null;
         vm.qrModalOpen = false;
         vm.scannerModalOpen = false;
         vm.roomLink = '';
@@ -160,6 +167,8 @@
          */
         var serverTimeOffset = 0;
         var lastSeenEventId = 0;
+        var activeWrongQuestionMatchKey = '';
+        var kickedNavigationHandled = false;
 
 
         /* =====================================================
@@ -167,6 +176,8 @@
            ===================================================== */
 
         vm.isHost = isHost;
+        vm.isSpectator = isSpectator;
+        vm.canKickPlayer = canKickPlayer;
         vm.me = getMe;
 
         vm.createRoom = createRoom;
@@ -188,6 +199,12 @@
         vm.saveSettings = saveSettings;
 
         vm.toggleReady = toggleReady;
+        vm.toggleSpectator = toggleSpectator;
+        vm.openKickConfirm = openKickConfirm;
+        vm.closeKickConfirm = closeKickConfirm;
+        vm.confirmKickPlayer = confirmKickPlayer;
+        vm.getActivePlayerCount = getActivePlayerCount;
+        vm.getSpectatorCount = getSpectatorCount;
         vm.startMatch = startMatch;
         vm.restartMatch = restartMatch;
 
@@ -209,6 +226,10 @@
         vm.getActiveSkillEffectActor = getActiveSkillEffectActor;
         vm.openRankingModal = openRankingModal;
         vm.closeRankingModal = closeRankingModal;
+        vm.openSkillActivityModal = openSkillActivityModal;
+        vm.closeSkillActivityModal = closeSkillActivityModal;
+        vm.openWrongQuestionsModal = openWrongQuestionsModal;
+        vm.closeWrongQuestionsModal = closeWrongQuestionsModal;
         vm.openQrModal = openQrModal;
         vm.closeQrModal = closeQrModal;
         vm.openScannerModal = openScannerModal;
@@ -403,6 +424,64 @@
             );
 
             return found;
+        }
+
+
+        function isSpectator() {
+            var me = getMe();
+
+            return !!(
+                me &&
+                me.spectator === true
+            );
+        }
+
+
+        function canKickPlayer(player) {
+            return !!(
+                isHost() &&
+                vm.room &&
+                (
+                    vm.room.status === 'LOBBY' ||
+                    vm.room.status === 'PLAYING'
+                ) &&
+                player &&
+                player.username &&
+                player.username !== vm.currentUser.username &&
+                player.host !== true
+            );
+        }
+
+
+        function getActivePlayerCount() {
+            var count = 0;
+
+            angular.forEach(
+                (vm.room && vm.room.players) || [],
+                function (player) {
+                    if (player && player.spectator !== true) {
+                        count += 1;
+                    }
+                }
+            );
+
+            return count;
+        }
+
+
+        function getSpectatorCount() {
+            var count = 0;
+
+            angular.forEach(
+                (vm.room && vm.room.players) || [],
+                function (player) {
+                    if (player && player.spectator === true) {
+                        count += 1;
+                    }
+                }
+            );
+
+            return count;
         }
 
 
@@ -810,6 +889,13 @@
                         stopRealtimeAndPolling();
 
                         vm.room = null;
+                        vm.rankingModalOpen = false;
+                        vm.skillActivityModalOpen = false;
+                        vm.wrongQuestionsModalOpen = false;
+                        vm.kickConfirmModalOpen = false;
+                        vm.playerToKick = null;
+                        vm.wrongQuestions = [];
+                        activeWrongQuestionMatchKey = '';
 
                         $state.go(
                             'application.battle_quiz_online'
@@ -904,7 +990,14 @@
                                         false
                                     );
                                 },
-                                angular.noop
+                                function (error) {
+                                    if (
+                                        error &&
+                                        error.status === 403
+                                    ) {
+                                        handleKickedFromRoom();
+                                    }
+                                }
                             );
                     },
                     1000
@@ -957,7 +1050,14 @@
                             false
                         );
                     },
-                    angular.noop
+                    function (error) {
+                        if (
+                            error &&
+                            error.status === 403
+                        ) {
+                            handleKickedFromRoom();
+                        }
+                    }
                 )
                 .finally(
                     function () {
@@ -972,6 +1072,52 @@
            APPLY ROOM
            ===================================================== */
 
+        function roomContainsCurrentUser(room) {
+            var found = false;
+
+            angular.forEach(
+                (room && room.players) || [],
+                function (player) {
+                    if (
+                        player &&
+                        player.username === vm.currentUser.username
+                    ) {
+                        found = true;
+                    }
+                }
+            );
+
+            return found;
+        }
+
+
+        function handleKickedFromRoom() {
+            if (kickedNavigationHandled || destroyed) {
+                return;
+            }
+
+            kickedNavigationHandled = true;
+
+            stopRealtimeAndPolling();
+
+            vm.room = null;
+            vm.rankingModalOpen = false;
+            vm.skillActivityModalOpen = false;
+            vm.wrongQuestionsModalOpen = false;
+            vm.skillTargetModalOpen = false;
+            vm.kickConfirmModalOpen = false;
+            vm.playerToKick = null;
+
+            toastr.warning(
+                'HOST đã kích bạn khỏi phòng.',
+                'BATTLE ONLINE'
+            );
+
+            $state.go(
+                'application.battle_quiz_online'
+            );
+        }
+
         function applyRoom(
             incoming,
             fromGenericSocket
@@ -985,6 +1131,15 @@
 
             var previousRoom =
                 vm.room;
+
+            if (
+                previousRoom &&
+                previousRoom.code === incoming.code &&
+                !roomContainsCurrentUser(incoming)
+            ) {
+                handleKickedFromRoom();
+                return;
+            }
 
             var previousQuestion =
                 previousRoom &&
@@ -1094,6 +1249,7 @@
                     if (
                         target &&
                         target.connected === true &&
+                        target.spectator !== true &&
                         target.username !== vm.currentUser.username
                     ) {
                         vm.availableSkillTargets.push(target);
@@ -1103,6 +1259,7 @@
 
             vm.skillTargetModalOpen =
                 incoming.status === 'PLAYING' &&
+                !isSpectator() &&
                 !!incoming.pendingSkillType;
 
             processSkillEvents(incoming.recentEvents || []);
@@ -1224,7 +1381,8 @@
                 incoming.settings.mode ===
                     'COUNTDOWN' &&
                 !incoming.currentQuestion &&
-                !incoming.pendingSkillType
+                !incoming.pendingSkillType &&
+                !isSpectator()
             ) {
                 refreshPrivateRoomState();
             }
@@ -1239,6 +1397,7 @@
                 incoming.status ===
                     'PLAYING'
             ) {
+                prepareWrongQuestionHistory(incoming);
                 vm.lastAnswerCorrect = null;
                 vm.lastAnswerMessage = '';
                 vm.personalSkillNotice = null;
@@ -1441,6 +1600,108 @@
         }
 
 
+        function toggleSpectator() {
+            var me = getMe();
+
+            if (
+                !vm.room ||
+                vm.room.status !== 'LOBBY' ||
+                !isHost() ||
+                !me ||
+                vm.changingSpectator
+            ) {
+                return;
+            }
+
+            vm.changingSpectator = true;
+
+            battleService
+                .setSpectator(
+                    vm.room.code,
+                    me.spectator !== true
+                )
+                .then(
+                    function (room) {
+                        applyRoom(room, false);
+
+                        toastr.success(
+                            isSpectator()
+                                ? 'Bạn đang ở chế độ khán giả.'
+                                : 'Bạn đã trở lại chế độ người chơi.',
+                            'BATTLE ONLINE'
+                        );
+                    },
+                    showRequestError
+                )
+                .finally(
+                    function () {
+                        vm.changingSpectator = false;
+                    }
+                );
+        }
+
+
+        function openKickConfirm(player) {
+            if (!canKickPlayer(player)) {
+                return;
+            }
+
+            vm.playerToKick = player;
+            vm.kickConfirmModalOpen = true;
+        }
+
+
+        function closeKickConfirm() {
+            if (vm.kickingPlayer) {
+                return;
+            }
+
+            vm.kickConfirmModalOpen = false;
+            vm.playerToKick = null;
+        }
+
+
+        function confirmKickPlayer() {
+            var target = vm.playerToKick;
+
+            if (
+                !canKickPlayer(target) ||
+                vm.kickingPlayer
+            ) {
+                return;
+            }
+
+            vm.kickingPlayer = true;
+
+            battleService
+                .kickPlayer(
+                    vm.room.code,
+                    target.username
+                )
+                .then(
+                    function (room) {
+                        var name = getPlayerDisplayName(target);
+
+                        vm.kickConfirmModalOpen = false;
+                        vm.playerToKick = null;
+
+                        applyRoom(room, false);
+
+                        toastr.success(
+                            'Đã kích ' + name + ' khỏi phòng.',
+                            'BATTLE ONLINE'
+                        );
+                    },
+                    showRequestError
+                )
+                .finally(
+                    function () {
+                        vm.kickingPlayer = false;
+                    }
+                );
+        }
+
+
         function startMatch() {
             if (
                 !vm.room ||
@@ -1547,6 +1808,7 @@
                 !option ||
                 vm.answerLocked ||
                 vm.room.pendingSkillType ||
+                isSpectator() ||
                 isMeFrozen()
             ) {
                 return;
@@ -1574,6 +1836,16 @@
                 )
                 .then(
                     function (result) {
+                        if (
+                            isCountdownMode() &&
+                            result.correct !== true
+                        ) {
+                            rememberWrongQuestion(
+                                question,
+                                result
+                            );
+                        }
+
                         /*
                          * COUNTDOWN server trả room private
                          * chứa câu random tiếp theo.
@@ -1956,6 +2228,234 @@
 
         function closeRankingModal() {
             vm.rankingModalOpen = false;
+        }
+
+
+        function openSkillActivityModal() {
+            vm.skillActivityModalOpen = true;
+        }
+
+
+        function closeSkillActivityModal() {
+            vm.skillActivityModalOpen = false;
+        }
+
+
+        function openWrongQuestionsModal() {
+            vm.wrongQuestionsModalOpen = true;
+        }
+
+
+        function closeWrongQuestionsModal() {
+            vm.wrongQuestionsModalOpen = false;
+        }
+
+
+        function getWrongQuestionMatchKey(room) {
+            if (
+                !room ||
+                !room.code ||
+                !room.matchEndsAt ||
+                !vm.currentUser.username
+            ) {
+                return '';
+            }
+
+            return [
+                'battle-online-wrong-questions',
+                room.code,
+                vm.currentUser.username,
+                room.matchEndsAt
+            ].join(':');
+        }
+
+
+        function prepareWrongQuestionHistory(room) {
+            var matchKey = getWrongQuestionMatchKey(room);
+
+            if (!matchKey || matchKey === activeWrongQuestionMatchKey) {
+                return;
+            }
+
+            activeWrongQuestionMatchKey = matchKey;
+            vm.wrongQuestions = [];
+            vm.skillActivityModalOpen = false;
+            vm.wrongQuestionsModalOpen = false;
+
+            try {
+                var saved = $window.sessionStorage.getItem(matchKey);
+                var parsed = saved ? angular.fromJson(saved) : [];
+
+                if (angular.isArray(parsed)) {
+                    vm.wrongQuestions = parsed;
+                }
+            } catch (e) {
+                vm.wrongQuestions = [];
+            }
+        }
+
+
+        function saveWrongQuestionHistory() {
+            if (!activeWrongQuestionMatchKey) {
+                return;
+            }
+
+            try {
+                $window.sessionStorage.setItem(
+                    activeWrongQuestionMatchKey,
+                    angular.toJson(vm.wrongQuestions)
+                );
+            } catch (e) {
+                // Vẫn giữ trong RAM nếu trình duyệt chặn sessionStorage.
+            }
+        }
+
+
+        function extractCorrectAnswer(source) {
+            source = source || {};
+
+            var direct =
+                source.correctAnswerText ||
+                source.correctAnswer ||
+                source.motherTongue ||
+                '';
+
+            if (String(direct).trim()) {
+                return String(direct).trim();
+            }
+
+            var correct = '';
+
+            angular.forEach(
+                source.questionAnswers || [],
+                function (questionAnswer) {
+                    if (correct || !questionAnswer) {
+                        return;
+                    }
+
+                    if (
+                        questionAnswer.correct === true ||
+                        questionAnswer.isCorrect === true
+                    ) {
+                        correct =
+                            questionAnswer.correctAnswer ||
+                            (
+                                questionAnswer.answer &&
+                                questionAnswer.answer.answer
+                            ) ||
+                            questionAnswer.answer ||
+                            '';
+                    }
+                }
+            );
+
+            return String(correct || '').trim();
+        }
+
+
+        function storeWrongQuestion(
+            question,
+            correctAnswer,
+            expectedMatchKey
+        ) {
+            correctAnswer = String(correctAnswer || '').trim();
+
+            if (!question || !correctAnswer) {
+                return;
+            }
+
+            prepareWrongQuestionHistory(vm.room);
+
+            if (
+                expectedMatchKey &&
+                expectedMatchKey !== activeWrongQuestionMatchKey
+            ) {
+                return;
+            }
+
+            var questionKey = String(
+                question.id != null
+                    ? question.id
+                    : question.question || ''
+            );
+
+            var exists = vm.wrongQuestions.some(
+                function (item) {
+                    return String(item.questionKey) === questionKey;
+                }
+            );
+
+            if (exists) {
+                return;
+            }
+
+            vm.wrongQuestions.unshift({
+                questionKey: questionKey,
+                question: question.question,
+                pronounce: question.pronounce,
+                correctAnswer: correctAnswer
+            });
+
+            saveWrongQuestionHistory();
+        }
+
+
+        function rememberWrongQuestion(question, answerResult) {
+            if (!question) {
+                return;
+            }
+
+            prepareWrongQuestionHistory(vm.room);
+
+            var matchKey = activeWrongQuestionMatchKey;
+
+            var answerFromResult = extractCorrectAnswer(answerResult);
+
+            var correctKey =
+                answerResult &&
+                (
+                    answerResult.correctOptionKey ||
+                    answerResult.correctKey
+                );
+
+            if (!answerFromResult && correctKey) {
+                angular.forEach(
+                    question.answers || [],
+                    function (answer) {
+                        if (
+                            !answerFromResult &&
+                            answer &&
+                            String(answer.key) === String(correctKey)
+                        ) {
+                            answerFromResult = answer.text;
+                        }
+                    }
+                );
+            }
+
+            if (answerFromResult) {
+                storeWrongQuestion(
+                    question,
+                    answerFromResult,
+                    matchKey
+                );
+                return;
+            }
+
+            /*
+             * DTO chơi online không công khai đáp án đúng. Chỉ sau khi
+             * người chơi trả lời sai mới lấy chi tiết câu để lưu phần ôn lại.
+             */
+            questionService.getOne(question.id).then(
+                function (questionDetail) {
+                    storeWrongQuestion(
+                        question,
+                        extractCorrectAnswer(questionDetail),
+                        matchKey
+                    );
+                },
+                angular.noop
+            );
         }
 
 
@@ -2963,7 +3463,9 @@
                 'is-rank-3': player.rank === 3,
                 'is-player-burning': isPlayerBurning(player),
                 'is-player-frozen':
-                    Number(player.frozenUntil || 0) > serverNow()
+                    Number(player.frozenUntil || 0) > serverNow(),
+                'is-kickable': canKickPlayer(player),
+                'is-spectator': player.spectator === true
             };
         }
 
@@ -2995,6 +3497,7 @@
                 !vm.room.currentQuestion ||
                 vm.answerLocked ||
                 vm.room.pendingSkillType ||
+                isSpectator() ||
                 isMeFrozen()
             ) {
                 return;

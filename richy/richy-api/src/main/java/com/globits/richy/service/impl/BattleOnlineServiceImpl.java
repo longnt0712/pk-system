@@ -69,6 +69,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final double SKILL_TOP_RANK_WEIGHT = 1.4D;
     private static final int MAX_RECENT_EVENTS = 12;
 
+    /*
+     * COUNTDOWN ôn lại câu sai theo spaced repetition ngắn:
+     * sau 5-7 câu khác mới đưa câu sai quay lại.
+     */
+    private static final int COUNTDOWN_REVIEW_MIN_GAP = 5;
+    private static final int COUNTDOWN_REVIEW_MAX_GAP = 7;
+
     private static final int MAX_PLAYERS = 20;
 
     /* Tài khoản bộ từ dùng chung "EM YÊU INH LÍCH" giống DAILY VOCAB. */
@@ -253,6 +260,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         BattleOnlineRoomDto dto;
 
         synchronized (room) {
+            if (room.kickedUsernames.contains(username)) {
+                throw new BattleOnlineException(
+                        HttpStatus.FORBIDDEN,
+                        "HOST đã kích bạn khỏi phòng này."
+                );
+            }
+
             PlayerState existing =
                     room.players.get(username);
 
@@ -260,7 +274,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 existing.connected = true;
                 existing.displayName = identity.displayName;
 
-                if (PLAYING.equals(room.status)) {
+                if (
+                    PLAYING.equals(room.status) &&
+                    !existing.spectator
+                ) {
                     existing.ready = true;
                 }
 
@@ -271,6 +288,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 if (
                     PLAYING.equals(room.status) &&
                     MODE_COUNTDOWN.equals(room.settings.mode) &&
+                    !existing.spectator &&
                     existing.currentQuestion == null
                 ) {
                     assignNextCountdownQuestionLocked(
@@ -398,6 +416,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             if (
                 PLAYING.equals(room.status) &&
                 MODE_COUNTDOWN.equals(room.settings.mode) &&
+                !player.spectator &&
                 player.currentQuestion == null &&
                 player.pendingSkillType == null
             ) {
@@ -446,10 +465,110 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             PlayerState player =
                     requirePlayer(room, username);
 
+            if (player.spectator) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Khán giả không cần READY. Hãy tắt chế độ khán giả trước."
+                );
+            }
+
             if (player.host) {
                 player.ready = true;
             } else {
                 player.ready = ready;
+            }
+
+            dto = snapshotLocked(room, username);
+        }
+
+        broadcastGeneric(room);
+
+        return dto;
+    }
+
+
+    @Override
+    public BattleOnlineRoomDto setSpectator(
+            String roomCode,
+            String username,
+            boolean spectator) {
+
+        username = requireUsername(username);
+
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto dto;
+
+        synchronized (room) {
+            requireLobby(room);
+            requireHost(room, username);
+
+            PlayerState host = requirePlayer(room, username);
+
+            host.spectator = spectator;
+            host.ready = !spectator;
+
+            resetPlayerMatchState(host);
+
+            dto = snapshotLocked(room, username);
+        }
+
+        broadcastGeneric(room);
+
+        return dto;
+    }
+
+
+    @Override
+    public BattleOnlineRoomDto kickPlayer(
+            String roomCode,
+            String username,
+            String targetUsername) {
+
+        username = requireUsername(username);
+        targetUsername = requireUsername(targetUsername);
+
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto dto;
+
+        synchronized (room) {
+            requireHost(room, username);
+
+            if (
+                !LOBBY.equals(room.status) &&
+                !PLAYING.equals(room.status)
+            ) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Chỉ có thể kích người chơi trong lobby hoặc khi trận đang diễn ra."
+                );
+            }
+
+            if (username.equals(targetUsername)) {
+                throw new BattleOnlineException(
+                        HttpStatus.BAD_REQUEST,
+                        "HOST không thể tự kích chính mình."
+                );
+            }
+
+            PlayerState target = room.players.get(targetUsername);
+
+            if (target == null) {
+                throw new BattleOnlineException(
+                        HttpStatus.NOT_FOUND,
+                        "Người chơi không còn ở trong phòng."
+                );
+            }
+
+            room.players.remove(targetUsername);
+            room.kickedUsernames.add(targetUsername);
+
+            /*
+             * Xóa mục tiêu vừa bị kích khỏi mọi danh sách skill đang chờ.
+             * Nếu không còn đối thủ, lần GET tiếp theo sẽ tự nhả skill.
+             */
+            for (PlayerState player : room.players.values()) {
+                player.pendingSkillTargetUsernames.remove(targetUsername);
+                releasePendingSkillWhenNoTargetLocked(room, player);
             }
 
             dto = snapshotLocked(room, username);
@@ -594,13 +713,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             room.classicQuestions.clear();
             room.classicQuestionIndex = -1;
+            room.kickedUsernames.clear();
 
             room.questionEndsAt = 0L;
             room.matchEndsAt = 0L;
 
             for (PlayerState player : room.players.values()) {
                 resetPlayerMatchState(player);
-                player.ready = player.host;
+                player.ready = player.host && !player.spectator;
             }
 
             /*
@@ -708,8 +828,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         buildCountdownSkillPlanLocked(room);
 
         for (PlayerState player : room.players.values()) {
+            if (player.spectator) {
+                resetPlayerMatchState(player);
+                continue;
+            }
+
             player.pendingWordIds.clear();
             player.uniqueWordIds.clear();
+            player.countdownReviewQuestions.clear();
             player.currentQuestion = null;
             player.currentQuestionSequence = 0L;
 
@@ -779,6 +905,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             PlayerState player =
                     requirePlayer(room, username);
+
+            requireActivePlayer(player);
 
             QuestionState question =
                     currentClassicQuestionLocked(room);
@@ -928,6 +1056,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             PlayerState player =
                     requirePlayer(room, username);
 
+            requireActivePlayer(player);
+
             player.connected = true;
 
             if (player.pendingSkillType != null) {
@@ -978,6 +1108,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     ).equals(
                         question.correctKey
                     );
+
+            updateCountdownReviewStateLocked(
+                    player,
+                    question,
+                    correct
+            );
 
             String earnedSkill =
                     correct
@@ -1099,6 +1235,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             PlayerState actor = requirePlayer(room, username);
 
+            requireActivePlayer(actor);
+
             if (actor.pendingSkillType == null) {
                 throw new BattleOnlineException(
                         HttpStatus.CONFLICT,
@@ -1148,6 +1286,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 if (
                     target == null ||
                     target == actor ||
+                    target.spectator ||
                     !target.connected
                 ) {
                     throw new BattleOnlineException(
@@ -1653,7 +1792,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         int count = 0;
 
         for (PlayerState player : room.players.values()) {
-            if (player != actor && player.connected) {
+            if (
+                player != actor &&
+                !player.spectator &&
+                player.connected
+            ) {
                 count += 1;
             }
         }
@@ -1719,6 +1862,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             if (
                 candidate != actor &&
+                !candidate.spectator &&
                 candidate.connected
             ) {
                 pool.add(candidate);
@@ -1801,6 +1945,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             if (
                 candidate != actor &&
+                !candidate.spectator &&
                 candidate.connected
             ) {
                 eligibleByUsername.put(
@@ -1876,9 +2021,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             RoomState room) {
 
         List<PlayerState> players =
-                new ArrayList<PlayerState>(
-                    room.players.values()
-                );
+                new ArrayList<PlayerState>();
+
+        for (PlayerState player : room.players.values()) {
+            if (!player.spectator) {
+                players.add(player);
+            }
+        }
 
         Collections.sort(
                 players,
@@ -2031,6 +2180,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             RoomState room,
             PlayerState player) {
 
+        if (player.spectator) {
+            player.currentQuestion = null;
+            player.currentSkillType = null;
+            player.pendingSkillType = null;
+            player.pendingSkillTargetUsernames.clear();
+            return;
+        }
+
         if (player.pendingSkillType != null) {
             player.currentQuestion = null;
             player.currentSkillType = null;
@@ -2044,6 +2201,27 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 room.matchEndsAt
         ) {
             player.currentQuestion = null;
+            return;
+        }
+
+        /*
+         * Ưu tiên câu ôn lại đã đến hạn trước câu random thông thường.
+         * next sequence được dùng để đảm bảo có đủ 5-7 câu xen giữa.
+         */
+        QuestionState dueReviewQuestion =
+                findCountdownReviewQuestionLocked(
+                        room,
+                        player,
+                        true
+                );
+
+        if (dueReviewQuestion != null) {
+            setCurrentCountdownQuestionLocked(
+                    room,
+                    player,
+                    dueReviewQuestion
+            );
+
             return;
         }
 
@@ -2066,7 +2244,29 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             if (player.pendingWordIds.isEmpty()) {
-                player.currentQuestion = null;
+                /*
+                 * Pool quá nhỏ hoặc mọi từ đều đang chờ ôn lại:
+                 * không để client bị treo currentQuestion = null.
+                 * Khi không đủ 5 câu khác, lấy câu có hạn gần nhất.
+                 */
+                QuestionState fallbackReviewQuestion =
+                        findCountdownReviewQuestionLocked(
+                                room,
+                                player,
+                                false
+                        );
+
+                if (fallbackReviewQuestion != null) {
+                    setCurrentCountdownQuestionLocked(
+                            room,
+                            player,
+                            fallbackReviewQuestion
+                    );
+                } else {
+                    player.currentQuestion = null;
+                    player.currentSkillType = null;
+                }
+
                 return;
             }
 
@@ -2081,6 +2281,17 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     );
 
             if (prepared == null) {
+                continue;
+            }
+
+            /*
+             * Câu đã sai do review queue quản lý, không cho random thường
+             * lấy lại sớm hơn mốc 5-7 câu.
+             */
+            if (
+                player.countdownReviewQuestions
+                    .containsKey(wordId)
+            ) {
                 continue;
             }
 
@@ -2110,28 +2321,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 }
             }
 
-            QuestionState question =
-                    copyQuestionState(
-                        prepared
-                    );
-
-            player.currentQuestionSequence += 1L;
-
-            question.sequence =
-                    player.currentQuestionSequence;
-
-            player.currentQuestion =
-                    question;
-
-            int skillCycleSize = Math.max(1, displayTotal(room));
-            int skillPosition =
-                    (int) ((player.currentQuestionSequence - 1L) % skillCycleSize);
-
-            player.currentSkillType =
-                    room.countdownSkillPlan.get(skillPosition);
-
-            player.uniqueWordIds.add(
-                    wordId
+            setCurrentCountdownQuestionLocked(
+                    room,
+                    player,
+                    prepared
             );
 
             return;
@@ -2139,9 +2332,191 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         /*
          * Không recurse vô hạn nếu dữ liệu có quá nhiều nghĩa trùng.
+         * Nếu pool thường tạm thời không chọn được, dùng câu ôn gần nhất
+         * để phía client vẫn luôn nhận được một câu hợp lệ.
          */
-        player.currentQuestion = null;
-        player.currentSkillType = null;
+        QuestionState fallbackReviewQuestion =
+                findCountdownReviewQuestionLocked(
+                        room,
+                        player,
+                        false
+                );
+
+        if (fallbackReviewQuestion != null) {
+            setCurrentCountdownQuestionLocked(
+                    room,
+                    player,
+                    fallbackReviewQuestion
+            );
+        } else {
+            player.currentQuestion = null;
+            player.currentSkillType = null;
+        }
+    }
+
+
+    private void setCurrentCountdownQuestionLocked(
+            RoomState room,
+            PlayerState player,
+            QuestionState prepared) {
+
+        QuestionState question =
+                copyQuestionState(prepared);
+
+        player.currentQuestionSequence += 1L;
+
+        question.sequence =
+                player.currentQuestionSequence;
+
+        player.currentQuestion =
+                question;
+
+        int skillCycleSize =
+                Math.max(
+                        1,
+                        displayTotal(room)
+                );
+
+        int skillPosition =
+                (int) (
+                    (player.currentQuestionSequence - 1L) %
+                    skillCycleSize
+                );
+
+        player.currentSkillType =
+                room.countdownSkillPlan.get(
+                        skillPosition
+                );
+
+        player.uniqueWordIds.add(
+                prepared.id
+        );
+    }
+
+
+    private void updateCountdownReviewStateLocked(
+            PlayerState player,
+            QuestionState question,
+            boolean correct) {
+
+        if (
+            question == null ||
+            question.id == null
+        ) {
+            return;
+        }
+
+        if (correct) {
+            /*
+             * Đúng ở lần ôn lại (hoặc gặp lại bằng luồng hợp lệ)
+             * thì hoàn tất câu này, không hỏi lại nữa.
+             */
+            player.countdownReviewQuestions.remove(
+                    question.id
+            );
+
+            return;
+        }
+
+        int gap =
+                COUNTDOWN_REVIEW_MIN_GAP +
+                random.nextInt(
+                    COUNTDOWN_REVIEW_MAX_GAP -
+                    COUNTDOWN_REVIEW_MIN_GAP +
+                    1
+                );
+
+        CountdownReviewState review =
+                player.countdownReviewQuestions.get(
+                        question.id
+                );
+
+        if (review == null) {
+            review = new CountdownReviewState();
+            review.questionId = question.id;
+
+            player.countdownReviewQuestions.put(
+                    question.id,
+                    review
+            );
+        }
+
+        /*
+         * +1 vì cần đủ gap câu khác ở giữa:
+         * sai tại S, câu S+1..S+gap là câu xen giữa,
+         * câu ôn lại sớm nhất là S+gap+1.
+         */
+        review.dueSequence =
+                player.currentQuestionSequence +
+                gap +
+                1L;
+    }
+
+
+    private QuestionState findCountdownReviewQuestionLocked(
+            RoomState room,
+            PlayerState player,
+            boolean dueOnly) {
+
+        if (player.countdownReviewQuestions.isEmpty()) {
+            return null;
+        }
+
+        long nextSequence =
+                player.currentQuestionSequence + 1L;
+
+        CountdownReviewState selected = null;
+        List<Long> invalidQuestionIds =
+                new ArrayList<Long>();
+
+        for (
+            Map.Entry<Long, CountdownReviewState> entry :
+                player.countdownReviewQuestions.entrySet()
+        ) {
+            QuestionState prepared =
+                    room.preparedQuestions.get(
+                            entry.getKey()
+                    );
+
+            if (prepared == null) {
+                invalidQuestionIds.add(
+                        entry.getKey()
+                );
+                continue;
+            }
+
+            CountdownReviewState review =
+                    entry.getValue();
+
+            if (
+                review == null ||
+                (
+                    dueOnly &&
+                    review.dueSequence > nextSequence
+                )
+            ) {
+                continue;
+            }
+
+            if (
+                selected == null ||
+                review.dueSequence < selected.dueSequence
+            ) {
+                selected = review;
+            }
+        }
+
+        for (Long invalidId : invalidQuestionIds) {
+            player.countdownReviewQuestions.remove(
+                    invalidId
+            );
+        }
+
+        return selected == null
+                ? null
+                : room.preparedQuestions.get(
+                        selected.questionId
+                );
     }
 
 
@@ -2153,7 +2528,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 new ArrayList<Long>();
 
         for (Long id : room.preparedQuestions.keySet()) {
-            if (!player.uniqueWordIds.contains(id)) {
+            if (
+                !player.uniqueWordIds.contains(id) &&
+                !player.countdownReviewQuestions
+                    .containsKey(id)
+            ) {
                 unseen.add(id);
             }
         }
@@ -2165,9 +2544,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
          * - nếu đã load hết: bắt đầu vòng review mới.
          */
         if (unseen.isEmpty()) {
-            unseen.addAll(
-                    room.preparedQuestions.keySet()
-            );
+            for (Long id : room.preparedQuestions.keySet()) {
+                if (
+                    !player.countdownReviewQuestions
+                        .containsKey(id)
+                ) {
+                    unseen.add(id);
+                }
+            }
         }
 
         Collections.shuffle(
@@ -2196,6 +2580,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         for (PlayerState player : room.players.values()) {
+            if (player.spectator) {
+                continue;
+            }
+
             List<Long> append =
                     new ArrayList<Long>();
 
@@ -2706,7 +3094,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         int count = 0;
 
         for (PlayerState player : room.players.values()) {
-            if (player.connected) {
+            if (player.connected && !player.spectator) {
                 count += 1;
             }
         }
@@ -2723,6 +3111,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         for (PlayerState player : room.players.values()) {
             if (
                 player == currentPlayer ||
+                player.spectator ||
                 !player.connected ||
                 player.currentQuestion == null
             ) {
@@ -3049,7 +3438,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             viewerUsername
                         );
 
-                if (viewer != null) {
+                if (viewer != null && !viewer.spectator) {
                     ensurePendingSkillTargetsLocked(
                             room,
                             viewer
@@ -3068,6 +3457,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
                 if (
                     viewer != null &&
+                    !viewer.spectator &&
                     viewer.currentQuestion != null
                 ) {
                     dto.setCurrentQuestion(
@@ -3118,6 +3508,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             player.setHost(
                     state.host
+            );
+
+            player.setSpectator(
+                    state.spectator
             );
 
             player.setReady(
@@ -3261,6 +3655,28 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             BattleOnlinePlayerDto right) {
 
                         if (
+                            left.isSpectator() !=
+                            right.isSpectator()
+                        ) {
+                            return left.isSpectator()
+                                    ? 1
+                                    : -1;
+                        }
+
+                        if (
+                            left.isSpectator() &&
+                            right.isSpectator()
+                        ) {
+                            return safe(
+                                    left.getUsername()
+                                ).compareToIgnoreCase(
+                                    safe(
+                                        right.getUsername()
+                                    )
+                                );
+                        }
+
+                        if (
                             left.getScore() !=
                             right.getScore()
                         ) {
@@ -3289,13 +3705,15 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 }
         );
 
-        for (
-            int index = 0;
-            index < players.size();
-            index++
-        ) {
-            players.get(index)
-                .setRank(index + 1);
+        int rank = 1;
+
+        for (BattleOnlinePlayerDto player : players) {
+            if (player.isSpectator()) {
+                player.setRank(0);
+            } else {
+                player.setRank(rank);
+                rank += 1;
+            }
         }
     }
 
@@ -3310,14 +3728,16 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         int connected = 0;
 
         for (PlayerState player : room.players.values()) {
-            if (!player.connected) {
+            if (
+                !player.connected ||
+                player.spectator
+            ) {
                 continue;
             }
 
             connected += 1;
 
             if (
-                !player.host &&
                 !player.ready
             ) {
                 throw new BattleOnlineException(
@@ -3365,6 +3785,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         player.pendingWordIds.clear();
         player.uniqueWordIds.clear();
+        player.countdownReviewQuestions.clear();
     }
 
 
@@ -3374,7 +3795,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         int connected = 0;
 
         for (PlayerState player : room.players.values()) {
-            if (!player.connected) {
+            if (
+                !player.connected ||
+                player.spectator
+            ) {
                 continue;
             }
 
@@ -3448,6 +3872,18 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         return player;
+    }
+
+
+    private void requireActivePlayer(
+            PlayerState player) {
+
+        if (player != null && player.spectator) {
+            throw new BattleOnlineException(
+                    HttpStatus.FORBIDDEN,
+                    "Bạn đang ở chế độ khán giả và không thể trả lời hoặc sử dụng skill."
+            );
+        }
     }
 
 
@@ -4014,6 +4450,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         Map<String, PlayerState> players =
                 new LinkedHashMap<String, PlayerState>();
 
+        Set<String> kickedUsernames =
+                new LinkedHashSet<String>();
+
         RoomSettingsState settings =
                 new RoomSettingsState();
 
@@ -4085,6 +4524,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         String displayName;
 
         boolean host;
+        boolean spectator;
         boolean ready;
         boolean connected;
 
@@ -4110,6 +4550,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         Set<Long> uniqueWordIds =
                 new LinkedHashSet<Long>();
 
+        Map<Long, CountdownReviewState> countdownReviewQuestions =
+                new LinkedHashMap<Long, CountdownReviewState>();
+
         String currentSkillType;
         String pendingSkillType;
 
@@ -4118,6 +4561,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         long frozenUntil = 0L;
         long burningUntil = 0L;
+    }
+
+
+    private static class CountdownReviewState {
+        Long questionId;
+        long dueSequence;
     }
 
 

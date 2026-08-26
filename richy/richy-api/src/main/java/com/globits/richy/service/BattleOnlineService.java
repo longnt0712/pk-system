@@ -35,6 +35,18 @@ public interface BattleOnlineService {
             boolean ready
     );
 
+    BattleOnlineRoomDto setSpectator(
+            String roomCode,
+            String username,
+            boolean spectator
+    );
+
+    BattleOnlineRoomDto kickPlayer(
+            String roomCode,
+            String username,
+            String targetUsername
+    );
+
     BattleOnlineRoomDto updateSettings(
             String roomCode,
             String username,
