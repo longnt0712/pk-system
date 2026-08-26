@@ -26,14 +26,22 @@
                class="navbar-brand learning-nav-brand"
                id="church-title"
                href="dashboard">
-                <span class="learning-brand-icon"><i class="fa fa-graduation-cap"></i></span>
+                <span class="learning-brand-icon">
+                    <img class="learning-brand-logo"
+                         src="assets/images/troop.jpg"
+                         alt="Logo Saint Paul Academy">
+                </span>
                 <span class="learning-brand-text">SAINT PAUL ACADEMY</span>
             </a>
             <a ng-if="settings.chapter == true"
                class="navbar-brand learning-nav-brand"
                id="church-title"
                href="dashboard">
-                <span class="learning-brand-icon"><i class="fa fa-book"></i></span>
+                <span class="learning-brand-icon">
+                    <img class="learning-brand-logo"
+                         src="assets/images/troop-1.jpg"
+                         alt="Logo Chapter">
+                </span>
                 <span class="learning-brand-text">CHAPTER</span>
             </a>
         </div>
@@ -538,10 +546,15 @@
 
         border-radius: 14px;
 
+        padding: 2px;
+
+        overflow: hidden;
+
         color: #fff;
 
-        background:
-            linear-gradient(135deg, var(--nav-blue), var(--nav-purple));
+        background: #fff;
+
+        border: 1px solid rgba(91, 124, 250, .20);
 
         box-shadow:
             0 7px 16px rgba(91,124,250,.22);
@@ -549,6 +562,18 @@
 
     .learning-login-nav .learning-brand-icon i {
         font-size: 18px;
+    }
+
+    .learning-login-nav .learning-brand-logo {
+        display: block;
+
+        width: 100%;
+        height: 100%;
+
+        border-radius: 11px;
+
+        object-fit: contain;
+        object-position: center;
     }
 
     .learning-login-nav .learning-brand-text {
