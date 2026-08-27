@@ -94,6 +94,124 @@
 
             $rootScope.islogOut = false;
 
+            /*
+             * Nếu người dùng mở link phòng Battle Online khi chưa đăng nhập,
+             * lưu mã phòng trong tab hiện tại để sau khi đăng nhập xong có thể
+             * quay lại đúng phòng. Chỉ lưu mã đã qua kiểm tra định dạng, không
+             * lưu URL tùy ý nên không tạo open redirect.
+             */
+            var pendingBattleRoomStorageKey =
+                'battleOnline.pendingRoomCode';
+            var postLoginNavigationStarted = false;
+
+            function normalizeBattleRoomCode(value) {
+                var code = String(value || '')
+                    .toUpperCase()
+                    .replace(/[^A-Z0-9]/g, '')
+                    .trim();
+
+                return /^[A-Z0-9]{4,12}$/.test(code)
+                    ? code
+                    : '';
+            }
+
+            function getBattleRoomCodeFromCurrentUrl() {
+                var pathname = String(
+                    window.location.pathname || ''
+                );
+                var matched = pathname.match(
+                    /\/battle-quiz-online\/([A-Z0-9]{4,12})\/?$/i
+                );
+
+                return matched
+                    ? normalizeBattleRoomCode(matched[1])
+                    : '';
+            }
+
+            function rememberPendingBattleRoomFromCurrentUrl() {
+                var code = getBattleRoomCodeFromCurrentUrl();
+
+                if (!code) {
+                    return '';
+                }
+
+                $rootScope.pendingBattleRoomCode = code;
+
+                try {
+                    window.sessionStorage.setItem(
+                        pendingBattleRoomStorageKey,
+                        code
+                    );
+                } catch (e) {
+                    // RootScope vẫn giữ mã phòng nếu trình duyệt chặn storage.
+                }
+
+                return code;
+            }
+
+            function readPendingBattleRoomCode() {
+                var code = normalizeBattleRoomCode(
+                    $rootScope.pendingBattleRoomCode
+                );
+
+                if (code) {
+                    return code;
+                }
+
+                try {
+                    code = normalizeBattleRoomCode(
+                        window.sessionStorage.getItem(
+                            pendingBattleRoomStorageKey
+                        )
+                    );
+                } catch (e) {
+                    code = '';
+                }
+
+                return code;
+            }
+
+            function clearPendingBattleRoomCode() {
+                $rootScope.pendingBattleRoomCode = '';
+
+                try {
+                    window.sessionStorage.removeItem(
+                        pendingBattleRoomStorageKey
+                    );
+                } catch (e) {
+                    // Không ảnh hưởng điều hướng sau đăng nhập.
+                }
+            }
+
+            $rootScope.resetPostLoginNavigation = function () {
+                postLoginNavigationStarted = false;
+            };
+
+            $rootScope.navigateAfterLogin = function () {
+                if (postLoginNavigationStarted) {
+                    return;
+                }
+
+                postLoginNavigationStarted = true;
+
+                var roomCode = readPendingBattleRoomCode();
+
+                if (roomCode) {
+                    clearPendingBattleRoomCode();
+
+                    $state.go(
+                        'application.battle_quiz_online_room',
+                        {
+                            roomCode: roomCode
+                        }
+                    );
+
+                    return;
+                }
+
+                $state.go('application.dashboard');
+            };
+
             // console.log("ver 1.0");
 
             // =========================
@@ -223,6 +341,8 @@
                 blockUI.stop();
 
                 if (angular.isDefined(rejection.data) && rejection.data.error === 'invalid_grant') {
+                    rememberPendingBattleRoomFromCurrentUrl();
+                    postLoginNavigationStarted = false;
                     $cookies.remove(constants.oauth2_token);
                     $state.go('login');
                     return;
@@ -233,6 +353,8 @@
                 }
 
                 $rootScope.$emit('$unauthorized', function () {});
+                rememberPendingBattleRoomFromCurrentUrl();
+                postLoginNavigationStarted = false;
                 $state.go('login');
             });
 
@@ -242,6 +364,8 @@
             $rootScope.$on('$locationChangeSuccess', function () {
 
                 if (!OAuth.isAuthenticated()) {
+                    rememberPendingBattleRoomFromCurrentUrl();
+                    postLoginNavigationStarted = false;
                     $rootScope.$emit('$unauthorized', function () {});
                     $state.go('login');
                     return;
@@ -262,12 +386,14 @@
                             $rootScope.$broadcast('permissionsLoaded');
 
                             if ($state.current.name === 'login') {
-                                $state.go('application.dashboard');
+                                $rootScope.navigateAfterLogin();
                             }
                         }
                     })
                     .error(function () {
                         blockUI.stop();
+                        rememberPendingBattleRoomFromCurrentUrl();
+                        postLoginNavigationStarted = false;
                         $cookies.remove(constants.oauth2_token);
                         $state.go('login');
                     });

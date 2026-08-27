@@ -26,6 +26,19 @@
         var vm = this;
         vm.user = {};
 
+        /*
+         * Mỗi lần vào màn hình đăng nhập cho phép đúng một lần điều hướng
+         * sau login. application.js sẽ ưu tiên mã phòng Battle Online đã
+         * lưu khi người dùng mở link QR trước lúc đăng nhập.
+         */
+        if (
+            angular.isFunction(
+                $rootScope.resetPostLoginNavigation
+            )
+        ) {
+            $rootScope.resetPostLoginNavigation();
+        }
+
         var checkHttp =  $location.protocol();
         if(checkHttp == 'http'){
              console.log(checkHttp);
@@ -98,7 +111,15 @@
 
                         blockUI.stop();
 
-                        $state.go('application.dashboard');
+                        if (
+                            angular.isFunction(
+                                $rootScope.navigateAfterLogin
+                            )
+                        ) {
+                            $rootScope.navigateAfterLogin();
+                        } else {
+                            $state.go('application.dashboard');
+                        }
                         // $state.go('church');
                     });
                 } else {

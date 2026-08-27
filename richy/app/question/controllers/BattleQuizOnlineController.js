@@ -3428,25 +3428,14 @@
 
             qrScanHandled = true;
 
-            var shouldJoin = $window.confirm(
-                'Đã quét được phòng ' + scanned.code +
-                '. Bạn có muốn vào room không?'
-            );
-
             stopQrScanner().then(
                 function () {
-                    if (shouldJoin) {
-                        $window.location.assign(scanned.link);
-                        return;
-                    }
-
-                    if (!destroyed) {
-                        $scope.$evalAsync(
-                            function () {
-                                vm.scannerModalOpen = false;
-                            }
-                        );
-                    }
+                    /*
+                     * QR phòng hợp lệ được mở ngay, không hỏi xác nhận.
+                     * Nếu chưa đăng nhập, application.js sẽ giữ mã phòng,
+                     * đưa tới login rồi tự quay lại JOIN đúng phòng này.
+                     */
+                    $window.location.assign(scanned.link);
                 }
             );
         }
