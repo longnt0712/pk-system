@@ -476,6 +476,24 @@
                     </small>
                 </button>
 
+
+                <button type="button"
+                        class="battle-online-mode-card"
+                        ng-class="{
+                            'is-active is-money-beg': vm.hostSettings.mode === 'MONEY_BEG'
+                        }"
+                        ng-click="vm.selectMode('MONEY_BEG')">
+
+                    <span class="battle-online-mode-icon">🤑</span>
+
+                    <strong>XIN TÍ TIỀN</strong>
+
+                    <small>
+                        Giữ toàn bộ COUNTDOWN. Đoán mật khẩu đối thủ
+                        để xin 40% tổng điểm.
+                    </small>
+                </button>
+
             </div>
 
 
@@ -526,10 +544,12 @@
 
             <!-- COUNTDOWN -->
             <div class="battle-online-mode-settings is-countdown"
-                 ng-if="vm.hostSettings.mode === 'COUNTDOWN'">
+                 ng-if="vm.hostSettings.mode === 'COUNTDOWN' || vm.hostSettings.mode === 'MONEY_BEG'">
 
                 <div class="battle-online-mode-badge">
-                    ⏳ COUNTDOWN MODE
+                    {{vm.hostSettings.mode === 'MONEY_BEG'
+                        ? '🤑 XIN TÍ TIỀN MODE'
+                        : '⏳ COUNTDOWN MODE'}}
                 </div>
 
                 <label>TỔNG THỜI GIAN (PHÚT)</label>
@@ -541,8 +561,13 @@
                        ng-change="vm.markCountdownMinutesTouched()"
                        ng-model="vm.hostSettings.countdownMinutes">
 
-                <p>
+                <p ng-if="vm.hostSettings.mode === 'COUNTDOWN'">
                     Mỗi account nhận thứ tự từ ngẫu nhiên riêng. Trả lời xong là có câu tiếp ngay, không chờ người khác. Hết số phút là kết thúc.
+                </p>
+
+                <p ng-if="vm.hostSettings.mode === 'MONEY_BEG'">
+                    Đồng hồ chạy ngay khi START. Mỗi người chọn 1 trong 3 mật khẩu;
+                    đoán đúng mật khẩu đối thủ sẽ lấy 40% tổng điểm của họ.
                 </p>
             </div>
 
@@ -603,6 +628,10 @@
                 <strong ng-if="vm.room.settings.mode === 'COUNTDOWN'">
                     ⏳ COUNTDOWN
                 </strong>
+
+                <strong ng-if="vm.room.settings.mode === 'MONEY_BEG'">
+                    🤑 XIN TÍ TIỀN
+                </strong>
             </div>
 
 
@@ -623,7 +652,7 @@
 
 
             <div class="battle-online-info-row"
-                 ng-if="vm.room.settings.mode === 'COUNTDOWN'">
+                 ng-if="vm.room.settings.mode === 'COUNTDOWN' || vm.room.settings.mode === 'MONEY_BEG'">
 
                 <span>Tổng thời gian</span>
                 <strong>{{vm.room.settings.countdownMinutes}} phút</strong>
@@ -631,10 +660,14 @@
 
 
             <div class="battle-online-countdown-explain"
-                 ng-if="vm.room.settings.mode === 'COUNTDOWN'">
+                 ng-if="vm.room.settings.mode === 'COUNTDOWN' || vm.room.settings.mode === 'MONEY_BEG'">
 
-                Mỗi người chơi sẽ có thứ tự câu ngẫu nhiên riêng.
-                Không cần chờ người khác để sang câu.
+                <span ng-if="vm.room.settings.mode === 'COUNTDOWN'">
+                    Mỗi người chơi có thứ tự câu riêng, không cần chờ nhau.
+                </span>
+                <span ng-if="vm.room.settings.mode === 'MONEY_BEG'">
+                    Mỗi người chọn mật khẩu riêng và có thể đoán mật khẩu để xin 40% điểm.
+                </span>
             </div>
 
         </aside>
@@ -698,10 +731,10 @@
 
             <!-- COUNTDOWN TOP -->
             <div class="battle-online-game-topline"
-                 ng-if="vm.room.settings.mode === 'COUNTDOWN'">
+                 ng-if="vm.isCountdownMode()">
 
                 <span>
-                    ⏳ COUNTDOWN
+                    {{vm.isMoneyBegMode() ? '🤑 XIN TÍ TIỀN' : '⏳ COUNTDOWN'}}
                     • TỪ ĐÃ GẶP
                     <b>{{vm.me().uniqueWordsSeen || 0}}</b>
                     /
@@ -716,6 +749,12 @@
                     ⏱ {{vm.formatTime(vm.countdown)}}
                 </div>
 
+            </div>
+
+            <div class="battle-online-password-chip"
+                 ng-if="vm.isMoneyBegMode() && vm.room.currentPassword">
+                <span>🔐 MẬT KHẨU CỦA BẠN</span>
+                <strong>{{vm.room.currentPassword}}</strong>
             </div>
 
 
@@ -764,7 +803,7 @@
 
 
             <div class="battle-online-private-loading"
-                 ng-if="!vm.room.currentQuestion && !vm.room.pendingSkillType">
+                 ng-if="!vm.room.currentQuestion && !vm.room.pendingSkillType && !vm.room.passwordSelectionRequired && !vm.room.pendingPasswordGuessTargetUsername">
 
                 <i class="fa fa-circle-o-notch fa-spin"></i>
 
@@ -778,7 +817,7 @@
                 <button type="button"
                         ng-repeat="option in vm.room.currentQuestion.answers track by option.key"
                         class="battle-online-answer-btn answer-{{$index}}"
-                        ng-disabled="vm.answerLocked || vm.countdown <= 0 || vm.isMeFrozen() || vm.room.pendingSkillType"
+                        ng-disabled="vm.answerLocked || vm.countdown <= 0 || vm.isMeFrozen() || vm.room.pendingSkillType || vm.room.passwordSelectionRequired || vm.room.pendingPasswordGuessTargetUsername"
                         ng-click="vm.answer(option)">
 
                     <span class="battle-online-answer-key">
@@ -822,7 +861,7 @@
             </div>
 
             <div class="battle-online-countdown-tip"
-                 ng-if="vm.room.settings.mode === 'COUNTDOWN'">
+                 ng-if="vm.isCountdownMode()">
 
                 ⚡ Bạn không cần chờ ai. Trả lời xong server sẽ gửi ngay một câu random khác.
             </div>
@@ -862,7 +901,7 @@
             </div>
 
             <div class="battle-online-spectator-question"
-                 ng-if="vm.room.settings.mode === 'COUNTDOWN'">
+                 ng-if="vm.isCountdownMode()">
                 <small>THỜI GIAN CÒN LẠI</small>
                 <strong>⏳ {{vm.formatTime(vm.countdown)}}</strong>
                 <span>Mỗi người chơi đang nhận câu hỏi riêng.</span>
@@ -910,7 +949,7 @@
                         • ❌ {{player.wrongCount}}
                     </small>
 
-                    <small ng-if="vm.room.settings.mode === 'COUNTDOWN'">
+                    <small ng-if="vm.isCountdownMode()">
                         🔥 {{player.streak}}
                         • 📚 {{player.uniqueWordsSeen}}/{{player.totalLessonWords}}
                         • ✅ {{player.correctCount}}
@@ -924,7 +963,7 @@
             </div>
 
             <div class="battle-online-event-board"
-                 ng-class="{'is-mobile-modal-only': vm.room.settings.mode === 'COUNTDOWN'}"
+                 ng-class="{'is-mobile-modal-only': vm.isCountdownMode()}"
                  ng-if="vm.room.recentEvents.length">
                 <div class="battle-online-event-title">
                     ⚡ HOẠT ĐỘNG SKILL
@@ -965,8 +1004,9 @@
                 🎯 CLASSIC
             </span>
 
-            <span ng-if="vm.room.settings.mode === 'COUNTDOWN'">
-                ⏳ COUNTDOWN {{vm.room.settings.countdownMinutes}} PHÚT
+            <span ng-if="vm.isCountdownMode()">
+                {{vm.isMoneyBegMode() ? '🤑 XIN TÍ TIỀN' : '⏳ COUNTDOWN'}}
+                {{vm.room.settings.countdownMinutes}} PHÚT
             </span>
 
             <small>
@@ -1001,7 +1041,7 @@
                         ✅ {{player.correctCount}}
                         • ❌ {{player.wrongCount}}
 
-                        <span ng-if="vm.room.settings.mode === 'COUNTDOWN'">
+                        <span ng-if="vm.isCountdownMode()">
                             • 📚 {{player.uniqueWordsSeen}}/{{player.totalLessonWords}}
                         </span>
                     </small>
@@ -1045,7 +1085,7 @@
 
         <button type="button"
                 class="battle-online-mobile-tool is-skills"
-                ng-if="vm.room.settings.mode === 'COUNTDOWN'"
+                ng-if="vm.isCountdownMode()"
                 ng-click="vm.openSkillActivityModal()"
                 aria-label="Mở hoạt động skill">
             <span>⚡</span>
@@ -1055,13 +1095,100 @@
 
         <button type="button"
                 class="battle-online-mobile-tool is-wrong"
-                ng-if="vm.room.settings.mode === 'COUNTDOWN'"
+                ng-if="vm.isCountdownMode()"
                 ng-click="vm.openWrongQuestionsModal()"
                 aria-label="Mở các câu trả lời sai">
             <span>❌</span>
             <small>CÂU SAI</small>
             <b ng-if="vm.wrongQuestions.length">{{vm.wrongQuestions.length}}</b>
         </button>
+    </div>
+
+    <div class="battle-online-skill-modal-backdrop battle-online-password-backdrop"
+         ng-if="vm.room && vm.room.status === 'PLAYING' && vm.room.passwordSelectionRequired && vm.room.passwordOptions.length">
+
+        <section class="battle-online-skill-modal battle-online-password-modal"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="Chọn mật khẩu">
+
+            <div class="battle-online-skill-modal-header">
+                <span>{{vm.room.pendingSkillType === 'RESET_PASSWORD' ? '🔐' : '🗝️'}}</span>
+                <div>
+                    <small>ĐỒNG HỒ VẪN ĐANG CHẠY • {{vm.formatTime(vm.countdown)}}</small>
+                    <h2>
+                        {{vm.room.pendingSkillType === 'RESET_PASSWORD'
+                            ? 'ĐẶT LẠI MẬT KHẨU'
+                            : 'CHỌN MẬT KHẨU CHÍNH'}}
+                    </h2>
+                </div>
+            </div>
+
+            <div class="battle-online-skill-modal-body">
+                <div class="battle-online-skill-modal-guide">
+                    <strong>🎭 Chọn 1 trong 3 chuỗi bất kỳ</strong>
+                    <p>
+                        Đây sẽ là mật khẩu thật của bạn. Hãy chọn nhanh vì
+                        COUNTDOWN bắt đầu tính ngay khi trận được START.
+                    </p>
+                </div>
+
+                <div class="battle-online-password-option-list">
+                    <button type="button"
+                            class="battle-online-password-option"
+                            ng-repeat="option in vm.room.passwordOptions track by option.key"
+                            ng-disabled="vm.choosingPassword"
+                            ng-click="vm.choosePassword(option)">
+                        <span>{{option.key}}</span>
+                        <strong>{{option.value}}</strong>
+                        <small>CHỌN</small>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="battle-online-skill-modal-backdrop battle-online-password-backdrop"
+         ng-if="vm.room && vm.room.status === 'PLAYING' && vm.room.pendingPasswordGuessTargetUsername && vm.room.passwordGuessOptions.length">
+
+        <section class="battle-online-skill-modal battle-online-password-modal"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="Đoán mật khẩu đối thủ">
+
+            <div class="battle-online-skill-modal-header">
+                <span>🤑</span>
+                <div>
+                    <small>SKILL XIN TÍ TIỀN • ĐÚNG 1 / 3</small>
+                    <h2>
+                        ĐOÁN MẬT KHẨU CỦA
+                        {{vm.room.pendingPasswordGuessTargetDisplayName || vm.room.pendingPasswordGuessTargetUsername}}
+                    </h2>
+                </div>
+            </div>
+
+            <div class="battle-online-skill-modal-body">
+                <div class="battle-online-skill-modal-guide">
+                    <strong>💸 Đoán đúng: lấy 40% tổng điểm hiện tại</strong>
+                    <p>
+                        Một trong ba chuỗi bên dưới là mật khẩu thật.
+                        Đoán sai sẽ mất skill và không chuyển điểm.
+                    </p>
+                </div>
+
+                <div class="battle-online-password-option-list">
+                    <button type="button"
+                            class="battle-online-password-option is-guess"
+                            ng-repeat="option in vm.room.passwordGuessOptions track by option.key"
+                            ng-disabled="vm.guessingPassword"
+                            ng-click="vm.guessPassword(option)">
+                        <span>{{option.key}}</span>
+                        <strong>{{option.value}}</strong>
+                        <small>ĐOÁN</small>
+                    </button>
+                </div>
+            </div>
+        </section>
     </div>
 
     <div class="battle-online-skill-modal-backdrop"
@@ -1083,10 +1210,16 @@
 
             <div class="battle-online-skill-modal-body">
                 <div class="battle-online-skill-modal-guide">
-                    <strong>🎯 Chọn người để bắn skill</strong>
+                    <strong>
+                        🎯 {{vm.room.pendingSkillType === 'MONEY_BEG'
+                            ? 'Chọn người để xin tí tiền'
+                            : 'Chọn người để bắn skill'}}
+                    </strong>
                     <p>
                         Chọn 1 trong tối đa 4 đối thủ được random bên dưới.
-                        Nhấn vào thẻ người chơi để sử dụng skill ngay.
+                        {{vm.room.pendingSkillType === 'MONEY_BEG'
+                            ? 'Chọn xong sẽ hiện 3 mật khẩu để bạn đoán.'
+                            : 'Nhấn vào thẻ người chơi để sử dụng skill ngay.'}}
                     </p>
                 </div>
 
@@ -1113,7 +1246,7 @@
                         </span>
 
                         <span class="battle-online-skill-target-shoot">
-                            BẮN
+                            {{vm.room.pendingSkillType === 'MONEY_BEG' ? 'CHỌN' : 'BẮN'}}
                         </span>
                     </button>
                 </div>
@@ -1174,7 +1307,7 @@
                             • ❌ {{player.wrongCount}}
                         </small>
 
-                        <small ng-if="vm.room.settings.mode === 'COUNTDOWN'">
+                        <small ng-if="vm.isCountdownMode()">
                             🔥 {{player.streak}}
                             • 📚 {{player.uniqueWordsSeen}}/{{player.totalLessonWords}}
                             • ✅ {{player.correctCount}}
@@ -1188,7 +1321,7 @@
                 </div>
 
                 <div class="battle-online-event-board"
-                     ng-class="{'is-mobile-modal-only': vm.room.settings.mode === 'COUNTDOWN'}"
+                     ng-class="{'is-mobile-modal-only': vm.isCountdownMode()}"
                      ng-if="vm.room.recentEvents.length">
                     <div class="battle-online-event-title">
                         ⚡ HOẠT ĐỘNG SKILL
@@ -1249,7 +1382,9 @@
                  ng-click="$event.stopPropagation()">
             <div class="battle-online-ranking-modal-header">
                 <div>
-                    <span class="battle-online-small-title">⚡ COUNTDOWN</span>
+                    <span class="battle-online-small-title">
+                        {{vm.isMoneyBegMode() ? '🤑 XIN TÍ TIỀN' : '⚡ COUNTDOWN'}}
+                    </span>
                     <h2>Hoạt động skill</h2>
                 </div>
                 <button type="button"
@@ -2966,7 +3101,7 @@
 
     .battle-online-mode-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
 
         gap: 7px;
     }
@@ -3679,6 +3814,16 @@
         white-space: nowrap;
     }
 
+    .battle-online-mode-card.is-active.is-money-beg {
+        background:
+            linear-gradient(
+                135deg,
+                #0e9f6e,
+                #d69e2e
+            );
+        box-shadow: 0 8px 22px rgba(16, 185, 129, .28);
+    }
+
     .battle-online-fire-question-icon {
         position: absolute;
         z-index: 5;
@@ -3727,6 +3872,34 @@
     @keyframes battle-online-fire-skill-glow {
         from { transform: scale(.98); filter: brightness(.95); }
         to { transform: scale(1.04); filter: brightness(1.18); }
+    }
+
+    .battle-online-password-chip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 8px 0;
+        padding: 8px 12px;
+        border: 1px solid rgba(16, 185, 129, .35);
+        border-radius: 13px;
+        background: linear-gradient(135deg, rgba(16, 185, 129, .12), rgba(245, 158, 11, .10));
+    }
+
+    .battle-online-password-chip span {
+        color: var(--bo-muted);
+        font-size: 9px;
+        font-weight: 900;
+        letter-spacing: .5px;
+    }
+
+    .battle-online-password-chip strong {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        color: #0f9f74;
+        font-size: 15px;
+        font-weight: 1000;
+        text-align: right;
     }
 
     .battle-online-skill-modal-backdrop {
@@ -4045,6 +4218,84 @@
         border-radius: 13px;
 
         background: var(--bo-soft);
+    }
+
+    .battle-online-password-backdrop {
+        z-index: 1180;
+        background:
+            radial-gradient(circle at 50% 25%, rgba(16, 185, 129, .18), transparent 42%),
+            rgba(8, 13, 31, .82);
+    }
+
+    .battle-online-password-modal {
+        width: min(680px, 100%);
+        border-color: rgba(16, 185, 129, .65);
+        box-shadow:
+            0 26px 80px rgba(6, 10, 28, .62),
+            0 0 42px rgba(16, 185, 129, .24);
+    }
+
+    .battle-online-password-option-list {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .battle-online-password-option {
+        min-width: 0;
+        min-height: 118px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        padding: 13px 10px;
+        border: 1px solid rgba(16, 185, 129, .36);
+        border-radius: 18px;
+        color: var(--bo-text);
+        background:
+            linear-gradient(145deg, rgba(16, 185, 129, .12), rgba(245, 158, 11, .08));
+        transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+    }
+
+    .battle-online-password-option:hover:not(:disabled) {
+        transform: translateY(-3px) scale(1.01);
+        border-color: #10b981;
+        box-shadow: 0 13px 27px rgba(16, 185, 129, .22);
+    }
+
+    .battle-online-password-option > span {
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        color: #fff;
+        background: linear-gradient(135deg, #10b981, #d69e2e);
+        font-size: 11px;
+        font-weight: 1000;
+    }
+
+    .battle-online-password-option strong {
+        width: 100%;
+        overflow-wrap: anywhere;
+        font-size: 18px;
+        line-height: 1.3;
+        font-weight: 1000;
+        text-align: center;
+    }
+
+    .battle-online-password-option small {
+        color: #0f9f74;
+        font-size: 9px;
+        font-weight: 1000;
+        letter-spacing: .7px;
+    }
+
+    .battle-online-password-option.is-guess {
+        border-color: rgba(245, 158, 11, .44);
+        background: linear-gradient(145deg, rgba(245, 158, 11, .14), rgba(236, 72, 153, .08));
     }
 
     .battle-online-ranking-row.is-kickable {
@@ -4646,6 +4897,21 @@
 
         .battle-online-skill-target-list {
             grid-template-columns: 1fr;
+        }
+
+        .battle-online-password-option-list {
+            grid-template-columns: 1fr;
+        }
+
+        .battle-online-password-option {
+            min-height: 78px;
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            text-align: left;
+        }
+
+        .battle-online-password-option strong {
+            text-align: left;
         }
 
         .battle-online-answer-btn {

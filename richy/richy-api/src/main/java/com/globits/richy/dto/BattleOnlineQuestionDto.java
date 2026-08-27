@@ -20,7 +20,9 @@ public class BattleOnlineQuestionDto implements Serializable {
     private int total;
 
     /*
-     * COUNTDOWN: FREEZE | BREAK_STREAK | STEAL_SCORE | FIRE_UP | null.
+     * COUNTDOWN / MONEY_BEG:
+     * FREEZE | BREAK_STREAK | STEAL_SCORE | FIRE_UP |
+     * MONEY_BEG | RESET_PASSWORD | null.
      * Chỉ công khai loại skill, không công khai đáp án đúng.
      */
     private String skillType;

@@ -71,6 +71,8 @@
         vm.lastAnswerMessage = '';
 
         vm.usingSkill = false;
+        vm.choosingPassword = false;
+        vm.guessingPassword = false;
         vm.availableSkillTargets = [];
         vm.skillTargetModalOpen = false;
         vm.personalSkillNotice = null;
@@ -176,6 +178,8 @@
            ===================================================== */
 
         vm.isHost = isHost;
+        vm.isCountdownMode = isCountdownMode;
+        vm.isMoneyBegMode = isMoneyBegMode;
         vm.isSpectator = isSpectator;
         vm.canKickPlayer = canKickPlayer;
         vm.me = getMe;
@@ -210,6 +214,8 @@
 
         vm.answer = answer;
         vm.useSkill = useSkill;
+        vm.choosePassword = choosePassword;
+        vm.guessPassword = guessPassword;
         vm.getSkillLabel = getSkillLabel;
         vm.getSkillIcon = getSkillIcon;
         vm.isMeFrozen = isMeFrozen;
@@ -486,12 +492,32 @@
 
 
         function isCountdownMode() {
-            return !!(
+            var mode =
                 vm.room &&
-                vm.room.settings &&
-                vm.room.settings.mode ===
-                    'COUNTDOWN'
-            );
+                vm.room.settings
+                    ? vm.room.settings.mode
+                    : '';
+
+            mode = String(mode || '')
+                .toUpperCase()
+                .trim();
+
+            return mode === 'COUNTDOWN' || mode === 'MONEY_BEG';
+        }
+
+
+        function isCountdownLikeValue(mode) {
+            mode = String(mode || '').toUpperCase().trim();
+            return mode === 'COUNTDOWN' || mode === 'MONEY_BEG';
+        }
+
+
+        function isMoneyBegMode() {
+            var mode = vm.room && vm.room.settings
+                ? vm.room.settings.mode
+                : vm.hostSettings.mode;
+
+            return String(mode || '').toUpperCase().trim() === 'MONEY_BEG';
         }
 
 
@@ -1170,8 +1196,7 @@
                 fromGenericSocket === true &&
                 incoming.status === 'PLAYING' &&
                 incoming.settings &&
-                incoming.settings.mode ===
-                    'COUNTDOWN' &&
+                isCountdownLikeValue(incoming.settings.mode) &&
                 !incoming.currentQuestion &&
                 previousQuestion
             ) {
@@ -1191,7 +1216,7 @@
                 fromGenericSocket === true &&
                 incoming.status === 'PLAYING' &&
                 incoming.settings &&
-                incoming.settings.mode === 'COUNTDOWN' &&
+                isCountdownLikeValue(incoming.settings.mode) &&
                 !incoming.pendingSkillType &&
                 previousRoom &&
                 previousRoom.pendingSkillType
@@ -1209,7 +1234,7 @@
                 fromGenericSocket === true &&
                 incoming.status === 'PLAYING' &&
                 incoming.settings &&
-                incoming.settings.mode === 'COUNTDOWN' &&
+                isCountdownLikeValue(incoming.settings.mode) &&
                 incoming.pendingSkillType &&
                 (
                     !incoming.pendingSkillTargetUsernames ||
@@ -1221,6 +1246,30 @@
             ) {
                 incoming.pendingSkillTargetUsernames =
                     previousRoom.pendingSkillTargetUsernames.slice(0);
+            }
+
+            /*
+             * Các trường mật khẩu là private REST state. Generic WebSocket
+             * không chứa chúng nên luôn giữ bản riêng đang có của account.
+             */
+            if (
+                fromGenericSocket === true &&
+                incoming.status === 'PLAYING' &&
+                incoming.settings &&
+                incoming.settings.mode === 'MONEY_BEG' &&
+                previousRoom
+            ) {
+                incoming.passwordSelectionRequired =
+                    previousRoom.passwordSelectionRequired === true;
+                incoming.currentPassword = previousRoom.currentPassword;
+                incoming.passwordOptions =
+                    (previousRoom.passwordOptions || []).slice(0);
+                incoming.pendingPasswordGuessTargetUsername =
+                    previousRoom.pendingPasswordGuessTargetUsername;
+                incoming.pendingPasswordGuessTargetDisplayName =
+                    previousRoom.pendingPasswordGuessTargetDisplayName;
+                incoming.passwordGuessOptions =
+                    (previousRoom.passwordGuessOptions || []).slice(0);
             }
 
             vm.room = incoming;
@@ -1260,7 +1309,10 @@
             vm.skillTargetModalOpen =
                 incoming.status === 'PLAYING' &&
                 !isSpectator() &&
-                !!incoming.pendingSkillType;
+                !!incoming.pendingSkillType &&
+                incoming.pendingSkillType !== 'RESET_PASSWORD' &&
+                !incoming.passwordSelectionRequired &&
+                !incoming.pendingPasswordGuessTargetUsername;
 
             processSkillEvents(incoming.recentEvents || []);
 
@@ -1378,10 +1430,11 @@
                 incoming.status ===
                     'PLAYING' &&
                 incoming.settings &&
-                incoming.settings.mode ===
-                    'COUNTDOWN' &&
+                isCountdownLikeValue(incoming.settings.mode) &&
                 !incoming.currentQuestion &&
                 !incoming.pendingSkillType &&
+                !incoming.passwordSelectionRequired &&
+                !incoming.pendingPasswordGuessTargetUsername &&
                 !isSpectator()
             ) {
                 refreshPrivateRoomState();
@@ -1417,9 +1470,11 @@
                 return;
             }
 
+            mode = String(mode || '').toUpperCase().trim();
+
             vm.hostSettings.mode =
-                mode === 'COUNTDOWN'
-                    ? 'COUNTDOWN'
+                mode === 'COUNTDOWN' || mode === 'MONEY_BEG'
+                    ? mode
                     : 'CLASSIC';
 
             /*
@@ -1470,9 +1525,9 @@
         function buildSettingsDto() {
             return {
                 mode:
-                    vm.hostSettings.mode ===
-                    'COUNTDOWN'
-                        ? 'COUNTDOWN'
+                    vm.hostSettings.mode === 'COUNTDOWN' ||
+                    vm.hostSettings.mode === 'MONEY_BEG'
+                        ? vm.hostSettings.mode
                         : 'CLASSIC',
 
                 questionCount:
@@ -1808,6 +1863,8 @@
                 !option ||
                 vm.answerLocked ||
                 vm.room.pendingSkillType ||
+                vm.room.passwordSelectionRequired ||
+                vm.room.pendingPasswordGuessTargetUsername ||
                 isSpectator() ||
                 isMeFrozen()
             ) {
@@ -1934,6 +1991,78 @@
         }
 
 
+        function choosePassword(option) {
+            if (
+                !vm.room ||
+                !vm.room.passwordSelectionRequired ||
+                !option ||
+                !option.key ||
+                vm.choosingPassword
+            ) {
+                return;
+            }
+
+            vm.choosingPassword = true;
+
+            battleService
+                .choosePassword(vm.room.code, option.key)
+                .then(
+                    function (room) {
+                        applyRoom(room, false);
+                        toastr.success(
+                            'Mật khẩu của bạn: ' + String(room.currentPassword || ''),
+                            'ĐÃ CHỌN MẬT KHẨU'
+                        );
+                    },
+                    showRequestError
+                )
+                .finally(function () {
+                    vm.choosingPassword = false;
+                });
+        }
+
+
+        function guessPassword(option) {
+            if (
+                !vm.room ||
+                !vm.room.pendingPasswordGuessTargetUsername ||
+                !option ||
+                !option.key ||
+                vm.guessingPassword
+            ) {
+                return;
+            }
+
+            vm.guessingPassword = true;
+
+            battleService
+                .guessPassword(vm.room.code, option.key)
+                .then(
+                    function (room) {
+                        applyRoom(room, false);
+
+                        var event = (room.recentEvents || [])[0];
+                        var message = event && event.message
+                            ? event.message
+                            : 'Đã gửi dự đoán mật khẩu.';
+
+                        if (event && Number(event.amount || 0) > 0) {
+                            toastr.success(message, 'XIN TÍ TIỀN THÀNH CÔNG');
+                        } else {
+                            toastr.info(message, 'CHƯA XIN ĐƯỢC ĐIỂM');
+                        }
+                    },
+                    function (error) {
+                        showRequestError(error);
+                        refreshPrivateRoomState();
+                    }
+                )
+                .finally(function () {
+                    vm.guessingPassword = false;
+                });
+        }
+
+
         function getSkillLabel(type) {
             if (type === 'FREEZE') {
                 return 'ĐÓNG BĂNG 3 GIÂY';
@@ -1949,6 +2078,14 @@
 
             if (type === 'FIRE_UP') {
                 return 'CHÁY LÊN x1.2 TRONG 15 GIÂY';
+            }
+
+            if (type === 'MONEY_BEG') {
+                return 'XIN TÍ TIỀN – ĐOÁN MẬT KHẨU';
+            }
+
+            if (type === 'RESET_PASSWORD') {
+                return 'ĐẶT LẠI MẬT KHẨU';
             }
 
             return 'SKILL';
@@ -1970,6 +2107,14 @@
 
             if (type === 'FIRE_UP') {
                 return '🔥';
+            }
+
+            if (type === 'MONEY_BEG') {
+                return '🤑';
+            }
+
+            if (type === 'RESET_PASSWORD') {
+                return '🔐';
             }
 
             return '⚡';
@@ -2057,7 +2202,11 @@
 
                 if (
                     event.targetUsername === vm.currentUser.username &&
-                    event.actorUsername !== vm.currentUser.username
+                    event.actorUsername !== vm.currentUser.username &&
+                    (
+                        event.type !== 'MONEY_BEG' ||
+                        Number(event.amount || 0) > 0
+                    )
                 ) {
                     vm.personalSkillNotice = {
                         id: eventId,
@@ -2087,6 +2236,11 @@
 
             if (event.type === 'BREAK_STREAK') {
                 return actor + ' vừa phá streak của bạn.';
+            }
+
+            if (event.type === 'MONEY_BEG') {
+                return actor + ' vừa đoán đúng mật khẩu và xin được ' +
+                    formatScore(event.amount) + ' điểm của bạn.';
             }
 
             return actor + ' vừa cướp ' +
@@ -2137,6 +2291,18 @@
             if (event.type === 'STEAL_SCORE') {
                 return actor + ' vừa cướp ' +
                     formatScore(event.amount) + ' điểm của ' + target + '.';
+            }
+
+            if (event.type === 'MONEY_BEG') {
+                return Number(event.amount || 0) > 0
+                    ? actor + ' đoán đúng mật khẩu và xin được ' +
+                        formatScore(event.amount) + ' điểm của ' + target + '.'
+                    : actor + ' đoán sai mật khẩu của ' + target +
+                        ', không xin được điểm.';
+            }
+
+            if (event.type === 'RESET_PASSWORD') {
+                return actor + ' vừa dùng skill ĐẶT LẠI MẬT KHẨU.';
             }
 
             return actor + ' vừa kích hoạt CHÁY LÊN x1.2 trong 15 giây.';
@@ -2208,6 +2374,10 @@
                 return 'BỊ CƯỚP ' + formatScore(
                     vm.skillHitEffect && vm.skillHitEffect.amount
                 ) + ' ĐIỂM';
+            }
+
+            if (type === 'MONEY_BEG') {
+                return 'BỊ XIN 40% ĐIỂM';
             }
 
             return 'TRÚNG SKILL';
@@ -3486,6 +3656,8 @@
                 !vm.room.currentQuestion ||
                 vm.answerLocked ||
                 vm.room.pendingSkillType ||
+                vm.room.passwordSelectionRequired ||
+                vm.room.pendingPasswordGuessTargetUsername ||
                 isSpectator() ||
                 isMeFrozen()
             ) {

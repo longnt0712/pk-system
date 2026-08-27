@@ -3,6 +3,8 @@ package com.globits.richy.service;
 import com.globits.richy.dto.BattleOnlineAnswerDto;
 import com.globits.richy.dto.BattleOnlineAnswerResultDto;
 import com.globits.richy.dto.BattleOnlineCreateRoomDto;
+import com.globits.richy.dto.BattleOnlinePasswordChoiceDto;
+import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
@@ -73,5 +75,17 @@ public interface BattleOnlineService {
             String roomCode,
             String username,
             BattleOnlineUseSkillDto skillDto
+    );
+
+    BattleOnlineRoomDto choosePassword(
+            String roomCode,
+            String username,
+            BattleOnlinePasswordChoiceDto passwordDto
+    );
+
+    BattleOnlineRoomDto guessPassword(
+            String roomCode,
+            String username,
+            BattleOnlinePasswordGuessDto passwordDto
     );
 }

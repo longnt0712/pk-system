@@ -120,6 +120,20 @@
             ).then(function (response) { return response.data; });
         };
 
+        self.choosePassword = function (roomCode, optionKey) {
+            return $http.post(
+                apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/password',
+                {optionKey: optionKey}
+            ).then(function (response) { return response.data; });
+        };
+
+        self.guessPassword = function (roomCode, optionKey) {
+            return $http.post(
+                apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/password-guess',
+                {optionKey: optionKey}
+            ).then(function (response) { return response.data; });
+        };
+
         self.connectRealtime = connectRealtime;
         self.disconnectRealtime = disconnectRealtime;
 

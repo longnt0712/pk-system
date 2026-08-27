@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.globits.richy.dto.BattleOnlineAnswerDto;
 import com.globits.richy.dto.BattleOnlineAnswerResultDto;
 import com.globits.richy.dto.BattleOnlineCreateRoomDto;
+import com.globits.richy.dto.BattleOnlinePasswordChoiceDto;
+import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
 import com.globits.richy.dto.BattleOnlineReadyDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
@@ -153,6 +155,30 @@ public class RestBattleOnlineController {
             @RequestBody BattleOnlineUseSkillDto dto) {
 
         return battleOnlineService.useSkill(
+                roomCode,
+                currentUsername(),
+                dto
+        );
+    }
+
+    @RequestMapping(value = "/rooms/{roomCode}/password", method = RequestMethod.POST)
+    public BattleOnlineRoomDto choosePassword(
+            @PathVariable String roomCode,
+            @RequestBody BattleOnlinePasswordChoiceDto dto) {
+
+        return battleOnlineService.choosePassword(
+                roomCode,
+                currentUsername(),
+                dto
+        );
+    }
+
+    @RequestMapping(value = "/rooms/{roomCode}/password-guess", method = RequestMethod.POST)
+    public BattleOnlineRoomDto guessPassword(
+            @PathVariable String roomCode,
+            @RequestBody BattleOnlinePasswordGuessDto dto) {
+
+        return battleOnlineService.guessPassword(
                 roomCode,
                 currentUsername(),
                 dto

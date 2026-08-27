@@ -31,6 +31,9 @@ import com.globits.richy.dto.BattleOnlineAnswerOptionDto;
 import com.globits.richy.dto.BattleOnlineAnswerResultDto;
 import com.globits.richy.dto.BattleOnlineCreateRoomDto;
 import com.globits.richy.dto.BattleOnlineEventDto;
+import com.globits.richy.dto.BattleOnlinePasswordChoiceDto;
+import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
+import com.globits.richy.dto.BattleOnlinePasswordOptionDto;
 import com.globits.richy.dto.BattleOnlinePlayerDto;
 import com.globits.richy.dto.BattleOnlineQuestionDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
@@ -54,20 +57,41 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private static final String MODE_CLASSIC = "CLASSIC";
     private static final String MODE_COUNTDOWN = "COUNTDOWN";
+    private static final String MODE_MONEY_BEG = "MONEY_BEG";
 
     private static final String SKILL_FREEZE = "FREEZE";
     private static final String SKILL_BREAK_STREAK = "BREAK_STREAK";
     private static final String SKILL_STEAL_SCORE = "STEAL_SCORE";
     private static final String SKILL_FIRE_UP = "FIRE_UP";
+    private static final String SKILL_MONEY_BEG = "MONEY_BEG";
+    private static final String SKILL_RESET_PASSWORD = "RESET_PASSWORD";
 
     private static final long FREEZE_DURATION_MS = 3000L;
     private static final long FIRE_UP_DURATION_MS = 15000L;
     private static final double FIRE_UP_SCORE_MULTIPLIER = 1.2D;
+    private static final double MONEY_BEG_STEAL_RATE = 0.40D;
     private static final double COUNTDOWN_SKILL_RATE_FACTOR = 0.75D;
     private static final int SKILL_TARGET_CANDIDATE_COUNT = 4;
     private static final int SKILL_TARGET_RANDOM_SLOT_COUNT = 2;
     private static final double SKILL_TOP_RANK_WEIGHT = 1.4D;
     private static final int MAX_RECENT_EVENTS = 12;
+
+    private static final String[] PASSWORD_OPTION_KEYS =
+            new String[] {"A", "B", "C"};
+
+    /*
+     * Mỗi phần tử là một code point hiển thị. Generator ghép ngẫu nhiên
+     * từ 1 đến 15 phần tử nên mật khẩu có cả dài/ngắn, chữ, số, ký hiệu
+     * và icon nhưng không chứa control character gây hỏng HTML/JSON.
+     */
+    private static final String[] PASSWORD_ATOMS = new String[] {
+        "a", "B", "x", "Z", "0", "3", "7", "9",
+        "!", "@", "#", "$", "%", "&", "*", "+", "-", "?", "=", "_",
+        "\"", "'", "\\", "/", "<", ">", "(", ")", "[", "]", "{", "}",
+        "^", "~", ":", ";", ".", ",", "|",
+        "🔥", "💰", "🐸", "🌙", "⭐", "🍀", "🎲", "🚀", "👑", "💎",
+        "🐲", "🍉", "🌈", "⚡", "🦄", "🎯", "🧿", "☕", "🎸", "🏆"
+    };
 
     /*
      * COUNTDOWN ôn lại câu sai theo spaced repetition ngắn:
@@ -287,10 +311,18 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                  */
                 if (
                     PLAYING.equals(room.status) &&
-                    MODE_COUNTDOWN.equals(room.settings.mode) &&
+                    isCountdownLikeMode(room.settings.mode) &&
                     !existing.spectator &&
                     existing.currentQuestion == null
                 ) {
+                    if (
+                        MODE_MONEY_BEG.equals(room.settings.mode) &&
+                        isBlank(existing.currentPassword) &&
+                        existing.passwordOptions.isEmpty()
+                    ) {
+                        preparePasswordSelectionLocked(existing);
+                    }
+
                     assignNextCountdownQuestionLocked(
                             room,
                             existing
@@ -325,8 +357,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                  */
                 if (
                     PLAYING.equals(room.status) &&
-                    MODE_COUNTDOWN.equals(room.settings.mode)
+                    isCountdownLikeMode(room.settings.mode)
                 ) {
+                    if (MODE_MONEY_BEG.equals(room.settings.mode)) {
+                        preparePasswordSelectionLocked(player);
+                    }
+
                     assignNextCountdownQuestionLocked(
                             room,
                             player
@@ -415,7 +451,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
              */
             if (
                 PLAYING.equals(room.status) &&
-                MODE_COUNTDOWN.equals(room.settings.mode) &&
+                isCountdownLikeMode(room.settings.mode) &&
                 !player.spectator &&
                 player.currentQuestion == null &&
                 player.pendingSkillType == null
@@ -671,7 +707,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             resetScoresLocked(room);
             room.recentEvents.clear();
 
-            if (MODE_COUNTDOWN.equals(room.settings.mode)) {
+            if (isCountdownLikeMode(room.settings.mode)) {
                 startCountdownLocked(room);
             } else {
                 startClassicLocked(room);
@@ -817,13 +853,18 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.classicQuestionIndex = -1;
         room.questionEndsAt = 0L;
 
-        room.matchEndsAt =
-                System.currentTimeMillis() +
+        long matchStartsAt = System.currentTimeMillis();
+        long matchDurationMs =
                 (
                     room.settings.countdownMinutes *
                     60L *
                     1000L
                 );
+
+        room.matchEndsAt = matchStartsAt + matchDurationMs;
+        room.passwordResetSkillIssued = false;
+        room.passwordResetAvailableAt =
+                matchStartsAt + (matchDurationMs / 2L);
 
         buildCountdownSkillPlanLocked(room);
 
@@ -843,6 +884,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     room,
                     player
             );
+
+            if (MODE_MONEY_BEG.equals(room.settings.mode)) {
+                preparePasswordSelectionLocked(player);
+            }
 
             if (player.connected) {
                 assignNextCountdownQuestionLocked(
@@ -873,7 +918,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         RoomState room = requireRoom(roomCode);
 
-        if (MODE_COUNTDOWN.equals(room.settings.mode)) {
+        if (isCountdownLikeMode(room.settings.mode)) {
             return answerCountdown(
                     room,
                     username,
@@ -952,6 +997,23 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     );
 
             player.connected = true;
+
+            if (
+                MODE_MONEY_BEG.equals(room.settings.mode) &&
+                player.passwordSelectionRequired
+            ) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Hãy chọn mật khẩu của bạn trước khi trả lời."
+                );
+            }
+
+            if (player.pendingPasswordGuessTargetUsername != null) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Hãy đoán mật khẩu của người đã chọn trước khi trả lời tiếp."
+                );
+            }
             player.answeredClassicIndex =
                     room.classicQuestionIndex;
 
@@ -1169,14 +1231,17 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.currentQuestion = null;
             player.currentSkillType = null;
 
-            if (fireActivated) {
+            if (SKILL_RESET_PASSWORD.equals(earnedSkill)) {
+                player.pendingSkillType = SKILL_RESET_PASSWORD;
+                preparePasswordSelectionLocked(player);
+            } else if (fireActivated) {
                 assignNextCountdownQuestionLocked(
                         room,
                         player
                 );
             } else if (
                 earnedSkill != null &&
-                countSkillTargetsLocked(room, player) > 0
+                countSkillTargetsLocked(room, player, earnedSkill) > 0
             ) {
                 player.pendingSkillType = earnedSkill;
                 preparePendingSkillTargetsLocked(
@@ -1218,7 +1283,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         synchronized (room) {
             requirePlaying(room);
 
-            if (!MODE_COUNTDOWN.equals(room.settings.mode)) {
+            if (!isCountdownLikeMode(room.settings.mode)) {
                 throw new BattleOnlineException(
                         HttpStatus.CONFLICT,
                         "Skill chỉ sử dụng trong COUNTDOWN."
@@ -1299,7 +1364,17 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 double amount = 0D;
                 long now = System.currentTimeMillis();
 
-                if (SKILL_FREEZE.equals(skillType)) {
+                if (SKILL_MONEY_BEG.equals(skillType)) {
+                    if (isBlank(target.currentPassword)) {
+                        throw new BattleOnlineException(
+                                HttpStatus.BAD_REQUEST,
+                                "Người chơi này chưa chọn mật khẩu. Hãy chọn người khác."
+                        );
+                    }
+
+                    preparePasswordGuessLocked(actor, target);
+                    actor.pendingSkillTargetUsernames.clear();
+                } else if (SKILL_FREEZE.equals(skillType)) {
                     target.frozenUntil =
                             Math.max(now, target.frozenUntil) +
                             FREEZE_DURATION_MS;
@@ -1322,22 +1397,24 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     );
                 }
 
-                addSkillEventLocked(
-                        room,
-                        skillType,
-                        actor,
-                        target,
-                        amount,
-                        now
-                );
+                if (!SKILL_MONEY_BEG.equals(skillType)) {
+                    addSkillEventLocked(
+                            room,
+                            skillType,
+                            actor,
+                            target,
+                            amount,
+                            now
+                    );
 
-                actor.pendingSkillType = null;
-                actor.pendingSkillTargetUsernames.clear();
+                    actor.pendingSkillType = null;
+                    actor.pendingSkillTargetUsernames.clear();
 
-                assignNextCountdownQuestionLocked(
-                        room,
-                        actor
-                );
+                    assignNextCountdownQuestionLocked(
+                            room,
+                            actor
+                    );
+                }
             }
 
             dto = snapshotLocked(room, username);
@@ -1346,6 +1423,308 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         broadcastGeneric(room);
 
         return dto;
+    }
+
+
+    @Override
+    public BattleOnlineRoomDto choosePassword(
+            String roomCode,
+            String username,
+            BattleOnlinePasswordChoiceDto passwordDto) {
+
+        username = requireUsername(username);
+
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto dto;
+
+        synchronized (room) {
+            requirePlaying(room);
+
+            if (!MODE_MONEY_BEG.equals(room.settings.mode)) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Phòng này không sử dụng mật khẩu XIN TÍ TIỀN."
+                );
+            }
+
+            if (System.currentTimeMillis() >= room.matchEndsAt) {
+                finishMatchLocked(room);
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Hết thời gian trận."
+                );
+            }
+
+            PlayerState player = requirePlayer(room, username);
+            requireActivePlayer(player);
+
+            if (
+                !player.passwordSelectionRequired ||
+                player.passwordOptions.isEmpty()
+            ) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Bạn không có lượt chọn mật khẩu đang chờ."
+                );
+            }
+
+            String optionKey = normalizePasswordOptionKey(
+                    passwordDto != null
+                            ? passwordDto.getOptionKey()
+                            : null
+            );
+
+            String selectedPassword = player.passwordOptions.get(optionKey);
+
+            if (selectedPassword == null) {
+                throw new BattleOnlineException(
+                        HttpStatus.BAD_REQUEST,
+                        "Mật khẩu được chọn không hợp lệ."
+                );
+            }
+
+            boolean resetSkill =
+                    SKILL_RESET_PASSWORD.equals(player.pendingSkillType);
+
+            player.currentPassword = selectedPassword;
+            player.passwordSelectionRequired = false;
+            player.passwordOptions.clear();
+
+            if (resetSkill) {
+                addSkillEventLocked(
+                        room,
+                        SKILL_RESET_PASSWORD,
+                        player,
+                        player,
+                        0D,
+                        System.currentTimeMillis()
+                );
+
+                player.pendingSkillType = null;
+                player.pendingSkillTargetUsernames.clear();
+            }
+
+            assignNextCountdownQuestionLocked(room, player);
+            dto = snapshotLocked(room, username);
+        }
+
+        broadcastGeneric(room);
+        return dto;
+    }
+
+
+    @Override
+    public BattleOnlineRoomDto guessPassword(
+            String roomCode,
+            String username,
+            BattleOnlinePasswordGuessDto passwordDto) {
+
+        username = requireUsername(username);
+
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto dto;
+
+        synchronized (room) {
+            requirePlaying(room);
+
+            if (!MODE_MONEY_BEG.equals(room.settings.mode)) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Phòng này không có skill XIN TÍ TIỀN."
+                );
+            }
+
+            if (System.currentTimeMillis() >= room.matchEndsAt) {
+                finishMatchLocked(room);
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Hết thời gian trận."
+                );
+            }
+
+            PlayerState actor = requirePlayer(room, username);
+            requireActivePlayer(actor);
+
+            if (
+                !SKILL_MONEY_BEG.equals(actor.pendingSkillType) ||
+                actor.pendingPasswordGuessTargetUsername == null ||
+                actor.passwordGuessOptions.isEmpty()
+            ) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Bạn không có lượt đoán mật khẩu đang chờ."
+                );
+            }
+
+            String optionKey = normalizePasswordOptionKey(
+                    passwordDto != null
+                            ? passwordDto.getOptionKey()
+                            : null
+            );
+
+            if (!actor.passwordGuessOptions.containsKey(optionKey)) {
+                throw new BattleOnlineException(
+                        HttpStatus.BAD_REQUEST,
+                        "Mật khẩu dự đoán không hợp lệ."
+                );
+            }
+
+            PlayerState target = room.players.get(
+                    actor.pendingPasswordGuessTargetUsername
+            );
+
+            boolean correct = optionKey.equals(
+                    actor.pendingPasswordGuessCorrectKey
+            );
+
+            double amount = 0D;
+
+            if (correct && target != null && target != actor) {
+                amount = roundScoreToOneDecimal(
+                        Math.max(0D, target.score) * MONEY_BEG_STEAL_RATE
+                );
+
+                target.score = roundScoreToOneDecimal(
+                        Math.max(0D, target.score - amount)
+                );
+
+                actor.score = roundScoreToOneDecimal(actor.score + amount);
+            }
+
+            addPasswordGuessEventLocked(
+                    room,
+                    actor,
+                    target,
+                    correct,
+                    amount,
+                    System.currentTimeMillis()
+            );
+
+            actor.pendingSkillType = null;
+            actor.pendingSkillTargetUsernames.clear();
+            actor.pendingPasswordGuessTargetUsername = null;
+            actor.pendingPasswordGuessCorrectKey = null;
+            actor.passwordGuessOptions.clear();
+
+            assignNextCountdownQuestionLocked(room, actor);
+            dto = snapshotLocked(room, username);
+        }
+
+        broadcastGeneric(room);
+        return dto;
+    }
+
+
+    private void preparePasswordSelectionLocked(PlayerState player) {
+        player.passwordOptions.clear();
+
+        Set<String> disallowed = new LinkedHashSet<String>();
+
+        if (!isBlank(player.currentPassword)) {
+            disallowed.add(player.currentPassword);
+        }
+
+        List<String> values = generateUniquePasswords(3, disallowed);
+
+        for (int index = 0; index < PASSWORD_OPTION_KEYS.length; index++) {
+            player.passwordOptions.put(
+                    PASSWORD_OPTION_KEYS[index],
+                    values.get(index)
+            );
+        }
+
+        player.passwordSelectionRequired = true;
+        player.currentQuestion = null;
+        player.currentSkillType = null;
+    }
+
+
+    private void preparePasswordGuessLocked(
+            PlayerState actor,
+            PlayerState target) {
+
+        actor.passwordGuessOptions.clear();
+
+        Set<String> values = new LinkedHashSet<String>();
+        values.add(target.currentPassword);
+        values.addAll(generateUniquePasswords(2, values));
+
+        List<String> shuffled = new ArrayList<String>(values);
+        Collections.shuffle(shuffled, random);
+
+        for (int index = 0; index < PASSWORD_OPTION_KEYS.length; index++) {
+            String key = PASSWORD_OPTION_KEYS[index];
+            String value = shuffled.get(index);
+
+            actor.passwordGuessOptions.put(key, value);
+
+            if (target.currentPassword.equals(value)) {
+                actor.pendingPasswordGuessCorrectKey = key;
+            }
+        }
+
+        actor.pendingPasswordGuessTargetUsername = target.username;
+        actor.currentQuestion = null;
+        actor.currentSkillType = null;
+    }
+
+
+    private List<String> generateUniquePasswords(
+            int count,
+            Set<String> disallowed) {
+
+        Set<String> result = new LinkedHashSet<String>();
+        int attempts = 0;
+
+        while (result.size() < count && attempts < 200) {
+            attempts += 1;
+            String password = generatePassword();
+
+            if (disallowed == null || !disallowed.contains(password)) {
+                result.add(password);
+            }
+        }
+
+        while (result.size() < count) {
+            String fallback = "💰" + (result.size() + 1) + random.nextInt(1000);
+
+            if (disallowed == null || !disallowed.contains(fallback)) {
+                result.add(fallback);
+            }
+        }
+
+        return new ArrayList<String>(result);
+    }
+
+
+    private String generatePassword() {
+        int codePointLength = 1 + random.nextInt(15);
+        StringBuilder builder = new StringBuilder();
+
+        for (int index = 0; index < codePointLength; index++) {
+            builder.append(
+                    PASSWORD_ATOMS[random.nextInt(PASSWORD_ATOMS.length)]
+            );
+        }
+
+        return builder.toString();
+    }
+
+
+    private String normalizePasswordOptionKey(String value) {
+        String key = safe(value)
+                .toUpperCase(Locale.ENGLISH)
+                .trim();
+
+        if (
+            !"A".equals(key) &&
+            !"B".equals(key) &&
+            !"C".equals(key)
+        ) {
+            return "";
+        }
+
+        return key;
     }
 
 
@@ -1617,7 +1996,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         Set<Integer> blocked = new LinkedHashSet<Integer>();
-        int[] skillCounts = getCountdownSkillCounts(total);
+        int[] skillCounts = getCountdownSkillCounts(
+                total,
+                MODE_MONEY_BEG.equals(room.settings.mode)
+        );
 
         List<Integer> freezePositions =
                 buildBalancedSkillPositions(
@@ -1664,6 +2046,18 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         for (Integer position : firePositions) {
             room.countdownSkillPlan.put(position, SKILL_FIRE_UP);
+            blocked.add(position);
+        }
+
+        List<Integer> moneyBegPositions =
+                buildBalancedSkillPositions(
+                    total,
+                    skillCounts[4],
+                    blocked
+                );
+
+        for (Integer position : moneyBegPositions) {
+            room.countdownSkillPlan.put(position, SKILL_MONEY_BEG);
         }
     }
 
@@ -1683,8 +2077,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
      * Bốn loại skill được chia theo vòng ưu tiên để khi có đủ từ 4 skill
      * trở lên thì FREEZE, FIRE_UP, BREAK_STREAK và STEAL_SCORE đều xuất hiện.
      */
-    private int[] getCountdownSkillCounts(int total) {
-        int[] counts = new int[] {0, 0, 0, 0};
+    private int[] getCountdownSkillCounts(
+            int total,
+            boolean includeMoneyBeg) {
+
+        int[] counts = new int[] {0, 0, 0, 0, 0};
 
         if (total < 10) {
             return counts;
@@ -1712,8 +2109,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 )
         );
 
-        /* FREEZE, FIRE_UP, BREAK_STREAK, STEAL_SCORE. */
-        int[] firstRound = new int[] {0, 3, 1, 2};
+        /* FREEZE, FIRE_UP, BREAK_STREAK, STEAL_SCORE, MONEY_BEG. */
+        int[] firstRound = includeMoneyBeg
+                ? new int[] {0, 3, 1, 2, 4}
+                : new int[] {0, 3, 1, 2};
         int assigned = 0;
 
         while (assigned < totalSkillCount && assigned < firstRound.length) {
@@ -1725,7 +2124,17 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
          * Vòng lặp sau giữ FREEZE phổ biến nhất, FIRE_UP/BREAK_STREAK ở mức
          * trung bình và STEAL_SCORE hiếm nhất.
          */
-        int[] weightedCycle = new int[] {0, 3, 1, 0, 3, 2, 1, 0};
+        /*
+         * MONEY_BEG có 3 slot khi trung bình mỗi skill thường có 5 slot:
+         * xác suất thấp hơn xấp xỉ 40% như yêu cầu.
+         */
+        int[] weightedCycle = includeMoneyBeg
+                ? new int[] {
+                    0, 3, 1, 2, 0, 3, 1, 4,
+                    0, 3, 2, 1, 0, 3, 4, 1,
+                    0, 2, 3, 4, 1, 0, 3
+                }
+                : new int[] {0, 3, 1, 0, 3, 2, 1, 0};
         int cycleIndex = 0;
 
         while (assigned < totalSkillCount) {
@@ -1789,13 +2198,30 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             RoomState room,
             PlayerState actor) {
 
+        return countSkillTargetsLocked(
+                room,
+                actor,
+                actor != null ? actor.pendingSkillType : null
+        );
+    }
+
+
+    private int countSkillTargetsLocked(
+            RoomState room,
+            PlayerState actor,
+            String skillType) {
+
         int count = 0;
 
         for (PlayerState player : room.players.values()) {
             if (
                 player != actor &&
                 !player.spectator &&
-                player.connected
+                player.connected &&
+                (
+                    !SKILL_MONEY_BEG.equals(skillType) ||
+                    !isBlank(player.currentPassword)
+                )
             ) {
                 count += 1;
             }
@@ -1811,6 +2237,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         if (
             actor.pendingSkillType == null ||
+            SKILL_RESET_PASSWORD.equals(actor.pendingSkillType) ||
+            actor.pendingPasswordGuessTargetUsername != null ||
             countSkillTargetsLocked(room, actor) > 0
         ) {
             return false;
@@ -1863,7 +2291,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             if (
                 candidate != actor &&
                 !candidate.spectator &&
-                candidate.connected
+                candidate.connected &&
+                (
+                    !SKILL_MONEY_BEG.equals(actor.pendingSkillType) ||
+                    !isBlank(candidate.currentPassword)
+                )
             ) {
                 pool.add(candidate);
             }
@@ -1921,7 +2353,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             RoomState room,
             PlayerState actor) {
 
-        if (actor.pendingSkillType == null) {
+        if (
+            actor.pendingSkillType == null ||
+            SKILL_RESET_PASSWORD.equals(actor.pendingSkillType) ||
+            actor.pendingPasswordGuessTargetUsername != null
+        ) {
             actor.pendingSkillTargetUsernames.clear();
             return;
         }
@@ -1946,7 +2382,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             if (
                 candidate != actor &&
                 !candidate.spectator &&
-                candidate.connected
+                candidate.connected &&
+                (
+                    !SKILL_MONEY_BEG.equals(actor.pendingSkillType) ||
+                    !isBlank(candidate.currentPassword)
+                )
             ) {
                 eligibleByUsername.put(
                         candidate.username,
@@ -2142,6 +2582,52 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             event.setMessage(
                     actorName + " vừa kích hoạt CHÁY LÊN x1.2 trong 15 giây."
             );
+        } else if (SKILL_RESET_PASSWORD.equals(skillType)) {
+            event.setMessage(
+                    actorName + " vừa dùng skill ĐẶT LẠI MẬT KHẨU."
+            );
+        }
+
+        room.recentEvents.add(0, event);
+
+        while (room.recentEvents.size() > MAX_RECENT_EVENTS) {
+            room.recentEvents.remove(room.recentEvents.size() - 1);
+        }
+    }
+
+
+    private void addPasswordGuessEventLocked(
+            RoomState room,
+            PlayerState actor,
+            PlayerState target,
+            boolean correct,
+            double amount,
+            long createdAt) {
+
+        BattleOnlineEventDto event = new BattleOnlineEventDto();
+
+        event.setId(++room.nextEventId);
+        event.setType(SKILL_MONEY_BEG);
+        event.setActorUsername(actor.username);
+        event.setActorDisplayName(actor.displayName);
+        event.setTargetUsername(target != null ? target.username : null);
+        event.setTargetDisplayName(target != null ? target.displayName : null);
+        event.setAmount(amount);
+        event.setCreatedAt(createdAt);
+
+        String actorName = displayName(actor);
+        String targetName = displayName(target);
+
+        if (correct) {
+            event.setMessage(
+                    actorName + " đoán đúng mật khẩu và xin được " +
+                    formatScore(amount) + " điểm của " + targetName + "."
+            );
+        } else {
+            event.setMessage(
+                    actorName + " đoán sai mật khẩu của " + targetName +
+                    ", không xin được điểm."
+            );
         }
 
         room.recentEvents.add(0, event);
@@ -2188,7 +2674,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             return;
         }
 
-        if (player.pendingSkillType != null) {
+        if (
+            player.pendingSkillType != null ||
+            player.passwordSelectionRequired ||
+            player.pendingPasswordGuessTargetUsername != null
+        ) {
             player.currentQuestion = null;
             player.currentSkillType = null;
             return;
@@ -2196,7 +2686,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         if (
             !PLAYING.equals(room.status) ||
-            !MODE_COUNTDOWN.equals(room.settings.mode) ||
+            !isCountdownLikeMode(room.settings.mode) ||
             System.currentTimeMillis() >=
                 room.matchEndsAt
         ) {
@@ -2383,10 +2873,24 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     skillCycleSize
                 );
 
-        player.currentSkillType =
-                room.countdownSkillPlan.get(
-                        skillPosition
-                );
+        if (
+            MODE_MONEY_BEG.equals(room.settings.mode) &&
+            !room.passwordResetSkillIssued &&
+            System.currentTimeMillis() >= room.passwordResetAvailableAt
+        ) {
+            /*
+             * Câu đầu tiên được cấp sau mốc nửa trận mang RESET_PASSWORD.
+             * Đánh dấu ngay lúc xuất hiện nên toàn phòng chỉ thấy đúng 1 lần;
+             * trả lời sai thì skill cũng được xem là đã dùng mất.
+             */
+            player.currentSkillType = SKILL_RESET_PASSWORD;
+            room.passwordResetSkillIssued = true;
+        } else {
+            player.currentSkillType =
+                    room.countdownSkillPlan.get(
+                            skillPosition
+                    );
+        }
 
         player.uniqueWordIds.add(
                 prepared.id
@@ -2572,7 +3076,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         if (
             !PLAYING.equals(room.status) ||
-            !MODE_COUNTDOWN.equals(room.settings.mode) ||
+            !isCountdownLikeMode(room.settings.mode) ||
             newIds == null ||
             newIds.isEmpty()
         ) {
@@ -2672,7 +3176,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         synchronized (room) {
             if (
                 !PLAYING.equals(room.status) ||
-                !MODE_COUNTDOWN.equals(room.settings.mode)
+                !isCountdownLikeMode(room.settings.mode)
             ) {
                 return;
             }
@@ -2699,6 +3203,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.currentSkillType = null;
             player.pendingSkillType = null;
             player.pendingSkillTargetUsernames.clear();
+            player.passwordSelectionRequired = false;
+            player.passwordOptions.clear();
+            player.pendingPasswordGuessTargetUsername = null;
+            player.pendingPasswordGuessCorrectKey = null;
+            player.passwordGuessOptions.clear();
             player.frozenUntil = 0L;
             player.burningUntil = 0L;
         }
@@ -3424,9 +3933,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         if (
             PLAYING.equals(room.status) &&
-            MODE_COUNTDOWN.equals(
-                room.settings.mode
-            )
+            isCountdownLikeMode(room.settings.mode)
         ) {
             /*
              * Chỉ REST snapshot dành cho viewer mới có
@@ -3453,6 +3960,35 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                                 viewer.pendingSkillTargetUsernames
                             )
                     );
+
+                    if (MODE_MONEY_BEG.equals(room.settings.mode)) {
+                        dto.setPasswordSelectionRequired(
+                                viewer.passwordSelectionRequired
+                        );
+
+                        dto.setCurrentPassword(viewer.currentPassword);
+                        dto.setPasswordOptions(
+                                toPasswordOptions(viewer.passwordOptions)
+                        );
+
+                        dto.setPendingPasswordGuessTargetUsername(
+                                viewer.pendingPasswordGuessTargetUsername
+                        );
+
+                        PlayerState passwordTarget = room.players.get(
+                                viewer.pendingPasswordGuessTargetUsername
+                        );
+
+                        dto.setPendingPasswordGuessTargetDisplayName(
+                                passwordTarget != null
+                                        ? displayName(passwordTarget)
+                                        : null
+                        );
+
+                        dto.setPasswordGuessOptions(
+                                toPasswordOptions(viewer.passwordGuessOptions)
+                        );
+                    }
                 }
 
                 if (
@@ -3573,6 +4109,29 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         dto.setPlayers(players);
 
         return dto;
+    }
+
+
+    private List<BattleOnlinePasswordOptionDto> toPasswordOptions(
+            Map<String, String> source) {
+
+        List<BattleOnlinePasswordOptionDto> result =
+                new ArrayList<BattleOnlinePasswordOptionDto>();
+
+        if (source == null) {
+            return result;
+        }
+
+        for (Map.Entry<String, String> entry : source.entrySet()) {
+            result.add(
+                    new BattleOnlinePasswordOptionDto(
+                            entry.getKey(),
+                            entry.getValue()
+                    )
+            );
+        }
+
+        return result;
     }
 
 
@@ -3780,6 +4339,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         player.currentSkillType = null;
         player.pendingSkillType = null;
         player.pendingSkillTargetUsernames.clear();
+        player.currentPassword = null;
+        player.passwordSelectionRequired = false;
+        player.passwordOptions.clear();
+        player.pendingPasswordGuessTargetUsername = null;
+        player.pendingPasswordGuessCorrectKey = null;
+        player.passwordGuessOptions.clear();
         player.frozenUntil = 0L;
         player.burningUntil = 0L;
 
@@ -4306,7 +4871,19 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             return MODE_COUNTDOWN;
         }
 
+        if (
+            MODE_MONEY_BEG.equals(mode) ||
+            "XIN_TIEN".equals(mode)
+        ) {
+            return MODE_MONEY_BEG;
+        }
+
         return MODE_CLASSIC;
+    }
+
+
+    private boolean isCountdownLikeMode(String mode) {
+        return MODE_COUNTDOWN.equals(mode) || MODE_MONEY_BEG.equals(mode);
     }
 
 
@@ -4496,6 +5073,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         Map<Integer, String> countdownSkillPlan =
                 new LinkedHashMap<Integer, String>();
 
+        long passwordResetAvailableAt = 0L;
+        boolean passwordResetSkillIssued = false;
+
         List<BattleOnlineEventDto> recentEvents =
                 new ArrayList<BattleOnlineEventDto>();
 
@@ -4558,6 +5138,18 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         List<String> pendingSkillTargetUsernames =
                 new ArrayList<String>();
+
+        String currentPassword;
+        boolean passwordSelectionRequired;
+
+        Map<String, String> passwordOptions =
+                new LinkedHashMap<String, String>();
+
+        String pendingPasswordGuessTargetUsername;
+        String pendingPasswordGuessCorrectKey;
+
+        Map<String, String> passwordGuessOptions =
+                new LinkedHashMap<String, String>();
 
         long frozenUntil = 0L;
         long burningUntil = 0L;

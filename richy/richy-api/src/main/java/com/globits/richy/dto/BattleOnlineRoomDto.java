@@ -64,6 +64,22 @@ public class BattleOnlineRoomDto implements Serializable {
             new ArrayList<String>();
 
     /*
+     * XIN_TIEN: toàn bộ trường dưới đây là state riêng của viewer.
+     * WebSocket generic không bao giờ chứa mật khẩu hay phương án đoán.
+     */
+    private boolean passwordSelectionRequired;
+    private String currentPassword;
+
+    private List<BattleOnlinePasswordOptionDto> passwordOptions =
+            new ArrayList<BattleOnlinePasswordOptionDto>();
+
+    private String pendingPasswordGuessTargetUsername;
+    private String pendingPasswordGuessTargetDisplayName;
+
+    private List<BattleOnlinePasswordOptionDto> passwordGuessOptions =
+            new ArrayList<BattleOnlinePasswordOptionDto>();
+
+    /*
      * Nhật ký skill chung, mới nhất đứng trước.
      */
     private List<BattleOnlineEventDto> recentEvents =
@@ -223,6 +239,60 @@ public class BattleOnlineRoomDto implements Serializable {
     public void setPendingSkillTargetUsernames(
             List<String> pendingSkillTargetUsernames) {
         this.pendingSkillTargetUsernames = pendingSkillTargetUsernames;
+    }
+
+    public boolean isPasswordSelectionRequired() {
+        return passwordSelectionRequired;
+    }
+
+    public void setPasswordSelectionRequired(boolean passwordSelectionRequired) {
+        this.passwordSelectionRequired = passwordSelectionRequired;
+    }
+
+    public String getCurrentPassword() {
+        return currentPassword;
+    }
+
+    public void setCurrentPassword(String currentPassword) {
+        this.currentPassword = currentPassword;
+    }
+
+    public List<BattleOnlinePasswordOptionDto> getPasswordOptions() {
+        return passwordOptions;
+    }
+
+    public void setPasswordOptions(
+            List<BattleOnlinePasswordOptionDto> passwordOptions) {
+        this.passwordOptions = passwordOptions;
+    }
+
+    public String getPendingPasswordGuessTargetUsername() {
+        return pendingPasswordGuessTargetUsername;
+    }
+
+    public void setPendingPasswordGuessTargetUsername(
+            String pendingPasswordGuessTargetUsername) {
+        this.pendingPasswordGuessTargetUsername =
+                pendingPasswordGuessTargetUsername;
+    }
+
+    public String getPendingPasswordGuessTargetDisplayName() {
+        return pendingPasswordGuessTargetDisplayName;
+    }
+
+    public void setPendingPasswordGuessTargetDisplayName(
+            String pendingPasswordGuessTargetDisplayName) {
+        this.pendingPasswordGuessTargetDisplayName =
+                pendingPasswordGuessTargetDisplayName;
+    }
+
+    public List<BattleOnlinePasswordOptionDto> getPasswordGuessOptions() {
+        return passwordGuessOptions;
+    }
+
+    public void setPasswordGuessOptions(
+            List<BattleOnlinePasswordOptionDto> passwordGuessOptions) {
+        this.passwordGuessOptions = passwordGuessOptions;
     }
 
     public List<BattleOnlineEventDto> getRecentEvents() {
