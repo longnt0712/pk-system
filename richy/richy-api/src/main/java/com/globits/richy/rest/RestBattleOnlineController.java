@@ -20,6 +20,7 @@ import com.globits.richy.dto.BattleOnlineAnswerResultDto;
 import com.globits.richy.dto.BattleOnlineCreateRoomDto;
 import com.globits.richy.dto.BattleOnlinePasswordChoiceDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
+import com.globits.richy.dto.BattleOnlinePasswordGuessResultDto;
 import com.globits.richy.dto.BattleOnlineReadyDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
@@ -174,7 +175,7 @@ public class RestBattleOnlineController {
     }
 
     @RequestMapping(value = "/rooms/{roomCode}/password-guess", method = RequestMethod.POST)
-    public BattleOnlineRoomDto guessPassword(
+    public BattleOnlinePasswordGuessResultDto guessPassword(
             @PathVariable String roomCode,
             @RequestBody BattleOnlinePasswordGuessDto dto) {
 

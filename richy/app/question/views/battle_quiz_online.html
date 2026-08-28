@@ -751,13 +751,6 @@
 
             </div>
 
-            <div class="battle-online-password-chip"
-                 ng-if="vm.isMoneyBegMode() && vm.room.currentPassword">
-                <span>🔐 MẬT KHẨU CỦA BẠN</span>
-                <strong>{{vm.room.currentPassword}}</strong>
-            </div>
-
-
             <div class="battle-online-word"
                  ng-if="vm.room.currentQuestion">
 
@@ -1126,10 +1119,11 @@
 
             <div class="battle-online-skill-modal-body">
                 <div class="battle-online-skill-modal-guide">
-                    <strong>🎭 Chọn 1 trong 3 chuỗi bất kỳ</strong>
+                    <strong>🎭 Chọn mã dễ, trung bình, khó hoặc tự nhập</strong>
                     <p>
-                        Đây sẽ là mật khẩu thật của bạn. Hãy chọn nhanh vì
-                        COUNTDOWN bắt đầu tính ngay khi trận được START.
+                        Ba mã được điều chế từ các cụm dễ nhớ với độ khó khác
+                        nhau. Bạn cũng có thể tự nhập mã từ 1–20 ký tự.
+                        COUNTDOWN vẫn đang chạy.
                     </p>
                 </div>
 
@@ -1143,6 +1137,31 @@
                         <strong>{{option.value}}</strong>
                         <small>CHỌN</small>
                     </button>
+                </div>
+
+                <div class="battle-online-custom-password">
+                    <label for="battle-online-custom-password-input">
+                        ✍️ HOẶC TỰ NHẬP MẬT MÃ
+                    </label>
+
+                    <div>
+                        <input id="battle-online-custom-password-input"
+                               type="text"
+                               maxlength="20"
+                               autocomplete="off"
+                               spellcheck="false"
+                               placeholder="Ví dụ: tâm bất biến, mèo#27..."
+                               ng-model="vm.customPasswordInput"
+                               ng-disabled="vm.choosingPassword">
+
+                        <button type="button"
+                                ng-click="vm.chooseCustomPassword()"
+                                ng-disabled="vm.choosingPassword || !vm.customPasswordInput">
+                            DÙNG MÃ NÀY
+                        </button>
+                    </div>
+
+                    <small>Tối đa 20 ký tự • không hiện phía trên câu hỏi</small>
                 </div>
             </div>
         </section>
@@ -1176,7 +1195,8 @@
                     </p>
                 </div>
 
-                <div class="battle-online-password-option-list">
+                <div class="battle-online-password-option-list"
+                     ng-if="vm.passwordGuessStage === 'idle'">
                     <button type="button"
                             class="battle-online-password-option is-guess"
                             ng-repeat="option in vm.room.passwordGuessOptions track by option.key"
@@ -1186,6 +1206,40 @@
                         <strong>{{option.value}}</strong>
                         <small>ĐOÁN</small>
                     </button>
+                </div>
+
+                <div class="battle-online-password-hacking"
+                     ng-if="vm.passwordGuessStage === 'loading'">
+                    <span>🔓</span>
+                    <strong>ĐANG HACK MẬT MÃ</strong>
+                    <div aria-label="Đang kiểm tra mật mã">
+                        <i></i><i></i><i></i>
+                    </div>
+                </div>
+
+                <div class="battle-online-password-result"
+                     ng-if="vm.passwordGuessStage === 'result'"
+                     ng-class="{
+                        'is-correct': vm.passwordGuessResult.correct,
+                        'is-incorrect': !vm.passwordGuessResult.correct
+                     }">
+                    <span>
+                        {{vm.passwordGuessResult.correct ? '✅' : '❌'}}
+                    </span>
+
+                    <strong>
+                        {{vm.passwordGuessResult.correct ? 'CORRECT' : 'INCORRECT'}}
+                    </strong>
+
+                    <b ng-if="vm.passwordGuessResult.correct">
+                        +{{vm.formatScore(vm.passwordGuessResult.amount)}} ĐIỂM
+                    </b>
+
+                    <small>
+                        {{vm.passwordGuessResult.correct
+                            ? 'Bạn đã xin được điểm của đối thủ!'
+                            : 'Bạn không lấy được điểm và skill đã kết thúc.'}}
+                    </small>
                 </div>
             </div>
         </section>
@@ -3874,34 +3928,6 @@
         to { transform: scale(1.04); filter: brightness(1.18); }
     }
 
-    .battle-online-password-chip {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        margin: 8px 0;
-        padding: 8px 12px;
-        border: 1px solid rgba(16, 185, 129, .35);
-        border-radius: 13px;
-        background: linear-gradient(135deg, rgba(16, 185, 129, .12), rgba(245, 158, 11, .10));
-    }
-
-    .battle-online-password-chip span {
-        color: var(--bo-muted);
-        font-size: 9px;
-        font-weight: 900;
-        letter-spacing: .5px;
-    }
-
-    .battle-online-password-chip strong {
-        min-width: 0;
-        overflow-wrap: anywhere;
-        color: #0f9f74;
-        font-size: 15px;
-        font-weight: 1000;
-        text-align: right;
-    }
-
     .battle-online-skill-modal-backdrop {
         position: fixed;
         z-index: 1160;
@@ -4258,10 +4284,12 @@
         transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
     }
 
-    .battle-online-password-option:hover:not(:disabled) {
-        transform: translateY(-3px) scale(1.01);
-        border-color: #10b981;
-        box-shadow: 0 13px 27px rgba(16, 185, 129, .22);
+    @media (hover: hover) and (pointer: fine) {
+        .battle-online-password-option:not(.is-guess):hover:not(:disabled) {
+            transform: translateY(-3px) scale(1.01);
+            border-color: #10b981;
+            box-shadow: 0 13px 27px rgba(16, 185, 129, .22);
+        }
     }
 
     .battle-online-password-option > span {
@@ -4296,6 +4324,144 @@
     .battle-online-password-option.is-guess {
         border-color: rgba(245, 158, 11, .44);
         background: linear-gradient(145deg, rgba(245, 158, 11, .14), rgba(236, 72, 153, .08));
+    }
+
+    .battle-online-custom-password {
+        margin-top: 14px;
+        padding: 13px;
+        border: 1px dashed rgba(16, 185, 129, .45);
+        border-radius: 16px;
+        background: var(--bo-soft);
+    }
+
+    .battle-online-custom-password > label,
+    .battle-online-custom-password > small {
+        display: block;
+        font-weight: 900;
+    }
+
+    .battle-online-custom-password > label {
+        margin-bottom: 8px;
+        color: var(--bo-text);
+        font-size: 10px;
+        letter-spacing: .5px;
+    }
+
+    .battle-online-custom-password > div {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+    }
+
+    .battle-online-custom-password input {
+        width: 100%;
+        min-width: 0;
+        height: 44px;
+        padding: 0 12px;
+        border: 1px solid var(--bo-line);
+        border-radius: 12px;
+        color: var(--bo-text);
+        background: var(--bo-card);
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: .4px;
+    }
+
+    .battle-online-custom-password button {
+        min-height: 44px;
+        padding: 0 14px;
+        border: 0;
+        border-radius: 12px;
+        color: #fff;
+        background: linear-gradient(135deg, #10b981, #059669);
+        font-size: 9px;
+        font-weight: 1000;
+    }
+
+    .battle-online-custom-password button:disabled {
+        opacity: .48;
+    }
+
+    .battle-online-custom-password > small {
+        margin-top: 7px;
+        color: var(--bo-muted);
+        font-size: 8px;
+    }
+
+    .battle-online-password-hacking,
+    .battle-online-password-result {
+        min-height: 190px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 20px;
+        border: 1px solid rgba(245, 158, 11, .38);
+        border-radius: 20px;
+        text-align: center;
+        background: linear-gradient(145deg, rgba(245, 158, 11, .12), rgba(139, 92, 246, .08));
+    }
+
+    .battle-online-password-hacking > span,
+    .battle-online-password-result > span {
+        font-size: 40px;
+    }
+
+    .battle-online-password-hacking > strong,
+    .battle-online-password-result > strong {
+        color: var(--bo-text);
+        font-size: 22px;
+        font-weight: 1000;
+        letter-spacing: 1px;
+    }
+
+    .battle-online-password-hacking > div {
+        display: flex;
+        gap: 8px;
+    }
+
+    .battle-online-password-hacking i {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: #f59e0b;
+        animation: battle-online-password-dot .8s ease-in-out infinite alternate;
+    }
+
+    .battle-online-password-hacking i:nth-child(2) {
+        animation-delay: .18s;
+    }
+
+    .battle-online-password-hacking i:nth-child(3) {
+        animation-delay: .36s;
+    }
+
+    .battle-online-password-result.is-correct {
+        border-color: rgba(16, 185, 129, .55);
+        background: linear-gradient(145deg, rgba(16, 185, 129, .18), rgba(34, 197, 94, .08));
+    }
+
+    .battle-online-password-result.is-incorrect {
+        border-color: rgba(239, 68, 68, .55);
+        background: linear-gradient(145deg, rgba(239, 68, 68, .16), rgba(190, 24, 93, .08));
+    }
+
+    .battle-online-password-result b {
+        color: #10b981;
+        font-size: 20px;
+        font-weight: 1000;
+    }
+
+    .battle-online-password-result small {
+        color: var(--bo-muted);
+        font-size: 10px;
+        font-weight: 800;
+    }
+
+    @keyframes battle-online-password-dot {
+        from { transform: translateY(0); opacity: .35; }
+        to { transform: translateY(-7px); opacity: 1; }
     }
 
     .battle-online-ranking-row.is-kickable {
@@ -4912,6 +5078,19 @@
 
         .battle-online-password-option strong {
             text-align: left;
+        }
+
+        .battle-online-custom-password > div {
+            grid-template-columns: 1fr;
+        }
+
+        .battle-online-custom-password button {
+            width: 100%;
+        }
+
+        .battle-online-password-hacking,
+        .battle-online-password-result {
+            min-height: 150px;
         }
 
         .battle-online-answer-btn {

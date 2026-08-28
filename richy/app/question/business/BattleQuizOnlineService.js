@@ -120,10 +120,13 @@
             ).then(function (response) { return response.data; });
         };
 
-        self.choosePassword = function (roomCode, optionKey) {
+        self.choosePassword = function (roomCode, optionKey, customPassword) {
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/password',
-                {optionKey: optionKey}
+                {
+                    optionKey: optionKey || null,
+                    customPassword: customPassword || null
+                }
             ).then(function (response) { return response.data; });
         };
 

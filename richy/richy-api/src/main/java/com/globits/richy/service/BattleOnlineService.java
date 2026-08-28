@@ -5,6 +5,7 @@ import com.globits.richy.dto.BattleOnlineAnswerResultDto;
 import com.globits.richy.dto.BattleOnlineCreateRoomDto;
 import com.globits.richy.dto.BattleOnlinePasswordChoiceDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
+import com.globits.richy.dto.BattleOnlinePasswordGuessResultDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
@@ -83,7 +84,7 @@ public interface BattleOnlineService {
             BattleOnlinePasswordChoiceDto passwordDto
     );
 
-    BattleOnlineRoomDto guessPassword(
+    BattleOnlinePasswordGuessResultDto guessPassword(
             String roomCode,
             String username,
             BattleOnlinePasswordGuessDto passwordDto

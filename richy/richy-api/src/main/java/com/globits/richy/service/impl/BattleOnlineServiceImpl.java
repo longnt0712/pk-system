@@ -1,5 +1,6 @@
 package com.globits.richy.service.impl;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -33,6 +34,7 @@ import com.globits.richy.dto.BattleOnlineCreateRoomDto;
 import com.globits.richy.dto.BattleOnlineEventDto;
 import com.globits.richy.dto.BattleOnlinePasswordChoiceDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
+import com.globits.richy.dto.BattleOnlinePasswordGuessResultDto;
 import com.globits.richy.dto.BattleOnlinePasswordOptionDto;
 import com.globits.richy.dto.BattleOnlinePlayerDto;
 import com.globits.richy.dto.BattleOnlineQuestionDto;
@@ -80,18 +82,26 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             new String[] {"A", "B", "C"};
 
     /*
-     * Mỗi phần tử là một code point hiển thị. Generator ghép ngẫu nhiên
-     * từ 1 đến 15 phần tử nên mật khẩu có cả dài/ngắn, chữ, số, ký hiệu
-     * và icon nhưng không chứa control character gây hỏng HTML/JSON.
+     * Mỗi lượt chọn có đủ một mã dễ, một mã trung bình và một mã khó.
+     * Các biến thể đều được điều chế từ cụm dễ nhớ, dài tối đa 20 code point.
      */
-    private static final String[] PASSWORD_ATOMS = new String[] {
-        "a", "B", "x", "Z", "0", "3", "7", "9",
-        "!", "@", "#", "$", "%", "&", "*", "+", "-", "?", "=", "_",
-        "\"", "'", "\\", "/", "<", ">", "(", ")", "[", "]", "{", "}",
-        "^", "~", ":", ";", ".", ",", "|",
-        "🔥", "💰", "🐸", "🌙", "⭐", "🍀", "🎲", "🚀", "👑", "💎",
-        "🐲", "🍉", "🌈", "⚡", "🦄", "🎯", "🧿", "☕", "🎸", "🏆"
+    private static final String[] PASSWORD_PHRASES = new String[] {
+        "mấy con gà", "chăm học đi", "đừng cướp tôi", "chan đê",
+        "tâm bất biến", "tích đức", "chó", "mèo", "lợn", "gà",
+        "me handsome", "I love football", "đi ngủ đi", "đừng hack tôi",
+        "xin nhẹ thôi", "còn cái nịt", "ví tôi rỗng", "tha cho tôi",
+        "học bài chưa", "ăn cơm chưa", "bình tĩnh", "không có tiền",
+        "cho xin lại", "đừng tham", "làm người tốt", "tôi vô tội",
+        "cướp ít thôi", "điểm của tôi", "keep calm", "no money",
+        "good luck", "try again", "để tôi yên", "đừng nhìn nữa",
+        "học đi bạn", "xin đừng cướp", "ví đang buồn", "nhẹ tay thôi"
     };
+
+    private static final String[] PASSWORD_ICONS = new String[] {
+        "🔥", "💰", "🐸", "🌙", "⭐", "🍀", "🎲", "🚀", "👑", "💎"
+    };
+
+    private static final String PASSWORD_PUNCTUATION = "!@#$%&?+-_";
 
     /*
      * COUNTDOWN ôn lại câu sai theo spaced repetition ngắn:
@@ -140,7 +150,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private final ScheduledExecutorService scheduler =
             Executors.newScheduledThreadPool(4);
 
-    private final Random random = new Random();
+    private final Random random = new SecureRandom();
 
     @Autowired
     private QuestionService questionService;
@@ -1474,7 +1484,15 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             : null
             );
 
-            String selectedPassword = player.passwordOptions.get(optionKey);
+            String customPassword = validateCustomPassword(
+                    passwordDto != null
+                            ? passwordDto.getCustomPassword()
+                            : null
+            );
+
+            String selectedPassword = customPassword != null
+                    ? customPassword
+                    : player.passwordOptions.get(optionKey);
 
             if (selectedPassword == null) {
                 throw new BattleOnlineException(
@@ -1485,6 +1503,16 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             boolean resetSkill =
                     SKILL_RESET_PASSWORD.equals(player.pendingSkillType);
+
+            if (
+                resetSkill &&
+                selectedPassword.equals(player.currentPassword)
+            ) {
+                throw new BattleOnlineException(
+                        HttpStatus.BAD_REQUEST,
+                        "Mật khẩu mới phải khác mật khẩu hiện tại."
+                );
+            }
 
             player.currentPassword = selectedPassword;
             player.passwordSelectionRequired = false;
@@ -1514,7 +1542,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
 
     @Override
-    public BattleOnlineRoomDto guessPassword(
+    public BattleOnlinePasswordGuessResultDto guessPassword(
             String roomCode,
             String username,
             BattleOnlinePasswordGuessDto passwordDto) {
@@ -1522,7 +1550,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         username = requireUsername(username);
 
         RoomState room = requireRoom(roomCode);
-        BattleOnlineRoomDto dto;
+        BattleOnlinePasswordGuessResultDto result =
+                new BattleOnlinePasswordGuessResultDto();
 
         synchronized (room) {
             requirePlaying(room);
@@ -1607,11 +1636,19 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             actor.passwordGuessOptions.clear();
 
             assignNextCountdownQuestionLocked(room, actor);
-            dto = snapshotLocked(room, username);
+            result.setCorrect(correct);
+            result.setAmount(amount);
+            result.setMessage(
+                    correct
+                            ? "CORRECT! Bạn đã lấy được " +
+                                formatScore(amount) + " điểm."
+                            : "INCORRECT! Bạn không lấy được điểm."
+            );
+            result.setRoom(snapshotLocked(room, username));
         }
 
         broadcastGeneric(room);
-        return dto;
+        return result;
     }
 
 
@@ -1624,7 +1661,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             disallowed.add(player.currentPassword);
         }
 
-        List<String> values = generateUniquePasswords(3, disallowed);
+        List<String> values = generateTieredPasswords(disallowed);
 
         for (int index = 0; index < PASSWORD_OPTION_KEYS.length; index++) {
             player.passwordOptions.put(
@@ -1647,7 +1684,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         Set<String> values = new LinkedHashSet<String>();
         values.add(target.currentPassword);
-        values.addAll(generateUniquePasswords(2, values));
+        values.addAll(generateSimilarPasswordDecoys(
+                target.currentPassword,
+                2
+        ));
 
         List<String> shuffled = new ArrayList<String>(values);
         Collections.shuffle(shuffled, random);
@@ -1669,6 +1709,43 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
+    private List<String> generateTieredPasswords(Set<String> disallowed) {
+        Set<String> result = new LinkedHashSet<String>();
+
+        for (int difficulty = 0; difficulty < 3; difficulty++) {
+            int attempts = 0;
+
+            while (attempts < 100) {
+                attempts += 1;
+                String password = generatePassword(difficulty);
+
+                if (
+                    !result.contains(password) &&
+                    (disallowed == null || !disallowed.contains(password))
+                ) {
+                    result.add(password);
+                    break;
+                }
+            }
+        }
+
+        while (result.size() < 3) {
+            String fallback = generatePassword(random.nextInt(3));
+
+            if (
+                !result.contains(fallback) &&
+                (disallowed == null || !disallowed.contains(fallback))
+            ) {
+                result.add(fallback);
+            }
+        }
+
+        List<String> values = new ArrayList<String>(result);
+        Collections.shuffle(values, random);
+        return values;
+    }
+
+
     private List<String> generateUniquePasswords(
             int count,
             Set<String> disallowed) {
@@ -1678,7 +1755,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         while (result.size() < count && attempts < 200) {
             attempts += 1;
-            String password = generatePassword();
+            String password = generatePassword(random.nextInt(3));
 
             if (disallowed == null || !disallowed.contains(password)) {
                 result.add(password);
@@ -1686,7 +1763,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         while (result.size() < count) {
-            String fallback = "💰" + (result.size() + 1) + random.nextInt(1000);
+            String fallback = "PIN" + (10 + random.nextInt(90));
 
             if (disallowed == null || !disallowed.contains(fallback)) {
                 result.add(fallback);
@@ -1697,17 +1774,241 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
-    private String generatePassword() {
-        int codePointLength = 1 + random.nextInt(15);
-        StringBuilder builder = new StringBuilder();
+    /*
+     * Hai phương án sai có độ dài và kiểu ký tự gần giống mật khẩu thật.
+     * Nhờ đó mật khẩu tự nhập không bị lộ chỉ vì dài/ngắn hoặc có icon khác
+     * hẳn hai mã mồi do hệ thống sinh ra.
+     */
+    private List<String> generateSimilarPasswordDecoys(
+            String realPassword,
+            int count) {
 
-        for (int index = 0; index < codePointLength; index++) {
-            builder.append(
-                    PASSWORD_ATOMS[random.nextInt(PASSWORD_ATOMS.length)]
+        Set<String> result = new LinkedHashSet<String>();
+        result.add(realPassword);
+
+        int attempts = 0;
+
+        while (result.size() < count + 1 && attempts < 200) {
+            attempts += 1;
+            result.add(mutatePasswordKeepingShape(realPassword));
+        }
+
+        if (result.size() < count + 1) {
+            result.addAll(generateUniquePasswords(
+                    count + 1 - result.size(),
+                    result
+            ));
+        }
+
+        result.remove(realPassword);
+        return new ArrayList<String>(result);
+    }
+
+
+    private String mutatePasswordKeepingShape(String password) {
+        int[] codePoints = password.codePoints().toArray();
+        int changeCount = codePoints.length >= 8 ? 2 : 1;
+        Set<Integer> changedPositions = new LinkedHashSet<Integer>();
+
+        while (changedPositions.size() < changeCount) {
+            changedPositions.add(random.nextInt(codePoints.length));
+        }
+
+        for (Integer position : changedPositions) {
+            codePoints[position] = randomSimilarCodePoint(codePoints[position]);
+        }
+
+        return new String(codePoints, 0, codePoints.length);
+    }
+
+
+    private int randomSimilarCodePoint(int original) {
+        if (Character.isDigit(original)) {
+            int replacement;
+
+            do {
+                replacement = '0' + random.nextInt(10);
+            } while (replacement == original);
+
+            return replacement;
+        }
+
+        if (Character.isLetter(original)) {
+            boolean lowerCase = Character.isLowerCase(original);
+            int replacement;
+
+            do {
+                replacement = (lowerCase ? 'a' : 'A') + random.nextInt(26);
+            } while (replacement == original);
+
+            return replacement;
+        }
+
+        if (Character.isWhitespace(original)) {
+            return '_';
+        }
+
+        int type = Character.getType(original);
+
+        if (
+            type == Character.CONNECTOR_PUNCTUATION ||
+            type == Character.DASH_PUNCTUATION ||
+            type == Character.START_PUNCTUATION ||
+            type == Character.END_PUNCTUATION ||
+            type == Character.INITIAL_QUOTE_PUNCTUATION ||
+            type == Character.FINAL_QUOTE_PUNCTUATION ||
+            type == Character.OTHER_PUNCTUATION
+        ) {
+            int replacement;
+
+            do {
+                replacement = PASSWORD_PUNCTUATION.charAt(
+                        random.nextInt(PASSWORD_PUNCTUATION.length())
+                );
+            } while (replacement == original);
+
+            return replacement;
+        }
+
+        int replacement;
+
+        do {
+            String icon = PASSWORD_ICONS[
+                    random.nextInt(PASSWORD_ICONS.length)
+            ];
+            replacement = icon.codePointAt(0);
+        } while (replacement == original);
+
+        return replacement;
+    }
+
+
+    private String generatePassword(int difficulty) {
+        String phrase = PASSWORD_PHRASES[
+                random.nextInt(PASSWORD_PHRASES.length)
+        ];
+        String icon = PASSWORD_ICONS[random.nextInt(PASSWORD_ICONS.length)];
+        int digit = 2 + random.nextInt(8);
+
+        if (difficulty <= 0) {
+            return phrase;
+        }
+
+        if (difficulty == 1) {
+            switch (random.nextInt(4)) {
+                case 0:
+                    return limitPasswordLength(phrase + digit);
+                case 1:
+                    return limitPasswordLength(icon + phrase);
+                case 2:
+                    return limitPasswordLength(phrase.replace(' ', '-'));
+                default:
+                    return limitPasswordLength(phrase + icon);
+            }
+        }
+
+        String hardPhrase = toHardPasswordPhrase(phrase);
+        String number = String.valueOf(10 + random.nextInt(90));
+
+        switch (random.nextInt(3)) {
+            case 0:
+                return limitPasswordLength(icon + hardPhrase + number);
+            case 1:
+                return limitPasswordLength(
+                        hardPhrase +
+                        PASSWORD_PUNCTUATION.charAt(
+                            random.nextInt(PASSWORD_PUNCTUATION.length())
+                        ) +
+                        number
+                );
+            default:
+                return limitPasswordLength(number + hardPhrase + icon);
+        }
+    }
+
+
+    private String toHardPasswordPhrase(String phrase) {
+        StringBuilder result = new StringBuilder();
+
+        for (int offset = 0; offset < phrase.length();) {
+            int codePoint = phrase.codePointAt(offset);
+
+            switch (Character.toLowerCase(codePoint)) {
+                case 'a':
+                    result.append('4');
+                    break;
+                case 'e':
+                    result.append('3');
+                    break;
+                case 'i':
+                    result.append('1');
+                    break;
+                case 'o':
+                    result.append('0');
+                    break;
+                case 's':
+                    result.append('5');
+                    break;
+                case ' ':
+                    result.append(random.nextBoolean() ? '_' : '.');
+                    break;
+                default:
+                    result.appendCodePoint(codePoint);
+                    break;
+            }
+
+            offset += Character.charCount(codePoint);
+        }
+
+        return result.toString();
+    }
+
+
+    private String limitPasswordLength(String value) {
+        int codePointLength = value.codePointCount(0, value.length());
+
+        if (codePointLength <= 20) {
+            return value;
+        }
+
+        return value.substring(0, value.offsetByCodePoints(0, 20));
+    }
+
+
+    private String validateCustomPassword(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String password = value.trim();
+
+        if (password.length() == 0) {
+            return null;
+        }
+
+        int codePointLength = password.codePointCount(0, password.length());
+
+        if (codePointLength > 20) {
+            throw new BattleOnlineException(
+                    HttpStatus.BAD_REQUEST,
+                    "Mật khẩu tự nhập chỉ được dài tối đa 20 ký tự."
             );
         }
 
-        return builder.toString();
+        for (int offset = 0; offset < password.length();) {
+            int codePoint = password.codePointAt(offset);
+
+            if (Character.isISOControl(codePoint)) {
+                throw new BattleOnlineException(
+                        HttpStatus.BAD_REQUEST,
+                        "Mật khẩu không được chứa ký tự điều khiển."
+                );
+            }
+
+            offset += Character.charCount(codePoint);
+        }
+
+        return password;
     }
 
 
@@ -2074,8 +2375,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
      *
      * Không đặt trần số lượng tuyệt đối, nên phòng 200 câu luôn có nhiều
      * skill hơn phòng 100 câu và không còn bị tụt tỉ lệ vì chạm giới hạn.
-     * Bốn loại skill được chia theo vòng ưu tiên để khi có đủ từ 4 skill
-     * trở lên thì FREEZE, FIRE_UP, BREAK_STREAK và STEAL_SCORE đều xuất hiện.
+     * COUNTDOWN thường chia 4 skill theo vòng ưu tiên. Riêng XIN TÍ TIỀN
+     * dành xấp xỉ 30% tổng số lượt skill cho HACK/MONEY_BEG.
      */
     private int[] getCountdownSkillCounts(
             int total,
@@ -2109,13 +2410,32 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 )
         );
 
-        /* FREEZE, FIRE_UP, BREAK_STREAK, STEAL_SCORE, MONEY_BEG. */
-        int[] firstRound = includeMoneyBeg
-                ? new int[] {0, 3, 1, 2, 4}
-                : new int[] {0, 3, 1, 2};
+        /*
+         * Trong mode XIN TÍ TIỀN, HACK/MONEY_BEG chiếm xấp xỉ 30%
+         * tổng số skill; 70% còn lại giữ cách chia skill COUNTDOWN cũ.
+         */
+        double expectedMoneyBegCount = includeMoneyBeg
+                ? totalSkillCount * 0.30D
+                : 0D;
+
+        int moneyBegCount = (int) Math.floor(expectedMoneyBegCount);
+
+        if (
+            includeMoneyBeg &&
+            random.nextDouble() <
+                (expectedMoneyBegCount - moneyBegCount)
+        ) {
+            moneyBegCount += 1;
+        }
+
+        moneyBegCount = Math.min(totalSkillCount, moneyBegCount);
+        counts[4] = moneyBegCount;
+
+        int regularSkillCount = totalSkillCount - moneyBegCount;
+        int[] firstRound = new int[] {0, 3, 1, 2};
         int assigned = 0;
 
-        while (assigned < totalSkillCount && assigned < firstRound.length) {
+        while (assigned < regularSkillCount && assigned < firstRound.length) {
             counts[firstRound[assigned]] += 1;
             assigned += 1;
         }
@@ -2124,20 +2444,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
          * Vòng lặp sau giữ FREEZE phổ biến nhất, FIRE_UP/BREAK_STREAK ở mức
          * trung bình và STEAL_SCORE hiếm nhất.
          */
-        /*
-         * MONEY_BEG có 3 slot khi trung bình mỗi skill thường có 5 slot:
-         * xác suất thấp hơn xấp xỉ 40% như yêu cầu.
-         */
-        int[] weightedCycle = includeMoneyBeg
-                ? new int[] {
-                    0, 3, 1, 2, 0, 3, 1, 4,
-                    0, 3, 2, 1, 0, 3, 4, 1,
-                    0, 2, 3, 4, 1, 0, 3
-                }
-                : new int[] {0, 3, 1, 0, 3, 2, 1, 0};
+        int[] weightedCycle = new int[] {0, 3, 1, 0, 3, 2, 1, 0};
         int cycleIndex = 0;
 
-        while (assigned < totalSkillCount) {
+        while (assigned < regularSkillCount) {
             counts[weightedCycle[cycleIndex]] += 1;
             assigned += 1;
             cycleIndex = (cycleIndex + 1) % weightedCycle.length;
@@ -3966,7 +4276,6 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                                 viewer.passwordSelectionRequired
                         );
 
-                        dto.setCurrentPassword(viewer.currentPassword);
                         dto.setPasswordOptions(
                                 toPasswordOptions(viewer.passwordOptions)
                         );

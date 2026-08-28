@@ -73,6 +73,9 @@
         vm.usingSkill = false;
         vm.choosingPassword = false;
         vm.guessingPassword = false;
+        vm.customPasswordInput = '';
+        vm.passwordGuessStage = 'idle';
+        vm.passwordGuessResult = null;
         vm.availableSkillTargets = [];
         vm.skillTargetModalOpen = false;
         vm.personalSkillNotice = null;
@@ -158,6 +161,7 @@
         var pollingTimer = null;
         var countdownTimer = null;
         var skillHitEffectTimer = null;
+        var passwordGuessPhaseTimer = null;
         var qrScanner = null;
         var qrScannerRunning = false;
         var qrScanHandled = false;
@@ -215,6 +219,7 @@
         vm.answer = answer;
         vm.useSkill = useSkill;
         vm.choosePassword = choosePassword;
+        vm.chooseCustomPassword = chooseCustomPassword;
         vm.guessPassword = guessPassword;
         vm.getSkillLabel = getSkillLabel;
         vm.getSkillIcon = getSkillIcon;
@@ -1261,7 +1266,6 @@
             ) {
                 incoming.passwordSelectionRequired =
                     previousRoom.passwordSelectionRequired === true;
-                incoming.currentPassword = previousRoom.currentPassword;
                 incoming.passwordOptions =
                     (previousRoom.passwordOptions || []).slice(0);
                 incoming.pendingPasswordGuessTargetUsername =
@@ -1270,6 +1274,24 @@
                     previousRoom.pendingPasswordGuessTargetDisplayName;
                 incoming.passwordGuessOptions =
                     (previousRoom.passwordGuessOptions || []).slice(0);
+            }
+
+            if (
+                incoming.passwordSelectionRequired === true &&
+                (!previousRoom || previousRoom.passwordSelectionRequired !== true)
+            ) {
+                vm.customPasswordInput = '';
+            }
+
+            if (
+                incoming.pendingPasswordGuessTargetUsername &&
+                (
+                    !previousRoom ||
+                    previousRoom.pendingPasswordGuessTargetUsername !==
+                        incoming.pendingPasswordGuessTargetUsername
+                )
+            ) {
+                resetPasswordGuessDisplay();
             }
 
             vm.room = incoming;
@@ -2002,15 +2024,44 @@
                 return;
             }
 
+            submitPasswordChoice(option.key, null);
+        }
+
+
+        function chooseCustomPassword() {
+            var customPassword = String(vm.customPasswordInput || '').trim();
+
+            if (!customPassword) {
+                toastr.warning(
+                    'Hãy nhập mật mã bạn muốn sử dụng.',
+                    'MẬT MÃ TRỐNG'
+                );
+                return;
+            }
+
+            submitPasswordChoice(null, customPassword);
+        }
+
+
+        function submitPasswordChoice(optionKey, customPassword) {
+            if (
+                !vm.room ||
+                !vm.room.passwordSelectionRequired ||
+                vm.choosingPassword
+            ) {
+                return;
+            }
+
             vm.choosingPassword = true;
 
             battleService
-                .choosePassword(vm.room.code, option.key)
+                .choosePassword(vm.room.code, optionKey, customPassword)
                 .then(
                     function (room) {
+                        vm.customPasswordInput = '';
                         applyRoom(room, false);
                         toastr.success(
-                            'Mật khẩu của bạn: ' + String(room.currentPassword || ''),
+                            'Mật khẩu bí mật của bạn đã được lưu.',
                             'ĐÃ CHỌN MẬT KHẨU'
                         );
                     },
@@ -2034,32 +2085,115 @@
             }
 
             vm.guessingPassword = true;
+            vm.passwordGuessStage = 'loading';
+            vm.passwordGuessResult = null;
 
             battleService
                 .guessPassword(vm.room.code, option.key)
                 .then(
-                    function (room) {
-                        applyRoom(room, false);
+                    function (result) {
+                        result = result || {};
 
-                        var event = (room.recentEvents || [])[0];
-                        var message = event && event.message
-                            ? event.message
-                            : 'Đã gửi dự đoán mật khẩu.';
+                        passwordGuessPhaseTimer = $timeout(
+                            function () {
+                                vm.passwordGuessStage = 'result';
+                                vm.passwordGuessResult = {
+                                    correct: isPasswordGuessCorrect(result),
+                                    amount: Number(result.amount || 0),
+                                    message: result.message || ''
+                                };
 
-                        if (event && Number(event.amount || 0) > 0) {
-                            toastr.success(message, 'XIN TÍ TIỀN THÀNH CÔNG');
-                        } else {
-                            toastr.info(message, 'CHƯA XIN ĐƯỢC ĐIỂM');
-                        }
+                                passwordGuessPhaseTimer = $timeout(
+                                    function () {
+                                        if (
+                                            result.room &&
+                                            vm.room &&
+                                            vm.room.status === 'PLAYING' &&
+                                            vm.room.code === result.room.code
+                                        ) {
+                                            applyRoom(result.room, false);
+                                        }
+
+                                        resetPasswordGuessDisplay();
+                                    },
+                                    1800
+                                );
+                            },
+                            550
+                        );
                     },
                     function (error) {
+                        resetPasswordGuessDisplay();
                         showRequestError(error);
                         refreshPrivateRoomState();
                     }
-                )
-                .finally(function () {
-                    vm.guessingPassword = false;
-                });
+                );
+        }
+
+
+        function isPasswordGuessCorrect(result) {
+            if (!result) {
+                return false;
+            }
+
+            if (
+                isServerTrueValue(result.correct) ||
+                isServerTrueValue(result.isCorrect) ||
+                isServerTrueValue(result.success)
+            ) {
+                return true;
+            }
+
+            /*
+             * Backend chỉ chuyển điểm bên trong nhánh correct=true.
+             * Vì vậy amount > 0 là bằng chứng chắc chắn lượt HACK đã đúng.
+             */
+            if (Number(result.amount || 0) > 0) {
+                return true;
+            }
+
+            /*
+             * Trường hợp đối thủ đang có 0 điểm: đoán đúng nhưng amount=0.
+             * Khi đó dùng message backend làm lớp xác nhận cuối cùng.
+             */
+            var message = String(result.message || '')
+                .trim()
+                .toUpperCase();
+
+            return (
+                message === 'CORRECT' ||
+                message.indexOf('CORRECT!') === 0
+            );
+        }
+
+
+        function isServerTrueValue(value) {
+            if (value === true || value === 1) {
+                return true;
+            }
+
+            var normalized = String(value == null ? '' : value)
+                .trim()
+                .toLowerCase();
+
+            return (
+                normalized === 'true' ||
+                normalized === '1' ||
+                normalized === 'correct' ||
+                normalized === 'success'
+            );
+        }
+
+
+        function resetPasswordGuessDisplay() {
+            if (passwordGuessPhaseTimer) {
+                $timeout.cancel(passwordGuessPhaseTimer);
+                passwordGuessPhaseTimer = null;
+            }
+
+            vm.guessingPassword = false;
+            vm.passwordGuessStage = 'idle';
+            vm.passwordGuessResult = null;
         }
 
 
@@ -3762,6 +3896,7 @@
                 }
 
                 clearSkillHitEffect();
+                resetPasswordGuessDisplay();
                 stopQrScanner();
 
                 angular.element(
