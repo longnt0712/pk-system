@@ -296,7 +296,7 @@
 
             .state('application.battle_quiz_online', {
                 url: '/battle-quiz-online',
-                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION + '&mobileHistory=20260827_1&moneyMode=20260828_3',
+                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION + '&mobileHistory=20260827_1&moneyMode=20260828_5',
                 data: {pageTitle: 'BATTLE QUIZ ONLINE'},
                 controller: 'BattleQuizOnlineController as vm',
                 resolve: {
@@ -305,8 +305,8 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION + '&qrCameraFix=20260825_2&mobileHistory=20260827_1&moneyMode=20260828_3',
-                                'question/business/BattleQuizOnlineService.js?v=' + window.APP_VERSION + '&moneyMode=20260828_3',
+                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION + '&qrCameraFix=20260825_2&mobileHistory=20260827_1&moneyMode=20260828_5',
+                                'question/business/BattleQuizOnlineService.js?v=' + window.APP_VERSION + '&moneyMode=20260828_5',
                                 'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
                         });
@@ -316,7 +316,7 @@
 
             .state('application.battle_quiz_online_room', {
                 url: '/battle-quiz-online/:roomCode',
-                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION + '&mobileHistory=20260827_1&moneyMode=20260828_3',
+                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION + '&mobileHistory=20260827_1&moneyMode=20260828_5',
                 data: {pageTitle: 'BATTLE QUIZ ONLINE'},
                 controller: 'BattleQuizOnlineController as vm',
                 resolve: {
@@ -325,8 +325,8 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION + '&qrCameraFix=20260825_2&mobileHistory=20260827_1&moneyMode=20260828_3',
-                                'question/business/BattleQuizOnlineService.js?v=' + window.APP_VERSION + '&moneyMode=20260828_3',
+                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION + '&qrCameraFix=20260825_2&mobileHistory=20260827_1&moneyMode=20260828_5',
+                                'question/business/BattleQuizOnlineService.js?v=' + window.APP_VERSION + '&moneyMode=20260828_5',
                                 'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
                         });

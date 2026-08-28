@@ -53,6 +53,7 @@
         }
 
         vm.room = null;
+        syncMobilePlayingPageState(true);
         vm.roomCodeInput = '';
 
         vm.creatingRoom = false;
@@ -162,6 +163,8 @@
         var countdownTimer = null;
         var skillHitEffectTimer = null;
         var passwordGuessPhaseTimer = null;
+        var passwordGuessRequestTimer = null;
+        var passwordGuessAttemptId = 0;
         var qrScanner = null;
         var qrScannerRunning = false;
         var qrScanHandled = false;
@@ -920,6 +923,7 @@
                         stopRealtimeAndPolling();
 
                         vm.room = null;
+                        syncMobilePlayingPageState();
                         vm.rankingModalOpen = false;
                         vm.skillActivityModalOpen = false;
                         vm.wrongQuestionsModalOpen = false;
@@ -1132,6 +1136,7 @@
             stopRealtimeAndPolling();
 
             vm.room = null;
+            syncMobilePlayingPageState();
             vm.rankingModalOpen = false;
             vm.skillActivityModalOpen = false;
             vm.wrongQuestionsModalOpen = false;
@@ -1294,7 +1299,24 @@
                 resetPasswordGuessDisplay();
             }
 
+            /*
+             * Một số mobile có thể giữ HTML/controller khác phiên bản trong
+             * cache, làm modal mở nhưng không khớp bất kỳ phase nào. Khi private
+             * state vẫn có đủ 3 lựa chọn, luôn tự đưa giao diện về phase idle.
+             */
+            if (
+                incoming.pendingPasswordGuessTargetUsername &&
+                incoming.passwordGuessOptions &&
+                incoming.passwordGuessOptions.length &&
+                vm.passwordGuessStage !== 'idle' &&
+                vm.passwordGuessStage !== 'loading' &&
+                vm.passwordGuessStage !== 'result'
+            ) {
+                resetPasswordGuessDisplay();
+            }
+
             vm.room = incoming;
+            syncMobilePlayingPageState();
 
             vm.availableSkillTargets = [];
 
@@ -2084,18 +2106,67 @@
                 return;
             }
 
+            clearPasswordGuessTimers();
+
+            var attemptId =
+                ++passwordGuessAttemptId;
+
             vm.guessingPassword = true;
             vm.passwordGuessStage = 'loading';
             vm.passwordGuessResult = null;
+
+            /*
+             * Không để request mạng treo giữ học sinh mãi trong modal. Sau
+             * 12 giây, khôi phục lựa chọn và tải lại private room state.
+             */
+            passwordGuessRequestTimer = $timeout(
+                function () {
+                    passwordGuessRequestTimer = null;
+
+                    if (
+                        attemptId !== passwordGuessAttemptId ||
+                        destroyed
+                    ) {
+                        return;
+                    }
+
+                    resetPasswordGuessDisplay();
+
+                    toastr.warning(
+                        'Kết nối chậm. Danh sách mật mã đã được khôi phục, hãy thử lại.',
+                        'ĐÃ TỰ KHÔI PHỤC'
+                    );
+
+                    refreshPrivateRoomState();
+                },
+                12000
+            );
 
             battleService
                 .guessPassword(vm.room.code, option.key)
                 .then(
                     function (result) {
+                        if (
+                            attemptId !== passwordGuessAttemptId ||
+                            destroyed
+                        ) {
+                            return;
+                        }
+
+                        cancelPasswordGuessRequestTimer();
                         result = result || {};
 
                         passwordGuessPhaseTimer = $timeout(
                             function () {
+                                passwordGuessPhaseTimer = null;
+
+                                if (
+                                    attemptId !== passwordGuessAttemptId ||
+                                    destroyed
+                                ) {
+                                    return;
+                                }
+
                                 vm.passwordGuessStage = 'result';
                                 vm.passwordGuessResult = {
                                     correct: isPasswordGuessCorrect(result),
@@ -2105,6 +2176,15 @@
 
                                 passwordGuessPhaseTimer = $timeout(
                                     function () {
+                                        passwordGuessPhaseTimer = null;
+
+                                        if (
+                                            attemptId !== passwordGuessAttemptId ||
+                                            destroyed
+                                        ) {
+                                            return;
+                                        }
+
                                         if (
                                             result.room &&
                                             vm.room &&
@@ -2123,6 +2203,13 @@
                         );
                     },
                     function (error) {
+                        if (
+                            attemptId !== passwordGuessAttemptId ||
+                            destroyed
+                        ) {
+                            return;
+                        }
+
                         resetPasswordGuessDisplay();
                         showRequestError(error);
                         refreshPrivateRoomState();
@@ -2185,15 +2272,59 @@
         }
 
 
-        function resetPasswordGuessDisplay() {
+        function cancelPasswordGuessRequestTimer() {
+            if (!passwordGuessRequestTimer) {
+                return;
+            }
+
+            $timeout.cancel(passwordGuessRequestTimer);
+            passwordGuessRequestTimer = null;
+        }
+
+
+        function clearPasswordGuessTimers() {
+            cancelPasswordGuessRequestTimer();
+
             if (passwordGuessPhaseTimer) {
                 $timeout.cancel(passwordGuessPhaseTimer);
                 passwordGuessPhaseTimer = null;
             }
+        }
+
+
+        function resetPasswordGuessDisplay() {
+            passwordGuessAttemptId += 1;
+            clearPasswordGuessTimers();
 
             vm.guessingPassword = false;
             vm.passwordGuessStage = 'idle';
             vm.passwordGuessResult = null;
+        }
+
+
+        /*
+         * Footer và navbar nằm ngoài template Battle. Gắn trạng thái lên body
+         * để CSS có thể ẩn toàn bộ phần phụ khi trận đang PLAYING trên mobile.
+         */
+        function syncMobilePlayingPageState(forceClear) {
+            var body =
+                $window.document &&
+                $window.document.body;
+
+            if (!body || !body.classList) {
+                return;
+            }
+
+            var playing =
+                forceClear !== true &&
+                vm.room &&
+                vm.room.status === 'PLAYING';
+
+            if (playing) {
+                body.classList.add('battle-online-mobile-playing');
+            } else {
+                body.classList.remove('battle-online-mobile-playing');
+            }
         }
 
 
@@ -3883,6 +4014,7 @@
             '$destroy',
             function () {
                 destroyed = true;
+                syncMobilePlayingPageState(true);
 
                 stopRealtimeAndPolling();
 

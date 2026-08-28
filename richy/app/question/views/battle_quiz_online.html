@@ -1196,7 +1196,7 @@
                 </div>
 
                 <div class="battle-online-password-option-list"
-                     ng-if="vm.passwordGuessStage === 'idle'">
+                     ng-if="vm.passwordGuessStage !== 'loading' && vm.passwordGuessStage !== 'result'">
                     <button type="button"
                             class="battle-online-password-option is-guess"
                             ng-repeat="option in vm.room.passwordGuessOptions track by option.key"
@@ -4795,6 +4795,27 @@
        ===================================================== */
 
     @media (max-width: 820px) {
+        /*
+         * Khi trận đang chạy, mobile chỉ giữ khu vực chơi và các modal/icon.
+         * Navbar + footer ở ngoài template nên được điều khiển bằng body class.
+         */
+        body.battle-online-mobile-playing #navscroll,
+        body.battle-online-mobile-playing .learning-login-nav,
+        body.battle-online-mobile-playing .learning-public-nav,
+        body.battle-online-mobile-playing .student-desk-footer,
+        body.battle-online-mobile-playing
+        .battle-online-page > .battle-online-hero,
+        body.battle-online-mobile-playing
+        .battle-online-page > .battle-online-room-header,
+        body.battle-online-mobile-playing
+        .battle-online-page > .battle-online-lesson-bar {
+            display: none !important;
+        }
+
+        body.battle-online-mobile-playing .battle-online-page {
+            padding-top: 0;
+        }
+
         .battle-online-home,
         .battle-online-layout,
         .battle-online-game-layout {
