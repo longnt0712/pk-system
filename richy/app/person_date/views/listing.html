@@ -11,28 +11,28 @@
 
                         <label style="margin-right: 20px">
                             <input type="radio"
-                                   name="checkType"
-                                   ng-model="vm.checkType"
-                                   ng-value="1"
-                                   ng-change="vm.checkTypeChange()">
+                                    name="checkType"
+                                    ng-model="vm.checkType"
+                                    ng-value="1"
+                                    ng-change="vm.checkTypeChange()">
                             ĐIỂM DANH LỄ
                         </label>
 
                         <label>
                             <input type="radio"
-                                   name="checkType"
-                                   ng-model="vm.checkType"
-                                   ng-value="2"
-                                   ng-change="vm.checkTypeChange()">
+                                    name="checkType"
+                                    ng-model="vm.checkType"
+                                    ng-value="2"
+                                    ng-change="vm.checkTypeChange()">
                             ĐIỂM DANH GIÁO LÝ
                         </label>
 
                         <label ng-if="vm.showExtraFeatures">
                             <input type="radio"
-                                   name="checkType"
-                                   ng-model="vm.checkType"
-                                   ng-value="3"
-                                   ng-change="vm.checkTypeChange()">
+                                    name="checkType"
+                                    ng-model="vm.checkType"
+                                    ng-value="3"
+                                    ng-change="vm.checkTypeChange()">
                             ĐIỂM DANH NGOẠI KHÓA
                         </label>
 
@@ -57,9 +57,9 @@
                         <div class="col-md-12">
                             <label for="start-set-up" style="font-size: 30px">Bắt đầu thiết lập điểm danh</label>
                             <input style="height: 30px; width: 30px"
-                                   id="start-set-up"
-                                   type="checkbox"
-                                   ng-model="vm.startSetUp">
+                                    id="start-set-up"
+                                    type="checkbox"
+                                    ng-model="vm.startSetUp">
                             <br>
                             <small>(chỉ cho tạo bảng điểm danh theo ngày)</small>
                         </div>
@@ -69,11 +69,11 @@
                                 <label>Chọn ngày tạo bảng điểm danh</label>
 
                                 <input data-ng-model="vm.setupAttendanceDate"
-                                       type="text"
-                                       class="form-control"
-                                       style="width: 180px; margin: 0 auto;"
-                                       placeholder="CHỌN NGÀY"
-                                       my-date-picker />
+                                        type="text"
+                                        class="form-control"
+                                        style="width: 180px; margin: 0 auto;"
+                                        placeholder="CHỌN NGÀY"
+                                        my-date-picker />
                             </div>
 
                             <div class="col-md-12">
@@ -90,16 +90,16 @@
 
                         <div class="col-md-12">
                             <label class="bold"
-                                   style="display:inline-block; margin-right:25px; margin-bottom:15px;">
+                                    style="display:inline-block; margin-right:25px; margin-bottom:15px;">
                                 <input type="checkbox"
-                                       ng-model="vm.showExtraFeatures"
-                                       ng-change="vm.onExtraFeatureVisibilityChange()">
+                                        ng-model="vm.showExtraFeatures"
+                                        ng-change="vm.onExtraFeatureVisibilityChange()">
                                 HIỂN THỊ NGOẠI KHÓA
                             </label>
                             <label class="bold"
-                                   style="display:inline-block; margin-right:25px; margin-bottom:15px;">
+                                    style="display:inline-block; margin-right:25px; margin-bottom:15px;">
                                 <input type="checkbox"
-                                       ng-model="vm.showStat">
+                                        ng-model="vm.showStat">
                                 HIỂN THỊ THỐNG KÊ THEO NGÀY
                             </label>
                         </div>
@@ -121,16 +121,16 @@
 
                         <div class="col-md-2 margin-bottom-10">
                             <input data-ng-model="vm.attendanceDate"
-                                   type="text"
-                                   class="form-control"
-                                   placeholder="NGÀY ĐIỂM DANH"
-                                   my-date-picker />
+                                    type="text"
+                                    class="form-control"
+                                    placeholder="NGÀY ĐIỂM DANH"
+                                    my-date-picker />
                         </div>
 
                         <div class="col-md-2 margin-bottom-10">
                             <ui-select ng-model="vm.searchDto.user.person.enrollmentClassId"
-                                       ng-change="vm.getPage()"
-                                       close-on-select="true">
+                                    ng-change="vm.getPage()"
+                                    close-on-select="true">
                                 <ui-select-match allow-clear="true" placeholder="Chọn lớp để lọc">
                                     {{$select.selected.name}}
                                 </ui-select-match>
@@ -142,9 +142,9 @@
 
                         <div class="col-md-2 margin-bottom-10">
                             <ui-select ng-model="vm.searchDto.group"
-                                       ng-change="vm.groupChange()"
-                                       close-on-select="true"
-                                       style="width:100%">
+                                    ng-change="vm.groupChange()"
+                                    close-on-select="true"
+                                    style="width:100%">
                                 <ui-select-match allow-clear="true" placeholder="BAN/HỘI...">
                                     {{$select.selected.name}}
                                 </ui-select-match>
@@ -157,9 +157,9 @@
 
                         <div class="col-md-2 margin-bottom-10">
                             <input type="text"
-                                   class="form-control"
-                                   ng-model="vm.searchTextClient"
-                                   placeholder="Gõ tên vào đây để tìm...">
+                                    class="form-control"
+                                    ng-model="vm.searchTextClient"
+                                    placeholder="Gõ tên vào đây để tìm...">
                         </div>
 
                         <div class="col-md-12" ng-if="vm.showStat == true">
@@ -183,14 +183,14 @@
 
                     <div class="col-md-12">
                         <div class="table-scroll">
-                            <table class="table table-hover table-striped table-bordered text-center order-table">
+                            <table class="table table-striped table-bordered text-center order-table">
                                 <thead>
                                 <tr>
                                     <th scope="col">TÊN</th>
                                     <th scope="col">LỄ</th>
                                     <th scope="col">GL</th>
                                     <th scope="col"
-                                        ng-if="vm.showExtraFeatures">NGOẠI KHÓA</th>
+                                            ng-if="vm.showExtraFeatures">NGOẠI KHÓA</th>
                                     <th scope="col">LỚP</th>
                                     <th scope="col">GHI CHÚ</th>
                                     <th scope="col">NDD</th>
@@ -211,23 +211,23 @@
                                     </td>
 
                                     <td class="attendance-mass-cell"
-                                        ng-class="{
+                                            ng-class="{
                                             'status-class-green': personDate.statusMass == 1,
                                             'status-class-red': personDate.statusMass == 2,
                                             'status-class-warning': personDate.statusMass == 6,
                                             'status-class-info': personDate.statusMass == 5
                                         }">
                                         <ui-select ng-model="personDate.statusMass"
-                                                   close-on-select="true"
-                                                   data-ng-change="vm.saveByClick(personDate, personDate.user,1,personDate.statusMass)">
+                                                close-on-select="true"
+                                                data-ng-change="vm.saveByClick(personDate, personDate.user,1,personDate.statusMass)">
                                             <ui-select-match allow-clear="false" placeholder="CÓ ĐI LỄ KHÔNG?">
                                                 {{$select.selected.name}}
                                             </ui-select-match>
                                             <ui-select-choices repeat="so.id as so in vm.statusMasses | propsFilter:{name:$select.search}"
-                                                               ui-disable-choice="so.id != 6 && so.id != 5">
+                                                    ui-disable-choice="so.id != 6 && so.id != 5">
                                                 <div class="bold"
-                                                     ng-class="{'text-muted': so.id != 6 && so.id != 5}"
-                                                     ng-bind-html="so.name | highlight:$select.search">
+                                                        ng-class="{'text-muted': so.id != 6 && so.id != 5}"
+                                                        ng-bind-html="so.name | highlight:$select.search">
                                                 </div>
                                             </ui-select-choices>
                                         </ui-select>
@@ -246,23 +246,23 @@
                                     </td>
 
                                     <td class="attendance-class-cell"
-                                        ng-class="{
+                                            ng-class="{
                                             'status-class-green': personDate.statusClass == 1,
                                             'status-class-red': personDate.statusClass == 2,
                                             'status-class-warning': personDate.statusClass == 6,
                                             'status-class-info': personDate.statusClass == 5
                                         }">
                                         <ui-select ng-model="personDate.statusClass"
-                                                   close-on-select="true"
-                                                   data-ng-change="vm.saveByClick(personDate, personDate.user,2,personDate.statusClass)">
+                                                close-on-select="true"
+                                                data-ng-change="vm.saveByClick(personDate, personDate.user,2,personDate.statusClass)">
                                             <ui-select-match allow-clear="false" placeholder="CÓ ĐI HỌC GIÁO LÝ KHÔNG?">
                                                 {{$select.selected.name}}
                                             </ui-select-match>
                                             <ui-select-choices repeat="so.id as so in vm.statusClasses | propsFilter:{name:$select.search}"
-                                                               ui-disable-choice="so.id != 6">
+                                                    ui-disable-choice="so.id != 6">
                                                 <div class="bold"
-                                                     ng-class="{'text-muted': so.id != 6}"
-                                                     ng-bind-html="so.name | highlight:$select.search">
+                                                        ng-class="{'text-muted': so.id != 6}"
+                                                        ng-bind-html="so.name | highlight:$select.search">
                                                 </div>
                                             </ui-select-choices>
                                         </ui-select>
@@ -281,24 +281,24 @@
                                     </td>
 
                                     <td class="attendance-extra-cell"
-                                        ng-if="vm.showExtraFeatures"
-                                        ng-class="{
+                                            ng-if="vm.showExtraFeatures"
+                                            ng-class="{
                                             'status-class-green': personDate.extraClass == 1,
                                             'status-class-red': personDate.extraClass == 2,
                                             'status-class-warning': personDate.extraClass == 6,
                                             'status-class-info': personDate.extraClass == 5
                                         }">
                                         <ui-select ng-model="personDate.extraClass"
-                                                   close-on-select="true"
-                                                   data-ng-change="vm.saveByClick(personDate, personDate.user,3,personDate.extraClass)">
+                                                close-on-select="true"
+                                                data-ng-change="vm.saveByClick(personDate, personDate.user,3,personDate.extraClass)">
                                             <ui-select-match allow-clear="false" placeholder="HỌC NGOẠI KHÓA?">
                                                 {{$select.selected.name}}
                                             </ui-select-match>
                                             <ui-select-choices repeat="so.id as so in vm.extraClasses | propsFilter:{name:$select.search}"
-                                                               ui-disable-choice="so.id != 6">
+                                                    ui-disable-choice="so.id != 6">
                                                 <div class="bold"
-                                                     ng-class="{'text-muted': so.id != 6}"
-                                                     ng-bind-html="so.name | highlight:$select.search">
+                                                        ng-class="{'text-muted': so.id != 6}"
+                                                        ng-bind-html="so.name | highlight:$select.search">
                                                 </div>
                                             </ui-select-choices>
                                         </ui-select>
@@ -324,10 +324,10 @@
                                     <td class="attendance-note-cell" style="min-width: 260px;">
                                         <div class="input-group">
                                             <input data-ng-model="personDate.description"
-                                                   placeholder="Ghi chú..."
-                                                   type="text"
-                                                   class="form-control"
-                                                   style="font-size: 15px;" />
+                                                    placeholder="Ghi chú..."
+                                                    type="text"
+                                                    class="form-control"
+                                                    style="font-size: 15px;" />
 
                                             <span class="input-group-btn">
                                                 <button class="btn"
@@ -378,8 +378,8 @@
                             <tbody>
                             <tr ng-repeat="row in vm.exportAllRows track by $index">
                                 <td ng-repeat="col in vm.exportSelectedColumns track by col.key"
-                                    ng-class="col.classGetter ? col.classGetter(row._source) : ''"
-                                    ng-style="{'text-align': col.align || 'center'}">
+                                        ng-class="col.classGetter ? col.classGetter(row._source) : ''"
+                                        ng-style="{'text-align': col.align || 'center'}">
                                     {{ row[col.key] }}
                                 </td>
                             </tr>
@@ -396,24 +396,24 @@
                         <div class="row" ng-show="!vm.startSetUp">
                             <div class="col-md-2 margin-bottom-10">
                                 <input data-ng-model="vm.statStartDate"
-                                       type="text"
-                                       class="form-control"
-                                       placeholder="TỪ NGÀY"
-                                       my-date-picker />
+                                        type="text"
+                                        class="form-control"
+                                        placeholder="TỪ NGÀY"
+                                        my-date-picker />
                             </div>
 
                             <div class="col-md-2 margin-bottom-10">
                                 <input data-ng-model="vm.statEndDate"
-                                       type="text"
-                                       class="form-control"
-                                       placeholder="ĐẾN NGÀY"
-                                       my-date-picker />
+                                        type="text"
+                                        class="form-control"
+                                        placeholder="ĐẾN NGÀY"
+                                        my-date-picker />
                             </div>
 
                             <div class="col-md-2 margin-bottom-10">
                                 <ui-select ng-model="vm.searchDto.user.person.enrollmentClassId"
-                                           ng-change=""
-                                           close-on-select="true">
+                                        ng-change=""
+                                        close-on-select="true">
                                     <ui-select-match allow-clear="true" placeholder="Chọn lớp để lọc">
                                         {{$select.selected.name}}
                                     </ui-select-match>
@@ -426,9 +426,9 @@
 
                             <div class="col-md-2 margin-bottom-10">
                                 <ui-select ng-model="vm.searchDto.group"
-                                           ng-change="vm.groupChange()"
-                                           close-on-select="true"
-                                           style="width:100%">
+                                        ng-change="vm.groupChange()"
+                                        close-on-select="true"
+                                        style="width:100%">
                                     <ui-select-match allow-clear="true" placeholder="BAN/HỘI...">
                                         {{$select.selected.name}}
                                     </ui-select-match>
@@ -459,26 +459,26 @@
                                 <span class="bold">HIỂN THỊ CÁC NGÀY:</span>
                                 <span style="display:inline-block; margin-left: 10px; margin-right: 10px;">
                                     <label ng-repeat="day in vm.weekdayOptions track by day.value"
-                                           style="margin-right: 12px; font-weight: normal;">
+                                            style="margin-right: 12px; font-weight: normal;">
                                         {{day.label}}
                                         <input type="checkbox"
-                                               ng-model="day.checked"
-                                               ng-change="vm.updateVisibleStatisticDates()">
+                                                ng-model="day.checked"
+                                                ng-change="vm.updateVisibleStatisticDates()">
                                     </label>
                                 </span>
                                 <br>
                                 <span class="bold" style="margin-right: 15px;">CÁC MỤC HIỂN THỊ:</span>
                                 <label style="margin-right: 15px;">
                                     <input type="checkbox"
-                                           ng-model="vm.showMass"
-                                           ng-change="vm.updateVisibleStatisticDates()">
+                                            ng-model="vm.showMass"
+                                            ng-change="vm.updateVisibleStatisticDates()">
                                     Lễ
                                 </label>
 
                                 <label style="margin-right: 15px;">
                                     <input type="checkbox"
-                                           ng-model="vm.showClass"
-                                           ng-change="vm.updateVisibleStatisticDates()">
+                                            ng-model="vm.showClass"
+                                            ng-change="vm.updateVisibleStatisticDates()">
                                     GL
                                 </label>
 
@@ -513,7 +513,7 @@
                                     <th rowspan="2">LỚP</th>
 
                                     <th ng-repeat="day in vm.visibleStatisticDates track by $index"
-                                        ng-class="{
+                                            ng-class="{
                                             'sunday-column': day.isSunday,
                                             'saturday-column': day.isSaturday
                                         }">
@@ -523,7 +523,7 @@
                                     <th rowspan="2" class="summary-range-column">Tổng kết ngày đã chọn</th>
                                 </tr>
                                 <th ng-repeat="day in vm.visibleStatisticDates track by $index"
-                                    ng-class="{
+                                        ng-class="{
                                             'sunday-column': day.isSunday,
                                             'saturday-column': day.isSaturday
                                         }">
@@ -545,7 +545,7 @@
                                     <td>{{row.className}}</td>
 
                                     <td ng-repeat="day in vm.visibleStatisticDates track by $index"
-                                        ng-class="{
+                                            ng-class="{
                                             'sunday-column': day.isSunday,
                                             'saturday-column': day.isSaturday
                                         }">
@@ -640,9 +640,9 @@
 
             <div class="modal-body text-center photo-preview-body">
                 <img ng-show="vm.photoPreviewUrl"
-                     ng-src="{{vm.photoPreviewUrl}}"
-                     alt="Ảnh đại diện"
-                     class="photo-preview-large-img">
+                        ng-src="{{vm.photoPreviewUrl}}"
+                        alt="Ảnh đại diện"
+                        class="photo-preview-large-img">
             </div>
         </div>
     </div>
@@ -713,9 +713,9 @@
                 <div class="tntt-stack-avatar">
                     <div class="tntt-avatar tntt-avatar--big">
                         <img style="cursor:pointer;"
-                             ng-click="vm.openPhotoPreview(vm.checkPerson.user)"
-                             ng-src="{{settings.api.baseUrl}}public/users/photo/{{vm.checkPerson.user.username}}?v={{vm.checkPerson.user.photoVersion || 0}}"
-                             alt="Avatar TNTT">
+                                ng-click="vm.openPhotoPreview(vm.checkPerson.user)"
+                                ng-src="{{settings.api.baseUrl}}public/users/photo/{{vm.checkPerson.user.username}}?v={{vm.checkPerson.user.photoVersion || 0}}"
+                                alt="Avatar TNTT">
                     </div>
                 </div>
 
@@ -732,10 +732,10 @@
                     <span class="tntt-chip tntt-class-chip">
                         🎒 Lớp:
                         <ui-select ng-disabled="true"
-                                   ng-model="vm.checkPerson.user.person.enrollmentClassId"
-                                   sortable="true"
-                                   close-on-select="true"
-                                   class="tntt-inline-select">
+                                ng-model="vm.checkPerson.user.person.enrollmentClassId"
+                                sortable="true"
+                                close-on-select="true"
+                                class="tntt-inline-select">
                             <ui-select-match allow-clear="false" placeholder="LỚP HỌC">
                                 {{$select.selected.name}}
                             </ui-select-match>
@@ -764,7 +764,7 @@
 
                 <div class="tntt-status-grid tntt-status-grid--stack">
                     <div class="tntt-statusbox"
-                         ng-class="{
+                            ng-class="{
                              'tntt-ok': vm.checkPerson.statusMass==1,
                              'tntt-miss': vm.checkPerson.statusMass==2,
                              'tntt-warn': vm.checkPerson.statusMass==3,
@@ -774,9 +774,9 @@
                         <div class="tntt-statusbox__title">⛪ Trạng thái điểm danh Lễ</div>
 
                         <ui-select ng-disabled="true"
-                                   ng-model="vm.checkPerson.statusMass"
-                                   sortable="true"
-                                   close-on-select="true">
+                                ng-model="vm.checkPerson.statusMass"
+                                sortable="true"
+                                close-on-select="true">
                             <ui-select-match allow-clear="false" placeholder="Trạng thái Lễ">
                                 {{$select.selected.name}}
                             </ui-select-match>
@@ -787,7 +787,7 @@
                     </div>
 
                     <div class="tntt-statusbox"
-                         ng-class="{
+                            ng-class="{
                              'tntt-ok': vm.checkPerson.statusClass==1,
                              'tntt-miss': vm.checkPerson.statusClass==2,
                              'tntt-warn': vm.checkPerson.statusClass==3,
@@ -797,9 +797,9 @@
                         <div class="tntt-statusbox__title">📚 Trạng thái điểm danh Giáo lý</div>
 
                         <ui-select ng-disabled="true"
-                                   ng-model="vm.checkPerson.statusClass"
-                                   sortable="true"
-                                   close-on-select="true">
+                                ng-model="vm.checkPerson.statusClass"
+                                sortable="true"
+                                close-on-select="true">
                             <ui-select-match allow-clear="false" placeholder="Trạng thái GL">
                                 {{$select.selected.name}}
                             </ui-select-match>
@@ -850,8 +850,8 @@
                     <label class="bold margin-bottom-10">Chọn cột và sắp thứ tự</label>
 
                     <div class="export-column-item"
-                         ng-repeat="col in vm.exportColumns track by col.key"
-                         ng-if="!col.extraOnly || vm.showExtraFeatures">
+                            ng-repeat="col in vm.exportColumns track by col.key"
+                            ng-if="!col.extraOnly || vm.showExtraFeatures">
                         <div class="row">
                             <div class="col-xs-7">
                                 <label style="font-weight: normal; margin-bottom: 0;">
@@ -895,8 +895,8 @@
                             </tr>
                             <tr ng-repeat="row in vm.exportPreviewRows track by $index">
                                 <td ng-repeat="col in vm.exportPreviewHeaders track by col.key"
-                                    ng-class="col.classGetter ? col.classGetter(row._source) : ''"
-                                    ng-style="{'text-align': col.align || 'center'}">
+                                        ng-class="col.classGetter ? col.classGetter(row._source) : ''"
+                                        ng-style="{'text-align': col.align || 'center'}">
                                     {{row[col.key]}}
                                 </td>
                             </tr>
@@ -949,6 +949,7 @@
         this.style.height = 0;
         this.style.height = (this.scrollHeight) + "px";
     }
+
 </script>
 
 <style>
@@ -981,8 +982,39 @@
         border-radius: 8px;
     }
 
-    .datepicker {
+    /*
+     * FLOATING LAYERS
+     *
+     * Datepicker thường được plugin đưa thẳng xuống cuối <body>. Trong khi
+     * hai khối điểm danh/thống kê lại tự tạo stacking context, nên popup có
+     * thể nhìn thấy nhưng vẫn nằm dưới bảng và không nhận được click.
+     * Dùng chung một lớp nổi cao cho mọi loại lịch/dropdown của trang.
+     */
+    .datepicker,
+    .datepicker.dropdown-menu,
+    body > .datepicker,
+    .bootstrap-datetimepicker-widget,
+    .daterangepicker,
+    .ui-datepicker,
+    .ui-timepicker-wrapper,
+    .select2-drop,
+    .select2-dropdown,
+    .select2-container--open {
+        z-index: 2147483000 !important;
+        pointer-events: auto !important;
+    }
+
+    .datepicker,
+    .datepicker.dropdown-menu {
         background: white !important;
+    }
+
+    .datepicker *,
+    .bootstrap-datetimepicker-widget *,
+    .daterangepicker *,
+    .ui-datepicker *,
+    .ui-timepicker-wrapper * {
+        pointer-events: auto !important;
     }
 
     .table-scroll {
@@ -1041,6 +1073,65 @@
     .sticky-search-bar .ui-select-container.open .ui-select-choices,
     .sticky-search-bar .ui-select-container.open .dropdown-menu {
         z-index: 13010 !important;
+    }
+
+    /*
+     * ui-select/dropdown ở thanh lọc, trong bảng và trong modal đều phải nổi
+     * trên các hàng phía sau. max-height giúp danh sách dài luôn cuộn được.
+     */
+    .portlet-body .ui-select-container.open,
+    .order-table .ui-select-container.open,
+    .modal .ui-select-container.open,
+    .portlet-body .dropdown.open,
+    .portlet-body .btn-group.open,
+    .modal .dropdown.open,
+    .modal .btn-group.open {
+        position: relative !important;
+        z-index: 2147482000 !important;
+    }
+
+    .portlet-body .ui-select-container.open .ui-select-choices,
+    .portlet-body .ui-select-container.open .dropdown-menu,
+    .order-table .ui-select-container.open .ui-select-choices,
+    .order-table .ui-select-container.open .dropdown-menu,
+    .modal .ui-select-container.open .ui-select-choices,
+    .modal .ui-select-container.open .dropdown-menu,
+    .portlet-body .dropdown.open > .dropdown-menu,
+    .portlet-body .btn-group.open > .dropdown-menu,
+    .modal .dropdown.open > .dropdown-menu,
+    .modal .btn-group.open > .dropdown-menu {
+        z-index: 2147482100 !important;
+        max-height: 55vh !important;
+        overflow-y: auto !important;
+        pointer-events: auto !important;
+    }
+
+    /*
+     * overflow-x:auto sẽ ngầm biến overflow-y:visible thành auto và cắt
+     * dropdown theo chiều dọc. Chỉ mở overflow trong lúc người dùng thao tác,
+     * sau khi đóng select bảng sẽ tự trở về chế độ cuộn ngang bình thường.
+     */
+    .table-scroll:focus-within,
+    .table-scroll:has(.ui-select-container.open) {
+        overflow: visible !important;
+    }
+
+    .order-table > tbody > tr:focus-within,
+    .order-table > tbody > tr:has(.ui-select-container.open),
+    .order-table > tbody > tr > td:focus-within,
+    .order-table > tbody > tr > td:has(.ui-select-container.open) {
+        position: relative !important;
+        z-index: 2147481000 !important;
+        overflow: visible !important;
+    }
+
+    .modal-content:focus-within,
+    .modal-body:focus-within,
+    .tntt-card.tntt-card--stack:focus-within,
+    .tntt-statusbox:focus-within {
+        position: relative !important;
+        z-index: 2147481000 !important;
+        overflow: visible !important;
     }
 
     /* Không để portlet/row cắt phần dropdown tràn ra ngoài chiều cao của thanh. */
@@ -1664,81 +1755,6 @@
 
 <style>
     /*
-     * Hover riêng cho bảng điểm danh:
-     * - Không đổi màu nền hiện tại của các ô.
-     * - Dùng đường viền xanh để nhận biết dòng đang trỏ chuột.
-     */
-    .order-table.table-striped > tbody > tr:nth-of-type(odd):hover {
-        background-color: #EAE5E1 !important;
-    }
-
-    .order-table.table-striped > tbody > tr:nth-of-type(even):hover {
-        background-color: #ffffff !important;
-    }
-
-    /*
-     * Hủy màu xám từ CSS global.
-     * Nền trong suốt giúp ô thường nhận màu sọc của dòng.
-     */
-    .order-table.table-hover > tbody > tr:hover > td {
-        background-color: transparent !important;
-        color: inherit !important;
-
-        /*
-         * Hai đường xanh trên và dưới giúp nhận biết rõ dòng hover.
-         */
-        box-shadow:
-                inset 0 3px 0 #149ddd,
-                inset 0 -3px 0 #149ddd;
-    }
-
-    /*
-     * Viền trái và phải để tạo khung bao quanh toàn bộ dòng.
-     */
-    .order-table.table-hover > tbody > tr:hover > td:first-child {
-        border-left: 4px solid #149ddd !important;
-    }
-
-    .order-table.table-hover > tbody > tr:hover > td:last-child {
-        border-right: 4px solid #149ddd !important;
-    }
-
-    /*
-     * Giữ nguyên màu các ô trạng thái khi hover.
-     */
-    .order-table.table-hover > tbody > tr:hover > td.status-class-green {
-        background-color: #e4fff5 !important;
-        color: inherit !important;
-    }
-
-    .order-table.table-hover > tbody > tr:hover > td.status-class-red {
-        background-color: #e87867 !important;
-        color: #ffffff !important;
-    }
-
-    .order-table.table-hover > tbody > tr:hover > td.status-class-warning {
-        background-color: #FFC107 !important;
-        color: inherit !important;
-    }
-
-    .order-table.table-hover > tbody > tr:hover > td.status-class-info {
-        background-color: #17A2B8 !important;
-        color: #ffffff !important;
-    }
-
-    /*
-     * Hiệu ứng chuyển nhẹ, không làm bảng bị nhảy.
-     */
-    .order-table > tbody > tr > td {
-        transition:
-                box-shadow 0.12s ease,
-                border-color 0.12s ease;
-    }
-</style>
-
-
-<style>
-    /*
      * MOBILE LAYOUT CHO BẢNG ĐIỂM DANH
      *
      * Tên: chiếm toàn bộ hàng đầu.
@@ -1943,37 +1959,6 @@
             font-size: 11px;
         }
 
-        /*
-         * Không dùng nền xám hover trên mobile;
-         * giữ nguyên màu trạng thái hiện tại.
-         */
-        .order-table.table-hover > tbody > tr:hover,
-        .order-table.table-hover > tbody > tr:hover > td {
-            color: inherit !important;
-            box-shadow: none !important;
-        }
-
-        .order-table.table-hover > tbody > tr:hover > td:not(.status-class-green):not(.status-class-red):not(.status-class-warning):not(.status-class-info) {
-            background-color: inherit !important;
-        }
-
-        .order-table.table-hover > tbody > tr:hover > td.status-class-green {
-            background-color: #e4fff5 !important;
-        }
-
-        .order-table.table-hover > tbody > tr:hover > td.status-class-red {
-            background-color: #e87867 !important;
-            color: #ffffff !important;
-        }
-
-        .order-table.table-hover > tbody > tr:hover > td.status-class-warning {
-            background-color: #FFC107 !important;
-        }
-
-        .order-table.table-hover > tbody > tr:hover > td.status-class-info {
-            background-color: #17A2B8 !important;
-            color: #ffffff !important;
-        }
     }
 </style>
 
@@ -2027,19 +2012,19 @@
         border-bottom-color: #344159 !important;
 
         background:
-            radial-gradient(
-                circle at 0% 0%,
-                rgba(91,124,250,.07),
-                transparent 28%
-            ),
-            linear-gradient(
-                180deg,
-                #172236 0%,
-                #131d2f 100%
-            ) !important;
+                radial-gradient(
+                        circle at 0% 0%,
+                        rgba(91,124,250,.07),
+                        transparent 28%
+                ),
+                linear-gradient(
+                        180deg,
+                        #172236 0%,
+                        #131d2f 100%
+                ) !important;
 
         box-shadow:
-            0 8px 22px rgba(0,0,0,.18) !important;
+                0 8px 22px rgba(0,0,0,.18) !important;
     }
 
     html.global-dark-mode .sticky-search-bar label,
@@ -2074,14 +2059,14 @@
         border-color: #37455d !important;
 
         background:
-            linear-gradient(
-                180deg,
-                #111a2a,
-                #0f1827
-            ) !important;
+                linear-gradient(
+                        180deg,
+                        #111a2a,
+                        #0f1827
+                ) !important;
 
         box-shadow:
-            inset 0 0 0 1px rgba(255,255,255,.02) !important;
+                inset 0 0 0 1px rgba(255,255,255,.02) !important;
     }
 
     html.global-dark-mode .sticky-search-bar .form-control::placeholder,
@@ -2101,7 +2086,7 @@
         background: #142036 !important;
 
         box-shadow:
-            0 0 0 3px rgba(91,124,250,.11) !important;
+                0 0 0 3px rgba(91,124,250,.11) !important;
     }
 
     /* File đang có .datepicker { background:white!important } */
@@ -2114,7 +2099,7 @@
         background: #151f31 !important;
 
         box-shadow:
-            0 14px 30px rgba(0,0,0,.32) !important;
+                0 14px 30px rgba(0,0,0,.32) !important;
     }
 
     html.global-dark-mode .datepicker table tr td,
@@ -2153,14 +2138,14 @@
         border-color: #37455d !important;
 
         background:
-            linear-gradient(
-                180deg,
-                #111a2a,
-                #0f1827
-            ) !important;
+                linear-gradient(
+                        180deg,
+                        #111a2a,
+                        #0f1827
+                ) !important;
 
         box-shadow:
-            inset 0 0 0 1px rgba(255,255,255,.02) !important;
+                inset 0 0 0 1px rgba(255,255,255,.02) !important;
     }
 
     html.global-dark-mode .portlet-body .ui-select-match-text {
@@ -2185,7 +2170,7 @@
         background: #151f31 !important;
 
         box-shadow:
-            0 14px 30px rgba(0,0,0,.32) !important;
+                0 14px 30px rgba(0,0,0,.32) !important;
     }
 
     html.global-dark-mode .portlet-body .ui-select-choices-row > span,
@@ -2243,27 +2228,6 @@
     html.global-dark-mode
     .order-table.table-striped > tbody > tr:nth-of-type(even) > td:not(.status-class-green):not(.status-class-red):not(.status-class-warning):not(.status-class-info) {
         background: #131d2f !important;
-    }
-
-    /* Hover dark nhưng KHÔNG đè màu trạng thái */
-    html.global-dark-mode
-    .order-table.table-hover > tbody > tr:hover > td:not(.status-class-green):not(.status-class-red):not(.status-class-warning):not(.status-class-info) {
-        color: #ffffff !important;
-        background: #202e47 !important;
-
-        box-shadow:
-            inset 0 3px 0 #4d91dd,
-            inset 0 -3px 0 #4d91dd !important;
-    }
-
-    html.global-dark-mode
-    .order-table.table-hover > tbody > tr:hover > td:first-child {
-        border-left-color: #4d91dd !important;
-    }
-
-    html.global-dark-mode
-    .order-table.table-hover > tbody > tr:hover > td:last-child {
-        border-right-color: #4d91dd !important;
     }
 
     /* =====================================================
@@ -2370,7 +2334,7 @@
             background: #131d2f !important;
 
             box-shadow:
-                0 7px 18px rgba(0,0,0,.23) !important;
+                    0 7px 18px rgba(0,0,0,.23) !important;
         }
 
         html.global-dark-mode .order-table > tbody > tr > td {
@@ -2396,22 +2360,6 @@
             border-right-color: #47556d !important;
         }
 
-        /*
-         * CSS mobile cũ có hover background:inherit;
-         * ép lại để không quay về trắng.
-         */
-        html.global-dark-mode
-        .order-table.table-hover > tbody > tr:hover > td:not(.status-class-green):not(.status-class-red):not(.status-class-warning):not(.status-class-info) {
-            color: #e7edf7 !important;
-            background: #182337 !important;
-            box-shadow: none !important;
-        }
-
-        html.global-dark-mode
-        .order-table.table-hover > tbody > tr:hover
-        > .attendance-name-cell {
-            background: #1b2941 !important;
-        }
     }
 
     /* =====================================================
@@ -2477,30 +2425,30 @@
         border-color: #725438 !important;
 
         background:
-            radial-gradient(
-                circle at top left,
-                rgba(255,255,255,.06),
-                transparent 35%
-            ),
-            radial-gradient(
-                circle at bottom right,
-                rgba(255,255,255,.04),
-                transparent 30%
-            ),
-            linear-gradient(
-                135deg,
-                #2d271f 0%,
-                #18313a 30%,
-                #233425 45%,
-                #39301f 62%,
-                #38252c 78%,
-                #342226 90%,
-                #24212a 100%
-            ) !important;
+                radial-gradient(
+                        circle at top left,
+                        rgba(255,255,255,.06),
+                        transparent 35%
+                ),
+                radial-gradient(
+                        circle at bottom right,
+                        rgba(255,255,255,.04),
+                        transparent 30%
+                ),
+                linear-gradient(
+                        135deg,
+                        #2d271f 0%,
+                        #18313a 30%,
+                        #233425 45%,
+                        #39301f 62%,
+                        #38252c 78%,
+                        #342226 90%,
+                        #24212a 100%
+                ) !important;
 
         box-shadow:
-            0 16px 38px rgba(0,0,0,.35),
-            inset 0 1px 0 rgba(255,255,255,.05) !important;
+                0 16px 38px rgba(0,0,0,.35),
+                inset 0 1px 0 rgba(255,255,255,.05) !important;
     }
 
     html.global-dark-mode .tntt-chip,
@@ -2586,4 +2534,34 @@
         background: #111a2a !important;
     }
 
+</style>
+
+<style>
+    /*
+     * Hover riêng của bảng điểm danh, không dùng class table-hover nên không
+     * bị các rule toàn cục trong custom.css can thiệp.
+     */
+    @media (hover: hover) and (pointer: fine) {
+        html body .portlet-body table.order-table > tbody > tr:hover {
+            background: #F1EDFF !important;
+        }
+
+        html body .portlet-body table.order-table > tbody > tr:hover > td:not(.status-class-green):not(.status-class-red):not(.status-class-warning):not(.status-class-info) {
+            color: inherit !important;
+            background: #F1EDFF !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        html.global-dark-mode body .portlet-body table.order-table > tbody > tr:hover {
+            background: #3A315F !important;
+        }
+
+        html.global-dark-mode body .portlet-body table.order-table > tbody > tr:hover > td:not(.status-class-green):not(.status-class-red):not(.status-class-warning):not(.status-class-info) {
+            color: #f4f1ff !important;
+            background: #3A315F !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+    }
 </style>
