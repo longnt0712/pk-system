@@ -103,6 +103,7 @@
             var pendingBattleRoomStorageKey =
                 'battleOnline.pendingRoomCode';
             var postLoginNavigationStarted = false;
+            var lastLoginRequiredNoticeRoomCode = '';
 
             function normalizeBattleRoomCode(value) {
                 var code = String(value || '')
@@ -144,6 +145,29 @@
                     );
                 } catch (e) {
                     // RootScope vẫn giữ mã phòng nếu trình duyệt chặn storage.
+                }
+
+                return code;
+            }
+
+            function prepareBattleRoomLoginRedirect() {
+                var code =
+                    rememberPendingBattleRoomFromCurrentUrl();
+
+                postLoginNavigationStarted = false;
+
+                if (
+                    code &&
+                    lastLoginRequiredNoticeRoomCode !== code
+                ) {
+                    lastLoginRequiredNoticeRoomCode = code;
+
+                    toastr.info(
+                        'Hãy đăng nhập trước để vào phòng ' +
+                            code +
+                            '. Sau khi đăng nhập, bạn sẽ tự động vào phòng.',
+                        'BATTLE ONLINE'
+                    );
                 }
 
                 return code;
@@ -341,8 +365,7 @@
                 blockUI.stop();
 
                 if (angular.isDefined(rejection.data) && rejection.data.error === 'invalid_grant') {
-                    rememberPendingBattleRoomFromCurrentUrl();
-                    postLoginNavigationStarted = false;
+                    prepareBattleRoomLoginRedirect();
                     $cookies.remove(constants.oauth2_token);
                     $state.go('login');
                     return;
@@ -353,8 +376,7 @@
                 }
 
                 $rootScope.$emit('$unauthorized', function () {});
-                rememberPendingBattleRoomFromCurrentUrl();
-                postLoginNavigationStarted = false;
+                prepareBattleRoomLoginRedirect();
                 $state.go('login');
             });
 
@@ -364,8 +386,7 @@
             $rootScope.$on('$locationChangeSuccess', function () {
 
                 if (!OAuth.isAuthenticated()) {
-                    rememberPendingBattleRoomFromCurrentUrl();
-                    postLoginNavigationStarted = false;
+                    prepareBattleRoomLoginRedirect();
                     $rootScope.$emit('$unauthorized', function () {});
                     $state.go('login');
                     return;
@@ -392,8 +413,7 @@
                     })
                     .error(function () {
                         blockUI.stop();
-                        rememberPendingBattleRoomFromCurrentUrl();
-                        postLoginNavigationStarted = false;
+                        prepareBattleRoomLoginRedirect();
                         $cookies.remove(constants.oauth2_token);
                         $state.go('login');
                     });
