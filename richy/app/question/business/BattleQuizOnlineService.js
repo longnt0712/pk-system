@@ -74,6 +74,16 @@
             ).then(function (response) { return response.data; });
         };
 
+        self.assignPlayerTeam = function (roomCode, targetUsername, teamNumber) {
+            return $http.post(
+                apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/team',
+                {
+                    targetUsername: targetUsername,
+                    teamNumber: teamNumber
+                }
+            ).then(function (response) { return response.data; });
+        };
+
         self.updateSettings = function (roomCode, dto) {
             return $http.put(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/settings',

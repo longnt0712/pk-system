@@ -63,6 +63,7 @@
         vm.refreshingPrivateState = false;
         vm.changingSpectator = false;
         vm.kickingPlayer = false;
+        vm.assigningTeamUsername = '';
 
         vm.realtimeConnected = false;
         vm.connectionMode = 'CONNECTING';
@@ -128,8 +129,23 @@
             questionCount: 20,
             secondsPerQuestion: 10,
 
-            countdownMinutes: 5
+            countdownMinutes: 5,
+            wrongAnswerFreezeSeconds: 3,
+            teamCount: 0
         };
+
+        vm.teamCountOptions = [
+            {value: 0, label: 'KHÔNG CHIA ĐỘI'},
+            {value: 2, label: '2 ĐỘI'},
+            {value: 3, label: '3 ĐỘI'},
+            {value: 4, label: '4 ĐỘI'},
+            {value: 5, label: '5 ĐỘI'},
+            {value: 6, label: '6 ĐỘI'},
+            {value: 7, label: '7 ĐỘI'},
+            {value: 8, label: '8 ĐỘI'},
+            {value: 9, label: '9 ĐỘI'},
+            {value: 10, label: '10 ĐỘI'}
+        ];
 
         vm.classicQuestionCountTouched = false;
 
@@ -140,6 +156,8 @@
          */
         vm.hostModeDirty = false;
         vm.hostCountdownMinutesDirty = false;
+        vm.hostWrongFreezeDirty = false;
+        vm.hostTeamCountDirty = false;
 
         vm.currentUser =
             readCurrentUser();
@@ -178,6 +196,7 @@
         var lastSeenEventId = 0;
         var activeWrongQuestionMatchKey = '';
         var kickedNavigationHandled = false;
+        var wrongAnswerPenaltyWasActive = false;
 
 
         /* =====================================================
@@ -208,9 +227,15 @@
             markCountdownMinutesTouched;
 
         vm.saveSettings = saveSettings;
+        vm.markWrongFreezeTouched = markWrongFreezeTouched;
+        vm.markTeamCountTouched = markTeamCountTouched;
 
         vm.toggleReady = toggleReady;
         vm.toggleSpectator = toggleSpectator;
+        vm.assignPlayerTeam = assignPlayerTeam;
+        vm.getTeamNumbers = getTeamNumbers;
+        vm.getTeamSummaries = getTeamSummaries;
+        vm.hasTeamMode = hasTeamMode;
         vm.openKickConfirm = openKickConfirm;
         vm.closeKickConfirm = closeKickConfirm;
         vm.confirmKickPlayer = confirmKickPlayer;
@@ -228,6 +253,8 @@
         vm.getSkillIcon = getSkillIcon;
         vm.isMeFrozen = isMeFrozen;
         vm.getFreezeRemaining = getFreezeRemaining;
+        vm.isWrongAnswerPenaltyActive = isWrongAnswerPenaltyActive;
+        vm.getWrongAnswerPenaltyRemaining = getWrongAnswerPenaltyRemaining;
         vm.isMeBurning = isMeBurning;
         vm.isPlayerBurning = isPlayerBurning;
         vm.getBurnRemaining = getBurnRemaining;
@@ -1259,6 +1286,27 @@
             }
 
             /*
+             * Chi tiết câu vừa sai là private state. WebSocket chung không
+             * được làm mất overlay ôn lại hoặc làm lộ đáp án cho người khác.
+             */
+            if (
+                fromGenericSocket === true &&
+                incoming.status === 'PLAYING' &&
+                incoming.settings &&
+                isCountdownLikeValue(incoming.settings.mode) &&
+                previousRoom
+            ) {
+                incoming.wrongAnswerPenaltyUntil =
+                    previousRoom.wrongAnswerPenaltyUntil;
+                incoming.wrongAnswerQuestion =
+                    previousRoom.wrongAnswerQuestion;
+                incoming.wrongAnswerCorrectAnswer =
+                    previousRoom.wrongAnswerCorrectAnswer;
+                incoming.wrongAnswerSelectedAnswer =
+                    previousRoom.wrongAnswerSelectedAnswer;
+            }
+
+            /*
              * Các trường mật khẩu là private REST state. Generic WebSocket
              * không chứa chúng nên luôn giữ bản riêng đang có của account.
              */
@@ -1405,6 +1453,24 @@
                             .countdownMinutes;
                 }
 
+                if (
+                    !isHost() ||
+                    incoming.status !== 'LOBBY' ||
+                    vm.hostWrongFreezeDirty !== true
+                ) {
+                    vm.hostSettings.wrongAnswerFreezeSeconds =
+                        incoming.settings.wrongAnswerFreezeSeconds || 3;
+                }
+
+                if (
+                    !isHost() ||
+                    incoming.status !== 'LOBBY' ||
+                    vm.hostTeamCountDirty !== true
+                ) {
+                    vm.hostSettings.teamCount =
+                        Number(incoming.settings.teamCount || 0);
+                }
+
                 /*
                  * Classic mặc định = toàn bộ bài.
                  * Chỉ auto-set nếu Host chưa tự sửa field.
@@ -1453,7 +1519,9 @@
                 vm.lastAnswerCorrect = null;
                 vm.lastAnswerMessage = '';
 
-                sayCurrentQuestion();
+                if (!isWrongAnswerPenaltyActive()) {
+                    sayCurrentQuestion();
+                }
             }
 
             if (
@@ -1540,6 +1608,16 @@
         }
 
 
+        function markWrongFreezeTouched() {
+            vm.hostWrongFreezeDirty = true;
+        }
+
+
+        function markTeamCountTouched() {
+            vm.hostTeamCountDirty = true;
+        }
+
+
         function clampInteger(
             value,
             min,
@@ -1603,6 +1681,22 @@
                         1,
                         180,
                         5
+                    ),
+
+                wrongAnswerFreezeSeconds:
+                    clampInteger(
+                        vm.hostSettings.wrongAnswerFreezeSeconds,
+                        1,
+                        60,
+                        3
+                    ),
+
+                teamCount:
+                    clampInteger(
+                        vm.hostSettings.teamCount,
+                        0,
+                        10,
+                        0
                     )
             };
         }
@@ -1636,6 +1730,8 @@
                          */
                         vm.hostModeDirty = false;
                         vm.hostCountdownMinutesDirty = false;
+                        vm.hostWrongFreezeDirty = false;
+                        vm.hostTeamCountDirty = false;
 
                         applyRoom(
                             room,
@@ -1737,6 +1833,139 @@
                         vm.changingSpectator = false;
                     }
                 );
+        }
+
+
+        function assignPlayerTeam(player) {
+            if (
+                !vm.room ||
+                vm.room.status !== 'LOBBY' ||
+                !isHost() ||
+                !player ||
+                player.spectator ||
+                vm.assigningTeamUsername
+            ) {
+                return;
+            }
+
+            var teamNumber = clampInteger(
+                player.teamNumber,
+                1,
+                Number(vm.room.settings.teamCount || 0),
+                1
+            );
+
+            vm.assigningTeamUsername = player.username;
+
+            battleService
+                .assignPlayerTeam(
+                    vm.room.code,
+                    player.username,
+                    teamNumber
+                )
+                .then(
+                    function (room) {
+                        applyRoom(room, false);
+                    },
+                    function (error) {
+                        showRequestError(error);
+                        refreshPrivateRoomState();
+                    }
+                )
+                .finally(
+                    function () {
+                        vm.assigningTeamUsername = '';
+                    }
+                );
+        }
+
+
+        function hasTeamMode() {
+            return !!(
+                vm.room &&
+                vm.room.settings &&
+                Number(vm.room.settings.teamCount || 0) >= 2
+            );
+        }
+
+
+        function getTeamNumbers() {
+            var result = [];
+            var count = vm.room && vm.room.settings
+                ? Number(vm.room.settings.teamCount || 0)
+                : 0;
+
+            for (var team = 1; team <= count; team += 1) {
+                result.push(team);
+            }
+
+            return result;
+        }
+
+
+        function getTeamSummaries() {
+            if (!hasTeamMode()) {
+                return [];
+            }
+
+            var count = Number(vm.room.settings.teamCount || 0);
+            var summaries = [];
+            var byNumber = {};
+
+            for (var team = 1; team <= count; team += 1) {
+                var summary = {
+                    number: team,
+                    score: 0,
+                    correctCount: 0,
+                    wrongCount: 0,
+                    memberCount: 0,
+                    rank: 0
+                };
+
+                summaries.push(summary);
+                byNumber[team] = summary;
+            }
+
+            angular.forEach(
+                vm.room.players || [],
+                function (player) {
+                    var target = player && !player.spectator
+                        ? byNumber[Number(player.teamNumber || 0)]
+                        : null;
+
+                    if (!target) {
+                        return;
+                    }
+
+                    target.score += Number(player.score || 0);
+                    target.correctCount += Number(player.correctCount || 0);
+                    target.wrongCount += Number(player.wrongCount || 0);
+                    target.memberCount += 1;
+                }
+            );
+
+            summaries.sort(
+                function (left, right) {
+                    if (left.score !== right.score) {
+                        return right.score - left.score;
+                    }
+
+                    if (left.correctCount !== right.correctCount) {
+                        return right.correctCount - left.correctCount;
+                    }
+
+                    return left.number - right.number;
+                }
+            );
+
+            angular.forEach(
+                summaries,
+                function (summary, index) {
+                    summary.rank = index + 1;
+                }
+            );
+
+            return summaries;
         }
 
 
@@ -1879,6 +2108,12 @@
                         vm.hostCountdownMinutesDirty =
                             false;
 
+                        vm.hostWrongFreezeDirty =
+                            false;
+
+                        vm.hostTeamCountDirty =
+                            false;
+
                         vm.personalSkillNotice =
                             null;
 
@@ -1910,7 +2145,8 @@
                 vm.room.passwordSelectionRequired ||
                 vm.room.pendingPasswordGuessTargetUsername ||
                 isSpectator() ||
-                isMeFrozen()
+                isMeFrozen() ||
+                isWrongAnswerPenaltyActive()
             ) {
                 return;
             }
@@ -2894,6 +3130,31 @@
         }
 
 
+        function isWrongAnswerPenaltyActive() {
+            return !!(
+                vm.room &&
+                Number(vm.room.wrongAnswerPenaltyUntil || 0) > serverNow()
+            );
+        }
+
+
+        function getWrongAnswerPenaltyRemaining() {
+            if (!vm.room) {
+                return 0;
+            }
+
+            return Math.max(
+                0,
+                Math.ceil(
+                    (
+                        Number(vm.room.wrongAnswerPenaltyUntil || 0) -
+                        serverNow()
+                    ) / 1000
+                )
+            );
+        }
+
+
         function formatScore(value) {
             value = Number(value || 0);
 
@@ -2916,6 +3177,7 @@
                     'PLAYING'
             ) {
                 vm.countdown = 0;
+                wrongAnswerPenaltyWasActive = false;
                 return;
             }
 
@@ -2957,6 +3219,21 @@
                 vm.answerLocked =
                     true;
             }
+
+            var wrongPenaltyActive =
+                isWrongAnswerPenaltyActive();
+
+            if (
+                wrongAnswerPenaltyWasActive &&
+                !wrongPenaltyActive &&
+                vm.room.currentQuestion &&
+                !isSpectator()
+            ) {
+                sayCurrentQuestion();
+            }
+
+            wrongAnswerPenaltyWasActive =
+                wrongPenaltyActive;
         }
 
 
@@ -3924,7 +4201,8 @@
                 vm.room.passwordSelectionRequired ||
                 vm.room.pendingPasswordGuessTargetUsername ||
                 isSpectator() ||
-                isMeFrozen()
+                isMeFrozen() ||
+                isWrongAnswerPenaltyActive()
             ) {
                 return;
             }
