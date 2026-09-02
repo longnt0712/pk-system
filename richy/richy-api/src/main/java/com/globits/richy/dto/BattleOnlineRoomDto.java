@@ -80,6 +80,15 @@ public class BattleOnlineRoomDto implements Serializable {
             new ArrayList<BattleOnlinePasswordOptionDto>();
 
     /*
+     * COUNTDOWN/MONEY_BEG: private state của viewer sau khi trả lời sai.
+     * Generic WebSocket luôn để trống để không công khai đáp án đúng.
+     */
+    private long wrongAnswerPenaltyUntil;
+    private String wrongAnswerQuestion;
+    private String wrongAnswerCorrectAnswer;
+    private String wrongAnswerSelectedAnswer;
+
+    /*
      * Nhật ký skill chung, mới nhất đứng trước.
      */
     private List<BattleOnlineEventDto> recentEvents =
@@ -293,6 +302,38 @@ public class BattleOnlineRoomDto implements Serializable {
     public void setPasswordGuessOptions(
             List<BattleOnlinePasswordOptionDto> passwordGuessOptions) {
         this.passwordGuessOptions = passwordGuessOptions;
+    }
+
+    public long getWrongAnswerPenaltyUntil() {
+        return wrongAnswerPenaltyUntil;
+    }
+
+    public void setWrongAnswerPenaltyUntil(long wrongAnswerPenaltyUntil) {
+        this.wrongAnswerPenaltyUntil = wrongAnswerPenaltyUntil;
+    }
+
+    public String getWrongAnswerQuestion() {
+        return wrongAnswerQuestion;
+    }
+
+    public void setWrongAnswerQuestion(String wrongAnswerQuestion) {
+        this.wrongAnswerQuestion = wrongAnswerQuestion;
+    }
+
+    public String getWrongAnswerCorrectAnswer() {
+        return wrongAnswerCorrectAnswer;
+    }
+
+    public void setWrongAnswerCorrectAnswer(String wrongAnswerCorrectAnswer) {
+        this.wrongAnswerCorrectAnswer = wrongAnswerCorrectAnswer;
+    }
+
+    public String getWrongAnswerSelectedAnswer() {
+        return wrongAnswerSelectedAnswer;
+    }
+
+    public void setWrongAnswerSelectedAnswer(String wrongAnswerSelectedAnswer) {
+        this.wrongAnswerSelectedAnswer = wrongAnswerSelectedAnswer;
     }
 
     public List<BattleOnlineEventDto> getRecentEvents() {

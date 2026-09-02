@@ -25,6 +25,7 @@ import com.globits.richy.dto.BattleOnlineReadyDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
 import com.globits.richy.dto.BattleOnlineSpectatorDto;
+import com.globits.richy.dto.BattleOnlineTeamAssignmentDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
 import com.globits.richy.service.BattleOnlineException;
 import com.globits.richy.service.BattleOnlineService;
@@ -107,6 +108,18 @@ public class RestBattleOnlineController {
                 roomCode,
                 currentUsername(),
                 targetUsername
+        );
+    }
+
+    @RequestMapping(value = "/rooms/{roomCode}/team", method = RequestMethod.POST)
+    public BattleOnlineRoomDto assignPlayerTeam(
+            @PathVariable String roomCode,
+            @RequestBody BattleOnlineTeamAssignmentDto dto) {
+
+        return battleOnlineService.assignPlayerTeam(
+                roomCode,
+                currentUsername(),
+                dto
         );
     }
 

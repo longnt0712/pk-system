@@ -8,6 +8,7 @@ import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessResultDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
+import com.globits.richy.dto.BattleOnlineTeamAssignmentDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
 
 public interface BattleOnlineService {
@@ -48,6 +49,12 @@ public interface BattleOnlineService {
             String roomCode,
             String username,
             String targetUsername
+    );
+
+    BattleOnlineRoomDto assignPlayerTeam(
+            String roomCode,
+            String username,
+            BattleOnlineTeamAssignmentDto teamDto
     );
 
     BattleOnlineRoomDto updateSettings(

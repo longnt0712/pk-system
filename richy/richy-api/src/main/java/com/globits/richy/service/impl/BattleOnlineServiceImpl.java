@@ -40,6 +40,7 @@ import com.globits.richy.dto.BattleOnlinePlayerDto;
 import com.globits.richy.dto.BattleOnlineQuestionDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
+import com.globits.richy.dto.BattleOnlineTeamAssignmentDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
 import com.globits.richy.dto.QuestionDto;
 import com.globits.richy.dto.QuestionForGamesDto;
@@ -132,6 +133,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final int MIN_COUNTDOWN_MINUTES = 1;
     private static final int MAX_COUNTDOWN_MINUTES = 180;
 
+    private static final int DEFAULT_WRONG_ANSWER_FREEZE_SECONDS = 3;
+    private static final int MIN_WRONG_ANSWER_FREEZE_SECONDS = 1;
+    private static final int MAX_WRONG_ANSWER_FREEZE_SECONDS = 60;
+
+    private static final int MAX_TEAM_COUNT = 10;
+
     private static final char[] ROOM_CHARS =
             "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".toCharArray();
 
@@ -220,6 +227,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.settings.questionCount = 20;
         room.settings.secondsPerQuestion = 10;
         room.settings.countdownMinutes = 5;
+        room.settings.wrongAnswerFreezeSeconds =
+                DEFAULT_WRONG_ANSWER_FREEZE_SECONDS;
+        room.settings.teamCount = 0;
 
         PlayerState host = new PlayerState();
         host.username = username;
@@ -309,6 +319,17 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 existing.displayName = identity.displayName;
 
                 if (
+                    !existing.spectator &&
+                    room.settings.teamCount >= 2 &&
+                    (
+                        existing.teamNumber < 1 ||
+                        existing.teamNumber > room.settings.teamCount
+                    )
+                ) {
+                    existing.teamNumber = nextBalancedTeamLocked(room);
+                }
+
+                if (
                     PLAYING.equals(room.status) &&
                     !existing.spectator
                 ) {
@@ -357,6 +378,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 player.ready = PLAYING.equals(room.status);
 
                 room.players.put(username, player);
+
+                if (room.settings.teamCount >= 2) {
+                    player.teamNumber = nextBalancedTeamLocked(room);
+                }
 
                 /*
                  * Late join:
@@ -555,6 +580,71 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             resetPlayerMatchState(host);
 
+            host.teamNumber = spectator || room.settings.teamCount < 2
+                    ? 0
+                    : nextBalancedTeamLocked(room);
+
+            dto = snapshotLocked(room, username);
+        }
+
+        broadcastGeneric(room);
+
+        return dto;
+    }
+
+
+    @Override
+    public BattleOnlineRoomDto assignPlayerTeam(
+            String roomCode,
+            String username,
+            BattleOnlineTeamAssignmentDto teamDto) {
+
+        username = requireUsername(username);
+
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto dto;
+
+        synchronized (room) {
+            requireLobby(room);
+            requireHost(room, username);
+
+            if (room.settings.teamCount < 2) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Hãy bật chế độ chia đội và lưu thiết lập trước."
+                );
+            }
+
+            String targetUsername = requireUsername(
+                    teamDto != null
+                            ? teamDto.getTargetUsername()
+                            : null
+            );
+
+            int teamNumber = teamDto != null
+                    ? teamDto.getTeamNumber()
+                    : 0;
+
+            if (
+                teamNumber < 1 ||
+                teamNumber > room.settings.teamCount
+            ) {
+                throw new BattleOnlineException(
+                        HttpStatus.BAD_REQUEST,
+                        "Đội được chọn không hợp lệ."
+                );
+            }
+
+            PlayerState target = requirePlayer(room, targetUsername);
+
+            if (target.spectator) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Khán giả không tham gia đội."
+                );
+            }
+
+            target.teamNumber = teamNumber;
             dto = snapshotLocked(room, username);
         }
 
@@ -676,6 +766,18 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         MAX_COUNTDOWN_MINUTES
                     );
 
+            room.settings.wrongAnswerFreezeSeconds =
+                    normalizeWrongAnswerFreezeSeconds(
+                        settings.getWrongAnswerFreezeSeconds()
+                    );
+
+            room.settings.teamCount =
+                    normalizeTeamCount(
+                        settings.getTeamCount()
+                    );
+
+            normalizeTeamAssignmentsLocked(room);
+
             dto = snapshotLocked(room, username);
         }
 
@@ -703,6 +805,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             requireLobby(room);
             requireHost(room, username);
 
+            normalizeTeamAssignmentsLocked(room);
             validatePlayersReadyLocked(room);
 
             if (room.preparedQuestions.size() < 4) {
@@ -1132,6 +1235,20 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             player.connected = true;
 
+            clearExpiredWrongAnswerPenaltyLocked(player, now);
+
+            if (now < player.wrongAnswerPenaltyUntil) {
+                long seconds = Math.max(
+                        1L,
+                        (player.wrongAnswerPenaltyUntil - now + 999L) / 1000L
+                );
+
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Bạn đang xem lại câu vừa sai. Còn " + seconds + " giây."
+                );
+            }
+
             if (player.pendingSkillType != null) {
                 throw new BattleOnlineException(
                         HttpStatus.CONFLICT,
@@ -1180,6 +1297,16 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     ).equals(
                         question.correctKey
                     );
+
+            if (!correct) {
+                applyWrongAnswerPenaltyLocked(
+                        room,
+                        player,
+                        question,
+                        answerDto.getAnswerKey(),
+                        now
+                );
+            }
 
             updateCountdownReviewStateLocked(
                     player,
@@ -1358,15 +1485,15 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
                 PlayerState target = room.players.get(targetUsername);
 
-                if (
-                    target == null ||
-                    target == actor ||
-                    target.spectator ||
-                    !target.connected
-                ) {
+                if (!isSkillTargetEligibleLocked(
+                        room,
+                        actor,
+                        target,
+                        actor.pendingSkillType
+                )) {
                     throw new BattleOnlineException(
                             HttpStatus.BAD_REQUEST,
-                            "Người chơi được chọn không hợp lệ hoặc đã mất kết nối."
+                            "Người chơi được chọn không hợp lệ, cùng đội hoặc đã mất kết nối."
                     );
                 }
 
@@ -2070,6 +2197,65 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
+    private void applyWrongAnswerPenaltyLocked(
+            RoomState room,
+            PlayerState player,
+            QuestionState question,
+            String selectedKey,
+            long now) {
+
+        int seconds = normalizeWrongAnswerFreezeSeconds(
+                room.settings.wrongAnswerFreezeSeconds
+        );
+
+        player.wrongAnswerPenaltyUntil =
+                now + (seconds * 1000L);
+        player.wrongAnswerQuestion = question.question;
+        player.wrongAnswerCorrectAnswer =
+                findAnswerText(question, question.correctKey);
+        player.wrongAnswerSelectedAnswer =
+                findAnswerText(question, selectedKey);
+    }
+
+
+    private void clearExpiredWrongAnswerPenaltyLocked(
+            PlayerState player,
+            long now) {
+
+        if (
+            player.wrongAnswerPenaltyUntil <= 0L ||
+            now < player.wrongAnswerPenaltyUntil
+        ) {
+            return;
+        }
+
+        player.wrongAnswerPenaltyUntil = 0L;
+        player.wrongAnswerQuestion = null;
+        player.wrongAnswerCorrectAnswer = null;
+        player.wrongAnswerSelectedAnswer = null;
+    }
+
+
+    private String findAnswerText(
+            QuestionState question,
+            String answerKey) {
+
+        String normalizedKey = normalizeAnswerKey(answerKey);
+
+        if (question == null || normalizedKey == null) {
+            return "";
+        }
+
+        for (OptionState option : question.options) {
+            if (normalizedKey.equals(option.key)) {
+                return safe(option.text);
+            }
+        }
+
+        return "";
+    }
+
+
     private double applyScore(
             PlayerState player,
             boolean correct,
@@ -2524,20 +2710,46 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         int count = 0;
 
         for (PlayerState player : room.players.values()) {
-            if (
-                player != actor &&
-                !player.spectator &&
-                player.connected &&
-                (
-                    !SKILL_MONEY_BEG.equals(skillType) ||
-                    !isBlank(player.currentPassword)
-                )
-            ) {
+            if (isSkillTargetEligibleLocked(
+                    room,
+                    actor,
+                    player,
+                    skillType
+            )) {
                 count += 1;
             }
         }
 
         return count;
+    }
+
+
+    private boolean isSkillTargetEligibleLocked(
+            RoomState room,
+            PlayerState actor,
+            PlayerState candidate,
+            String skillType) {
+
+        if (
+            candidate == null ||
+            candidate == actor ||
+            candidate.spectator ||
+            !candidate.connected
+        ) {
+            return false;
+        }
+
+        if (
+            room.settings.teamCount >= 2 &&
+            actor != null &&
+            actor.teamNumber >= 1 &&
+            actor.teamNumber == candidate.teamNumber
+        ) {
+            return false;
+        }
+
+        return !SKILL_MONEY_BEG.equals(skillType) ||
+                !isBlank(candidate.currentPassword);
     }
 
 
@@ -2598,15 +2810,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     index + 1
             );
 
-            if (
-                candidate != actor &&
-                !candidate.spectator &&
-                candidate.connected &&
-                (
-                    !SKILL_MONEY_BEG.equals(actor.pendingSkillType) ||
-                    !isBlank(candidate.currentPassword)
-                )
-            ) {
+            if (isSkillTargetEligibleLocked(
+                    room,
+                    actor,
+                    candidate,
+                    actor.pendingSkillType
+            )) {
                 pool.add(candidate);
             }
         }
@@ -2689,15 +2898,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     index + 1
             );
 
-            if (
-                candidate != actor &&
-                !candidate.spectator &&
-                candidate.connected &&
-                (
-                    !SKILL_MONEY_BEG.equals(actor.pendingSkillType) ||
-                    !isBlank(candidate.currentPassword)
-                )
-            ) {
+            if (isSkillTargetEligibleLocked(
+                    room,
+                    actor,
+                    candidate,
+                    actor.pendingSkillType
+            )) {
                 eligibleByUsername.put(
                         candidate.username,
                         candidate
@@ -4261,6 +4467,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             viewer
                     );
 
+                    clearExpiredWrongAnswerPenaltyLocked(
+                            viewer,
+                            System.currentTimeMillis()
+                    );
+
                     dto.setPendingSkillType(
                             viewer.pendingSkillType
                     );
@@ -4270,6 +4481,21 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                                 viewer.pendingSkillTargetUsernames
                             )
                     );
+
+                    if (viewer.wrongAnswerPenaltyUntil > 0L) {
+                        dto.setWrongAnswerPenaltyUntil(
+                                viewer.wrongAnswerPenaltyUntil
+                        );
+                        dto.setWrongAnswerQuestion(
+                                viewer.wrongAnswerQuestion
+                        );
+                        dto.setWrongAnswerCorrectAnswer(
+                                viewer.wrongAnswerCorrectAnswer
+                        );
+                        dto.setWrongAnswerSelectedAnswer(
+                                viewer.wrongAnswerSelectedAnswer
+                        );
+                    }
 
                     if (MODE_MONEY_BEG.equals(room.settings.mode)) {
                         dto.setPasswordSelectionRequired(
@@ -4381,6 +4607,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             player.setWrongCount(
                     state.wrongCount
+            );
+
+            player.setTeamNumber(
+                    state.teamNumber
             );
 
             player.setUniqueWordsSeen(
@@ -4590,6 +4820,83 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
        STATE / VALIDATION
        ========================================================= */
 
+    private int normalizeWrongAnswerFreezeSeconds(int value) {
+        if (value <= 0) {
+            return DEFAULT_WRONG_ANSWER_FREEZE_SECONDS;
+        }
+
+        return clamp(
+                value,
+                MIN_WRONG_ANSWER_FREEZE_SECONDS,
+                MAX_WRONG_ANSWER_FREEZE_SECONDS
+        );
+    }
+
+
+    private int normalizeTeamCount(int value) {
+        if (value < 2) {
+            return 0;
+        }
+
+        return clamp(value, 2, MAX_TEAM_COUNT);
+    }
+
+
+    private void normalizeTeamAssignmentsLocked(RoomState room) {
+        if (room.settings.teamCount < 2) {
+            for (PlayerState player : room.players.values()) {
+                player.teamNumber = 0;
+            }
+
+            return;
+        }
+
+        for (PlayerState player : room.players.values()) {
+            if (
+                player.spectator ||
+                player.teamNumber < 1 ||
+                player.teamNumber > room.settings.teamCount
+            ) {
+                player.teamNumber = 0;
+            }
+        }
+
+        for (PlayerState player : room.players.values()) {
+            if (!player.spectator && player.teamNumber == 0) {
+                player.teamNumber = nextBalancedTeamLocked(room);
+            }
+        }
+    }
+
+
+    private int nextBalancedTeamLocked(RoomState room) {
+        if (room.settings.teamCount < 2) {
+            return 0;
+        }
+
+        int[] counts = new int[room.settings.teamCount + 1];
+
+        for (PlayerState player : room.players.values()) {
+            if (
+                !player.spectator &&
+                player.teamNumber >= 1 &&
+                player.teamNumber <= room.settings.teamCount
+            ) {
+                counts[player.teamNumber] += 1;
+            }
+        }
+
+        int selectedTeam = 1;
+
+        for (int team = 2; team <= room.settings.teamCount; team++) {
+            if (counts[team] < counts[selectedTeam]) {
+                selectedTeam = team;
+            }
+        }
+
+        return selectedTeam;
+    }
+
     private void validatePlayersReadyLocked(
             RoomState room) {
 
@@ -4656,6 +4963,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         player.passwordGuessOptions.clear();
         player.frozenUntil = 0L;
         player.burningUntil = 0L;
+        player.wrongAnswerPenaltyUntil = 0L;
+        player.wrongAnswerQuestion = null;
+        player.wrongAnswerCorrectAnswer = null;
+        player.wrongAnswerSelectedAnswer = null;
 
         player.pendingWordIds.clear();
         player.uniqueWordIds.clear();
@@ -5103,6 +5414,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 source.countdownMinutes
         );
 
+        dto.setWrongAnswerFreezeSeconds(
+                source.wrongAnswerFreezeSeconds
+        );
+
+        dto.setTeamCount(
+                source.teamCount
+        );
+
         return dto;
     }
 
@@ -5405,6 +5724,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         int secondsPerQuestion = 10;
 
         int countdownMinutes = 5;
+
+        int wrongAnswerFreezeSeconds =
+                DEFAULT_WRONG_ANSWER_FREEZE_SECONDS;
+
+        int teamCount = 0;
     }
 
 
@@ -5421,6 +5745,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         int streak;
         int correctCount;
         int wrongCount;
+        int teamNumber;
 
         /*
          * CLASSIC.
@@ -5462,6 +5787,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         long frozenUntil = 0L;
         long burningUntil = 0L;
+
+        long wrongAnswerPenaltyUntil = 0L;
+        String wrongAnswerQuestion;
+        String wrongAnswerCorrectAnswer;
+        String wrongAnswerSelectedAnswer;
     }
 
 

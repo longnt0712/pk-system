@@ -19,6 +19,7 @@ public class BattleOnlinePlayerDto implements Serializable {
     private int correctCount;
     private int wrongCount;
     private int rank;
+    private int teamNumber;
 
     /*
      * COUNTDOWN progress:
@@ -136,6 +137,14 @@ public class BattleOnlinePlayerDto implements Serializable {
 
     public void setRank(int rank) {
         this.rank = rank;
+    }
+
+    public int getTeamNumber() {
+        return teamNumber;
+    }
+
+    public void setTeamNumber(int teamNumber) {
+        this.teamNumber = teamNumber;
     }
 
     public int getUniqueWordsSeen() {

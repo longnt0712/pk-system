@@ -14,7 +14,7 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     private List<String> topicNames = new ArrayList<String>();
 
     /*
-     * CLASSIC | COUNTDOWN
+     * CLASSIC | COUNTDOWN | MONEY_BEG
      */
     private String mode = "CLASSIC";
 
@@ -30,6 +30,16 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
      * tổng thời gian toàn trận.
      */
     private int countdownMinutes = 5;
+
+    /*
+     * COUNTDOWN/MONEY_BEG: số giây khóa đáp án sau một câu sai.
+     */
+    private int wrongAnswerFreezeSeconds = 3;
+
+    /*
+     * 0 = chơi cá nhân; 2-10 = số đội do HOST thiết lập.
+     */
+    private int teamCount = 0;
 
     public BattleOnlineRoomSettingsDto() {
     }
@@ -80,5 +90,21 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
 
     public void setCountdownMinutes(int countdownMinutes) {
         this.countdownMinutes = countdownMinutes;
+    }
+
+    public int getWrongAnswerFreezeSeconds() {
+        return wrongAnswerFreezeSeconds;
+    }
+
+    public void setWrongAnswerFreezeSeconds(int wrongAnswerFreezeSeconds) {
+        this.wrongAnswerFreezeSeconds = wrongAnswerFreezeSeconds;
+    }
+
+    public int getTeamCount() {
+        return teamCount;
+    }
+
+    public void setTeamCount(int teamCount) {
+        this.teamCount = teamCount;
     }
 }
