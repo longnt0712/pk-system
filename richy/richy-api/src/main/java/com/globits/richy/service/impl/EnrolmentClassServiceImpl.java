@@ -1,5 +1,6 @@
 package com.globits.richy.service.impl;
 
+import java.text.Normalizer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,12 +11,10 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-
-import javax.persistence.EntityManager;
-import javax.persistence.Query;
 
 import org.joda.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,8 +43,6 @@ import com.globits.security.repository.UserRepository;
 @Transactional
 public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	@Autowired
-	EntityManager manager;
-	@Autowired
 	EnrolmentClassRepository enrolmentClassRepository;
 	@Autowired
 	UserRepository userRepository;
@@ -56,47 +53,44 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			"ROLE_STUDENT_MANAGERMENT",
 			"ROLE_STAFF");
 
-	private static final List<String> ALL_CLASS_TEAM_MANAGER_ROLES = Arrays.asList(
-			"ROLE_ADMIN",
-			"ROLE_EDUCATION_MANAGERMENT",
-			"ROLE_STUDENT_MANAGERMENT");
+	private static final String ROLE_ADMIN = "ROLE_ADMIN";
+	private static final String ROLE_EDUCATION_MANAGERMENT = "ROLE_EDUCATION_MANAGERMENT";
+	private static final String ROLE_STUDENT_MANAGERMENT = "ROLE_STUDENT_MANAGERMENT";
+	private static final Integer HIDDEN_SCHOOL_ID = Integer.valueOf(1);
+	private static final Integer EDUCATION_MANAGER_SCHOOL_ID = Integer.valueOf(2);
 
 	@Override
 	public Page<EnrolmentClassDto> getPageObject(EnrolmentClassDto searchDto, int pageIndex, int pageSize) {
-		if (pageIndex > 0)
-			pageIndex = pageIndex - 1;
-		else
-			pageIndex = 0;
-		Pageable pageable = new PageRequest(pageIndex, pageSize);
+		int zeroBasedPage = pageIndex > 0 ? pageIndex - 1 : 0;
+		int safePageSize = pageSize > 0 ? pageSize : 10;
+		Pageable pageable = new PageRequest(zeroBasedPage, safePageSize);
+		String textSearch = searchDto == null || searchDto.getTextSearch() == null
+				? ""
+				: searchDto.getTextSearch().trim().toLowerCase(Locale.ROOT);
+		User currentUser = getCurrentUser();
+		List<EnrolmentClass> domains = enrolmentClassRepository.findAll();
+		sortClasses(domains);
 
-		String textSearch = searchDto == null ? null : searchDto.getTextSearch();
-
-		String sql = "select new com.globits.richy.dto.EnrolmentClassDto(s) from EnrolmentClass s where (1=1)";
-		String sqlCount = "select count(s.id) from EnrolmentClass s where (1=1)";
-		String whereClause = "";
-
-		if (textSearch != null && textSearch.length() > 0) {
-			whereClause += " and (lower(s.name) like :textSearch or lower(s.code) like :textSearch)";
+		List<EnrolmentClassDto> visible = new ArrayList<EnrolmentClassDto>();
+		for (EnrolmentClass domain : domains) {
+			if (!canViewClass(currentUser, domain)) {
+				continue;
+			}
+			String searchable = ((domain.getName() == null ? "" : domain.getName()) + " "
+					+ (domain.getCode() == null ? "" : domain.getCode())).toLowerCase(Locale.ROOT);
+			if (!textSearch.isEmpty() && !searchable.contains(textSearch)) {
+				continue;
+			}
+			visible.add(toDto(domain, null, currentUser));
 		}
 
-		sql += whereClause;
-		sqlCount += whereClause;
-
-		Query q = manager.createQuery(sql, EnrolmentClassDto.class);
-		Query qCount = manager.createQuery(sqlCount);
-
-		if (textSearch != null && textSearch.length() > 0) {
-			q.setParameter("textSearch", '%' + textSearch.trim().toLowerCase() + '%');
-			qCount.setParameter("textSearch", '%' + textSearch.trim().toLowerCase() + '%');
-		}
-
-		q.setFirstResult((pageIndex) * pageSize);
-		q.setMaxResults(pageSize);
-
-		Long numberResult = (Long) qCount.getSingleResult();
-
-		Page<EnrolmentClassDto> page = new PageImpl<EnrolmentClassDto>(q.getResultList(), pageable, numberResult);
-		return page;
+		long requestedFromIndex = (long) zeroBasedPage * (long) safePageSize;
+		int fromIndex = (int) Math.min(requestedFromIndex, (long) visible.size());
+		int toIndex = Math.min(fromIndex + safePageSize, visible.size());
+		return new PageImpl<EnrolmentClassDto>(
+				new ArrayList<EnrolmentClassDto>(visible.subList(fromIndex, toIndex)),
+				pageable,
+				visible.size());
 	}
 
 	@Override
@@ -107,26 +101,67 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	@Override
 	public EnrolmentClassDto getObjectById(Long id) {
 		EnrolmentClass domain = id == null ? null : enrolmentClassRepository.findOne(id);
-		return domain == null ? null : toDto(domain, null, getCurrentUser());
+		if (domain == null) {
+			return null;
+		}
+		User currentUser = getCurrentUser();
+		if (!canViewClass(currentUser, domain)) {
+			throw new AccessDeniedException("Bạn không được xem lớp này.");
+		}
+		return toDto(domain, null, currentUser);
 	}
 
 	@Override
 	public boolean saveObject(EnrolmentClassDto dto) {
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		User modifiedUser = null;
-		LocalDateTime currentDate = LocalDateTime.now();
-		String currentUserName = "Unknown User";
-		if (authentication != null) {
-			modifiedUser = (User) authentication.getPrincipal();
-			currentUserName = modifiedUser.getUsername();
+		User currentUser = getCurrentUser();
+		if (currentUser == null) {
+			throw new AccessDeniedException("Bạn chưa đăng nhập.");
 		}
+		LocalDateTime currentDate = LocalDateTime.now();
+		String currentUserName = currentUser.getUsername();
 		if(dto == null || dto.getName() == null || dto.getName().trim().isEmpty()) {
 			return false;
 		}
 		EnrolmentClass domain = null;
 		if(dto.getId() != null) {
 			domain = enrolmentClassRepository.findOne(dto.getId());
+			if (domain == null) {
+				return false;
+			}
 		}
+		boolean isNew = domain == null;
+		EnrolmentClass originalParent = isNew ? null : domain.getParent();
+		if (!isNew && !canEditClass(currentUser, domain)) {
+			throw new AccessDeniedException("Bạn không được sửa lớp này.");
+		}
+
+		EnrolmentClass parent = null;
+		if (dto.getParentId() != null) {
+			parent = enrolmentClassRepository.findOne(dto.getParentId());
+			if (parent == null || (!isNew && createsCycle(domain, parent))) {
+				return false;
+			}
+		}
+
+		boolean parentChanged = !sameClass(originalParent, parent);
+		if (isNew) {
+			if (parent == null) {
+				if (!canCreateRootClass(currentUser)) {
+					throw new AccessDeniedException("Bạn không được tạo lớp gốc.");
+				}
+			} else if (!canEditClass(currentUser, parent)) {
+				throw new AccessDeniedException("Bạn không được thêm lớp con vào lớp này.");
+			}
+		} else if (parentChanged) {
+			if (parent == null) {
+				if (!canCreateRootClass(currentUser)) {
+					throw new AccessDeniedException("Bạn không được chuyển lớp thành lớp gốc.");
+				}
+			} else if (!canEditClass(currentUser, parent)) {
+				throw new AccessDeniedException("Bạn không được chuyển lớp vào lớp cha này.");
+			}
+		}
+
 		if(domain != null) {
 			domain.setModifiedBy(currentUserName);
 			domain.setModifyDate(currentDate);
@@ -145,17 +180,12 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			domain.setCode(dto.getCode().trim());
 		}
 		
-		domain.setSchoolId(dto.getSchoolId());
-
-		EnrolmentClass parent = null;
-		if (dto.getParentId() != null) {
-			if (domain.getId() != null && domain.getId().equals(dto.getParentId())) {
-				return false;
-			}
-			parent = enrolmentClassRepository.findOne(dto.getParentId());
-			if (parent == null || createsCycle(domain, parent)) {
-				return false;
-			}
+		if (hasRole(currentUser, ROLE_ADMIN)) {
+			domain.setSchoolId(dto.getSchoolId());
+		} else if (parent != null) {
+			domain.setSchoolId(parent.getSchoolId());
+		} else if (isNew) {
+			domain.setSchoolId(EDUCATION_MANAGER_SCHOOL_ID);
 		}
 		domain.setParent(parent);
 
@@ -190,6 +220,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		if(domain == null) {
 			return false;
 		}
+		if (!canEditClass(getCurrentUser(), domain)) {
+			throw new AccessDeniedException("Bạn không được xóa lớp này.");
+		}
 		if (enrolmentClassRepository.countByParentId(id) > 0
 				|| !userRepository.getUsersByEnrollmentClassIds(Collections.singletonList(id)).isEmpty()) {
 			return false;
@@ -203,21 +236,6 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	public List<EnrolmentClassDto> getTreeObjects() {
 		List<EnrolmentClass> domains = enrolmentClassRepository.findAll();
 		User currentUser = getCurrentUser();
-		Set<Long> visibleIds = new HashSet<Long>();
-		boolean canSeeAllClasses = hasAnyRole(currentUser, ALL_CLASS_TEAM_MANAGER_ROLES);
-		if (!canSeeAllClasses) {
-			for (EnrolmentClass domain : domains) {
-				if (!canManageTeams(currentUser, domain)) {
-					continue;
-				}
-				EnrolmentClass current = domain;
-				Set<Long> path = new HashSet<Long>();
-				while (current != null && path.add(current.getId())) {
-					visibleIds.add(current.getId());
-					current = current.getParent();
-				}
-			}
-		}
 		Collections.sort(domains, new Comparator<EnrolmentClass>() {
 			@Override
 			public int compare(EnrolmentClass first, EnrolmentClass second) {
@@ -228,10 +246,10 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		});
 		Map<Long, Integer> childCounts = new HashMap<Long, Integer>();
 		for (EnrolmentClass domain : domains) {
-			if (!canSeeAllClasses && !visibleIds.contains(domain.getId())) {
+			if (!canViewClass(currentUser, domain)) {
 				continue;
 			}
-			if (domain.getParent() != null) {
+			if (domain.getParent() != null && canViewClass(currentUser, domain.getParent())) {
 				Long parentId = domain.getParent().getId();
 				Integer current = childCounts.get(parentId);
 				childCounts.put(parentId, current == null ? 1 : current + 1);
@@ -239,7 +257,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 		List<EnrolmentClassDto> result = new ArrayList<EnrolmentClassDto>();
 		for (EnrolmentClass domain : domains) {
-			if (canSeeAllClasses || visibleIds.contains(domain.getId())) {
+			if (canViewClass(currentUser, domain)) {
 				result.add(toDto(domain, childCounts, currentUser));
 			}
 		}
@@ -280,6 +298,22 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 	@Override
 	public List<UserDto> getResponsibleCandidates(Long parentClassId) {
+		User currentUser = getCurrentUser();
+		if (parentClassId == null) {
+			if (!canCreateRootClass(currentUser)) {
+				throw new AccessDeniedException("Bạn không được tạo hoặc sửa lớp gốc.");
+			}
+		} else {
+			EnrolmentClass parentClass = enrolmentClassRepository.findOne(parentClassId);
+			if (parentClass == null || !canViewClass(currentUser, parentClass)) {
+				throw new AccessDeniedException("Bạn không được xem lớp cha này.");
+			}
+			if (!canEditClass(currentUser, parentClass)
+					&& !canEditAnyDirectChild(currentUser, parentClassId)) {
+				throw new AccessDeniedException("Bạn không được sửa lớp trong phạm vi này.");
+			}
+		}
+
 		Map<Long, UserDto> candidates = new LinkedHashMap<Long, UserDto>();
 		for (UserDto teacher : getTeacherCandidates()) {
 			if (teacher != null && teacher.getId() != null) {
@@ -287,7 +321,13 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			}
 		}
 
-		List<Long> classIds = getClassAndDescendantIds(parentClassId);
+		List<Long> classIds = new ArrayList<Long>();
+		for (Long classId : getClassAndDescendantIds(parentClassId)) {
+			EnrolmentClass candidateClass = enrolmentClassRepository.findOne(classId);
+			if (canViewClass(currentUser, candidateClass)) {
+				classIds.add(classId);
+			}
+		}
 		if (!classIds.isEmpty()) {
 			for (User student : userRepository.getActiveStudentsByEnrollmentClassIds(classIds)) {
 				if (student != null && student.getId() != null && !candidates.containsKey(student.getId())) {
@@ -324,7 +364,12 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			throw new AccessDeniedException("Bạn không được phân đội cho lớp này.");
 		}
 
-		List<EnrolmentClass> teamDomains = enrolmentClassRepository.findByParentId(classId);
+		List<EnrolmentClass> teamDomains = new ArrayList<EnrolmentClass>();
+		for (EnrolmentClass team : enrolmentClassRepository.findByParentId(classId)) {
+			if (canViewClass(currentUser, team)) {
+				teamDomains.add(team);
+			}
+		}
 		sortClasses(teamDomains);
 
 		List<Long> scopeIds = new ArrayList<Long>();
@@ -337,7 +382,11 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		Collections.sort(students, new Comparator<User>() {
 			@Override
 			public int compare(User first, User second) {
-				return studentName(first).compareToIgnoreCase(studentName(second));
+				int byName = studentNameSortKey(first).compareTo(studentNameSortKey(second));
+				if (byName != 0) {
+					return byName;
+				}
+				return studentUsername(first).compareTo(studentUsername(second));
 			}
 		});
 
@@ -359,6 +408,11 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 		for (User student : students) {
 			UserDto studentDto = new UserDto(student, true);
+			if (student.getPerson() != null) {
+				studentDto.setLastName(student.getPerson().getLastName());
+				studentDto.setFirstName(student.getPerson().getFirstName());
+				studentDto.setDisplayName(studentDisplayName(student));
+			}
 			EnrolmentClassTeamDto assignedTeam = null;
 			for (EnrolmentClass team : teamDomains) {
 				if (userBelongsToClass(student, team.getId())) {
@@ -389,11 +443,17 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		if (selectedClass == null) {
 			return null;
 		}
-		if (!canManageTeams(getCurrentUser(), selectedClass)) {
+		User currentUser = getCurrentUser();
+		if (!canManageTeams(currentUser, selectedClass)) {
 			throw new AccessDeniedException("Bạn không được phân đội cho lớp này.");
 		}
 
-		List<EnrolmentClass> directTeams = enrolmentClassRepository.findByParentId(classId);
+		List<EnrolmentClass> directTeams = new ArrayList<EnrolmentClass>();
+		for (EnrolmentClass team : enrolmentClassRepository.findByParentId(classId)) {
+			if (canViewClass(currentUser, team)) {
+				directTeams.add(team);
+			}
+		}
 		Set<Long> directTeamIds = new HashSet<Long>();
 		for (EnrolmentClass team : directTeams) {
 			directTeamIds.add(team.getId());
@@ -452,10 +512,17 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			Map<Long, Integer> childCounts,
 			User currentUser) {
 		EnrolmentClassDto dto = new EnrolmentClassDto(domain);
+		if (domain.getParent() != null && !canViewClass(currentUser, domain.getParent())) {
+			dto.setParentId(null);
+			dto.setParentName(null);
+		}
 		if (childCounts != null && childCounts.containsKey(domain.getId())) {
 			dto.setChildCount(childCounts.get(domain.getId()));
 		}
 		dto.setCanManageTeams(canManageTeams(currentUser, domain));
+		boolean canEdit = canEditClass(currentUser, domain);
+		dto.setCanEdit(canEdit);
+		dto.setCanAddChild(canEdit);
 		return dto;
 	}
 
@@ -470,20 +537,75 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		});
 	}
 
-	private String studentName(User student) {
+	private String studentDisplayName(User student) {
 		if (student != null && student.getPerson() != null) {
-			String displayName = student.getPerson().getDisplayName();
-			if (displayName != null && !displayName.trim().isEmpty()) {
-				return displayName.trim();
-			}
 			String lastName = student.getPerson().getLastName() == null ? "" : student.getPerson().getLastName();
 			String firstName = student.getPerson().getFirstName() == null ? "" : student.getPerson().getFirstName();
-			String fullName = (lastName + " " + firstName).trim();
+			String fullName = normalizeNameSpacing(lastName + " " + firstName);
 			if (!fullName.isEmpty()) {
 				return fullName;
 			}
+
+			String displayName = student.getPerson().getDisplayName();
+			if (displayName != null && !displayName.trim().isEmpty()) {
+				return normalizeNameSpacing(displayName);
+			}
 		}
 		return student == null || student.getUsername() == null ? "" : student.getUsername();
+	}
+
+	private String studentNameSortKey(User student) {
+		if (student == null || student.getPerson() == null) {
+			return "";
+		}
+
+		String lastName = normalizeVietnameseText(student.getPerson().getLastName());
+		String firstName = removeNameNote(student.getPerson().getFirstName());
+		String fullName = normalizeVietnameseText(lastName + " " + firstName);
+		if (fullName.isEmpty()) {
+			return "";
+		}
+
+		String[] nameParts = fullName.split(" ");
+		StringBuilder sortKey = new StringBuilder();
+		for (int index = nameParts.length - 1; index >= 0; index--) {
+			if (nameParts[index].isEmpty()) {
+				continue;
+			}
+			if (sortKey.length() > 0) {
+				sortKey.append('|');
+			}
+			sortKey.append(nameParts[index]);
+		}
+		return sortKey.toString();
+	}
+
+	private String normalizeVietnameseText(String value) {
+		String text = normalizeNameSpacing(value).toLowerCase(Locale.ROOT);
+		return Normalizer.normalize(text, Normalizer.Form.NFC);
+	}
+
+	private String normalizeNameSpacing(String value) {
+		return value == null ? "" : value.replaceAll("\\s+", " ").trim();
+	}
+
+	private String removeNameNote(String value) {
+		String text = normalizeVietnameseText(value);
+		String oldText;
+		do {
+			oldText = text;
+			text = text
+					.replaceAll("\\s*\\([^()]*\\)\\s*$", "")
+					.replaceAll("\\s*\\[[^\\[\\]]*\\]\\s*$", "")
+					.trim();
+		} while (!text.equals(oldText));
+		return text;
+	}
+
+	private String studentUsername(User student) {
+		return student == null || student.getUsername() == null
+				? ""
+				: student.getUsername().toLowerCase(Locale.ROOT);
 	}
 
 	private boolean userBelongsToClass(User user, Long classId) {
@@ -507,13 +629,71 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	}
 
 	private boolean canManageTeams(User user, EnrolmentClass selectedClass) {
+		if (!canViewClass(user, selectedClass)) {
+			return false;
+		}
+		if (hasRole(user, ROLE_ADMIN)) {
+			return true;
+		}
+		if (hasRole(user, ROLE_EDUCATION_MANAGERMENT)
+				&& EDUCATION_MANAGER_SCHOOL_ID.equals(selectedClass.getSchoolId())) {
+			return true;
+		}
+		return isAssignedResponsibleForClassOrAncestor(user, selectedClass)
+				&& isTeacherCandidate(user);
+	}
+
+	private boolean canViewClass(User user, EnrolmentClass selectedClass) {
 		if (user == null || selectedClass == null) {
 			return false;
 		}
-		for (String roleName : ALL_CLASS_TEAM_MANAGER_ROLES) {
-			if (hasRole(user, roleName)) {
+		if (hasRole(user, ROLE_ADMIN)) {
+			return true;
+		}
+		if (HIDDEN_SCHOOL_ID.equals(selectedClass.getSchoolId())) {
+			return false;
+		}
+		return hasRole(user, ROLE_EDUCATION_MANAGERMENT)
+				|| hasRole(user, ROLE_STUDENT_MANAGERMENT)
+				|| isAssignedResponsibleForClassOrAncestor(user, selectedClass);
+	}
+
+	private boolean canEditClass(User user, EnrolmentClass selectedClass) {
+		if (!canViewClass(user, selectedClass)) {
+			return false;
+		}
+		if (hasRole(user, ROLE_ADMIN)) {
+			return true;
+		}
+		if (hasRole(user, ROLE_EDUCATION_MANAGERMENT)
+				&& EDUCATION_MANAGER_SCHOOL_ID.equals(selectedClass.getSchoolId())) {
+			return true;
+		}
+		return hasRole(user, ROLE_STUDENT_MANAGERMENT)
+				&& isAssignedResponsibleForClassOrAncestor(user, selectedClass);
+	}
+
+	private boolean canCreateRootClass(User user) {
+		return hasRole(user, ROLE_ADMIN) || hasRole(user, ROLE_EDUCATION_MANAGERMENT);
+	}
+
+	private boolean canEditAnyDirectChild(User user, Long parentClassId) {
+		if (user == null || parentClassId == null) {
+			return false;
+		}
+		for (EnrolmentClass child : enrolmentClassRepository.findByParentId(parentClassId)) {
+			if (canEditClass(user, child)) {
 				return true;
 			}
+		}
+		return false;
+	}
+
+	private boolean isAssignedResponsibleForClassOrAncestor(
+			User user,
+			EnrolmentClass selectedClass) {
+		if (user == null || user.getId() == null || selectedClass == null) {
+			return false;
 		}
 		Set<Long> visited = new HashSet<Long>();
 		EnrolmentClass current = selectedClass;
@@ -521,8 +701,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			if (current.getTeachers() != null) {
 				for (User teacher : current.getTeachers()) {
 					if (teacher != null
-							&& user.getId().equals(teacher.getId())
-							&& isTeacherCandidate(user)) {
+							&& user.getId().equals(teacher.getId())) {
 						return true;
 					}
 				}
@@ -532,24 +711,19 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		return false;
 	}
 
+	private boolean sameClass(EnrolmentClass first, EnrolmentClass second) {
+		if (first == null || second == null) {
+			return first == second;
+		}
+		return first.getId() != null && first.getId().equals(second.getId());
+	}
+
 	private boolean hasRole(User user, String roleName) {
 		if (user == null || user.getRoles() == null) {
 			return false;
 		}
 		for (Role role : user.getRoles()) {
 			if (role != null && roleName.equals(role.getName())) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private boolean hasAnyRole(User user, List<String> roleNames) {
-		if (roleNames == null) {
-			return false;
-		}
-		for (String roleName : roleNames) {
-			if (hasRole(user, roleName)) {
 				return true;
 			}
 		}

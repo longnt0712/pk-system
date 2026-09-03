@@ -62,19 +62,19 @@ public class RestEnrolmentClassController {
 		return service.getTeacherCandidates();
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/responsible_candidates/{parentClassId}", method = RequestMethod.GET)
 	public List<UserDto> getResponsibleCandidates(@PathVariable Long parentClassId) {
 		return service.getResponsibleCandidates(parentClassId);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/save", method = RequestMethod.POST)
 	public boolean saveOne(@RequestBody EnrolmentClassDto searchDto) {
 		return service.saveObject(searchDto);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)
 	public boolean saveOne(@PathVariable Long id) {
 		return service.deleteObject(id);
