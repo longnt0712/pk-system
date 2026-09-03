@@ -141,6 +141,12 @@
                     </ul>
                 </li>
 
+                <li ng-show="settings.isStaff == true || settings.isStudentManagerment == true">
+                    <a href="enrolment_classes">
+                        <i class="fa fa-sitemap"></i> LỚP PHỤ TRÁCH
+                    </a>
+                </li>
+
                 <li ng-show="settings.isAdmin == true || settings.isEducationManagerment == true" class="menu-dropdown">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         ĐÀO TẠO <span class="caret"></span>

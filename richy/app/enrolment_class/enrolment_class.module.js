@@ -7,17 +7,19 @@
         'bsTable',
         'toastr',
         'ui.select',
+        'dndLists',
         'Hrm.Common'
     ]);
 
-    	Hrm.EnrolmentClass.config(['$stateProvider', function ($stateProvider) {
+	Hrm.EnrolmentClass.config(['$stateProvider', function ($stateProvider) {
+		var version = window.APP_VERSION || new Date().getTime();
 
         $stateProvider
 
             // Event priority
             .state('application.class', {
                 url: '/enrolment_classes',
-                templateUrl: 'enrolment_class/views/listing.html',
+				templateUrl: 'enrolment_class/views/listing.html?v=' + version,
                 data: {pageTitle: 'EnrolmentClass'},
                 controller: 'EnrolmentClassController as vm',
                 resolve: {
@@ -26,8 +28,8 @@
                             name: 'Hrm.EnrolmentClass',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'enrolment_class/controllers/EnrolmentClassController.js',
-                                'enrolment_class/business/EnrolmentClassService.js'
+								'enrolment_class/controllers/EnrolmentClassController.js?v=' + version,
+								'enrolment_class/business/EnrolmentClassService.js?v=' + version
                             ]
                         });
                     }]

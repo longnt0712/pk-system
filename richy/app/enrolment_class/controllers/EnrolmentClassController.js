@@ -1,359 +1,408 @@
-/**
- * Created by nguyen the dat on 23/4/2018.
- */
 (function () {
     'use strict';
 
     angular.module('Hrm.EnrolmentClass').controller('EnrolmentClassController', EnrolmentClassController);
 
     EnrolmentClassController.$inject = [
-        '$rootScope',
-        '$scope',
-        'toastr',
-        '$timeout',
-        'settings',
-        'Utilities',
-        '$uibModal',
-        'EnrolmentClassService',
-        'Upload'
+        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService'
     ];
 
-    angular.module('Hrm.EnrolmentClass').directive('fileDownload',function(){
-        return{
-            restrict:'A',
-            scope:{
-                fileDownload:'=',
-                fileName:'=',
-            },
-
-            link:function(scope,elem,atrs){
-
-
-                scope.$watch('fileDownload',function(newValue, oldValue){
-
-                    if(newValue!=undefined && newValue!=null){
-                        console.debug('Downloading a new file');
-                        var isFirefox = typeof InstallTrigger !== 'undefined';
-                        var isSafari = Object.prototype.toString.call(window.HTMLElement).indexOf('Constructor') > 0;
-                        var isIE = /*@cc_on!@*/false || !!document.documentMode;
-                        var isEdge = !isIE && !!window.StyleMedia;
-                        var isChrome = !!window.chrome && !!window.chrome.webstore || window.chrome!=null;;
-                        var isOpera = (!!window.opr && !!opr.addons) || !!window.opera || navigator.userAgent.indexOf(' OPR/') >= 0;
-                        var isBlink = (isChrome || isOpera) && !!window.CSS;
-
-                        if(isFirefox || isIE || isChrome){
-                            if(isChrome){
-                                console.log('Manage Google Chrome download');
-                                var url = window.URL || window.webkitURL;
-                                var fileURL = url.createObjectURL(scope.fileDownload);
-                                var downloadLink = angular.element('<a></a>');//create a new  <a> tag element
-                                downloadLink.attr('href',fileURL);
-                                downloadLink.attr('download',scope.fileName);
-                                downloadLink.attr('target','_self');
-                                downloadLink[0].click();//call click function
-                                url.revokeObjectURL(fileURL);//revoke the object from URL
-                            }
-                            if(isIE){
-                                console.log('Manage IE download>10');
-                                window.navigator.msSaveOrOpenBlob(scope.fileDownload,scope.fileName);
-                            }
-                            if(isFirefox){
-                                console.log('Manage Mozilla Firefox download');
-                                var url = window.URL || window.webkitURL;
-                                var fileURL = url.createObjectURL(scope.fileDownload);
-                                var a=elem[0];//recover the <a> tag from directive
-                                a.href=fileURL;
-                                a.download=scope.fileName;
-                                a.target='_self';
-                                a.click();//we call click function
-                            }
-
-
-                        }else{
-                            alert('SORRY YOUR BROWSER IS NOT COMPATIBLE');
-                        }
-                    }
-                });
-
-            }
-        }
-    });
-
-    angular.module('Hrm.EnrolmentClass').filter('removeHTMLTags', function() {
-
-        return function(text) {
-
-            return  text ? String(text).replace(/<[^>]+>/gm, '') : '';
-
-        };
-
-    });
-
-    function EnrolmentClassController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, Upload) {
+    function EnrolmentClassController($rootScope, $scope, toastr, modal, service) {
         $scope.$on('$viewContentLoaded', function () {
-            // initialize core components
             App.initAjax();
         });
 
-        // set sidebar closed and body solid layout mode
         $rootScope.settings.layout.pageContentWhite = true;
         $rootScope.settings.layout.pageBodySolid = false;
         $rootScope.settings.layout.pageSidebarClosed = false;
+
         var vm = this;
-
+        vm.allClasses = [];
+        vm.visibleClasses = [];
+        vm.teacherCandidates = [];
+        vm.expanded = {};
+        vm.searchText = '';
         vm.enrolmentClass = {};
-        vm.enrolmentClasses = [];
-        vm.selectedEnrolmentClasses = [];
-        vm.pageIndex = 1;
-        vm.pageSize = 25;
-        vm.searchDto = {};
+        vm.saving = false;
+        vm.modalInstance = null;
+        vm.teamBoard = null;
+        vm.teamBoardModal = null;
+        vm.teamSearchText = '';
+        vm.teamBoardSaving = false;
 
-        /* TINYMCE */
-        vm.tinymceOptions = {
-            height: 130,
-            theme: 'modern',
-            plugins: [
-                'lists fullscreen' //autoresize
-            ],
-            toolbar1: 'bold underline italic | removeformat | bullist numlist outdent indent | fullscreen',
-            content_css: [
-                '//fonts.googleapis.com/css?family=Poppins:300,400,500,600,700',
-                '/assets/css/tinymce_content.css'
-            ],
-            autoresize_bottom_margin: 0,
-            statusbar: false,
-            menubar: false
+        vm.canEditClassStructure = function () {
+            var currentSettings = $rootScope.settings || {};
+            return currentSettings.isAdmin === true || currentSettings.isEducationManagerment === true;
         };
 
-        vm.getPage = function () {
-            service.getPage(vm.searchDto,vm.pageIndex, vm.pageSize).then(function (data) {
-                vm.enrolmentClasses = data.content;
-                vm.bsTableControl.options.data = vm.enrolmentClasses;
-                vm.bsTableControl.options.totalRows = data.totalElements;
+        vm.load = function () {
+            service.getTree().then(function (data) {
+                vm.allClasses = angular.isArray(data) ? data : [];
+                angular.forEach(vm.allClasses, function (item) {
+                    if (angular.isUndefined(vm.expanded[item.id])) {
+                        vm.expanded[item.id] = true;
+                    }
+                });
+                vm.rebuildTree();
             });
         };
 
-        vm.getPage();
+        vm.loadTeachers = function () {
+            service.getTeacherCandidates().then(function (data) {
+                vm.teacherCandidates = angular.isArray(data) ? data : [];
+				vm.teacherCandidates.sort(function (a, b) {
+					return (a.displayName || a.username || '').localeCompare(
+						b.displayName || b.username || '', 'vi');
+				});
+            });
+        };
 
-        vm.bsTableControl = {
-            options: {
-                data: vm.enrolmentClasses,
-                idField: 'id',
-                sortable: true,
-                striped: true,
-                maintainSelected: true,
-                clickToSelect: false,
-                showColumns: true,
-                showToggle: true,
-                pagination: true,
-                pageSize: vm.pageSize,
-                pageList: [5, 10, 25, 50, 100],
-                locale: settings.locale,
-                sidePagination: 'server',
-                columns: service.getTableDefinition(),
-                onCheck: function (row, $element) {
-                    $scope.$apply(function () {
-                        vm.selectedEnrolmentClasses.push(row);
-                    });
-                },
-                onCheckAll: function (rows) {
-                    $scope.$apply(function () {
-                        vm.selectedEnrolmentClasses = rows;
-                    });
-                },
-                onUncheck: function (row, $element) {
-                    var index = utils.indexOf(row, vm.selectedpositiontitles);
-                    if (index >= 0) {
-                        $scope.$apply(function () {
-                            vm.selectedEnrolmentClasses.splice(index, 1);
-                        });
+        vm.rebuildTree = function () {
+            var byId = {};
+            var children = {};
+            var roots = [];
+            var query = (vm.searchText || '').toLowerCase().trim();
+            var included = {};
+
+            angular.forEach(vm.allClasses, function (item) {
+                byId[item.id] = item;
+                children[item.id] = [];
+            });
+
+            angular.forEach(vm.allClasses, function (item) {
+                if (item.parentId && byId[item.parentId] && item.parentId !== item.id) {
+                    children[item.parentId].push(item);
+                } else {
+                    roots.push(item);
+                }
+            });
+
+			function treeLabel(item, path) {
+				path = path || {};
+				if (!item || path[item.id]) {
+					return item ? (item.name || '') : '';
+				}
+				path[item.id] = true;
+				var parent = item.parentId ? byId[item.parentId] : null;
+				return parent
+					? treeLabel(parent, path) + ' / ' + (item.name || '')
+					: (item.name || '');
+			}
+			angular.forEach(vm.allClasses, function (item) {
+				item.treeLabel = treeLabel(item, {});
+			});
+
+            function sortItems(items) {
+                items.sort(function (a, b) {
+                    return (a.name || '').localeCompare(b.name || '', 'vi');
+                });
+            }
+
+            sortItems(roots);
+            angular.forEach(children, sortItems);
+
+            if (query) {
+                angular.forEach(vm.allClasses, function (item) {
+                    var haystack = ((item.name || '') + ' ' + (item.code || '')).toLowerCase();
+                    if (haystack.indexOf(query) < 0) {
+                        return;
                     }
-                },
-                onUncheckAll: function (rows) {
-                    $scope.$apply(function () {
-                        vm.selectedEnrolmentClasses = [];
+                    var current = item;
+                    var guard = {};
+                    while (current && !guard[current.id]) {
+                        included[current.id] = true;
+                        guard[current.id] = true;
+                        current = current.parentId ? byId[current.parentId] : null;
+                    }
+                });
+            }
+
+            var result = [];
+            var visited = {};
+            function append(item, level) {
+                if (!item || visited[item.id] || (query && !included[item.id])) {
+                    return;
+                }
+                visited[item.id] = true;
+                item.level = level;
+                item.hasChildren = children[item.id].length > 0;
+                result.push(item);
+                if (query || vm.expanded[item.id]) {
+                    angular.forEach(children[item.id], function (child) {
+                        append(child, level + 1);
                     });
-                },
-                onPageChange: function (index, pageSize) {
-                    vm.pageSize = pageSize;
-                    vm.pageIndex = index;
-                    vm.getPage();
+                }
+            }
+
+            angular.forEach(roots, function (root) { append(root, 0); });
+            angular.forEach(vm.allClasses, function (item) { append(item, 0); });
+            vm.visibleClasses = result;
+        };
+
+        vm.toggle = function (item) {
+            if (!item.hasChildren) {
+                return;
+            }
+            vm.expanded[item.id] = !vm.expanded[item.id];
+            vm.rebuildTree();
+        };
+
+        vm.teacherNames = function (item) {
+            return (item.teachers || []).map(function (teacher) {
+                return teacher.displayName || teacher.username;
+            }).join(', ');
+        };
+
+        function sameTeamId(first, second) {
+            if (first === null || angular.isUndefined(first)) {
+                return second === null || angular.isUndefined(second);
+            }
+            if (second === null || angular.isUndefined(second)) {
+                return false;
+            }
+            return String(first) === String(second);
+        }
+
+        vm.decorateTeamBoard = function (board) {
+            if (!board) {
+                vm.teamBoard = null;
+                return;
+            }
+            board.unassignedStudents = board.unassignedStudents || [];
+            board.teams = board.teams || [];
+            board.columns = [{
+                id: null,
+                name: 'Chưa phân đội',
+                code: '',
+                unassigned: true,
+                students: board.unassignedStudents
+            }].concat(board.teams);
+
+            angular.forEach(board.columns, function (column) {
+                column.students = column.students || [];
+                angular.forEach(column.students, function (student) {
+                    student._teamId = column.id;
+                    student._targetTeamId = column.id;
+                });
+            });
+            vm.teamBoard = board;
+        };
+
+        vm.openTeamBoard = function (item) {
+            if (!item || !item.id || item.canManageTeams !== true) {
+                toastr.warning('Bạn không được phân đội cho lớp này.', 'Thông báo');
+                return;
+            }
+            vm.teamSearchText = '';
+            service.getTeamBoard(item.id).then(function (data) {
+                if (!data) {
+                    toastr.error('Không tải được danh sách phân đội.', 'Lỗi');
+                    return;
+                }
+                vm.decorateTeamBoard(data);
+                vm.teamBoardModal = modal.open({
+                    animation: true,
+                    templateUrl: 'team_board_modal.html',
+                    scope: $scope,
+                    size: 'lg',
+                    backdrop: 'static'
+                });
+            }, function () {
+                toastr.error('Không tải được danh sách phân đội hoặc bạn không có quyền.', 'Lỗi');
+            });
+        };
+
+        vm.studentName = function (student) {
+            return student ? (student.displayName || student.username || 'Học sinh') : '';
+        };
+
+        vm.teamStudentFilter = function (student) {
+            var query = (vm.teamSearchText || '').toLowerCase().trim();
+            if (!query) {
+                return true;
+            }
+            var value = (vm.studentName(student) + ' ' + (student.username || '')).toLowerCase();
+            return value.indexOf(query) >= 0;
+        };
+
+        vm.findTeamColumn = function (teamId) {
+            var found = null;
+            angular.forEach((vm.teamBoard && vm.teamBoard.columns) || [], function (column) {
+                if (!found && sameTeamId(column.id, teamId)) {
+                    found = column;
+                }
+            });
+            return found;
+        };
+
+        vm.removeDraggedStudent = function (sourceColumn, student) {
+            if (!sourceColumn || !student) {
+                return;
+            }
+            for (var index = 0; index < sourceColumn.students.length; index++) {
+                if (sourceColumn.students[index].id === student.id) {
+                    sourceColumn.students.splice(index, 1);
+                    return;
                 }
             }
         };
 
-        /**
-         * New event account
-         */
-        vm.saveObject = function () {
-            // service.saveObject(vm.enrolmentClass, function success(response) {
-            //
-            //     vm.getPage();
-            //     toastr.info(response.message, 'Thông báo');
-            //     vm.enrolmentClass = {};
-            //
-            // }, function failure() {
-            //     toastr.error('Có lỗi khi cập nhật điểm', 'Lỗi');
-            // });
-
-            service.saveObject(vm.enrolmentClass).then(function (data) {
-                vm.getPage();
-                toastr.info(data.message, 'Thông báo');
-            }, function failure() {
-                toastr.error('Có lỗi khi cập nhật điểm', 'Lỗi');
+        vm.persistStudentMove = function (student, targetTeamId) {
+            if (!vm.teamBoard || !student || vm.teamBoardSaving) {
+                return;
+            }
+            vm.teamBoardSaving = true;
+            service.moveStudentToTeam(vm.teamBoard.classId, {
+                userId: student.id,
+                targetTeamId: targetTeamId
+            }).then(function (data) {
+                if (!data) {
+                    toastr.error('Không thể chuyển đội cho học sinh.', 'Lỗi');
+                    vm.reloadTeamBoard();
+                    return;
+                }
+                vm.decorateTeamBoard(data);
+                vm.teamBoardSaving = false;
+            }, function () {
+                toastr.error('Không thể chuyển đội. Danh sách sẽ được tải lại.', 'Lỗi');
+                vm.reloadTeamBoard();
             });
         };
 
-        vm.newObject = function () {
-            vm.enrolmentClass = {};
-            vm.enrolmentClass.isNew = true;
+        vm.dropStudent = function (targetColumn, student) {
+            if (!targetColumn || !student || vm.teamBoardSaving || sameTeamId(student._teamId, targetColumn.id)) {
+                return false;
+            }
+            targetColumn.students.push(student);
+            student._teamId = targetColumn.id;
+            student._targetTeamId = targetColumn.id;
+            vm.persistStudentMove(student, targetColumn.id);
+            return true;
+        };
 
-            var modalInstance = modal.open({
+        vm.moveStudentFromSelect = function (student) {
+            if (!student || vm.teamBoardSaving || sameTeamId(student._teamId, student._targetTeamId)) {
+                return;
+            }
+            var sourceColumn = vm.findTeamColumn(student._teamId);
+            var targetColumn = vm.findTeamColumn(student._targetTeamId);
+            if (!targetColumn) {
+                student._targetTeamId = student._teamId;
+                return;
+            }
+            vm.removeDraggedStudent(sourceColumn, student);
+            targetColumn.students.push(student);
+            student._teamId = targetColumn.id;
+            vm.persistStudentMove(student, targetColumn.id);
+        };
+
+        vm.reloadTeamBoard = function () {
+            if (!vm.teamBoard || !vm.teamBoard.classId) {
+                vm.teamBoardSaving = false;
+                return;
+            }
+            service.getTeamBoard(vm.teamBoard.classId).then(function (data) {
+                vm.decorateTeamBoard(data);
+                vm.teamBoardSaving = false;
+            }, function () {
+                vm.teamBoardSaving = false;
+            });
+        };
+
+        vm.openEditor = function (item, parentId) {
+            if (item && item.id) {
+                service.getOne(item.id).then(function (data) {
+                    vm.showEditor(data || {});
+                });
+                return;
+            }
+            vm.showEditor({
+                isNew: true,
+                parentId: parentId || null,
+                teacherIds: []
+            });
+        };
+
+        vm.showEditor = function (object) {
+            vm.enrolmentClass = angular.copy(object || {});
+            vm.enrolmentClass.isNew = !vm.enrolmentClass.id;
+            vm.enrolmentClass.teacherIds = vm.enrolmentClass.teacherIds || [];
+            vm.modalInstance = modal.open({
                 animation: true,
                 templateUrl: 'edit_object_modal.html',
                 scope: $scope,
-                size: 'md'
-            });
-
-            modalInstance.result.then(function (confirm) {
-                // if (confirm == 'yes') {
-                //     // service.saveObject(vm.enrolmentClass, function success() {
-                //     //     vm.getPage();
-                //     //     toastr.info('Bạn đã tạo mới thành công một tài khoản.', 'Thông báo');
-                //     //     vm.enrolmentClass = {};
-                //     // }, function failure() {
-                //     //     toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
-                //     // });
-                //     vm.saveObject();
-                // }
-            }, function () {
-                vm.enrolmentClass = {};
+                size: 'lg'
             });
         };
 
-        /**
-         * Edit a account
-         */
-        $scope.editObject = function (id) {
-            service.getOne(id).then(function (data) {
-                vm.enrolmentClass = data;
-                vm.enrolmentClass.isNew = false;
-                var modalInstance = modal.open({
-                    animation: true,
-                    templateUrl: 'edit_object_modal.html',
-                    scope: $scope,
-                    size: 'md'
-                });
-
-                modalInstance.result.then(function (confirm) {
-                    if (confirm == 'yes') {
-                        // service.saveObject(vm.enrolmentClass, function success() {
-                        //     vm.getPage();
-                        //     toastr.info('Bạn đã lưu thành công một bản ghi.', 'Thông báo');
-                        //     vm.enrolmentClass = {};
-                        // }, function failure() {
-                        //     toastr.error('Có lỗi xảy ra khi lưu thông tin tài khoản.', 'Lỗi');
-                        // });
-                        vm.saveObject();
+        vm.availableParents = function () {
+            if (!vm.enrolmentClass.id) {
+                return vm.allClasses;
+            }
+            var forbidden = {};
+            forbidden[vm.enrolmentClass.id] = true;
+            var changed = true;
+            while (changed) {
+                changed = false;
+                angular.forEach(vm.allClasses, function (item) {
+                    if (item.parentId && forbidden[item.parentId] && !forbidden[item.id]) {
+                        forbidden[item.id] = true;
+                        changed = true;
                     }
-                }, function () {
-                    vm.enrolmentClass = {};
                 });
+            }
+            return vm.allClasses.filter(function (item) { return !forbidden[item.id]; });
+        };
+
+        vm.saveObject = function () {
+            if (!vm.enrolmentClass.name || !vm.enrolmentClass.name.trim()) {
+                toastr.warning('Bạn chưa nhập tên lớp.', 'Thông báo');
+                return;
+            }
+            vm.saving = true;
+            service.saveObject(vm.enrolmentClass).then(function (saved) {
+                vm.saving = false;
+                if (saved !== true) {
+                    toastr.error('Không thể lưu. Hãy kiểm tra lớp cha và giáo viên phụ trách.', 'Lỗi');
+                    return;
+                }
+                toastr.success('Đã lưu lớp học.', 'Thông báo');
+                if (vm.modalInstance) {
+                    vm.modalInstance.close();
+                }
+                vm.load();
+            }, function () {
+                vm.saving = false;
+                toastr.error('Có lỗi khi lưu lớp học.', 'Lỗi');
             });
         };
 
-        /**
-         * Delete accounts
-         */
-        $scope.deleteObject = function (id) {
-            var modalInstance = modal.open({
+        vm.confirmDelete = function (item) {
+            vm.enrolmentClassToDelete = item;
+            var confirmModal = modal.open({
                 animation: true,
                 templateUrl: 'confirm_delete_modal.html',
                 scope: $scope,
                 size: 'md'
             });
-
-            modalInstance.result.then(function (confirm) {
-                if (confirm == 'yes') {
-                	console.log(vm.selectedEnrolmentClasses);
-                    service.deleteObject(id, function success() {
-                        toastr.info('Bạn đã xóa thành công', 'Thông báo');
-                        vm.getPage();
-                    }, function failure() {
-                        toastr.error('Có lỗi xảy ra khi xóa bản ghi.', 'Lỗi');
-                    });
+            confirmModal.result.then(function (answer) {
+                if (answer !== 'yes') {
+                    return;
                 }
-            }, function () {
-            });
-        };
-
-        //// Upload file
-        $scope.MAX_FILE_SIZE = '2MB';
-        $scope.f = null;
-        $scope.errFile = null;
-        vm.baseUrl = settings.api.baseUrl + settings.api.apiPrefix;
-
-        $scope.uploadFiles = function(file, errFiles) {
-            $scope.f = file;
-            $scope.errFile = errFiles && errFiles[0];
-        };
-
-        vm.startUploadFile = function(file) {
-            // console.log(file);
-            if (file) {
-                file.upload = Upload.upload({
-                    url: vm.baseUrl + 'file/import_bill/',
-                    data: {uploadfile: file}
+                service.deleteObject(item.id).then(function (deleted) {
+                    if (deleted !== true) {
+                        toastr.warning('Không thể xóa lớp đang có tổ/lớp con hoặc có học sinh.', 'Thông báo');
+                        return;
+                    }
+                    toastr.success('Đã xóa lớp học.', 'Thông báo');
+                    vm.load();
                 });
-
-                file.upload.then(function (response) {
-                    // console.log(response);
-                    file.result = response.data;
-                    // getListSubject(vm.pageIndex,vm.pageSize);
-                    toastr.info('Import thành công.', 'Thông báo');
-                },function errorCallback(response) {
-                    toastr.error('Import lỗi.', 'Lỗi');
-                });
-            }
+            });
         };
 
-        vm.importBills = function () {
-            var modalInstance = modal.open({
-                animation: true,
-                templateUrl: 'import_modal.html',
-                scope: $scope,
-                size: 'md'
-            });
-
-            vm.student = {};
-            $scope.f = null;
-            $scope.errFile = null;
-
-            modalInstance.result.then(function (confirm) {
-                if (confirm == 'yes') {
-                    vm.startUploadFile($scope.f);
-                    // console.log($scope.f);
-                }
-            }, function () {
-                vm.enrolmentClass = null;
-                vm.address = {};
-                // console.log("cancel");
-            });
+        vm.load();
+        if (vm.canEditClassStructure()) {
+            vm.loadTeachers();
         }
-
-        $scope.myBlobObject=undefined;
-        $scope.getFile=function(){
-            console.log('download started, you can show a wating animation');
-            service.getStream()
-                .then(function(data){//is important that the data was returned as Aray Buffer
-                    console.log('Stream download complete, stop animation!');
-                    $scope.myBlobObject=new Blob([data],{ type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-                },function(fail){
-                    console.log('Download Error, stop animation and show error message');
-                    $scope.myBlobObject=[];
-                });
-        };
-
     }
-
 })();
