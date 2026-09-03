@@ -6,7 +6,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 import javax.persistence.CascadeType;
+import javax.persistence.CollectionTable;
 import javax.persistence.Column;
+import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
@@ -71,6 +73,16 @@ public class User extends BaseObject implements UserDetails {
 	@Fetch(FetchMode.SELECT)
 	@JoinTable(name = "tbl_user_usergroup", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "group_id"))
 	private Set<UserGroup> groups = new HashSet<UserGroup>();
+
+	/*
+	 * Một học sinh có thể học nhiều lớp. Collection chỉ lưu id để core-api
+	 * không phải phụ thuộc ngược vào entity EnrolmentClass của richy-api.
+	 */
+	@ElementCollection(fetch = FetchType.EAGER)
+	@Fetch(FetchMode.SELECT)
+	@CollectionTable(name = "tbl_user_enrolment_class", joinColumns = @JoinColumn(name = "user_id"))
+	@Column(name = "enrolment_class_id", nullable = false)
+	private Set<Long> enrollmentClassIds = new HashSet<Long>();
 
 	@OneToOne(mappedBy = "user", fetch = FetchType.EAGER, optional = true, cascade = CascadeType.ALL)
 	private Person person;
@@ -181,6 +193,14 @@ public class User extends BaseObject implements UserDetails {
 
 	public void setGroups(Set<UserGroup> groups) {
 		this.groups = groups;
+	}
+
+	public Set<Long> getEnrollmentClassIds() {
+		return enrollmentClassIds;
+	}
+
+	public void setEnrollmentClassIds(Set<Long> enrollmentClassIds) {
+		this.enrollmentClassIds = enrollmentClassIds;
 	}
 
 	public Boolean getAccountNonExpired() {
@@ -295,6 +315,9 @@ public class User extends BaseObject implements UserDetails {
 		this.setCreateDate(user.getCreateDate());
 		this.setCreatedBy(user.getCreatedBy());
 		this.roles = user.getRoles();
+		this.enrollmentClassIds = user.getEnrollmentClassIds() == null
+				? new HashSet<Long>()
+				: new HashSet<Long>(user.getEnrollmentClassIds());
 		if (user.getPerson() != null && isSetPerson == true) {
 			this.person = new Person();
 			if(user.getPerson().getId()!=null) {

@@ -11,12 +11,22 @@ public class UserFilterDto {
 	
 	private Integer enrollmentClass;
 
+	private Long[] enrollmentClassIds;
+
 	public Integer getEnrollmentClass() {
 		return enrollmentClass;
 	}
 
 	public void setEnrollmentClass(Integer enrollmentClass) {
 		this.enrollmentClass = enrollmentClass;
+	}
+
+	public Long[] getEnrollmentClassIds() {
+		return enrollmentClassIds;
+	}
+
+	public void setEnrollmentClassIds(Long[] enrollmentClassIds) {
+		this.enrollmentClassIds = enrollmentClassIds;
 	}
 
 	public String getKeyword() {

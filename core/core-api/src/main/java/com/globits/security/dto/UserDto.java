@@ -4,6 +4,9 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSetter;
+
 import com.globits.core.dto.AuditableEntityDto;
 import com.globits.core.dto.PersonDto;
 import com.globits.security.domain.Role;
@@ -44,6 +47,11 @@ public class UserDto extends AuditableEntityDto {
 
 	private Set<UserGroupDto> groups = new HashSet<UserGroupDto>();
 
+	private Set<Long> enrollmentClassIds = new HashSet<Long>();
+
+	@JsonIgnore
+	private boolean enrollmentClassIdsSpecified;
+
 	public UserDto() {
 
 	}
@@ -79,6 +87,14 @@ public class UserDto extends AuditableEntityDto {
 			this.person.setBirthDate(entity.getPerson().getBirthDate());
 			this.person.setPhoneNumber(entity.getPerson().getPhoneNumber());
 			this.person.setPersonNote(entity.getPerson().getPersonNote());
+		}
+
+		if (entity.getEnrollmentClassIds() != null) {
+			this.enrollmentClassIds.addAll(entity.getEnrollmentClassIds());
+		}
+		/* Dữ liệu cũ chỉ có lớp chính vẫn được nhìn thấy ngay sau khi nâng cấp. */
+		if (this.person != null && this.person.getEnrollmentClassId() != null) {
+			this.enrollmentClassIds.add(this.person.getEnrollmentClassId().longValue());
 		}
 
 		if (entity.getRoles() != null) {
@@ -131,6 +147,8 @@ public class UserDto extends AuditableEntityDto {
 			}
 		}
 
+		entity.setEnrollmentClassIds(new HashSet<Long>(enrollmentClassIds));
+
 		return entity;
 	}
 	
@@ -144,6 +162,12 @@ public class UserDto extends AuditableEntityDto {
 
 		if (entity.getPerson() != null) {
 			this.displayName = entity.getPerson().getFirstName() + " " + entity.getPerson().getLastName();
+			if (entity.getPerson().getEnrollmentClassId() != null) {
+				this.enrollmentClassIds.add(entity.getPerson().getEnrollmentClassId().longValue());
+			}
+		}
+		if (entity.getEnrollmentClassIds() != null) {
+			this.enrollmentClassIds.addAll(entity.getEnrollmentClassIds());
 		}
 	}
 
@@ -281,6 +305,23 @@ public class UserDto extends AuditableEntityDto {
 
 	public void setGroups(Set<UserGroupDto> groups) {
 		this.groups = groups;
+	}
+
+	public Set<Long> getEnrollmentClassIds() {
+		return enrollmentClassIds;
+	}
+
+	@JsonSetter("enrollmentClassIds")
+	public void setEnrollmentClassIds(Set<Long> enrollmentClassIds) {
+		this.enrollmentClassIdsSpecified = true;
+		this.enrollmentClassIds = enrollmentClassIds == null
+				? new HashSet<Long>()
+				: enrollmentClassIds;
+	}
+
+	@JsonIgnore
+	public boolean isEnrollmentClassIdsSpecified() {
+		return enrollmentClassIdsSpecified;
 	}
 
 }

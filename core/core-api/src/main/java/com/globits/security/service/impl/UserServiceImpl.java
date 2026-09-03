@@ -21,8 +21,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +56,18 @@ import java.util.Set;
 
 @Service
 public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements UserService {
+
+	private static final String ROLE_ADMIN = "ROLE_ADMIN";
+	private static final String ROLE_EDUCATION_MANAGERMENT =
+			"ROLE_EDUCATION_MANAGERMENT";
+	private static final Set<String> EDUCATION_MANAGED_ROLE_NAMES =
+			new LinkedHashSet<String>();
+
+	static {
+		EDUCATION_MANAGED_ROLE_NAMES.add("ROLE_STUDENT_MANAGERMENT");
+		EDUCATION_MANAGED_ROLE_NAMES.add("ROLE_STUDENT");
+		EDUCATION_MANAGED_ROLE_NAMES.add("ROLE_STAFF");
+	}
 
 	@Autowired
 	private UserRepository userRepository;
@@ -396,8 +410,13 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 
 	    Pageable pageable = new PageRequest(pageIndex, pageSize);
 
-	    String sql = "select u from User u left join u.person p ";
-	    String sqlCount = "select count(u.id) from User u left join u.person p ";
+		    /*
+		     * Không JOIN trực tiếp enrollmentClassIds ở câu query chính. Nếu JOIN rồi
+		     * dùng DISTINCT, SQL Server bắt mọi biểu thức ORDER BY phải nằm trong
+		     * SELECT và làm trang danh sách học sinh lỗi khi sắp xếp theo tên.
+		     */
+		    String sql = "select u from User u left join u.person p ";
+		    String sqlCount = "select count(u.id) from User u left join u.person p ";
 
 	    String clause = " where 1=1 ";
 
@@ -453,19 +472,25 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	     * Frontend gửi ID lớp, ví dụ 13.
 	     * Vì Person.enrollmentClass là object EnrolmentClass nên query phải so sánh theo .id.
 	     */
-	    Integer enrollmentClassId = null;
+	    List<Long> enrollmentClassIds = new ArrayList<Long>();
 
-	    if (filter != null && filter.getEnrollmentClass() != null) {
-	        try {
-	        	enrollmentClassId = Integer.valueOf(filter.getEnrollmentClass().toString());
-	        } catch (Exception e) {
-	            enrollmentClassId = null;
+	    if (filter != null && filter.getEnrollmentClassIds() != null) {
+	        for (Long classId : filter.getEnrollmentClassIds()) {
+	            if (classId != null && classId.longValue() > 0 && !enrollmentClassIds.contains(classId)) {
+	                enrollmentClassIds.add(classId);
+	            }
 	        }
 	    }
 
-	    if (enrollmentClassId != null) {
-	        clause += " and p.enrollmentClassId = :enrollmentClassId ";
+	    if (enrollmentClassIds.isEmpty() && filter != null && filter.getEnrollmentClass() != null) {
+	        enrollmentClassIds.add(filter.getEnrollmentClass().longValue());
 	    }
+
+		    if (!enrollmentClassIds.isEmpty()) {
+		        clause += " and (cast(p.enrollmentClassId as long) in :enrollmentClassIds "
+		                + "or exists (select 1 from u.enrollmentClassIds ec "
+		                + "where ec in :enrollmentClassIds)) ";
+		    }
 
 	    /*
 	     * ROLE FILTER
@@ -540,9 +565,9 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	    /*
 	     * SET ENROLLMENT CLASS PARAMETER
 	     */
-	    if (enrollmentClassId != null) {
-	        q.setParameter("enrollmentClassId", enrollmentClassId);
-	        qCount.setParameter("enrollmentClassId", enrollmentClassId);
+	    if (!enrollmentClassIds.isEmpty()) {
+	        q.setParameter("enrollmentClassIds", enrollmentClassIds);
+	        qCount.setParameter("enrollmentClassIds", enrollmentClassIds);
 	    }
 
 	    if (!roleIds.isEmpty()) {
@@ -711,6 +736,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 
 		user.setPerson(person);
 		person.setUser(user);
+		synchronizeEnrollmentClasses(user, userDto, person);
 		user.setActive(userDto.getActive());
 		user = userRepository.save(user);
 
@@ -824,6 +850,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 
 		user.setPerson(person);
 		person.setUser(user);
+		synchronizeEnrollmentClasses(user, userDto, person);
 		user.setActive(userDto.getActive());
 		user = userRepository.save(user);
 
@@ -843,9 +870,18 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 		}
 
 		User user = null;
+		boolean currentUserIsAdmin = currentUserHasRole(ROLE_ADMIN);
+		boolean currentUserIsEducationManager =
+				currentUserHasRole(ROLE_EDUCATION_MANAGERMENT);
 
 		if (CommonUtils.isPositive(userDto.getId(), true)) {
 			user = userRepository.findById(userDto.getId());
+		}
+
+		if (user == null && !currentUserIsAdmin) {
+			throw new AccessDeniedException(
+					"Chỉ quản trị viên mới được tạo tài khoản mới."
+			);
 		}
 
 		if (user == null) {
@@ -865,20 +901,9 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 //			}
 		}
 
-//		if (userDto.getRoles() != null) {
-//			List<Role> rs = new ArrayList<Role>();
-//
-//			for (RoleDto d : userDto.getRoles()) {
-//				Role r = roleRepos.findOne(d.getId());
-//
-//				if (r != null) {
-//					rs.add(r);
-//				}
-//			}
-//
-//			user.getRoles().clear();
-//			user.getRoles().addAll(rs);
-//		}
+		if (!currentUserIsAdmin && currentUserIsEducationManager) {
+			replaceEducationManagedRoles(user, userDto.getRoles());
+		}
 
 		if (userDto.getGroups() != null) {
 			List<UserGroup> gs = new ArrayList<>();
@@ -942,6 +967,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 
 		user.setPerson(person);
 		person.setUser(user);
+		synchronizeEnrollmentClasses(user, userDto, person);
 		user.setActive(userDto.getActive());
 		user = userRepository.save(user);
 
@@ -950,6 +976,115 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 		} else {
 			return null;
 		}
+	}
+
+	private boolean currentUserHasRole(String roleName) {
+		Authentication authentication =
+				SecurityContextHolder.getContext().getAuthentication();
+
+		if (authentication == null || authentication.getAuthorities() == null) {
+			return false;
+		}
+
+		for (GrantedAuthority authority : authentication.getAuthorities()) {
+			if (authority != null && roleName.equals(authority.getAuthority())) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/*
+	 * class_id trong Person tiếp tục là lớp chính để các màn hình cũ hoạt động.
+	 * Collection mới chứa toàn bộ lớp; payload cũ không gửi field mới sẽ không
+	 * vô tình xóa các lớp đã gán.
+	 */
+	private void synchronizeEnrollmentClasses(User user, UserDto dto, Person person) {
+		if (user.getEnrollmentClassIds() == null) {
+			user.setEnrollmentClassIds(new LinkedHashSet<Long>());
+		}
+
+		if (dto.isEnrollmentClassIdsSpecified()) {
+			Set<Long> normalized = new LinkedHashSet<Long>();
+			if (dto.getEnrollmentClassIds() != null) {
+				for (Long classId : dto.getEnrollmentClassIds()) {
+					if (classId != null && classId.longValue() > 0) {
+						normalized.add(classId);
+					}
+				}
+			}
+			user.getEnrollmentClassIds().clear();
+			user.getEnrollmentClassIds().addAll(normalized);
+		}
+
+		Integer primaryClassId = person == null ? null : person.getEnrollmentClassId();
+		if (primaryClassId != null) {
+			user.getEnrollmentClassIds().add(primaryClassId.longValue());
+		} else if (!user.getEnrollmentClassIds().isEmpty()) {
+			Long firstClassId = user.getEnrollmentClassIds().iterator().next();
+			if (firstClassId != null && firstClassId.longValue() <= Integer.MAX_VALUE) {
+				person.setEnrollmentClassId(firstClassId.intValue());
+			}
+		}
+	}
+
+	private void replaceEducationManagedRoles(
+			User user,
+			Set<RoleDto> requestedRoles) {
+
+		Set<Role> rolesToKeep = new LinkedHashSet<Role>();
+
+		for (Role currentRole : user.getRoles()) {
+			if (
+					currentRole != null &&
+					!EDUCATION_MANAGED_ROLE_NAMES.contains(currentRole.getName())
+			) {
+				rolesToKeep.add(currentRole);
+			}
+		}
+
+		rolesToKeep.addAll(
+				loadRequestedRoles(
+						requestedRoles,
+						EDUCATION_MANAGED_ROLE_NAMES
+				)
+		);
+
+		user.getRoles().clear();
+		user.getRoles().addAll(rolesToKeep);
+	}
+
+	private Set<Role> loadRequestedRoles(
+			Set<RoleDto> requestedRoles,
+			Set<String> allowedRoleNames) {
+
+		Set<Role> roles = new LinkedHashSet<Role>();
+
+		if (requestedRoles == null) {
+			return roles;
+		}
+
+		for (RoleDto requestedRole : requestedRoles) {
+			if (requestedRole == null || requestedRole.getId() == null) {
+				continue;
+			}
+
+			Role persistedRole = roleRepos.findOne(requestedRole.getId());
+
+			if (persistedRole == null) {
+				continue;
+			}
+
+			if (
+					allowedRoleNames == null ||
+					allowedRoleNames.contains(persistedRole.getName())
+			) {
+				roles.add(persistedRole);
+			}
+		}
+
+		return roles;
 	}
 
 	@Override

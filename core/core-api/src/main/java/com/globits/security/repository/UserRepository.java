@@ -59,6 +59,11 @@ public interface UserRepository
             + "where u.active = true")
     List<UserDto> getAllUserWithDisplayNameAndUsername();
 
+	@Query("select distinct new com.globits.security.dto.UserDto(u, true) "
+			+ "from User u join u.roles r "
+			+ "where u.active = true and r.name in :roleNames")
+	List<UserDto> getActiveUsersByRoleNames(@Param("roleNames") List<String> roleNames);
+
     @Query("select new com.globits.security.dto.UserDto(u, true) "
             + "from User u "
             + "where u.active = true "
@@ -67,8 +72,8 @@ public interface UserRepository
             String grade
     );
 
-    @Query("select u from User u "
-            + "where u.person.enrollmentClassId = ?1 "
+    @Query("select distinct u from User u left join u.enrollmentClassIds ec "
+            + "where (u.person.enrollmentClassId = ?1 or cast(ec as integer) = ?1) "
             + "and u.active = true")
     List<User> getUsersByEnrollmentClass(
             int enrollmentClass
@@ -79,14 +84,29 @@ public interface UserRepository
      */
     @Query(
         "select new com.globits.security.dto.UserDto(u) "
-        + "from User u "
-        + "where u.person.enrollmentClassId = :enrollmentClassId "
+        + "from User u left join u.enrollmentClassIds ec "
+        + "where (u.person.enrollmentClassId = :enrollmentClassId or cast(ec as integer) = :enrollmentClassId) "
         + "and u.active = true"
     )
     List<UserDto> getUsersDtoByEnrollmentClass(
             @Param("enrollmentClassId")
             int enrollmentClassId
     );
+
+	@Query("select distinct u from User u left join u.enrollmentClassIds ec "
+			+ "where (cast(u.person.enrollmentClassId as long) in :ids or ec in :ids) and u.active = true")
+	List<User> getUsersByEnrollmentClassIds(@Param("ids") List<Long> ids);
+
+	@Query("select distinct new com.globits.security.dto.UserDto(u) "
+			+ "from User u left join u.enrollmentClassIds ec "
+			+ "where (cast(u.person.enrollmentClassId as long) in :ids or ec in :ids) and u.active = true")
+	List<UserDto> getUsersDtoByEnrollmentClassIds(@Param("ids") List<Long> ids);
+
+	@Query("select distinct u from User u left join u.enrollmentClassIds ec join u.roles r "
+			+ "where r.name = 'ROLE_STUDENT' "
+			+ "and (cast(u.person.enrollmentClassId as long) in :ids or ec in :ids) "
+			+ "and u.active = true")
+	List<User> getActiveStudentsByEnrollmentClassIds(@Param("ids") List<Long> ids);
 
     /*
      * Chỉ lọc theo group.
@@ -110,9 +130,9 @@ public interface UserRepository
     @Query(
         "select distinct "
         + "new com.globits.security.dto.UserDto(u) "
-        + "from User u "
+        + "from User u left join u.enrollmentClassIds ec "
         + "join u.groups g "
-        + "where u.person.enrollmentClassId = :enrollmentClassId "
+        + "where (u.person.enrollmentClassId = :enrollmentClassId or cast(ec as integer) = :enrollmentClassId) "
         + "and g.id = :groupId "
         + "and u.active = true"
     )
@@ -123,6 +143,14 @@ public interface UserRepository
             @Param("groupId")
             Long groupId
     );
+
+	@Query("select distinct new com.globits.security.dto.UserDto(u) "
+			+ "from User u left join u.enrollmentClassIds ec join u.groups g "
+			+ "where (cast(u.person.enrollmentClassId as long) in :ids or ec in :ids) "
+			+ "and g.id = :groupId and u.active = true")
+	List<UserDto> getUsersDtoByEnrollmentClassIdsAndGroupId(
+			@Param("ids") List<Long> ids,
+			@Param("groupId") Long groupId);
 
     /*
      * Không chọn lớp và không chọn group.
@@ -135,8 +163,8 @@ public interface UserRepository
     )
     List<UserDto> getAllActiveStudentDtos();
 
-    @Query("select u from User u "
-            + "where u.person.enrollmentClassId is not null "
+    @Query("select distinct u from User u left join u.enrollmentClassIds ec "
+            + "where (u.person.enrollmentClassId is not null or ec is not null) "
             + "and u.active = true")
     List<User> getUsersByAllEnrollmentClass();
 }
