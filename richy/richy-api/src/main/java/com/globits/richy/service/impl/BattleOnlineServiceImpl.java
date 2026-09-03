@@ -975,7 +975,6 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
 
         room.matchEndsAt = matchStartsAt + matchDurationMs;
-        room.passwordResetSkillIssued = false;
         room.passwordResetAvailableAt =
                 matchStartsAt + (matchDurationMs / 2L);
 
@@ -3391,16 +3390,17 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         if (
             MODE_MONEY_BEG.equals(room.settings.mode) &&
-            !room.passwordResetSkillIssued &&
+            !player.passwordResetSkillIssued &&
             System.currentTimeMillis() >= room.passwordResetAvailableAt
         ) {
             /*
-             * Câu đầu tiên được cấp sau mốc nửa trận mang RESET_PASSWORD.
-             * Đánh dấu ngay lúc xuất hiện nên toàn phòng chỉ thấy đúng 1 lần;
-             * trả lời sai thì skill cũng được xem là đã dùng mất.
+             * Câu đầu tiên của riêng mỗi người chơi được cấp sau mốc nửa trận
+             * mang RESET_PASSWORD. Đánh dấu ngay lúc xuất hiện để mỗi người
+             * chỉ thấy đúng 1 lần; trả lời sai thì lượt của chính người đó
+             * cũng được xem là đã dùng mất, không ảnh hưởng người chơi khác.
              */
             player.currentSkillType = SKILL_RESET_PASSWORD;
-            room.passwordResetSkillIssued = true;
+            player.passwordResetSkillIssued = true;
         } else {
             player.currentSkillType =
                     room.countdownSkillPlan.get(
@@ -4956,6 +4956,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         player.pendingSkillType = null;
         player.pendingSkillTargetUsernames.clear();
         player.currentPassword = null;
+        player.passwordResetSkillIssued = false;
         player.passwordSelectionRequired = false;
         player.passwordOptions.clear();
         player.pendingPasswordGuessTargetUsername = null;
@@ -5702,7 +5703,6 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 new LinkedHashMap<Integer, String>();
 
         long passwordResetAvailableAt = 0L;
-        boolean passwordResetSkillIssued = false;
 
         List<BattleOnlineEventDto> recentEvents =
                 new ArrayList<BattleOnlineEventDto>();
@@ -5774,6 +5774,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 new ArrayList<String>();
 
         String currentPassword;
+        boolean passwordResetSkillIssued = false;
         boolean passwordSelectionRequired;
 
         Map<String, String> passwordOptions =
