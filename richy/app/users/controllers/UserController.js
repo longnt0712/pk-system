@@ -222,9 +222,43 @@
             // {id: 24, name: "KHÁC"}
 
         ];
-        service.getEnrolmentClass(null, 1, 1000000).then(function (data) {
-            vm.enrollmentClasses = data.content;
+		service.getEnrollmentClassTree().then(function (data) {
+			vm.enrollmentClasses = angular.isArray(data) ? data : [];
+			prepareEnrollmentClassTree();
         });
+
+		function prepareEnrollmentClassTree() {
+			var byId = {};
+			angular.forEach(vm.enrollmentClasses, function (item) {
+				byId[toNumberOrNull(item.id)] = item;
+			});
+
+			function getLabel(item, visited) {
+				if (!item) {
+					return '';
+				}
+				if (item.treeLabel) {
+					return item.treeLabel;
+				}
+				visited = visited || {};
+				if (visited[item.id]) {
+					return item.name || '';
+				}
+				visited[item.id] = true;
+				var parent = item.parentId ? byId[toNumberOrNull(item.parentId)] : null;
+				item.treeLabel = parent
+					? getLabel(parent, visited) + ' / ' + (item.name || '')
+					: (item.name || '');
+				return item.treeLabel;
+			}
+
+			angular.forEach(vm.enrollmentClasses, function (item) {
+				getLabel(item, {});
+			});
+			vm.enrollmentClasses.sort(function (a, b) {
+				return (a.treeLabel || '').localeCompare(b.treeLabel || '', 'vi');
+			});
+		}
         function toNumberOrNull(value) {
             if (value === null || value === undefined || value === '') {
                 return null;
@@ -255,6 +289,48 @@
             var enrollmentClass = vm.findEnrollmentClass(classId);
             return enrollmentClass ? enrollmentClass.name : '';
         };
+
+		vm.getEnrollmentClassNames = function (user) {
+			if (!user) {
+				return '';
+			}
+			var ids = angular.isArray(user.enrollmentClassIds)
+				? user.enrollmentClassIds.slice()
+				: [];
+			var primaryId = user.person ? toNumberOrNull(user.person.enrollmentClassId) : null;
+			if (primaryId !== null && ids.map(toNumberOrNull).indexOf(primaryId) < 0) {
+				ids.unshift(primaryId);
+			}
+			var names = [];
+			angular.forEach(ids, function (id) {
+				var item = vm.findEnrollmentClass(id);
+				if (item && names.indexOf(item.treeLabel || item.name) < 0) {
+					names.push(item.treeLabel || item.name);
+				}
+			});
+			return names.join(', ');
+		};
+
+		vm.getClassAndDescendantIds = function (classId) {
+			var normalizedId = toNumberOrNull(classId);
+			if (normalizedId === null) {
+				return [];
+			}
+			var result = [normalizedId];
+			var changed = true;
+			while (changed) {
+				changed = false;
+				angular.forEach(vm.enrollmentClasses, function (item) {
+					var itemId = toNumberOrNull(item.id);
+					var parentId = toNumberOrNull(item.parentId);
+					if (result.indexOf(parentId) >= 0 && result.indexOf(itemId) < 0) {
+						result.push(itemId);
+						changed = true;
+					}
+				});
+			}
+			return result;
+		};
         vm.genders = [
             {id: 'M', name: "NAM"},
             {id: 'F', name: "NỮ"},
@@ -292,6 +368,8 @@
 
         vm.roles = [];
         vm.groups = [];
+        vm.educationAssignableRoles = [];
+        vm.educationManagedRoles = [];
 
         vm.currentUser = JSON.parse($cookies.getAll()["education.user"]);
         vm.myUser = {};
@@ -370,6 +448,48 @@
             var studentRole = findRoleByName('ROLE_STUDENT');
             return studentRole ? [studentRole] : [];
         }
+
+        function isEducationManagedRole(role) {
+            if (!role || !role.name) {
+                return false;
+            }
+
+            return role.name === 'ROLE_STUDENT_MANAGERMENT' ||
+                role.name === 'ROLE_STUDENT' ||
+                role.name === 'ROLE_STAFF';
+        }
+
+        function refreshEducationAssignableRoles() {
+            vm.educationAssignableRoles = [];
+
+            angular.forEach(vm.roles, function (role) {
+                if (isEducationManagedRole(role)) {
+                    vm.educationAssignableRoles.push(role);
+                }
+            });
+        }
+
+        function syncEducationManagedRoles(user) {
+            vm.educationManagedRoles = [];
+
+            if (!user || !user.roles) {
+                return;
+            }
+
+            angular.forEach(vm.educationAssignableRoles, function (availableRole) {
+                var selected = false;
+
+                angular.forEach(user.roles, function (userRole) {
+                    if (userRole && userRole.name === availableRole.name) {
+                        selected = true;
+                    }
+                });
+
+                if (selected) {
+                    vm.educationManagedRoles.push(availableRole);
+                }
+            });
+        }
         // if(vm.isRoleAdmin){
         service.getAllRoles().then(function (data) {
             if (data && data.length > 0) {
@@ -377,6 +497,8 @@
             } else {
                 vm.roles = [];
             }
+
+            refreshEducationAssignableRoles();
 
             if (vm.user && vm.user.isNew === true && (!vm.user.roles || vm.user.roles.length === 0)) {
                 vm.user.roles = getDefaultStudentRole();
@@ -432,14 +554,21 @@
                     if (
                         value1.name === "ROLE_STUDENT" ||
                         value1.name === "ROLE_STUDENT_MANAGERMENT" ||
-                        value1.name === "ROLE_EDUCATION_MANAGERMENT"
+                        value1.name === "ROLE_EDUCATION_MANAGERMENT" ||
+                        (
+                            vm.isRoleEducationManagerment === true &&
+                            value1.name === "ROLE_STAFF"
+                        )
                     ) {
                         vm.filter.roles.push(value1);
                     }
                 });
             }
 
-            service.getUsers(vm.filter, vm.pageIndex, vm.pageSize).then(function (data) {
+			var requestFilter = angular.copy(vm.filter);
+			requestFilter.enrollmentClassIds = vm.getClassAndDescendantIds(requestFilter.enrollmentClass);
+
+			service.getUsers(requestFilter, vm.pageIndex, vm.pageSize).then(function (data) {
                 vm.users = data.content;
                 vm.users.totalElement = data.totalElements;
             });
@@ -580,7 +709,10 @@
                 }
             }
 
-            if (!vm.user.roles || vm.user.roles.length <= 0) {
+            if (
+                vm.isRoleEducationManagerment !== true &&
+                (!vm.user.roles || vm.user.roles.length <= 0)
+            ) {
                 toastr.error('Vui lòng chọn ít nhất một vai trò cho người dùng!', 'Thông báo');
                 return;
             }
@@ -602,7 +734,15 @@
                         return;
                     }
 
-                    service.saveUserBasicInfo(vm.user, function successCallback(data) {
+                    var userToSave = angular.copy(vm.user);
+
+                    if (vm.isRoleEducationManagerment === true) {
+                        userToSave.roles = angular.copy(
+                            vm.educationManagedRoles || []
+                        );
+                    }
+
+                    service.saveUserBasicInfo(userToSave, function successCallback(data) {
                         toastr.info('Đã lưu thông tin người dùng thành công!', 'Thông báo');
 
                         // Reload users
@@ -700,7 +840,27 @@
                     .trim()
                     .toLowerCase();
             }
+
+			if (!angular.isArray(vm.user.enrollmentClassIds)) {
+				vm.user.enrollmentClassIds = [];
+			}
+			var normalized = [];
+			angular.forEach(vm.user.enrollmentClassIds, function (classId) {
+				var id = toNumberOrNull(classId);
+				if (id !== null && normalized.indexOf(id) < 0) {
+					normalized.push(id);
+				}
+			});
+			var primaryId = vm.user.person ? toNumberOrNull(vm.user.person.enrollmentClassId) : null;
+			if (primaryId !== null && normalized.indexOf(primaryId) < 0) {
+				normalized.unshift(primaryId);
+			}
+			vm.user.enrollmentClassIds = normalized;
         }
+
+		vm.syncPrimaryClassMembership = function () {
+			normalizeStudentAccountBeforeSave();
+		};
         vm.generateNextStudentAccount = function () {
             if (!vm.user) {
                 vm.user = {};
@@ -843,6 +1003,7 @@
                 isNew: true,
                 active: true,
                 roles: getDefaultStudentRole(),
+				enrollmentClassIds: [],
                 person: {}
             };
 
@@ -866,8 +1027,13 @@
 
                 if (data && data.id) {
 
-                    vm.user = data;
+					vm.user = data;
+					vm.user.enrollmentClassIds = angular.isArray(vm.user.enrollmentClassIds)
+						? vm.user.enrollmentClassIds
+						: [];
+					vm.syncPrimaryClassMembership();
                     vm.user.isNew = false;
+                    syncEducationManagedRoles(vm.user);
 
                     vm.modalInstance = modal.open({
                         animation: true,
@@ -1131,7 +1297,7 @@
                     return person.phoneNumber || '';
 
                 case 'enrollmentClass':
-                    return vm.getEnrollmentClassName(person.enrollmentClassId).toLowerCase();
+					return vm.getEnrollmentClassNames(user).toLowerCase();
 
                 case 'zaloStatus':
                     return vm.getZaloStatusName(person.zaloStatus).toLowerCase();
@@ -2098,8 +2264,7 @@
                 title: 'LỚP',
                 checked: true,
                 getter: function (user, index) {
-                    if (!user || !user.person) return '';
-                    return vm.getEnrollmentClassName(user.person.enrollmentClassId);
+					return vm.getEnrollmentClassNames(user);
                 }
             }
             // ,

@@ -56,12 +56,11 @@
                     </div>
                     <div class="col-md-3">
                         <ui-select data-ng-disabled="" ng-model="vm.filter.enrollmentClass" data-ng-change="vm.search()" sortable="true" close-on-select="true">
-                            <ui-select-match allow-clear="" placeholder="LỚP HỌC">{{$select.selected.name}}</ui-select-match>
+							<ui-select-match allow-clear="" placeholder="LỚP HỌC">{{$select.selected.treeLabel || $select.selected.name}}</ui-select-match>
                             <ui-select-choices repeat="so.id as so in vm.enrollmentClasses
                                 | filter:vm.filterEnrollmentClassByRole
                                 | propsFilter:{name: $select.search}">
-                                <div class="bold"
-                                     ng-bind-html="so.name | highlight: $select.search"></div>
+								<div class="bold" ng-bind-html="(so.treeLabel || so.name) | highlight: $select.search"></div>
                                 <small>{{so.old}}</small>
                             </ui-select-choices>
                         </ui-select>
@@ -230,7 +229,7 @@
                                                 <!--<div class="bold" ng-bind-html="so.name | highlight: $select.search"></div>-->
                                             <!--</ui-select-choices>-->
                                         <!--</ui-select>-->
-                                        {{ vm.getEnrollmentClassName(user.person.enrollmentClassId) }}
+										{{ vm.getEnrollmentClassNames(user) }}
                                     </td>
                                     <td ng-class="vm.getZaloStatusClass(user.person.zaloStatus)">
                                         {{ vm.getZaloStatusName(user.person.zaloStatus) }}
@@ -454,27 +453,42 @@
                     <input id="vm.user.person.fatherNumber" data-ng-model="vm.user.person.fatherPhoneNumber" type="text" autofocus="autofocus" class="form-control" />
                 </div>
                 <div class="col-md-6 margin-top-10">
-                    <label class="bold">LỚP</label>
+					<label class="bold">LỚP CHÍNH</label>
 
-                    <ui-select ng-model="vm.user.person.enrollmentClassId"
-                               <!--data-ng-change="vm.syncModalEnrollmentClassToFilter()"-->
+					<ui-select ng-model="vm.user.person.enrollmentClassId"
+							   data-ng-change="vm.syncPrimaryClassMembership()"
                                sortable="true"
                                close-on-select="true">
 
                         <ui-select-match allow-clear="true" placeholder="LỚP HỌC">
-                            {{$select.selected.name}}
+							{{$select.selected.treeLabel || $select.selected.name}}
                         </ui-select-match>
 
                         <ui-select-choices repeat="so.id as so in vm.enrollmentClasses
                             | filter:vm.filterEnrollmentClassByRole
                             | propsFilter:{name: $select.search}">
-                            <div class="bold"
-                                 ng-bind-html="so.name | highlight: $select.search"></div>
+							<div class="bold" ng-bind-html="(so.treeLabel || so.name) | highlight: $select.search"></div>
                             <small>{{so.old}}</small>
                         </ui-select-choices>
 
                     </ui-select>
                 </div>
+				<div class="col-md-6 margin-top-10">
+					<label class="bold">CÁC LỚP ĐANG HỌC</label>
+					<ui-select multiple theme="bootstrap"
+							   data-ng-model="vm.user.enrollmentClassIds"
+							   data-ng-change="vm.syncPrimaryClassMembership()"
+							   sortable="true" close-on-select="false" style="width:100%">
+						<ui-select-match placeholder="Có thể chọn nhiều lớp...">
+							{{$item.treeLabel || $item.name}}
+						</ui-select-match>
+						<ui-select-choices repeat="so.id as so in vm.enrollmentClasses | filter:vm.filterEnrollmentClassByRole | propsFilter:{treeLabel:$select.search, name:$select.search}">
+							<div class="bold" ng-bind-html="(so.treeLabel || so.name) | highlight:$select.search"></div>
+							<small>{{so.code}}</small>
+						</ui-select-choices>
+					</ui-select>
+					<small class="text-muted">Lớp chính luôn được giữ trong danh sách này.</small>
+				</div>
                 <div class="col-md-6 margin-top-10">
                     <label class="bold">CÓ TRONG NHÓM ZALO KHÔNG?</label>
                     <ui-select ng-model="vm.user.person.zaloStatus" data-ng-change="" sortable="true" close-on-select="true">
@@ -559,6 +573,27 @@
                             <div class="bold" ng-bind-html="role.name | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
+                </div>
+                <div ng-if="!vm.isRoleAdmin && vm.isRoleEducationManagerment"
+                     class="col-md-6 margin-top-15">
+                    <label class="bold">Vai trò được phép quản lý</label>
+                    <ui-select multiple
+                               theme="bootstrap"
+                               data-ng-model="vm.educationManagedRoles"
+                               sortable="true"
+                               close-on-select="true"
+                               style="width: 100% !important;">
+                        <ui-select-match allow-clear="true" placeholder="Chọn vai trò...">
+                            {{$item.name}}
+                        </ui-select-match>
+                        <ui-select-choices repeat="role in vm.educationAssignableRoles | propsFilter: {name: $select.search}">
+                            <div class="bold" ng-bind-html="role.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                    <small class="text-muted">
+                        Chỉ được thêm hoặc gỡ ROLE_STUDENT_MANAGERMENT,
+                        ROLE_STUDENT và ROLE_STAFF.
+                    </small>
                 </div>
                 <div class="col-md-6 margin-top-10">
                     <label class="bold">Tên đăng nhập</label>
