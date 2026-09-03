@@ -17,6 +17,18 @@
             return utils.resolve(baseUrl + '/teacher_candidates', 'GET', angular.noop, angular.noop);
         };
 
+        self.getResponsibleCandidates = function (parentClassId) {
+            if (!parentClassId) {
+                return self.getTeacherCandidates();
+            }
+            return utils.resolve(
+                baseUrl + '/responsible_candidates/' + parentClassId,
+                'GET',
+                angular.noop,
+                angular.noop
+            );
+        };
+
         self.getTeamBoard = function (classId) {
             if (!classId) {
                 return $q.when(null);

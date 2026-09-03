@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -158,11 +159,17 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 		domain.setParent(parent);
 
+		Set<Long> studentResponsibleClassIds = parent == null
+				? new HashSet<Long>()
+				: new HashSet<Long>(getClassAndDescendantIds(parent.getId()));
 		Set<User> teachers = new LinkedHashSet<User>();
 		if (dto.getTeacherIds() != null) {
 			for (Long teacherId : dto.getTeacherIds()) {
 				User teacher = teacherId == null ? null : userRepository.findOne(teacherId);
-				if (teacher != null && Boolean.TRUE.equals(teacher.getActive()) && isTeacherCandidate(teacher)) {
+				if (teacher != null
+						&& Boolean.TRUE.equals(teacher.getActive())
+						&& (isTeacherCandidate(teacher)
+								|| isStudentResponsibleCandidate(teacher, studentResponsibleClassIds))) {
 					teachers.add(teacher);
 				}
 			}
@@ -269,6 +276,40 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	@Override
 	public List<UserDto> getTeacherCandidates() {
 		return userRepository.getActiveUsersByRoleNames(TEACHER_ROLE_NAMES);
+	}
+
+	@Override
+	public List<UserDto> getResponsibleCandidates(Long parentClassId) {
+		Map<Long, UserDto> candidates = new LinkedHashMap<Long, UserDto>();
+		for (UserDto teacher : getTeacherCandidates()) {
+			if (teacher != null && teacher.getId() != null) {
+				candidates.put(teacher.getId(), teacher);
+			}
+		}
+
+		List<Long> classIds = getClassAndDescendantIds(parentClassId);
+		if (!classIds.isEmpty()) {
+			for (User student : userRepository.getActiveStudentsByEnrollmentClassIds(classIds)) {
+				if (student != null && student.getId() != null && !candidates.containsKey(student.getId())) {
+					candidates.put(student.getId(), new UserDto(student, true));
+				}
+		}
+		}
+
+		List<UserDto> result = new ArrayList<UserDto>(candidates.values());
+		Collections.sort(result, new Comparator<UserDto>() {
+			@Override
+			public int compare(UserDto first, UserDto second) {
+				String firstName = first == null || first.getDisplayName() == null
+						? (first == null || first.getUsername() == null ? "" : first.getUsername())
+						: first.getDisplayName();
+				String secondName = second == null || second.getDisplayName() == null
+						? (second == null || second.getUsername() == null ? "" : second.getUsername())
+						: second.getDisplayName();
+				return firstName.compareToIgnoreCase(secondName);
+			}
+		});
+		return result;
 	}
 
 	@Override
@@ -479,7 +520,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		while (current != null && visited.add(current.getId())) {
 			if (current.getTeachers() != null) {
 				for (User teacher : current.getTeachers()) {
-					if (teacher != null && user.getId().equals(teacher.getId())) {
+					if (teacher != null
+							&& user.getId().equals(teacher.getId())
+							&& isTeacherCandidate(user)) {
 						return true;
 					}
 				}
@@ -534,6 +577,18 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 		for (Role role : user.getRoles()) {
 			if (role != null && TEACHER_ROLE_NAMES.contains(role.getName())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean isStudentResponsibleCandidate(User user, Set<Long> allowedClassIds) {
+		if (!hasRole(user, "ROLE_STUDENT") || allowedClassIds == null || allowedClassIds.isEmpty()) {
+			return false;
+		}
+		for (Long classId : allowedClassIds) {
+			if (userBelongsToClass(user, classId)) {
 				return true;
 			}
 		}

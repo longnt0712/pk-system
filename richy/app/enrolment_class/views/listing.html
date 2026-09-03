@@ -60,7 +60,7 @@
                         <tr>
                             <th style="width:34%">LỚP / TỔ / LỚP CON</th>
                             <th style="width:14%">MÃ</th>
-                            <th>GIÁO VIÊN PHỤ TRÁCH</th>
+                            <th>NGƯỜI PHỤ TRÁCH</th>
                             <th style="width:10%">MÃ TRƯỜNG</th>
                             <th style="width:220px">THAO TÁC</th>
                         </tr>
@@ -204,7 +204,8 @@
                 </div>
                 <div class="col-md-8 form-group">
                     <label class="bold">Thuộc lớp / tổ cha</label>
-                    <ui-select data-ng-model="vm.enrolmentClass.parentId" theme="bootstrap" allow-clear="true">
+                    <ui-select data-ng-model="vm.enrolmentClass.parentId" theme="bootstrap" allow-clear="true"
+                               data-ng-change="vm.parentChanged()">
 						<ui-select-match placeholder="Không chọn = lớp gốc">{{$select.selected.treeLabel || $select.selected.name}}</ui-select-match>
 						<ui-select-choices repeat="item.id as item in vm.availableParents() | propsFilter:{treeLabel:$select.search, name:$select.search, code:$select.search}">
 							<div ng-bind-html="(item.treeLabel || item.name) | highlight:$select.search"></div>
@@ -217,7 +218,12 @@
                     <input data-ng-model="vm.enrolmentClass.schoolId" type="number" class="form-control" />
                 </div>
                 <div class="col-md-12 form-group">
-                    <label class="bold">Giáo viên phụ trách (có thể chọn nhiều)</label>
+                    <label class="bold">
+                        {{vm.enrolmentClass.parentId
+                            ? 'Người phụ trách (giáo viên hoặc học sinh)'
+                            : 'Giáo viên phụ trách'}}
+                        — có thể chọn nhiều
+                    </label>
                     <ui-select multiple theme="bootstrap" data-ng-model="vm.enrolmentClass.teacherIds"
                                sortable="true" close-on-select="false" style="width:100%">
                         <ui-select-match placeholder="Chọn giáo viên...">
@@ -228,7 +234,13 @@
                             <small>{{teacher.username}}</small>
                         </ui-select-choices>
                     </ui-select>
-                    <span class="help-block">Danh sách gồm tài khoản quản trị, quản lý giáo dục, quản lý học sinh và nhân viên đang hoạt động.</span>
+                    <span class="help-block" data-ng-if="!vm.enrolmentClass.parentId">
+                        Lớp gốc chỉ cho phép giáo viên hoặc tài khoản quản lý phụ trách.
+                    </span>
+                    <span class="help-block" data-ng-if="vm.enrolmentClass.parentId">
+                        Tổ/lớp con/đội có thể giao cho giáo viên hoặc học sinh thuộc lớp cha phụ trách.
+                        Học sinh phụ trách không được cấp thêm quyền quản trị.
+                    </span>
                 </div>
             </div>
         </div>

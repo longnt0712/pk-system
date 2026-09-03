@@ -21,6 +21,7 @@ public interface EnrolmentClassService {
 	public List<Long> getClassAndDescendantIds(Long classId);
 	public List<Long> getClassIdsBySchool(Integer schoolId);
 	public List<UserDto> getTeacherCandidates();
+	public List<UserDto> getResponsibleCandidates(Long parentClassId);
 	public EnrolmentClassTeamBoardDto getTeamBoard(Long classId);
 	public EnrolmentClassTeamBoardDto moveStudentToTeam(Long classId, EnrolmentClassMoveStudentDto moveDto);
 }

@@ -47,15 +47,29 @@
             });
         };
 
-        vm.loadTeachers = function () {
-            service.getTeacherCandidates().then(function (data) {
+        vm.loadTeachers = function (parentClassId, pruneSelection) {
+            return service.getResponsibleCandidates(parentClassId).then(function (data) {
                 vm.teacherCandidates = angular.isArray(data) ? data : [];
 				vm.teacherCandidates.sort(function (a, b) {
 					return (a.displayName || a.username || '').localeCompare(
 						b.displayName || b.username || '', 'vi');
 				});
+
+				if (pruneSelection && vm.enrolmentClass) {
+					var allowed = {};
+					angular.forEach(vm.teacherCandidates, function (candidate) {
+						allowed[candidate.id] = true;
+					});
+					vm.enrolmentClass.teacherIds = (vm.enrolmentClass.teacherIds || []).filter(function (id) {
+						return allowed[id] === true;
+					});
+				}
             });
         };
+
+		vm.parentChanged = function () {
+			vm.loadTeachers(vm.enrolmentClass.parentId, true);
+		};
 
         vm.rebuildTree = function () {
             var byId = {};
@@ -312,15 +326,21 @@
         vm.openEditor = function (item, parentId) {
             if (item && item.id) {
                 service.getOne(item.id).then(function (data) {
-                    vm.showEditor(data || {});
+					var object = data || {};
+					vm.loadTeachers(object.parentId, false).then(function () {
+						vm.showEditor(object);
+					});
                 });
                 return;
             }
-            vm.showEditor({
+            var newObject = {
                 isNew: true,
                 parentId: parentId || null,
                 teacherIds: []
-            });
+            };
+			vm.loadTeachers(newObject.parentId, false).then(function () {
+				vm.showEditor(newObject);
+			});
         };
 
         vm.showEditor = function (object) {
