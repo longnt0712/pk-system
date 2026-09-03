@@ -1,15 +1,26 @@
 package com.globits.richy.dto;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
-import com.globits.richy.domain.Answer;
 import com.globits.richy.domain.EnrolmentClass;
+import com.globits.security.domain.User;
+import com.globits.security.dto.UserDto;
 
 public class EnrolmentClassDto implements Serializable{
 	private Long id;
 	private String name;
 	private String code;
 	private Integer schoolId;
+	private Long parentId;
+	private String parentName;
+	private Set<Long> teacherIds = new LinkedHashSet<Long>();
+	private List<UserDto> teachers = new ArrayList<UserDto>();
+	private int childCount;
+	private boolean canManageTeams;
 
 	public Integer getSchoolId() {
 		return schoolId;
@@ -43,6 +54,42 @@ public class EnrolmentClassDto implements Serializable{
 	public void setTextSearch(String textSearch) {
 		this.textSearch = textSearch;
 	}
+	public Long getParentId() {
+		return parentId;
+	}
+	public void setParentId(Long parentId) {
+		this.parentId = parentId;
+	}
+	public String getParentName() {
+		return parentName;
+	}
+	public void setParentName(String parentName) {
+		this.parentName = parentName;
+	}
+	public Set<Long> getTeacherIds() {
+		return teacherIds;
+	}
+	public void setTeacherIds(Set<Long> teacherIds) {
+		this.teacherIds = teacherIds;
+	}
+	public List<UserDto> getTeachers() {
+		return teachers;
+	}
+	public void setTeachers(List<UserDto> teachers) {
+		this.teachers = teachers;
+	}
+	public int getChildCount() {
+		return childCount;
+	}
+	public void setChildCount(int childCount) {
+		this.childCount = childCount;
+	}
+	public boolean isCanManageTeams() {
+		return canManageTeams;
+	}
+	public void setCanManageTeams(boolean canManageTeams) {
+		this.canManageTeams = canManageTeams;
+	}
 	public EnrolmentClassDto() {
 		
 	}
@@ -51,6 +98,16 @@ public class EnrolmentClassDto implements Serializable{
 		this.name = domain.getName();
 		this.code = domain.getCode();
 		this.schoolId = domain.getSchoolId();
+		if (domain.getParent() != null) {
+			this.parentId = domain.getParent().getId();
+			this.parentName = domain.getParent().getName();
+		}
+		if (domain.getTeachers() != null) {
+			for (User teacher : domain.getTeachers()) {
+				this.teacherIds.add(teacher.getId());
+				this.teachers.add(new UserDto(teacher, true));
+			}
+		}
 	}
 	
 }
