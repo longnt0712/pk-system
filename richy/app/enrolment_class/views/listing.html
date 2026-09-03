@@ -1,6 +1,36 @@
 <style>
-    .class-tree-table .tree-name { display:flex; align-items:center; min-height:34px; }
-    .class-tree-table .tree-toggle { width:28px; height:28px; padding:0; margin-right:6px; }
+    .class-tree-table .tree-name { display:flex; align-items:center; min-height:34px; min-width:0; }
+    .class-tree-table .tree-indent-step {
+        position:relative;
+        display:block;
+        flex:0 0 28px;
+        width:28px;
+        height:34px;
+    }
+    .class-tree-table .tree-indent-step:before {
+        content:"";
+        position:absolute;
+        left:12px;
+        top:-18px;
+        bottom:0;
+        border-left:1px solid #d8deea;
+    }
+    .class-tree-table .tree-indent-step.tree-indent-last:after {
+        content:"";
+        position:absolute;
+        left:12px;
+        top:16px;
+        width:13px;
+        border-top:1px solid #d8deea;
+    }
+    .class-tree-table .tree-toggle {
+        width:28px;
+        min-width:28px;
+        height:28px;
+        min-height:28px !important;
+        padding:0;
+        margin-right:6px;
+    }
     .class-tree-table .tree-spacer { display:inline-block; width:34px; }
     .class-tree-table .root-class { font-weight:700; }
     .class-tree-table .child-badge { margin-left:8px; }
@@ -10,17 +40,136 @@
     .class-teacher-empty { color:#9aa4b2; font-style:italic; }
     .class-team-link { border:0; background:transparent; color:#337ab7; padding:0; font-weight:inherit; text-align:left; }
     .class-team-link:hover, .class-team-link:focus { color:#23527c; text-decoration:underline; outline:0; }
-    .team-board-modal .modal-body { max-height:72vh; overflow-y:auto; background:#f6f7fb; }
+    .class-responsible-select.ui-select-multiple.ui-select-bootstrap {
+        height:auto !important;
+        min-height:40px;
+        text-align:left !important;
+    }
+    .class-responsible-select .ui-select-match {
+        display:inline !important;
+        width:auto !important;
+        text-align:left !important;
+    }
+    .class-responsible-select .ui-select-match-item {
+        display:inline-flex !important;
+        float:none !important;
+        align-items:center;
+        justify-content:flex-start;
+        width:auto !important;
+        max-width:100%;
+        min-width:0 !important;
+        height:auto !important;
+        min-height:28px !important;
+        margin:2px 4px 2px 0 !important;
+        padding:4px 8px !important;
+        line-height:18px !important;
+        text-align:left !important;
+        vertical-align:top;
+        white-space:normal !important;
+        word-break:break-word;
+        transform:none !important;
+        box-shadow:none !important;
+    }
+    .class-responsible-select .ui-select-match-item:hover,
+    .class-responsible-select .ui-select-match-item:focus,
+    .class-responsible-select .ui-select-match-item:active {
+        transform:none !important;
+        box-shadow:none !important;
+    }
+    .class-responsible-select .ui-select-match-item .ui-select-match-text,
+    .class-responsible-select .ui-select-match-item > span:not(.ui-select-match-close) {
+        display:inline !important;
+        width:auto !important;
+        max-width:100%;
+        padding:0 !important;
+        overflow:visible !important;
+        line-height:18px !important;
+        text-align:left !important;
+        text-overflow:clip !important;
+        white-space:normal !important;
+    }
+    .class-responsible-select .ui-select-match-close {
+        position:static !important;
+        order:2;
+        float:none !important;
+        flex:0 0 auto;
+        margin:0 0 0 6px !important;
+        line-height:16px !important;
+    }
+    .class-management-modal-window .modal-dialog {
+        max-width:calc(100vw - 40px);
+        margin-top:20px;
+        margin-bottom:20px;
+    }
+    .class-management-modal-window .modal-content {
+        max-height:calc(100vh - 40px);
+    }
+    .class-management-modal {
+        display:flex;
+        flex-direction:column;
+        max-height:calc(100vh - 40px);
+        min-height:0;
+    }
+    .class-management-modal > .modal-header,
+    .class-management-modal > .modal-footer { flex:0 0 auto; }
+    .class-management-modal > .modal-body {
+        flex:1 1 auto;
+        min-height:0;
+    }
+    .team-board-modal-window .modal-content {
+        height:calc(100vh - 40px);
+        overflow:hidden !important;
+    }
+    .team-board-modal {
+        height:calc(100vh - 40px);
+        overflow:hidden !important;
+    }
+    .team-board-modal .modal-body {
+        display:flex;
+        flex-direction:column;
+        min-height:0;
+        overflow:hidden !important;
+        background:#f6f7fb;
+    }
     .team-board-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
     .team-board-toolbar .form-control { width:320px; max-width:100%; }
-    .team-board-columns { display:flex; align-items:flex-start; gap:14px; overflow-x:auto; padding:2px 2px 16px; }
-    .team-board-column { flex:1 0 265px; min-width:265px; max-width:360px; background:#fff; border:1px solid #dce2ee; border-radius:8px; overflow:hidden; }
+    .team-board-columns {
+        display:flex;
+        flex:1 1 auto;
+        align-items:stretch;
+        min-height:0;
+        max-width:100%;
+        gap:14px;
+        overflow-x:auto;
+        overflow-y:hidden;
+        padding:2px 2px 10px;
+    }
+    .team-board-column {
+        display:flex;
+        flex:1 0 265px;
+        flex-direction:column;
+        min-width:265px;
+        max-width:360px;
+        min-height:0;
+        background:#fff;
+        border:1px solid #dce2ee;
+        border-radius:8px;
+        overflow:hidden;
+    }
     .team-board-column.unassigned { border-color:#f0ad4e; }
     .team-board-column-header { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 13px; background:#eef1f8; border-bottom:1px solid #dce2ee; }
     .team-board-column.unassigned .team-board-column-header { background:#fff6e5; }
     .team-board-column-title { min-width:0; font-weight:700; }
     .team-board-column-code { display:block; overflow:hidden; text-overflow:ellipsis; color:#7b8494; font-size:11px; font-weight:400; }
-    .team-student-list { list-style:none; min-height:150px; margin:0; padding:10px; }
+    .team-student-list {
+        flex:1 1 auto;
+        list-style:none;
+        min-height:150px;
+        margin:0;
+        padding:10px;
+        overflow-y:auto;
+        overscroll-behavior:contain;
+    }
     .team-student-list .dndPlaceholder { display:block; min-height:58px; margin-bottom:9px; border:2px dashed #8b75e8; border-radius:7px; background:#f0ecff; }
     .team-student-card { margin-bottom:9px; padding:10px 11px; border:1px solid #e0e5ef; border-radius:7px; background:#fff; box-shadow:0 1px 2px rgba(33,43,54,.06); cursor:grab; }
     .team-student-card:active { cursor:grabbing; }
@@ -30,11 +179,30 @@
     .team-board-empty { padding:18px 8px; color:#9aa4b2; text-align:center; }
     .team-mobile-picker { display:none; margin-top:8px; }
     @media (max-width: 991px) {
-        .team-board-modal .modal-body { max-height:76vh; padding:10px; }
-        .team-board-columns { display:block; overflow-x:visible; }
-        .team-board-column { min-width:0; max-width:none; margin-bottom:12px; }
+        .team-board-modal .modal-body {
+            overflow-x:hidden !important;
+            overflow-y:auto !important;
+            padding:10px;
+        }
+        .team-board-columns { display:block; flex:none; overflow:visible; }
+        .team-board-column { min-width:0; max-width:none; min-height:150px; margin-bottom:12px; }
+        .team-student-list { overflow:visible; }
         .team-mobile-picker { display:block; }
         .team-student-card { cursor:default; }
+    }
+    @media (max-width: 767px) {
+        .class-management-modal-window .modal-dialog {
+            width:auto;
+            max-width:none;
+            margin:10px;
+        }
+        .class-management-modal-window .modal-content,
+        .class-management-modal { max-height:calc(100vh - 20px); }
+        .team-board-modal-window .modal-content,
+        .team-board-modal { height:calc(100vh - 20px); }
+        .team-board-toolbar { align-items:stretch; }
+        .team-board-toolbar > div,
+        .team-board-toolbar .form-control { width:100%; }
     }
 </style>
 
@@ -46,7 +214,7 @@
             </div>
             <div class="portlet-body">
                 <div class="class-tree-toolbar">
-                    <button class="btn btn-primary" data-ng-if="vm.canEditClassStructure()"
+                    <button class="btn btn-primary" data-ng-if="vm.canCreateRootClass()"
                             data-ng-click="vm.openEditor(null, null)">
                         <i class="fa fa-plus-circle"></i> Thêm lớp gốc
                     </button>
@@ -66,12 +234,16 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr data-ng-repeat="row in vm.visibleClasses track by row.id">
+                        <tr data-ng-repeat="row in vm.visibleClasses track by row.id"
+                            data-ng-class="{'class-tree-child-row': row.level > 0}">
                             <td>
-                                <div class="tree-name" data-ng-class="{'root-class': row.level === 0}"
-                                     data-ng-style="{'padding-left': (row.level * 24) + 'px'}">
+                                <div class="tree-name" data-ng-class="{'root-class': row.level === 0}">
+                                    <span class="tree-indent-step" data-ng-class="{'tree-indent-last': $last}" aria-hidden="true"
+                                          data-ng-repeat="depth in row.levelMarkers track by $index"></span>
                                     <button type="button" class="btn btn-default tree-toggle"
-                                            data-ng-if="row.hasChildren" data-ng-click="vm.toggle(row)">
+                                            data-ng-if="row.hasChildren" data-ng-click="vm.toggle(row)"
+                                            data-ng-attr-aria-expanded="{{vm.expanded[row.id] === true}}"
+                                            data-ng-attr-title="{{vm.expanded[row.id] ? 'Thu gọn lớp con' : 'Mở lớp con'}}">
                                         <i class="fa" data-ng-class="vm.expanded[row.id] ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
                                     </button>
                                     <span class="tree-spacer" data-ng-if="!row.hasChildren"></span>
@@ -95,11 +267,11 @@
                                         data-ng-click="vm.openTeamBoard(row)" title="Mở bảng phân đội">
                                     <i class="fa fa-random"></i> Phân đội
                                 </button>
-                                <button class="btn btn-xs btn-success" data-ng-if="vm.canEditClassStructure()" title="Thêm tổ/lớp con"
+                                <button class="btn btn-xs btn-success" data-ng-if="row.canAddChild" title="Thêm tổ/lớp con"
                                         data-ng-click="vm.openEditor(null, row.id)"><i class="fa fa-plus"></i> Lớp con</button>
-                                <button class="btn btn-xs btn-info" data-ng-if="vm.canEditClassStructure()"
+                                <button class="btn btn-xs btn-info" data-ng-if="row.canEdit"
                                         data-ng-click="vm.openEditor(row)"><i class="fa fa-pencil"></i></button>
-                                <button class="btn btn-xs btn-danger" data-ng-if="vm.canEditClassStructure()"
+                                <button class="btn btn-xs btn-danger" data-ng-if="row.canEdit"
                                         data-ng-click="vm.confirmDelete(row)"><i class="fa fa-trash"></i></button>
                             </td>
                         </tr>
@@ -115,7 +287,7 @@
 </div>
 
 <script type="text/ng-template" id="team_board_modal.html">
-    <div class="team-board-modal">
+    <div class="class-management-modal team-board-modal">
         <div class="modal-header">
             <button type="button" class="close" data-ng-click="$dismiss()" aria-hidden="true"></button>
             <h4 class="modal-title"><i class="fa fa-random"></i> Phân đội — {{vm.teamBoard.className}}</h4>
@@ -185,7 +357,7 @@
 </script>
 
 <script type="text/ng-template" id="edit_object_modal.html">
-    <div modal-movable>
+    <div class="class-management-modal" modal-movable>
         <div class="modal-header">
             <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
             <h4 class="modal-title"><i class="fa fa-sitemap"></i>
@@ -215,18 +387,23 @@
                 </div>
                 <div class="col-md-4 form-group">
                     <label class="bold">Mã trường</label>
-                    <input data-ng-model="vm.enrolmentClass.schoolId" type="number" class="form-control" />
+                    <input data-ng-model="vm.enrolmentClass.schoolId" type="number" class="form-control"
+                           data-ng-readonly="!vm.isAdmin()" />
+                    <span class="help-block" data-ng-if="!vm.isAdmin()">
+                        Mã trường được hệ thống giữ theo phạm vi bạn quản lý.
+                    </span>
                 </div>
                 <div class="col-md-12 form-group">
                     <label class="bold">
                         {{vm.enrolmentClass.parentId
-                            ? 'Người phụ trách (giáo viên hoặc học sinh)'
+                            ? 'Đội trưởng / Đội phó'
                             : 'Giáo viên phụ trách'}}
                         — có thể chọn nhiều
                     </label>
-                    <ui-select multiple theme="bootstrap" data-ng-model="vm.enrolmentClass.teacherIds"
+                    <ui-select multiple theme="bootstrap" class="class-responsible-select"
+                               data-ng-model="vm.enrolmentClass.teacherIds"
                                sortable="true" close-on-select="false" style="width:100%">
-                        <ui-select-match placeholder="Chọn giáo viên...">
+                        <ui-select-match placeholder="{{vm.enrolmentClass.parentId ? 'Chọn Đội trưởng / Đội phó...' : 'Chọn giáo viên...'}}">
                             {{$item.displayName || $item.username}}
                         </ui-select-match>
                         <ui-select-choices repeat="teacher.id as teacher in vm.teacherCandidates | propsFilter:{displayName:$select.search, username:$select.search}">
@@ -238,8 +415,8 @@
                         Lớp gốc chỉ cho phép giáo viên hoặc tài khoản quản lý phụ trách.
                     </span>
                     <span class="help-block" data-ng-if="vm.enrolmentClass.parentId">
-                        Tổ/lớp con/đội có thể giao cho giáo viên hoặc học sinh thuộc lớp cha phụ trách.
-                        Học sinh phụ trách không được cấp thêm quyền quản trị.
+                        Có thể chọn giáo viên hoặc học sinh thuộc lớp cha làm Đội trưởng / Đội phó.
+                        Học sinh được chọn không được cấp thêm quyền quản trị.
                     </span>
                 </div>
             </div>
@@ -254,7 +431,7 @@
 </script>
 
 <script type="text/ng-template" id="confirm_delete_modal.html">
-    <div modal-movable>
+    <div class="class-management-modal" modal-movable>
         <div class="modal-header"><h4 class="modal-title"><i class="fa fa-warning"></i> Xóa lớp học</h4></div>
         <div class="modal-body">
             <p>Bạn có chắc muốn xóa <strong>{{vm.enrolmentClassToDelete.name}}</strong>?</p>

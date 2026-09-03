@@ -29,11 +29,28 @@
         vm.teamBoardModal = null;
         vm.teamSearchText = '';
         vm.teamBoardSaving = false;
+		vm.originalParentId = null;
 
-        vm.canEditClassStructure = function () {
-            var currentSettings = $rootScope.settings || {};
-            return currentSettings.isAdmin === true || currentSettings.isEducationManagerment === true;
-        };
+		vm.isAdmin = function () {
+			var currentSettings = $rootScope.settings || {};
+			return currentSettings.isAdmin === true;
+		};
+
+		vm.canCreateRootClass = function () {
+			var currentSettings = $rootScope.settings || {};
+			return currentSettings.isAdmin === true
+				|| currentSettings.isEducationManagerment === true;
+		};
+
+		vm.findClass = function (classId) {
+			var found = null;
+			angular.forEach(vm.allClasses, function (item) {
+				if (!found && item.id === classId) {
+					found = item;
+				}
+			});
+			return found;
+		};
 
         vm.load = function () {
             service.getTree().then(function (data) {
@@ -139,6 +156,10 @@
                 }
                 visited[item.id] = true;
                 item.level = level;
+                item.levelMarkers = [];
+                for (var depth = 0; depth < level; depth++) {
+                    item.levelMarkers.push(depth);
+                }
                 item.hasChildren = children[item.id].length > 0;
                 result.push(item);
                 if (query || vm.expanded[item.id]) {
@@ -194,6 +215,7 @@
 
             angular.forEach(board.columns, function (column) {
                 column.students = column.students || [];
+                sortTeamStudents(column.students);
                 angular.forEach(column.students, function (student) {
                     student._teamId = column.id;
                     student._targetTeamId = column.id;
@@ -219,6 +241,7 @@
                     templateUrl: 'team_board_modal.html',
                     scope: $scope,
                     size: 'lg',
+                    windowClass: 'class-management-modal-window team-board-modal-window',
                     backdrop: 'static'
                 });
             }, function () {
@@ -226,8 +249,98 @@
             });
         };
 
+        function normalizeVietnameseText(value) {
+            if (value === null || angular.isUndefined(value)) {
+                return '';
+            }
+
+            var text = String(value)
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toLowerCase();
+
+            if (text.normalize) {
+                text = text.normalize('NFC');
+            }
+
+            return text;
+        }
+
+        function removeNameNote(value) {
+            var text = normalizeVietnameseText(value);
+            var oldText;
+
+            do {
+                oldText = text;
+                text = text
+                    .replace(/\s*\([^()]*\)\s*$/g, '')
+                    .replace(/\s*\[[^\[\]]*\]\s*$/g, '')
+                    .trim();
+            } while (text !== oldText);
+
+            return text;
+        }
+
+        function studentNameParts(student) {
+            var person = student && student.person ? student.person : {};
+            return {
+                lastName: student && student.lastName
+                    ? student.lastName
+                    : (person.lastName || ''),
+                firstName: student && student.firstName
+                    ? student.firstName
+                    : (person.firstName || '')
+            };
+        }
+
+        function buildTeamStudentNameSortKey(student) {
+            var parts = studentNameParts(student);
+            var fullName = normalizeVietnameseText(
+                normalizeVietnameseText(parts.lastName) + ' ' +
+                removeNameNote(parts.firstName)
+            );
+
+            if (!fullName) {
+                fullName = normalizeVietnameseText(
+                    student && (student.displayName || student.username)
+                );
+            }
+
+            if (!fullName) {
+                return '';
+            }
+
+            return fullName.split(' ').reverse().join('|');
+        }
+
+        function sortTeamStudents(students) {
+            students.sort(function (first, second) {
+                var firstKey = buildTeamStudentNameSortKey(first);
+                var secondKey = buildTeamStudentNameSortKey(second);
+
+                if (firstKey < secondKey) {
+                    return -1;
+                }
+                if (firstKey > secondKey) {
+                    return 1;
+                }
+
+                return normalizeVietnameseText(first && first.username)
+                    .localeCompare(normalizeVietnameseText(second && second.username));
+            });
+        }
+
         vm.studentName = function (student) {
-            return student ? (student.displayName || student.username || 'Học sinh') : '';
+            if (!student) {
+                return '';
+            }
+
+            var parts = studentNameParts(student);
+            var fullName = (parts.lastName + ' ' + parts.firstName)
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            return fullName || student.displayName || student.username || 'Học sinh';
         };
 
         vm.teamStudentFilter = function (student) {
@@ -325,17 +438,35 @@
 
         vm.openEditor = function (item, parentId) {
             if (item && item.id) {
+				if (item.canEdit !== true) {
+					toastr.warning('Bạn không được sửa lớp này.', 'Thông báo');
+					return;
+				}
                 service.getOne(item.id).then(function (data) {
 					var object = data || {};
+					if (object.canEdit !== true) {
+						toastr.warning('Bạn không được sửa lớp này.', 'Thông báo');
+						return;
+					}
 					vm.loadTeachers(object.parentId, false).then(function () {
 						vm.showEditor(object);
 					});
                 });
                 return;
             }
+			var parent = parentId ? vm.findClass(parentId) : null;
+			if (parentId && (!parent || parent.canAddChild !== true)) {
+				toastr.warning('Bạn không được thêm lớp con vào lớp này.', 'Thông báo');
+				return;
+			}
+			if (!parentId && !vm.canCreateRootClass()) {
+				toastr.warning('Bạn không được tạo lớp gốc.', 'Thông báo');
+				return;
+			}
             var newObject = {
                 isNew: true,
                 parentId: parentId || null,
+				schoolId: parent ? parent.schoolId : (vm.isAdmin() ? null : 2),
                 teacherIds: []
             };
 			vm.loadTeachers(newObject.parentId, false).then(function () {
@@ -347,31 +478,36 @@
             vm.enrolmentClass = angular.copy(object || {});
             vm.enrolmentClass.isNew = !vm.enrolmentClass.id;
             vm.enrolmentClass.teacherIds = vm.enrolmentClass.teacherIds || [];
+			vm.originalParentId = vm.enrolmentClass.parentId || null;
             vm.modalInstance = modal.open({
                 animation: true,
                 templateUrl: 'edit_object_modal.html',
                 scope: $scope,
-                size: 'lg'
+                size: 'lg',
+                windowClass: 'class-management-modal-window'
             });
         };
 
         vm.availableParents = function () {
+			var candidates = vm.allClasses.filter(function (item) {
+				return item.canAddChild === true || item.id === vm.originalParentId;
+			});
             if (!vm.enrolmentClass.id) {
-                return vm.allClasses;
+				return candidates;
             }
             var forbidden = {};
             forbidden[vm.enrolmentClass.id] = true;
             var changed = true;
             while (changed) {
                 changed = false;
-                angular.forEach(vm.allClasses, function (item) {
-                    if (item.parentId && forbidden[item.parentId] && !forbidden[item.id]) {
+			angular.forEach(candidates, function (item) {
+                if (item.parentId && forbidden[item.parentId] && !forbidden[item.id]) {
                         forbidden[item.id] = true;
                         changed = true;
                     }
                 });
             }
-            return vm.allClasses.filter(function (item) { return !forbidden[item.id]; });
+			return candidates.filter(function (item) { return !forbidden[item.id]; });
         };
 
         vm.saveObject = function () {
@@ -398,12 +534,17 @@
         };
 
         vm.confirmDelete = function (item) {
+			if (!item || item.canEdit !== true) {
+				toastr.warning('Bạn không được xóa lớp này.', 'Thông báo');
+				return;
+			}
             vm.enrolmentClassToDelete = item;
             var confirmModal = modal.open({
                 animation: true,
                 templateUrl: 'confirm_delete_modal.html',
                 scope: $scope,
-                size: 'md'
+                size: 'md',
+                windowClass: 'class-management-modal-window'
             });
             confirmModal.result.then(function (answer) {
                 if (answer !== 'yes') {
@@ -421,8 +562,5 @@
         };
 
         vm.load();
-        if (vm.canEditClassStructure()) {
-            vm.loadTeachers();
-        }
     }
 })();
