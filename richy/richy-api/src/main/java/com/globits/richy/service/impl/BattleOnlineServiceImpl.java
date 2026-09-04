@@ -61,6 +61,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String MODE_CLASSIC = "CLASSIC";
     private static final String MODE_COUNTDOWN = "COUNTDOWN";
     private static final String MODE_MONEY_BEG = "MONEY_BEG";
+    private static final String MODE_WHO_IS_DUMBER = "WHO_IS_DUMBER";
 
     private static final String SKILL_FREEZE = "FREEZE";
     private static final String SKILL_BREAK_STREAK = "BREAK_STREAK";
@@ -772,9 +773,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     );
 
             room.settings.teamCount =
-                    normalizeTeamCount(
-                        settings.getTeamCount()
-                    );
+                    MODE_WHO_IS_DUMBER.equals(room.settings.mode)
+                            ? 2
+                            : normalizeTeamCount(
+                                settings.getTeamCount()
+                            );
 
             normalizeTeamAssignmentsLocked(room);
 
@@ -866,6 +869,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             room.questionEndsAt = 0L;
             room.matchEndsAt = 0L;
+            room.dumbBallPosition = 0;
+            room.dumbBallMaxDistance =
+                    calculateDumbBallMaxDistance(room);
 
             for (PlayerState player : room.players.values()) {
                 resetPlayerMatchState(player);
@@ -1322,6 +1328,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     correct &&
                     now < player.burningUntil;
 
+            applyDumbBallAnswerLocked(
+                    room,
+                    player,
+                    correct,
+                    fireBoostApplied
+            );
+
             double scoreDelta = applyScore(
                     player,
                     correct,
@@ -1359,6 +1372,24 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     fireBoostApplied,
                     fireActivated
             );
+
+            if (MODE_WHO_IS_DUMBER.equals(room.settings.mode)) {
+                int otherTeam = player.teamNumber == 1 ? 2 : 1;
+
+                if (correct) {
+                    result.setMessage(
+                            "CHÍNH XÁC! Đẩy quả cầu NGU sang ĐỘI " +
+                            otherTeam +
+                            (fireBoostApplied ? " 2 bước." : " 1 bước.")
+                    );
+                } else {
+                    result.setMessage(
+                            "SAI RỒI! Quả cầu NGU bị hút về ĐỘI " +
+                            player.teamNumber +
+                            " 1 bước."
+                    );
+                }
+            }
 
             /*
              * COUNTDOWN không chờ người khác:
@@ -2487,6 +2518,22 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 MODE_MONEY_BEG.equals(room.settings.mode)
         );
 
+        if (MODE_WHO_IS_DUMBER.equals(room.settings.mode)) {
+            /*
+             * Mode hai đội không dùng CƯỚP ĐIỂM. Phân bổ lại toàn bộ
+             * lượt đó cho FREEZE, FIRE_UP và BREAK_STREAK để tổng tần
+             * suất skill vẫn tương đương COUNTDOWN.
+             */
+            int removedStealCount = skillCounts[2];
+            int[] replacementCycle = new int[] {0, 3, 1};
+
+            skillCounts[2] = 0;
+
+            for (int index = 0; index < removedStealCount; index++) {
+                skillCounts[replacementCycle[index % replacementCycle.length]] += 1;
+            }
+        }
+
         List<Integer> freezePositions =
                 buildBalancedSkillPositions(
                     total,
@@ -3094,9 +3141,16 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     " điểm của " + targetName + "."
             );
         } else if (SKILL_FIRE_UP.equals(skillType)) {
-            event.setMessage(
-                    actorName + " vừa kích hoạt CHÁY LÊN x1.2 trong 15 giây."
-            );
+            if (MODE_WHO_IS_DUMBER.equals(room.settings.mode)) {
+                event.setMessage(
+                        actorName +
+                        " vừa kích hoạt CHÁY LÊN: câu đúng đẩy 2 bước trong 15 giây."
+                );
+            } else {
+                event.setMessage(
+                        actorName + " vừa kích hoạt CHÁY LÊN x1.2 trong 15 giây."
+                );
+            }
         } else if (SKILL_RESET_PASSWORD.equals(skillType)) {
             event.setMessage(
                     actorName + " vừa dùng skill ĐẶT LẠI MẬT KHẨU."
@@ -4381,6 +4435,19 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 room.matchEndsAt
         );
 
+        if (MODE_WHO_IS_DUMBER.equals(room.settings.mode)) {
+            room.dumbBallMaxDistance =
+                    calculateDumbBallMaxDistance(room);
+            room.dumbBallPosition = clamp(
+                    room.dumbBallPosition,
+                    -room.dumbBallMaxDistance,
+                    room.dumbBallMaxDistance
+            );
+
+            dto.setDumbBallPosition(room.dumbBallPosition);
+            dto.setDumbBallMaxDistance(room.dumbBallMaxDistance);
+        }
+
         dto.setLoadingQuestions(
                 room.loadingQuestions
         );
@@ -4901,6 +4968,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             RoomState room) {
 
         int connected = 0;
+        boolean hasTeamOne = false;
+        boolean hasTeamTwo = false;
 
         for (PlayerState player : room.players.values()) {
             if (
@@ -4911,6 +4980,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             connected += 1;
+
+            if (player.teamNumber == 1) {
+                hasTeamOne = true;
+            } else if (player.teamNumber == 2) {
+                hasTeamTwo = true;
+            }
 
             if (
                 !player.ready
@@ -4928,11 +5003,25 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     "Cần ít nhất 2 người đang online để START."
             );
         }
+
+        if (
+            MODE_WHO_IS_DUMBER.equals(room.settings.mode) &&
+            (!hasTeamOne || !hasTeamTwo)
+        ) {
+            throw new BattleOnlineException(
+                    HttpStatus.BAD_REQUEST,
+                    "XEM AI NGU HƠN NÀO cần ít nhất 1 người online ở mỗi đội."
+            );
+        }
     }
 
 
     private void resetScoresLocked(
             RoomState room) {
+
+        room.dumbBallPosition = 0;
+        room.dumbBallMaxDistance =
+                calculateDumbBallMaxDistance(room);
 
         for (PlayerState player : room.players.values()) {
             resetPlayerMatchState(player);
@@ -5438,6 +5527,50 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
+    private int calculateDumbBallMaxDistance(RoomState room) {
+        return Math.max(
+                1,
+                (int) Math.ceil(displayTotal(room) * 0.20D)
+        );
+    }
+
+
+    private void applyDumbBallAnswerLocked(
+            RoomState room,
+            PlayerState player,
+            boolean correct,
+            boolean fireBoostApplied) {
+
+        if (!MODE_WHO_IS_DUMBER.equals(room.settings.mode)) {
+            return;
+        }
+
+        if (player.teamNumber != 1 && player.teamNumber != 2) {
+            throw new BattleOnlineException(
+                    HttpStatus.CONFLICT,
+                    "Người chơi phải thuộc ĐỘI 1 hoặc ĐỘI 2."
+            );
+        }
+
+        int distance = correct && fireBoostApplied ? 2 : 1;
+        int direction;
+
+        if (player.teamNumber == 1) {
+            direction = correct ? distance : -distance;
+        } else {
+            direction = correct ? -distance : distance;
+        }
+
+        room.dumbBallMaxDistance =
+                calculateDumbBallMaxDistance(room);
+        room.dumbBallPosition = clamp(
+                room.dumbBallPosition + direction,
+                -room.dumbBallMaxDistance,
+                room.dumbBallMaxDistance
+        );
+    }
+
+
     private List<Long> cleanTopicIds(
             List<Long> source) {
 
@@ -5507,12 +5640,21 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             return MODE_MONEY_BEG;
         }
 
+        if (
+            MODE_WHO_IS_DUMBER.equals(mode) ||
+            "XEM_AI_NGU_HON".equals(mode)
+        ) {
+            return MODE_WHO_IS_DUMBER;
+        }
+
         return MODE_CLASSIC;
     }
 
 
     private boolean isCountdownLikeMode(String mode) {
-        return MODE_COUNTDOWN.equals(mode) || MODE_MONEY_BEG.equals(mode);
+        return MODE_COUNTDOWN.equals(mode) ||
+                MODE_MONEY_BEG.equals(mode) ||
+                MODE_WHO_IS_DUMBER.equals(mode);
     }
 
 
@@ -5698,6 +5840,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
          * COUNTDOWN.
          */
         long matchEndsAt = 0L;
+
+        /*
+         * WHO_IS_DUMBER: âm gần ĐỘI 1, dương gần ĐỘI 2.
+         */
+        int dumbBallPosition = 0;
+        int dumbBallMaxDistance = 1;
 
         Map<Integer, String> countdownSkillPlan =
                 new LinkedHashMap<Integer, String>();

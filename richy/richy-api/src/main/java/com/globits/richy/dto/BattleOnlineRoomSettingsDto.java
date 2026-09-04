@@ -14,7 +14,7 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     private List<String> topicNames = new ArrayList<String>();
 
     /*
-     * CLASSIC | COUNTDOWN | MONEY_BEG
+     * CLASSIC | COUNTDOWN | MONEY_BEG | WHO_IS_DUMBER
      */
     private String mode = "CLASSIC";
 
@@ -32,7 +32,7 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     private int countdownMinutes = 5;
 
     /*
-     * COUNTDOWN/MONEY_BEG: số giây khóa đáp án sau một câu sai.
+     * COUNTDOWN/MONEY_BEG/WHO_IS_DUMBER: số giây khóa đáp án sau một câu sai.
      */
     private int wrongAnswerFreezeSeconds = 3;
 

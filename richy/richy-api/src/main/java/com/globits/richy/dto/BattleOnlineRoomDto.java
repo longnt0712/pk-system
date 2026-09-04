@@ -40,6 +40,13 @@ public class BattleOnlineRoomDto implements Serializable {
     private long serverTime;
 
     /*
+     * WHO_IS_DUMBER: vị trí âm gần ĐỘI 1, vị trí dương gần ĐỘI 2.
+     * Khoảng cách tối đa mỗi phía bằng ceil(20% tổng số câu của bài).
+     */
+    private int dumbBallPosition;
+    private int dumbBallMaxDistance;
+
+    /*
      * Server-side lazy preload của bài đã chọn.
      */
     private boolean loadingQuestions;
@@ -183,6 +190,22 @@ public class BattleOnlineRoomDto implements Serializable {
 
     public void setServerTime(long serverTime) {
         this.serverTime = serverTime;
+    }
+
+    public int getDumbBallPosition() {
+        return dumbBallPosition;
+    }
+
+    public void setDumbBallPosition(int dumbBallPosition) {
+        this.dumbBallPosition = dumbBallPosition;
+    }
+
+    public int getDumbBallMaxDistance() {
+        return dumbBallMaxDistance;
+    }
+
+    public void setDumbBallMaxDistance(int dumbBallMaxDistance) {
+        this.dumbBallMaxDistance = dumbBallMaxDistance;
     }
 
     public boolean isLoadingQuestions() {
