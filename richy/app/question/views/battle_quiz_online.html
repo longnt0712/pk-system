@@ -509,6 +509,24 @@
                     </small>
                 </button>
 
+
+                <button type="button"
+                        class="battle-online-mode-card"
+                        ng-class="{
+                            'is-active is-who-is-dumber': vm.hostSettings.mode === 'WHO_IS_DUMBER'
+                        }"
+                        ng-click="vm.selectMode('WHO_IS_DUMBER')">
+
+                    <span class="battle-online-mode-icon">🤪</span>
+
+                    <strong>XEM AI NGU HƠN NÀO</strong>
+
+                    <small>
+                        COUNTDOWN cho 2 đội. Đẩy quả cầu NGU sang phía
+                        đối thủ bằng câu trả lời đúng.
+                    </small>
+                </button>
+
             </div>
 
 
@@ -559,12 +577,14 @@
 
             <!-- COUNTDOWN -->
             <div class="battle-online-mode-settings is-countdown"
-                 ng-if="vm.hostSettings.mode === 'COUNTDOWN' || vm.hostSettings.mode === 'MONEY_BEG'">
+                 ng-if="vm.hostSettings.mode === 'COUNTDOWN' || vm.hostSettings.mode === 'MONEY_BEG' || vm.hostSettings.mode === 'WHO_IS_DUMBER'">
 
                 <div class="battle-online-mode-badge">
                     {{vm.hostSettings.mode === 'MONEY_BEG'
                         ? '🤑 XIN TÍ TIỀN MODE'
-                        : '⏳ COUNTDOWN MODE'}}
+                        : (vm.hostSettings.mode === 'WHO_IS_DUMBER'
+                            ? '🤪 XEM AI NGU HƠN NÀO'
+                            : '⏳ COUNTDOWN MODE')}}
                 </div>
 
                 <div class="battle-online-setting-grid">
@@ -599,6 +619,12 @@
                     Đồng hồ chạy ngay khi START. Mỗi người chọn 1 trong 3 mật khẩu;
                     đoán đúng mật khẩu đối thủ sẽ lấy 40% tổng điểm của họ.
                 </p>
+
+                <p ng-if="vm.hostSettings.mode === 'WHO_IS_DUMBER'">
+                    Hai đội kéo quả cầu NGU: đúng đẩy sang đối thủ 1 bước,
+                    sai hút về đội mình 1 bước; CHÁY LÊN đẩy 2 bước.
+                    Mỗi nửa thanh dài bằng 20% tổng số câu của bài.
+                </p>
             </div>
 
 
@@ -612,12 +638,18 @@
                 <select class="form-control"
                         ng-model="vm.hostSettings.teamCount"
                         ng-options="option.value as option.label for option in vm.teamCountOptions"
+                        ng-disabled="vm.hostSettings.mode === 'WHO_IS_DUMBER'"
                         ng-change="vm.markTeamCountTouched()">
                 </select>
 
-                <p>
+                <p ng-if="vm.hostSettings.mode !== 'WHO_IS_DUMBER'">
                     Khi lưu, server chia cân bằng ban đầu. HOST có thể đổi đội
                     của từng học sinh trong danh sách lobby. Skill chỉ dùng lên đội đối phương.
+                </p>
+
+                <p ng-if="vm.hostSettings.mode === 'WHO_IS_DUMBER'">
+                    Mode này cố định 2 đội. Server chia cân bằng ban đầu;
+                    HOST vẫn có thể đổi thành viên giữa ĐỘI 1 và ĐỘI 2.
                 </p>
             </div>
 
@@ -682,6 +714,10 @@
                 <strong ng-if="vm.room.settings.mode === 'MONEY_BEG'">
                     🤑 XIN TÍ TIỀN
                 </strong>
+
+                <strong ng-if="vm.room.settings.mode === 'WHO_IS_DUMBER'">
+                    🤪 XEM AI NGU HƠN NÀO
+                </strong>
             </div>
 
 
@@ -702,7 +738,7 @@
 
 
             <div class="battle-online-info-row"
-                 ng-if="vm.room.settings.mode === 'COUNTDOWN' || vm.room.settings.mode === 'MONEY_BEG'">
+                 ng-if="vm.room.settings.mode === 'COUNTDOWN' || vm.room.settings.mode === 'MONEY_BEG' || vm.room.settings.mode === 'WHO_IS_DUMBER'">
 
                 <span>Tổng thời gian</span>
                 <strong>{{vm.room.settings.countdownMinutes}} phút</strong>
@@ -710,7 +746,7 @@
 
 
             <div class="battle-online-info-row"
-                 ng-if="vm.room.settings.mode === 'COUNTDOWN' || vm.room.settings.mode === 'MONEY_BEG'">
+                 ng-if="vm.room.settings.mode === 'COUNTDOWN' || vm.room.settings.mode === 'MONEY_BEG' || vm.room.settings.mode === 'WHO_IS_DUMBER'">
 
                 <span>Sai bị khóa</span>
                 <strong>{{vm.room.settings.wrongAnswerFreezeSeconds}} giây</strong>
@@ -728,13 +764,17 @@
 
 
             <div class="battle-online-countdown-explain"
-                 ng-if="vm.room.settings.mode === 'COUNTDOWN' || vm.room.settings.mode === 'MONEY_BEG'">
+                 ng-if="vm.room.settings.mode === 'COUNTDOWN' || vm.room.settings.mode === 'MONEY_BEG' || vm.room.settings.mode === 'WHO_IS_DUMBER'">
 
                 <span ng-if="vm.room.settings.mode === 'COUNTDOWN'">
                     Mỗi người chơi có thứ tự câu riêng, không cần chờ nhau.
                 </span>
                 <span ng-if="vm.room.settings.mode === 'MONEY_BEG'">
                     Mỗi người chọn mật khẩu riêng và có thể đoán mật khẩu để xin 40% điểm.
+                </span>
+                <span ng-if="vm.room.settings.mode === 'WHO_IS_DUMBER'">
+                    Đúng đẩy quả cầu NGU sang đội kia; sai kéo nó về đội mình.
+                    Mode này không có skill CƯỚP ĐIỂM.
                 </span>
             </div>
 
@@ -829,7 +869,7 @@
                  ng-if="vm.isCountdownMode()">
 
                 <span>
-                    {{vm.isMoneyBegMode() ? '🤑 XIN TÍ TIỀN' : '⏳ COUNTDOWN'}}
+                    {{vm.getBattleModeLabel()}}
                     • TỪ ĐÃ GẶP
                     <b>{{vm.me().uniqueWordsSeen || 0}}</b>
                     /
@@ -845,6 +885,25 @@
                 </div>
 
             </div>
+
+            <section class="battle-online-dumb-meter"
+                     ng-if="vm.isWhoIsDumberMode()">
+                <div class="battle-online-dumb-meter-heading">
+                    <strong>ĐỘI 1</strong>
+                    <span>20% TỔNG SỐ CÂU = {{vm.room.dumbBallMaxDistance}} BƯỚC / PHÍA</span>
+                    <strong>ĐỘI 2</strong>
+                </div>
+
+                <div class="battle-online-dumb-track">
+                    <span class="battle-online-dumb-center"></span>
+                    <div class="battle-online-dumb-ball"
+                         ng-style="{'left': vm.getDumbBallPercent() + '%'}">
+                        NGU
+                    </div>
+                </div>
+
+                <p>{{vm.getDumbBallStatus()}}</p>
+            </section>
 
             <div class="battle-online-word"
                  ng-if="vm.room.currentQuestion">
@@ -987,6 +1046,21 @@
                 <strong>⏳ {{vm.formatTime(vm.countdown)}}</strong>
                 <span>Mỗi người chơi đang nhận câu hỏi riêng.</span>
             </div>
+
+            <section class="battle-online-dumb-meter is-spectator"
+                     ng-if="vm.isWhoIsDumberMode()">
+                <div class="battle-online-dumb-meter-heading">
+                    <strong>ĐỘI 1</strong>
+                    <span>{{vm.room.dumbBallMaxDistance}} BƯỚC / PHÍA</span>
+                    <strong>ĐỘI 2</strong>
+                </div>
+                <div class="battle-online-dumb-track">
+                    <span class="battle-online-dumb-center"></span>
+                    <div class="battle-online-dumb-ball"
+                         ng-style="{'left': vm.getDumbBallPercent() + '%'}">NGU</div>
+                </div>
+                <p>{{vm.getDumbBallStatus()}}</p>
+            </section>
         </main>
 
 
@@ -1006,7 +1080,7 @@
 
 
             <div class="battle-online-team-ranking"
-                 ng-if="vm.hasTeamMode()">
+                 ng-if="vm.hasTeamMode() && !vm.isWhoIsDumberMode()">
                 <div class="battle-online-team-ranking-title">👥 XẾP HẠNG ĐỘI</div>
 
                 <div class="battle-online-team-ranking-row"
@@ -1042,7 +1116,7 @@
 
                     <span class="battle-online-burning-badge"
                           ng-if="vm.isPlayerBurning(player)">
-                        🔥 x1.2
+                        🔥 {{vm.isWhoIsDumberMode() ? '2 BƯỚC' : 'x1.2'}}
                     </span>
 
                     <small ng-if="vm.room.settings.mode === 'CLASSIC'">
@@ -1107,7 +1181,7 @@
             </span>
 
             <span ng-if="vm.isCountdownMode()">
-                {{vm.isMoneyBegMode() ? '🤑 XIN TÍ TIỀN' : '⏳ COUNTDOWN'}}
+                {{vm.getBattleModeLabel()}}
                 {{vm.room.settings.countdownMinutes}} PHÚT
             </span>
 
@@ -1117,8 +1191,24 @@
         </div>
 
 
+        <section class="battle-online-dumb-meter is-final"
+                 ng-if="vm.isWhoIsDumberMode()">
+            <div class="battle-online-dumb-meter-heading">
+                <strong>ĐỘI 1</strong>
+                <span>{{vm.room.dumbBallMaxDistance}} BƯỚC / PHÍA</span>
+                <strong>ĐỘI 2</strong>
+            </div>
+            <div class="battle-online-dumb-track">
+                <span class="battle-online-dumb-center"></span>
+                <div class="battle-online-dumb-ball"
+                     ng-style="{'left': vm.getDumbBallPercent() + '%'}">NGU</div>
+            </div>
+            <p>{{vm.getDumbBallStatus()}}</p>
+        </section>
+
+
         <div class="battle-online-team-ranking is-final"
-             ng-if="vm.hasTeamMode()">
+             ng-if="vm.hasTeamMode() && !vm.isWhoIsDumberMode()">
             <div class="battle-online-team-ranking-title">👥 KẾT QUẢ THEO ĐỘI</div>
 
             <div class="battle-online-team-ranking-row"
@@ -1155,7 +1245,7 @@
 
                     <span class="battle-online-burning-badge"
                           ng-if="vm.isPlayerBurning(player)">
-                        🔥 x1.2
+                        🔥 {{vm.isWhoIsDumberMode() ? '2 BƯỚC' : 'x1.2'}}
                     </span>
 
                     <small>
@@ -1469,7 +1559,7 @@
 
             <div class="battle-online-ranking-modal-scroll">
                 <div class="battle-online-team-ranking"
-                     ng-if="vm.hasTeamMode()">
+                     ng-if="vm.hasTeamMode() && !vm.isWhoIsDumberMode()">
                     <div class="battle-online-team-ranking-title">👥 XẾP HẠNG ĐỘI</div>
 
                     <div class="battle-online-team-ranking-row"
@@ -1502,7 +1592,7 @@
 
                         <span class="battle-online-burning-badge"
                               ng-if="vm.isPlayerBurning(player)">
-                            🔥 x1.2
+                            🔥 {{vm.isWhoIsDumberMode() ? '2 BƯỚC' : 'x1.2'}}
                         </span>
 
                         <small ng-if="vm.room.settings.mode === 'CLASSIC'">
@@ -1587,7 +1677,7 @@
             <div class="battle-online-ranking-modal-header">
                 <div>
                     <span class="battle-online-small-title">
-                        {{vm.isMoneyBegMode() ? '🤑 XIN TÍ TIỀN' : '⚡ COUNTDOWN'}}
+                        {{vm.getBattleModeLabel()}}
                     </span>
                     <h2>Hoạt động skill</h2>
                 </div>
@@ -3441,7 +3531,7 @@
 
     .battle-online-mode-grid {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
 
         gap: 7px;
     }
@@ -3499,6 +3589,142 @@
                 #ed7e38,
                 #e75474
             );
+    }
+
+    .battle-online-mode-card.is-active.is-who-is-dumber {
+        background:
+            linear-gradient(
+                135deg,
+                #3468dd,
+                #8d3cc7 52%,
+                #ed5579
+            );
+    }
+
+
+    /* =====================================================
+       WHO IS DUMBER METER
+       ===================================================== */
+
+    .battle-online-dumb-meter {
+        margin: 10px 0 12px;
+        padding: 10px 12px 9px;
+        border: 1px solid rgba(109, 91, 209, .18);
+        border-radius: 15px;
+        background:
+            linear-gradient(
+                135deg,
+                rgba(71, 120, 232, .09),
+                rgba(238, 82, 125, .09)
+            );
+    }
+
+    .battle-online-dumb-meter-heading {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: .4px;
+    }
+
+    .battle-online-dumb-meter-heading strong:first-child {
+        color: #2867d9;
+        text-align: left;
+    }
+
+    .battle-online-dumb-meter-heading strong:last-child {
+        color: #df416a;
+        text-align: right;
+    }
+
+    .battle-online-dumb-meter-heading span {
+        color: #7d8193;
+        font-size: 8px;
+        text-align: center;
+    }
+
+    .battle-online-dumb-track {
+        position: relative;
+        height: 16px;
+        margin: 0 4px;
+        border: 3px solid #fff;
+        border-radius: 999px;
+        background:
+            linear-gradient(
+                90deg,
+                #3e7cea 0%,
+                #aeb8d9 49%,
+                #aeb8d9 51%,
+                #ef587d 100%
+            );
+        box-shadow:
+            0 5px 14px rgba(46, 59, 113, .18),
+            inset 0 1px 2px rgba(0, 0, 0, .12);
+    }
+
+    .battle-online-dumb-center {
+        position: absolute;
+        top: -7px;
+        bottom: -7px;
+        left: 50%;
+        width: 2px;
+        border-radius: 2px;
+        background: rgba(55, 49, 82, .42);
+        transform: translateX(-50%);
+    }
+
+    .battle-online-dumb-ball {
+        position: absolute;
+        z-index: 2;
+        top: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border: 4px solid #fff;
+        border-radius: 50%;
+        color: #3a2742;
+        background:
+            radial-gradient(circle at 35% 30%, #fff8a8, #ffcf38 62%, #f39a21);
+        box-shadow:
+            0 8px 18px rgba(89, 57, 22, .28),
+            inset 0 -4px 8px rgba(173, 84, 8, .14);
+        font-size: 11px;
+        font-weight: 1000;
+        letter-spacing: .4px;
+        transform: translate(-50%, -50%);
+        transition: left .38s cubic-bezier(.22, .75, .25, 1.1);
+    }
+
+    .battle-online-dumb-meter > p {
+        margin: 13px 0 0;
+        color: #4e5165;
+        font-size: 10px;
+        font-weight: 900;
+        text-align: center;
+    }
+
+    .battle-online-dumb-meter.is-spectator {
+        width: 100%;
+        margin-top: 18px;
+        box-sizing: border-box;
+    }
+
+    .battle-online-dumb-meter.is-final {
+        width: min(720px, 100%);
+        margin: 20px auto;
+        padding: 18px 20px 16px;
+        box-sizing: border-box;
+    }
+
+    .battle-online-dumb-meter.is-final > p {
+        margin-top: 18px;
+        color: #29233c;
+        font-size: 15px;
     }
 
     .battle-online-mode-card.is-active small {
@@ -5049,6 +5275,19 @@
     }
 
     html.global-dark-mode
+    .battle-online-dumb-meter {
+        border-color: #394966;
+        background: linear-gradient(135deg, rgba(45, 92, 178, .22), rgba(163, 48, 91, .20));
+    }
+
+    html.global-dark-mode
+    .battle-online-dumb-meter-heading span,
+    html.global-dark-mode
+    .battle-online-dumb-meter > p {
+        color: #d9e2f1;
+    }
+
+    html.global-dark-mode
     .battle-online-ranking-row.is-rank-1 {
         background: #3a321b;
     }
@@ -5392,6 +5631,26 @@
 
         .battle-online-mode-card {
             min-height: 86px;
+        }
+
+        .battle-online-dumb-meter {
+            padding-right: 8px;
+            padding-left: 8px;
+        }
+
+        .battle-online-dumb-meter-heading {
+            gap: 4px;
+        }
+
+        .battle-online-dumb-meter-heading span {
+            max-width: 135px;
+            font-size: 6px;
+        }
+
+        .battle-online-dumb-ball {
+            width: 42px;
+            height: 42px;
+            font-size: 10px;
         }
 
         .battle-online-word {

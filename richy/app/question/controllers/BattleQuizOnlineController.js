@@ -206,6 +206,10 @@
         vm.isHost = isHost;
         vm.isCountdownMode = isCountdownMode;
         vm.isMoneyBegMode = isMoneyBegMode;
+        vm.isWhoIsDumberMode = isWhoIsDumberMode;
+        vm.getBattleModeLabel = getBattleModeLabel;
+        vm.getDumbBallPercent = getDumbBallPercent;
+        vm.getDumbBallStatus = getDumbBallStatus;
         vm.isSpectator = isSpectator;
         vm.canKickPlayer = canKickPlayer;
         vm.me = getMe;
@@ -537,13 +541,17 @@
                 .toUpperCase()
                 .trim();
 
-            return mode === 'COUNTDOWN' || mode === 'MONEY_BEG';
+            return mode === 'COUNTDOWN' ||
+                mode === 'MONEY_BEG' ||
+                mode === 'WHO_IS_DUMBER';
         }
 
 
         function isCountdownLikeValue(mode) {
             mode = String(mode || '').toUpperCase().trim();
-            return mode === 'COUNTDOWN' || mode === 'MONEY_BEG';
+            return mode === 'COUNTDOWN' ||
+                mode === 'MONEY_BEG' ||
+                mode === 'WHO_IS_DUMBER';
         }
 
 
@@ -553,6 +561,73 @@
                 : vm.hostSettings.mode;
 
             return String(mode || '').toUpperCase().trim() === 'MONEY_BEG';
+        }
+
+
+        function isWhoIsDumberMode() {
+            var mode = vm.room && vm.room.settings
+                ? vm.room.settings.mode
+                : vm.hostSettings.mode;
+
+            return String(mode || '').toUpperCase().trim() ===
+                'WHO_IS_DUMBER';
+        }
+
+
+        function getBattleModeLabel() {
+            if (isWhoIsDumberMode()) {
+                return '🤪 XEM AI NGU HƠN NÀO';
+            }
+
+            return isMoneyBegMode()
+                ? '🤑 XIN TÍ TIỀN'
+                : '⏳ COUNTDOWN';
+        }
+
+
+        function getDumbBallPercent() {
+            var maximum = Math.max(
+                1,
+                Number(vm.room && vm.room.dumbBallMaxDistance || 1)
+            );
+            var position = Number(
+                vm.room && vm.room.dumbBallPosition || 0
+            );
+
+            position = Math.max(-maximum, Math.min(maximum, position));
+
+            /* Chừa 8% ở hai đầu để quả cầu không tràn khỏi thanh trên mobile. */
+            return 8 + ((position + maximum) / (2 * maximum)) * 84;
+        }
+
+
+        function getDumbBallStatus() {
+            var maximum = Math.max(
+                1,
+                Number(vm.room && vm.room.dumbBallMaxDistance || 1)
+            );
+            var position = Number(
+                vm.room && vm.room.dumbBallPosition || 0
+            );
+            var finished = vm.room && vm.room.status === 'FINISHED';
+
+            if (position === 0) {
+                return finished
+                    ? 'HÒA: quả cầu NGU vẫn ở chính giữa.'
+                    : 'Quả cầu NGU đang ở chính giữa.';
+            }
+
+            var dumbTeam = position < 0 ? 1 : 2;
+            var winningTeam = dumbTeam === 1 ? 2 : 1;
+            var steps = Math.min(maximum, Math.abs(position));
+
+            if (finished) {
+                return 'ĐỘI ' + dumbTeam + ' NGU HƠN • ĐỘI ' +
+                    winningTeam + ' THẮNG!';
+            }
+
+            return 'ĐỘI ' + dumbTeam + ' đang giữ quả cầu NGU • ' +
+                steps + '/' + maximum + ' bước.';
         }
 
 
@@ -1585,9 +1660,16 @@
             mode = String(mode || '').toUpperCase().trim();
 
             vm.hostSettings.mode =
-                mode === 'COUNTDOWN' || mode === 'MONEY_BEG'
+                mode === 'COUNTDOWN' ||
+                mode === 'MONEY_BEG' ||
+                mode === 'WHO_IS_DUMBER'
                     ? mode
                     : 'CLASSIC';
+
+            if (vm.hostSettings.mode === 'WHO_IS_DUMBER') {
+                vm.hostSettings.teamCount = 2;
+                vm.hostTeamCountDirty = true;
+            }
 
             /*
              * Giữ lựa chọn này qua các room update do lazy preload.
@@ -1648,7 +1730,8 @@
             return {
                 mode:
                     vm.hostSettings.mode === 'COUNTDOWN' ||
-                    vm.hostSettings.mode === 'MONEY_BEG'
+                    vm.hostSettings.mode === 'MONEY_BEG' ||
+                    vm.hostSettings.mode === 'WHO_IS_DUMBER'
                         ? vm.hostSettings.mode
                         : 'CLASSIC',
 
@@ -1692,12 +1775,14 @@
                     ),
 
                 teamCount:
-                    clampInteger(
-                        vm.hostSettings.teamCount,
-                        0,
-                        10,
-                        0
-                    )
+                    vm.hostSettings.mode === 'WHO_IS_DUMBER'
+                        ? 2
+                        : clampInteger(
+                            vm.hostSettings.teamCount,
+                            0,
+                            10,
+                            0
+                        )
             };
         }
 
@@ -2578,7 +2663,9 @@
             }
 
             if (type === 'FIRE_UP') {
-                return 'CHÁY LÊN x1.2 TRONG 15 GIÂY';
+                return isWhoIsDumberMode()
+                    ? 'CHÁY LÊN: ĐẨY 2 BƯỚC TRONG 15 GIÂY'
+                    : 'CHÁY LÊN x1.2 TRONG 15 GIÂY';
             }
 
             if (type === 'MONEY_BEG') {
@@ -2806,7 +2893,9 @@
                 return actor + ' vừa dùng skill ĐẶT LẠI MẬT KHẨU.';
             }
 
-            return actor + ' vừa kích hoạt CHÁY LÊN x1.2 trong 15 giây.';
+            return isWhoIsDumberMode()
+                ? actor + ' vừa kích hoạt CHÁY LÊN: câu đúng đẩy 2 bước trong 15 giây.'
+                : actor + ' vừa kích hoạt CHÁY LÊN x1.2 trong 15 giây.';
         }
 
 
