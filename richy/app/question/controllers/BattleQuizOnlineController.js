@@ -131,7 +131,8 @@
 
             countdownMinutes: 5,
             wrongAnswerFreezeSeconds: 3,
-            teamCount: 0
+            teamCount: 0,
+            doubleActionUsername: ''
         };
 
         vm.teamCountOptions = [
@@ -158,6 +159,7 @@
         vm.hostCountdownMinutesDirty = false;
         vm.hostWrongFreezeDirty = false;
         vm.hostTeamCountDirty = false;
+        vm.hostDoubleActionDirty = false;
 
         vm.currentUser =
             readCurrentUser();
@@ -206,7 +208,7 @@
         vm.isHost = isHost;
         vm.isCountdownMode = isCountdownMode;
         vm.isMoneyBegMode = isMoneyBegMode;
-        vm.isWhoIsDumberMode = isWhoIsDumberMode;
+        vm.isEscapeDumbDemonMode = isEscapeDumbDemonMode;
         vm.getBattleModeLabel = getBattleModeLabel;
         vm.getDumbBallPercent = getDumbBallPercent;
         vm.getDumbBallStatus = getDumbBallStatus;
@@ -240,6 +242,14 @@
         vm.getTeamNumbers = getTeamNumbers;
         vm.getTeamSummaries = getTeamSummaries;
         vm.hasTeamMode = hasTeamMode;
+        vm.getEscapeTeamPlayerCount = getEscapeTeamPlayerCount;
+        vm.getEscapeSmallerTeamNumber = getEscapeSmallerTeamNumber;
+        vm.areEscapeTeamsUneven = areEscapeTeamsUneven;
+        vm.getEscapeDoubleActionCandidates = getEscapeDoubleActionCandidates;
+        vm.markDoubleActionTouched = markDoubleActionTouched;
+        vm.isDoubleActionPlayer = isDoubleActionPlayer;
+        vm.getDoubleActionPlayerName = getDoubleActionPlayerName;
+        vm.getFirePowerLabel = getFirePowerLabel;
         vm.openKickConfirm = openKickConfirm;
         vm.closeKickConfirm = closeKickConfirm;
         vm.confirmKickPlayer = confirmKickPlayer;
@@ -543,6 +553,7 @@
 
             return mode === 'COUNTDOWN' ||
                 mode === 'MONEY_BEG' ||
+                mode === 'ESCAPE_DUMB_DEMON' ||
                 mode === 'WHO_IS_DUMBER';
         }
 
@@ -551,6 +562,7 @@
             mode = String(mode || '').toUpperCase().trim();
             return mode === 'COUNTDOWN' ||
                 mode === 'MONEY_BEG' ||
+                mode === 'ESCAPE_DUMB_DEMON' ||
                 mode === 'WHO_IS_DUMBER';
         }
 
@@ -564,19 +576,21 @@
         }
 
 
-        function isWhoIsDumberMode() {
+        function isEscapeDumbDemonMode() {
             var mode = vm.room && vm.room.settings
                 ? vm.room.settings.mode
                 : vm.hostSettings.mode;
 
-            return String(mode || '').toUpperCase().trim() ===
-                'WHO_IS_DUMBER';
+            mode = String(mode || '').toUpperCase().trim();
+
+            return mode === 'ESCAPE_DUMB_DEMON' ||
+                mode === 'WHO_IS_DUMBER';
         }
 
 
         function getBattleModeLabel() {
-            if (isWhoIsDumberMode()) {
-                return '🤪 XEM AI NGU HƠN NÀO';
+            if (isEscapeDumbDemonMode()) {
+                return '👹 THOÁT KHỎI QUỶ NGU';
             }
 
             return isMoneyBegMode()
@@ -613,8 +627,8 @@
 
             if (position === 0) {
                 return finished
-                    ? 'HÒA: quả cầu NGU vẫn ở chính giữa.'
-                    : 'Quả cầu NGU đang ở chính giữa.';
+                    ? 'HÒA: QUỶ NGU vẫn đứng giữa hai đội.'
+                    : 'QUỶ NGU đang đứng chính giữa hai đội.';
             }
 
             var dumbTeam = position < 0 ? 1 : 2;
@@ -622,11 +636,11 @@
             var steps = Math.min(maximum, Math.abs(position));
 
             if (finished) {
-                return 'ĐỘI ' + dumbTeam + ' NGU HƠN • ĐỘI ' +
-                    winningTeam + ' THẮNG!';
+                return 'ĐỘI ' + dumbTeam + ' BỊ QUỶ NGU BẮT • ĐỘI ' +
+                    winningTeam + ' ĐÃ THOÁT!';
             }
 
-            return 'ĐỘI ' + dumbTeam + ' đang giữ quả cầu NGU • ' +
+            return 'QUỶ NGU đang đứng bên ĐỘI ' + dumbTeam + ' • ' +
                 steps + '/' + maximum + ' bước.';
         }
 
@@ -1546,6 +1560,15 @@
                         Number(incoming.settings.teamCount || 0);
                 }
 
+                if (
+                    !isHost() ||
+                    incoming.status !== 'LOBBY' ||
+                    vm.hostDoubleActionDirty !== true
+                ) {
+                    vm.hostSettings.doubleActionUsername =
+                        incoming.settings.doubleActionUsername || '';
+                }
+
                 /*
                  * Classic mặc định = toàn bộ bài.
                  * Chỉ auto-set nếu Host chưa tự sửa field.
@@ -1659,16 +1682,23 @@
 
             mode = String(mode || '').toUpperCase().trim();
 
+            if (mode === 'WHO_IS_DUMBER') {
+                mode = 'ESCAPE_DUMB_DEMON';
+            }
+
             vm.hostSettings.mode =
                 mode === 'COUNTDOWN' ||
                 mode === 'MONEY_BEG' ||
-                mode === 'WHO_IS_DUMBER'
+                mode === 'ESCAPE_DUMB_DEMON'
                     ? mode
                     : 'CLASSIC';
 
-            if (vm.hostSettings.mode === 'WHO_IS_DUMBER') {
+            if (vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON') {
                 vm.hostSettings.teamCount = 2;
                 vm.hostTeamCountDirty = true;
+            } else {
+                vm.hostSettings.doubleActionUsername = '';
+                vm.hostDoubleActionDirty = true;
             }
 
             /*
@@ -1697,6 +1727,11 @@
 
         function markTeamCountTouched() {
             vm.hostTeamCountDirty = true;
+        }
+
+
+        function markDoubleActionTouched() {
+            vm.hostDoubleActionDirty = true;
         }
 
 
@@ -1731,7 +1766,7 @@
                 mode:
                     vm.hostSettings.mode === 'COUNTDOWN' ||
                     vm.hostSettings.mode === 'MONEY_BEG' ||
-                    vm.hostSettings.mode === 'WHO_IS_DUMBER'
+                    vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'
                         ? vm.hostSettings.mode
                         : 'CLASSIC',
 
@@ -1775,14 +1810,21 @@
                     ),
 
                 teamCount:
-                    vm.hostSettings.mode === 'WHO_IS_DUMBER'
+                    vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'
                         ? 2
                         : clampInteger(
                             vm.hostSettings.teamCount,
                             0,
                             10,
                             0
-                        )
+                        ),
+
+                doubleActionUsername:
+                    vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'
+                        ? String(
+                            vm.hostSettings.doubleActionUsername || ''
+                        ).trim()
+                        : ''
             };
         }
 
@@ -1817,6 +1859,7 @@
                         vm.hostCountdownMinutesDirty = false;
                         vm.hostWrongFreezeDirty = false;
                         vm.hostTeamCountDirty = false;
+                        vm.hostDoubleActionDirty = false;
 
                         applyRoom(
                             room,
@@ -2054,6 +2097,144 @@
         }
 
 
+        function getEscapeTeamPlayerCount(teamNumber) {
+            var count = 0;
+
+            angular.forEach(
+                (vm.room && vm.room.players) || [],
+                function (player) {
+                    if (
+                        player &&
+                        player.connected === true &&
+                        player.spectator !== true &&
+                        Number(player.teamNumber || 0) === Number(teamNumber)
+                    ) {
+                        count += 1;
+                    }
+                }
+            );
+
+            return count;
+        }
+
+
+        function getEscapeSmallerTeamNumber() {
+            if (
+                !vm.room ||
+                vm.hostSettings.mode !== 'ESCAPE_DUMB_DEMON'
+            ) {
+                return 0;
+            }
+
+            var teamOneCount = getEscapeTeamPlayerCount(1);
+            var teamTwoCount = getEscapeTeamPlayerCount(2);
+
+            if (teamOneCount === teamTwoCount) {
+                return 0;
+            }
+
+            return teamOneCount < teamTwoCount ? 1 : 2;
+        }
+
+
+        function areEscapeTeamsUneven() {
+            return getEscapeSmallerTeamNumber() > 0;
+        }
+
+
+        function getEscapeDoubleActionCandidates() {
+            var smallerTeam = getEscapeSmallerTeamNumber();
+            var result = [];
+
+            if (!smallerTeam) {
+                return result;
+            }
+
+            angular.forEach(
+                (vm.room && vm.room.players) || [],
+                function (player) {
+                    if (
+                        player &&
+                        player.connected === true &&
+                        player.spectator !== true &&
+                        Number(player.teamNumber || 0) === smallerTeam
+                    ) {
+                        result.push(player);
+                    }
+                }
+            );
+
+            result.sort(
+                function (left, right) {
+                    return getPlayerDisplayName(left).localeCompare(
+                        getPlayerDisplayName(right)
+                    );
+                }
+            );
+
+            return result;
+        }
+
+
+        function getDoubleActionUsername() {
+            if (
+                isHost() &&
+                vm.room &&
+                vm.room.status === 'LOBBY' &&
+                vm.hostDoubleActionDirty === true
+            ) {
+                return String(
+                    vm.hostSettings.doubleActionUsername || ''
+                ).trim();
+            }
+
+            return String(
+                vm.room &&
+                vm.room.settings &&
+                vm.room.settings.doubleActionUsername ||
+                vm.hostSettings.doubleActionUsername ||
+                ''
+            ).trim();
+        }
+
+
+        function isDoubleActionPlayer(player) {
+            return !!(
+                player &&
+                player.username &&
+                getDoubleActionUsername() === String(player.username)
+            );
+        }
+
+
+        function getDoubleActionPlayerName() {
+            var username = getDoubleActionUsername();
+            var result = '';
+
+            angular.forEach(
+                (vm.room && vm.room.players) || [],
+                function (player) {
+                    if (!result && player && player.username === username) {
+                        result = getPlayerDisplayName(player);
+                    }
+                }
+            );
+
+            return result;
+        }
+
+
+        function getFirePowerLabel(player) {
+            if (!isEscapeDumbDemonMode()) {
+                return 'x1.2';
+            }
+
+            return isDoubleActionPlayer(player)
+                ? '4 BƯỚC'
+                : '2 BƯỚC';
+        }
+
+
         function openKickConfirm(player) {
             if (!canKickPlayer(player)) {
                 return;
@@ -2199,6 +2380,9 @@
                         vm.hostTeamCountDirty =
                             false;
 
+                        vm.hostDoubleActionDirty =
+                            false;
+
                         vm.personalSkillNotice =
                             null;
 
@@ -2295,13 +2479,23 @@
                          * CLASSIC chờ tất cả / timer.
                          * COUNTDOWN đã nhận câu tiếp nên mở khóa.
                          */
-                        if (
-                            isCountdownMode() &&
-                            vm.room &&
-                            vm.room.currentQuestion
-                        ) {
-                            vm.answerLocked =
-                                false;
+                        if (isCountdownMode()) {
+                            /*
+                             * COUNTDOWN/THOÁT KHỎI QUỶ NGU không chờ
+                             * người chơi khác. Luôn nhả khóa request sau
+                             * response; pending skill/penalty đã có guard riêng.
+                             */
+                            vm.answerLocked = false;
+
+                            if (
+                                vm.room &&
+                                !vm.room.currentQuestion &&
+                                !vm.room.pendingSkillType &&
+                                !vm.room.passwordSelectionRequired &&
+                                !vm.room.pendingPasswordGuessTargetUsername
+                            ) {
+                                refreshPrivateRoomState();
+                            }
                         }
                     },
                     function (error) {
@@ -2342,6 +2536,10 @@
                 .then(
                     function (room) {
                         applyRoom(room, false);
+
+                        if (isCountdownMode()) {
+                            vm.answerLocked = false;
+                        }
                     },
                     function (error) {
                         showRequestError(error);
@@ -2663,8 +2861,10 @@
             }
 
             if (type === 'FIRE_UP') {
-                return isWhoIsDumberMode()
-                    ? 'CHÁY LÊN: ĐẨY 2 BƯỚC TRONG 15 GIÂY'
+                return isEscapeDumbDemonMode()
+                    ? 'CHÁY LÊN: ĐẨY ' +
+                        (isDoubleActionPlayer(getMe()) ? '4' : '2') +
+                        ' BƯỚC TRONG 15 GIÂY'
                     : 'CHÁY LÊN x1.2 TRONG 15 GIÂY';
             }
 
@@ -2893,8 +3093,10 @@
                 return actor + ' vừa dùng skill ĐẶT LẠI MẬT KHẨU.';
             }
 
-            return isWhoIsDumberMode()
-                ? actor + ' vừa kích hoạt CHÁY LÊN: câu đúng đẩy 2 bước trong 15 giây.'
+            return isEscapeDumbDemonMode()
+                ? actor + ' vừa kích hoạt CHÁY LÊN: câu đúng đẩy QUỶ NGU ' +
+                    (isDoubleActionPlayer({username: event.actorUsername}) ? 4 : 2) +
+                    ' bước trong 15 giây.'
                 : actor + ' vừa kích hoạt CHÁY LÊN x1.2 trong 15 giây.';
         }
 
@@ -4254,6 +4456,7 @@
                 'is-player-burning': isPlayerBurning(player),
                 'is-player-frozen':
                     Number(player.frozenUntil || 0) > serverNow(),
+                'is-double-action-player': isDoubleActionPlayer(player),
                 'is-kickable': canKickPlayer(player),
                 'is-spectator': player.spectator === true
             };

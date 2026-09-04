@@ -141,23 +141,17 @@
                     </ul>
                 </li>
 
-                <li ng-show="settings.isStaff == true || settings.isStudentManagerment == true">
-                    <a href="enrolment_classes">
-                        <i class="fa fa-sitemap"></i> LỚP PHỤ TRÁCH
-                    </a>
-                </li>
-
-                <li ng-show="settings.isAdmin == true || settings.isEducationManagerment == true" class="menu-dropdown">
+                <li class="menu-dropdown">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         ĐÀO TẠO <span class="caret"></span>
                     </a>
                     <ul class="dropdown-menu">
-                        <li>
+                        <li ng-show="settings.isAdmin == true || settings.isEducationManagerment == true">
                             <a href="education_programs">
                                 <i class="fa fa-caret-right"></i> Chương trình đào tạo
                             </a>
                         </li>
-                        <li>
+                        <li ng-show="settings.isAdmin == true || settings.isEducationManagerment == true">
                             <a href="marks">
                                 <i class="fa fa-caret-right"></i> Thiết lập điểm
                             </a>
