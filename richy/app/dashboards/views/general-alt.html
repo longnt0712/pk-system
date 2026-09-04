@@ -47,7 +47,7 @@
         <!-- DAILY VOCAB - LUÔN Ở ĐẦU -->
         <div
                 class="learning-tile-wrap"
-                ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+                ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin)">
 
             <a
                     ui-sref="application.daily_vocab({listFlashCard: 0})"
@@ -84,7 +84,7 @@
              ================================================= -->
         <div
                 class="learning-tile-wrap learning-battle-group"
-                ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+                ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin)">
 
             <button
                     type="button"
@@ -181,7 +181,7 @@
         <!-- GAME MODES -->
         <div
                 class="learning-tile-wrap"
-                ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+                ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin)">
 
             <a
                     href="view/3"
@@ -212,7 +212,7 @@
         <!-- FLASHCARDS -->
         <div
                 class="learning-tile-wrap"
-                ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+                ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin)">
 
             <a
                     href="question/3"
@@ -243,7 +243,7 @@
         <!-- IELTS -->
         <div
                 class="learning-tile-wrap"
-                ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+                ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin)">
 
             <a
                     href="create_ielts_reading_test"
@@ -274,7 +274,7 @@
         <!-- RESULTS -->
         <div
                 class="learning-tile-wrap"
-                ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+                ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin)">
 
             <a
                     href="test_results"
@@ -305,7 +305,7 @@
         <!-- TOPIC -->
         <div
                 class="learning-tile-wrap"
-                ng-if="vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin">
+                ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin)">
 
             <a
                     href="topics"

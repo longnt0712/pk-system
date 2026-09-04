@@ -67,6 +67,14 @@ public class RestEnrolmentClassController {
 	public List<UserDto> getResponsibleCandidates(@PathVariable Long parentClassId) {
 		return service.getResponsibleCandidates(parentClassId);
 	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/responsible_candidates/{parentClassId}/{classId}", method = RequestMethod.GET)
+	public List<UserDto> getResponsibleCandidates(
+			@PathVariable Long parentClassId,
+			@PathVariable Long classId) {
+		return service.getResponsibleCandidates(parentClassId, classId);
+	}
 	
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/save", method = RequestMethod.POST)

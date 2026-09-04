@@ -17,9 +17,17 @@
             return utils.resolve(baseUrl + '/teacher_candidates', 'GET', angular.noop, angular.noop);
         };
 
-        self.getResponsibleCandidates = function (parentClassId) {
+        self.getResponsibleCandidates = function (parentClassId, classId) {
             if (!parentClassId) {
                 return self.getTeacherCandidates();
+            }
+            if (classId) {
+                return utils.resolve(
+                    baseUrl + '/responsible_candidates/' + parentClassId + '/' + classId,
+                    'GET',
+                    angular.noop,
+                    angular.noop
+                );
             }
             return utils.resolve(
                 baseUrl + '/responsible_candidates/' + parentClassId,

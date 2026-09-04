@@ -64,8 +64,8 @@
             });
         };
 
-        vm.loadTeachers = function (parentClassId, pruneSelection) {
-            return service.getResponsibleCandidates(parentClassId).then(function (data) {
+        vm.loadTeachers = function (parentClassId, pruneSelection, classId) {
+            return service.getResponsibleCandidates(parentClassId, classId).then(function (data) {
                 vm.teacherCandidates = angular.isArray(data) ? data : [];
 				vm.teacherCandidates.sort(function (a, b) {
 					return (a.displayName || a.username || '').localeCompare(
@@ -85,7 +85,7 @@
         };
 
 		vm.parentChanged = function () {
-			vm.loadTeachers(vm.enrolmentClass.parentId, true);
+			vm.loadTeachers(vm.enrolmentClass.parentId, true, vm.enrolmentClass.id);
 		};
 
         vm.rebuildTree = function () {
@@ -170,7 +170,6 @@
             }
 
             angular.forEach(roots, function (root) { append(root, 0); });
-            angular.forEach(vm.allClasses, function (item) { append(item, 0); });
             vm.visibleClasses = result;
         };
 
@@ -448,7 +447,7 @@
 						toastr.warning('Bạn không được sửa lớp này.', 'Thông báo');
 						return;
 					}
-					vm.loadTeachers(object.parentId, false).then(function () {
+					vm.loadTeachers(object.parentId, false, object.id).then(function () {
 						vm.showEditor(object);
 					});
                 });
@@ -469,7 +468,7 @@
 				schoolId: parent ? parent.schoolId : (vm.isAdmin() ? null : 2),
                 teacherIds: []
             };
-			vm.loadTeachers(newObject.parentId, false).then(function () {
+			vm.loadTeachers(newObject.parentId, false, newObject.id).then(function () {
 				vm.showEditor(newObject);
 			});
         };

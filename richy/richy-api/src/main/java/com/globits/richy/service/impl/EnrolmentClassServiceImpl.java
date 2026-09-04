@@ -191,16 +191,17 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 		domain.setParent(parent);
 
-		Set<Long> studentResponsibleClassIds = parent == null
-				? new HashSet<Long>()
-				: new HashSet<Long>(getClassAndDescendantIds(parent.getId()));
+		Set<Long> studentResponsibleClassIds = new HashSet<Long>();
+		if (parent != null && !isNew && domain.getId() != null) {
+			studentResponsibleClassIds.add(domain.getId());
+		}
 		Set<User> teachers = new LinkedHashSet<User>();
 		if (dto.getTeacherIds() != null) {
 			for (Long teacherId : dto.getTeacherIds()) {
 				User teacher = teacherId == null ? null : userRepository.findOne(teacherId);
 				if (teacher != null
 						&& Boolean.TRUE.equals(teacher.getActive())
-						&& (isTeacherCandidate(teacher)
+						&& ((parent == null && isTeacherCandidate(teacher))
 								|| isStudentResponsibleCandidate(teacher, studentResponsibleClassIds))) {
 					teachers.add(teacher);
 				}
@@ -300,6 +301,11 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 	@Override
 	public List<UserDto> getResponsibleCandidates(Long parentClassId) {
+		return getResponsibleCandidates(parentClassId, null);
+	}
+
+	@Override
+	public List<UserDto> getResponsibleCandidates(Long parentClassId, Long classId) {
 		User currentUser = getCurrentUser();
 		if (parentClassId == null) {
 			if (!canCreateRootClass(currentUser)) {
@@ -317,16 +323,21 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 
 		Map<Long, UserDto> candidates = new LinkedHashMap<Long, UserDto>();
-		for (UserDto teacher : getTeacherCandidates()) {
-			if (teacher != null && teacher.getId() != null) {
-				candidates.put(teacher.getId(), teacher);
+		if (parentClassId == null) {
+			for (UserDto teacher : getTeacherCandidates()) {
+				if (teacher != null && teacher.getId() != null) {
+					candidates.put(teacher.getId(), teacher);
+				}
 			}
 		}
 
 		List<Long> classIds = new ArrayList<Long>();
-		for (Long classId : getClassAndDescendantIds(parentClassId)) {
-			EnrolmentClass candidateClass = enrolmentClassRepository.findOne(classId);
-			if (canViewClass(currentUser, candidateClass)) {
+		if (parentClassId != null && classId != null) {
+			EnrolmentClass selectedClass = enrolmentClassRepository.findOne(classId);
+			if (selectedClass != null
+					&& selectedClass.getParent() != null
+					&& parentClassId.equals(selectedClass.getParent().getId())
+					&& canViewClass(currentUser, selectedClass)) {
 				classIds.add(classId);
 			}
 		}
