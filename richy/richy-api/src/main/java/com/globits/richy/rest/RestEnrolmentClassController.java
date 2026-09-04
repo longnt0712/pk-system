@@ -25,18 +25,18 @@ public class RestEnrolmentClassController {
 	@Autowired
 	EnrolmentClassService service;
 	
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_STUDENT","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
 	public Page<EnrolmentClassDto> getPage(@RequestBody EnrolmentClassDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
 		return service.getPageObject(searchDto, pageIndex, pageSize);
 	}
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_STUDENT","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)
 	public EnrolmentClassDto getOne(@PathVariable Long id) {
 		return service.getObjectById(id);
 	}
 
-	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT","ROLE_STAFF"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_STUDENT","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/tree", method = RequestMethod.GET)
 	public List<EnrolmentClassDto> getTree() {
 		return service.getTreeObjects();

@@ -14,7 +14,7 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     private List<String> topicNames = new ArrayList<String>();
 
     /*
-     * CLASSIC | COUNTDOWN | MONEY_BEG | WHO_IS_DUMBER
+     * CLASSIC | COUNTDOWN | MONEY_BEG | ESCAPE_DUMB_DEMON
      */
     private String mode = "CLASSIC";
 
@@ -32,7 +32,7 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     private int countdownMinutes = 5;
 
     /*
-     * COUNTDOWN/MONEY_BEG/WHO_IS_DUMBER: số giây khóa đáp án sau một câu sai.
+     * COUNTDOWN/MONEY_BEG/ESCAPE_DUMB_DEMON: số giây khóa đáp án sau một câu sai.
      */
     private int wrongAnswerFreezeSeconds = 3;
 
@@ -40,6 +40,13 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
      * 0 = chơi cá nhân; 2-10 = số đội do HOST thiết lập.
      */
     private int teamCount = 0;
+
+    /*
+     * ESCAPE_DUMB_DEMON:
+     * HOST có thể chọn một người ở đội ít quân hơn làm NGƯỜI GÁNH ĐỘI.
+     * Điểm câu trả lời và tác động lên QUỶ NGU của người này được nhân 2.
+     */
+    private String doubleActionUsername;
 
     public BattleOnlineRoomSettingsDto() {
     }
@@ -106,5 +113,13 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
 
     public void setTeamCount(int teamCount) {
         this.teamCount = teamCount;
+    }
+
+    public String getDoubleActionUsername() {
+        return doubleActionUsername;
+    }
+
+    public void setDoubleActionUsername(String doubleActionUsername) {
+        this.doubleActionUsername = doubleActionUsername;
     }
 }

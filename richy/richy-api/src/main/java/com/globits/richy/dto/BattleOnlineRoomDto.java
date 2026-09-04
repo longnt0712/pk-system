@@ -40,7 +40,7 @@ public class BattleOnlineRoomDto implements Serializable {
     private long serverTime;
 
     /*
-     * WHO_IS_DUMBER: vị trí âm gần ĐỘI 1, vị trí dương gần ĐỘI 2.
+     * ESCAPE_DUMB_DEMON: vị trí âm gần ĐỘI 1, vị trí dương gần ĐỘI 2.
      * Khoảng cách tối đa mỗi phía bằng ceil(20% tổng số câu của bài).
      */
     private int dumbBallPosition;

@@ -61,7 +61,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String MODE_CLASSIC = "CLASSIC";
     private static final String MODE_COUNTDOWN = "COUNTDOWN";
     private static final String MODE_MONEY_BEG = "MONEY_BEG";
-    private static final String MODE_WHO_IS_DUMBER = "WHO_IS_DUMBER";
+    private static final String MODE_ESCAPE_DUMB_DEMON = "ESCAPE_DUMB_DEMON";
 
     private static final String SKILL_FREEZE = "FREEZE";
     private static final String SKILL_BREAK_STREAK = "BREAK_STREAK";
@@ -88,7 +88,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
      * Các biến thể đều được điều chế từ cụm dễ nhớ, dài tối đa 20 code point.
      */
     private static final String[] PASSWORD_PHRASES = new String[] {
-        "mấy con gà", "chăm học đi", "đừng cướp tôi", "chan đê",
+        "mấy con gà", "chăm học đi", "đừng cướp tôi", "chán đê",
         "tâm bất biến", "tích đức", "chó", "mèo", "lợn", "gà",
         "me handsome", "I love football", "đi ngủ đi", "đừng hack tôi",
         "xin nhẹ thôi", "còn cái nịt", "ví tôi rỗng", "tha cho tôi",
@@ -104,6 +104,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     };
 
     private static final String PASSWORD_PUNCTUATION = "!@#$%&?+-_";
+    private static final String PASSWORD_WORD_SEPARATORS = "-_.";
+
+    private static final String PASSWORD_VIETNAMESE_LETTERS =
+            "áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩị" +
+            "óòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ";
 
     /*
      * COUNTDOWN ôn lại câu sai theo spaced repetition ngắn:
@@ -231,6 +236,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.settings.wrongAnswerFreezeSeconds =
                 DEFAULT_WRONG_ANSWER_FREEZE_SECONDS;
         room.settings.teamCount = 0;
+        room.settings.doubleActionUsername = null;
 
         PlayerState host = new PlayerState();
         host.username = username;
@@ -361,6 +367,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     );
                 }
 
+                if (LOBBY.equals(room.status)) {
+                    normalizeEscapeDoubleActionPlayerLocked(room);
+                }
+
                 dto = snapshotLocked(room, username);
             } else {
                 if (room.players.size() >= MAX_PLAYERS) {
@@ -403,6 +413,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             room,
                             player
                     );
+                }
+
+                if (LOBBY.equals(room.status)) {
+                    normalizeEscapeDoubleActionPlayerLocked(room);
                 }
 
                 dto = snapshotLocked(room, username);
@@ -451,6 +465,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             if (room.players.isEmpty()) {
                 removeRoom = true;
             } else {
+                if (LOBBY.equals(room.status)) {
+                    normalizeEscapeDoubleActionPlayerLocked(room);
+                }
+
                 dto = snapshotLocked(room, username);
             }
         }
@@ -585,6 +603,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     ? 0
                     : nextBalancedTeamLocked(room);
 
+            normalizeEscapeDoubleActionPlayerLocked(room);
+
             dto = snapshotLocked(room, username);
         }
 
@@ -646,6 +666,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             target.teamNumber = teamNumber;
+            normalizeEscapeDoubleActionPlayerLocked(room);
             dto = snapshotLocked(room, username);
         }
 
@@ -706,6 +727,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             for (PlayerState player : room.players.values()) {
                 player.pendingSkillTargetUsernames.remove(targetUsername);
                 releasePendingSkillWhenNoTargetLocked(room, player);
+            }
+
+            if (LOBBY.equals(room.status)) {
+                normalizeEscapeDoubleActionPlayerLocked(room);
             }
 
             dto = snapshotLocked(room, username);
@@ -773,13 +798,18 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     );
 
             room.settings.teamCount =
-                    MODE_WHO_IS_DUMBER.equals(room.settings.mode)
+                    MODE_ESCAPE_DUMB_DEMON.equals(room.settings.mode)
                             ? 2
                             : normalizeTeamCount(
                                 settings.getTeamCount()
                             );
 
             normalizeTeamAssignmentsLocked(room);
+
+            room.settings.doubleActionUsername =
+                    clean(settings.getDoubleActionUsername());
+
+            normalizeEscapeDoubleActionPlayerLocked(room);
 
             dto = snapshotLocked(room, username);
         }
@@ -809,6 +839,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             requireHost(room, username);
 
             normalizeTeamAssignmentsLocked(room);
+            normalizeEscapeDoubleActionPlayerLocked(room);
             validatePlayersReadyLocked(room);
 
             if (room.preparedQuestions.size() < 4) {
@@ -872,6 +903,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             room.dumbBallPosition = 0;
             room.dumbBallMaxDistance =
                     calculateDumbBallMaxDistance(room);
+            room.settings.doubleActionUsername = null;
 
             for (PlayerState player : room.players.values()) {
                 resetPlayerMatchState(player);
@@ -1342,6 +1374,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     now
             );
 
+            scoreDelta = applyEscapeDoubleActionScoreLocked(
+                    room,
+                    player,
+                    scoreDelta
+            );
+
             boolean fireActivated =
                     SKILL_FIRE_UP.equals(earnedSkill);
 
@@ -1373,20 +1411,32 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     fireActivated
             );
 
-            if (MODE_WHO_IS_DUMBER.equals(room.settings.mode)) {
+            if (MODE_ESCAPE_DUMB_DEMON.equals(room.settings.mode)) {
                 int otherTeam = player.teamNumber == 1 ? 2 : 1;
+                int dumbBallSteps = calculateDumbBallAnswerDistanceLocked(
+                        room,
+                        player,
+                        correct,
+                        fireBoostApplied
+                );
+                String doubleActionLabel =
+                        isEscapeDoubleActionPlayerLocked(room, player)
+                                ? " NGƯỜI GÁNH ĐỘI x2!"
+                                : "";
 
                 if (correct) {
                     result.setMessage(
-                            "CHÍNH XÁC! Đẩy quả cầu NGU sang ĐỘI " +
+                            "CHÍNH XÁC!" + doubleActionLabel +
+                            " Đẩy QUỶ NGU sang ĐỘI " +
                             otherTeam +
-                            (fireBoostApplied ? " 2 bước." : " 1 bước.")
+                            " " + dumbBallSteps + " bước."
                     );
                 } else {
                     result.setMessage(
-                            "SAI RỒI! Quả cầu NGU bị hút về ĐỘI " +
+                            "SAI RỒI!" + doubleActionLabel +
+                            " QUỶ NGU bị hút về ĐỘI " +
                             player.teamNumber +
-                            " 1 bước."
+                            " " + dumbBallSteps + " bước."
                     );
                 }
             }
@@ -1932,54 +1982,147 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
 
     /*
-     * Hai phương án sai có độ dài và kiểu ký tự gần giống mật khẩu thật.
-     * Nhờ đó mật khẩu tự nhập không bị lộ chỉ vì dài/ngắn hoặc có icon khác
-     * hẳn hai mã mồi do hệ thống sinh ra.
+     * Hai phương án sai đều là mật khẩu hoàn chỉnh do hệ thống sinh ra,
+     * sau đó được xếp theo độ giống mật khẩu thật về cấu trúc.
+     *
+     * Không sửa ngẫu nhiên từng chữ của mật khẩu thật: cách cũ vô tình biến
+     * chữ tiếng Việt có dấu thành ASCII, khiến học sinh nhận ra phương án nào
+     * viết đúng dấu thì đó chính là mật khẩu thật.
      */
     private List<String> generateSimilarPasswordDecoys(
             String realPassword,
             int count) {
 
         Set<String> result = new LinkedHashSet<String>();
-        result.add(realPassword);
 
+        /*
+         * Nếu mã có số, dấu câu, emoji hoặc là một chuỗi liền không có
+         * khoảng trắng, ưu tiên tạo mồi cùng khuôn. Dấu tiếng Việt luôn
+         * được giữ hoặc thay bằng một chữ vẫn có dấu, tuyệt đối không
+         * chuyển riêng phương án mồi sang ASCII như trước.
+         */
+        int shapeAttempts = 0;
+
+        while (result.size() < count && shapeAttempts < 100) {
+            shapeAttempts += 1;
+
+            String candidate = mutatePasswordWithoutAccentLeak(realPassword);
+
+            if (!realPassword.equals(candidate)) {
+                result.add(candidate);
+            }
+        }
+
+        Set<String> candidateSet = new LinkedHashSet<String>();
         int attempts = 0;
 
-        while (result.size() < count + 1 && attempts < 200) {
+        while (candidateSet.size() < 120 && attempts < 500) {
             attempts += 1;
-            result.add(mutatePasswordKeepingShape(realPassword));
+
+            String candidate = generatePassword(random.nextInt(3));
+
+            if (!realPassword.equals(candidate)) {
+                candidateSet.add(candidate);
+            }
         }
 
-        if (result.size() < count + 1) {
-            result.addAll(generateUniquePasswords(
-                    count + 1 - result.size(),
-                    result
-            ));
+        final String passwordToMatch = realPassword;
+        List<String> candidates =
+                new ArrayList<String>(candidateSet);
+
+        /* Xáo trước để các trường hợp cùng điểm không bị thiên vị cụm đầu. */
+        Collections.shuffle(candidates, random);
+        Collections.sort(
+                candidates,
+                new Comparator<String>() {
+                    @Override
+                    public int compare(String left, String right) {
+                        return Integer.compare(
+                                passwordShapeDistance(passwordToMatch, left),
+                                passwordShapeDistance(passwordToMatch, right)
+                        );
+                    }
+                }
+        );
+
+        for (String candidate : candidates) {
+            if (result.size() >= count) {
+                break;
+            }
+
+            result.add(candidate);
         }
 
-        result.remove(realPassword);
+        if (result.size() < count) {
+            Set<String> disallowed = new LinkedHashSet<String>(result);
+            disallowed.add(realPassword);
+
+            List<String> fallback = generateUniquePasswords(
+                    count - result.size(),
+                    disallowed
+            );
+
+            result.addAll(fallback);
+        }
+
         return new ArrayList<String>(result);
     }
 
 
-    private String mutatePasswordKeepingShape(String password) {
+    private String mutatePasswordWithoutAccentLeak(String password) {
         int[] codePoints = password.codePoints().toArray();
-        int changeCount = codePoints.length >= 8 ? 2 : 1;
-        Set<Integer> changedPositions = new LinkedHashSet<Integer>();
+        List<Integer> mutablePositions = new ArrayList<Integer>();
+        boolean hasWordBoundary = false;
 
-        while (changedPositions.size() < changeCount) {
-            changedPositions.add(random.nextInt(codePoints.length));
+        for (int codePoint : codePoints) {
+            if (
+                Character.isWhitespace(codePoint) ||
+                isPasswordWordSeparator(codePoint)
+            ) {
+                hasWordBoundary = true;
+                break;
+            }
         }
 
-        for (Integer position : changedPositions) {
-            codePoints[position] = randomSimilarCodePoint(codePoints[position]);
+        for (int index = 0; index < codePoints.length; index++) {
+            int characterClass = passwordCharacterClass(codePoints[index]);
+
+            if (
+                characterClass != 0 ||
+                !hasWordBoundary
+            ) {
+                if (!Character.isWhitespace(codePoints[index])) {
+                    mutablePositions.add(index);
+                }
+            }
+        }
+
+        if (mutablePositions.isEmpty()) {
+            return password;
+        }
+
+        int position = mutablePositions.get(
+                random.nextInt(mutablePositions.size())
+        );
+
+        int original = codePoints[position];
+        int replacement = randomSameClassPasswordCodePoint(original);
+
+        if (isPasswordWordSeparator(original)) {
+            for (int index = 0; index < codePoints.length; index++) {
+                if (codePoints[index] == original) {
+                    codePoints[index] = replacement;
+                }
+            }
+        } else {
+            codePoints[position] = replacement;
         }
 
         return new String(codePoints, 0, codePoints.length);
     }
 
 
-    private int randomSimilarCodePoint(int original) {
+    private int randomSameClassPasswordCodePoint(int original) {
         if (Character.isDigit(original)) {
             int replacement;
 
@@ -1991,32 +2134,47 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         if (Character.isLetter(original)) {
-            boolean lowerCase = Character.isLowerCase(original);
+            boolean upperCase = Character.isUpperCase(original);
             int replacement;
 
+            if (original <= 127) {
+                do {
+                    replacement =
+                            (upperCase ? 'A' : 'a') + random.nextInt(26);
+                } while (replacement == original);
+
+                return replacement;
+            }
+
+            int[] vietnameseLetters =
+                    PASSWORD_VIETNAMESE_LETTERS.codePoints().toArray();
+
             do {
-                replacement = (lowerCase ? 'a' : 'A') + random.nextInt(26);
+                replacement = vietnameseLetters[
+                        random.nextInt(vietnameseLetters.length)
+                ];
+                replacement = upperCase
+                        ? Character.toUpperCase(replacement)
+                        : replacement;
             } while (replacement == original);
 
             return replacement;
         }
 
-        if (Character.isWhitespace(original)) {
-            return '_';
-        }
+        int characterClass = passwordCharacterClass(original);
 
-        int type = Character.getType(original);
-
-        if (
-            type == Character.CONNECTOR_PUNCTUATION ||
-            type == Character.DASH_PUNCTUATION ||
-            type == Character.START_PUNCTUATION ||
-            type == Character.END_PUNCTUATION ||
-            type == Character.INITIAL_QUOTE_PUNCTUATION ||
-            type == Character.FINAL_QUOTE_PUNCTUATION ||
-            type == Character.OTHER_PUNCTUATION
-        ) {
+        if (characterClass == 3) {
             int replacement;
+
+            if (isPasswordWordSeparator(original)) {
+                do {
+                    replacement = PASSWORD_WORD_SEPARATORS.charAt(
+                            random.nextInt(PASSWORD_WORD_SEPARATORS.length())
+                    );
+                } while (replacement == original);
+
+                return replacement;
+            }
 
             do {
                 replacement = PASSWORD_PUNCTUATION.charAt(
@@ -2037,6 +2195,116 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         } while (replacement == original);
 
         return replacement;
+    }
+
+
+    private boolean isPasswordWordSeparator(int codePoint) {
+        return PASSWORD_WORD_SEPARATORS.indexOf(codePoint) >= 0;
+    }
+
+
+    private int passwordShapeDistance(String expected, String candidate) {
+        int[] left = passwordShape(expected);
+        int[] right = passwordShape(candidate);
+        int score = 0;
+
+        /* Độ dài gần nhau là quan trọng nhất, nhưng không phải dấu hiệu duy nhất. */
+        score += Math.abs(left[0] - right[0]) * 3;
+        score += Math.abs(left[1] - right[1]) * 5;
+        score += Math.abs(left[2] - right[2]) * 3;
+        score += Math.abs(left[3] - right[3]) * 5;
+        score += Math.abs(left[4] - right[4]) * 7;
+        score += Math.abs(left[5] - right[5]) * 2;
+
+        /* Cùng kiểu tiếng Việt/có dấu để không lộ phương án thật. */
+        if ((left[6] > 0) != (right[6] > 0)) {
+            score += 30;
+        }
+
+        if (left[7] != right[7]) {
+            score += 12;
+        }
+
+        if (left[8] != right[8]) {
+            score += 12;
+        }
+
+        return score;
+    }
+
+
+    /*
+     * [0] length, [1] digit, [2] whitespace, [3] punctuation,
+     * [4] symbol/emoji, [5] uppercase, [6] non-ASCII letter,
+     * [7] first character class, [8] last character class.
+     */
+    private int[] passwordShape(String password) {
+        int[] shape = new int[9];
+        int[] codePoints = password.codePoints().toArray();
+
+        shape[0] = codePoints.length;
+
+        for (int codePoint : codePoints) {
+            int characterClass = passwordCharacterClass(codePoint);
+
+            if (characterClass == 1) {
+                shape[1] += 1;
+            } else if (characterClass == 2) {
+                shape[2] += 1;
+            } else if (characterClass == 3) {
+                shape[3] += 1;
+            } else if (characterClass == 4) {
+                shape[4] += 1;
+            }
+
+            if (Character.isUpperCase(codePoint)) {
+                shape[5] += 1;
+            }
+
+            if (Character.isLetter(codePoint) && codePoint > 127) {
+                shape[6] += 1;
+            }
+        }
+
+        if (codePoints.length > 0) {
+            shape[7] = passwordCharacterClass(codePoints[0]);
+            shape[8] = passwordCharacterClass(
+                    codePoints[codePoints.length - 1]
+            );
+        }
+
+        return shape;
+    }
+
+
+    private int passwordCharacterClass(int codePoint) {
+        if (Character.isDigit(codePoint)) {
+            return 1;
+        }
+
+        if (Character.isWhitespace(codePoint)) {
+            return 2;
+        }
+
+        int type = Character.getType(codePoint);
+
+        if (
+            type == Character.CONNECTOR_PUNCTUATION ||
+            type == Character.DASH_PUNCTUATION ||
+            type == Character.START_PUNCTUATION ||
+            type == Character.END_PUNCTUATION ||
+            type == Character.INITIAL_QUOTE_PUNCTUATION ||
+            type == Character.FINAL_QUOTE_PUNCTUATION ||
+            type == Character.OTHER_PUNCTUATION
+        ) {
+            return 3;
+        }
+
+        if (Character.isLetter(codePoint)) {
+            return 0;
+        }
+
+        return 4;
     }
 
 
@@ -2518,7 +2786,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 MODE_MONEY_BEG.equals(room.settings.mode)
         );
 
-        if (MODE_WHO_IS_DUMBER.equals(room.settings.mode)) {
+        if (MODE_ESCAPE_DUMB_DEMON.equals(room.settings.mode)) {
             /*
              * Mode hai đội không dùng CƯỚP ĐIỂM. Phân bổ lại toàn bộ
              * lượt đó cho FREEZE, FIRE_UP và BREAK_STREAK để tổng tần
@@ -3141,10 +3409,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     " điểm của " + targetName + "."
             );
         } else if (SKILL_FIRE_UP.equals(skillType)) {
-            if (MODE_WHO_IS_DUMBER.equals(room.settings.mode)) {
+            if (MODE_ESCAPE_DUMB_DEMON.equals(room.settings.mode)) {
                 event.setMessage(
                         actorName +
-                        " vừa kích hoạt CHÁY LÊN: câu đúng đẩy 2 bước trong 15 giây."
+                        " vừa kích hoạt CHÁY LÊN: câu đúng đẩy QUỶ NGU " +
+                        (isEscapeDoubleActionPlayerLocked(room, actor) ? 4 : 2) +
+                        " bước trong 15 giây."
                 );
             } else {
                 event.setMessage(
@@ -3322,8 +3592,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             fallbackReviewQuestion
                     );
                 } else {
-                    player.currentQuestion = null;
-                    player.currentSkillType = null;
+                    assignEmergencyCountdownQuestionLocked(
+                            room,
+                            player
+                    );
                 }
 
                 return;
@@ -3406,6 +3678,57 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     room,
                     player,
                     fallbackReviewQuestion
+            );
+        } else {
+            assignEmergencyCountdownQuestionLocked(
+                    room,
+                    player
+            );
+        }
+    }
+
+
+    /*
+     * Lưới an toàn cho COUNTDOWN và THOÁT KHỎI QUỶ NGU.
+     * Trong mọi trường hợp pool tạm thời không chọn được câu, người chơi
+     * vẫn phải nhận một câu riêng tiếp theo thay vì currentQuestion = null.
+     */
+    private void assignEmergencyCountdownQuestionLocked(
+            RoomState room,
+            PlayerState player) {
+
+        List<QuestionState> candidates =
+                new ArrayList<QuestionState>(
+                    room.preparedQuestions.values()
+                );
+
+        Collections.shuffle(candidates, random);
+
+        QuestionState selected = null;
+
+        for (QuestionState candidate : candidates) {
+            if (
+                candidate != null &&
+                !isCurrentQuestionUsedByOtherPlayerLocked(
+                    room,
+                    player,
+                    candidate.id
+                )
+            ) {
+                selected = candidate;
+                break;
+            }
+        }
+
+        if (selected == null && !candidates.isEmpty()) {
+            selected = candidates.get(0);
+        }
+
+        if (selected != null) {
+            setCurrentCountdownQuestionLocked(
+                    room,
+                    player,
+                    selected
             );
         } else {
             player.currentQuestion = null;
@@ -4435,7 +4758,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 room.matchEndsAt
         );
 
-        if (MODE_WHO_IS_DUMBER.equals(room.settings.mode)) {
+        if (MODE_ESCAPE_DUMB_DEMON.equals(room.settings.mode)) {
             room.dumbBallMaxDistance =
                     calculateDumbBallMaxDistance(room);
             room.dumbBallPosition = clamp(
@@ -4936,6 +5259,113 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
+    private int getSmallerEscapeTeamNumberLocked(RoomState room) {
+        if (
+            room == null ||
+            !MODE_ESCAPE_DUMB_DEMON.equals(room.settings.mode)
+        ) {
+            return 0;
+        }
+
+        int teamOneCount = 0;
+        int teamTwoCount = 0;
+
+        for (PlayerState player : room.players.values()) {
+            if (
+                player == null ||
+                player.spectator ||
+                !player.connected
+            ) {
+                continue;
+            }
+
+            if (player.teamNumber == 1) {
+                teamOneCount += 1;
+            } else if (player.teamNumber == 2) {
+                teamTwoCount += 1;
+            }
+        }
+
+        if (teamOneCount == teamTwoCount) {
+            return 0;
+        }
+
+        return teamOneCount < teamTwoCount ? 1 : 2;
+    }
+
+
+    private void normalizeEscapeDoubleActionPlayerLocked(RoomState room) {
+        if (
+            room == null ||
+            !MODE_ESCAPE_DUMB_DEMON.equals(room.settings.mode)
+        ) {
+            if (room != null) {
+                room.settings.doubleActionUsername = null;
+            }
+
+            return;
+        }
+
+        int smallerTeam = getSmallerEscapeTeamNumberLocked(room);
+        String selectedUsername = clean(
+                room.settings.doubleActionUsername
+        );
+        PlayerState selected = room.players.get(selectedUsername);
+
+        if (
+            smallerTeam == 0 ||
+            selected == null ||
+            selected.spectator ||
+            !selected.connected ||
+            selected.teamNumber != smallerTeam
+        ) {
+            room.settings.doubleActionUsername = null;
+            return;
+        }
+
+        room.settings.doubleActionUsername = selected.username;
+    }
+
+
+    private boolean isEscapeDoubleActionPlayerLocked(
+            RoomState room,
+            PlayerState player) {
+
+        return room != null &&
+                player != null &&
+                MODE_ESCAPE_DUMB_DEMON.equals(room.settings.mode) &&
+                !isBlank(room.settings.doubleActionUsername) &&
+                room.settings.doubleActionUsername.equals(player.username);
+    }
+
+
+    /*
+     * applyScore đã cộng scoreDelta cơ bản vào player.score. Người gánh đội
+     * nhận thêm đúng một lần phần delta đó để tổng tác động điểm thành x2.
+     * Cách này áp dụng đồng đều cho điểm đúng, FIRE/streak và cả điểm trừ khi sai.
+     */
+    private double applyEscapeDoubleActionScoreLocked(
+            RoomState room,
+            PlayerState player,
+            double scoreDelta) {
+
+        if (
+            !isEscapeDoubleActionPlayerLocked(room, player) ||
+            scoreDelta == 0D
+        ) {
+            return scoreDelta;
+        }
+
+        player.score = roundScoreToOneDecimal(
+                player.score + scoreDelta
+        );
+
+        return roundScoreToOneDecimal(
+                scoreDelta * 2D
+        );
+    }
+
+
     private int nextBalancedTeamLocked(RoomState room) {
         if (room.settings.teamCount < 2) {
             return 0;
@@ -5005,12 +5435,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         if (
-            MODE_WHO_IS_DUMBER.equals(room.settings.mode) &&
+            MODE_ESCAPE_DUMB_DEMON.equals(room.settings.mode) &&
             (!hasTeamOne || !hasTeamTwo)
         ) {
             throw new BattleOnlineException(
                     HttpStatus.BAD_REQUEST,
-                    "XEM AI NGU HƠN NÀO cần ít nhất 1 người online ở mỗi đội."
+                    "THOÁT KHỎI QUỶ NGU cần ít nhất 1 người online ở mỗi đội."
             );
         }
     }
@@ -5512,6 +5942,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 source.teamCount
         );
 
+        dto.setDoubleActionUsername(
+                source.doubleActionUsername
+        );
+
         return dto;
     }
 
@@ -5535,13 +5969,27 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
+    private int calculateDumbBallAnswerDistanceLocked(
+            RoomState room,
+            PlayerState player,
+            boolean correct,
+            boolean fireBoostApplied) {
+
+        int distance = correct && fireBoostApplied ? 2 : 1;
+
+        return isEscapeDoubleActionPlayerLocked(room, player)
+                ? distance * 2
+                : distance;
+    }
+
+
     private void applyDumbBallAnswerLocked(
             RoomState room,
             PlayerState player,
             boolean correct,
             boolean fireBoostApplied) {
 
-        if (!MODE_WHO_IS_DUMBER.equals(room.settings.mode)) {
+        if (!MODE_ESCAPE_DUMB_DEMON.equals(room.settings.mode)) {
             return;
         }
 
@@ -5552,7 +6000,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             );
         }
 
-        int distance = correct && fireBoostApplied ? 2 : 1;
+        int distance = calculateDumbBallAnswerDistanceLocked(
+                room,
+                player,
+                correct,
+                fireBoostApplied
+        );
         int direction;
 
         if (player.teamNumber == 1) {
@@ -5641,10 +6094,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         if (
-            MODE_WHO_IS_DUMBER.equals(mode) ||
-            "XEM_AI_NGU_HON".equals(mode)
+            MODE_ESCAPE_DUMB_DEMON.equals(mode) ||
+            "WHO_IS_DUMBER".equals(mode) ||
+            "XEM_AI_NGU_HON".equals(mode) ||
+            "THOAT_KHOI_QUY_NGU".equals(mode)
         ) {
-            return MODE_WHO_IS_DUMBER;
+            return MODE_ESCAPE_DUMB_DEMON;
         }
 
         return MODE_CLASSIC;
@@ -5654,7 +6109,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private boolean isCountdownLikeMode(String mode) {
         return MODE_COUNTDOWN.equals(mode) ||
                 MODE_MONEY_BEG.equals(mode) ||
-                MODE_WHO_IS_DUMBER.equals(mode);
+                MODE_ESCAPE_DUMB_DEMON.equals(mode);
     }
 
 
@@ -5842,7 +6297,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         long matchEndsAt = 0L;
 
         /*
-         * WHO_IS_DUMBER: âm gần ĐỘI 1, dương gần ĐỘI 2.
+         * ESCAPE_DUMB_DEMON: âm gần ĐỘI 1, dương gần ĐỘI 2.
          */
         int dumbBallPosition = 0;
         int dumbBallMaxDistance = 1;
@@ -5877,6 +6332,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 DEFAULT_WRONG_ANSWER_FREEZE_SECONDS;
 
         int teamCount = 0;
+
+        String doubleActionUsername;
     }
 
 

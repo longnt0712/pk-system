@@ -54,6 +54,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			"ROLE_STAFF");
 
 	private static final String ROLE_ADMIN = "ROLE_ADMIN";
+	private static final String ROLE_USER = "ROLE_USER";
+	private static final String ROLE_VIEWER = "ROLE_VIEWER";
 	private static final String ROLE_EDUCATION_MANAGERMENT = "ROLE_EDUCATION_MANAGERMENT";
 	private static final String ROLE_STUDENT_MANAGERMENT = "ROLE_STUDENT_MANAGERMENT";
 	private static final Integer HIDDEN_SCHOOL_ID = Integer.valueOf(1);
@@ -651,11 +653,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			return true;
 		}
 		if (HIDDEN_SCHOOL_ID.equals(selectedClass.getSchoolId())) {
-			return false;
+			return hasRole(user, ROLE_USER) || hasRole(user, ROLE_VIEWER);
 		}
-		return hasRole(user, ROLE_EDUCATION_MANAGERMENT)
-				|| hasRole(user, ROLE_STUDENT_MANAGERMENT)
-				|| isAssignedResponsibleForClassOrAncestor(user, selectedClass);
+		return true;
 	}
 
 	private boolean canEditClass(User user, EnrolmentClass selectedClass) {
