@@ -13,15 +13,15 @@
 
                     <!--&lt;!&ndash;</div>&ndash;&gt;-->
                 <!--</div>-->
-                <div class="row">
-                    <div class="col-md-1 margin-left-10">
+                <div class="row mark-setting-toolbar">
+                    <div class="col-md-2">
                         <button class="btn btn-default" data-ng-click="vm.newObject()"><i class="fa fa-plus-circle"></i>Thêm mới</button>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <ui-select ng-model="vm.searchDto.educationProgram"
-                                   data-ng-change="vm.getPage()"
+                                   data-ng-change="vm.onEducationProgramChanged()"
                                    close-on-select="true" style="witdth: 100% !important;">
-                            <ui-select-match allow-clear="true" placeholder="Chọn lớp để lọc">
+                            <ui-select-match allow-clear="true" placeholder="Chọn chương trình để lọc và sắp xếp">
                                 {{$select.selected.name}}
                             </ui-select-match>
                             <ui-select-choices repeat="cls in vm.educationPrograms | propsFilter:{name:$select.search}">
@@ -29,7 +29,80 @@
                             </ui-select-choices>
                         </ui-select>
                     </div>
+                    <div class="col-md-6 mark-order-toolbar-hint" ng-if="!vm.searchDto.educationProgram">
+                        <i class="fa fa-hand-pointer-o"></i>
+                        Chọn chương trình để sắp xếp thứ tự các đầu điểm.
+                    </div>
                 </div>
+
+                <section class="mark-order-panel" ng-if="vm.searchDto.educationProgram">
+                    <header class="mark-order-panel-header">
+                        <div>
+                            <h4><i class="fa fa-arrows-h"></i> Sắp xếp thứ tự đầu điểm</h4>
+                            <p>Kéo từng ô sang trái hoặc phải. Thứ tự này sẽ được dùng cho các cột trong <strong>student_marks</strong>.</p>
+                        </div>
+                        <div class="mark-order-status" aria-live="polite">
+                            <span ng-if="vm.markOrderState === 'loading'">
+                                <i class="fa fa-spinner fa-spin"></i> Đang tải...
+                            </span>
+                            <span class="text-warning" ng-if="vm.markOrderState === 'dirty'">
+                                <i class="fa fa-clock-o"></i> Đang chờ lưu...
+                            </span>
+                            <span class="text-info" ng-if="vm.markOrderState === 'saving'">
+                                <i class="fa fa-spinner fa-spin"></i> Đang lưu...
+                            </span>
+                            <span class="text-success" ng-if="vm.markOrderState === 'saved'">
+                                <i class="fa fa-check-circle"></i> Đã lưu thứ tự
+                            </span>
+                            <span class="text-danger" ng-if="vm.markOrderState === 'error'">
+                                <i class="fa fa-exclamation-circle"></i> Chưa lưu được
+                            </span>
+                        </div>
+                    </header>
+
+                    <ul class="mark-order-list"
+                        ng-if="vm.markOrderState !== 'loading' && vm.orderableMarks.length > 0"
+                        dnd-list="vm.orderableMarks"
+                        dnd-horizontal-list="true">
+                        <li class="mark-order-card"
+                            ng-repeat="mark in vm.orderableMarks track by $index"
+                            dnd-draggable="mark"
+                            dnd-moved="vm.onMarkMoved($index)"
+                            dnd-effect-allowed="move"
+                            dnd-disable-if="vm.markOrderState === 'saving'">
+                            <span class="mark-order-number">{{$index + 1}}</span>
+                            <span class="mark-order-handle" title="Giữ và kéo để đổi vị trí">
+                                <i class="fa fa-bars"></i>
+                            </span>
+                            <span class="mark-order-content">
+                                <strong>{{mark.name}}</strong>
+                                <small>{{mark.code}} · Hệ số {{mark.coefficient}}</small>
+                            </span>
+                            <span class="mark-order-actions" dnd-nodrag>
+                                <button type="button"
+                                        class="btn btn-xs btn-default"
+                                        ng-click="vm.moveMark($index, -1)"
+                                        ng-disabled="$first || vm.markOrderState === 'saving'"
+                                        title="Đưa sang trái">
+                                    <i class="fa fa-chevron-left"></i>
+                                </button>
+                                <button type="button"
+                                        class="btn btn-xs btn-default"
+                                        ng-click="vm.moveMark($index, 1)"
+                                        ng-disabled="$last || vm.markOrderState === 'saving'"
+                                        title="Đưa sang phải">
+                                    <i class="fa fa-chevron-right"></i>
+                                </button>
+                            </span>
+                        </li>
+                    </ul>
+
+                    <div class="mark-order-empty"
+                         ng-if="vm.markOrderState !== 'loading' && vm.orderableMarks.length === 0">
+                        Chương trình này chưa có đầu điểm để sắp xếp.
+                    </div>
+                </section>
+
                 <table id="bsTableControl" bs-table-control="vm.bsTableControl"></table>
             </div>
         </div>
@@ -42,8 +115,8 @@
     <div modal-movable>
         <div class="modal-header">
             <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
-            <h4 class="modal-title" data-ng-if="vm.mark.isNew == true"><i class="icon-plus"></i>Thêm tôn giáo</h4>
-            <h4 class="modal-title" data-ng-if="vm.mark.isNew == false"><i class="fa fa-pencil-square-o"></i>Cập nhật tôn giáo</h4>
+            <h4 class="modal-title" data-ng-if="vm.mark.isNew == true"><i class="icon-plus"></i> Thêm đầu điểm</h4>
+            <h4 class="modal-title" data-ng-if="vm.mark.isNew == false"><i class="fa fa-pencil-square-o"></i> Cập nhật đầu điểm</h4>
         </div>
         <div class="modal-body">
             <div class="row">
@@ -74,7 +147,7 @@
                     <label class="bold">Chương trình</label>
                     <ui-select ng-model="vm.mark.educationProgram"
                                close-on-select="true">
-                        <ui-select-match allow-clear="true" placeholder="Chọn lớp để lọc">
+                        <ui-select-match allow-clear="true" placeholder="Chọn chương trình">
                             {{$select.selected.name}}
                         </ui-select-match>
                         <ui-select-choices repeat="cls in vm.educationPrograms | propsFilter:{name:$select.search}">
@@ -151,3 +224,238 @@
     </div>
 </script>
 <!-- BEGIN MAIN JS -->
+
+<style>
+    .mark-setting-toolbar {
+        display: flex;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .mark-order-toolbar-hint {
+        padding-top: 8px;
+        color: #718096;
+        font-size: 13px;
+    }
+
+    .mark-order-panel {
+        overflow: hidden;
+        margin: 12px 0 18px;
+        border: 1px solid #dce4f0;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #f8fbff 0%, #fffdf8 100%);
+        box-shadow: 0 5px 16px rgba(45, 65, 95, .08);
+    }
+
+    .mark-order-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 15px 18px 11px;
+        border-bottom: 1px solid #e5ebf3;
+    }
+
+    .mark-order-panel-header h4 {
+        margin: 0 0 4px;
+        color: #34425c;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .mark-order-panel-header h4 i {
+        margin-right: 4px;
+        color: #5b72e6;
+    }
+
+    .mark-order-panel-header p {
+        margin: 0;
+        color: #718096;
+        font-size: 12px;
+    }
+
+    .mark-order-status {
+        flex: 0 0 auto;
+        min-width: 130px;
+        text-align: right;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .mark-order-list {
+        display: flex;
+        align-items: stretch;
+        gap: 10px;
+        min-height: 94px;
+        margin: 0;
+        padding: 14px 18px 17px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        list-style: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mark-order-card {
+        position: relative;
+        display: flex;
+        align-items: center;
+        flex: 0 0 205px;
+        min-height: 62px;
+        padding: 9px 7px 9px 38px;
+        border: 1px solid #d6dfec;
+        border-radius: 9px;
+        color: #34425c;
+        background: #ffffff;
+        box-shadow: 0 3px 9px rgba(50, 65, 95, .08);
+        cursor: grab;
+        user-select: none;
+        transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+    }
+
+    .mark-order-card:hover {
+        border-color: #8ea1ef;
+        box-shadow: 0 6px 14px rgba(64, 79, 145, .14);
+        transform: translateY(-1px);
+    }
+
+    .mark-order-card:active {
+        cursor: grabbing;
+    }
+
+    .mark-order-number {
+        position: absolute;
+        top: -8px;
+        left: -7px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 27px;
+        height: 27px;
+        border: 3px solid #ffffff;
+        border-radius: 50%;
+        color: #ffffff;
+        background: #5b72e6;
+        font-size: 12px;
+        font-weight: 700;
+        box-shadow: 0 2px 6px rgba(44, 65, 150, .25);
+    }
+
+    .mark-order-handle {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 31px;
+        border-right: 1px dashed #d7deea;
+        color: #9aa7ba;
+        font-size: 15px;
+    }
+
+    .mark-order-content {
+        min-width: 0;
+        padding-right: 5px;
+    }
+
+    .mark-order-content strong,
+    .mark-order-content small {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .mark-order-content strong {
+        max-width: 98px;
+        color: #273550;
+        font-size: 13px;
+    }
+
+    .mark-order-content small {
+        max-width: 110px;
+        margin-top: 4px;
+        color: #8792a4;
+        font-size: 10px;
+    }
+
+    .mark-order-actions {
+        display: flex;
+        flex: 0 0 auto;
+        gap: 3px;
+        margin-left: auto;
+    }
+
+    .mark-order-actions .btn {
+        width: 24px;
+        height: 25px;
+        padding: 0;
+        border-color: #dce3ed;
+        color: #68758b;
+        line-height: 23px;
+    }
+
+    .mark-order-list .dndPlaceholder {
+        flex: 0 0 205px;
+        min-height: 62px;
+        border: 2px dashed #5b72e6;
+        border-radius: 9px;
+        background: rgba(91, 114, 230, .08);
+    }
+
+    .mark-order-list .dndDraggingSource {
+        display: none;
+    }
+
+    .mark-order-empty {
+        padding: 24px 18px;
+        color: #8792a4;
+        text-align: center;
+    }
+
+    html.global-dark-mode .mark-order-panel {
+        border-color: #414b5e;
+        background: #252c38;
+    }
+
+    html.global-dark-mode .mark-order-panel-header {
+        border-color: #414b5e;
+    }
+
+    html.global-dark-mode .mark-order-panel-header h4,
+    html.global-dark-mode .mark-order-content strong {
+        color: #eef2fb;
+    }
+
+    html.global-dark-mode .mark-order-card {
+        border-color: #4b5669;
+        color: #eef2fb;
+        background: #313947;
+    }
+
+    html.global-dark-mode .mark-order-number {
+        border-color: #252c38;
+    }
+
+    @media only screen and (max-width: 767px) {
+        .mark-setting-toolbar,
+        .mark-order-panel-header {
+            display: block;
+        }
+
+        .mark-setting-toolbar > div {
+            margin-bottom: 8px;
+        }
+
+        .mark-order-status {
+            margin-top: 9px;
+            text-align: left;
+        }
+
+        .mark-order-list {
+            padding-right: 12px;
+            padding-left: 12px;
+        }
+    }
+</style>

@@ -13,6 +13,36 @@
         // 'pubnub.angular.service',
     ]);
 
+    // Lightweight view helpers for the IDP-style Reading question palette.
+    // Keeping these as filters lets the existing controller remain unchanged.
+    Hrm.Question.filter('ieltsAnsweredCount', [function () {
+        return function (packages) {
+            var answered = 0;
+
+            angular.forEach(packages || [], function (questionPackage) {
+                angular.forEach(questionPackage.subQuestions || [], function (question) {
+                    if (question.answered === true) {
+                        answered++;
+                    }
+                });
+            });
+
+            return answered;
+        };
+    }]);
+
+    Hrm.Question.filter('ieltsQuestionCount', [function () {
+        return function (packages) {
+            var total = 0;
+
+            angular.forEach(packages || [], function (questionPackage) {
+                total += (questionPackage.subQuestions || []).length;
+            });
+
+            return total;
+        };
+    }]);
+
     Hrm.Question.config(['$stateProvider', function ($stateProvider) {
 
         $stateProvider
@@ -237,7 +267,7 @@
 
             .state('application.ielts_reading_actual_test', {
                 url: '/ielts_reading_actual_test/:ieltsReadingTestId',
-                templateUrl: 'question/views/ielts_reading_actual_test.html',
+                templateUrl: 'question/views/ielts_reading_actual_test_idp.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'IELTS Reading Actual Test'},
                 controller: 'IELTSReadingActualTestController as vm',
                 resolve: {

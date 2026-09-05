@@ -27,6 +27,13 @@ public class Mark extends BaseObject{
 //	//hệ số
 	@Column(name="coefficient")
 	private Integer coefficient;
+
+	/**
+	 * Thứ tự hiển thị của đầu điểm trong màn hình student_marks.
+	 * Giá trị nhỏ hơn được hiển thị trước.
+	 */
+	@Column(name="display_order")
+	private Integer displayOrder;
 //	
 //	//Điểm số
 //	@Column(name="mark_number")
@@ -66,6 +73,14 @@ public class Mark extends BaseObject{
 
 	public void setCoefficient(Integer coefficient) {
 		this.coefficient = coefficient;
+	}
+
+	public Integer getDisplayOrder() {
+		return displayOrder;
+	}
+
+	public void setDisplayOrder(Integer displayOrder) {
+		this.displayOrder = displayOrder;
 	}
 
 	public EducationProgram getEducationProgram() {

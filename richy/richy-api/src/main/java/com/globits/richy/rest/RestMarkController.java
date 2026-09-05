@@ -27,6 +27,19 @@ public class RestMarkController {
 	public Page<MarkDto> getPage(@RequestBody MarkDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
 		return service.getPageObject(searchDto, pageIndex, pageSize);
 	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@RequestMapping(value = "/get_ordered/{educationProgramId}", method = RequestMethod.GET)
+	public List<MarkDto> getOrderedMarks(@PathVariable Long educationProgramId) {
+		return service.getOrderedMarks(educationProgramId);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@RequestMapping(value = "/reorder/{educationProgramId}", method = RequestMethod.POST)
+	public List<MarkDto> reorderMarks(@PathVariable Long educationProgramId,
+			@RequestBody List<Long> orderedMarkIds) {
+		return service.reorderMarks(educationProgramId, orderedMarkIds);
+	}
 	
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)

@@ -11,6 +11,7 @@ public class MarkDto implements Serializable{
 	private String name;
 	private String code;
 	private Integer coefficient;
+	private Integer displayOrder;
 	private String description;
 	private EducationProgramDto educationProgram;
 //	private String markText;
@@ -57,6 +58,12 @@ public class MarkDto implements Serializable{
 	public void setCoefficient(Integer coefficient) {
 		this.coefficient = coefficient;
 	}
+	public Integer getDisplayOrder() {
+		return displayOrder;
+	}
+	public void setDisplayOrder(Integer displayOrder) {
+		this.displayOrder = displayOrder;
+	}
 	public void setEducationProgram(EducationProgramDto educationProgram) {
 		this.educationProgram = educationProgram;
 	}
@@ -74,6 +81,7 @@ public class MarkDto implements Serializable{
 		this.code = domain.getCode();
 		this.name = domain.getName();
 		this.coefficient = domain.getCoefficient();
+		this.displayOrder = domain.getDisplayOrder();
 		this.description = domain.getDescription();
 		if(domain != null && domain.getEducationProgram() != null) {
 			this.educationProgram = new EducationProgramDto(domain.getEducationProgram());

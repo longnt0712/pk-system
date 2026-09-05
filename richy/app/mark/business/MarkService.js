@@ -22,6 +22,8 @@
         self.saveObject = saveObject;
         self.getOne = getOne;
         self.deleteObject = deleteObject;
+        self.getOrderedMarks = getOrderedMarks;
+        self.saveMarkOrder = saveMarkOrder;
         self.getTableDefinition = getTableDefinition;
 
         var restUrl = 'mark';
@@ -59,6 +61,28 @@
             }
             var url = baseUrl+ restUrl + '/delete/' + id;
             return utils.resolveAlt(url, 'DELETE', null, null, {
+                'Content-Type': 'application/json; charset=utf-8'
+            }, successCallback, errorCallback);
+        }
+
+        function getOrderedMarks(educationProgramId, successCallback, errorCallback) {
+            if (!educationProgramId) {
+                return $q.when([]);
+            }
+
+            var url = baseUrl + restUrl + '/get_ordered/' + educationProgramId;
+            return utils.resolveAlt(url, 'GET', null, null, {
+                'Content-Type': 'application/json; charset=utf-8'
+            }, successCallback, errorCallback);
+        }
+
+        function saveMarkOrder(educationProgramId, orderedMarkIds, successCallback, errorCallback) {
+            if (!educationProgramId) {
+                return $q.when([]);
+            }
+
+            var url = baseUrl + restUrl + '/reorder/' + educationProgramId;
+            return utils.resolveAlt(url, 'POST', null, orderedMarkIds || [], {
                 'Content-Type': 'application/json; charset=utf-8'
             }, successCallback, errorCallback);
         }
@@ -132,6 +156,13 @@
                     switchable: true,
                     visible: true,
                     formatter: _tableOperation,
+                    cellStyle: _cellNowrap
+                }
+                , {
+                    field: 'displayOrder',
+                    title: 'Thứ tự',
+                    sortable: false,
+                    switchable: false,
                     cellStyle: _cellNowrap
                 }
                 , {

@@ -1,6 +1,11 @@
 package com.globits.richy.service.impl;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
@@ -14,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.globits.richy.domain.EducationProgram;
 import com.globits.richy.domain.Mark;
@@ -55,6 +61,8 @@ public class MarkServiceImpl implements MarkService {
 		}
 
 		sql += whereClause;
+		sql += " order by s.educationProgram.id, "
+				+ "coalesce(s.displayOrder, 2147483647), s.createDate, s.id";
 		sqlCount += whereClause;
 
 		Query q = manager.createQuery(sql, MarkDto.class);
@@ -85,6 +93,88 @@ public class MarkServiceImpl implements MarkService {
 	}
 
 	@Override
+	public List<MarkDto> getOrderedMarks(Long educationProgramId) {
+		List<MarkDto> result = new ArrayList<MarkDto>();
+		if (educationProgramId == null) {
+			return result;
+		}
+
+		List<Mark> marks = markRepository.findMarkBy(educationProgramId);
+		if (marks == null) {
+			return result;
+		}
+
+		for (Mark mark : marks) {
+			if (mark != null) {
+				result.add(new MarkDto(mark));
+			}
+		}
+
+		return result;
+	}
+
+	@Override
+	@Transactional
+	public List<MarkDto> reorderMarks(Long educationProgramId, List<Long> orderedMarkIds) {
+		List<MarkDto> result = new ArrayList<MarkDto>();
+		if (educationProgramId == null) {
+			return result;
+		}
+
+		List<Mark> currentMarks = markRepository.findMarkBy(educationProgramId);
+		if (currentMarks == null || currentMarks.isEmpty()) {
+			return result;
+		}
+
+		Map<Long, Mark> marksById = new LinkedHashMap<Long, Mark>();
+		for (Mark mark : currentMarks) {
+			if (mark != null && mark.getId() != null) {
+				marksById.put(mark.getId(), mark);
+			}
+		}
+
+		List<Mark> orderedMarks = new ArrayList<Mark>();
+		Set<Long> addedIds = new HashSet<Long>();
+
+		if (orderedMarkIds != null) {
+			for (Long markId : orderedMarkIds) {
+				Mark mark = marksById.get(markId);
+				if (mark != null && addedIds.add(markId)) {
+					orderedMarks.add(mark);
+				}
+			}
+		}
+
+		/*
+		 * Nếu một đầu điểm vừa được thêm ở tab khác trong lúc người dùng đang kéo,
+		 * giữ nó lại và nối xuống cuối thay vì làm mất thứ tự/dữ liệu.
+		 */
+		for (Mark mark : currentMarks) {
+			if (mark != null && mark.getId() != null && addedIds.add(mark.getId())) {
+				orderedMarks.add(mark);
+			}
+		}
+
+		String currentUserName = "Unknown User";
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication != null) {
+			currentUserName = authentication.getName();
+		}
+		LocalDateTime currentDate = LocalDateTime.now();
+
+		for (int i = 0; i < orderedMarks.size(); i++) {
+			Mark mark = orderedMarks.get(i);
+			mark.setDisplayOrder(i + 1);
+			mark.setModifiedBy(currentUserName);
+			mark.setModifyDate(currentDate);
+			markRepository.save(mark);
+			result.add(new MarkDto(mark));
+		}
+
+		return result;
+	}
+
+	@Override
 	public MarkDto getObjectById(Long id) {
 		return new MarkDto(markRepository.getOne(id));
 	}
@@ -104,9 +194,14 @@ public class MarkServiceImpl implements MarkService {
 			return dto;
 		}
 		Mark domain = null;
+		boolean isNewDomain = false;
 		String saveType = "...";
 		if(dto.getId() != null) {
 			domain = markRepository.getOne(dto.getId());
+		}
+		Long originalEducationProgramId = null;
+		if (domain != null && domain.getEducationProgram() != null) {
+			originalEducationProgramId = domain.getEducationProgram().getId();
 		}
 		if(domain != null) {
 			domain.setModifiedBy(currentUserName);
@@ -115,6 +210,7 @@ public class MarkServiceImpl implements MarkService {
 		}
 		if(domain == null) {
 			domain = new Mark();
+			isNewDomain = true;
 			domain.setCreateDate(currentDate);
 			domain.setCreatedBy(currentUserName);
 			saveType = "THÊM MỚI";
@@ -146,6 +242,16 @@ public class MarkServiceImpl implements MarkService {
 			EducationProgram educationProgram = educationProgramRepository.getOne(dto.getEducationProgram().getId());
 			if(educationProgram != null) {
 				domain.setEducationProgram(educationProgram);
+				boolean educationProgramChanged = !isNewDomain
+						&& (originalEducationProgramId == null
+						|| !originalEducationProgramId.equals(educationProgram.getId()));
+				if (isNewDomain || educationProgramChanged) {
+					Integer maxDisplayOrder = markRepository
+							.findMaxDisplayOrderByEducationProgramId(educationProgram.getId());
+					domain.setDisplayOrder(maxDisplayOrder == null ? 1 : maxDisplayOrder + 1);
+				} else if (dto.getDisplayOrder() != null) {
+					domain.setDisplayOrder(dto.getDisplayOrder());
+				}
 			}
 		}
 		domain.setDescription(dto.getDescription());

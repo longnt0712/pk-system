@@ -107,6 +107,9 @@
         vm.pageIndex = 1;
         vm.pageSize = 25;
         vm.searchDto = {};
+        vm.orderableMarks = [];
+        vm.markOrderState = 'idle';
+        vm.markOrderSaveTimers = {};
 
         /* TINYMCE */
         vm.tinymceOptions = {
@@ -141,6 +144,159 @@
                 vm.bsTableControl.options.data = vm.marks;
                 vm.bsTableControl.options.totalRows = data.totalElements;
             });
+        };
+
+        function getSelectedEducationProgramId() {
+            if (vm.searchDto && vm.searchDto.educationProgram) {
+                return vm.searchDto.educationProgram.id;
+            }
+
+            return null;
+        }
+
+        function normalizeLocalMarkOrder() {
+            angular.forEach(vm.orderableMarks || [], function (mark, index) {
+                if (mark) {
+                    mark.displayOrder = index + 1;
+                }
+            });
+        }
+
+        vm.loadOrderedMarks = function () {
+            var educationProgramId = getSelectedEducationProgramId();
+
+            if (!educationProgramId) {
+                vm.orderableMarks = [];
+                vm.markOrderState = 'idle';
+                return;
+            }
+
+            vm.markOrderState = 'loading';
+
+            service.getOrderedMarks(educationProgramId).then(function (data) {
+                if (String(getSelectedEducationProgramId()) !== String(educationProgramId)) {
+                    return;
+                }
+
+                vm.orderableMarks = angular.isArray(data) ? data : [];
+                normalizeLocalMarkOrder();
+                vm.markOrderState = 'idle';
+            }, function () {
+                if (String(getSelectedEducationProgramId()) === String(educationProgramId)) {
+                    vm.orderableMarks = [];
+                    vm.markOrderState = 'error';
+                    toastr.error('Không tải được thứ tự đầu điểm', 'Lỗi');
+                }
+            });
+        };
+
+        vm.onEducationProgramChanged = function () {
+            vm.pageIndex = 1;
+            vm.getPage();
+            vm.loadOrderedMarks();
+        };
+
+        vm.refreshSelectedEducationProgram = function () {
+            vm.getPage();
+            vm.loadOrderedMarks();
+        };
+
+        function collectOrderedMarkIds(marks) {
+            var orderedMarkIds = [];
+
+            angular.forEach(marks || [], function (mark) {
+                if (mark && mark.id) {
+                    orderedMarkIds.push(mark.id);
+                }
+            });
+
+            return orderedMarkIds;
+        }
+
+        vm.saveOrderedMarks = function (educationProgramId, orderedMarkIds) {
+            educationProgramId = educationProgramId || getSelectedEducationProgramId();
+            var isCurrentProgram = String(getSelectedEducationProgramId()) === String(educationProgramId);
+
+            if (!educationProgramId || (isCurrentProgram && vm.markOrderState === 'saving')) {
+                return;
+            }
+
+            orderedMarkIds = angular.isArray(orderedMarkIds)
+                ? orderedMarkIds
+                : collectOrderedMarkIds(vm.orderableMarks);
+
+            if (isCurrentProgram) {
+                vm.markOrderState = 'saving';
+            }
+
+            service.saveMarkOrder(educationProgramId, orderedMarkIds).then(function (data) {
+                if (String(getSelectedEducationProgramId()) !== String(educationProgramId)) {
+                    return;
+                }
+
+                if (angular.isArray(data)) {
+                    vm.orderableMarks = data;
+                }
+
+                normalizeLocalMarkOrder();
+                vm.markOrderState = 'saved';
+                vm.getPage();
+
+                $timeout(function () {
+                    if (vm.markOrderState === 'saved') {
+                        vm.markOrderState = 'idle';
+                    }
+                }, 1800);
+            }, function () {
+                if (String(getSelectedEducationProgramId()) === String(educationProgramId)) {
+                    vm.markOrderState = 'error';
+                    vm.loadOrderedMarks();
+                }
+
+                toastr.error('Không lưu được thứ tự đầu điểm. Danh sách sẽ được tải lại.', 'Lỗi');
+            });
+        };
+
+        vm.queueSaveOrderedMarks = function () {
+            var educationProgramId = getSelectedEducationProgramId();
+            if (!educationProgramId) {
+                return;
+            }
+
+            normalizeLocalMarkOrder();
+            vm.markOrderState = 'dirty';
+
+            var timerKey = String(educationProgramId);
+            var orderedMarkIds = collectOrderedMarkIds(vm.orderableMarks);
+
+            if (vm.markOrderSaveTimers[timerKey]) {
+                $timeout.cancel(vm.markOrderSaveTimers[timerKey]);
+            }
+
+            vm.markOrderSaveTimers[timerKey] = $timeout(function () {
+                delete vm.markOrderSaveTimers[timerKey];
+                vm.saveOrderedMarks(educationProgramId, orderedMarkIds);
+            }, 300);
+        };
+
+        vm.onMarkMoved = function (index) {
+            vm.orderableMarks.splice(index, 1);
+            vm.queueSaveOrderedMarks();
+        };
+
+        vm.moveMark = function (index, direction) {
+            if (vm.markOrderState === 'saving') {
+                return;
+            }
+
+            var targetIndex = index + direction;
+            if (index < 0 || targetIndex < 0 || targetIndex >= vm.orderableMarks.length) {
+                return;
+            }
+
+            var movedMark = vm.orderableMarks.splice(index, 1)[0];
+            vm.orderableMarks.splice(targetIndex, 0, movedMark);
+            vm.queueSaveOrderedMarks();
         };
 
         vm.getPage();
@@ -216,7 +372,7 @@
             // });
 
             service.saveObject(vm.mark).then(function (data) {
-                vm.getPage();
+                vm.refreshSelectedEducationProgram();
                 toastr.info(data.message, 'Thông báo');
             }, function failure() {
                 toastr.error('Có lỗi khi cập nhật điểm', 'Lỗi');
@@ -226,6 +382,10 @@
         vm.newObject = function () {
             vm.mark = {};
             vm.mark.isNew = true;
+
+            if (vm.searchDto && vm.searchDto.educationProgram) {
+                vm.mark.educationProgram = vm.searchDto.educationProgram;
+            }
 
             var modalInstance = modal.open({
                 animation: true,
@@ -297,7 +457,7 @@
                 	console.log(vm.selectedMarks);
                     service.deleteObject(id, function success() {
                         toastr.info('Bạn đã xóa thành công', 'Thông báo');
-                        vm.getPage();
+                        vm.refreshSelectedEducationProgram();
                     }, function failure() {
                         toastr.error('Có lỗi xảy ra khi xóa bản ghi.', 'Lỗi');
                     });

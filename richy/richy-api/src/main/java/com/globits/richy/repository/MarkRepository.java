@@ -11,6 +11,10 @@ import com.globits.richy.domain.Mark;
 import com.globits.richy.dto.MarkDto;
 @Repository
 public interface MarkRepository extends JpaRepository<Mark, Long> {
-	@Query("select u from Mark u where u.educationProgram.id = ?1 ")
+	@Query("select u from Mark u where u.educationProgram.id = ?1 "
+			+ "order by coalesce(u.displayOrder, 2147483647), u.createDate, u.id")
 	List<Mark> findMarkBy(Long educationProgramId);
+
+	@Query("select max(u.displayOrder) from Mark u where u.educationProgram.id = ?1")
+	Integer findMaxDisplayOrderByEducationProgramId(Long educationProgramId);
 }
