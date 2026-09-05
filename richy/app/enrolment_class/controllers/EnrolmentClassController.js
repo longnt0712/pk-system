@@ -20,6 +20,16 @@
         vm.allClasses = [];
         vm.visibleClasses = [];
         vm.teacherCandidates = [];
+        vm.candidatesLoading = false;
+        vm.candidatesError = false;
+        var candidatesRequest = 0;
+        var vietnameseFamilyNames = {
+            "nguyen": true, "tran": true, "le": true, "pham": true, "hoang": true,
+            "huynh": true, "phan": true, "vu": true, "vo": true, "dang": true,
+            "bui": true, "do": true, "ho": true, "ngo": true, "duong": true,
+            "ly": true, "dinh": true, "truong": true, "dao": true, "cao": true,
+            "mai": true, "doan": true, "luu": true, "trinh": true, "ta": true
+        };
         vm.expanded = {};
         vm.searchText = '';
         vm.enrolmentClass = {};
@@ -65,8 +75,17 @@
         };
 
         vm.loadTeachers = function (parentClassId, pruneSelection, classId) {
+            var request = ++candidatesRequest;
+            vm.candidatesLoading = true;
+            vm.candidatesError = false;
             return service.getResponsibleCandidates(parentClassId, classId).then(function (data) {
+                if (request !== candidatesRequest) { return; }
+                vm.candidatesLoading = false;
                 vm.teacherCandidates = angular.isArray(data) ? data : [];
+                angular.forEach(vm.teacherCandidates, function (candidate) {
+                    candidate.originalDisplayName = candidate.originalDisplayName || candidate.displayName;
+                    candidate.displayName = responsibleDisplayName(candidate);
+                });
 				vm.teacherCandidates.sort(function (a, b) {
 					return (a.displayName || a.username || '').localeCompare(
 						b.displayName || b.username || '', 'vi');
@@ -77,10 +96,32 @@
 					angular.forEach(vm.teacherCandidates, function (candidate) {
 						allowed[candidate.id] = true;
 					});
-					vm.enrolmentClass.teacherIds = (vm.enrolmentClass.teacherIds || []).filter(function (id) {
+					vm.enrolmentClass.deputyTeacherIds = (vm.enrolmentClass.deputyTeacherIds || []).filter(function (id) {
 						return allowed[id] === true;
 					});
+                    if (!allowed[vm.enrolmentClass.primaryTeacherId]) {
+                        vm.enrolmentClass.primaryTeacherId = null;
+                    }
 				}
+            }, function () {
+                if (request !== candidatesRequest) { return; }
+                vm.candidatesLoading = false;
+                vm.candidatesError = true;
+                vm.teacherCandidates = [];
+                toastr.error('Không tải được danh sách người phụ trách. Vui lòng thử lại.', 'Lỗi');
+            });
+        };
+
+        vm.primaryChanged = function () {
+            var primary = vm.enrolmentClass.primaryTeacherId;
+            vm.enrolmentClass.deputyTeacherIds = (vm.enrolmentClass.deputyTeacherIds || []).filter(function (id) {
+                return !sameTeamId(id, primary);
+            });
+        };
+
+        vm.deputyCandidates = function () {
+            return vm.teacherCandidates.filter(function (candidate) {
+                return !sameTeamId(candidate.id, vm.enrolmentClass.primaryTeacherId);
             });
         };
 
@@ -181,11 +222,82 @@
             vm.rebuildTree();
         };
 
-        vm.teacherNames = function (item) {
-            return (item.teachers || []).map(function (teacher) {
-                return teacher.displayName || teacher.username;
+        vm.teacherNames = function (item, primaryOnly) {
+            return (item.teachers || []).filter(function (teacher) {
+                return sameTeamId(teacher.id, item.primaryTeacherId) === primaryOnly;
+            }).map(function (teacher) {
+                return responsibleDisplayName(teacher);
             }).join(', ');
         };
+
+        function responsibleDisplayName(user) {
+            if (!user) {
+                return '';
+            }
+
+            var person = user.person || {};
+            var lastName = cleanDisplayText(user.lastName || person.lastName || '');
+            var firstName = cleanDisplayText(user.firstName || person.firstName || '');
+            var fullName = cleanDisplayText(lastName + ' ' + removeNameNoteKeepCase(firstName));
+
+            if (fullName) {
+                return fullName;
+            }
+
+            fullName = cleanDisplayText(user.originalDisplayName || user.displayName || '');
+            if (fullName) {
+                return fixVietnameseDisplayNameOrder(fullName);
+            }
+
+            return user.username || '';
+        }
+
+        function fixVietnameseDisplayNameOrder(displayName) {
+            var parts = displayName.split(' ');
+            if (parts.length < 2) {
+                return displayName;
+            }
+
+            var firstKey = removeVietnameseTone(parts[0]).toLowerCase();
+            var lastKey = removeVietnameseTone(parts[parts.length - 1]).toLowerCase();
+            if (!vietnameseFamilyNames[firstKey] && vietnameseFamilyNames[lastKey]) {
+                return [parts[parts.length - 1]]
+                    .concat(parts.slice(0, parts.length - 1))
+                    .join(' ');
+            }
+
+            return displayName;
+        }
+
+        function removeVietnameseTone(value) {
+            return cleanDisplayText(value)
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/đ/g, 'd')
+                .replace(/Đ/g, 'D');
+        }
+
+        function cleanDisplayText(value) {
+            if (value === null || angular.isUndefined(value)) {
+                return '';
+            }
+            return String(value).replace(/\s+/g, ' ').trim();
+        }
+
+        function removeNameNoteKeepCase(value) {
+            var text = cleanDisplayText(value);
+            var oldText;
+
+            do {
+                oldText = text;
+                text = text
+                    .replace(/\s*\([^()]*\)\s*$/g, '')
+                    .replace(/\s*\[[^\[\]]*\]\s*$/g, '')
+                    .trim();
+            } while (text !== oldText);
+
+            return text;
+        }
 
         function sameTeamId(first, second) {
             if (first === null || angular.isUndefined(first)) {
@@ -448,7 +560,7 @@
 						return;
 					}
 					vm.loadTeachers(object.parentId, false, object.id).then(function () {
-						vm.showEditor(object);
+						if (!vm.candidatesError) { vm.showEditor(object); }
 					});
                 });
                 return;
@@ -469,7 +581,7 @@
                 teacherIds: []
             };
 			vm.loadTeachers(newObject.parentId, false, newObject.id).then(function () {
-				vm.showEditor(newObject);
+				if (!vm.candidatesError) { vm.showEditor(newObject); }
 			});
         };
 
@@ -477,6 +589,10 @@
             vm.enrolmentClass = angular.copy(object || {});
             vm.enrolmentClass.isNew = !vm.enrolmentClass.id;
             vm.enrolmentClass.teacherIds = vm.enrolmentClass.teacherIds || [];
+            vm.enrolmentClass.primaryTeacherId = vm.enrolmentClass.primaryTeacherId || null;
+            vm.enrolmentClass.deputyTeacherIds = angular.isArray(vm.enrolmentClass.deputyTeacherIds)
+                ? vm.enrolmentClass.deputyTeacherIds : vm.enrolmentClass.teacherIds.slice();
+            vm.primaryChanged();
 			vm.originalParentId = vm.enrolmentClass.parentId || null;
             vm.modalInstance = modal.open({
                 animation: true,
@@ -510,15 +626,28 @@
         };
 
         vm.saveObject = function () {
+            if (vm.saving || vm.candidatesLoading || vm.candidatesError) { return; }
             if (!vm.enrolmentClass.name || !vm.enrolmentClass.name.trim()) {
                 toastr.warning('Bạn chưa nhập tên lớp.', 'Thông báo');
                 return;
             }
+            vm.primaryChanged();
+            var assignedIds = vm.enrolmentClass.deputyTeacherIds.slice();
+            if (vm.enrolmentClass.primaryTeacherId != null) {
+                assignedIds.push(vm.enrolmentClass.primaryTeacherId);
+            }
+            var allowedIds = {};
+            angular.forEach(vm.teacherCandidates, function (candidate) { allowedIds[candidate.id] = true; });
+            if (assignedIds.some(function (id) { return !allowedIds[id]; })) {
+                toastr.warning('Có người phụ trách không còn thuộc danh sách được phép. Hãy chọn lại.', 'Thông báo');
+                return;
+            }
+            vm.enrolmentClass.teacherIds = assignedIds;
             vm.saving = true;
             service.saveObject(vm.enrolmentClass).then(function (saved) {
                 vm.saving = false;
                 if (saved !== true) {
-                    toastr.error('Không thể lưu. Hãy kiểm tra lớp cha và giáo viên phụ trách.', 'Lỗi');
+                    toastr.error('Không thể lưu. Hãy kiểm tra lớp cha và người phụ trách đã chọn.', 'Lỗi');
                     return;
                 }
                 toastr.success('Đã lưu lớp học.', 'Thông báo');

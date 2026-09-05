@@ -21,6 +21,25 @@ public class EnrolmentClassDto implements Serializable {
     private String parentName;
     private Set<Long> teacherIds = new LinkedHashSet<Long>();
     private List<UserDto> teachers = new ArrayList<UserDto>();
+    private Long primaryTeacherId;
+    // Null means a legacy client sent only teacherIds.
+    private Set<Long> deputyTeacherIds;
+
+    public Long getPrimaryTeacherId() {
+        return primaryTeacherId;
+    }
+
+    public void setPrimaryTeacherId(Long primaryTeacherId) {
+        this.primaryTeacherId = primaryTeacherId;
+    }
+
+    public Set<Long> getDeputyTeacherIds() {
+        return deputyTeacherIds;
+    }
+
+    public void setDeputyTeacherIds(Set<Long> deputyTeacherIds) {
+        this.deputyTeacherIds = deputyTeacherIds;
+    }
     private int childCount;
     private boolean canManageTeams;
     private boolean canEdit;
@@ -149,5 +168,9 @@ public class EnrolmentClassDto implements Serializable {
                 this.teachers.add(new UserDto(teacher, true));
             }
         }
+        this.primaryTeacherId = teacherIds.contains(domain.getPrimaryTeacherId())
+                ? domain.getPrimaryTeacherId() : null;
+        this.deputyTeacherIds = new LinkedHashSet<Long>(teacherIds);
+        this.deputyTeacherIds.remove(this.primaryTeacherId);
     }
 }

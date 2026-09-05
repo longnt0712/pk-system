@@ -24,19 +24,44 @@
         border-top:1px solid #d8deea;
     }
     .class-tree-table .tree-toggle {
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
         width:28px;
         min-width:28px;
         height:28px;
         min-height:28px !important;
         padding:0;
         margin-right:6px;
+        line-height:1;
+        vertical-align:middle;
+    }
+    .class-tree-table .tree-toggle .fa {
+        line-height:1;
+        margin:0;
     }
     .class-tree-table .tree-spacer { display:inline-block; width:34px; }
     .class-tree-table .root-class { font-weight:700; }
     .class-tree-table .child-badge { margin-left:8px; }
     .class-tree-toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:15px; }
     .class-tree-toolbar .form-control { max-width:360px; }
-    .class-tree-actions { white-space:nowrap; }
+    .class-tree-table {
+        table-layout:fixed;
+        width:100%;
+    }
+    .class-tree-table .class-name-column { width:36%; }
+    .class-tree-table .class-responsible-column { width:auto; }
+    .class-tree-table .class-actions-column { width:380px; }
+    .class-tree-responsible strong { white-space:nowrap; }
+    .class-tree-actions {
+        white-space:nowrap;
+        width:380px;
+    }
+    .class-tree-actions .btn {
+        margin:3px 2px 3px 0;
+        padding-left:9px;
+        padding-right:9px;
+    }
     .class-teacher-empty { color:#9aa4b2; font-style:italic; }
     .class-team-link { border:0; background:transparent; color:#337ab7; padding:0; font-weight:inherit; text-align:left; }
     .class-team-link:hover, .class-team-link:focus { color:#23527c; text-decoration:underline; outline:0; }
@@ -210,7 +235,7 @@
     <div class="col-md-12">
         <div class="portlet light bordered">
             <div class="portlet-title">
-                <div class="caption"><i class="fa fa-sitemap"></i> Cây lớp học, tổ và lớp con</div>
+                <div class="caption"><i class="fa fa-sitemap"></i> Cây lớp học và đội</div>
             </div>
             <div class="portlet-body">
                 <div class="class-tree-toolbar">
@@ -226,11 +251,9 @@
                     <table class="table table-bordered table-hover class-tree-table">
                         <thead>
                         <tr>
-                            <th style="width:34%">LỚP / TỔ / LỚP CON</th>
-                            <th style="width:14%">MÃ</th>
-                            <th>NGƯỜI PHỤ TRÁCH</th>
-                            <th style="width:10%">MÃ TRƯỜNG</th>
-                            <th style="width:220px">THAO TÁC</th>
+                            <th class="class-name-column">LỚP / TỔ / ĐỘI</th>
+                            <th class="class-responsible-column">NGƯỜI PHỤ TRÁCH</th>
+                            <th class="class-actions-column">THAO TÁC</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -243,7 +266,7 @@
                                     <button type="button" class="btn btn-default tree-toggle"
                                             data-ng-if="row.hasChildren" data-ng-click="vm.toggle(row)"
                                             data-ng-attr-aria-expanded="{{vm.expanded[row.id] === true}}"
-                                            data-ng-attr-title="{{vm.expanded[row.id] ? 'Thu gọn lớp con' : 'Mở lớp con'}}">
+                                            data-ng-attr-title="{{vm.expanded[row.id] ? 'Thu gọn đội' : 'Mở đội'}}">
                                         <i class="fa" data-ng-class="vm.expanded[row.id] ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
                                     </button>
                                     <span class="tree-spacer" data-ng-if="!row.hasChildren"></span>
@@ -256,27 +279,35 @@
                                     <span class="badge badge-info child-badge" data-ng-if="row.childCount">{{row.childCount}}</span>
                                 </div>
                             </td>
-                            <td>{{row.code || '—'}}</td>
-                            <td>
-                                <span data-ng-if="row.teachers.length">{{vm.teacherNames(row)}}</span>
+                            <td class="class-tree-responsible">
+                                <div data-ng-if="row.primaryTeacherId">
+                                    <strong>{{row.parentId ? 'Đội trưởng' : 'Phụ trách chính'}}:</strong>
+                                    {{vm.teacherNames(row, true)}}
+                                </div>
+                                <div data-ng-if="vm.teacherNames(row, false)">
+                                    <strong>{{row.parentId ? 'Đội phó' : 'Phụ trách phụ'}}:</strong>
+                                    {{vm.teacherNames(row, false)}}
+                                </div>
                                 <span class="class-teacher-empty" data-ng-if="!row.teachers.length">Chưa gán</span>
                             </td>
-                            <td>{{row.schoolId || '—'}}</td>
                             <td class="class-tree-actions">
                                 <button class="btn btn-xs btn-primary" data-ng-if="row.canManageTeams"
                                         data-ng-click="vm.openTeamBoard(row)" title="Mở bảng phân đội">
                                     <i class="fa fa-random"></i> Phân đội
                                 </button>
-                                <button class="btn btn-xs btn-success" data-ng-if="row.canAddChild" title="Thêm tổ/lớp con"
-                                        data-ng-click="vm.openEditor(null, row.id)"><i class="fa fa-plus"></i> Lớp con</button>
+                                <button class="btn btn-xs btn-success" data-ng-if="row.canAddChild" title="Tạo đội"
+                                        data-ng-click="vm.openEditor(null, row.id)"><i class="fa fa-plus"></i> Tạo đội</button>
                                 <button class="btn btn-xs btn-info" data-ng-if="row.canEdit"
-                                        data-ng-click="vm.openEditor(row)"><i class="fa fa-pencil"></i></button>
+                                        title="Sửa thông tin / thêm trưởng phó"
+                                        data-ng-click="vm.openEditor(row)">
+                                    <i class="fa fa-pencil"></i> Sửa / Trưởng phó
+                                </button>
                                 <button class="btn btn-xs btn-danger" data-ng-if="row.canEdit"
                                         data-ng-click="vm.confirmDelete(row)"><i class="fa fa-trash"></i></button>
                             </td>
                         </tr>
                         <tr data-ng-if="!vm.visibleClasses.length">
-                            <td colspan="5" class="text-center">Không có lớp phù hợp.</td>
+                            <td colspan="3" class="text-center">Không có lớp phù hợp.</td>
                         </tr>
                         </tbody>
                     </table>
@@ -306,7 +337,7 @@
             </div>
 
             <div class="alert alert-warning" data-ng-if="!vm.teamBoard.teams.length">
-                Lớp này chưa có đội. Quản trị viên hoặc quản lý giáo dục hãy tạo các <strong>lớp con/tổ</strong> dưới lớp này trước.
+                Lớp này chưa có đội. Quản trị viên hoặc quản lý giáo dục hãy bấm <strong>Tạo đội</strong> dưới lớp này trước.
             </div>
 
             <div class="team-board-columns">
@@ -395,18 +426,32 @@
                 </div>
                 <div class="col-md-12 form-group">
                     <label class="bold">
-                        {{vm.enrolmentClass.parentId
-                            ? 'Đội trưởng / Đội phó'
-                            : 'Giáo viên phụ trách'}}
-                        — có thể chọn nhiều
+                        {{vm.enrolmentClass.parentId ? 'Đội trưởng' : 'Phụ trách chính'}} (chọn 1)
                     </label>
-                    <ui-select multiple theme="bootstrap" class="class-responsible-select"
-                               data-ng-model="vm.enrolmentClass.teacherIds"
-                               sortable="true" close-on-select="false" style="width:100%">
-                        <ui-select-match placeholder="{{vm.enrolmentClass.parentId ? 'Chọn Đội trưởng / Đội phó...' : 'Chọn giáo viên...'}}">
-                            {{$item.displayName || $item.username}}
+                    <ui-select theme="bootstrap" data-ng-model="vm.enrolmentClass.primaryTeacherId"
+                               data-ng-disabled="vm.candidatesLoading || vm.candidatesError || vm.saving"
+                               on-select="vm.primaryChanged()" style="width:100%">
+                        <ui-select-match allow-clear="true" placeholder="{{vm.enrolmentClass.parentId ? 'Chọn đội trưởng...' : 'Chọn phụ trách chính...'}}">
+                            {{$select.selected.displayName || $select.selected.username}}
                         </ui-select-match>
                         <ui-select-choices repeat="teacher.id as teacher in vm.teacherCandidates | propsFilter:{displayName:$select.search, username:$select.search}">
+                            <div>{{teacher.displayName || teacher.username}}</div>
+                            <small>{{teacher.username}}</small>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                <div class="col-md-12 form-group">
+                    <label class="bold">
+                        {{vm.enrolmentClass.parentId ? 'Đội phó' : 'Phụ trách phụ'}} (có thể chọn nhiều)
+                    </label>
+                    <ui-select multiple theme="bootstrap" class="class-responsible-select"
+                               data-ng-model="vm.enrolmentClass.deputyTeacherIds"
+                               data-ng-disabled="vm.candidatesLoading || vm.candidatesError || vm.saving"
+                               close-on-select="false" style="width:100%">
+                        <ui-select-match placeholder="{{vm.enrolmentClass.parentId ? 'Chọn đội phó...' : 'Chọn phụ trách phụ...'}}">
+                            {{$item.displayName || $item.username}}
+                        </ui-select-match>
+                        <ui-select-choices repeat="teacher.id as teacher in vm.deputyCandidates() | propsFilter:{displayName:$select.search, username:$select.search}">
                             <div>{{teacher.displayName || teacher.username}}</div>
                             <small>{{teacher.username}}</small>
                         </ui-select-choices>
@@ -418,12 +463,18 @@
                         Chỉ học sinh đã được phân vào tổ này mới có thể chọn làm Đội trưởng / Đội phó.
                         Học sinh được chọn không được cấp thêm quyền quản trị.
                     </span>
+                    <span class="help-block" data-ng-if="vm.enrolmentClass.parentId && !vm.candidatesLoading && !vm.candidatesError && !vm.teacherCandidates.length">
+                        Chưa có thành viên để chọn. Hãy lưu tổ và phân học sinh vào tổ trước.
+                    </span>
+                    <span class="help-block" data-ng-if="vm.candidatesLoading">Đang tải danh sách...</span>
+                    <button type="button" class="btn btn-default" data-ng-if="vm.candidatesError"
+                            data-ng-click="vm.parentChanged()">Tải lại danh sách</button>
                 </div>
             </div>
         </div>
         <div class="modal-footer">
             <button type="button" ng-click="$dismiss()" class="btn btn-default">Hủy bỏ</button>
-            <button type="button" ng-click="vm.saveObject()" class="btn btn-primary" data-ng-disabled="vm.saving">
+            <button type="button" ng-click="vm.saveObject()" class="btn btn-primary" data-ng-disabled="vm.saving || vm.candidatesLoading || vm.candidatesError">
                 <i class="fa fa-save"></i> {{vm.saving ? 'Đang lưu...' : 'Lưu'}}
             </button>
         </div>
@@ -435,7 +486,7 @@
         <div class="modal-header"><h4 class="modal-title"><i class="fa fa-warning"></i> Xóa lớp học</h4></div>
         <div class="modal-body">
             <p>Bạn có chắc muốn xóa <strong>{{vm.enrolmentClassToDelete.name}}</strong>?</p>
-            <p class="text-muted">Không thể xóa nếu lớp còn lớp con/tổ hoặc còn học sinh.</p>
+            <p class="text-muted">Không thể xóa nếu lớp còn đội hoặc còn học sinh.</p>
         </div>
         <div class="modal-footer">
             <button type="button" ng-click="$dismiss()" class="btn btn-default">Không</button>

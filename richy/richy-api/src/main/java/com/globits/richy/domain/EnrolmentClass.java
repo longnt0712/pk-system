@@ -42,6 +42,18 @@ public class EnrolmentClass extends BaseObject{
 			inverseJoinColumns = @JoinColumn(name = "user_id"))
 	private Set<User> teachers = new HashSet<User>();
 
+	// The primary is also in teachers, preserving existing responsibility checks.
+	@Column(name = "primary_teacher_id")
+	private Long primaryTeacherId;
+
+	public Long getPrimaryTeacherId() {
+		return primaryTeacherId;
+	}
+
+	public void setPrimaryTeacherId(Long primaryTeacherId) {
+		this.primaryTeacherId = primaryTeacherId;
+	}
+
 	public Integer getSchoolId() {
 		return schoolId;
 	}

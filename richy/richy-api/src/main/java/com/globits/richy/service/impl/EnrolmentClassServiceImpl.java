@@ -164,6 +164,36 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			}
 		}
 
+		// Validate before changing managed entities: returning false does not roll back.
+		Set<Long> requestedIds = new LinkedHashSet<Long>();
+		Long primaryTeacherId;
+		if (dto.getDeputyTeacherIds() != null) {
+			primaryTeacherId = dto.getPrimaryTeacherId();
+			requestedIds.addAll(dto.getDeputyTeacherIds());
+			if (primaryTeacherId != null && !requestedIds.add(primaryTeacherId)) {
+				return false;
+			}
+		} else {
+			if (dto.getTeacherIds() != null) {
+				requestedIds.addAll(dto.getTeacherIds());
+			}
+			primaryTeacherId = domain == null ? null : domain.getPrimaryTeacherId();
+			if (!requestedIds.contains(primaryTeacherId)) {
+				primaryTeacherId = null;
+			}
+		}
+		Set<User> teachers = new LinkedHashSet<User>();
+		for (Long teacherId : requestedIds) {
+			User teacher = teacherId == null ? null : userRepository.findOne(teacherId);
+			if (teacher == null || !Boolean.TRUE.equals(teacher.getActive())
+					|| (parent == null ? !isTeacherCandidate(teacher)
+							: isNew || !hasRole(teacher, "ROLE_STUDENT")
+									|| !userBelongsToClass(teacher, domain.getId()))) {
+				return false;
+			}
+			teachers.add(teacher);
+		}
+
 		if(domain != null) {
 			domain.setModifiedBy(currentUserName);
 			domain.setModifyDate(currentDate);
@@ -191,23 +221,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 		domain.setParent(parent);
 
-		Set<Long> studentResponsibleClassIds = new HashSet<Long>();
-		if (parent != null && !isNew && domain.getId() != null) {
-			studentResponsibleClassIds.add(domain.getId());
-		}
-		Set<User> teachers = new LinkedHashSet<User>();
-		if (dto.getTeacherIds() != null) {
-			for (Long teacherId : dto.getTeacherIds()) {
-				User teacher = teacherId == null ? null : userRepository.findOne(teacherId);
-				if (teacher != null
-						&& Boolean.TRUE.equals(teacher.getActive())
-						&& ((parent == null && isTeacherCandidate(teacher))
-								|| isStudentResponsibleCandidate(teacher, studentResponsibleClassIds))) {
-					teachers.add(teacher);
-				}
-			}
-		}
 		domain.setTeachers(teachers);
+		domain.setPrimaryTeacherId(primaryTeacherId);
 		
 		domain = enrolmentClassRepository.save(domain);
 		
@@ -329,24 +344,17 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					candidates.put(teacher.getId(), teacher);
 				}
 			}
-		}
-
-		List<Long> classIds = new ArrayList<Long>();
-		if (parentClassId != null && classId != null) {
-			EnrolmentClass selectedClass = enrolmentClassRepository.findOne(classId);
-			if (selectedClass != null
-					&& selectedClass.getParent() != null
-					&& parentClassId.equals(selectedClass.getParent().getId())
-					&& canViewClass(currentUser, selectedClass)) {
-				classIds.add(classId);
+		} else if (classId != null) {
+			EnrolmentClass team = enrolmentClassRepository.findOne(classId);
+			if (team == null || !canEditClass(currentUser, team)) {
+				throw new AccessDeniedException("Bạn không được sửa tổ này.");
 			}
-		}
-		if (!classIds.isEmpty()) {
-			for (User student : userRepository.getActiveStudentsByEnrollmentClassIds(classIds)) {
-				if (student != null && student.getId() != null && !candidates.containsKey(student.getId())) {
+			for (User student : userRepository.getActiveStudentsByEnrollmentClassIds(
+					Collections.singletonList(classId))) {
+				if (student != null && student.getId() != null) {
 					candidates.put(student.getId(), new UserDto(student, true));
 				}
-		}
+			}
 		}
 
 		List<UserDto> result = new ArrayList<UserDto>(candidates.values());
@@ -517,6 +525,14 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 
 		userRepository.save(student);
+		for (EnrolmentClass team : directTeams) {
+			if (!team.getId().equals(targetTeamId)) {
+				team.getTeachers().removeIf(teacher -> student.getId().equals(teacher.getId()));
+				if (student.getId().equals(team.getPrimaryTeacherId())) {
+					team.setPrimaryTeacherId(null);
+				}
+			}
+		}
 		return getTeamBoard(classId);
 	}
 
