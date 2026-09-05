@@ -57,6 +57,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String LOBBY = "LOBBY";
     private static final String PLAYING = "PLAYING";
     private static final String FINISHED = "FINISHED";
+    private static final String EXPIRED = "EXPIRED";
 
     private static final String MODE_CLASSIC = "CLASSIC";
     private static final String MODE_COUNTDOWN = "COUNTDOWN";
@@ -74,9 +75,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final long FREEZE_DURATION_MS = 3000L;
     private static final long INVERT_DURATION_MS = 7000L;
     private static final long FIRE_UP_DURATION_MS = 15000L;
+    private static final long LOBBY_EXPIRATION_MS =
+            TimeUnit.MINUTES.toMillis(5L);
     private static final double FIRE_UP_SCORE_MULTIPLIER = 1.2D;
     private static final double MONEY_BEG_STEAL_RATE = 0.40D;
-    private static final double MONEY_BEG_SKILL_RATE = 0.07D;
+    private static final double MONEY_BEG_SKILL_RATE = 0.12D;
     private static final double COUNTDOWN_SKILL_RATE_FACTOR = 0.75D;
     private static final double ESCAPE_INVERT_SKILL_RATE = 0.08D;
     private static final int SKILL_TARGET_CANDIDATE_COUNT = 4;
@@ -163,6 +166,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             new ConcurrentHashMap<String, ScheduledFuture<?>>();
 
     private final Map<String, ScheduledFuture<?>> preloadTimers =
+            new ConcurrentHashMap<String, ScheduledFuture<?>>();
+
+    private final Map<String, ScheduledFuture<?>> lobbyExpirationTimers =
             new ConcurrentHashMap<String, ScheduledFuture<?>>();
 
     private final ScheduledExecutorService scheduler =
@@ -252,6 +258,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         room.players.put(username, host);
         rooms.put(room.code, room);
+        scheduleLobbyExpiration(room.code);
 
         /*
          * Tạo room trước, sau đó server tự load bài theo batch 50
@@ -865,6 +872,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 startClassicLocked(room);
             }
 
+            cancelLobbyExpirationTimer(room.code);
+
             dto = snapshotLocked(room, username);
         }
 
@@ -923,6 +932,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 schedulePreload(room.code, 50L);
             }
 
+            scheduleLobbyExpiration(room.code);
             dto = snapshotLocked(room, username);
         }
 
@@ -2929,7 +2939,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
      * Không đặt trần số lượng tuyệt đối, nên phòng 200 câu luôn có nhiều
      * skill hơn phòng 100 câu và không còn bị tụt tỉ lệ vì chạm giới hạn.
      * COUNTDOWN thường chia 4 skill theo vòng ưu tiên. Riêng XIN TÍ TIỀN
-     * dành xấp xỉ 7% tổng số lượt skill cho HACK/MONEY_BEG.
+     * dành xấp xỉ 12% tổng số lượt skill cho HACK/MONEY_BEG.
      */
     private int[] getCountdownSkillCounts(
             int total,
@@ -2964,7 +2974,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         );
 
         /*
-         * Trong mode XIN TÍ TIỀN, HACK/MONEY_BEG chiếm xấp xỉ 7%
+         * Trong mode XIN TÍ TIỀN, HACK/MONEY_BEG chiếm xấp xỉ 12%
          * tổng số skill; phần còn lại giữ cách chia skill COUNTDOWN cũ.
          */
         double expectedMoneyBegCount = includeMoneyBeg
@@ -5783,6 +5793,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         cancelClassicTimer(code);
         cancelMatchTimer(code);
         cancelPreloadTimer(code);
+        cancelLobbyExpirationTimer(code);
 
         rooms.remove(code);
     }
@@ -5791,6 +5802,74 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     /* =========================================================
        TIMER CLEANUP
        ========================================================= */
+
+    private void scheduleLobbyExpiration(
+            final String roomCode) {
+
+        final String code = normalizeRoomCode(roomCode);
+        cancelLobbyExpirationTimer(code);
+
+        ScheduledFuture<?> future =
+                scheduler.schedule(
+                    new Runnable() {
+                        @Override
+                        public void run() {
+                            expireLobbyRoom(code);
+                        }
+                    },
+                    LOBBY_EXPIRATION_MS,
+                    TimeUnit.MILLISECONDS
+                );
+
+        lobbyExpirationTimers.put(code, future);
+    }
+
+
+    private void expireLobbyRoom(
+            String roomCode) {
+
+        String code = normalizeRoomCode(roomCode);
+        RoomState room = rooms.get(code);
+
+        if (room == null) {
+            lobbyExpirationTimers.remove(code);
+            return;
+        }
+
+        synchronized (room) {
+            if (
+                rooms.get(code) != room ||
+                !LOBBY.equals(room.status)
+            ) {
+                lobbyExpirationTimers.remove(code);
+                return;
+            }
+
+            /*
+             * Đánh dấu trước khi broadcast để request START đang chờ lock
+             * không thể khởi động lại một room vừa hết hạn.
+             */
+            room.status = EXPIRED;
+        }
+
+        /* Máy đang dùng WebSocket nhận EXPIRED ngay; polling nhận 404 sau đó. */
+        broadcastGeneric(room);
+        destroyRoom(code);
+    }
+
+
+    private void cancelLobbyExpirationTimer(
+            String roomCode) {
+
+        ScheduledFuture<?> future =
+                lobbyExpirationTimers.remove(
+                    normalizeRoomCode(roomCode)
+                );
+
+        if (future != null) {
+            future.cancel(false);
+        }
+    }
 
     private void cancelClassicTimer(
             String roomCode) {

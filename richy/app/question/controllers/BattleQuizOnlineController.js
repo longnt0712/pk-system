@@ -302,6 +302,7 @@
         vm.getBurnRemaining = getBurnRemaining;
         vm.dismissPersonalSkillNotice = dismissPersonalSkillNotice;
         vm.getPlayerDisplayName = getPlayerDisplayName;
+        vm.getPlayerRankPraise = getPlayerRankPraise;
         vm.getSkillEventMessage = getSkillEventMessage;
         vm.getActiveSkillEffectType = getActiveSkillEffectType;
         vm.getActiveSkillEffectIcon = getActiveSkillEffectIcon;
@@ -417,6 +418,32 @@
             }
 
             return 'Người chơi';
+        }
+
+
+        function getPlayerRankPraise(player) {
+            var rank = Number(player && player.rank || 0);
+            var finished = vm.room && vm.room.status === 'FINISHED';
+
+            if (rank === 1) {
+                return finished
+                    ? '👑 Nhà vô địch trận đấu'
+                    : '👑 Đang dẫn đầu trận đấu';
+            }
+
+            if (rank === 2) {
+                return finished
+                    ? '🥈 Á quân đầy ấn tượng'
+                    : '🥈 Đang bám đuổi rất sát';
+            }
+
+            if (rank === 3) {
+                return finished
+                    ? '🥉 Cán đích trong top 3'
+                    : '🥉 Giữ vững phong độ nhé';
+            }
+
+            return '';
         }
 
 
@@ -1171,12 +1198,7 @@
                                     );
                                 },
                                 function (error) {
-                                    if (
-                                        error &&
-                                        error.status === 403
-                                    ) {
-                                        handleKickedFromRoom();
-                                    }
+                                    handleRoomAccessError(error);
                                 }
                             );
                     },
@@ -1231,12 +1253,7 @@
                         );
                     },
                     function (error) {
-                        if (
-                            error &&
-                            error.status === 403
-                        ) {
-                            handleKickedFromRoom();
-                        }
+                        handleRoomAccessError(error);
                     }
                 )
                 .finally(
@@ -1272,6 +1289,35 @@
 
 
         function handleKickedFromRoom() {
+            exitRoomAfterRemoteRemoval(
+                'HOST đã kích bạn khỏi phòng.',
+                'BATTLE ONLINE'
+            );
+        }
+
+
+        function handleExpiredRoom() {
+            exitRoomAfterRemoteRemoval(
+                'Phòng đã tự hủy vì không bắt đầu trong vòng 5 phút.',
+                'PHÒNG ĐÃ HẾT HẠN'
+            );
+        }
+
+
+        function handleRoomAccessError(error) {
+            if (!error) {
+                return;
+            }
+
+            if (error.status === 403) {
+                handleKickedFromRoom();
+            } else if (error.status === 404) {
+                handleExpiredRoom();
+            }
+        }
+
+
+        function exitRoomAfterRemoteRemoval(message, title) {
             if (kickedNavigationHandled || destroyed) {
                 return;
             }
@@ -1291,8 +1337,8 @@
             vm.playerToKick = null;
 
             toastr.warning(
-                'HOST đã kích bạn khỏi phòng.',
-                'BATTLE ONLINE'
+                message,
+                title
             );
 
             $state.go(
@@ -1308,6 +1354,11 @@
                 !incoming ||
                 !incoming.code
             ) {
+                return;
+            }
+
+            if (incoming.status === 'EXPIRED') {
+                handleExpiredRoom();
                 return;
             }
 

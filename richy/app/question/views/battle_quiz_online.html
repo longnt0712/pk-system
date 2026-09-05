@@ -1328,7 +1328,12 @@
                 <div class="battle-online-team-ranking-row"
                      ng-class="{'is-rank-1': team.rank === 1, 'is-rank-2': team.rank === 2, 'is-rank-3': team.rank === 3}"
                      ng-repeat="team in vm.getTeamSummaries() track by team.number">
-                    <span>{{team.rank}}</span>
+                    <span class="battle-online-team-rank">
+                        <img ng-if="team.rank === 1" src="assets/images/1st.png" alt="Đội hạng 1">
+                        <img ng-if="team.rank === 2" src="assets/images/2nd.png" alt="Đội hạng 2">
+                        <img ng-if="team.rank === 3" src="assets/images/3rd.png" alt="Đội hạng 3">
+                        <b ng-if="team.rank > 3">{{team.rank}}</b>
+                    </span>
                     <div>
                         <strong>ĐỘI {{team.number}}</strong>
                         <small>{{team.memberCount}} thành viên • ✅ {{team.correctCount}} • ❌ {{team.wrongCount}}</small>
@@ -1344,13 +1349,21 @@
                  ng-click="vm.openKickConfirm(player)">
 
                 <span class="battle-online-rank">
-                    {{player.rank}}
+                    <img ng-if="player.rank === 1" src="assets/images/1st.png" alt="Hạng 1">
+                    <img ng-if="player.rank === 2" src="assets/images/2nd.png" alt="Hạng 2">
+                    <img ng-if="player.rank === 3" src="assets/images/3rd.png" alt="Hạng 3">
+                    <span ng-if="player.rank > 3">{{player.rank}}</span>
                 </span>
 
                 <div>
                     <strong>
                         {{vm.getPlayerDisplayName(player)}}
                     </strong>
+
+                    <small class="battle-online-rank-praise"
+                           ng-if="player.rank <= 3">
+                        {{vm.getPlayerRankPraise(player)}}
+                    </small>
 
                     <span class="battle-online-team-badge"
                           ng-if="vm.hasTeamMode()">
@@ -1463,7 +1476,12 @@
             <div class="battle-online-team-ranking-row"
                  ng-class="{'is-rank-1': team.rank === 1, 'is-rank-2': team.rank === 2, 'is-rank-3': team.rank === 3}"
                  ng-repeat="team in vm.getTeamSummaries() track by team.number">
-                <span>{{team.rank}}</span>
+                <span class="battle-online-team-rank">
+                    <img ng-if="team.rank === 1" src="assets/images/1st.png" alt="Đội hạng 1">
+                    <img ng-if="team.rank === 2" src="assets/images/2nd.png" alt="Đội hạng 2">
+                    <img ng-if="team.rank === 3" src="assets/images/3rd.png" alt="Đội hạng 3">
+                    <b ng-if="team.rank > 3">{{team.rank}}</b>
+                </span>
                 <div>
                     <strong>ĐỘI {{team.number}}</strong>
                     <small>{{team.memberCount}} thành viên • ✅ {{team.correctCount}} • ❌ {{team.wrongCount}}</small>
@@ -1480,13 +1498,21 @@
                  ng-class="vm.getPlayerClass(player)">
 
                 <span class="battle-online-rank">
-                    {{player.rank}}
+                    <img ng-if="player.rank === 1" src="assets/images/1st.png" alt="Hạng 1">
+                    <img ng-if="player.rank === 2" src="assets/images/2nd.png" alt="Hạng 2">
+                    <img ng-if="player.rank === 3" src="assets/images/3rd.png" alt="Hạng 3">
+                    <span ng-if="player.rank > 3">{{player.rank}}</span>
                 </span>
 
                 <div>
                     <strong>
                         {{vm.getPlayerDisplayName(player)}}
                     </strong>
+
+                    <small class="battle-online-rank-praise"
+                           ng-if="player.rank <= 3">
+                        {{vm.getPlayerRankPraise(player)}}
+                    </small>
 
                     <span class="battle-online-team-badge"
                           ng-if="vm.hasTeamMode()">
@@ -1808,7 +1834,12 @@
                     <div class="battle-online-team-ranking-row"
                          ng-class="{'is-rank-1': team.rank === 1, 'is-rank-2': team.rank === 2, 'is-rank-3': team.rank === 3}"
                          ng-repeat="team in vm.getTeamSummaries() track by team.number">
-                        <span>{{team.rank}}</span>
+                        <span class="battle-online-team-rank">
+                            <img ng-if="team.rank === 1" src="assets/images/1st.png" alt="Đội hạng 1">
+                            <img ng-if="team.rank === 2" src="assets/images/2nd.png" alt="Đội hạng 2">
+                            <img ng-if="team.rank === 3" src="assets/images/3rd.png" alt="Đội hạng 3">
+                            <b ng-if="team.rank > 3">{{team.rank}}</b>
+                        </span>
                         <div>
                             <strong>ĐỘI {{team.number}}</strong>
                             <small>{{team.memberCount}} thành viên • ✅ {{team.correctCount}} • ❌ {{team.wrongCount}}</small>
@@ -1823,11 +1854,19 @@
                      ng-click="vm.openKickConfirm(player)">
 
                     <span class="battle-online-rank">
-                        {{player.rank}}
+                        <img ng-if="player.rank === 1" src="assets/images/1st.png" alt="Hạng 1">
+                        <img ng-if="player.rank === 2" src="assets/images/2nd.png" alt="Hạng 2">
+                        <img ng-if="player.rank === 3" src="assets/images/3rd.png" alt="Hạng 3">
+                        <span ng-if="player.rank > 3">{{player.rank}}</span>
                     </span>
 
                     <div>
                         <strong>{{vm.getPlayerDisplayName(player)}}</strong>
+
+                        <small class="battle-online-rank-praise"
+                               ng-if="player.rank <= 3">
+                            {{vm.getPlayerRankPraise(player)}}
+                        </small>
 
                         <span class="battle-online-team-badge"
                               ng-if="vm.hasTeamMode()">
@@ -5632,20 +5671,22 @@
 
     .battle-online-ranking-row.is-rank-1 {
         border-color: rgba(245,188,59,.6);
-        background: #fff8df;
+        background:
+            radial-gradient(circle at 12% 20%, rgba(255,255,255,.92), transparent 18%),
+            linear-gradient(115deg, #fff6b7 0%, #ffe17a 36%, #fff4b0 68%, #ffd55f 100%);
     }
 
     .battle-online-ranking-row.is-rank-2 {
-        background: #f2f5fa;
+        background: linear-gradient(135deg, #ffffff 0%, #f1f4f8 55%, #e8edf3 100%);
     }
 
     .battle-online-ranking-row.is-rank-3 {
-        background: #fff0e7;
+        background: linear-gradient(135deg, #fffaf6 0%, #f8e8db 100%);
     }
 
     .battle-online-ranking-row.is-rank-1,
     .battle-online-team-ranking-row.is-rank-1 {
-        min-height: 62px;
+        min-height: 78px;
         padding-top: 13px;
         padding-bottom: 13px;
         border-color: rgba(245, 188, 59, .78);
@@ -5655,24 +5696,24 @@
     }
 
     .battle-online-ranking-row.is-rank-1 {
-        grid-template-columns: 39px minmax(0,1fr) auto;
+        grid-template-columns: 58px minmax(0,1fr) auto;
     }
 
     .battle-online-ranking-row.is-rank-2 {
-        grid-template-columns: 36px minmax(0,1fr) auto;
+        grid-template-columns: 48px minmax(0,1fr) auto;
     }
 
     .battle-online-ranking-row.is-rank-3 {
-        grid-template-columns: 34px minmax(0,1fr) auto;
+        grid-template-columns: 46px minmax(0,1fr) auto;
     }
 
     .battle-online-team-ranking-row.is-rank-1 {
-        grid-template-columns: 36px minmax(0,1fr) auto;
+        grid-template-columns: 48px minmax(0,1fr) auto;
     }
 
     .battle-online-team-ranking-row.is-rank-2,
     .battle-online-team-ranking-row.is-rank-3 {
-        grid-template-columns: 32px minmax(0,1fr) auto;
+        grid-template-columns: 40px minmax(0,1fr) auto;
     }
 
     .battle-online-ranking-row.is-rank-2,
@@ -5742,29 +5783,43 @@
         animation-duration: .95s;
     }
 
+    .battle-online-ranking-row.is-rank-1::before,
+    .battle-online-team-ranking-row.is-rank-1::before {
+        position: absolute;
+        z-index: 0;
+        top: -45%;
+        left: -50%;
+        width: 38%;
+        height: 190%;
+        content: '';
+        pointer-events: none;
+        transform: rotate(18deg);
+        background: linear-gradient(
+            90deg,
+            rgba(255,255,255,0) 0%,
+            rgba(255,255,255,.82) 48%,
+            rgba(255,255,255,0) 100%
+        );
+        animation: battle-online-rank-shine 2.8s ease-in-out infinite;
+    }
+
     .battle-online-ranking-row.is-rank-1 .battle-online-rank {
-        width: 39px;
-        height: 39px;
-        color: #713f12;
-        background: linear-gradient(135deg, #fde68a, #f59e0b);
-        font-size: 16px;
-        box-shadow: 0 0 16px rgba(245, 158, 11, .42);
+        width: 58px;
+        height: 58px;
+        background: transparent;
+        box-shadow: none;
     }
 
     .battle-online-ranking-row.is-rank-2 .battle-online-rank {
-        width: 36px;
-        height: 36px;
-        color: #334155;
-        background: linear-gradient(135deg, #f8fafc, #cbd5e1);
-        font-size: 14px;
+        width: 48px;
+        height: 48px;
+        background: transparent;
     }
 
     .battle-online-ranking-row.is-rank-3 .battle-online-rank {
-        width: 34px;
-        height: 34px;
-        color: #7c2d12;
-        background: linear-gradient(135deg, #fed7aa, #fb923c);
-        font-size: 13px;
+        width: 46px;
+        height: 46px;
+        background: transparent;
     }
 
     .battle-online-ranking-row.is-rank-1 strong {
@@ -5792,18 +5847,16 @@
     }
 
     .battle-online-team-ranking-row.is-rank-1 > span {
-        width: 36px;
-        height: 36px;
-        color: #713f12;
-        background: linear-gradient(135deg, #fde68a, #f59e0b);
-        font-size: 14px;
+        width: 48px;
+        height: 48px;
+        background: transparent;
     }
 
     .battle-online-team-ranking-row.is-rank-2 > span,
     .battle-online-team-ranking-row.is-rank-3 > span {
-        width: 32px;
-        height: 32px;
-        font-size: 12px;
+        width: 40px;
+        height: 40px;
+        background: transparent;
     }
 
     .battle-online-team-ranking-row.is-rank-1 strong {
@@ -5814,6 +5867,27 @@
         font-size: 21px;
     }
 
+    .battle-online-rank img,
+    .battle-online-team-rank img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .16));
+    }
+
+    .battle-online-ranking-row.is-rank-1 .battle-online-rank img,
+    .battle-online-team-ranking-row.is-rank-1 .battle-online-team-rank img {
+        animation: battle-online-rank-medal-float 1.9s ease-in-out infinite;
+    }
+
+    .battle-online-rank-praise {
+        margin: 3px 0 4px;
+        color: #9a6907 !important;
+        font-size: 9px !important;
+        font-weight: 1000 !important;
+    }
+
     @keyframes battle-online-rank-sparkle {
         from {
             opacity: .28;
@@ -5822,6 +5896,29 @@
         to {
             opacity: .92;
             transform: translate3d(2%, -2%, 0) scale(1.04);
+        }
+    }
+
+    @keyframes battle-online-rank-medal-float {
+        0%, 100% {
+            transform: translateY(0) rotate(-2deg);
+        }
+        50% {
+            transform: translateY(-3px) rotate(2deg);
+        }
+    }
+
+    @keyframes battle-online-rank-shine {
+        0% {
+            left: -55%;
+            opacity: 0;
+        }
+        15%, 48% {
+            opacity: .85;
+        }
+        72%, 100% {
+            left: 118%;
+            opacity: 0;
         }
     }
 
