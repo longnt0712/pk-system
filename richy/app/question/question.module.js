@@ -296,7 +296,7 @@
 
             .state('application.battle_quiz_online', {
                 url: '/battle-quiz-online',
-                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION + '&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1',
+                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION + '&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1&lobbyTeamDrag=20260905_1',
                 data: {pageTitle: 'BATTLE QUIZ ONLINE'},
                 controller: 'BattleQuizOnlineController as vm',
                 resolve: {
@@ -305,7 +305,7 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION + '&qrCameraFix=20260825_2&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1',
+                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION + '&qrCameraFix=20260825_2&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1&lobbyTeamDrag=20260905_1',
                                 'question/business/BattleQuizOnlineService.js?v=' + window.APP_VERSION + '&moneyMode=20260828_5&wrongFreezeTeams=20260902_1',
                                 'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
@@ -316,7 +316,7 @@
 
             .state('application.battle_quiz_online_room', {
                 url: '/battle-quiz-online/:roomCode',
-                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION + '&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1',
+                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION + '&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1&lobbyTeamDrag=20260905_1',
                 data: {pageTitle: 'BATTLE QUIZ ONLINE'},
                 controller: 'BattleQuizOnlineController as vm',
                 resolve: {
@@ -325,7 +325,7 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION + '&qrCameraFix=20260825_2&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1',
+                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION + '&qrCameraFix=20260825_2&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1&lobbyTeamDrag=20260905_1',
                                 'question/business/BattleQuizOnlineService.js?v=' + window.APP_VERSION + '&moneyMode=20260828_5&wrongFreezeTeams=20260902_1',
                                 'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]

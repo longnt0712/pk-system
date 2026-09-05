@@ -328,8 +328,150 @@
                 💡 Trong lúc mọi người JOIN/READY, server đang tự preload bài theo batch 50 từ.
             </div>
 
+            <div class="battle-online-team-arrange-tip"
+                 ng-if="vm.hasTeamMode()">
+                <span>👥</span>
+                <strong ng-if="vm.isHost()">
+                    Giữ và kéo người chơi sang ô đội khác để xếp đội.
+                </strong>
+                <strong ng-if="!vm.isHost()">
+                    Danh sách thành viên theo đội.
+                </strong>
+            </div>
 
-            <div class="battle-online-player-grid">
+            <div class="battle-online-lobby-team-board"
+                 ng-if="vm.hasTeamMode()">
+
+                <section class="battle-online-lobby-team-box is-team-{{((teamNumber - 1) % 5) + 1}}"
+                         ng-repeat="teamNumber in vm.getTeamNumbers() track by teamNumber"
+                         ng-class="{'is-saving-target': vm.assigningTeamNumber === teamNumber}">
+
+                    <header class="battle-online-lobby-team-header">
+                        <strong>ĐỘI {{teamNumber}}</strong>
+                        <span>{{vm.getLobbyTeamPlayers(teamNumber).length}} người</span>
+                    </header>
+
+                    <div class="battle-online-lobby-team-list"
+                         dnd-list=""
+                         dnd-allowed-types="['battle-player']"
+                         dnd-drop="vm.dropPlayerIntoTeam(teamNumber, item)"
+                         dnd-disable-if="!vm.isHost() || vm.assigningTeamUsername">
+
+                        <div class="battle-online-player-card battle-online-team-player-card"
+                             ng-repeat="player in vm.getLobbyTeamPlayers(teamNumber) track by player.username"
+                             dnd-draggable="player"
+                             dnd-type="'battle-player'"
+                             dnd-effect-allowed="move"
+                             dnd-disable-if="!vm.isHost() || vm.assigningTeamUsername"
+                             dnd-dragstart="vm.onLobbyPlayerDragStart(player)"
+                             dnd-dragend="vm.onLobbyPlayerDragEnd()"
+                             ng-class="{
+                                 'is-host': player.host,
+                                 'is-ready': player.ready,
+                                 'is-offline': !player.connected,
+                                 'is-double-action-player': vm.isDoubleActionPlayer(player),
+                                 'is-being-assigned': vm.assigningTeamUsername === player.username
+                             }">
+
+                            <div class="battle-online-avatar">
+                                {{vm.isDoubleActionPlayer(player)
+                                    ? '⚡'
+                                    : (player.host ? '👑' : '🎮')}}
+                            </div>
+
+                            <div class="battle-online-player-copy">
+                                <strong>{{vm.getPlayerDisplayName(player)}}</strong>
+
+                                <span class="battle-online-double-action-badge"
+                                      ng-if="vm.isDoubleActionPlayer(player)">
+                                    ⚡ GÁNH ĐỘI x2
+                                </span>
+
+                                <small class="battle-online-drag-player-hint"
+                                       ng-if="vm.isHost()">
+                                    ⋮⋮ Kéo để đổi đội
+                                </small>
+
+                                <label class="battle-online-team-card-picker"
+                                       dnd-nodrag
+                                       ng-if="vm.isHost()">
+                                    <span>Chuyển:</span>
+                                    <select ng-model="player.teamNumber"
+                                            ng-options="team as ('Đội ' + team) for team in vm.getTeamNumbers()"
+                                            ng-change="vm.assignPlayerTeam(player)"
+                                            ng-disabled="vm.assigningTeamUsername">
+                                    </select>
+                                </label>
+                            </div>
+
+                            <span class="battle-online-ready-badge"
+                                  ng-if="player.host">HOST</span>
+
+                            <span class="battle-online-ready-badge is-ready"
+                                  ng-if="!player.host && player.ready">READY</span>
+
+                            <span class="battle-online-ready-badge is-waiting"
+                                  ng-if="!player.host && !player.ready">WAITING</span>
+
+                            <button type="button"
+                                    class="battle-online-kick-mini-btn"
+                                    dnd-nodrag
+                                    ng-if="vm.canKickPlayer(player)"
+                                    ng-click="vm.openKickConfirm(player); $event.stopPropagation()"
+                                    aria-label="Kích người chơi khỏi phòng">
+                                KÍCH
+                            </button>
+                        </div>
+
+                        <div class="battle-online-team-empty"
+                             ng-if="!vm.getLobbyTeamPlayers(teamNumber).length">
+                            {{vm.isHost() ? 'Kéo người chơi vào đây' : 'Chưa có thành viên'}}
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="battle-online-lobby-spectators"
+                 ng-if="vm.hasTeamMode() && vm.getLobbySpectators().length">
+                <div class="battle-online-lobby-spectators-title">
+                    👁️ KHÁN GIẢ • {{vm.getLobbySpectators().length}}
+                </div>
+
+                <div class="battle-online-player-grid">
+                    <div class="battle-online-player-card is-spectator"
+                         ng-repeat="player in vm.getLobbySpectators() track by player.username"
+                         ng-class="{
+                             'is-host': player.host,
+                             'is-offline': !player.connected
+                         }">
+
+                        <div class="battle-online-avatar">👁️</div>
+
+                        <div class="battle-online-player-copy">
+                            <strong>{{vm.getPlayerDisplayName(player)}}</strong>
+                        </div>
+
+                        <span class="battle-online-ready-badge"
+                              ng-if="player.host">HOST</span>
+
+                        <span class="battle-online-ready-badge is-spectator">
+                            KHÁN GIẢ
+                        </span>
+
+                        <button type="button"
+                                class="battle-online-kick-mini-btn"
+                                ng-if="vm.canKickPlayer(player)"
+                                ng-click="vm.openKickConfirm(player); $event.stopPropagation()"
+                                aria-label="Kích người chơi khỏi phòng">
+                            KÍCH
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="battle-online-player-grid"
+                 ng-if="!vm.hasTeamMode()">
 
                 <div class="battle-online-player-card"
                      ng-repeat="player in vm.room.players track by player.username"
@@ -923,7 +1065,7 @@
 
             <!-- COUNTDOWN TOP -->
             <div class="battle-online-game-topline"
-                 ng-if="vm.isCountdownMode()">
+                 ng-if="vm.isCountdownMode() && !vm.isEscapeDumbDemonMode()">
 
                 <span>
                     {{vm.getBattleModeLabel()}}
@@ -947,26 +1089,6 @@
                 </div>
 
             </div>
-
-            <section class="battle-online-dumb-meter"
-                     ng-if="vm.isEscapeDumbDemonMode()">
-                <div class="battle-online-dumb-watch-title">👹 VỊ TRÍ QUỶ NGU</div>
-                <div class="battle-online-dumb-meter-heading">
-                    <strong>ĐỘI 1</strong>
-                    <span>20% TỔNG SỐ CÂU = {{vm.room.dumbBallMaxDistance}} BƯỚC / PHÍA</span>
-                    <strong>ĐỘI 2</strong>
-                </div>
-
-                <div class="battle-online-dumb-track">
-                    <span class="battle-online-dumb-center"></span>
-                    <div class="battle-online-dumb-ball"
-                         ng-style="{'left': vm.getDumbBallPercent() + '%'}">
-                        QUỶ<br>NGU
-                    </div>
-                </div>
-
-                <p>{{vm.getDumbBallStatus()}}</p>
-            </section>
 
             <div class="battle-online-word"
                  ng-if="vm.room.currentQuestion">
@@ -1058,6 +1180,52 @@
 
                 ❌ {{vm.lastAnswerMessage}}
             </div>
+
+            <div class="battle-online-game-topline"
+                 ng-if="vm.isEscapeDumbDemonMode()">
+
+                <span>
+                    {{vm.getBattleModeLabel()}}
+                    • TỪ ĐÃ GẶP
+                    <b>{{vm.me().uniqueWordsSeen || 0}}</b>
+                    /
+                    {{vm.room.totalLessonWords || vm.room.totalQuestions}}
+
+                    <span class="battle-online-double-action-live"
+                          ng-if="vm.isDoubleActionPlayer(vm.me())">
+                        • ⚡ GÁNH ĐỘI x2
+                    </span>
+                </span>
+
+                <div class="battle-online-countdown is-total"
+                     ng-class="{
+                         'is-danger': vm.countdown <= 30
+                     }">
+
+                    ⏱ {{vm.formatTime(vm.countdown)}}
+                </div>
+
+            </div>
+
+            <section class="battle-online-dumb-meter"
+                     ng-if="vm.isEscapeDumbDemonMode()">
+                <div class="battle-online-dumb-watch-title">👹 VỊ TRÍ QUỶ NGU</div>
+                <div class="battle-online-dumb-meter-heading">
+                    <strong>ĐỘI 1</strong>
+                    <span>20% TỔNG SỐ CÂU = {{vm.room.dumbBallMaxDistance}} BƯỚC / PHÍA</span>
+                    <strong>ĐỘI 2</strong>
+                </div>
+
+                <div class="battle-online-dumb-track">
+                    <span class="battle-online-dumb-center"></span>
+                    <div class="battle-online-dumb-ball"
+                         ng-style="{'left': vm.getDumbBallPercent() + '%'}">
+                        QUỶ<br>NGU
+                    </div>
+                </div>
+
+                <p>{{vm.getDumbBallStatus()}}</p>
+            </section>
 
 
             <div class="battle-online-feedback is-waiting"
@@ -3374,6 +3542,212 @@
         gap: 8px;
     }
 
+    .battle-online-team-arrange-tip {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin: 0 0 10px;
+        padding: 8px 10px;
+        border: 1px solid rgba(91, 104, 237, .18);
+        border-radius: 11px;
+        color: #4c5f86;
+        background: #f4f6ff;
+        font-size: 9px;
+    }
+
+    .battle-online-team-arrange-tip strong {
+        font-weight: 900;
+    }
+
+    .battle-online-lobby-team-board {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .battle-online-lobby-team-box {
+        min-width: 0;
+        overflow: hidden;
+        border: 1px solid var(--bo-line);
+        border-top: 4px solid #6d78ef;
+        border-radius: 15px;
+        background: var(--bo-soft);
+        transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+    }
+
+    .battle-online-lobby-team-box.is-team-2 {
+        border-top-color: #ed5579;
+    }
+
+    .battle-online-lobby-team-box.is-team-3 {
+        border-top-color: #2fc58f;
+    }
+
+    .battle-online-lobby-team-box.is-team-4 {
+        border-top-color: #f2a93b;
+    }
+
+    .battle-online-lobby-team-box.is-team-5 {
+        border-top-color: #8b5cf6;
+    }
+
+    .battle-online-lobby-team-box.is-saving-target {
+        box-shadow: 0 0 0 3px rgba(91, 104, 237, .14);
+    }
+
+    .battle-online-lobby-team-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 9px 10px;
+        border-bottom: 1px solid var(--bo-line);
+        background: var(--bo-card);
+    }
+
+    .battle-online-lobby-team-header strong {
+        color: #5063db;
+        font-size: 10px;
+        font-weight: 1000;
+        letter-spacing: .4px;
+    }
+
+    .battle-online-lobby-team-box.is-team-2
+    .battle-online-lobby-team-header strong {
+        color: #d53c65;
+    }
+
+    .battle-online-lobby-team-box.is-team-3
+    .battle-online-lobby-team-header strong {
+        color: #169d6d;
+    }
+
+    .battle-online-lobby-team-box.is-team-4
+    .battle-online-lobby-team-header strong {
+        color: #c97a08;
+    }
+
+    .battle-online-lobby-team-box.is-team-5
+    .battle-online-lobby-team-header strong {
+        color: #7541d8;
+    }
+
+    .battle-online-lobby-team-header span {
+        flex: 0 0 auto;
+        padding: 3px 7px;
+        border-radius: 999px;
+        color: var(--bo-muted);
+        background: var(--bo-soft);
+        font-size: 7px;
+        font-weight: 900;
+    }
+
+    .battle-online-lobby-team-list {
+        min-height: 112px;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        padding: 8px;
+        border: 2px dashed transparent;
+        transition: border-color .16s ease, background .16s ease;
+    }
+
+    .battle-online-lobby-team-list.dndDragover {
+        border-color: #6573ed;
+        background: rgba(91, 104, 237, .10);
+    }
+
+    .battle-online-lobby-team-list .dndPlaceholder {
+        min-height: 58px;
+        display: block;
+        border: 2px dashed #6573ed;
+        border-radius: 13px;
+        background: rgba(91, 104, 237, .08);
+    }
+
+    .battle-online-team-player-card {
+        flex: 0 0 auto;
+        width: 100%;
+        min-width: 0;
+        padding: 8px;
+        background: var(--bo-card);
+    }
+
+    .battle-online-team-player-card[draggable="true"] {
+        cursor: grab;
+    }
+
+    .battle-online-team-player-card[draggable="true"]:active {
+        cursor: grabbing;
+    }
+
+    .battle-online-team-player-card.dndDraggingSource {
+        opacity: .42;
+    }
+
+    .battle-online-team-player-card.is-being-assigned {
+        opacity: .58;
+        pointer-events: none;
+    }
+
+    .battle-online-drag-player-hint {
+        margin-top: 3px;
+        color: #6674d8 !important;
+        font-size: 7px !important;
+        font-weight: 900;
+    }
+
+    .battle-online-team-card-picker {
+        display: none;
+        align-items: center;
+        gap: 5px;
+        margin-top: 5px;
+        color: var(--bo-muted);
+        font-size: 7px;
+        font-weight: 900;
+    }
+
+    .battle-online-team-card-picker select {
+        min-width: 72px;
+        height: 25px;
+        padding: 2px 5px;
+        border: 1px solid var(--bo-line);
+        border-radius: 7px;
+        color: var(--bo-text);
+        background: var(--bo-card);
+        font-size: 8px;
+        font-weight: 900;
+    }
+
+    .battle-online-team-empty {
+        min-height: 76px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px;
+        border: 1px dashed var(--bo-line);
+        border-radius: 12px;
+        color: var(--bo-muted);
+        font-size: 8px;
+        font-weight: 800;
+        text-align: center;
+    }
+
+    .battle-online-lobby-spectators {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--bo-line);
+    }
+
+    .battle-online-lobby-spectators-title {
+        margin-bottom: 7px;
+        color: var(--bo-muted);
+        font-size: 8px;
+        font-weight: 900;
+        letter-spacing: .35px;
+    }
+
     .battle-online-player-card {
         position: relative;
         display: flex;
@@ -5407,6 +5781,38 @@
     }
 
     html.global-dark-mode
+    .battle-online-team-arrange-tip {
+        border-color: #35435d;
+        color: #c1cbe0;
+        background: #1e2b40;
+    }
+
+    html.global-dark-mode
+    .battle-online-lobby-team-box {
+        background: #172235;
+    }
+
+    html.global-dark-mode
+    .battle-online-lobby-team-header,
+    html.global-dark-mode
+    .battle-online-team-player-card {
+        background: #202b3e;
+    }
+
+    html.global-dark-mode
+    .battle-online-lobby-team-list.dndDragover {
+        border-color: #8a95ff;
+        background: rgba(109, 120, 239, .16);
+    }
+
+    html.global-dark-mode
+    .battle-online-team-card-picker select {
+        border-color: #3a4860;
+        color: #e2e8f4;
+        background: #172235;
+    }
+
+    html.global-dark-mode
     .battle-online-mode-card {
         color: #dce4f1;
         background: #202b3e;
@@ -5773,6 +6179,18 @@
 
         .battle-online-player-grid {
             grid-template-columns: 1fr;
+        }
+
+        .battle-online-lobby-team-board {
+            grid-template-columns: 1fr;
+        }
+
+        .battle-online-team-card-picker {
+            display: flex;
+        }
+
+        .battle-online-drag-player-hint {
+            display: none !important;
         }
 
         .battle-online-main-card,

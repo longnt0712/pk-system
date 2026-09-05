@@ -64,6 +64,8 @@
         vm.changingSpectator = false;
         vm.kickingPlayer = false;
         vm.assigningTeamUsername = '';
+        vm.assigningTeamNumber = 0;
+        vm.draggingPlayerUsername = '';
 
         vm.realtimeConnected = false;
         vm.connectionMode = 'CONNECTING';
@@ -239,6 +241,11 @@
         vm.toggleReady = toggleReady;
         vm.toggleSpectator = toggleSpectator;
         vm.assignPlayerTeam = assignPlayerTeam;
+        vm.dropPlayerIntoTeam = dropPlayerIntoTeam;
+        vm.onLobbyPlayerDragStart = onLobbyPlayerDragStart;
+        vm.onLobbyPlayerDragEnd = onLobbyPlayerDragEnd;
+        vm.getLobbyTeamPlayers = getLobbyTeamPlayers;
+        vm.getLobbySpectators = getLobbySpectators;
         vm.getTeamNumbers = getTeamNumbers;
         vm.getTeamSummaries = getTeamSummaries;
         vm.hasTeamMode = hasTeamMode;
@@ -1964,7 +1971,7 @@
         }
 
 
-        function assignPlayerTeam(player) {
+        function assignPlayerTeam(player, requestedTeamNumber) {
             if (
                 !vm.room ||
                 vm.room.status !== 'LOBBY' ||
@@ -1977,13 +1984,17 @@
             }
 
             var teamNumber = clampInteger(
-                player.teamNumber,
+                requestedTeamNumber !== undefined &&
+                    requestedTeamNumber !== null
+                    ? requestedTeamNumber
+                    : player.teamNumber,
                 1,
                 Number(vm.room.settings.teamCount || 0),
                 1
             );
 
             vm.assigningTeamUsername = player.username;
+            vm.assigningTeamNumber = teamNumber;
 
             battleService
                 .assignPlayerTeam(
@@ -2003,8 +2014,119 @@
                 .finally(
                     function () {
                         vm.assigningTeamUsername = '';
+                        vm.assigningTeamNumber = 0;
+                        vm.draggingPlayerUsername = '';
                     }
                 );
+        }
+
+
+        function findLobbyPlayer(username) {
+            var found = null;
+
+            angular.forEach(
+                (vm.room && vm.room.players) || [],
+                function (player) {
+                    if (
+                        !found &&
+                        player &&
+                        String(player.username || '') === String(username || '')
+                    ) {
+                        found = player;
+                    }
+                }
+            );
+
+            return found;
+        }
+
+
+        function dropPlayerIntoTeam(teamNumber, draggedPlayer) {
+            if (
+                !vm.room ||
+                vm.room.status !== 'LOBBY' ||
+                !isHost() ||
+                vm.assigningTeamUsername ||
+                !draggedPlayer ||
+                draggedPlayer.spectator === true
+            ) {
+                return false;
+            }
+
+            var player = findLobbyPlayer(draggedPlayer.username);
+            var targetTeamNumber = clampInteger(
+                teamNumber,
+                1,
+                Number(vm.room.settings.teamCount || 0),
+                0
+            );
+
+            if (
+                !player ||
+                !targetTeamNumber ||
+                Number(player.teamNumber || 0) === targetTeamNumber
+            ) {
+                vm.draggingPlayerUsername = '';
+                return false;
+            }
+
+            assignPlayerTeam(player, targetTeamNumber);
+
+            /*
+             * dnd-drop nhận true để biết việc chuyển đội được API xử lý,
+             * không tự chèn bản sao player vào mảng hiển thị.
+             */
+            return true;
+        }
+
+
+        function onLobbyPlayerDragStart(player) {
+            if (!isHost() || !player || player.spectator === true) {
+                return;
+            }
+
+            vm.draggingPlayerUsername = String(player.username || '');
+        }
+
+
+        function onLobbyPlayerDragEnd() {
+            vm.draggingPlayerUsername = '';
+        }
+
+
+        function getLobbyTeamPlayers(teamNumber) {
+            var result = [];
+
+            angular.forEach(
+                (vm.room && vm.room.players) || [],
+                function (player) {
+                    if (
+                        player &&
+                        player.spectator !== true &&
+                        Number(player.teamNumber || 0) === Number(teamNumber)
+                    ) {
+                        result.push(player);
+                    }
+                }
+            );
+
+            return result;
+        }
+
+
+        function getLobbySpectators() {
+            var result = [];
+
+            angular.forEach(
+                (vm.room && vm.room.players) || [],
+                function (player) {
+                    if (player && player.spectator === true) {
+                        result.push(player);
+                    }
+                }
+            );
+
+            return result;
         }
 
 
