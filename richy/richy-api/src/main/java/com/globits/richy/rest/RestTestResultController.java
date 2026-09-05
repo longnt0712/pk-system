@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.globits.richy.dto.TestResultDto;
+import com.globits.richy.dto.TestResultStudyCalendarItemDto;
 import com.globits.richy.service.TestResultService;
 
 @RestController
@@ -30,6 +31,12 @@ public class RestTestResultController {
 	@RequestMapping(value = "/get_ranking", method = RequestMethod.POST)
 	public List<TestResultDto> getRanking(@RequestBody TestResultDto searchDto) {
 		return service.getRanking(searchDto);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER"})
+	@RequestMapping(value = "/study_calendar", method = RequestMethod.POST)
+	public List<TestResultStudyCalendarItemDto> getStudyCalendar(@RequestBody TestResultDto searchDto) {
+		return service.getStudyCalendar(searchDto);
 	}
 	
 	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER"})

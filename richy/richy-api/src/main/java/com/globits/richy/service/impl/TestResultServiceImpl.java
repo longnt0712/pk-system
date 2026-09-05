@@ -26,6 +26,7 @@ import com.globits.richy.domain.TestResult;
 import com.globits.richy.dto.QuestionAnswerDto;
 import com.globits.richy.dto.QuestionAnswerTestResultDto;
 import com.globits.richy.dto.TestResultDto;
+import com.globits.richy.dto.TestResultStudyCalendarItemDto;
 import com.globits.richy.dto.TestResultDto.sortByOrdinalNumberQuestionAnswerTestResult;
 import com.globits.richy.repository.AnswerRepository;
 import com.globits.richy.repository.QuestionAnswerRepository;
@@ -363,6 +364,65 @@ public class TestResultServiceImpl implements TestResultService {
 	    }
 
 	    return ret2;
+	}
+
+	@Override
+	public List<TestResultStudyCalendarItemDto> getStudyCalendar(TestResultDto searchDto) {
+		List<TestResultStudyCalendarItemDto> calendarItems =
+				new ArrayList<TestResultStudyCalendarItemDto>();
+
+		if (searchDto == null) {
+			searchDto = new TestResultDto();
+		}
+
+		Integer year = searchDto.getCalendarYear();
+		Integer month = searchDto.getCalendarMonth();
+		LocalDateTime now = LocalDateTime.now();
+
+		if (year == null || year < 2000 || year > 2100) {
+			year = now.getYear();
+		}
+		if (month == null || month < 1 || month > 12) {
+			month = now.getMonthOfYear();
+		}
+
+		Long userId = null;
+		if (searchDto.getUser() != null && searchDto.getUser().getId() != null) {
+			userId = searchDto.getUser().getId();
+		} else {
+			Authentication authentication =
+					SecurityContextHolder.getContext().getAuthentication();
+			if (authentication != null && authentication.getPrincipal() instanceof User) {
+				userId = ((User) authentication.getPrincipal()).getId();
+			}
+		}
+
+		// A calendar is always personal. Never aggregate every student's activity
+		// when no student can be resolved from the request/current session.
+		if (userId == null) {
+			return calendarItems;
+		}
+
+		LocalDateTime monthStart = new LocalDateTime(year, month, 1, 0, 0);
+		LocalDateTime nextMonthStart = monthStart.plusMonths(1);
+
+		Query query = manager.createQuery(
+				"select s from TestResult s "
+				+ "where s.user.id = :userId "
+				+ "and s.createDate >= :monthStart "
+				+ "and s.createDate < :nextMonthStart "
+				+ "order by s.createDate asc");
+		query.setParameter("userId", userId);
+		query.setParameter("monthStart", monthStart);
+		query.setParameter("nextMonthStart", nextMonthStart);
+
+		@SuppressWarnings("unchecked")
+		List<TestResult> results = query.getResultList();
+		for (TestResult result : results) {
+			calendarItems.add(new TestResultStudyCalendarItemDto(result));
+		}
+
+		return calendarItems;
 	}
 
 	@Override

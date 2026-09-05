@@ -156,35 +156,217 @@
                     </div>
                 </div>
 
+                <!-- MONTHLY STUDY CALENDAR: FULL WIDTH + LAZY LOAD -->
+                <div class="row study-calendar-main-row">
+                    <div class="col-md-12">
+                        <section class="study-calendar-section">
+                            <div class="learning-panel-heading study-calendar-heading"
+                                 ng-click="vm.toggleStudyCalendar()"
+                                 role="button"
+                                 tabindex="0"
+                                 aria-expanded="{{!vm.isStudyCalendarCollapsed}}"
+                                 ng-keydown="($event.keyCode === 13 || $event.keyCode === 32) && vm.toggleStudyCalendar()">
+                                <div class="learning-panel-icon study-calendar-heading-icon">🗓️</div>
+                                <div class="learning-panel-copy">
+                                    <div class="learning-panel-title">LỊCH HỌC TRONG THÁNG</div>
+                                    <div class="learning-panel-subtitle">Mỗi chấm xanh là một ngày bạn đã chăm chỉ luyện tập!</div>
+                                </div>
+                                <span class="learning-panel-toggle"
+                                      aria-hidden="true">{{vm.isStudyCalendarCollapsed ? '+' : '−'}}</span>
+                            </div>
+
+                            <div class="study-calendar-collapsible"
+                                 ng-show="!vm.isStudyCalendarCollapsed">
+                                <div class="study-calendar-loading"
+                                     ng-if="vm.isStudyCalendarLoading">
+                                    <div class="study-calendar-spinner"></div>
+                                    <div class="study-calendar-loading-title">Đang mở lịch học...</div>
+                                    <div class="study-calendar-loading-subtitle">Một chút thôi, hành trình chăm chỉ sắp xuất hiện!</div>
+                                </div>
+
+                                <div class="study-calendar-error"
+                                     ng-if="!vm.isStudyCalendarLoading && vm.studyCalendarLoadError">
+                                    <span class="study-calendar-error-emoji">🌦️</span>
+                                    <strong>Chưa tải được lịch học.</strong>
+                                    <span>Bạn thử lại một lần nữa nhé!</span>
+                                    <button type="button"
+                                            class="study-calendar-retry-btn"
+                                            ng-click="vm.loadStudyCalendar(true)">
+                                        <i class="fa fa-refresh"></i> Thử lại
+                                    </button>
+                                </div>
+
+                                <div ng-if="!vm.isStudyCalendarLoading && vm.isStudyCalendarLoaded">
+                                    <div class="study-calendar-toolbar">
+                                        <button type="button"
+                                                class="study-calendar-nav-btn"
+                                                ng-click="vm.changeStudyCalendarMonth(-1)"
+                                                aria-label="Xem tháng trước"
+                                                title="Xem tháng trước">
+                                            <i class="fa fa-chevron-left"></i>
+                                        </button>
+
+                                        <div class="study-calendar-month-wrap">
+                                            <div class="study-calendar-month">{{vm.studyCalendarMonthLabel}}</div>
+                                            <div class="study-calendar-owner">
+                                                <span class="study-calendar-owner-avatar">🌟</span>
+                                                Hành trình của <strong>{{vm.studyCalendarOwnerName}}</strong>
+                                            </div>
+                                        </div>
+
+                                        <button type="button"
+                                                class="study-calendar-nav-btn"
+                                                ng-click="vm.changeStudyCalendarMonth(1)"
+                                                ng-disabled="!vm.canGoToNextStudyMonth()"
+                                                aria-label="Xem tháng sau"
+                                                title="Xem tháng sau">
+                                            <i class="fa fa-chevron-right"></i>
+                                        </button>
+                                    </div>
+
+                                    <div class="study-calendar-celebration"
+                                         ng-class="{'study-calendar-celebration-empty': vm.studyCalendarStats.bestStreak === 0}">
+                                        <div class="study-calendar-celebration-emoji">
+                                            {{vm.studyCalendarStats.bestStreak > 0 ? '🔥' : '🌱'}}
+                                        </div>
+                                        <div>
+                                            <div class="study-calendar-celebration-title"
+                                                 ng-if="vm.studyCalendarStats.bestStreak > 0">
+                                                Chúc mừng! Bạn đã giữ chuỗi
+                                                <strong>{{vm.studyCalendarStats.bestStreak}} ngày liên tiếp</strong>
+                                                trong tháng!
+                                            </div>
+                                            <div class="study-calendar-celebration-title"
+                                                 ng-if="vm.studyCalendarStats.bestStreak === 0">
+                                                Hôm nay là một ngày thật đẹp để bắt đầu chuỗi học mới!
+                                            </div>
+                                            <div class="study-calendar-celebration-subtitle">
+                                                {{vm.studyCalendarStats.activeDays}} ngày học ·
+                                                {{vm.studyCalendarStats.totalTests}} bài test đã hoàn thành
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="study-calendar-board">
+                                        <div class="study-calendar-weekday"
+                                             ng-repeat="weekday in vm.studyCalendarWeekdays track by $index">
+                                            {{weekday}}
+                                        </div>
+
+                                        <div class="study-calendar-day"
+                                             ng-repeat="day in vm.studyCalendarDays track by $index"
+                                             ng-class="{
+                                                 'study-calendar-day-blank': day.isBlank,
+                                                 'study-calendar-day-studied': day.studied,
+                                                 'study-calendar-day-today': day.isToday
+                                             }"
+                                             title="{{day.tooltip}}">
+                                            <div ng-if="!day.isBlank" class="study-calendar-day-inner">
+                                                <span class="study-calendar-day-number">{{day.day}}</span>
+                                                <span class="study-calendar-day-dot"
+                                                      ng-class="{'is-active': day.studied}"></span>
+                                                <span class="study-calendar-day-count"
+                                                      ng-if="day.studied">
+                                                    {{day.tests.length}} bài
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="study-calendar-legend">
+                                        <span><i class="study-calendar-legend-dot is-active"></i> Đã làm bài</span>
+                                        <span><i class="study-calendar-legend-dot"></i> Chưa làm bài</span>
+                                    </div>
+
+                                    <div class="study-calendar-history">
+                                        <div class="study-calendar-history-heading">
+                                            <span class="study-calendar-history-icon">🎒</span>
+                                            <div>
+                                                <div class="study-calendar-history-title">NHẬT KÝ BÀI TEST</div>
+                                                <div class="study-calendar-history-subtitle">Những dấu chân học tập trong tháng này</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="study-calendar-history-empty"
+                                             ng-if="vm.studyCalendarActivities.length === 0">
+                                            <span>🚀</span>
+                                            <div>
+                                                <strong>Chưa có bài test nào trong tháng này.</strong>
+                                                <p>Làm một bài ngay hôm nay để thắp sáng chấm xanh đầu tiên nhé!</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="study-calendar-history-list"
+                                             ng-if="vm.studyCalendarActivities.length > 0">
+                                            <div class="study-calendar-history-day"
+                                                 ng-repeat="activity in vm.studyCalendarActivities track by activity.dateKey">
+                                                <div class="study-calendar-history-date">
+                                                    <span class="study-calendar-history-date-dot"></span>
+                                                    {{activity.dateLabel}}
+                                                </div>
+                                                <div class="study-calendar-test-list">
+                                                    <div class="study-calendar-test-chip"
+                                                         ng-repeat="test in activity.tests track by test.id">
+                                                        <span class="study-calendar-test-emoji">📝</span>
+                                                        <span class="study-calendar-test-name">{{test.testName}}</span>
+                                                        <span class="study-calendar-test-meta">
+                                                            {{test.testTypeName}} · {{test.timeLabel}}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
 <!-- RANKING: FULL WIDTH -->
                 <div class="row ranking-main-row">
 
                     <div class="col-md-12">
                         <div class="ranking-section">
-                            <div class="ranking-section-heading">
-                                <div class="ranking-heading-icon ranking-heading-toggle"
-                                     ng-click="vm.toggleRanking()"
-                                     ng-class="{'ranking-heading-collapsed': vm.isRankingCollapsed}"
-                                     title="{{vm.isRankingCollapsed ? 'Hiện bảng xếp hạng' : 'Ẩn bảng xếp hạng'}}"
-                                     role="button"
-                                     tabindex="0"
-                                     ng-keydown="$event.keyCode === 13 && vm.toggleRanking()">
+                            <div class="ranking-section-heading learning-panel-heading"
+                                 ng-click="vm.toggleRanking()"
+                                 title="{{vm.isRankingCollapsed ? 'Hiện bảng xếp hạng' : 'Ẩn bảng xếp hạng'}}"
+                                 role="button"
+                                 tabindex="0"
+                                 aria-expanded="{{!vm.isRankingCollapsed}}"
+                                 ng-keydown="($event.keyCode === 13 || $event.keyCode === 32) && vm.toggleRanking()">
+                                <div class="ranking-heading-icon">
                                     🏆
                                 </div>
-                                <div>
+                                <div class="learning-panel-copy">
                                     <div class="ranking-heading-title">BẢNG XẾP HẠNG</div>
                                     <div class="ranking-heading-subtitle">Cùng xem ai đang dẫn đầu lớp nhé!</div>
                                 </div>
+                                <span class="learning-panel-toggle"
+                                      aria-hidden="true">{{vm.isRankingCollapsed ? '+' : '−'}}</span>
                             </div>
                             <div class="ranking-collapsible" ng-show="!vm.isRankingCollapsed">
                                 <div class="ranking-loading" ng-if="vm.isRankingLoading">
-                                <div class="ranking-spinner"></div>
-                                <div class="ranking-loading-text">
-                                    Đang tải bảng xếp hạng...
+                                    <div class="ranking-spinner"></div>
+                                    <div class="ranking-loading-text">
+                                        Đang tải bảng xếp hạng...
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div ng-if="!vm.isRankingLoading">
+                                <div class="ranking-load-error"
+                                     ng-if="!vm.isRankingLoading && vm.rankingLoadError">
+                                    <span>🌦️ Chưa tải được bảng xếp hạng.</span>
+                                    <button type="button" ng-click="vm.getRanking()">
+                                        <i class="fa fa-refresh"></i> Thử lại
+                                    </button>
+                                </div>
+
+                                <div class="ranking-empty"
+                                     ng-if="!vm.isRankingLoading && vm.isRankingLoaded && vm.rankings.length === 0">
+                                    🌱 Chưa có dữ liệu xếp hạng. Hãy hoàn thành bài test đầu tiên nhé!
+                                </div>
+
+                            <div ng-if="!vm.isRankingLoading && vm.rankings.length > 0">
                             <div class="row ranking-columns">
                                 <!-- TIMES DO TEST -->
                                 <div class="col-md-6 col-sm-12">
@@ -2778,10 +2960,911 @@
             ) !important;
     }
 
-    /* =====================================================
-       QUAN TRỌNG:
-       Không có selector .ranking-* trong patch này.
-       Bảng xếp hạng giữ nguyên giao diện hiện tại.
-       ===================================================== */
+    /* =========================================================
+       LAZY PANELS + MONTHLY STUDY CALENDAR
+       ========================================================= */
+    .learning-panel-heading {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        min-width: 0;
+        cursor: pointer;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .learning-panel-heading:focus {
+        outline: none;
+    }
+
+    .learning-panel-heading:focus .learning-panel-toggle {
+        box-shadow: 0 0 0 4px rgba(104, 99, 255, .18),
+                    0 8px 18px rgba(73, 70, 189, .22);
+    }
+
+    .learning-panel-copy {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .learning-panel-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        flex: 0 0 38px;
+        margin-left: auto;
+        border: 2px solid rgba(255,255,255,.92);
+        border-radius: 13px;
+        color: #ffffff;
+        background: linear-gradient(145deg, #7667ff, #4f72e8);
+        box-shadow: 0 8px 18px rgba(73, 70, 189, .22);
+        font-size: 25px;
+        line-height: 1;
+        font-weight: 900;
+        transition: transform .18s ease, box-shadow .18s ease;
+    }
+
+    .learning-panel-heading:hover .learning-panel-toggle {
+        transform: translateY(-1px) rotate(3deg);
+        box-shadow: 0 11px 24px rgba(73, 70, 189, .29);
+    }
+
+    .ranking-section-heading.learning-panel-heading {
+        justify-content: flex-start;
+        margin-bottom: 0;
+        text-align: left;
+    }
+
+    .ranking-section-heading.learning-panel-heading .ranking-heading-icon {
+        margin-right: 0;
+    }
+
+    .ranking-collapsible {
+        margin-top: 18px;
+    }
+
+    .ranking-load-error,
+    .ranking-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        min-height: 112px;
+        padding: 22px;
+        border: 1px dashed #d8deed;
+        border-radius: 17px;
+        color: #65718a;
+        background: rgba(255,255,255,.76);
+        text-align: center;
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .ranking-load-error button {
+        padding: 8px 13px;
+        border: 0;
+        border-radius: 11px;
+        color: #ffffff;
+        background: linear-gradient(135deg, #6b63f6, #438ce7);
+        font-weight: 800;
+    }
+
+    .study-calendar-main-row {
+        margin-top: 10px;
+        margin-bottom: 14px;
+    }
+
+    .study-calendar-section {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+        padding: 19px 22px;
+        border: 1px solid #dfe6ff;
+        border-radius: 23px;
+        background:
+            radial-gradient(circle at 2% 8%, rgba(255, 219, 101, .28), transparent 21%),
+            radial-gradient(circle at 98% 0%, rgba(107, 219, 255, .24), transparent 25%),
+            linear-gradient(135deg, #fffef8 0%, #f6fbff 48%, #f8f5ff 100%);
+        box-shadow: 0 12px 34px rgba(73, 94, 145, .11);
+        box-sizing: border-box;
+    }
+
+    .study-calendar-heading {
+        min-height: 56px;
+    }
+
+    .learning-panel-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 54px;
+        height: 54px;
+        flex: 0 0 54px;
+        margin-right: 13px;
+        border-radius: 18px;
+        font-size: 28px;
+    }
+
+    .study-calendar-heading-icon {
+        background: linear-gradient(145deg, #dffbe9, #8fe9bc);
+        box-shadow: 0 8px 21px rgba(51, 188, 126, .22);
+    }
+
+    .learning-panel-title {
+        color: #26304a;
+        font-size: 22px;
+        line-height: 1.15;
+        font-weight: 900;
+        letter-spacing: .35px;
+    }
+
+    .learning-panel-subtitle {
+        margin-top: 4px;
+        color: #77839b;
+        font-size: 13px;
+        line-height: 1.4;
+        font-weight: 600;
+    }
+
+    .study-calendar-collapsible {
+        width: 100%;
+        margin-top: 19px;
+    }
+
+    .study-calendar-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 250px;
+        padding: 30px 15px;
+        text-align: center;
+    }
+
+    .study-calendar-spinner {
+        width: 58px;
+        height: 58px;
+        border: 6px solid #e8edf8;
+        border-top-color: #34c984;
+        border-right-color: #6a6af5;
+        border-radius: 50%;
+        animation: rankingSpin .85s linear infinite;
+    }
+
+    .study-calendar-loading-title {
+        margin-top: 15px;
+        color: #37415b;
+        font-size: 17px;
+        font-weight: 900;
+    }
+
+    .study-calendar-loading-subtitle {
+        margin-top: 4px;
+        color: #8a94a8;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .study-calendar-error {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 190px;
+        padding: 24px;
+        border: 1px dashed #f0b8bd;
+        border-radius: 18px;
+        color: #7a6670;
+        background: #fff8f8;
+        text-align: center;
+    }
+
+    .study-calendar-error-emoji {
+        margin-bottom: 6px;
+        font-size: 32px;
+    }
+
+    .study-calendar-retry-btn {
+        margin-top: 13px;
+        padding: 9px 15px;
+        border: 0;
+        border-radius: 12px;
+        color: #ffffff;
+        background: linear-gradient(135deg, #ff7385, #fb9a61);
+        box-shadow: 0 7px 17px rgba(226, 103, 104, .22);
+        font-weight: 800;
+    }
+
+    .study-calendar-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        padding: 5px 0 14px;
+    }
+
+    .study-calendar-nav-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+        padding: 0;
+        border: 1px solid #dfe6f5;
+        border-radius: 13px;
+        color: #5b66ce;
+        background: #ffffff;
+        box-shadow: 0 6px 15px rgba(54, 72, 111, .09);
+        transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease;
+    }
+
+    .study-calendar-nav-btn:not([disabled]):hover {
+        transform: translateY(-2px);
+        box-shadow: 0 9px 19px rgba(54, 72, 111, .15);
+    }
+
+    .study-calendar-nav-btn[disabled] {
+        cursor: not-allowed;
+        opacity: .35;
+    }
+
+    .study-calendar-month-wrap {
+        min-width: 235px;
+        text-align: center;
+    }
+
+    .study-calendar-month {
+        color: #4338a8;
+        font-size: 21px;
+        line-height: 1.2;
+        font-weight: 950;
+        letter-spacing: .8px;
+    }
+
+    .study-calendar-owner {
+        margin-top: 4px;
+        color: #77829a;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .study-calendar-owner strong {
+        color: #46516c;
+    }
+
+    .study-calendar-owner-avatar {
+        margin-right: 3px;
+    }
+
+    .study-calendar-celebration {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        margin-bottom: 15px;
+        padding: 14px 18px;
+        border: 1px solid #ffdc76;
+        border-radius: 17px;
+        background: linear-gradient(135deg, #fff9d9, #fff2bd 58%, #ffe9c9);
+        box-shadow: 0 7px 18px rgba(225, 176, 46, .12);
+    }
+
+    .study-calendar-celebration-empty {
+        border-color: #bfead3;
+        background: linear-gradient(135deg, #effff5, #e2faed);
+        box-shadow: 0 7px 18px rgba(63, 181, 119, .10);
+    }
+
+    .study-calendar-celebration-emoji {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        flex: 0 0 48px;
+        border-radius: 15px;
+        background: rgba(255,255,255,.74);
+        font-size: 27px;
+        animation: studyCalendarBounce 2s ease-in-out infinite;
+    }
+
+    .study-calendar-celebration-title {
+        color: #564419;
+        font-size: 15px;
+        line-height: 1.4;
+        font-weight: 800;
+    }
+
+    .study-calendar-celebration-empty .study-calendar-celebration-title {
+        color: #276b4a;
+    }
+
+    .study-calendar-celebration-subtitle {
+        margin-top: 3px;
+        color: #8b7440;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .study-calendar-celebration-empty .study-calendar-celebration-subtitle {
+        color: #65927b;
+    }
+
+    .study-calendar-board {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 8px;
+        width: 100%;
+        padding: 13px;
+        border: 1px solid #e2e9f5;
+        border-radius: 19px;
+        background: rgba(255,255,255,.86);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+        box-sizing: border-box;
+    }
+
+    .study-calendar-weekday {
+        padding: 5px 2px 8px;
+        color: #7c86a0;
+        text-align: center;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: .35px;
+    }
+
+    .study-calendar-weekday:nth-child(6),
+    .study-calendar-weekday:nth-child(7) {
+        color: #ee7185;
+    }
+
+    .study-calendar-day {
+        position: relative;
+        min-width: 0;
+        min-height: 76px;
+        overflow: hidden;
+        border: 1px solid #e5e9f0;
+        border-radius: 15px;
+        background: linear-gradient(145deg, #ffffff, #f4f6f9);
+        box-shadow: 0 4px 11px rgba(61, 75, 104, .05);
+        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    }
+
+    .study-calendar-day:not(.study-calendar-day-blank):hover {
+        z-index: 2;
+        transform: translateY(-2px) scale(1.015);
+        box-shadow: 0 9px 18px rgba(61, 75, 104, .12);
+    }
+
+    .study-calendar-day-blank {
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .study-calendar-day-studied {
+        border-color: #7de0ac;
+        background:
+            radial-gradient(circle at 82% 18%, rgba(255,255,255,.72), transparent 19%),
+            linear-gradient(145deg, #ebfff3, #c8f5dd);
+        box-shadow: 0 5px 15px rgba(42, 181, 110, .12);
+    }
+
+    .study-calendar-day-today {
+        border: 2px solid #7568f4;
+        box-shadow: 0 0 0 3px rgba(117, 104, 244, .10),
+                    0 6px 14px rgba(74, 70, 171, .12);
+    }
+
+    .study-calendar-day-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 74px;
+        padding: 6px 3px;
+        box-sizing: border-box;
+    }
+
+    .study-calendar-day-number {
+        color: #46516b;
+        font-size: 15px;
+        line-height: 1;
+        font-weight: 900;
+    }
+
+    .study-calendar-day-studied .study-calendar-day-number {
+        color: #19784b;
+    }
+
+    .study-calendar-day-dot,
+    .study-calendar-legend-dot {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: #cbd1dc;
+        box-shadow: inset 0 1px 2px rgba(61, 70, 89, .14);
+    }
+
+    .study-calendar-day-dot {
+        margin-top: 7px;
+    }
+
+    .study-calendar-day-dot.is-active,
+    .study-calendar-legend-dot.is-active {
+        background: #2dcc7e;
+        box-shadow: 0 0 0 4px rgba(45, 204, 126, .13),
+                    0 2px 7px rgba(30, 157, 94, .25);
+    }
+
+    .study-calendar-day-count {
+        margin-top: 6px;
+        color: #4e9871;
+        font-size: 9px;
+        line-height: 1;
+        font-weight: 800;
+    }
+
+    .study-calendar-legend {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        padding: 11px 0 3px;
+        color: #778298;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .study-calendar-legend > span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .study-calendar-history {
+        margin-top: 15px;
+        padding: 17px;
+        border: 1px solid #eadfff;
+        border-radius: 19px;
+        background: linear-gradient(135deg, rgba(253,250,255,.96), rgba(247,251,255,.96));
+    }
+
+    .study-calendar-history-heading {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 13px;
+        border-bottom: 1px dashed #ddd7eb;
+    }
+
+    .study-calendar-history-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        flex: 0 0 42px;
+        border-radius: 13px;
+        background: #ffffff;
+        box-shadow: 0 5px 14px rgba(67, 55, 115, .09);
+        font-size: 23px;
+    }
+
+    .study-calendar-history-title {
+        color: #433c70;
+        font-size: 15px;
+        font-weight: 900;
+        letter-spacing: .35px;
+    }
+
+    .study-calendar-history-subtitle {
+        margin-top: 2px;
+        color: #938da7;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .study-calendar-history-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        min-height: 105px;
+        color: #747b91;
+        text-align: left;
+    }
+
+    .study-calendar-history-empty > span {
+        font-size: 31px;
+    }
+
+    .study-calendar-history-empty strong {
+        color: #4d5670;
+    }
+
+    .study-calendar-history-empty p {
+        margin: 3px 0 0;
+        font-size: 11px;
+    }
+
+    .study-calendar-history-list {
+        padding-top: 4px;
+    }
+
+    .study-calendar-history-day {
+        display: grid;
+        grid-template-columns: minmax(180px, .75fr) minmax(0, 2.25fr);
+        gap: 14px;
+        padding: 12px 2px;
+        border-bottom: 1px dashed #e2ddec;
+    }
+
+    .study-calendar-history-day:last-child {
+        padding-bottom: 2px;
+        border-bottom: 0;
+    }
+
+    .study-calendar-history-date {
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+        padding-top: 8px;
+        color: #5e6680;
+        font-size: 12px;
+        line-height: 1.4;
+        font-weight: 800;
+    }
+
+    .study-calendar-history-date-dot {
+        width: 10px;
+        height: 10px;
+        flex: 0 0 10px;
+        margin-top: 3px;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        background: #32ca80;
+        box-shadow: 0 0 0 3px rgba(50, 202, 128, .14);
+    }
+
+    .study-calendar-test-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .study-calendar-test-chip {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-areas: "emoji name" "emoji meta";
+        column-gap: 8px;
+        min-width: 205px;
+        max-width: 100%;
+        padding: 8px 11px;
+        border: 1px solid #dfe7f5;
+        border-radius: 13px;
+        background: #ffffff;
+        box-shadow: 0 4px 11px rgba(60, 70, 101, .06);
+        box-sizing: border-box;
+    }
+
+    .study-calendar-test-emoji {
+        grid-area: emoji;
+        align-self: center;
+        font-size: 19px;
+    }
+
+    .study-calendar-test-name {
+        grid-area: name;
+        overflow: hidden;
+        color: #3d4761;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 12px;
+        line-height: 1.25;
+        font-weight: 800;
+    }
+
+    .study-calendar-test-meta {
+        grid-area: meta;
+        margin-top: 2px;
+        color: #98a1b2;
+        font-size: 9px;
+        line-height: 1.2;
+        font-weight: 700;
+    }
+
+    @keyframes studyCalendarBounce {
+        0%, 100% { transform: translateY(0) rotate(-3deg); }
+        50% { transform: translateY(-4px) rotate(3deg); }
+    }
+
+    @media (max-width: 767px) {
+        .study-calendar-main-row {
+            margin-right: -8px;
+            margin-left: -8px;
+        }
+
+        .study-calendar-main-row > .col-md-12 {
+            padding-right: 8px;
+            padding-left: 8px;
+        }
+
+        .study-calendar-section {
+            padding: 13px 10px;
+            border-radius: 18px;
+        }
+
+        .study-calendar-heading,
+        .ranking-section-heading.learning-panel-heading {
+            margin: 0;
+        }
+
+        .learning-panel-icon,
+        .ranking-section-heading.learning-panel-heading .ranking-heading-icon {
+            width: 44px;
+            height: 44px;
+            flex-basis: 44px;
+            border-radius: 14px;
+            font-size: 22px;
+        }
+
+        .learning-panel-icon {
+            margin-right: 9px;
+        }
+
+        .ranking-section-heading.learning-panel-heading .ranking-heading-icon {
+            margin-right: 0;
+        }
+
+        .learning-panel-title {
+            font-size: 17px;
+        }
+
+        .learning-panel-subtitle {
+            padding-right: 6px;
+            font-size: 10px;
+        }
+
+        .learning-panel-toggle {
+            width: 34px;
+            height: 34px;
+            flex-basis: 34px;
+            border-radius: 11px;
+            font-size: 22px;
+        }
+
+        .ranking-collapsible,
+        .study-calendar-collapsible {
+            margin-top: 13px;
+        }
+
+        .study-calendar-toolbar {
+            gap: 8px;
+            padding-bottom: 11px;
+        }
+
+        .study-calendar-nav-btn {
+            width: 36px;
+            height: 36px;
+            flex-basis: 36px;
+            border-radius: 11px;
+        }
+
+        .study-calendar-month-wrap {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        .study-calendar-month {
+            font-size: 17px;
+        }
+
+        .study-calendar-owner {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 10px;
+        }
+
+        .study-calendar-celebration {
+            gap: 9px;
+            padding: 11px;
+            border-radius: 14px;
+        }
+
+        .study-calendar-celebration-emoji {
+            width: 40px;
+            height: 40px;
+            flex-basis: 40px;
+            border-radius: 12px;
+            font-size: 22px;
+        }
+
+        .study-calendar-celebration-title {
+            font-size: 12px;
+        }
+
+        .study-calendar-celebration-subtitle {
+            font-size: 9px;
+        }
+
+        .study-calendar-board {
+            gap: 4px;
+            padding: 7px 5px;
+            border-radius: 15px;
+        }
+
+        .study-calendar-weekday {
+            padding: 4px 0 6px;
+            font-size: 9px;
+        }
+
+        .study-calendar-day {
+            min-height: 53px;
+            border-radius: 10px;
+        }
+
+        .study-calendar-day-inner {
+            min-height: 51px;
+            padding: 5px 1px;
+        }
+
+        .study-calendar-day-number {
+            font-size: 12px;
+        }
+
+        .study-calendar-day-dot,
+        .study-calendar-legend-dot {
+            width: 8px;
+            height: 8px;
+        }
+
+        .study-calendar-day-dot {
+            margin-top: 6px;
+        }
+
+        .study-calendar-day-dot.is-active,
+        .study-calendar-legend-dot.is-active {
+            box-shadow: 0 0 0 3px rgba(45, 204, 126, .12);
+        }
+
+        .study-calendar-day-count {
+            margin-top: 5px;
+            font-size: 7px;
+        }
+
+        .study-calendar-legend {
+            gap: 15px;
+            font-size: 9px;
+        }
+
+        .study-calendar-history {
+            margin-top: 11px;
+            padding: 12px 10px;
+            border-radius: 15px;
+        }
+
+        .study-calendar-history-day {
+            display: block;
+            padding: 10px 1px;
+        }
+
+        .study-calendar-history-date {
+            padding: 0 0 8px;
+            font-size: 10px;
+        }
+
+        .study-calendar-test-list {
+            display: block;
+        }
+
+        .study-calendar-test-chip {
+            width: 100%;
+            min-width: 0;
+            margin-bottom: 6px;
+        }
+
+        .ranking-load-error,
+        .ranking-empty {
+            min-height: 95px;
+            padding: 16px 12px;
+            font-size: 11px;
+        }
+    }
+
+    @media (max-width: 380px) {
+        .learning-panel-subtitle {
+            display: none;
+        }
+
+        .study-calendar-day {
+            min-height: 46px;
+        }
+
+        .study-calendar-day-inner {
+            min-height: 44px;
+        }
+
+        .study-calendar-day-count {
+            display: none;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .learning-panel-toggle,
+        .study-calendar-spinner,
+        .study-calendar-celebration-emoji,
+        .study-calendar-day,
+        .study-calendar-nav-btn {
+            animation: none !important;
+            transition: none !important;
+        }
+    }
+
+    html.global-dark-mode .study-calendar-section {
+        border-color: #34445f;
+        background:
+            radial-gradient(circle at 3% 3%, rgba(42, 183, 117, .14), transparent 22%),
+            radial-gradient(circle at 97% 3%, rgba(91, 111, 231, .18), transparent 24%),
+            linear-gradient(135deg, #172236, #131d30);
+    }
+
+    html.global-dark-mode .learning-panel-title,
+    html.global-dark-mode .study-calendar-month,
+    html.global-dark-mode .study-calendar-history-title,
+    html.global-dark-mode .study-calendar-test-name {
+        color: #eef3ff;
+    }
+
+    html.global-dark-mode .learning-panel-subtitle,
+    html.global-dark-mode .study-calendar-owner,
+    html.global-dark-mode .study-calendar-history-subtitle,
+    html.global-dark-mode .study-calendar-test-meta {
+        color: #9cabc3;
+    }
+
+    html.global-dark-mode .study-calendar-owner strong,
+    html.global-dark-mode .study-calendar-history-date {
+        color: #d2dbee;
+    }
+
+    html.global-dark-mode .study-calendar-board,
+    html.global-dark-mode .study-calendar-history {
+        border-color: #34445c;
+        background: rgba(20, 30, 49, .88);
+    }
+
+    html.global-dark-mode .study-calendar-day {
+        border-color: #36445a;
+        background: linear-gradient(145deg, #202d43, #182338);
+    }
+
+    html.global-dark-mode .study-calendar-day-studied {
+        border-color: #328b61;
+        background: linear-gradient(145deg, #153c31, #1c4a39);
+    }
+
+    html.global-dark-mode .study-calendar-day-number {
+        color: #cdd7e8;
+    }
+
+    html.global-dark-mode .study-calendar-day-studied .study-calendar-day-number {
+        color: #8df0ba;
+    }
+
+    html.global-dark-mode .study-calendar-test-chip,
+    html.global-dark-mode .study-calendar-nav-btn,
+    html.global-dark-mode .study-calendar-history-icon,
+    html.global-dark-mode .ranking-load-error,
+    html.global-dark-mode .ranking-empty {
+        border-color: #394860;
+        color: #bfcaDC;
+        background: #1c2940;
+    }
 
 </style>

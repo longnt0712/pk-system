@@ -41,6 +41,8 @@ public class TestResultDto implements Serializable{
 	private Integer times = 0;
 	private Integer numberOfWords = 0;
 	private Integer numberOfRanking = 10;
+	private Integer calendarYear;
+	private Integer calendarMonth;
 	
 	
 	//CHECK CHEATING
@@ -106,6 +108,18 @@ public class TestResultDto implements Serializable{
 	}
 	public Integer getNumberOfRanking() {
 		return numberOfRanking;
+	}
+	public Integer getCalendarYear() {
+		return calendarYear;
+	}
+	public void setCalendarYear(Integer calendarYear) {
+		this.calendarYear = calendarYear;
+	}
+	public Integer getCalendarMonth() {
+		return calendarMonth;
+	}
+	public void setCalendarMonth(Integer calendarMonth) {
+		this.calendarMonth = calendarMonth;
 	}
 	public void setNumberOfRanking(Integer numberOfRanking) {
 		this.numberOfRanking = numberOfRanking;

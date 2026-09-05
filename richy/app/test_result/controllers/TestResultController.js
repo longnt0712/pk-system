@@ -196,21 +196,34 @@
 
         vm.rankings = [];
         vm.isRankingLoading = false;
+        vm.isRankingLoaded = false;
+        vm.rankingLoadError = false;
+        vm.rankingRequestId = 0;
 
-        // Ẩn / hiện bảng xếp hạng khi bấm vào cup
-        vm.isRankingCollapsed = false;
+        // Mặc định đóng. Chỉ gọi API ở lần người dùng chủ động mở.
+        vm.isRankingCollapsed = true;
 
         vm.toggleRanking = function () {
             vm.isRankingCollapsed = !vm.isRankingCollapsed;
+
+            if (!vm.isRankingCollapsed && !vm.isRankingLoaded) {
+                vm.getRanking();
+            }
         };
 
         vm.getRanking = function () {
-
+            var requestId = ++vm.rankingRequestId;
             vm.isRankingLoading = true;
+            vm.rankingLoadError = false;
 
-            service.getRanking(vm.searchDto).then(function (data) {
+            service.getRanking(angular.copy(vm.searchDto)).then(function (data) {
+
+                if (requestId !== vm.rankingRequestId) {
+                    return;
+                }
 
                 vm.rankings = data || [];
+                vm.isRankingLoaded = true;
 
                 if (vm.rankings.length === 0) {
                     vm.isRankingLoading = false;
@@ -265,13 +278,260 @@
 
             }, function () {
 
+                if (requestId !== vm.rankingRequestId) {
+                    return;
+                }
+
                 vm.rankings = [];
                 vm.isRankingLoading = false;
+                vm.isRankingLoaded = false;
+                vm.rankingLoadError = true;
 
             });
         };
 
-        vm.getRanking();
+        vm.invalidateRanking = function () {
+            vm.rankingRequestId++;
+            vm.rankings = [];
+            vm.isRankingLoaded = false;
+            vm.isRankingLoading = false;
+            vm.rankingLoadError = false;
+
+            if (!vm.isRankingCollapsed) {
+                vm.getRanking();
+            }
+        };
+
+        /* =====================================================
+           MONTHLY STUDY CALENDAR - LAZY LOAD
+           ===================================================== */
+        vm.isStudyCalendarCollapsed = true;
+        vm.isStudyCalendarLoading = false;
+        vm.isStudyCalendarLoaded = false;
+        vm.studyCalendarLoadError = false;
+        vm.studyCalendarCache = {};
+        vm.studyCalendarRequestId = 0;
+        vm.studyCalendarDate = new Date(date.getFullYear(), date.getMonth(), 1);
+        vm.studyCalendarWeekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+        vm.studyCalendarDays = [];
+        vm.studyCalendarActivities = [];
+        vm.studyCalendarStats = {
+            activeDays: 0,
+            totalTests: 0,
+            bestStreak: 0
+        };
+
+        vm.getStudyCalendarOwnerName = function () {
+            if (vm.searchDto.user && vm.searchDto.user.displayName) {
+                return vm.searchDto.user.displayName;
+            }
+            if ($rootScope.currentUser && $rootScope.currentUser.displayName) {
+                return $rootScope.currentUser.displayName;
+            }
+            return 'Bạn';
+        };
+
+        vm.getStudyCalendarKey = function () {
+            var ownerId = vm.searchDto.user && vm.searchDto.user.id
+                ? vm.searchDto.user.id
+                : 'self';
+            return ownerId + '-' + vm.studyCalendarDate.getFullYear()
+                + '-' + (vm.studyCalendarDate.getMonth() + 1);
+        };
+
+        vm.getVietnameseWeekday = function (dateValue) {
+            var labels = [
+                'Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư',
+                'Thứ năm', 'Thứ sáu', 'Thứ bảy'
+            ];
+            return labels[dateValue.getDay()];
+        };
+
+        vm.getStudyTestTypeName = function (testType) {
+            if (testType === 1) {
+                return 'Daily Vocab';
+            }
+            if (testType === 2) {
+                return 'Reading';
+            }
+            if (testType === 3) {
+                return 'Filling Gaps';
+            }
+            if (testType === 4) {
+                return 'Listening';
+            }
+            return 'Bài luyện tập';
+        };
+
+        vm.buildStudyCalendar = function (items) {
+            var year = vm.studyCalendarDate.getFullYear();
+            var monthIndex = vm.studyCalendarDate.getMonth();
+            var numberOfDays = new Date(year, monthIndex + 1, 0).getDate();
+            var leadingBlankDays = (new Date(year, monthIndex, 1).getDay() + 6) % 7;
+            var groupedTests = {};
+            var calendarDays = [];
+            var activities = [];
+            var totalTests = 0;
+            var activeDays = 0;
+            var bestStreak = 0;
+            var runningStreak = 0;
+            var today = new Date();
+
+            angular.forEach(items || [], function (item) {
+                var resultMoment = moment(item.testDate);
+                if (!resultMoment.isValid()
+                    || resultMoment.year() !== year
+                    || resultMoment.month() !== monthIndex) {
+                    return;
+                }
+
+                var dateKey = resultMoment.format('YYYY-MM-DD');
+                if (!groupedTests[dateKey]) {
+                    groupedTests[dateKey] = [];
+                }
+
+                groupedTests[dateKey].push({
+                    id: item.id,
+                    testName: item.testName || vm.getStudyTestTypeName(item.testType),
+                    testTypeName: vm.getStudyTestTypeName(item.testType),
+                    timeLabel: resultMoment.format('HH:mm')
+                });
+                totalTests++;
+            });
+
+            for (var blankIndex = 0; blankIndex < leadingBlankDays; blankIndex++) {
+                calendarDays.push({isBlank: true});
+            }
+
+            for (var dayNumber = 1; dayNumber <= numberOfDays; dayNumber++) {
+                var dayDate = new Date(year, monthIndex, dayNumber);
+                var dayKey = moment(dayDate).format('YYYY-MM-DD');
+                var tests = groupedTests[dayKey] || [];
+                var studied = tests.length > 0;
+
+                if (studied) {
+                    activeDays++;
+                    runningStreak++;
+                    bestStreak = Math.max(bestStreak, runningStreak);
+                } else {
+                    runningStreak = 0;
+                }
+
+                calendarDays.push({
+                    isBlank: false,
+                    day: dayNumber,
+                    dateKey: dayKey,
+                    studied: studied,
+                    tests: tests,
+                    isToday: dayDate.getFullYear() === today.getFullYear()
+                        && dayDate.getMonth() === today.getMonth()
+                        && dayDate.getDate() === today.getDate(),
+                    tooltip: studied
+                        ? dayNumber + '/' + (monthIndex + 1) + ': ' + tests.length + ' bài đã làm'
+                        : dayNumber + '/' + (monthIndex + 1) + ': chưa có bài test'
+                });
+
+                if (studied) {
+                    activities.push({
+                        dateKey: dayKey,
+                        dateLabel: vm.getVietnameseWeekday(dayDate)
+                            + ', ' + (dayNumber < 10 ? '0' : '') + dayNumber
+                            + '/' + (monthIndex + 1 < 10 ? '0' : '') + (monthIndex + 1)
+                            + '/' + year,
+                        tests: tests
+                    });
+                }
+            }
+
+            while (calendarDays.length % 7 !== 0) {
+                calendarDays.push({isBlank: true});
+            }
+
+            vm.studyCalendarDays = calendarDays;
+            vm.studyCalendarActivities = activities.reverse();
+            vm.studyCalendarStats = {
+                activeDays: activeDays,
+                totalTests: totalTests,
+                bestStreak: bestStreak
+            };
+            vm.studyCalendarMonthLabel = 'THÁNG ' + (monthIndex + 1) + ' / ' + year;
+            vm.studyCalendarOwnerName = vm.getStudyCalendarOwnerName();
+        };
+
+        vm.loadStudyCalendar = function (forceReload) {
+            var cacheKey = vm.getStudyCalendarKey();
+
+            if (!forceReload && vm.studyCalendarCache[cacheKey]) {
+                vm.studyCalendarRequestId++;
+                vm.buildStudyCalendar(vm.studyCalendarCache[cacheKey]);
+                vm.isStudyCalendarLoading = false;
+                vm.isStudyCalendarLoaded = true;
+                vm.studyCalendarLoadError = false;
+                return;
+            }
+
+            var requestId = ++vm.studyCalendarRequestId;
+            var payload = {
+                calendarYear: vm.studyCalendarDate.getFullYear(),
+                calendarMonth: vm.studyCalendarDate.getMonth() + 1,
+                user: vm.searchDto.user && vm.searchDto.user.id
+                    ? {id: vm.searchDto.user.id}
+                    : null
+            };
+
+            vm.isStudyCalendarLoading = true;
+            vm.isStudyCalendarLoaded = false;
+            vm.studyCalendarLoadError = false;
+
+            service.getStudyCalendar(payload).then(function (data) {
+                vm.studyCalendarCache[cacheKey] = data || [];
+
+                if (requestId !== vm.studyCalendarRequestId
+                    || cacheKey !== vm.getStudyCalendarKey()) {
+                    return;
+                }
+
+                vm.buildStudyCalendar(vm.studyCalendarCache[cacheKey]);
+                vm.isStudyCalendarLoading = false;
+                vm.isStudyCalendarLoaded = true;
+            }, function () {
+                if (requestId !== vm.studyCalendarRequestId) {
+                    return;
+                }
+
+                vm.isStudyCalendarLoading = false;
+                vm.isStudyCalendarLoaded = false;
+                vm.studyCalendarLoadError = true;
+            });
+        };
+
+        vm.toggleStudyCalendar = function () {
+            vm.isStudyCalendarCollapsed = !vm.isStudyCalendarCollapsed;
+
+            if (!vm.isStudyCalendarCollapsed) {
+                vm.loadStudyCalendar(false);
+            }
+        };
+
+        vm.canGoToNextStudyMonth = function () {
+            var currentMonth = new Date();
+            currentMonth.setDate(1);
+            currentMonth.setHours(0, 0, 0, 0);
+            return vm.studyCalendarDate.getTime() < currentMonth.getTime();
+        };
+
+        vm.changeStudyCalendarMonth = function (monthOffset) {
+            if (monthOffset > 0 && !vm.canGoToNextStudyMonth()) {
+                return;
+            }
+
+            vm.studyCalendarDate = new Date(
+                vm.studyCalendarDate.getFullYear(),
+                vm.studyCalendarDate.getMonth() + monthOffset,
+                1
+            );
+            vm.loadStudyCalendar(false);
+        };
 
 
         vm.bsTableControl = {
@@ -437,7 +697,11 @@
             }
 
             vm.getPage();
-            vm.getRanking();
+            vm.invalidateRanking();
+
+            if (!vm.isStudyCalendarCollapsed) {
+                vm.loadStudyCalendar(false);
+            }
         };
 
         vm.users = [];

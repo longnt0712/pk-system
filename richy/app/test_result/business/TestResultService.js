@@ -25,6 +25,7 @@
         self.getTableDefinition = getTableDefinition;
         self.getUsers = getUsers;
         self.getRanking = getRanking;
+        self.getStudyCalendar = getStudyCalendar;
 
         var restUrl = 'test_result';
 
@@ -53,6 +54,14 @@
 
         function getRanking(searchDto,successCallback, errorCallback) {
             var url = baseUrl + restUrl + '/get_ranking';
+
+            return utils.resolveAlt(url, 'POST', null, searchDto, {
+                'Content-Type': 'application/json; charset=utf-8'
+            }, successCallback, errorCallback);
+        }
+
+        function getStudyCalendar(searchDto, successCallback, errorCallback) {
+            var url = baseUrl + restUrl + '/study_calendar';
 
             return utils.resolveAlt(url, 'POST', null, searchDto, {
                 'Content-Type': 'application/json; charset=utf-8'

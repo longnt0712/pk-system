@@ -5,10 +5,12 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 
 import com.globits.richy.dto.TestResultDto;
+import com.globits.richy.dto.TestResultStudyCalendarItemDto;
 
 public interface TestResultService {
 	public Page<TestResultDto> getPageObject(TestResultDto searchDto, int pageIndex, int pageSize);
 	public List<TestResultDto> getRanking(TestResultDto searchDto);
+	public List<TestResultStudyCalendarItemDto> getStudyCalendar(TestResultDto searchDto);
 	public List<TestResultDto> getListObject(TestResultDto searchDto, int pageIndex, int pageSize);
 	public TestResultDto getObjectById(Long id);
 	public TestResultDto saveObject(TestResultDto dto);
