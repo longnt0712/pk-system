@@ -39,7 +39,7 @@
                     <header class="mark-order-panel-header">
                         <div>
                             <h4><i class="fa fa-arrows-h"></i> Sắp xếp thứ tự đầu điểm</h4>
-                            <p>Kéo từng ô sang trái hoặc phải. Thứ tự này sẽ được dùng cho các cột trong <strong>student_marks</strong>.</p>
+                            <p>Kéo từng ô đến vị trí mong muốn. Mỗi hàng hiển thị khoảng 5 đầu điểm và thứ tự này sẽ được dùng cho các cột trong <strong>student_marks</strong>.</p>
                         </div>
                         <div class="mark-order-status" aria-live="polite">
                             <span ng-if="vm.markOrderState === 'loading'">
@@ -284,22 +284,23 @@
 
     .mark-order-list {
         display: flex;
+        flex-wrap: wrap;
         align-items: stretch;
         gap: 10px;
         min-height: 94px;
         margin: 0;
         padding: 14px 18px 17px;
-        overflow-x: auto;
-        overflow-y: hidden;
+        overflow: visible;
         list-style: none;
-        -webkit-overflow-scrolling: touch;
     }
 
     .mark-order-card {
         position: relative;
         display: flex;
         align-items: center;
-        flex: 0 0 205px;
+        flex: 0 0 calc((100% - 40px) / 5);
+        max-width: calc((100% - 40px) / 5);
+        box-sizing: border-box;
         min-height: 62px;
         padding: 9px 7px 9px 38px;
         border: 1px solid #d6dfec;
@@ -397,7 +398,9 @@
     }
 
     .mark-order-list .dndPlaceholder {
-        flex: 0 0 205px;
+        flex: 0 0 calc((100% - 40px) / 5);
+        max-width: calc((100% - 40px) / 5);
+        box-sizing: border-box;
         min-height: 62px;
         border: 2px dashed #5b72e6;
         border-radius: 9px;
@@ -438,6 +441,22 @@
         border-color: #252c38;
     }
 
+    @media only screen and (max-width: 1199px) {
+        .mark-order-card,
+        .mark-order-list .dndPlaceholder {
+            flex-basis: calc((100% - 30px) / 4);
+            max-width: calc((100% - 30px) / 4);
+        }
+    }
+
+    @media only screen and (max-width: 991px) {
+        .mark-order-card,
+        .mark-order-list .dndPlaceholder {
+            flex-basis: calc((100% - 20px) / 3);
+            max-width: calc((100% - 20px) / 3);
+        }
+    }
+
     @media only screen and (max-width: 767px) {
         .mark-setting-toolbar,
         .mark-order-panel-header {
@@ -456,6 +475,20 @@
         .mark-order-list {
             padding-right: 12px;
             padding-left: 12px;
+        }
+
+        .mark-order-card,
+        .mark-order-list .dndPlaceholder {
+            flex-basis: calc((100% - 10px) / 2);
+            max-width: calc((100% - 10px) / 2);
+        }
+    }
+
+    @media only screen and (max-width: 479px) {
+        .mark-order-card,
+        .mark-order-list .dndPlaceholder {
+            flex-basis: 100%;
+            max-width: 100%;
         }
     }
 </style>
