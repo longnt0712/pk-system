@@ -77,9 +77,9 @@
         vm.usingSkill = false;
         vm.choosingPassword = false;
         vm.guessingPassword = false;
-        vm.customPasswordInput = '';
         vm.passwordGuessStage = 'idle';
         vm.passwordGuessResult = null;
+        vm.passwordGuessTargetName = '';
         vm.availableSkillTargets = [];
         vm.skillTargetModalOpen = false;
         vm.personalSkillNotice = null;
@@ -187,6 +187,25 @@
         var passwordGuessPhaseTimer = null;
         var passwordGuessRequestTimer = null;
         var passwordGuessAttemptId = 0;
+        var passwordGuessResultRoom = null;
+        var battleViewMusicPlayer = null;
+        var battleViewMusicPlayerReady = false;
+        var battleViewMusicApiLoading = false;
+        var battleViewMusicApiPollTimer = null;
+        var battleViewMusicWaitingForMatch = false;
+        var battleViewMusicQueue = [];
+        var battleViewMusicLastTrackId = '';
+        var battleViewMusicLoadFailures = 0;
+        var finishCelebrationAudio = null;
+        var finishCelebrationAudioUnlocked = false;
+        var finishCelebrationAudioUnlocking = false;
+        var finishCelebrationPlaybackPending = false;
+        var finishCelebrationPlaybackStarted = false;
+        var battleViewMusicTrackIds = [
+            'MU0Yp0qmYEs',
+            '9vdmlmg1QiA',
+            'RRpINBQCI48'
+        ];
         var qrScanner = null;
         var qrScannerRunning = false;
         var qrScanHandled = false;
@@ -268,12 +287,14 @@
         vm.answer = answer;
         vm.useSkill = useSkill;
         vm.choosePassword = choosePassword;
-        vm.chooseCustomPassword = chooseCustomPassword;
         vm.guessPassword = guessPassword;
+        vm.getPasswordGuessGroups = getPasswordGuessGroups;
+        vm.dismissPasswordGuessResult = dismissPasswordGuessResult;
         vm.getSkillLabel = getSkillLabel;
         vm.getSkillIcon = getSkillIcon;
         vm.isMeFrozen = isMeFrozen;
         vm.getFreezeRemaining = getFreezeRemaining;
+        vm.isMeInverted = isMeInverted;
         vm.isWrongAnswerPenaltyActive = isWrongAnswerPenaltyActive;
         vm.getWrongAnswerPenaltyRemaining = getWrongAnswerPenaltyRemaining;
         vm.isMeBurning = isMeBurning;
@@ -1047,6 +1068,7 @@
 
                         vm.room = null;
                         syncMobilePlayingPageState();
+                        stopBattleViewMusic(true);
                         vm.rankingModalOpen = false;
                         vm.skillActivityModalOpen = false;
                         vm.wrongQuestionsModalOpen = false;
@@ -1260,6 +1282,7 @@
 
             vm.room = null;
             syncMobilePlayingPageState();
+            stopBattleViewMusic(true);
             vm.rankingModalOpen = false;
             vm.skillActivityModalOpen = false;
             vm.wrongQuestionsModalOpen = false;
@@ -1426,13 +1449,6 @@
             }
 
             if (
-                incoming.passwordSelectionRequired === true &&
-                (!previousRoom || previousRoom.passwordSelectionRequired !== true)
-            ) {
-                vm.customPasswordInput = '';
-            }
-
-            if (
                 incoming.pendingPasswordGuessTargetUsername &&
                 (
                     !previousRoom ||
@@ -1446,7 +1462,7 @@
             /*
              * Một số mobile có thể giữ HTML/controller khác phiên bản trong
              * cache, làm modal mở nhưng không khớp bất kỳ phase nào. Khi private
-             * state vẫn có đủ 3 lựa chọn, luôn tự đưa giao diện về phase idle.
+             * state vẫn có đủ lựa chọn, luôn tự đưa giao diện về phase idle.
              */
             if (
                 incoming.pendingPasswordGuessTargetUsername &&
@@ -1461,6 +1477,7 @@
 
             vm.room = incoming;
             syncMobilePlayingPageState();
+            syncBattleViewMusic();
 
             vm.availableSkillTargets = [];
 
@@ -1667,11 +1684,19 @@
                 incoming.status ===
                     'PLAYING'
             ) {
+                resetFinishCelebrationSound();
                 prepareWrongQuestionHistory(incoming);
                 vm.lastAnswerCorrect = null;
                 vm.lastAnswerMessage = '';
                 vm.personalSkillNotice = null;
                 clearSkillHitEffect();
+            }
+
+            if (
+                previousStatus === 'PLAYING' &&
+                incoming.status === 'FINISHED'
+            ) {
+                requestFinishCelebrationSound();
             }
 
             updateCountdown();
@@ -2446,6 +2471,11 @@
             vm.startingMatch =
                 true;
 
+            if (isSpectator()) {
+                battleViewMusicWaitingForMatch = true;
+                playBattleViewMusic();
+            }
+
             settingsPromise
                 .then(
                     function () {
@@ -2468,6 +2498,14 @@
                     function () {
                         vm.startingMatch =
                             false;
+
+                        if (
+                            !vm.room ||
+                            vm.room.status !== 'PLAYING'
+                        ) {
+                            battleViewMusicWaitingForMatch = false;
+                            syncBattleViewMusic();
+                        }
                     }
                 );
         }
@@ -2687,26 +2725,11 @@
                 return;
             }
 
-            submitPasswordChoice(option.key, null);
+            submitPasswordChoice(option.key);
         }
 
 
-        function chooseCustomPassword() {
-            var customPassword = String(vm.customPasswordInput || '').trim();
-
-            if (!customPassword) {
-                toastr.warning(
-                    'Hãy nhập mật mã bạn muốn sử dụng.',
-                    'MẬT MÃ TRỐNG'
-                );
-                return;
-            }
-
-            submitPasswordChoice(null, customPassword);
-        }
-
-
-        function submitPasswordChoice(optionKey, customPassword) {
+        function submitPasswordChoice(optionKey) {
             if (
                 !vm.room ||
                 !vm.room.passwordSelectionRequired ||
@@ -2718,10 +2741,9 @@
             vm.choosingPassword = true;
 
             battleService
-                .choosePassword(vm.room.code, optionKey, customPassword)
+                .choosePassword(vm.room.code, optionKey, null)
                 .then(
                     function (room) {
-                        vm.customPasswordInput = '';
                         applyRoom(room, false);
                         toastr.success(
                             'Mật khẩu bí mật của bạn đã được lưu.',
@@ -2733,6 +2755,18 @@
                 .finally(function () {
                     vm.choosingPassword = false;
                 });
+        }
+
+
+        function getPasswordGuessGroups() {
+            var options = vm.room && vm.room.passwordGuessOptions || [];
+            var groups = [];
+
+            for (var index = 0; index < options.length; index += 2) {
+                groups.push(options.slice(index, index + 2));
+            }
+
+            return groups;
         }
 
 
@@ -2755,6 +2789,10 @@
             vm.guessingPassword = true;
             vm.passwordGuessStage = 'loading';
             vm.passwordGuessResult = null;
+            vm.passwordGuessTargetName =
+                vm.room.pendingPasswordGuessTargetDisplayName ||
+                vm.room.pendingPasswordGuessTargetUsername;
+            passwordGuessResultRoom = null;
 
             /*
              * Không để request mạng treo giữ học sinh mãi trong modal. Sau
@@ -2814,31 +2852,8 @@
                                     amount: Number(result.amount || 0),
                                     message: result.message || ''
                                 };
-
-                                passwordGuessPhaseTimer = $timeout(
-                                    function () {
-                                        passwordGuessPhaseTimer = null;
-
-                                        if (
-                                            attemptId !== passwordGuessAttemptId ||
-                                            destroyed
-                                        ) {
-                                            return;
-                                        }
-
-                                        if (
-                                            result.room &&
-                                            vm.room &&
-                                            vm.room.status === 'PLAYING' &&
-                                            vm.room.code === result.room.code
-                                        ) {
-                                            applyRoom(result.room, false);
-                                        }
-
-                                        resetPasswordGuessDisplay();
-                                    },
-                                    1800
-                                );
+                                vm.guessingPassword = false;
+                                passwordGuessResultRoom = result.room || null;
                             },
                             550
                         );
@@ -2856,6 +2871,29 @@
                         refreshPrivateRoomState();
                     }
                 );
+        }
+
+
+        function dismissPasswordGuessResult() {
+            if (vm.passwordGuessStage !== 'result') {
+                return;
+            }
+
+            var nextRoom = passwordGuessResultRoom;
+
+            resetPasswordGuessDisplay();
+
+            if (
+                nextRoom &&
+                vm.room &&
+                vm.room.status === 'PLAYING' &&
+                vm.room.code === nextRoom.code
+            ) {
+                applyRoom(nextRoom, false);
+                return;
+            }
+
+            refreshPrivateRoomState();
         }
 
 
@@ -2940,6 +2978,512 @@
             vm.guessingPassword = false;
             vm.passwordGuessStage = 'idle';
             vm.passwordGuessResult = null;
+            vm.passwordGuessTargetName = '';
+            passwordGuessResultRoom = null;
+        }
+
+
+        function ensureFinishCelebrationAudio() {
+            if (destroyed) {
+                return null;
+            }
+
+            if (!finishCelebrationAudio) {
+                try {
+                    finishCelebrationAudio = new $window.Audio(
+                        'assets/audio/battle-online-finish-yay.mp3'
+                    );
+                    finishCelebrationAudio.preload = 'auto';
+                    finishCelebrationAudio.volume = 0.92;
+                    finishCelebrationAudio.load();
+                } catch (ignoreAudioCreateError) {
+                    finishCelebrationAudio = null;
+                }
+            }
+
+            return finishCelebrationAudio;
+        }
+
+
+        /*
+         * Mobile Safari chỉ cho phát âm thanh sau một thao tác của người dùng.
+         * Lần chạm đầu tiên sẽ mở khóa audio ở mức âm lượng 0 để tiếng chúc
+         * mừng vẫn phát được khi WebSocket báo trận đã kết thúc.
+         */
+        function unlockFinishCelebrationAudio() {
+            if (
+                finishCelebrationAudioUnlocked ||
+                finishCelebrationAudioUnlocking ||
+                finishCelebrationPlaybackPending ||
+                finishCelebrationPlaybackStarted
+            ) {
+                return;
+            }
+
+            var audio = ensureFinishCelebrationAudio();
+
+            if (!audio) {
+                return;
+            }
+
+            finishCelebrationAudioUnlocking = true;
+            audio.volume = 0;
+            audio.currentTime = 0;
+
+            var playPromise;
+
+            try {
+                playPromise = audio.play();
+            } catch (ignoreUnlockError) {
+                finishCelebrationAudioUnlocking = false;
+                audio.volume = 0.92;
+                return;
+            }
+
+            function finishUnlock(success) {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.volume = 0.92;
+                finishCelebrationAudioUnlocking = false;
+                finishCelebrationAudioUnlocked = success === true;
+            }
+
+            if (playPromise && typeof playPromise.then === 'function') {
+                playPromise.then(
+                    function () {
+                        finishUnlock(true);
+                    },
+                    function () {
+                        finishUnlock(false);
+                    }
+                );
+            } else {
+                finishUnlock(true);
+            }
+        }
+
+
+        function playFinishCelebrationSound() {
+            if (
+                destroyed ||
+                finishCelebrationPlaybackStarted ||
+                !finishCelebrationPlaybackPending
+            ) {
+                return;
+            }
+
+            var audio = ensureFinishCelebrationAudio();
+
+            if (!audio) {
+                return;
+            }
+
+            finishCelebrationPlaybackStarted = true;
+            audio.pause();
+            audio.currentTime = 0;
+            audio.volume = 0.92;
+
+            var playPromise;
+
+            try {
+                playPromise = audio.play();
+            } catch (ignoreCelebrationPlayError) {
+                finishCelebrationPlaybackStarted = false;
+                return;
+            }
+
+            if (playPromise && typeof playPromise.then === 'function') {
+                playPromise.then(
+                    function () {
+                        finishCelebrationPlaybackPending = false;
+                    },
+                    function () {
+                        /* Click tiếp theo trên màn hình sẽ thử phát lại. */
+                        finishCelebrationPlaybackStarted = false;
+                    }
+                );
+            } else {
+                finishCelebrationPlaybackPending = false;
+            }
+        }
+
+
+        function requestFinishCelebrationSound() {
+            if (finishCelebrationPlaybackStarted) {
+                return;
+            }
+
+            stopBattleViewMusic(true);
+            finishCelebrationPlaybackPending = true;
+            playFinishCelebrationSound();
+        }
+
+
+        function resetFinishCelebrationSound() {
+            finishCelebrationPlaybackPending = false;
+            finishCelebrationPlaybackStarted = false;
+
+            if (finishCelebrationAudio) {
+                finishCelebrationAudio.pause();
+                finishCelebrationAudio.currentTime = 0;
+                finishCelebrationAudio.volume = 0.92;
+            }
+        }
+
+
+        function destroyFinishCelebrationAudio() {
+            resetFinishCelebrationSound();
+            finishCelebrationAudio = null;
+            finishCelebrationAudioUnlocked = false;
+            finishCelebrationAudioUnlocking = false;
+        }
+
+
+        function shouldPrepareBattleViewMusic() {
+            return !!(
+                vm.room &&
+                isSpectator() &&
+                (
+                    vm.room.status === 'LOBBY' ||
+                    vm.room.status === 'PLAYING'
+                )
+            );
+        }
+
+
+        function shouldPlayBattleViewMusic() {
+            return !!(
+                vm.room &&
+                vm.room.status === 'PLAYING' &&
+                isSpectator()
+            );
+        }
+
+
+        function nextBattleViewMusicTrackId() {
+            if (!battleViewMusicQueue.length) {
+                battleViewMusicQueue = battleViewMusicTrackIds.slice(0);
+
+                for (
+                    var index = battleViewMusicQueue.length - 1;
+                    index > 0;
+                    index -= 1
+                ) {
+                    var swapIndex = Math.floor(Math.random() * (index + 1));
+                    var temporary = battleViewMusicQueue[index];
+
+                    battleViewMusicQueue[index] = battleViewMusicQueue[swapIndex];
+                    battleViewMusicQueue[swapIndex] = temporary;
+                }
+
+                if (
+                    battleViewMusicQueue.length > 1 &&
+                    battleViewMusicQueue[0] === battleViewMusicLastTrackId
+                ) {
+                    var first = battleViewMusicQueue[0];
+                    battleViewMusicQueue[0] = battleViewMusicQueue[1];
+                    battleViewMusicQueue[1] = first;
+                }
+            }
+
+            battleViewMusicLastTrackId = battleViewMusicQueue.shift();
+            return battleViewMusicLastTrackId;
+        }
+
+
+        function ensureBattleViewMusicPlayer() {
+            if (destroyed || battleViewMusicPlayer) {
+                return;
+            }
+
+            if (
+                $window.YT &&
+                typeof $window.YT.Player === 'function'
+            ) {
+                createBattleViewMusicPlayer();
+                return;
+            }
+
+            if (battleViewMusicApiLoading) {
+                return;
+            }
+
+            battleViewMusicApiLoading = true;
+
+            var document = $window.document;
+            var script = document.getElementById('youtube-iframe-api-script');
+
+            if (!script) {
+                script = document.createElement('script');
+                script.id = 'youtube-iframe-api-script';
+                script.src = 'https://www.youtube.com/iframe_api';
+                script.async = true;
+
+                (document.head || document.body).appendChild(script);
+            }
+
+            var waited = 0;
+
+            battleViewMusicApiPollTimer = $window.setInterval(
+                function () {
+                    waited += 100;
+
+                    if (
+                        $window.YT &&
+                        typeof $window.YT.Player === 'function'
+                    ) {
+                        clearBattleViewMusicApiPoll();
+                        battleViewMusicApiLoading = false;
+                        createBattleViewMusicPlayer();
+                        return;
+                    }
+
+                    if (waited >= 15000) {
+                        clearBattleViewMusicApiPoll();
+                        battleViewMusicApiLoading = false;
+                    }
+                },
+                100
+            );
+        }
+
+
+        function clearBattleViewMusicApiPoll() {
+            if (!battleViewMusicApiPollTimer) {
+                return;
+            }
+
+            $window.clearInterval(battleViewMusicApiPollTimer);
+            battleViewMusicApiPollTimer = null;
+        }
+
+
+        function createBattleViewMusicPlayer() {
+            if (
+                destroyed ||
+                battleViewMusicPlayer ||
+                !$window.YT ||
+                typeof $window.YT.Player !== 'function' ||
+                !$window.document.getElementById('battle-online-view-music-player')
+            ) {
+                return;
+            }
+
+            try {
+                battleViewMusicPlayer = new $window.YT.Player(
+                    'battle-online-view-music-player',
+                    {
+                        height: '200',
+                        width: '200',
+                        videoId: nextBattleViewMusicTrackId(),
+                        playerVars: {
+                            autoplay: 0,
+                            controls: 0,
+                            disablekb: 1,
+                            fs: 0,
+                            playsinline: 1,
+                            rel: 0
+                        },
+                        events: {
+                            onReady: function (event) {
+                                battleViewMusicPlayerReady = true;
+
+                                try {
+                                    event.target.setVolume(65);
+                                    event.target.unMute();
+                                } catch (ignoreVolumeError) {
+                                    // Trình duyệt sẽ dùng âm lượng hiện tại.
+                                }
+
+                                if (
+                                    shouldPlayBattleViewMusic() ||
+                                    battleViewMusicWaitingForMatch
+                                ) {
+                                    playBattleViewMusic();
+                                }
+                            },
+                            onStateChange: function (event) {
+                                if (
+                                    $window.YT &&
+                                    event.data === $window.YT.PlayerState.PLAYING
+                                ) {
+                                    battleViewMusicLoadFailures = 0;
+                                }
+
+                                if (
+                                    $window.YT &&
+                                    event.data === $window.YT.PlayerState.ENDED &&
+                                    (
+                                        shouldPlayBattleViewMusic() ||
+                                        battleViewMusicWaitingForMatch
+                                    )
+                                ) {
+                                    loadNextBattleViewMusicTrack();
+                                }
+                            },
+                            onError: function () {
+                                battleViewMusicLoadFailures += 1;
+
+                                if (
+                                    battleViewMusicLoadFailures <
+                                        battleViewMusicTrackIds.length &&
+                                    (
+                                        shouldPlayBattleViewMusic() ||
+                                        battleViewMusicWaitingForMatch
+                                    )
+                                ) {
+                                    loadNextBattleViewMusicTrack();
+                                }
+                            }
+                        }
+                    }
+                );
+            } catch (ignorePlayerError) {
+                battleViewMusicPlayer = null;
+                battleViewMusicPlayerReady = false;
+            }
+        }
+
+
+        function loadNextBattleViewMusicTrack() {
+            if (
+                !battleViewMusicPlayer ||
+                !battleViewMusicPlayerReady
+            ) {
+                return;
+            }
+
+            try {
+                battleViewMusicPlayer.loadVideoById(
+                    nextBattleViewMusicTrackId()
+                );
+            } catch (ignoreNextTrackError) {
+                // Không làm gián đoạn giao diện trận nếu YouTube bị chặn.
+            }
+        }
+
+
+        function playBattleViewMusic() {
+            if (
+                !shouldPlayBattleViewMusic() &&
+                !battleViewMusicWaitingForMatch
+            ) {
+                return;
+            }
+
+            ensureBattleViewMusicPlayer();
+
+            if (
+                !battleViewMusicPlayer ||
+                !battleViewMusicPlayerReady
+            ) {
+                return;
+            }
+
+            try {
+                battleViewMusicPlayer.setVolume(65);
+                battleViewMusicPlayer.unMute();
+
+                if (
+                    !$window.YT ||
+                    battleViewMusicPlayer.getPlayerState() !==
+                        $window.YT.PlayerState.PLAYING
+                ) {
+                    battleViewMusicPlayer.playVideo();
+                }
+            } catch (ignorePlayError) {
+                // Lần click tiếp theo trên màn hình view sẽ thử phát lại.
+            }
+        }
+
+
+        function pauseBattleViewMusic() {
+            if (
+                !battleViewMusicPlayer ||
+                !battleViewMusicPlayerReady
+            ) {
+                return;
+            }
+
+            try {
+                battleViewMusicPlayer.pauseVideo();
+            } catch (ignorePauseError) {
+                // Bỏ qua nếu iframe đã bị trình duyệt thu hồi.
+            }
+        }
+
+
+        function stopBattleViewMusic(resetPlaylist) {
+            battleViewMusicWaitingForMatch = false;
+
+            if (
+                battleViewMusicPlayer &&
+                battleViewMusicPlayerReady
+            ) {
+                try {
+                    battleViewMusicPlayer.stopVideo();
+                } catch (ignoreStopError) {
+                    // Bỏ qua nếu iframe đã bị trình duyệt thu hồi.
+                }
+            }
+
+            if (resetPlaylist === true) {
+                battleViewMusicQueue = [];
+                battleViewMusicLastTrackId = '';
+                battleViewMusicLoadFailures = 0;
+            }
+        }
+
+
+        function syncBattleViewMusic() {
+            if (!shouldPrepareBattleViewMusic()) {
+                stopBattleViewMusic(true);
+                return;
+            }
+
+            ensureBattleViewMusicPlayer();
+
+            if (shouldPlayBattleViewMusic()) {
+                battleViewMusicWaitingForMatch = false;
+                playBattleViewMusic();
+            } else if (!battleViewMusicWaitingForMatch) {
+                pauseBattleViewMusic();
+            }
+        }
+
+
+        function battleViewMusicGestureHandler() {
+            if (finishCelebrationPlaybackPending) {
+                playFinishCelebrationSound();
+            } else {
+                unlockFinishCelebrationAudio();
+            }
+
+            if (
+                shouldPlayBattleViewMusic() ||
+                battleViewMusicWaitingForMatch
+            ) {
+                playBattleViewMusic();
+            }
+        }
+
+
+        function destroyBattleViewMusic() {
+            clearBattleViewMusicApiPoll();
+            battleViewMusicApiLoading = false;
+            battleViewMusicWaitingForMatch = false;
+
+            if (battleViewMusicPlayer) {
+                try {
+                    battleViewMusicPlayer.destroy();
+                } catch (ignoreDestroyError) {
+                    // Player có thể đã tự hủy khi đổi route.
+                }
+            }
+
+            battleViewMusicPlayer = null;
+            battleViewMusicPlayerReady = false;
+            battleViewMusicQueue = [];
         }
 
 
@@ -2974,6 +3518,10 @@
                 return 'ĐÓNG BĂNG 3 GIÂY';
             }
 
+            if (type === 'INVERT') {
+                return 'ĐẢO LỘN 7 GIÂY';
+            }
+
             if (type === 'BREAK_STREAK') {
                 return 'PHÁ STREAK';
             }
@@ -3005,6 +3553,10 @@
         function getSkillIcon(type) {
             if (type === 'FREEZE') {
                 return '❄️';
+            }
+
+            if (type === 'INVERT') {
+                return '🙃';
             }
 
             if (type === 'BREAK_STREAK') {
@@ -3061,6 +3613,16 @@
                         serverNow()
                     ) / 1000
                 )
+            );
+        }
+
+
+        function isMeInverted() {
+            var me = getMe();
+
+            return !!(
+                me &&
+                Number(me.invertedUntil || 0) > serverNow()
             );
         }
 
@@ -3144,6 +3706,10 @@
                 return actor + ' vừa đóng băng bạn trong 3 giây.';
             }
 
+            if (event.type === 'INVERT') {
+                return actor + ' vừa đảo ngược màn hình của bạn trong 7 giây.';
+            }
+
             if (event.type === 'BREAK_STREAK') {
                 return actor + ' vừa phá streak của bạn.';
             }
@@ -3192,6 +3758,11 @@
 
             if (event.type === 'FREEZE') {
                 return actor + ' vừa đóng băng ' + target + ' trong 3 giây.';
+            }
+
+            if (event.type === 'INVERT') {
+                return actor + ' vừa đảo ngược màn hình của ' + target +
+                    ' trong 7 giây.';
             }
 
             if (event.type === 'BREAK_STREAK') {
@@ -3278,6 +3849,10 @@
 
             if (type === 'FREEZE') {
                 return 'ĐÓNG BĂNG';
+            }
+
+            if (type === 'INVERT') {
+                return 'MÀN HÌNH BỊ ĐẢO';
             }
 
             if (type === 'BREAK_STREAK') {
@@ -4691,6 +5266,13 @@
             keydownHandler
         );
 
+        angular.element(
+            $window.document
+        ).on(
+            'click',
+            battleViewMusicGestureHandler
+        );
+
 
         /* =====================================================
            INIT / DESTROY
@@ -4721,6 +5303,8 @@
 
                 clearSkillHitEffect();
                 resetPasswordGuessDisplay();
+                destroyBattleViewMusic();
+                destroyFinishCelebrationAudio();
                 stopQrScanner();
 
                 angular.element(
@@ -4728,6 +5312,13 @@
                 ).off(
                     'keydown',
                     keydownHandler
+                );
+
+                angular.element(
+                    $window.document
+                ).off(
+                    'click',
+                    battleViewMusicGestureHandler
                 );
 
                 try {

@@ -20,9 +20,13 @@
                 </span>
 
                 <div class="student-footer-brand-copy">
-                    <span class="student-footer-kicker">LEARN • PLAY • GROW</span>
-                    <strong>IELTS ROOM</strong>
-                    <small>Keep learning. Keep shining ✨</small>
+                    <span class="student-footer-kicker">
+                        {{$settings.chapter ? 'YÊU THƯƠNG • PHỤC VỤ • HIỆP NHẤT' : 'LEARN • PLAY • GROW'}}
+                    </span>
+                    <strong>{{$settings.chapter ? 'Abba, Cha ơi' : 'IELTS ROOM'}}</strong>
+                    <small>
+                        {{$settings.chapter ? 'Cùng Chúa Giêsu, sống yêu thương mỗi ngày ✨' : 'Keep learning. Keep shining ✨'}}
+                    </small>
                 </div>
             </div>
 
@@ -72,7 +76,7 @@
                 </span>
 
                 <span>
-                    2022 Copy Right &copy; IELTS ROOM.
+                    2022 Copy Right &copy; {{$settings.chapter ? 'Abba, Cha ơi' : 'IELTS ROOM'}}.
                 </span>
             </div>
         </div>

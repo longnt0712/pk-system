@@ -35,6 +35,12 @@ public class BattleOnlinePlayerDto implements Serializable {
     private long frozenUntil;
 
     /*
+     * ESCAPE_DUMB_DEMON skill INVERT.
+     * Epoch milliseconds; client đảo màn hình trả lời đến thời điểm này.
+     */
+    private long invertedUntil;
+
+    /*
      * COUNTDOWN skill FIRE_UP.
      * Trong thời gian này, điểm vừa nhận của mỗi câu đúng được nhân 1.2.
      */
@@ -169,6 +175,14 @@ public class BattleOnlinePlayerDto implements Serializable {
 
     public void setFrozenUntil(long frozenUntil) {
         this.frozenUntil = frozenUntil;
+    }
+
+    public long getInvertedUntil() {
+        return invertedUntil;
+    }
+
+    public void setInvertedUntil(long invertedUntil) {
+        this.invertedUntil = invertedUntil;
     }
 
     public long getBurningUntil() {
