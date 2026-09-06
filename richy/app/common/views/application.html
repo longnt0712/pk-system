@@ -32,7 +32,8 @@
             <!-- END CONTAINER -->
         </div>
     </div>
-    <div class="page-wrapper-row">
+    <div class="page-wrapper-row"
+         ng-if="$state.current.name !== 'application.ielts_reading_actual_test'">
         <div class="page-wrapper-bottom">
             <!-- BEGIN FOOTER -->
             <div data-ng-include="'common/views/navs/footer-hoz.html'" data-ng-controller="FooterController"> </div>

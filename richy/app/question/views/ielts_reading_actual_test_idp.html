@@ -64,11 +64,32 @@
     <div class="idp-exam-topbar" ng-show="vm.isStartTest && vm.passageNumber != 4">
         <div class="idp-exam-logo">IELTS</div>
         <div class="idp-exam-name">
-            <strong>Academic Reading</strong>
-            <span>IELTS on Computer practice</span>
+            <strong>Test taker name</strong>
+            <span>{{vm.testResult.testTakerName}}</span>
         </div>
+        <img class="idp-ieltsroom-logo"
+             src="assets/images/troop.jpg"
+             alt="IELTS Room logo">
         <div class="idp-exam-tools">
-            <span><i class="fa fa-pencil"></i> Select text for Highlight &amp; Notes</span>
+            <span class="idp-top-timer">
+                <i class="fa fa-clock-o"></i>
+                {{minuteDisplay}} : {{secondDisplay}}
+            </span>
+            <button type="button" class="idp-tool-icon" title="Connection status" aria-label="Connection status">
+                <i class="fa fa-wifi"></i>
+            </button>
+            <button type="button" class="idp-tool-icon" title="Notifications" aria-label="Notifications">
+                <i class="fa fa-bell-o"></i>
+            </button>
+            <button type="button" class="idp-tool-icon" title="Menu" aria-label="Menu">
+                <i class="fa fa-bars"></i>
+            </button>
+            <button type="button" class="idp-tool-icon" title="Highlight and notes" aria-label="Highlight and notes">
+                <i class="fa fa-pencil-square-o"></i>
+            </button>
+            <button type="button" class="idp-top-finish" data-ng-click="vm.saveTestResult()">
+                Finish test
+            </button>
         </div>
     </div>
     <div class="row">
@@ -112,7 +133,7 @@
 
             <div class="col-md-12 main-test idp-main-test" style="padding-left: 40px;padding-right: 40px;">
 
-                <div class="portlet bg-white bordered idp-instruction-bar" style="margin-top: 10px;border-radius: 7px !important;" ng-hide="vm.passageNumber == 4">
+                <div class="portlet bg-white bordered idp-instruction-bar" ng-hide="vm.passageNumber == 4">
                     <div class="portlet-body">
                         <div class="row">
                             <div ng-show="vm.ieltsReadingActualTest.pronounce !=null" class="col-md-12 text-center" style="margin-left: 20px;margin-bottom: 0 !important" >
@@ -129,26 +150,28 @@
                                 <input type="checkbox" ng-model="vm.showAudio" ng-if="vm.showAudioListening"> <strong ng-if="vm.showAudioListening">Show audio </strong>
                             </div>
                             <div ng-show="vm.ieltsReadingActualTest.pronounce == null" class="col-md-12"style="margin-left: 20px;margin-bottom: 0 !important" >
-                                <h3 ng-show="vm.passageNumber == 1" class="bold text-media">Reading Passage 1</h3>
-                                <h4 class="not-for-media" ng-show="vm.passageNumber == 1">You should spend about 20 minutes on Questions 1–13, which are based on Reading Passage 1 below.</h4>
+                                <h3 ng-show="vm.passageNumber == 1" class="bold">Part 1</h3>
+                                <h4 ng-show="vm.passageNumber == 1">Read the text and answer questions 1–13.</h4>
 
-                                <h3 ng-show="vm.passageNumber == 2" class="bold text-media">Reading Passage 2</h3>
-                                <h4 class="not-for-media" ng-show="vm.passageNumber == 2">You should spend about 20 minutes on Questions 14-26, which are based on Reading Passage 2 below.</h4>
+                                <h3 ng-show="vm.passageNumber == 2" class="bold">Part 2</h3>
+                                <h4 ng-show="vm.passageNumber == 2">Read the text and answer questions 14–26.</h4>
 
-                                <h3 ng-show="vm.passageNumber == 3" class="bold text-media">Reading Passage 3</h3>
-                                <h4 class="not-for-media" ng-show="vm.passageNumber == 3">You should spend about 20 minutes on Questions 27-40, which are based on Reading Passage 3 below.</h4>
+                                <h3 ng-show="vm.passageNumber == 3" class="bold">Part 3</h3>
+                                <h4 ng-show="vm.passageNumber == 3">Read the text and answer questions 27–40.</h4>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="portlet bg-white bordered idp-workspace" style="border-radius: 7px;" >
+                <div class="portlet bg-white bordered idp-workspace">
                     <div class="portlet-body">
-                        <div ng-show="vm.passageNumber == 1" class="row" >
+                        <div ng-show="vm.passageNumber == 1" class="row idp-split-row" >
 
                             <!--<div class="col-md-6 passage-text-for-media">-->
                             <!--ng-style="(x.selectedMedia == true  && {'color':'black'})"-->
-                            <div class="col-md-6" ng-hide="vm.ieltsReadingActualTest.subQuestions[0].type === 6">
+                            <div class="col-md-6 idp-reading-pane"
+                                 ng-style="{'width': vm.readingPanePercent + '%'}"
+                                 ng-hide="vm.ieltsReadingActualTest.subQuestions[0].type === 6">
                                 <!--<h3>{{vm.ieltsReadingActualTest.subQuestions[0].type}}</h3>-->
                                 <div class="row">
                                     <div class="notes-highlight actual-test-font-global" id="passage-1-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes">
@@ -166,7 +189,15 @@
                                 </div>
                             </div>
 
-                            <div ng-style="(vm.ieltsReadingActualTest.subQuestions[0].type === 6  && {'width':'100%'})" class="col-md-6  question-content" ng-mousedown="closeNotes1()" id="passage-question-text-1" ng-right-click="showContextMenu()" context="context1">
+                            <div class="idp-split-divider"
+                                 ng-style="{'left': vm.readingPanePercent + '%'}"
+                                 ng-hide="vm.ieltsReadingActualTest.subQuestions[0].type === 6"
+                                 ng-mousedown="vm.startReadingResize($event)"
+                                 ng-dblclick="vm.resetReadingResize()"
+                                 title="Drag to resize; double-click to reset"
+                                 aria-label="Resize reading and question panels"></div>
+
+                            <div ng-style="{'width': vm.ieltsReadingActualTest.subQuestions[0].type === 6 ? '100%' : (100 - vm.readingPanePercent) + '%'}" class="col-md-6 question-content idp-question-pane" ng-mousedown="closeNotes1()" id="passage-question-text-1" ng-right-click="showContextMenu()" context="context1">
                                 <!--<span style="" my-draggable>Drag Me</span>-->
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
@@ -464,10 +495,12 @@
 
                 </div>
 
-                <div class="portlet bg-white bordered" style="border-radius: 7px;">
+                <div class="portlet bg-white bordered idp-workspace">
                     <div class="portlet-body">
-                        <div ng-show="vm.passageNumber == 2" class="row" >
-                            <div class="col-md-6" ng-hide="vm.ieltsReadingActualTest.subQuestions[1].type === 6">
+                        <div ng-show="vm.passageNumber == 2" class="row idp-split-row" >
+                            <div class="col-md-6 idp-reading-pane"
+                                 ng-style="{'width': vm.readingPanePercent + '%'}"
+                                 ng-hide="vm.ieltsReadingActualTest.subQuestions[1].type === 6">
                                 <div class="row">
                                     <div class="notes-highlight actual-test-font-global" id="passage-2-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes2">
                                         <div  class="close-highlight text-right">
@@ -484,7 +517,15 @@
                                 </div>
                             </div>
 
-                            <div ng-style="(vm.ieltsReadingActualTest.subQuestions[0].type === 6  && {'width':'100%'})" class="col-md-6 question-content" id="passage-question-text-2"  ng-right-click="showContextMenu()" context="context1">
+                            <div class="idp-split-divider"
+                                 ng-style="{'left': vm.readingPanePercent + '%'}"
+                                 ng-hide="vm.ieltsReadingActualTest.subQuestions[1].type === 6"
+                                 ng-mousedown="vm.startReadingResize($event)"
+                                 ng-dblclick="vm.resetReadingResize()"
+                                 title="Drag to resize; double-click to reset"
+                                 aria-label="Resize reading and question panels"></div>
+
+                            <div ng-style="{'width': vm.ieltsReadingActualTest.subQuestions[1].type === 6 ? '100%' : (100 - vm.readingPanePercent) + '%'}" class="col-md-6 question-content idp-question-pane" id="passage-question-text-2"  ng-right-click="showContextMenu()" context="context1">
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[1].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-2" class="row" >
@@ -762,11 +803,13 @@
 
                 </div>
 
-                <div class="portlet bg-white bordered" style="border-radius: 7px;">
+                <div class="portlet bg-white bordered idp-workspace">
                     <div class="portlet-body">
-                        <div ng-show="vm.passageNumber == 3" class="row" >
+                        <div ng-show="vm.passageNumber == 3" class="row idp-split-row" >
 
-                            <div class="col-md-6" ng-hide="vm.ieltsReadingActualTest.subQuestions[2].type === 6">
+                            <div class="col-md-6 idp-reading-pane"
+                                 ng-style="{'width': vm.readingPanePercent + '%'}"
+                                 ng-hide="vm.ieltsReadingActualTest.subQuestions[2].type === 6">
                                 <div class="row">
                                     <div class="notes-highlight actual-test-font-global" id="passage-3-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes3">
                                         <div  class="close-highlight text-right">
@@ -783,7 +826,15 @@
                                 </div>
                             </div>
 
-                            <div ng-style="(vm.ieltsReadingActualTest.subQuestions[0].type === 6  && {'width':'100%'})" class="col-md-6 question-content" id="passage-question-text-3" ng-right-click="showContextMenu()" context="context1">
+                            <div class="idp-split-divider"
+                                 ng-style="{'left': vm.readingPanePercent + '%'}"
+                                 ng-hide="vm.ieltsReadingActualTest.subQuestions[2].type === 6"
+                                 ng-mousedown="vm.startReadingResize($event)"
+                                 ng-dblclick="vm.resetReadingResize()"
+                                 title="Drag to resize; double-click to reset"
+                                 aria-label="Resize reading and question panels"></div>
+
+                            <div ng-style="{'width': vm.ieltsReadingActualTest.subQuestions[2].type === 6 ? '100%' : (100 - vm.readingPanePercent) + '%'}" class="col-md-6 question-content idp-question-pane" id="passage-question-text-3" ng-right-click="showContextMenu()" context="context1">
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[2].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-3" class="row">
@@ -1095,10 +1146,10 @@
                         <div class="idp-part-switcher">
                             <section class="idp-part-group"
                                      ng-repeat="item in vm.ieltsReadingActualTest.subQuestions track by $index"
-                                     ng-class="{'is-active': vm.passageNumber == ($index + 1)}">
+                                     ng-class="{'is-active': vm.passageNumber == ($index + 1)}"
+                                     ng-click="vm.changePassage(item.subQuestions)">
                                 <button type="button"
-                                        class="idp-part-tab actual-test-font-global"
-                                        ng-click="vm.changePassage(item.subQuestions)">
+                                        class="idp-part-tab actual-test-font-global">
                                     <strong>Part {{item.ordinalNumber || ($index + 1)}}</strong>
                                     <span class="idp-part-progress" ng-if="vm.passageNumber != ($index + 1)">
                                         {{item.subQuestions | ieltsAnsweredCount}} of {{item.subQuestions | ieltsQuestionCount}}
@@ -1115,7 +1166,7 @@
                                                     'is-answered': q.answered == true,
                                                     'needs-review': q.needReview == true
                                                 }"
-                                                ng-click="vm.clickShowChildren(q,package.subQuestions);vm.autoScrollToView(q.ordinalNumber);vm.changePassage(item.subQuestions);vm.autoFocusOnText(q.ordinalNumber)">
+                                                ng-click="$event.stopPropagation();vm.clickShowChildren(q,package.subQuestions);vm.autoScrollToView(q.ordinalNumber);vm.changePassage(item.subQuestions);vm.autoFocusOnText(q.ordinalNumber)">
                                             {{q.ordinalNumber}}
                                         </button>
                                     </span>
@@ -2205,22 +2256,24 @@
         top: 0;
         display: flex;
         align-items: center;
-        min-height: 48px;
-        padding: 0 22px;
-        color: #ffffff;
-        background: var(--idp-charcoal);
-        box-shadow: 0 2px 7px rgba(0,0,0,.22);
+        min-height: 60px;
+        padding: 0 16px;
+        border-top: 4px solid #2b2b2b;
+        border-bottom: 1px solid #c9cacc;
+        color: #202124;
+        background: #ffffff;
+        box-shadow: none;
     }
 
     .idp-exam-logo {
-        margin-right: 16px;
-        padding: 5px 7px;
-        color: #ffffff;
-        background: #d71920;
-        font-size: 17px;
+        margin-right: 32px;
+        padding: 0;
+        color: #e31837;
+        background: transparent;
+        font-size: 30px;
         line-height: 1;
         font-weight: 900;
-        letter-spacing: -.7px;
+        letter-spacing: -2px;
     }
 
     .idp-exam-name {
@@ -2230,22 +2283,32 @@
     }
 
     .idp-exam-name strong {
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 700;
     }
 
     .idp-exam-name span {
         margin-top: 2px;
-        color: #c7c8cb;
-        font-size: 10px !important;
+        color: #5f6368;
+        font-size: 12px !important;
+    }
+
+    .idp-ieltsroom-logo {
+        width: 40px;
+        height: 40px;
+        margin-left: 12px;
+        border: 1px solid #d8dadd;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #ffffff;
     }
 
     .idp-exam-tools {
         display: flex;
         align-items: center;
-        gap: 22px;
+        gap: 18px;
         margin-left: auto;
-        color: #ececef;
+        color: #202124;
         font-size: 12px;
         font-weight: 600;
     }
@@ -2255,8 +2318,44 @@
     }
 
     .idp-exam-tools .fa {
-        margin-right: 5px;
-        color: var(--idp-yellow);
+        color: #22262b;
+    }
+
+    .idp-top-timer {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px !important;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .idp-tool-icon {
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        border: 0;
+        color: #22262b;
+        background: transparent;
+        font-size: 20px;
+        cursor: default;
+    }
+
+    .idp-top-finish {
+        min-height: 34px;
+        padding: 7px 13px;
+        border: 1px solid #b7b9bd;
+        border-radius: 3px;
+        color: #202124;
+        background: #f3f3f1;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .idp-top-finish:hover,
+    .idp-top-finish:focus {
+        border-color: #777a80;
+        background: #e8e8e6;
     }
 
     .idp-exam-stage {
@@ -2266,15 +2365,7 @@
     }
 
     .idp-candidate-bar {
-        position: sticky;
-        z-index: 70;
-        top: 48px;
-        min-height: 66px;
-        margin: 0 !important;
-        border: 0 !important;
-        border-bottom: 1px solid #cfd0d2 !important;
-        border-radius: 0 !important;
-        background: #ffffff;
+        display: none;
     }
 
     .idp-candidate-bar > .portlet-body {
@@ -2399,16 +2490,15 @@
 
     /* Passage instruction band */
     .idp-instruction-bar {
-        margin: 12px 0 0 !important;
+        margin: 16px 0 0 !important;
         border: 1px solid #d4d5d7 !important;
-        border-left: 5px solid var(--idp-yellow) !important;
-        border-radius: 2px !important;
-        background: #ffffff;
+        border-radius: 3px !important;
+        background: #f3f3f0;
     }
 
     .idp-instruction-bar > .portlet-body {
-        min-height: 69px;
-        padding: 13px 18px !important;
+        min-height: 72px;
+        padding: 11px 16px !important;
     }
 
     .idp-instruction-bar .row {
@@ -2421,17 +2511,17 @@
     }
 
     .idp-instruction-bar h3 {
-        margin: 0 0 4px !important;
-        color: #25262a;
-        font-size: 17px !important;
+        margin: 0 0 3px !important;
+        color: #111214;
+        font-size: 16px !important;
         line-height: 1.2;
         font-weight: 700;
     }
 
     .idp-instruction-bar h4 {
         margin: 0;
-        color: #55585e;
-        font-size: 13px !important;
+        color: #17181a;
+        font-size: 14px !important;
         line-height: 1.45;
         font-weight: 400;
     }
@@ -2461,6 +2551,10 @@
         padding: 0 !important;
     }
 
+    .idp-split-row {
+        position: relative;
+    }
+
     @media (min-width: 997px) {
         .idp-workspace > .portlet-body > .row:not(.ng-hide) {
             display: flex;
@@ -2468,8 +2562,48 @@
             margin: 0;
         }
 
-        .idp-workspace > .portlet-body > .row:not(.ng-hide) > .col-md-6:first-child {
-            border-right: 1px solid #cfd0d3;
+        .idp-reading-pane,
+        .idp-question-pane {
+            float: none !important;
+            flex: 0 0 auto;
+            min-width: 0;
+            padding: 0 !important;
+        }
+
+        .idp-split-divider {
+            position: absolute;
+            z-index: 35;
+            top: 0;
+            bottom: 0;
+            width: 14px;
+            transform: translateX(-50%);
+            cursor: col-resize;
+            touch-action: none;
+        }
+
+        .idp-split-divider::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 6px;
+            width: 2px;
+            background: #9da0a5;
+            box-shadow: 0 0 0 1px rgba(255,255,255,.75);
+            transition: width .12s ease, left .12s ease, background .12s ease;
+        }
+
+        .idp-split-divider:hover::before,
+        body.idp-is-resizing .idp-split-divider::before {
+            left: 5px;
+            width: 4px;
+            background: #2f82bf;
+        }
+
+        body.idp-is-resizing,
+        body.idp-is-resizing * {
+            cursor: col-resize !important;
+            user-select: none !important;
         }
     }
 
@@ -2877,12 +3011,19 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        position: relative;
         flex: .9 1 0;
         min-width: 155px;
         padding: 9px 15px 7px;
         border-right: 1px solid #e2e3e5;
         white-space: nowrap;
+        cursor: pointer;
         transition: flex .18s ease, background .18s ease;
+    }
+
+    .idp-part-group:hover,
+    .idp-part-group:focus-within {
+        background: #f0f1f2;
     }
 
     .idp-part-group.is-active {
@@ -2907,7 +3048,7 @@
 
     .idp-part-tab:hover,
     .idp-part-tab:focus {
-        background: #f0f1f2;
+        background: transparent;
         outline: none;
     }
 
@@ -3206,6 +3347,17 @@
             padding: 0 11px;
         }
 
+        .idp-exam-logo {
+            margin-right: 12px;
+            font-size: 23px;
+        }
+
+        .idp-ieltsroom-logo {
+            width: 32px;
+            height: 32px;
+            margin-left: 8px;
+        }
+
         .idp-exam-tools {
             display: none;
         }
@@ -3215,8 +3367,18 @@
         }
 
         .idp-candidate-bar {
+            display: block;
             top: 44px;
             min-height: 54px;
+        }
+
+        .idp-split-divider {
+            display: none !important;
+        }
+
+        .idp-reading-pane,
+        .idp-question-pane {
+            width: 100% !important;
         }
 
         .idp-candidate-mobile {

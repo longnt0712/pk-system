@@ -91,7 +91,7 @@
 
             // Member area
             $stateProvider.state('application', {
-                templateUrl: 'common/views/application.html',
+                templateUrl: 'common/views/application.html?v=' + window.APP_VERSION,
                 abstract: true
             });
 

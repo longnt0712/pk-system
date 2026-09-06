@@ -259,6 +259,78 @@
 
         var vm = this;
 
+        /* Adjustable Reading / Questions split (desktop only). */
+        vm.readingPanePercent = 50;
+        var readingResizeState = null;
+
+        try {
+            var savedReadingPanePercent = parseFloat(
+                $window.localStorage.getItem('ieltsReadingPanePercent')
+            );
+            if (!isNaN(savedReadingPanePercent)) {
+                vm.readingPanePercent = Math.max(25, Math.min(75, savedReadingPanePercent));
+            }
+        } catch (ignoreReadingPaneStorageError) {
+            vm.readingPanePercent = 50;
+        }
+
+        function stopReadingResize() {
+            if (!readingResizeState) {
+                return;
+            }
+
+            $window.document.removeEventListener('mousemove', readingResizeState.onMove, false);
+            $window.document.removeEventListener('mouseup', stopReadingResize, false);
+            $window.document.body.classList.remove('idp-is-resizing');
+
+            try {
+                $window.localStorage.setItem(
+                    'ieltsReadingPanePercent',
+                    String(vm.readingPanePercent)
+                );
+            } catch (ignoreReadingPaneStorageError) {
+                // The split still works when localStorage is unavailable.
+            }
+
+            readingResizeState = null;
+        }
+
+        vm.startReadingResize = function ($event) {
+            if (!$event || $window.innerWidth <= 996) {
+                return;
+            }
+
+            $event.preventDefault();
+
+            var splitRow = $event.currentTarget.parentNode;
+            var splitBounds = splitRow.getBoundingClientRect();
+
+            function onMove(moveEvent) {
+                var nextPercent = ((moveEvent.clientX - splitBounds.left) / splitBounds.width) * 100;
+                nextPercent = Math.max(25, Math.min(75, nextPercent));
+
+                $scope.$evalAsync(function () {
+                    vm.readingPanePercent = Math.round(nextPercent * 10) / 10;
+                });
+            }
+
+            readingResizeState = {onMove: onMove};
+            $window.document.body.classList.add('idp-is-resizing');
+            $window.document.addEventListener('mousemove', onMove, false);
+            $window.document.addEventListener('mouseup', stopReadingResize, false);
+        };
+
+        vm.resetReadingResize = function () {
+            vm.readingPanePercent = 50;
+            try {
+                $window.localStorage.setItem('ieltsReadingPanePercent', '50');
+            } catch (ignoreReadingPaneStorageError) {
+                // The reset still works when localStorage is unavailable.
+            }
+        };
+
+        $scope.$on('$destroy', stopReadingResize);
+
         window.addEventListener('beforeunload', function (e) {
             // Cancel the event
             e.preventDefault(); // If you prevent default behavior in Mozilla Firefox prompt will always be shown
