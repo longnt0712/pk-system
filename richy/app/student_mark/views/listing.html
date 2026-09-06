@@ -154,7 +154,14 @@
                                 </small>
                             </td>
                             <td class="student-mark-sticky-col student-mark-col-action">
-                                <button ng-click="vm.allowEdit(student)" class="btn btn-primary"><i class="fa fa-pencil"></i></button>
+                                <button type="button"
+                                        ng-click="vm.allowEdit(student)"
+                                        class="btn"
+                                        ng-class="student.allowEdit ? 'btn-success' : 'btn-primary'"
+                                        ng-attr-title="{{student.allowEdit ? 'Khóa chỉnh sửa' : 'Cho phép chỉnh sửa'}}"
+                                        aria-pressed="{{student.allowEdit}}">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
                             </td>
 
                             <td ng-repeat="markItem in student.studentMarks track by $index">
@@ -166,7 +173,7 @@
                                        ng-change="vm.onMarkKeyup(markItem)"
                                        ng-class="vm.getMarkValueClass(markItem.markNumber)"
                                        placeholder="Nhập điểm"
-                                       ng-disabled="student.allowEdit == false">
+                                       ng-disabled="!student.allowEdit">
                             </td>
 
                             <td>
@@ -277,6 +284,27 @@
         font-size: 18px !important;
         font-weight: 600;
         height: 40px;
+        background-color: #ffffff !important;
+        transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+
+    /* Chưa bấm sửa: ô điểm ở trạng thái chỉ xem và có nền xám rõ ràng. */
+    .student-mark-table .mark-input[disabled],
+    .student-mark-table .mark-input:disabled {
+        opacity: 1 !important;
+        color: #596273 !important;
+        border-color: #d5dae3 !important;
+        background-color: #e5e7eb !important;
+        box-shadow: inset 0 1px 2px rgba(30, 41, 59, .06) !important;
+        cursor: not-allowed;
+    }
+
+    /* Sau khi bấm nút bút chì: các ô của đúng học sinh đó chuyển sang trắng. */
+    .student-mark-table .mark-input:not([disabled]) {
+        color: #172033;
+        border-color: #b9c6f2;
+        background-color: #ffffff !important;
+        box-shadow: 0 0 0 2px rgba(91, 114, 230, .08);
     }
 
     .mark-danger {
@@ -432,6 +460,20 @@
     html.global-dark-mode .student-mark-table .student-mark-col-action {
         border-right-color: #43516a !important;
         box-shadow: 9px 0 14px -11px rgba(0, 0, 0, .95);
+    }
+
+    html.global-dark-mode .student-mark-table .mark-input[disabled],
+    html.global-dark-mode .student-mark-table .mark-input:disabled {
+        color: #9ca7b8 !important;
+        border-color: #39445a !important;
+        background-color: #252d3b !important;
+        box-shadow: none !important;
+    }
+
+    html.global-dark-mode .student-mark-table .mark-input:not([disabled]) {
+        color: #172033 !important;
+        border-color: #8da1ee !important;
+        background-color: #ffffff !important;
     }
 
     @media (max-width: 767px) {

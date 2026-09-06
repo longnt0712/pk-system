@@ -454,13 +454,13 @@
         });
 
         vm.allowEdit = function (studentMark) {
+            var shouldEnableEdit = !studentMark.allowEdit;
+
             angular.forEach(vm.studentMarks, function(value, key) {
-                if (value.id == studentMark.id) {
-                    value.allowEdit = true;
-                } else {
-                    value.allowEdit = false;
-                }
+                value.allowEdit = false;
             });
+
+            studentMark.allowEdit = shouldEnableEdit;
         };
 
         vm.getListDisplayStudentMark = function () {
