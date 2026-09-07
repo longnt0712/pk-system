@@ -259,6 +259,21 @@
 
         var vm = this;
 
+        /* Keep the active exam inside one viewport and restore the normal site
+           layout as soon as the test ends or this screen is left. */
+        var examBodyClass = 'ielts-reading-test-running';
+        var unwatchExamLayout = $scope.$watch(function () {
+            return vm.isStartTest === true && vm.passageNumber != 4;
+        }, function (isRunning) {
+            $window.document.body.classList.toggle(examBodyClass, isRunning);
+        });
+
+        $scope.$on('$destroy', function () {
+            stopReadingResize();
+            unwatchExamLayout();
+            $window.document.body.classList.remove(examBodyClass);
+        });
+
         /* Adjustable Reading / Questions split (desktop only). */
         vm.readingPanePercent = 50;
         var readingResizeState = null;
@@ -329,6 +344,63 @@
             }
         };
 
+        /* Reading display preferences (the three IDP contrast and text modes). */
+        var readingContrastStorageKey = 'ieltsReadingContrast';
+        var readingTextSizeStorageKey = 'ieltsReadingTextSize';
+        var allowedReadingContrasts = ['black-white', 'white-black', 'yellow-black'];
+        var allowedReadingTextSizes = ['regular', 'large', 'extra-large'];
+
+        vm.displayContrast = 'black-white';
+        vm.readingTextSize = 'regular';
+        vm.showDisplaySettings = false;
+
+        try {
+            var savedReadingContrast = $window.localStorage.getItem(readingContrastStorageKey);
+            var savedReadingTextSize = $window.localStorage.getItem(readingTextSizeStorageKey);
+            if (allowedReadingContrasts.indexOf(savedReadingContrast) !== -1) {
+                vm.displayContrast = savedReadingContrast;
+            }
+            if (allowedReadingTextSizes.indexOf(savedReadingTextSize) !== -1) {
+                vm.readingTextSize = savedReadingTextSize;
+            }
+        } catch (ignoreReadingDisplayStorageError) {
+            // Display settings still work for the current test session.
+        }
+
+        vm.openDisplaySettings = function () {
+            vm.isShowContextMenu = false;
+            vm.activeAnnotationNote = null;
+            vm.showDisplaySettings = true;
+        };
+
+        vm.closeDisplaySettings = function () {
+            vm.showDisplaySettings = false;
+        };
+
+        vm.setDisplayContrast = function (contrast) {
+            if (allowedReadingContrasts.indexOf(contrast) === -1) {
+                return;
+            }
+            vm.displayContrast = contrast;
+            try {
+                $window.localStorage.setItem(readingContrastStorageKey, contrast);
+            } catch (ignoreReadingDisplayStorageError) {
+                // Keep the in-memory preference when storage is unavailable.
+            }
+        };
+
+        vm.setReadingTextSize = function (size) {
+            if (allowedReadingTextSizes.indexOf(size) === -1) {
+                return;
+            }
+            vm.readingTextSize = size;
+            try {
+                $window.localStorage.setItem(readingTextSizeStorageKey, size);
+            } catch (ignoreReadingDisplayStorageError) {
+                // Keep the in-memory preference when storage is unavailable.
+            }
+        };
+
         $scope.$on('$destroy', stopReadingResize);
 
         window.addEventListener('beforeunload', function (e) {
@@ -367,6 +439,18 @@
 
         vm.testResult.questionAnswerTestResult = [];
         vm.testResult.user = vm.currentUser;
+
+        var currentPerson = vm.currentUser.person || {};
+        vm.testResult.testTakerName = [
+            currentPerson.lastName,
+            currentPerson.firstName
+        ].filter(function (namePart) {
+            return namePart !== null && namePart !== undefined && String(namePart).trim() !== '';
+        }).join(' ').trim();
+
+        if (!vm.testResult.testTakerName) {
+            vm.testResult.testTakerName = vm.currentUser.displayName || vm.currentUser.username || '';
+        }
 
         vm.testResultAfterSubmitting = {};
 
@@ -560,14 +644,7 @@
         console.log('IELTS Reading Actual Test');
         vm.searchDto.pageSize = 10;
         // console.log($stateParams.ieltsReadingTestId);
-        vm.isHasTestTakerName = false;
-        vm.submitTestTakerName = function () {
-            if(vm.testResult != null && vm.testResult.testTakerName != null && vm.testResult.testTakerName.length >= 0){
-                vm.isHasTestTakerName = true;
-            }else {
-                toastr.warning('Fill in your name, please.', 'Thông báo');
-            }
-        };
+        vm.isHasTestTakerName = true;
         vm.isStartTest = false;
         vm.startTest = function () {
             if ($stateParams.ieltsReadingTestId != null) {
@@ -909,6 +986,82 @@
                     }
                 }
             }
+        };
+
+        function getReadingQuestionEntries() {
+            var entries = [];
+            var passages = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.subQuestions;
+
+            angular.forEach(passages || [], function (passage) {
+                angular.forEach(passage.subQuestions || [], function (questionPackage) {
+                    angular.forEach(questionPackage.subQuestions || [], function (question) {
+                        entries.push({
+                            question: question,
+                            packageQuestions: questionPackage.subQuestions,
+                            passageQuestions: passage.subQuestions
+                        });
+                    });
+                });
+            });
+
+            entries.sort(function (left, right) {
+                return Number(left.question.ordinalNumber) - Number(right.question.ordinalNumber);
+            });
+            return entries;
+        }
+
+        function getCurrentReadingQuestionIndex(entries) {
+            var currentOrdinalNumber = vm.tempQuestion && vm.tempQuestion.ordinalNumber;
+
+            for (var i = 0; i < entries.length; i++) {
+                if (entries[i].question === vm.tempQuestion ||
+                    (currentOrdinalNumber != null && entries[i].question.ordinalNumber == currentOrdinalNumber)) {
+                    return i;
+                }
+            }
+
+            for (var j = 0; j < entries.length; j++) {
+                if (entries[j].question.showChildren === true) {
+                    return j;
+                }
+            }
+
+            return entries.length ? 0 : -1;
+        }
+
+        vm.openReadingQuestion = function (question, packageQuestions, passageQuestions) {
+            if (!question) {
+                return;
+            }
+
+            vm.changePassage(passageQuestions);
+            vm.clickShowChildren(question, packageQuestions);
+
+            $timeout(function () {
+                vm.autoScrollToView(question.ordinalNumber);
+                vm.autoFocusOnText(question.ordinalNumber);
+            }, 0);
+        };
+
+        vm.canNavigateReadingQuestion = function (step) {
+            var entries = getReadingQuestionEntries();
+            var currentIndex = getCurrentReadingQuestionIndex(entries);
+            var targetIndex = currentIndex + Number(step || 0);
+
+            return currentIndex >= 0 && targetIndex >= 0 && targetIndex < entries.length;
+        };
+
+        vm.navigateReadingQuestion = function (step) {
+            var entries = getReadingQuestionEntries();
+            var currentIndex = getCurrentReadingQuestionIndex(entries);
+            var targetIndex = currentIndex + Number(step || 0);
+
+            if (currentIndex < 0 || targetIndex < 0 || targetIndex >= entries.length) {
+                return;
+            }
+
+            var target = entries[targetIndex];
+            vm.openReadingQuestion(target.question, target.packageQuestions, target.passageQuestions);
         };
 
         vm.buttonBottomNextQuestion = function () {
@@ -1735,6 +1888,432 @@
 
         //------------- end passage 3 ------------------//
 
+        /*
+         * Reliable IDP-style annotations.
+         *
+         * The legacy implementation read window.getSelection() after the
+         * toolbar was clicked and only accepted selections inside one text
+         * node. Clicking the toolbar can collapse the browser selection, and
+         * real passage content frequently crosses inline elements. Keep a
+         * cloned Range as soon as mouseup occurs and annotate every text node
+         * that intersects that saved range instead.
+         */
+        var savedAnnotationRange = null;
+        var annotationSequence = 0;
+        vm.annotationNotes = [];
+        vm.activeAnnotationNote = null;
+        vm.selectionMenuStyle = {};
+        vm.annotationNoteStyle = {};
+        vm.selectionHasHighlight = false;
+        vm.selectionHasNote = false;
+        vm.isAnnotationRemoveMenu = false;
+        var clickedAnnotationMarker = null;
+
+        function closestElement(element, selector) {
+            if (!element) {
+                return null;
+            }
+            if (element.nodeType === 3) {
+                element = element.parentNode;
+            }
+            if (element.closest) {
+                return element.closest(selector);
+            }
+            while (element && element.nodeType === 1) {
+                if ($(element).is(selector)) {
+                    return element;
+                }
+                element = element.parentNode;
+            }
+            return null;
+        }
+
+        function selectionBelongsToReadingTest(range) {
+            var startArea = closestElement(range.startContainer, '.passage-text, .question-content');
+            var endArea = closestElement(range.endContainer, '.passage-text, .question-content');
+            return startArea !== null && endArea !== null && startArea === endArea;
+        }
+
+        function rangeIntersectsNode(range, node) {
+            if (range.intersectsNode) {
+                try {
+                    return range.intersectsNode(node);
+                } catch (ignore) {
+                    return false;
+                }
+            }
+
+            var nodeRange = document.createRange();
+            nodeRange.selectNodeContents(node);
+            return range.compareBoundaryPoints(Range.END_TO_START, nodeRange) < 0 &&
+                range.compareBoundaryPoints(Range.START_TO_END, nodeRange) > 0;
+        }
+
+        function annotationElementsInRange(range) {
+            var elements = [];
+            var seen = [];
+            var parentAnnotation = closestElement(range.startContainer, '.ielts-annotation');
+
+            function add(element) {
+                if (element && seen.indexOf(element) === -1 && rangeIntersectsNode(range, element)) {
+                    seen.push(element);
+                    elements.push(element);
+                }
+            }
+
+            add(parentAnnotation);
+            var root = range.commonAncestorContainer.nodeType === 3 ?
+                range.commonAncestorContainer.parentNode : range.commonAncestorContainer;
+            if (root && root.querySelectorAll) {
+                angular.forEach(root.querySelectorAll('.ielts-annotation'), add);
+            }
+            return elements;
+        }
+
+        function selectableTextNodes(range) {
+            var root = range.commonAncestorContainer.nodeType === 3 ?
+                range.commonAncestorContainer.parentNode : range.commonAncestorContainer;
+            var nodes = [];
+            var showText = window.NodeFilter ? window.NodeFilter.SHOW_TEXT : 4;
+            var walker = document.createTreeWalker(root, showText, null, false);
+            var current;
+
+            if (root.nodeType === 3) {
+                return [root];
+            }
+
+            while ((current = walker.nextNode())) {
+                if (!rangeIntersectsNode(range, current)) {
+                    continue;
+                }
+                if (closestElement(current, 'button, input, textarea, select, option, .dropdown-menu-highlight, .idp-annotation-note, .idp-question-stepper')) {
+                    continue;
+                }
+                nodes.push(current);
+            }
+            return nodes;
+        }
+
+        function selectedOffsets(range, node) {
+            var start = node === range.startContainer ? range.startOffset : 0;
+            var end = node === range.endContainer ? range.endOffset : node.nodeValue.length;
+            return {
+                start: Math.max(0, Math.min(start, node.nodeValue.length)),
+                end: Math.max(0, Math.min(end, node.nodeValue.length))
+            };
+        }
+
+        function addAnnotationClass(range, className, noteId) {
+            var touched = annotationElementsInRange(range);
+            var nodes = selectableTextNodes(range);
+            var groupId = 'annotation-' + (++annotationSequence);
+
+            /* Work backwards so splitting a later node cannot invalidate an
+             * earlier boundary in the saved Range. */
+            for (var i = nodes.length - 1; i >= 0; i--) {
+                var node = nodes[i];
+                var offsets = selectedOffsets(range, node);
+                if (offsets.end <= offsets.start || !node.nodeValue.substring(offsets.start, offsets.end).trim()) {
+                    continue;
+                }
+
+                var existing = closestElement(node, '.ielts-annotation');
+                if (existing) {
+                    if (touched.indexOf(existing) === -1) {
+                        touched.push(existing);
+                    }
+                    continue;
+                }
+
+                if (offsets.end < node.nodeValue.length) {
+                    node.splitText(offsets.end);
+                }
+                var selectedNode = offsets.start > 0 ? node.splitText(offsets.start) : node;
+                var marker = document.createElement('span');
+                marker.className = 'ielts-annotation';
+                marker.setAttribute('data-annotation-group', groupId);
+                selectedNode.parentNode.insertBefore(marker, selectedNode);
+                marker.appendChild(selectedNode);
+                touched.push(marker);
+            }
+
+            angular.forEach(touched, function (element) {
+                $(element).addClass(className);
+                element.setAttribute('title', 'Click to remove');
+                if (noteId) {
+                    element.setAttribute('data-note-id', noteId);
+                }
+            });
+            return touched;
+        }
+
+        function unwrapIfEmptyAnnotation(element) {
+            if (!element || $(element).hasClass('is-highlighted') || $(element).hasClass('has-note')) {
+                return;
+            }
+            var parent = element.parentNode;
+            while (element.firstChild) {
+                parent.insertBefore(element.firstChild, element);
+            }
+            parent.removeChild(element);
+            parent.normalize();
+        }
+
+        function hideSelectionMenu(clearRange) {
+            vm.isShowContextMenu = false;
+            if (clearRange) {
+                savedAnnotationRange = null;
+                var selection = window.getSelection && window.getSelection();
+                if (selection && selection.removeAllRanges) {
+                    selection.removeAllRanges();
+                }
+            }
+        }
+
+        function updateSelectionState(range) {
+            var elements = annotationElementsInRange(range);
+            vm.selectionHasHighlight = elements.some(function (element) {
+                return $(element).hasClass('is-highlighted');
+            });
+            vm.selectionHasNote = elements.some(function (element) {
+                return $(element).hasClass('has-note');
+            });
+        }
+
+        $scope.showSelectionTools = function ($event) {
+            if (closestElement($event.target, '.dropdown-menu-highlight, .idp-annotation-note, .idp-display-settings')) {
+                return;
+            }
+
+            var selection = window.getSelection && window.getSelection();
+            if (!selection || selection.rangeCount === 0 || selection.isCollapsed || !selection.toString().trim()) {
+                hideSelectionMenu(false);
+                return;
+            }
+
+            var range = selection.getRangeAt(0);
+            if (!selectionBelongsToReadingTest(range)) {
+                hideSelectionMenu(false);
+                return;
+            }
+
+            savedAnnotationRange = range.cloneRange();
+            updateSelectionState(savedAnnotationRange);
+            vm.activeAnnotationNote = null;
+            vm.isAnnotationRemoveMenu = false;
+            clickedAnnotationMarker = null;
+
+            var rect = range.getBoundingClientRect();
+            var menuWidth = 146;
+            var left = Math.max(8, Math.min(rect.left + (rect.width / 2) - (menuWidth / 2), window.innerWidth - menuWidth - 8));
+            var top = rect.top - 58;
+            if (top < 8) {
+                top = rect.bottom + 10;
+            }
+            vm.selectionMenuStyle = {
+                left: left + 'px',
+                top: top + 'px'
+            };
+            vm.isShowContextMenu = true;
+        };
+
+        vm.openQuestionIfNotSelecting = function (question, questions, $event) {
+            if ($event && closestElement($event.target, '.ielts-annotation')) {
+                return;
+            }
+            var selection = window.getSelection && window.getSelection();
+            if (selection && !selection.isCollapsed && selection.toString().trim()) {
+                return;
+            }
+            vm.clickShowChildren(question, questions);
+        };
+
+        $scope.applySelectionHighlight = function () {
+            if (!savedAnnotationRange) {
+                return;
+            }
+            addAnnotationClass(savedAnnotationRange, 'is-highlighted');
+            hideSelectionMenu(true);
+        };
+
+        $scope.removeSelectionHighlight = function () {
+            if (!savedAnnotationRange) {
+                return;
+            }
+            angular.forEach(annotationElementsInRange(savedAnnotationRange), function (element) {
+                $(element).removeClass('is-highlighted surrounded-text');
+                element.style.backgroundColor = '';
+                unwrapIfEmptyAnnotation(element);
+            });
+            hideSelectionMenu(true);
+        };
+
+        function noteById(noteId) {
+            for (var i = 0; i < vm.annotationNotes.length; i++) {
+                if (vm.annotationNotes[i].id === noteId) {
+                    return vm.annotationNotes[i];
+                }
+            }
+            return null;
+        }
+
+        $scope.applySelectionNote = function () {
+            if (!savedAnnotationRange) {
+                return;
+            }
+
+            var existingElements = annotationElementsInRange(savedAnnotationRange);
+            var existingNoteId = null;
+            angular.forEach(existingElements, function (element) {
+                existingNoteId = existingNoteId || element.getAttribute('data-note-id');
+            });
+
+            var note = existingNoteId ? noteById(existingNoteId) : null;
+            if (!note) {
+                var noteId = 'note-' + Date.now() + '-' + (++annotationSequence);
+                note = {
+                    id: noteId,
+                    header: savedAnnotationRange.toString().trim(),
+                    specificNote: ''
+                };
+                vm.annotationNotes.push(note);
+            }
+
+            addAnnotationClass(savedAnnotationRange, 'has-note', note.id);
+            vm.activeAnnotationNote = note;
+            var noteLeft = Math.max(8, Math.min(parseInt(vm.selectionMenuStyle.left, 10), window.innerWidth - 292));
+            var noteTop = Math.max(8, Math.min(parseInt(vm.selectionMenuStyle.top, 10) + 82, window.innerHeight - 218));
+            vm.annotationNoteStyle = {
+                left: noteLeft + 'px',
+                top: noteTop + 'px'
+            };
+            hideSelectionMenu(true);
+        };
+
+        $scope.removeSelectionNote = function () {
+            if (!savedAnnotationRange) {
+                return;
+            }
+            var noteIds = [];
+            angular.forEach(annotationElementsInRange(savedAnnotationRange), function (element) {
+                var noteId = element.getAttribute('data-note-id');
+                if (noteId && noteIds.indexOf(noteId) === -1) {
+                    noteIds.push(noteId);
+                }
+            });
+
+            angular.forEach(noteIds, function (noteId) {
+                angular.forEach(document.querySelectorAll('.ielts-annotation[data-note-id="' + noteId + '"]'), function (element) {
+                    $(element).removeClass('has-note');
+                    element.removeAttribute('data-note-id');
+                    unwrapIfEmptyAnnotation(element);
+                });
+                vm.annotationNotes = vm.annotationNotes.filter(function (note) {
+                    return note.id !== noteId;
+                });
+                if (vm.activeAnnotationNote && vm.activeAnnotationNote.id === noteId) {
+                    vm.activeAnnotationNote = null;
+                }
+            });
+            hideSelectionMenu(true);
+        };
+
+        $scope.openAnnotationNote = function ($event) {
+            var marker = closestElement($event.target, '.ielts-annotation.has-note');
+            if (!marker || (window.getSelection && window.getSelection().toString().trim())) {
+                return;
+            }
+            var note = noteById(marker.getAttribute('data-note-id'));
+            if (!note) {
+                return;
+            }
+            var rect = marker.getBoundingClientRect();
+            vm.activeAnnotationNote = note;
+            vm.annotationNoteStyle = {
+                left: Math.max(8, Math.min(rect.left, window.innerWidth - 292)) + 'px',
+                top: Math.max(8, Math.min(rect.bottom + 8, window.innerHeight - 218)) + 'px'
+            };
+        };
+
+        $scope.closeAnnotationNote = function () {
+            vm.activeAnnotationNote = null;
+        };
+
+        $scope.handleReadingAnnotationClick = function ($event) {
+            if (closestElement($event.target, '.dropdown-menu-highlight, .idp-annotation-note, .idp-display-settings')) {
+                return;
+            }
+
+            var marker = closestElement($event.target, '.ielts-annotation');
+            var selection = window.getSelection && window.getSelection();
+            if (!marker || (selection && !selection.isCollapsed && selection.toString().trim())) {
+                return;
+            }
+
+            clickedAnnotationMarker = marker;
+            savedAnnotationRange = null;
+            vm.activeAnnotationNote = null;
+            vm.isAnnotationRemoveMenu = true;
+
+            var rect = marker.getBoundingClientRect();
+            var menuWidth = 86;
+            var left = Math.max(8, Math.min(rect.left + (rect.width / 2) - (menuWidth / 2), window.innerWidth - menuWidth - 8));
+            var top = rect.top - 51;
+            if (top < 8) {
+                top = rect.bottom + 8;
+            }
+            vm.selectionMenuStyle = {
+                left: left + 'px',
+                top: top + 'px'
+            };
+            vm.isShowContextMenu = true;
+        };
+
+        $scope.removeClickedAnnotation = function () {
+            if (!clickedAnnotationMarker) {
+                return;
+            }
+
+            var groupId = clickedAnnotationMarker.getAttribute('data-annotation-group');
+            var groupElements = groupId ?
+                Array.prototype.slice.call(document.querySelectorAll('.ielts-annotation[data-annotation-group="' + groupId + '"]')) :
+                [clickedAnnotationMarker];
+            var noteIds = [];
+
+            angular.forEach(groupElements, function (element) {
+                var noteId = element.getAttribute('data-note-id');
+                if (noteId && noteIds.indexOf(noteId) === -1) {
+                    noteIds.push(noteId);
+                }
+            });
+
+            angular.forEach(noteIds, function (noteId) {
+                angular.forEach(document.querySelectorAll('.ielts-annotation[data-note-id="' + noteId + '"]'), function (element) {
+                    $(element).removeClass('has-note');
+                    element.removeAttribute('data-note-id');
+                    unwrapIfEmptyAnnotation(element);
+                });
+                vm.annotationNotes = vm.annotationNotes.filter(function (note) {
+                    return note.id !== noteId;
+                });
+            });
+
+            /* Resolve the group again because removing a note may already have
+             * unwrapped note-only markers. */
+            if (groupId) {
+                groupElements = Array.prototype.slice.call(document.querySelectorAll('.ielts-annotation[data-annotation-group="' + groupId + '"]'));
+            }
+            angular.forEach(groupElements, function (element) {
+                $(element).removeClass('is-highlighted has-note');
+                element.removeAttribute('data-note-id');
+                unwrapIfEmptyAnnotation(element);
+            });
+
+            clickedAnnotationMarker = null;
+            vm.isAnnotationRemoveMenu = false;
+            vm.isShowContextMenu = false;
+        };
+
 
         vm.setReviewQuestion = function () {
 
@@ -2092,6 +2671,46 @@
             // return list.items.filter(function(item) { return item.selected; });
         };
 
+        function syncMatchingHeadingAnswered(lists) {
+            var entries = getReadingQuestionEntries();
+            var results = vm.testResult.questionAnswerTestResult;
+            angular.forEach(lists || [], function (list) {
+                var slot = list && list.items && list.items[0];
+                var question = slot && slot.question;
+                var droppedAnswer = slot && slot.objectFromListB;
+                var hasDroppedAnswer = droppedAnswer != null &&
+                    Object.getOwnPropertyNames(droppedAnswer).length > 0;
+
+                if (question) {
+                    question.answered = hasDroppedAnswer;
+                    // questionAnswer.question is a DTO copy, not the question
+                    // instance used by the bottom question palette.
+                    angular.forEach(entries, function (entry) {
+                        if ((question.id != null && entry.question.id == question.id) ||
+                            (question.ordinalNumber != null && entry.question.ordinalNumber == question.ordinalNumber)) {
+                            entry.question.answered = hasDroppedAnswer;
+                        }
+                    });
+
+                    // Keep one result per heading and remove it when cleared.
+                    // The number displayed in an empty slot is a placeholder,
+                    // not a student's answer.
+                    for (var i = results.length - 1; i >= 0; i--) {
+                        var result = results[i];
+                        var resultQuestion = result.questionAnswer && result.questionAnswer.question;
+                        if ((question.ordinalNumber != null && result.ordinalNumber == question.ordinalNumber) ||
+                            (question.id != null && resultQuestion && resultQuestion.id == question.id)) {
+                            results.splice(i, 1);
+                        }
+                    }
+                    if (hasDroppedAnswer) {
+                        results.push({questionAnswer: slot, ordinalNumber: question.ordinalNumber,
+                            clientAnswer: slot.clientAnswer});
+                    }
+                }
+            });
+        }
+
         /**
          * We set the list into dragging state, meaning the items that are being
          * dragged are hidden. We also use the HTML5 API directly to set a custom
@@ -2191,29 +2810,7 @@
 
             // console.log(list.items[0]);
 
-            for (var m = 0; m < vm.testResult.questionAnswerTestResult.length; m++){
-                for(var n = 0; n < $scope.listA.length; n++){
-                    if(vm.testResult.questionAnswerTestResult[m].questionAnswer.question.id == $scope.listA[n].items[0].question.id){
-                        vm.testResult.questionAnswerTestResult.splice(m,1);
-                    }
-                }
-            }
-
-            for(var n = 0; n < $scope.listA.length; n++){
-
-                var qat = {};
-                qat.questionAnswer = $scope.listA[n].items[0];
-                qat.ordinalNumber = $scope.listA[n].items[0].question.ordinalNumber;
-
-                qat.clientAnswer = $scope.listA[n].items[0].clientAnswer;
-
-                // questionAnswer.id = null;
-                vm.testResult.questionAnswerTestResult.push(qat);
-            }
-
-            // console.log(vm.testResult);
-
-
+            syncMatchingHeadingAnswered($scope.listA);
             return true;
         };
 
@@ -2244,6 +2841,7 @@
             // console.log('A');
             // console.log($scope.listA);
 
+            syncMatchingHeadingAnswered($scope.listA);
             return true;
         };
 
@@ -2327,29 +2925,7 @@
 
             // console.log(list.items[0]);
 
-            for (var m = 0; m < vm.testResult.questionAnswerTestResult.length; m++){
-                for(var n = 0; n < $scope.listA2.length; n++){
-                    if(vm.testResult.questionAnswerTestResult[m].questionAnswer.question.id == $scope.listA2[n].items[0].question.id){
-                        vm.testResult.questionAnswerTestResult.splice(m,1);
-                    }
-                }
-            }
-
-            for(var n = 0; n < $scope.listA2.length; n++){
-
-                var qat = {};
-                qat.questionAnswer = $scope.listA2[n].items[0];
-                qat.ordinalNumber = $scope.listA2[n].items[0].question.ordinalNumber;
-
-                qat.clientAnswer = $scope.listA2[n].items[0].clientAnswer;
-
-                // questionAnswer.id = null;
-                vm.testResult.questionAnswerTestResult.push(qat);
-            }
-
-            // console.log(vm.testResult);
-
-
+            syncMatchingHeadingAnswered($scope.listA2);
             return true;
         };
 
@@ -2374,6 +2950,7 @@
                 }
             }
 
+            syncMatchingHeadingAnswered($scope.listA2);
             return true;
         };
 
@@ -2456,29 +3033,7 @@
 
             // console.log(list.items[0]);
 
-            for (var m = 0; m < vm.testResult.questionAnswerTestResult.length; m++){
-                for(var n = 0; n < $scope.listA3.length; n++){
-                    if(vm.testResult.questionAnswerTestResult[m].questionAnswer.question.id == $scope.listA3[n].items[0].question.id){
-                        vm.testResult.questionAnswerTestResult.splice(m,1);
-                    }
-                }
-            }
-
-            for(var n = 0; n < $scope.listA3.length; n++){
-
-                var qat = {};
-                qat.questionAnswer = $scope.listA3[n].items[0];
-                qat.ordinalNumber = $scope.listA3[n].items[0].question.ordinalNumber;
-
-                qat.clientAnswer = $scope.listA3[n].items[0].clientAnswer;
-
-                // questionAnswer.id = null;
-                vm.testResult.questionAnswerTestResult.push(qat);
-            }
-
-            // console.log(vm.testResult);
-
-
+            syncMatchingHeadingAnswered($scope.listA3);
             return true;
         };
 
@@ -2503,6 +3058,7 @@
                 }
             }
 
+            syncMatchingHeadingAnswered($scope.listA3);
             return true;
         };
         

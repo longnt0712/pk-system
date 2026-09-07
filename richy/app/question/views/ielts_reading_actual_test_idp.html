@@ -6,53 +6,11 @@
     All Angular bindings and DOM ids intentionally match the legacy view so
     IELTSReadingActualTestController.js can be reused without modification.
 -->
-<div class="idp-reading-page">
+<div class="idp-reading-page"
+     ng-class="'idp-contrast-' + vm.displayContrast + ' idp-text-' + vm.readingTextSize"
+     ng-mouseup="showSelectionTools($event)"
+     ng-click="handleReadingAnnotationClick($event)">
 
-<div class="row margin-top-10 wrap-test idp-entry-screen" ng-show="vm.isHasTestTakerName === false">
-    <div class="col-md-3"></div>
-    <div class="col-md-6 start-test-form text-center">
-        <div class="idp-entry-brand">
-            <span class="idp-entry-brand-mark">IELTS</span>
-            <span class="idp-entry-brand-copy">Academic Reading</span>
-        </div>
-        <h1 class="idp-entry-title">Candidate details</h1>
-        <p class="idp-entry-subtitle">Enter your name, check the display settings and continue when you are ready.</p>
-
-        <div class="row idp-entry-field-row">
-            <div class="col-md-2 margin-bottom-10">
-                <i class="fa fa-user text-blue" aria-hidden="true"></i>
-            </div>
-            <div class="col-md-7 margin-bottom-10">
-                <input id="test-taker-name" ng-model="vm.testResult.testTakerName" type="text" style="width: 100%; text-align: center" class="" placeholder="Enter candidate name">
-            </div>
-            <div class="col-md-3 margin-bottom-10">
-                <button type="button" ng-click="vm.submitTestTakerName()" class="idp-entry-continue-btn">
-                    Continue <i class="fa fa-arrow-right"></i>
-                </button>
-            </div>
-        </div>
-        <div class="row idp-entry-option-row">
-            <div class="col-md-12 margin-bottom-10">
-                <div class="form-check">
-                    <strong class="form-check-label" for="defaultCheck1">
-                        <i class="fa fa-headphones"></i> Show audio controls when available
-                    </strong>
-                    <input class="form-check-input" type="checkbox" ng-model="vm.showAudioListening" id="defaultCheck1" style="height:15px; width:15px;padding-bottom:5px;">
-                </div>
-            </div>
-        </div>
-        <div class="row idp-entry-option-row">
-            <div class="col-md-2">
-                <i class="fa fa-cog text-yellow"></i>
-            </div>
-            <div class="col-md-7 ">
-                <input id="change-length" ng-model="vm.length" ng-change="vm.changeLength()" type="text" style="text-align: center" class="" placeholder="Reading panel height">
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3"></div>
-
-</div>
 <div class="row margin-top-10 wrap-test text-center idp-start-screen" ng-show="vm.isHasTestTakerName === true && vm.isStartTest === false">
     <h1 class="start-test-button" ng-show="vm.isHasTestTakerName === true" style="cursor: pointer" ng-click="vm.startTest()">
         <span class="idp-start-icon"><i class="fa fa-play"></i></span>
@@ -81,7 +39,12 @@
             <button type="button" class="idp-tool-icon" title="Notifications" aria-label="Notifications">
                 <i class="fa fa-bell-o"></i>
             </button>
-            <button type="button" class="idp-tool-icon" title="Menu" aria-label="Menu">
+            <button type="button"
+                    class="idp-tool-icon idp-display-settings-trigger"
+                    title="Display settings"
+                    aria-label="Display settings"
+                    ng-click="vm.openDisplaySettings(); $event.stopPropagation()"
+                    ng-attr-aria-expanded="{{vm.showDisplaySettings}}">
                 <i class="fa fa-bars"></i>
             </button>
             <button type="button" class="idp-tool-icon" title="Highlight and notes" aria-label="Highlight and notes">
@@ -163,7 +126,27 @@
                     </div>
                 </div>
 
-                <div class="portlet bg-white bordered idp-workspace">
+                <div class="portlet bg-white bordered idp-workspace" ng-show="vm.passageNumber == 1">
+                <nav class="idp-question-stepper"
+                     ng-hide="vm.passageNumber == 4"
+                     aria-label="Question navigation">
+                    <button type="button"
+                            class="idp-question-step-button is-back"
+                            ng-click="vm.navigateReadingQuestion(-1)"
+                            ng-disabled="!vm.canNavigateReadingQuestion(-1)"
+                            aria-label="Previous question"
+                            title="Previous question">
+                        <i class="fa fa-arrow-left" aria-hidden="true"></i>
+                    </button>
+                    <button type="button"
+                            class="idp-question-step-button is-next"
+                            ng-click="vm.navigateReadingQuestion(1)"
+                            ng-disabled="!vm.canNavigateReadingQuestion(1)"
+                            aria-label="Next question"
+                            title="Next question">
+                        <i class="fa fa-arrow-right" aria-hidden="true"></i>
+                    </button>
+                </nav>
                     <div class="portlet-body">
                         <div ng-show="vm.passageNumber == 1" class="row idp-split-row" >
 
@@ -183,7 +166,7 @@
                                         <textarea type="text" ng-model="note.specificNote" data-ng-change="vm.testNoteChange()" class="specific-note-highlight" />
 
                                     </div>
-                                    <div ng-mousedown="closeNotes1()" id="passage-text-1" data-ng-change="vm.questionChange()" data-ng-model="vm.ieltsReadingActualTest.subQuestions[0].question" ng-right-click="showContextMenu()" context="context1" class="col-md-12  passage-text" compile="vm.ieltsReadingActualTest.subQuestions[0].question">
+                                    <div ng-mousedown="closeNotes1()" id="passage-text-1" data-ng-change="vm.questionChange()" data-ng-model="vm.ieltsReadingActualTest.subQuestions[0].question" class="col-md-12 passage-text" compile="vm.ieltsReadingActualTest.subQuestions[0].question">
 
                                     </div>
                                 </div>
@@ -197,7 +180,7 @@
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-style="{'width': vm.ieltsReadingActualTest.subQuestions[0].type === 6 ? '100%' : (100 - vm.readingPanePercent) + '%'}" class="col-md-6 question-content idp-question-pane" ng-mousedown="closeNotes1()" id="passage-question-text-1" ng-right-click="showContextMenu()" context="context1">
+                            <div ng-style="{'width': vm.ieltsReadingActualTest.subQuestions[0].type === 6 ? '100%' : (100 - vm.readingPanePercent) + '%'}" class="col-md-6 question-content idp-question-pane" ng-mousedown="closeNotes1()" id="passage-question-text-1">
                                 <!--<span style="" my-draggable>Drag Me</span>-->
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
@@ -324,11 +307,11 @@
 
                                     <div class="col-md-12 idp-single-choice-question" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 1">
                                         <div class="row idp-single-choice-heading">
-                                            <button id="question-number-{{q.ordinalNumber}}" ng-click="vm.clickShowChildren(q,item.subQuestions);" ng-class="{'is-current': q.showChildren == true}" class="text-left actual-test-font-global idp-single-choice-title">
-                                                <span   class=" multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                            <div id="question-number-{{q.ordinalNumber}}" ng-click="vm.openQuestionIfNotSelecting(q,item.subQuestions,$event);" ng-class="{'is-current': q.showChildren == true}" class="text-left actual-test-font-global idp-single-choice-title">
+                                                <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}</strong>
                                                     <span compile="q.question"></span>
                                                 </span>
-                                            </button>
+                                            </div>
                                         </div>
 
                                         <div class="col-md-12 idp-single-choice-answer" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
@@ -406,8 +389,8 @@
                                     <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 5">
                                         <div class="row" style="" >
 
-                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == false && $index == 0" ng-click="vm.clickShowChildren(q,item.subQuestions);" class="text-left button-question-not-click actual-test-font-global"><span class="bold" compile=""> </span>{{q.question}}</button>
-                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global"> {{q.question}}</button>
+                                            <div id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == false && $index == 0" ng-click="vm.openQuestionIfNotSelecting(q,item.subQuestions,$event);" class="text-left button-question-not-click actual-test-font-global idp-selectable-question-text"><span class="bold" compile=""> </span>{{q.question}}</div>
+                                            <div id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global idp-selectable-question-text">{{q.question}}</div>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                             <div class="row" ng-if="$index == vm.type5Index">
                                                 <div style="padding-left: 25px" ng-show="q.showChildren == true" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
@@ -495,7 +478,27 @@
 
                 </div>
 
-                <div class="portlet bg-white bordered idp-workspace">
+                <div class="portlet bg-white bordered idp-workspace" ng-show="vm.passageNumber == 2">
+                <nav class="idp-question-stepper"
+                     ng-hide="vm.passageNumber == 4"
+                     aria-label="Question navigation">
+                    <button type="button"
+                            class="idp-question-step-button is-back"
+                            ng-click="vm.navigateReadingQuestion(-1)"
+                            ng-disabled="!vm.canNavigateReadingQuestion(-1)"
+                            aria-label="Previous question"
+                            title="Previous question">
+                        <i class="fa fa-arrow-left" aria-hidden="true"></i>
+                    </button>
+                    <button type="button"
+                            class="idp-question-step-button is-next"
+                            ng-click="vm.navigateReadingQuestion(1)"
+                            ng-disabled="!vm.canNavigateReadingQuestion(1)"
+                            aria-label="Next question"
+                            title="Next question">
+                        <i class="fa fa-arrow-right" aria-hidden="true"></i>
+                    </button>
+                </nav>
                     <div class="portlet-body">
                         <div ng-show="vm.passageNumber == 2" class="row idp-split-row" >
                             <div class="col-md-6 idp-reading-pane"
@@ -511,7 +514,7 @@
                                         <textarea type="text" ng-model="note.specificNote" data-ng-change="vm.testNoteChange()" class="specific-note-highlight" />
 
                                     </div>
-                                    <div ng-mousedown="closeNotes2()" id="passage-text-2" ng-right-click="showContextMenu()" context="context1" class="col-md-12  passage-text" compile="vm.ieltsReadingActualTest.subQuestions[1].question">
+                                    <div ng-mousedown="closeNotes2()" id="passage-text-2" class="col-md-12 passage-text" compile="vm.ieltsReadingActualTest.subQuestions[1].question">
 
                                     </div>
                                 </div>
@@ -525,7 +528,7 @@
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-style="{'width': vm.ieltsReadingActualTest.subQuestions[1].type === 6 ? '100%' : (100 - vm.readingPanePercent) + '%'}" class="col-md-6 question-content idp-question-pane" id="passage-question-text-2"  ng-right-click="showContextMenu()" context="context1">
+                            <div ng-style="{'width': vm.ieltsReadingActualTest.subQuestions[1].type === 6 ? '100%' : (100 - vm.readingPanePercent) + '%'}" class="col-md-6 question-content idp-question-pane" id="passage-question-text-2">
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[1].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-2" class="row" >
@@ -649,11 +652,11 @@
 
                                     <div class="col-md-12 idp-single-choice-question" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 1">
                                         <div class="row idp-single-choice-heading">
-                                            <button id="question-number-{{q.ordinalNumber}}" ng-click="vm.clickShowChildren(q,item.subQuestions);" ng-class="{'is-current': q.showChildren == true}" class="text-left actual-test-font-global idp-single-choice-title">
-                                                <span class=" multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                            <div id="question-number-{{q.ordinalNumber}}" ng-click="vm.openQuestionIfNotSelecting(q,item.subQuestions,$event);" ng-class="{'is-current': q.showChildren == true}" class="text-left actual-test-font-global idp-single-choice-title">
+                                                <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}</strong>
                                                     <span compile="q.question"></span>
                                                 </span>
-                                            </button>
+                                            </div>
                                         </div>
 
                                         <div class="col-md-12 idp-single-choice-answer" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
@@ -714,8 +717,8 @@
 
                                     <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 5">
                                         <div class="row" style="" >
-                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == false && $index == 0" ng-click="vm.clickShowChildren(q,item.subQuestions);" class="text-left button-question-not-click actual-test-font-global"><span class="" style="color: white" compile="q.question"> </span></button>
-                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global"><span class="" compile="q.question"> </span></button>
+                                            <div id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == false && $index == 0" ng-click="vm.openQuestionIfNotSelecting(q,item.subQuestions,$event);" class="text-left button-question-not-click actual-test-font-global idp-selectable-question-text"><span compile="q.question"> </span></div>
+                                            <div id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global idp-selectable-question-text"><span compile="q.question"> </span></div>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                             <div class="row" ng-if="$index == vm.type5Index">
                                                 <div style="padding-left: 25px" ng-show="q.showChildren == true" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
@@ -803,7 +806,27 @@
 
                 </div>
 
-                <div class="portlet bg-white bordered idp-workspace">
+                <div class="portlet bg-white bordered idp-workspace" ng-show="vm.passageNumber == 3">
+                <nav class="idp-question-stepper"
+                     ng-hide="vm.passageNumber == 4"
+                     aria-label="Question navigation">
+                    <button type="button"
+                            class="idp-question-step-button is-back"
+                            ng-click="vm.navigateReadingQuestion(-1)"
+                            ng-disabled="!vm.canNavigateReadingQuestion(-1)"
+                            aria-label="Previous question"
+                            title="Previous question">
+                        <i class="fa fa-arrow-left" aria-hidden="true"></i>
+                    </button>
+                    <button type="button"
+                            class="idp-question-step-button is-next"
+                            ng-click="vm.navigateReadingQuestion(1)"
+                            ng-disabled="!vm.canNavigateReadingQuestion(1)"
+                            aria-label="Next question"
+                            title="Next question">
+                        <i class="fa fa-arrow-right" aria-hidden="true"></i>
+                    </button>
+                </nav>
                     <div class="portlet-body">
                         <div ng-show="vm.passageNumber == 3" class="row idp-split-row" >
 
@@ -820,7 +843,7 @@
                                         <textarea type="text" ng-model="note.specificNote" data-ng-change="vm.testNoteChange()" class="specific-note-highlight" />
 
                                     </div>
-                                    <div ng-mousedown="closeNotes3()" id="passage-text-3" ng-right-click="showContextMenu()" context="context1" class="col-md-12  passage-text" compile="vm.ieltsReadingActualTest.subQuestions[2].question">
+                                    <div ng-mousedown="closeNotes3()" id="passage-text-3" class="col-md-12 passage-text" compile="vm.ieltsReadingActualTest.subQuestions[2].question">
 
                                     </div>
                                 </div>
@@ -834,7 +857,7 @@
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-style="{'width': vm.ieltsReadingActualTest.subQuestions[2].type === 6 ? '100%' : (100 - vm.readingPanePercent) + '%'}" class="col-md-6 question-content idp-question-pane" id="passage-question-text-3" ng-right-click="showContextMenu()" context="context1">
+                            <div ng-style="{'width': vm.ieltsReadingActualTest.subQuestions[2].type === 6 ? '100%' : (100 - vm.readingPanePercent) + '%'}" class="col-md-6 question-content idp-question-pane" id="passage-question-text-3">
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[2].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-3" class="row">
@@ -956,11 +979,11 @@
                                     </div>
                                     <div class="col-md-12 idp-single-choice-question" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 1">
                                         <div class="row idp-single-choice-heading">
-                                            <button id="question-number-{{q.ordinalNumber}}" ng-click="vm.clickShowChildren(q,item.subQuestions);" ng-class="{'is-current': q.showChildren == true}" class="text-left actual-test-font-global idp-single-choice-title">
-                                                <span class=" multiple-choice-question-text"><strong>{{q.ordinalNumber}}. &nbsp;</strong>
+                                            <div id="question-number-{{q.ordinalNumber}}" ng-click="vm.openQuestionIfNotSelecting(q,item.subQuestions,$event);" ng-class="{'is-current': q.showChildren == true}" class="text-left actual-test-font-global idp-single-choice-title">
+                                                <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}</strong>
                                                     <span compile="q.question"></span>
                                                 </span>
-                                            </button>
+                                            </div>
                                         </div>
 
                                         <div class="col-md-12 idp-single-choice-answer" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
@@ -1038,8 +1061,8 @@
 
                                     <div class="col-md-12" style="margin-bottom: 20px" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 5">
                                         <div class="row" style="" >
-                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == false && $index == 0" ng-click="vm.clickShowChildren(q,item.subQuestions);" class="text-left button-question-not-click actual-test-font-global"><span class="bold"> </span>{{q.question}}</button>
-                                            <button id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global">{{q.question}}</button>
+                                            <div id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == false && $index == 0" ng-click="vm.openQuestionIfNotSelecting(q,item.subQuestions,$event);" class="text-left button-question-not-click actual-test-font-global idp-selectable-question-text"><span class="bold"> </span>{{q.question}}</div>
+                                            <div id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global idp-selectable-question-text">{{q.question}}</div>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                             <div class="row" ng-if="$index == vm.type5Index">
                                                 <div style="padding-left: 25px" ng-show="q.showChildren == true" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
@@ -1141,6 +1164,7 @@
 
 
 
+
                 <div ng-hide="vm.passageNumber == 4" class="portlet bg-white bordered list-question-bottom idp-question-nav">
                     <div class="portlet-body idp-question-nav-inner">
                         <div class="idp-part-switcher">
@@ -1166,7 +1190,7 @@
                                                     'is-answered': q.answered == true,
                                                     'needs-review': q.needReview == true
                                                 }"
-                                                ng-click="$event.stopPropagation();vm.clickShowChildren(q,package.subQuestions);vm.autoScrollToView(q.ordinalNumber);vm.changePassage(item.subQuestions);vm.autoFocusOnText(q.ordinalNumber)">
+                                                ng-click="$event.stopPropagation();vm.openReadingQuestion(q,package.subQuestions,item.subQuestions)">
                                             {{q.ordinalNumber}}
                                         </button>
                                     </span>
@@ -1271,12 +1295,136 @@
 
 
 
-<div ng-show="vm.isShowContextMenu == true" id="context1" class="dropdown-menu-highlight" role='menu'>
-    <div class="context-menu-highlight" ng-mousedown="highlightText()"><i class="fa fa-pencil"></i>&nbsp; Highlight</div>
-    <div ng-show="vm.passageNumber == 1" class="context-menu-highlight" ng-mousedown="createNotes1()"><i class="fa fa-note-sticky" aria-hidden="true"></i>&nbsp; Notes</div>
-    <div ng-show="vm.passageNumber == 2" class="context-menu-highlight" ng-mousedown="createNotes2()"><i class="fa fa-note-sticky" aria-hidden="true"></i>&nbsp; Notes</div>
-    <div ng-show="vm.passageNumber == 3" class="context-menu-highlight" ng-mousedown="createNotes3()"><i class="fa fa-note-sticky" aria-hidden="true"></i>&nbsp; Notes</div>
-    <div class="context-menu-highlight" ng-mousedown="clearHighlightText()"><i class="fa fa-times"></i>&nbsp; Clear </div>
+<div ng-show="vm.isShowContextMenu == true"
+     ng-class="{'is-remove-menu': vm.isAnnotationRemoveMenu}"
+     ng-style="vm.selectionMenuStyle"
+     ng-mousedown="$event.preventDefault(); $event.stopPropagation()"
+     ng-mouseup="$event.stopPropagation()"
+     id="context1"
+     class="dropdown-menu-highlight idp-selection-menu"
+     role="menu"
+     aria-label="Text tools">
+    <button type="button" class="context-menu-highlight" ng-mousedown="applySelectionNote()" ng-hide="vm.isAnnotationRemoveMenu">
+        <i class="fa fa-sticky-note-o" aria-hidden="true"></i>
+        <span>Take note</span>
+    </button>
+    <button type="button" class="context-menu-highlight" ng-mousedown="applySelectionHighlight()" ng-hide="vm.isAnnotationRemoveMenu">
+        <i class="fa fa-paint-brush" aria-hidden="true"></i>
+        <span>Highlight</span>
+    </button>
+    <button type="button" class="context-menu-highlight is-remove idp-remove-annotation-action" ng-mousedown="removeClickedAnnotation()" ng-show="vm.isAnnotationRemoveMenu">
+        <i class="fa fa-times" aria-hidden="true"></i>
+        <span>Remove</span>
+    </button>
+</div>
+
+<section class="idp-annotation-note"
+         ng-if="vm.activeAnnotationNote"
+         ng-style="vm.annotationNoteStyle"
+         ng-mousedown="$event.stopPropagation()"
+         ng-mouseup="$event.stopPropagation()"
+         ng-click="$event.stopPropagation()"
+         aria-label="Reading note">
+    <header>
+        <strong>Note</strong>
+        <button type="button" ng-click="closeAnnotationNote()" aria-label="Close note">
+            <i class="fa fa-times" aria-hidden="true"></i>
+        </button>
+    </header>
+    <p>{{vm.activeAnnotationNote.header}}</p>
+    <textarea ng-model="vm.activeAnnotationNote.specificNote"
+              placeholder="Write your note here..."
+              aria-label="Note content"></textarea>
+</section>
+
+<div class="idp-display-settings-backdrop"
+     ng-if="vm.showDisplaySettings"
+     ng-click="vm.closeDisplaySettings()"
+     role="presentation">
+    <section class="idp-display-settings"
+             ng-click="$event.stopPropagation()"
+             ng-mousedown="$event.stopPropagation()"
+             ng-mouseup="$event.stopPropagation()"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="idp-display-settings-title">
+        <header class="idp-display-settings-header">
+            <h2 id="idp-display-settings-title">Display settings</h2>
+            <button type="button" ng-click="vm.closeDisplaySettings()" aria-label="Close display settings">
+                <i class="fa fa-times" aria-hidden="true"></i>
+            </button>
+        </header>
+
+        <div class="idp-display-settings-body">
+            <h3>Contrast</h3>
+            <div class="idp-setting-options" role="radiogroup" aria-label="Contrast">
+                <button type="button"
+                        class="idp-setting-option"
+                        ng-class="{'is-selected': vm.displayContrast === 'black-white'}"
+                        ng-click="vm.setDisplayContrast('black-white')"
+                        role="radio"
+                        ng-attr-aria-checked="{{vm.displayContrast === 'black-white'}}">
+                    <i class="fa fa-check idp-setting-check" aria-hidden="true"></i>
+                    <span>Black on white</span>
+                    <span class="idp-contrast-preview is-black-white" aria-hidden="true"><i></i><i></i><i></i></span>
+                </button>
+                <button type="button"
+                        class="idp-setting-option"
+                        ng-class="{'is-selected': vm.displayContrast === 'white-black'}"
+                        ng-click="vm.setDisplayContrast('white-black')"
+                        role="radio"
+                        ng-attr-aria-checked="{{vm.displayContrast === 'white-black'}}">
+                    <i class="fa fa-check idp-setting-check" aria-hidden="true"></i>
+                    <span>White on black</span>
+                    <span class="idp-contrast-preview is-white-black" aria-hidden="true"><i></i><i></i><i></i></span>
+                </button>
+                <button type="button"
+                        class="idp-setting-option"
+                        ng-class="{'is-selected': vm.displayContrast === 'yellow-black'}"
+                        ng-click="vm.setDisplayContrast('yellow-black')"
+                        role="radio"
+                        ng-attr-aria-checked="{{vm.displayContrast === 'yellow-black'}}">
+                    <i class="fa fa-check idp-setting-check" aria-hidden="true"></i>
+                    <span>Yellow on black</span>
+                    <span class="idp-contrast-preview is-yellow-black" aria-hidden="true"><i></i><i></i><i></i></span>
+                </button>
+            </div>
+
+            <h3>Text size</h3>
+            <div class="idp-setting-options" role="radiogroup" aria-label="Text size">
+                <button type="button"
+                        class="idp-setting-option"
+                        ng-class="{'is-selected': vm.readingTextSize === 'regular'}"
+                        ng-click="vm.setReadingTextSize('regular')"
+                        role="radio"
+                        ng-attr-aria-checked="{{vm.readingTextSize === 'regular'}}">
+                    <i class="fa fa-check idp-setting-check" aria-hidden="true"></i>
+                    <span>Regular</span>
+                    <span class="idp-text-size-preview is-regular" aria-hidden="true">Aa</span>
+                </button>
+                <button type="button"
+                        class="idp-setting-option"
+                        ng-class="{'is-selected': vm.readingTextSize === 'large'}"
+                        ng-click="vm.setReadingTextSize('large')"
+                        role="radio"
+                        ng-attr-aria-checked="{{vm.readingTextSize === 'large'}}">
+                    <i class="fa fa-check idp-setting-check" aria-hidden="true"></i>
+                    <span>Large</span>
+                    <span class="idp-text-size-preview is-large" aria-hidden="true">Aa</span>
+                </button>
+                <button type="button"
+                        class="idp-setting-option"
+                        ng-class="{'is-selected': vm.readingTextSize === 'extra-large'}"
+                        ng-click="vm.setReadingTextSize('extra-large')"
+                        role="radio"
+                        ng-attr-aria-checked="{{vm.readingTextSize === 'extra-large'}}">
+                    <i class="fa fa-check idp-setting-check" aria-hidden="true"></i>
+                    <span>Extra large</span>
+                    <span class="idp-text-size-preview is-extra-large" aria-hidden="true">Aa</span>
+                </button>
+            </div>
+        </div>
+    </section>
 </div>
 
 </div><!-- /.idp-reading-page -->
@@ -1993,6 +2141,96 @@
         box-sizing: border-box;
     }
 
+    /* Full-screen exam mode: the document stays still; only both exam panes scroll. */
+    body.ielts-reading-test-running {
+        height: 100vh !important;
+        overflow: hidden !important;
+    }
+
+    body.ielts-reading-test-running .page-wrapper-top,
+    body.ielts-reading-test-running .page-head,
+    body.ielts-reading-test-running .page-wrapper-bottom,
+    body.ielts-reading-test-running .student-desk-footer,
+    body.ielts-reading-test-running .student-scroll-top {
+        display: none !important;
+    }
+
+    body.ielts-reading-test-running .page-wrapper,
+    body.ielts-reading-test-running .page-wrapper-row.full-height,
+    body.ielts-reading-test-running .page-wrapper-middle,
+    body.ielts-reading-test-running .page-container,
+    body.ielts-reading-test-running .page-content,
+    body.ielts-reading-test-running .page-content > .container,
+    body.ielts-reading-test-running .page-content > .container > .fade-in-up {
+        width: 100% !important;
+        height: 100vh !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    body.ielts-reading-test-running .idp-reading-page,
+    body.ielts-reading-test-running .idp-reading-test-shell {
+        height: 100vh !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    body.ielts-reading-test-running .idp-reading-test-shell {
+        display: flex;
+        flex-direction: column;
+    }
+
+    body.ielts-reading-test-running .idp-reading-test-shell > .row {
+        display: flex;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    body.ielts-reading-test-running .idp-exam-stage,
+    body.ielts-reading-test-running .idp-main-test {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    body.ielts-reading-test-running .idp-instruction-bar,
+    body.ielts-reading-test-running .idp-question-nav {
+        flex: 0 0 auto;
+    }
+
+    body.ielts-reading-test-running .idp-workspace {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    body.ielts-reading-test-running .idp-workspace > .portlet-body,
+    body.ielts-reading-test-running .idp-workspace > .portlet-body > .idp-split-row {
+        height: 100%;
+        min-height: 0;
+    }
+
+    body.ielts-reading-test-running .idp-reading-pane > .row {
+        height: 100%;
+        min-height: 0;
+        margin: 0;
+        overflow: hidden;
+    }
+
+    body.ielts-reading-test-running .idp-reading-page .passage-text,
+    body.ielts-reading-test-running .idp-reading-page .question-content {
+        height: 100% !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+    }
+
     .idp-reading-page h1,
     .idp-reading-page h2,
     .idp-reading-page h3,
@@ -2340,6 +2578,18 @@
         cursor: default;
     }
 
+    .idp-display-settings-trigger {
+        cursor: pointer;
+    }
+
+    .idp-display-settings-trigger:hover,
+    .idp-display-settings-trigger:focus {
+        border-radius: 3px;
+        background: #eceef0;
+        outline: 2px solid #2f82bf;
+        outline-offset: 1px;
+    }
+
     .idp-top-finish {
         min-height: 34px;
         padding: 7px 13px;
@@ -2540,6 +2790,7 @@
 
     /* Two independently scrollable panes */
     .idp-workspace {
+        position: relative;
         overflow: hidden;
         margin: 10px 0 0 !important;
         border: 1px solid #cfd0d3 !important;
@@ -2593,11 +2844,42 @@
             transition: width .12s ease, left .12s ease, background .12s ease;
         }
 
+        .idp-split-divider::after {
+            content: "\2194";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border: 2px solid #7f8388;
+            border-radius: 50%;
+            color: #33373c;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+            font-family: Arial, Helvetica, sans-serif !important;
+            font-size: 24px !important;
+            font-weight: 700;
+            line-height: 1;
+            transform: translate(-50%, -50%);
+            transition: color .12s ease, border-color .12s ease, background .12s ease, transform .12s ease;
+        }
+
         .idp-split-divider:hover::before,
         body.idp-is-resizing .idp-split-divider::before {
             left: 5px;
             width: 4px;
             background: #2f82bf;
+        }
+
+        .idp-split-divider:hover::after,
+        body.idp-is-resizing .idp-split-divider::after {
+            border-color: #2f82bf;
+            color: #ffffff;
+            background: #2f82bf;
+            transform: translate(-50%, -50%) scale(1.08);
         }
 
         body.idp-is-resizing,
@@ -2811,6 +3093,50 @@
         border-radius: 2px !important;
         background: #ffffff;
         box-shadow: 0 -3px 10px rgba(20, 21, 24, .08) !important;
+    }
+
+    .idp-question-stepper {
+        position: absolute;
+        right: 20px;
+        bottom: 24px;
+        z-index: 67;
+        display: flex;
+        gap: 4px;
+    }
+
+    .idp-question-step-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 68px;
+        height: 70px;
+        padding: 0;
+        border: 0;
+        border-radius: 3px;
+        color: #ffffff;
+        background: #090909;
+        font-size: 34px !important;
+        cursor: pointer;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, .12);
+    }
+
+    .idp-question-step-button.is-back {
+        background: #555555;
+    }
+
+    .idp-question-step-button:hover:not(:disabled),
+    .idp-question-step-button:focus:not(:disabled) {
+        color: #ffffff;
+        outline: 3px solid #2f82bf;
+        outline-offset: 2px;
+    }
+
+    .idp-question-step-button:disabled {
+        color: #d6d6d6;
+        background: #a5a5a5;
+        cursor: not-allowed;
+        opacity: .65;
+        box-shadow: none;
     }
 
     .idp-question-nav > .portlet-body {
@@ -3081,6 +3407,9 @@
 
     .idp-part-question-button {
         position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         width: 23px;
         height: 29px;
         padding: 0;
@@ -3090,7 +3419,7 @@
         background: transparent;
         font-family: Arial, Helvetica, sans-serif;
         font-size: 13px;
-        line-height: 27px;
+        line-height: 1;
         text-align: center;
         cursor: pointer;
     }
@@ -3115,7 +3444,7 @@
 
     .idp-part-question-button.is-current {
         border: 2px solid #2f82bf;
-        line-height: 25px;
+        line-height: 1;
     }
 
     .idp-part-question-button.needs-review {
@@ -3178,15 +3507,44 @@
         box-shadow: inset 0 0 0 2px #2f82bf;
     }
 
-    /* Highlight and notes retain legacy behavior, with exam styling */
+    /* Reliable selection annotations: highlight and note are independent. */
     .idp-reading-page .surrounded-text,
     .idp-reading-page .surrounded-text-have-note {
-        color: #202124 !important;
-        background: #ffe76b !important;
+        color: #ffffff !important;
+        background: #8b4338 !important;
     }
 
     .idp-reading-page .surrounded-text-to-clear {
         background: transparent !important;
+    }
+
+    .idp-reading-page .ielts-annotation {
+        border-radius: 1px;
+        cursor: pointer;
+        -webkit-box-decoration-break: clone;
+        box-decoration-break: clone;
+    }
+
+    .idp-reading-page .ielts-annotation.is-highlighted {
+        color: #ffffff !important;
+        background: #8b4338 !important;
+    }
+
+    .idp-reading-page .ielts-annotation.has-note {
+        color: #ffffff !important;
+        background: #1769c2 !important;
+        cursor: pointer;
+    }
+
+    .idp-reading-page .ielts-annotation.is-highlighted.has-note {
+        color: #ffffff !important;
+        background: #8b4338 !important;
+        box-shadow: inset 0 -3px 0 #2f8ee5;
+    }
+
+    .idp-reading-page .ielts-annotation.is-highlighted *,
+    .idp-reading-page .ielts-annotation.has-note * {
+        color: inherit !important;
     }
 
     .idp-reading-page .notes-highlight {
@@ -3212,32 +3570,182 @@
     }
 
     .idp-reading-page .dropdown-menu-highlight {
-        width: 180px !important;
+        position: fixed !important;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 146px !important;
         height: auto !important;
-        overflow: hidden;
+        overflow: visible;
         border: 1px solid #b8babf;
-        border-radius: 2px;
+        border-radius: 3px;
         background: #ffffff;
         box-shadow: 0 8px 22px rgba(25, 26, 29, .23);
-        z-index: 160;
+        z-index: 10020;
+    }
+
+    .idp-reading-page .dropdown-menu-highlight.is-remove-menu {
+        grid-template-columns: 1fr;
+        width: 86px !important;
+    }
+
+    .idp-reading-page .dropdown-menu-highlight::after {
+        position: absolute;
+        left: calc(50% - 5px);
+        bottom: -6px;
+        width: 10px;
+        height: 10px;
+        border-right: 1px solid #b8babf;
+        border-bottom: 1px solid #b8babf;
+        background: #ffffff;
+        content: '';
+        transform: rotate(45deg);
     }
 
     .idp-reading-page .context-menu-highlight {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
         width: 100%;
-        padding: 9px 12px;
-        border-bottom: 1px solid #e3e3e1;
+        padding: 5px 4px;
+        border: 0;
+        border-right: 1px solid #e3e3e1;
         border-radius: 0;
         color: #2a2c30;
-        font-size: 13px;
+        background: #ffffff;
+        font-size: 11px;
         font-weight: 500;
+        line-height: 1.25;
     }
 
+    .idp-reading-page .context-menu-highlight:nth-child(even),
     .idp-reading-page .context-menu-highlight:last-child {
-        border-bottom: 0;
+        border-right: 0;
+    }
+
+    .idp-reading-page .context-menu-highlight i {
+        margin-bottom: 2px;
+        color: #5d6065;
+        font-size: 14px;
     }
 
     .idp-reading-page .context-menu-highlight:hover {
-        background: #fff3b7;
+        background: #f1f4f7;
+    }
+
+    .idp-reading-page .context-menu-highlight.is-remove:hover {
+        color: #8d2f28;
+        background: #fff1ef;
+    }
+
+    .idp-reading-page .idp-remove-annotation-action {
+        flex-direction: row;
+        gap: 5px;
+        min-height: 38px;
+        border-right: 0;
+    }
+
+    .idp-reading-page .idp-remove-annotation-action i {
+        margin: 0;
+    }
+
+    .idp-reading-page .idp-annotation-note {
+        position: fixed;
+        z-index: 10021;
+        width: 284px;
+        overflow: hidden;
+        border: 1px solid #276fb5;
+        border-radius: 4px;
+        background: #eef6ff;
+        box-shadow: 0 12px 28px rgba(19, 58, 99, .28);
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .idp-reading-page .idp-annotation-note header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 36px;
+        padding: 6px 10px;
+        color: #ffffff;
+        background: #1769c2;
+    }
+
+    .idp-reading-page .idp-annotation-note header button {
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        border: 0;
+        color: #ffffff;
+        background: transparent;
+    }
+
+    .idp-reading-page .idp-annotation-note p {
+        max-height: 48px;
+        margin: 0;
+        padding: 9px 10px 5px;
+        overflow: hidden;
+        color: #31506f;
+        font-size: 12px !important;
+        line-height: 1.35 !important;
+        text-overflow: ellipsis;
+    }
+
+    .idp-reading-page .idp-annotation-note textarea {
+        display: block;
+        width: calc(100% - 20px);
+        min-height: 92px;
+        margin: 5px 10px 10px;
+        padding: 8px;
+        resize: vertical;
+        border: 1px solid #9bbddd;
+        border-radius: 2px;
+        color: #1f2c38;
+        background: #ffffff;
+        outline: 0;
+    }
+
+    .idp-reading-page .idp-annotation-note textarea:focus {
+        border-color: #1769c2;
+        box-shadow: 0 0 0 2px rgba(23, 105, 194, .16);
+    }
+
+    .idp-reading-page .idp-selectable-question-text,
+    .idp-reading-page .idp-single-choice-title,
+    .idp-reading-page .multiple-choice-question-text {
+        cursor: text;
+        -webkit-user-select: text;
+        user-select: text;
+    }
+
+    .idp-reading-page .idp-selectable-question-text,
+    .idp-reading-page .idp-selectable-question-text:hover {
+        min-height: 0;
+        padding: 4px 0;
+        border: 0;
+        border-radius: 0;
+        color: #202124;
+        background: transparent;
+        box-shadow: none;
+        font-weight: 700;
+    }
+
+    .idp-reading-page .multiple-choice-question-text {
+        display: flex;
+        align-items: flex-start;
+    }
+
+    .idp-reading-page .idp-single-choice-title strong {
+        width: 32px;
+        min-width: 32px;
+        height: 32px;
+        margin-right: 10px;
+        border: 1px solid #2f82bf;
+        line-height: 30px;
+        text-align: center;
     }
 
     /* Result */
@@ -3310,6 +3818,25 @@
 
     /* Tablet and mobile */
     @media only screen and (max-width: 996px) {
+        body.ielts-reading-test-running .idp-workspace > .portlet-body > .row:not(.ng-hide) {
+            display: flex !important;
+            flex-direction: column;
+            height: 100%;
+            min-height: 0;
+            margin: 0;
+        }
+
+        body.ielts-reading-test-running .idp-reading-pane,
+        body.ielts-reading-test-running .idp-question-pane {
+            flex: 1 1 50%;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        body.ielts-reading-test-running .idp-question-pane[style*="100%"] {
+            flex-basis: 100%;
+        }
+
         .idp-entry-screen,
         .idp-start-screen {
             min-height: calc(100vh - 80px);
@@ -3506,6 +4033,402 @@
 
         .idp-question-nav .form-check-label {
             font-size: 10px !important;
+        }
+
+        .idp-question-stepper {
+            right: 16px;
+            bottom: 20px;
+        }
+
+        .idp-question-step-button {
+            width: 50px;
+            height: 52px;
+            font-size: 25px !important;
+        }
+    }
+
+    /* Display settings modal */
+    .idp-display-settings-backdrop {
+        position: fixed;
+        z-index: 10030;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(0, 0, 0, .52);
+    }
+
+    .idp-display-settings {
+        width: min(760px, 94vw);
+        max-height: calc(100vh - 48px);
+        overflow: auto;
+        border: 1px solid #bfc1c4;
+        border-radius: 5px;
+        color: #111214 !important;
+        background: #ffffff !important;
+        box-shadow: 0 20px 55px rgba(0, 0, 0, .3);
+        font-family: Arial, Helvetica, sans-serif !important;
+    }
+
+    .idp-display-settings-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 58px;
+        padding: 11px 18px;
+        border-bottom: 1px solid #d4d5d7;
+        color: #111214 !important;
+        background: #ffffff !important;
+    }
+
+    .idp-display-settings-header h2 {
+        margin: 0;
+        color: #111214 !important;
+        font-size: 21px !important;
+        font-weight: 700;
+    }
+
+    .idp-display-settings-header button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border: 0;
+        border-radius: 3px;
+        color: #242629 !important;
+        background: #f0f1f2 !important;
+        font-size: 17px;
+    }
+
+    .idp-display-settings-body {
+        padding: 18px 24px 26px;
+        color: #111214 !important;
+        background: #ffffff !important;
+    }
+
+    .idp-display-settings-body h3 {
+        margin: 9px 0 14px;
+        color: #111214 !important;
+        font-size: 24px !important;
+        font-weight: 500;
+        text-align: center;
+    }
+
+    .idp-display-settings-body h3:not(:first-child) {
+        margin-top: 25px;
+    }
+
+    .idp-setting-options {
+        overflow: hidden;
+        border: 1px solid #bfc1c4;
+        border-radius: 5px;
+        background: #ffffff;
+    }
+
+    .idp-setting-option {
+        display: grid;
+        grid-template-columns: 42px 1fr 82px;
+        align-items: center;
+        width: 100%;
+        min-height: 70px;
+        padding: 10px 22px;
+        border: 0;
+        border-bottom: 1px solid #c8cacc;
+        color: #111214 !important;
+        background: #ffffff !important;
+        font-size: 18px !important;
+        text-align: left;
+    }
+
+    .idp-setting-option:last-child {
+        border-bottom: 0;
+    }
+
+    .idp-setting-option:hover,
+    .idp-setting-option:focus {
+        background: #f3f5f7 !important;
+        outline: none;
+    }
+
+    .idp-setting-option.is-selected {
+        background: #f8fafc !important;
+    }
+
+    .idp-setting-check {
+        color: #050505 !important;
+        font-size: 20px !important;
+        opacity: 0;
+    }
+
+    .idp-setting-option.is-selected .idp-setting-check {
+        opacity: 1;
+    }
+
+    .idp-contrast-preview {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 5px;
+        justify-self: end;
+        width: 62px;
+        height: 42px;
+        padding: 8px;
+        border: 1px solid #d0d2d5;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, .14);
+    }
+
+    .idp-contrast-preview i {
+        display: block;
+        width: 100%;
+        height: 2px;
+        background: currentColor;
+    }
+
+    .idp-contrast-preview.is-black-white {
+        color: #222222 !important;
+        background: #ffffff !important;
+    }
+
+    .idp-contrast-preview.is-white-black {
+        color: #ffffff !important;
+        background: #050505 !important;
+    }
+
+    .idp-contrast-preview.is-yellow-black {
+        color: #ffe600 !important;
+        background: #050505 !important;
+    }
+
+    .idp-text-size-preview {
+        justify-self: end;
+        min-width: 62px;
+        color: #292b2f !important;
+        text-align: center;
+    }
+
+    .idp-text-size-preview.is-regular { font-size: 15px !important; }
+    .idp-text-size-preview.is-large { font-size: 19px !important; }
+    .idp-text-size-preview.is-extra-large { font-size: 23px !important; }
+
+    /* Contrast modes. These rules deliberately come after the global site
+       dark-mode compatibility rules so the candidate's own choice wins. */
+    .idp-reading-page.idp-contrast-white-black .idp-reading-test-shell,
+    .idp-reading-page.idp-contrast-white-black .idp-exam-stage,
+    .idp-reading-page.idp-contrast-white-black .idp-main-test,
+    .idp-reading-page.idp-contrast-yellow-black .idp-reading-test-shell,
+    .idp-reading-page.idp-contrast-yellow-black .idp-exam-stage,
+    .idp-reading-page.idp-contrast-yellow-black .idp-main-test {
+        background: #111111 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-exam-topbar,
+    .idp-reading-page.idp-contrast-white-black .idp-instruction-bar,
+    .idp-reading-page.idp-contrast-white-black .idp-workspace,
+    .idp-reading-page.idp-contrast-white-black .passage-text,
+    .idp-reading-page.idp-contrast-white-black .question-content,
+    .idp-reading-page.idp-contrast-white-black .idp-question-nav,
+    .idp-reading-page.idp-contrast-white-black .idp-question-nav-inner,
+    .idp-reading-page.idp-contrast-white-black .idp-question-nav .col-md-1,
+    .idp-reading-page.idp-contrast-white-black .idp-question-nav .col-md-10,
+    .idp-reading-page.idp-contrast-white-black .idp-part-group,
+    .idp-reading-page.idp-contrast-yellow-black .idp-exam-topbar,
+    .idp-reading-page.idp-contrast-yellow-black .idp-instruction-bar,
+    .idp-reading-page.idp-contrast-yellow-black .idp-workspace,
+    .idp-reading-page.idp-contrast-yellow-black .passage-text,
+    .idp-reading-page.idp-contrast-yellow-black .question-content,
+    .idp-reading-page.idp-contrast-yellow-black .idp-question-nav,
+    .idp-reading-page.idp-contrast-yellow-black .idp-question-nav-inner,
+    .idp-reading-page.idp-contrast-yellow-black .idp-question-nav .col-md-1,
+    .idp-reading-page.idp-contrast-yellow-black .idp-question-nav .col-md-10,
+    .idp-reading-page.idp-contrast-yellow-black .idp-part-group {
+        border-color: #6b6b6b !important;
+        background: #050505 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-exam-topbar,
+    .idp-reading-page.idp-contrast-white-black .idp-exam-topbar *:not(.idp-exam-logo),
+    .idp-reading-page.idp-contrast-white-black .idp-instruction-bar *,
+    .idp-reading-page.idp-contrast-white-black .passage-text *,
+    .idp-reading-page.idp-contrast-white-black .question-content *,
+    .idp-reading-page.idp-contrast-white-black .idp-question-nav *,
+    .idp-reading-page.idp-contrast-yellow-black .idp-exam-topbar,
+    .idp-reading-page.idp-contrast-yellow-black .idp-exam-topbar *:not(.idp-exam-logo),
+    .idp-reading-page.idp-contrast-yellow-black .idp-instruction-bar *,
+    .idp-reading-page.idp-contrast-yellow-black .passage-text *,
+    .idp-reading-page.idp-contrast-yellow-black .question-content *,
+    .idp-reading-page.idp-contrast-yellow-black .idp-question-nav * {
+        color: #ffffff !important;
+    }
+
+    .idp-reading-page.idp-contrast-yellow-black .idp-exam-topbar,
+    .idp-reading-page.idp-contrast-yellow-black .idp-exam-topbar *:not(.idp-exam-logo),
+    .idp-reading-page.idp-contrast-yellow-black .idp-instruction-bar *,
+    .idp-reading-page.idp-contrast-yellow-black .passage-text *,
+    .idp-reading-page.idp-contrast-yellow-black .question-content *,
+    .idp-reading-page.idp-contrast-yellow-black .idp-question-nav * {
+        color: #ffe600 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-exam-logo,
+    .idp-reading-page.idp-contrast-yellow-black .idp-exam-logo {
+        color: #e31837 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-display-settings-trigger:hover,
+    .idp-reading-page.idp-contrast-white-black .idp-display-settings-trigger:focus,
+    .idp-reading-page.idp-contrast-yellow-black .idp-display-settings-trigger:hover,
+    .idp-reading-page.idp-contrast-yellow-black .idp-display-settings-trigger:focus,
+    .idp-reading-page.idp-contrast-white-black .idp-instruction-bar button,
+    .idp-reading-page.idp-contrast-yellow-black .idp-instruction-bar button,
+    .idp-reading-page.idp-contrast-white-black .idp-top-finish,
+    .idp-reading-page.idp-contrast-yellow-black .idp-top-finish,
+    .idp-reading-page.idp-contrast-white-black .idp-single-choice-title:hover,
+    .idp-reading-page.idp-contrast-white-black .idp-single-choice-title:focus,
+    .idp-reading-page.idp-contrast-yellow-black .idp-single-choice-title:hover,
+    .idp-reading-page.idp-contrast-yellow-black .idp-single-choice-title:focus,
+    .idp-reading-page.idp-contrast-white-black .button-question-not-click,
+    .idp-reading-page.idp-contrast-white-black .button-question-click,
+    .idp-reading-page.idp-contrast-yellow-black .button-question-not-click,
+    .idp-reading-page.idp-contrast-yellow-black .button-question-click {
+        border-color: #777777 !important;
+        background: #242424 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-selectable-question-text,
+    .idp-reading-page.idp-contrast-yellow-black .idp-selectable-question-text {
+        border: 0 !important;
+        background: transparent !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black input[type="text"],
+    .idp-reading-page.idp-contrast-white-black textarea,
+    .idp-reading-page.idp-contrast-white-black select,
+    .idp-reading-page.idp-contrast-white-black .ui-select-match .btn,
+    .idp-reading-page.idp-contrast-yellow-black input[type="text"],
+    .idp-reading-page.idp-contrast-yellow-black textarea,
+    .idp-reading-page.idp-contrast-yellow-black select,
+    .idp-reading-page.idp-contrast-yellow-black .ui-select-match .btn {
+        border-color: #8a8a8a !important;
+        color: #ffffff !important;
+        background: #181818 !important;
+    }
+
+    .idp-reading-page.idp-contrast-yellow-black input[type="text"],
+    .idp-reading-page.idp-contrast-yellow-black textarea,
+    .idp-reading-page.idp-contrast-yellow-black select,
+    .idp-reading-page.idp-contrast-yellow-black .ui-select-match .btn {
+        color: #ffe600 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-radio-control,
+    .idp-reading-page.idp-contrast-yellow-black .idp-radio-control {
+        border-color: currentColor !important;
+        background: #050505 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-radio-control:checked {
+        background: radial-gradient(circle at center, #ffffff 0, #ffffff 3px, #050505 4px) !important;
+    }
+
+    .idp-reading-page.idp-contrast-yellow-black .idp-radio-control:checked {
+        background: radial-gradient(circle at center, #ffe600 0, #ffe600 3px, #050505 4px) !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .button-bottom-question-click {
+        border-color: #ffffff !important;
+        color: #050505 !important;
+        background: #ffffff !important;
+    }
+
+    .idp-reading-page.idp-contrast-yellow-black .button-bottom-question-click {
+        border-color: #ffe600 !important;
+        color: #050505 !important;
+        background: #ffe600 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-split-divider::after,
+    .idp-reading-page.idp-contrast-yellow-black .idp-split-divider::after {
+        border-color: #a2a2a2;
+        color: #050505;
+        background: #ffffff;
+    }
+
+    .idp-reading-page.idp-contrast-white-black *::-webkit-scrollbar-track,
+    .idp-reading-page.idp-contrast-yellow-black *::-webkit-scrollbar-track {
+        background: #171717;
+    }
+
+    .idp-reading-page.idp-contrast-white-black *::-webkit-scrollbar-thumb,
+    .idp-reading-page.idp-contrast-yellow-black *::-webkit-scrollbar-thumb {
+        border-color: #171717;
+        background: #8d8d8d;
+    }
+
+    /* Text size affects only passage/question content, not exam controls. */
+    .idp-reading-page.idp-text-large .passage-text p,
+    .idp-reading-page.idp-text-large .passage-text p span,
+    .idp-reading-page.idp-text-large .passage-text > span,
+    .idp-reading-page.idp-text-large .passage-text em,
+    .idp-reading-page.idp-text-large .passage-text li {
+        font-size: 19px !important;
+        line-height: 1.75 !important;
+    }
+
+    .idp-reading-page.idp-text-extra-large .passage-text p,
+    .idp-reading-page.idp-text-extra-large .passage-text p span,
+    .idp-reading-page.idp-text-extra-large .passage-text > span,
+    .idp-reading-page.idp-text-extra-large .passage-text em,
+    .idp-reading-page.idp-text-extra-large .passage-text li {
+        font-size: 22px !important;
+        line-height: 1.78 !important;
+    }
+
+    .idp-reading-page.idp-text-large .question-content p,
+    .idp-reading-page.idp-text-large .question-content p span,
+    .idp-reading-page.idp-text-large .question-content .actual-test-font-global,
+    .idp-reading-page.idp-text-large .question-content .actual-test-font-global span,
+    .idp-reading-page.idp-text-large .question-content label,
+    .idp-reading-page.idp-text-large .question-content td,
+    .idp-reading-page.idp-text-large .question-content li,
+    .idp-reading-page.idp-text-large .question-content .idp-single-choice-label {
+        font-size: 18px !important;
+        line-height: 1.62 !important;
+    }
+
+    .idp-reading-page.idp-text-extra-large .question-content p,
+    .idp-reading-page.idp-text-extra-large .question-content p span,
+    .idp-reading-page.idp-text-extra-large .question-content .actual-test-font-global,
+    .idp-reading-page.idp-text-extra-large .question-content .actual-test-font-global span,
+    .idp-reading-page.idp-text-extra-large .question-content label,
+    .idp-reading-page.idp-text-extra-large .question-content td,
+    .idp-reading-page.idp-text-extra-large .question-content li,
+    .idp-reading-page.idp-text-extra-large .question-content .idp-single-choice-label {
+        font-size: 21px !important;
+        line-height: 1.68 !important;
+    }
+
+    @media only screen and (max-width: 680px) {
+        .idp-display-settings-backdrop {
+            padding: 10px;
+        }
+
+        .idp-display-settings-body {
+            padding: 12px;
+        }
+
+        .idp-setting-option {
+            grid-template-columns: 30px 1fr 65px;
+            min-height: 60px;
+            padding: 8px 12px;
+            font-size: 15px !important;
+        }
+
+        .idp-contrast-preview {
+            width: 54px;
+            height: 38px;
         }
     }
 
