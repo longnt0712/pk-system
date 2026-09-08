@@ -5,10 +5,10 @@
         <div class="portlet light bordered">
             <div class="portlet-body">
 
-                <div class="row">
+                <div class="row" ng-if="settings.isAdmin == true">
                     <div class="col-md-4 margin-bottom-20">
                         <div class="input-group">
-                            <input ng-model="vm.searchDto.textSearch" ng-keyup="vm.enterSearchCode(e)" type="text"  class="form-control" placeholder="Find test...">
+                            <input ng-model="vm.searchDto.textSearch" ng-keyup="vm.enterSearchCode($event)" type="text"  class="form-control" placeholder="Find test...">
                             <div class="input-group-btn">
                                 <button ng-click="vm.codeChange()" class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>
                             </div>
@@ -18,52 +18,74 @@
 
                 <div class="row">
 
-                    <div class="row text-center" ng-if="!settings.isAdmin">
-                        <!--<div  class="col-md-12">-->
-                            <!--&lt;!&ndash;<input id="page-index" placeholder="Page index" class="input-underline-only pagination" ng-model="vm.searchDto.pageIndex" /> /&ndash;&gt;-->
-                            <!--<label for="page-size" class="bold">Page Size: &ensp;</label>-->
-                            <!--<input id="page-size" placeholder="Page size" class="input-underline-only page-size-input" ng-model="vm.searchDto.pageSize" />-->
-                            <!--<label style="cursor: pointer;" for="page-size" ng-click="vm.changePageSize()">&ensp;<i class="fa-solid fa-sync"></i></label>-->
-                            <!--&lt;!&ndash;<label for="page-index" class="bold">INDEX/ SIZE: &ensp;</label>&ndash;&gt;-->
-                            <!--&lt;!&ndash;</div>&ndash;&gt;-->
-                            <!--&lt;!&ndash;<div  class="col-md-12 margin-bottom-10 margin-top-10">&ndash;&gt;-->
-                            <!--&lt;!&ndash;<input placeholder="The number of words listed..." class="input-underline-only" ng-model="vm.searchDto.pageSize" />&ndash;&gt;-->
-                            <!--&lt;!&ndash;<a style="font-style:italic;font-size:18px" class="text-center bold" ng-click="vm.loadMore()">Load More - </a>&ndash;&gt;-->
-
-                        <!--</div>-->
-                        <div class="row">
-                            <div class="container">
-                                <div style="padding: 10px" class="col-md-3 col-sm-4 col-xs-12 margin-top-10" ng-repeat="item in vm.ieltsReadingTests">
-                                    <div class="dash-let"  style="background: #946b2d !important">
-                                        <a target="_blank" href="ielts_reading_actual_test/{{item.id}}" ng-if="item.pronounce == null || item.pronounce.length <= 0"  style="background: #ecb939 !important">
-                                            <i class="fa fa-book"></i>
-                                            <i class="fa fa-book"></i>
-                                            <span>{{item.title}}</span>
-                                        </a>
-                                        <a target="_blank" style="background: #2a623d !important" href="ielts_reading_actual_test/{{item.id}}" ng-if="item.pronounce != null && item.pronounce.length > 0">
-                                            <i class="fa fa-headphones"></i>
-                                            <i class="fa fa-headphones" style="color: #1a472a"></i>
-                                            <span style="color: white">{{item.title}}</span>
-                                        </a>
-                                    </div>
-                                </div>
+                    <section class="reading-test-catalog" ng-if="!settings.isAdmin">
+                        <div class="reading-test-catalog__header">
+                            <div>
+                                <span class="reading-test-catalog__eyebrow">IELTS PRACTICE LIBRARY</span>
+                                <h2>Chọn bài luyện tập</h2>
+                                <p>Luyện Reading hoặc Listening với giao diện thi thật.</p>
                             </div>
-
+                            <span class="reading-test-catalog__count">
+                                {{vm.bsTableControlCreateIELTSReadingTest.options.totalRows || 0}} bài test
+                            </span>
                         </div>
-                        <div  class="col-md-12">
+
+                        <div class="reading-test-search">
+                            <i class="fa fa-search" aria-hidden="true"></i>
+                            <input ng-model="vm.searchDto.textSearch"
+                                   ng-keyup="vm.enterSearchCode($event)"
+                                   type="search"
+                                   placeholder="Tìm bài test theo tên..."
+                                   aria-label="Tìm bài test theo tên">
+                            <button type="button" ng-click="vm.codeChange()">Tìm kiếm</button>
+                        </div>
+
+                        <div class="reading-test-grid" ng-if="vm.ieltsReadingTests.length">
+                            <a class="reading-test-card"
+                               ng-class="{'is-listening': item.pronounce != null && item.pronounce.length > 0,
+                                          'is-reading': item.pronounce == null || item.pronounce.length <= 0}"
+                               target="_blank"
+                               rel="noopener"
+                               href="ielts_reading_actual_test/{{item.id}}"
+                               ng-repeat="item in vm.ieltsReadingTests track by item.id">
+                                <div class="reading-test-card__top">
+                                    <span class="reading-test-card__type">
+                                        <i class="fa" ng-class="item.pronounce != null && item.pronounce.length > 0 ? 'fa-headphones' : 'fa-book'" aria-hidden="true"></i>
+                                        {{item.pronounce != null && item.pronounce.length > 0 ? 'Listening' : 'Reading'}}
+                                    </span>
+                                    <span class="reading-test-card__open"><i class="fa fa-external-link" aria-hidden="true"></i></span>
+                                </div>
+                                <div class="reading-test-card__visual">
+                                    <i class="fa" ng-class="item.pronounce != null && item.pronounce.length > 0 ? 'fa-headphones' : 'fa-book'" aria-hidden="true"></i>
+                                </div>
+                                <div class="reading-test-card__body">
+                                    <h3>{{item.title}}</h3>
+                                    <p>{{item.pronounce != null && item.pronounce.length > 0 ? 'Nghe và hoàn thành bài thi theo thời gian thực.' : 'Đọc 3 passages và hoàn thành 40 câu hỏi.'}}</p>
+                                </div>
+                                <div class="reading-test-card__footer">
+                                    <span>Bắt đầu làm bài</span>
+                                    <i class="fa fa-arrow-right" aria-hidden="true"></i>
+                                </div>
+                            </a>
+                        </div>
+
+                        <div class="reading-test-empty" ng-if="!vm.ieltsReadingTests.length">
+                            <i class="fa fa-search" aria-hidden="true"></i>
+                            <h3>Không tìm thấy bài test</h3>
+                            <p>Hãy thử tìm bằng một từ khóa khác.</p>
+                        </div>
+
+                        <div class="reading-test-pagination" ng-if="vm.bsTableControlCreateIELTSReadingTest.options.totalRows > 0">
                             <ul uib-pagination total-items="vm.bsTableControlCreateIELTSReadingTest.options.totalRows"
-                                ng-model="vm.searchDto.pageIndex" max-size="10" items-per-page="vm.searchDto.pageSize"
+                                ng-model="vm.searchDto.pageIndex" max-size="7" items-per-page="vm.searchDto.pageSize"
                                 class="pagination-sm"
                                 previous-text="&lsaquo;" next-text="&rsaquo;" first-text="&laquo;" last-text="&raquo;"
                                 boundary-links="true"
                                 num-pages="numPages"
                                 ng-change="pageChanged()"></ul>
-                            <pre style="padding:0;border: none; background-color: transparent">Page: {{vm.searchDto.pageIndex}} / {{numPages}} - Total: {{vm.bsTableControlCreateIELTSReadingTest.options.totalRows}}</pre>
+                            <span>Trang {{vm.searchDto.pageIndex}}/{{numPages}}</span>
                         </div>
-
-                        <!--<a style="font-style:italic;font-size:18px" class="text-center bold" ng-click="vm.loadAll()"> Load All</a>-->
-                        <!--</div>-->
-                    </div>
+                    </section>
                     <div class="col-md-12" ng-if="settings.isAdmin == true">
                         <table id="bsTableControl" bs-table-control="vm.bsTableControlCreateIELTSReadingTest"></table>
                     </div>
@@ -219,11 +241,13 @@
 
                                 <br>
                                 <label class="bold" for="numberConfig">
-                                    The number of answers for each question
+                                    <span ng-if="item.type != 13">The number of answers for each question</span>
+                                    <span ng-if="item.type == 13">Tổng số từ lựa chọn (đáp án đúng + từ nhiễu)</span>
                                 </label>
-                                <input ng-disabled="item.type == 11" style="margin-top: 5px;margin-bottom: 5px" type="number" id="numberConfig" ng-model="vm.numberOfAnswers" ng-change="vm.createTempAnswers($index)">
+                                <input ng-disabled="item.type == 11" min="1" style="margin-top: 5px;margin-bottom: 5px" type="number" id="numberConfig" ng-model="vm.numberOfAnswers" ng-change="vm.createTempAnswers($index)">
                                 <div ng-if="item.type == 11" class="reading-one-editor-notice">Mỗi câu dùng 1 đáp án. Bạn sẽ nhập đáp án sau khi tạo khoảng câu.</div>
-                                <div ng-if="item.type != 11" ng-repeat="c in vm.tempAnswers" style="margin-bottom:5px">
+                                <div ng-if="item.type == 13" class="reading-one-editor-notice">Nhập tổng số từ trong danh sách: đáp án đúng của từng câu trước, sau đó là các từ nhiễu. Tổng số từ phải ít nhất bằng số câu.</div>
+                                <div ng-if="item.type != 11 && item.type != 13" ng-repeat="c in vm.tempAnswers" style="margin-bottom:5px">
                                     <input class="form-control" type="text" data-ng-model="c.answer.answer">
                                 </div>
                                 <p><span class="font-red bold">WARNING: </span>The process of configuring Answer for each package will disappear if you click ' <span class="bold font-yellow"> Adding questions for Package </span>' => make sure your configuration is correct</p>
@@ -251,9 +275,29 @@
                                 </div>
                             </div>
 
+                            <div class="reading-complete-list-builder" ng-if="item.type == 13 && item.subQuestions.length">
+                                <div class="reading-one-editor-builder__header">
+                                    <div>
+                                        <strong>Một editor cho toàn bộ {{item.subQuestions.length}} câu</strong>
+                                        <small>Mỗi }{SPACE}{ tương ứng lần lượt với câu {{item.subQuestions[0].ordinalNumber}} đến {{item.subQuestions[item.subQuestions.length - 1].ordinalNumber}}.</small>
+                                    </div>
+                                    <span ng-class="{'is-valid': vm.countOneEditorGaps(item.subQuestions[0].question) === item.subQuestions.length}">
+                                        {{vm.countOneEditorGaps(item.subQuestions[0].question)}}/{{item.subQuestions.length}} ô
+                                    </span>
+                                </div>
+                                <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <div class="reading-complete-list-words">
+                                    <div ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                        <label ng-if="$index < item.subQuestions.length">Đáp án đúng câu {{item.subQuestions[$index].ordinalNumber}}</label>
+                                        <label ng-if="$index >= item.subQuestions.length">Từ nhiễu {{$index - item.subQuestions.length + 1}}</label>
+                                        <input class="form-control" type="text" ng-model="a.answer.answer" ng-change="vm.updateCompleteListWord(item, $index)" placeholder="Nhập từ hoặc cụm từ">
+                                    </div>
+                                </div>
+                            </div>
+
                             <hr>
                             <div class="row">
-                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11" style="margin-top: 20px;">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13" style="margin-top: 20px;">
                                     <div class="col-md-12">
                                         <div class="row">
                                             <div class="col-md-2">
@@ -301,7 +345,7 @@
                             <!--<div class="col-md-12" ng-show="vm.createPassageNumber == 1">-->
                             <div class="col-md-12">
                                 <button class="btn btn-success" ng-click="vm.saveReadingTest()">SAVE</button>
-                                <button class="btn btn-info" data-ng-click="vm.addPackageForPassage1()"><i class="fa fa-plus"></i> Thêm nhóm câu hỏi Part 1</button>
+                                <button type="button" class="btn btn-info" data-ng-click="$event.preventDefault(); vm.addPackageForPassage1()"><i class="fa fa-plus"></i> Thêm nhóm câu hỏi Part 1</button>
                             </div>
                             <!--<div class="col-md-9" ng-show="vm.createPassageNumber == 2">-->
                             <!--</div>-->
@@ -402,11 +446,13 @@
 
                                 <br>
                                 <label class="bold" for="numberConfig">
-                                    The number of answers for each question
+                                    <span ng-if="item.type != 13">The number of answers for each question</span>
+                                    <span ng-if="item.type == 13">Tổng số từ lựa chọn (đáp án đúng + từ nhiễu)</span>
                                 </label>
-                                <input ng-disabled="item.type == 11" style="margin-top: 5px;margin-bottom: 5px" type="number" id="numberConfig" ng-model="vm.numberOfAnswers" ng-change="vm.createTempAnswers($index)">
+                                <input ng-disabled="item.type == 11" min="1" style="margin-top: 5px;margin-bottom: 5px" type="number" id="numberConfig" ng-model="vm.numberOfAnswers" ng-change="vm.createTempAnswers($index)">
                                 <div ng-if="item.type == 11" class="reading-one-editor-notice">Mỗi câu dùng 1 đáp án. Bạn sẽ nhập đáp án sau khi tạo khoảng câu.</div>
-                                <div ng-if="item.type != 11" ng-repeat="c in vm.tempAnswers" style="margin-bottom:5px">
+                                <div ng-if="item.type == 13" class="reading-one-editor-notice">Nhập tổng số từ trong danh sách: đáp án đúng của từng câu trước, sau đó là các từ nhiễu. Tổng số từ phải ít nhất bằng số câu.</div>
+                                <div ng-if="item.type != 11 && item.type != 13" ng-repeat="c in vm.tempAnswers" style="margin-bottom:5px">
                                     <input class="form-control" type="text" data-ng-model="c.answer.answer">
                                 </div>
                                 <p><span class="font-red bold">WARNING: </span>The process of configuring Answer for each package will disappear if you click ' <span class="bold font-yellow"> Adding questions for Package </span>' => make sure your configuration is correct</p>
@@ -433,9 +479,29 @@
                                 </div>
                             </div>
 
+                            <div class="reading-complete-list-builder" ng-if="item.type == 13 && item.subQuestions.length">
+                                <div class="reading-one-editor-builder__header">
+                                    <div>
+                                        <strong>Một editor cho toàn bộ {{item.subQuestions.length}} câu</strong>
+                                        <small>Mỗi }{SPACE}{ tương ứng lần lượt với câu {{item.subQuestions[0].ordinalNumber}} đến {{item.subQuestions[item.subQuestions.length - 1].ordinalNumber}}.</small>
+                                    </div>
+                                    <span ng-class="{'is-valid': vm.countOneEditorGaps(item.subQuestions[0].question) === item.subQuestions.length}">
+                                        {{vm.countOneEditorGaps(item.subQuestions[0].question)}}/{{item.subQuestions.length}} ô
+                                    </span>
+                                </div>
+                                <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <div class="reading-complete-list-words">
+                                    <div ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                        <label ng-if="$index < item.subQuestions.length">Đáp án đúng câu {{item.subQuestions[$index].ordinalNumber}}</label>
+                                        <label ng-if="$index >= item.subQuestions.length">Từ nhiễu {{$index - item.subQuestions.length + 1}}</label>
+                                        <input class="form-control" type="text" ng-model="a.answer.answer" ng-change="vm.updateCompleteListWord(item, $index)" placeholder="Nhập từ hoặc cụm từ">
+                                    </div>
+                                </div>
+                            </div>
+
                             <hr>
                             <div class="row" >
-                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11" style="margin-top: 20px;">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13" style="margin-top: 20px;">
 
                                     <div class="col-md-12">
                                         <div class="row">
@@ -485,7 +551,7 @@
                             <!--<hr>-->
                             <div class="col-md-12" style="margin-top: 20px; margin-bottom: 20px">
                                 <button class="btn btn-success" ng-click="vm.saveReadingTest()">SAVE</button>
-                                <button class="btn btn-info" data-ng-click="vm.addPackageForPassage2()"><i class="fa fa-plus"></i> Thêm nhóm câu hỏi Part 2</button>
+                                <button type="button" class="btn btn-info" data-ng-click="$event.preventDefault(); vm.addPackageForPassage2()"><i class="fa fa-plus"></i> Thêm nhóm câu hỏi Part 2</button>
                             </div>
                             <!--<div class="col-md-9" ng-show="vm.createPassageNumber == 3">-->
                             <!--</div>-->
@@ -582,12 +648,14 @@
 
                                 <br>
                                 <label class="bold" for="numberConfig">
-                                    The number of answers for each question
+                                    <span ng-if="item.type != 13">The number of answers for each question</span>
+                                    <span ng-if="item.type == 13">Tổng số từ lựa chọn (đáp án đúng + từ nhiễu)</span>
                                 </label>
-                                <input ng-disabled="item.type == 11" style="margin-top: 5px;margin-bottom: 5px" type="number" id="numberConfig" ng-model="vm.numberOfAnswers" ng-change="vm.createTempAnswers($index)">
+                                <input ng-disabled="item.type == 11" min="1" style="margin-top: 5px;margin-bottom: 5px" type="number" id="numberConfig" ng-model="vm.numberOfAnswers" ng-change="vm.createTempAnswers($index)">
                                 <!--<button class="btn btn-primary" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.createTempAnswers($index)"><i class="fa fa-arrow-down"></i> Setting up Answers</button>-->
                                 <div ng-if="item.type == 11" class="reading-one-editor-notice">Mỗi câu dùng 1 đáp án. Bạn sẽ nhập đáp án sau khi tạo khoảng câu.</div>
-                                <div ng-if="item.type != 11" ng-repeat="c in vm.tempAnswers" style="margin-bottom:5px">
+                                <div ng-if="item.type == 13" class="reading-one-editor-notice">Nhập tổng số từ trong danh sách: đáp án đúng của từng câu trước, sau đó là các từ nhiễu. Tổng số từ phải ít nhất bằng số câu.</div>
+                                <div ng-if="item.type != 11 && item.type != 13" ng-repeat="c in vm.tempAnswers" style="margin-bottom:5px">
                                     <input class="form-control" type="text" data-ng-model="c.answer.answer">
                                 </div>
                                 <p><span class="font-red bold">WARNING: </span>The process of configuring Answer for each package will disappear if you click ' <span class="bold font-yellow"> Adding questions for Package </span>' => make sure your configuration is correct</p>
@@ -614,9 +682,29 @@
                                 </div>
                             </div>
 
+                            <div class="reading-complete-list-builder" ng-if="item.type == 13 && item.subQuestions.length">
+                                <div class="reading-one-editor-builder__header">
+                                    <div>
+                                        <strong>Một editor cho toàn bộ {{item.subQuestions.length}} câu</strong>
+                                        <small>Mỗi }{SPACE}{ tương ứng lần lượt với câu {{item.subQuestions[0].ordinalNumber}} đến {{item.subQuestions[item.subQuestions.length - 1].ordinalNumber}}.</small>
+                                    </div>
+                                    <span ng-class="{'is-valid': vm.countOneEditorGaps(item.subQuestions[0].question) === item.subQuestions.length}">
+                                        {{vm.countOneEditorGaps(item.subQuestions[0].question)}}/{{item.subQuestions.length}} ô
+                                    </span>
+                                </div>
+                                <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <div class="reading-complete-list-words">
+                                    <div ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                        <label ng-if="$index < item.subQuestions.length">Đáp án đúng câu {{item.subQuestions[$index].ordinalNumber}}</label>
+                                        <label ng-if="$index >= item.subQuestions.length">Từ nhiễu {{$index - item.subQuestions.length + 1}}</label>
+                                        <input class="form-control" type="text" ng-model="a.answer.answer" ng-change="vm.updateCompleteListWord(item, $index)" placeholder="Nhập từ hoặc cụm từ">
+                                    </div>
+                                </div>
+                            </div>
+
                             <hr>
                             <div class="row">
-                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11" style="margin-top: 20px">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13" style="margin-top: 20px">
 
                                     <div class="col-md-12">
                                         <div class="row">
@@ -659,7 +747,7 @@
                             <hr>
                             <div class="col-md-12">
                                 <button class="btn btn-success" ng-click="vm.saveReadingTest()">SAVE</button>
-                                <button  class="btn btn-info" data-ng-click="vm.addPackageForPassage3()"><i class="fa fa-plus"></i> Thêm nhóm câu hỏi Part 3</button>
+                                <button type="button" class="btn btn-info" data-ng-click="$event.preventDefault(); vm.addPackageForPassage3()"><i class="fa fa-plus"></i> Thêm nhóm câu hỏi Part 3</button>
                             </div>
                         </div>
                     </div>
@@ -763,6 +851,360 @@
 <style>
     .ielts-reading-builder-page {
         padding-bottom: 82px;
+    }
+
+    .reading-test-catalog {
+        --reading-accent: #4f63d9;
+        --reading-soft: #eef1ff;
+        --listening-accent: #13866f;
+        --listening-soft: #e7f8f3;
+        padding: 8px 10px 26px;
+        color: #20283d;
+        text-align: left;
+    }
+
+    .reading-test-catalog__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 18px;
+    }
+
+    .reading-test-catalog__eyebrow {
+        color: #5967c7;
+        font-size: 11px !important;
+        font-weight: 800;
+        letter-spacing: 1.4px;
+    }
+
+    .reading-test-catalog__header h2 {
+        margin: 5px 0 4px;
+        color: #1d2742;
+        font-size: 28px;
+        font-weight: 750;
+    }
+
+    .reading-test-catalog__header p {
+        margin: 0;
+        color: #778096;
+        font-size: 14px;
+    }
+
+    .reading-test-catalog__count {
+        flex: 0 0 auto;
+        padding: 7px 12px;
+        border: 1px solid #dce2f2;
+        border-radius: 18px;
+        color: #626d86;
+        background: #f8f9fc;
+        font-size: 12px !important;
+        font-weight: 700;
+    }
+
+    .reading-test-search {
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr) auto;
+        width: min(100%, 680px);
+        min-height: 50px;
+        align-items: center;
+        margin-bottom: 28px;
+        overflow: hidden;
+        border: 1px solid #d9dfec;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 5px 16px rgba(40, 53, 94, .06);
+    }
+
+    .reading-test-search > i {
+        color: #7f8aa3;
+        text-align: center;
+    }
+
+    .reading-test-search input {
+        width: 100%;
+        height: 48px;
+        padding: 0 8px 0 0;
+        border: 0;
+        outline: 0;
+        color: #26304b;
+        background: transparent;
+        font-size: 14px;
+    }
+
+    .reading-test-search input::placeholder {
+        color: #99a2b5;
+    }
+
+    .reading-test-search button {
+        align-self: stretch;
+        min-width: 104px;
+        padding: 0 18px;
+        border: 0;
+        color: #fff;
+        background: #5265d8;
+        font-size: 13px;
+        font-weight: 700;
+        transition: background .2s ease;
+    }
+
+    .reading-test-search button:hover,
+    .reading-test-search button:focus {
+        background: #3f50bd;
+    }
+
+    .reading-test-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 20px;
+    }
+
+    .reading-test-card {
+        position: relative;
+        display: flex;
+        min-width: 0;
+        min-height: 270px;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid #dfe4ef;
+        border-radius: 16px;
+        color: #26304b !important;
+        background: #fff;
+        box-shadow: 0 8px 24px rgba(42, 52, 85, .08);
+        text-decoration: none !important;
+        transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+
+    .reading-test-card::before {
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        height: 5px;
+        background: var(--reading-accent);
+        content: '';
+    }
+
+    .reading-test-card.is-listening::before {
+        background: var(--listening-accent);
+    }
+
+    .reading-test-card:hover,
+    .reading-test-card:focus {
+        border-color: #b9c3e6;
+        color: #26304b !important;
+        box-shadow: 0 16px 34px rgba(42, 52, 85, .16);
+        outline: 0;
+        transform: translateY(-5px);
+    }
+
+    .reading-test-card__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 18px 8px;
+    }
+
+    .reading-test-card__type {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 6px 10px;
+        border-radius: 16px;
+        color: #4255c3;
+        background: var(--reading-soft);
+        font-size: 11px !important;
+        font-weight: 800;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+    }
+
+    .is-listening .reading-test-card__type {
+        color: #08705d;
+        background: var(--listening-soft);
+    }
+
+    .reading-test-card__open {
+        color: #9aa3b6;
+        font-size: 13px !important;
+    }
+
+    .reading-test-card__visual {
+        display: flex;
+        width: 66px;
+        height: 66px;
+        align-items: center;
+        justify-content: center;
+        margin: 8px 18px 15px;
+        border-radius: 18px;
+        color: var(--reading-accent);
+        background: linear-gradient(145deg, #f1f3ff, #e7ebff);
+        font-size: 29px;
+    }
+
+    .is-listening .reading-test-card__visual {
+        color: var(--listening-accent);
+        background: linear-gradient(145deg, #ebfaf6, #d9f3eb);
+    }
+
+    .reading-test-card__body {
+        flex: 1 1 auto;
+        padding: 0 18px 18px;
+    }
+
+    .reading-test-card__body h3 {
+        display: -webkit-box;
+        min-height: 45px;
+        margin: 0 0 9px;
+        overflow: hidden;
+        color: #202a44;
+        font-size: 16px;
+        font-weight: 750;
+        line-height: 1.4;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .reading-test-card__body p {
+        margin: 0;
+        color: #7a8499;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .reading-test-card__footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 13px 18px;
+        border-top: 1px solid #edf0f5;
+        color: #4b5fce;
+        background: #fbfcff;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .is-listening .reading-test-card__footer {
+        color: #08735f;
+        background: #fbfefd;
+    }
+
+    .reading-test-card__footer span {
+        font-size: 12px !important;
+    }
+
+    .reading-test-card:hover .reading-test-card__footer i {
+        transform: translateX(3px);
+    }
+
+    .reading-test-card__footer i {
+        transition: transform .2s ease;
+    }
+
+    .reading-test-empty {
+        padding: 70px 20px;
+        border: 1px dashed #ccd3e2;
+        border-radius: 14px;
+        color: #7d879c;
+        background: #fafbfe;
+        text-align: center;
+    }
+
+    .reading-test-empty > i {
+        margin-bottom: 10px;
+        color: #9aa5ba;
+        font-size: 32px;
+    }
+
+    .reading-test-empty h3 {
+        margin: 0 0 5px;
+        color: #4c5770;
+        font-size: 17px;
+    }
+
+    .reading-test-empty p {
+        margin: 0;
+        font-size: 13px;
+    }
+
+    .reading-test-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        margin-top: 28px;
+        color: #778096;
+        font-size: 12px;
+    }
+
+    .reading-test-pagination .pagination {
+        margin: 0;
+    }
+
+    .reading-test-pagination > span {
+        font-size: 12px !important;
+    }
+
+    @media (max-width: 1199px) {
+        .reading-test-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 850px) {
+        .reading-test-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 560px) {
+        .reading-test-catalog {
+            padding-right: 2px;
+            padding-left: 2px;
+        }
+
+        .reading-test-catalog__header {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .reading-test-catalog__header h2 {
+            font-size: 23px;
+        }
+
+        .reading-test-search {
+            grid-template-columns: 38px minmax(0, 1fr) 48px;
+        }
+
+        .reading-test-search button {
+            min-width: 48px;
+            padding: 0;
+            overflow: hidden;
+            color: transparent;
+            font-size: 0;
+        }
+
+        .reading-test-search button::after {
+            color: #fff;
+            font-family: FontAwesome;
+            font-size: 14px;
+            content: '\f002';
+        }
+
+        .reading-test-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .reading-test-card {
+            min-height: 250px;
+        }
+
+        .reading-test-pagination {
+            align-items: center;
+            flex-direction: column;
+            gap: 8px;
+        }
     }
 
     .reading-builder-guide {
@@ -1002,6 +1444,14 @@
         background: #f8f9ff;
     }
 
+    .reading-complete-list-builder {
+        margin: 18px 0;
+        padding: 16px;
+        border: 2px solid #bfe3d5;
+        border-radius: 10px;
+        background: #f5fcf9;
+    }
+
     .reading-one-editor-builder__header {
         display: flex;
         align-items: center;
@@ -1040,6 +1490,27 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
         margin-top: 16px;
+    }
+
+    .reading-complete-list-words {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+    }
+
+    .reading-complete-list-words > div {
+        padding: 10px;
+        border: 1px solid #d5e9e1;
+        border-radius: 7px;
+        background: #fff;
+    }
+
+    .reading-complete-list-words label {
+        display: block;
+        margin-bottom: 6px;
+        color: #285e4c;
+        font-weight: 700;
     }
 
     .reading-one-editor-answers > div {

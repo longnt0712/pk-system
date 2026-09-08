@@ -80,7 +80,8 @@
             {id: 9, name: "MAPS - Listening", notice: "..."},
             {id: 10, name: "MATCHING NAMES", notice: "temp"},
             {id: 11, name: "Filling Gaps New (One Editor)", notice: "Write all questions in one editor; each }{SPACE}{ becomes the next numbered answer"},
-            {id: 12, name: "MATCHING INFORMATION", notice: "Same creation and test layout as Matching Names"}
+            {id: 12, name: "MATCHING INFORMATION", notice: "Same creation and test layout as Matching Names"},
+            {id: 13, name: "COMPLETE LIST OF WORDS", notice: "One editor with ordered correct words followed by distractors; students drag a shuffled word list into the gaps"}
         ];
         vm.passageTypes = vm.types.slice(0, 10);
 
@@ -389,6 +390,74 @@
             }
         }
 
+        function ensureCompleteListPackage(questionPackage) {
+            if (!questionPackage || Number(questionPackage.type) !== 13) {
+                return;
+            }
+            questionPackage.subQuestions = questionPackage.subQuestions || [];
+            questionPackage.subQuestions.sort(function (left, right) {
+                return Number(left.ordinalNumber) - Number(right.ordinalNumber);
+            });
+            if (!questionPackage.subQuestions.length) {
+                return;
+            }
+
+            var firstCompleteListQuestion = questionPackage.subQuestions[0];
+            firstCompleteListQuestion.questionAnswers = firstCompleteListQuestion.questionAnswers || [];
+            firstCompleteListQuestion.questionAnswers.sort(function (left, right) {
+                return Number(left.ordinalNumberQuestionAnswer) - Number(right.ordinalNumberQuestionAnswer);
+            });
+            var sourceAnswers = firstCompleteListQuestion.questionAnswers;
+            angular.forEach(questionPackage.subQuestions, function (question, questionIndex) {
+                question.questionAnswers = question.questionAnswers || [];
+                question.questionAnswers.sort(function (left, right) {
+                    return Number(left.ordinalNumberQuestionAnswer) - Number(right.ordinalNumberQuestionAnswer);
+                });
+                while (question.questionAnswers.length < sourceAnswers.length) {
+                    question.questionAnswers.push(angular.copy(sourceAnswers[question.questionAnswers.length]));
+                }
+                if (question.questionAnswers.length > sourceAnswers.length) {
+                    question.questionAnswers = question.questionAnswers.slice(0, sourceAnswers.length);
+                }
+                angular.forEach(question.questionAnswers, function (answer, answerIndex) {
+                    answer.answer = answer.answer || {answer: ''};
+                    if (questionIndex > 0 && sourceAnswers[answerIndex] && sourceAnswers[answerIndex].answer) {
+                        answer.answer.answer = sourceAnswers[answerIndex].answer.answer;
+                    }
+                    answer.ordinalNumberQuestionAnswer = answerIndex + 1;
+                    answer.correct = answerIndex === questionIndex;
+                });
+                if (questionIndex > 0 && /^Question number\s*\d*$/i.test(plainText(question.question))) {
+                    question.question = '';
+                }
+            });
+            var firstQuestion = questionPackage.subQuestions[0];
+            if (/^Question number\s*\d*$/i.test(plainText(firstQuestion.question))) {
+                firstQuestion.question = '';
+            }
+        }
+
+        vm.updateCompleteListContent = function (questionPackage) {
+            ensureCompleteListPackage(questionPackage);
+            vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
+        };
+
+        vm.updateCompleteListWord = function (questionPackage, answerIndex) {
+            if (!questionPackage || !questionPackage.subQuestions || !questionPackage.subQuestions.length) {
+                return;
+            }
+            var source = questionPackage.subQuestions[0].questionAnswers[answerIndex];
+            angular.forEach(questionPackage.subQuestions, function (question, questionIndex) {
+                var target = question.questionAnswers && question.questionAnswers[answerIndex];
+                if (target && source && source.answer) {
+                    target.answer = target.answer || {};
+                    target.answer.answer = source.answer.answer;
+                    target.correct = answerIndex === questionIndex;
+                }
+            });
+            vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
+        };
+
         vm.onReadingPackageTypeChange = function (questionPackage, partIndex, packageIndex) {
             if (questionPackage && Number(questionPackage.type) === 11) {
                 vm.numberOfAnswers = 1;
@@ -400,6 +469,9 @@
                     packageNumber: packageIndex
                 }];
                 ensureOneEditorPackage(questionPackage);
+            }
+            if (questionPackage && Number(questionPackage.type) === 13) {
+                ensureCompleteListPackage(questionPackage);
             }
             vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
         };
@@ -481,6 +553,20 @@
                             addIssue(rule.name + ', nhóm ' + (packageIndex + 1) + ': có ' + gapCount + ' ô điền từ nhưng cần đúng ' + expectedGapCount + ' ô.', packageTarget, partIndex);
                         }
                     }
+                    if (Number(questionPackage.type) === 13 && (questionPackage.subQuestions || []).length) {
+                        var completeListContent = questionPackage.subQuestions[0].question;
+                        var completeListGapCount = vm.countOneEditorGaps(completeListContent);
+                        var completeListQuestionCount = questionPackage.subQuestions.length;
+                        var completeListAnswerCount = (questionPackage.subQuestions[0].questionAnswers || []).length;
+                        if (!plainText(completeListContent)) {
+                            addIssue(rule.name + ', nhóm ' + (packageIndex + 1) + ': chưa nhập nội dung Complete List of Words.', packageTarget, partIndex);
+                        } else if (completeListGapCount !== completeListQuestionCount) {
+                            addIssue(rule.name + ', nhóm ' + (packageIndex + 1) + ': có ' + completeListGapCount + ' ô kéo-thả nhưng cần đúng ' + completeListQuestionCount + ' ô.', packageTarget, partIndex);
+                        }
+                        if (completeListAnswerCount < completeListQuestionCount) {
+                            addIssue(rule.name + ', nhóm ' + (packageIndex + 1) + ': danh sách từ phải có ít nhất ' + completeListQuestionCount + ' từ.', packageTarget, partIndex);
+                        }
+                    }
                 });
 
                 angular.forEach(questionEntries, function (entry) {
@@ -496,7 +582,7 @@
                     }
 
                     var questionText = plainText(question.question);
-                    if (Number(entry.questionPackage.type) !== 11 && (!questionText || /^Question number\s*\d*$/i.test(questionText))) {
+                    if (Number(entry.questionPackage.type) !== 11 && Number(entry.questionPackage.type) !== 13 && (!questionText || /^Question number\s*\d*$/i.test(questionText))) {
                         addIssue('Câu ' + (number || '?') + ': chưa nhập nội dung câu hỏi.', questionTarget, partIndex);
                     }
 
@@ -601,22 +687,50 @@
             return vm.saveReadingTest('draft');
         };
 
+        function clearOldReadingPreviews() {
+            var previewPrefix = 'ieltsReadingPreview-';
+            var keysToRemove = [];
+            try {
+                for (var storageIndex = 0; storageIndex < $window.localStorage.length; storageIndex++) {
+                    var storageKey = $window.localStorage.key(storageIndex);
+                    if (storageKey && storageKey.indexOf(previewPrefix) === 0) {
+                        keysToRemove.push(storageKey);
+                    }
+                }
+                angular.forEach(keysToRemove, function (storageKey) {
+                    $window.localStorage.removeItem(storageKey);
+                });
+            } catch (ignorePreviewCleanupError) {
+                // The following setItem call will show the useful error if storage is unavailable.
+            }
+        }
+
         vm.previewReadingTest = function (partIndex) {
             var targetPart = Math.max(1, Math.min(3, parseInt(partIndex, 10) || 1));
             var previewKey = 'ieltsReadingPreview-' + new Date().getTime();
+            var previewStorage = 'local';
+            var previewJson;
+            clearOldReadingPreviews();
             try {
-                $window.localStorage.setItem(previewKey, angular.toJson(vm.ieltsReadingTest));
+                previewJson = angular.toJson(vm.ieltsReadingTest);
+                $window.localStorage.setItem(previewKey, previewJson);
             } catch (previewStorageError) {
-                toastr.error('Không thể tạo dữ liệu Preview trên trình duyệt này.', 'Không thể mở Preview');
-                return;
+                try {
+                    previewStorage = 'session';
+                    $window.sessionStorage.setItem(previewKey, previewJson || angular.toJson(vm.ieltsReadingTest));
+                } catch (sessionPreviewStorageError) {
+                    toastr.error('Không thể tạo dữ liệu Preview trên trình duyệt này.', 'Không thể mở Preview');
+                    return;
+                }
             }
             var baseElement = document.getElementsByTagName('base')[0];
             var appBaseUrl = baseElement ? baseElement.href : ($window.location.protocol + '//' + $window.location.host + '/');
             var previewUrl = appBaseUrl.replace(/\/?$/, '/') + 'ielts_reading_actual_test/preview-local' +
-                '?preview=1&previewPart=' + targetPart + '&previewKey=' + encodeURIComponent(previewKey);
+                '?preview=1&previewPart=' + targetPart + '&previewKey=' + encodeURIComponent(previewKey) +
+                '&previewStorage=' + previewStorage;
             var previewWindow = $window.open(previewUrl, '_blank');
             if (!previewWindow) {
-                $window.localStorage.removeItem(previewKey);
+                (previewStorage === 'session' ? $window.sessionStorage : $window.localStorage).removeItem(previewKey);
                 toastr.warning('Trình duyệt đang chặn cửa sổ xem trước. Vui lòng cho phép pop-up.', 'Không thể mở Preview');
             }
         };
@@ -650,7 +764,6 @@
             vm.numberOfAnswers = vm.numberOfAnswers > 0 ? vm.numberOfAnswers : 4;
             vm.createPackage = true;
             vm.createPassageNumber = Math.max(vm.createPassageNumber, partIndex + 1);
-            vm.goToBuilderStep(partIndex + 1);
         };
 
         function validateQuestionRange(partIndex) {
@@ -700,6 +813,7 @@
                         for(var j = 0; j < packages.length; j++){
                             var questions = packages[j].subQuestions;
                             ensureOneEditorPackage(packages[j]);
+                            ensureCompleteListPackage(packages[j]);
                             if(questions != null && questions.length > 0){
                                 packages[j].isHaveChildren = true;
                             } else {
@@ -965,8 +1079,26 @@
             }
         };
 
+        function validateCompleteListOptionCount(questionPackage) {
+            if (!questionPackage || Number(questionPackage.type) !== 13) {
+                return true;
+            }
+            var questionCount = (parseInt(vm.toQuestion, 10) - parseInt(vm.fromQuestion, 10)) + 1;
+            var optionCount = parseInt(vm.numberOfAnswers, 10) || 0;
+            if (optionCount < questionCount) {
+                toastr.warning('Complete List of Words cần ít nhất ' + questionCount + ' từ: ' +
+                    questionCount + ' đáp án đúng trước, sau đó mới đến các từ nhiễu.', 'Thiếu từ trong danh sách');
+                return false;
+            }
+            return true;
+        }
+
         vm.addQuestionForPassage1 = function (index) {
             if (!validateQuestionRange(0)) {
+                return;
+            }
+
+            if (!validateCompleteListOptionCount(vm.ieltsReadingTest.subQuestions[0].subQuestions[index])) {
                 return;
             }
 
@@ -1004,6 +1136,7 @@
                 // item.questionAnswers = tempAnswers;
             }
             ensureOneEditorPackage(vm.ieltsReadingTest.subQuestions[0].subQuestions[index]);
+            ensureCompleteListPackage(vm.ieltsReadingTest.subQuestions[0].subQuestions[index]);
             vm.ieltsReadingTest.subQuestions[0].subQuestions[index].isHaveChildren = true;
             vm.getOrdinalNumber(vm.ieltsReadingTest);
             vm.refreshBuilderValidation();
@@ -1133,6 +1266,9 @@
             if (!validateQuestionRange(1)) {
                 return;
             }
+            if (!validateCompleteListOptionCount(vm.ieltsReadingTest.subQuestions[1].subQuestions[index])) {
+                return;
+            }
             if (vm.tempAnswers.length !== parseInt(vm.numberOfAnswers, 10)) {
                 vm.createTempAnswers(index);
             }
@@ -1167,6 +1303,7 @@
                 // item.questionAnswers = tempAnswers;
             }
             ensureOneEditorPackage(vm.ieltsReadingTest.subQuestions[1].subQuestions[index]);
+            ensureCompleteListPackage(vm.ieltsReadingTest.subQuestions[1].subQuestions[index]);
             vm.ieltsReadingTest.subQuestions[1].subQuestions[index].isHaveChildren = true;
             vm.getOrdinalNumber(vm.ieltsReadingTest);
             vm.refreshBuilderValidation();
@@ -1285,6 +1422,9 @@
             if (!validateQuestionRange(2)) {
                 return;
             }
+            if (!validateCompleteListOptionCount(vm.ieltsReadingTest.subQuestions[2].subQuestions[index])) {
+                return;
+            }
             if (vm.tempAnswers.length !== parseInt(vm.numberOfAnswers, 10)) {
                 vm.createTempAnswers(index);
             }
@@ -1319,6 +1459,7 @@
                 // item.questionAnswers = tempAnswers;
             }
             ensureOneEditorPackage(vm.ieltsReadingTest.subQuestions[2].subQuestions[index]);
+            ensureCompleteListPackage(vm.ieltsReadingTest.subQuestions[2].subQuestions[index]);
             vm.ieltsReadingTest.subQuestions[2].subQuestions[index].isHaveChildren = true;
             vm.getOrdinalNumber(vm.ieltsReadingTest);
             vm.refreshBuilderValidation();
@@ -1465,13 +1606,42 @@
                     icon: false,
                     tooltip: 'Chèn ký hiệu }{SPACE}{ tại vị trí con trỏ',
                     onclick: function () {
+                        var bookmark = null;
+                        try {
+                            bookmark = editor.selection.getBookmark(2, true);
+                        } catch (ignoreBookmarkError) {
+                            bookmark = null;
+                        }
                         editor.focus();
+                        if (bookmark) {
+                            try {
+                                editor.selection.moveToBookmark(bookmark);
+                            } catch (ignoreRestoreBookmarkError) {
+                                // TinyMCE still inserts at its last valid caret when a saved bookmark is stale.
+                            }
+                        }
                         editor.undoManager.transact(function () {
-                            editor.insertContent('}{SPACE}{');
+                            editor.execCommand('mceInsertContent', false, '}{SPACE}{');
                         });
+                        editor.nodeChanged();
+                        editor.fire('input');
                         editor.fire('change');
                         editor.save();
-                        vm.changeInTheProcessOfCreatingReadingTest();
+
+                        // ui-tinymce can miss a toolbar-generated change on an editor
+                        // loaded from an existing test. Push the content into ngModel
+                        // explicitly so the gap counter and the saved payload update now.
+                        var textarea = editor.getElement();
+                        var ngModelController = textarea ? angular.element(textarea).controller('ngModel') : null;
+                        var currentContent = editor.getContent();
+                        $scope.$evalAsync(function () {
+                            if (ngModelController) {
+                                ngModelController.$setViewValue(currentContent);
+                                ngModelController.$setTouched();
+                                ngModelController.$setDirty();
+                            }
+                            vm.changeInTheProcessOfCreatingReadingTest();
+                        });
                     }
                 });
             },
@@ -1590,9 +1760,10 @@
             });
         };
 
-        vm.enterSearchCode = function(){
+        vm.enterSearchCode = function(keyboardEvent){
             // console.log(event.keyCode);
-            if(event.keyCode == 13){//Phím Enter
+            keyboardEvent = keyboardEvent || $window.event;
+            if(keyboardEvent && keyboardEvent.keyCode == 13){//Phím Enter
                 vm.codeChange();
             }
         };

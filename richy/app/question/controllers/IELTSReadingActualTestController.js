@@ -647,6 +647,7 @@
         vm.isPreviewMode = $location.search().preview === '1' || $location.search().preview === 1;
         vm.previewPart = Math.max(1, Math.min(3, parseInt($location.search().previewPart, 10) || 1));
         vm.previewKey = $location.search().previewKey;
+        vm.previewStorage = $location.search().previewStorage === 'session' ? 'session' : 'local';
         vm.isHasTestTakerName = true;
         vm.isStartTest = false;
 
@@ -727,8 +728,10 @@
 
             if (vm.isPreviewMode && vm.previewKey) {
                 try {
-                    var previewData = JSON.parse($window.localStorage.getItem(vm.previewKey));
+                    var activePreviewStorage = vm.previewStorage === 'session' ? $window.sessionStorage : $window.localStorage;
+                    var previewData = JSON.parse(activePreviewStorage.getItem(vm.previewKey));
                     if (previewData) {
+                        activePreviewStorage.removeItem(vm.previewKey);
                         loadReadingTest(normalizeLocalReadingPreview(previewData));
                         return;
                     }
@@ -1168,6 +1171,105 @@
             questionPackage.oneEditorRenderedQuestion = content.replace(/\}\{ENTER\}\{/gi, '<br><br>');
         }
 
+        function shuffleCompleteListWords(words) {
+            var shuffled = words.slice();
+            for (var index = shuffled.length - 1; index > 0; index--) {
+                var randomIndex = Math.floor(Math.random() * (index + 1));
+                var current = shuffled[index];
+                shuffled[index] = shuffled[randomIndex];
+                shuffled[randomIndex] = current;
+            }
+            return shuffled;
+        }
+
+        function buildCompleteListQuestion(questionPackage) {
+            var questions = questionPackage.subQuestions || [];
+            questions.sort(function (left, right) {
+                return Number(left.ordinalNumber) - Number(right.ordinalNumber);
+            });
+
+            angular.forEach(questions, function (question) {
+                question.questionAnswers = question.questionAnswers || [];
+                question.questionAnswers.sort(function (left, right) {
+                    return Number(left.ordinalNumberQuestionAnswer) - Number(right.ordinalNumberQuestionAnswer);
+                });
+            });
+            var content = questions.length ? String(questions[0].question || '') : '';
+            var sourceAnswers = questions.length ? questions[0].questionAnswers : [];
+            questionPackage.completeListSlots = [];
+            questionPackage.completeListWordBank = shuffleCompleteListWords(sourceAnswers.map(function (questionAnswer, answerIndex) {
+                return {
+                    answerIndex: answerIndex,
+                    answerId: questionAnswer.id,
+                    clientAnswer: questionAnswer.answer ? questionAnswer.answer.answer : ''
+                };
+            }));
+
+            angular.forEach(questions, function (question, questionIndex) {
+                questionPackage.completeListSlots.push({items: []});
+                var ordinalNumber = question.ordinalNumber;
+                var dropBox = '<span class="complete-list-drop-box" ' +
+                    'id="question-number-' + ordinalNumber + '" ' +
+                    'dnd-list="completeListPackage.completeListSlots[' + questionIndex + '].items" ' +
+                    'dnd-drop="vm.dropCompleteListWord(completeListPackage,' + questionIndex + ',item)" ' +
+                    'ng-click="$event.stopPropagation(); vm.clearCompleteListSlot(completeListPackage,' + questionIndex + ')">' +
+                    '<span ng-if="!completeListPackage.completeListSlots[' + questionIndex + '].items.length" class="complete-list-drop-number">' + ordinalNumber + '</span>' +
+                    '<span ng-if="completeListPackage.completeListSlots[' + questionIndex + '].items.length" ' +
+                    'ng-bind="completeListPackage.completeListSlots[' + questionIndex + '].items[0].clientAnswer"></span>' +
+                    '</span>';
+                content = content.replace(/\}\{SPACE\}\{/i, dropBox);
+            });
+
+            questionPackage.completeListRenderedQuestion = content.replace(/\}\{ENTER\}\{/gi, '<br><br>');
+        }
+
+        vm.isCompleteListWordUsed = function (questionPackage, word) {
+            var used = false;
+            angular.forEach((questionPackage && questionPackage.completeListSlots) || [], function (slot) {
+                if (slot.items && slot.items.length && slot.items[0].answerIndex === word.answerIndex) {
+                    used = true;
+                }
+            });
+            return used;
+        };
+
+        vm.clearCompleteListSlot = function (questionPackage, slotIndex) {
+            var slot = questionPackage && questionPackage.completeListSlots ? questionPackage.completeListSlots[slotIndex] : null;
+            var question = questionPackage && questionPackage.subQuestions ? questionPackage.subQuestions[slotIndex] : null;
+            if (!slot || !slot.items || !slot.items.length || !question) {
+                return;
+            }
+            var answerIndex = slot.items[0].answerIndex;
+            var questionAnswer = (question.questionAnswers || [])[answerIndex];
+            if (questionAnswer) {
+                vm.checkBoxMultipleChoiceQuestions(questionAnswer, question, false);
+            }
+            slot.items = [];
+        };
+
+        vm.dropCompleteListWord = function (questionPackage, slotIndex, droppedWord) {
+            if (!questionPackage || !droppedWord || !questionPackage.subQuestions || !questionPackage.completeListSlots) {
+                return false;
+            }
+
+            angular.forEach(questionPackage.completeListSlots, function (slot, existingIndex) {
+                if (existingIndex !== slotIndex && slot.items && slot.items.length && slot.items[0].answerIndex === droppedWord.answerIndex) {
+                    vm.clearCompleteListSlot(questionPackage, existingIndex);
+                }
+            });
+            vm.clearCompleteListSlot(questionPackage, slotIndex);
+
+            var question = questionPackage.subQuestions[slotIndex];
+            var questionAnswer = question && question.questionAnswers ? question.questionAnswers[droppedWord.answerIndex] : null;
+            if (question && questionAnswer) {
+                questionPackage.completeListSlots[slotIndex].items = [angular.copy(droppedWord)];
+                vm.checkBoxMultipleChoiceQuestions(questionAnswer, question, true);
+                vm.clickShowChildren(question, questionPackage.subQuestions);
+            }
+            $scope.$evalAsync();
+            return true;
+        };
+
         vm.processQuestionATT = function (data,idName) {
             var z = 0;
             var z2 = 0;
@@ -1194,6 +1296,9 @@
                     for (var i = 0; i < data.subQuestions[k].subQuestions.length; i++) {
                         if (data.subQuestions[k].subQuestions[i].type == 11) {
                             buildOneEditorQuestion(data.subQuestions[k].subQuestions[i]);
+                        }
+                        if (data.subQuestions[k].subQuestions[i].type == 13) {
+                            buildCompleteListQuestion(data.subQuestions[k].subQuestions[i]);
                         }
                         for (var j = 0; j < data.subQuestions[k].subQuestions[i].subQuestions.length; j++) {
                             var parentType = 4;
@@ -2179,9 +2284,9 @@
             clickedAnnotationMarker = null;
 
             var rect = range.getBoundingClientRect();
-            var menuWidth = 82;
+            var menuWidth = 102;
             var left = Math.max(8, Math.min(rect.left + (rect.width / 2) - (menuWidth / 2), window.innerWidth - menuWidth - 8));
-            var top = rect.top - 46;
+            var top = rect.top - 52;
             if (top < 8) {
                 top = rect.bottom + 10;
             }

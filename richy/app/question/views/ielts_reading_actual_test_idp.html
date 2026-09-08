@@ -346,6 +346,18 @@
                                         <span compile="item.oneEditorRenderedQuestion"></span>
                                     </div>
 
+                                    <div class="complete-list-runtime actual-test-font-global" ng-if="item.type == 13" ng-init="completeListPackage=item">
+                                        <div class="complete-list-text" compile="item.completeListRenderedQuestion"></div>
+                                        <div class="complete-list-word-bank" aria-label="Danh sách từ để kéo vào ô trống">
+                                            <span class="complete-list-word"
+                                                  ng-repeat="word in item.completeListWordBank track by $index"
+                                                  ng-if="!vm.isCompleteListWordUsed(item, word)"
+                                                  dnd-draggable="word"
+                                                  dnd-effect-allowed="copy"
+                                                  ng-bind="word.clientAnswer"></span>
+                                        </div>
+                                    </div>
+
                                     <div class="row">
                                         <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB.items" dnd-drop="onDropB(listB, item, index)" ng-repeat="itemB in listB.items"  ng-if="item.type == 4">
                                         <span
@@ -695,6 +707,18 @@
                                         <span compile="item.oneEditorRenderedQuestion"></span>
                                     </div>
 
+                                    <div class="complete-list-runtime actual-test-font-global" ng-if="item.type == 13" ng-init="completeListPackage=item">
+                                        <div class="complete-list-text" compile="item.completeListRenderedQuestion"></div>
+                                        <div class="complete-list-word-bank" aria-label="Danh sách từ để kéo vào ô trống">
+                                            <span class="complete-list-word"
+                                                  ng-repeat="word in item.completeListWordBank track by $index"
+                                                  ng-if="!vm.isCompleteListWordUsed(item, word)"
+                                                  dnd-draggable="word"
+                                                  dnd-effect-allowed="copy"
+                                                  ng-bind="word.clientAnswer"></span>
+                                        </div>
+                                    </div>
+
                                     <div class="row">
                                         <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB2.items" dnd-drop="onDropB2(listB2, item, index)" ng-repeat="itemB in listB2.items"  ng-if="item.type == 4">
                                         <span
@@ -1026,6 +1050,18 @@
                                         <span compile="item.oneEditorRenderedQuestion"></span>
                                     </div>
 
+                                    <div class="complete-list-runtime actual-test-font-global" ng-if="item.type == 13" ng-init="completeListPackage=item">
+                                        <div class="complete-list-text" compile="item.completeListRenderedQuestion"></div>
+                                        <div class="complete-list-word-bank" aria-label="Danh sách từ để kéo vào ô trống">
+                                            <span class="complete-list-word"
+                                                  ng-repeat="word in item.completeListWordBank track by $index"
+                                                  ng-if="!vm.isCompleteListWordUsed(item, word)"
+                                                  dnd-draggable="word"
+                                                  dnd-effect-allowed="copy"
+                                                  ng-bind="word.clientAnswer"></span>
+                                        </div>
+                                    </div>
+
                                     <div class="row">
                                         <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB3.items" dnd-drop="onDropB3(listB3, item, index)" ng-repeat="itemB in listB3.items"  ng-if="item.type == 4">
                                         <span
@@ -1265,9 +1301,10 @@
                     || item.questionAnswer.question.parent.type == 7
                     || item.questionAnswer.question.parent.type == 9
                     || item.questionAnswer.question.parent.type == 10
-                    || item.questionAnswer.question.parent.type == 12">{{item.questionAnswer.answer.answer}}</td>
+                    || item.questionAnswer.question.parent.type == 12
+                    || item.questionAnswer.question.parent.type == 13">{{item.questionAnswer.answer.answer}}</td>
 
-                            <td ng-if="item.questionAnswer.question.parent.type == 1 || item.questionAnswer.question.parent.type == 6|| item.questionAnswer.question.parent.type == 9|| item.questionAnswer.question.parent.type == 10 || item.questionAnswer.question.parent.type == 12">{{item.questionAnswer.correctAnswer}}</td>
+                            <td ng-if="item.questionAnswer.question.parent.type == 1 || item.questionAnswer.question.parent.type == 6|| item.questionAnswer.question.parent.type == 9|| item.questionAnswer.question.parent.type == 10 || item.questionAnswer.question.parent.type == 12 || item.questionAnswer.question.parent.type == 13">{{item.questionAnswer.correctAnswer}}</td>
 
                             <td ng-if="item.questionAnswer.question.parent.type == 5 || item.questionAnswer.question.parent.type == 7" ng-bind-html="item.correctAnswerForMultipleAnswer"></td>
 
@@ -1320,9 +1357,9 @@
      id="context1"
      class="dropdown-menu-highlight idp-selection-menu"
      role="menu"
-     aria-label="Text tools">
+    aria-label="Text tools">
     <button type="button" class="context-menu-highlight" ng-mousedown="applySelectionNote()" ng-hide="vm.isAnnotationRemoveMenu">
-        <i class="fa fa-file-text-o" aria-hidden="true"></i>
+        <i class="fa fa-sticky-note" aria-hidden="true"></i>
         <span>Take note</span>
     </button>
     <button type="button" class="context-menu-highlight" ng-mousedown="applySelectionHighlight()" ng-hide="vm.isAnnotationRemoveMenu">
@@ -1464,7 +1501,6 @@
 
 
 <style>
-+
 
     /* Matching Names / Matching Information matrix */
     .idp-matching-matrix {
@@ -1519,6 +1555,64 @@
     .idp-matching-radio:focus {
         outline: 2px solid #1683d8;
         outline-offset: 2px;
+    }
+
+    .complete-list-runtime {
+        clear: both;
+        margin: 10px 0 24px;
+        line-height: 1.65;
+    }
+
+    .complete-list-drop-box {
+        display: inline-flex;
+        min-width: 132px;
+        min-height: 38px;
+        align-items: center;
+        justify-content: center;
+        margin: 3px 5px;
+        padding: 3px 12px;
+        border: 2px solid currentColor;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, .9);
+        color: #202124;
+        vertical-align: middle;
+        cursor: pointer;
+    }
+
+    .complete-list-drop-box.dndDragover {
+        outline: 3px solid #1683d8;
+        outline-offset: 2px;
+    }
+
+    .complete-list-drop-number {
+        font-weight: 700;
+    }
+
+    .complete-list-word-bank {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 24px;
+        padding: 18px;
+        border: 1px solid currentColor;
+        border-radius: 6px;
+    }
+
+    .complete-list-word {
+        display: inline-flex;
+        min-height: 38px;
+        align-items: center;
+        padding: 6px 14px;
+        border: 1px solid currentColor;
+        border-radius: 4px;
+        background: #fff;
+        color: #202124;
+        cursor: grab;
+        user-select: none;
+    }
+
+    .complete-list-word:active {
+        cursor: grabbing;
     }
 
 
@@ -3690,7 +3784,7 @@
         position: fixed !important;
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        width: 82px !important;
+        width: 102px !important;
         height: auto !important;
         overflow: visible;
         border: 1px solid #b8babf;
@@ -3725,7 +3819,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        min-height: 34px;
+        min-height: 40px;
         width: 100%;
         padding: 3px 2px;
         border: 0;
@@ -3733,7 +3827,7 @@
         border-radius: 0;
         color: #2a2c30;
         background: #ffffff;
-        font-size: 8px !important;
+        font-size: 10px !important;
         font-weight: 500;
         line-height: 1.25;
     }
@@ -3746,12 +3840,12 @@
     .idp-reading-page .context-menu-highlight i {
         margin-bottom: 2px;
         color: #5d6065;
-        font-size: 10px !important;
+        font-size: 12px !important;
     }
 
     /* Beat the site's global `span { font-size: 19px !important; }` rule. */
     .idp-reading-page .dropdown-menu-highlight .context-menu-highlight span {
-        font-size: 8px !important;
+        font-size: 10px !important;
         line-height: 1.15 !important;
     }
 
@@ -4444,6 +4538,14 @@
     .idp-reading-page.idp-contrast-yellow-black select,
     .idp-reading-page.idp-contrast-yellow-black .ui-select-match .btn {
         color: #ffe600 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .complete-list-drop-box,
+    .idp-reading-page.idp-contrast-white-black .complete-list-word,
+    .idp-reading-page.idp-contrast-yellow-black .complete-list-drop-box,
+    .idp-reading-page.idp-contrast-yellow-black .complete-list-word {
+        border-color: currentColor !important;
+        background: #181818 !important;
     }
 
     .idp-reading-page.idp-contrast-white-black .idp-radio-control,
