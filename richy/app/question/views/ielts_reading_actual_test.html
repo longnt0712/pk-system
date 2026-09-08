@@ -41,6 +41,9 @@
     <h1 class="start-test-button" ng-show="vm.isHasTestTakerName === true" style="cursor: pointer" ng-click="vm.startTest()" ><i class="fa fa-play"  ></i> START TEST</h1>
 </div>
 <div class="row margin-top-10 wrap-test" ng-show="vm.isHasTestTakerName === true" id="test-performance">
+    <div class="reading-preview-banner" ng-if="vm.isPreviewMode">
+        <i class="fa fa-eye"></i> PREVIEW MODE · Đang xem Part {{vm.passageNumber}} như giao diện của học viên
+    </div>
     <div class="row">
         <div class="col-md-12" style="background-color: #E1EDF4;" ng-hide="vm.passageNumber == 4">
             <div class="portlet bg-white bordered">
@@ -57,14 +60,14 @@
                                 <p style="font-size: 15px;font-weight: 700;"><span style="font-weight:bold;font-size:20px;">&nbsp; {{minuteDisplay+1}}</span> minute<span ng-show="minuteDisplay != 1">s</span> left</p>
                             </div>
                             <div style="padding-top: 15px;padding-right: 40px" class="col-md-4 text-right" ng-show="vm.isStartTest">
-                                <button style="padding-left: 20px; padding-right: 20px" class="btn btn-primary" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">Submit</span></button>
+                                <button ng-if="!vm.isPreviewMode" style="padding-left: 20px; padding-right: 20px" class="btn btn-primary" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">Submit</span></button>
                             </div>
                         </div>
 
 
                         <div class="row for-media text-center" style="width: 100%;background-color: white" ng-show="vm.isStartTest">
                         <div class="col-md-6 margin-top-10">
-                            <button style="margin-left: 10px;padding-left: 20px; padding-right: 20px" class="btn btn-primary" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">Submit</span></button>
+                            <button ng-if="!vm.isPreviewMode" style="margin-left: 10px;padding-left: 20px; padding-right: 20px" class="btn btn-primary" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">Submit</span></button>
                         </div>
                         <div class="col-md-6">
                             <span style="font-weight:bold;font-size:20px;">&nbsp; {{minuteDisplay}} : {{secondDisplay}}</span> left
@@ -223,9 +226,9 @@
                                                 </tbody>
                                             </table>
                                         </div>
-                                        <div class="row" ng-if="item.type == 10" style="overflow-x: scroll">
+                                        <div class="row" ng-if="item.type == 10 || item.type == 12" style="overflow-x: scroll">
 
-                                            <table class="table-hover table-bordered" style="width: 100%;margin-bottom: 20px">
+                                            <table class="table-hover idp-matching-matrix" style="width: 100%;margin-bottom: 20px">
                                                 <tr ng-repeat="q in item.subQuestions" ng-if="$index == 0">
                                                     <td></td>
                                                     <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
@@ -244,7 +247,7 @@
                                                         <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                                     </td>
                                                     <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
-                                                        <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                        <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" class="form-check-input idp-matching-radio" type="checkbox" name="matching-answer-{{q.id}}">
                                                         <!--{{a.answer.answer}}-->
                                                     </td>
                                                 </tr>
@@ -295,6 +298,10 @@
                                             </span>
                                         </span>
                                     </span>
+
+                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11">
+                                        <span compile="item.oneEditorRenderedQuestion"></span>
+                                    </div>
 
                                     <div class="row">
                                         <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB.items" dnd-drop="onDropB(listB, item, index)" ng-repeat="itemB in listB.items"  ng-if="item.type == 4">
@@ -547,9 +554,9 @@
                                                 </tbody>
                                             </table>
                                         </div>
-                                        <div class="row" ng-if="item.type == 10" style="overflow-x: scroll">
+                                        <div class="row" ng-if="item.type == 10 || item.type == 12" style="overflow-x: scroll">
 
-                                            <table class="table-hover table-bordered" style="width: 100%;margin-bottom: 20px">
+                                            <table class="table-hover idp-matching-matrix" style="width: 100%;margin-bottom: 20px">
                                                 <tr ng-repeat="q in item.subQuestions" ng-if="$index == 0">
                                                     <td></td>
                                                     <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
@@ -568,7 +575,7 @@
                                                         <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                                     </td>
                                                     <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
-                                                        <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                        <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" class="form-check-input idp-matching-radio" type="checkbox" name="matching-answer-{{q.id}}">
                                                         <!--{{a.answer.answer}}-->
                                                     </td>
                                                 </tr>
@@ -617,6 +624,10 @@
                                             </span>
                                         </span>
                                     </span>
+
+                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11">
+                                        <span compile="item.oneEditorRenderedQuestion"></span>
+                                    </div>
 
                                     <div class="row">
                                         <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB2.items" dnd-drop="onDropB2(listB2, item, index)" ng-repeat="itemB in listB2.items"  ng-if="item.type == 4">
@@ -853,9 +864,9 @@
                                                 </tbody>
                                             </table>
                                         </div>
-                                        <div class="row" ng-if="item.type == 10" style="overflow-x: scroll">
+                                        <div class="row" ng-if="item.type == 10 || item.type == 12" style="overflow-x: scroll">
 
-                                            <table class="table-hover table-bordered" style="width: 100%;margin-bottom: 20px">
+                                            <table class="table-hover idp-matching-matrix" style="width: 100%;margin-bottom: 20px">
                                                 <tr ng-repeat="q in item.subQuestions" ng-if="$index == 0">
                                                     <td></td>
                                                     <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
@@ -874,7 +885,7 @@
                                                         <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                                     </td>
                                                     <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
-                                                        <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
+                                                        <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" class="form-check-input idp-matching-radio" type="checkbox" name="matching-answer-{{q.id}}">
                                                         <!--{{a.answer.answer}}-->
                                                     </td>
                                                 </tr>
@@ -921,6 +932,10 @@
                                             </span>
                                         </span>
                                     </span>
+
+                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11">
+                                        <span compile="item.oneEditorRenderedQuestion"></span>
+                                    </div>
 
                                     <div class="row">
                                         <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB3.items" dnd-drop="onDropB3(listB3, item, index)" ng-repeat="itemB in listB3.items"  ng-if="item.type == 4">
@@ -1169,9 +1184,10 @@
                     || item.questionAnswer.question.parent.type == 5
                     || item.questionAnswer.question.parent.type == 7
                     || item.questionAnswer.question.parent.type == 9
-                    || item.questionAnswer.question.parent.type == 10">{{item.questionAnswer.answer.answer}}</td>
+                    || item.questionAnswer.question.parent.type == 10
+                    || item.questionAnswer.question.parent.type == 12">{{item.questionAnswer.answer.answer}}</td>
 
-                            <td ng-if="item.questionAnswer.question.parent.type == 1 || item.questionAnswer.question.parent.type == 6|| item.questionAnswer.question.parent.type == 9|| item.questionAnswer.question.parent.type == 10">{{item.questionAnswer.correctAnswer}}</td>
+                            <td ng-if="item.questionAnswer.question.parent.type == 1 || item.questionAnswer.question.parent.type == 6|| item.questionAnswer.question.parent.type == 9|| item.questionAnswer.question.parent.type == 10 || item.questionAnswer.question.parent.type == 12">{{item.questionAnswer.correctAnswer}}</td>
 
                             <td ng-if="item.questionAnswer.question.parent.type == 5 || item.questionAnswer.question.parent.type == 7" ng-bind-html="item.correctAnswerForMultipleAnswer"></td>
 
@@ -1182,10 +1198,10 @@
                             <!--<td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3"-->
                             <!--ng-style="(!item.isCorrectTestResultDetail) && {'background':'rgba(196, 77, 86,1)'}">{{item.ordinalNumber}}</td>-->
 
-                            <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3">
+                            <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3 || item.questionAnswer.question.parent.type == 11">
                                 {{item.clientAnswer}}
                             </td>
-                            <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3">
+                            <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3 || item.questionAnswer.question.parent.type == 11">
                                 {{item.questionAnswer.answer.answer}}
                             </td>
                         </tr>
@@ -1242,6 +1258,103 @@
 
 
 <style>
++
+
+    /* Matching Names / Matching Information matrix */
+    .idp-matching-matrix {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid currentColor;
+        background: transparent;
+    }
+
+    .idp-matching-matrix td {
+        border: 1px solid currentColor !important;
+        padding: 10px 8px;
+        vertical-align: middle !important;
+    }
+
+    .idp-matching-matrix tr:first-child td {
+        padding-top: 8px;
+        padding-bottom: 8px;
+        text-align: center;
+        font-weight: 700;
+    }
+
+    .idp-matching-matrix tr:not(:first-child) td:first-child {
+        line-height: 1.55;
+    }
+
+    .idp-matching-matrix tr:not(:first-child) td:not(:first-child) {
+        min-width: 54px;
+        text-align: center;
+    }
+
+    .idp-matching-radio {
+        -webkit-appearance: none;
+        appearance: none;
+        display: inline-block;
+        width: 16px !important;
+        height: 16px !important;
+        margin: 0 !important;
+        border: 1px solid #777 !important;
+        border-radius: 50% !important;
+        background: transparent;
+        vertical-align: middle;
+        cursor: pointer;
+        box-shadow: none !important;
+    }
+
+    .idp-matching-radio:checked {
+        border-color: currentColor !important;
+        background: radial-gradient(circle at center, currentColor 0 4px, transparent 4.5px);
+    }
+
+    .idp-matching-radio:focus {
+        outline: 2px solid #1683d8;
+        outline-offset: 2px;
+    }
+
+    .reading-preview-banner {
+        position: fixed;
+        top: 8px;
+        left: 50%;
+        z-index: 1200;
+        transform: translateX(-50%);
+        padding: 9px 18px;
+        border-radius: 24px;
+        background: #26366f;
+        color: #fff;
+        box-shadow: 0 5px 18px rgba(20, 31, 75, .25);
+        font-weight: 700;
+    }
+
+    .reading-one-editor-runtime {
+        width: 100%;
+        padding: 8px 12px 28px;
+        line-height: 2.25;
+    }
+
+    .reading-one-editor-runtime .reading-one-editor-input {
+        display: inline-block;
+        width: 154px;
+        height: 38px;
+        margin: 4px 7px;
+        padding: 6px 10px;
+        border: 1px solid #949ba8;
+        border-radius: 2px;
+        background: #fff;
+        color: #111;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .reading-one-editor-runtime .reading-one-editor-input:focus {
+        border-color: #c39118;
+        box-shadow: 0 0 0 2px rgba(218, 171, 55, .25);
+        outline: 0;
+    }
+
 
     .button-question-not-click {
         border:none;border-radius:7px;background-color: #6D6E71;color: white;font-weight: 500; padding-top: 10px;padding-bottom: 10px;

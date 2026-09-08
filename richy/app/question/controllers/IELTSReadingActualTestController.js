@@ -644,12 +644,38 @@
         console.log('IELTS Reading Actual Test');
         vm.searchDto.pageSize = 10;
         // console.log($stateParams.ieltsReadingTestId);
+        vm.isPreviewMode = $location.search().preview === '1' || $location.search().preview === 1;
+        vm.previewPart = Math.max(1, Math.min(3, parseInt($location.search().previewPart, 10) || 1));
+        vm.previewKey = $location.search().previewKey;
         vm.isHasTestTakerName = true;
         vm.isStartTest = false;
+
+        function normalizeLocalReadingPreview(data) {
+            angular.forEach(data.subQuestions || [], function (passage, passageIndex) {
+                angular.forEach(passage.subQuestions || [], function (questionPackage, packageIndex) {
+                    questionPackage.parent = {
+                        ordinalNumber: passage.ordinalNumber,
+                        questionType: passage.questionType
+                    };
+                    angular.forEach(questionPackage.subQuestions || [], function (question, questionIndex) {
+                        if (question.id == null) {
+                            question.id = 'preview-question-' + passageIndex + '-' + packageIndex + '-' + questionIndex;
+                        }
+                        question.parent = {type: questionPackage.type, questionType: questionPackage.questionType};
+                        angular.forEach(question.questionAnswers || [], function (questionAnswer, answerIndex) {
+                            if (questionAnswer.id == null) {
+                                questionAnswer.id = question.id + '-answer-' + answerIndex;
+                            }
+                            questionAnswer.question = {id: question.id, parent: {type: questionPackage.type}};
+                        });
+                    });
+                });
+            });
+            return data;
+        }
+
         vm.startTest = function () {
-            if ($stateParams.ieltsReadingTestId != null) {
-                blockUI.start();
-                service.getOne($stateParams.ieltsReadingTestId).then(function (data) {
+            function loadReadingTest(data) {
                     vm.ieltsReadingActualTest = data;
                     vm.getOrdinalNumber(data);
                     blockUI.stop();
@@ -687,6 +713,9 @@
                         var timeout;
                         timeout = $timeout(function(){
                             vm.ieltsReadingActualTest = vm.processQuestionATT(data);
+                            if (vm.isPreviewMode) {
+                                vm.passageNumber = vm.previewPart;
+                            }
                             myCallback(vm.ieltsReadingActualTest);
                         },0);
                     }
@@ -694,7 +723,26 @@
                     firstCallFunction(secondCallFunction);
 
                     // console.log(data);
-                }, function failure() {
+            }
+
+            if (vm.isPreviewMode && vm.previewKey) {
+                try {
+                    var previewData = JSON.parse($window.localStorage.getItem(vm.previewKey));
+                    if (previewData) {
+                        loadReadingTest(normalizeLocalReadingPreview(previewData));
+                        return;
+                    }
+                } catch (previewReadError) {
+                    toastr.error('Dữ liệu Preview không hợp lệ.', 'Không thể mở Preview');
+                    return;
+                }
+                toastr.warning('Bản Preview đã hết hạn. Vui lòng mở lại từ trang tạo đề.', 'Không tìm thấy Preview');
+                return;
+            }
+
+            if ($stateParams.ieltsReadingTestId != null) {
+                blockUI.start();
+                service.getOne($stateParams.ieltsReadingTestId).then(loadReadingTest, function failure() {
                     toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
                 });
             }
@@ -930,7 +978,8 @@
         vm.autoScrollToView = function (ordinalNumber) {
 
             vm.tempOrdinalNumber = ordinalNumber;
-            var elmnt = document.getElementById('question-number-'+ordinalNumber);
+            var elmnt = document.getElementById('question-number-'+ordinalNumber) ||
+                document.getElementById('text-question-number-'+ordinalNumber);
             if(elmnt != null){
                 elmnt.scrollIntoView({
                     behavior: 'auto',
@@ -1096,6 +1145,29 @@
             // $scope.models.lists.B1.push({label: "Item B1" + i});
         // }
 
+        function buildOneEditorQuestion(questionPackage) {
+            var questions = questionPackage.subQuestions || [];
+            questions.sort(function (left, right) {
+                return Number(left.ordinalNumber) - Number(right.ordinalNumber);
+            });
+            var content = questions.length ? String(questions[0].question || '') : '';
+
+            angular.forEach(questions, function (question, questionIndex) {
+                var ordinalNumber = question.ordinalNumber;
+                var answerExpression = 'item.subQuestions[' + questionIndex + '].questionAnswers[0]';
+                var questionExpression = 'item.subQuestions[' + questionIndex + ']';
+                var input = '<input autocomplete="off" type="text" ' +
+                    'ng-click="vm.clickShowChildren(' + questionExpression + ',item.subQuestions)" ' +
+                    'ng-change="vm.changeTextQuestionAnswer(' + answerExpression + ',' + answerExpression + '.answer.answer,' + questionExpression + ')" ' +
+                    'ng-model="' + answerExpression + '.clientAnswer" ' +
+                    'class="text-question-filling-root reading-one-editor-input" ' +
+                    'id="text-question-number-' + ordinalNumber + '" placeholder="' + ordinalNumber + '">';
+                content = content.replace(/\}\{SPACE\}\{/i, input);
+            });
+
+            questionPackage.oneEditorRenderedQuestion = content.replace(/\}\{ENTER\}\{/gi, '<br><br>');
+        }
+
         vm.processQuestionATT = function (data,idName) {
             var z = 0;
             var z2 = 0;
@@ -1120,6 +1192,9 @@
                 //UPDATE 12 12 2025
                 if(data.subQuestions[k].subQuestions != null){
                     for (var i = 0; i < data.subQuestions[k].subQuestions.length; i++) {
+                        if (data.subQuestions[k].subQuestions[i].type == 11) {
+                            buildOneEditorQuestion(data.subQuestions[k].subQuestions[i]);
+                        }
                         for (var j = 0; j < data.subQuestions[k].subQuestions[i].subQuestions.length; j++) {
                             var parentType = 4;
                             //process filling gaps
@@ -3637,6 +3712,12 @@
         // vm.afterSubmit = function () {
         //
         // };
+
+        if (vm.isPreviewMode) {
+            $timeout(function () {
+                vm.startTest();
+            }, 0);
+        }
 
         //--------------------- End Reading Actual test -------------------------//
 

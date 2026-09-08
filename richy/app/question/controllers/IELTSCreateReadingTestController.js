@@ -78,8 +78,11 @@
             {id: 7, name: "Multiple Answers - Listening", notice: "T/F/NG or Y/N/NG is also multiple choice question"},
             {id: 8, name: "Matching Heading - Listening", notice: "Drop box (temp)"},
             {id: 9, name: "MAPS - Listening", notice: "..."},
-            {id: 10, name: "MATCHING NAMES", notice: "temp"}
+            {id: 10, name: "MATCHING NAMES", notice: "temp"},
+            {id: 11, name: "Filling Gaps New (One Editor)", notice: "Write all questions in one editor; each }{SPACE}{ becomes the next numbered answer"},
+            {id: 12, name: "MATCHING INFORMATION", notice: "Same creation and test layout as Matching Names"}
         ];
+        vm.passageTypes = vm.types.slice(0, 10);
 
         vm.status = {id: 1, name: "Chưa thuộc"};
         vm.statuses = [
@@ -200,7 +203,7 @@
                 name: 'IELTS Reading Test',
                 textSearch: null
             },
-            status : 1,
+            status : 6,
             questionTopics: [],
             countWords : 0,
             ordinalNumber: 1,
@@ -276,9 +279,9 @@
         };  //create a new test
         vm.createPassageNumber = 1;
 
-        vm.saveReadingTest = function () {
+        vm.saveReadingTest = function (saveMode) {
             blockUI.start();
-            service.saveObject(vm.ieltsReadingTest).then(function (data) {
+            return service.saveObject(vm.ieltsReadingTest).then(function (data) {
                 blockUI.stop();
                 vm.ieltsReadingTest = data;
                 vm.getOrdinalNumber(data);
@@ -313,14 +316,371 @@
 
 
 
-                // console.log(data);
+                vm.refreshBuilderValidation();
                 vm.getPageCreateIELTSReadingTest();
-            }, function success() {
-                toastr.info('Bạn đã tạo mới thành công một tài khoản.', 'Thông báo');
+                var saveMessage = saveMode === 'publish' ? 'Đã kiểm tra và xuất bản bài Reading.' :
+                    (saveMode === 'preview' ? 'Đã lưu dữ liệu để mở bản xem trước.' : 'Đã lưu bản nháp.');
+                toastr.success(saveMessage, 'Thông báo');
+                return data;
             }, function failure() {
-                toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
+                blockUI.stop();
+                toastr.error('Không thể lưu bài Reading. Vui lòng thử lại.', 'Thông báo');
             });
         };
+
+        var readingPartRules = [
+            {name: 'Part 1', start: 1, end: 13},
+            {name: 'Part 2', start: 14, end: 26},
+            {name: 'Part 3', start: 27, end: 40}
+        ];
+
+        vm.builderSteps = [
+            {number: 1, title: 'Thông tin bài thi', target: 'reading-builder-info'},
+            {number: 2, title: 'Part 1', target: 'reading-builder-part-1'},
+            {number: 3, title: 'Part 2', target: 'reading-builder-part-2'},
+            {number: 4, title: 'Part 3', target: 'reading-builder-part-3'},
+            {number: 5, title: 'Kiểm tra & xuất bản', target: 'reading-builder-review'}
+        ];
+
+        function plainText(value) {
+            return (value || '')
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/&nbsp;|&#160;/gi, ' ')
+                .replace(/&[a-z0-9#]+;/gi, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        vm.countOneEditorGaps = function (content) {
+            var matches = String(content || '').match(/\}\{SPACE\}\{/gi);
+            return matches ? matches.length : 0;
+        };
+
+        function ensureOneEditorPackage(questionPackage) {
+            if (!questionPackage || Number(questionPackage.type) !== 11) {
+                return;
+            }
+            questionPackage.subQuestions = questionPackage.subQuestions || [];
+            questionPackage.subQuestions.sort(function (left, right) {
+                return Number(left.ordinalNumber) - Number(right.ordinalNumber);
+            });
+            angular.forEach(questionPackage.subQuestions || [], function (question, questionIndex) {
+                question.questionAnswers = question.questionAnswers || [];
+                if (!question.questionAnswers.length) {
+                    question.questionAnswers.push({
+                        answer: {answer: ''},
+                        question: {},
+                        ordinalNumberQuestionAnswer: 1,
+                        correct: true
+                    });
+                }
+                question.questionAnswers = [question.questionAnswers[0]];
+                question.questionAnswers[0].ordinalNumberQuestionAnswer = 1;
+                question.questionAnswers[0].correct = true;
+                if (questionIndex > 0 && /^Question number\s*\d*$/i.test(plainText(question.question))) {
+                    question.question = '';
+                }
+            });
+            if (questionPackage.subQuestions && questionPackage.subQuestions.length) {
+                var firstQuestion = questionPackage.subQuestions[0];
+                if (/^Question number\s*\d*$/i.test(plainText(firstQuestion.question))) {
+                    firstQuestion.question = '';
+                }
+            }
+        }
+
+        vm.onReadingPackageTypeChange = function (questionPackage, partIndex, packageIndex) {
+            if (questionPackage && Number(questionPackage.type) === 11) {
+                vm.numberOfAnswers = 1;
+                vm.tempAnswers = [{
+                    answer: {answer: ''},
+                    question: {},
+                    ordinalNumberQuestionAnswer: 1,
+                    correct: true,
+                    packageNumber: packageIndex
+                }];
+                ensureOneEditorPackage(questionPackage);
+            }
+            vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
+        };
+
+        vm.updateOneEditorContent = function (questionPackage) {
+            ensureOneEditorPackage(questionPackage);
+            vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
+        };
+
+        function getPartQuestions(partIndex) {
+            var test = vm.ieltsReadingTest || {};
+            var passage = (test.subQuestions || [])[partIndex];
+            var result = [];
+            angular.forEach((passage && passage.subQuestions) || [], function (questionPackage, packageIndex) {
+                angular.forEach(questionPackage.subQuestions || [], function (question) {
+                    result.push({question: question, questionPackage: questionPackage, packageIndex: packageIndex});
+                });
+            });
+            return result;
+        }
+
+        function buildReadingTestValidation() {
+            var test = vm.ieltsReadingTest || {};
+            var result = {
+                valid: true,
+                issues: [],
+                totalQuestions: 0,
+                percent: 0,
+                parts: []
+            };
+
+            function addIssue(message, target, partIndex) {
+                result.issues.push({message: message, target: target, partIndex: partIndex});
+            }
+
+            if (!plainText(test.title)) {
+                addIssue('Chưa nhập tên bài thi.', 'reading-builder-info');
+            }
+
+            angular.forEach(readingPartRules, function (rule, partIndex) {
+                var passage = (test.subQuestions || [])[partIndex] || {};
+                var packages = passage.subQuestions || [];
+                var questionEntries = getPartQuestions(partIndex);
+                var numberMap = {};
+                var missing = [];
+                var partIssueStart = result.issues.length;
+
+                result.totalQuestions += questionEntries.length;
+
+                if (!plainText(passage.question)) {
+                    addIssue(rule.name + ': chưa nhập nội dung bài đọc.', 'reading-builder-part-' + (partIndex + 1), partIndex);
+                }
+                if (!passage.type) {
+                    addIssue(rule.name + ': chưa chọn dạng hiển thị bài đọc.', 'reading-builder-part-' + (partIndex + 1), partIndex);
+                }
+                if (!packages.length) {
+                    addIssue(rule.name + ': chưa có nhóm câu hỏi.', 'reading-builder-part-' + (partIndex + 1), partIndex);
+                }
+
+                angular.forEach(packages, function (questionPackage, packageIndex) {
+                    var packageTarget = 'reading-builder-part-' + (partIndex + 1);
+                    if (!questionPackage.type) {
+                        addIssue(rule.name + ', nhóm ' + (packageIndex + 1) + ': chưa chọn dạng câu hỏi.', packageTarget, partIndex);
+                    }
+                    var instruction = plainText(questionPackage.question);
+                    if (!instruction || /Question\s*\?\s*to\s*\?/i.test(instruction)) {
+                        addIssue(rule.name + ', nhóm ' + (packageIndex + 1) + ': hướng dẫn vẫn đang để mẫu.', packageTarget, partIndex);
+                    }
+                    if (!(questionPackage.subQuestions || []).length) {
+                        addIssue(rule.name + ', nhóm ' + (packageIndex + 1) + ': chưa tạo câu hỏi.', packageTarget, partIndex);
+                    }
+                    if (Number(questionPackage.type) === 11 && (questionPackage.subQuestions || []).length) {
+                        var oneEditorContent = questionPackage.subQuestions[0].question;
+                        var gapCount = vm.countOneEditorGaps(oneEditorContent);
+                        var expectedGapCount = questionPackage.subQuestions.length;
+                        if (!plainText(oneEditorContent)) {
+                            addIssue(rule.name + ', nhóm ' + (packageIndex + 1) + ': chưa nhập nội dung vào editor chung.', packageTarget, partIndex);
+                        } else if (gapCount !== expectedGapCount) {
+                            addIssue(rule.name + ', nhóm ' + (packageIndex + 1) + ': có ' + gapCount + ' ô điền từ nhưng cần đúng ' + expectedGapCount + ' ô.', packageTarget, partIndex);
+                        }
+                    }
+                });
+
+                angular.forEach(questionEntries, function (entry) {
+                    var question = entry.question || {};
+                    var number = parseInt(question.ordinalNumber, 10);
+                    var questionTarget = 'reading-builder-part-' + (partIndex + 1);
+                    if (!number || number < rule.start || number > rule.end) {
+                        addIssue(rule.name + ': có số câu ngoài khoảng ' + rule.start + '–' + rule.end + '.', questionTarget, partIndex);
+                    } else if (numberMap[number]) {
+                        addIssue(rule.name + ': câu ' + number + ' bị trùng.', questionTarget, partIndex);
+                    } else {
+                        numberMap[number] = true;
+                    }
+
+                    var questionText = plainText(question.question);
+                    if (Number(entry.questionPackage.type) !== 11 && (!questionText || /^Question number\s*\d*$/i.test(questionText))) {
+                        addIssue('Câu ' + (number || '?') + ': chưa nhập nội dung câu hỏi.', questionTarget, partIndex);
+                    }
+
+                    var answers = question.questionAnswers || [];
+                    if (!answers.length) {
+                        addIssue('Câu ' + (number || '?') + ': chưa có đáp án.', questionTarget, partIndex);
+                    } else {
+                        var hasBlankAnswer = false;
+                        var correctAnswerCount = 0;
+                        angular.forEach(answers, function (answer) {
+                            var answerText = answer && answer.answer ? plainText(answer.answer.answer) : '';
+                            hasBlankAnswer = hasBlankAnswer || !answerText || answerText.toLowerCase() === 'hihi';
+                            if (answer.correct === true) {
+                                correctAnswerCount++;
+                            }
+                        });
+                        if (hasBlankAnswer) {
+                            addIssue('Câu ' + (number || '?') + ': còn đáp án để trống.', questionTarget, partIndex);
+                        }
+                        if (correctAnswerCount === 0) {
+                            addIssue('Câu ' + (number || '?') + ': chưa đánh dấu đáp án đúng.', questionTarget, partIndex);
+                        } else if (Number(entry.questionPackage.type) === 11 && answers.length !== 1) {
+                            addIssue('Câu ' + (number || '?') + ': Filling Gaps New chỉ dùng 1 đáp án.', questionTarget, partIndex);
+                        } else if ((entry.questionPackage.type === 5 || entry.questionPackage.type === 7) && correctAnswerCount < 2) {
+                            addIssue('Câu ' + (number || '?') + ': dạng nhiều đáp án cần đánh dấu ít nhất 2 đáp án đúng.', questionTarget, partIndex);
+                        } else if (entry.questionPackage.type !== 5 && entry.questionPackage.type !== 7 && correctAnswerCount > 1) {
+                            addIssue('Câu ' + (number || '?') + ': dạng này chỉ nên có 1 đáp án đúng.', questionTarget, partIndex);
+                        }
+                    }
+                });
+
+                for (var number = rule.start; number <= rule.end; number++) {
+                    if (!numberMap[number]) {
+                        missing.push(number);
+                    }
+                }
+                if (missing.length) {
+                    addIssue(rule.name + ': thiếu câu ' + missing.join(', ') + '.', 'reading-builder-part-' + (partIndex + 1), partIndex);
+                }
+
+                result.parts.push({
+                    name: rule.name,
+                    count: questionEntries.length,
+                    expected: rule.end - rule.start + 1,
+                    missing: missing,
+                    issueCount: result.issues.length - partIssueStart
+                });
+            });
+
+            result.valid = result.issues.length === 0 && result.totalQuestions === 40;
+            var completedChecks = Math.max(0, 5 - Math.min(5, result.issues.length));
+            result.percent = Math.min(100, Math.round(((result.totalQuestions / 40) * 80) + ((completedChecks / 5) * 20)));
+            return result;
+        }
+
+        vm.refreshBuilderValidation = function () {
+            vm.builderValidation = buildReadingTestValidation();
+            return vm.builderValidation;
+        };
+
+        vm.goToBuilderTarget = function (target) {
+            var element = document.getElementById(target);
+            if (!element) {
+                return;
+            }
+            element.scrollIntoView({behavior: 'smooth', block: 'start'});
+            angular.element(element).addClass('reading-builder-focus');
+            $timeout(function () {
+                angular.element(element).removeClass('reading-builder-focus');
+            }, 1400);
+        };
+
+        vm.goToBuilderStep = function (stepIndex) {
+            if (stepIndex === 2 && vm.createPassageNumber < 2) {
+                vm.createPassageNumber = 2;
+            }
+            if (stepIndex >= 3) {
+                vm.createPassageNumber = 3;
+            }
+            $timeout(function () {
+                vm.goToBuilderTarget(vm.builderSteps[stepIndex].target);
+            });
+        };
+
+        vm.continueBuilder = function () {
+            var validation = vm.refreshBuilderValidation();
+            if (validation.issues.length) {
+                vm.goToBuilderTarget(validation.issues[0].target);
+            } else {
+                vm.goToBuilderTarget('reading-builder-review');
+            }
+        };
+
+        vm.toggleBuilderReview = function () {
+            vm.showBuilderReview = !vm.showBuilderReview;
+            vm.refreshBuilderValidation();
+        };
+
+        vm.saveDraftReadingTest = function () {
+            vm.ieltsReadingTest.status = 6;
+            vm.refreshBuilderValidation();
+            return vm.saveReadingTest('draft');
+        };
+
+        vm.previewReadingTest = function (partIndex) {
+            var targetPart = Math.max(1, Math.min(3, parseInt(partIndex, 10) || 1));
+            var previewKey = 'ieltsReadingPreview-' + new Date().getTime();
+            try {
+                $window.localStorage.setItem(previewKey, angular.toJson(vm.ieltsReadingTest));
+            } catch (previewStorageError) {
+                toastr.error('Không thể tạo dữ liệu Preview trên trình duyệt này.', 'Không thể mở Preview');
+                return;
+            }
+            var baseElement = document.getElementsByTagName('base')[0];
+            var appBaseUrl = baseElement ? baseElement.href : ($window.location.protocol + '//' + $window.location.host + '/');
+            var previewUrl = appBaseUrl.replace(/\/?$/, '/') + 'ielts_reading_actual_test/preview-local' +
+                '?preview=1&previewPart=' + targetPart + '&previewKey=' + encodeURIComponent(previewKey);
+            var previewWindow = $window.open(previewUrl, '_blank');
+            if (!previewWindow) {
+                $window.localStorage.removeItem(previewKey);
+                toastr.warning('Trình duyệt đang chặn cửa sổ xem trước. Vui lòng cho phép pop-up.', 'Không thể mở Preview');
+            }
+        };
+
+        vm.publishReadingTest = function () {
+            var validation = vm.refreshBuilderValidation();
+            vm.showBuilderReview = true;
+            if (!validation.valid) {
+                toastr.warning('Bài thi còn ' + validation.issues.length + ' mục cần hoàn thiện.', 'Chưa thể xuất bản');
+                if (validation.issues.length) {
+                    vm.goToBuilderTarget(validation.issues[0].target);
+                }
+                return;
+            }
+            vm.ieltsReadingTest.status = 7;
+            return vm.saveReadingTest('publish');
+        };
+
+        vm.preparePart = function (partIndex) {
+            var rule = readingPartRules[partIndex];
+            var used = {};
+            angular.forEach(getPartQuestions(partIndex), function (entry) {
+                used[parseInt(entry.question.ordinalNumber, 10)] = true;
+            });
+            var next = rule.start;
+            while (next <= rule.end && used[next]) {
+                next++;
+            }
+            vm.fromQuestion = next <= rule.end ? next : rule.end;
+            vm.toQuestion = vm.fromQuestion;
+            vm.numberOfAnswers = vm.numberOfAnswers > 0 ? vm.numberOfAnswers : 4;
+            vm.createPackage = true;
+            vm.createPassageNumber = Math.max(vm.createPassageNumber, partIndex + 1);
+            vm.goToBuilderStep(partIndex + 1);
+        };
+
+        function validateQuestionRange(partIndex) {
+            var rule = readingPartRules[partIndex];
+            var from = parseInt(vm.fromQuestion, 10);
+            var to = parseInt(vm.toQuestion, 10);
+            if (!from || !to || from > to) {
+                toastr.warning('Số câu bắt đầu phải nhỏ hơn hoặc bằng số câu kết thúc.', 'Kiểm tra khoảng câu');
+                return false;
+            }
+            if (from < rule.start || to > rule.end) {
+                toastr.warning(rule.name + ' chỉ được dùng câu ' + rule.start + '–' + rule.end + '.', 'Sai khoảng câu');
+                return false;
+            }
+            var used = {};
+            angular.forEach(getPartQuestions(partIndex), function (entry) {
+                used[parseInt(entry.question.ordinalNumber, 10)] = true;
+            });
+            for (var number = from; number <= to; number++) {
+                if (used[number]) {
+                    toastr.warning('Câu ' + number + ' đã tồn tại. Không thể tạo trùng số câu.', 'Trùng câu hỏi');
+                    return false;
+                }
+            }
+            if (parseInt(vm.numberOfAnswers, 10) <= 0) {
+                toastr.warning('Mỗi câu phải có ít nhất 1 đáp án.', 'Kiểm tra đáp án');
+                return false;
+            }
+            return true;
+        }
 
         function isHavingQuestions (ieltsReadingTest) {
             var passages = ieltsReadingTest.subQuestions;
@@ -339,6 +699,7 @@
                     if(packages != null){
                         for(var j = 0; j < packages.length; j++){
                             var questions = packages[j].subQuestions;
+                            ensureOneEditorPackage(packages[j]);
                             if(questions != null && questions.length > 0){
                                 packages[j].isHaveChildren = true;
                             } else {
@@ -381,6 +742,8 @@
         }
 
         vm.getOrdinalNumberPassage3 = function (ieltsReadingTest){
+            vm.highestOrdinalNumberPackageForPassage3 = 0;
+            vm.highestOrdinalNumberQuestionForPassage3 = 0;
             if(ieltsReadingTest!= null){
                 var passages = ieltsReadingTest.subQuestions;
                 vm.highestOrdinalNumberPassage = getHighestOrdinalNumber(passages);
@@ -420,6 +783,8 @@
         };
 
         vm.getOrdinalNumberPassage2 = function (ieltsReadingTest){
+            vm.highestOrdinalNumberPackageForPassage2 = 0;
+            vm.highestOrdinalNumberQuestionForPassage2 = 0;
             if(ieltsReadingTest!= null){
                 var passages = ieltsReadingTest.subQuestions;
                 vm.highestOrdinalNumberPassage = getHighestOrdinalNumber(passages);
@@ -460,6 +825,8 @@
         };
 
         vm.getOrdinalNumber = function (ieltsReadingTest){
+            vm.highestOrdinalNumberPackageForPassage1 = 0;
+            vm.highestOrdinalNumberQuestionForPassage1 = 0;
             if(ieltsReadingTest!= null){
                 var passages = ieltsReadingTest.subQuestions;
                 vm.highestOrdinalNumberPassage = getHighestOrdinalNumber(passages);
@@ -535,8 +902,7 @@
                     }
                 }
 
-
-
+                vm.refreshBuilderValidation();
                 console.log(data);
             }, function failure() {
                 toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
@@ -553,6 +919,9 @@
                 return;
             }
             vm.createPackage = true;
+            if (!vm.ieltsReadingTest.subQuestions[0].subQuestions.length) {
+                vm.addPackageForPassage1();
+            }
 
             // vm.saveReadingTest();
         };
@@ -576,7 +945,7 @@
             for(var i = 0; i < vm.numberOfAnswers; i++){
                 var item = {
                     answer: {
-                        answer:'hihi'
+                        answer:''
                     },
                     question: {},
                     ordinalNumberQuestionAnswer : 0,
@@ -597,17 +966,13 @@
         };
 
         vm.addQuestionForPassage1 = function (index) {
-            if(vm.fromQuestion > vm.toQuestion){
-                toastr.warning('to Question must be higher than from Question.', 'Thông báo');
-                return;
-            }
-            if(vm.numberOfAnswers <= 0){
-                toastr.warning('number of answers must be higher than 0.', 'Thông báo');
-                // vm.toQuestion = vm.fromQuestion + 1;
+            if (!validateQuestionRange(0)) {
                 return;
             }
 
-            vm.createTempAnswers();
+            if (vm.tempAnswers.length !== parseInt(vm.numberOfAnswers, 10)) {
+                vm.createTempAnswers(index);
+            }
 
             for(var i = vm.fromQuestion; i <= vm.toQuestion; i++){
                 var item = {
@@ -633,12 +998,15 @@
 
                 for(var  j = 0; j < vm.tempAnswers.length; j++){
                     vm.tempAnswers[j].ordinalNumberQuestionAnswer = j + 1;
-                    item.questionAnswers.push(vm.tempAnswers[j]);
+                    item.questionAnswers.push(angular.copy(vm.tempAnswers[j]));
                 }
 
                 // item.questionAnswers = tempAnswers;
             }
-            // vm.saveReadingTest();
+            ensureOneEditorPackage(vm.ieltsReadingTest.subQuestions[0].subQuestions[index]);
+            vm.ieltsReadingTest.subQuestions[0].subQuestions[index].isHaveChildren = true;
+            vm.getOrdinalNumber(vm.ieltsReadingTest);
+            vm.refreshBuilderValidation();
 
 
 
@@ -714,18 +1082,21 @@
                     name: 'IELTS Reading Test Package'
                 },
                 ordinalNumber: 0,
-                subQuestions: []
+                subQuestions: [],
+                isHaveChildren: false
             };
 
             console.log(item.ordinalNumber);
 
-            item.ordinalNumber = vm.highestOrdinalNumberPackageForPassage1 + 1;
+            item.ordinalNumber = getHighestOrdinalNumber(vm.ieltsReadingTest.subQuestions[0].subQuestions) + 1;
 
             if(vm.ieltsReadingTest.subQuestions[0].subQuestions == null){
                 vm.ieltsReadingTest.subQuestions[0].subQuestions = [];
             }
 
             vm.ieltsReadingTest.subQuestions[0].subQuestions.push(item);
+            vm.preparePart(0);
+            vm.refreshBuilderValidation();
 
             // vm.saveReadingTest();
 
@@ -735,6 +1106,10 @@
         vm.startCreatePassage2 = function () {
             // vm.isStartCreatePassage2 = true;
             vm.createPassageNumber = 2;
+            vm.createPackage = true;
+            if (!vm.ieltsReadingTest.subQuestions[1].subQuestions.length) {
+                vm.addPackageForPassage2();
+            }
         };
 
         //passage 2
@@ -755,17 +1130,12 @@
         // vm.numberTo= 0;
 
         vm.addQuestionForPassage2 = function (index) {
-            if(vm.fromQuestion > vm.toQuestion){
-                toastr.warning('to Question must be higher than from Question.', 'Thông báo');
+            if (!validateQuestionRange(1)) {
                 return;
             }
-            if(vm.numberOfAnswers <= 0){
-                toastr.warning('number of answers must be higher than 0.', 'Thông báo');
-                // vm.toQuestion = vm.fromQuestion + 1;
-                return;
+            if (vm.tempAnswers.length !== parseInt(vm.numberOfAnswers, 10)) {
+                vm.createTempAnswers(index);
             }
-            vm.createTempAnswers();
-            var ordinal = vm.highestOrdinalNumberQuestionForPassage2;
             for(var i = vm.fromQuestion; i <= vm.toQuestion; i++){
                 var item = {
                     question: 'Question number ',
@@ -779,9 +1149,8 @@
                     questionAnswers: []
                 };
 
-                item.question = item.question +  (ordinal + 1);
-                item.ordinalNumber = ordinal + 1;
-                ordinal++;
+                item.question = item.question + i;
+                item.ordinalNumber = i;
                 // vm.ordinalNumberForQuestion = vm.ordinalNumberForQuestion + 1;
 
                 if(vm.ieltsReadingTest.subQuestions[1].subQuestions[index].subQuestions == null){
@@ -792,12 +1161,15 @@
 
                 for(var  j = 0; j < vm.tempAnswers.length; j++){
                     vm.tempAnswers[j].ordinalNumberQuestionAnswer = j + 1;
-                    item.questionAnswers.push(vm.tempAnswers[j]);
+                    item.questionAnswers.push(angular.copy(vm.tempAnswers[j]));
                 }
 
                 // item.questionAnswers = tempAnswers;
             }
-            // vm.saveReadingTest();
+            ensureOneEditorPackage(vm.ieltsReadingTest.subQuestions[1].subQuestions[index]);
+            vm.ieltsReadingTest.subQuestions[1].subQuestions[index].isHaveChildren = true;
+            vm.getOrdinalNumber(vm.ieltsReadingTest);
+            vm.refreshBuilderValidation();
 
 
             // var item = {
@@ -869,18 +1241,21 @@
                     name: 'IELTS Reading Test Package'
                 },
                 ordinalNumber: 0,
-                subQuestions: []
+                subQuestions: [],
+                isHaveChildren: false
             };
 
             console.log(item.ordinalNumber);
 
-            item.ordinalNumber = vm.highestOrdinalNumberPackageForPassage2 + 1;
+            item.ordinalNumber = getHighestOrdinalNumber(vm.ieltsReadingTest.subQuestions[1].subQuestions) + 1;
 
             if(vm.ieltsReadingTest.subQuestions[1].subQuestions == null){
                 vm.ieltsReadingTest.subQuestions[1].subQuestions = [];
             }
 
             vm.ieltsReadingTest.subQuestions[1].subQuestions.push(item);
+            vm.preparePart(1);
+            vm.refreshBuilderValidation();
 
             // vm.saveReadingTest();
 
@@ -888,6 +1263,10 @@
 
         vm.startCreatePassage3 = function () {
             vm.createPassageNumber = 3;
+            vm.createPackage = true;
+            if (!vm.ieltsReadingTest.subQuestions[2].subQuestions.length) {
+                vm.addPackageForPassage3();
+            }
         };
 
         //passage 3
@@ -903,17 +1282,12 @@
         };
 
         vm.addQuestionForPassage3 = function (index) {
-            if(vm.fromQuestion > vm.toQuestion){
-                toastr.warning('to Question must be higher than from Question.', 'Thông báo');
+            if (!validateQuestionRange(2)) {
                 return;
             }
-            if(vm.numberOfAnswers <= 0){
-                toastr.warning('number of answers must be higher than 0.', 'Thông báo');
-                // vm.toQuestion = vm.fromQuestion + 1;
-                return;
+            if (vm.tempAnswers.length !== parseInt(vm.numberOfAnswers, 10)) {
+                vm.createTempAnswers(index);
             }
-            vm.createTempAnswers();
-            var ordinal = vm.highestOrdinalNumberQuestionForPassage3;
             for(var i = vm.fromQuestion; i <= vm.toQuestion; i++){
                 var item = {
                     question: 'Question number ',
@@ -927,9 +1301,8 @@
                     questionAnswers: []
                 };
 
-                item.question = item.question +  (ordinal + 1);
-                item.ordinalNumber = ordinal + 1;
-                ordinal++;
+                item.question = item.question + i;
+                item.ordinalNumber = i;
                 // vm.ordinalNumberForQuestion = vm.ordinalNumberForQuestion + 1;
 
                 if(vm.ieltsReadingTest.subQuestions[2].subQuestions[index].subQuestions == null){
@@ -940,12 +1313,15 @@
 
                 for(var  j = 0; j < vm.tempAnswers.length; j++){
                     vm.tempAnswers[j].ordinalNumberQuestionAnswer = j + 1;
-                    item.questionAnswers.push(vm.tempAnswers[j]);
+                    item.questionAnswers.push(angular.copy(vm.tempAnswers[j]));
                 }
 
                 // item.questionAnswers = tempAnswers;
             }
-            // vm.saveReadingTest();
+            ensureOneEditorPackage(vm.ieltsReadingTest.subQuestions[2].subQuestions[index]);
+            vm.ieltsReadingTest.subQuestions[2].subQuestions[index].isHaveChildren = true;
+            vm.getOrdinalNumber(vm.ieltsReadingTest);
+            vm.refreshBuilderValidation();
             
         };
 
@@ -991,18 +1367,21 @@
                     name: 'IELTS Reading Test Package'
                 },
                 ordinalNumber: 0,
-                subQuestions: []
+                subQuestions: [],
+                isHaveChildren: false
             };
 
             console.log(item.ordinalNumber);
 
-            item.ordinalNumber = vm.highestOrdinalNumberPackageForPassage3 + 1;
+            item.ordinalNumber = getHighestOrdinalNumber(vm.ieltsReadingTest.subQuestions[2].subQuestions) + 1;
 
             if(vm.ieltsReadingTest.subQuestions[2].subQuestions == null){
                 vm.ieltsReadingTest.subQuestions[2].subQuestions = [];
             }
 
             vm.ieltsReadingTest.subQuestions[2].subQuestions.push(item);
+            vm.preparePart(2);
+            vm.refreshBuilderValidation();
 
             // vm.saveReadingTest();
 
@@ -1018,6 +1397,13 @@
             //     vm.saveReadingTest();
             //     _timeoutReading = null;
             // },10000);
+            if (_timeoutReading) {
+                $timeout.cancel(_timeoutReading);
+            }
+            _timeoutReading = $timeout(function () {
+                vm.refreshBuilderValidation();
+                _timeoutReading = null;
+            }, 180);
         };
 
 
@@ -1072,7 +1458,23 @@
             plugins: [
                 'autosave print preview fullpage searchreplace autolink directionality visualblocks visualchars fullscreen image link media template table charmap hr pagebreak nonbreaking anchor insertdatetime advlist lists textcolor wordcount imagetools  contextmenu colorpicker textpattern '
             ],
-            toolbar1: 'table | bold underline italic | forecolor backcolor  | removeformat | bullist numlist | alignleft aligncenter alignright alignjustify',
+            toolbar1: 'insertReadingGap | table | bold underline italic | forecolor backcolor | removeformat | bullist numlist | alignleft aligncenter alignright alignjustify',
+            setup: function (editor) {
+                editor.addButton('insertReadingGap', {
+                    text: 'Chèn ô điền từ',
+                    icon: false,
+                    tooltip: 'Chèn ký hiệu }{SPACE}{ tại vị trí con trỏ',
+                    onclick: function () {
+                        editor.focus();
+                        editor.undoManager.transact(function () {
+                            editor.insertContent('}{SPACE}{');
+                        });
+                        editor.fire('change');
+                        editor.save();
+                        vm.changeInTheProcessOfCreatingReadingTest();
+                    }
+                });
+            },
             content_css: [
                 '//fonts.googleapis.com/css?family=Poppins:300,400,500,600,700',
                 '/assets/css/tinymce_content.css'
@@ -1143,12 +1545,48 @@
                     console.log(vm.selectedQuestions);
                     service.deleteObject(id, function success() {
                         toastr.info('Bạn đã xóa thành công', 'Thông báo');
-                        $scope.editCreateIELTSReadingTest(vm.ieltsListeningTest.id);
+                        $scope.editCreateIELTSReadingTest(vm.ieltsReadingTest.id);
                     }, function failure() {
                         toastr.error('Có lỗi xảy ra khi xóa bản ghi.', 'Lỗi');
                     });
                 }
             }, function () {
+            });
+        };
+
+        vm.removeReadingPackage = function (partIndex, packageIndex, item) {
+            var passage = (vm.ieltsReadingTest.subQuestions || [])[partIndex];
+            if (!passage || !passage.subQuestions) {
+                return;
+            }
+
+            var removeFromForm = function () {
+                passage.subQuestions.splice(packageIndex, 1);
+                vm.getOrdinalNumber(vm.ieltsReadingTest);
+                vm.refreshBuilderValidation();
+            };
+
+            if (!item || !item.id) {
+                removeFromForm();
+                return;
+            }
+
+            var modalInstance = modal.open({
+                animation: true,
+                templateUrl: 'confirm_delete_modal.html',
+                scope: $scope,
+                size: 'md'
+            });
+            modalInstance.result.then(function (confirm) {
+                if (confirm !== 'yes') {
+                    return;
+                }
+                service.deleteObject(item.id, function success() {
+                    removeFromForm();
+                    toastr.success('Đã xóa nhóm câu hỏi.', 'Thông báo');
+                }, function failure() {
+                    toastr.error('Không thể xóa nhóm câu hỏi.', 'Thông báo');
+                });
             });
         };
 
@@ -1172,8 +1610,8 @@
             // {id: 3, name: "Tất cả (no listening)"},
             // {id: 4, name:"Đánh dấu"},
             // {id: 5, name: "Listening"},
-            {id: 6, name: "NOT SHOWING TEST"},
-            {id: 7, name: "SHOW TEST"},
+            {id: 6, name: "Bản nháp (chưa hiển thị)"},
+            {id: 7, name: "Đã xuất bản (hiển thị)"},
         ];
         
         $scope.changeStatus = function (id,status) {
@@ -1218,6 +1656,8 @@
         };
 
         vm.showAudioListening = false;
+
+        vm.refreshBuilderValidation();
 
 
         //--------------------- End Create Reading test -------------------------//
