@@ -145,18 +145,64 @@
                 item.questionAnswer.question.parent ? item.questionAnswer.question.parent.type : null;
         }
 
+        function addMissingResultRows(testResult) {
+            var sourceRows = testResult && testResult.questionAnswerTestResult;
+            if (!sourceRows || sourceRows.length < 2) {
+                return testResult;
+            }
+
+            sourceRows.sort(function (left, right) {
+                return Number(left.ordinalNumber) - Number(right.ordinalNumber);
+            });
+
+            var rows = [];
+            var previousOrdinalNumber = null;
+            angular.forEach(sourceRows, function (row) {
+                var ordinalNumber = Number(row.ordinalNumber);
+                if (previousOrdinalNumber != null && !isNaN(ordinalNumber)) {
+                    for (var missingNumber = previousOrdinalNumber + 1;
+                         missingNumber < ordinalNumber; missingNumber++) {
+                        rows.push({
+                            ordinalNumber: missingNumber,
+                            clientAnswer: '',
+                            isCorrectTestResultDetail: false,
+                            isMissingResultRecord: true
+                        });
+                    }
+                }
+                rows.push(row);
+                if (!isNaN(ordinalNumber) &&
+                    (previousOrdinalNumber == null || ordinalNumber > previousOrdinalNumber)) {
+                    previousOrdinalNumber = ordinalNumber;
+                }
+            });
+
+            testResult.questionAnswerTestResult = rows;
+            return testResult;
+        }
+
         vm.getResultYourAnswer = function (item) {
+            if (item && item.isMissingResultRecord) {
+                return 'Không có dữ liệu';
+            }
             var type = getResultQuestionType(item);
+            var submittedAnswer = item && item.clientAnswer != null ? String(item.clientAnswer).trim() : '';
+            if (!submittedAnswer) {
+                return '';
+            }
             if (type == 2 || type == 3 || type == 4 || type == 8 || type == 11) {
-                return item && item.clientAnswer ? item.clientAnswer : '';
+                return submittedAnswer;
             }
 
             var answer = item && item.questionAnswer && item.questionAnswer.answer;
             return answer && answer.answer != null ? answer.answer :
-                (item && item.clientAnswer ? item.clientAnswer : '');
+                submittedAnswer;
         };
 
         vm.getResultCorrectAnswer = function (item) {
+            if (item && item.isMissingResultRecord) {
+                return '—';
+            }
             var type = getResultQuestionType(item);
             var questionAnswer = item && item.questionAnswer;
 
@@ -651,7 +697,7 @@
          */
         $scope.editObject = function (id) {
             service.getOne(id).then(function (data) {
-                vm.testResult = data;
+                vm.testResult = addMissingResultRows(data);
                 console.log(data);
                 vm.testResult.isNew = false;
                 var modalInstance = modal.open({

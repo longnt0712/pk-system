@@ -266,13 +266,17 @@
 
         vm.getResultYourAnswer = function (item) {
             var type = getResultQuestionType(item);
+            var submittedAnswer = item && item.clientAnswer != null ? String(item.clientAnswer).trim() : '';
+            if (!submittedAnswer) {
+                return '';
+            }
             if (type == 2 || type == 3 || type == 4 || type == 8 || type == 11) {
-                return item && item.clientAnswer ? item.clientAnswer : '';
+                return submittedAnswer;
             }
 
             var answer = item && item.questionAnswer && item.questionAnswer.answer;
             return answer && answer.answer != null ? answer.answer :
-                (item && item.clientAnswer ? item.clientAnswer : '');
+                submittedAnswer;
         };
 
         vm.getResultCorrectAnswer = function (item) {
@@ -797,6 +801,7 @@
         };
 
         vm.saveTestResult = function () {
+            synchronizeReadingResultsBeforeSubmit();
             vm.testResult.testTime = $scope.minuteDisplay + ":" + $scope.secondDisplay;
             var passage1 = document.getElementById('passage-text-1').innerHTML;
             var passage2 = document.getElementById('passage-text-2').innerHTML;
@@ -1085,6 +1090,8 @@
                     angular.forEach(questionPackage.subQuestions || [], function (question) {
                         entries.push({
                             question: question,
+                            questionPackage: questionPackage,
+                            packageType: questionPackage.type,
                             packageQuestions: questionPackage.subQuestions,
                             passageQuestions: passage.subQuestions
                         });
@@ -1096,6 +1103,82 @@
                 return Number(left.question.ordinalNumber) - Number(right.question.ordinalNumber);
             });
             return entries;
+        }
+
+        function synchronizeReadingResultsBeforeSubmit() {
+            var results = vm.testResult.questionAnswerTestResult || [];
+            var entries = getReadingQuestionEntries();
+
+            angular.forEach(entries, function (entry) {
+                var question = entry.question || {};
+                var questionAnswers = question.questionAnswers || [];
+                var type = Number(entry.packageType);
+                var existingResults = [];
+
+                angular.forEach(results, function (result) {
+                    var resultQuestion = result.questionAnswer && result.questionAnswer.question;
+                    if ((question.id != null && resultQuestion && resultQuestion.id == question.id) ||
+                        (question.ordinalNumber != null && result.ordinalNumber == question.ordinalNumber)) {
+                        existingResults.push(result);
+                    }
+                });
+
+                var representativeAnswer = null;
+                var submittedAnswer = '';
+
+                if (type == 2 || type == 3 || type == 11) {
+                    representativeAnswer = questionAnswers.length ? questionAnswers[0] : null;
+                    submittedAnswer = representativeAnswer && representativeAnswer.clientAnswer != null ?
+                        String(representativeAnswer.clientAnswer).trim() : '';
+                } else {
+                    angular.forEach(questionAnswers, function (questionAnswer) {
+                        if (!representativeAnswer && questionAnswer && questionAnswer.selected === true) {
+                            representativeAnswer = questionAnswer;
+                        }
+                    });
+                    if (!representativeAnswer && existingResults.length && existingResults[0].questionAnswer) {
+                        representativeAnswer = existingResults[0].questionAnswer;
+                    }
+                    if (!representativeAnswer && questionAnswers.length) {
+                        representativeAnswer = questionAnswers[0];
+                    }
+                    if (representativeAnswer && representativeAnswer.selected === true &&
+                        representativeAnswer.answer && representativeAnswer.answer.answer != null) {
+                        submittedAnswer = String(representativeAnswer.answer.answer).trim();
+                    }
+                }
+
+                // A saved result needs a QuestionAnswer id. If a question has no
+                // configured answer, it cannot be represented by the current DTO.
+                if (!representativeAnswer || representativeAnswer.id == null) {
+                    return;
+                }
+
+                if (existingResults.length) {
+                    angular.forEach(existingResults, function (existingResult) {
+                        if (!existingResult.questionAnswer || existingResult.questionAnswer.id == null) {
+                            existingResult.questionAnswer = representativeAnswer;
+                        }
+                        if (submittedAnswer && (type == 2 || type == 3 || type == 11 ||
+                            !existingResult.clientAnswer)) {
+                            existingResult.questionAnswer = representativeAnswer;
+                            existingResult.clientAnswer = submittedAnswer;
+                        }
+                    });
+                    return;
+                }
+
+                results.push({
+                    questionAnswer: representativeAnswer,
+                    ordinalNumber: question.ordinalNumber,
+                    clientAnswer: submittedAnswer
+                });
+            });
+
+            results.sort(function (left, right) {
+                return Number(left.ordinalNumber) - Number(right.ordinalNumber);
+            });
+            vm.testResult.questionAnswerTestResult = results;
         }
 
         function getCurrentReadingQuestionIndex(entries) {
