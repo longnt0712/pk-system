@@ -3070,9 +3070,34 @@
     }
 
     .idp-reading-page .passage-text p {
-        margin: 0 0 18px;
+        margin: 0 0 1em !important;
         padding: 0 !important;
         font-weight: 400 !important;
+    }
+
+    /* Old passages were saved in several HTML formats. Some use DIV or BR
+       instead of P, so support all of them to keep paragraph spacing visible. */
+    .idp-reading-page .passage-text > div,
+    .idp-reading-page .passage-text > section,
+    .idp-reading-page .passage-text > article {
+        margin-bottom: 1em !important;
+    }
+
+    .idp-reading-page .passage-text > div:last-child,
+    .idp-reading-page .passage-text > section:last-child,
+    .idp-reading-page .passage-text > article:last-child {
+        margin-bottom: 0 !important;
+    }
+
+    .idp-reading-page .passage-text br {
+        content: "" !important;
+        display: block !important;
+        margin-bottom: 1em !important;
+    }
+
+    .idp-reading-page .passage-text br + br {
+        display: none !important;
+        margin-bottom: 0 !important;
     }
 
     .idp-reading-page .passage-text h1,
@@ -4652,7 +4677,24 @@
     }
 
     .idp-reading-page .ielts-result-passage p {
-        margin: 0 0 18px !important;
+        margin: 0 0 1em !important;
+    }
+
+    .idp-reading-page .ielts-result-passage > div,
+    .idp-reading-page .ielts-result-passage > section,
+    .idp-reading-page .ielts-result-passage > article {
+        margin-bottom: 1em !important;
+    }
+
+    .idp-reading-page .ielts-result-passage br {
+        content: "" !important;
+        display: block !important;
+        margin-bottom: 1em !important;
+    }
+
+    .idp-reading-page .ielts-result-passage br + br {
+        display: none !important;
+        margin-bottom: 0 !important;
     }
 
     .idp-reading-page .ielts-result-passage h1,

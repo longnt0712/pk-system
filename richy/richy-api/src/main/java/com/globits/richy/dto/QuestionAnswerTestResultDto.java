@@ -71,88 +71,87 @@ public class QuestionAnswerTestResultDto implements Serializable{
 		
 	}
 	public QuestionAnswerTestResultDto(QuestionAnswerTestResult domain) {
+		if(domain == null) {
+			return;
+		}
 		this.id = domain.getId();
 		this.clientAnswer = domain.getClientAnswer();
 		this.ordinalNumber = domain.getOrdinalNumber();
 		if(domain.getQuestionAnswer() != null) {
 			this.questionAnswer = new QuestionAnswerDto(domain.getQuestionAnswer());
 		}
-		
-		if(domain.getQuestionAnswer() != null) {
-			if(domain.getClientAnswer() == null || domain.getClientAnswer().length() > 0) {
-				if(domain.getQuestionAnswer().isCorrect() 
-						&& domain.getQuestionAnswer().getQuestion() != null 
-						&& domain.getQuestionAnswer().getQuestion().getParent() != null
-						&& (domain.getQuestionAnswer().getQuestion().getParent().getType() == 1
-							|| domain.getQuestionAnswer().getQuestion().getParent().getType() == 6
-							|| domain.getQuestionAnswer().getQuestion().getParent().getType() == 9//type = 1 multiple choice type = 9 maps type = 10 gần như map
-							|| domain.getQuestionAnswer().getQuestion().getParent().getType() == 10)) { 
-					this.isCorrectTestResultDetail = true;
-				} else if(domain.getQuestionAnswer() != null 
-						&& domain.getQuestionAnswer().getAnswer() != null
-						&& domain.getQuestionAnswer().getQuestion() != null 
-						&& domain.getQuestionAnswer().getQuestion().getParent() != null
-						&& (domain.getQuestionAnswer().getQuestion().getParent().getType() == 2 
-							|| domain.getQuestionAnswer().getQuestion().getParent().getType() == 3)) { //type = 2 or 3 filling gaps
-					
-					String[] parts = (domain.getQuestionAnswer().getAnswer().getAnswer()).split("/");
-					
-					if(parts.length > 1) {
-						for(int i = 0; i < parts.length; i++) {
-							if(domain.getClientAnswer().toLowerCase().trim().equals(parts[i].toLowerCase().trim())) {
-								this.isCorrectTestResultDetail = true;
-								break;
-							}
-						}
-					}else {
-						if(domain.getClientAnswer().toLowerCase().trim().equals(domain.getQuestionAnswer().getAnswer().getAnswer().toLowerCase().trim())) {
-							this.isCorrectTestResultDetail = true;
-						}
-					}
-					
-				} else if (domain.getQuestionAnswer() != null 
-						&& domain.getQuestionAnswer().getAnswer() != null
-						&& domain.getQuestionAnswer().getQuestion() != null 
-						&& domain.getQuestionAnswer().getQuestion().getParent() != null
-						&& (domain.getQuestionAnswer().getQuestion().getParent().getType() == 4
-							||domain.getQuestionAnswer().getQuestion().getParent().getType() == 8)) {
-					
-										
-					if(domain.getClientAnswer().equals(domain.getQuestionAnswer().getAnswer().getAnswer())) {
+
+		QuestionAnswer selectedAnswer = domain.getQuestionAnswer();
+		if(selectedAnswer == null || selectedAnswer.getQuestion() == null
+				|| selectedAnswer.getQuestion().getParent() == null) {
+			return;
+		}
+
+		Integer type = selectedAnswer.getQuestion().getParent().getType();
+		if(type == null) {
+			return;
+		}
+		String submittedAnswer = normalize(domain.getClientAnswer());
+		boolean hasSubmittedAnswer = submittedAnswer.length() > 0;
+
+		// Single-option modes. Matching Information (12) and Complete List of
+		// Words (13) use the same persisted QuestionAnswer contract as Matching
+		// Names (10), Maps (9), and normal single-choice questions.
+		if(type == 1 || type == 6 || type == 9 || type == 10 || type == 12 || type == 13) {
+			this.isCorrectTestResultDetail = hasSubmittedAnswer && selectedAnswer.isCorrect();
+			return;
+		}
+
+		// Filling Gaps New / One Editor (11) is scored exactly like the legacy
+		// filling-gap modes, including alternatives separated by '/'.
+		if(type == 2 || type == 3 || type == 11) {
+			if(hasSubmittedAnswer && selectedAnswer.getAnswer() != null
+					&& selectedAnswer.getAnswer().getAnswer() != null) {
+				String[] acceptedAnswers = selectedAnswer.getAnswer().getAnswer().split("/");
+				for(String acceptedAnswer : acceptedAnswers) {
+					if(submittedAnswer.equalsIgnoreCase(normalize(acceptedAnswer))) {
 						this.isCorrectTestResultDetail = true;
+						break;
 					}
-					
-				} else if (domain.getQuestionAnswer() != null 
-						&& domain.getQuestionAnswer().getAnswer() != null
-						&& domain.getQuestionAnswer().getQuestion() != null 
-						&& domain.getQuestionAnswer().getQuestion().getParent() != null
-						&& (domain.getQuestionAnswer().getQuestion().getParent().getType() == 5 
-							|| domain.getQuestionAnswer().getQuestion().getParent().getType() == 7 )) {
-					
-					
-					for (QuestionAnswer q : domain.getQuestionAnswer().getQuestion().getQuestionAnswers()) {
-						if(q.isCorrect() == true) {
-							this.correctAnswerForMultipleAnswer += q.getAnswer().getAnswer() + " <br>  <br> ";
-						}
-					}
-					
-					if(domain.getQuestionAnswer().isCorrect() == true) {
-						this.isCorrectTestResultDetail = true;
-					}
-					
-				}
-			} else {
-				if(domain.getQuestionAnswer().getAnswer() != null && domain.getQuestionAnswer().getAnswer().getAnswer() != null && domain.getClientAnswer() != null) {
-					if(domain.getQuestionAnswer().getAnswer().getAnswer().equals(domain.getClientAnswer()))
-					this.isCorrectTestResultDetail = true;
 				}
 			}
-			
+			return;
+		}
+
+		if(type == 4 || type == 8) {
+			this.isCorrectTestResultDetail = hasSubmittedAnswer
+					&& selectedAnswer.getAnswer() != null
+					&& submittedAnswer.equals(normalize(selectedAnswer.getAnswer().getAnswer()));
+			return;
+		}
+
+		if(type == 5 || type == 7) {
+			if(selectedAnswer.getQuestion().getQuestionAnswers() != null) {
+				for(QuestionAnswer answer : selectedAnswer.getQuestion().getQuestionAnswers()) {
+					if(answer != null && answer.isCorrect() && answer.getAnswer() != null
+							&& answer.getAnswer().getAnswer() != null) {
+						this.correctAnswerForMultipleAnswer += answer.getAnswer().getAnswer() + " <br>  <br> ";
+					}
+				}
+			}
+			this.isCorrectTestResultDetail = hasSubmittedAnswer && selectedAnswer.isCorrect();
+			return;
+		}
+
+		// Safe fallback for any future text-based mode.
+		if(hasSubmittedAnswer && selectedAnswer.getAnswer() != null
+				&& selectedAnswer.getAnswer().getAnswer() != null) {
+			this.isCorrectTestResultDetail = submittedAnswer.equalsIgnoreCase(
+					normalize(selectedAnswer.getAnswer().getAnswer()));
 		}
 		
 //		if(domain.getTestResult() != null) {
 //			this.testResult = new TestResultDto(domain.getTestResult());
 //		}
+	}
+
+	private String normalize(String value) {
+		return value == null ? "" : value.trim();
 	}
 	
 	public class sortByOrdinalNumberQuestionAnswerTestResult implements Comparator<QuestionAnswerTestResultDto> {

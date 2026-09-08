@@ -302,7 +302,7 @@ public class TestResultDto implements Serializable{
 					correctAnswer += 1;
 				}
 				
-				ret.add(new QuestionAnswerTestResultDto(item));
+				ret.add(itemDto);
 			}
 			
 			
@@ -383,7 +383,7 @@ public class TestResultDto implements Serializable{
 					correctAnswer += 1;
 				}
 				
-				ret.add(new QuestionAnswerTestResultDto(item));
+				ret.add(itemDto);
 			}
 			
 			

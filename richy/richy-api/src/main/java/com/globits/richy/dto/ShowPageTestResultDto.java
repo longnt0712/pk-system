@@ -176,7 +176,7 @@ public class ShowPageTestResultDto implements Serializable{
 					correctAnswer += 1;
 				}
 				
-				ret.add(new QuestionAnswerTestResultDto(item));
+				ret.add(itemDto);
 			}
 			
 			
@@ -254,7 +254,7 @@ public class ShowPageTestResultDto implements Serializable{
 					correctAnswer += 1;
 				}
 				
-				ret.add(new QuestionAnswerTestResultDto(item));
+				ret.add(itemDto);
 			}
 			
 			
