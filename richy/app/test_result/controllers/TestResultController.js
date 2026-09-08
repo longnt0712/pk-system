@@ -140,6 +140,42 @@
 
         var vm = this;
 
+        function getResultQuestionType(item) {
+            return item && item.questionAnswer && item.questionAnswer.question &&
+                item.questionAnswer.question.parent ? item.questionAnswer.question.parent.type : null;
+        }
+
+        vm.getResultYourAnswer = function (item) {
+            var type = getResultQuestionType(item);
+            if (type == 2 || type == 3 || type == 4 || type == 8 || type == 11) {
+                return item && item.clientAnswer ? item.clientAnswer : '';
+            }
+
+            var answer = item && item.questionAnswer && item.questionAnswer.answer;
+            return answer && answer.answer != null ? answer.answer :
+                (item && item.clientAnswer ? item.clientAnswer : '');
+        };
+
+        vm.getResultCorrectAnswer = function (item) {
+            var type = getResultQuestionType(item);
+            var questionAnswer = item && item.questionAnswer;
+
+            if (type == 5 || type == 7) {
+                return String((item && item.correctAnswerForMultipleAnswer) || '')
+                    .replace(/<br\s*\/?\s*>/gi, ' / ')
+                    .replace(/\s*\/\s*(?:\/\s*)+/g, ' / ')
+                    .replace(/^\s*\/|\/\s*$/g, '')
+                    .trim();
+            }
+            if (type == 2 || type == 3 || type == 11) {
+                return questionAnswer && questionAnswer.answer &&
+                    questionAnswer.answer.answer != null ? questionAnswer.answer.answer : '';
+            }
+
+            return questionAnswer && questionAnswer.correctAnswer != null ?
+                questionAnswer.correctAnswer : '';
+        };
+
         vm.testResult = {};
         vm.testResults = [];
         vm.selectedTestResults = [];

@@ -1295,37 +1295,13 @@
 
                             <td>{{item.ordinalNumber}}</td>
 
-                            <td ng-if="item.questionAnswer.question.parent.type == 1
-                    || item.questionAnswer.question.parent.type == 6
-                    || item.questionAnswer.question.parent.type == 5
-                    || item.questionAnswer.question.parent.type == 7
-                    || item.questionAnswer.question.parent.type == 9
-                    || item.questionAnswer.question.parent.type == 10
-                    || item.questionAnswer.question.parent.type == 12
-                    || item.questionAnswer.question.parent.type == 13">{{item.questionAnswer.answer.answer}}</td>
-
-                            <td ng-if="item.questionAnswer.question.parent.type == 1 || item.questionAnswer.question.parent.type == 6|| item.questionAnswer.question.parent.type == 9|| item.questionAnswer.question.parent.type == 10 || item.questionAnswer.question.parent.type == 12 || item.questionAnswer.question.parent.type == 13">{{item.questionAnswer.correctAnswer}}</td>
-
-                            <td ng-if="item.questionAnswer.question.parent.type == 5 || item.questionAnswer.question.parent.type == 7" ng-bind-html="item.correctAnswerForMultipleAnswer"></td>
-
-                            <td ng-if="item.questionAnswer.question.parent.type == 4 || item.questionAnswer.question.parent.type == 8">{{item.clientAnswer}}</td>
-                            <td ng-if="item.questionAnswer.question.parent.type == 4 || item.questionAnswer.question.parent.type == 8">{{item.questionAnswer.correctAnswer}}</td>
-
-
-                            <!--<td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3"-->
-                            <!--ng-style="(!item.isCorrectTestResultDetail) && {'background':'rgba(196, 77, 86,1)'}">{{item.ordinalNumber}}</td>-->
-
-                            <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3 || item.questionAnswer.question.parent.type == 11">
-                                {{item.clientAnswer}}
-                            </td>
-                            <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3 || item.questionAnswer.question.parent.type == 11">
-                                {{item.questionAnswer.answer.answer}}
-                            </td>
+                            <td>{{vm.getResultYourAnswer(item)}}</td>
+                            <td>{{vm.getResultCorrectAnswer(item)}}</td>
                         </tr>
 
                         </tbody>
                     </table>
-                    <div class="col-md-12" compile="vm.testResult.testTakerPerformance">
+                    <div class="col-md-12 ielts-result-passage" compile="vm.testResult.testTakerPerformance">
 
                     </div>
                 </div>
@@ -3088,9 +3064,9 @@
     .idp-reading-page .passage-text em,
     .idp-reading-page .passage-text li {
         color: #282a2e !important;
-        font-family: Georgia, 'Times New Roman', serif !important;
+        font-family: Arial, Helvetica, sans-serif !important;
         font-size: 16px !important;
-        line-height: 1.72 !important;
+        line-height: 1.55 !important;
     }
 
     .idp-reading-page .passage-text p {
@@ -3102,11 +3078,15 @@
     .idp-reading-page .passage-text h1,
     .idp-reading-page .passage-text h2,
     .idp-reading-page .passage-text h3,
-    .idp-reading-page .passage-text h4 {
+    .idp-reading-page .passage-text h4,
+    .idp-reading-page .passage-text h1 *,
+    .idp-reading-page .passage-text h2 *,
+    .idp-reading-page .passage-text h3 *,
+    .idp-reading-page .passage-text h4 * {
         margin-top: 5px;
         margin-bottom: 19px;
         color: #1f2023;
-        font-family: Georgia, 'Times New Roman', serif !important;
+        font-family: Arial, Helvetica, sans-serif !important;
         font-size: 23px !important;
         line-height: 1.3;
         font-weight: 700;
@@ -4600,7 +4580,7 @@
     .idp-reading-page.idp-text-regular .passage-text em,
     .idp-reading-page.idp-text-regular .passage-text li {
         font-size: 19px !important;
-        line-height: 1.7 !important;
+        line-height: 1.55 !important;
     }
 
     .idp-reading-page.idp-text-large .passage-text p,
@@ -4609,7 +4589,7 @@
     .idp-reading-page.idp-text-large .passage-text em,
     .idp-reading-page.idp-text-large .passage-text li {
         font-size: 24px !important;
-        line-height: 1.75 !important;
+        line-height: 1.55 !important;
     }
 
     .idp-reading-page.idp-text-extra-large .passage-text p,
@@ -4618,7 +4598,7 @@
     .idp-reading-page.idp-text-extra-large .passage-text em,
     .idp-reading-page.idp-text-extra-large .passage-text li {
         font-size: 29px !important;
-        line-height: 1.78 !important;
+        line-height: 1.55 !important;
     }
 
     .idp-reading-page.idp-text-regular .question-content p,
@@ -4630,7 +4610,7 @@
     .idp-reading-page.idp-text-regular .question-content li,
     .idp-reading-page.idp-text-regular .question-content .idp-single-choice-label {
         font-size: 19px !important;
-        line-height: 1.58 !important;
+        line-height: 1.55 !important;
     }
 
     .idp-reading-page.idp-text-large .question-content p,
@@ -4642,7 +4622,7 @@
     .idp-reading-page.idp-text-large .question-content li,
     .idp-reading-page.idp-text-large .question-content .idp-single-choice-label {
         font-size: 24px !important;
-        line-height: 1.62 !important;
+        line-height: 1.55 !important;
     }
 
     .idp-reading-page.idp-text-extra-large .question-content p,
@@ -4654,7 +4634,41 @@
     .idp-reading-page.idp-text-extra-large .question-content li,
     .idp-reading-page.idp-text-extra-large .question-content .idp-single-choice-label {
         font-size: 29px !important;
-        line-height: 1.68 !important;
+        line-height: 1.55 !important;
+    }
+
+    /* Result passage follows the same readable typography as the live test. */
+    .idp-reading-page .ielts-result-passage,
+    .idp-reading-page .ielts-result-passage p,
+    .idp-reading-page .ielts-result-passage p span,
+    .idp-reading-page .ielts-result-passage div,
+    .idp-reading-page .ielts-result-passage div span,
+    .idp-reading-page .ielts-result-passage li,
+    .idp-reading-page .ielts-result-passage em {
+        color: #111111 !important;
+        font-family: Arial, Helvetica, sans-serif !important;
+        font-size: 16px !important;
+        line-height: 1.55 !important;
+    }
+
+    .idp-reading-page .ielts-result-passage p {
+        margin: 0 0 18px !important;
+    }
+
+    .idp-reading-page .ielts-result-passage h1,
+    .idp-reading-page .ielts-result-passage h2,
+    .idp-reading-page .ielts-result-passage h3,
+    .idp-reading-page .ielts-result-passage h4,
+    .idp-reading-page .ielts-result-passage h1 *,
+    .idp-reading-page .ielts-result-passage h2 *,
+    .idp-reading-page .ielts-result-passage h3 *,
+    .idp-reading-page .ielts-result-passage h4 * {
+        margin: 22px 0 18px !important;
+        color: #111111 !important;
+        font-family: Arial, Helvetica, sans-serif !important;
+        font-size: 20px !important;
+        line-height: 1.3 !important;
+        font-weight: 700 !important;
     }
 
     @media only screen and (max-width: 680px) {

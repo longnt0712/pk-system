@@ -514,7 +514,7 @@
 <!-- END MAIN CONTENT -->
 <!-- BEGIN MAIN JS-->
 <script type="text/ng-template" id="edit_object_modal.html">
-    <div modal-movable>
+    <div modal-movable class="ielts-result-detail-modal">
         <div class="modal-header">
             <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
             <h4 class="modal-title" data-ng-if="vm.questionType.isNew == true"><i class="icon-plus"></i>Thêm tôn giáo</h4>
@@ -534,35 +534,13 @@
 
                     <td>{{item.ordinalNumber}}</td>
 
-                    <td ng-if="item.questionAnswer.question.parent.type == 1
-                    || item.questionAnswer.question.parent.type == 6
-                    || item.questionAnswer.question.parent.type == 5
-                    || item.questionAnswer.question.parent.type == 7
-                    || item.questionAnswer.question.parent.type == 9
-                    || item.questionAnswer.question.parent.type == 10">{{item.questionAnswer.answer.answer}}</td>
-
-                    <td ng-if="item.questionAnswer.question.parent.type == 1 || item.questionAnswer.question.parent.type == 6|| item.questionAnswer.question.parent.type == 9|| item.questionAnswer.question.parent.type == 10">{{item.questionAnswer.correctAnswer}}</td>
-
-                    <td ng-if="item.questionAnswer.question.parent.type == 5 || item.questionAnswer.question.parent.type == 7" ng-bind-html="item.correctAnswerForMultipleAnswer"></td>
-
-                    <td ng-if="item.questionAnswer.question.parent.type == 4 || item.questionAnswer.question.parent.type == 8">{{item.clientAnswer}}</td>
-                    <td ng-if="item.questionAnswer.question.parent.type == 4 || item.questionAnswer.question.parent.type == 8">{{item.questionAnswer.correctAnswer}}</td>
-
-
-                    <!--<td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3"-->
-                        <!--ng-style="(!item.isCorrectTestResultDetail) && {'background':'rgba(196, 77, 86,1)'}">{{item.ordinalNumber}}</td>-->
-
-                    <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3">
-                        {{item.clientAnswer}}
-                    </td>
-                    <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3">
-                        {{item.questionAnswer.answer.answer}}
-                    </td>
+                    <td>{{vm.getResultYourAnswer(item)}}</td>
+                    <td>{{vm.getResultCorrectAnswer(item)}}</td>
                 </tr>
 
                 </tbody>
             </table>
-            <div class="col-md-12" compile="vm.testResult.testTakerPerformance">
+            <div class="col-md-12 ielts-result-passage" compile="vm.testResult.testTakerPerformance">
 
             </div>
         </div>
@@ -591,6 +569,60 @@
 <!-- BEGIN MAIN JS -->
 
 <style>
+    .ielts-result-detail-modal,
+    .ielts-result-detail-modal button,
+    .ielts-result-detail-modal table,
+    .ielts-result-detail-modal input,
+    .ielts-result-detail-modal .ielts-result-passage,
+    .ielts-result-detail-modal .ielts-result-passage * {
+        font-family: Arial, Helvetica, sans-serif !important;
+    }
+
+    .ielts-result-detail-modal .fa {
+        font-family: FontAwesome !important;
+    }
+
+    .ielts-result-detail-modal .glyphicon {
+        font-family: 'Glyphicons Halflings' !important;
+    }
+
+    .ielts-result-detail-modal .ielts-result-passage {
+        padding: 8px 5px 28px;
+        color: #111111;
+        font-size: 16px !important;
+        line-height: 1.55 !important;
+    }
+
+    .ielts-result-detail-modal .ielts-result-passage p,
+    .ielts-result-detail-modal .ielts-result-passage p span,
+    .ielts-result-detail-modal .ielts-result-passage div,
+    .ielts-result-detail-modal .ielts-result-passage div span,
+    .ielts-result-detail-modal .ielts-result-passage li,
+    .ielts-result-detail-modal .ielts-result-passage em {
+        color: #111111 !important;
+        font-size: 16px !important;
+        line-height: 1.55 !important;
+    }
+
+    .ielts-result-detail-modal .ielts-result-passage p {
+        margin: 0 0 18px !important;
+    }
+
+    .ielts-result-detail-modal .ielts-result-passage h1,
+    .ielts-result-detail-modal .ielts-result-passage h2,
+    .ielts-result-detail-modal .ielts-result-passage h3,
+    .ielts-result-detail-modal .ielts-result-passage h4,
+    .ielts-result-detail-modal .ielts-result-passage h1 *,
+    .ielts-result-detail-modal .ielts-result-passage h2 *,
+    .ielts-result-detail-modal .ielts-result-passage h3 *,
+    .ielts-result-detail-modal .ielts-result-passage h4 * {
+        margin: 22px 0 18px !important;
+        color: #111111 !important;
+        font-size: 20px !important;
+        line-height: 1.3 !important;
+        font-weight: 700 !important;
+    }
+
     .surrounded-text {
         background-color: yellow;
     }
