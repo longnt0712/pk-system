@@ -322,7 +322,8 @@
                                             <div class="col-md-1 idp-single-choice-input">
                                                 <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,true);vm.clickShowChildren(q,item.subQuestions)" ng-checked="a.selected == true" class="form-check-input idp-radio-control" type="radio" name="question-{{q.ordinalNumber}}" aria-label="{{a.answer.answer}}">
                                             </div>
-                                            <div class="col-md-11 actual-test-font-global idp-single-choice-label">
+                                            <div class="col-md-11 actual-test-font-global idp-single-choice-label"
+                                                 ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,true);vm.clickShowChildren(q,item.subQuestions)">
                                                 {{a.answer.answer}}
                                             </div>
                                         </div>
@@ -683,7 +684,8 @@
                                             <div class="col-md-1 idp-single-choice-input">
                                                 <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,true);vm.clickShowChildren(q,item.subQuestions)" ng-checked="a.selected == true" class="form-check-input idp-radio-control" type="radio" name="question-{{q.ordinalNumber}}" aria-label="{{a.answer.answer}}">
                                             </div>
-                                            <div class="col-md-11 actual-test-font-global idp-single-choice-label">
+                                            <div class="col-md-11 actual-test-font-global idp-single-choice-label"
+                                                 ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,true);vm.clickShowChildren(q,item.subQuestions)">
                                                 {{a.answer.answer}}
                                             </div>
                                         </div>
@@ -1026,7 +1028,8 @@
                                             <div class="col-md-1 idp-single-choice-input">
                                                 <input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,true);vm.clickShowChildren(q,item.subQuestions)" ng-checked="a.selected == true" class="form-check-input idp-radio-control" type="radio" name="question-{{q.ordinalNumber}}" aria-label="{{a.answer.answer}}">
                                             </div>
-                                            <div class="col-md-11 actual-test-font-global idp-single-choice-label">
+                                            <div class="col-md-11 actual-test-font-global idp-single-choice-label"
+                                                 ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,true);vm.clickShowChildren(q,item.subQuestions)">
                                                 {{a.answer.answer}}
                                             </div>
                                         </div>
@@ -3499,11 +3502,41 @@
 
     .idp-reading-page .idp-single-choice-label {
         float: none;
-        width: auto;
+        width: calc(100% - 25px);
         padding: 0 0 0 3px !important;
         color: #151515;
         font-weight: 400 !important;
         line-height: 24px;
+        cursor: pointer;
+    }
+
+    .idp-reading-page .idp-single-choice-label:hover,
+    .idp-reading-page .idp-single-choice-label:focus {
+        color: #000000;
+        background: #f1f3f5;
+        outline: 2px solid transparent;
+    }
+
+    /* The heading drop area fills the remaining width of its line. */
+    .idp-reading-page .passage-text .matching-heading-drop-box {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        width: calc(100% - 58px) !important;
+        min-width: 0 !important;
+        min-height: 48px !important;
+        margin: 5px 0 12px 8px;
+        padding: 8px 12px !important;
+        vertical-align: middle;
+        line-height: 1.45 !important;
+    }
+
+    @media only screen and (max-width: 680px) {
+        .idp-reading-page .passage-text .matching-heading-drop-box {
+            display: flex !important;
+            width: 100% !important;
+            margin: 8px 0 14px;
+        }
     }
 
     .idp-reading-page .idp-radio-control {
