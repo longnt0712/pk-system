@@ -2179,9 +2179,9 @@
             clickedAnnotationMarker = null;
 
             var rect = range.getBoundingClientRect();
-            var menuWidth = 146;
+            var menuWidth = 82;
             var left = Math.max(8, Math.min(rect.left + (rect.width / 2) - (menuWidth / 2), window.innerWidth - menuWidth - 8));
-            var top = rect.top - 58;
+            var top = rect.top - 46;
             if (top < 8) {
                 top = rect.bottom + 10;
             }

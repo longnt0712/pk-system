@@ -1322,7 +1322,7 @@
      role="menu"
      aria-label="Text tools">
     <button type="button" class="context-menu-highlight" ng-mousedown="applySelectionNote()" ng-hide="vm.isAnnotationRemoveMenu">
-        <i class="fa fa-sticky-note-o" aria-hidden="true"></i>
+        <i class="fa fa-file-text-o" aria-hidden="true"></i>
         <span>Take note</span>
     </button>
     <button type="button" class="context-menu-highlight" ng-mousedown="applySelectionHighlight()" ng-hide="vm.isAnnotationRemoveMenu">
@@ -3690,7 +3690,7 @@
         position: fixed !important;
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        width: 146px !important;
+        width: 82px !important;
         height: auto !important;
         overflow: visible;
         border: 1px solid #b8babf;
@@ -3725,15 +3725,15 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        min-height: 44px;
+        min-height: 34px;
         width: 100%;
-        padding: 5px 4px;
+        padding: 3px 2px;
         border: 0;
         border-right: 1px solid #e3e3e1;
         border-radius: 0;
         color: #2a2c30;
         background: #ffffff;
-        font-size: 11px;
+        font-size: 8px !important;
         font-weight: 500;
         line-height: 1.25;
     }
@@ -3746,7 +3746,13 @@
     .idp-reading-page .context-menu-highlight i {
         margin-bottom: 2px;
         color: #5d6065;
-        font-size: 14px;
+        font-size: 10px !important;
+    }
+
+    /* Beat the site's global `span { font-size: 19px !important; }` rule. */
+    .idp-reading-page .dropdown-menu-highlight .context-menu-highlight span {
+        font-size: 8px !important;
+        line-height: 1.15 !important;
     }
 
     .idp-reading-page .context-menu-highlight:hover {
@@ -4326,9 +4332,9 @@
         text-align: center;
     }
 
-    .idp-text-size-preview.is-regular { font-size: 15px !important; }
-    .idp-text-size-preview.is-large { font-size: 19px !important; }
-    .idp-text-size-preview.is-extra-large { font-size: 23px !important; }
+    .idp-text-size-preview.is-regular { font-size: 19px !important; }
+    .idp-text-size-preview.is-large { font-size: 24px !important; }
+    .idp-text-size-preview.is-extra-large { font-size: 29px !important; }
 
     /* Contrast modes. These rules deliberately come after the global site
        dark-mode compatibility rules so the candidate's own choice wins. */
@@ -4484,13 +4490,23 @@
         background: #8d8d8d;
     }
 
-    /* Text size affects only passage/question content, not exam controls. */
+    /* Text size affects only passage/question content, not exam controls.
+       Each level increases exactly 5px: 19px -> 24px -> 29px. */
+    .idp-reading-page.idp-text-regular .passage-text p,
+    .idp-reading-page.idp-text-regular .passage-text p span,
+    .idp-reading-page.idp-text-regular .passage-text > span,
+    .idp-reading-page.idp-text-regular .passage-text em,
+    .idp-reading-page.idp-text-regular .passage-text li {
+        font-size: 19px !important;
+        line-height: 1.7 !important;
+    }
+
     .idp-reading-page.idp-text-large .passage-text p,
     .idp-reading-page.idp-text-large .passage-text p span,
     .idp-reading-page.idp-text-large .passage-text > span,
     .idp-reading-page.idp-text-large .passage-text em,
     .idp-reading-page.idp-text-large .passage-text li {
-        font-size: 19px !important;
+        font-size: 24px !important;
         line-height: 1.75 !important;
     }
 
@@ -4499,8 +4515,20 @@
     .idp-reading-page.idp-text-extra-large .passage-text > span,
     .idp-reading-page.idp-text-extra-large .passage-text em,
     .idp-reading-page.idp-text-extra-large .passage-text li {
-        font-size: 22px !important;
+        font-size: 29px !important;
         line-height: 1.78 !important;
+    }
+
+    .idp-reading-page.idp-text-regular .question-content p,
+    .idp-reading-page.idp-text-regular .question-content p span,
+    .idp-reading-page.idp-text-regular .question-content .actual-test-font-global,
+    .idp-reading-page.idp-text-regular .question-content .actual-test-font-global span,
+    .idp-reading-page.idp-text-regular .question-content label,
+    .idp-reading-page.idp-text-regular .question-content td,
+    .idp-reading-page.idp-text-regular .question-content li,
+    .idp-reading-page.idp-text-regular .question-content .idp-single-choice-label {
+        font-size: 19px !important;
+        line-height: 1.58 !important;
     }
 
     .idp-reading-page.idp-text-large .question-content p,
@@ -4511,7 +4539,7 @@
     .idp-reading-page.idp-text-large .question-content td,
     .idp-reading-page.idp-text-large .question-content li,
     .idp-reading-page.idp-text-large .question-content .idp-single-choice-label {
-        font-size: 18px !important;
+        font-size: 24px !important;
         line-height: 1.62 !important;
     }
 
@@ -4523,7 +4551,7 @@
     .idp-reading-page.idp-text-extra-large .question-content td,
     .idp-reading-page.idp-text-extra-large .question-content li,
     .idp-reading-page.idp-text-extra-large .question-content .idp-single-choice-label {
-        font-size: 21px !important;
+        font-size: 29px !important;
         line-height: 1.68 !important;
     }
 
