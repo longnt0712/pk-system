@@ -475,6 +475,24 @@
                                 ? 'Thời gian đã tạm dừng, bạn không bị mất lượt.'
                                 : 'Dữ liệu đang được tải nền...'}}
                         </span>
+
+                        <button
+                            type="button"
+                            class="daily-buffer-retry-btn"
+                            ng-click="vm.retryDailyQuestionLoad()"
+                            ng-disabled="vm.loadingMoreQuestions && !vm.dailyLazyHttpPending">
+                            <i
+                                class="fa"
+                                ng-class="vm.loadingMoreQuestions
+                                    ? 'fa-circle-o-notch fa-spin'
+                                    : 'fa-refresh'">
+                            </i>
+                            <span>
+                                {{vm.loadingMoreQuestions && !vm.dailyLazyHttpPending
+                                    ? 'Đang chuẩn bị câu hỏi...'
+                                    : 'Tải tiếp câu còn thiếu'}}
+                            </span>
+                        </button>
                     </div>
 
                     <div ng-if="vm.totalCard > 0" class="daily-question-inner">
@@ -6187,6 +6205,49 @@
         font-weight: 700;
     }
 
+    .daily-vocab-page
+    .daily-buffer-retry-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+
+        min-height: 36px;
+        margin-top: 8px;
+        padding: 8px 14px;
+
+        border: 1px solid rgba(91,124,250,.35);
+        border-radius: 12px;
+
+        color: #fff;
+        background: linear-gradient(135deg, #5b7cfa, #7857e8);
+        box-shadow: 0 7px 16px rgba(91,124,250,.20);
+
+        font-size: 11px;
+        font-weight: 900;
+        cursor: pointer;
+    }
+
+    .daily-vocab-page
+    .daily-buffer-retry-btn i {
+        color: #fff;
+        font-size: 13px;
+        text-shadow: none;
+    }
+
+    .daily-vocab-page
+    .daily-buffer-retry-btn span {
+        color: #fff;
+        font-size: 11px;
+        font-weight: 900;
+    }
+
+    .daily-vocab-page
+    .daily-buffer-retry-btn:disabled {
+        opacity: .65;
+        cursor: wait;
+    }
+
 
     /* ---------- DISABLED ANSWERS ---------- */
 
@@ -6245,6 +6306,12 @@
         color: #9eacc3;
     }
 
+    html.global-dark-mode
+    .daily-vocab-page
+    .daily-buffer-retry-btn span {
+        color: #fff;
+    }
+
 
     /* ---------- MOBILE ---------- */
 
@@ -6283,6 +6350,24 @@
         .daily-vocab-page
         .daily-buffer-waiting span {
             font-size: 7px;
+        }
+
+        .daily-vocab-page
+        .daily-buffer-retry-btn {
+            min-height: 34px;
+            margin-top: 6px;
+            padding: 7px 12px;
+        }
+
+        .daily-vocab-page
+        .daily-buffer-retry-btn i {
+            font-size: 12px;
+        }
+
+        .daily-vocab-page
+        .daily-buffer-retry-btn span {
+            color: #fff;
+            font-size: 10px;
         }
     }
 

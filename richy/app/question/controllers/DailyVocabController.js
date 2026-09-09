@@ -619,6 +619,7 @@
 
         vm.loadedCardCount = 0;
         vm.loadingMoreQuestions = false;
+        vm.dailyLazyHttpPending = false;
         vm.allQuestionsLoaded = false;
         vm.dailyLazyLoadError = false;
         vm.dailyBufferWaiting = false;
@@ -653,6 +654,7 @@
             cancelDailyLazyTimers();
 
             vm.loadingMoreQuestions = false;
+            vm.dailyLazyHttpPending = false;
             vm.dailyLazyLoadError = false;
             vm.dailyBufferWaiting = false;
         }
@@ -701,6 +703,7 @@
 
             vm.loadedCardCount = 0;
             vm.loadingMoreQuestions = false;
+            vm.dailyLazyHttpPending = false;
             vm.allQuestionsLoaded = false;
             vm.dailyLazyLoadError = false;
             vm.dailyBufferWaiting = false;
@@ -1135,6 +1138,7 @@
                 dailyLazyNextPage;
 
             vm.loadingMoreQuestions = true;
+            vm.dailyLazyHttpPending = true;
             vm.dailyLazyLoadError = false;
 
             /*
@@ -1153,6 +1157,8 @@
                     ) {
                         return;
                     }
+
+                    vm.dailyLazyHttpPending = false;
 
                     var content =
                         data && data.content
@@ -1258,6 +1264,7 @@
                         return;
                     }
 
+                    vm.dailyLazyHttpPending = false;
                     vm.loadingMoreQuestions = false;
                     vm.dailyLazyLoadError = true;
 
@@ -1788,6 +1795,47 @@
                 Math.min(88, vm.runningManStudentLeft)
             );
         }
+
+        /*
+         * Cho học sinh tự gọi lại đúng trang đang bị treo mà không làm mất
+         * câu đã làm, điểm, streak hoặc thời gian còn lại.
+         *
+         * dailyLazyGeneration làm callback của request cũ mất hiệu lực nếu
+         * nó trả về muộn, nhờ đó cùng một trang không bị append hai lần.
+         */
+        vm.retryDailyQuestionLoad = function () {
+            if (
+                vm.dailyVocabRunning !== true ||
+                (
+                    vm.allQuestionsLoaded === true &&
+                    !hasCachedDailyQuestionsToPrepare()
+                )
+            ) {
+                return;
+            }
+
+            /* Đang build batch trong RAM thì chỉ cần chờ vài mili giây. */
+            if (
+                vm.loadingMoreQuestions === true &&
+                vm.dailyLazyHttpPending !== true
+            ) {
+                return;
+            }
+
+            if (vm.dailyLazyHttpPending === true) {
+                dailyLazyGeneration = dailyLazyGeneration + 1;
+                cancelDailyLazyTimers();
+
+                vm.dailyLazyHttpPending = false;
+                vm.loadingMoreQuestions = false;
+            }
+
+            dailyLazyRetryCount = 0;
+            vm.dailyLazyLoadError = false;
+            vm.dailyBufferWaiting = true;
+
+            loadNextDailyQuestionPage();
+        };
 
         function resetRunningManRound() {
             cancelRunningManTimeout();
