@@ -574,6 +574,508 @@
             });
         };
 
+        // =====================================================
+        // THỐNG KÊ TÀI KHOẢN ĐANG KÍCH HOẠT - SCHOOL ID 2
+        // =====================================================
+
+        function createEmptyStudentStatistics() {
+            return {
+                total: 0,
+                male: 0,
+                female: 0,
+                unknown: 0,
+                classes: []
+            };
+        }
+
+        vm.studentStatistics = createEmptyStudentStatistics();
+        vm.studentStatisticsLoading = false;
+        vm.studentStatisticsError = '';
+
+        function getUserEnrollmentClassIds(user) {
+            var ids = [];
+            var primaryId = user && user.person
+                ? toNumberOrNull(user.person.enrollmentClassId)
+                : null;
+
+            if (primaryId !== null) {
+                ids.push(primaryId);
+            }
+
+            angular.forEach((user && user.enrollmentClassIds) || [], function (classId) {
+                var normalizedId = toNumberOrNull(classId);
+
+                if (normalizedId !== null && ids.indexOf(normalizedId) < 0) {
+                    ids.push(normalizedId);
+                }
+            });
+
+            return ids;
+        }
+
+        function isSchoolTwoAccount(user) {
+            if (!user) {
+                return false;
+            }
+
+            if (
+                Number(user.schoolId) === 2 ||
+                (user.person && Number(user.person.schoolId) === 2)
+            ) {
+                return true;
+            }
+
+            var belongsToSchoolTwo = false;
+
+            angular.forEach(getUserEnrollmentClassIds(user), function (classId) {
+                var enrollmentClass = vm.findEnrollmentClass(classId);
+
+                if (enrollmentClass && Number(enrollmentClass.schoolId) === 2) {
+                    belongsToSchoolTwo = true;
+                }
+            });
+
+            return belongsToSchoolTwo;
+        }
+
+        function isActiveStudentAccount(user) {
+            return user && (
+                user.active === true ||
+                user.active === 1 ||
+                user.active === '1' ||
+                String(user.active).toLowerCase() === 'true'
+            );
+        }
+
+        function addGenderCount(target, user) {
+            var gender = user && user.person && user.person.gender
+                ? String(user.person.gender).toUpperCase()
+                : 'U';
+
+            if (gender === 'M') {
+                target.male += 1;
+            } else if (gender === 'F') {
+                target.female += 1;
+            } else {
+                target.unknown += 1;
+            }
+        }
+
+        function addRoleCounts(target, user) {
+            var roles = (user && user.roles) || [];
+            var countedRoles = {};
+
+            if (!target.roleCountMap) {
+                target.roleCountMap = {};
+            }
+
+            if (roles.length === 0) {
+                target.roleCountMap['KHÔNG CÓ ROLE'] =
+                    (target.roleCountMap['KHÔNG CÓ ROLE'] || 0) + 1;
+                return;
+            }
+
+            angular.forEach(roles, function (role) {
+                var roleName = role && role.name
+                    ? String(role.name)
+                    : 'KHÔNG CÓ ROLE';
+
+                if (countedRoles[roleName] === true) {
+                    return;
+                }
+
+                countedRoles[roleName] = true;
+
+                target.roleCountMap[roleName] =
+                    (target.roleCountMap[roleName] || 0) + 1;
+            });
+        }
+
+        function finalizeRoleCounts(row) {
+            row.roleCounts = [];
+
+            angular.forEach(row.roleCountMap || {}, function (count, roleName) {
+                row.roleCounts.push({
+                    name: roleName,
+                    count: count
+                });
+            });
+
+            row.roleCounts.sort(function (a, b) {
+                if (b.count !== a.count) {
+                    return b.count - a.count;
+                }
+                return String(a.name).localeCompare(String(b.name));
+            });
+
+            delete row.roleCountMap;
+        }
+
+        function getSchoolTwoParentClasses() {
+            return (vm.enrollmentClasses || []).filter(function (enrollmentClass) {
+                if (!enrollmentClass || Number(enrollmentClass.schoolId) !== 2) {
+                    return false;
+                }
+
+                var parentId = toNumberOrNull(enrollmentClass.parentId);
+                return parentId === null || !vm.findEnrollmentClass(parentId);
+            }).sort(function (a, b) {
+                return String(a.name || '').localeCompare(String(b.name || ''), 'vi');
+            });
+        }
+
+        function getDirectChildClasses(parentClassId) {
+            var normalizedParentId = toNumberOrNull(parentClassId);
+
+            return (vm.enrollmentClasses || []).filter(function (enrollmentClass) {
+                return enrollmentClass &&
+                    Number(enrollmentClass.schoolId) === 2 &&
+                    toNumberOrNull(enrollmentClass.parentId) === normalizedParentId;
+            }).sort(function (a, b) {
+                return String(a.name || '').localeCompare(String(b.name || ''), 'vi');
+            });
+        }
+
+        function getRootSchoolTwoClass(enrollmentClass) {
+            var current = enrollmentClass;
+            var visited = {};
+
+            while (current && toNumberOrNull(current.parentId) !== null) {
+                var currentId = toNumberOrNull(current.id);
+
+                if (currentId !== null && visited[currentId]) {
+                    break;
+                }
+
+                if (currentId !== null) {
+                    visited[currentId] = true;
+                }
+
+                var parent = vm.findEnrollmentClass(current.parentId);
+
+                if (!parent || Number(parent.schoolId) !== 2) {
+                    break;
+                }
+
+                current = parent;
+            }
+
+            return current && Number(current.schoolId) === 2 ? current : null;
+        }
+
+        function getUserParentClass(user) {
+            var classIds = getUserEnrollmentClassIds(user);
+
+            for (var i = 0; i < classIds.length; i++) {
+                var enrollmentClass = vm.findEnrollmentClass(classIds[i]);
+                var parentClass = getRootSchoolTwoClass(enrollmentClass);
+
+                if (parentClass) {
+                    return parentClass;
+                }
+            }
+
+            return null;
+        }
+
+        function getUserTeamInParent(user, parentClassId) {
+            var normalizedParentId = toNumberOrNull(parentClassId);
+            var classIds = getUserEnrollmentClassIds(user);
+
+            for (var i = 0; i < classIds.length; i++) {
+                var current = vm.findEnrollmentClass(classIds[i]);
+                var visited = {};
+
+                while (current) {
+                    var currentId = toNumberOrNull(current.id);
+                    var currentParentId = toNumberOrNull(current.parentId);
+
+                    if (currentParentId === normalizedParentId) {
+                        return current;
+                    }
+
+                    if (
+                        currentParentId === null ||
+                        currentId === null ||
+                        visited[currentId]
+                    ) {
+                        break;
+                    }
+
+                    visited[currentId] = true;
+                    current = vm.findEnrollmentClass(currentParentId);
+                }
+            }
+
+            return null;
+        }
+
+        function userBelongsToParentClass(user, parentClassId) {
+            var normalizedParentId = toNumberOrNull(parentClassId);
+            var belongs = false;
+
+            angular.forEach(getUserEnrollmentClassIds(user), function (classId) {
+                var rootClass = getRootSchoolTwoClass(vm.findEnrollmentClass(classId));
+
+                if (rootClass && toNumberOrNull(rootClass.id) === normalizedParentId) {
+                    belongs = true;
+                }
+            });
+
+            return belongs;
+        }
+
+        function createStatisticRow(id, name) {
+            return {
+                id: id,
+                name: name,
+                total: 0,
+                male: 0,
+                female: 0,
+                unknown: 0,
+                roleCountMap: {},
+                roleCounts: []
+            };
+        }
+
+        function buildStudentStatistics(users) {
+            var statistics = createEmptyStudentStatistics();
+            var classRowsById = {};
+            var isTeamMode = vm.studentStatisticsMode === 'team';
+
+            if (isTeamMode) {
+                angular.forEach(
+                    getDirectChildClasses(vm.studentStatisticsSelectedParentClassId),
+                    function (teamClass) {
+                        var teamId = toNumberOrNull(teamClass.id);
+                        classRowsById[teamId] = createStatisticRow(
+                            teamId,
+                            teamClass.name || ('Đội ' + teamId)
+                        );
+                    }
+                );
+            } else {
+                angular.forEach(vm.studentStatisticsSelectedClassIds || [], function (classId) {
+                    var parentClass = vm.findEnrollmentClass(classId);
+                    var parentClassId = toNumberOrNull(classId);
+
+                    if (parentClass && parentClassId !== null) {
+                        classRowsById[parentClassId] = createStatisticRow(
+                            parentClassId,
+                            parentClass.name || ('Lớp ' + parentClassId)
+                        );
+                    }
+                });
+            }
+
+            angular.forEach(users || [], function (user) {
+                if (isActiveStudentAccount(user) !== true || isSchoolTwoAccount(user) !== true) {
+                    return;
+                }
+                var row;
+
+                if (isTeamMode) {
+                    if (!userBelongsToParentClass(user, vm.studentStatisticsSelectedParentClassId)) {
+                        return;
+                    }
+
+                    var teamClass = getUserTeamInParent(
+                        user,
+                        vm.studentStatisticsSelectedParentClassId
+                    );
+
+                    if (teamClass) {
+                        row = classRowsById[toNumberOrNull(teamClass.id)];
+                    } else {
+                        row = classRowsById.unassigned;
+
+                        if (!row) {
+                            row = createStatisticRow('unassigned', 'Chưa xếp đội');
+                            classRowsById.unassigned = row;
+                        }
+                    }
+                } else {
+                    var parentClass = getUserParentClass(user);
+
+                    if (parentClass) {
+                        row = classRowsById[toNumberOrNull(parentClass.id)];
+                    }
+                }
+
+                if (!row) {
+                    return;
+                }
+
+                statistics.total += 1;
+                addGenderCount(statistics, user);
+                row.total += 1;
+                addGenderCount(row, user);
+                addRoleCounts(row, user);
+            });
+
+            angular.forEach(classRowsById, function (row) {
+                finalizeRoleCounts(row);
+                statistics.classes.push(row);
+            });
+
+            statistics.classes.sort(function (a, b) {
+                if (a.id === 'unassigned') {
+                    return 1;
+                }
+                if (b.id === 'unassigned') {
+                    return -1;
+                }
+                return String(a.name).localeCompare(String(b.name), 'vi');
+            });
+
+            return statistics;
+        }
+
+        vm.chooseStudentStatisticsMode = function (mode) {
+            vm.studentStatisticsMode = mode;
+            vm.studentStatisticsError = '';
+
+            if (mode === 'class') {
+                vm.studentStatisticsSelectedClassIds = vm.studentStatisticsParentClasses.map(
+                    function (parentClass) {
+                        return toNumberOrNull(parentClass.id);
+                    }
+                );
+                vm.studentStatisticsStep = 'class-selection';
+            } else {
+                vm.studentStatisticsSelectedParentClassId = null;
+                vm.studentStatisticsStep = 'team-class-selection';
+            }
+        };
+
+        vm.isAllParentClassesSelected = function () {
+            return vm.studentStatisticsParentClasses.length > 0 &&
+                vm.studentStatisticsSelectedClassIds.length ===
+                    vm.studentStatisticsParentClasses.length;
+        };
+
+        vm.toggleAllParentClasses = function () {
+            if (vm.isAllParentClassesSelected()) {
+                vm.studentStatisticsSelectedClassIds = [];
+                return;
+            }
+
+            vm.studentStatisticsSelectedClassIds = vm.studentStatisticsParentClasses.map(
+                function (parentClass) {
+                    return toNumberOrNull(parentClass.id);
+                }
+            );
+        };
+
+        vm.isParentClassSelected = function (classId) {
+            return vm.studentStatisticsSelectedClassIds.indexOf(toNumberOrNull(classId)) >= 0;
+        };
+
+        vm.toggleParentClass = function (classId) {
+            var normalizedClassId = toNumberOrNull(classId);
+            var index = vm.studentStatisticsSelectedClassIds.indexOf(normalizedClassId);
+
+            if (index >= 0) {
+                vm.studentStatisticsSelectedClassIds.splice(index, 1);
+            } else if (normalizedClassId !== null) {
+                vm.studentStatisticsSelectedClassIds.push(normalizedClassId);
+            }
+        };
+
+        vm.backStudentStatisticsStep = function () {
+            if (vm.studentStatisticsStep === 'results') {
+                vm.studentStatisticsStep = vm.studentStatisticsMode === 'team'
+                    ? 'team-class-selection'
+                    : 'class-selection';
+                return;
+            }
+
+            vm.studentStatisticsStep = 'mode';
+            vm.studentStatisticsMode = null;
+        };
+
+        vm.loadStudentStatistics = function () {
+            if (
+                vm.studentStatisticsMode === 'class' &&
+                vm.studentStatisticsSelectedClassIds.length === 0
+            ) {
+                toastr.warning('Vui lòng chọn ít nhất một lớp.', 'Thông báo');
+                return;
+            }
+
+            if (
+                vm.studentStatisticsMode === 'team' &&
+                toNumberOrNull(vm.studentStatisticsSelectedParentClassId) === null
+            ) {
+                toastr.warning('Vui lòng chọn lớp muốn thống kê đội.', 'Thông báo');
+                return;
+            }
+
+            var requestedClassIds = [];
+
+            if (vm.studentStatisticsMode === 'team') {
+                requestedClassIds = vm.getClassAndDescendantIds(
+                    vm.studentStatisticsSelectedParentClassId
+                );
+                vm.studentStatisticsResultTitle = 'Thống kê đội của lớp ' +
+                    (vm.getEnrollmentClassName(vm.studentStatisticsSelectedParentClassId) || '');
+            } else {
+                angular.forEach(vm.studentStatisticsSelectedClassIds, function (classId) {
+                    angular.forEach(vm.getClassAndDescendantIds(classId), function (descendantId) {
+                        if (requestedClassIds.indexOf(descendantId) < 0) {
+                            requestedClassIds.push(descendantId);
+                        }
+                    });
+                });
+                vm.studentStatisticsResultTitle = 'Thống kê theo lớp';
+            }
+
+            var statisticsFilter = {
+                keyword: '',
+                active: true,
+                roles: [],
+                groups: [],
+                filtered: 0,
+                schoolId: 2,
+                enrollmentClassIds: requestedClassIds
+            };
+
+            vm.studentStatisticsLoading = true;
+            vm.studentStatisticsError = '';
+            vm.studentStatisticsStep = 'results';
+
+            service.getUsers(statisticsFilter, 1, 1000000).then(
+                function (data) {
+                    vm.studentStatistics = buildStudentStatistics(
+                        data && angular.isArray(data.content) ? data.content : []
+                    );
+                    vm.studentStatisticsLoading = false;
+                },
+                function () {
+                    vm.studentStatisticsLoading = false;
+                    vm.studentStatisticsError = 'Không tải được dữ liệu thống kê. Vui lòng thử lại.';
+                }
+            );
+        };
+
+        vm.openStudentStatisticsModal = function () {
+            vm.studentStatistics = createEmptyStudentStatistics();
+            vm.studentStatisticsError = '';
+            vm.studentStatisticsLoading = false;
+            vm.studentStatisticsMode = null;
+            vm.studentStatisticsStep = 'mode';
+            vm.studentStatisticsParentClasses = getSchoolTwoParentClasses();
+            vm.studentStatisticsSelectedClassIds = [];
+            vm.studentStatisticsSelectedParentClassId = null;
+
+            vm.studentStatisticsModalInstance = modal.open({
+                animation: true,
+                templateUrl: 'student_statistics_modal.html',
+                scope: $scope,
+                size: 'lg'
+            });
+        };
+
         $scope.pageChanged = function() {
             // $log.log('Page changed to: ' + $scope.currentPage);
             vm.getUsers();

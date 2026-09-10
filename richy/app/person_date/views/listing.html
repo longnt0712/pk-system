@@ -117,6 +117,11 @@
                                     ng-click="vm.openExportImageModal()">
                                 <i class="fa fa-image"></i> Xuất ảnh
                             </button>
+
+                            <button class="btn btn-warning"
+                                    ng-click="vm.openStudentCountStatisticsModal()">
+                                <i class="fa fa-bar-chart"></i> Thống kê theo ngày
+                            </button>
                         </div>
 
                         <div class="col-md-2 margin-bottom-10">
@@ -832,6 +837,153 @@
     </div>
 </script>
 
+<script type="text/ng-template" id="student_count_statistics_modal.html">
+    <div class="student-count-statistics-modal">
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true">&times;</button>
+            <h4 class="modal-title">
+                <i class="fa fa-bar-chart"></i> Thống kê học sinh theo ngày
+            </h4>
+            <p class="student-count-statistics-subtitle">
+                Học sinh đang active thuộc schoolId = 2 · Ngày {{vm.studentCountStatisticsDateText}}
+            </p>
+        </div>
+
+        <div class="modal-body">
+            <div ng-if="!vm.studentCountStatisticsConfirmed">
+                <div class="student-count-selection-heading">
+                    <div>
+                        <strong>Chọn lớp cần thống kê</strong>
+                        <p>Mặc định hệ thống đã chọn tất cả các lớp thuộc schoolId = 2.</p>
+                    </div>
+
+                    <label class="student-count-select-all">
+                        <input type="checkbox"
+                               ng-checked="vm.isAllStudentCountClassesSelected()"
+                               ng-click="vm.toggleAllStudentCountClasses()">
+                        Chọn tất cả
+                    </label>
+                </div>
+
+                <div class="student-count-class-grid">
+                    <label class="student-count-class-option"
+                           ng-class="{'is-selected': vm.isStudentCountClassSelected(enrollmentClass.id)}"
+                           ng-repeat="enrollmentClass in vm.studentCountAvailableClasses track by enrollmentClass.id">
+                        <input type="checkbox"
+                               ng-checked="vm.isStudentCountClassSelected(enrollmentClass.id)"
+                               ng-click="vm.toggleStudentCountClass(enrollmentClass.id)">
+                        <span>{{enrollmentClass.treeLabel || enrollmentClass.name}}</span>
+                    </label>
+
+                    <div class="alert alert-warning"
+                         ng-if="vm.studentCountAvailableClasses.length === 0">
+                        Không tìm thấy lớp nào thuộc schoolId = 2.
+                    </div>
+                </div>
+
+                <div class="student-count-selection-summary">
+                    Đã chọn <strong>{{vm.studentCountSelectedClassIds.length}}</strong>/{{vm.studentCountAvailableClasses.length}} lớp
+                </div>
+            </div>
+
+            <div ng-if="vm.studentCountStatisticsConfirmed">
+                <div class="student-count-statistics-loading" ng-if="vm.studentCountStatisticsLoading">
+                    <i class="fa fa-spinner fa-spin"></i>
+                    Đang tổng hợp dữ liệu học sinh...
+                </div>
+
+                <div class="alert alert-danger"
+                     ng-if="!vm.studentCountStatisticsLoading && vm.studentCountStatisticsError">
+                    {{vm.studentCountStatisticsError}}
+                    <button type="button"
+                            class="btn btn-danger btn-sm pull-right"
+                            ng-click="vm.confirmStudentCountStatistics()">
+                        <i class="fa fa-refresh"></i> Thử lại
+                    </button>
+                    <div class="clearfix"></div>
+                </div>
+
+                <div ng-if="!vm.studentCountStatisticsLoading && !vm.studentCountStatisticsError">
+                    <div class="row student-count-statistics-cards">
+                        <div class="col-sm-3 col-xs-6">
+                            <div class="student-count-stat-card is-total">
+                                <span>Tổng học sinh</span>
+                                <strong>{{vm.studentCountStatistics.total}}</strong>
+                            </div>
+                        </div>
+                        <div class="col-sm-3 col-xs-6">
+                            <div class="student-count-stat-card is-male">
+                                <span>Nam</span>
+                                <strong>{{vm.studentCountStatistics.male}}</strong>
+                            </div>
+                        </div>
+                        <div class="col-sm-3 col-xs-6">
+                            <div class="student-count-stat-card is-female">
+                                <span>Nữ</span>
+                                <strong>{{vm.studentCountStatistics.female}}</strong>
+                            </div>
+                        </div>
+                        <div class="col-sm-3 col-xs-6">
+                            <div class="student-count-stat-card is-unknown">
+                                <span>Chưa xác định</span>
+                                <strong>{{vm.studentCountStatistics.unknown}}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 class="student-count-table-title">Chi tiết theo lớp chính</h4>
+
+                    <div class="table-responsive student-count-table-wrap">
+                        <table class="table table-bordered table-striped student-count-table">
+                            <thead>
+                            <tr>
+                                <th>STT</th>
+                                <th class="text-left">Lớp</th>
+                                <th>Tổng</th>
+                                <th>Nam</th>
+                                <th>Nữ</th>
+                                <th>Chưa xác định</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr ng-repeat="row in vm.studentCountStatistics.classes track by row.id">
+                                <td>{{$index + 1}}</td>
+                                <td class="text-left"><strong>{{row.name}}</strong></td>
+                                <td>{{row.total}}</td>
+                                <td>{{row.male}}</td>
+                                <td>{{row.female}}</td>
+                                <td>{{row.unknown}}</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button"
+                    class="btn btn-default pull-left"
+                    ng-if="vm.studentCountStatisticsConfirmed"
+                    ng-click="vm.backToStudentCountClassSelection()">
+                <i class="fa fa-arrow-left"></i> Chọn lại lớp
+            </button>
+
+            <button type="button" class="btn btn-default" ng-click="$dismiss()">
+                Đóng
+            </button>
+
+            <button type="button"
+                    class="btn btn-primary"
+                    ng-if="!vm.studentCountStatisticsConfirmed"
+                    ng-disabled="vm.studentCountSelectedClassIds.length === 0"
+                    ng-click="vm.confirmStudentCountStatistics()">
+                <i class="fa fa-check"></i> Xác nhận thống kê
+            </button>
+        </div>
+    </div>
+</script>
+
 <script type="text/ng-template" id="export_attendance_modal.html">
     <div modal-movable>
         <div class="modal-header">
@@ -1219,6 +1371,204 @@
 
     .attendance-export-table td {
         background: #fff;
+    }
+</style>
+
+<style>
+    .student-count-statistics-modal .modal-header {
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e5e9f2;
+        background: #f7f9fc;
+    }
+
+    .student-count-statistics-subtitle {
+        margin: 7px 0 0;
+        color: #6f798b;
+        font-size: 12px;
+    }
+
+    .student-count-selection-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 15px;
+        margin-bottom: 14px;
+    }
+
+    .student-count-selection-heading strong {
+        color: #344054;
+        font-size: 16px;
+    }
+
+    .student-count-selection-heading p {
+        margin: 4px 0 0;
+        color: #7a8496;
+        font-size: 12px;
+    }
+
+    .student-count-select-all {
+        flex: 0 0 auto;
+        margin: 0;
+        padding: 9px 12px;
+        border: 1px solid #cfd7e6;
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .student-count-select-all input,
+    .student-count-class-option input {
+        margin-right: 7px;
+    }
+
+    .student-count-class-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 9px;
+        max-height: 390px;
+        padding: 3px;
+        overflow-y: auto;
+    }
+
+    .student-count-class-option {
+        display: flex;
+        align-items: center;
+        min-height: 46px;
+        margin: 0;
+        padding: 10px 12px;
+        border: 1px solid #dce2ec;
+        border-radius: 8px;
+        color: #475467;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .student-count-class-option.is-selected {
+        border-color: #6c78df;
+        color: #3445a8;
+        background: #f0f2ff;
+        box-shadow: 0 0 0 2px rgba(91, 103, 210, .08);
+    }
+
+    .student-count-selection-summary {
+        margin-top: 12px;
+        color: #667085;
+        text-align: right;
+    }
+
+    .student-count-statistics-loading {
+        padding: 60px 15px;
+        color: #5368c7;
+        font-size: 15px;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .student-count-statistics-loading i {
+        margin-right: 8px;
+    }
+
+    .student-count-statistics-cards {
+        margin-bottom: 18px;
+    }
+
+    .student-count-stat-card {
+        min-height: 102px;
+        margin-bottom: 10px;
+        padding: 15px 10px;
+        border: 1px solid #e3e7ef;
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 4px 14px rgba(38, 51, 77, .07);
+        text-align: center;
+    }
+
+    .student-count-stat-card span {
+        display: block;
+        margin-bottom: 7px;
+        color: #667085;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .student-count-stat-card strong {
+        display: block;
+        color: #344054;
+        font-size: 30px;
+        line-height: 1.1;
+    }
+
+    .student-count-stat-card.is-total { border-top: 4px solid #5667d8; }
+    .student-count-stat-card.is-male { border-top: 4px solid #249ed1; }
+    .student-count-stat-card.is-female { border-top: 4px solid #e76da6; }
+    .student-count-stat-card.is-unknown { border-top: 4px solid #98a2b3; }
+
+    .student-count-table-title {
+        margin: 0 0 10px;
+        color: #344054;
+        font-weight: 700;
+    }
+
+    .student-count-table-wrap {
+        max-height: 420px;
+        overflow-y: auto;
+    }
+
+    .student-count-table {
+        margin-bottom: 0;
+        text-align: center;
+    }
+
+    .student-count-table thead th {
+        position: sticky;
+        z-index: 2;
+        top: 0;
+        color: #fff;
+        background: #5667d8;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    html.global-dark-mode .student-count-statistics-modal .modal-header,
+    html.global-dark-mode .student-count-class-option,
+    html.global-dark-mode .student-count-select-all,
+    html.global-dark-mode .student-count-stat-card {
+        border-color: #34435b;
+        color: #dbe3f1;
+        background: #182337;
+    }
+
+    html.global-dark-mode .student-count-class-option.is-selected {
+        border-color: #8290ff;
+        color: #fff;
+        background: #29365a;
+    }
+
+    html.global-dark-mode .student-count-selection-heading strong,
+    html.global-dark-mode .student-count-table-title,
+    html.global-dark-mode .student-count-stat-card strong {
+        color: #eef3fb;
+    }
+
+    @media (max-width: 767px) {
+        .student-count-class-grid {
+            grid-template-columns: 1fr;
+            max-height: 330px;
+        }
+
+        .student-count-selection-heading {
+            flex-direction: column;
+        }
+
+        .student-count-stat-card {
+            min-height: 88px;
+            padding: 11px 6px;
+        }
+
+        .student-count-stat-card strong {
+            font-size: 24px;
+        }
     }
 </style>
 

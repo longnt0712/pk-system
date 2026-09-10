@@ -27,6 +27,10 @@
                         <button class="btn btn-info margin-left-10" ng-click="vm.openExportImageModal()">
                             <i class="fa fa-image"></i> Xuất ảnh
                         </button>
+
+                        <button class="btn btn-primary margin-left-10" ng-click="vm.openStudentStatisticsModal()">
+                            <i class="fa fa-bar-chart"></i> Thống kê
+                        </button>
                         <!--<button class="btn btn-danger margin-left-10" ng-click="vm.deleteUsers()" data-ng-disabled="vm.selectedUsers.length <= 0"><i class="icon-trash"></i> Xóa <span ng-if="vm.selectedUsers.length > 0">{{vm.selectedUsers.length}} bản ghi đã chọn</span></button>-->
                     </div>
                     <!--<div class="col-sm-6 col-xs-12 margin-top-10" style="text-align: right;">-->
@@ -379,6 +383,213 @@
         <div class="modal-footer">
             <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal"><i class="icon-close"></i> Đóng lại</button>
             <button type="button" ng-click="$close('yes')" class="btn btn-primary"><i class="icon-check"></i> Tìm kiếm</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="student_statistics_modal.html">
+    <div class="student-statistics-modal">
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true">&times;</button>
+            <h4 class="modal-title">
+                <i class="fa fa-bar-chart"></i>
+                Thống kê tài khoản đang kích hoạt
+            </h4>
+            <p class="student-statistics-subtitle">
+                Phạm vi: tất cả tài khoản thuộc schoolId = 2 và có trạng thái đang kích hoạt
+            </p>
+        </div>
+
+        <div class="modal-body">
+            <div ng-if="vm.studentStatisticsStep === 'mode'">
+                <h4 class="student-statistics-step-title">Bạn muốn thống kê theo hình thức nào?</h4>
+
+                <div class="row student-statistics-mode-grid">
+                    <div class="col-sm-6">
+                        <button type="button"
+                                class="student-statistics-mode-card"
+                                ng-click="vm.chooseStudentStatisticsMode('class')">
+                            <i class="fa fa-university"></i>
+                            <strong>Thống kê theo lớp</strong>
+                            <span>Chọn một hoặc nhiều lớp cha; không hiển thị lớp con.</span>
+                        </button>
+                    </div>
+                    <div class="col-sm-6">
+                        <button type="button"
+                                class="student-statistics-mode-card is-team"
+                                ng-click="vm.chooseStudentStatisticsMode('team')">
+                            <i class="fa fa-users"></i>
+                            <strong>Thống kê theo đội</strong>
+                            <span>Chọn một lớp cha để xem số liệu từng đội trực thuộc.</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div ng-if="vm.studentStatisticsStep === 'class-selection'">
+                <div class="student-statistics-selection-heading">
+                    <div>
+                        <h4>Chọn các lớp muốn thống kê</h4>
+                        <p>Danh sách chỉ gồm lớp cha thuộc schoolId = 2.</p>
+                    </div>
+                    <label class="student-statistics-select-all">
+                        <input type="checkbox"
+                               ng-checked="vm.isAllParentClassesSelected()"
+                               ng-click="vm.toggleAllParentClasses()">
+                        Chọn tất cả
+                    </label>
+                </div>
+
+                <div class="student-statistics-parent-grid">
+                    <label class="student-statistics-parent-option"
+                           ng-class="{'is-selected': vm.isParentClassSelected(parentClass.id)}"
+                           ng-repeat="parentClass in vm.studentStatisticsParentClasses track by parentClass.id">
+                        <input type="checkbox"
+                               ng-checked="vm.isParentClassSelected(parentClass.id)"
+                               ng-click="vm.toggleParentClass(parentClass.id)">
+                        <span>{{parentClass.name}}</span>
+                    </label>
+                </div>
+
+                <div class="student-statistics-selection-count">
+                    Đã chọn <strong>{{vm.studentStatisticsSelectedClassIds.length}}</strong>/{{vm.studentStatisticsParentClasses.length}} lớp
+                </div>
+            </div>
+
+            <div ng-if="vm.studentStatisticsStep === 'team-class-selection'">
+                <h4 class="student-statistics-step-title">Chọn lớp muốn thống kê theo đội</h4>
+                <p class="student-statistics-step-description">
+                    Sau khi xác nhận, hệ thống sẽ hiển thị các đội/lớp con trực thuộc lớp đã chọn.
+                </p>
+
+                <div class="student-statistics-team-parent-grid">
+                    <label class="student-statistics-parent-option is-radio"
+                           ng-class="{'is-selected': vm.studentStatisticsSelectedParentClassId == parentClass.id}"
+                           ng-repeat="parentClass in vm.studentStatisticsParentClasses track by parentClass.id">
+                        <input type="radio"
+                               name="studentStatisticsParentClass"
+                               ng-model="vm.studentStatisticsSelectedParentClassId"
+                               ng-value="parentClass.id">
+                        <span>{{parentClass.name}}</span>
+                    </label>
+                </div>
+            </div>
+
+            <div ng-if="vm.studentStatisticsStep === 'results'">
+                <div class="student-statistics-loading" ng-if="vm.studentStatisticsLoading">
+                    <i class="fa fa-spinner fa-spin"></i>
+                    Đang tổng hợp dữ liệu tài khoản...
+                </div>
+
+                <div class="alert alert-danger" ng-if="!vm.studentStatisticsLoading && vm.studentStatisticsError">
+                    {{vm.studentStatisticsError}}
+                    <button type="button" class="btn btn-danger btn-sm pull-right" ng-click="vm.loadStudentStatistics()">
+                        <i class="fa fa-refresh"></i> Thử lại
+                    </button>
+                    <div class="clearfix"></div>
+                </div>
+
+                <div ng-if="!vm.studentStatisticsLoading && !vm.studentStatisticsError">
+                <div class="row student-statistics-cards">
+                    <div class="col-sm-3 col-xs-6">
+                        <div class="student-stat-card is-total">
+                            <span class="student-stat-card-label">Tổng tài khoản</span>
+                            <strong>{{vm.studentStatistics.total}}</strong>
+                        </div>
+                    </div>
+                    <div class="col-sm-3 col-xs-6">
+                        <div class="student-stat-card is-male">
+                            <span class="student-stat-card-label">Nam</span>
+                            <strong>{{vm.studentStatistics.male}}</strong>
+                        </div>
+                    </div>
+                    <div class="col-sm-3 col-xs-6">
+                        <div class="student-stat-card is-female">
+                            <span class="student-stat-card-label">Nữ</span>
+                            <strong>{{vm.studentStatistics.female}}</strong>
+                        </div>
+                    </div>
+                    <div class="col-sm-3 col-xs-6">
+                        <div class="student-stat-card is-unknown">
+                            <span class="student-stat-card-label">Chưa xác định</span>
+                            <strong>{{vm.studentStatistics.unknown}}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <h4 class="student-statistics-table-title">{{vm.studentStatisticsResultTitle}}</h4>
+
+                <div class="table-responsive student-statistics-table-wrap">
+                    <table class="table table-bordered table-striped student-statistics-table">
+                        <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th class="text-left">{{vm.studentStatisticsMode === 'team' ? 'Đội' : 'Lớp'}}</th>
+                            <th>Tổng</th>
+                            <th>Nam</th>
+                            <th>Nữ</th>
+                            <th>Chưa xác định</th>
+                            <th class="text-left">Các role trong lớp</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr ng-repeat="row in vm.studentStatistics.classes track by row.id">
+                            <td>{{$index + 1}}</td>
+                            <td class="text-left"><strong>{{row.name}}</strong></td>
+                            <td>{{row.total}}</td>
+                            <td>{{row.male}}</td>
+                            <td>{{row.female}}</td>
+                            <td>{{row.unknown}}</td>
+                            <td class="text-left student-statistics-role-cell">
+                                <span class="student-statistics-role-badge"
+                                      ng-repeat="role in row.roleCounts track by role.name">
+                                    {{role.name}}: <strong>{{role.count}}</strong>
+                                </span>
+                                <span class="text-muted" ng-if="row.roleCounts.length === 0">Không có tài khoản</span>
+                            </td>
+                        </tr>
+                        <tr ng-if="vm.studentStatistics.classes.length === 0">
+                            <td colspan="7" class="text-center text-muted">Không có lớp thuộc schoolId = 2.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p class="student-statistics-role-note">
+                    <i class="fa fa-info-circle"></i>
+                    Một tài khoản có nhiều role vẫn chỉ tính một người trong tổng, nhưng được tính một lần ở từng role tương ứng.
+                </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button"
+                    class="btn btn-default pull-left"
+                    ng-if="vm.studentStatisticsStep !== 'mode'"
+                    ng-click="vm.backStudentStatisticsStep()">
+                <i class="fa fa-arrow-left"></i> Quay lại
+            </button>
+
+            <button type="button" class="btn btn-default" ng-click="$dismiss()">
+                <i class="fa fa-times"></i> Đóng
+            </button>
+
+            <button type="button"
+                    class="btn btn-primary"
+                    ng-if="vm.studentStatisticsStep === 'class-selection'"
+                    ng-disabled="vm.studentStatisticsSelectedClassIds.length === 0"
+                    ng-click="vm.loadStudentStatistics()">
+                <i class="fa fa-bar-chart"></i> Xác nhận thống kê
+            </button>
+
+            <button type="button"
+                    class="btn btn-primary"
+                    ng-if="vm.studentStatisticsStep === 'team-class-selection'"
+                    ng-disabled="!vm.studentStatisticsSelectedParentClassId"
+                    ng-click="vm.loadStudentStatistics()">
+                <i class="fa fa-bar-chart"></i> Xác nhận thống kê
+            </button>
         </div>
     </div>
 </script>
@@ -1079,5 +1290,287 @@
     th.sortable i {
         margin-left: 5px;
         font-size: 12px;
+    }
+
+    .student-statistics-modal .modal-header {
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e6eaf0;
+        background: #f7f9fc;
+    }
+
+    .student-statistics-subtitle {
+        margin: 7px 0 0;
+        color: #6c7687;
+        font-size: 12px;
+    }
+
+    .student-statistics-loading {
+        padding: 55px 15px;
+        color: #5870a8;
+        font-size: 15px;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .student-statistics-loading i {
+        margin-right: 8px;
+    }
+
+    .student-statistics-step-title {
+        margin: 5px 0 18px;
+        color: #344054;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .student-statistics-step-description {
+        margin: -10px 0 18px;
+        color: #667085;
+        text-align: center;
+    }
+
+    .student-statistics-mode-grid {
+        max-width: 760px;
+        margin: 0 auto;
+    }
+
+    .student-statistics-mode-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 190px;
+        padding: 24px;
+        border: 2px solid #d8dff5;
+        border-radius: 14px;
+        color: #3f51ad;
+        background: #f6f8ff;
+        box-shadow: 0 5px 16px rgba(51, 65, 135, .08);
+        cursor: pointer;
+        transition: .16s ease;
+    }
+
+    .student-statistics-mode-card:hover {
+        border-color: #6575df;
+        background: #eef1ff;
+        transform: translateY(-2px);
+    }
+
+    .student-statistics-mode-card.is-team {
+        border-color: #cae8df;
+        color: #18765d;
+        background: #f1fbf8;
+    }
+
+    .student-statistics-mode-card.is-team:hover {
+        border-color: #42b693;
+        background: #e9f8f3;
+    }
+
+    .student-statistics-mode-card i {
+        margin-bottom: 13px;
+        font-size: 38px;
+    }
+
+    .student-statistics-mode-card strong {
+        margin-bottom: 7px;
+        font-size: 18px;
+    }
+
+    .student-statistics-mode-card span {
+        color: #68738a;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .student-statistics-selection-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 15px;
+        margin-bottom: 14px;
+    }
+
+    .student-statistics-selection-heading h4 {
+        margin: 0 0 5px;
+        color: #344054;
+        font-weight: 700;
+    }
+
+    .student-statistics-selection-heading p {
+        margin: 0;
+        color: #667085;
+        font-size: 12px;
+    }
+
+    .student-statistics-select-all {
+        flex: 0 0 auto;
+        margin: 0;
+        padding: 9px 12px;
+        border: 1px solid #ccd4e3;
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .student-statistics-parent-grid,
+    .student-statistics-team-parent-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 9px;
+        max-height: 390px;
+        padding: 3px;
+        overflow-y: auto;
+    }
+
+    .student-statistics-parent-option {
+        display: flex;
+        align-items: center;
+        min-height: 48px;
+        margin: 0;
+        padding: 10px 12px;
+        border: 1px solid #dce2ec;
+        border-radius: 8px;
+        color: #475467;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .student-statistics-parent-option input,
+    .student-statistics-select-all input {
+        margin-right: 7px;
+    }
+
+    .student-statistics-parent-option.is-selected {
+        border-color: #6877df;
+        color: #3445a8;
+        background: #f0f2ff;
+        box-shadow: 0 0 0 2px rgba(91, 103, 210, .08);
+    }
+
+    .student-statistics-selection-count {
+        margin-top: 12px;
+        color: #667085;
+        text-align: right;
+    }
+
+    .student-statistics-cards {
+        margin-bottom: 20px;
+    }
+
+    .student-stat-card {
+        min-height: 105px;
+        margin-bottom: 10px;
+        padding: 16px;
+        border: 1px solid #e4e8ef;
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 4px 13px rgba(31, 45, 61, .07);
+        text-align: center;
+    }
+
+    .student-stat-card-label {
+        display: block;
+        margin-bottom: 7px;
+        color: #667085;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .student-stat-card strong {
+        display: block;
+        color: #344054;
+        font-size: 30px;
+        line-height: 1.1;
+    }
+
+    .student-stat-card.is-total { border-top: 4px solid #5067d9; }
+    .student-stat-card.is-male { border-top: 4px solid #27a5e7; }
+    .student-stat-card.is-female { border-top: 4px solid #ed6ca8; }
+    .student-stat-card.is-unknown { border-top: 4px solid #98a2b3; }
+
+    .student-statistics-table-title {
+        margin: 0 0 10px;
+        color: #344054;
+        font-weight: 700;
+    }
+
+    .student-statistics-table-wrap {
+        max-height: 430px;
+        overflow-y: auto;
+    }
+
+    .student-statistics-table {
+        margin-bottom: 0;
+        text-align: center;
+    }
+
+    .student-statistics-table thead th {
+        position: sticky;
+        z-index: 2;
+        top: 0;
+        color: #fff;
+        background: #5067d9;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .student-statistics-role-cell {
+        min-width: 310px;
+    }
+
+    .student-statistics-role-badge {
+        display: inline-block;
+        margin: 2px 5px 2px 0;
+        padding: 4px 7px;
+        border: 1px solid #ccd5f5;
+        border-radius: 999px;
+        color: #4051a6;
+        background: #f0f3ff;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    .student-statistics-role-note {
+        margin: 10px 0 0;
+        color: #667085;
+        font-size: 12px;
+    }
+
+    .student-statistics-role-note i {
+        margin-right: 4px;
+        color: #5067d9;
+    }
+
+    @media (max-width: 767px) {
+        .student-statistics-modal .modal-body {
+            padding: 12px;
+        }
+
+        .student-stat-card {
+            min-height: 90px;
+            padding: 12px 8px;
+        }
+
+        .student-stat-card strong {
+            font-size: 24px;
+        }
+
+        .student-statistics-mode-card {
+            min-height: 140px;
+            margin-bottom: 12px;
+        }
+
+        .student-statistics-parent-grid,
+        .student-statistics-team-parent-grid {
+            grid-template-columns: 1fr;
+            max-height: 330px;
+        }
+
+        .student-statistics-selection-heading {
+            flex-direction: column;
+        }
     }
 </style>

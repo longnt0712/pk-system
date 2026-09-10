@@ -942,6 +942,232 @@
             }
         });
 
+        // =====================================================
+        // THỐNG KÊ HỌC SINH ACTIVE THEO LỚP - SCHOOL ID 2
+        // =====================================================
+
+        function createEmptyStudentCountStatistics() {
+            return {
+                total: 0,
+                male: 0,
+                female: 0,
+                unknown: 0,
+                classes: []
+            };
+        }
+
+        function getSchoolTwoEnrollmentClasses() {
+            return (vm.enrollmentClasses || [])
+                .filter(function (enrollmentClass) {
+                    return enrollmentClass && Number(enrollmentClass.schoolId) === 2;
+                })
+                .sort(function (a, b) {
+                    return String(a.treeLabel || a.name || '').localeCompare(
+                        String(b.treeLabel || b.name || ''),
+                        'vi'
+                    );
+                });
+        }
+
+        function normalizeId(value) {
+            if (value === null || value === undefined || value === '') {
+                return null;
+            }
+
+            var id = Number(value);
+            return isNaN(id) ? null : id;
+        }
+
+        function getPrimaryEnrollmentClassId(user) {
+            if (!user || !user.person) {
+                return null;
+            }
+
+            return normalizeId(user.person.enrollmentClassId);
+        }
+
+        function userHasStudentRole(user) {
+            var isStudent = false;
+
+            angular.forEach((user && user.roles) || [], function (role) {
+                if (role && role.name === 'ROLE_STUDENT') {
+                    isStudent = true;
+                }
+            });
+
+            return isStudent;
+        }
+
+        function isActiveUser(user) {
+            return user && (
+                user.active === true ||
+                user.active === 1 ||
+                user.active === '1' ||
+                String(user.active).toLowerCase() === 'true'
+            );
+        }
+
+        function addStudentGenderCount(target, user) {
+            var gender = user && user.person && user.person.gender
+                ? String(user.person.gender).toUpperCase()
+                : 'U';
+
+            if (gender === 'M') {
+                target.male += 1;
+            } else if (gender === 'F') {
+                target.female += 1;
+            } else {
+                target.unknown += 1;
+            }
+        }
+
+        function buildActiveStudentCountStatistics(users) {
+            var result = createEmptyStudentCountStatistics();
+            var selectedClassIds = {};
+            var classRows = {};
+
+            angular.forEach(vm.studentCountSelectedClassIds || [], function (classId) {
+                var normalizedClassId = normalizeId(classId);
+
+                if (normalizedClassId !== null) {
+                    selectedClassIds[normalizedClassId] = true;
+                }
+            });
+
+            angular.forEach(vm.studentCountAvailableClasses || [], function (enrollmentClass) {
+                var classId = normalizeId(enrollmentClass.id);
+
+                if (classId === null || selectedClassIds[classId] !== true) {
+                    return;
+                }
+
+                var row = {
+                    id: classId,
+                    name: enrollmentClass.treeLabel || enrollmentClass.name || ('Lớp ' + classId),
+                    total: 0,
+                    male: 0,
+                    female: 0,
+                    unknown: 0
+                };
+
+                classRows[classId] = row;
+                result.classes.push(row);
+            });
+
+            angular.forEach(users || [], function (user) {
+                if (isActiveUser(user) !== true || userHasStudentRole(user) !== true) {
+                    return;
+                }
+
+                var primaryClassId = getPrimaryEnrollmentClassId(user);
+                var row = primaryClassId !== null ? classRows[primaryClassId] : null;
+
+                /*
+                 * Chỉ đếm theo lớp chính đã chọn. Nhờ vậy một học sinh có
+                 * nhiều lớp phụ vẫn không bị cộng trùng trong tổng thống kê.
+                 */
+                if (!row) {
+                    return;
+                }
+
+                result.total += 1;
+                row.total += 1;
+
+                addStudentGenderCount(result, user);
+                addStudentGenderCount(row, user);
+            });
+
+            return result;
+        }
+
+        vm.isAllStudentCountClassesSelected = function () {
+            return vm.studentCountAvailableClasses &&
+                vm.studentCountAvailableClasses.length > 0 &&
+                vm.studentCountSelectedClassIds.length === vm.studentCountAvailableClasses.length;
+        };
+
+        vm.toggleAllStudentCountClasses = function () {
+            if (vm.isAllStudentCountClassesSelected()) {
+                vm.studentCountSelectedClassIds = [];
+                return;
+            }
+
+            vm.studentCountSelectedClassIds = vm.studentCountAvailableClasses.map(function (enrollmentClass) {
+                return normalizeId(enrollmentClass.id);
+            });
+        };
+
+        vm.isStudentCountClassSelected = function (classId) {
+            return vm.studentCountSelectedClassIds.indexOf(normalizeId(classId)) >= 0;
+        };
+
+        vm.toggleStudentCountClass = function (classId) {
+            var normalizedClassId = normalizeId(classId);
+            var index = vm.studentCountSelectedClassIds.indexOf(normalizedClassId);
+
+            if (index >= 0) {
+                vm.studentCountSelectedClassIds.splice(index, 1);
+            } else if (normalizedClassId !== null) {
+                vm.studentCountSelectedClassIds.push(normalizedClassId);
+            }
+        };
+
+        vm.confirmStudentCountStatistics = function () {
+            if (!vm.studentCountSelectedClassIds || vm.studentCountSelectedClassIds.length === 0) {
+                toastr.warning('Vui lòng chọn ít nhất một lớp để thống kê.', 'Thông báo');
+                return;
+            }
+
+            vm.studentCountStatisticsLoading = true;
+            vm.studentCountStatisticsError = '';
+            vm.studentCountStatisticsConfirmed = true;
+
+            var filter = {
+                active: true,
+                schoolId: 2,
+                roles: [],
+                groups: [],
+                enrollmentClassIds: vm.studentCountSelectedClassIds.slice()
+            };
+
+            service.getUsers(filter, 1, 100000).then(
+                function (data) {
+                    vm.studentCountStatistics = buildActiveStudentCountStatistics(
+                        data && angular.isArray(data.content) ? data.content : []
+                    );
+                    vm.studentCountStatisticsLoading = false;
+                },
+                function () {
+                    vm.studentCountStatisticsLoading = false;
+                    vm.studentCountStatisticsError = 'Không tải được dữ liệu thống kê. Vui lòng thử lại.';
+                }
+            );
+        };
+
+        vm.backToStudentCountClassSelection = function () {
+            vm.studentCountStatisticsConfirmed = false;
+            vm.studentCountStatisticsError = '';
+        };
+
+        vm.openStudentCountStatisticsModal = function () {
+            vm.studentCountAvailableClasses = getSchoolTwoEnrollmentClasses();
+            vm.studentCountSelectedClassIds = vm.studentCountAvailableClasses.map(function (enrollmentClass) {
+                return normalizeId(enrollmentClass.id);
+            });
+            vm.studentCountStatistics = createEmptyStudentCountStatistics();
+            vm.studentCountStatisticsLoading = false;
+            vm.studentCountStatisticsError = '';
+            vm.studentCountStatisticsConfirmed = false;
+            vm.studentCountStatisticsDateText = $filter('date')(new Date(), 'dd/MM/yyyy');
+
+            vm.studentCountStatisticsModalInstance = modal.open({
+                animation: true,
+                templateUrl: 'student_count_statistics_modal.html',
+                scope: $scope,
+                size: 'lg'
+            });
+        };
+
         /**
          * New event account
          */
