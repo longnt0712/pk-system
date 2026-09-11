@@ -237,6 +237,27 @@
         vm.users = [];
         vm.selectedUsers = [];
 
+		vm.vocabularyLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+
+		vm.getVocabularyExperienceLevel = function () {
+			return Math.max(0, Number((vm.user || {}).vocabularyExperienceLevel) || 0);
+		};
+
+		vm.getVocabularyExperienceWords = function () {
+			return Math.max(0, Number((vm.user || {}).vocabularyExperienceWords) || 0);
+		};
+
+		vm.getVocabularyExperienceThreshold = function () {
+			return 1000 * (vm.getVocabularyExperienceLevel() + 1);
+		};
+
+		vm.getVocabularyExperiencePercent = function () {
+			var threshold = vm.getVocabularyExperienceThreshold();
+			return threshold > 0
+				? Math.min(100, Math.round(vm.getVocabularyExperienceWords() * 100 / threshold))
+				: 0;
+		};
+
 
         
         vm.enrollmentClasses = [

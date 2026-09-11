@@ -39,6 +39,14 @@ public class UserDto extends AuditableEntityDto {
 
 	private String email;
 
+	private String vocabularyLevel;
+
+	private Integer vocabularyExperienceLevel = 0;
+
+	private Long vocabularyExperienceWords = 0L;
+
+	private Long totalVocabularyWordsLearned = 0L;
+
 	private PersonDto person;
 
 	private boolean hasPhoto;
@@ -68,6 +76,10 @@ public class UserDto extends AuditableEntityDto {
 		this.confirmPassword = entity.getConfirmPassword();
 		this.active = entity.getActive();
 		this.email = entity.getEmail();
+		this.vocabularyLevel = entity.getVocabularyLevel();
+		this.vocabularyExperienceLevel = entity.getVocabularyExperienceLevel();
+		this.vocabularyExperienceWords = entity.getVocabularyExperienceWords();
+		this.totalVocabularyWordsLearned = entity.getTotalVocabularyWordsLearned();
 
 		if (entity.getPerson() != null) {
 			this.person = new PersonDto(entity.getPerson());
@@ -126,6 +138,10 @@ public class UserDto extends AuditableEntityDto {
 		entity.setPassword(password);
 		entity.setActive(active);
 		entity.setEmail(email);
+		entity.setVocabularyLevel(vocabularyLevel);
+		entity.setVocabularyExperienceLevel(vocabularyExperienceLevel);
+		entity.setVocabularyExperienceWords(vocabularyExperienceWords);
+		entity.setTotalVocabularyWordsLearned(totalVocabularyWordsLearned);
 
 		entity.setAccountNonExpired(true);
 		entity.setAccountNonLocked(true);
@@ -265,6 +281,38 @@ public class UserDto extends AuditableEntityDto {
 
 	public void setEmail(String email) {
 		this.email = email;
+	}
+
+	public String getVocabularyLevel() {
+		return vocabularyLevel;
+	}
+
+	public void setVocabularyLevel(String vocabularyLevel) {
+		this.vocabularyLevel = vocabularyLevel;
+	}
+
+	public Integer getVocabularyExperienceLevel() {
+		return vocabularyExperienceLevel;
+	}
+
+	public void setVocabularyExperienceLevel(Integer vocabularyExperienceLevel) {
+		this.vocabularyExperienceLevel = vocabularyExperienceLevel;
+	}
+
+	public Long getVocabularyExperienceWords() {
+		return vocabularyExperienceWords;
+	}
+
+	public void setVocabularyExperienceWords(Long vocabularyExperienceWords) {
+		this.vocabularyExperienceWords = vocabularyExperienceWords;
+	}
+
+	public Long getTotalVocabularyWordsLearned() {
+		return totalVocabularyWordsLearned;
+	}
+
+	public void setTotalVocabularyWordsLearned(Long totalVocabularyWordsLearned) {
+		this.totalVocabularyWordsLearned = totalVocabularyWordsLearned;
 	}
 
 	public PersonDto getPerson() {

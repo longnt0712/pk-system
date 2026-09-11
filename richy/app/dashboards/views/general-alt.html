@@ -16,6 +16,7 @@
             <p>
                 Chọn một hoạt động và bắt đầu học theo cách vui hơn.
             </p>
+
         </div>
 
         <div class="learning-hub-hero-art" aria-hidden="true">
@@ -32,6 +33,32 @@
                      class="learning-hub-brand-logo"
                      src="assets/images/troop-1.jpg"
                      alt="Logo Chapter">
+            </div>
+        </div>
+
+        <div class="user-learning-level" ng-if="currentUser && currentUser.id">
+            <span class="user-learning-level-sparkle sparkle-a">✦</span>
+            <span class="user-learning-level-sparkle sparkle-b">★</span>
+
+            <span class="user-learning-level-badge is-cefr">
+                <i class="fa fa-graduation-cap"></i>
+                TRÌNH ĐỘ {{currentUser.vocabularyLevel || 'CHƯA XẾP'}}
+            </span>
+
+            <div class="user-learning-progress-wrap">
+                <span class="user-learning-progress-label">
+                    <i class="fa fa-star"></i>
+                    LEVEL {{currentUser.vocabularyExperienceLevel || 0}}
+                </span>
+                <div class="user-learning-progress-track"
+                     role="progressbar"
+                     aria-label="Tiến trình level từ vựng"
+                     aria-valuemin="0"
+                     aria-valuemax="100"
+                     ng-attr-aria-valuenow="{{vm.getUserVocabularyProgressPercent(currentUser)}}">
+                    <span class="user-learning-progress-fill"
+                          ng-style="{'width': vm.getUserVocabularyProgressPercent(currentUser) + '%'}"></span>
+                </div>
             </div>
         </div>
     </section>
@@ -586,6 +613,8 @@
         justify-content: space-between;
 
         gap: 14px;
+
+        flex-wrap: wrap;
 
         padding: 18px;
 

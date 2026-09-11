@@ -3659,3 +3659,225 @@ html.global-dark-mode select.form-control option:checked {
 /* =========================================================
    END UI-SELECT OVERLAY / CLIPPING FIX
    ========================================================= */
+
+/* =========================================================
+   READ-ONLY USER LEVEL BADGES - LEARNING HUB / DAILY VOCAB
+   ========================================================= */
+
+.user-learning-level {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex: 0 0 100%;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    margin-top: 2px;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, .25);
+    border-radius: 999px;
+    background: rgba(34, 31, 105, .18);
+    box-shadow:
+        0 0 14px rgba(255, 225, 107, .18),
+        inset 0 1px 0 rgba(255, 255, 255, .18);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+    isolation: isolate;
+}
+
+.user-learning-level:before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -3px;
+    border-radius: inherit;
+    background: linear-gradient(
+        105deg,
+        transparent 18%,
+        rgba(255,255,255,.55) 43%,
+        transparent 66%
+    );
+    background-size: 230% 100%;
+    opacity: .55;
+    animation: user-level-shimmer 3.4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.user-learning-level-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 25px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: .35px;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(32, 25, 92, .35);
+}
+
+.user-learning-level-badge.is-cefr {
+    flex: 0 0 auto;
+    border: 1px solid rgba(205, 239, 255, .7);
+    background: linear-gradient(135deg, #53d6d0, #5b79f6);
+    box-shadow:
+        0 0 10px rgba(93, 211, 229, .46),
+        inset 0 1px 0 rgba(255,255,255,.42);
+}
+
+.user-learning-progress-wrap {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.user-learning-progress-label {
+    flex: 0 0 auto;
+    color: #fff6c9;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .35px;
+    white-space: nowrap;
+    text-shadow: 0 0 7px rgba(255, 219, 88, .75);
+}
+
+.user-learning-progress-label i {
+    margin-right: 3px;
+    color: #ffe06a;
+}
+
+.user-learning-progress-track {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 80px;
+    height: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.38);
+    border-radius: 999px;
+    background: rgba(22, 24, 80, .38);
+    box-shadow:
+        inset 0 1px 3px rgba(20, 18, 66, .36),
+        0 0 8px rgba(255, 229, 109, .18);
+}
+
+.user-learning-progress-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    min-width: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #ffca46 0%, #fff09a 48%, #ff9f5a 100%);
+    box-shadow:
+        0 0 10px rgba(255, 220, 85, .9),
+        inset 0 1px 0 rgba(255,255,255,.75);
+    transition: width .45s ease;
+}
+
+.user-learning-progress-fill:after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        105deg,
+        transparent 20%,
+        rgba(255,255,255,.82) 48%,
+        transparent 72%
+    );
+    background-size: 70px 100%;
+    animation: user-level-progress-shine 2.2s linear infinite;
+}
+
+.user-learning-level-sparkle {
+    position: absolute;
+    z-index: 4;
+    color: #fff3a5;
+    line-height: 1;
+    text-shadow: 0 0 8px rgba(255, 239, 137, .9);
+    pointer-events: none;
+    animation: user-level-twinkle 1.8s ease-in-out infinite;
+}
+
+.user-learning-level-sparkle.sparkle-a {
+    top: -8px;
+    right: 18%;
+    font-size: 9px;
+}
+
+.user-learning-level-sparkle.sparkle-b {
+    right: -4px;
+    bottom: -5px;
+    font-size: 7px;
+    animation-delay: .75s;
+}
+
+html.global-dark-mode .user-learning-level {
+    border-color: rgba(181, 195, 255, .3);
+    background: rgba(15, 18, 50, .44);
+    box-shadow:
+        0 0 16px rgba(138, 112, 255, .25),
+        inset 0 1px 0 rgba(255, 255, 255, .12);
+}
+
+@keyframes user-level-shimmer {
+    0%, 28% { background-position: 160% 0; opacity: 0; }
+    45% { opacity: .58; }
+    68%, 100% { background-position: -80% 0; opacity: 0; }
+}
+
+@keyframes user-level-twinkle {
+    0%, 100% { opacity: .28; transform: scale(.72) rotate(0deg); }
+    50% { opacity: 1; transform: scale(1.25) rotate(16deg); }
+}
+
+@keyframes user-level-progress-shine {
+    from { background-position: -80px 0; }
+    to { background-position: 180px 0; }
+}
+
+@media (max-width: 480px) {
+    .user-learning-level {
+        gap: 5px;
+        margin-top: 1px;
+        padding: 4px;
+    }
+
+    .user-learning-level-badge {
+        min-height: 21px;
+        padding: 3px 7px;
+        font-size: 7px;
+        letter-spacing: .2px;
+    }
+
+    .user-learning-progress-wrap {
+        gap: 5px;
+    }
+
+    .user-learning-progress-label {
+        font-size: 7px;
+    }
+
+    .user-learning-progress-track {
+        height: 8px;
+        min-width: 45px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .user-learning-level:before,
+    .user-learning-level-sparkle,
+    .user-learning-progress-fill:after {
+        animation: none !important;
+    }
+}
+
+/* =========================================================
+   END READ-ONLY USER LEVEL BADGES
+   ========================================================= */

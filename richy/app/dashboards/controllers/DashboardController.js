@@ -107,6 +107,16 @@
             return false;
         };
 
+        vm.getUserVocabularyProgressPercent = function (user) {
+            var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
+            var learnedWords = Math.max(0, Number((user || {}).vocabularyExperienceWords) || 0);
+            var threshold = 1000 * (level + 1);
+
+            return threshold > 0
+                ? Math.min(100, learnedWords * 100 / threshold)
+                : 0;
+        };
+
         vm.buildCurrentUser = function (rawUser) {
             vm.currentUser = rawUser || {};
             vm.myUser = {

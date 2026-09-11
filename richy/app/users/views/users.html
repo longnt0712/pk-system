@@ -898,6 +898,55 @@
                 </div>
             </div>
 
+            <div class="vocabulary-profile-card" ng-if="vm.isRoleAdmin">
+                <div class="vocabulary-profile-heading">
+                    <div>
+                        <h4><i class="fa fa-graduation-cap"></i> Trình độ và kinh nghiệm từ vựng</h4>
+                        <p>Chỉ quản trị viên nhìn thấy và thay đổi phần này.</p>
+                    </div>
+                    <span class="vocabulary-current-level">
+                        Level {{vm.getVocabularyExperienceLevel()}}
+                    </span>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <label class="bold">Trình độ từ vựng</label>
+                        <select class="form-control"
+                                ng-model="vm.user.vocabularyLevel"
+                                ng-options="level as level for level in vm.vocabularyLevels">
+                            <option value="">-- Chưa xác định --</option>
+                        </select>
+                        <span class="help-block">Thang CEFR từ A1 đến C2.</span>
+                    </div>
+
+                    <div class="col-md-8">
+                        <div class="vocabulary-progress-labels">
+                            <strong>Tiến độ lên Level {{vm.getVocabularyExperienceLevel() + 1}}</strong>
+                            <span>
+                                {{vm.getVocabularyExperienceWords() | number:0}} /
+                                {{vm.getVocabularyExperienceThreshold() | number:0}} từ
+                            </span>
+                        </div>
+                        <div class="progress vocabulary-progress">
+                            <div class="progress-bar"
+                                 role="progressbar"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100"
+                                 aria-valuenow="{{vm.getVocabularyExperiencePercent()}}"
+                                 ng-style="{'width': vm.getVocabularyExperiencePercent() + '%'}">
+                                <span>{{vm.getVocabularyExperiencePercent()}}%</span>
+                            </div>
+                        </div>
+                        <div class="vocabulary-total-words">
+                            <i class="fa fa-book"></i>
+                            Tổng số từ đã học:
+                            <strong>{{(vm.user.totalVocabularyWordsLearned || 0) | number:0}} từ</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
         <div class="modal-footer">
 
@@ -1337,6 +1386,119 @@
 </style>
 
 <style>
+    .vocabulary-profile-card {
+        margin-top: 22px;
+        padding: 18px;
+        border: 1px solid #dfe4f2;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #f7f9ff 0%, #f5f1ff 100%);
+        box-shadow: 0 5px 16px rgba(65, 76, 140, .08);
+    }
+
+    .vocabulary-profile-heading,
+    .vocabulary-progress-labels {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .vocabulary-profile-heading {
+        margin-bottom: 16px;
+    }
+
+    .vocabulary-profile-heading h4 {
+        margin: 0 0 4px;
+        color: #303b5c;
+        font-weight: 700;
+    }
+
+    .vocabulary-profile-heading h4 i {
+        margin-right: 7px;
+        color: #6b5ce7;
+    }
+
+    .vocabulary-profile-heading p {
+        margin: 0;
+        color: #74809a;
+        font-size: 12px;
+    }
+
+    .vocabulary-current-level {
+        flex: 0 0 auto;
+        padding: 7px 13px;
+        border-radius: 999px;
+        color: #fff;
+        background: linear-gradient(90deg, #5874f6, #8655ed);
+        font-weight: 700;
+    }
+
+    .vocabulary-progress-labels {
+        margin: 3px 0 8px;
+        color: #3c4661;
+    }
+
+    .vocabulary-progress-labels span {
+        color: #68738b;
+        font-size: 12px;
+    }
+
+    .vocabulary-progress {
+        height: 22px;
+        margin-bottom: 11px;
+        border-radius: 999px;
+        background: #e2e7f4;
+        box-shadow: inset 0 1px 2px rgba(37, 48, 83, .12);
+        overflow: hidden;
+    }
+
+    .vocabulary-progress .progress-bar {
+        min-width: 0;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #40c9a2, #6179f6, #8b58ed);
+        line-height: 22px;
+        transition: width .25s ease;
+    }
+
+    .vocabulary-total-words {
+        color: #59657e;
+        font-size: 13px;
+    }
+
+    .vocabulary-total-words i {
+        margin-right: 5px;
+        color: #6b5ce7;
+    }
+
+    html.global-dark-mode .vocabulary-profile-card {
+        border-color: #39435e;
+        background: linear-gradient(135deg, #222a3b 0%, #29243d 100%);
+        box-shadow: 0 5px 16px rgba(0, 0, 0, .2);
+    }
+
+    html.global-dark-mode .vocabulary-profile-heading h4,
+    html.global-dark-mode .vocabulary-progress-labels {
+        color: #eef1ff;
+    }
+
+    html.global-dark-mode .vocabulary-profile-heading p,
+    html.global-dark-mode .vocabulary-progress-labels span,
+    html.global-dark-mode .vocabulary-total-words {
+        color: #aeb8d0;
+    }
+
+    html.global-dark-mode .vocabulary-progress {
+        background: #39435b;
+    }
+
+    @media (max-width: 767px) {
+        .vocabulary-profile-heading,
+        .vocabulary-progress-labels {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+    }
+
     .zalo-status-green {
         background-color: #d4edda !important;
     }

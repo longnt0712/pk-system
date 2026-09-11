@@ -662,6 +662,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 		if (userDto == null) {
 			throw new IllegalArgumentException();
 		}
+		String normalizedVocabularyLevel = normalizeVocabularyLevel(userDto.getVocabularyLevel());
 
 		User user = null;
 
@@ -685,6 +686,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 				user.setPassword(SecurityUtils.getHashPassword(userDto.getPassword()));
 			}
 		}
+		user.setVocabularyLevel(normalizedVocabularyLevel);
 
 		if (userDto.getRoles() != null) {
 			List<Role> rs = new ArrayList<Role>();
@@ -769,6 +771,19 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 
 		return user;
 	}
+
+	private String normalizeVocabularyLevel(String level) {
+		if (level == null || level.trim().isEmpty()) {
+			return null;
+		}
+		String normalized = level.trim().toUpperCase();
+		if ("A1".equals(normalized) || "A2".equals(normalized)
+				|| "B1".equals(normalized) || "B2".equals(normalized)
+				|| "C1".equals(normalized) || "C2".equals(normalized)) {
+			return normalized;
+		}
+		throw new IllegalArgumentException("Trình độ từ vựng phải từ A1 đến C2.");
+	}
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public UserDto save(UserDto userDto) {
@@ -776,6 +791,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 		if (userDto == null) {
 			throw new IllegalArgumentException();
 		}
+		String normalizedVocabularyLevel = normalizeVocabularyLevel(userDto.getVocabularyLevel());
 
 		User user = null;
 
@@ -799,6 +815,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 //				user.setPassword(SecurityUtils.getHashPassword(userDto.getPassword()));
 //			}
 		}
+		user.setVocabularyLevel(normalizedVocabularyLevel);
 
 		if (userDto.getRoles() != null) {
 			List<Role> rs = new ArrayList<Role>();

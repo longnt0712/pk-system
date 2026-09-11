@@ -97,6 +97,16 @@
             roles: vm.currentUser.roles || []
         };
 
+        vm.getUserVocabularyProgressPercent = function (user) {
+            var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
+            var learnedWords = Math.max(0, Number((user || {}).vocabularyExperienceWords) || 0);
+            var threshold = 1000 * (level + 1);
+
+            return threshold > 0
+                ? Math.min(100, learnedWords * 100 / threshold)
+                : 0;
+        };
+
         vm.isRoleView = false;
         vm.isRoleUser = false;
         vm.isRoleAdmin = false;
@@ -3080,6 +3090,15 @@
 
                     if (data) {
                         vm.testResult.id = data.id;
+
+						/*
+						 * Backend trả về user sau khi đã cộng kinh nghiệm.
+						 * Cập nhật đúng cụm Level trên banner, không reload trang.
+						 */
+						if (data.user) {
+							vm.currentUser = data.user;
+							$rootScope.$emit('$onCurrentUserData', data.user);
+						}
                     }
 
                     vm.isSaveTestResult = true;

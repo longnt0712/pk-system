@@ -40,6 +40,7 @@ public class TestResultDto implements Serializable{
 	private Integer testType = 0; //1: daily vocab 2: test reading 3:listening daily 4: test lisning
 	private Integer times = 0;
 	private Integer numberOfWords = 0;
+	private Integer vocabularyExperienceAwardedWords = 0;
 	private Integer numberOfRanking = 10;
 	private Integer calendarYear;
 	private Integer calendarMonth;
@@ -129,6 +130,12 @@ public class TestResultDto implements Serializable{
 	}
 	public void setNumberOfWords(Integer numberOfWords) {
 		this.numberOfWords = numberOfWords;
+	}
+	public Integer getVocabularyExperienceAwardedWords() {
+		return vocabularyExperienceAwardedWords;
+	}
+	public void setVocabularyExperienceAwardedWords(Integer vocabularyExperienceAwardedWords) {
+		this.vocabularyExperienceAwardedWords = vocabularyExperienceAwardedWords;
 	}
 	
 	public Integer getTimes() {
@@ -247,6 +254,7 @@ public class TestResultDto implements Serializable{
 //			this.numberOfWords = 0;	
 //		} else {
 		this.numberOfWords = domain.getNumberOfWords();
+		this.vocabularyExperienceAwardedWords = domain.getVocabularyExperienceAwardedWords();
 //		}
 		
 //		this.testTakerPerformance = domain.getTestTakerPerformance();
@@ -325,6 +333,7 @@ public class TestResultDto implements Serializable{
 		this.testDate = domain.getCreateDate().toDate();
 		this.testTime = domain.getTestTime();
 		this.testTakerName = domain.getTestTakerName();
+		this.vocabularyExperienceAwardedWords = domain.getVocabularyExperienceAwardedWords();
 		if(isGetOne == true) {
 			this.testTakerPerformance = domain.getTestTakerPerformance();	
 		}

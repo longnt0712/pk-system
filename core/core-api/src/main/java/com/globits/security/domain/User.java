@@ -64,6 +64,22 @@ public class User extends BaseObject implements UserDetails {
 	@Column(name = "email", length = 150, nullable = false, unique = true)
 	private String email;
 
+	/** Trình độ từ vựng CEFR do quản trị viên xếp: A1, A2, B1, B2, C1, C2. */
+	@Column(name = "vocabulary_level", length = 2, nullable = true)
+	private String vocabularyLevel;
+
+	/** Level kinh nghiệm Daily Vocab, bắt đầu từ 0. */
+	@Column(name = "vocabulary_experience_level", nullable = false)
+	private Integer vocabularyExperienceLevel = 0;
+
+	/** Số từ đang tích lũy để lên level kế tiếp. */
+	@Column(name = "vocabulary_experience_words", nullable = false)
+	private Long vocabularyExperienceWords = 0L;
+
+	/** Tổng số từ Daily Vocab đã học, không reset khi lên level. */
+	@Column(name = "total_vocabulary_words_learned", nullable = false)
+	private Long totalVocabularyWordsLearned = 0L;
+
 	@ManyToMany(fetch = FetchType.EAGER)
 	@Fetch(FetchMode.SELECT)
 	@JoinTable(name = "tbl_user_role", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
@@ -169,6 +185,62 @@ public class User extends BaseObject implements UserDetails {
 
 	public void setEmail(String email) {
 		this.email = email;
+	}
+
+	public String getVocabularyLevel() {
+		return vocabularyLevel;
+	}
+
+	public void setVocabularyLevel(String vocabularyLevel) {
+		this.vocabularyLevel = vocabularyLevel;
+	}
+
+	public Integer getVocabularyExperienceLevel() {
+		return vocabularyExperienceLevel == null ? 0 : vocabularyExperienceLevel;
+	}
+
+	public void setVocabularyExperienceLevel(Integer vocabularyExperienceLevel) {
+		this.vocabularyExperienceLevel = vocabularyExperienceLevel == null ? 0 : vocabularyExperienceLevel;
+	}
+
+	public Long getVocabularyExperienceWords() {
+		return vocabularyExperienceWords == null ? 0L : vocabularyExperienceWords;
+	}
+
+	public void setVocabularyExperienceWords(Long vocabularyExperienceWords) {
+		this.vocabularyExperienceWords = vocabularyExperienceWords == null ? 0L : vocabularyExperienceWords;
+	}
+
+	public Long getTotalVocabularyWordsLearned() {
+		return totalVocabularyWordsLearned == null ? 0L : totalVocabularyWordsLearned;
+	}
+
+	public void setTotalVocabularyWordsLearned(Long totalVocabularyWordsLearned) {
+		this.totalVocabularyWordsLearned = totalVocabularyWordsLearned == null ? 0L : totalVocabularyWordsLearned;
+	}
+
+	/**
+	 * Cộng số từ của một lượt Daily Vocab đã hoàn thành.
+	 * Ngưỡng level kế tiếp = 1000 * (level hiện tại + 1).
+	 */
+	public void addDailyVocabularyWords(long learnedWords) {
+		if (learnedWords <= 0) {
+			return;
+		}
+
+		long total = getTotalVocabularyWordsLearned() + learnedWords;
+		long progress = getVocabularyExperienceWords() + learnedWords;
+		int level = getVocabularyExperienceLevel();
+		long nextThreshold = 1000L * (level + 1L);
+
+		setTotalVocabularyWordsLearned(total);
+		if (progress >= nextThreshold) {
+			setVocabularyExperienceLevel(level + 1);
+			// Theo yêu cầu: khi lên level, thanh tiến độ bắt đầu lại từ 0.
+			setVocabularyExperienceWords(0L);
+		} else {
+			setVocabularyExperienceWords(progress);
+		}
 	}
 
 	public void setActive(Boolean active) {

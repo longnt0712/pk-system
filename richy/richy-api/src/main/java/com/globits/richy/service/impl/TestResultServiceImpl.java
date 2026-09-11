@@ -18,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.globits.richy.domain.Answer;
 import com.globits.richy.domain.QuestionAnswer;
@@ -436,6 +437,7 @@ public class TestResultServiceImpl implements TestResultService {
 	}
 
 	@Override
+	@Transactional(rollbackFor = Exception.class)
 	public TestResultDto saveObject(TestResultDto dto) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		User modifiedUser = null;
@@ -449,6 +451,7 @@ public class TestResultServiceImpl implements TestResultService {
 			return new TestResultDto();
 		}
 		TestResult domain = null;
+		boolean newResult = false;
 		
 		//daily vocab
 		if(dto.getTestType() == 1) {
@@ -468,11 +471,20 @@ public class TestResultServiceImpl implements TestResultService {
 		}
 		if(domain == null) {
 			domain = new TestResult();
+			newResult = true;
 			domain.setCreateDate(currentDate);
 			domain.setCreatedBy(currentUserName);
 		}
-		if(dto.getUser() != null && dto.getUser().getId() != null) {
-			User user = userRepository.getOne(dto.getUser().getId());
+		User resultUser = null;
+		if(dto.getTestType() != null && dto.getTestType() == 1
+				&& modifiedUser != null && modifiedUser.getId() != null) {
+			// Daily Vocab chỉ được ghi nhận cho chính tài khoản đang đăng nhập.
+			resultUser = userRepository.findById(modifiedUser.getId());
+		} else if(dto.getUser() != null && dto.getUser().getId() != null) {
+			resultUser = userRepository.getOne(dto.getUser().getId());
+		}
+		if(resultUser != null) {
+			User user = resultUser;
 			if(user != null && user.getId() != null) {
 				domain.setUser(user);	
 			}
@@ -521,6 +533,21 @@ public class TestResultServiceImpl implements TestResultService {
 		
 		
 		domain = testResultRepository.save(domain);
+
+		/*
+		 * Chỉ thưởng một lần cho kết quả Daily Vocab mới và đã vượt kiểm tra
+		 * "đạt" ở đầu hàm. Việc lưu lại cùng result id sẽ không cộng lần hai.
+		 */
+		if(newResult && domain.getTestType() != null && domain.getTestType() == 1
+				&& domain.getVocabularyExperienceAwardedWords() == 0
+				&& domain.getNumberOfWords() != null && domain.getNumberOfWords() > 0
+				&& domain.getUser() != null) {
+			int awardedWords = domain.getNumberOfWords();
+			domain.getUser().addDailyVocabularyWords(awardedWords);
+			userRepository.save(domain.getUser());
+			domain.setVocabularyExperienceAwardedWords(awardedWords);
+			domain = testResultRepository.save(domain);
+		}
 		
 		return new TestResultDto(domain);
 	}

@@ -19,6 +19,7 @@
                 <p class="daily-page-subtitle">
                     Học từ mới mỗi ngày, vui hơn một chút ✨
                 </p>
+
             </div>
         </div>
 
@@ -28,6 +29,32 @@
             <i class="fa fa-gamepad"></i>
             <span>Game khác</span>
         </a>
+
+        <div class="user-learning-level" ng-if="currentUser && currentUser.id">
+            <span class="user-learning-level-sparkle sparkle-a">✦</span>
+            <span class="user-learning-level-sparkle sparkle-b">★</span>
+
+            <span class="user-learning-level-badge is-cefr">
+                <i class="fa fa-graduation-cap"></i>
+                TRÌNH ĐỘ {{currentUser.vocabularyLevel || 'CHƯA XẾP'}}
+            </span>
+
+            <div class="user-learning-progress-wrap">
+                <span class="user-learning-progress-label">
+                    <i class="fa fa-star"></i>
+                    LEVEL {{currentUser.vocabularyExperienceLevel || 0}}
+                </span>
+                <div class="user-learning-progress-track"
+                     role="progressbar"
+                     aria-label="Tiến trình level từ vựng"
+                     aria-valuemin="0"
+                     aria-valuemax="100"
+                     ng-attr-aria-valuenow="{{vm.getUserVocabularyProgressPercent(currentUser)}}">
+                    <span class="user-learning-progress-fill"
+                          ng-style="{'width': vm.getUserVocabularyProgressPercent(currentUser) + '%'}"></span>
+                </div>
+            </div>
+        </div>
     </section>
 
 
@@ -919,6 +946,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
+        flex-wrap: wrap;
         padding: 16px;
         margin-bottom: 12px;
         border-radius: 24px;

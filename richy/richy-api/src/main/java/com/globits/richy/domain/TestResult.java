@@ -51,6 +51,10 @@ public class TestResult extends BaseObject{
 	
 	@Column(name="number_of_words")
 	private Integer numberOfWords;
+
+	/** Số từ của kết quả này đã được cộng vào kinh nghiệm của học sinh. */
+	@Column(name="vocabulary_experience_awarded_words", nullable = false)
+	private Integer vocabularyExperienceAwardedWords = 0;
 	
 	@Lob
 	@Column(name="test_taker_performance")
@@ -62,6 +66,15 @@ public class TestResult extends BaseObject{
 
 	public void setNumberOfWords(Integer numberOfWords) {
 		this.numberOfWords = numberOfWords;
+	}
+
+	public Integer getVocabularyExperienceAwardedWords() {
+		return vocabularyExperienceAwardedWords == null ? 0 : vocabularyExperienceAwardedWords;
+	}
+
+	public void setVocabularyExperienceAwardedWords(Integer vocabularyExperienceAwardedWords) {
+		this.vocabularyExperienceAwardedWords = vocabularyExperienceAwardedWords == null
+				? 0 : vocabularyExperienceAwardedWords;
 	}
 
 	public String getTestName() {
