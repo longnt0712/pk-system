@@ -50,7 +50,7 @@
 
                 </div>
                 <div class="row margin-bottom-10">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <ui-select multiple theme="" data-ng-model="vm.filter.groups" data-ng-change="vm.search()" sortable="true" close-on-select="true" style="width: 100% !important;">
                             <ui-select-match allow-clear="true" placeholder="BAN/HỘI...">{{$item.name}}</ui-select-match>
                             <ui-select-choices repeat="group in vm.groups | propsFilter: {name: $select.search}">
@@ -58,7 +58,7 @@
                             </ui-select-choices>
                         </ui-select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <ui-select data-ng-disabled="" ng-model="vm.filter.enrollmentClass" data-ng-change="vm.search()" sortable="true" close-on-select="true">
 							<ui-select-match allow-clear="" placeholder="LỚP HỌC">{{$select.selected.treeLabel || $select.selected.name}}</ui-select-match>
                             <ui-select-choices repeat="so.id as so in vm.enrollmentClasses
@@ -90,6 +90,20 @@
                     </div>
 
                     <div class="col-md-3">
+                        <div class="input-group" title="Lọc theo ngày tạo tài khoản">
+                            <span class="input-group-addon">
+                                <i class="fa fa-calendar"></i>
+                            </span>
+                            <input type="date"
+                                   class="form-control"
+                                   data-ng-model="vm.createdDateFilter"
+                                   data-ng-change="vm.search()"
+                                   aria-label="Ngày nhập học"
+                                   title="Ngày nhập học">
+                        </div>
+                    </div>
+
+                    <div class="col-md-2">
                         <label class="checkbox-inline"
                                style="padding-top: 7px; font-weight: 600; cursor: pointer;">
                             <input type="checkbox"

@@ -7,42 +7,14 @@
                 <div class="row">
                     <div class="col-md-12 text-center margin-bottom-10 margin-top-10">
 
-                        <br>
-
-                        <label style="margin-right: 20px">
-                            <input type="radio"
-                                    name="checkType"
-                                    ng-model="vm.checkType"
-                                    ng-value="1"
-                                    ng-change="vm.checkTypeChange()">
-                            ĐIỂM DANH LỄ
-                        </label>
-
-                        <label>
-                            <input type="radio"
-                                    name="checkType"
-                                    ng-model="vm.checkType"
-                                    ng-value="2"
-                                    ng-change="vm.checkTypeChange()">
-                            ĐIỂM DANH GIÁO LÝ
-                        </label>
-
-                        <label ng-if="vm.showExtraFeatures">
-                            <input type="radio"
-                                    name="checkType"
-                                    ng-model="vm.checkType"
-                                    ng-value="3"
-                                    ng-change="vm.checkTypeChange()">
-                            ĐIỂM DANH NGOẠI KHÓA
-                        </label>
-
-                        <div class="row" ng-show="vm.checkType != null">
-                            <button style="margin-right: 20px" ng-click="vm.start()" ng-disabled="vm.scanning">
-                                Ấn để mở Camera
-                            </button>
-
-                            <button ng-click="vm.stop()" ng-disabled="!vm.scanning">
-                                Ấn để tắt Camera
+                        <div class="qr-attendance-launcher">
+                            <h3><i class="fa fa-qrcode"></i> Điểm danh bằng mã QR</h3>
+                            <button type="button"
+                                    class="btn qr-camera-toggle"
+                                    ng-class="vm.scanning ? 'btn-danger' : 'btn-primary'"
+                                    ng-click="vm.toggleCamera()">
+                                <i class="fa" ng-class="vm.scanning ? 'fa-stop-circle' : 'fa-camera'"></i>
+                                {{vm.scanning ? 'Tắt camera' : 'Mở camera'}}
                             </button>
 
                             <div class="status">
@@ -691,6 +663,160 @@
         </div>
     </div>
 </script>
+
+<script type="text/ng-template" id="qr_attendance_type_modal.html">
+    <div class="qr-attendance-type-modal">
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true">&times;</button>
+            <h4 class="modal-title"><i class="fa fa-qrcode"></i> Chọn loại điểm danh QR</h4>
+        </div>
+        <div class="modal-body">
+            <p class="text-muted">Chọn loại điểm danh trước khi hệ thống yêu cầu quyền truy cập camera.</p>
+
+            <label class="qr-attendance-type-option"
+                   ng-class="{'is-selected': vm.pendingCheckType == 1, 'is-disabled': !vm.isMassAttendanceAllowed()}">
+                <input type="radio"
+                       name="pendingCheckType"
+                       ng-model="vm.pendingCheckType"
+                       ng-value="1"
+                       ng-disabled="!vm.isMassAttendanceAllowed()">
+                <span class="qr-attendance-type-icon"><i class="fa fa-university"></i></span>
+                <span>
+                    <strong>Điểm danh lễ</strong>
+                    <small ng-if="vm.isMassAttendanceAllowed()">Có thể chọn trước 09:00 sáng.</small>
+                    <small class="text-danger" ng-if="!vm.isMassAttendanceAllowed()">Đã khóa sau 09:00 sáng.</small>
+                </span>
+            </label>
+
+            <label class="qr-attendance-type-option"
+                   ng-class="{'is-selected': vm.pendingCheckType == 2}">
+                <input type="radio"
+                       name="pendingCheckType"
+                       ng-model="vm.pendingCheckType"
+                       ng-value="2">
+                <span class="qr-attendance-type-icon"><i class="fa fa-book"></i></span>
+                <span>
+                    <strong>Điểm danh giáo lý</strong>
+                    <small>Điểm danh học sinh vào lớp giáo lý.</small>
+                </span>
+            </label>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-default" ng-click="$dismiss()">Hủy</button>
+            <button type="button"
+                    class="btn btn-primary"
+                    ng-disabled="!vm.pendingCheckType"
+                    ng-click="vm.confirmQrAttendanceType()">
+                <i class="fa fa-check"></i> Xác nhận và mở camera
+            </button>
+        </div>
+    </div>
+</script>
+
+<style>
+    .qr-attendance-launcher {
+        max-width: 720px;
+        margin: 0 auto 18px;
+        padding: 18px;
+        border: 1px solid #dfe5f0;
+        border-radius: 14px;
+        background: #f8faff;
+    }
+
+    .qr-attendance-launcher h3 {
+        margin: 0 0 14px;
+        color: #344054;
+        font-size: 20px;
+        font-weight: 700;
+    }
+
+    .qr-camera-toggle {
+        min-width: 170px;
+        min-height: 42px;
+        border-radius: 10px !important;
+        font-weight: 700;
+    }
+
+    .qr-attendance-launcher .status {
+        margin: 12px auto 0;
+    }
+
+    .qr-attendance-launcher #reader {
+        margin-top: 14px;
+        overflow: hidden;
+        border-radius: 12px;
+        background: #000;
+    }
+
+    .qr-attendance-type-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 76px;
+        margin: 12px 0 0;
+        padding: 13px 15px;
+        border: 1px solid #dce3ef;
+        border-radius: 12px;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .qr-attendance-type-option.is-selected {
+        border-color: #6574e8;
+        background: #f1f3ff;
+        box-shadow: 0 0 0 2px rgba(101, 116, 232, .10);
+    }
+
+    .qr-attendance-type-option.is-disabled {
+        opacity: .62;
+        cursor: not-allowed;
+    }
+
+    .qr-attendance-type-option input {
+        flex: 0 0 auto;
+        margin: 0;
+    }
+
+    .qr-attendance-type-icon {
+        width: 42px;
+        height: 42px;
+        display: inline-flex;
+        flex: 0 0 42px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 11px;
+        color: #5d6ee0;
+        background: #edf0ff;
+        font-size: 18px;
+    }
+
+    .qr-attendance-type-option strong,
+    .qr-attendance-type-option small {
+        display: block;
+    }
+
+    .qr-attendance-type-option small {
+        margin-top: 4px;
+        color: #7b8495;
+        font-weight: 400;
+    }
+
+    html.global-dark-mode .qr-attendance-launcher,
+    html.global-dark-mode .qr-attendance-type-option {
+        border-color: #344159;
+        background: #172236;
+    }
+
+    html.global-dark-mode .qr-attendance-launcher h3,
+    html.global-dark-mode .qr-attendance-type-option strong {
+        color: #eef3fb;
+    }
+
+    html.global-dark-mode .qr-attendance-type-option.is-selected {
+        border-color: #8290ff;
+        background: #29365a;
+    }
+</style>
 
 <script type="text/ng-template" id="confirm_check_object_modal.html">
     <div modal-movable ng-click="$dismiss()">

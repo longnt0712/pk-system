@@ -1028,6 +1028,66 @@
 </style>
 
 <style>
+    /* =========================================================
+       MOBILE HEADER GEOMETRY SYNC V10
+       Đồng bộ vị trí với header của màn hình đăng nhập.
+       ========================================================= */
+    @media (max-width: 767px) {
+        .learning-login-nav {
+            margin: 6px 7px 10px !important;
+        }
+
+        .learning-login-nav > .container-fluid,
+        .learning-login-nav .container-fluid {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+        }
+
+        .learning-login-nav .navbar-header {
+            width: 100% !important;
+            min-height: 58px !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .learning-login-nav .learning-nav-brand,
+        .learning-login-nav .navbar-brand {
+            height: 58px !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            margin: 0 auto 0 0 !important;
+            padding: 7px 4px 7px 10px !important;
+        }
+
+        .learning-login-nav .learning-brand-icon {
+            width: 38px !important;
+            height: 38px !important;
+            flex-basis: 38px !important;
+        }
+
+        .learning-login-nav .mobile-global-theme-toggle,
+        .learning-login-nav .navbar-toggle {
+            width: 42px !important;
+            height: 42px !important;
+            flex: 0 0 42px !important;
+            float: none !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
+        .learning-login-nav .mobile-global-theme-toggle {
+            margin-left: 6px !important;
+            margin-right: 6px !important;
+        }
+
+        .learning-login-nav .navbar-toggle {
+            margin-left: 0 !important;
+            margin-right: 10px !important;
+        }
+    }
+</style>
+
+<style>
     /* VIETNAMESE SAFE FONT V5 */
     .learning-login-nav,
     .learning-login-nav a,
@@ -1898,6 +1958,63 @@
                     #202b43,
                     #2d2541
                 ) !important;
+        }
+    }
+</style>
+
+<style>
+    /* Final mobile geometry override: keep both header templates identical. */
+    @media (max-width: 767px) {
+        .learning-login-nav {
+            margin: 6px 7px 10px !important;
+        }
+
+        .learning-login-nav > .container-fluid,
+        .learning-login-nav .container-fluid {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+        }
+
+        .learning-login-nav .navbar-header {
+            width: 100% !important;
+            min-height: 58px !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .learning-login-nav .learning-nav-brand,
+        .learning-login-nav .navbar-brand {
+            height: 58px !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            margin: 0 auto 0 0 !important;
+            padding: 7px 4px 7px 10px !important;
+        }
+
+        .learning-login-nav .learning-brand-icon {
+            width: 38px !important;
+            height: 38px !important;
+            flex-basis: 38px !important;
+        }
+
+        .learning-login-nav .mobile-global-theme-toggle,
+        .learning-login-nav .navbar-toggle {
+            width: 42px !important;
+            height: 42px !important;
+            flex: 0 0 42px !important;
+            float: none !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
+        .learning-login-nav .mobile-global-theme-toggle {
+            margin-left: 6px !important;
+            margin-right: 6px !important;
+        }
+
+        .learning-login-nav .navbar-toggle {
+            margin-left: 0 !important;
+            margin-right: -20px !important;
         }
     }
 </style>

@@ -178,6 +178,9 @@
             filtered: 0
         };
 
+        // Ngày nhập học được hiểu là ngày tài khoản được tạo (createDate).
+        vm.createdDateFilter = null;
+
         vm.changeInactiveUsersVisibility = function () {
             vm.filter.active = vm.showInactiveUsers === true
                 ? null
@@ -569,10 +572,42 @@
 			requestFilter.enrollmentClassIds = vm.getClassAndDescendantIds(requestFilter.enrollmentClass);
 
 			service.getUsers(requestFilter, vm.pageIndex, vm.pageSize).then(function (data) {
-                vm.users = data.content;
-                vm.users.totalElement = data.totalElements;
+                var users = angular.isArray(data.content) ? data.content : [];
+
+                if (vm.createdDateFilter) {
+                    users = users.filter(function (user) {
+                        return isSameCalendarDate(user && user.createDate, vm.createdDateFilter);
+                    });
+                }
+
+                vm.users = users;
+                vm.users.totalElement = vm.createdDateFilter ? users.length : data.totalElements;
             });
         };
+
+        function toCalendarDate(value) {
+            if (!value) {
+                return null;
+            }
+
+            if (angular.isArray(value) && value.length >= 3) {
+                var arrayDate = new Date(Number(value[0]), Number(value[1]) - 1, Number(value[2]));
+                return isNaN(arrayDate.getTime()) ? null : arrayDate;
+            }
+
+            var parsedDate = value instanceof Date ? value : new Date(value);
+            return isNaN(parsedDate.getTime()) ? null : parsedDate;
+        }
+
+        function isSameCalendarDate(createDate, selectedDate) {
+            var accountDate = toCalendarDate(createDate);
+            var filterDate = toCalendarDate(selectedDate);
+
+            return accountDate !== null && filterDate !== null &&
+                accountDate.getFullYear() === filterDate.getFullYear() &&
+                accountDate.getMonth() === filterDate.getMonth() &&
+                accountDate.getDate() === filterDate.getDate();
+        }
 
         // =====================================================
         // THỐNG KÊ TÀI KHOẢN ĐANG KÍCH HOẠT - SCHOOL ID 2
@@ -1956,16 +1991,21 @@
                 f.enrollmentClass !== undefined &&
                 f.enrollmentClass !== '';
 
+            var hasCreatedDate = vm.createdDateFilter !== null &&
+                vm.createdDateFilter !== undefined &&
+                vm.createdDateFilter !== '';
+
             /*
              * active=true là bộ lọc mặc định của màn hình, không phải điều kiện
              * tìm kiếm do người dùng nhập. Vì vậy không dùng active để đổi
              * pageSize từ 25 lên 1000 hoặc bật khung thông báo bộ lọc.
              */
-            return hasKeyword || hasGroups || hasRoles || hasEnrollmentClass;
+            return hasKeyword || hasGroups || hasRoles || hasEnrollmentClass || hasCreatedDate;
         };
 
         vm.applyPageSizeByFilter = function () {
-            vm.pageSize = vm.hasAnyFilterValue() ? 1000 : 25;
+            // Lọc createDate ở client nên cần tải trọn tập dữ liệu phù hợp trước.
+            vm.pageSize = vm.createdDateFilter ? 1000000 : (vm.hasAnyFilterValue() ? 1000 : 25);
         };
 
         vm.syncModalEnrollmentClassToFilter = function () {
