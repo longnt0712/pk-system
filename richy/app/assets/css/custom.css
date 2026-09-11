@@ -3614,6 +3614,19 @@ html.global-dark-mode select.form-control option:checked {
     overflow-y: auto !important;
 }
 
+/* Class schedule owns its scrollbar inside modal-body. The generic
+   ui-select clipping fix above must not force this modal-body to visible. */
+.class-schedule-modal-window .modal-content {
+    overflow: hidden !important;
+}
+
+.class-schedule-modal-window .class-schedule-modal > .modal-body {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
 /* Create a high stacking layer as soon as ui-select is opened. */
 .ui-select-container.open,
 .ui-select-container.ui-select-open,
