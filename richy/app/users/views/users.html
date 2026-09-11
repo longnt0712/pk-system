@@ -31,6 +31,11 @@
                         <button class="btn btn-primary margin-left-10" ng-click="vm.openStudentStatisticsModal()">
                             <i class="fa fa-bar-chart"></i> Thống kê
                         </button>
+
+                        <button class="btn btn-warning margin-left-10" ng-click="vm.advancedSearch()">
+                            <i class="fa fa-filter"></i> Tìm kiếm nâng cao
+                            <span class="badge" ng-if="vm.advancedSearchApplied.active">Đang lọc</span>
+                        </button>
                         <!--<button class="btn btn-danger margin-left-10" ng-click="vm.deleteUsers()" data-ng-disabled="vm.selectedUsers.length <= 0"><i class="icon-trash"></i> Xóa <span ng-if="vm.selectedUsers.length > 0">{{vm.selectedUsers.length}} bản ghi đã chọn</span></button>-->
                     </div>
                     <!--<div class="col-sm-6 col-xs-12 margin-top-10" style="text-align: right;">-->
@@ -58,18 +63,24 @@
                             </ui-select-choices>
                         </ui-select>
                     </div>
-                    <div class="col-md-2">
-                        <ui-select data-ng-disabled="" ng-model="vm.filter.enrollmentClass" data-ng-change="vm.search()" sortable="true" close-on-select="true">
-							<ui-select-match allow-clear="" placeholder="LỚP HỌC">{{$select.selected.treeLabel || $select.selected.name}}</ui-select-match>
+                    <div class="col-md-3">
+                        <ui-select ng-model="vm.filter.enrollmentClass"
+                                   data-ng-change="vm.searchByQuickEnrollmentClass()"
+                                   sortable="true"
+                                   close-on-select="true">
+                            <ui-select-match allow-clear="true" placeholder="LỚP HỌC">
+                                {{$select.selected.treeLabel || $select.selected.name}}
+                            </ui-select-match>
                             <ui-select-choices repeat="so.id as so in vm.enrollmentClasses
-                                | filter:vm.filterEnrollmentClassByRole
-                                | propsFilter:{name: $select.search}">
-								<div class="bold" ng-bind-html="(so.treeLabel || so.name) | highlight: $select.search"></div>
+                                | filter:vm.filterQuickEnrollmentClass
+                                | propsFilter:{treeLabel: $select.search, name: $select.search}">
+                                <div class="bold"
+                                     ng-bind-html="(so.treeLabel || so.name) | highlight: $select.search"></div>
                                 <small>{{so.old}}</small>
                             </ui-select-choices>
                         </ui-select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <div class="input-group">
                             <input type="text"
                                    data-ng-model="vm.filter.keyword"
@@ -77,33 +88,19 @@
                                    class="form-control"
                                    placeholder="Tìm kiếm nhanh"
                                    name="search">
-
                             <span class="input-group-btn">
                                 <button type="button"
                                         class="btn btn-default"
+                                        title="Tìm kiếm"
+                                        aria-label="Tìm kiếm"
                                         data-ng-click="vm.search()">
                                     <i class="fa fa-search"></i>
                                 </button>
                             </span>
                         </div>
-                        <!--<input type="text" data-ng-model="vm.filter.keyword" dl-enter-key="vm.search()" class="form-control" placeholder="Tìm kiếm nhanh" name="search">-->
                     </div>
 
                     <div class="col-md-3">
-                        <div class="input-group" title="Lọc theo ngày tạo tài khoản">
-                            <span class="input-group-addon">
-                                <i class="fa fa-calendar"></i>
-                            </span>
-                            <input type="date"
-                                   class="form-control"
-                                   data-ng-model="vm.createdDateFilter"
-                                   data-ng-change="vm.search()"
-                                   aria-label="Ngày nhập học"
-                                   title="Ngày nhập học">
-                        </div>
-                    </div>
-
-                    <div class="col-md-2">
                         <label class="checkbox-inline"
                                style="padding-top: 7px; font-weight: 600; cursor: pointer;">
                             <input type="checkbox"
@@ -361,42 +358,102 @@
 <!-- END MAIN CONTENT -->
 <!-- BEGIN MAIN JS-->
 <script type="text/ng-template" id="search_user_modal.html">
-    <div modal-movable>
+    <div class="advanced-user-search-modal">
         <div class="modal-header">
-            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
-            <h4 class="modal-title"><i class="fa fa-search"></i> Tìm kiếm người dùng</h4>
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true">&times;</button>
+            <h4 class="modal-title"><i class="fa fa-filter"></i> Tìm kiếm nâng cao</h4>
+            <p class="advanced-search-subtitle">Lọc học sinh theo trường, ngày đăng ký học và các lớp được chọn.</p>
         </div>
         <div class="modal-body">
             <div class="row">
-                <div class="col-md-12 margin-top-10">
-                    <label class="bold">Từ khóa tìm kiếm</label>
-                    <input data-ng-model="vm.filterTemp.keyword" type="text" autofocus="autofocus" class="form-control" />
+                <div class="col-md-12">
+                    <label class="bold">Chọn trường</label>
+                    <select class="form-control"
+                            ng-model="vm.advancedSearchDraft.schoolId"
+                            ng-options="school.id as school.name for school in vm.advancedSearchSchools"
+                            ng-change="vm.onAdvancedSearchSchoolChanged()">
+                    </select>
+                    <p class="help-block">Hiện tại chỉ hiển thị trường schoolId = 2. Trường schoolId = 1 đang được tạm ẩn.</p>
                 </div>
             </div>
+
             <div class="row">
-                <div class="col-md-6 margin-top-20">
-                    <label class="bold">Vai trò</label>
-                    <ui-select multiple theme="bootstrap" data-ng-model="vm.filterTemp.roles" sortable="true" close-on-select="true" data-ng-disabled="hasRole(vm.user, 'ROLE_ADMIN')" style="width: 100% !important;">
-                        <ui-select-match allow-clear="true" placeholder="Xin mời chọn...">{{$item.name}}</ui-select-match>
-                        <ui-select-choices repeat="role in vm.roles | propsFilter: {name: $select.search}">
-                            <div class="bold" ng-bind-html="role.name | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
+                <div class="col-sm-6 margin-top-10">
+                    <label class="bold">Ngày đăng ký học từ ngày</label>
+                    <input type="text"
+                           class="form-control"
+                           ng-model="vm.advancedSearchDraft.startDate"
+                           placeholder="TỪ NGÀY"
+                           autocomplete="off"
+                           data-lpignore="true"
+                           user-date-picker>
                 </div>
-                <div class="col-md-6 margin-top-20">
-                    <label class="bold">Nhóm người dùng</label>
-                    <ui-select multiple theme="bootstrap" data-ng-model="vm.filterTemp.groups" sortable="true" close-on-select="true" style="width: 100% !important;">
-                        <ui-select-match allow-clear="true" placeholder="Xin mời chọn...">{{$item.name}}</ui-select-match>
-                        <ui-select-choices repeat="group in vm.groups | propsFilter: {name: $select.search}">
-                            <div class="bold" ng-bind-html="group.name | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
+                <div class="col-sm-6 margin-top-10">
+                    <label class="bold">Đến ngày</label>
+                    <input type="text"
+                           class="form-control"
+                           ng-model="vm.advancedSearchDraft.endDate"
+                           placeholder="ĐẾN NGÀY"
+                           autocomplete="off"
+                           data-lpignore="true"
+                           user-date-picker>
+                </div>
+            </div>
+
+            <div class="advanced-search-class-section">
+                <div class="advanced-search-class-heading">
+                    <div>
+                        <label class="bold">Chọn các lớp muốn tìm</label>
+                        <p class="help-block">Mặc định chọn tất cả. Bỏ tích những lớp không muốn xuất hiện.</p>
+                    </div>
+                    <label class="advanced-search-select-all">
+                        <input type="checkbox"
+                               ng-checked="vm.isAllAdvancedSearchClassesSelected()"
+                               ng-click="vm.toggleAllAdvancedSearchClasses()">
+                        Chọn tất cả
+                    </label>
+                </div>
+
+                <div class="advanced-search-class-grid">
+                    <label class="advanced-search-class-option"
+                           ng-class="{'is-selected': vm.isAdvancedSearchClassSelected(enrollmentClass.id)}"
+                           ng-repeat="enrollmentClass in vm.getAdvancedSearchClasses() track by enrollmentClass.id">
+                        <input type="checkbox"
+                               ng-checked="vm.isAdvancedSearchClassSelected(enrollmentClass.id)"
+                               ng-click="vm.toggleAdvancedSearchClass(enrollmentClass.id)">
+                        <span>{{enrollmentClass.treeLabel || enrollmentClass.name}}</span>
+                    </label>
+
+                    <div class="alert alert-warning"
+                         ng-if="vm.getAdvancedSearchClasses().length === 0">
+                        Không có lớp thuộc trường đã chọn.
+                    </div>
+                </div>
+
+                <div class="advanced-search-selection-count">
+                    Đã chọn <strong>{{vm.advancedSearchDraft.classIds.length}}</strong>/{{vm.getAdvancedSearchClasses().length}} lớp
                 </div>
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal"><i class="icon-close"></i> Đóng lại</button>
-            <button type="button" ng-click="$close('yes')" class="btn btn-primary"><i class="icon-check"></i> Tìm kiếm</button>
+            <button type="button"
+                    ng-if="vm.advancedSearchApplied.active"
+                    ng-click="$close('clear')"
+                    class="btn btn-danger pull-left">
+                <i class="fa fa-times"></i> Bỏ lọc nâng cao
+            </button>
+            <button type="button" ng-click="vm.resetAdvancedSearchDraft()" class="btn btn-default">
+                <i class="fa fa-refresh"></i> Chọn lại mặc định
+            </button>
+            <button type="button" ng-click="$dismiss()" class="btn btn-default">
+                <i class="icon-close"></i> Đóng
+            </button>
+            <button type="button"
+                    ng-click="vm.confirmAdvancedSearch($close)"
+                    class="btn btn-primary"
+                    ng-disabled="vm.advancedSearchDraft.classIds.length === 0">
+                <i class="fa fa-search"></i> Xác nhận tìm kiếm
+            </button>
         </div>
     </div>
 </script>
@@ -1558,6 +1615,94 @@
         color: #5067d9;
     }
 
+    .advanced-user-search-modal .modal-header {
+        padding: 17px 22px 13px;
+        border-bottom-color: #e4e8f1;
+        background: #f6f5ff;
+    }
+
+    .advanced-user-search-modal .modal-title {
+        color: #344054;
+        font-weight: 700;
+    }
+
+    .advanced-search-subtitle {
+        margin: 5px 0 0;
+        color: #667085;
+        font-size: 12px;
+    }
+
+    .advanced-user-search-modal .modal-body {
+        padding: 20px 22px;
+    }
+
+    .advanced-search-class-section {
+        margin-top: 20px;
+        padding-top: 17px;
+        border-top: 1px solid #e5e8ef;
+    }
+
+    .advanced-search-class-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 15px;
+        margin-bottom: 10px;
+    }
+
+    .advanced-search-class-heading .help-block {
+        margin: 4px 0 0;
+    }
+
+    .advanced-search-select-all {
+        flex: 0 0 auto;
+        margin: 0;
+        padding: 8px 11px;
+        border: 1px solid #cfd6e5;
+        border-radius: 7px;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .advanced-search-select-all input,
+    .advanced-search-class-option input {
+        margin-right: 7px;
+    }
+
+    .advanced-search-class-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        max-height: 330px;
+        padding: 3px;
+        overflow-y: auto;
+    }
+
+    .advanced-search-class-option {
+        display: flex;
+        align-items: center;
+        min-height: 43px;
+        margin: 0;
+        padding: 9px 11px;
+        border: 1px solid #dce2ec;
+        border-radius: 7px;
+        color: #475467;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .advanced-search-class-option.is-selected {
+        border-color: #7167df;
+        color: #4238a5;
+        background: #f2f0ff;
+    }
+
+    .advanced-search-selection-count {
+        margin-top: 10px;
+        color: #667085;
+        text-align: right;
+    }
+
     @media (max-width: 767px) {
         .student-statistics-modal .modal-body {
             padding: 12px;
@@ -1585,6 +1730,15 @@
 
         .student-statistics-selection-heading {
             flex-direction: column;
+        }
+
+        .advanced-search-class-heading {
+            flex-direction: column;
+        }
+
+        .advanced-search-class-grid {
+            grid-template-columns: 1fr;
+            max-height: 300px;
         }
     }
 </style>

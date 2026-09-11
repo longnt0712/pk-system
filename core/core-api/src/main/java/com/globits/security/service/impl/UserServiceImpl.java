@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.joda.time.LocalDateTime;
 
 import com.globits.core.domain.Ethnics;
 import com.globits.core.domain.Person;
@@ -423,6 +424,22 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	    List<Long> roleIds = new ArrayList<>();
 	    List<Long> groupIds = new ArrayList<>();
 	    List<String> keywordVariants = new ArrayList<>();
+	    LocalDateTime createdFrom = null;
+	    LocalDateTime createdToExclusive = null;
+
+	    /*
+	     * Lọc ngày nhập học theo create_date của User.
+	     * endDate được đổi thành đầu ngày kế tiếp để lấy trọn ngày kết thúc.
+	     */
+	    if (filter != null && filter.getStartDate() != null) {
+	        createdFrom = new LocalDateTime(filter.getStartDate()).withTime(0, 0, 0, 0);
+	        clause += " and u.createDate >= :createdFrom ";
+	    }
+
+	    if (filter != null && filter.getEndDate() != null) {
+	        createdToExclusive = new LocalDateTime(filter.getEndDate()).withTime(0, 0, 0, 0).plusDays(1);
+	        clause += " and u.createDate < :createdToExclusive ";
+	    }
 
 	    /*
 	     * KEYWORD
@@ -560,6 +577,16 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	    if (filter != null && filter.getActive() != null) {
 	        q.setParameter("active", filter.getActive());
 	        qCount.setParameter("active", filter.getActive());
+	    }
+
+	    if (createdFrom != null) {
+	        q.setParameter("createdFrom", createdFrom);
+	        qCount.setParameter("createdFrom", createdFrom);
+	    }
+
+	    if (createdToExclusive != null) {
+	        q.setParameter("createdToExclusive", createdToExclusive);
+	        qCount.setParameter("createdToExclusive", createdToExclusive);
 	    }
 
 	    /*

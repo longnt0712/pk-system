@@ -113,4 +113,86 @@
             })
     }]);
 
+    /* Datepicker đồng bộ với person_date: hiển thị và nhập DD/MM/YYYY. */
+    Hrm.User.directive('userDatePicker', ['$timeout', function ($timeout) {
+        return {
+            restrict: 'A',
+            require: '?ngModel',
+            link: function (scope, element, attrs, ngModelController) {
+                var datepickerFormat = 'dd/mm/yyyy';
+                var momentFormat = 'DD/MM/YYYY';
+
+                function toMoment(value) {
+                    if (!value) return null;
+                    if (angular.isDate(value) || angular.isNumber(value)) {
+                        var mValue = moment(value);
+                        return mValue.isValid() ? mValue : null;
+                    }
+                    if (angular.isString(value)) {
+                        var text = value.trim();
+                        var mText = moment(text, ['DD/MM/YYYY', 'D/M/YYYY'], true);
+                        if (mText.isValid()) return mText;
+                        var mIso = moment(text, moment.ISO_8601, true);
+                        return mIso.isValid() ? mIso : null;
+                    }
+                    var m = moment(value);
+                    return m.isValid() ? m : null;
+                }
+
+                element.datepicker({
+                    autoclose: true,
+                    keyboardNavigation: false,
+                    todayHighlight: true,
+                    format: datepickerFormat
+                });
+
+                if (!ngModelController) return;
+
+                // Model do controller quản lý; null thì để trống, có giá trị thì giữ lại khi mở lại modal.
+                element.attr('autocomplete', 'off');
+                if (!ngModelController.$modelValue) {
+                    element.val('');
+                    element.datepicker('update', '');
+                }
+
+                ngModelController.$formatters.push(function (modelValue) {
+                    var m = toMoment(modelValue);
+                    var viewValue = m ? m.format(momentFormat) : '';
+                    element.datepicker('update', viewValue);
+                    return viewValue;
+                });
+
+                ngModelController.$parsers.push(function (viewValue) {
+                    if (!viewValue) return null;
+                    var m = moment(String(viewValue).trim(), ['DD/MM/YYYY', 'D/M/YYYY'], true);
+                    return m.isValid() ? m.toDate() : null;
+                });
+
+                ngModelController.$render = function () {
+                    var value = ngModelController.$viewValue || '';
+                    element.val(value);
+                    element.datepicker('update', value);
+                };
+
+                element.on('changeDate', function (evt) {
+                    scope.$applyAsync(function () {
+                        var value = evt.date ? moment(evt.date).format(momentFormat) : element.val();
+                        ngModelController.$setViewValue(value);
+                        ngModelController.$render();
+                    });
+                });
+
+                element.on('blur', function () {
+                    scope.$applyAsync(function () {
+                        ngModelController.$setViewValue(element.val());
+                    });
+                });
+
+                element.on('$destroy', function () {
+                    element.datepicker('destroy');
+                });
+            }
+        };
+    }]);
+
 })();

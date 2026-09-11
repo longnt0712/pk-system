@@ -1,4 +1,5 @@
 package com.globits.security.dto;
+
 public class UserFilterDto {
 
 	private String keyword;
@@ -12,6 +13,27 @@ public class UserFilterDto {
 	private Integer enrollmentClass;
 
 	private Long[] enrollmentClassIds;
+
+	/* Khoảng ngày tạo tài khoản (ngày nhập học). */
+	private Long startDate;
+
+	private Long endDate;
+
+	public Long getStartDate() {
+		return startDate;
+	}
+
+	public void setStartDate(Long startDate) {
+		this.startDate = startDate;
+	}
+
+	public Long getEndDate() {
+		return endDate;
+	}
+
+	public void setEndDate(Long endDate) {
+		this.endDate = endDate;
+	}
 
 	public Integer getEnrollmentClass() {
 		return enrollmentClass;

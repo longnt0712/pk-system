@@ -4,99 +4,106 @@
     <div class="col-md-12">
         <div class="portlet light bordered">
             <div class="portlet-body">
-                <div class="row">
-                    <div class="col-md-12 text-center margin-bottom-10 margin-top-10">
-
-                        <div class="qr-attendance-launcher">
-                            <h3><i class="fa fa-qrcode"></i> Điểm danh bằng mã QR</h3>
-                            <button type="button"
-                                    class="btn qr-camera-toggle"
-                                    ng-class="vm.scanning ? 'btn-danger' : 'btn-primary'"
-                                    ng-click="vm.toggleCamera()">
-                                <i class="fa" ng-class="vm.scanning ? 'fa-stop-circle' : 'fa-camera'"></i>
-                                {{vm.scanning ? 'Tắt camera' : 'Mở camera'}}
-                            </button>
-
-                            <div class="status">
-                                Status: {{ vm.status }}
+                <div class="attendance-control-panel">
+                    <div ng-show="vm.isRoleAdmin || vm.isRoleEducationManagerment"
+                         class="attendance-control-card attendance-setup-card">
+                        <div class="attendance-control-card-heading">
+                            <span class="attendance-control-icon"><i class="fa fa-calendar-check-o"></i></span>
+                            <div>
+                                <h3>Thiết lập điểm danh</h3>
+                                <p>Tạo bảng điểm danh theo ngày.</p>
                             </div>
+                        </div>
 
-                            <div id="reader" ng-show="vm.scanning"></div>
+                        <button type="button"
+                                class="btn attendance-primary-action"
+                                ng-class="vm.startSetUp ? 'btn-danger' : 'btn-primary'"
+                                ng-click="vm.startSetUp = !vm.startSetUp">
+                            <i class="fa" ng-class="vm.startSetUp ? 'fa-times' : 'fa-plus-circle'"></i>
+                            {{vm.startSetUp ? 'Đóng thiết lập' : 'Bắt đầu thiết lập điểm danh'}}
+                        </button>
+
+                        <div class="attendance-setup-fields" ng-show="vm.startSetUp">
+                            <input data-ng-model="vm.setupAttendanceDate"
+                                   type="text"
+                                   class="form-control"
+                                   placeholder="CHỌN NGÀY"
+                                   my-date-picker />
+                            <button class="btn btn-primary attendance-create-button"
+                                    ng-click="vm.createCheckList()">
+                                <i class="fa fa-check"></i> Tạo bảng điểm danh
+                            </button>
                         </div>
                     </div>
 
-                    <div ng-show="vm.isRoleAdmin || vm.isRoleEducationManagerment" class="row text-center">
-                        <div class="col-md-12">
-                            <label for="start-set-up" style="font-size: 30px">Bắt đầu thiết lập điểm danh</label>
-                            <input style="height: 30px; width: 30px"
-                                    id="start-set-up"
-                                    type="checkbox"
-                                    ng-model="vm.startSetUp">
-                            <br>
-                            <small>(chỉ cho tạo bảng điểm danh theo ngày)</small>
-                        </div>
-
-                        <div class="row text-center" ng-show="vm.startSetUp">
-                            <div class="col-md-12 margin-bottom-10">
-                                <label>Chọn ngày tạo bảng điểm danh</label>
-
-                                <input data-ng-model="vm.setupAttendanceDate"
-                                        type="text"
-                                        class="form-control"
-                                        style="width: 180px; margin: 0 auto;"
-                                        placeholder="CHỌN NGÀY"
-                                        my-date-picker />
-                            </div>
-
-                            <div class="col-md-12">
-                                <button class="btn btn-primary margin-bottom-10" ng-click="vm.createCheckList()">
-                                    TẠO BẢNG ĐIỂM DANH
-                                </button>
+                    <div class="attendance-control-card qr-attendance-launcher">
+                        <div class="attendance-control-card-heading">
+                            <span class="attendance-control-icon is-qr"><i class="fa fa-qrcode"></i></span>
+                            <div>
+                                <h3>Điểm danh bằng mã QR</h3>
+                                <p>Mở camera để quét mã học sinh.</p>
                             </div>
                         </div>
+
+                        <button type="button"
+                                class="btn qr-camera-toggle"
+                                ng-class="vm.scanning ? 'btn-danger' : 'btn-primary'"
+                                ng-click="vm.toggleCamera()">
+                            <i class="fa" ng-class="vm.scanning ? 'fa-stop-circle' : 'fa-camera'"></i>
+                            {{vm.scanning ? 'Tắt camera' : 'Mở camera'}}
+                        </button>
+
+                        <div class="status" ng-if="vm.status">
+                            {{vm.status}}
+                        </div>
+
+                        <div id="reader" ng-show="vm.scanning"></div>
                     </div>
                 </div>
 
                 <div class="row attendance-main-section">
                     <div class="col-md-12 sticky-search-bar attendance-filter-bar">
+                        <div class="attendance-toolbar-actions">
+                            <div class="btn-group attendance-tools-dropdown">
+                                <button type="button"
+                                        class="btn btn-primary attendance-tool-btn dropdown-toggle"
+                                        data-toggle="dropdown"
+                                        aria-haspopup="true"
+                                        aria-expanded="false">
+                                    <i class="fa fa-th-large"></i> Công cụ
+                                    <span class="caret"></span>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a href="" class="attendance-tool-menu-item is-excel" ng-click="vm.openExportExcelModal()">
+                                            <i class="fa fa-file-excel"></i> Xuất Excel
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="" class="attendance-tool-menu-item is-image" ng-click="vm.openExportImageModal()">
+                                            <i class="fa fa-image"></i> Xuất ảnh
+                                        </a>
+                                    </li>
+                                    <li role="separator" class="divider"></li>
+                                    <li>
+                                        <a href="" class="attendance-tool-menu-item is-statistics" ng-click="vm.openStudentCountStatisticsModal()">
+                                            <i class="fa fa-bar-chart"></i> Thống kê theo ngày
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
 
-                        <div class="col-md-12">
-                            <label class="bold"
-                                    style="display:inline-block; margin-right:25px; margin-bottom:15px;">
-                                <input type="checkbox"
-                                        ng-model="vm.showExtraFeatures"
-                                        ng-change="vm.onExtraFeatureVisibilityChange()">
-                                HIỂN THỊ NGOẠI KHÓA
-                            </label>
-                            <label class="bold"
-                                    style="display:inline-block; margin-right:25px; margin-bottom:15px;">
-                                <input type="checkbox"
-                                        ng-model="vm.showStat">
-                                HIỂN THỊ THỐNG KÊ THEO NGÀY
-                            </label>
+                            <button type="button"
+                                    class="btn attendance-tool-btn attendance-extra-toggle"
+                                    ng-class="vm.showExtraFeatures ? 'is-active' : ''"
+                                    ng-click="vm.showExtraFeatures = !vm.showExtraFeatures; vm.onExtraFeatureVisibilityChange()">
+                                <i class="fa" ng-class="vm.showExtraFeatures ? 'fa-eye-slash' : 'fa-eye'"></i>
+                                {{vm.showExtraFeatures ? 'Ẩn ngoại khóa' : 'Hiển thị ngoại khóa'}}
+                            </button>
                         </div>
 
-                        <div class="col-md-12 margin-bottom-10">
-                            <button class="btn btn-primary" ng-click="vm.getPage()">
-                                TẢI LẠI DANH SÁCH
-                            </button>
-                            <button class="btn btn-success"
-                                    ng-click="vm.openExportExcelModal()">
-                                <i class="fa fa-file-excel"></i> Xuất Excel
-                            </button>
-
-                            <button class="btn btn-info"
-                                    ng-click="vm.openExportImageModal()">
-                                <i class="fa fa-image"></i> Xuất ảnh
-                            </button>
-
-                            <button class="btn btn-warning"
-                                    ng-click="vm.openStudentCountStatisticsModal()">
-                                <i class="fa fa-bar-chart"></i> Thống kê theo ngày
-                            </button>
-                        </div>
-
-                        <div class="col-md-2 margin-bottom-10">
+                        <div class="attendance-filter-fields">
+                        <div class="attendance-filter-item">
                             <input data-ng-model="vm.attendanceDate"
                                     type="text"
                                     class="form-control"
@@ -104,7 +111,7 @@
                                     my-date-picker />
                         </div>
 
-                        <div class="col-md-2 margin-bottom-10">
+                        <div class="attendance-filter-item">
                             <ui-select ng-model="vm.searchDto.user.person.enrollmentClassId"
                                     ng-change="vm.getPage()"
                                     close-on-select="true">
@@ -117,7 +124,7 @@
                             </ui-select>
                         </div>
 
-                        <div class="col-md-2 margin-bottom-10">
+                        <div class="attendance-filter-item">
                             <ui-select ng-model="vm.searchDto.group"
                                     ng-change="vm.groupChange()"
                                     close-on-select="true"
@@ -132,30 +139,21 @@
                             </ui-select>
                         </div>
 
-                        <div class="col-md-2 margin-bottom-10">
+                        <div class="attendance-filter-item attendance-filter-search">
                             <input type="text"
                                     class="form-control"
                                     ng-model="vm.searchTextClient"
                                     placeholder="Gõ tên vào đây để tìm...">
                         </div>
 
-                        <div class="col-md-12" ng-if="vm.showStat == true">
-                            <strong class="text-primary">Tổng học sinh:</strong> {{vm.totalStudent}} <br>
-                            <strong class="text-red">THÁNH LỄ ✝ => </strong>
-                            (Có mặt) {{vm.totalMass1}} + (Ca đoàn) {{vm.totalMass5}} = <strong>Tổng đi:</strong> {{vm.totalGoToChurch}}
-                            >>||<<
-                            (Vắng) {{vm.totalMass2}} + (Vắng (P)) {{vm.totalMass6}} = <strong>Tổng nghỉ:</strong> {{vm.totalAbsentChurch}}
-                            <br>
-
-                            <strong class="text-red">HỌC GIÁO LÝ 📖 => </strong>
-                            <strong>Tổng đi:</strong> {{vm.totalClass1}}
-                            >>||<<
-                            (Vắng) {{vm.totalClass2}} + (Vắng (P)) {{vm.totalClass6}} = <strong>Tổng nghỉ:</strong> {{vm.totalAbsentClass}}
-                            <br>
+                        <div class="attendance-filter-item attendance-filter-reload">
+                            <button type="button"
+                                    class="btn btn-primary attendance-reload-under-search"
+                                    ng-click="vm.getPage()">
+                                <i class="fa fa-refresh"></i> Tải lại danh sách
+                            </button>
                         </div>
-
-
-                        <div class="clearfix"></div>
+                        </div>
                     </div>
 
                     <div class="col-md-12">
@@ -714,31 +712,97 @@
 </script>
 
 <style>
-    .qr-attendance-launcher {
-        max-width: 720px;
-        margin: 0 auto 18px;
-        padding: 18px;
-        border: 1px solid #dfe5f0;
-        border-radius: 14px;
-        background: #f8faff;
+    .attendance-control-panel {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin: 4px 0 16px;
     }
 
-    .qr-attendance-launcher h3 {
-        margin: 0 0 14px;
+    .attendance-control-card {
+        min-width: 0;
+        padding: 16px;
+        border: 1px solid #dfe5f0;
+        border-radius: 12px;
+        background: #f8faff;
+        box-shadow: 0 4px 13px rgba(31, 45, 61, .05);
+    }
+
+    .attendance-control-card-heading {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        margin-bottom: 13px;
+        text-align: left;
+    }
+
+    .attendance-control-icon {
+        display: inline-flex;
+        flex: 0 0 42px;
+        width: 42px;
+        height: 42px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        color: #5267d9;
+        background: #e9edff;
+        font-size: 18px;
+    }
+
+    .attendance-control-icon.is-qr {
+        color: #16856d;
+        background: #e3f7f1;
+    }
+
+    .attendance-control-card-heading h3 {
+        margin: 0;
         color: #344054;
-        font-size: 20px;
+        font-size: 17px;
+        font-weight: 700;
+    }
+
+    .attendance-control-card-heading p {
+        margin: 3px 0 0;
+        color: #7a8496;
+        font-size: 12px;
+    }
+
+    .attendance-primary-action,
+    .qr-camera-toggle {
+        min-width: 185px;
+        min-height: 40px;
+        border-radius: 8px !important;
         font-weight: 700;
     }
 
     .qr-camera-toggle {
-        min-width: 170px;
-        min-height: 42px;
-        border-radius: 10px !important;
-        font-weight: 700;
+        display: block;
     }
 
     .qr-attendance-launcher .status {
-        margin: 12px auto 0;
+        display: inline-block;
+        margin: 10px 0 0 8px;
+        color: #687386;
+        font-size: 12px;
+    }
+
+    .attendance-setup-fields {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-top: 11px;
+    }
+
+    .attendance-setup-fields .form-control {
+        max-width: 190px;
+        height: 40px;
+        border-radius: 8px !important;
+    }
+
+    .attendance-create-button {
+        min-height: 40px;
+        border-radius: 8px !important;
+        font-weight: 700;
     }
 
     .qr-attendance-launcher #reader {
@@ -802,19 +866,46 @@
     }
 
     html.global-dark-mode .qr-attendance-launcher,
+    html.global-dark-mode .attendance-control-card,
     html.global-dark-mode .qr-attendance-type-option {
         border-color: #344159;
         background: #172236;
     }
 
-    html.global-dark-mode .qr-attendance-launcher h3,
+    html.global-dark-mode .attendance-control-card-heading h3,
     html.global-dark-mode .qr-attendance-type-option strong {
         color: #eef3fb;
+    }
+
+    html.global-dark-mode .attendance-control-card-heading p,
+    html.global-dark-mode .qr-attendance-launcher .status {
+        color: #aab4c6;
     }
 
     html.global-dark-mode .qr-attendance-type-option.is-selected {
         border-color: #8290ff;
         background: #29365a;
+    }
+
+    @media (max-width: 767px) {
+        .attendance-control-panel {
+            grid-template-columns: 1fr;
+        }
+
+        .attendance-setup-fields {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .attendance-setup-fields .form-control {
+            max-width: none;
+        }
+
+        .attendance-primary-action,
+        .qr-camera-toggle,
+        .attendance-create-button {
+            width: 100%;
+        }
     }
 </style>
 
@@ -1391,6 +1482,187 @@
      */
     .attendance-filter-bar {
         z-index: 1100;
+        padding: 12px 14px;
+        border: 1px solid #e2e7f0;
+        border-radius: 11px;
+        box-shadow: 0 5px 16px rgba(31, 45, 61, .06);
+    }
+
+    .attendance-toolbar-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .attendance-tool-btn {
+        min-height: 38px;
+        margin: 0 !important;
+        padding: 8px 13px;
+        border-radius: 8px !important;
+        font-weight: 700;
+        line-height: 20px;
+    }
+
+    .attendance-tool-btn i {
+        width: 15px;
+        margin-right: 4px;
+        text-align: center;
+    }
+
+    .attendance-tools-dropdown .dropdown-menu {
+        min-width: 220px;
+        margin-top: 6px;
+        padding: 7px 0;
+        border: 1px solid #dfe5ef;
+        border-radius: 9px;
+        box-shadow: 0 10px 28px rgba(31, 45, 61, .16);
+    }
+
+    .attendance-tools-dropdown .dropdown-menu > li > a {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 13px;
+        color: #475467;
+        font-weight: 600;
+    }
+
+    .attendance-tools-dropdown .dropdown-menu > li > a i {
+        width: 17px;
+        text-align: center;
+    }
+
+    .attendance-tools-dropdown .attendance-tool-menu-item.is-excel i {
+        color: #16a36a !important;
+    }
+
+    .attendance-tools-dropdown .attendance-tool-menu-item.is-image i {
+        color: #258bdc !important;
+    }
+
+    .attendance-tools-dropdown .attendance-tool-menu-item.is-statistics i {
+        color: #d88a00 !important;
+    }
+
+    .attendance-extra-toggle {
+        border: 1px solid #b8c3d5;
+        color: #526079;
+        background: #fff;
+    }
+
+    .attendance-extra-toggle:hover,
+    .attendance-extra-toggle:focus {
+        border-color: #7382df;
+        color: #4858bd;
+        background: #f3f4ff;
+    }
+
+    .attendance-extra-toggle.is-active {
+        border-color: #7366df;
+        color: #fff;
+        background: #7366df;
+    }
+
+    .attendance-filter-fields {
+        display: grid;
+        grid-template-columns: minmax(150px, .75fr) minmax(190px, 1fr) minmax(175px, .9fr) minmax(220px, 1.25fr) minmax(175px, .8fr);
+        gap: 9px;
+        align-items: start;
+    }
+
+    .attendance-filter-item {
+        min-width: 0;
+    }
+
+    .attendance-filter-search {
+        min-width: 0;
+    }
+
+    .attendance-reload-under-search {
+        width: 100%;
+        min-height: 38px;
+        border-radius: 8px !important;
+        font-weight: 700;
+    }
+
+    html.global-dark-mode .attendance-tools-dropdown .dropdown-menu {
+        border-color: #344159 !important;
+        background: #172236 !important;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, .34);
+    }
+
+    html.global-dark-mode .attendance-tools-dropdown .dropdown-menu > li > a {
+        color: #e7edf7 !important;
+        background: transparent !important;
+    }
+
+    html.global-dark-mode .attendance-tools-dropdown .dropdown-menu > li > a:hover,
+    html.global-dark-mode .attendance-tools-dropdown .dropdown-menu > li > a:focus {
+        color: #fff !important;
+        background: #25324a !important;
+    }
+
+    html.global-dark-mode .attendance-tools-dropdown .dropdown-menu .divider {
+        background: #344159 !important;
+    }
+
+    html.global-dark-mode .attendance-tools-dropdown .attendance-tool-menu-item.is-excel i {
+        color: #4ed79d !important;
+    }
+
+    html.global-dark-mode .attendance-tools-dropdown .attendance-tool-menu-item.is-image i {
+        color: #65b9ff !important;
+    }
+
+    html.global-dark-mode .attendance-tools-dropdown .attendance-tool-menu-item.is-statistics i {
+        color: #ffc654 !important;
+    }
+
+    .attendance-filter-item .form-control,
+    .attendance-filter-item .ui-select-match > .btn {
+        min-height: 38px;
+        border-radius: 8px !important;
+    }
+
+    @media (max-width: 991px) {
+        .attendance-filter-fields {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .attendance-filter-reload {
+            grid-column: span 2;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .attendance-filter-bar {
+            padding: 10px;
+        }
+
+        .attendance-toolbar-actions,
+        .attendance-filter-fields {
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        .attendance-tool-btn {
+            width: 100%;
+        }
+
+        .attendance-filter-reload {
+            grid-column: auto;
+        }
+
+        .attendance-tools-dropdown,
+        .attendance-tools-dropdown .dropdown-toggle {
+            width: 100%;
+        }
+
+        .attendance-tools-dropdown .dropdown-menu {
+            width: 100%;
+        }
     }
 
     .attendance-statistics-filter-bar {

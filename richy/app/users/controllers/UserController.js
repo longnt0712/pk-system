@@ -178,14 +178,58 @@
             filtered: 0
         };
 
-        // Ngày nhập học được hiểu là ngày tài khoản được tạo (createDate).
-        vm.createdDateFilter = null;
+        // Khoảng ngày nhập học được hiểu là khoảng createDate của tài khoản.
+        vm.createdDateFrom = null;
+        vm.createdDateTo = null;
+        vm.appliedCreatedDateFrom = null;
+        vm.appliedCreatedDateTo = null;
+
+        // Hiện tại chỉ cho phép tìm trong trường TNTT Phùng Khoang (schoolId = 2).
+        vm.advancedSearchSchools = [
+            {id: 2, name: 'TNTT PHÙNG KHOANG'}
+        ];
+
+        vm.advancedSearchApplied = {
+            active: false,
+            schoolId: 2,
+            startDate: null,
+            endDate: null,
+            classIds: []
+        };
+
+        vm.advancedSearchDraft = {
+            schoolId: 2,
+            startDate: null,
+            endDate: null,
+            classIds: []
+        };
 
         vm.changeInactiveUsersVisibility = function () {
             vm.filter.active = vm.showInactiveUsers === true
                 ? null
                 : true;
 
+            vm.search();
+        };
+
+        vm.filterQuickEnrollmentClass = function (enrollmentClass) {
+            return enrollmentClass && Number(enrollmentClass.schoolId) === 2;
+        };
+
+        vm.searchByQuickEnrollmentClass = function () {
+            /*
+             * Tìm nhanh theo một lớp sẽ thay thế bộ lọc nâng cao, tránh trường
+             * hợp hai danh sách lớp và hai khoảng ngày cùng được áp dụng.
+             */
+            vm.advancedSearchApplied = {
+                active: false,
+                schoolId: 2,
+                startDate: null,
+                endDate: null,
+                classIds: []
+            };
+            vm.appliedCreatedDateFrom = null;
+            vm.appliedCreatedDateTo = null;
             vm.search();
         };
 
@@ -569,19 +613,21 @@
             }
 
 			var requestFilter = angular.copy(vm.filter);
-			requestFilter.enrollmentClassIds = vm.getClassAndDescendantIds(requestFilter.enrollmentClass);
+			requestFilter.enrollmentClassIds = vm.advancedSearchApplied.active
+				? vm.advancedSearchApplied.classIds.slice()
+				: vm.getClassAndDescendantIds(requestFilter.enrollmentClass);
+			requestFilter.startDate = vm.appliedCreatedDateFrom
+				? toCalendarDate(vm.appliedCreatedDateFrom).getTime()
+				: null;
+			requestFilter.endDate = vm.appliedCreatedDateTo
+				? toCalendarDate(vm.appliedCreatedDateTo).getTime()
+				: null;
 
 			service.getUsers(requestFilter, vm.pageIndex, vm.pageSize).then(function (data) {
                 var users = angular.isArray(data.content) ? data.content : [];
 
-                if (vm.createdDateFilter) {
-                    users = users.filter(function (user) {
-                        return isSameCalendarDate(user && user.createDate, vm.createdDateFilter);
-                    });
-                }
-
                 vm.users = users;
-                vm.users.totalElement = vm.createdDateFilter ? users.length : data.totalElements;
+                vm.users.totalElement = data.totalElements;
             });
         };
 
@@ -599,14 +645,11 @@
             return isNaN(parsedDate.getTime()) ? null : parsedDate;
         }
 
-        function isSameCalendarDate(createDate, selectedDate) {
-            var accountDate = toCalendarDate(createDate);
-            var filterDate = toCalendarDate(selectedDate);
-
-            return accountDate !== null && filterDate !== null &&
-                accountDate.getFullYear() === filterDate.getFullYear() &&
-                accountDate.getMonth() === filterDate.getMonth() &&
-                accountDate.getDate() === filterDate.getDate();
+        function toCalendarDayNumber(value) {
+            var date = toCalendarDate(value);
+            return date === null
+                ? null
+                : new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
         }
 
         // =====================================================
@@ -1728,22 +1771,115 @@
          */
         vm.filterTemp = {};
 
+        vm.getAdvancedSearchClasses = function () {
+            var schoolId = toNumberOrNull(vm.advancedSearchDraft.schoolId);
+
+            return (vm.enrollmentClasses || []).filter(function (enrollmentClass) {
+                return enrollmentClass &&
+                    toNumberOrNull(enrollmentClass.schoolId) === schoolId;
+            });
+        };
+
+        function getAllAdvancedSearchClassIds() {
+            return vm.getAdvancedSearchClasses().map(function (enrollmentClass) {
+                return toNumberOrNull(enrollmentClass.id);
+            }).filter(function (classId) {
+                return classId !== null;
+            });
+        }
+
+        vm.resetAdvancedSearchDraft = function () {
+            vm.advancedSearchDraft.schoolId = 2;
+            vm.advancedSearchDraft.startDate = null;
+            vm.advancedSearchDraft.endDate = null;
+            vm.advancedSearchDraft.classIds = getAllAdvancedSearchClassIds();
+        };
+
+        vm.onAdvancedSearchSchoolChanged = function () {
+            // schoolId = 1 đang tạm ẩn; đổi trường sẽ luôn chọn toàn bộ lớp của trường đó.
+            vm.advancedSearchDraft.classIds = getAllAdvancedSearchClassIds();
+        };
+
+        vm.isAdvancedSearchClassSelected = function (classId) {
+            var normalizedId = toNumberOrNull(classId);
+            return vm.advancedSearchDraft.classIds.indexOf(normalizedId) >= 0;
+        };
+
+        vm.toggleAdvancedSearchClass = function (classId) {
+            var normalizedId = toNumberOrNull(classId);
+            var selectedIndex = vm.advancedSearchDraft.classIds.indexOf(normalizedId);
+
+            if (selectedIndex >= 0) {
+                vm.advancedSearchDraft.classIds.splice(selectedIndex, 1);
+            } else if (normalizedId !== null) {
+                vm.advancedSearchDraft.classIds.push(normalizedId);
+            }
+        };
+
+        vm.isAllAdvancedSearchClassesSelected = function () {
+            var allClassIds = getAllAdvancedSearchClassIds();
+            return allClassIds.length > 0 &&
+                allClassIds.every(function (classId) {
+                    return vm.advancedSearchDraft.classIds.indexOf(classId) >= 0;
+                });
+        };
+
+        vm.toggleAllAdvancedSearchClasses = function () {
+            vm.advancedSearchDraft.classIds = vm.isAllAdvancedSearchClassesSelected()
+                ? []
+                : getAllAdvancedSearchClassIds();
+        };
+
+        vm.confirmAdvancedSearch = function (closeModal) {
+            var fromDay = toCalendarDayNumber(vm.advancedSearchDraft.startDate);
+            var toDay = toCalendarDayNumber(vm.advancedSearchDraft.endDate);
+
+            if (fromDay !== null && toDay !== null && fromDay > toDay) {
+                toastr.warning('Từ ngày không được lớn hơn đến ngày.', 'Thông báo');
+                return;
+            }
+
+            if (!vm.advancedSearchDraft.classIds.length) {
+                toastr.warning('Bạn cần chọn ít nhất một lớp.', 'Thông báo');
+                return;
+            }
+
+            closeModal('apply');
+        };
+
         vm.advancedSearch = function () {
-            angular.copy(vm.filter, vm.filterTemp);
+            if (vm.advancedSearchApplied.active) {
+                vm.advancedSearchDraft = angular.copy(vm.advancedSearchApplied);
+            } else {
+                vm.resetAdvancedSearchDraft();
+            }
 
             vm.modalInstance = modal.open({
                 animation: true,
                 templateUrl: 'search_user_modal.html',
                 scope: $scope,
-                size: 'md',
+                size: 'lg',
                 backdrop: 'static',
             });
 
             vm.modalInstance.result.then(function (confirm) {
-                if (confirm == 'yes') {
-                    angular.copy(vm.filterTemp, vm.filter);
-                    vm.filterTemp = {filtered: 0};
-
+                if (confirm === 'apply') {
+                    vm.advancedSearchApplied = angular.copy(vm.advancedSearchDraft);
+                    vm.advancedSearchApplied.active = true;
+                    vm.appliedCreatedDateFrom = vm.advancedSearchApplied.startDate || null;
+                    vm.appliedCreatedDateTo = vm.advancedSearchApplied.endDate || null;
+                    vm.filter.enrollmentClass = null;
+                    vm.search();
+                } else if (confirm === 'clear') {
+                    vm.advancedSearchApplied = {
+                        active: false,
+                        schoolId: 2,
+                        startDate: null,
+                        endDate: null,
+                        classIds: []
+                    };
+                    vm.appliedCreatedDateFrom = null;
+                    vm.appliedCreatedDateTo = null;
                     vm.search();
                 }
             });
@@ -1991,21 +2127,19 @@
                 f.enrollmentClass !== undefined &&
                 f.enrollmentClass !== '';
 
-            var hasCreatedDate = vm.createdDateFilter !== null &&
-                vm.createdDateFilter !== undefined &&
-                vm.createdDateFilter !== '';
+            var hasCreatedDate = !!vm.appliedCreatedDateFrom || !!vm.appliedCreatedDateTo;
+            var hasAdvancedSearch = vm.advancedSearchApplied && vm.advancedSearchApplied.active;
 
             /*
              * active=true là bộ lọc mặc định của màn hình, không phải điều kiện
              * tìm kiếm do người dùng nhập. Vì vậy không dùng active để đổi
              * pageSize từ 25 lên 1000 hoặc bật khung thông báo bộ lọc.
              */
-            return hasKeyword || hasGroups || hasRoles || hasEnrollmentClass || hasCreatedDate;
+            return hasKeyword || hasGroups || hasRoles || hasEnrollmentClass || hasCreatedDate || hasAdvancedSearch;
         };
 
         vm.applyPageSizeByFilter = function () {
-            // Lọc createDate ở client nên cần tải trọn tập dữ liệu phù hợp trước.
-            vm.pageSize = vm.createdDateFilter ? 1000000 : (vm.hasAnyFilterValue() ? 1000 : 25);
+            vm.pageSize = vm.hasAnyFilterValue() ? 1000 : 25;
         };
 
         vm.syncModalEnrollmentClassToFilter = function () {
@@ -2050,6 +2184,20 @@
 
             vm.pageIndex = 1;
             vm.getUsers();
+        };
+
+        vm.searchByCreatedDate = function () {
+            var fromDay = toCalendarDayNumber(vm.createdDateFrom);
+            var toDay = toCalendarDayNumber(vm.createdDateTo);
+
+            if (fromDay !== null && toDay !== null && fromDay > toDay) {
+                toastr.warning('Từ ngày không được lớn hơn đến ngày.', 'Thông báo');
+                return;
+            }
+
+            vm.appliedCreatedDateFrom = vm.createdDateFrom || null;
+            vm.appliedCreatedDateTo = vm.createdDateTo || null;
+            vm.search();
         };
 
         vm.reloadUserListFromModal = function () {
