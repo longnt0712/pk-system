@@ -943,7 +943,7 @@
         });
 
         // =====================================================
-        // THỐNG KÊ HỌC SINH ACTIVE THEO LỚP - SCHOOL ID 2
+        // THỐNG KÊ ĐIỂM DANH THEO LỚP / ĐỘI - SCHOOL ID 2
         // =====================================================
 
         function createEmptyStudentCountStatistics() {
@@ -952,149 +952,271 @@
                 male: 0,
                 female: 0,
                 unknown: 0,
+                present: 0,
+                excused: 0,
+                unexcused: 0,
+                unmarked: 0,
                 classes: []
             };
         }
 
-        function getSchoolTwoEnrollmentClasses() {
-            return (vm.enrollmentClasses || [])
-                .filter(function (enrollmentClass) {
-                    return enrollmentClass && Number(enrollmentClass.schoolId) === 2;
-                })
-                .sort(function (a, b) {
-                    return String(a.treeLabel || a.name || '').localeCompare(
-                        String(b.treeLabel || b.name || ''),
-                        'vi'
-                    );
-                });
-        }
-
         function normalizeId(value) {
-            if (value === null || value === undefined || value === '') {
-                return null;
-            }
-
+            if (value === null || value === undefined || value === '') return null;
             var id = Number(value);
             return isNaN(id) ? null : id;
         }
 
-        function getPrimaryEnrollmentClassId(user) {
-            if (!user || !user.person) {
-                return null;
+        function findEnrollmentClass(classId) {
+            var normalizedId = normalizeId(classId);
+            var found = null;
+
+            angular.forEach(vm.enrollmentClasses || [], function (enrollmentClass) {
+                if (normalizeId(enrollmentClass.id) === normalizedId) found = enrollmentClass;
+            });
+
+            return found;
+        }
+
+        function getSchoolTwoParentClasses() {
+            return (vm.enrollmentClasses || []).filter(function (enrollmentClass) {
+                if (!enrollmentClass || Number(enrollmentClass.schoolId) !== 2) return false;
+                var parentId = normalizeId(enrollmentClass.parentId);
+                return parentId === null || !findEnrollmentClass(parentId);
+            }).sort(function (a, b) {
+                return String(a.name || '').localeCompare(String(b.name || ''), 'vi');
+            });
+        }
+
+        function getDirectChildClasses(parentClassId) {
+            var parentId = normalizeId(parentClassId);
+            return (vm.enrollmentClasses || []).filter(function (enrollmentClass) {
+                return enrollmentClass && Number(enrollmentClass.schoolId) === 2 &&
+                    normalizeId(enrollmentClass.parentId) === parentId;
+            }).sort(function (a, b) {
+                return String(a.name || '').localeCompare(String(b.name || ''), 'vi');
+            });
+        }
+
+        function getClassAndDescendantIds(classId) {
+            var rootId = normalizeId(classId);
+            var result = rootId === null ? [] : [rootId];
+            var changed = true;
+
+            while (changed) {
+                changed = false;
+                angular.forEach(vm.enrollmentClasses || [], function (enrollmentClass) {
+                    var itemId = normalizeId(enrollmentClass.id);
+                    var parentId = normalizeId(enrollmentClass.parentId);
+                    if (result.indexOf(parentId) >= 0 && result.indexOf(itemId) < 0) {
+                        result.push(itemId);
+                        changed = true;
+                    }
+                });
             }
-
-            return normalizeId(user.person.enrollmentClassId);
-        }
-
-        function userHasStudentRole(user) {
-            var isStudent = false;
-
-            angular.forEach((user && user.roles) || [], function (role) {
-                if (role && role.name === 'ROLE_STUDENT') {
-                    isStudent = true;
-                }
-            });
-
-            return isStudent;
-        }
-
-        function isActiveUser(user) {
-            return user && (
-                user.active === true ||
-                user.active === 1 ||
-                user.active === '1' ||
-                String(user.active).toLowerCase() === 'true'
-            );
-        }
-
-        function addStudentGenderCount(target, user) {
-            var gender = user && user.person && user.person.gender
-                ? String(user.person.gender).toUpperCase()
-                : 'U';
-
-            if (gender === 'M') {
-                target.male += 1;
-            } else if (gender === 'F') {
-                target.female += 1;
-            } else {
-                target.unknown += 1;
-            }
-        }
-
-        function buildActiveStudentCountStatistics(users) {
-            var result = createEmptyStudentCountStatistics();
-            var selectedClassIds = {};
-            var classRows = {};
-
-            angular.forEach(vm.studentCountSelectedClassIds || [], function (classId) {
-                var normalizedClassId = normalizeId(classId);
-
-                if (normalizedClassId !== null) {
-                    selectedClassIds[normalizedClassId] = true;
-                }
-            });
-
-            angular.forEach(vm.studentCountAvailableClasses || [], function (enrollmentClass) {
-                var classId = normalizeId(enrollmentClass.id);
-
-                if (classId === null || selectedClassIds[classId] !== true) {
-                    return;
-                }
-
-                var row = {
-                    id: classId,
-                    name: enrollmentClass.treeLabel || enrollmentClass.name || ('Lớp ' + classId),
-                    total: 0,
-                    male: 0,
-                    female: 0,
-                    unknown: 0
-                };
-
-                classRows[classId] = row;
-                result.classes.push(row);
-            });
-
-            angular.forEach(users || [], function (user) {
-                if (isActiveUser(user) !== true || userHasStudentRole(user) !== true) {
-                    return;
-                }
-
-                var primaryClassId = getPrimaryEnrollmentClassId(user);
-                var row = primaryClassId !== null ? classRows[primaryClassId] : null;
-
-                /*
-                 * Chỉ đếm theo lớp chính đã chọn. Nhờ vậy một học sinh có
-                 * nhiều lớp phụ vẫn không bị cộng trùng trong tổng thống kê.
-                 */
-                if (!row) {
-                    return;
-                }
-
-                result.total += 1;
-                row.total += 1;
-
-                addStudentGenderCount(result, user);
-                addStudentGenderCount(row, user);
-            });
 
             return result;
         }
 
+        function getUserClassIds(user) {
+            var ids = [];
+            var primaryId = user && user.person ? normalizeId(user.person.enrollmentClassId) : null;
+            if (primaryId !== null) ids.push(primaryId);
+
+            angular.forEach((user && user.enrollmentClassIds) || [], function (classId) {
+                var id = normalizeId(classId);
+                if (id !== null && ids.indexOf(id) < 0) ids.push(id);
+            });
+            return ids;
+        }
+
+        function getRootSchoolTwoClass(enrollmentClass) {
+            var current = enrollmentClass;
+            var visited = {};
+
+            while (current && normalizeId(current.parentId) !== null) {
+                var currentId = normalizeId(current.id);
+                if (currentId !== null && visited[currentId]) break;
+                if (currentId !== null) visited[currentId] = true;
+                var parent = findEnrollmentClass(current.parentId);
+                if (!parent || Number(parent.schoolId) !== 2) break;
+                current = parent;
+            }
+            return current && Number(current.schoolId) === 2 ? current : null;
+        }
+
+        function getUserParentClass(user) {
+            var ids = getUserClassIds(user);
+            for (var i = 0; i < ids.length; i++) {
+                var parentClass = getRootSchoolTwoClass(findEnrollmentClass(ids[i]));
+                if (parentClass) return parentClass;
+            }
+            return null;
+        }
+
+        function userBelongsToParent(user, parentClassId) {
+            var parentId = normalizeId(parentClassId);
+            var belongs = false;
+            angular.forEach(getUserClassIds(user), function (classId) {
+                var root = getRootSchoolTwoClass(findEnrollmentClass(classId));
+                if (root && normalizeId(root.id) === parentId) belongs = true;
+            });
+            return belongs;
+        }
+
+        function getUserTeam(user, parentClassId) {
+            var parentId = normalizeId(parentClassId);
+            var ids = getUserClassIds(user);
+
+            for (var i = 0; i < ids.length; i++) {
+                var current = findEnrollmentClass(ids[i]);
+                var visited = {};
+                while (current) {
+                    var currentId = normalizeId(current.id);
+                    var currentParentId = normalizeId(current.parentId);
+                    if (currentParentId === parentId) return current;
+                    if (currentParentId === null || currentId === null || visited[currentId]) break;
+                    visited[currentId] = true;
+                    current = findEnrollmentClass(currentParentId);
+                }
+            }
+            return null;
+        }
+
+        function isActiveStudent(user) {
+            var active = user && (
+                user.active === true || user.active === 1 || user.active === '1' ||
+                String(user.active).toLowerCase() === 'true'
+            );
+            var student = false;
+            angular.forEach((user && user.roles) || [], function (role) {
+                if (role && role.name === 'ROLE_STUDENT') student = true;
+            });
+            return active && student;
+        }
+
+        function createAttendanceStatisticRow(id, name) {
+            return {
+                id: id,
+                name: name,
+                total: 0,
+                male: 0,
+                female: 0,
+                unknown: 0,
+                present: 0,
+                excused: 0,
+                unexcused: 0,
+                unmarked: 0
+            };
+        }
+
+        function addGender(target, user) {
+            var gender = user && user.person && user.person.gender
+                ? String(user.person.gender).toUpperCase() : 'U';
+            if (gender === 'M') target.male += 1;
+            else if (gender === 'F') target.female += 1;
+            else target.unknown += 1;
+        }
+
+        function addAttendance(target, attendance) {
+            var status = attendance ? Number(attendance.statusClass) : null;
+            if (status === 1) target.present += 1;
+            else if (status === 6) target.excused += 1;
+            else if (status === 2) target.unexcused += 1;
+            else target.unmarked += 1;
+        }
+
+        function buildAttendanceByUserId(records) {
+            var map = {};
+            angular.forEach(records || [], function (record) {
+                var userId = record && record.user ? normalizeId(record.user.id) : null;
+                if (userId !== null) map[userId] = record;
+            });
+            return map;
+        }
+
+        function buildStudentCountStatistics(users, attendanceRecords) {
+            var result = createEmptyStudentCountStatistics();
+            var rowsById = {};
+            var teamMode = vm.studentCountStatisticsMode === 'team';
+            var attendanceByUserId = buildAttendanceByUserId(attendanceRecords);
+
+            if (teamMode) {
+                angular.forEach(getDirectChildClasses(vm.studentCountSelectedParentClassId), function (team) {
+                    rowsById[normalizeId(team.id)] = createAttendanceStatisticRow(team.id, team.name);
+                });
+            } else {
+                angular.forEach(vm.studentCountSelectedClassIds || [], function (classId) {
+                    var parentClass = findEnrollmentClass(classId);
+                    if (parentClass) {
+                        rowsById[normalizeId(parentClass.id)] = createAttendanceStatisticRow(
+                            parentClass.id,
+                            parentClass.name
+                        );
+                    }
+                });
+            }
+
+            angular.forEach(users || [], function (user) {
+                if (!isActiveStudent(user)) return;
+                var row;
+
+                if (teamMode) {
+                    if (!userBelongsToParent(user, vm.studentCountSelectedParentClassId)) return;
+                    var team = getUserTeam(user, vm.studentCountSelectedParentClassId);
+                    if (team) row = rowsById[normalizeId(team.id)];
+                    else {
+                        row = rowsById.unassigned;
+                        if (!row) {
+                            row = createAttendanceStatisticRow('unassigned', 'Chưa xếp đội');
+                            rowsById.unassigned = row;
+                        }
+                    }
+                } else {
+                    var parentClass = getUserParentClass(user);
+                    if (parentClass) row = rowsById[normalizeId(parentClass.id)];
+                }
+
+                if (!row) return;
+                var attendance = attendanceByUserId[normalizeId(user.id)];
+
+                result.total += 1;
+                row.total += 1;
+                addGender(result, user);
+                addGender(row, user);
+                addAttendance(result, attendance);
+                addAttendance(row, attendance);
+            });
+
+            angular.forEach(rowsById, function (row) { result.classes.push(row); });
+            result.classes.sort(function (a, b) {
+                if (a.id === 'unassigned') return 1;
+                if (b.id === 'unassigned') return -1;
+                return String(a.name || '').localeCompare(String(b.name || ''), 'vi');
+            });
+            return result;
+        }
+
+        vm.chooseStudentCountStatisticsMode = function (mode) {
+            vm.studentCountStatisticsMode = mode;
+            if (mode === 'class') {
+                vm.studentCountSelectedClassIds = vm.studentCountParentClasses.map(function (item) {
+                    return normalizeId(item.id);
+                });
+                vm.studentCountStatisticsStep = 'class-selection';
+            } else {
+                vm.studentCountSelectedParentClassId = null;
+                vm.studentCountStatisticsStep = 'team-class-selection';
+            }
+        };
+
         vm.isAllStudentCountClassesSelected = function () {
-            return vm.studentCountAvailableClasses &&
-                vm.studentCountAvailableClasses.length > 0 &&
-                vm.studentCountSelectedClassIds.length === vm.studentCountAvailableClasses.length;
+            return vm.studentCountParentClasses.length > 0 &&
+                vm.studentCountSelectedClassIds.length === vm.studentCountParentClasses.length;
         };
 
         vm.toggleAllStudentCountClasses = function () {
-            if (vm.isAllStudentCountClassesSelected()) {
-                vm.studentCountSelectedClassIds = [];
-                return;
-            }
-
-            vm.studentCountSelectedClassIds = vm.studentCountAvailableClasses.map(function (enrollmentClass) {
-                return normalizeId(enrollmentClass.id);
-            });
+            vm.studentCountSelectedClassIds = vm.isAllStudentCountClassesSelected() ? [] :
+                vm.studentCountParentClasses.map(function (item) { return normalizeId(item.id); });
         };
 
         vm.isStudentCountClassSelected = function (classId) {
@@ -1102,63 +1224,98 @@
         };
 
         vm.toggleStudentCountClass = function (classId) {
-            var normalizedClassId = normalizeId(classId);
-            var index = vm.studentCountSelectedClassIds.indexOf(normalizedClassId);
+            var id = normalizeId(classId);
+            var index = vm.studentCountSelectedClassIds.indexOf(id);
+            if (index >= 0) vm.studentCountSelectedClassIds.splice(index, 1);
+            else if (id !== null) vm.studentCountSelectedClassIds.push(id);
+        };
 
-            if (index >= 0) {
-                vm.studentCountSelectedClassIds.splice(index, 1);
-            } else if (normalizedClassId !== null) {
-                vm.studentCountSelectedClassIds.push(normalizedClassId);
+        vm.backStudentCountStatisticsStep = function () {
+            if (vm.studentCountStatisticsStep === 'results') {
+                vm.studentCountStatisticsStep = vm.studentCountStatisticsMode === 'team'
+                    ? 'team-class-selection' : 'class-selection';
+            } else {
+                vm.studentCountStatisticsStep = 'mode';
+                vm.studentCountStatisticsMode = null;
             }
         };
 
         vm.confirmStudentCountStatistics = function () {
-            if (!vm.studentCountSelectedClassIds || vm.studentCountSelectedClassIds.length === 0) {
-                toastr.warning('Vui lòng chọn ít nhất một lớp để thống kê.', 'Thông báo');
+            if (vm.studentCountStatisticsMode === 'class' && !vm.studentCountSelectedClassIds.length) {
+                toastr.warning('Vui lòng chọn ít nhất một lớp.', 'Thông báo');
+                return;
+            }
+            if (vm.studentCountStatisticsMode === 'team' &&
+                normalizeId(vm.studentCountSelectedParentClassId) === null) {
+                toastr.warning('Vui lòng chọn lớp muốn thống kê đội.', 'Thông báo');
                 return;
             }
 
-            vm.studentCountStatisticsLoading = true;
-            vm.studentCountStatisticsError = '';
-            vm.studentCountStatisticsConfirmed = true;
+            var selectedDate = parseDateOnly(vm.attendanceDate);
+            if (!selectedDate) {
+                toastr.warning('Ngày thống kê không hợp lệ.', 'Thông báo');
+                return;
+            }
 
-            var filter = {
+            var requestedClassIds = [];
+            if (vm.studentCountStatisticsMode === 'team') {
+                requestedClassIds = getClassAndDescendantIds(vm.studentCountSelectedParentClassId);
+                var selectedParent = findEnrollmentClass(vm.studentCountSelectedParentClassId);
+                vm.studentCountStatisticsResultTitle = 'Thống kê đội của lớp ' +
+                    (selectedParent ? selectedParent.name : '');
+            } else {
+                angular.forEach(vm.studentCountSelectedClassIds, function (classId) {
+                    angular.forEach(getClassAndDescendantIds(classId), function (id) {
+                        if (requestedClassIds.indexOf(id) < 0) requestedClassIds.push(id);
+                    });
+                });
+                vm.studentCountStatisticsResultTitle = 'Thống kê theo lớp';
+            }
+
+            var userFilter = {
                 active: true,
                 schoolId: 2,
                 roles: [],
                 groups: [],
-                enrollmentClassIds: vm.studentCountSelectedClassIds.slice()
+                enrollmentClassIds: requestedClassIds
+            };
+            var attendanceFilter = {
+                startDate: selectedDate.getTime(),
+                endDate: selectedDate.getTime(),
+                user: {person: {}}
             };
 
-            service.getUsers(filter, 1, 100000).then(
-                function (data) {
-                    vm.studentCountStatistics = buildActiveStudentCountStatistics(
-                        data && angular.isArray(data.content) ? data.content : []
-                    );
-                    vm.studentCountStatisticsLoading = false;
-                },
-                function () {
-                    vm.studentCountStatisticsLoading = false;
-                    vm.studentCountStatisticsError = 'Không tải được dữ liệu thống kê. Vui lòng thử lại.';
-                }
-            );
-        };
-
-        vm.backToStudentCountClassSelection = function () {
-            vm.studentCountStatisticsConfirmed = false;
+            vm.studentCountStatisticsLoading = true;
             vm.studentCountStatisticsError = '';
+            vm.studentCountStatisticsStep = 'results';
+
+            $q.all([
+                service.getUsers(userFilter, 1, 100000),
+                service.getPage(attendanceFilter, 1, 100000)
+            ]).then(function (responses) {
+                vm.studentCountStatistics = buildStudentCountStatistics(
+                    responses[0] && angular.isArray(responses[0].content) ? responses[0].content : [],
+                    responses[1] && angular.isArray(responses[1].content) ? responses[1].content : []
+                );
+                vm.studentCountStatisticsLoading = false;
+            }, function () {
+                vm.studentCountStatisticsLoading = false;
+                vm.studentCountStatisticsError = 'Không tải được dữ liệu thống kê. Vui lòng thử lại.';
+            });
         };
 
         vm.openStudentCountStatisticsModal = function () {
-            vm.studentCountAvailableClasses = getSchoolTwoEnrollmentClasses();
-            vm.studentCountSelectedClassIds = vm.studentCountAvailableClasses.map(function (enrollmentClass) {
-                return normalizeId(enrollmentClass.id);
-            });
+            var selectedDate = parseDateOnly(vm.attendanceDate);
+            vm.studentCountParentClasses = getSchoolTwoParentClasses();
+            vm.studentCountSelectedClassIds = [];
+            vm.studentCountSelectedParentClassId = null;
             vm.studentCountStatistics = createEmptyStudentCountStatistics();
             vm.studentCountStatisticsLoading = false;
             vm.studentCountStatisticsError = '';
-            vm.studentCountStatisticsConfirmed = false;
-            vm.studentCountStatisticsDateText = $filter('date')(new Date(), 'dd/MM/yyyy');
+            vm.studentCountStatisticsMode = null;
+            vm.studentCountStatisticsStep = 'mode';
+            vm.studentCountStatisticsDateText = selectedDate
+                ? $filter('date')(selectedDate, 'dd/MM/yyyy') : '';
 
             vm.studentCountStatisticsModalInstance = modal.open({
                 animation: true,

@@ -850,7 +850,30 @@
         </div>
 
         <div class="modal-body">
-            <div ng-if="!vm.studentCountStatisticsConfirmed">
+            <div ng-if="vm.studentCountStatisticsStep === 'mode'">
+                <div class="student-count-selection-heading">
+                    <div>
+                        <strong>Bạn muốn thống kê theo cách nào?</strong>
+                        <p>Thống kê được tính theo ngày đang chọn trên màn hình điểm danh.</p>
+                    </div>
+                </div>
+                <div class="student-count-mode-grid">
+                    <button type="button" class="student-count-mode-card"
+                            ng-click="vm.chooseStudentCountStatisticsMode('class')">
+                        <i class="fa fa-graduation-cap"></i>
+                        <strong>Thống kê theo lớp</strong>
+                        <span>Chọn một hoặc nhiều lớp cha; mặc định chọn tất cả.</span>
+                    </button>
+                    <button type="button" class="student-count-mode-card"
+                            ng-click="vm.chooseStudentCountStatisticsMode('team')">
+                        <i class="fa fa-users"></i>
+                        <strong>Thống kê theo đội</strong>
+                        <span>Chọn một lớp cha để xem thống kê từng đội thuộc lớp đó.</span>
+                    </button>
+                </div>
+            </div>
+
+            <div ng-if="vm.studentCountStatisticsStep === 'class-selection'">
                 <div class="student-count-selection-heading">
                     <div>
                         <strong>Chọn lớp cần thống kê</strong>
@@ -868,25 +891,44 @@
                 <div class="student-count-class-grid">
                     <label class="student-count-class-option"
                            ng-class="{'is-selected': vm.isStudentCountClassSelected(enrollmentClass.id)}"
-                           ng-repeat="enrollmentClass in vm.studentCountAvailableClasses track by enrollmentClass.id">
+                           ng-repeat="enrollmentClass in vm.studentCountParentClasses track by enrollmentClass.id">
                         <input type="checkbox"
                                ng-checked="vm.isStudentCountClassSelected(enrollmentClass.id)"
                                ng-click="vm.toggleStudentCountClass(enrollmentClass.id)">
-                        <span>{{enrollmentClass.treeLabel || enrollmentClass.name}}</span>
+                        <span>{{enrollmentClass.name}}</span>
                     </label>
 
                     <div class="alert alert-warning"
-                         ng-if="vm.studentCountAvailableClasses.length === 0">
-                        Không tìm thấy lớp nào thuộc schoolId = 2.
+                         ng-if="vm.studentCountParentClasses.length === 0">
+                        Không tìm thấy lớp cha nào thuộc schoolId = 2.
                     </div>
                 </div>
 
                 <div class="student-count-selection-summary">
-                    Đã chọn <strong>{{vm.studentCountSelectedClassIds.length}}</strong>/{{vm.studentCountAvailableClasses.length}} lớp
+                    Đã chọn <strong>{{vm.studentCountSelectedClassIds.length}}</strong>/{{vm.studentCountParentClasses.length}} lớp
                 </div>
             </div>
 
-            <div ng-if="vm.studentCountStatisticsConfirmed">
+            <div ng-if="vm.studentCountStatisticsStep === 'team-class-selection'">
+                <div class="student-count-selection-heading">
+                    <div>
+                        <strong>Chọn lớp muốn thống kê theo đội</strong>
+                        <p>Hệ thống sẽ hiển thị từng đội/lớp con trực thuộc lớp được chọn.</p>
+                    </div>
+                </div>
+                <div class="student-count-class-grid">
+                    <label class="student-count-class-option"
+                           ng-class="{'is-selected': vm.studentCountSelectedParentClassId == enrollmentClass.id}"
+                           ng-repeat="enrollmentClass in vm.studentCountParentClasses track by enrollmentClass.id">
+                        <input type="radio" name="studentCountParentClass"
+                               ng-model="vm.studentCountSelectedParentClassId"
+                               ng-value="enrollmentClass.id">
+                        <span>{{enrollmentClass.name}}</span>
+                    </label>
+                </div>
+            </div>
+
+            <div ng-if="vm.studentCountStatisticsStep === 'results'">
                 <div class="student-count-statistics-loading" ng-if="vm.studentCountStatisticsLoading">
                     <i class="fa fa-spinner fa-spin"></i>
                     Đang tổng hợp dữ liệu học sinh...
@@ -929,20 +971,48 @@
                                 <strong>{{vm.studentCountStatistics.unknown}}</strong>
                             </div>
                         </div>
+                        <div class="col-sm-3 col-xs-6">
+                            <div class="student-count-stat-card is-present">
+                                <span>Đi học</span>
+                                <strong>{{vm.studentCountStatistics.present}}</strong>
+                            </div>
+                        </div>
+                        <div class="col-sm-3 col-xs-6">
+                            <div class="student-count-stat-card is-excused">
+                                <span>Nghỉ có phép</span>
+                                <strong>{{vm.studentCountStatistics.excused}}</strong>
+                            </div>
+                        </div>
+                        <div class="col-sm-3 col-xs-6">
+                            <div class="student-count-stat-card is-unexcused">
+                                <span>Nghỉ không phép</span>
+                                <strong>{{vm.studentCountStatistics.unexcused}}</strong>
+                            </div>
+                        </div>
+                        <div class="col-sm-3 col-xs-6">
+                            <div class="student-count-stat-card is-unmarked">
+                                <span>Chưa điểm danh / khác</span>
+                                <strong>{{vm.studentCountStatistics.unmarked}}</strong>
+                            </div>
+                        </div>
                     </div>
 
-                    <h4 class="student-count-table-title">Chi tiết theo lớp chính</h4>
+                    <h4 class="student-count-table-title">{{vm.studentCountStatisticsResultTitle}}</h4>
 
                     <div class="table-responsive student-count-table-wrap">
                         <table class="table table-bordered table-striped student-count-table">
                             <thead>
                             <tr>
                                 <th>STT</th>
-                                <th class="text-left">Lớp</th>
+                                <th class="text-left">{{vm.studentCountStatisticsMode === 'team' ? 'Đội' : 'Lớp'}}</th>
                                 <th>Tổng</th>
                                 <th>Nam</th>
                                 <th>Nữ</th>
                                 <th>Chưa xác định</th>
+                                <th>Đi học</th>
+                                <th>Nghỉ có phép</th>
+                                <th>Nghỉ không phép</th>
+                                <th>Chưa điểm danh / khác</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -953,6 +1023,10 @@
                                 <td>{{row.male}}</td>
                                 <td>{{row.female}}</td>
                                 <td>{{row.unknown}}</td>
+                                <td>{{row.present}}</td>
+                                <td>{{row.excused}}</td>
+                                <td>{{row.unexcused}}</td>
+                                <td>{{row.unmarked}}</td>
                             </tr>
                             </tbody>
                         </table>
@@ -964,9 +1038,9 @@
         <div class="modal-footer">
             <button type="button"
                     class="btn btn-default pull-left"
-                    ng-if="vm.studentCountStatisticsConfirmed"
-                    ng-click="vm.backToStudentCountClassSelection()">
-                <i class="fa fa-arrow-left"></i> Chọn lại lớp
+                    ng-if="vm.studentCountStatisticsStep !== 'mode'"
+                    ng-click="vm.backStudentCountStatisticsStep()">
+                <i class="fa fa-arrow-left"></i> Quay lại
             </button>
 
             <button type="button" class="btn btn-default" ng-click="$dismiss()">
@@ -975,8 +1049,8 @@
 
             <button type="button"
                     class="btn btn-primary"
-                    ng-if="!vm.studentCountStatisticsConfirmed"
-                    ng-disabled="vm.studentCountSelectedClassIds.length === 0"
+                    ng-if="vm.studentCountStatisticsStep === 'class-selection' || vm.studentCountStatisticsStep === 'team-class-selection'"
+                    ng-disabled="(vm.studentCountStatisticsStep === 'class-selection' && vm.studentCountSelectedClassIds.length === 0) || (vm.studentCountStatisticsStep === 'team-class-selection' && !vm.studentCountSelectedParentClassId)"
                     ng-click="vm.confirmStudentCountStatistics()">
                 <i class="fa fa-check"></i> Xác nhận thống kê
             </button>
@@ -1406,6 +1480,54 @@
         font-size: 12px;
     }
 
+    .student-count-mode-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .student-count-mode-card {
+        min-height: 150px;
+        padding: 22px;
+        border: 1px solid #dce2ec;
+        border-radius: 12px;
+        color: #344054;
+        background: #fff;
+        text-align: left;
+        transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+    }
+
+    .student-count-mode-card:hover,
+    .student-count-mode-card:focus {
+        border-color: #6c78df;
+        box-shadow: 0 8px 22px rgba(67, 83, 173, .13);
+        transform: translateY(-1px);
+        outline: none;
+    }
+
+    .student-count-mode-card i {
+        display: block;
+        margin-bottom: 13px;
+        color: #5667d8;
+        font-size: 28px;
+    }
+
+    .student-count-mode-card strong,
+    .student-count-mode-card span {
+        display: block;
+    }
+
+    .student-count-mode-card strong {
+        margin-bottom: 7px;
+        font-size: 17px;
+    }
+
+    .student-count-mode-card span {
+        color: #667085;
+        font-size: 13px;
+        font-weight: 400;
+    }
+
     .student-count-select-all {
         flex: 0 0 auto;
         margin: 0;
@@ -1503,6 +1625,10 @@
     .student-count-stat-card.is-male { border-top: 4px solid #249ed1; }
     .student-count-stat-card.is-female { border-top: 4px solid #e76da6; }
     .student-count-stat-card.is-unknown { border-top: 4px solid #98a2b3; }
+    .student-count-stat-card.is-present { border-top: 4px solid #22a06b; }
+    .student-count-stat-card.is-excused { border-top: 4px solid #e6a23c; }
+    .student-count-stat-card.is-unexcused { border-top: 4px solid #e05252; }
+    .student-count-stat-card.is-unmarked { border-top: 4px solid #7c8799; }
 
     .student-count-table-title {
         margin: 0 0 10px;
@@ -1517,6 +1643,7 @@
 
     .student-count-table {
         margin-bottom: 0;
+        min-width: 1050px;
         text-align: center;
     }
 
@@ -1545,6 +1672,12 @@
         background: #29365a;
     }
 
+    html.global-dark-mode .student-count-mode-card {
+        border-color: #34435b;
+        color: #eef3fb;
+        background: #182337;
+    }
+
     html.global-dark-mode .student-count-selection-heading strong,
     html.global-dark-mode .student-count-table-title,
     html.global-dark-mode .student-count-stat-card strong {
@@ -1552,6 +1685,9 @@
     }
 
     @media (max-width: 767px) {
+        .student-count-mode-grid {
+            grid-template-columns: 1fr;
+        }
         .student-count-class-grid {
             grid-template-columns: 1fr;
             max-height: 330px;

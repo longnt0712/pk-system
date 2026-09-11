@@ -3,7 +3,7 @@
     <div class="container-fluid">
         <!-- Brand and toggle get grouped for better mobile display -->
         <div class="navbar-header">
-            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="true">
                 <span class="sr-only">Toggle navigation</span>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
@@ -49,7 +49,7 @@
         </div>
 
         <!-- Collect the nav links, forms, and other content for toggling -->
-        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+        <div class="collapse navbar-collapse in" id="bs-example-navbar-collapse-1" aria-expanded="true">
             <!--<ul class="nav navbar-nav ">-->
                 <!--&lt;!&ndash;<li class="dropdown">&ndash;&gt;-->
                     <!--&lt;!&ndash;<a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Vocabulary <span class="caret"></span></a>&ndash;&gt;-->
@@ -717,7 +717,7 @@
         width: 42px;
         height: 42px;
 
-        margin: 9px 2px 0 0 !important;
+        margin: 9px 8px 0 0 !important;
         padding: 10px !important;
 
         border: 0 !important;
@@ -729,6 +729,10 @@
                 #eef1ff,
                 #f4edff
             ) !important;
+
+        cursor: pointer;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
     }
 
     .learning-public-nav .navbar-toggle .icon-bar {
@@ -814,7 +818,7 @@
         .learning-public-nav .learning-public-brand {
             height: 58px !important;
 
-            padding: 7px 4px !important;
+            padding: 7px 4px 7px 10px !important;
 
             font-size: 13px !important;
         }

@@ -5,6 +5,10 @@
     /* Setup App Main Controller */
     Hrm.controller('AppController', ['$rootScope', '$scope', '$cookies', '$state', '$timeout', 'constants', 'settings', '$uibModal', 'toastr', 'Upload', 'focus', 'UserService', 'OAuth',
         function ($rootScope, $scope, $cookies, $state, $timeout, constants, settings, modal, toastr, Upload, focus, userService, OAuth) {
+            // Used by ng-include URLs so Angular's template cache is refreshed
+            // together with the JavaScript/CSS release version in index.html.
+            $scope.appVersion = window.APP_VERSION || new Date().getTime();
+
             $scope.safeApply = function(fn) {
                 var phase = this.$root.$$phase;
                 if(phase == '$apply' || phase == '$digest') {
@@ -44,6 +48,10 @@
              * Change password
              */
             $scope.changePassword = function () {
+                if (!$scope.canManageOwnProfile($scope.currentUser)) {
+                    return;
+                }
+
                 var modalInstance = modal.open({
                     animation: true,
                     templateUrl: 'change_password_modal.html',
@@ -121,7 +129,8 @@
                 croppedImage: '',
                 photoUrl: '',
                 showUploadModal: function () {
-                    if (!$scope.currentUser || !$scope.currentUser.id) {
+                    if (!$scope.currentUser || !$scope.currentUser.id ||
+                        !$scope.canManageOwnProfile($scope.currentUser)) {
                         return;
                     }
 
@@ -212,6 +221,36 @@
                 });
 
                 return ret;
+            };
+
+            /**
+             * Student/viewer-only accounts may only sign out from the account menu.
+             * A user that also owns another role (staff/admin/manager...) keeps the
+             * normal profile actions.
+             */
+            $scope.canManageOwnProfile = function (user) {
+                if (!user || !user.roles || user.roles.length === 0) {
+                    return false;
+                }
+
+                var restrictedRoles = {
+                    ROLE_STUDENT: true,
+                    ROLE_VIEWER: true
+                };
+                var hasKnownRole = false;
+                var hasOtherRole = false;
+
+                angular.forEach(user.roles, function (role) {
+                    var roleName = role && (role.name || role.authority);
+                    if (!roleName) return;
+
+                    hasKnownRole = true;
+                    if (!restrictedRoles[String(roleName).toUpperCase()]) {
+                        hasOtherRole = true;
+                    }
+                });
+
+                return hasKnownRole && hasOtherRole;
             };
 
             /**

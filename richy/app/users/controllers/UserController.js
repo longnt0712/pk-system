@@ -1763,6 +1763,23 @@
             return found ? found.name : '';
         };
 
+        /*
+         * Natural sort key for values containing both text and numbers.
+         * Example: view2 < view10 < view111 (instead of view10 < view111 < view2).
+         */
+        function buildNaturalSortKey(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+
+            return String(value)
+                .trim()
+                .toLowerCase()
+                .replace(/\d+/g, function (numberPart) {
+                    return ('00000000000000000000' + numberPart).slice(-20);
+                });
+        }
+
         vm.getSortValue = function (user) {
             if (!user) {
                 return '';
@@ -1781,7 +1798,7 @@
                     return person.birthDate ? new Date(person.birthDate).getTime() : 0;
 
                 case 'username':
-                    return user.username || '';
+                    return buildNaturalSortKey(user.username);
 
                 case 'motherFullName':
                     return person.motherFullName || '';
@@ -2361,7 +2378,7 @@
 
                 $scope.profilePhoto.cropModalInstance = modal.open({
                     animation: true,
-                    templateUrl: 'crop_photo_modal.html',
+                    templateUrl: 'user_list_crop_photo_modal.html',
                     scope: $scope,
                     size: 'lg',
                     backdrop: 'static'
@@ -2652,17 +2669,35 @@
 
                         toastr.success('Upload ảnh thành công');
 
+                        /*
+                         * Refresh only the avatar that has just been updated.
+                         * Changing photoVersion changes that image's ng-src and
+                         * bypasses the browser cache without reloading vm.users.
+                         */
+                        var newPhotoVersion = new Date().getTime();
+
+                        $scope.$applyAsync(function () {
+                            user.photoVersion = newPhotoVersion;
+                            user.hasPhoto = true;
+
+                            if (vm.photoPreviewUser && vm.photoPreviewUser.id === user.id) {
+                                vm.photoPreviewUrl = settings.api.baseUrl +
+                                    'public/users/photo/' + user.username +
+                                    '?v=' + newPhotoVersion;
+                            }
+                        });
+
                         if ($scope.profilePhoto.cropper) {
                             $scope.profilePhoto.cropper.destroy();
+                            $scope.profilePhoto.cropper = null;
                         }
 
                         if ($scope.profilePhoto.cropModalInstance) {
                             $scope.profilePhoto.cropModalInstance.close();
+                            $scope.profilePhoto.cropModalInstance = null;
                         }
 
                         $scope.profilePhoto.resetState();
-
-                        vm.getUsers();
 
                     })
 

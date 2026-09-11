@@ -267,27 +267,27 @@
                         </span>
                     </a>
                     <ul class="dropdown-menu user-dropdown-menu">
-                        <li class="user-photo" ng-if="!currentUser.hasPhoto && !settings.isViewer">
+                        <li class="user-photo" ng-if="!currentUser.hasPhoto && canManageOwnProfile(currentUser)">
                             <a href="" ng-click="profilePhoto.showUploadModal()">
                                 <img class="img-circle" alt="User" ng-src="{{settings.assetsPath}}/images/no-profile-photo.png" />
                                 <span>CẬP NHẬT ẢNH</span>
                             </a>
                         </li>
 
-                        <li class="user-photo" ng-if="currentUser.hasPhoto && !settings.isViewer">
+                        <li class="user-photo" ng-if="currentUser.hasPhoto && canManageOwnProfile(currentUser)">
                             <a href="" ng-click="profilePhoto.showUploadModal()">
                                 <img id="_user_profile_photo_big" class="img-circle" alt="User" ng-src="{{settings.api.baseUrl}}public/users/photo/{{currentUser.username}}" />
                                 <span>CẬP NHẬT ẢNH</span>
                             </a>
                         </li>
 
-                        <li style="padding-top: 10px" ng-if="!settings.isViewer">
+                        <li style="padding-top: 10px" ng-if="canManageOwnProfile(currentUser)">
                             <a href="" ng-click="changePassword()">
                                 <i class="icon-shield"></i> Đổi mật khẩu
                             </a>
                         </li>
 
-                        <li class="divider"></li>
+                        <li class="divider" ng-if="canManageOwnProfile(currentUser)"></li>
 
                         <li>
                             <a href="" data-ng-click="logout()">
