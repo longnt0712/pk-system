@@ -24,6 +24,7 @@ public class EnrolmentClassDto implements Serializable {
     private Long primaryTeacherId;
     private String startTime;
     private String endTime;
+    private List<EnrolmentClassWeeklySessionDto> weeklySessions = new ArrayList<EnrolmentClassWeeklySessionDto>();
     // Null means a legacy client sent only teacherIds.
     private Set<Long> deputyTeacherIds;
 
@@ -39,6 +40,8 @@ public class EnrolmentClassDto implements Serializable {
     public void setStartTime(String startTime) { this.startTime = startTime; }
     public String getEndTime() { return endTime; }
     public void setEndTime(String endTime) { this.endTime = endTime; }
+    public List<EnrolmentClassWeeklySessionDto> getWeeklySessions() { return weeklySessions; }
+    public void setWeeklySessions(List<EnrolmentClassWeeklySessionDto> weeklySessions) { this.weeklySessions = weeklySessions; }
 
     public Set<Long> getDeputyTeacherIds() {
         return deputyTeacherIds;

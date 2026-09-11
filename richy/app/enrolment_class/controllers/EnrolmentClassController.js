@@ -46,12 +46,24 @@
 		vm.scheduleMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 		vm.scheduleTopics = [];
 		vm.scheduleLoading = false;
+		vm.scheduleSettingsLoading = false;
+		vm.scheduleSettingsError = false;
+		vm.scheduleTopicsLoading = false;
 		vm.scheduleSaving = false;
 		vm.scheduleDaySaving = false;
 		vm.scheduleModal = null;
 		vm.scheduleDayModal = null;
 		vm.scheduleDay = null;
 		vm.topicSelectionOpen = {classTopicIds: false, homeworkTopicIds: false};
+		vm.weeklyDayOptions = [
+			{value: 1, label: 'Thứ 2', shortLabel: 'T2'},
+			{value: 2, label: 'Thứ 3', shortLabel: 'T3'},
+			{value: 3, label: 'Thứ 4', shortLabel: 'T4'},
+			{value: 4, label: 'Thứ 5', shortLabel: 'T5'},
+			{value: 5, label: 'Thứ 6', shortLabel: 'T6'},
+			{value: 6, label: 'Thứ 7', shortLabel: 'T7'},
+			{value: 7, label: 'Chủ nhật', shortLabel: 'CN'}
+		];
 		vm.originalParentId = null;
 
 		vm.isAdmin = function () {
@@ -565,31 +577,56 @@
 				toastr.warning('Bạn không được thiết lập lịch cho lớp này.', 'Thông báo');
 				return;
 			}
+			vm.scheduleClass = angular.copy(item);
+			vm.scheduleClass.weeklySessions = [];
+			vm.scheduleTopics = [];
+			vm.scheduleMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+			vm.scheduleMonthLabel = 'THÁNG ' + (vm.scheduleMonthDate.getMonth() + 1)
+				+ ' / ' + vm.scheduleMonthDate.getFullYear();
+			vm.scheduleSettingsLoading = true;
+			vm.scheduleSettingsError = false;
+			vm.scheduleTopicsLoading = true;
 			vm.scheduleLoading = true;
+			vm.scheduleModal = modal.open({
+				animation: true,
+				templateUrl: 'class_schedule_modal.html',
+				scope: $scope,
+				size: 'lg',
+				windowClass: 'class-management-modal-window class-schedule-modal-window',
+				backdrop: 'static'
+			});
+
 			service.getOne(item.id).then(function (classData) {
 				if (!classData || classData.canEdit !== true) {
 					throw new Error('forbidden');
 				}
-				vm.scheduleClass = angular.copy(classData);
-				vm.scheduleClass.startTimeValue = parseScheduleTime(classData.startTime);
-				vm.scheduleClass.endTimeValue = parseScheduleTime(classData.endTime);
-				return service.getScheduleTopics();
-			}).then(function (topics) {
-				vm.scheduleTopics = angular.isArray(topics) ? topics : [];
-				vm.scheduleMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-				vm.scheduleModal = modal.open({
-					animation: true,
-					templateUrl: 'class_schedule_modal.html',
-					scope: $scope,
-					size: 'lg',
-					windowClass: 'class-management-modal-window class-schedule-modal-window',
-					backdrop: 'static'
+				vm.scheduleClass = angular.extend(vm.scheduleClass, angular.copy(classData));
+				vm.scheduleClass.weeklySessions = (classData.weeklySessions || []).map(function (session) {
+					return {
+						id: session.id,
+						dayOfWeek: session.dayOfWeek,
+						startTimeValue: parseScheduleTime(session.startTime),
+						endTimeValue: parseScheduleTime(session.endTime)
+					};
 				});
-				return vm.loadScheduleMonth();
-			}).catch(function () {
-				vm.scheduleLoading = false;
-				toastr.error('Không tải được thiết lập lớp hoặc danh sách topic.', 'Lỗi');
+				vm.scheduleSettingsLoading = false;
+				vm.scheduleSettingsError = false;
+				if (!vm.scheduleLoading) { vm.buildScheduleCalendar(); }
+			}, function () {
+				vm.scheduleSettingsLoading = false;
+				vm.scheduleSettingsError = true;
+				toastr.error('Không tải được các buổi học đã thiết lập.', 'Lỗi');
 			});
+
+			service.getScheduleTopics().then(function (topics) {
+				vm.scheduleTopics = angular.isArray(topics) ? topics : [];
+				vm.scheduleTopicsLoading = false;
+			}, function () {
+				vm.scheduleTopicsLoading = false;
+				toastr.error('Không tải được danh sách topic.', 'Lỗi');
+			});
+
+			vm.loadScheduleMonth();
 		};
 
 		vm.loadScheduleMonth = function () {
@@ -615,6 +652,10 @@
 			var daysInMonth = new Date(year, month + 1, 0).getDate();
 			var firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
 			var entriesByDate = {};
+			var weeklyDays = {};
+			angular.forEach((vm.scheduleClass && vm.scheduleClass.weeklySessions) || [], function (session) {
+				if (session.dayOfWeek) { weeklyDays[session.dayOfWeek] = true; }
+			});
 			angular.forEach(vm.scheduleEntries, function (entry) {
 				entriesByDate[entry.scheduleDate] = entry;
 			});
@@ -624,13 +665,16 @@
 			}
 			var todayKey = moment().format('YYYY-MM-DD');
 			for (var day = 1; day <= daysInMonth; day++) {
-				var dateKey = moment(new Date(year, month, day)).format('YYYY-MM-DD');
+				var dayDate = new Date(year, month, day);
+				var dateKey = moment(dayDate).format('YYYY-MM-DD');
+				var dayOfWeek = ((dayDate.getDay() + 6) % 7) + 1;
 				var entry = entriesByDate[dateKey] || null;
 				cells.push({
 					isBlank: false,
 					day: day,
 					dateKey: dateKey,
 					isToday: dateKey === todayKey,
+					isClassDay: weeklyDays[dayOfWeek] === true,
 					entry: entry,
 					classCount: entry && entry.classTopicIds ? entry.classTopicIds.length : 0,
 					homeworkCount: entry && entry.homeworkTopicIds ? entry.homeworkTopicIds.length : 0
@@ -651,37 +695,77 @@
 		};
 
 		vm.saveScheduleSettings = function () {
-			if (vm.scheduleSaving || !vm.scheduleClass) { return; }
-			var startTime = formatScheduleTime(vm.scheduleClass.startTimeValue);
-			var endTime = formatScheduleTime(vm.scheduleClass.endTimeValue);
-			if (startTime && endTime && endTime <= startTime) {
-				toastr.warning('Giờ tan học phải sau giờ học.', 'Thông báo');
+			if (vm.scheduleSaving || vm.scheduleSettingsLoading || vm.scheduleSettingsError || !vm.scheduleClass) { return; }
+			var weeklySessions = [];
+			var uniqueSessions = {};
+			var invalid = false;
+			angular.forEach(vm.scheduleClass.weeklySessions || [], function (session, index) {
+				var startTime = formatScheduleTime(session.startTimeValue);
+				var endTime = formatScheduleTime(session.endTimeValue);
+				if (!session.dayOfWeek || !startTime || !endTime || endTime <= startTime) {
+					invalid = true;
+					return;
+				}
+				var key = session.dayOfWeek + '|' + startTime + '|' + endTime;
+				if (uniqueSessions[key]) { invalid = true; return; }
+				uniqueSessions[key] = true;
+				weeklySessions.push({
+					dayOfWeek: session.dayOfWeek,
+					startTime: startTime,
+					endTime: endTime,
+					displayOrder: index
+				});
+			});
+			if (invalid) {
+				toastr.warning('Hãy chọn đủ ngày, giờ học và giờ tan học; giờ tan phải sau giờ học và không được trùng buổi.', 'Thông báo');
 				return;
 			}
 			vm.scheduleSaving = true;
 			service.saveScheduleSettings(vm.scheduleClass.id, {
-				startTime: startTime,
-				endTime: endTime
+				weeklySessions: weeklySessions
 			}).then(function (saved) {
 				vm.scheduleSaving = false;
 				if (!saved) {
 					toastr.error('Không lưu được giờ học.', 'Lỗi');
 					return;
 				}
-				vm.scheduleClass.startTime = saved.startTime;
-				vm.scheduleClass.endTime = saved.endTime;
-				vm.scheduleClass.startTimeValue = parseScheduleTime(saved.startTime);
-				vm.scheduleClass.endTimeValue = parseScheduleTime(saved.endTime);
-				var row = vm.findClass(vm.scheduleClass.id);
-				if (row) {
-					row.startTime = saved.startTime;
-					row.endTime = saved.endTime;
-				}
-				toastr.success('Đã lưu giờ học và giờ tan học.', 'Thông báo');
+				vm.scheduleClass.weeklySessions = (saved.weeklySessions || []).map(function (session) {
+					return {
+						id: session.id,
+						dayOfWeek: session.dayOfWeek,
+						startTimeValue: parseScheduleTime(session.startTime),
+						endTimeValue: parseScheduleTime(session.endTime)
+					};
+				});
+				if (!vm.scheduleLoading) { vm.buildScheduleCalendar(); }
+				toastr.success('Đã lưu lịch học hằng tuần.', 'Thông báo');
 			}, function () {
 				vm.scheduleSaving = false;
 				toastr.error('Không lưu được giờ học.', 'Lỗi');
 			});
+		};
+
+		vm.addWeeklySession = function () {
+			if (vm.scheduleSaving || vm.scheduleSettingsLoading || vm.scheduleSettingsError) { return; }
+			var usedDays = {};
+			angular.forEach(vm.scheduleClass.weeklySessions || [], function (session) {
+				if (session.dayOfWeek) { usedDays[session.dayOfWeek] = true; }
+			});
+			var suggestedDay = null;
+			angular.forEach(vm.weeklyDayOptions, function (option) {
+				if (suggestedDay === null && !usedDays[option.value]) { suggestedDay = option.value; }
+			});
+			vm.scheduleClass.weeklySessions = vm.scheduleClass.weeklySessions || [];
+			vm.scheduleClass.weeklySessions.push({
+				dayOfWeek: suggestedDay,
+				startTimeValue: null,
+				endTimeValue: null
+			});
+		};
+
+		vm.removeWeeklySession = function (index) {
+			if (vm.scheduleSaving || vm.scheduleSettingsLoading || vm.scheduleSettingsError) { return; }
+			vm.scheduleClass.weeklySessions.splice(index, 1);
 		};
 
 		function parseScheduleTime(value) {

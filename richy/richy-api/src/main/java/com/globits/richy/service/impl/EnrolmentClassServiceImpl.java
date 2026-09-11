@@ -31,15 +31,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.globits.richy.domain.EnrolmentClass;
 import com.globits.richy.domain.EnrolmentClassScheduleDay;
+import com.globits.richy.domain.EnrolmentClassWeeklySession;
 import com.globits.richy.domain.Topic;
 import com.globits.richy.dto.EnrolmentClassDto;
 import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
+import com.globits.richy.dto.EnrolmentClassWeeklySessionDto;
 import com.globits.richy.dto.EnrolmentClassMoveStudentDto;
 import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
 import com.globits.richy.dto.EnrolmentClassTeamDto;
 import com.globits.richy.dto.TopicForListAllDto;
 import com.globits.richy.repository.EnrolmentClassRepository;
 import com.globits.richy.repository.EnrolmentClassScheduleDayRepository;
+import com.globits.richy.repository.EnrolmentClassWeeklySessionRepository;
 import com.globits.richy.repository.TopicRepository;
 import com.globits.richy.service.EnrolmentClassService;
 import com.globits.security.domain.Role;
@@ -56,6 +59,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	UserRepository userRepository;
 	@Autowired
 	EnrolmentClassScheduleDayRepository scheduleDayRepository;
+	@Autowired
+	EnrolmentClassWeeklySessionRepository weeklySessionRepository;
 	@Autowired
 	TopicRepository topicRepository;
 
@@ -122,7 +127,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		if (!canViewClass(currentUser, domain)) {
 			throw new AccessDeniedException("Bạn không được xem lớp này.");
 		}
-		return toDto(domain, null, currentUser);
+		EnrolmentClassDto dto = toDto(domain, null, currentUser);
+		dto.setWeeklySessions(toWeeklySessionDtos(id));
+		return dto;
 	}
 
 	@Override
@@ -558,21 +565,53 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		if (!canEditClass(currentUser, selectedClass)) {
 			throw new AccessDeniedException("Bạn không được thiết lập lớp này.");
 		}
-		String startTime = normalizeTime(dto.getStartTime());
-		String endTime = normalizeTime(dto.getEndTime());
-		if ((dto.getStartTime() != null && !dto.getStartTime().trim().isEmpty() && startTime == null)
-				|| (dto.getEndTime() != null && !dto.getEndTime().trim().isEmpty() && endTime == null)) {
+		List<EnrolmentClassWeeklySessionDto> requestedSessions = dto.getWeeklySessions();
+		if (requestedSessions == null) {
 			return null;
 		}
-		if (startTime != null && endTime != null && endTime.compareTo(startTime) <= 0) {
-			return null;
+		List<EnrolmentClassWeeklySession> replacements = new ArrayList<EnrolmentClassWeeklySession>();
+		Set<String> uniqueSessions = new HashSet<String>();
+		int order = 0;
+		for (EnrolmentClassWeeklySessionDto requested : requestedSessions) {
+			if (requested == null || requested.getDayOfWeek() == null
+					|| requested.getDayOfWeek() < 1 || requested.getDayOfWeek() > 7) {
+				return null;
+			}
+			String startTime = normalizeTime(requested.getStartTime());
+			String endTime = normalizeTime(requested.getEndTime());
+			if (startTime == null || endTime == null || endTime.compareTo(startTime) <= 0) {
+				return null;
+			}
+			String uniqueKey = requested.getDayOfWeek() + "|" + startTime + "|" + endTime;
+			if (!uniqueSessions.add(uniqueKey)) {
+				return null;
+			}
+			EnrolmentClassWeeklySession session = new EnrolmentClassWeeklySession();
+			session.setEnrolmentClass(selectedClass);
+			session.setDayOfWeek(requested.getDayOfWeek());
+			session.setStartTime(startTime);
+			session.setEndTime(endTime);
+			session.setDisplayOrder(order++);
+			session.setCreateDate(LocalDateTime.now());
+			session.setCreatedBy(currentUser.getUsername());
+			replacements.add(session);
 		}
-		selectedClass.setStartTime(startTime);
-		selectedClass.setEndTime(endTime);
+
+		List<EnrolmentClassWeeklySession> existing = weeklySessionRepository
+				.findByEnrolmentClassIdOrderByDisplayOrderAscDayOfWeekAscStartTimeAsc(classId);
+		weeklySessionRepository.delete(existing);
+		weeklySessionRepository.flush();
+		if (!replacements.isEmpty()) {
+			weeklySessionRepository.save(replacements);
+		}
+		selectedClass.setStartTime(replacements.isEmpty() ? null : replacements.get(0).getStartTime());
+		selectedClass.setEndTime(replacements.isEmpty() ? null : replacements.get(0).getEndTime());
 		selectedClass.setModifiedBy(currentUser.getUsername());
 		selectedClass.setModifyDate(LocalDateTime.now());
 		enrolmentClassRepository.save(selectedClass);
-		return toDto(selectedClass, null, currentUser);
+		EnrolmentClassDto result = toDto(selectedClass, null, currentUser);
+		result.setWeeklySessions(toWeeklySessionDtos(classId));
+		return result;
 	}
 
 	@Override
@@ -654,6 +693,15 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 				return null;
 			}
 			result.add(topic);
+		}
+		return result;
+	}
+
+	private List<EnrolmentClassWeeklySessionDto> toWeeklySessionDtos(Long classId) {
+		List<EnrolmentClassWeeklySessionDto> result = new ArrayList<EnrolmentClassWeeklySessionDto>();
+		for (EnrolmentClassWeeklySession session : weeklySessionRepository
+				.findByEnrolmentClassIdOrderByDisplayOrderAscDayOfWeekAscStartTimeAsc(classId)) {
+			result.add(new EnrolmentClassWeeklySessionDto(session));
 		}
 		return result;
 	}

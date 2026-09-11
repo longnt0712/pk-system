@@ -207,21 +207,48 @@
     .team-student-username { color:#7b8494; font-size:12px; }
     .team-board-empty { padding:18px 8px; color:#9aa4b2; text-align:center; }
     .team-mobile-picker { display:none; margin-top:8px; }
-    .class-schedule-modal-window .modal-dialog { width:1040px; }
-    .class-schedule-modal-window .modal-content { overflow:hidden; }
-    .class-schedule-modal .modal-body { overflow-y:auto; background:#f6f8fc; }
+    .class-schedule-modal-window .modal-dialog { width:1180px; max-width:calc(100vw - 24px); margin:12px auto; }
+    .class-schedule-modal-window .modal-content { height:calc(100vh - 24px); max-height:calc(100vh - 24px); overflow:hidden; }
+    .class-schedule-modal { height:100%; max-height:none; overflow:hidden; }
+    .class-schedule-modal .modal-header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .class-schedule-modal .modal-title { min-width:0; }
+    .class-schedule-header-close { flex:0 0 auto; min-width:88px; height:36px; border-radius:9px; font-weight:700; }
+    .class-schedule-modal .modal-body {
+        flex:1 1 auto; min-height:0; padding:18px; overflow-x:hidden; overflow-y:auto;
+        overscroll-behavior:contain; scrollbar-gutter:stable; scrollbar-width:thin;
+        scrollbar-color:#7865eb #e8edf5; background:#f6f8fc;
+    }
+    .class-schedule-modal .modal-body::-webkit-scrollbar { width:10px; }
+    .class-schedule-modal .modal-body::-webkit-scrollbar-track { border-radius:10px; background:#e8edf5; }
+    .class-schedule-modal .modal-body::-webkit-scrollbar-thumb { border:2px solid #e8edf5; border-radius:10px; background:#7865eb; }
+    .class-schedule-modal .modal-body::-webkit-scrollbar-thumb:hover { background:#5f4ee0; }
     .class-schedule-time-card {
-        display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap;
         margin-bottom:18px; padding:16px 18px; border:1px solid #dce4f2;
         border-radius:12px; background:#fff; box-shadow:0 4px 16px rgba(31,45,72,.06);
     }
-    .class-schedule-time-title { flex:1 1 240px; align-self:center; }
+    .class-schedule-time-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:14px; }
+    .class-schedule-time-title { min-width:0; }
     .class-schedule-time-title strong { display:block; color:#263754; font-size:17px; }
     .class-schedule-time-title span { color:#7c879b; font-size:12px; }
-    .class-schedule-time-field { width:150px; }
+    .class-schedule-add-session { flex:0 0 auto; height:38px; border-radius:9px; font-weight:700; }
+    .class-schedule-session-list { display:flex; flex-direction:column; gap:9px; }
+    .class-schedule-session-row {
+        display:grid; grid-template-columns:42px minmax(145px,1fr) 170px 170px 38px;
+        align-items:end; gap:10px; padding:11px; border:1px solid #e2e8f2;
+        border-radius:10px; background:#f9fbff;
+    }
+    .class-schedule-session-number { display:flex; align-items:center; justify-content:center; width:34px; height:34px; margin-bottom:3px; border-radius:50%; background:linear-gradient(135deg,#5e7af7,#8458ef); color:#fff; font-weight:800; box-shadow:0 5px 12px rgba(102,87,230,.22); }
+    .class-schedule-session-field { min-width:0; }
     .class-schedule-time-field label { display:block; margin-bottom:6px; color:#53627a; font-size:12px; font-weight:700; }
-    .class-schedule-time-field .form-control { height:40px; border-radius:8px; }
-    .class-schedule-save-time { height:40px; border-radius:8px; }
+    .class-schedule-session-field label { display:block; margin-bottom:6px; color:#53627a; font-size:11px; font-weight:800; letter-spacing:.2px; }
+    .class-schedule-session-field .form-control { height:40px; border:1px solid #d7dfec; border-radius:8px; background:#fff; color:#253654; box-shadow:none; }
+    .class-schedule-session-field .form-control:focus { border-color:#7563eb; box-shadow:0 0 0 3px rgba(117,99,235,.12); }
+    .class-schedule-remove-session { width:38px; height:40px; padding:0; border-radius:8px; }
+    .class-schedule-time-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:13px; }
+    .class-schedule-session-note { color:#7b879b; font-size:12px; }
+    .class-schedule-save-time { height:40px; border-radius:9px; font-weight:700; }
+    .class-schedule-settings-loading { display:flex; align-items:center; justify-content:center; gap:9px; min-height:70px; color:#69768b; }
+    .class-schedule-no-session { padding:18px; border:1px dashed #ccd5e5; border-radius:10px; color:#8b96a8; text-align:center; background:#fbfcff; }
     .class-schedule-calendar { padding:16px; border:1px solid #dce4f2; border-radius:12px; background:#fff; box-shadow:0 4px 16px rgba(31,45,72,.06); }
     .class-schedule-calendar-toolbar { display:flex; align-items:center; justify-content:center; gap:20px; margin-bottom:14px; }
     .class-schedule-month { min-width:180px; color:#273754; font-size:18px; font-weight:800; text-align:center; }
@@ -238,12 +265,16 @@
     }
     .class-schedule-day.is-blank { border-color:transparent; background:transparent; }
     .class-schedule-day.is-today { border:2px solid #6f5cf0; background:#f6f3ff; }
+    .class-schedule-day.is-class-day { background:#f5f8ff; }
+    .class-schedule-day.is-class-day:after { content:""; position:absolute; top:9px; right:9px; width:7px; height:7px; border-radius:50%; background:#6e5deb; box-shadow:0 0 0 3px rgba(110,93,235,.13); }
     .class-schedule-day-number { display:block; margin-bottom:8px; font-size:16px; font-weight:800; }
     .class-schedule-topic-count { display:block; margin-top:4px; padding:3px 6px; overflow:hidden; border-radius:5px; font-size:11px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
     .class-schedule-topic-count.class-count { background:#e8f2ff; color:#2671c5; }
     .class-schedule-topic-count.homework-count { background:#fff1dc; color:#b56b09; }
     .class-schedule-empty-hint { color:#a3adbc; font-size:11px; }
-    .class-schedule-loading { padding:60px 15px; color:#69768b; font-size:15px; text-align:center; }
+    .class-schedule-loading { display:flex; min-height:390px; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:#69768b; font-size:14px; text-align:center; }
+    .class-schedule-loading .fa { color:#725fe9; font-size:38px; }
+    .class-schedule-loading strong { display:block; color:#42516a; font-size:16px; }
     .class-day-plan-modal .modal-body { padding:22px; background:#f7f8fc; }
     .class-day-plan-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
     .class-day-plan-card { min-width:0; padding:18px; border:1px solid #dce4f2; border-radius:12px; background:#fff; }
@@ -270,7 +301,16 @@
     .global-dark-mode .class-schedule-day { border-color:#394155; background:#242b3a; }
     .global-dark-mode .class-schedule-day.is-blank { border-color:transparent; background:transparent; }
     .global-dark-mode .class-schedule-day.is-today { border-color:#8d7cff; background:#302b4d; }
+    .global-dark-mode .class-schedule-day.is-class-day { background:#292d43; }
     .global-dark-mode .class-day-selected-list li { background:#2b3242; color:#e6eafe; }
+    .global-dark-mode .class-schedule-session-row { border-color:#384156; background:#272e3d; }
+    .global-dark-mode .class-schedule-session-field .form-control { border-color:#465069; background:#1d2330; color:#eef2ff; }
+    .global-dark-mode .class-schedule-no-session { border-color:#465069; background:#272e3d; color:#aeb7c9; }
+    .global-dark-mode .class-schedule-loading strong { color:#e7ebf8; }
+    .global-dark-mode .class-schedule-modal .modal-body { scrollbar-color:#8d7cff #292f3f; }
+    .global-dark-mode .class-schedule-modal .modal-body::-webkit-scrollbar-track { background:#292f3f; }
+    .global-dark-mode .class-schedule-modal .modal-body::-webkit-scrollbar-thumb { border-color:#292f3f; background:#8d7cff; }
+    .global-dark-mode .class-schedule-modal .modal-body::-webkit-scrollbar-thumb:hover { background:#a397ff; }
     @media (max-width: 991px) {
         .team-board-modal .modal-body {
             overflow-x:hidden !important;
@@ -297,9 +337,20 @@
         .team-board-toolbar > div,
         .team-board-toolbar .form-control { width:100%; }
         .class-schedule-modal-window .modal-dialog { width:auto; }
-        .class-schedule-time-field { width:calc(50% - 8px); }
+        .class-schedule-modal-window .modal-content { height:calc(100vh - 20px); max-height:calc(100vh - 20px); }
+        .class-schedule-time-card { padding:13px; }
+        .class-schedule-time-header { align-items:flex-start; }
+        .class-schedule-session-row { grid-template-columns:34px 1fr 38px; align-items:end; }
+        .class-schedule-session-field.session-day { grid-column:2; }
+        .class-schedule-session-field.session-start { grid-column:2; }
+        .class-schedule-session-field.session-end { grid-column:2; }
+        .class-schedule-session-number { grid-column:1; grid-row:1; }
+        .class-schedule-remove-session { grid-column:3; grid-row:1; }
+        .class-schedule-time-footer { align-items:stretch; flex-direction:column; }
         .class-schedule-save-time { width:100%; }
         .class-schedule-calendar { padding:9px; }
+        .class-schedule-modal .modal-header { padding-right:10px; }
+        .class-schedule-header-close { min-width:78px; }
         .class-schedule-grid { gap:3px; }
         .class-schedule-day { min-height:70px; padding:5px; }
         .class-schedule-topic-count { padding:2px 3px; font-size:9px; }
@@ -470,30 +521,73 @@
 <script type="text/ng-template" id="class_schedule_modal.html">
     <div class="class-management-modal class-schedule-modal">
         <div class="modal-header">
-            <button type="button" class="close" data-ng-click="$dismiss()" aria-hidden="true"></button>
             <h4 class="modal-title"><i class="fa fa-calendar"></i> Thiết lập lớp — {{vm.scheduleClass.name}}</h4>
+            <button type="button" class="btn btn-default class-schedule-header-close" data-ng-click="$dismiss()">
+                <i class="fa fa-times"></i> Đóng
+            </button>
         </div>
         <div class="modal-body">
             <section class="class-schedule-time-card">
-                <div class="class-schedule-time-title">
-                    <strong><i class="fa fa-clock-o"></i> Khung giờ học</strong>
-                    <span>Thiết lập giờ bắt đầu và giờ tan học của lớp.</span>
+                <div class="class-schedule-time-header">
+                    <div class="class-schedule-time-title">
+                        <strong><i class="fa fa-clock-o"></i> Lịch học hằng tuần</strong>
+                        <span>Thêm nhiều buổi; mỗi buổi có ngày và khung giờ riêng.</span>
+                    </div>
+                    <button type="button" class="btn btn-success class-schedule-add-session"
+                            data-ng-click="vm.addWeeklySession()"
+                            data-ng-disabled="vm.scheduleSaving || vm.scheduleSettingsLoading || vm.scheduleSettingsError">
+                        <i class="fa fa-plus"></i> Thêm buổi học
+                    </button>
                 </div>
-                <div class="class-schedule-time-field">
-                    <label>GIỜ HỌC</label>
-                    <input type="time" class="form-control" data-ng-model="vm.scheduleClass.startTimeValue"
-                           data-ng-disabled="vm.scheduleSaving" />
+
+                <div class="class-schedule-settings-loading" data-ng-if="vm.scheduleSettingsLoading">
+                    <i class="fa fa-spinner fa-spin"></i> Đang tải các buổi học đã thiết lập...
                 </div>
-                <div class="class-schedule-time-field">
-                    <label>GIỜ TAN HỌC</label>
-                    <input type="time" class="form-control" data-ng-model="vm.scheduleClass.endTimeValue"
-                           data-ng-disabled="vm.scheduleSaving" />
+                <div class="alert alert-danger" data-ng-if="vm.scheduleSettingsError">
+                    Không tải được lịch học hằng tuần. Hãy đóng cửa sổ và mở lại để tránh ghi đè dữ liệu cũ.
                 </div>
-                <button type="button" class="btn btn-primary class-schedule-save-time"
-                        data-ng-click="vm.saveScheduleSettings()" data-ng-disabled="vm.scheduleSaving">
-                    <i class="fa" data-ng-class="vm.scheduleSaving ? 'fa-spinner fa-spin' : 'fa-save'"></i>
-                    {{vm.scheduleSaving ? 'Đang lưu...' : 'Lưu giờ học'}}
-                </button>
+
+                <div class="class-schedule-session-list" data-ng-if="!vm.scheduleSettingsLoading && !vm.scheduleSettingsError">
+                    <div class="class-schedule-session-row"
+                         data-ng-repeat="session in vm.scheduleClass.weeklySessions track by $index">
+                        <span class="class-schedule-session-number">{{$index + 1}}</span>
+                        <div class="class-schedule-session-field session-day">
+                            <label>NGÀY HỌC</label>
+                            <select class="form-control" data-ng-model="session.dayOfWeek"
+                                    data-ng-options="day.value as day.label for day in vm.weeklyDayOptions"
+                                    data-ng-disabled="vm.scheduleSaving">
+                                <option value="">Chọn ngày</option>
+                            </select>
+                        </div>
+                        <div class="class-schedule-session-field session-start">
+                            <label>GIỜ HỌC</label>
+                            <input type="time" class="form-control" data-ng-model="session.startTimeValue"
+                                   data-ng-disabled="vm.scheduleSaving" />
+                        </div>
+                        <div class="class-schedule-session-field session-end">
+                            <label>GIỜ TAN HỌC</label>
+                            <input type="time" class="form-control" data-ng-model="session.endTimeValue"
+                                   data-ng-disabled="vm.scheduleSaving" />
+                        </div>
+                        <button type="button" class="btn btn-danger class-schedule-remove-session"
+                                data-ng-click="vm.removeWeeklySession($index)" data-ng-disabled="vm.scheduleSaving"
+                                title="Xóa buổi học"><i class="fa fa-trash"></i></button>
+                    </div>
+                    <div class="class-schedule-no-session" data-ng-if="!vm.scheduleClass.weeklySessions.length">
+                        <i class="fa fa-calendar-plus-o"></i> Chưa có buổi học. Bấm <strong>Thêm buổi học</strong> để bắt đầu.
+                    </div>
+                </div>
+
+                <div class="class-schedule-time-footer" data-ng-if="!vm.scheduleSettingsLoading && !vm.scheduleSettingsError">
+                    <span class="class-schedule-session-note">
+                        <i class="fa fa-info-circle"></i> Có thể thêm nhiều buổi trong cùng một ngày nếu cần.
+                    </span>
+                    <button type="button" class="btn btn-primary class-schedule-save-time"
+                            data-ng-click="vm.saveScheduleSettings()" data-ng-disabled="vm.scheduleSaving">
+                        <i class="fa" data-ng-class="vm.scheduleSaving ? 'fa-spinner fa-spin' : 'fa-save'"></i>
+                        {{vm.scheduleSaving ? 'Đang lưu...' : 'Lưu lịch học'}}
+                    </button>
+                </div>
             </section>
 
             <section class="class-schedule-calendar">
@@ -509,14 +603,15 @@
                     </button>
                 </div>
                 <div class="class-schedule-loading" data-ng-if="vm.scheduleLoading">
-                    <i class="fa fa-spinner fa-spin"></i> Đang tải lịch lớp...
+                    <i class="fa fa-spinner fa-spin"></i>
+                    <div><strong>Đang tải lịch lớp...</strong>Khung giờ học phía trên vẫn có thể thao tác.</div>
                 </div>
                 <div class="class-schedule-grid" data-ng-if="!vm.scheduleLoading">
                     <div class="class-schedule-weekday" data-ng-repeat="weekday in vm.scheduleWeekdays track by $index">{{weekday}}</div>
                     <button type="button" class="class-schedule-day"
                             data-ng-repeat="cell in vm.scheduleCalendarDays track by $index"
                             data-ng-disabled="cell.isBlank"
-                            data-ng-class="{'is-blank': cell.isBlank, 'is-today': cell.isToday}"
+                            data-ng-class="{'is-blank': cell.isBlank, 'is-today': cell.isToday, 'is-class-day': cell.isClassDay}"
                             data-ng-click="vm.openScheduleDay(cell)">
                         <span data-ng-if="!cell.isBlank">
                             <span class="class-schedule-day-number">{{cell.day}}</span>
@@ -526,14 +621,13 @@
                             <span class="class-schedule-topic-count homework-count" data-ng-if="cell.homeworkCount">
                                 Homework: {{cell.homeworkCount}} topic
                             </span>
-                            <span class="class-schedule-empty-hint" data-ng-if="!cell.classCount && !cell.homeworkCount">+ Thêm bài</span>
+                            <span class="class-schedule-empty-hint" data-ng-if="!cell.classCount && !cell.homeworkCount">
+                                {{cell.isClassDay ? 'Ngày học · + Thêm bài' : '+ Thêm bài'}}
+                            </span>
                         </span>
                     </button>
                 </div>
             </section>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-default" data-ng-click="$dismiss()">Đóng</button>
         </div>
     </div>
 </script>
@@ -550,8 +644,9 @@
                     <div class="class-day-plan-heading">
                         <h4><i class="fa fa-book"></i> Class</h4>
                         <button type="button" class="btn btn-primary class-day-add-btn"
-                                data-ng-click="vm.toggleTopicSelection('classTopicIds')" title="Chọn topic học trên lớp">
-                            <i class="fa" data-ng-class="vm.topicSelectionOpen.classTopicIds ? 'fa-minus' : 'fa-plus'"></i>
+                                data-ng-click="vm.toggleTopicSelection('classTopicIds')"
+                                data-ng-disabled="vm.scheduleTopicsLoading" title="Chọn topic học trên lớp">
+                            <i class="fa" data-ng-class="vm.scheduleTopicsLoading ? 'fa-spinner fa-spin' : (vm.topicSelectionOpen.classTopicIds ? 'fa-minus' : 'fa-plus')"></i>
                         </button>
                     </div>
                     <ui-select multiple theme="bootstrap" class="class-day-topic-select"
@@ -574,8 +669,9 @@
                     <div class="class-day-plan-heading">
                         <h4><i class="fa fa-pencil-square-o"></i> Homework</h4>
                         <button type="button" class="btn btn-warning class-day-add-btn"
-                                data-ng-click="vm.toggleTopicSelection('homeworkTopicIds')" title="Chọn topic bài tập về nhà">
-                            <i class="fa" data-ng-class="vm.topicSelectionOpen.homeworkTopicIds ? 'fa-minus' : 'fa-plus'"></i>
+                                data-ng-click="vm.toggleTopicSelection('homeworkTopicIds')"
+                                data-ng-disabled="vm.scheduleTopicsLoading" title="Chọn topic bài tập về nhà">
+                            <i class="fa" data-ng-class="vm.scheduleTopicsLoading ? 'fa-spinner fa-spin' : (vm.topicSelectionOpen.homeworkTopicIds ? 'fa-minus' : 'fa-plus')"></i>
                         </button>
                     </div>
                     <ui-select multiple theme="bootstrap" class="class-day-topic-select"
