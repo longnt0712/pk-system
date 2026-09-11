@@ -31,6 +31,7 @@ public class QuestionDto implements Serializable  {
 	private String description;
 	private int type = 1;//1: flash_card
 	private String pronounce;
+	private String level;
 	private int status = 3;//1: chưa thuộc; 2: đã thuộc; 3: tat ca; 4: quan trong
 	private String examples;
 	
@@ -85,6 +86,12 @@ public class QuestionDto implements Serializable  {
 	}
 	public void setWebsite(Integer website) {
 		this.website = website;
+	}
+	public String getLevel() {
+		return level;
+	}
+	public void setLevel(String level) {
+		this.level = level;
 	}
 	public String getMessage() {
 		return message;
@@ -346,6 +353,7 @@ public class QuestionDto implements Serializable  {
 		this.type = domain.getType();
 		this.description = domain.getDescription();
 		this.pronounce = domain.getPronounce();
+		this.level = domain.getLevel();
 		this.status = domain.getStatus();
 		this.examples = domain.getExamples();
 		this.timeReviewd = domain.getTimeReviewd();
@@ -466,6 +474,7 @@ public class QuestionDto implements Serializable  {
 				sDto.setTitle(q.getTitle());
 				sDto.setOrdinalNumber(q.getOrdinalNumber());
 				sDto.setMotherTongue(q.getMotherTongue());
+				sDto.setLevel(q.getLevel());
 				if(q.getQuestionType() != null && q.getQuestionType().getId() != null) {
 					sDto.setQuestionType(new QuestionTypeDto(q.getQuestionType()));
 				}

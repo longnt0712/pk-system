@@ -24,6 +24,7 @@ import com.globits.richy.dto.QuestionImportConfirmDto;
 import com.globits.richy.dto.QuestionImportPreviewDto;
 import com.globits.richy.dto.QuestionImportResultDto;
 import com.globits.richy.dto.QuestionOnlyQuestionDto;
+import com.globits.richy.dto.QuestionLevelDto;
 import com.globits.richy.dto.QuestionUserDto;
 import com.globits.richy.dto.QuizDto;
 import com.globits.richy.service.QuestionExcelImportService;
@@ -79,6 +80,28 @@ public class RestQuestionController {
     @RequestMapping(value = "/save", method = RequestMethod.POST)
     public QuestionDto saveOne(@RequestBody QuestionDto searchDto) {
         return service.saveObject(searchDto);
+    }
+
+    @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})
+    @RequestMapping(value = "/get_flash_card_levels", method = RequestMethod.POST)
+    public java.util.List<QuestionLevelDto> getFlashCardLevels(@RequestBody QuestionDto searchDto) {
+        return service.getFlashCardLevels(searchDto);
+    }
+
+    @Secured({"ROLE_ADMIN", "ROLE_USER"})
+    @RequestMapping(value = "/update_level/{id}", method = RequestMethod.POST)
+    public ResponseEntity<?> updateFlashCardLevel(
+            @PathVariable Long id,
+            @RequestBody QuestionLevelDto dto) {
+        try {
+            return ResponseEntity.ok(service.updateFlashCardLevel(id, dto.getLevel()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(Collections.singletonMap("message", e.getMessage()));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Collections.singletonMap("message", e.getMessage()));
+        }
     }
 
     @Secured({"ROLE_ADMIN", "ROLE_USER"})

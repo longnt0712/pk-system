@@ -28,6 +28,8 @@
         self.confirmExcelImport = confirmExcelImport;
         
         self.saveObject = saveObject;
+        self.getFlashCardLevels = getFlashCardLevels;
+        self.updateFlashCardLevel = updateFlashCardLevel;
         self.saveMaterial = saveMaterial;
         self.getOne = getOne;
         self.deleteObject = deleteObject;
@@ -253,6 +255,20 @@
             return utils.resolveAlt(url, 'POST', null, object, {
                 'Content-Type': 'application/json; charset=utf-8'
             }, successCallback, errorCallback);
+        }
+
+        function getFlashCardLevels(searchDto) {
+            return utils.resolveAlt(baseUrl + restUrl + '/get_flash_card_levels', 'POST', null, searchDto, {
+                'Content-Type': 'application/json; charset=utf-8'
+            });
+        }
+
+        function updateFlashCardLevel(id, level) {
+            return utils.resolveAlt(baseUrl + restUrl + '/update_level/' + id, 'POST', null, {
+                level: level || null
+            }, {
+                'Content-Type': 'application/json; charset=utf-8'
+            });
         }
 
         function saveMaterial(object, successCallback, errorCallback) {

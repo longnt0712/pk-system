@@ -272,7 +272,10 @@
         };  //create a new test
 
         vm.totalCard = 0;
-        vm.showListFlashCard = true;
+        vm.showListFlashCard = false;
+        vm.showLevelTable = false;
+        vm.levelTableLoading = false;
+        vm.levelTableWords = [];
 
         // $scope.setPage = function (pageNo) {
         //     $scope.currentPage = pageNo;
@@ -373,6 +376,73 @@
             } else{
                 vm.showListFlashCard = true;
             }
+        };
+
+        vm.loadLevelTable = function () {
+            if(!vm.searchDto.questionTopics || vm.searchDto.questionTopics.length === 0) {
+                toastr.warning('Vui lòng chọn ít nhất một topic trước khi hiển thị bảng từ.');
+                vm.showLevelTable = false;
+                return;
+            }
+
+            var levelSearch = angular.copy(vm.searchDto);
+            levelSearch.questionType = {id: 6};
+            levelSearch.username = vm.currentUser.username;
+            levelSearch.userId = vm.currentUser.id;
+            vm.levelTableLoading = true;
+
+            service.getFlashCardLevels(levelSearch).then(function (data) {
+                vm.levelTableWords = data || [];
+                angular.forEach(vm.levelTableWords, function (item) {
+                    item._lastSavedLevel = item.level || '';
+                });
+                vm.levelTableLoading = false;
+            }, function () {
+                vm.levelTableLoading = false;
+                vm.showLevelTable = false;
+                toastr.error('Không thể tải bảng từ của topic.');
+            });
+        };
+
+        vm.toggleLevelTable = function () {
+            vm.showLevelTable = !vm.showLevelTable;
+            if(vm.showLevelTable) {
+                vm.loadLevelTable();
+            }
+        };
+
+        vm.saveLevelInline = function (item) {
+            if(!item || item._levelSaving) {
+                return;
+            }
+            var previousLevel = item._lastSavedLevel || '';
+            item._levelSaving = true;
+            item._levelSaved = false;
+            item._levelError = false;
+
+            service.updateFlashCardLevel(item.id, item.level).then(function (data) {
+                item.level = data.level || '';
+                item._lastSavedLevel = item.level;
+                angular.forEach(vm.questions || [], function (question) {
+                    if(question.id === item.id) {
+                        question.level = item.level;
+                    }
+                });
+                if(vm.currentCard && vm.currentCard.id === item.id) {
+                    vm.currentCard.level = item.level;
+                }
+                item._levelSaving = false;
+                item._levelSaved = true;
+                $timeout(function () {
+                    item._levelSaved = false;
+                }, 1500);
+            }, function (error) {
+                item.level = previousLevel;
+                item._levelSaving = false;
+                item._levelError = true;
+                toastr.error(error && error.data && error.data.message
+                    ? error.data.message : 'Không thể lưu level của từ.');
+            });
         };
 
         vm.listFlashCard = 0;
@@ -759,6 +829,9 @@
             vm.currentPosition = 0;
             vm.searchDto.pageIndex = 1;
             vm.getPageFlashCard();
+            if(vm.showLevelTable) {
+                vm.loadLevelTable();
+            }
         };
 
         // vm.newFlashCard = function () {

@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -34,6 +35,7 @@ import com.globits.richy.dto.QuestionDto;
 import com.globits.richy.dto.QuestionForGamesDto;
 import com.globits.richy.dto.QuestionForTestsDto;
 import com.globits.richy.dto.QuestionOnlyQuestionDto;
+import com.globits.richy.dto.QuestionLevelDto;
 import com.globits.richy.dto.QuestionTopicDto;
 import com.globits.richy.dto.QuestionTypeDto;
 import com.globits.richy.dto.QuestionUserDto;
@@ -57,6 +59,10 @@ import com.globits.security.repository.UserRepository;
 
 @Service
 public class QuestionServiceImpl implements QuestionService {
+	private static final Set<String> CEFR_LEVELS = new HashSet<String>();
+	static {
+		Collections.addAll(CEFR_LEVELS, "A1", "A2", "B1", "B2", "C1", "C2");
+	}
 	@Autowired
 	EntityManager manager;
 	@Autowired
@@ -1125,6 +1131,88 @@ public class QuestionServiceImpl implements QuestionService {
 	}
 
 	@Override
+	public List<QuestionLevelDto> getFlashCardLevels(QuestionDto searchDto) {
+		if(searchDto == null || searchDto.getQuestionTopics() == null
+				|| searchDto.getQuestionTopics().isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		List<Long> topicIds = new ArrayList<Long>();
+		for(QuestionTopicDto item : searchDto.getQuestionTopics()) {
+			if(item != null && item.getTopic() != null && item.getTopic().getId() != null) {
+				topicIds.add(item.getTopic().getId());
+			}
+		}
+		if(topicIds.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		String hql = "select new com.globits.richy.dto.QuestionLevelDto("
+				+ "q.id, q.question, q.motherTongue, q.level) "
+				+ "from Question q "
+				+ "where q.questionType.id = 6 "
+				+ "and exists (select qt.id from QuestionTopic qt "
+				+ "where qt.question.id = q.id and qt.topic.id in :topicIds) ";
+		if(searchDto.getUserId() != null) {
+			hql += "and q.user.id = :userId ";
+		}
+		if(searchDto.getWebsite() != null) {
+			hql += "and q.website = :website ";
+		}
+		hql += "order by q.ordinalNumber, q.createDate desc";
+
+		Query query = manager.createQuery(hql, QuestionLevelDto.class);
+		query.setParameter("topicIds", topicIds);
+		if(searchDto.getUserId() != null) {
+			query.setParameter("userId", searchDto.getUserId());
+		}
+		if(searchDto.getWebsite() != null) {
+			query.setParameter("website", searchDto.getWebsite());
+		}
+		return query.getResultList();
+	}
+
+	@Override
+	public QuestionLevelDto updateFlashCardLevel(Long id, String level) {
+		if(id == null) {
+			throw new IllegalArgumentException("Flashcard id is required");
+		}
+
+		String normalizedLevel = null;
+		if(level != null && !level.trim().isEmpty()) {
+			normalizedLevel = level.trim().toUpperCase(Locale.ROOT);
+			if(!CEFR_LEVELS.contains(normalizedLevel)) {
+				throw new IllegalArgumentException("Level must be one of A1, A2, B1, B2, C1, C2");
+			}
+		}
+
+		Question domain = questionRepository.findOne(id);
+		if(domain == null) {
+			throw new IllegalArgumentException("Flashcard was not found");
+		}
+
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if(authentication == null || !(authentication.getPrincipal() instanceof User)) {
+			throw new SecurityException("You do not have permission to update this flashcard");
+		}
+		User currentUser = (User) authentication.getPrincipal();
+		boolean isAdmin = authentication.getAuthorities() != null
+				&& authentication.getAuthorities().stream()
+						.anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+		if(!isAdmin && (domain.getUser() == null || domain.getUser().getId() == null
+				|| !domain.getUser().getId().equals(currentUser.getId()))) {
+			throw new SecurityException("You do not have permission to update this flashcard");
+		}
+
+		domain.setLevel(normalizedLevel);
+		domain.setModifiedBy(currentUser.getUsername());
+		domain.setModifyDate(LocalDateTime.now());
+		domain = questionRepository.save(domain);
+		return new QuestionLevelDto(domain.getId(), domain.getQuestion(),
+				domain.getMotherTongue(), domain.getLevel());
+	}
+
+	@Override
 	public QuestionDto saveObject(QuestionDto dto) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		User modifiedUser = null;
@@ -1142,6 +1230,14 @@ public class QuestionServiceImpl implements QuestionService {
 		String message = "Successfully";
 		if(dto == null) {
 			return null;
+		}
+		String level = null;
+		if(dto.getLevel() != null && !dto.getLevel().trim().isEmpty()) {
+			level = dto.getLevel().trim().toUpperCase(Locale.ROOT);
+			if(!CEFR_LEVELS.contains(level)) {
+				ret.setMessage("Level must be one of A1, A2, B1, B2, C1, C2");
+				return ret;
+			}
 		}
 		Question domain = null;
 		if(dto.getId() != null) {
@@ -1251,6 +1347,7 @@ public class QuestionServiceImpl implements QuestionService {
 		domain.setCountWords(dto.getCountWords());
 		domain.setTitle(dto.getTitle());
 		domain.setWebsite(dto.getWebsite());
+		domain.setLevel(level);
 		if(dto.getParent() != null && dto.getParent().getId() !=null) {
 			Question object = questionRepository.getOne(dto.getParent().getId());
 			if(object != null){

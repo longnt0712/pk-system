@@ -47,6 +47,9 @@ public class Question extends BaseObject{
 	
 	@Column(name="pronounce")
 	private String pronounce;
+
+	@Column(name="level", length = 2)
+	private String level; // CEFR: A1, A2, B1, B2, C1, C2
 	
 	@Column(name="status")
 	private int status;//1:chưa; 2:thuộc; 3: tất cả (no lis); 4: đánh dấu 5: lis//  6: không show test 7: show test
@@ -193,6 +196,12 @@ public class Question extends BaseObject{
 	}
 	public void setPronounce(String pronounce) {
 		this.pronounce = pronounce;
+	}
+	public String getLevel() {
+		return level;
+	}
+	public void setLevel(String level) {
+		this.level = level;
 	}
 	public String getDescription() {
 		return description;

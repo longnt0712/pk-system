@@ -8,6 +8,7 @@ import com.globits.richy.dto.QuestionDto;
 import com.globits.richy.dto.QuestionForGamesDto;
 import com.globits.richy.dto.QuestionForTestsDto;
 import com.globits.richy.dto.QuestionOnlyQuestionDto;
+import com.globits.richy.dto.QuestionLevelDto;
 import com.globits.richy.dto.QuestionUserDto;
 import com.globits.richy.dto.QuizDto;
 
@@ -20,6 +21,8 @@ public interface QuestionService {
 	public List<QuestionDto> getListObject(QuestionDto searchDto, int pageIndex, int pageSize);
 	public QuestionDto getObjectById(Long id);
 	public QuestionDto saveObject(QuestionDto dto);
+	public List<QuestionLevelDto> getFlashCardLevels(QuestionDto searchDto);
+	public QuestionLevelDto updateFlashCardLevel(Long id, String level);
 	public boolean deleteObject(Long id);
 	
 	public QuestionDto getRandomObject(int from, int to);
