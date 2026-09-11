@@ -272,7 +272,7 @@
         };  //create a new test
 
         vm.totalCard = 0;
-        vm.showListFlashCard = false;
+        vm.showListFlashCard = true;
         vm.showLevelTable = false;
         vm.levelTableLoading = false;
         vm.levelTableWords = [];
@@ -930,6 +930,10 @@
 
         vm.editFlashCard = function (item) {
 
+            if (!item || item._rowSaving) {
+                return;
+            }
+
             vm.normalizeQuestionAnswers(item);
 
             if (item.questionAnswers.length > vm.MAX_QUESTION_ANSWERS) {
@@ -937,26 +941,41 @@
                 return;
             }
 
-            // vm.selectedTopicToEdit = getListTopicFromCard(item.questionTopics);
-            // service.saveObject(item, function success() {
-            //
-            //     vm.getPageFlashCard();
-            //     toastr.info('Save successfully');
-            //     // vm.currentCard = {};
-            // }, function failure() {
-            //     // console.log(vm.currentCard);
-            //
-            //     toastr.error('Error');
-            // });
+            item._rowSaving = true;
+            item._rowSaved = false;
+            item._rowSaveError = false;
 
             service.saveObject(item).then(function (data) {
-                vm.getPageFlashCard();
-                // toastr.info('Save successfully');
-                if(data.message != null){
-                    toastr.info(data.message, 'Notification');
-                }else{
-                    toastr.error('Error.', 'Warning');
+                if(data && data.id) {
+                    // API /save trả về chính flashcard vừa được đọc lại từ database.
+                    // Cập nhật object hiện tại để Angular chỉ render lại đúng dòng này.
+                    angular.extend(item, data);
+                    item._rowSaving = false;
+                    item._rowSaved = true;
+
+                    angular.forEach(vm.levelTableWords || [], function (levelItem) {
+                        if(levelItem.id === item.id) {
+                            levelItem.question = item.question;
+                            levelItem.motherTongue = item.motherTongue;
+                            levelItem.level = item.level || '';
+                            levelItem._lastSavedLevel = levelItem.level;
+                        }
+                    });
+
+                    $timeout(function () {
+                        item._rowSaved = false;
+                    }, 1500);
+                    toastr.success('Đã lưu dòng vừa sửa.');
+                } else {
+                    item._rowSaving = false;
+                    item._rowSaveError = true;
+                    toastr.error(data && data.message ? data.message : 'Không thể lưu dòng này.');
                 }
+            }, function (error) {
+                item._rowSaving = false;
+                item._rowSaveError = true;
+                toastr.error(error && error.data && error.data.message
+                    ? error.data.message : 'Không thể lưu dòng này.');
             });
 
         };

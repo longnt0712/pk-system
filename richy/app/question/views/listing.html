@@ -296,9 +296,18 @@
                 <div class="row" style="margin: 10px">
                     <div class="row margin-bottom-10">
                         <div class="col-md-12">
+                            <button class="btn btn-brown" ng-click="vm.clickShowListFlashCard()">
+                                <i class="fa-solid fa-list-ul"></i>
+                                {{vm.showListFlashCard ? 'Ẩn danh sách chỉnh sửa' : 'Hiển thị danh sách chỉnh sửa'}}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row margin-bottom-10">
+                        <div class="col-md-12">
                             <button class="btn btn-brown level-table-toggle" ng-click="vm.toggleLevelTable()">
                                 <i class="fa-solid" ng-class="vm.showLevelTable ? 'fa-eye-slash' : 'fa-table-list'"></i>
-                                {{vm.showLevelTable ? 'Ẩn bảng từ' : 'Hiển thị bảng từ'}}
+                                {{vm.showLevelTable ? 'Ẩn bảng level' : 'Hiển thị bảng level của topic'}}
                             </button>
                         </div>
                     </div>
@@ -389,7 +398,15 @@
                                 <!--<i ng-show="item.showDetail == false" class="fa fa-eye" style="font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.showDetailFlashCard(item)"></i>-->
                                 <!--<i ng-show="item.showDetail == true" class="fa fa-eye" style="color: gold;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.hideDetailFlashCard(item)"></i>-->
 
-                                <i class="fa-solid fa-floppy-disk" style="cursor:pointer;font-size: 18px; padding-top: 12px" data-ng-click="vm.editFlashCard(item)"></i>
+                                <i ng-if="!item._rowSaving && !item._rowSaved" class="fa-solid fa-floppy-disk"
+                                   title="Lưu riêng dòng này" style="cursor:pointer;font-size: 18px; padding-top: 12px"
+                                   data-ng-click="vm.editFlashCard(item)"></i>
+                                <i ng-if="item._rowSaving" class="fa fa-spinner fa-spin"
+                                   title="Đang lưu dòng này" style="font-size:18px; padding-top:12px"></i>
+                                <i ng-if="item._rowSaved" class="fa fa-check-circle text-success"
+                                   title="Đã lưu" style="font-size:18px; padding-top:12px"></i>
+                                <i ng-if="item._rowSaveError" class="fa fa-exclamation-circle text-danger"
+                                   title="Lưu lỗi - bấm lại biểu tượng lưu" style="font-size:18px; padding-top:12px; margin-left:5px"></i>
                                 <i ng-show="item.showDetail == false" class="fa-solid fa-circle-info" style="cursor:pointer;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.showDetailFlashCard(item)"></i>
                                 <i ng-show="item.showDetail == true" class="fa-solid fa-circle-info" style="cursor:pointer;color: gold;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.hideDetailFlashCard(item)"></i>
                                 <!--&nbsp; &nbsp;-->
