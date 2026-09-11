@@ -30,7 +30,8 @@
             <span>Game khác</span>
         </a>
 
-        <div class="user-learning-level" ng-if="currentUser && currentUser.id">
+        <div class="user-learning-level"
+             ng-if="settings.chapter != true && currentUser && currentUser.id">
             <span class="user-learning-level-sparkle sparkle-a">✦</span>
             <span class="user-learning-level-sparkle sparkle-b">★</span>
 
