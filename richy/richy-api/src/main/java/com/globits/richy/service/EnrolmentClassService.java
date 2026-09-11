@@ -9,6 +9,8 @@ import com.globits.core.dto.PersonDto;
 import com.globits.richy.dto.EnrolmentClassDto;
 import com.globits.richy.dto.EnrolmentClassMoveStudentDto;
 import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
+import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
+import com.globits.richy.dto.TopicForListAllDto;
 import com.globits.security.dto.UserDto;
 
 public interface EnrolmentClassService {
@@ -25,4 +27,8 @@ public interface EnrolmentClassService {
 	public List<UserDto> getResponsibleCandidates(Long parentClassId, Long classId);
 	public EnrolmentClassTeamBoardDto getTeamBoard(Long classId);
 	public EnrolmentClassTeamBoardDto moveStudentToTeam(Long classId, EnrolmentClassMoveStudentDto moveDto);
+	public EnrolmentClassDto saveScheduleSettings(Long classId, EnrolmentClassDto dto);
+	public List<EnrolmentClassScheduleDayDto> getScheduleDays(Long classId, String fromDate, String toDate);
+	public EnrolmentClassScheduleDayDto saveScheduleDay(Long classId, EnrolmentClassScheduleDayDto dto);
+	public List<TopicForListAllDto> getScheduleTopics();
 }

@@ -53,6 +53,34 @@
             });
         };
 
+        self.getSchedule = function (classId, fromDate, toDate) {
+            if (!classId || !fromDate || !toDate) {
+                return $q.when([]);
+            }
+            return utils.resolve(
+                baseUrl + '/schedule/' + classId
+                    + '?fromDate=' + encodeURIComponent(fromDate)
+                    + '&toDate=' + encodeURIComponent(toDate),
+                'GET', angular.noop, angular.noop
+            );
+        };
+
+        self.getScheduleTopics = function () {
+            return utils.resolve(baseUrl + '/schedule/topics', 'GET', angular.noop, angular.noop);
+        };
+
+        self.saveScheduleSettings = function (classId, object) {
+            return utils.resolveAlt(baseUrl + '/schedule/' + classId + '/settings', 'POST', null, object, {
+                'Content-Type': 'application/json; charset=utf-8'
+            });
+        };
+
+        self.saveScheduleDay = function (classId, object) {
+            return utils.resolveAlt(baseUrl + '/schedule/' + classId + '/day', 'POST', null, object, {
+                'Content-Type': 'application/json; charset=utf-8'
+            });
+        };
+
         self.getOne = function (id) {
             if (!id) {
                 return $q.when(null);

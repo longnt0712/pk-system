@@ -9,13 +9,16 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.globits.core.dto.OrganizationDto;
 import com.globits.core.dto.PersonDto;
 import com.globits.richy.dto.EnrolmentClassDto;
 import com.globits.richy.dto.EnrolmentClassMoveStudentDto;
+import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
 import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
+import com.globits.richy.dto.TopicForListAllDto;
 import com.globits.richy.service.EnrolmentClassService;
 import com.globits.security.dto.UserDto;
 
@@ -73,6 +76,35 @@ public class RestEnrolmentClassController {
 	public List<UserDto> getResponsibleCandidates(
 			@PathVariable Long parentClassId, @PathVariable Long classId) {
 		return service.getResponsibleCandidates(parentClassId, classId);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT","ROLE_STAFF"})
+	@RequestMapping(value = "/schedule/{classId}", method = RequestMethod.GET)
+	public List<EnrolmentClassScheduleDayDto> getSchedule(
+			@PathVariable Long classId,
+			@RequestParam String fromDate,
+			@RequestParam String toDate) {
+		return service.getScheduleDays(classId, fromDate, toDate);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/schedule/{classId}/settings", method = RequestMethod.POST)
+	public EnrolmentClassDto saveScheduleSettings(
+			@PathVariable Long classId, @RequestBody EnrolmentClassDto dto) {
+		return service.saveScheduleSettings(classId, dto);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/schedule/{classId}/day", method = RequestMethod.POST)
+	public EnrolmentClassScheduleDayDto saveScheduleDay(
+			@PathVariable Long classId, @RequestBody EnrolmentClassScheduleDayDto dto) {
+		return service.saveScheduleDay(classId, dto);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/schedule/topics", method = RequestMethod.GET)
+	public List<TopicForListAllDto> getScheduleTopics() {
+		return service.getScheduleTopics();
 	}
 	
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})

@@ -22,6 +22,8 @@ public class EnrolmentClassDto implements Serializable {
     private Set<Long> teacherIds = new LinkedHashSet<Long>();
     private List<UserDto> teachers = new ArrayList<UserDto>();
     private Long primaryTeacherId;
+    private String startTime;
+    private String endTime;
     // Null means a legacy client sent only teacherIds.
     private Set<Long> deputyTeacherIds;
 
@@ -32,6 +34,11 @@ public class EnrolmentClassDto implements Serializable {
     public void setPrimaryTeacherId(Long primaryTeacherId) {
         this.primaryTeacherId = primaryTeacherId;
     }
+
+    public String getStartTime() { return startTime; }
+    public void setStartTime(String startTime) { this.startTime = startTime; }
+    public String getEndTime() { return endTime; }
+    public void setEndTime(String endTime) { this.endTime = endTime; }
 
     public Set<Long> getDeputyTeacherIds() {
         return deputyTeacherIds;
@@ -158,6 +165,8 @@ public class EnrolmentClassDto implements Serializable {
         this.name = domain.getName();
         this.code = domain.getCode();
         this.schoolId = domain.getSchoolId();
+        this.startTime = domain.getStartTime();
+        this.endTime = domain.getEndTime();
         if (domain.getParent() != null) {
             this.parentId = domain.getParent().getId();
             this.parentName = domain.getParent().getName();

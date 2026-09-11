@@ -46,6 +46,17 @@ public class EnrolmentClass extends BaseObject{
 	@Column(name = "primary_teacher_id")
 	private Long primaryTeacherId;
 
+	@Column(name = "start_time", length = 5)
+	private String startTime;
+
+	@Column(name = "end_time", length = 5)
+	private String endTime;
+
+	public String getStartTime() { return startTime; }
+	public void setStartTime(String startTime) { this.startTime = startTime; }
+	public String getEndTime() { return endTime; }
+	public void setEndTime(String endTime) { this.endTime = endTime; }
+
 	public Long getPrimaryTeacherId() {
 		return primaryTeacherId;
 	}

@@ -1,6 +1,8 @@
 package com.globits.richy.service.impl;
 
 import java.text.Normalizer;
+import java.text.ParsePosition;
+import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,11 +30,17 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.globits.richy.domain.EnrolmentClass;
+import com.globits.richy.domain.EnrolmentClassScheduleDay;
+import com.globits.richy.domain.Topic;
 import com.globits.richy.dto.EnrolmentClassDto;
+import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
 import com.globits.richy.dto.EnrolmentClassMoveStudentDto;
 import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
 import com.globits.richy.dto.EnrolmentClassTeamDto;
+import com.globits.richy.dto.TopicForListAllDto;
 import com.globits.richy.repository.EnrolmentClassRepository;
+import com.globits.richy.repository.EnrolmentClassScheduleDayRepository;
+import com.globits.richy.repository.TopicRepository;
 import com.globits.richy.service.EnrolmentClassService;
 import com.globits.security.domain.Role;
 import com.globits.security.domain.User;
@@ -46,6 +54,10 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	EnrolmentClassRepository enrolmentClassRepository;
 	@Autowired
 	UserRepository userRepository;
+	@Autowired
+	EnrolmentClassScheduleDayRepository scheduleDayRepository;
+	@Autowired
+	TopicRepository topicRepository;
 
 	private static final List<String> TEACHER_ROLE_NAMES = Arrays.asList(
 			"ROLE_ADMIN",
@@ -534,6 +546,137 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			}
 		}
 		return getTeamBoard(classId);
+	}
+
+	@Override
+	public EnrolmentClassDto saveScheduleSettings(Long classId, EnrolmentClassDto dto) {
+		EnrolmentClass selectedClass = classId == null ? null : enrolmentClassRepository.findOne(classId);
+		if (selectedClass == null || dto == null) {
+			return null;
+		}
+		User currentUser = getCurrentUser();
+		if (!canEditClass(currentUser, selectedClass)) {
+			throw new AccessDeniedException("Bạn không được thiết lập lớp này.");
+		}
+		String startTime = normalizeTime(dto.getStartTime());
+		String endTime = normalizeTime(dto.getEndTime());
+		if ((dto.getStartTime() != null && !dto.getStartTime().trim().isEmpty() && startTime == null)
+				|| (dto.getEndTime() != null && !dto.getEndTime().trim().isEmpty() && endTime == null)) {
+			return null;
+		}
+		if (startTime != null && endTime != null && endTime.compareTo(startTime) <= 0) {
+			return null;
+		}
+		selectedClass.setStartTime(startTime);
+		selectedClass.setEndTime(endTime);
+		selectedClass.setModifiedBy(currentUser.getUsername());
+		selectedClass.setModifyDate(LocalDateTime.now());
+		enrolmentClassRepository.save(selectedClass);
+		return toDto(selectedClass, null, currentUser);
+	}
+
+	@Override
+	public List<EnrolmentClassScheduleDayDto> getScheduleDays(Long classId, String fromDate, String toDate) {
+		EnrolmentClass selectedClass = classId == null ? null : enrolmentClassRepository.findOne(classId);
+		if (selectedClass == null || !isValidDate(fromDate) || !isValidDate(toDate)
+				|| fromDate.compareTo(toDate) > 0) {
+			return new ArrayList<EnrolmentClassScheduleDayDto>();
+		}
+		User currentUser = getCurrentUser();
+		if (!canViewClass(currentUser, selectedClass)) {
+			throw new AccessDeniedException("Bạn không được xem lịch của lớp này.");
+		}
+		List<EnrolmentClassScheduleDayDto> result = new ArrayList<EnrolmentClassScheduleDayDto>();
+		for (EnrolmentClassScheduleDay day : scheduleDayRepository
+				.findByEnrolmentClassIdAndScheduleDateBetweenOrderByScheduleDateAsc(classId, fromDate, toDate)) {
+			result.add(new EnrolmentClassScheduleDayDto(day));
+		}
+		return result;
+	}
+
+	@Override
+	public EnrolmentClassScheduleDayDto saveScheduleDay(Long classId, EnrolmentClassScheduleDayDto dto) {
+		EnrolmentClass selectedClass = classId == null ? null : enrolmentClassRepository.findOne(classId);
+		if (selectedClass == null || dto == null || !isValidDate(dto.getScheduleDate())) {
+			return null;
+		}
+		User currentUser = getCurrentUser();
+		if (!canEditClass(currentUser, selectedClass)) {
+			throw new AccessDeniedException("Bạn không được sửa lịch của lớp này.");
+		}
+
+		Set<Topic> classTopics = loadTopics(dto.getClassTopicIds());
+		Set<Topic> homeworkTopics = loadTopics(dto.getHomeworkTopicIds());
+		if (classTopics == null || homeworkTopics == null) {
+			return null;
+		}
+
+		EnrolmentClassScheduleDay domain = scheduleDayRepository
+				.findByEnrolmentClassIdAndScheduleDate(classId, dto.getScheduleDate());
+		if (domain == null) {
+			domain = new EnrolmentClassScheduleDay();
+			domain.setEnrolmentClass(selectedClass);
+			domain.setScheduleDate(dto.getScheduleDate());
+			domain.setCreateDate(LocalDateTime.now());
+			domain.setCreatedBy(currentUser.getUsername());
+		} else {
+			domain.setModifyDate(LocalDateTime.now());
+			domain.setModifiedBy(currentUser.getUsername());
+		}
+		domain.setClassTopics(classTopics);
+		domain.setHomeworkTopics(homeworkTopics);
+		domain = scheduleDayRepository.save(domain);
+		return new EnrolmentClassScheduleDayDto(domain);
+	}
+
+	@Override
+	public List<TopicForListAllDto> getScheduleTopics() {
+		List<TopicForListAllDto> topics = topicRepository.getAllTopics();
+		Collections.sort(topics, new Comparator<TopicForListAllDto>() {
+			@Override
+			public int compare(TopicForListAllDto first, TopicForListAllDto second) {
+				String a = first == null || first.getName() == null ? "" : first.getName();
+				String b = second == null || second.getName() == null ? "" : second.getName();
+				return a.compareToIgnoreCase(b);
+			}
+		});
+		return topics;
+	}
+
+	private Set<Topic> loadTopics(List<Long> topicIds) {
+		Set<Topic> result = new LinkedHashSet<Topic>();
+		if (topicIds == null) {
+			return result;
+		}
+		for (Long topicId : new LinkedHashSet<Long>(topicIds)) {
+			Topic topic = topicId == null ? null : topicRepository.findOne(topicId);
+			if (topic == null) {
+				return null;
+			}
+			result.add(topic);
+		}
+		return result;
+	}
+
+	private String normalizeTime(String value) {
+		if (value == null || value.trim().isEmpty()) {
+			return null;
+		}
+		String normalized = value.trim();
+		if (!normalized.matches("(?:[01]\\d|2[0-3]):[0-5]\\d")) {
+			return null;
+		}
+		return normalized;
+	}
+
+	private boolean isValidDate(String value) {
+		if (value == null || !value.matches("\\d{4}-\\d{2}-\\d{2}")) {
+			return false;
+		}
+		SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+		format.setLenient(false);
+		ParsePosition position = new ParsePosition(0);
+		return format.parse(value, position) != null && position.getIndex() == value.length();
 	}
 
 	private EnrolmentClassDto toDto(

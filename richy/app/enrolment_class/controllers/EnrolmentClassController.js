@@ -39,6 +39,19 @@
         vm.teamBoardModal = null;
         vm.teamSearchText = '';
         vm.teamBoardSaving = false;
+		vm.scheduleClass = null;
+		vm.scheduleEntries = [];
+		vm.scheduleCalendarDays = [];
+		vm.scheduleWeekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+		vm.scheduleMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+		vm.scheduleTopics = [];
+		vm.scheduleLoading = false;
+		vm.scheduleSaving = false;
+		vm.scheduleDaySaving = false;
+		vm.scheduleModal = null;
+		vm.scheduleDayModal = null;
+		vm.scheduleDay = null;
+		vm.topicSelectionOpen = {classTopicIds: false, homeworkTopicIds: false};
 		vm.originalParentId = null;
 
 		vm.isAdmin = function () {
@@ -546,6 +559,214 @@
                 vm.teamBoardSaving = false;
             });
         };
+
+		vm.openClassSchedule = function (item) {
+			if (!item || !item.id || item.canEdit !== true || item.parentId) {
+				toastr.warning('Bạn không được thiết lập lịch cho lớp này.', 'Thông báo');
+				return;
+			}
+			vm.scheduleLoading = true;
+			service.getOne(item.id).then(function (classData) {
+				if (!classData || classData.canEdit !== true) {
+					throw new Error('forbidden');
+				}
+				vm.scheduleClass = angular.copy(classData);
+				vm.scheduleClass.startTimeValue = parseScheduleTime(classData.startTime);
+				vm.scheduleClass.endTimeValue = parseScheduleTime(classData.endTime);
+				return service.getScheduleTopics();
+			}).then(function (topics) {
+				vm.scheduleTopics = angular.isArray(topics) ? topics : [];
+				vm.scheduleMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+				vm.scheduleModal = modal.open({
+					animation: true,
+					templateUrl: 'class_schedule_modal.html',
+					scope: $scope,
+					size: 'lg',
+					windowClass: 'class-management-modal-window class-schedule-modal-window',
+					backdrop: 'static'
+				});
+				return vm.loadScheduleMonth();
+			}).catch(function () {
+				vm.scheduleLoading = false;
+				toastr.error('Không tải được thiết lập lớp hoặc danh sách topic.', 'Lỗi');
+			});
+		};
+
+		vm.loadScheduleMonth = function () {
+			if (!vm.scheduleClass || !vm.scheduleClass.id) { return; }
+			var firstDay = moment(vm.scheduleMonthDate).startOf('month').format('YYYY-MM-DD');
+			var lastDay = moment(vm.scheduleMonthDate).endOf('month').format('YYYY-MM-DD');
+			vm.scheduleLoading = true;
+			return service.getSchedule(vm.scheduleClass.id, firstDay, lastDay).then(function (data) {
+				vm.scheduleEntries = angular.isArray(data) ? data : [];
+				vm.buildScheduleCalendar();
+				vm.scheduleLoading = false;
+			}, function () {
+				vm.scheduleEntries = [];
+				vm.buildScheduleCalendar();
+				vm.scheduleLoading = false;
+				toastr.error('Không tải được lịch trong tháng.', 'Lỗi');
+			});
+		};
+
+		vm.buildScheduleCalendar = function () {
+			var year = vm.scheduleMonthDate.getFullYear();
+			var month = vm.scheduleMonthDate.getMonth();
+			var daysInMonth = new Date(year, month + 1, 0).getDate();
+			var firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
+			var entriesByDate = {};
+			angular.forEach(vm.scheduleEntries, function (entry) {
+				entriesByDate[entry.scheduleDate] = entry;
+			});
+			var cells = [];
+			for (var blank = 0; blank < firstWeekday; blank++) {
+				cells.push({isBlank: true});
+			}
+			var todayKey = moment().format('YYYY-MM-DD');
+			for (var day = 1; day <= daysInMonth; day++) {
+				var dateKey = moment(new Date(year, month, day)).format('YYYY-MM-DD');
+				var entry = entriesByDate[dateKey] || null;
+				cells.push({
+					isBlank: false,
+					day: day,
+					dateKey: dateKey,
+					isToday: dateKey === todayKey,
+					entry: entry,
+					classCount: entry && entry.classTopicIds ? entry.classTopicIds.length : 0,
+					homeworkCount: entry && entry.homeworkTopicIds ? entry.homeworkTopicIds.length : 0
+				});
+			}
+			while (cells.length % 7) { cells.push({isBlank: true}); }
+			vm.scheduleCalendarDays = cells;
+			vm.scheduleMonthLabel = 'THÁNG ' + (month + 1) + ' / ' + year;
+		};
+
+		vm.changeScheduleMonth = function (offset) {
+			vm.scheduleMonthDate = new Date(
+				vm.scheduleMonthDate.getFullYear(),
+				vm.scheduleMonthDate.getMonth() + offset,
+				1
+			);
+			vm.loadScheduleMonth();
+		};
+
+		vm.saveScheduleSettings = function () {
+			if (vm.scheduleSaving || !vm.scheduleClass) { return; }
+			var startTime = formatScheduleTime(vm.scheduleClass.startTimeValue);
+			var endTime = formatScheduleTime(vm.scheduleClass.endTimeValue);
+			if (startTime && endTime && endTime <= startTime) {
+				toastr.warning('Giờ tan học phải sau giờ học.', 'Thông báo');
+				return;
+			}
+			vm.scheduleSaving = true;
+			service.saveScheduleSettings(vm.scheduleClass.id, {
+				startTime: startTime,
+				endTime: endTime
+			}).then(function (saved) {
+				vm.scheduleSaving = false;
+				if (!saved) {
+					toastr.error('Không lưu được giờ học.', 'Lỗi');
+					return;
+				}
+				vm.scheduleClass.startTime = saved.startTime;
+				vm.scheduleClass.endTime = saved.endTime;
+				vm.scheduleClass.startTimeValue = parseScheduleTime(saved.startTime);
+				vm.scheduleClass.endTimeValue = parseScheduleTime(saved.endTime);
+				var row = vm.findClass(vm.scheduleClass.id);
+				if (row) {
+					row.startTime = saved.startTime;
+					row.endTime = saved.endTime;
+				}
+				toastr.success('Đã lưu giờ học và giờ tan học.', 'Thông báo');
+			}, function () {
+				vm.scheduleSaving = false;
+				toastr.error('Không lưu được giờ học.', 'Lỗi');
+			});
+		};
+
+		function parseScheduleTime(value) {
+			if (!value || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) { return null; }
+			var parts = value.split(':');
+			return new Date(1970, 0, 1, parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
+		}
+
+		function formatScheduleTime(value) {
+			if (!value || !angular.isFunction(value.getHours)) { return null; }
+			var hours = value.getHours();
+			var minutes = value.getMinutes();
+			return (hours < 10 ? '0' : '') + hours + ':' + (minutes < 10 ? '0' : '') + minutes;
+		}
+
+		vm.openScheduleDay = function (cell) {
+			if (!cell || cell.isBlank || vm.scheduleLoading) { return; }
+			vm.scheduleDay = angular.copy(cell.entry || {
+				enrolmentClassId: vm.scheduleClass.id,
+				scheduleDate: cell.dateKey,
+				classTopicIds: [],
+				homeworkTopicIds: []
+			});
+			vm.scheduleDay.classTopicIds = vm.scheduleDay.classTopicIds || [];
+			vm.scheduleDay.homeworkTopicIds = vm.scheduleDay.homeworkTopicIds || [];
+			vm.topicSelectionOpen = {classTopicIds: false, homeworkTopicIds: false};
+			vm.scheduleDayModal = modal.open({
+				animation: true,
+				templateUrl: 'class_schedule_day_modal.html',
+				scope: $scope,
+				size: 'lg',
+				windowClass: 'class-management-modal-window class-schedule-day-modal-window',
+				backdrop: 'static'
+			});
+		};
+
+		vm.scheduleDayLabel = function () {
+			return vm.scheduleDay && vm.scheduleDay.scheduleDate
+				? moment(vm.scheduleDay.scheduleDate, 'YYYY-MM-DD').format('DD/MM/YYYY') : '';
+		};
+
+		vm.toggleTopicSelection = function (field) {
+			vm.topicSelectionOpen[field] = !vm.topicSelectionOpen[field];
+		};
+
+		vm.selectedScheduleTopics = function (field) {
+			var selectedIds = vm.scheduleDay && vm.scheduleDay[field] ? vm.scheduleDay[field] : [];
+			var selectedLookup = {};
+			angular.forEach(selectedIds, function (id) { selectedLookup[String(id)] = true; });
+			return vm.scheduleTopics.filter(function (topic) {
+				return topic && selectedLookup[String(topic.id)] === true;
+			});
+		};
+
+		vm.saveScheduleDay = function () {
+			if (vm.scheduleDaySaving || !vm.scheduleDay) { return; }
+			vm.scheduleDaySaving = true;
+			service.saveScheduleDay(vm.scheduleClass.id, {
+				id: vm.scheduleDay.id || null,
+				scheduleDate: vm.scheduleDay.scheduleDate,
+				classTopicIds: vm.scheduleDay.classTopicIds || [],
+				homeworkTopicIds: vm.scheduleDay.homeworkTopicIds || []
+			}).then(function (saved) {
+				vm.scheduleDaySaving = false;
+				if (!saved) {
+					toastr.error('Không lưu được kế hoạch ngày học.', 'Lỗi');
+					return;
+				}
+				var replaced = false;
+				for (var i = 0; i < vm.scheduleEntries.length; i++) {
+					if (vm.scheduleEntries[i].scheduleDate === saved.scheduleDate) {
+						vm.scheduleEntries[i] = saved;
+						replaced = true;
+						break;
+					}
+				}
+				if (!replaced) { vm.scheduleEntries.push(saved); }
+				vm.buildScheduleCalendar();
+				if (vm.scheduleDayModal) { vm.scheduleDayModal.close(); }
+				toastr.success('Đã lưu Class và Homework cho ngày ' + vm.scheduleDayLabel() + '.', 'Thông báo');
+			}, function () {
+				vm.scheduleDaySaving = false;
+				toastr.error('Không lưu được kế hoạch ngày học.', 'Lỗi');
+			});
+		};
 
         vm.openEditor = function (item, parentId) {
             if (item && item.id) {
