@@ -86,6 +86,7 @@
                 <ui-select
                     ng-model="vm.searchTopicDto.topicCategory"
                     ng-change="vm.getTopics()"
+                    ng-disabled="vm.loadingTopicCategories"
                     theme="bootstrap">
 
                     <ui-select-match placeholder="Chọn Grade / Category">
@@ -102,9 +103,20 @@
 
                 <label>BÀI TỪ VỰNG</label>
 
+                <div class="battle-online-topic-loading" ng-if="vm.loadingTopics || vm.loadingTopicCategories"
+                     role="status" aria-live="polite">
+                    <span class="battle-online-topic-spinner" aria-hidden="true"></span>
+                    {{vm.loadingTopicCategories ? 'Đang tải category...' : 'Đang tải bài từ vựng...'}}
+                </div>
+                <button type="button" class="battle-online-topic-load-error"
+                        ng-if="vm.topicLoadError && !vm.loadingTopics" ng-click="vm.getTopics()">
+                    {{vm.topicLoadError}}
+                </button>
+
                 <div class="battle-online-topic-picker-row">
                     <ui-select
                         ng-model="vm.selectedTopicToCreate"
+                        ng-disabled="vm.loadingTopics || vm.loadingTopicCategories || !vm.topics.length"
                         theme="bootstrap">
 
                         <ui-select-match placeholder="Chọn bài muốn thêm">
@@ -120,7 +132,7 @@
 
                     <button type="button"
                             class="battle-online-add-topic-btn"
-                            ng-disabled="!vm.selectedTopicToCreate"
+                            ng-disabled="vm.loadingTopics || !vm.selectedTopicToCreate"
                             ng-click="vm.addTopicToCreate()">
                         <i class="fa fa-plus"></i>
                         THÊM BÀI
@@ -1435,6 +1447,11 @@
 
         <h2>KẾT QUẢ CUỐI CÙNG</h2>
 
+        <p class="battle-online-finish-expiration" role="status">
+            Phòng tự hủy sau {{vm.finishedRoomRemainingLabel || '5 phút'}}.
+            Chơi lại trước khi hết hạn để giữ phòng.
+        </p>
+
 
         <div class="battle-online-finish-mode">
             <span ng-if="vm.room.settings.mode === 'CLASSIC'">
@@ -2399,6 +2416,46 @@
     .battle-online-side-card
     .ui-select-container {
         width: 100% !important;
+    }
+
+    .battle-online-topic-loading {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #6354de;
+        font-size: 12px;
+        margin: 0 0 8px;
+    }
+
+    .battle-online-topic-spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        border: 2px solid rgba(99, 84, 222, .2);
+        border-top-color: #6354de;
+        border-radius: 50%;
+        animation: battle-online-topic-spin .7s linear infinite;
+    }
+
+    @keyframes battle-online-topic-spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .battle-online-topic-load-error {
+        background: transparent;
+        border: 0;
+        color: #ce355b;
+        font-size: 12px;
+        padding: 0 0 8px;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .battle-online-finish-expiration {
+        color: #6354de;
+        font-size: 13px;
+        margin: 8px 0 16px;
     }
 
     .battle-online-topic-picker-row {

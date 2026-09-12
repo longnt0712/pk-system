@@ -112,6 +112,11 @@
 
         vm.topicCategories = [];
         vm.topics = [];
+        vm.loadingTopicCategories = false;
+        vm.loadingTopics = false;
+        vm.topicLoadError = '';
+        vm.finishedRoomRemainingLabel = '';
+        var topicLoadRequestId = 0;
         vm.topicOwners = [];
         vm.selectedTopicOwner = null;
 
@@ -759,6 +764,7 @@
 
 
         function getPageTopicCategory() {
+            vm.loadingTopicCategories = true;
             questionService
                 .getPageTopicCategory(
                     vm.searchTopicCategory,
@@ -767,6 +773,7 @@
                 )
                 .then(
                     function (data) {
+                        if (destroyed) { return; }
                         vm.topicCategories =
                             data &&
                             data.content
@@ -786,37 +793,61 @@
 
                             getTopics();
                         }
+                    },
+                    function () {
+                        if (!destroyed) {
+                            toastr.error('Không tải được danh sách category. Vui lòng tải lại trang.');
+                        }
                     }
-                );
+                ).finally(function () {
+                    vm.loadingTopicCategories = false;
+                });
         }
 
 
         function getTopics() {
+            var requestId = ++topicLoadRequestId;
             vm.selectedTopicToCreate = null;
+            vm.topics = [];
+            vm.topicLoadError = '';
 
             if (
                 !vm.searchTopicDto
                     .topicCategory
             ) {
                 vm.topics = [];
+                vm.loadingTopics = false;
                 return;
             }
 
+            vm.loadingTopics = true;
             questionService
                 .getTopicsForGames(
-                    vm.searchTopicDto,
+                    angular.copy(vm.searchTopicDto),
                     1,
                     10000000
                 )
                 .then(
                     function (data) {
+                        if (destroyed || requestId !== topicLoadRequestId) {
+                            return;
+                        }
                         vm.topics =
                             data &&
                             data.content
                                 ? data.content
                                 : [];
+                    },
+                    function () {
+                        if (!destroyed && requestId === topicLoadRequestId) {
+                            vm.topicLoadError = 'Không tải được bài từ vựng. Bấm để thử lại.';
+                        }
                     }
-                );
+                ).finally(function () {
+                    if (requestId === topicLoadRequestId) {
+                        vm.loadingTopics = false;
+                    }
+                });
         }
 
 
@@ -1298,7 +1329,9 @@
 
         function handleExpiredRoom() {
             exitRoomAfterRemoteRemoval(
-                'Phòng đã tự hủy vì không bắt đầu trong vòng 5 phút.',
+                vm.room && vm.room.status === 'FINISHED'
+                    ? 'Phòng đã tự hủy sau 5 phút hiển thị kết quả.'
+                    : 'Phòng đã hết hạn hoặc không còn tồn tại.',
                 'PHÒNG ĐÃ HẾT HẠN'
             );
         }
@@ -4210,6 +4243,14 @@
            ===================================================== */
 
         function updateCountdown() {
+            vm.finishedRoomRemainingLabel = '';
+            if (vm.room && vm.room.status === 'FINISHED' && vm.room.finishedExpiresAt) {
+                var remaining = Math.max(0, Math.ceil(
+                    (Number(vm.room.finishedExpiresAt) - new Date().getTime() - serverTimeOffset) / 1000
+                ));
+                vm.finishedRoomRemainingLabel = Math.floor(remaining / 60) + ':' +
+                    ('0' + (remaining % 60)).slice(-2);
+            }
             if (
                 !vm.room ||
                 vm.room.status !==

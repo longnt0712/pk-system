@@ -156,9 +156,14 @@
                                 <i class="fa fa-caret-right"></i> Thiết lập điểm
                             </a>
                         </li>
-                        <li>
+                        <li ng-if="settings.permissionsLoaded !== false && (!settings.isViewer || settings.isAdmin || settings.isEducationManagerment || settings.isStudentManagerment || settings.isStaff)">
                             <a href="enrolment_classes">
-                                <i class="fa fa-caret-right"></i> DANH SÁCH LỚP
+                                <i class="fa fa-caret-right"></i> LỚP NHÀ THỜ
+                            </a>
+                        </li>
+                        <li ng-if="settings.permissionsLoaded !== false && settings.englishClassesDomain && (settings.isViewer || settings.isAdmin || settings.isEducationManagerment || settings.isStudentManagerment || settings.isStaff)">
+                            <a href="english_classes">
+                                <i class="fa fa-caret-right"></i> LỚP TIẾNG ANH
                             </a>
                         </li>
 

@@ -14,13 +14,11 @@
 	Hrm.EnrolmentClass.config(['$stateProvider', function ($stateProvider) {
 		var version = window.APP_VERSION || new Date().getTime();
 
-        $stateProvider
-
-            // Event priority
-            .state('application.class', {
-                url: '/enrolment_classes',
+        function classPage(url, schoolId, title) {
+            return {
+                url: url,
 				templateUrl: 'enrolment_class/views/listing.html?v=' + version,
-                data: {pageTitle: 'EnrolmentClass'},
+                data: {pageTitle: title, enrolmentSchoolId: schoolId},
                 controller: 'EnrolmentClassController as vm',
                 resolve: {
                     deps: ['$ocLazyLoad', function ($ocLazyLoad) {
@@ -34,7 +32,11 @@
                         });
                     }]
                 }
-            });
+            };
+        }
+        $stateProvider
+            .state('application.class', classPage('/enrolment_classes', 2, 'Lớp nhà thờ'))
+            .state('application.englishClass', classPage('/english_classes', 1, 'Lớp tiếng Anh'));
     }]);
 
 })();

@@ -16,7 +16,6 @@
             'toastr',
             'ngIdle',
             'dndLists',
-            
 
             // Sub modules
             'Hrm.Common',
@@ -54,11 +53,12 @@
 
         window.Hrm = Hrm;
     }
+
     // Hrm.API_SERVER_URL = 'https://giaoxuphungkhoang.org:8085/service/';
     // Hrm.API_SERVER_URL = 'https://tnttphungkhoang.com/service/';
     /*Hrm.API_SERVER_URL = 'https://ieltsroom.com:8443/service/';*/
-	/*Hrm.API_SERVER_URL = 'https://tnttphungkhoang.com:8443/service/';*/
-	Hrm.API_SERVER_URL = window.location.origin + '/service/';
+    /*Hrm.API_SERVER_URL = 'https://tnttphungkhoang.com:8443/service/';*/
+    Hrm.API_SERVER_URL = window.location.origin + '/service/';
     // Hrm.API_SERVER_URL = 'http://localhost:8443/service/'; // đoạn này mình call local
     //--------------------//
 
@@ -359,6 +359,7 @@
             // Hai co luon doi nghich de khong bao gio hien dong thoi hai thuong hieu.
             settings.chapter = isChapterDomain;
             settings.ieltsRoom = !isChapterDomain;
+            settings.englishClassesDomain = window.location.hostname.toLowerCase() === 'ieltsroom.com';
 
             // =========================
             // OAuth errors

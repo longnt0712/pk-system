@@ -21,12 +21,33 @@ import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
 import com.globits.richy.dto.TopicForListAllDto;
 import com.globits.richy.service.EnrolmentClassService;
 import com.globits.security.dto.UserDto;
+import com.globits.richy.service.EnrolmentClassScheduleException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import java.util.Map;
+import java.util.Collections;
 
 @RestController
 @RequestMapping("/api/enrolment_class")
 public class RestEnrolmentClassController {
 	@Autowired
 	EnrolmentClassService service;
+
+	@ExceptionHandler(EnrolmentClassScheduleException.class)
+	public ResponseEntity<Map<String, String>> handleScheduleError(EnrolmentClassScheduleException error) {
+		return new ResponseEntity<Map<String, String>>(Collections.singletonMap("message", error.getMessage()), error.getStatus());
+	}
+
+	@ExceptionHandler({org.springframework.orm.ObjectOptimisticLockingFailureException.class, javax.persistence.OptimisticLockException.class})
+	public ResponseEntity<Map<String, String>> handleScheduleConflict(Exception error) {
+		return new ResponseEntity<Map<String, String>>(Collections.singletonMap("message",
+				"Kế hoạch vừa được cập nhật ở phiên khác. Hãy tải lại lịch."), HttpStatus.CONFLICT);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/schedule/{classId}/students", method = RequestMethod.GET)
+	public List<UserDto> getScheduleStudents(@PathVariable Long classId) { return service.getScheduleStudents(classId); }
 	
 	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_STUDENT","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
@@ -41,8 +62,8 @@ public class RestEnrolmentClassController {
 
 	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_STUDENT","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/tree", method = RequestMethod.GET)
-	public List<EnrolmentClassDto> getTree() {
-		return service.getTreeObjects();
+	public List<EnrolmentClassDto> getTree(@RequestParam(defaultValue = "2") Integer schoolId) {
+		return service.getTreeObjects(schoolId);
 	}
 
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT","ROLE_STAFF"})

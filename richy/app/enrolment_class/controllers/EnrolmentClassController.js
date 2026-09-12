@@ -4,10 +4,10 @@
     angular.module('Hrm.EnrolmentClass').controller('EnrolmentClassController', EnrolmentClassController);
 
     EnrolmentClassController.$inject = [
-        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService'
+        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService', '$state'
     ];
 
-    function EnrolmentClassController($rootScope, $scope, toastr, modal, service) {
+    function EnrolmentClassController($rootScope, $scope, toastr, modal, service, $state) {
         $scope.$on('$viewContentLoaded', function () {
             App.initAjax();
         });
@@ -17,6 +17,17 @@
         $rootScope.settings.layout.pageSidebarClosed = false;
 
         var vm = this;
+        vm.schoolId = Number(($state.current.data || {}).enrolmentSchoolId) === 1 ? 1 : 2;
+        vm.listTitle = vm.schoolId === 1 ? 'Lớp tiếng Anh' : 'Lớp nhà thờ';
+        vm.canAccessList = function () {
+            var s = $rootScope.settings || {};
+            var manager = s.isAdmin || s.isEducationManagerment || s.isStudentManagerment || s.isStaff;
+            if (vm.schoolId === 1) {
+                return window.location.hostname.toLowerCase() === 'ieltsroom.com' && !!(manager || s.isViewer);
+            }
+            return !!(manager || !s.isViewer);
+        };
+        var classLoadRequest = 0;
         vm.allClasses = [];
         vm.visibleClasses = [];
         vm.teacherCandidates = [];
@@ -54,6 +65,15 @@
 		vm.scheduleModal = null;
 		vm.scheduleDayModal = null;
 		vm.scheduleDay = null;
+		vm.scheduleStudents = [];
+		vm.scheduleStudentsLoading = false;
+		vm.scheduleStudentsError = false;
+		vm.scheduleTaskCategories = [];
+		vm.taskEditor = null;
+		vm.taskEditorIndex = -1;
+		vm.taskStatuses = [{id: 'TODO', name: 'Chưa làm'}, {id: 'IN_PROGRESS', name: 'Đang thực hiện'}, {id: 'DONE', name: 'Hoàn thành'}];
+		vm.studentTaskStatuses = [{id: 'TODO', name: 'Chưa làm'}, {id: 'DONE', name: 'Đã làm'}, {id: 'NEEDS_REVIEW', name: 'Cần bổ sung'}];
+		var scheduleStudentsRequest = 0;
 		vm.topicSelectionOpen = {classTopicIds: false, homeworkTopicIds: false};
 		vm.weeklyDayOptions = [
 			{value: 1, label: 'Thứ 2', shortLabel: 'T2'},
@@ -74,7 +94,7 @@
 		vm.canCreateRootClass = function () {
 			var currentSettings = $rootScope.settings || {};
 			return currentSettings.isAdmin === true
-				|| currentSettings.isEducationManagerment === true;
+				|| (vm.schoolId === 2 && currentSettings.isEducationManagerment === true);
 		};
 
 		vm.findClass = function (classId) {
@@ -88,14 +108,28 @@
 		};
 
         vm.load = function () {
-            service.getTree().then(function (data) {
-                vm.allClasses = angular.isArray(data) ? data : [];
+            var request = ++classLoadRequest;
+            if ($rootScope.settings.permissionsLoaded === false || !vm.canAccessList()) {
+                vm.allClasses = [];
+                vm.rebuildTree();
+                return;
+            }
+            service.getTree(vm.schoolId).then(function (data) {
+                if (request !== classLoadRequest || !vm.canAccessList()) { return; }
+                vm.allClasses = (angular.isArray(data) ? data : []).filter(function (item) {
+                    return Number(item.schoolId) === vm.schoolId;
+                });
                 angular.forEach(vm.allClasses, function (item) {
                     if (angular.isUndefined(vm.expanded[item.id])) {
                         vm.expanded[item.id] = true;
                     }
                 });
                 vm.rebuildTree();
+            }, function () {
+                if (request !== classLoadRequest) { return; }
+                vm.allClasses = [];
+                vm.rebuildTree();
+                toastr.error('Không tải được ' + vm.listTitle.toLowerCase() + '. Vui lòng thử lại.', 'Lỗi');
             });
         };
 
@@ -578,6 +612,9 @@
 				return;
 			}
 			vm.scheduleClass = angular.copy(item);
+			vm.taskEditor = null;
+			vm.scheduleTaskCategories = [];
+			vm.loadScheduleStudents();
 			vm.scheduleClass.weeklySessions = [];
 			vm.scheduleTopics = [];
 			vm.scheduleMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -620,6 +657,7 @@
 
 			service.getScheduleTopics().then(function (topics) {
 				vm.scheduleTopics = angular.isArray(topics) ? topics : [];
+				vm.buildScheduleTaskCategories();
 				vm.scheduleTopicsLoading = false;
 			}, function () {
 				vm.scheduleTopicsLoading = false;
@@ -677,7 +715,9 @@
 					isClassDay: weeklyDays[dayOfWeek] === true,
 					entry: entry,
 					classCount: entry && entry.classTopicIds ? entry.classTopicIds.length : 0,
-					homeworkCount: entry && entry.homeworkTopicIds ? entry.homeworkTopicIds.length : 0
+					homeworkCount: entry && entry.homeworkTopicIds ? entry.homeworkTopicIds.length : 0,
+					taskCount: entry && entry.tasks ? entry.tasks.length : 0,
+					doneTaskCount: entry && entry.tasks ? entry.tasks.filter(function (task) { return task.status === 'DONE'; }).length : 0
 				});
 			}
 			while (cells.length % 7) { cells.push({isBlank: true}); }
@@ -791,6 +831,10 @@
 			});
 			vm.scheduleDay.classTopicIds = vm.scheduleDay.classTopicIds || [];
 			vm.scheduleDay.homeworkTopicIds = vm.scheduleDay.homeworkTopicIds || [];
+			vm.scheduleDay.tasks = vm.scheduleDay.tasks || [];
+			vm.scheduleDay.classNotes = vm.scheduleDay.classNotes || '';
+			vm.scheduleDay.homeworkNotes = vm.scheduleDay.homeworkNotes || '';
+			vm.taskEditor = null;
 			vm.topicSelectionOpen = {classTopicIds: false, homeworkTopicIds: false};
 			vm.scheduleDayModal = modal.open({
 				animation: true,
@@ -822,16 +866,25 @@
 
 		vm.saveScheduleDay = function () {
 			if (vm.scheduleDaySaving || !vm.scheduleDay) { return; }
+			if (vm.taskEditor) { toastr.warning('Hãy bấm Thêm task/Cập nhật task hoặc Hủy sửa trước khi lưu kế hoạch.'); return; }
 			vm.scheduleDaySaving = true;
 			service.saveScheduleDay(vm.scheduleClass.id, {
 				id: vm.scheduleDay.id || null,
 				scheduleDate: vm.scheduleDay.scheduleDate,
 				classTopicIds: vm.scheduleDay.classTopicIds || [],
-				homeworkTopicIds: vm.scheduleDay.homeworkTopicIds || []
+				homeworkTopicIds: vm.scheduleDay.homeworkTopicIds || [],
+				version: vm.scheduleDay.version == null ? null : vm.scheduleDay.version,
+				classNotes: vm.scheduleDay.classNotes || '',
+				homeworkNotes: vm.scheduleDay.homeworkNotes || '',
+				tasks: vm.scheduleDay.tasks.map(scheduleTaskPayload)
 			}).then(function (saved) {
 				vm.scheduleDaySaving = false;
 				if (!saved) {
 					toastr.error('Không lưu được kế hoạch ngày học.', 'Lỗi');
+					return;
+				}
+				if (!angular.isArray(saved.tasks) || saved.version == null) {
+					toastr.error('Backend chưa hỗ trợ Tasks. Chưa xác nhận lưu tasks; hãy cập nhật backend trước.', 'Cần cập nhật');
 					return;
 				}
 				var replaced = false;
@@ -846,10 +899,121 @@
 				vm.buildScheduleCalendar();
 				if (vm.scheduleDayModal) { vm.scheduleDayModal.close(); }
 				toastr.success('Đã lưu Class và Homework cho ngày ' + vm.scheduleDayLabel() + '.', 'Thông báo');
-			}, function () {
+			}, function (error) {
 				vm.scheduleDaySaving = false;
-				toastr.error('Không lưu được kế hoạch ngày học.', 'Lỗi');
+				toastr.error(error && error.data && error.data.message ? error.data.message : 'Không lưu được kế hoạch ngày học.', 'Lỗi');
 			});
+		};
+
+		vm.loadScheduleStudents = function () {
+			var request = ++scheduleStudentsRequest;
+			vm.scheduleStudents = []; vm.scheduleStudentsLoading = true; vm.scheduleStudentsError = false;
+			return service.getScheduleStudents(vm.scheduleClass.id).then(function (students) {
+				if (request !== scheduleStudentsRequest) { return; }
+				var seen = {};
+				vm.scheduleStudents = (angular.isArray(students) ? students : []).filter(function (student) {
+					if (!student || student.id == null || seen[String(student.id)]) { return false; }
+					seen[String(student.id)] = true; student.taskDisplayName = responsibleDisplayName(student); return true;
+				});
+				vm.scheduleStudents.sort(function (a, b) { return (a.taskDisplayName || '').localeCompare(b.taskDisplayName || '', 'vi'); });
+				vm.scheduleStudentsLoading = false;
+			}, function () {
+				if (request !== scheduleStudentsRequest) { return; }
+				vm.scheduleStudentsLoading = false; vm.scheduleStudentsError = true;
+			});
+		};
+
+		vm.buildScheduleTaskCategories = function () {
+			var seen = {}; vm.scheduleTaskCategories = [];
+			angular.forEach(vm.scheduleTopics, function (topic) {
+				var key = topic.categoryId == null ? 'uncategorized' : String(topic.categoryId);
+				if (!seen[key]) {
+					seen[key] = true;
+					vm.scheduleTaskCategories.push({id: key, name: topic.categoryName || 'Không phân loại'});
+				}
+			});
+			vm.scheduleTaskCategories.sort(function (a, b) { return a.name.localeCompare(b.name, 'vi'); });
+		};
+
+		vm.tasksForSection = function (section) {
+			return ((vm.scheduleDay && vm.scheduleDay.tasks) || []).filter(function (task) { return task.section === section; });
+		};
+
+		vm.openScheduleTask = function (section, task) {
+			if (vm.scheduleDaySaving || vm.taskEditor) { return; }
+			if (!task && vm.scheduleDay.tasks.length >= 100) { toastr.warning('Tối đa 100 tasks cho một ngày.'); return; }
+			vm.taskEditorIndex = task ? vm.scheduleDay.tasks.indexOf(task) : -1;
+			vm.taskEditor = angular.copy(task || {section: section, title: '', notes: '', status: 'TODO', topicId: null, studentProgress: []});
+			vm.taskEditor.dueDateValue = vm.taskEditor.dueDate ? moment(vm.taskEditor.dueDate, 'YYYY-MM-DD', true).toDate() : null;
+			vm.taskEditor.categoryKey = vm.taskEditor.topicId == null ? null : (vm.taskEditor.categoryId == null ? 'uncategorized' : String(vm.taskEditor.categoryId));
+			vm.taskEditor.studentProgress = vm.taskEditor.studentProgress || [];
+			vm.taskEditor.showProgress = false;
+		};
+
+		vm.cancelScheduleTask = function () { vm.taskEditor = null; vm.taskEditorIndex = -1; };
+		vm.taskCategoryChanged = function () { vm.taskEditor.topicId = null; };
+		vm.taskTopics = function () {
+			if (!vm.taskEditor || !vm.taskEditor.categoryKey) { return []; }
+			return vm.scheduleTopics.filter(function (topic) {
+				return (topic.categoryId == null ? 'uncategorized' : String(topic.categoryId)) === vm.taskEditor.categoryKey;
+			});
+		};
+
+		vm.taskStudentProgress = function (student) {
+			var found = null;
+			angular.forEach(vm.taskEditor.studentProgress, function (entry) {
+				if (String(entry.studentUserId) === String(student.id)) { found = entry; }
+			});
+			if (!found) {
+				found = {studentUserId: student.id, status: 'TODO', notes: ''}; vm.taskEditor.studentProgress.push(found);
+			}
+			return found;
+		};
+
+		function scheduleTaskPayload(task) {
+			return {id: task.id || null, section: task.section, title: task.title, notes: task.notes || '',
+				dueDate: task.dueDate || null, status: task.status || 'TODO', topicId: task.topicId || null,
+				studentProgress: (task.studentProgress || []).filter(function (entry) {
+					return entry.status !== 'TODO' || (entry.notes || '').trim();
+				}).map(function (entry) { return {studentUserId: entry.studentUserId, status: entry.status, notes: entry.notes || ''}; })};
+		}
+
+		vm.commitScheduleTask = function () {
+			if (!vm.taskEditor || vm.scheduleDaySaving) { return; }
+			var task = angular.copy(vm.taskEditor); task.title = (task.title || '').trim();
+			if (!task.title || task.title.length > 200) { toastr.warning('Nhập tên task từ 1 đến 200 ký tự.'); return; }
+			if (task.dueDateValue && !moment(task.dueDateValue).isValid()) { toastr.warning('Hạn hoàn thành không hợp lệ.'); return; }
+			task.dueDate = task.dueDateValue ? moment(task.dueDateValue).format('YYYY-MM-DD') : null;
+			var topic = null;
+			angular.forEach(vm.scheduleTopics, function (item) { if (String(item.id) === String(task.topicId)) { topic = item; } });
+			if (task.topicId != null && !topic) { toastr.warning('Topic không còn tồn tại. Hãy chọn lại.'); return; }
+			task.topicName = topic ? topic.name : ''; task.categoryId = topic ? topic.categoryId : null;
+			task.categoryName = topic ? topic.categoryName : '';
+			task.studentProgress = scheduleTaskPayload(task).studentProgress;
+			delete task.showProgress; delete task.dueDateValue; delete task.categoryKey; delete task._confirmDelete;
+			if (vm.taskEditorIndex < 0) { vm.scheduleDay.tasks.push(task); }
+			else { vm.scheduleDay.tasks[vm.taskEditorIndex] = task; }
+			vm.cancelScheduleTask();
+		};
+
+		vm.removeScheduleTask = function (task) {
+			if (vm.scheduleDaySaving || vm.taskEditor) { return; }
+			if (!task._confirmDelete) { task._confirmDelete = true; return; }
+			var index = vm.scheduleDay.tasks.indexOf(task);
+			if (index >= 0) { vm.scheduleDay.tasks.splice(index, 1); }
+		};
+
+		vm.taskStatusLabel = function (task) {
+			return task.status === 'DONE' ? 'Hoàn thành' : (task.status === 'IN_PROGRESS' ? 'Đang thực hiện' : 'Chưa làm');
+		};
+		vm.taskOverdue = function (task) { return task.status !== 'DONE' && task.dueDate && task.dueDate < moment().format('YYYY-MM-DD'); };
+		vm.taskDueLabel = function (task) { return task.dueDate ? moment(task.dueDate, 'YYYY-MM-DD', true).format('DD/MM/YYYY') : ''; };
+		vm.taskCompletion = function (task) {
+			if (vm.scheduleStudentsLoading || vm.scheduleStudentsError) { return 'Chưa tải được tiến độ lớp'; }
+			var done = {};
+			angular.forEach(task.studentProgress || [], function (entry) { if (entry.status === 'DONE') { done[String(entry.studentUserId)] = true; } });
+			var count = vm.scheduleStudents.filter(function (student) { return done[String(student.id)]; }).length;
+			return count + '/' + vm.scheduleStudents.length + ' học sinh đã làm';
 		};
 
         vm.openEditor = function (item, parentId) {
@@ -882,7 +1046,7 @@
             var newObject = {
                 isNew: true,
                 parentId: parentId || null,
-				schoolId: parent ? parent.schoolId : (vm.isAdmin() ? null : 2),
+				schoolId: parent ? parent.schoolId : vm.schoolId,
                 teacherIds: []
             };
 			vm.loadTeachers(newObject.parentId, false, newObject.id).then(function () {
@@ -931,6 +1095,10 @@
         };
 
         vm.saveObject = function () {
+            if (!vm.canAccessList() || Number(vm.enrolmentClass.schoolId) !== vm.schoolId) {
+                toastr.warning('Lớp không thuộc danh sách hiện tại.', 'Thông báo');
+                return;
+            }
             if (vm.saving || vm.candidatesLoading || vm.candidatesError) { return; }
             if (!vm.enrolmentClass.name || !vm.enrolmentClass.name.trim()) {
                 toastr.warning('Bạn chưa nhập tên lớp.', 'Thông báo');
@@ -994,6 +1162,9 @@
             });
         };
 
-        vm.load();
+        $scope.$watchGroup(['settings.permissionsLoaded', 'settings.isViewer', 'settings.isAdmin',
+            'settings.isEducationManagerment', 'settings.isStudentManagerment', 'settings.isStaff'], function () {
+            vm.load();
+        });
     }
 })();

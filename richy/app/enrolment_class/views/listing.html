@@ -289,6 +289,40 @@
     .class-day-selected-list li { display:flex; align-items:center; gap:8px; margin-bottom:7px; padding:8px 10px; border-radius:7px; background:#f2f5fa; color:#45536a; }
     .class-day-selected-list .fa { color:#6d5ce8; }
     .class-day-empty { padding:14px 8px; color:#9aa5b5; font-size:12px; text-align:center; }
+    .class-day-plan-heading { flex-wrap:wrap; }
+    .class-day-plan-actions { display:flex; gap:6px; flex-wrap:wrap; }
+    .class-day-plan-actions .btn { border-radius:8px; padding:7px 10px; }
+    .class-day-plan-actions .class-day-add-btn { width:auto; height:35px; }
+    .class-task-section { margin-top:16px; border-top:1px solid #e5e9f2; padding-top:12px; }
+    .class-task-section label { font-size:12px; font-weight:700; color:#45536a; }
+    .class-task-note { resize:vertical; min-height:64px; }
+    .class-task-item { margin-top:10px; padding:12px; border:1px solid #e0e6f2; border-radius:9px; background:#fafbff; }
+    .class-task-item.is-overdue { border-left:4px solid #e94b67; }
+    .class-task-item.is-done { border-left:4px solid #27b98d; }
+    .class-task-title { display:block; overflow-wrap:anywhere; color:#293955; }
+    .class-task-meta { display:flex; gap:7px; flex-wrap:wrap; margin:7px 0; font-size:11px; color:#6a7590; }
+    .class-task-meta span { border-radius:6px; padding:3px 6px; background:#edf0fa; }
+    .class-task-meta .task-overdue { background:#ffe9ee; color:#b32949; }
+    .class-task-notes { white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; color:#596780; margin-bottom:8px; }
+    .class-task-buttons { display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap; }
+    .class-task-editor { margin-top:12px; padding:12px; border:1px solid #aa9af9; border-radius:9px; background:#f7f5ff; }
+    .class-task-editor .form-group { margin-bottom:10px; }
+    .class-task-editor .form-control { max-width:100%; }
+    .class-task-editor-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .class-task-help { display:block; color:#74819a; font-size:11px; margin:6px 0; }
+    .class-task-progress { max-height:300px; overflow-y:auto; margin:10px 0; }
+    .class-task-student { display:grid; grid-template-columns:minmax(0,1fr) 125px; gap:7px; padding:10px 0; border-bottom:1px solid #e0e6f2; }
+    .class-task-student strong { font-size:12px; align-self:center; overflow-wrap:anywhere; }
+    .class-task-student input { grid-column:1 / -1; }
+    .global-dark-mode .class-task-section { border-color:#384156; }
+    .global-dark-mode .class-task-item { border-color:#44506a; background:#262d3e; }
+    .global-dark-mode .class-task-editor { border-color:#7969be; background:#29263d; }
+    .global-dark-mode .class-task-title, .global-dark-mode .class-task-section label,
+    .global-dark-mode .class-task-student strong { color:#eef2ff; }
+    .global-dark-mode .class-task-notes, .global-dark-mode .class-task-help { color:#b7c1d9; }
+    .global-dark-mode .class-task-meta span { background:#38415a; color:#d7dff5; }
+    .global-dark-mode .class-task-editor .form-control, .global-dark-mode .class-task-note { background:#1d2330; color:#eef2ff; border-color:#465069; }
+    @media (max-width:480px) { .class-task-editor-grid { grid-template-columns:1fr; } }
     .global-dark-mode .class-schedule-modal .modal-body,
     .global-dark-mode .class-day-plan-modal .modal-body { background:#151a25; }
     .global-dark-mode .class-schedule-time-card,
@@ -358,11 +392,14 @@
     }
 </style>
 
-<div class="row margin-top-10">
+<div class="alert alert-warning margin-top-10" data-ng-if="settings.permissionsLoaded !== false && !vm.canAccessList()">
+    Bạn không được xem {{vm.listTitle.toLowerCase()}} trên tài khoản hoặc domain này.
+</div>
+<div class="row margin-top-10" data-ng-if="settings.permissionsLoaded !== false && vm.canAccessList()">
     <div class="col-md-12">
         <div class="portlet light bordered">
             <div class="portlet-title">
-                <div class="caption"><i class="fa fa-sitemap"></i> Cây lớp học và đội</div>
+                <div class="caption"><i class="fa fa-sitemap"></i> {{vm.listTitle}}</div>
             </div>
             <div class="portlet-body">
                 <div class="class-tree-toolbar">
@@ -621,7 +658,8 @@
                             <span class="class-schedule-topic-count homework-count" data-ng-if="cell.homeworkCount">
                                 Homework: {{cell.homeworkCount}} topic
                             </span>
-                            <span class="class-schedule-empty-hint" data-ng-if="!cell.classCount && !cell.homeworkCount">
+                            <span class="class-schedule-topic-count" data-ng-if="cell.taskCount">Tasks: {{cell.doneTaskCount}}/{{cell.taskCount}}</span>
+                            <span class="class-schedule-empty-hint" data-ng-if="!cell.classCount && !cell.homeworkCount && !cell.taskCount">
                                 {{cell.isClassDay ? 'Ngày học · + Thêm bài' : '+ Thêm bài'}}
                             </span>
                         </span>
@@ -643,14 +681,20 @@
                 <section class="class-day-plan-card class-plan">
                     <div class="class-day-plan-heading">
                         <h4><i class="fa fa-book"></i> Class</h4>
+                        <div class="class-day-plan-actions">
+                        <button type="button" class="btn btn-primary" data-ng-click="vm.openScheduleTask('CLASS')"
+                                data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor"><i class="fa fa-plus"></i> Tasks</button>
                         <button type="button" class="btn btn-primary class-day-add-btn"
                                 data-ng-click="vm.toggleTopicSelection('classTopicIds')"
-                                data-ng-disabled="vm.scheduleTopicsLoading" title="Chọn topic học trên lớp">
+                                data-ng-disabled="vm.scheduleTopicsLoading || vm.scheduleDaySaving" title="Chọn topic học trên lớp">
                             <i class="fa" data-ng-class="vm.scheduleTopicsLoading ? 'fa-spinner fa-spin' : (vm.topicSelectionOpen.classTopicIds ? 'fa-minus' : 'fa-plus')"></i>
+                            Topic
                         </button>
+                        </div>
                     </div>
                     <ui-select multiple theme="bootstrap" class="class-day-topic-select"
                                data-ng-if="vm.topicSelectionOpen.classTopicIds"
+                               data-ng-disabled="vm.scheduleDaySaving"
                                data-ng-model="vm.scheduleDay.classTopicIds" close-on-select="false">
                         <ui-select-match placeholder="Gõ tên topic để chọn...">{{$item.name}}</ui-select-match>
                         <ui-select-choices repeat="topic.id as topic in vm.scheduleTopics | propsFilter:{name:$select.search}">
@@ -663,19 +707,26 @@
                         </li>
                         <li class="class-day-empty" data-ng-if="!vm.scheduleDay.classTopicIds.length">Chưa chọn topic học trên lớp.</li>
                     </ul>
+                    <div data-ng-repeat="taskSection in ['CLASS']" data-ng-include="'class_schedule_tasks.html'"></div>
                 </section>
 
                 <section class="class-day-plan-card homework-plan">
                     <div class="class-day-plan-heading">
                         <h4><i class="fa fa-pencil-square-o"></i> Homework</h4>
+                        <div class="class-day-plan-actions">
+                        <button type="button" class="btn btn-warning" data-ng-click="vm.openScheduleTask('HOMEWORK')"
+                                data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor"><i class="fa fa-plus"></i> Tasks</button>
                         <button type="button" class="btn btn-warning class-day-add-btn"
                                 data-ng-click="vm.toggleTopicSelection('homeworkTopicIds')"
-                                data-ng-disabled="vm.scheduleTopicsLoading" title="Chọn topic bài tập về nhà">
+                                data-ng-disabled="vm.scheduleTopicsLoading || vm.scheduleDaySaving" title="Chọn topic bài tập về nhà">
                             <i class="fa" data-ng-class="vm.scheduleTopicsLoading ? 'fa-spinner fa-spin' : (vm.topicSelectionOpen.homeworkTopicIds ? 'fa-minus' : 'fa-plus')"></i>
+                            Topic
                         </button>
+                        </div>
                     </div>
                     <ui-select multiple theme="bootstrap" class="class-day-topic-select"
                                data-ng-if="vm.topicSelectionOpen.homeworkTopicIds"
+                               data-ng-disabled="vm.scheduleDaySaving"
                                data-ng-model="vm.scheduleDay.homeworkTopicIds" close-on-select="false">
                         <ui-select-match placeholder="Gõ tên topic để chọn...">{{$item.name}}</ui-select-match>
                         <ui-select-choices repeat="topic.id as topic in vm.scheduleTopics | propsFilter:{name:$select.search}">
@@ -688,16 +739,114 @@
                         </li>
                         <li class="class-day-empty" data-ng-if="!vm.scheduleDay.homeworkTopicIds.length">Chưa chọn topic bài tập về nhà.</li>
                     </ul>
+                    <div data-ng-repeat="taskSection in ['HOMEWORK']" data-ng-include="'class_schedule_tasks.html'"></div>
                 </section>
             </div>
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-default" data-ng-click="$dismiss()" data-ng-disabled="vm.scheduleDaySaving">Hủy</button>
-            <button type="button" class="btn btn-primary" data-ng-click="vm.saveScheduleDay()" data-ng-disabled="vm.scheduleDaySaving">
+            <button type="button" class="btn btn-primary" data-ng-click="vm.saveScheduleDay()" data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor">
                 <i class="fa" data-ng-class="vm.scheduleDaySaving ? 'fa-spinner fa-spin' : 'fa-save'"></i>
                 {{vm.scheduleDaySaving ? 'Đang lưu...' : 'Lưu kế hoạch'}}
             </button>
         </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="class_schedule_tasks.html">
+    <div class="class-task-section">
+        <div class="form-group">
+            <label>Ghi chú {{taskSection === 'CLASS' ? 'trên lớp' : 'bài tập về nhà'}}</label>
+            <textarea class="form-control class-task-note" rows="2" maxlength="4000"
+                      data-ng-model="vm.scheduleDay[taskSection === 'CLASS' ? 'classNotes' : 'homeworkNotes']"
+                      data-ng-disabled="vm.scheduleDaySaving" placeholder="Dặn dò, tài liệu cần chuẩn bị, lưu ý cho học sinh..."></textarea>
+        </div>
+        <strong>Tasks ({{vm.tasksForSection(taskSection).length}})</strong>
+        <p class="class-task-help" data-ng-if="!vm.tasksForSection(taskSection).length">Bấm + Tasks để thêm việc cần làm. Có thể nhập tự do, không bắt buộc chọn topic.</p>
+        <article class="class-task-item" data-ng-repeat="task in vm.tasksForSection(taskSection) track by $index"
+                 data-ng-class="{'is-done': task.status === 'DONE', 'is-overdue': vm.taskOverdue(task)}">
+            <strong class="class-task-title">{{$index + 1}}. {{task.title}}</strong>
+            <div class="class-task-meta">
+                <span>{{vm.taskStatusLabel(task)}}</span>
+                <span data-ng-if="task.dueDate">Hạn: {{vm.taskDueLabel(task)}}</span>
+                <span class="task-overdue" data-ng-if="vm.taskOverdue(task)">Quá hạn</span>
+                <span>{{vm.taskCompletion(task)}}</span>
+            </div>
+            <p class="class-task-help" data-ng-if="task.topicName">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
+            <div class="class-task-notes" data-ng-if="task.notes">{{task.notes}}</div>
+            <div class="class-task-buttons">
+                <button type="button" class="btn btn-default btn-xs" data-ng-click="vm.openScheduleTask(taskSection, task)"
+                        data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor"><i class="fa fa-pencil"></i> Sửa / Tiến độ HS</button>
+                <button type="button" class="btn btn-danger btn-xs" data-ng-click="vm.removeScheduleTask(task)"
+                        data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor">{{task._confirmDelete ? 'Xác nhận xóa' : 'Xóa'}}</button>
+                <button type="button" class="btn btn-default btn-xs" data-ng-if="task._confirmDelete" data-ng-click="task._confirmDelete = false">Giữ lại</button>
+            </div>
+        </article>
+        <form name="taskForm" class="class-task-editor" novalidate data-ng-submit="taskForm.$valid && vm.commitScheduleTask()"
+              data-ng-if="vm.taskEditor && vm.taskEditor.section === taskSection">
+            <div class="form-group">
+                <label>Việc học sinh cần làm <span class="font-red">*</span></label>
+                <input type="text" name="title" class="form-control" data-ng-model="vm.taskEditor.title" required maxlength="200"
+                       placeholder="VD: Học 20 từ mới, làm bài trang 35..." autofocus />
+            </div>
+            <div class="class-task-editor-grid">
+                <div class="form-group">
+                    <label>Category (không bắt buộc)</label>
+                    <ui-select theme="bootstrap" data-ng-model="vm.taskEditor.categoryKey" data-ng-change="vm.taskCategoryChanged()"
+                               data-ng-disabled="vm.scheduleTopicsLoading" allow-clear="true">
+                        <ui-select-match placeholder="Chọn category..." allow-clear="true">{{$select.selected.name}}</ui-select-match>
+                        <ui-select-choices repeat="category.id as category in vm.scheduleTaskCategories | propsFilter:{name:$select.search}">
+                            <div data-ng-bind-html="category.name | highlight:$select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                <div class="form-group">
+                    <label>Topic / Bài học (không bắt buộc)</label>
+                    <ui-select theme="bootstrap" data-ng-model="vm.taskEditor.topicId" allow-clear="true"
+                               data-ng-disabled="vm.scheduleTopicsLoading || !vm.taskEditor.categoryKey">
+                        <ui-select-match placeholder="Chọn bài học..." allow-clear="true">{{$select.selected.name}}</ui-select-match>
+                        <ui-select-choices repeat="topic.id as topic in vm.taskTopics() | propsFilter:{name:$select.search}">
+                            <div data-ng-bind-html="topic.name | highlight:$select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+            <p class="class-task-help" data-ng-if="vm.scheduleTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải category / topic...</p>
+            <div class="form-group">
+                <label>Ghi chú / Hướng dẫn làm bài</label>
+                <textarea class="form-control class-task-note" rows="3" maxlength="4000" data-ng-model="vm.taskEditor.notes"
+                          placeholder="Yêu cầu, số câu cần làm, đường dẫn tài liệu hoặc lưu ý..."></textarea>
+            </div>
+            <div class="class-task-editor-grid">
+                <div class="form-group"><label>Hạn hoàn thành</label><input type="date" name="dueDate" class="form-control" data-ng-model="vm.taskEditor.dueDateValue" /></div>
+                <div class="form-group"><label>Trạng thái công việc</label>
+                    <select class="form-control" data-ng-model="vm.taskEditor.status" data-ng-options="status.id as status.name for status in vm.taskStatuses"></select>
+                </div>
+            </div>
+            <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.taskEditor.showProgress = !vm.taskEditor.showProgress">
+                <i class="fa fa-users"></i> {{vm.taskEditor.showProgress ? 'Ẩn' : 'Theo dõi'}} tiến độ từng học sinh
+            </button>
+            <div data-ng-if="vm.taskEditor.showProgress">
+                <p class="class-task-help">Giáo viên đánh dấu thủ công; học sinh chưa được đánh dấu mặc định là Chưa làm.</p>
+                <p class="class-task-help" data-ng-if="vm.scheduleStudentsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải học sinh...</p>
+                <button type="button" class="btn btn-default btn-sm" data-ng-if="vm.scheduleStudentsError" data-ng-click="vm.loadScheduleStudents()">Không tải được học sinh — Thử lại</button>
+                <p class="class-task-help" data-ng-if="!vm.scheduleStudentsLoading && !vm.scheduleStudentsError && !vm.scheduleStudents.length">Lớp chưa có học sinh đang hoạt động.</p>
+                <div class="class-task-progress">
+                    <div class="class-task-student" data-ng-repeat="student in vm.scheduleStudents track by student.id"
+                         data-ng-init="progress = vm.taskStudentProgress(student)">
+                        <strong>{{student.taskDisplayName || student.username}}</strong>
+                        <select class="form-control input-sm" data-ng-model="progress.status"
+                                data-ng-options="status.id as status.name for status in vm.studentTaskStatuses" aria-label="Tiến độ học sinh"></select>
+                        <input type="text" class="form-control input-sm" maxlength="1000" data-ng-model="progress.notes" placeholder="Nhận xét riêng / phần cần bổ sung..." />
+                    </div>
+                </div>
+            </div>
+            <p class="class-task-help">Task và tiến độ chỉ được lưu lên server khi bấm “Lưu kế hoạch”.</p>
+            <div class="class-task-buttons">
+                <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.cancelScheduleTask()">Hủy sửa</button>
+                <button type="submit" class="btn btn-primary btn-sm" data-ng-disabled="taskForm.$invalid || vm.scheduleDaySaving">{{vm.taskEditorIndex < 0 ? 'Thêm task' : 'Cập nhật task'}}</button>
+            </div>
+        </form>
     </div>
 </script>
 
@@ -733,9 +882,9 @@
                 <div class="col-md-4 form-group">
                     <label class="bold">Mã trường</label>
                     <input data-ng-model="vm.enrolmentClass.schoolId" type="number" class="form-control"
-                           data-ng-readonly="!vm.isAdmin()" />
-                    <span class="help-block" data-ng-if="!vm.isAdmin()">
-                        Mã trường được hệ thống giữ theo phạm vi bạn quản lý.
+                           readonly />
+                    <span class="help-block">
+                        Mã trường được giữ theo {{vm.listTitle.toLowerCase()}}.
                     </span>
                 </div>
                 <div class="col-md-12 form-group">

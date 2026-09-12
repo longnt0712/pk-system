@@ -29,10 +29,18 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import com.globits.richy.domain.EnrolmentClass;
 import com.globits.richy.domain.EnrolmentClassScheduleDay;
 import com.globits.richy.domain.EnrolmentClassWeeklySession;
 import com.globits.richy.domain.Topic;
+import com.globits.richy.domain.EnrolmentClassScheduleTask;
+import com.globits.richy.domain.EnrolmentClassTaskProgress;
+import com.globits.richy.dto.EnrolmentClassScheduleTaskDto;
+import com.globits.richy.dto.EnrolmentClassTaskProgressDto;
+import com.globits.richy.service.EnrolmentClassScheduleException;
+import org.springframework.http.HttpStatus;
 import com.globits.richy.dto.EnrolmentClassDto;
 import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
 import com.globits.richy.dto.EnrolmentClassWeeklySessionDto;
@@ -92,7 +100,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 		List<EnrolmentClassDto> visible = new ArrayList<EnrolmentClassDto>();
 		for (EnrolmentClass domain : domains) {
-			if (!canViewClass(currentUser, domain)) {
+			if (!(searchDto != null && searchDto.getSchoolId() != null ? searchDto.getSchoolId()
+					: EDUCATION_MANAGER_SCHOOL_ID).equals(domain.getSchoolId()) || !canViewClass(currentUser, domain)) {
 				continue;
 			}
 			String searchable = ((domain.getName() == null ? "" : domain.getName()) + " "
@@ -165,6 +174,17 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 
 		boolean parentChanged = !sameClass(originalParent, parent);
+        Integer targetSchoolId = parent != null ? parent.getSchoolId()
+                : !isNew ? domain.getSchoolId()
+                : dto.getSchoolId() != null ? dto.getSchoolId() : EDUCATION_MANAGER_SCHOOL_ID;
+        if (!canViewSchool(currentUser, targetSchoolId)
+                || (dto.getSchoolId() != null && !dto.getSchoolId().equals(targetSchoolId))
+                || (!isNew && !targetSchoolId.equals(domain.getSchoolId()))) {
+            throw new AccessDeniedException("Không được chuyển lớp sang trường hoặc phạm vi khác.");
+        }
+        if (isNew && parent == null && HIDDEN_SCHOOL_ID.equals(targetSchoolId) && !hasRole(currentUser, ROLE_ADMIN)) {
+            throw new AccessDeniedException("Bạn không được tạo lớp tiếng Anh gốc.");
+        }
 		if (isNew) {
 			if (parent == null) {
 				if (!canCreateRootClass(currentUser)) {
@@ -231,13 +251,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			domain.setCode(dto.getCode().trim());
 		}
 		
-		if (hasRole(currentUser, ROLE_ADMIN)) {
-			domain.setSchoolId(dto.getSchoolId());
-		} else if (parent != null) {
-			domain.setSchoolId(parent.getSchoolId());
-		} else if (isNew) {
-			domain.setSchoolId(EDUCATION_MANAGER_SCHOOL_ID);
-		}
+        domain.setSchoolId(targetSchoolId);
 		domain.setParent(parent);
 
 		domain.setTeachers(teachers);
@@ -271,8 +285,21 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 	@Override
 	public List<EnrolmentClassDto> getTreeObjects() {
+		return getTreeObjects(EDUCATION_MANAGER_SCHOOL_ID);
+	}
+
+	@Override
+	public List<EnrolmentClassDto> getTreeObjects(Integer schoolId) {
 		List<EnrolmentClass> domains = enrolmentClassRepository.findAll();
 		User currentUser = getCurrentUser();
+        if (!canViewSchool(currentUser, schoolId)) {
+            throw new AccessDeniedException("Bạn không được xem danh sách lớp này.");
+        }
+        List<EnrolmentClass> scopedDomains = new ArrayList<EnrolmentClass>();
+        for (EnrolmentClass domain : domains) {
+            if (schoolId.equals(domain.getSchoolId())) { scopedDomains.add(domain); }
+        }
+        domains = scopedDomains;
 		Collections.sort(domains, new Comparator<EnrolmentClass>() {
 			@Override
 			public int compare(EnrolmentClass first, EnrolmentClass second) {
@@ -652,6 +679,19 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 		EnrolmentClassScheduleDay domain = scheduleDayRepository
 				.findByEnrolmentClassIdAndScheduleDate(classId, dto.getScheduleDate());
+		if (domain != null && dto.getTasks() != null &&
+				(dto.getVersion() == null || dto.getVersion().longValue() != domain.getScheduleVersion())) {
+			throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT,
+					"Kế hoạch đã được người khác cập nhật. Hãy tải lại lịch trước khi lưu.");
+		}
+		if (domain == null && dto.getId() != null) {
+			throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Ngày học đã thay đổi. Hãy tải lại lịch.");
+		}
+		String classNotes = scheduleText(dto.getClassNotes(), 4000, false);
+		String homeworkNotes = scheduleText(dto.getHomeworkNotes(), 4000, false);
+		/* Validate every task before changing any managed entity. */
+		List<EnrolmentClassScheduleTask> preparedTasks = dto.getTasks() == null ? null
+				: prepareScheduleTasks(classId, domain, dto.getTasks());
 		if (domain == null) {
 			domain = new EnrolmentClassScheduleDay();
 			domain.setEnrolmentClass(selectedClass);
@@ -664,8 +704,129 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 		domain.setClassTopics(classTopics);
 		domain.setHomeworkTopics(homeworkTopics);
-		domain = scheduleDayRepository.save(domain);
+		if (dto.getClassNotes() != null) { domain.setClassNotes(classNotes); }
+		if (dto.getHomeworkNotes() != null) { domain.setHomeworkNotes(homeworkNotes); }
+		if (preparedTasks != null) {
+			Map<Long, EnrolmentClassScheduleTask> oldTasks = new LinkedHashMap<Long, EnrolmentClassScheduleTask>();
+			for (EnrolmentClassScheduleTask task : domain.getTasks()) { oldTasks.put(task.getId(), task); }
+			List<EnrolmentClassScheduleTask> nextTasks = new ArrayList<EnrolmentClassScheduleTask>();
+			for (EnrolmentClassScheduleTask prepared : preparedTasks) {
+				EnrolmentClassScheduleTask task = prepared.getId() == null ? prepared : oldTasks.get(prepared.getId());
+				if (task.getId() == null) {
+					task.setCreateDate(LocalDateTime.now()); task.setCreatedBy(currentUser.getUsername());
+				} else {
+					task.setModifyDate(LocalDateTime.now()); task.setModifiedBy(currentUser.getUsername());
+				}
+				task.setScheduleDay(domain); task.setSection(prepared.getSection()); task.setTitle(prepared.getTitle());
+				task.setNotes(prepared.getNotes()); task.setDueDate(prepared.getDueDate()); task.setStatus(prepared.getStatus());
+				task.setTopic(prepared.getTopic()); task.setDisplayOrder(prepared.getDisplayOrder());
+				if (task != prepared) {
+					task.getStudentProgress().clear(); task.getStudentProgress().addAll(prepared.getStudentProgress());
+				}
+				nextTasks.add(task);
+			}
+			domain.getTasks().retainAll(nextTasks);
+			for (EnrolmentClassScheduleTask task : nextTasks) {
+				if (!domain.getTasks().contains(task)) { domain.getTasks().add(task); }
+			}
+		}
+		/* Force the day row to change when only child tasks/progress changed. */
+		domain.setModifyDate(LocalDateTime.now());
+		domain = scheduleDayRepository.saveAndFlush(domain);
 		return new EnrolmentClassScheduleDayDto(domain);
+	}
+
+	@Override
+	public List<UserDto> getScheduleStudents(Long classId) {
+		EnrolmentClass selectedClass = classId == null ? null : enrolmentClassRepository.findOne(classId);
+		User currentUser = getCurrentUser();
+		if (selectedClass == null || !canEditClass(currentUser, selectedClass)) {
+			throw new AccessDeniedException("Bạn không được quản lý bài tập của lớp này.");
+		}
+		List<UserDto> result = new ArrayList<UserDto>();
+		for (User student : scheduleStudentDomains(classId, currentUser)) { result.add(new UserDto(student, true)); }
+		return result;
+	}
+
+	private List<User> scheduleStudentDomains(Long classId, User currentUser) {
+		List<Long> visibleIds = new ArrayList<Long>();
+		for (Long id : getClassAndDescendantIds(classId)) {
+			EnrolmentClass item = enrolmentClassRepository.findOne(id);
+			if (item != null && canViewClass(currentUser, item)) { visibleIds.add(id); }
+		}
+		return visibleIds.isEmpty() ? new ArrayList<User>() : userRepository.getActiveStudentsByEnrollmentClassIds(visibleIds);
+	}
+
+	private String scheduleText(String value, int limit, boolean required) {
+		String text = value == null ? "" : value.trim();
+		if ((required && text.isEmpty()) || text.length() > limit) {
+			throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST,
+					"Nội dung task không hợp lệ hoặc vượt giới hạn " + limit + " ký tự.");
+		}
+		return text;
+	}
+
+	private List<EnrolmentClassScheduleTask> prepareScheduleTasks(Long classId,
+			EnrolmentClassScheduleDay day, List<EnrolmentClassScheduleTaskDto> values) {
+		if (values.size() > 100) {
+			throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Tối đa 100 tasks cho một ngày.");
+		}
+		Map<Long, EnrolmentClassScheduleTask> oldTasks = new LinkedHashMap<Long, EnrolmentClassScheduleTask>();
+		if (day != null) { for (EnrolmentClassScheduleTask task : day.getTasks()) { oldTasks.put(task.getId(), task); } }
+		Set<Long> studentIds = new HashSet<Long>();
+		boolean hasProgress = false;
+		for (EnrolmentClassScheduleTaskDto value : values) {
+			if (value != null && value.getStudentProgress() != null && !value.getStudentProgress().isEmpty()) { hasProgress = true; }
+		}
+		if (hasProgress) {
+			for (User student : scheduleStudentDomains(classId, getCurrentUser())) { studentIds.add(student.getId()); }
+		}
+		List<EnrolmentClassScheduleTask> result = new ArrayList<EnrolmentClassScheduleTask>();
+		Set<Long> usedTaskIds = new HashSet<Long>();
+		int progressCount = 0;
+		for (EnrolmentClassScheduleTaskDto value : values) {
+			if (value == null || !Arrays.asList("CLASS", "HOMEWORK").contains(value.getSection()) ||
+					!Arrays.asList("TODO", "IN_PROGRESS", "DONE").contains(value.getStatus())) {
+				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Loại hoặc trạng thái task không hợp lệ.");
+			}
+			if (value.getId() != null && (!oldTasks.containsKey(value.getId()) || !usedTaskIds.add(value.getId()))) {
+				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Task không thuộc ngày/lớp này hoặc bị trùng.");
+			}
+			EnrolmentClassScheduleTask task = new EnrolmentClassScheduleTask();
+			task.setId(value.getId()); task.setSection(value.getSection()); task.setStatus(value.getStatus());
+			task.setTitle(scheduleText(value.getTitle(), 200, true)); task.setNotes(scheduleText(value.getNotes(), 4000, false));
+			String dueDate = scheduleText(value.getDueDate(), 10, false);
+			if (!dueDate.isEmpty() && !isValidDate(dueDate)) {
+				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Hạn hoàn thành không hợp lệ.");
+			}
+			task.setDueDate(dueDate.isEmpty() ? null : dueDate);
+			if (value.getTopicId() != null) {
+				Topic topic = topicRepository.findOne(value.getTopicId());
+				if (topic == null) { throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Topic không còn tồn tại."); }
+				task.setTopic(topic);
+			}
+			task.setDisplayOrder(result.size());
+			Set<Long> allowedStudentIds = new HashSet<Long>(studentIds);
+			/* Preserve historical progress when a student later leaves this class. */
+			if (value.getId() != null) {
+				for (EnrolmentClassTaskProgress old : oldTasks.get(value.getId()).getStudentProgress()) { allowedStudentIds.add(old.getStudentUserId()); }
+			}
+			Set<Long> seenStudents = new HashSet<Long>();
+			if (value.getStudentProgress() != null) {
+				for (EnrolmentClassTaskProgressDto entry : value.getStudentProgress()) {
+					if (++progressCount > 5000 || entry == null || entry.getStudentUserId() == null ||
+							!allowedStudentIds.contains(entry.getStudentUserId()) || !seenStudents.add(entry.getStudentUserId()) ||
+							!Arrays.asList("TODO", "DONE", "NEEDS_REVIEW").contains(entry.getStatus())) {
+						throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Tiến độ học sinh không hợp lệ hoặc vượt giới hạn.");
+					}
+					EnrolmentClassTaskProgress progress = new EnrolmentClassTaskProgress();
+					progress.setStudentUserId(entry.getStudentUserId()); progress.setStatus(entry.getStatus());
+					progress.setNotes(scheduleText(entry.getNotes(), 1000, false)); task.getStudentProgress().add(progress);
+				}
+			}
+			result.add(task);
+		}
+		return result;
 	}
 
 	@Override
@@ -732,7 +893,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			Map<Long, Integer> childCounts,
 			User currentUser) {
 		EnrolmentClassDto dto = new EnrolmentClassDto(domain);
-		if (domain.getParent() != null && !canViewClass(currentUser, domain.getParent())) {
+		if (domain.getParent() != null && (!domain.getSchoolId().equals(domain.getParent().getSchoolId())
+                || !canViewClass(currentUser, domain.getParent()))) {
 			dto.setParentId(null);
 			dto.setParentName(null);
 		}
@@ -864,17 +1026,22 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	}
 
 	private boolean canViewClass(User user, EnrolmentClass selectedClass) {
-		if (user == null || selectedClass == null) {
-			return false;
-		}
-		if (hasRole(user, ROLE_ADMIN)) {
-			return true;
-		}
-		if (HIDDEN_SCHOOL_ID.equals(selectedClass.getSchoolId())) {
-			return hasRole(user, ROLE_USER) || hasRole(user, ROLE_VIEWER);
-		}
-		return true;
+		return selectedClass != null && canViewSchool(user, selectedClass.getSchoolId());
 	}
+
+    private boolean canViewSchool(User user, Integer schoolId) {
+        if (user == null || schoolId == null) { return false; }
+        boolean manager = hasRole(user, ROLE_ADMIN) || hasRole(user, ROLE_EDUCATION_MANAGERMENT)
+                || hasRole(user, ROLE_STUDENT_MANAGERMENT) || hasRole(user, "ROLE_STAFF")
+                || hasRole(user, "ROLE_STAFF_MANAGEMENT");
+        if (HIDDEN_SCHOOL_ID.equals(schoolId)) {
+            if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes)) { return false; }
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            return "ieltsroom.com".equalsIgnoreCase(attributes.getRequest().getServerName())
+                    && (manager || hasRole(user, ROLE_VIEWER));
+        }
+        return EDUCATION_MANAGER_SCHOOL_ID.equals(schoolId) && (manager || !hasRole(user, ROLE_VIEWER));
+    }
 
 	private boolean canEditClass(User user, EnrolmentClass selectedClass) {
 		if (!canViewClass(user, selectedClass)) {

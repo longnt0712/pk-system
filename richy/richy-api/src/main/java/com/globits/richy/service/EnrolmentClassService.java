@@ -20,6 +20,7 @@ public interface EnrolmentClassService {
 	public boolean saveObject(EnrolmentClassDto dto);
 	public boolean deleteObject(Long id);
 	public List<EnrolmentClassDto> getTreeObjects();
+    public List<EnrolmentClassDto> getTreeObjects(Integer schoolId);
 	public List<Long> getClassAndDescendantIds(Long classId);
 	public List<Long> getClassIdsBySchool(Integer schoolId);
 	public List<UserDto> getTeacherCandidates();
@@ -31,4 +32,5 @@ public interface EnrolmentClassService {
 	public List<EnrolmentClassScheduleDayDto> getScheduleDays(Long classId, String fromDate, String toDate);
 	public EnrolmentClassScheduleDayDto saveScheduleDay(Long classId, EnrolmentClassScheduleDayDto dto);
 	public List<TopicForListAllDto> getScheduleTopics();
+	public List<UserDto> getScheduleStudents(Long classId);
 }

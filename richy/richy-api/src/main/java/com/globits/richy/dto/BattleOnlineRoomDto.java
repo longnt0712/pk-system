@@ -38,6 +38,7 @@ public class BattleOnlineRoomDto implements Serializable {
     private long matchEndsAt;
 
     private long serverTime;
+    private long finishedExpiresAt;
 
     /*
      * ESCAPE_DUMB_DEMON: vị trí âm gần ĐỘI 1, vị trí dương gần ĐỘI 2.
@@ -102,6 +103,14 @@ public class BattleOnlineRoomDto implements Serializable {
             new ArrayList<BattleOnlineEventDto>();
 
     public BattleOnlineRoomDto() {
+    }
+
+    public long getFinishedExpiresAt() {
+        return finishedExpiresAt;
+    }
+
+    public void setFinishedExpiresAt(long finishedExpiresAt) {
+        this.finishedExpiresAt = finishedExpiresAt;
     }
 
     public String getCode() {

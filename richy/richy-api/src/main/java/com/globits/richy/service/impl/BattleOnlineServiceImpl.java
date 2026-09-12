@@ -77,6 +77,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final long FIRE_UP_DURATION_MS = 15000L;
     private static final long LOBBY_EXPIRATION_MS =
             TimeUnit.MINUTES.toMillis(5L);
+    private static final long FINISHED_EXPIRATION_MS =
+            TimeUnit.MINUTES.toMillis(5L);
     private static final double FIRE_UP_SCORE_MULTIPLIER = 1.2D;
     private static final double MONEY_BEG_STEAL_RATE = 0.40D;
     private static final double MONEY_BEG_SKILL_RATE = 0.12D;
@@ -169,6 +171,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             new ConcurrentHashMap<String, ScheduledFuture<?>>();
 
     private final Map<String, ScheduledFuture<?>> lobbyExpirationTimers =
+            new ConcurrentHashMap<String, ScheduledFuture<?>>();
+
+    private final Map<String, ScheduledFuture<?>> finishedExpirationTimers =
             new ConcurrentHashMap<String, ScheduledFuture<?>>();
 
     private final ScheduledExecutorService scheduler =
@@ -903,6 +908,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
+            cancelFinishedExpirationTimer(room.code);
+            room.finishedExpiresAt = 0L;
             cancelClassicTimer(room.code);
             cancelMatchTimer(room.code);
 
@@ -4152,6 +4159,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private void finishMatchLocked(
             RoomState room) {
 
+        /* Duplicate finish callbacks must not extend the results lifetime. */
+        if (!PLAYING.equals(room.status)) {
+            return;
+        }
+
         room.status = FINISHED;
         room.questionEndsAt = 0L;
         room.matchEndsAt = 0L;
@@ -4173,6 +4185,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.invertedUntil = 0L;
             player.burningUntil = 0L;
         }
+
+        scheduleFinishedExpiration(room);
     }
 
 
@@ -4805,6 +4819,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         dto.setCode(room.code);
         dto.setStatus(room.status);
+        dto.setFinishedExpiresAt(room.finishedExpiresAt);
         dto.setHostUsername(
                 room.hostUsername
         );
@@ -5794,6 +5809,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         cancelMatchTimer(code);
         cancelPreloadTimer(code);
         cancelLobbyExpirationTimer(code);
+        cancelFinishedExpirationTimer(code);
 
         rooms.remove(code);
     }
@@ -5802,6 +5818,46 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     /* =========================================================
        TIMER CLEANUP
        ========================================================= */
+
+    private void scheduleFinishedExpiration(final RoomState room) {
+        cancelFinishedExpirationTimer(room.code);
+        final long deadline = System.currentTimeMillis() + FINISHED_EXPIRATION_MS;
+        final long generation = ++room.finishedExpirationGeneration;
+        room.finishedExpiresAt = deadline;
+
+        ScheduledFuture<?> future = scheduler.schedule(new Runnable() {
+            @Override
+            public void run() {
+                synchronized (room) {
+                    /* A cancelled callback may already be waiting for this lock.
+                     * Check both room identity and match deadline before removal. */
+                    if (rooms.get(room.code) != room ||
+                            !FINISHED.equals(room.status) ||
+                            room.finishedExpiresAt != deadline ||
+                            room.finishedExpirationGeneration != generation) {
+                        return;
+                    }
+                    room.status = EXPIRED;
+                    try {
+                        broadcastGeneric(room);
+                    } finally {
+                        /* Still clean up if the notification cannot be delivered. */
+                        destroyRoom(room.code);
+                    }
+                }
+            }
+        }, FINISHED_EXPIRATION_MS, TimeUnit.MILLISECONDS);
+
+        finishedExpirationTimers.put(room.code, future);
+    }
+
+    private void cancelFinishedExpirationTimer(String roomCode) {
+        ScheduledFuture<?> future = finishedExpirationTimers.remove(
+                normalizeRoomCode(roomCode));
+        if (future != null) {
+            future.cancel(false);
+        }
+    }
 
     private void scheduleLobbyExpiration(
             final String roomCode) {
@@ -6390,6 +6446,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         String code;
         String status;
         String hostUsername;
+
+        long finishedExpiresAt = 0L;
+        long finishedExpirationGeneration = 0L;
 
         Long ownerUserId;
 

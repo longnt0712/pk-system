@@ -9,8 +9,8 @@
         var baseUrl = settings.api.baseUrl + settings.api.apiV1Url + 'enrolment_class';
         var self = this;
 
-        self.getTree = function () {
-            return utils.resolve(baseUrl + '/tree', 'GET', angular.noop, angular.noop);
+        self.getTree = function (schoolId) {
+            return utils.resolve(baseUrl + '/tree?schoolId=' + encodeURIComponent(schoolId || 2), 'GET', angular.noop, angular.noop);
         };
 
         self.getTeacherCandidates = function () {
@@ -67,6 +67,10 @@
 
         self.getScheduleTopics = function () {
             return utils.resolve(baseUrl + '/schedule/topics', 'GET', angular.noop, angular.noop);
+        };
+
+        self.getScheduleStudents = function (classId) {
+            return utils.resolve(baseUrl + '/schedule/' + classId + '/students', 'GET', angular.noop, angular.noop);
         };
 
         self.saveScheduleSettings = function (classId, object) {

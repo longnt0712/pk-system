@@ -6,12 +6,18 @@ import java.util.List;
 
 import com.globits.richy.domain.EnrolmentClassScheduleDay;
 import com.globits.richy.domain.Topic;
+import com.globits.richy.domain.EnrolmentClassScheduleTask;
 
 public class EnrolmentClassScheduleDayDto implements Serializable {
     private static final long serialVersionUID = 1L;
     private Long id;
     private Long enrolmentClassId;
     private String scheduleDate;
+    private Long version;
+    private String classNotes;
+    private String homeworkNotes;
+    /* Null means omitted by an older client; [] explicitly clears tasks. */
+    private List<EnrolmentClassScheduleTaskDto> tasks;
     private List<Long> classTopicIds = new ArrayList<Long>();
     private List<Long> homeworkTopicIds = new ArrayList<Long>();
     private List<TopicForListAllDto> classTopics = new ArrayList<TopicForListAllDto>();
@@ -22,6 +28,13 @@ public class EnrolmentClassScheduleDayDto implements Serializable {
         id = domain.getId();
         enrolmentClassId = domain.getEnrolmentClass() == null ? null : domain.getEnrolmentClass().getId();
         scheduleDate = domain.getScheduleDate();
+        version = domain.getScheduleVersion();
+        classNotes = domain.getClassNotes();
+        homeworkNotes = domain.getHomeworkNotes();
+        tasks = new ArrayList<EnrolmentClassScheduleTaskDto>();
+        for (EnrolmentClassScheduleTask task : domain.getTasks()) {
+            tasks.add(new EnrolmentClassScheduleTaskDto(task));
+        }
         if (domain.getClassTopics() != null) {
             for (Topic topic : domain.getClassTopics()) {
                 classTopicIds.add(topic.getId());
@@ -37,6 +50,14 @@ public class EnrolmentClassScheduleDayDto implements Serializable {
     }
 
     public Long getId() { return id; }
+    public Long getVersion() { return version; }
+    public void setVersion(Long value) { version = value; }
+    public String getClassNotes() { return classNotes; }
+    public void setClassNotes(String value) { classNotes = value; }
+    public String getHomeworkNotes() { return homeworkNotes; }
+    public void setHomeworkNotes(String value) { homeworkNotes = value; }
+    public List<EnrolmentClassScheduleTaskDto> getTasks() { return tasks; }
+    public void setTasks(List<EnrolmentClassScheduleTaskDto> value) { tasks = value; }
     public void setId(Long id) { this.id = id; }
     public Long getEnrolmentClassId() { return enrolmentClassId; }
     public void setEnrolmentClassId(Long enrolmentClassId) { this.enrolmentClassId = enrolmentClassId; }
