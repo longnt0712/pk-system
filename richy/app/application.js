@@ -56,7 +56,9 @@
     }
     // Hrm.API_SERVER_URL = 'https://giaoxuphungkhoang.org:8085/service/';
     // Hrm.API_SERVER_URL = 'https://tnttphungkhoang.com/service/';
-    Hrm.API_SERVER_URL = 'https://ieltsroom.com:8443/service/';
+    /*Hrm.API_SERVER_URL = 'https://ieltsroom.com:8443/service/';*/
+	/*Hrm.API_SERVER_URL = 'https://tnttphungkhoang.com:8443/service/';*/
+	Hrm.API_SERVER_URL = window.location.origin + '/service/';
     // Hrm.API_SERVER_URL = 'http://localhost:8443/service/'; // đoạn này mình call local
     //--------------------//
 
