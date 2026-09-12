@@ -19,6 +19,18 @@ public class EnrolmentClassScheduleTask extends BaseObject {
     private String notes;
     @Column(name = "due_date", length = 10)
     private String dueDate;
+    @Column(name = "due_time", length = 5)
+    private String dueTime;
+    @Column(name = "deadline_automatic")
+    private Boolean deadlineAutomatic;
+    public String getDueTime() { return dueTime; }
+    public void setDueTime(String value) { dueTime = value; }
+    public Boolean getDeadlineAutomatic() { return deadlineAutomatic; }
+    public void setDeadlineAutomatic(Boolean value) { deadlineAutomatic = value; }
+    @Column(name = "auto_complete_topic")
+    private Boolean autoCompleteFromTopic;
+    public Boolean getAutoCompleteFromTopic() { return autoCompleteFromTopic; }
+    public void setAutoCompleteFromTopic(Boolean value) { autoCompleteFromTopic = value; }
     @Column(name = "status", length = 20, nullable = false)
     private String status;
     @Column(name = "display_order", nullable = false)

@@ -7,6 +7,18 @@ public class EnrolmentClassTaskProgressDto implements Serializable {
     private Long studentUserId;
     private String status;
     private String notes;
+    private boolean automatic;
+    private String manualStatus;
+    public String getManualStatus() { return manualStatus; }
+    public void setManualStatus(String value) { manualStatus = value; }
+    private Long testResultId;
+    private java.util.Date completedAt;
+    public boolean isAutomatic() { return automatic; }
+    public void setAutomatic(boolean value) { automatic = value; }
+    public Long getTestResultId() { return testResultId; }
+    public void setTestResultId(Long value) { testResultId = value; }
+    public java.util.Date getCompletedAt() { return completedAt; }
+    public void setCompletedAt(java.util.Date value) { completedAt = value; }
     public EnrolmentClassTaskProgressDto() { }
     public EnrolmentClassTaskProgressDto(EnrolmentClassTaskProgress value) {
         studentUserId = value.getStudentUserId(); status = value.getStatus(); notes = value.getNotes();

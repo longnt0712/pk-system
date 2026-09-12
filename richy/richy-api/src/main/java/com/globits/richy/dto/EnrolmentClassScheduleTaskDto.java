@@ -12,6 +12,22 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
     private String title;
     private String notes;
     private String dueDate;
+    private String dueTime;
+    private Boolean deadlineAutomatic;
+    /* Read-only effective deadline; automatic deadlines are never frozen as manual dates. */
+    private String resolvedDueDate;
+    private String resolvedDueTime;
+    public String getDueTime() { return dueTime; }
+    public void setDueTime(String value) { dueTime = value; }
+    public Boolean getDeadlineAutomatic() { return deadlineAutomatic; }
+    public void setDeadlineAutomatic(Boolean value) { deadlineAutomatic = value; }
+    public String getResolvedDueDate() { return resolvedDueDate; }
+    public void setResolvedDueDate(String value) { resolvedDueDate = value; }
+    public String getResolvedDueTime() { return resolvedDueTime; }
+    public void setResolvedDueTime(String value) { resolvedDueTime = value; }
+    private Boolean autoCompleteFromTopic;
+    public Boolean getAutoCompleteFromTopic() { return autoCompleteFromTopic; }
+    public void setAutoCompleteFromTopic(Boolean value) { autoCompleteFromTopic = value; }
     private String status;
     private Long topicId;
     private String topicName;
@@ -22,6 +38,8 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
     public EnrolmentClassScheduleTaskDto(EnrolmentClassScheduleTask task) {
         id = task.getId(); section = task.getSection(); title = task.getTitle(); notes = task.getNotes();
         dueDate = task.getDueDate(); status = task.getStatus();
+        dueTime = task.getDueTime(); deadlineAutomatic = task.getDeadlineAutomatic();
+        autoCompleteFromTopic = task.getAutoCompleteFromTopic();
         if (task.getTopic() != null) {
             topicId = task.getTopic().getId(); topicName = task.getTopic().getName();
             if (task.getTopic().getTopicCategory() != null) {

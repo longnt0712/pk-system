@@ -5,6 +5,13 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.LinkedHashSet;
+import com.globits.richy.domain.Topic;
+import com.globits.richy.domain.Question;
+import com.globits.richy.domain.QuestionTopic;
+import com.globits.richy.repository.TopicRepository;
+import org.springframework.security.access.AccessDeniedException;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
@@ -55,6 +62,39 @@ public class TestResultServiceImpl implements TestResultService {
 	AnswerRepository answerRepository;
 	@Autowired
 	QuestionRepository questionRepository;
+	@Autowired
+	TopicRepository topicRepository;
+
+	private String resultGroupClause(String group) {
+		if ("VOCAB".equals(group)) { return " and s.testType = 1 "; }
+		if ("DAILY_LISTENING".equals(group)) { return " and s.testType = 3 "; }
+		if ("IELTS".equals(group)) { return " and s.testType in (2,4) "; }
+		if (group == null || "ALL".equals(group)) { return ""; }
+		throw new IllegalArgumentException("Unknown result group");
+	}
+
+	private void addQuestionTopics(Question question, Set<Topic> topics) {
+		Set<Long> visited = new HashSet<Long>();
+		while (question != null && visited.add(question.getId())) {
+			if (question.getQuestionTopics() != null) {
+				for (QuestionTopic link : question.getQuestionTopics()) { if (link.getTopic() != null) { topics.add(link.getTopic()); } }
+			}
+			question = question.getParent();
+		}
+	}
+
+	private Set<Topic> completedTopics(TestResultDto dto, Set<Topic> topics) {
+		Set<Topic> completed = new LinkedHashSet<Topic>();
+		if (!Integer.valueOf(1).equals(dto.getTestType()) || dto.getCompletedVocabularyTopicIds() == null) { return completed; }
+		if (dto.getCompletedVocabularyTopicIds().size() > 100) { throw new IllegalArgumentException("Tối đa 100 topic hoàn thành."); }
+		for (Long id : new LinkedHashSet<Long>(dto.getCompletedVocabularyTopicIds())) {
+			Topic found = null;
+			if (topics != null) { for (Topic topic : topics) { if (topic.getId().equals(id)) { found = topic; break; } } }
+			if (found == null) { throw new IllegalArgumentException("Topic hoàn thành không thuộc bài đã làm."); }
+			completed.add(found);
+		}
+		return completed;
+	}
 	
 	@Override
 	public Page<TestResultDto> getPageObject(TestResultDto searchDto, int pageIndex, int pageSize) {
@@ -79,7 +119,7 @@ public class TestResultServiceImpl implements TestResultService {
 	            "select count(s.id) "
 	            + "from TestResult s where (1=1)";
 
-	    String whereClause = "";
+	    String whereClause = resultGroupClause(searchDto.getResultGroup());
 
 	    if (searchDto.getUser() != null) {
 	        whereClause += " and s.user.id = :userId ";
@@ -91,7 +131,7 @@ public class TestResultServiceImpl implements TestResultService {
 	    }
 
 	    if (textSearch != null && textSearch.length() > 0) {
-	        whereClause += " and s.testName like :textSearch ";
+	        whereClause += " and (s.testName like :textSearch or exists (select t.id from TestResult tr join tr.topics t where tr.id = s.id and t.name like :textSearch)) ";
 	    }
 
 	    if (grade != null && grade.length() > 0) {
@@ -267,7 +307,7 @@ public class TestResultServiceImpl implements TestResultService {
 	                    " and s.user.person.enrollmentClassId = :enrollmentClassId ";
 	        }
 
-	        whereClause += " and s.testType = 1 ";
+	        whereClause += " and s.testType = 1 and (s.resultStatus is null or s.resultStatus = 'SUCCESS') ";
 
 	        if (searchDto != null
 	                && searchDto.getStartDate() != null
@@ -339,6 +379,9 @@ public class TestResultServiceImpl implements TestResultService {
 	        if (sum == null) {
 	            sum = 0;
 	        }
+
+	        // Students without a successful attempt do not enter the ranking.
+	        if (times == null || times == 0) { continue; }
 
 	        dto.setTimes(times);
 	        dto.setNumberOfWords(sum);
@@ -412,6 +455,7 @@ public class TestResultServiceImpl implements TestResultService {
 				+ "where s.user.id = :userId "
 				+ "and s.createDate >= :monthStart "
 				+ "and s.createDate < :nextMonthStart "
+				+ resultGroupClause(searchDto.getResultGroup())
 				+ "order by s.createDate asc");
 		query.setParameter("userId", userId);
 		query.setParameter("monthStart", monthStart);
@@ -452,19 +496,45 @@ public class TestResultServiceImpl implements TestResultService {
 		}
 		TestResult domain = null;
 		boolean newResult = false;
+        boolean passedDailyVocab=true;
+
+        // Retry is scoped to the authenticated student, never a client-supplied user.
+        TestResult previousAttempt=findDailyVocabRetry(dto,modifiedUser);
+        if(previousAttempt!=null)return new TestResultDto(previousAttempt);
 		
 		//daily vocab
-		if(dto.getTestType() == 1) {
-			if(!dto.checkRestult(dto)) {
-				dto.setMessageCode(1);
-				return dto;
-			}
+		if(Integer.valueOf(1).equals(dto.getTestType())) {
+            if(dto.getTotalWord()==null||dto.getTotalWord()<=0||dto.getNumberOfWords()==null
+                    ||dto.getNumberOfWords()<0||dto.getNumberOfWords()>dto.getTotalWord())
+                throw new IllegalArgumentException("Số từ của kết quả Daily Vocab không hợp lệ.");
+            passedDailyVocab=dto.checkRestult(dto);
 		}
 		
 		
 		if(dto.getId() != null) {
 			domain = testResultRepository.getOne(dto.getId());
+			if (domain == null || modifiedUser == null || domain.getUser() == null
+					|| !domain.getUser().getId().equals(modifiedUser.getId())) {
+				throw new AccessDeniedException("Bạn không được sửa kết quả của tài khoản khác.");
+			}
+			// A passed vocabulary completion is immutable: no later ID/topic/time forgery.
+			if (Integer.valueOf(1).equals(domain.getTestType())) { return new TestResultDto(domain); }
 		}
+		Set<Topic> resultTopics = null;
+		if (dto.getTopicIds() != null) {
+			if (dto.getTopicIds().size() > 100) { throw new IllegalArgumentException("Tối đa 100 topic trong một kết quả."); }
+			resultTopics = new LinkedHashSet<Topic>();
+			for (Long id : new LinkedHashSet<Long>(dto.getTopicIds())) {
+				Topic topic = id == null ? null : topicRepository.findOne(id);
+				if (topic == null) { throw new IllegalArgumentException("Topic không còn tồn tại."); }
+				resultTopics.add(topic);
+			}
+		}
+		if (dto.getSourceQuestionId() != null && !Integer.valueOf(1).equals(dto.getTestType())) {
+			if (resultTopics == null) { resultTopics = new LinkedHashSet<Topic>(); }
+			addQuestionTopics(questionRepository.findOne(dto.getSourceQuestionId()), resultTopics);
+		}
+		Set<Topic> completedVocabTopics = passedDailyVocab ? completedTopics(dto, resultTopics) : new LinkedHashSet<Topic>();
 		if(domain != null) {
 			domain.setModifiedBy(currentUserName);
 			domain.setModifyDate(currentDate);
@@ -472,6 +542,7 @@ public class TestResultServiceImpl implements TestResultService {
 		if(domain == null) {
 			domain = new TestResult();
 			newResult = true;
+            if(Integer.valueOf(1).equals(dto.getTestType()))domain.setClientAttemptKey(dto.getClientAttemptKey());
 			domain.setCreateDate(currentDate);
 			domain.setCreatedBy(currentUserName);
 		}
@@ -491,9 +562,14 @@ public class TestResultServiceImpl implements TestResultService {
 			
 		}
 		domain.setTestTakerName(dto.getTestTakerName());
+		if (resultTopics != null) { domain.getTopics().clear(); domain.getTopics().addAll(resultTopics); }
+		if (newResult && Integer.valueOf(1).equals(dto.getTestType())) {
+			domain.getCompletedVocabularyTopics().addAll(completedVocabTopics);
+		}
 		domain.setTestName(dto.getTestName());
 		domain.setTestTime(dto.getTestTime());
 		domain.setTestType(dto.getTestType());
+        domain.setResultStatus(Integer.valueOf(1).equals(dto.getTestType())?(passedDailyVocab?"SUCCESS":"FAILED"):null);
 		domain.setNumberOfWords(dto.getNumberOfWords());
 		domain.setTestTakerPerformance(dto.getTestTakerPerformance());
 		if(dto.getQuestionAnswerTestResult() !=null && dto.getQuestionAnswerTestResult().size()>0) {
@@ -509,6 +585,11 @@ public class TestResultServiceImpl implements TestResultService {
 					children.setCreatedBy(currentUserName);
 				}
 				children.setTestResult(domain);
+				if (resultTopics != null && !Integer.valueOf(1).equals(dto.getTestType())
+						&& q.getQuestionAnswer() != null && q.getQuestionAnswer().getId() != null) {
+					QuestionAnswer answer = questionAnswerRepository.findOne(q.getQuestionAnswer().getId());
+					if (answer != null) { addQuestionTopics(answer.getQuestion(), domain.getTopics()); }
+				}
 				
 				if(q.getQuestionAnswer() != null && q.getQuestionAnswer().getId() != null) {
 					children.setQuestionAnswer(questionAnswerRepository.getOne(q.getQuestionAnswer().getId()));
@@ -535,10 +616,12 @@ public class TestResultServiceImpl implements TestResultService {
 		domain = testResultRepository.save(domain);
 
 		/*
-		 * Chỉ thưởng một lần cho kết quả Daily Vocab mới và đã vượt kiểm tra
-		 * "đạt" ở đầu hàm. Việc lưu lại cùng result id sẽ không cộng lần hai.
+		 * Chỉ kết quả Daily Vocab SUCCESS mới cộng số từ đúng vào kinh nghiệm.
+		 * FAILED vẫn lưu lịch sử, không cộng EXP và không hoàn thành homework.
+		 * Lưu lại cùng result id hoặc mã lượt không cộng lần hai.
 		 */
 		if(newResult && domain.getTestType() != null && domain.getTestType() == 1
+				&& "SUCCESS".equals(domain.getResultStatus())
 				&& domain.getVocabularyExperienceAwardedWords() == 0
 				&& domain.getNumberOfWords() != null && domain.getNumberOfWords() > 0
 				&& domain.getUser() != null) {
@@ -552,6 +635,15 @@ public class TestResultServiceImpl implements TestResultService {
 		return new TestResultDto(domain);
 	}
 
+    private TestResult findDailyVocabRetry(TestResultDto dto,User actor) {
+        if(dto.getClientAttemptKey()==null)return null; // Older clients remain compatible.
+        if(!Integer.valueOf(1).equals(dto.getTestType())||!dto.getClientAttemptKey().matches("[a-f0-9]{32}"))
+            throw new IllegalArgumentException("Mã lượt Daily Vocab không hợp lệ.");
+        if(actor==null||actor.getId()==null)throw new AccessDeniedException("Cần đăng nhập để lưu kết quả.");
+        if(dto.getUser()!=null&&dto.getUser().getId()!=null&&!actor.getId().equals(dto.getUser().getId()))
+            throw new AccessDeniedException("Lượt làm này thuộc tài khoản khác.");
+        return testResultRepository.findDailyVocabAttempt(actor.getId(),dto.getClientAttemptKey());
+    }
 	@Override
 	public boolean deleteObject(Long id) {
 		if(id == null) {

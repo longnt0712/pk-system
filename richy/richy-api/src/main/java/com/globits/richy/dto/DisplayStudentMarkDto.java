@@ -15,6 +15,9 @@ public class DisplayStudentMarkDto implements Serializable {
     private Integer enrollmentClass;
     private Long educationProgramId;
     private Long groupId;
+    private Long studentUserId;
+    public Long getStudentUserId() { return studentUserId; }
+    public void setStudentUserId(Long value) { studentUserId = value; }
 
     public Long getGroupId() {
 		return groupId;

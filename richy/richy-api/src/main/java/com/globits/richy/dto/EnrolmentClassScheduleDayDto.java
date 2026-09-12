@@ -13,6 +13,24 @@ public class EnrolmentClassScheduleDayDto implements Serializable {
     private Long id;
     private Long enrolmentClassId;
     private String scheduleDate;
+    private String sessionStartTime;
+    private String sessionEndTime;
+    private String movedFromDate;
+    private String movedToDate;
+    private String moveReason;
+    private String defaultHomeworkDeadline;
+    public String getSessionStartTime() { return sessionStartTime; }
+    public void setSessionStartTime(String value) { sessionStartTime = value; }
+    public String getSessionEndTime() { return sessionEndTime; }
+    public void setSessionEndTime(String value) { sessionEndTime = value; }
+    public String getMovedFromDate() { return movedFromDate; }
+    public void setMovedFromDate(String value) { movedFromDate = value; }
+    public String getMovedToDate() { return movedToDate; }
+    public void setMovedToDate(String value) { movedToDate = value; }
+    public String getMoveReason() { return moveReason; }
+    public void setMoveReason(String value) { moveReason = value; }
+    public String getDefaultHomeworkDeadline() { return defaultHomeworkDeadline; }
+    public void setDefaultHomeworkDeadline(String value) { defaultHomeworkDeadline = value; }
     private Long version;
     private String classNotes;
     private String homeworkNotes;
@@ -28,6 +46,8 @@ public class EnrolmentClassScheduleDayDto implements Serializable {
         id = domain.getId();
         enrolmentClassId = domain.getEnrolmentClass() == null ? null : domain.getEnrolmentClass().getId();
         scheduleDate = domain.getScheduleDate();
+        sessionStartTime = domain.getSessionStartTime(); sessionEndTime = domain.getSessionEndTime();
+        movedFromDate = domain.getMovedFromDate(); movedToDate = domain.getMovedToDate(); moveReason = domain.getMoveReason();
         version = domain.getScheduleVersion();
         classNotes = domain.getClassNotes();
         homeworkNotes = domain.getHomeworkNotes();

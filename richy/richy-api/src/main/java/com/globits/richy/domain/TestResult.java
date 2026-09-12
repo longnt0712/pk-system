@@ -1,6 +1,9 @@
 package com.globits.richy.domain;
 
 import java.util.Set;
+import java.util.LinkedHashSet;
+import javax.persistence.ManyToMany;
+import javax.persistence.JoinTable;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -25,6 +28,28 @@ import com.globits.security.domain.User;
 @Table(name = "tbl_test_result")
 @XmlRootElement
 public class TestResult extends BaseObject{
+    @Column(name="client_attempt_key",length=32)
+    private String clientAttemptKey;
+    public String getClientAttemptKey(){return clientAttemptKey;}
+    public void setClientAttemptKey(String value){clientAttemptKey=value;}
+    @Column(name="result_status",length=20)
+    private String resultStatus;
+    public String getResultStatus(){return resultStatus;}
+    public void setResultStatus(String value){resultStatus=value;}
+
+	@ManyToMany(fetch = FetchType.LAZY)
+	@JoinTable(name = "tbl_test_result_topic", joinColumns = @JoinColumn(name = "test_result_id"),
+			inverseJoinColumns = @JoinColumn(name = "topic_id"))
+	@OrderBy("id ASC")
+	private Set<Topic> topics = new LinkedHashSet<Topic>();
+	public Set<Topic> getTopics() { return topics; }
+	public void setTopics(Set<Topic> value) { topics = value; }
+	@ManyToMany(fetch = FetchType.LAZY)
+	@JoinTable(name = "tbl_test_result_completed_vocab_topic", joinColumns = @JoinColumn(name = "test_result_id"),
+			inverseJoinColumns = @JoinColumn(name = "topic_id"))
+	private Set<Topic> completedVocabularyTopics = new LinkedHashSet<Topic>();
+	public Set<Topic> getCompletedVocabularyTopics() { return completedVocabularyTopics; }
+	public void setCompletedVocabularyTopics(Set<Topic> value) { completedVocabularyTopics = value; }
 	
 	@OneToMany(mappedBy = "testResult", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval=true)
 	@OrderBy("ordinalNumber")

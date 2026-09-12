@@ -31,6 +31,31 @@ import com.globits.core.domain.BaseObject;
 public class EnrolmentClassScheduleDay extends BaseObject {
     @Version @Column(name = "schedule_version", nullable = false)
     private long scheduleVersion;
+    @Column(name = "session_start_time", length = 5)
+    private String sessionStartTime;
+    @Column(name = "session_end_time", length = 5)
+    private String sessionEndTime;
+    @Column(name = "moved_from_date", length = 10)
+    private String movedFromDate;
+    /* Empty source-date marker. The live plan keeps its original id and children. */
+    @Column(name = "moved_to_date", length = 10)
+    private String movedToDate;
+    @Column(name = "moved_day_id")
+    private Long movedDayId;
+    @Column(name = "move_reason", length = 1000, columnDefinition = "nvarchar(1000)")
+    private String moveReason;
+    public String getSessionStartTime() { return sessionStartTime; }
+    public void setSessionStartTime(String value) { sessionStartTime = value; }
+    public String getSessionEndTime() { return sessionEndTime; }
+    public void setSessionEndTime(String value) { sessionEndTime = value; }
+    public String getMovedFromDate() { return movedFromDate; }
+    public void setMovedFromDate(String value) { movedFromDate = value; }
+    public String getMovedToDate() { return movedToDate; }
+    public void setMovedToDate(String value) { movedToDate = value; }
+    public Long getMovedDayId() { return movedDayId; }
+    public void setMovedDayId(Long value) { movedDayId = value; }
+    public String getMoveReason() { return moveReason; }
+    public void setMoveReason(String value) { moveReason = value; }
     @Lob @Column(name = "class_notes", columnDefinition = "nvarchar(max)")
     private String classNotes;
     @Lob @Column(name = "homework_notes", columnDefinition = "nvarchar(max)")

@@ -52,6 +52,7 @@ import com.globits.richy.repository.EnrolmentClassRepository;
 import com.globits.richy.repository.EnrolmentClassScheduleDayRepository;
 import com.globits.richy.repository.EnrolmentClassWeeklySessionRepository;
 import com.globits.richy.repository.TopicRepository;
+import com.globits.richy.repository.TestResultRepository;
 import com.globits.richy.service.EnrolmentClassService;
 import com.globits.security.domain.Role;
 import com.globits.security.domain.User;
@@ -67,6 +68,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	UserRepository userRepository;
 	@Autowired
 	EnrolmentClassScheduleDayRepository scheduleDayRepository;
+	@Autowired
+	TestResultRepository testResultRepository;
 	@Autowired
 	EnrolmentClassWeeklySessionRepository weeklySessionRepository;
 	@Autowired
@@ -226,7 +229,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			User teacher = teacherId == null ? null : userRepository.findOne(teacherId);
 			if (teacher == null || !Boolean.TRUE.equals(teacher.getActive())
 					|| (parent == null ? !isTeacherCandidate(teacher)
-							: isNew || !hasRole(teacher, "ROLE_STUDENT")
+							: isNew || !isClassStudent(teacher, targetSchoolId)
 									|| !userBelongsToClass(teacher, domain.getId()))) {
 				return false;
 			}
@@ -395,8 +398,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			if (team == null || !canEditClass(currentUser, team)) {
 				throw new AccessDeniedException("Bạn không được sửa tổ này.");
 			}
-			for (User student : userRepository.getActiveStudentsByEnrollmentClassIds(
-					Collections.singletonList(classId))) {
+			for (User student : getClassStudents(Collections.singletonList(classId), team.getSchoolId())) {
 				if (student != null && student.getId() != null) {
 					candidates.put(student.getId(), new UserDto(student, true));
 				}
@@ -433,7 +435,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 		List<EnrolmentClass> teamDomains = new ArrayList<EnrolmentClass>();
 		for (EnrolmentClass team : enrolmentClassRepository.findByParentId(classId)) {
-			if (canViewClass(currentUser, team)) {
+			if (selectedClass.getSchoolId().equals(team.getSchoolId()) && canViewClass(currentUser, team)) {
 				teamDomains.add(team);
 			}
 		}
@@ -445,7 +447,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			scopeIds.add(team.getId());
 		}
 
-		List<User> students = userRepository.getActiveStudentsByEnrollmentClassIds(scopeIds);
+		List<User> students = getClassStudents(scopeIds, selectedClass.getSchoolId());
 		Collections.sort(students, new Comparator<User>() {
 			@Override
 			public int compare(User first, User second) {
@@ -517,7 +519,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 		List<EnrolmentClass> directTeams = new ArrayList<EnrolmentClass>();
 		for (EnrolmentClass team : enrolmentClassRepository.findByParentId(classId)) {
-			if (canViewClass(currentUser, team)) {
+			if (selectedClass.getSchoolId().equals(team.getSchoolId()) && canViewClass(currentUser, team)) {
 				directTeams.add(team);
 			}
 		}
@@ -532,7 +534,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 
 		User student = userRepository.findOne(moveDto.getUserId());
-		if (student == null || !Boolean.TRUE.equals(student.getActive()) || !hasRole(student, "ROLE_STUDENT")) {
+		if (!isClassStudent(student, selectedClass.getSchoolId())) {
 			return null;
 		}
 
@@ -653,12 +655,192 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			throw new AccessDeniedException("Bạn không được xem lịch của lớp này.");
 		}
 		List<EnrolmentClassScheduleDayDto> result = new ArrayList<EnrolmentClassScheduleDayDto>();
+		EffectiveClassSchedule timeline = effectiveSchedule(classId);
 		for (EnrolmentClassScheduleDay day : scheduleDayRepository
 				.findByEnrolmentClassIdAndScheduleDateBetweenOrderByScheduleDateAsc(classId, fromDate, toDate)) {
-			result.add(new EnrolmentClassScheduleDayDto(day));
+			result.add(canEditClass(currentUser, selectedClass) ? scheduleDayWithCompletion(day, timeline)
+                    : new EnrolmentClassScheduleDayDto(day));
 		}
 		return result;
 	}
+
+    @Override
+    public EnrolmentClassScheduleDayDto getPreviousScheduleDay(Long classId, String beforeDate) {
+        if (!isValidDate(beforeDate)) {
+            throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Ngày kế hoạch không hợp lệ.");
+        }
+        EnrolmentClass selectedClass = classId == null ? null : enrolmentClassRepository.findOne(classId);
+        if (selectedClass == null) { return null; }
+        if (!canEditClass(getCurrentUser(), selectedClass)) {
+            throw new AccessDeniedException("Bạn không được xem tiến độ học sinh lớp này.");
+        }
+        EffectiveClassSchedule timeline = effectiveSchedule(classId);
+        EffectiveClassSchedule.Slot previous = timeline.previous(beforeDate);
+        if (previous == null) { return null; }
+        String previousDate = previous.date;
+        EnrolmentClassScheduleDay saved = scheduleDayRepository.findByEnrolmentClassIdAndScheduleDate(classId, previousDate);
+        if (saved != null) { return scheduleDayWithCompletion(saved, timeline); }
+        // The preceding scheduled session has no saved plan: never reuse older progress.
+        EnrolmentClassScheduleDayDto empty = new EnrolmentClassScheduleDayDto();
+        empty.setEnrolmentClassId(classId);
+        empty.setScheduleDate(previousDate);
+        empty.setTasks(new ArrayList<EnrolmentClassScheduleTaskDto>());
+        enrichScheduleDeadline(empty, timeline);
+        return empty;
+    }
+
+    private EnrolmentClassScheduleDayDto scheduleDayWithCompletion(EnrolmentClassScheduleDay day) {
+        return scheduleDayWithCompletion(day, effectiveSchedule(day.getEnrolmentClass().getId()));
+    }
+
+    private EnrolmentClassScheduleDayDto scheduleDayWithCompletion(EnrolmentClassScheduleDay day, EffectiveClassSchedule timeline) {
+        EnrolmentClassScheduleDayDto dto = new EnrolmentClassScheduleDayDto(day);
+        enrichScheduleDeadline(dto, timeline);
+        if (day.getMovedToDate() != null) { return dto; }
+        List<Long> topicIds = new ArrayList<Long>();
+        for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
+            if (HomeworkTopicCompletion.enabled(task) && !topicIds.contains(task.getTopicId())) { topicIds.add(task.getTopicId()); }
+        }
+        if (topicIds.isEmpty()) { return dto; }
+        Long classId = day.getEnrolmentClass().getId();
+        List<Long> studentIds = new ArrayList<Long>();
+        for (User student : scheduleStudentDomains(classId, getCurrentUser())) { studentIds.add(student.getId()); }
+        if (studentIds.isEmpty()) { return dto; }
+        java.time.LocalDate startDate = java.time.LocalDate.parse(day.getScheduleDate());
+        if (day.getMovedFromDate() != null && day.getMovedFromDate().compareTo(day.getScheduleDate()) < 0) {
+            startDate = java.time.LocalDate.parse(day.getMovedFromDate());
+        }
+        LocalDateTime start = HomeworkTopicCompletion.midnight(startDate), maximumEnd = start;
+        Map<EnrolmentClassScheduleTaskDto, LocalDateTime> ends = new LinkedHashMap<EnrolmentClassScheduleTaskDto, LocalDateTime>();
+        for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
+            if (!HomeworkTopicCompletion.enabled(task)) { continue; }
+            LocalDateTime end = HomeworkTopicCompletion.deadlineEnd(task.getResolvedDueDate(), task.getResolvedDueTime());
+            if (end == null || !end.isAfter(start)) { continue; }
+            ends.put(task, end); if (end.isAfter(maximumEnd)) { maximumEnd = end; }
+        }
+        if (ends.isEmpty()) { return dto; }
+        List<Object[]> completions = testResultRepository.findVocabularyCompletions(studentIds, topicIds, start,
+                maximumEnd);
+        for (Map.Entry<EnrolmentClassScheduleTaskDto, LocalDateTime> entry : ends.entrySet()) {
+            HomeworkTopicCompletion.apply(entry.getKey(), completions, start, entry.getValue());
+        }
+        return dto;
+    }
+
+    private EffectiveClassSchedule effectiveSchedule(Long classId) {
+        List<Object[]> weekly = new ArrayList<Object[]>();
+        for (EnrolmentClassWeeklySession session : weeklySessionRepository.findByEnrolmentClassIdOrderByDisplayOrderAscDayOfWeekAscStartTimeAsc(classId)) {
+            if (session.getDayOfWeek() != null) {
+                weekly.add(new Object[] {session.getDayOfWeek(), session.getStartTime(), session.getEndTime()});
+            }
+        }
+        return new EffectiveClassSchedule(weekly, scheduleDayRepository.findScheduleTimeline(classId));
+    }
+
+    private void enrichScheduleDeadline(EnrolmentClassScheduleDayDto dto, EffectiveClassSchedule timeline) {
+        if (dto.getMovedToDate() != null) { return; }
+        EffectiveClassSchedule.Slot current = timeline.on(dto.getScheduleDate()), next = timeline.next(dto.getScheduleDate());
+        if (current != null) { dto.setSessionStartTime(current.startTime); dto.setSessionEndTime(current.endTime); }
+        dto.setDefaultHomeworkDeadline(next == null ? null : next.deadline());
+        if (dto.getTasks() == null) { return; }
+        for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
+            if (HomeworkTopicCompletion.automaticDeadline(task)) {
+                task.setResolvedDueDate(next == null || next.endTime == null ? null : next.date);
+                task.setResolvedDueTime(next == null ? null : next.endTime);
+            } else { task.setResolvedDueDate(task.getDueDate()); task.setResolvedDueTime(task.getDueTime()); }
+        }
+    }
+
+    @Override
+    public EnrolmentClassScheduleDayDto getScheduleSession(Long classId, String date) {
+        EnrolmentClass selected = classId == null ? null : enrolmentClassRepository.findOne(classId);
+        if (selected == null || !canEditClass(getCurrentUser(), selected)) {
+            throw new AccessDeniedException("Bạn không được thiết lập lớp này.");
+        }
+        if (!isValidDate(date)) { throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Ngày học không hợp lệ."); }
+        EnrolmentClassScheduleDay saved = scheduleDayRepository.findByEnrolmentClassIdAndScheduleDate(classId, date);
+        EffectiveClassSchedule timeline = effectiveSchedule(classId);
+        if (saved != null) { return scheduleDayWithCompletion(saved, timeline); }
+        EnrolmentClassScheduleDayDto dto = new EnrolmentClassScheduleDayDto();
+        dto.setEnrolmentClassId(classId); dto.setScheduleDate(date); dto.setTasks(new ArrayList<EnrolmentClassScheduleTaskDto>());
+        enrichScheduleDeadline(dto, timeline);
+        return dto;
+    }
+
+    @Override
+    public EnrolmentClassScheduleDayDto moveScheduleDay(Long classId, com.globits.richy.dto.EnrolmentClassScheduleMoveDto dto) {
+        User teacher = getCurrentUser();
+        EnrolmentClass selected = classId == null ? null : enrolmentClassRepository.findOne(classId);
+        if (selected == null || !canEditClass(teacher, selected)) { throw new AccessDeniedException("Bạn không được dời buổi lớp này."); }
+        if (dto == null || !isValidDate(dto.getFromDate()) || !isValidDate(dto.getToDate()) || dto.getFromDate().equals(dto.getToDate())) {
+            throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Chọn một ngày mới khác ngày học hiện tại.");
+        }
+        String start = normalizeTime(dto.getStartTime()), end = normalizeTime(dto.getEndTime());
+        String reason = scheduleText(dto.getReason(), 1000, false);
+        if (start == null || end == null || end.compareTo(start) <= 0) {
+            throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Giờ tan phải sau giờ học, định dạng HH:mm.");
+        }
+        EffectiveClassSchedule timeline = effectiveSchedule(classId);
+        EnrolmentClassScheduleDay day = scheduleDayRepository.findByEnrolmentClassIdAndScheduleDate(classId, dto.getFromDate());
+        if (timeline.cancelled(dto.getFromDate())) {
+            throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Buổi đã được dời. Hãy tải lại lịch.");
+        }
+        if (day == null && (dto.getDayId() != null || timeline.on(dto.getFromDate()) == null)) {
+            throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Không còn buổi học gốc. Hãy tải lại lịch.");
+        }
+        if (day != null && (dto.getDayId() == null || !dto.getDayId().equals(day.getId()) || dto.getDayVersion() == null
+                || dto.getDayVersion().longValue() != day.getScheduleVersion())) {
+            throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Kế hoạch đã thay đổi. Hãy tải lại trước khi dời.");
+        }
+        if ((day == null || day.getSessionStartTime() == null) && timeline.weeklyCount(dto.getFromDate()) > 1) {
+            throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST,
+                    "Ngày này có nhiều khung giờ nhưng dùng chung một kế hoạch. Chưa hỗ trợ dời riêng từng khung giờ.");
+        }
+        if (scheduleDayRepository.findByEnrolmentClassIdAndScheduleDate(classId, dto.getToDate()) != null
+                || timeline.weeklyCount(dto.getToDate()) > 0) {
+            throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Ngày mới đã có lịch hoặc kế hoạch. Hãy chọn ngày trống khác.");
+        }
+        java.time.LocalDate from = java.time.LocalDate.parse(dto.getFromDate()), to = java.time.LocalDate.parse(dto.getToDate());
+        long shift = java.time.temporal.ChronoUnit.DAYS.between(from, to);
+        // Validate shifted manual dates before mutating any managed child.
+        Map<EnrolmentClassScheduleTask, String> shifted = new LinkedHashMap<EnrolmentClassScheduleTask, String>();
+        if (day != null && dto.isShiftManualDeadlines()) {
+            for (EnrolmentClassScheduleTask task : day.getTasks()) {
+                if (task.getDueDate() == null || HomeworkTopicCompletion.automaticDeadline(new EnrolmentClassScheduleTaskDto(task))) { continue; }
+                String date = java.time.LocalDate.parse(task.getDueDate()).plusDays(shift).toString();
+                if (!isValidDate(date) || date.compareTo(dto.getToDate()) < 0) {
+                    throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Hạn nhập tay sau khi dịch không hợp lệ; hãy giữ nguyên hạn hoặc sửa trước.");
+                }
+                shifted.put(task, date);
+            }
+        }
+        if (day == null) {
+            day = new EnrolmentClassScheduleDay(); day.setEnrolmentClass(selected);
+            day.setCreateDate(LocalDateTime.now()); day.setCreatedBy(teacher.getUsername());
+        }
+        if (day.getMovedFromDate() == null || dto.getFromDate().compareTo(day.getMovedFromDate()) < 0) { day.setMovedFromDate(dto.getFromDate()); }
+        day.setScheduleDate(dto.getToDate()); day.setSessionStartTime(start); day.setSessionEndTime(end); day.setMoveReason(reason);
+        for (Map.Entry<EnrolmentClassScheduleTask, String> entry : shifted.entrySet()) { entry.getKey().setDueDate(entry.getValue()); }
+        day.setModifyDate(LocalDateTime.now()); day.setModifiedBy(teacher.getUsername());
+        try {
+            day = scheduleDayRepository.saveAndFlush(day);
+            // Chain moves retain all old source markers, each pointing to the current live date.
+            for (EnrolmentClassScheduleDay marker : scheduleDayRepository.findByEnrolmentClassIdAndMovedDayId(classId, day.getId())) {
+                marker.setMovedToDate(dto.getToDate()); marker.setModifyDate(LocalDateTime.now()); marker.setModifiedBy(teacher.getUsername());
+                scheduleDayRepository.save(marker);
+            }
+            EnrolmentClassScheduleDay marker = new EnrolmentClassScheduleDay();
+            marker.setEnrolmentClass(selected); marker.setScheduleDate(dto.getFromDate()); marker.setMovedToDate(dto.getToDate());
+            marker.setMovedDayId(day.getId()); marker.setMoveReason(reason);
+            marker.setCreateDate(LocalDateTime.now()); marker.setCreatedBy(teacher.getUsername());
+            scheduleDayRepository.saveAndFlush(marker);
+        } catch (org.springframework.dao.OptimisticLockingFailureException error) {
+            throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Lịch vừa thay đổi. Hãy tải lại trước khi dời.");
+        } catch (org.springframework.dao.DataIntegrityViolationException error) {
+            throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Ngày mới vừa được sử dụng. Không dời và không ghi đè kế hoạch.");
+        }
+        return scheduleDayWithCompletion(day);
+    }
 
 	@Override
 	public EnrolmentClassScheduleDayDto saveScheduleDay(Long classId, EnrolmentClassScheduleDayDto dto) {
@@ -679,6 +861,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 		EnrolmentClassScheduleDay domain = scheduleDayRepository
 				.findByEnrolmentClassIdAndScheduleDate(classId, dto.getScheduleDate());
+        if (domain != null && domain.getMovedToDate() != null) {
+            throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Buổi này đã dời sang " + domain.getMovedToDate() + ". Hãy tải lại lịch.");
+        }
 		if (domain != null && dto.getTasks() != null &&
 				(dto.getVersion() == null || dto.getVersion().longValue() != domain.getScheduleVersion())) {
 			throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT,
@@ -689,7 +874,24 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 		String classNotes = scheduleText(dto.getClassNotes(), 4000, false);
 		String homeworkNotes = scheduleText(dto.getHomeworkNotes(), 4000, false);
+		if (dto.getTasks() != null) {
+			for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
+				if (task != null && task.getId() == null && !Boolean.TRUE.equals(task.getDeadlineAutomatic())
+                        && task.getDueDate() != null && !task.getDueDate().isEmpty()
+						&& task.getDueDate().compareTo(dto.getScheduleDate()) < 0) {
+					throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Hạn hoàn thành không được trước ngày giao bài.");
+				}
+			}
+		}
 		/* Validate every task before changing any managed entity. */
+        if (dto.getTasks() != null) {
+            EffectiveClassSchedule.Slot next = effectiveSchedule(classId).next(dto.getScheduleDate());
+            for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
+                if (task != null && Boolean.TRUE.equals(task.getDeadlineAutomatic()) && (next == null || next.endTime == null)) {
+                    throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Chưa có giờ tan của buổi kế tiếp. Hãy thiết lập lịch hoặc nhập hạn thủ công.");
+                }
+            }
+        }
 		List<EnrolmentClassScheduleTask> preparedTasks = dto.getTasks() == null ? null
 				: prepareScheduleTasks(classId, domain, dto.getTasks());
 		if (domain == null) {
@@ -719,7 +921,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 				}
 				task.setScheduleDay(domain); task.setSection(prepared.getSection()); task.setTitle(prepared.getTitle());
 				task.setNotes(prepared.getNotes()); task.setDueDate(prepared.getDueDate()); task.setStatus(prepared.getStatus());
+                task.setDueTime(prepared.getDueTime()); task.setDeadlineAutomatic(prepared.getDeadlineAutomatic());
 				task.setTopic(prepared.getTopic()); task.setDisplayOrder(prepared.getDisplayOrder());
+				task.setAutoCompleteFromTopic(prepared.getAutoCompleteFromTopic());
 				if (task != prepared) {
 					task.getStudentProgress().clear(); task.getStudentProgress().addAll(prepared.getStudentProgress());
 				}
@@ -733,7 +937,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		/* Force the day row to change when only child tasks/progress changed. */
 		domain.setModifyDate(LocalDateTime.now());
 		domain = scheduleDayRepository.saveAndFlush(domain);
-		return new EnrolmentClassScheduleDayDto(domain);
+		return scheduleDayWithCompletion(domain);
 	}
 
 	@Override
@@ -748,14 +952,90 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		return result;
 	}
 
+    @Override
+    public EnrolmentClassScheduleDayDto updateTaskProgress(Long classId, Long dayId, Long taskId,
+            com.globits.richy.dto.EnrolmentClassTaskProgressUpdateDto dto) {
+        User teacher = getCurrentUser();
+        EnrolmentClass selectedClass = classId == null ? null : enrolmentClassRepository.findOne(classId);
+        if (selectedClass == null || !canEditClass(teacher, selectedClass)) {
+            throw new AccessDeniedException("Bạn không được sửa tiến độ lớp này.");
+        }
+        EnrolmentClassScheduleDay day = dayId == null ? null : scheduleDayRepository.findOne(dayId);
+        if (day == null || !classId.equals(day.getEnrolmentClass().getId())) {
+            throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Ngày học không thuộc lớp này.");
+        }
+        if (dto == null || dto.getDayVersion() == null || dto.getDayVersion().longValue() != day.getScheduleVersion()) {
+            throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Tiến độ đã thay đổi. Hãy tải lại bảng trước khi sửa.");
+        }
+        if (dto.getStudentUserId() == null || !Arrays.asList("UNRECORDED", "TODO", "DONE", "NEEDS_REVIEW",
+                "PROGRESS_10", "PROGRESS_20", "PROGRESS_30", "PROGRESS_40", "PROGRESS_50",
+                "PROGRESS_60", "PROGRESS_70", "PROGRESS_80", "PROGRESS_90").contains(dto.getStatus())) {
+            throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Học sinh hoặc trạng thái không hợp lệ.");
+        }
+        String notes = scheduleText(dto.getNotes(), 1000, false);
+        EnrolmentClassScheduleTask task = null;
+        for (EnrolmentClassScheduleTask candidate : day.getTasks()) {
+            if (taskId != null && taskId.equals(candidate.getId())) { task = candidate; break; }
+        }
+        if (task == null || !"HOMEWORK".equals(task.getSection())) {
+            throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Homework task không thuộc ngày này.");
+        }
+        EnrolmentClassTaskProgress progress = null;
+        for (EnrolmentClassTaskProgress entry : task.getStudentProgress()) {
+            if (dto.getStudentUserId().equals(entry.getStudentUserId())) { progress = entry; break; }
+        }
+        boolean member = progress != null; // Permit feedback on historical students with existing progress.
+        if (!member) {
+            for (User student : scheduleStudentDomains(classId, teacher)) {
+                if (dto.getStudentUserId().equals(student.getId())) { member = true; break; }
+            }
+        }
+        if (!member) { throw new AccessDeniedException("Học sinh không thuộc lớp này."); }
+        if (progress == null) {
+            progress = new EnrolmentClassTaskProgress(); progress.setStudentUserId(dto.getStudentUserId());
+            task.getStudentProgress().add(progress);
+        }
+        progress.setStatus(dto.getStatus()); progress.setNotes(notes);
+        LocalDateTime now = LocalDateTime.now();
+        task.setModifyDate(now); task.setModifiedBy(teacher.getUsername());
+        day.setModifyDate(now); day.setModifiedBy(teacher.getUsername());
+        try { day = scheduleDayRepository.saveAndFlush(day); }
+        catch (org.springframework.dao.OptimisticLockingFailureException error) {
+            throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Kế hoạch vừa được cập nhật. Hãy tải lại bảng.");
+        }
+        return scheduleDayWithCompletion(day);
+    }
+
 	private List<User> scheduleStudentDomains(Long classId, User currentUser) {
+		EnrolmentClass selectedClass = enrolmentClassRepository.findOne(classId);
+		if (selectedClass == null || !canViewClass(currentUser, selectedClass)) { return new ArrayList<User>(); }
 		List<Long> visibleIds = new ArrayList<Long>();
 		for (Long id : getClassAndDescendantIds(classId)) {
 			EnrolmentClass item = enrolmentClassRepository.findOne(id);
-			if (item != null && canViewClass(currentUser, item)) { visibleIds.add(id); }
+			if (item != null && selectedClass.getSchoolId().equals(item.getSchoolId())
+                    && canViewClass(currentUser, item)) { visibleIds.add(id); }
 		}
-		return visibleIds.isEmpty() ? new ArrayList<User>() : userRepository.getActiveStudentsByEnrollmentClassIds(visibleIds);
+		return getClassStudents(visibleIds, selectedClass.getSchoolId());
 	}
+
+    private boolean isClassStudent(User user, Integer schoolId) {
+        if (user == null || !Boolean.TRUE.equals(user.getActive())) { return false; }
+        if (HIDDEN_SCHOOL_ID.equals(schoolId)) { return hasRole(user, ROLE_VIEWER); }
+        return EDUCATION_MANAGER_SCHOOL_ID.equals(schoolId)
+                && hasRole(user, "ROLE_STUDENT") && !hasRole(user, ROLE_VIEWER);
+    }
+
+    private List<User> getClassStudents(List<Long> classIds, Integer schoolId) {
+        List<User> result = new ArrayList<User>();
+        if (classIds == null || classIds.isEmpty()) { return result; }
+        Set<Long> seen = new HashSet<Long>();
+        for (User user : userRepository.getUsersByEnrollmentClassIds(classIds)) {
+            if (isClassStudent(user, schoolId) && user.getId() != null && seen.add(user.getId())) {
+                result.add(user);
+            }
+        }
+        return result;
+    }
 
 	private String scheduleText(String value, int limit, boolean required) {
 		String text = value == null ? "" : value.trim();
@@ -796,10 +1076,30 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			task.setId(value.getId()); task.setSection(value.getSection()); task.setStatus(value.getStatus());
 			task.setTitle(scheduleText(value.getTitle(), 200, true)); task.setNotes(scheduleText(value.getNotes(), 4000, false));
 			String dueDate = scheduleText(value.getDueDate(), 10, false);
+            EnrolmentClassScheduleTask oldTask = value.getId() == null ? null : oldTasks.get(value.getId());
+            Boolean automatic = value.getDeadlineAutomatic() == null && oldTask != null
+                    ? oldTask.getDeadlineAutomatic() : value.getDeadlineAutomatic();
+            String dueTime = Boolean.TRUE.equals(automatic) ? "" : scheduleText(value.getDueTime() == null && oldTask != null
+                    && dueDate.equals(oldTask.getDueDate()) ? oldTask.getDueTime() : value.getDueTime(), 5, false);
+            if (!dueTime.isEmpty() && (normalizeTime(dueTime) == null || dueDate.isEmpty())) {
+                throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Hạn hoàn thành cần ngày và giờ HH:mm hợp lệ.");
+            }
+            if (Boolean.TRUE.equals(automatic) && !"HOMEWORK".equals(value.getSection())) {
+                throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Chỉ Homework có hạn tự động theo buổi kế tiếp.");
+            }
 			if (!dueDate.isEmpty() && !isValidDate(dueDate)) {
 				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Hạn hoàn thành không hợp lệ.");
 			}
-			task.setDueDate(dueDate.isEmpty() ? null : dueDate);
+			task.setDueDate(Boolean.TRUE.equals(automatic) || dueDate.isEmpty() ? null : dueDate);
+            task.setDueTime(Boolean.TRUE.equals(automatic) || dueTime.isEmpty() ? null : dueTime);
+            task.setDeadlineAutomatic(automatic);
+            String assignedDate = day == null ? null : day.getScheduleDate();
+            if (oldTask != null && day.getMovedFromDate() != null && day.getMovedFromDate().compareTo(assignedDate) < 0) { assignedDate = day.getMovedFromDate(); }
+			if (!Boolean.TRUE.equals(automatic) && !dueDate.isEmpty() && assignedDate != null && dueDate.compareTo(assignedDate) < 0) {
+				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Hạn hoàn thành không được trước ngày giao bài.");
+			}
+			task.setAutoCompleteFromTopic(value.getAutoCompleteFromTopic() == null && value.getId() != null
+					? oldTasks.get(value.getId()).getAutoCompleteFromTopic() : value.getAutoCompleteFromTopic());
 			if (value.getTopicId() != null) {
 				Topic topic = topicRepository.findOne(value.getTopicId());
 				if (topic == null) { throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Topic không còn tồn tại."); }
@@ -814,9 +1114,13 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			Set<Long> seenStudents = new HashSet<Long>();
 			if (value.getStudentProgress() != null) {
 				for (EnrolmentClassTaskProgressDto entry : value.getStudentProgress()) {
+					// Automatic status is recomputed from TestResult, never stored as teacher feedback.
+					if (entry != null && entry.isAutomatic()) { continue; }
 					if (++progressCount > 5000 || entry == null || entry.getStudentUserId() == null ||
 							!allowedStudentIds.contains(entry.getStudentUserId()) || !seenStudents.add(entry.getStudentUserId()) ||
-							!Arrays.asList("TODO", "DONE", "NEEDS_REVIEW").contains(entry.getStatus())) {
+							!Arrays.asList("UNRECORDED", "TODO", "DONE", "NEEDS_REVIEW",
+                                "PROGRESS_10", "PROGRESS_20", "PROGRESS_30", "PROGRESS_40", "PROGRESS_50",
+                                "PROGRESS_60", "PROGRESS_70", "PROGRESS_80", "PROGRESS_90").contains(entry.getStatus())) {
 						throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Tiến độ học sinh không hợp lệ hoặc vượt giới hạn.");
 					}
 					EnrolmentClassTaskProgress progress = new EnrolmentClassTaskProgress();

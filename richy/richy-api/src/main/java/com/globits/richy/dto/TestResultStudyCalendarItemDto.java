@@ -18,6 +18,9 @@ public class TestResultStudyCalendarItemDto implements Serializable {
     private Date testDate;
     private String testName;
     private Integer testType;
+    private java.util.List<TestResultTopicDto> topics = new java.util.ArrayList<TestResultTopicDto>();
+    public java.util.List<TestResultTopicDto> getTopics() { return topics; }
+    public void setTopics(java.util.List<TestResultTopicDto> value) { topics = value; }
 
     public TestResultStudyCalendarItemDto() {
     }
@@ -33,6 +36,9 @@ public class TestResultStudyCalendarItemDto implements Serializable {
                 : null;
         this.testName = domain.getTestName();
         this.testType = domain.getTestType();
+        if (domain.getTopics() != null) {
+            for (com.globits.richy.domain.Topic topic : domain.getTopics()) { topics.add(new TestResultTopicDto(topic)); }
+        }
     }
 
     public Long getId() {

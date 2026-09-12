@@ -115,6 +115,32 @@ public class RestEnrolmentClassController {
 		return service.saveScheduleSettings(classId, dto);
 	}
 
+    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+    @RequestMapping(value = "/schedule/{classId}/previous", method = RequestMethod.GET)
+    public EnrolmentClassScheduleDayDto getPreviousScheduleDay(@PathVariable Long classId, @RequestParam String beforeDate) {
+        return service.getPreviousScheduleDay(classId, beforeDate);
+    }
+
+    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+    @RequestMapping(value = "/schedule/{classId}/session", method = RequestMethod.GET)
+    public EnrolmentClassScheduleDayDto getScheduleSession(@PathVariable Long classId, @RequestParam String date) {
+        return service.getScheduleSession(classId, date);
+    }
+
+    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+    @RequestMapping(value = "/schedule/{classId}/move", method = RequestMethod.POST)
+    public EnrolmentClassScheduleDayDto moveScheduleDay(@PathVariable Long classId,
+            @RequestBody com.globits.richy.dto.EnrolmentClassScheduleMoveDto dto) {
+        return service.moveScheduleDay(classId, dto);
+    }
+
+    @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+    @RequestMapping(value = "/schedule/{classId}/day/{dayId}/task/{taskId}/progress", method = RequestMethod.PUT)
+    public EnrolmentClassScheduleDayDto updateTaskProgress(@PathVariable Long classId, @PathVariable Long dayId,
+            @PathVariable Long taskId, @RequestBody com.globits.richy.dto.EnrolmentClassTaskProgressUpdateDto dto) {
+        return service.updateTaskProgress(classId, dayId, taskId, dto);
+    }
+
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/schedule/{classId}/day", method = RequestMethod.POST)
 	public EnrolmentClassScheduleDayDto saveScheduleDay(

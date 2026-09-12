@@ -13,6 +13,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 @Repository
 public interface StudentMarkRepository extends JpaRepository<StudentMark, Long> {
+    @Query("select sm from StudentMark sm join fetch sm.mark m join fetch sm.user u "
+            + "where m.educationProgram.id = :programId and u.id in :userIds order by sm.id desc")
+    List<StudentMark> findBoardMarks(@Param("programId") Long programId, @Param("userIds") List<Long> userIds);
 	@Query("select u from StudentMark u where u.mark.id = ?1 and u.user.id = ?2")
 	Optional<StudentMark> findStudentMarkBy(Long markId, Long userId);
 	

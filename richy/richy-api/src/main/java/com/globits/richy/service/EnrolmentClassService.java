@@ -21,6 +21,7 @@ public interface EnrolmentClassService {
 	public boolean deleteObject(Long id);
 	public List<EnrolmentClassDto> getTreeObjects();
     public List<EnrolmentClassDto> getTreeObjects(Integer schoolId);
+    public EnrolmentClassScheduleDayDto getPreviousScheduleDay(Long classId, String beforeDate);
 	public List<Long> getClassAndDescendantIds(Long classId);
 	public List<Long> getClassIdsBySchool(Integer schoolId);
 	public List<UserDto> getTeacherCandidates();
@@ -31,6 +32,10 @@ public interface EnrolmentClassService {
 	public EnrolmentClassDto saveScheduleSettings(Long classId, EnrolmentClassDto dto);
 	public List<EnrolmentClassScheduleDayDto> getScheduleDays(Long classId, String fromDate, String toDate);
 	public EnrolmentClassScheduleDayDto saveScheduleDay(Long classId, EnrolmentClassScheduleDayDto dto);
+    public EnrolmentClassScheduleDayDto getScheduleSession(Long classId, String date);
+    public EnrolmentClassScheduleDayDto moveScheduleDay(Long classId, com.globits.richy.dto.EnrolmentClassScheduleMoveDto dto);
 	public List<TopicForListAllDto> getScheduleTopics();
 	public List<UserDto> getScheduleStudents(Long classId);
+    public EnrolmentClassScheduleDayDto updateTaskProgress(Long classId, Long dayId, Long taskId,
+            com.globits.richy.dto.EnrolmentClassTaskProgressUpdateDto dto);
 }

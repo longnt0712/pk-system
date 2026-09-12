@@ -17,6 +17,9 @@ import com.globits.security.dto.UserDto;
 
 public class QuestionForGamesDto implements Serializable  {
 	private Long id;
+	private List<Long> topicIds = new ArrayList<Long>();
+	public List<Long> getTopicIds() { return topicIds; }
+	public void setTopicIds(List<Long> value) { topicIds = value; }
 	private String question;
 	private Integer ordinalNumber;
 	
@@ -91,6 +94,11 @@ public class QuestionForGamesDto implements Serializable  {
 		super();
 	}
 	public QuestionForGamesDto(Question domain) {
+		if (domain.getQuestionTopics() != null) {
+			for (QuestionTopic link : domain.getQuestionTopics()) {
+				if (link.getTopic() != null && !topicIds.contains(link.getTopic().getId())) { topicIds.add(link.getTopic().getId()); }
+			}
+		}
 		this.id = domain.getId();
 		this.question = domain.getQuestion();
 		this.ordinalNumber = domain.getOrdinalNumber();

@@ -2,6 +2,8 @@ package com.globits.richy.service.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.LinkedHashMap;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.EntityManager;
@@ -139,6 +141,19 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	            searchDto.getTextSearch();
 
 	    List<UserDto> users;
+        if (searchDto.getStudentUserId() != null) {
+            // A targeted row request never retrieves all users or the entire board.
+            String sql = "select distinct new com.globits.security.dto.UserDto(u) from User u "
+                    + "left join u.enrollmentClassIds ec where u.id = :studentId and u.active = true";
+            if (enrollmentClass != null) { sql += " and (u.person.enrollmentClassId = :classId or ec = :longClassId)"; }
+            if (groupId != null) { sql += " and exists (select g.id from User ug join ug.groups g where ug.id=u.id and g.id=:groupId)"; }
+            Query rowQuery = manager.createQuery(sql, UserDto.class).setParameter("studentId", searchDto.getStudentUserId());
+            if (enrollmentClass != null) {
+                rowQuery.setParameter("classId", enrollmentClass); rowQuery.setParameter("longClassId", enrollmentClass.longValue());
+            }
+            if (groupId != null) { rowQuery.setParameter("groupId", groupId); }
+            users = rowQuery.getResultList();
+        } else {
 
 	    /*
 	     * Trường hợp 1:
@@ -182,6 +197,7 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	        users = userRepository
 	                .getAllActiveStudentDtos();
 	    }
+        }
 
 	    List<Mark> marks =
 	            markRepository.findMarkBy(
@@ -197,6 +213,19 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	    }
 
 	    String keyword = null;
+        List<Long> userIds = new ArrayList<Long>();
+        for (UserDto user : users) { if (user != null && user.getId() != null && !userIds.contains(user.getId())) { userIds.add(user.getId()); } }
+        Map<String, List<StudentMark>> boardMarks = new LinkedHashMap<String, List<StudentMark>>();
+        if (!marks.isEmpty()) {
+            for (int offset=0;offset<userIds.size();offset+=500) {
+            for (StudentMark mark : studentMarkRepository.findBoardMarks(educationProgramId, userIds.subList(offset,Math.min(offset+500,userIds.size())))) {
+                String key = mark.getUser().getId() + ":" + mark.getMark().getId();
+                if (!boardMarks.containsKey(key)) { boardMarks.put(key, new ArrayList<StudentMark>()); }
+                boardMarks.get(key).add(mark);
+            }
+            }
+        }
+        java.util.Set<Long> seenUsers = new java.util.HashSet<Long>();
 
 	    if (textSearch != null
 	            && textSearch.trim().length() > 0) {
@@ -209,7 +238,7 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	    for (UserDto userDto : users) {
 
 	        if (userDto == null
-	                || userDto.getId() == null) {
+	                || userDto.getId() == null || !seenUsers.add(userDto.getId())) {
 	            continue;
 	        }
 
@@ -258,11 +287,7 @@ public class StudentMarkServiceImpl implements StudentMarkService {
 	            }
 
 	            List<StudentMark> existedStudentMarks =
-	                    studentMarkRepository
-	                            .findStudentMarksByMarkIdAndUserId(
-	                                    mark.getId(),
-	                                    userDto.getId()
-	                            );
+                        boardMarks.get(userDto.getId() + ":" + mark.getId());
 
 	            StudentMark studentMark =
 	                    getBestStudentMark(

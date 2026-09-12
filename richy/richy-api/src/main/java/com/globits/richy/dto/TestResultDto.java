@@ -19,7 +19,44 @@ import com.globits.security.domain.User;
 import com.globits.security.dto.UserDto;
 
 public class TestResultDto implements Serializable{
+    private String clientAttemptKey;
+    public String getClientAttemptKey(){return clientAttemptKey;}
+    public void setClientAttemptKey(String value){clientAttemptKey=value;}
+    private String resultStatus;
+    public String getResultStatus(){return resultStatus;}
+    public void setResultStatus(String value){resultStatus=value;}
 	private Long id;
+	private List<Long> topicIds;
+	private List<Long> completedVocabularyTopicIds;
+	public List<Long> getCompletedVocabularyTopicIds() { return completedVocabularyTopicIds; }
+	public void setCompletedVocabularyTopicIds(List<Long> value) { completedVocabularyTopicIds = value; }
+	private List<TestResultTopicDto> topics;
+	private Long sourceQuestionId;
+	private String resultGroup;
+	public List<Long> getTopicIds() { return topicIds; }
+	public void setTopicIds(List<Long> value) { topicIds = value; }
+	public List<TestResultTopicDto> getTopics() { return topics; }
+	public void setTopics(List<TestResultTopicDto> value) { topics = value; }
+	public Long getSourceQuestionId() { return sourceQuestionId; }
+	public void setSourceQuestionId(Long value) { sourceQuestionId = value; }
+	public String getResultGroup() { return resultGroup; }
+	public void setResultGroup(String value) { resultGroup = value; }
+	private void copyTopics(TestResult domain) {
+        clientAttemptKey=domain.getClientAttemptKey();
+        resultStatus=domain.getResultStatus();
+        if(Integer.valueOf(1).equals(domain.getTestType())&&resultStatus==null)resultStatus="SUCCESS";
+        if("FAILED".equals(resultStatus))messageCode=1;
+		completedVocabularyTopicIds = new ArrayList<Long>();
+		if (domain.getCompletedVocabularyTopics() != null) {
+			for (com.globits.richy.domain.Topic topic : domain.getCompletedVocabularyTopics()) { completedVocabularyTopicIds.add(topic.getId()); }
+		}
+		topicIds = new ArrayList<Long>(); topics = new ArrayList<TestResultTopicDto>();
+		if (domain.getTopics() != null) {
+			for (com.globits.richy.domain.Topic topic : domain.getTopics()) {
+				topicIds.add(topic.getId()); topics.add(new TestResultTopicDto(topic));
+			}
+		}
+	}
 	
 	private List<QuestionAnswerTestResultDto> questionAnswerTestResult;
 	
@@ -37,7 +74,7 @@ public class TestResultDto implements Serializable{
 	private String userDisplayName;
 	private String testName;
 	private String testTakerPerformance;
-	private Integer testType = 0; //1: daily vocab 2: test reading 3:listening daily 4: test lisning
+	private Integer testType = 0; //1: Daily Vocab, 2: IELTS Listening, 3: Daily Listening, 4: IELTS Reading
 	private Integer times = 0;
 	private Integer numberOfWords = 0;
 	private Integer vocabularyExperienceAwardedWords = 0;
@@ -246,6 +283,7 @@ public class TestResultDto implements Serializable{
 	}
 	
 	public TestResultDto(TestResult domain) {
+		copyTopics(domain);
 		this.id = domain.getId();
 		this.testDate = domain.getCreateDate().toDate();
 		this.testTime = domain.getTestTime();
@@ -321,7 +359,8 @@ public class TestResultDto implements Serializable{
 		
 		
 		
-		BandScoreDto dto = new BandScoreDto(this.correctAnswer,this.testType) ; //1 => reading 2 => listening
+		BandScoreDto dto = new BandScoreDto(this.correctAnswer, Integer.valueOf(4).equals(this.testType) ? 1
+				: Integer.valueOf(2).equals(this.testType) ? 2 : 0);
 		if(dto.getBandScoreReading() != null) {
 			this.bandScore = dto.getBandScoreReading();
 		}
@@ -329,6 +368,7 @@ public class TestResultDto implements Serializable{
 	}
 	
 	public TestResultDto(TestResult domain,boolean isGetOne) {
+		copyTopics(domain);
 		this.id = domain.getId();
 		this.testDate = domain.getCreateDate().toDate();
 		this.testTime = domain.getTestTime();
@@ -403,7 +443,8 @@ public class TestResultDto implements Serializable{
 		
 		
 		
-		BandScoreDto dto = new BandScoreDto(this.correctAnswer,this.testType) ; //1 => reading 2 => listening
+		BandScoreDto dto = new BandScoreDto(this.correctAnswer, Integer.valueOf(4).equals(this.testType) ? 1
+				: Integer.valueOf(2).equals(this.testType) ? 2 : 0);
 		if(dto.getBandScoreReading() != null) {
 			this.bandScore = dto.getBandScoreReading();
 		}
@@ -411,6 +452,8 @@ public class TestResultDto implements Serializable{
 	}
 	
 	public boolean checkRestult(TestResultDto dto) {
+		if (dto.getTotalWord() == null || dto.getTotalWord() <= 0 || dto.getNumberOfWords() == null
+				|| dto.getNumberOfWords() < 0 || dto.getNumberOfWords() > dto.getTotalWord()) { return false; }
 			
 		//sai nhiều hơn 15% => không đạt không lưu result ~ unfinished
 		Double a = (double) dto.getNumberOfWords();
