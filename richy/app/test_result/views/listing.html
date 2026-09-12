@@ -5,6 +5,12 @@
     
         <div class="portlet light bordered">
             <div class="portlet-body">
+                <div class="btn-group" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px" role="group" aria-label="Nhóm kết quả">
+                    <button type="button" class="btn" data-ng-repeat="group in vm.resultGroups"
+                            data-ng-class="vm.searchDto.resultGroup === group.id ? 'btn-primary' : 'btn-default'"
+                            data-ng-attr-aria-pressed="{{vm.searchDto.resultGroup === group.id}}"
+                            data-ng-click="vm.selectResultGroup(group.id)">{{group.name}}</button>
+                </div>
                 <!-- FILTER / SEARCH -->
                 <div class="test-result-filter-panel">
                     <!--<div class="test-result-filter-heading">-->
@@ -55,6 +61,7 @@
 
                                 <ui-select ng-model="vm.searchDto.enrollmentClassId"
                                            ng-change="vm.enrollmentClassChange()"
+                                           ng-disabled="vm.enrollmentClassesLoading"
                                            sortable="true"
                                            close-on-select="true"
                                            class="test-result-ui-select">
@@ -64,7 +71,6 @@
                                     </ui-select-match>
 
                                     <ui-select-choices repeat="so.id as so in vm.enrollmentClasses
-                                        | filter:{schoolId: 1}
                                         | propsFilter:{name: $select.search}">
                                         <div class="bold"
                                              ng-bind-html="so.name | highlight: $select.search">
@@ -72,6 +78,10 @@
                                         <small>{{so.old}}</small>
                                     </ui-select-choices>
                                 </ui-select>
+                                <small data-ng-if="vm.enrollmentClassesLoading" role="status"><i class="fa fa-spinner fa-spin"></i> Đang tải lớp học...</small>
+                                <button type="button" class="btn btn-link btn-xs" data-ng-if="vm.enrollmentClassesError"
+                                        data-ng-click="vm.loadEnrollmentClasses()">Không tải được lớp — Thử lại</button>
+                                <small data-ng-if="!vm.enrollmentClassesLoading && !vm.enrollmentClassesError && !vm.enrollmentClasses.length">Chưa có lớp được phép xem.</small>
                             </div>
                         </div>
 
@@ -308,7 +318,8 @@
                                                     <div class="study-calendar-test-chip"
                                                          ng-repeat="test in activity.tests track by test.id">
                                                         <span class="study-calendar-test-emoji">📝</span>
-                                                        <span class="study-calendar-test-name">{{test.testName}}</span>
+                                                        <span class="study-calendar-test-name" data-ng-if="!test.topics.length">{{test.testName}}</span>
+                                                        <span class="study-calendar-test-name" style="display:block" data-ng-repeat="topic in test.topics track by topic.id">{{topic.name}}</span>
                                                         <span class="study-calendar-test-meta">
                                                             {{test.testTypeName}} · {{test.timeLabel}}
                                                         </span>
@@ -324,7 +335,7 @@
                 </div>
 
 <!-- RANKING: FULL WIDTH -->
-                <div class="row ranking-main-row">
+                <div class="row ranking-main-row" data-ng-show="vm.searchDto.resultGroup === 'ALL' || vm.searchDto.resultGroup === 'VOCAB'">
 
                     <div class="col-md-12">
                         <div class="ranking-section">
@@ -339,7 +350,7 @@
                                     🏆
                                 </div>
                                 <div class="learning-panel-copy">
-                                    <div class="ranking-heading-title">BẢNG XẾP HẠNG</div>
+                                    <div class="ranking-heading-title">BẢNG XẾP HẠNG DAILY VOCAB</div>
                                     <div class="ranking-heading-subtitle">Cùng xem ai đang dẫn đầu lớp nhé!</div>
                                 </div>
                                 <span class="learning-panel-toggle"

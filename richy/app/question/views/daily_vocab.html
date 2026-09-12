@@ -239,6 +239,25 @@
             {{vm.finishDailyVocab}}
         </div>
 
+        <section class="daily-result-save" ng-if="vm.dailySaveReady || vm.dailyVocabPendingResult"
+                 ng-class="{'save-failed':vm.dailySaveStatus === 'failed', 'save-pending':vm.dailySaveStatus === 'pending', 'save-success':vm.dailySaveStatus === 'saved'}">
+            <div class="daily-result-save-info">
+                <strong>{{vm.dailySaveStatus === 'failed' ? 'Kết quả: Thất bại' : vm.dailySaveStatus === 'saved' ? 'Kết quả: Thành công' : 'Lưu kết quả Daily Vocab'}}</strong>
+                <p ng-if="vm.dailyVocabPendingResult">{{vm.dailyVocabPendingResult.payload.totalWord}} từ · {{vm.dailyVocabPendingResult.payload.numberOfWords}} từ đúng · Lượt làm: {{vm.dailyVocabPendingResult.createdAt | date:'dd/MM/yyyy HH:mm'}}</p>
+                <p role="status" aria-live="polite">{{vm.dailySaveMessage}}</p>
+                <small ng-if="vm.dailySaveStorageNotice">{{vm.dailySaveStorageNotice}}</small>
+            </div>
+            <div class="daily-result-save-actions">
+                <button type="button" class="btn btn-primary" ng-click="vm.saveTestResult()"
+                        ng-disabled="vm.savingTestResult || vm.isSaveTestResult">
+                    <i class="fa" ng-class="vm.savingTestResult ? 'fa-spinner fa-spin' : vm.isSaveTestResult ? 'fa-check' : 'fa-save'"></i>
+                    {{vm.savingTestResult ? 'Đang lưu...' : vm.isSaveTestResult ? 'Đã lưu kết quả' : 'Lưu kết quả'}}
+                </button>
+                <button type="button" class="btn btn-default" ng-if="vm.dailySaveStatus === 'pending'"
+                        ng-disabled="vm.savingTestResult" ng-click="vm.discardDailyVocabPending()">Bỏ kết quả này</button>
+            </div>
+        </section>
+
         <div
             class="daily-lazy-load-status"
             ng-if="vm.totalCard > 0">
@@ -267,6 +286,16 @@
         </div>
 
 
+        <style>
+            .daily-vocab-page .daily-result-save{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:16px auto;padding:16px 20px;background:#f3f6ff;border:1px solid #d8e3fc;border-radius:14px;text-align:left;max-width:1100px}
+            .daily-vocab-page .daily-result-save p{margin:5px 0;font-size:14px;line-height:1.5}
+            .daily-vocab-page .daily-result-save small{display:block;color:#a23b27}
+            .daily-vocab-page .daily-result-save.save-failed{background:#fff2f1;border-color:#f3bdbc;color:#963b32}
+            .daily-vocab-page .daily-result-save.save-pending{background:#fff8e8;border-color:#f2d38b;color:#71520d}
+            .daily-vocab-page .daily-result-save.save-success{background:#ecfbf4;border-color:#9ddabf;color:#226947}
+            .daily-vocab-page .daily-result-save-actions{display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
+            @media(max-width:650px){.daily-vocab-page .daily-result-save{flex-direction:column;align-items:stretch;padding:14px}.daily-vocab-page .daily-result-save-actions .btn{flex:1}}
+        </style>
         <!-- TIMER -->
         <div
             class="daily-timer-zone"

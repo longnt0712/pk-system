@@ -300,6 +300,13 @@
 
         //test_result
         self.saveTestResult = saveTestResult;
+        self.saveDailyVocabResult = function (object) {
+            // Keep ordinary Listening/IELTS save calls unchanged. A timeout releases
+            // the retry button; the attempt key handles an ambiguous lost response.
+            return $http({method:'POST',url:baseUrl+'test_result/save',data:angular.copy(object),
+                timeout:30000,cache:false,headers:{'Content-Type':'application/json; charset=utf-8'}})
+                .then(function (response) { return response.data; });
+        };
         self.getOneTestResult = getOneTestResult;
 
         function saveTestResult(object, successCallback, errorCallback) {

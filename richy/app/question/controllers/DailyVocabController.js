@@ -1307,6 +1307,7 @@
         }
 
         function loadInitialDailyQuestionPage() {
+            var requestedTopicIds = (vm.searchDto.questionTopics || []).map(function (link) { return link.topic.id; });
             var requestGeneration =
                 dailyLazyGeneration;
 
@@ -1335,6 +1336,7 @@
 
                     vm.rawQuestions =
                         getPlayableDailyQuestions(content);
+                    vm.resultTopicIds = requestedTopicIds;
 
                     vm.totalCard =
                         data &&
@@ -1547,6 +1549,7 @@
             }
 
             if (vm.isSaveTestResult !== true) {
+                vm.dailySaveReady = true;
                 vm.saveTestResult();
             }
 
@@ -2249,6 +2252,7 @@
         }
 
         vm.startDailyVocab = function () {
+            if (!vm.canBeginDailyVocabRun()) return;
             if (vm.dailyVocabRunning === true) {
                 return;
             }
@@ -2278,6 +2282,8 @@
             buildDailyQuestions(true);
 
             vm.resetDailyVocabSaveState();
+            vm.attemptedDailyQuestionIds = {};
+            vm.completedDailyQuestionIds = {};
 
             vm.finishDailyVocab = 'Unfinished';
             vm.dailyVocabCounter =
@@ -2870,6 +2876,10 @@
                 correct === true ||
                 correct === 1 ||
                 String(correct).toLowerCase() === 'true';
+            vm.attemptedDailyQuestionIds = vm.attemptedDailyQuestionIds || {};
+            vm.completedDailyQuestionIds = vm.completedDailyQuestionIds || {};
+            vm.attemptedDailyQuestionIds[String(vm.currentCard.id)] = true;
+            if (isCorrect) { vm.completedDailyQuestionIds[String(vm.currentCard.id)] = true; }
 
             angular.forEach(
                 questions,
@@ -3000,6 +3010,59 @@
         vm.testResult = {};
         vm.isSaveTestResult = false;
         vm.savingTestResult = false;
+        vm.dailySaveStatus = 'idle';
+        vm.dailySaveMessage = '';
+        vm.dailySaveReady = false;
+        vm.dailyVocabPendingResult = null;
+        vm.dailySaveStorageNotice = '';
+        var dailySaveDestroyed = false;
+
+        function dailyDraftKey(userId) { return 'daily-vocab-pending:v1:' + userId; }
+        function removeDailyDraft(ownerId) {
+            try { window.localStorage.removeItem(dailyDraftKey(ownerId)); } catch (ignore) {}
+        }
+        function persistDailyDraft() {
+            if (!vm.dailyVocabPendingResult || !vm.dailyVocabPendingResult.ownerId) return;
+            try {
+                window.localStorage.setItem(dailyDraftKey(vm.dailyVocabPendingResult.ownerId), JSON.stringify(vm.dailyVocabPendingResult));
+                vm.dailySaveStorageNotice = '';
+            } catch (ignore) {
+                vm.dailySaveStorageNotice = 'Trình duyệt không giữ được bản tạm. Hãy giữ trang này mở và không tải lại trang trước khi lưu thành công.';
+            }
+        }
+        function restoreDailyDraft() {
+            if (!vm.currentUser.id) return;
+            try {
+                var raw = window.localStorage.getItem(dailyDraftKey(vm.currentUser.id));
+                if (!raw) return;
+                var draft = JSON.parse(raw), result = draft && draft.payload;
+                if (draft.version !== 1 || draft.ownerId !== vm.currentUser.id || !result || result.testType !== 1 ||
+                    !/^[a-f0-9]{32}$/.test(result.clientAttemptKey || '') || !result.user || result.user.id !== draft.ownerId ||
+                    !(result.totalWord > 0) || !(draft.createdAt > 0) || Date.now() - draft.createdAt > 7 * 86400000) {
+                    removeDailyDraft(vm.currentUser.id); return;
+                }
+                vm.dailyVocabPendingResult = draft;
+                vm.dailySaveReady = true;
+                vm.dailySaveStatus = 'pending';
+                vm.dailySaveMessage = 'Có kết quả của lượt trước chưa nhận được xác nhận lưu. Kết nối mạng rồi bấm Lưu kết quả.';
+            } catch (ignore) {
+                vm.dailySaveStorageNotice = 'Không đọc được bản tạm của trình duyệt. Nếu đang có kết quả trên trang, hãy giữ trang mở để lưu.';
+            }
+        }
+        vm.canBeginDailyVocabRun = function () {
+            if (vm.savingTestResult || vm.dailySaveStatus === 'pending') {
+                toastr.warning('Lượt trước chưa lưu xong. Hãy Lưu kết quả hoặc chọn Bỏ kết quả trước khi làm lượt mới.');
+                return false;
+            }
+            return true;
+        };
+        vm.discardDailyVocabPending = function () {
+            if (vm.savingTestResult || (!vm.dailyVocabPendingResult && !vm.dailySaveReady)) return;
+            if (!window.confirm('Bỏ kết quả chưa lưu này? Bản tạm sẽ bị xóa và không thể khôi phục.')) return;
+            if (vm.dailyVocabPendingResult) removeDailyDraft(vm.dailyVocabPendingResult.ownerId);
+            vm.dailyVocabPendingResult = null; vm.dailySaveReady = false;
+            vm.dailySaveStatus = 'idle'; vm.dailySaveMessage = ''; vm.dailySaveStorageNotice = '';
+        };
 
         vm.setUpTestResult = function () {
             vm.testResult = {
@@ -3012,12 +3075,34 @@
         };
 
         vm.resetDailyVocabSaveState = function () {
+            if (!vm.canBeginDailyVocabRun()) return false;
+            vm.dailyVocabPendingResult = null;
+            vm.dailySaveReady = false; vm.dailySaveStatus = 'idle'; vm.dailySaveMessage = '';
+            vm.dailySaveStorageNotice = '';
             vm.isSaveTestResult = false;
             vm.savingTestResult = false;
             vm.finishDailyVocab = 'Unfinished';
             vm.tempWrong = '';
 
             vm.setUpTestResult();
+        };
+
+        vm.prepareResultTopicEvidence = function () {
+            var played = {}, totals = {}, completed = {};
+            angular.forEach(vm.rawQuestions || [], function (question) {
+                angular.forEach(question.topicIds || [], function (id) {
+                    var key = String(id);
+                    totals[key] = (totals[key] || 0) + 1;
+                    if ((vm.attemptedDailyQuestionIds || {})[String(question.id)]) { played[key] = true; }
+                    if ((vm.completedDailyQuestionIds || {})[String(question.id)]) { completed[key] = (completed[key] || 0) + 1; }
+                });
+            });
+            vm.testResult.topicIds = (vm.resultTopicIds || []).filter(function (id, index, ids) {
+                return played[String(id)] && ids.indexOf(id) === index;
+            });
+            vm.testResult.completedVocabularyTopicIds = vm.testResult.topicIds.filter(function (id) {
+                return vm.allQuestionsLoaded === true && totals[String(id)] > 0 && completed[String(id)] === totals[String(id)];
+            });
         };
 
         vm.saveTestResult = function () {
@@ -3027,14 +3112,15 @@
             ) {
                 return;
             }
+            if (!vm.dailySaveReady) { toastr.info('Hoàn thành lượt Daily Vocab trước khi lưu kết quả.'); return; }
 
-            vm.savingTestResult = true;
-
+            if (!vm.dailyVocabPendingResult) {
             if (!vm.testResult) {
                 vm.setUpTestResult();
             }
 
             vm.testResult.testType = 1;
+            vm.prepareResultTopicEvidence();
             vm.testResult.testName =
                 (vm.title || 'DAILY VOCAB')
                     .substring(0, 50);
@@ -3060,32 +3146,59 @@
 
             vm.testResult.totalWord =
                 vm.totalCard;
-
-            blockUI.start();
-
-            service.saveTestResult(
-                vm.testResult
+                var crypto = window.crypto || window.msCrypto;
+                if (!crypto || !crypto.getRandomValues) { vm.dailySaveMessage = 'Không tạo được mã lượt làm. Hãy mở website bằng HTTPS trên trình duyệt mới.'; vm.dailySaveStatus = 'pending'; return; }
+                var bytes = new Uint8Array(16); crypto.getRandomValues(bytes);
+                var key = Array.prototype.map.call(bytes, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+                var payload = angular.copy(vm.testResult);
+                payload.user = {id: vm.currentUser.id};
+                delete payload.id; delete payload.testDate; delete payload.startDate; delete payload.endDate;
+                payload.clientAttemptKey = key;
+                vm.dailyVocabPendingResult = {version:1, ownerId:vm.currentUser.id, createdAt:Date.now(), payload:payload};
+            }
+            var pending = vm.dailyVocabPendingResult;
+            var signedIn = getCurrentUser();
+            if (!pending.ownerId || signedIn.id !== pending.ownerId) {
+                vm.dailySaveStatus = 'pending'; vm.dailySaveMessage = 'Hãy đăng nhập lại đúng tài khoản đã làm lượt này rồi bấm Lưu kết quả.';
+                persistDailyDraft(); return;
+            }
+            vm.dailySaveStatus = 'pending'; persistDailyDraft();
+            if (window.navigator && window.navigator.onLine === false) {
+                vm.dailySaveMessage = 'Đang mất mạng, kết quả chưa lưu. Kết nối lại mạng rồi bấm Lưu kết quả.'; return;
+            }
+            vm.savingTestResult = true; vm.dailySaveStatus = 'saving';
+            vm.dailySaveMessage = 'Đang lưu kết quả...';
+            service.saveDailyVocabResult(
+                pending.payload
             ).then(
                 function (data) {
+                    if (dailySaveDestroyed) return;
+                    if (!data || !(Number(data.id) > 0)) throw new Error('Chưa nhận được xác nhận lưu hợp lệ.');
                     if (
                         data &&
-                        data.messageCode == 1
+                        (data.resultStatus === 'FAILED' || data.messageCode == 1)
                     ) {
-                        toastr.error(
-                            'Sai quá nhiều => chưa đạt',
+                        vm.dailySaveStatus = 'failed';
+                        vm.dailySaveMessage = 'Đã lưu kết quả: Thất bại vì sai quá nhiều. Lượt này không cộng EXP, không tính vào bảng xếp hạng và chưa được tính hoàn thành bài tập.';
+                        removeDailyDraft(pending.ownerId);
+                        toastr.warning(
+                            vm.dailySaveMessage,
                             'Thông báo'
                         );
 
                         vm.finishDailyVocab =
-                            'Not Passed';
-                    } else {
+                            'Thất bại';
+                    } else if (data && Number(data.id) > 0) {
+                        vm.dailySaveStatus = 'saved';
+                        vm.dailySaveMessage = 'Đã lưu kết quả thành công.';
+                        removeDailyDraft(pending.ownerId);
                         toastr.info(
                             'Lưu thành công',
                             'Thông báo'
                         );
 
                         vm.finishDailyVocab =
-                            'Finished';
+                            'Thành công';
                     }
 
                     if (data) {
@@ -3102,20 +3215,27 @@
                     }
 
                     vm.isSaveTestResult = true;
-                },
-                function () {
+                    vm.dailySaveStorageNotice = '';
+                }
+            ).catch(function (error) {
+                    if (dailySaveDestroyed) return;
+                    vm.isSaveTestResult = false; vm.dailySaveStatus = 'pending';
+                    vm.dailySaveMessage = error && (error.status === 401 || error.status === 403)
+                        ? 'Phiên đăng nhập đã hết hạn hoặc không có quyền lưu. Đăng nhập lại đúng tài khoản rồi bấm Lưu kết quả.'
+                        : 'Chưa nhận được xác nhận lưu (mất mạng hoặc server gián đoạn). Kết nối lại rồi bấm Lưu kết quả. Không cần làm lại bài.';
+                    persistDailyDraft();
                     toastr.error(
-                        'Có lỗi xảy ra.',
+                        vm.dailySaveMessage,
                         'Thông báo'
                     );
-                }
-            ).finally(function () {
+            }).finally(function () {
+                if (dailySaveDestroyed) return;
                 vm.savingTestResult = false;
-                blockUI.stop();
             });
         };
 
         vm.resetDailyVocabRun = function () {
+            if (!vm.canBeginDailyVocabRun()) return;
             vm.resetDailyVocabTimer();
 
             resetRunningManRound();
@@ -3143,12 +3263,14 @@
         };
 
         vm.setUpTestResult();
+        restoreDailyDraft();
 
         // =====================================================
         // CLEANUP
         // =====================================================
 
         $scope.$on('$destroy', function () {
+            dailySaveDestroyed = true;
             cancelDailyVocabTimeout();
             cancelRunningManTimeout();
             cancelRunningManTauntTimeout();

@@ -3,6 +3,41 @@
 
     angular.module('Hrm.EnrolmentClass').controller('EnrolmentClassController', EnrolmentClassController);
 
+    angular.module('Hrm.EnrolmentClass').directive('homeworkProgressWheel', function () {
+        return {
+            restrict: 'A',
+            link: function (scope, element) {
+                var control = element[0];
+                function ancestor(node, className) {
+                    for (var parent = node.parentElement; parent; parent = parent.parentElement) {
+                        if (parent.classList.contains(className)) { return parent; }
+                    }
+                    return null;
+                }
+                function wheel(event) {
+                    // Keep browser zoom and normal scrolling on unfocused controls.
+                    if (event.ctrlKey || !event.cancelable || control.ownerDocument.activeElement !== control || control.disabled) { return; }
+                    var table = ancestor(control, 'class-homework-review-table');
+                    if (!table) { return; }
+                    event.preventDefault(); event.stopPropagation();
+                    var dx = event.deltaX || 0, dy = event.deltaY || 0;
+                    if (event.deltaMode === 1) { dx *= 20; dy *= 20; }
+                    else if (event.deltaMode === 2) { dx *= table.clientWidth; dy *= table.clientHeight; }
+                    if (event.shiftKey && !dx) { dx = dy; dy = 0; }
+                    var beforeTop = table.scrollTop, beforeLeft = table.scrollLeft;
+                    table.scrollTop += dy; table.scrollLeft += dx;
+                    var outer = ancestor(table, 'class-day-plan-body');
+                    if (outer) {
+                        outer.scrollTop += dy - (table.scrollTop - beforeTop);
+                        outer.scrollLeft += dx - (table.scrollLeft - beforeLeft);
+                    }
+                }
+                control.addEventListener('wheel', wheel, {passive: false});
+                scope.$on('$destroy', function () { control.removeEventListener('wheel', wheel); });
+            }
+        };
+    });
+
     EnrolmentClassController.$inject = [
         '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService', '$state'
     ];
@@ -72,8 +107,21 @@
 		vm.taskEditor = null;
 		vm.taskEditorIndex = -1;
 		vm.taskStatuses = [{id: 'TODO', name: 'Chưa làm'}, {id: 'IN_PROGRESS', name: 'Đang thực hiện'}, {id: 'DONE', name: 'Hoàn thành'}];
-		vm.studentTaskStatuses = [{id: 'TODO', name: 'Chưa làm'}, {id: 'DONE', name: 'Đã làm'}, {id: 'NEEDS_REVIEW', name: 'Cần bổ sung'}];
+		vm.homeworkProgressLevels = [10, 20, 30, 40, 50, 60, 70, 80, 90];
+		vm.studentTaskStatuses = [{id: 'UNRECORDED', name: 'Chưa xác nhận'}, {id: 'TODO', name: 'Chưa làm'}, {id: 'DONE', name: 'Đã làm'}, {id: 'NEEDS_REVIEW', name: 'Cần bổ sung'}];
+        angular.forEach(vm.homeworkProgressLevels, function (percent) { vm.studentTaskStatuses.push({id: 'PROGRESS_' + percent, name: 'Đã làm ' + percent + '%'}); });
 		var scheduleStudentsRequest = 0;
+        var homeworkReviewRequest = 0;
+        var homeworkCellSaveRequest = 0;
+        var homeworkCellDrafts = {};
+        vm.homeworkCellSaving = false;
+        vm.previousHomeworkDay = null;
+        vm.previousHomeworkTasks = [];
+        vm.homeworkReviewRows = [];
+        vm.homeworkReviewLoading = false;
+        vm.homeworkReviewError = false;
+        vm.homeworkReviewSearch = '';
+        vm.homeworkReviewFilter = 'ALL';
 		vm.topicSelectionOpen = {classTopicIds: false, homeworkTopicIds: false};
 		vm.weeklyDayOptions = [
 			{value: 1, label: 'Thứ 2', shortLabel: 'T2'},
@@ -672,11 +720,14 @@
 			var firstDay = moment(vm.scheduleMonthDate).startOf('month').format('YYYY-MM-DD');
 			var lastDay = moment(vm.scheduleMonthDate).endOf('month').format('YYYY-MM-DD');
 			vm.scheduleLoading = true;
-			return service.getSchedule(vm.scheduleClass.id, firstDay, lastDay).then(function (data) {
+            var request = ++scheduleMonthRequest, classId = vm.scheduleClass.id;
+			return service.getSchedule(classId, firstDay, lastDay).then(function (data) {
+                if (request !== scheduleMonthRequest || !vm.scheduleClass || vm.scheduleClass.id !== classId) { return; }
 				vm.scheduleEntries = angular.isArray(data) ? data : [];
 				vm.buildScheduleCalendar();
 				vm.scheduleLoading = false;
 			}, function () {
+                if (request !== scheduleMonthRequest || !vm.scheduleClass || vm.scheduleClass.id !== classId) { return; }
 				vm.scheduleEntries = [];
 				vm.buildScheduleCalendar();
 				vm.scheduleLoading = false;
@@ -684,6 +735,7 @@
 			});
 		};
 
+        var scheduleMonthRequest = 0, scheduleSessionRequest = 0, scheduleDaySnapshot = '';
 		vm.buildScheduleCalendar = function () {
 			var year = vm.scheduleMonthDate.getFullYear();
 			var month = vm.scheduleMonthDate.getMonth();
@@ -712,12 +764,12 @@
 					day: day,
 					dateKey: dateKey,
 					isToday: dateKey === todayKey,
-					isClassDay: weeklyDays[dayOfWeek] === true,
+					isClassDay: !(entry && entry.movedToDate) && (weeklyDays[dayOfWeek] === true || !!entry),
 					entry: entry,
 					classCount: entry && entry.classTopicIds ? entry.classTopicIds.length : 0,
 					homeworkCount: entry && entry.homeworkTopicIds ? entry.homeworkTopicIds.length : 0,
 					taskCount: entry && entry.tasks ? entry.tasks.length : 0,
-					doneTaskCount: entry && entry.tasks ? entry.tasks.filter(function (task) { return task.status === 'DONE'; }).length : 0
+					doneTaskCount: entry && entry.tasks ? entry.tasks.filter(function (task) { return vm.taskIsDone(task); }).length : 0
 				});
 			}
 			while (cells.length % 7) { cells.push({isBlank: true}); }
@@ -777,7 +829,7 @@
 						endTimeValue: parseScheduleTime(session.endTime)
 					};
 				});
-				if (!vm.scheduleLoading) { vm.buildScheduleCalendar(); }
+				vm.loadScheduleMonth();
 				toastr.success('Đã lưu lịch học hằng tuần.', 'Thông báo');
 			}, function () {
 				vm.scheduleSaving = false;
@@ -822,7 +874,8 @@
 		}
 
 		vm.openScheduleDay = function (cell) {
-			if (!cell || cell.isBlank || vm.scheduleLoading) { return; }
+			if (!cell || cell.isBlank || vm.scheduleLoading || vm.scheduleMoving) { return; }
+            homeworkCellSaveRequest++; homeworkCellDrafts = {}; vm.homeworkCellSaving = false;
 			vm.scheduleDay = angular.copy(cell.entry || {
 				enrolmentClassId: vm.scheduleClass.id,
 				scheduleDate: cell.dateKey,
@@ -834,6 +887,8 @@
 			vm.scheduleDay.tasks = vm.scheduleDay.tasks || [];
 			vm.scheduleDay.classNotes = vm.scheduleDay.classNotes || '';
 			vm.scheduleDay.homeworkNotes = vm.scheduleDay.homeworkNotes || '';
+            vm.scheduleMove = null; vm.scheduleSessionError = false; vm.scheduleSessionLoading = false;
+            scheduleDaySnapshot = JSON.stringify(scheduleDayPayload());
 			vm.taskEditor = null;
 			vm.topicSelectionOpen = {classTopicIds: false, homeworkTopicIds: false};
 			vm.scheduleDayModal = modal.open({
@@ -842,9 +897,214 @@
 				scope: $scope,
 				size: 'lg',
 				windowClass: 'class-management-modal-window class-schedule-day-modal-window',
+				keyboard: false,
 				backdrop: 'static'
 			});
+            if (vm.scheduleDayModal.result && angular.isFunction(vm.scheduleDayModal.result.then)) {
+                var openedModal = vm.scheduleDayModal;
+                var invalidateSession = function () {
+                    if (vm.scheduleDayModal === openedModal) { scheduleSessionRequest++; homeworkReviewRequest++; }
+                };
+                vm.scheduleDayModal.result.then(invalidateSession, invalidateSession);
+            }
+            vm.homeworkReviewSearch = ''; vm.homeworkReviewFilter = 'ALL';
+            vm.loadPreviousHomework();
+            vm.loadScheduleSession();
 		};
+
+        function scheduleDayPayload() {
+            var day = vm.scheduleDay;
+            return {id: day.id || null, scheduleDate: day.scheduleDate, version: day.version == null ? null : day.version,
+                classTopicIds: day.classTopicIds || [], homeworkTopicIds: day.homeworkTopicIds || [],
+                classNotes: day.classNotes || '', homeworkNotes: day.homeworkNotes || '', tasks: (day.tasks || []).map(scheduleTaskPayload)};
+        }
+
+        vm.loadScheduleSession = function () {
+            if (!angular.isFunction(service.getScheduleSession)) { return; }
+            var request = ++scheduleSessionRequest, classId = vm.scheduleClass.id, date = vm.scheduleDay.scheduleDate;
+            vm.scheduleSessionLoading = true; vm.scheduleSessionError = false;
+            return service.getScheduleSession(classId, date).then(function (info) {
+                if (request !== scheduleSessionRequest || !vm.scheduleClass || vm.scheduleClass.id !== classId
+                    || !vm.scheduleDay || vm.scheduleDay.scheduleDate !== date) { return; }
+                vm.scheduleSessionLoading = false;
+                if (!info || info.scheduleDate !== date || !angular.isArray(info.tasks)) { vm.scheduleSessionError = true; return; }
+                vm.scheduleDay = angular.copy(info);
+                vm.scheduleDay.classNotes = vm.scheduleDay.classNotes || ''; vm.scheduleDay.homeworkNotes = vm.scheduleDay.homeworkNotes || '';
+                scheduleDaySnapshot = JSON.stringify(scheduleDayPayload());
+                if (vm.scheduleDay.movedToDate) { vm.previousHomeworkDay = null; vm.previousHomeworkTasks = []; }
+            }, function () {
+                if (request !== scheduleSessionRequest || vm.scheduleClass.id !== classId || vm.scheduleDay.scheduleDate !== date) { return; }
+                vm.scheduleSessionLoading = false; vm.scheduleSessionError = true;
+                toastr.error('Không tải được buổi học và hạn mặc định. Hãy thử lại; chưa được lưu kế hoạch.', 'Lỗi');
+            });
+        };
+
+        vm.openMovedScheduleDay = function () {
+            var date = vm.scheduleDay && vm.scheduleDay.movedToDate;
+            if (!date || vm.scheduleMoving) { return; }
+            if (vm.scheduleDayModal) { vm.scheduleDayModal.close(); }
+            vm.openScheduleDay({dateKey: date});
+        };
+
+        vm.openScheduleMove = function () {
+            if (vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor) { return; }
+            vm.scheduleMove = {dateValue: null, startTimeValue: parseScheduleTime(vm.scheduleDay.sessionStartTime),
+                endTimeValue: parseScheduleTime(vm.scheduleDay.sessionEndTime), reason: '', shiftManualDeadlines: false};
+        };
+
+        vm.moveScheduleDay = function () {
+            if (!vm.scheduleMove || vm.scheduleMoving || vm.scheduleDaySaving || vm.homeworkCellSaving
+                || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.homeworkHasDrafts() || vm.taskEditor) { return; }
+            if (JSON.stringify(scheduleDayPayload()) !== scheduleDaySnapshot) {
+                toastr.warning('Có thay đổi kế hoạch chưa lưu. Hãy lưu kế hoạch rồi mở lại ngày này để dời buổi.'); return;
+            }
+            var move = vm.scheduleMove, date = move.dateValue && moment(move.dateValue).isValid() ? moment(move.dateValue).format('YYYY-MM-DD') : null;
+            var start = formatScheduleTime(move.startTimeValue), end = formatScheduleTime(move.endTimeValue);
+            if (!date || date === vm.scheduleDay.scheduleDate || !start || !end || end <= start) {
+                toastr.warning('Chọn ngày mới và đủ giờ học / giờ tan; giờ tan phải sau giờ học.'); return;
+            }
+            var classId = vm.scheduleClass.id, fromDate = vm.scheduleDay.scheduleDate;
+            vm.scheduleMoving = true;
+            service.moveScheduleDay(classId, {dayId: vm.scheduleDay.id || null, dayVersion: vm.scheduleDay.version,
+                fromDate: fromDate, toDate: date, startTime: start, endTime: end, reason: move.reason || '',
+                shiftManualDeadlines: move.shiftManualDeadlines === true}).then(function (saved) {
+                vm.scheduleMoving = false;
+                if (!saved || saved.scheduleDate !== date || saved.id == null || saved.version == null || !angular.isArray(saved.tasks)) {
+                    toastr.error('Chưa xác nhận dời buổi. Hãy tải lại lịch kiểm tra trước khi thử lại.'); return;
+                }
+                scheduleSessionRequest++; homeworkReviewRequest++;
+                if (vm.scheduleDayModal) { vm.scheduleDayModal.close(); }
+                vm.scheduleMonthDate = moment(date, 'YYYY-MM-DD', true).startOf('month').toDate();
+                vm.loadScheduleMonth();
+                toastr.success('Đã dời buổi sang ' + moment(date, 'YYYY-MM-DD').format('DD/MM/YYYY') + ' · ' + start + '–' + end + '.');
+            }, function (error) {
+                vm.scheduleMoving = false;
+                toastr.error(error && error.data && error.data.message ? error.data.message : 'Không dời được buổi. Kế hoạch chưa bị ghi đè.');
+            });
+		};
+
+        vm.loadPreviousHomework = function (discardDrafts) {
+            if (vm.homeworkCellSaving) { return; }
+            if (vm.homeworkHasDrafts() && !discardDrafts) { toastr.warning('Có sửa tiến độ chưa lưu. Hãy thử lưu lại hoặc chọn bỏ sửa và tải lại bảng.'); return; }
+            homeworkCellDrafts = {};
+            if (!vm.scheduleClass || !vm.scheduleDay || !vm.scheduleDay.scheduleDate) { return; }
+            var request = ++homeworkReviewRequest;
+            var classId = vm.scheduleClass.id, dateKey = vm.scheduleDay.scheduleDate;
+            vm.previousHomeworkDay = null; vm.previousHomeworkTasks = [];
+            vm.homeworkReviewLoading = true; vm.homeworkReviewError = false;
+            vm.buildHomeworkReviewRows();
+            return service.getPreviousScheduleDay(classId, dateKey).then(function (day) {
+                if (request !== homeworkReviewRequest || !vm.scheduleClass || vm.scheduleClass.id !== classId
+                    || !vm.scheduleDay || vm.scheduleDay.scheduleDate !== dateKey) { return; }
+                vm.previousHomeworkDay = day && day.scheduleDate ? day : null;
+                vm.previousHomeworkTasks = (day && angular.isArray(day.tasks) ? day.tasks : []).filter(function (task) {
+                    return task && task.section === 'HOMEWORK';
+                });
+                vm.homeworkReviewLoading = false;
+                vm.buildHomeworkReviewRows();
+            }, function () {
+                if (request !== homeworkReviewRequest || !vm.scheduleClass || vm.scheduleClass.id !== classId
+                    || !vm.scheduleDay || vm.scheduleDay.scheduleDate !== dateKey) { return; }
+                vm.homeworkReviewLoading = false; vm.homeworkReviewError = true;
+                vm.buildHomeworkReviewRows();
+            });
+        };
+
+        vm.previousHomeworkLabel = function () {
+            return vm.previousHomeworkDay ? moment(vm.previousHomeworkDay.scheduleDate, 'YYYY-MM-DD').format('DD/MM/YYYY') : '';
+        };
+
+        vm.homeworkHasDrafts = function () { return Object.keys(homeworkCellDrafts).length > 0; };
+        vm.markHomeworkCellDirty = function (cell) {
+            cell.dirty = cell.editStatus !== cell.status || (cell.editNotes || '') !== cell.notes;
+            cell.error = '';
+            if (cell.dirty) { homeworkCellDrafts[cell.key] = cell; }
+            else { delete homeworkCellDrafts[cell.key]; }
+        };
+        vm.saveHomeworkCell = function (row, cell) {
+            if (!cell.dirty || vm.homeworkCellSaving || !vm.previousHomeworkDay || vm.scheduleDaySaving) { return; }
+            if ((cell.editNotes || '').length > 1000) { cell.error = 'Nhận xét tối đa 1000 ký tự.'; return; }
+            var request = ++homeworkCellSaveRequest, reviewRequest = homeworkReviewRequest;
+            var classId = vm.scheduleClass.id, dayId = vm.previousHomeworkDay.id;
+            var previousDate = vm.previousHomeworkDay.scheduleDate, currentDate = vm.scheduleDay.scheduleDate;
+            var status = cell.automatic && cell.editStatus === cell.status ? cell.manualStatus || 'TODO' : cell.editStatus;
+            var payload = {studentUserId: row.id, status: status, notes: cell.editNotes || '', dayVersion: vm.previousHomeworkDay.version};
+            if (!dayId || !cell.taskId || payload.dayVersion == null) { cell.error = 'Ngày/task chưa được lưu hoặc backend chưa hỗ trợ. Hãy tải lại bảng.'; return; }
+            vm.homeworkCellSaving = true; cell.saving = true; cell.error = '';
+            function isCurrent() {
+                return request === homeworkCellSaveRequest && reviewRequest === homeworkReviewRequest
+                    && vm.scheduleClass && vm.scheduleClass.id === classId && vm.scheduleDay && vm.scheduleDay.scheduleDate === currentDate;
+            }
+            return service.updateTaskProgress(classId, dayId, cell.taskId, payload).then(function (saved) {
+                if (!isCurrent()) { return; }
+                vm.homeworkCellSaving = false; cell.saving = false;
+                if (!saved || saved.id !== dayId || saved.scheduleDate !== previousDate || saved.version == null
+                    || saved.version <= payload.dayVersion || !angular.isArray(saved.tasks)) {
+                    cell.error = 'Backend chưa xác nhận lưu tiến độ. Hãy tải lại bảng để kiểm tra.'; return;
+                }
+                delete homeworkCellDrafts[cell.key];
+                vm.previousHomeworkDay = saved;
+                vm.previousHomeworkTasks = saved.tasks.filter(function (task) { return task.section === 'HOMEWORK'; });
+                for (var i = 0; i < vm.scheduleEntries.length; i++) {
+                    if (vm.scheduleEntries[i].scheduleDate === previousDate) { vm.scheduleEntries[i] = saved; break; }
+                }
+                vm.buildHomeworkReviewRows();
+                toastr.success('Đã lưu tiến độ và nhận xét của học sinh.');
+            }, function (error) {
+                if (!isCurrent()) { return; }
+                vm.homeworkCellSaving = false; cell.saving = false;
+                cell.error = error && error.data && error.data.message ? error.data.message
+                    : 'Không xác nhận được lưu. Thử lưu lại; nếu kế hoạch đã thay đổi, hãy tải lại bảng.';
+            });
+        };
+
+        vm.buildHomeworkReviewRows = function () {
+            var lookups = vm.previousHomeworkTasks.map(function (task) {
+                var lookup = {};
+                angular.forEach(task.studentProgress || [], function (progress) {
+                    if (progress && progress.studentUserId != null) { lookup[String(progress.studentUserId)] = progress; }
+                });
+                return lookup;
+            });
+            vm.homeworkReviewRows = vm.scheduleStudents.map(function (student) {
+                var done = 0, needsReview = 0, recorded = 0, partial = 0, progressTotal = 0;
+                var cells = lookups.map(function (lookup, index) {
+                    var progress = lookup[String(student.id)];
+                    var status = progress ? progress.status : 'UNRECORDED';
+                    if (progress && status !== 'UNRECORDED') { recorded++; }
+                    var percent = /^PROGRESS_(10|20|30|40|50|60|70|80|90)$/.test(status) ? Number(status.substring(9)) : 0;
+                    if (percent) { partial++; progressTotal += percent; }
+                    if (status === 'DONE') { done++; progressTotal += 100; }
+                    if (status === 'NEEDS_REVIEW') { needsReview++; }
+                    var taskId = vm.previousHomeworkTasks[index].id, key = taskId + ':' + student.id;
+                    return homeworkCellDrafts[key] || {status: status, notes: progress ? progress.notes || '' : '',
+                        taskId: taskId, key: key, editStatus: status, editNotes: progress ? progress.notes || '' : '',
+                        automatic: !!(progress && progress.automatic), manualStatus: progress && progress.manualStatus,
+                        label: status === 'DONE' ? (progress.automatic ? 'Đã làm — tự động' : 'Đã làm') : status === 'NEEDS_REVIEW' ? 'Cần bổ sung'
+                            : percent ? 'Đã làm ' + percent + '%' : status === 'TODO' ? 'Chưa làm' : 'Chưa xác nhận'};
+                });
+                var total = cells.length;
+                var status = !total ? 'NO_TASKS' : done === total ? 'DONE' : needsReview ? 'NEEDS_REVIEW'
+                    : recorded ? 'INCOMPLETE' : 'UNRECORDED';
+                return {id: student.id, name: student.taskDisplayName || student.displayName || student.username,
+                    username: student.username || '', cells: cells, done: done, total: total, status: status,
+                    progressPercent: total ? Math.round(progressTotal / total) : 0,
+                    label: !total ? 'Chưa có Tasks để đối chiếu' : status === 'DONE' ? 'Đã hoàn thành'
+                        : status === 'NEEDS_REVIEW' ? 'Cần bổ sung' : status === 'UNRECORDED' ? 'Chưa xác nhận'
+                        : partial ? 'Đang làm — ' + Math.round(progressTotal / total) + '%'
+                        : done + '/' + total + ' đã làm'};
+            });
+            vm.homeworkReviewDoneCount = vm.homeworkReviewRows.filter(function (row) { return row.status === 'DONE'; }).length;
+        };
+
+        vm.filteredHomeworkRows = function () {
+            var query = (vm.homeworkReviewSearch || '').toLowerCase().trim();
+            return vm.homeworkReviewRows.filter(function (row) {
+                return (!query || ((row.name || '') + ' ' + row.username).toLowerCase().indexOf(query) !== -1)
+                    && (vm.homeworkReviewFilter === 'ALL' || (vm.homeworkReviewFilter === 'DONE' ? row.status === 'DONE'
+                        : row.total > 0 && row.status !== 'DONE'));
+            });
+        };
 
 		vm.scheduleDayLabel = function () {
 			return vm.scheduleDay && vm.scheduleDay.scheduleDate
@@ -852,6 +1112,7 @@
 		};
 
 		vm.toggleTopicSelection = function (field) {
+            if (vm.scheduleSessionLoading || vm.scheduleSessionError || vm.scheduleMoving) { return; }
 			vm.topicSelectionOpen[field] = !vm.topicSelectionOpen[field];
 		};
 
@@ -865,19 +1126,12 @@
 		};
 
 		vm.saveScheduleDay = function () {
-			if (vm.scheduleDaySaving || !vm.scheduleDay) { return; }
+            if (vm.homeworkCellSaving || vm.homeworkHasDrafts()) { toastr.warning('Hãy lưu hoặc bỏ sửa tiến độ buổi trước trước khi lưu kế hoạch.'); return; }
+			if (vm.scheduleDaySaving || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError
+                || !vm.scheduleDay || vm.scheduleDay.movedToDate) { return; }
 			if (vm.taskEditor) { toastr.warning('Hãy bấm Thêm task/Cập nhật task hoặc Hủy sửa trước khi lưu kế hoạch.'); return; }
 			vm.scheduleDaySaving = true;
-			service.saveScheduleDay(vm.scheduleClass.id, {
-				id: vm.scheduleDay.id || null,
-				scheduleDate: vm.scheduleDay.scheduleDate,
-				classTopicIds: vm.scheduleDay.classTopicIds || [],
-				homeworkTopicIds: vm.scheduleDay.homeworkTopicIds || [],
-				version: vm.scheduleDay.version == null ? null : vm.scheduleDay.version,
-				classNotes: vm.scheduleDay.classNotes || '',
-				homeworkNotes: vm.scheduleDay.homeworkNotes || '',
-				tasks: vm.scheduleDay.tasks.map(scheduleTaskPayload)
-			}).then(function (saved) {
+			service.saveScheduleDay(vm.scheduleClass.id, scheduleDayPayload()).then(function (saved) {
 				vm.scheduleDaySaving = false;
 				if (!saved) {
 					toastr.error('Không lưu được kế hoạch ngày học.', 'Lỗi');
@@ -908,6 +1162,7 @@
 		vm.loadScheduleStudents = function () {
 			var request = ++scheduleStudentsRequest;
 			vm.scheduleStudents = []; vm.scheduleStudentsLoading = true; vm.scheduleStudentsError = false;
+            vm.buildHomeworkReviewRows();
 			return service.getScheduleStudents(vm.scheduleClass.id).then(function (students) {
 				if (request !== scheduleStudentsRequest) { return; }
 				var seen = {};
@@ -917,9 +1172,13 @@
 				});
 				vm.scheduleStudents.sort(function (a, b) { return (a.taskDisplayName || '').localeCompare(b.taskDisplayName || '', 'vi'); });
 				vm.scheduleStudentsLoading = false;
+				vm.buildHomeworkReviewRows();
+                if (vm.scheduleClass && vm.scheduleMonthDate) { vm.buildScheduleCalendar(); }
 			}, function () {
 				if (request !== scheduleStudentsRequest) { return; }
 				vm.scheduleStudentsLoading = false; vm.scheduleStudentsError = true;
+                vm.buildHomeworkReviewRows();
+                if (vm.scheduleClass && vm.scheduleMonthDate) { vm.buildScheduleCalendar(); }
 			});
 		};
 
@@ -940,17 +1199,31 @@
 		};
 
 		vm.openScheduleTask = function (section, task) {
-			if (vm.scheduleDaySaving || vm.taskEditor) { return; }
+			if (vm.scheduleDaySaving || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor) { return; }
 			if (!task && vm.scheduleDay.tasks.length >= 100) { toastr.warning('Tối đa 100 tasks cho một ngày.'); return; }
 			vm.taskEditorIndex = task ? vm.scheduleDay.tasks.indexOf(task) : -1;
 			vm.taskEditor = angular.copy(task || {section: section, title: '', notes: '', status: 'TODO', topicId: null, studentProgress: []});
-			vm.taskEditor.dueDateValue = vm.taskEditor.dueDate ? moment(vm.taskEditor.dueDate, 'YYYY-MM-DD', true).toDate() : null;
+            vm.taskEditor.deadlineAutomatic = section === 'HOMEWORK' && (task
+                ? task.deadlineAutomatic === true || (task.deadlineAutomatic == null && !task.dueDate) : true);
+            vm.taskEditor.legacyDateOnly = !!(task && task.dueDate && !task.dueTime);
+            vm.taskEditor.dueDateValue = vm.taskEditor.dueDate ? moment(vm.taskEditor.dueDate + 'T' + (vm.taskEditor.dueTime || '23:59'), 'YYYY-MM-DDTHH:mm', true).toDate() : null;
+            vm.taskDeadlineChanged();
 			vm.taskEditor.categoryKey = vm.taskEditor.topicId == null ? null : (vm.taskEditor.categoryId == null ? 'uncategorized' : String(vm.taskEditor.categoryId));
 			vm.taskEditor.studentProgress = vm.taskEditor.studentProgress || [];
+			vm.taskEditor.autoCompleteFromTopic = vm.taskEditor.autoCompleteFromTopic !== false;
 			vm.taskEditor.showProgress = false;
 		};
 
 		vm.cancelScheduleTask = function () { vm.taskEditor = null; vm.taskEditorIndex = -1; };
+        vm.taskDeadlineChanged = function () {
+            if (!vm.taskEditor) { return; }
+            if (vm.taskEditor.deadlineAutomatic) {
+                vm.taskEditor.dueDateValue = vm.scheduleDay.defaultHomeworkDeadline
+                    ? moment(vm.scheduleDay.defaultHomeworkDeadline, 'YYYY-MM-DDTHH:mm', true).toDate() : null;
+                vm.taskEditor.legacyDateOnly = false;
+            }
+        };
+        vm.taskDeadlineEdited = function () { if (vm.taskEditor) { vm.taskEditor.legacyDateOnly = false; } };
 		vm.taskCategoryChanged = function () { vm.taskEditor.topicId = null; };
 		vm.taskTopics = function () {
 			if (!vm.taskEditor || !vm.taskEditor.categoryKey) { return []; }
@@ -971,11 +1244,17 @@
 		};
 
 		function scheduleTaskPayload(task) {
+			var progress = (task.studentProgress || []).map(function (entry) {
+				return {studentUserId: entry.studentUserId, status: entry.automatic ? entry.manualStatus || 'TODO' : entry.status,
+					notes: entry.notes || ''};
+			}).filter(function (entry) { return entry.status !== 'TODO' || (entry.notes || '').trim(); });
 			return {id: task.id || null, section: task.section, title: task.title, notes: task.notes || '',
-				dueDate: task.dueDate || null, status: task.status || 'TODO', topicId: task.topicId || null,
-				studentProgress: (task.studentProgress || []).filter(function (entry) {
-					return entry.status !== 'TODO' || (entry.notes || '').trim();
-				}).map(function (entry) { return {studentUserId: entry.studentUserId, status: entry.status, notes: entry.notes || ''}; })};
+				dueDate: task.deadlineAutomatic === true ? null : task.dueDate || null,
+                dueTime: task.deadlineAutomatic === true ? null : task.dueTime || null,
+                deadlineAutomatic: task.deadlineAutomatic == null ? null : task.deadlineAutomatic,
+                status: task.status || 'TODO', topicId: task.topicId || null,
+				autoCompleteFromTopic: task.autoCompleteFromTopic !== false,
+				studentProgress: progress};
 		}
 
 		vm.commitScheduleTask = function () {
@@ -983,14 +1262,23 @@
 			var task = angular.copy(vm.taskEditor); task.title = (task.title || '').trim();
 			if (!task.title || task.title.length > 200) { toastr.warning('Nhập tên task từ 1 đến 200 ký tự.'); return; }
 			if (task.dueDateValue && !moment(task.dueDateValue).isValid()) { toastr.warning('Hạn hoàn thành không hợp lệ.'); return; }
-			task.dueDate = task.dueDateValue ? moment(task.dueDateValue).format('YYYY-MM-DD') : null;
+            if (task.deadlineAutomatic && !vm.scheduleDay.defaultHomeworkDeadline) {
+                toastr.warning('Chưa có giờ tan buổi kế tiếp. Hãy thiết lập lịch hoặc bỏ hạn tự động và nhập ngày giờ.'); return;
+            }
+			task.dueDate = !task.deadlineAutomatic && task.dueDateValue ? moment(task.dueDateValue).format('YYYY-MM-DD') : null;
+            task.dueTime = !task.deadlineAutomatic && task.dueDateValue && !task.legacyDateOnly ? moment(task.dueDateValue).format('HH:mm') : null;
+            var assigned = task.id && vm.scheduleDay.movedFromDate && vm.scheduleDay.movedFromDate < vm.scheduleDay.scheduleDate
+                ? vm.scheduleDay.movedFromDate : vm.scheduleDay.scheduleDate;
+			if (task.dueDate && task.dueDate < assigned) { toastr.warning('Hạn hoàn thành không được trước ngày giao bài.'); return; }
+            task.resolvedDueDate = task.deadlineAutomatic ? vm.scheduleDay.defaultHomeworkDeadline.slice(0, 10) : task.dueDate;
+            task.resolvedDueTime = task.deadlineAutomatic ? vm.scheduleDay.defaultHomeworkDeadline.slice(11, 16) : task.dueTime;
 			var topic = null;
 			angular.forEach(vm.scheduleTopics, function (item) { if (String(item.id) === String(task.topicId)) { topic = item; } });
 			if (task.topicId != null && !topic) { toastr.warning('Topic không còn tồn tại. Hãy chọn lại.'); return; }
 			task.topicName = topic ? topic.name : ''; task.categoryId = topic ? topic.categoryId : null;
 			task.categoryName = topic ? topic.categoryName : '';
 			task.studentProgress = scheduleTaskPayload(task).studentProgress;
-			delete task.showProgress; delete task.dueDateValue; delete task.categoryKey; delete task._confirmDelete;
+			delete task.showProgress; delete task.dueDateValue; delete task.categoryKey; delete task._confirmDelete; delete task.legacyDateOnly;
 			if (vm.taskEditorIndex < 0) { vm.scheduleDay.tasks.push(task); }
 			else { vm.scheduleDay.tasks[vm.taskEditorIndex] = task; }
 			vm.cancelScheduleTask();
@@ -1004,10 +1292,28 @@
 		};
 
 		vm.taskStatusLabel = function (task) {
+            if (task.section === 'HOMEWORK') {
+                if (vm.scheduleStudentsLoading || vm.scheduleStudentsError || !vm.scheduleStudents.length) { return 'Chưa xác nhận'; }
+                var recorded = (task.studentProgress || []).filter(function (entry) { return entry.status !== 'UNRECORDED'
+                    && vm.scheduleStudents.some(function (student) { return String(student.id) === String(entry.studentUserId); }); });
+                return vm.taskIsDone(task) ? 'Đã hoàn thành' : recorded.length ? 'Chưa hoàn thành' : 'Chưa xác nhận';
+            }
 			return task.status === 'DONE' ? 'Hoàn thành' : (task.status === 'IN_PROGRESS' ? 'Đang thực hiện' : 'Chưa làm');
 		};
-		vm.taskOverdue = function (task) { return task.status !== 'DONE' && task.dueDate && task.dueDate < moment().format('YYYY-MM-DD'); };
-		vm.taskDueLabel = function (task) { return task.dueDate ? moment(task.dueDate, 'YYYY-MM-DD', true).format('DD/MM/YYYY') : ''; };
+        vm.taskIsDone = function (task) {
+            if (task.section !== 'HOMEWORK') { return task.status === 'DONE'; }
+            return !vm.scheduleStudentsLoading && !vm.scheduleStudentsError && vm.scheduleStudents.length > 0
+                && vm.scheduleStudents.every(function (student) { return (task.studentProgress || []).some(function (entry) {
+                    return String(entry.studentUserId) === String(student.id) && entry.status === 'DONE';
+                }); });
+        };
+        function taskDeadline(task) {
+            var date = task.resolvedDueDate || task.dueDate, time = task.resolvedDueTime || task.dueTime;
+            if (!date) { return null; }
+            return time ? moment(date + 'T' + time, 'YYYY-MM-DDTHH:mm', true) : moment(date, 'YYYY-MM-DD', true).endOf('day');
+        }
+		vm.taskOverdue = function (task) { var due = taskDeadline(task); return !vm.taskIsDone(task) && !!due && due.isBefore(moment()); };
+		vm.taskDueLabel = function (task) { var due = taskDeadline(task); return due ? due.format('DD/MM/YYYY HH:mm') + (!task.resolvedDueTime && !task.dueTime ? ' (hết ngày)' : '') : ''; };
 		vm.taskCompletion = function (task) {
 			if (vm.scheduleStudentsLoading || vm.scheduleStudentsError) { return 'Chưa tải được tiến độ lớp'; }
 			var done = {};

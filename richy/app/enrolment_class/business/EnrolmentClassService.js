@@ -12,6 +12,10 @@
         self.getTree = function (schoolId) {
             return utils.resolve(baseUrl + '/tree?schoolId=' + encodeURIComponent(schoolId || 2), 'GET', angular.noop, angular.noop);
         };
+        self.updateTaskProgress = function (classId, dayId, taskId, payload) {
+            return utils.resolveAlt(baseUrl + '/schedule/' + classId + '/day/' + dayId + '/task/' + taskId + '/progress',
+                'PUT', null, payload, {'Content-Type': 'application/json; charset=utf-8'});
+        };
 
         self.getTeacherCandidates = function () {
             return utils.resolve(baseUrl + '/teacher_candidates', 'GET', angular.noop, angular.noop);
@@ -69,8 +73,24 @@
             return utils.resolve(baseUrl + '/schedule/topics', 'GET', angular.noop, angular.noop);
         };
 
+        self.getScheduleSession = function (classId, date) {
+            return utils.resolve(baseUrl + '/schedule/' + classId + '/session?date=' + encodeURIComponent(date),
+                'GET', angular.noop, angular.noop);
+        };
+
+        self.moveScheduleDay = function (classId, object) {
+            return utils.resolveAlt(baseUrl + '/schedule/' + classId + '/move', 'POST', null, object, {
+                'Content-Type': 'application/json; charset=utf-8'
+            });
+        };
+
         self.getScheduleStudents = function (classId) {
             return utils.resolve(baseUrl + '/schedule/' + classId + '/students', 'GET', angular.noop, angular.noop);
+        };
+
+        self.getPreviousScheduleDay = function (classId, beforeDate) {
+            return utils.resolve(baseUrl + '/schedule/' + classId + '/previous?beforeDate=' + encodeURIComponent(beforeDate),
+                'GET', angular.noop, angular.noop);
         };
 
         self.saveScheduleSettings = function (classId, object) {

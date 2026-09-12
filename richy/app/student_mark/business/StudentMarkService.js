@@ -20,6 +20,23 @@
         console.log(baseUrl);
         self.getPage = getPage;
         self.getListDisplayStudentMark = getListDisplayStudentMark;
+        self.getStudentDisplay = function (scope, userId) {
+            var request = angular.copy(scope);
+            request.studentUserId = userId;
+            return getListDisplayStudentMark(request);
+        };
+        self.createShare = function (scope) {
+            return utils.resolveAlt(baseUrl + 'student_mark/share', 'POST', null, angular.copy(scope),
+                {'Content-Type': 'application/json; charset=utf-8'});
+        };
+        self.listShares = function (scope) {
+            return utils.resolve(baseUrl + 'student_mark/share?classId=' + encodeURIComponent(scope.enrollmentClass) +
+                '&programId=' + encodeURIComponent(scope.educationProgramId), 'GET', angular.noop, angular.noop);
+        };
+        self.revokeShare = function (id) {
+            return utils.resolveAlt(baseUrl + 'student_mark/share/' + encodeURIComponent(id) + '/revoke', 'POST', null, null,
+                {'Content-Type': 'application/json; charset=utf-8'});
+        };
         self.saveObject = saveObject;
         self.getOne = getOne;
         self.deleteObject = deleteObject;

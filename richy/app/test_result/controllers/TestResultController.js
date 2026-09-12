@@ -231,10 +231,27 @@
         vm.searchDto.textSearch = '';
 
         vm.searchDto.testType = null;
+        vm.searchDto.resultGroup = 'ALL';
+        vm.resultGroups = [{id: 'ALL', name: 'Tất cả'}, {id: 'VOCAB', name: 'Daily Vocab'},
+            {id: 'DAILY_LISTENING', name: 'Daily Listening'}, {id: 'IELTS', name: 'IELTS Tests'}];
+        vm.selectResultGroup = function (group) {
+            vm.searchDto.resultGroup = group;
+            vm.searchDto.testType = null;
+            vm.testTypes = allTestTypes.filter(function (type) {
+                return group === 'ALL' || group === 'VOCAB' && type.id === 1
+                    || group === 'DAILY_LISTENING' && type.id === 3 || group === 'IELTS' && (type.id === 2 || type.id === 4);
+            });
+            vm.codeChange();
+        };
+        var allTestTypes = [
+            {id: 1, name: 'Daily Vocab'}, {id: 3, name: 'Daily Listening'},
+            {id: 2, name: 'IELTS Listening'}, {id: 4, name: 'IELTS Reading'}
+        ];
         vm.testTypes = [
             {id: 1, name: "DAILY VOCAB", notice: ""},
             {id: 3, name: "FILLING GAPS", notice: ""}
         ];
+        vm.testTypes = allTestTypes.slice();
 
         var date = new Date();
         vm.startDate = new Date(date.getFullYear(), date.getMonth(), 1);
@@ -264,16 +281,29 @@
         };
 
         vm.getPage = function () {
+            var requestId = ++resultPageRequest;
+            vm.testResults = [];
+            if (vm.bsTableControl && vm.bsTableControl.options) {
+                vm.bsTableControl.options.data = [];
+                vm.bsTableControl.options.totalRows = 0;
+            }
             blockUI.start();
-            service.getPage(vm.searchDto,vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
+            service.getPage(angular.copy(vm.searchDto),vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
                 blockUI.stop();
+                if (requestId !== resultPageRequest) { return; }
                 vm.testResults = data.content;
+                vm.bsTableControl.options.columns = service.getTableDefinition(vm.searchDto.resultGroup);
                 vm.bsTableControl.options.data = vm.testResults;
                 vm.bsTableControl.options.totalRows = data.totalElements;
                 console.log(vm.bsTableControl);
+            }, function () {
+                blockUI.stop();
+                if (requestId !== resultPageRequest) { return; }
+                toastr.error('Không tải được kết quả. Vui lòng thử lại.');
             });
         };
 
+        var resultPageRequest = 0;
         vm.getPage();
 
         vm.rankings = [];
@@ -417,7 +447,7 @@
             var ownerId = vm.searchDto.user && vm.searchDto.user.id
                 ? vm.searchDto.user.id
                 : 'self';
-            return ownerId + '-' + vm.studyCalendarDate.getFullYear()
+            return ownerId + '-' + vm.searchDto.resultGroup + '-' + vm.studyCalendarDate.getFullYear()
                 + '-' + (vm.studyCalendarDate.getMonth() + 1);
         };
 
@@ -434,13 +464,13 @@
                 return 'Daily Vocab';
             }
             if (testType === 2) {
-                return 'Reading';
+                return 'IELTS Listening';
             }
             if (testType === 3) {
-                return 'Filling Gaps';
+                return 'Daily Listening';
             }
             if (testType === 4) {
-                return 'Listening';
+                return 'IELTS Reading';
             }
             return 'Bài luyện tập';
         };
@@ -475,6 +505,7 @@
                 groupedTests[dateKey].push({
                     id: item.id,
                     testName: item.testName || vm.getStudyTestTypeName(item.testType),
+                    topics: item.topics || [],
                     testTypeName: vm.getStudyTestTypeName(item.testType),
                     timeLabel: resultMoment.format('HH:mm')
                 });
@@ -556,6 +587,7 @@
             var payload = {
                 calendarYear: vm.studyCalendarDate.getFullYear(),
                 calendarMonth: vm.studyCalendarDate.getMonth() + 1,
+                resultGroup: vm.searchDto.resultGroup,
                 user: vm.searchDto.user && vm.searchDto.user.id
                     ? {id: vm.searchDto.user.id}
                     : null
@@ -829,9 +861,30 @@
             vm.loadUsers();
         }, 1000);
 
-        service.getEnrolmentClass(null, 1, 1000000).then(function (data) {
-            vm.enrollmentClasses = data.content;
-        });
+        vm.resultSchoolId = window.location.hostname.toLowerCase() === 'ieltsroom.com' ? 1 : 2;
+        vm.enrollmentClasses = [];
+        vm.enrollmentClassesLoading = false;
+        vm.enrollmentClassesError = false;
+        var enrollmentClassesRequest = 0;
+        vm.loadEnrollmentClasses = function () {
+            var request = ++enrollmentClassesRequest;
+            vm.enrollmentClassesLoading = true;
+            vm.enrollmentClassesError = false;
+            return service.getEnrolmentClass({schoolId: vm.resultSchoolId}, 1, 1000000).then(function (data) {
+                if (request !== enrollmentClassesRequest) { return; }
+                vm.enrollmentClasses = (data && angular.isArray(data.content) ? data.content : []).filter(function (item) {
+                    return item && Number(item.schoolId) === vm.resultSchoolId;
+                });
+                vm.enrollmentClassesLoading = false;
+            }, function () {
+                if (request !== enrollmentClassesRequest) { return; }
+                vm.enrollmentClasses = [];
+                vm.enrollmentClassesLoading = false;
+                vm.enrollmentClassesError = true;
+                toastr.error('Không tải được danh sách lớp. Hãy thử tải lại.', 'Lỗi');
+            });
+        };
+        vm.loadEnrollmentClasses();
 
         vm.enrollmentClassChange = function () {
 

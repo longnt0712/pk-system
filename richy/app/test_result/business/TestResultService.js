@@ -106,7 +106,24 @@
             }, successCallback, errorCallback);
         }
 
-        function getTableDefinition() {
+        function getTableDefinition(group) {
+            function escapeText(value) {
+                return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
+                    return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character];
+                });
+            }
+            function topicFormatter(value, row) {
+                if (row.topics && row.topics.length) {
+                    return row.topics.map(function (topic) {
+                        return '<div class="test-result-topic-line" style="white-space:normal;padding:4px 0">'
+                            + escapeText(topic.name || ('Topic #' + topic.id)) + '</div>';
+                    }).join('');
+                }
+                return escapeText(value); // Historical title-only results remain readable.
+            }
+            function typeFormatter(value) {
+                return {1: 'Daily Vocab', 3: 'Daily Listening', 2: 'IELTS Listening', 4: 'IELTS Reading'}[value] || 'Khác';
+            }
 
             var _tableOperation = function (value, row, index) {
                 return '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.editObject(' + "'" + row.id + "'" + ')"><i class="fa fa-eye"></i></a>'
@@ -134,7 +151,7 @@
                 return value.displayName;
             };
 
-            return [
+            var columns = [
                 // {
                 //     // field: 'state',
                 //     checkbox: false
@@ -150,12 +167,23 @@
                 }
                 , {
                     field: 'testName',
-                    title: 'Test',
+                    title: 'Topic / Bài đã làm',
+                    formatter: topicFormatter,
                     sortable: true,
                     switchable: false,
                     cellStyle: _cellNowrap
                 }
                 , {
+                    field: 'testType', title: 'Loại bài', formatter: typeFormatter, switchable: true
+                }, {
+                    field: 'resultStatus', title: 'Kết quả', switchable: true,
+                    formatter: function (value, row) {
+                        if (Number(row.testType) !== 1) return '';
+                        return value === 'FAILED'
+                            ? '<span class="label label-danger">Thất bại</span>'
+                            : '<span class="label label-success">Thành công</span>';
+                    }
+                }, {
                     field: 'user',
                     title: 'Test Taker',
                     sortable: true,
@@ -188,7 +216,8 @@
                     cellStyle: _cellNowrap
                 }, {
                     field: 'numberOfWords',
-                    title: 'Number of Words',
+                    title: 'Từ đạt',
+                    formatter: function (value, row) { return Number(row.testType) === 1 ? value : ''; },
                     sortable: true,
                     switchable: false,
                     cellStyle: _cellNowrap
@@ -196,6 +225,7 @@
                 , {
                     field: 'correctAnswer',
                     title: 'Correct Answer',
+                    formatter: function (value, row) { return Number(row.testType) !== 1 ? value : ''; },
                     sortable: true,
                     switchable: false,
                     cellStyle: _cellNowrap
@@ -203,11 +233,18 @@
                 , {
                     field: 'bandScore',
                     title: 'Band',
+                    formatter: function (value, row) { return Number(row.testType) === 2 || Number(row.testType) === 4 ? value : ''; },
                     sortable: true,
                     switchable: false,
                     cellStyle: _cellNowrap
                 }
-            ]
+            ];
+            return columns.filter(function (column) {
+                if (group === 'VOCAB') { return column.field !== 'bandScore' && column.field !== 'correctAnswer'; }
+                if (group === 'DAILY_LISTENING') { return column.field !== 'resultStatus' && column.field !== 'bandScore' && column.field !== 'numberOfWords'; }
+                if (group === 'IELTS') { return column.field !== 'resultStatus' && column.field !== 'numberOfWords'; }
+                return true;
+            });
         }
     }
 

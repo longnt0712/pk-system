@@ -58,7 +58,7 @@
 
                 <div class="row">
                     <div class="col-md-2">
-                        <ui-select ng-model="vm.searchDisplayDto.enrollmentClass" data-ng-change="vm.getListDisplayStudentMark()" sortable="true" close-on-select="true">
+                        <ui-select ng-model="vm.searchDisplayDto.enrollmentClass" ng-disabled="vm.hasUnsavedMarks()" data-ng-change="vm.getListDisplayStudentMark()" sortable="true" close-on-select="true">
                             <ui-select-match allow-clear="true" placeholder="LỚP HỌC">{{$select.selected.name}}</ui-select-match>
                             <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | filter:{schoolId: 2} | propsFilter: {name: $select.search}">
                                 <div class="bold" ng-bind-html="cls.name | highlight: $select.search"></div>
@@ -66,7 +66,7 @@
                         </ui-select>
                     </div>
                     <div class="col-md-3">
-                        <ui-select ng-model="vm.searchDisplayDto.educationProgramId" data-ng-change="vm.getListDisplayStudentMark()" sortable="true" close-on-select="true">
+                        <ui-select ng-model="vm.searchDisplayDto.educationProgramId" ng-disabled="vm.hasUnsavedMarks()" data-ng-change="vm.getListDisplayStudentMark()" sortable="true" close-on-select="true">
                             <ui-select-match allow-clear="false" placeholder="LỚP HỌC">{{$select.selected.name}}</ui-select-match>
                             <ui-select-choices repeat="cls.id as cls in vm.educationPrograms  | propsFilter: {name: $select.search}">
                                 <div class="bold" ng-bind-html="cls.name | highlight: $select.search"></div>
@@ -75,6 +75,7 @@
                     </div>
                     <div class="col-md-2 margin-bottom-10">
                         <ui-select ng-model="vm.selectedGroup"
+                                ng-disabled="vm.hasUnsavedMarks()"
                                 ng-change="vm.groupChange()"
                                 close-on-select="true"
                                 style="width:100%">
@@ -94,6 +95,10 @@
                                 placeholder="Tìm theo tên hoặc mã học sinh...">
                     </div>
                     <div class="col-md-3 text-right">
+                        <button type="button" class="btn btn-primary margin-bottom-10" ng-if="vm.canShare()" ng-click="vm.openShare()"
+                                ng-disabled="vm.tableLoading || !vm.loadedScope || vm.hasUnsavedMarks() || !vm.loadedScope.enrollmentClass || !vm.loadedScope.educationProgramId">
+                            <i class="fa fa-link"></i> Tạo link chỉ xem
+                        </button>
                         <div class="btn-group">
                             <button type="button"
                                     class="btn btn-success dropdown-toggle"
@@ -124,6 +129,7 @@
                         </div>
                     </div>
                 </div>
+                <p class="text-danger" ng-if="vm.boardError" role="alert">{{vm.boardError}}</p>
 
                 <div class="table-responsive margin-top-10 student-mark-table-wrap">
                     <table class="table table-bordered table-hover table-striped text-center product-table student-mark-table">
@@ -144,24 +150,26 @@
                         <tr ng-repeat="student in vm.studentMarks
                                 | filter:vm.filterStudentByName
                                 | orderBy:vm.getStudentNameSortValue:false
-                                track by $index">
+                                track by student.user.id">
                             <td class="student-mark-sticky-col student-mark-col-stt">{{$index + 1}}
                             </td>
                             <td class="text-left student-mark-sticky-col student-mark-col-name">
                                 {{student.user.person.patron}} {{student.user.person.lastName}} {{student.user.person.firstName}}
-                                <small>
-                                    <br>({{student.user.username}})
+                                <small ng-if="vm.getStudentBirthDate(student)">
+                                    <br>{{vm.getStudentBirthDate(student)}}
                                 </small>
                             </td>
                             <td class="student-mark-sticky-col student-mark-col-action">
                                 <button type="button"
                                         ng-click="vm.allowEdit(student)"
+                                        ng-disabled="vm.tableLoading || student.loading"
                                         class="btn"
                                         ng-class="student.allowEdit ? 'btn-success' : 'btn-primary'"
                                         ng-attr-title="{{student.allowEdit ? 'Khóa chỉnh sửa' : 'Cho phép chỉnh sửa'}}"
                                         aria-pressed="{{student.allowEdit}}">
-                                    <i class="fa fa-pencil"></i>
+                                    <i class="fa" ng-class="student.loading ? 'fa-spinner fa-spin' : 'fa-pencil'"></i>
                                 </button>
+                                <small class="text-danger" ng-if="student.rowError" role="alert">{{student.rowError}}</small>
                             </td>
 
                             <td ng-repeat="markItem in student.studentMarks track by $index">
@@ -174,6 +182,9 @@
                                        ng-class="vm.getMarkValueClass(markItem.markNumber)"
                                        placeholder="Nhập điểm"
                                        ng-disabled="!student.allowEdit">
+                                <small ng-if="markItem._saving" class="text-muted">Đang lưu...</small>
+                                <button type="button" class="btn btn-xs btn-danger" ng-if="markItem._saveError"
+                                        ng-click="vm.saveMark(markItem)">Thử lưu lại</button>
                             </td>
 
                             <td>
@@ -194,6 +205,42 @@
 
 <!-- END MAIN CONTENT -->
 <!-- BEGIN MAIN JS-->
+<script type="text/ng-template" id="student_mark_share_modal.html">
+    <div class="modal-header">
+        <button type="button" class="close" ng-click="$dismiss()" aria-label="Đóng"></button>
+        <h4 class="modal-title">Link bảng điểm chỉ xem</h4>
+    </div>
+    <div class="modal-body">
+        <p><strong>{{vm.shareClassName}} — {{vm.shareProgramName}}</strong></p>
+        <p ng-if="vm.shareScope.groupId">Ban/hội: #{{vm.shareScope.groupId}}</p>
+        <p ng-if="vm.shareScope.keywordStudentName">Lọc tên/mã: {{vm.shareScope.keywordStudentName}}</p>
+        <div class="alert alert-warning">Bất cứ ai có link đều xem được tên, mã học sinh và điểm của bảng này mà không cần đăng nhập.
+            Chỉ gửi cho người phù hợp. Link giữ nguyên lớp/chương trình/bộ lọc và hiển thị điểm mới nhất; người nhận không thể sửa.</div>
+        <p class="text-danger" ng-if="vm.shareError" role="alert">{{vm.shareError}}</p>
+        <button type="button" class="btn btn-primary" ng-click="vm.createShare()" ng-disabled="vm.shareBusy || vm.hasUnsavedMarks()">
+            <i class="fa" ng-class="vm.shareBusy ? 'fa-spinner fa-spin' : 'fa-link'"></i> Tạo link mới
+        </button>
+        <div ng-if="vm.shareLink" class="margin-top-10">
+            <label for="student-mark-share-link">Sao chép link này để gửi cho phụ huynh:</label>
+            <input id="student-mark-share-link" class="form-control" type="text" readonly ng-value="vm.shareLink">
+            <button type="button" class="btn btn-success margin-top-10" ng-click="vm.copyShare()">Sao chép link</button>
+        </div>
+        <h5 class="margin-top-20">Các link gần đây của lớp/chương trình này</h5>
+        <p class="text-muted">Link chỉ hiện để sao chép lúc tạo. Các link đã gửi vẫn dùng được cho tới khi bị thu hồi.</p>
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead><tr><th>Link</th><th>Ngày tạo</th><th>Phạm vi</th><th>Trạng thái</th><th></th></tr></thead>
+                <tbody><tr ng-repeat="item in vm.shareItems track by item.id">
+                    <td>#{{item.id}}</td><td>{{item.createdAt | date:'dd/MM/yyyy HH:mm'}}</td><td>{{item.description}}</td>
+                    <td>{{item.revoked ? 'Đã thu hồi' : 'Đang dùng'}}</td>
+                    <td><button type="button" class="btn btn-sm btn-danger" ng-click="vm.revokeShare(item)"
+                        ng-disabled="vm.shareBusy || item.revoked">Thu hồi</button></td>
+                </tr></tbody>
+            </table>
+        </div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-default" ng-click="$dismiss()">Đóng</button></div>
+</script>
 <script type="text/ng-template" id="edit_object_modal.html">
     <div modal-movable>
         <div class="modal-header">

@@ -436,37 +436,93 @@
             }
         });
 
+        var classesReady = false, programsReady = false, boardGeneration = 0, rowGeneration = 0, shareGeneration = 0, destroyed = false;
+        function initialBoard() {
+            if (classesReady && programsReady) vm.getListDisplayStudentMark();
+        }
         service.getEnrolmentClass(null, 1, 1000000).then(function (data) {
             vm.enrollmentClasses = data.content || [];
 
-            if (vm.enrollmentClasses.length > 0 && !vm.searchDisplayDto.enrollmentClass) {
-                vm.searchDisplayDto.enrollmentClass = vm.enrollmentClasses[0].id;
+            var visibleClasses = vm.enrollmentClasses.filter(function (cls) { return Number(cls.schoolId) === 2; });
+            if (visibleClasses.length && !visibleClasses.some(function (cls) { return cls.id === vm.searchDisplayDto.enrollmentClass; })) {
+                vm.searchDisplayDto.enrollmentClass = visibleClasses[0].id;
             }
 
-            vm.getListDisplayStudentMark();
-        });
+            classesReady = true;
+            initialBoard();
+        }, function () { vm.boardError = 'Không tải được danh sách lớp. Vui lòng tải lại trang.'; });
 
         service.getEducationPrograms(vm.filter, 1, 1000000).then(function (data) {
             vm.educationPrograms = data.content || [];
             if (vm.educationPrograms.length > 0) {
                 vm.searchDisplayDto.educationProgramId = vm.educationPrograms[0].id;
             }
-        });
+            programsReady = true;
+            initialBoard();
+        }, function () { vm.boardError = 'Không tải được chương trình. Vui lòng tải lại trang.'; });
 
-        vm.allowEdit = function (studentMark) {
-            var shouldEnableEdit = !studentMark.allowEdit;
-
-            angular.forEach(vm.studentMarks, function(value, key) {
-                value.allowEdit = false;
+        function initializeMarks(student) {
+            angular.forEach(student.studentMarks || [], function (item) {
+                item._lastSaved = vm.parseMarkNumber(item.markNumber);
+                item._saving = false;
+                item._saveError = false;
             });
-
-            studentMark.allowEdit = shouldEnableEdit;
+            student.allowEdit = false;
+        }
+        vm.hasUnsavedMarks = function () {
+            return (vm.studentMarks || []).some(function (student) {
+                return (student.studentMarks || []).some(function (item) {
+                    return item._saving || item._saveError || vm.parseMarkNumber(item.markNumber) !== item._lastSaved;
+                });
+            });
+        };
+        vm.allowEdit = function (studentMark) {
+            if (vm.tableLoading || studentMark.loading) return;
+            if (vm.hasUnsavedMarks()) {
+                toastr.warning('Chờ điểm lưu xong. Nếu lưu lỗi, bấm Thử lưu lại trước khi đổi học sinh.');
+                return;
+            }
+            if (studentMark.allowEdit) { studentMark.allowEdit = false; return; }
+            var generation = boardGeneration, request = ++rowGeneration;
+            angular.forEach(vm.studentMarks, function (row) { row.allowEdit = false; });
+            studentMark.loading = true;
+            studentMark.rowError = '';
+            service.getStudentDisplay(vm.loadedScope, studentMark.user.id).then(function (data) {
+                studentMark.loading = false;
+                if (destroyed || generation !== boardGeneration || request !== rowGeneration) return;
+                var fresh = data && data.length === 1 ? data[0] : null;
+                if (!fresh || !fresh.user || fresh.user.id !== studentMark.user.id ||
+                    JSON.stringify((fresh.studentMarks || []).map(function (i) { return i.mark.id; })) !==
+                    JSON.stringify(vm.markColumns.map(function (m) { return m.id; }))) {
+                    studentMark.rowError = 'Học sinh hoặc cột điểm đã thay đổi. Hãy tải lại bảng trước khi sửa.';
+                    return;
+                }
+                // Keep the row, order and scroll position; replace only this student's cells.
+                angular.forEach(vm.studentMarks, function (row) { row.allowEdit = false; });
+                studentMark.studentMarks = fresh.studentMarks;
+                initializeMarks(studentMark);
+                studentMark.allowEdit = true;
+            }, function () {
+                studentMark.loading = false;
+                if (!destroyed && generation === boardGeneration && request === rowGeneration)
+                    studentMark.rowError = 'Không tải được điểm mới. Bấm bút chì để thử lại.';
+            });
         };
 
         vm.getListDisplayStudentMark = function () {
-            blockUI.start();
-            service.getListDisplayStudentMark(vm.searchDisplayDto).then(function (data) {
-                blockUI.stop();
+            if (vm.hasUnsavedMarks()) {
+                vm.searchDisplayDto = angular.copy(vm.loadedScope);
+                vm.selectedGroup = (vm.groups || []).filter(function (g) { return g.id === vm.loadedScope.groupId; })[0] || null;
+                toastr.warning('Chờ lưu hết điểm hoặc thử lưu lại các ô bị lỗi trước khi đổi bảng.');
+                return;
+            }
+            var generation = ++boardGeneration, scope = angular.copy(vm.searchDisplayDto);
+            if (!vm.tableLoading) blockUI.start();
+            vm.tableLoading = true;
+            vm.boardError = '';
+            service.getListDisplayStudentMark(scope).then(function (data) {
+                if (destroyed || generation !== boardGeneration) return;
+                vm.tableLoading = false; blockUI.stop();
                 /*
                  * Mỗi lần tải hoặc tải lại dữ liệu đều sort mặc định
                  * theo đúng AngularJS orderBy của bảng User.
@@ -476,8 +532,9 @@
                 );
 
                 angular.forEach(vm.studentMarks, function(value, key) {
-                    value.allowEdit = false;
+                    initializeMarks(value);
                 });
+                vm.loadedScope = scope;
 
                 vm.markColumns = [];
                 if (vm.studentMarks.length > 0 && vm.studentMarks[0].studentMarks) {
@@ -488,12 +545,14 @@
                     });
                 }
 
-                console.log("vm.studentMarks =", vm.studentMarks);
-                console.log("vm.markColumns =", vm.markColumns);
+            }, function () {
+                if (destroyed || generation !== boardGeneration) return;
+                vm.tableLoading = false; blockUI.stop();
+                vm.studentMarks = []; vm.markColumns = []; vm.loadedScope = null;
+                vm.boardError = 'Không tải được bảng điểm. Vui lòng chọn lại bộ lọc để thử lại.';
             });
         };
 
-        vm.getListDisplayStudentMark();
         vm.markTimeouts = {};
 
         vm.parseMarkNumber = function (value) {
@@ -526,17 +585,20 @@
                     return;
                 }
 
+                delete vm.markTimeouts[key];
                 vm.saveMark(markItem);
-                markItem._lastSaved = normalizedValue;
             }, 1000);
         };
 
         vm.saveMark = function (markItem) {
-            if (!markItem) {
+            if (!markItem || destroyed || markItem._saving) {
                 return;
             }
 
             var normalizedMarkNumber = vm.parseMarkNumber(markItem.markNumber);
+            if (!markItem._saveError && normalizedMarkNumber === markItem._lastSaved) return;
+            markItem._saving = true;
+            markItem._saveError = false;
 
             var dto = {
                 id: markItem.id,
@@ -550,18 +612,93 @@
                 }
             };
 
-            service.saveObject(dto, function success(response) {
+            // Utilities.resolveAlt invokes legacy callbacks without response data;
+            // the promise is the authoritative response (including a newly created ID).
+            service.saveObject(dto).then(function success(response) {
+                markItem._saving = false;
+                if (destroyed) return;
                 toastr.success('Đã cập nhật điểm thành công', 'Thông báo');
 
                 if (response && response.id) {
                     markItem.id = response.id;
                 }
 
-                // đồng bộ lại model sau khi save
-                markItem.markNumber = normalizedMarkNumber;
+                // Only acknowledge the sent value. Do not overwrite newer typing.
+                markItem._lastSaved = normalizedMarkNumber;
+                if (vm.parseMarkNumber(markItem.markNumber) !== normalizedMarkNumber) vm.saveMark(markItem);
             }, function failure() {
+                markItem._saving = false;
+                markItem._saveError = true;
+                if (destroyed) return;
                 toastr.error('Có lỗi khi cập nhật điểm', 'Lỗi');
             });
+        };
+
+        $scope.$on('$destroy', function () {
+            destroyed = true; boardGeneration++; rowGeneration++; shareGeneration++;
+            angular.forEach(vm.markTimeouts, function (timer) { $timeout.cancel(timer); });
+            if (vm.tableLoading) blockUI.stop();
+            if (vm.shareModal) vm.shareModal.dismiss();
+        });
+
+        vm.openShare = function () {
+            if (!vm.loadedScope || vm.tableLoading || vm.hasUnsavedMarks()) {
+                toastr.warning('Chọn bảng điểm và chờ lưu hết điểm trước khi tạo link.'); return;
+            }
+            if (!vm.loadedScope.enrollmentClass || !vm.loadedScope.educationProgramId) {
+                toastr.warning('Cần chọn một lớp và một chương trình cụ thể.'); return;
+            }
+            vm.shareScope = angular.copy(vm.loadedScope);
+            vm.shareScope.keywordStudentName = vm.keywordStudentName || '';
+            vm.shareClassName = (vm.enrollmentClasses.filter(function (c) { return c.id === vm.shareScope.enrollmentClass; })[0] || {}).name;
+            vm.shareProgramName = (vm.educationPrograms.filter(function (p) { return p.id === vm.shareScope.educationProgramId; })[0] || {}).name;
+            vm.shareLink = ''; vm.shareError = ''; vm.shareItems = []; vm.shareBusy = true;
+            var generation = ++shareGeneration;
+            vm.shareModal = modal.open({templateUrl: 'student_mark_share_modal.html', scope: $scope, size: 'lg'});
+            if (vm.shareModal.result) vm.shareModal.result.then(closeShare, closeShare);
+            function closeShare() { if (generation === shareGeneration) { shareGeneration++; vm.shareModal = null; } }
+            service.listShares(vm.shareScope).then(function (items) {
+                if (destroyed || generation !== shareGeneration) return;
+                vm.shareItems = items || []; vm.shareBusy = false;
+            }, function () { if (destroyed || generation !== shareGeneration) return; vm.shareBusy = false; vm.shareError = 'Không có quyền chia sẻ lớp này hoặc không tải được danh sách link.'; });
+        };
+        vm.canShare = function () {
+            var permissions = $rootScope.settings || {};
+            return permissions.isAdmin === true || permissions.isEducationManagerment === true || permissions.isStudentManagerment === true;
+        };
+        vm.createShare = function () {
+            if (vm.shareBusy || vm.hasUnsavedMarks()) return;
+            var generation = shareGeneration;
+            vm.shareBusy = true; vm.shareError = '';
+            service.createShare(vm.shareScope).then(function (item) {
+                if (destroyed || generation !== shareGeneration) return;
+                vm.shareBusy = false;
+                vm.shareLink = window.location.protocol + '//' + window.location.host + item.relativeUrl;
+                vm.shareItems.unshift(item);
+            }, function (error) {
+                if (destroyed || generation !== shareGeneration) return;
+                vm.shareBusy = false;
+                vm.shareError = error && error.data && error.data.message || 'Không tạo được link. Kiểm tra quyền chia sẻ và chọn lớp/chương trình.';
+            });
+        };
+        vm.revokeShare = function (item) {
+            if (vm.shareBusy || item.revoked || !window.confirm('Thu hồi link này? Người nhận sẽ không xem được nữa.')) return;
+            var generation = shareGeneration;
+            vm.shareBusy = true;
+            service.revokeShare(item.id).then(function () {
+                if (destroyed || generation !== shareGeneration) return;
+                item.revoked = true; vm.shareBusy = false;
+                if (item.relativeUrl && vm.shareLink.indexOf(item.relativeUrl) !== -1) vm.shareLink = '';
+            }, function () { if (destroyed || generation !== shareGeneration) return; vm.shareBusy = false; vm.shareError = 'Không thu hồi được link. Vui lòng thử lại.'; });
+        };
+        vm.copyShare = function () {
+            var input = document.getElementById('student-mark-share-link');
+            if (!input) return;
+            input.focus(); input.select();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(vm.shareLink).then(function () { toastr.success('Đã sao chép link'); }, function () { toastr.info('Bấm Ctrl+C để sao chép link đã chọn.'); });
+            } else if (document.execCommand('copy')) toastr.success('Đã sao chép link');
+            else toastr.info('Bấm Ctrl+C để sao chép link đã chọn.');
         };
 
         vm.getMarkValueClass = function(markNumber) {
@@ -707,6 +844,7 @@
                 date.getFullYear();
         }
 
+        vm.getStudentBirthDate = getStudentBirthDate;
         function getStudentBirthDate(student) {
             if (!student) {
                 return '';
