@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="robots" content="noindex,nofollow,noarchive">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+    <title>Bảng điểm lớp học — Chỉ xem</title>
+    <style>
+        *{box-sizing:border-box}body{margin:0;padding:20px;height:100vh;height:100dvh;background:#f3f5fc;color:#23334d;font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+        main{max-width:1900px;height:100%;min-height:0;margin:auto;background:#fff;border:1px solid #e1e6f4;border-radius:16px;padding:20px;display:flex;flex-direction:column}
+        main>h1,main>h2,main>p,.search-bar{flex-shrink:0}
+        h1{margin:0;font-size:24px}h2{font-size:17px;margin:8px 0}p{margin:8px 0}.muted{color:#65738c}
+        #status{margin:4px 0;padding:3px 0;font-size:12px;line-height:1.4;color:#65738c}#status.error{padding:6px 8px;border-radius:8px;background:#fff0f0;color:#a22a39}
+        .search-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0}
+        .search-bar label{font-weight:600}#name-search{width:360px;max-width:100%;min-width:0;padding:10px 14px;border:1px solid #d8e0f3;border-radius:9px;background:#fff;color:#23334d;font:inherit}
+        #name-search:focus{outline:2px solid #7665ff;outline-offset:1px}#name-search:disabled{background:#f3f5fc}
+        #table-wrap{flex:1;min-height:0;overflow:auto;border:1px solid #dde4f3;border-radius:10px;margin-top:8px;isolation:isolate}
+        table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;text-align:center}
+        th,td{padding:10px 14px;border-right:1px solid #e8edf7;border-bottom:1px solid #e8edf7;white-space:nowrap}
+        th{position:sticky;top:0;z-index:3;background:#f0f3ff}tbody tr:nth-child(even){background:#f9fbff}
+        .number{width:64px;min-width:64px;max-width:64px;padding-left:8px;padding-right:8px}
+        td.name{position:static;left:auto;right:auto;z-index:auto;box-shadow:none;text-align:left;min-width:200px}
+        th.name-heading{left:auto;right:auto;box-shadow:none}
+        small{display:block;color:#65738c}.good{color:#198463;font-weight:600}.low{color:#c4334d;font-weight:600}
+        [hidden]{display:none!important}@media(max-width:600px){body{padding:8px}main{padding:12px}h1{font-size:20px}.search-bar{gap:4px}#name-search{width:100%}}
+    </style>
+</head>
+<body>
+<main>
+    <h1>Bảng điểm lớp học</h1>
+    <h2 id="scope"></h2>
+    <div class="search-bar">
+        <label for="name-search">Tìm học sinh</label>
+        <input id="name-search" type="search" placeholder="Tìm tên học sinh..." maxlength="200" autocomplete="off" disabled>
+    </div>
+    <p id="status" role="status" aria-live="polite">Đang tải bảng điểm...</p>
+    <div id="table-wrap" hidden><table aria-label="Bảng điểm"><thead id="head"></thead><tbody id="rows"></tbody></table></div>
+</main>
+<script src="shared.js?v=20260912-no-fixed-columns-3"></script>
+</body>
+</html>
