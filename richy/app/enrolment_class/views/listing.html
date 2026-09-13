@@ -332,6 +332,7 @@
     .class-homework-review h4 { margin:0 0 8px; font-weight:800; color:#293955; }
     .class-homework-review-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:12px 0; }
     .class-homework-review-toolbar .form-control { width:240px; max-width:100%; }
+    .class-homework-review-toolbar .class-homework-export-btn { margin-left:auto; border-radius:8px; }
     .class-homework-review-table { overflow:auto; max-height:70vh; border:1px solid #e1e7f1; border-radius:8px; }
     .class-homework-review-table table { width:max-content; min-width:100%; max-width:none; margin:0; table-layout:auto; border-collapse:separate; border-spacing:0; }
     .class-homework-review-table th { position:sticky; top:0; z-index:1; background:#f1f4fc; color:#3b4c70; }
@@ -951,6 +952,12 @@
                                 <option value="DONE">Đã hoàn thành</option>
                                 <option value="REMAINING">Chưa hoàn thành / chưa xác nhận</option>
                             </select>
+                            <button type="button" class="btn btn-primary btn-sm class-homework-export-btn"
+                                    data-ng-click="vm.exportHomeworkReviewImage()"
+                                    data-ng-disabled="vm.exportingHomeworkImage || !vm.previousHomeworkTasks.length || !vm.filteredHomeworkRows().length">
+                                <i class="fa" data-ng-class="vm.exportingHomeworkImage ? 'fa-spinner fa-spin' : 'fa-image'"></i>
+                                {{vm.exportingHomeworkImage ? 'Đang xuất ảnh...' : 'Xuất ảnh'}}
+                            </button>
                         </div>
                         <div class="class-homework-review-table" data-ng-if="vm.scheduleStudents.length" tabindex="0" aria-label="Bảng tiến độ Homework, cuộn để xem thêm">
                             <table>
@@ -1026,6 +1033,8 @@
             <strong class="class-task-title">{{$index + 1}}. {{task.title}}</strong>
             <div class="class-task-meta">
                 <span>{{vm.taskStatusLabel(task)}}</span>
+                <span data-ng-if="task.topicId">Bắt đầu: {{vm.taskStartLabel(task)}}</span>
+                <span data-ng-if="task.topicId">Yêu cầu: {{task.requiredAttempts || 1}} lần đạt</span>
                 <span data-ng-if="task.resolvedDueDate || task.dueDate">Hạn: {{vm.taskDueLabel(task)}}{{task.deadlineAutomatic ? ' · tự động' : ''}}</span>
                 <span class="task-overdue" data-ng-if="vm.taskOverdue(task)">Quá hạn</span>
                 <span>{{vm.taskCompletion(task)}}</span>
@@ -1070,9 +1079,22 @@
                 </div>
             </div>
             <p class="class-task-help" data-ng-if="vm.scheduleTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải category / topic...</p>
-            <div class="form-group" data-ng-if="vm.taskEditor.section === 'HOMEWORK' && vm.taskEditor.topicId">
+            <div class="class-task-editor-grid" data-ng-if="vm.taskEditor.topicId">
+                <div class="form-group">
+                    <label>Số lần học sinh phải làm đạt</label>
+                    <input type="number" min="1" max="100" step="1" required class="form-control"
+                           data-ng-model="vm.taskEditor.requiredAttempts" />
+                    <small>Chỉ khi đủ số lượt thành công này mới được tính là đã làm bài.</small>
+                </div>
+                <div class="form-group">
+                    <label>Thời gian bắt đầu</label>
+                    <input type="text" class="form-control" readonly value="{{vm.taskStartLabel(vm.taskEditor)}}" />
+                    <small>Tự động lấy thời điểm kết thúc của buổi giao task.</small>
+                </div>
+            </div>
+            <div class="form-group" data-ng-if="vm.taskEditor.topicId">
                 <label><input type="checkbox" data-ng-model="vm.taskEditor.autoCompleteFromTopic" /> Tự đánh dấu khi hoàn thành Daily Vocab của topic này</label>
-                <p class="class-task-help">Từ ngày giao bài đến đúng hạn ngày/giờ/phút. Hạn tự động là giờ tan của buổi kế tiếp thực tế, kể cả buổi đã dời. Bài chưa đạt, Daily Listening và IELTS không được tính.</p>
+                <p class="class-task-help">Chỉ tính lượt thành công từ giờ kết thúc buổi học trước đến hạn task. Với task trên lớp không đặt hạn, mốc kết thúc là giờ tan của buổi hiện tại. Bài chưa đạt, Daily Listening và IELTS không được tính.</p>
             </div>
             <div class="form-group">
                 <label>Ghi chú / Hướng dẫn làm bài</label>

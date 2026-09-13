@@ -517,6 +517,15 @@
             return studentRole ? [studentRole] : [];
         }
 
+        function getStudentDirectoryRole() {
+            var hostname = window.location.hostname.toLowerCase().replace(/^www\./, '');
+            var roleName = hostname === 'ieltsroom.com'
+                ? 'ROLE_VIEWER'
+                : 'ROLE_STUDENT';
+            var role = findRoleByName(roleName);
+            return role ? [role] : [];
+        }
+
         function isEducationManagedRole(role) {
             if (!role || !role.name) {
                 return false;
@@ -632,6 +641,10 @@
                     }
                 });
             }
+
+            // The student directory represents a different account type per domain.
+            // Apply it to the server-side query so pagination totals also stay correct.
+            vm.filter.roles = getStudentDirectoryRole();
 
 			var requestFilter = angular.copy(vm.filter);
 			requestFilter.enrollmentClassIds = vm.advancedSearchApplied.active
@@ -1132,7 +1145,7 @@
             var statisticsFilter = {
                 keyword: '',
                 active: true,
-                roles: [],
+                roles: getStudentDirectoryRole(),
                 groups: [],
                 filtered: 0,
                 schoolId: 2,

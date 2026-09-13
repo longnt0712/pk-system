@@ -31,6 +31,10 @@ public class EnrolmentClassScheduleTask extends BaseObject {
     private Boolean autoCompleteFromTopic;
     public Boolean getAutoCompleteFromTopic() { return autoCompleteFromTopic; }
     public void setAutoCompleteFromTopic(Boolean value) { autoCompleteFromTopic = value; }
+    @Column(name = "required_attempts")
+    private Integer requiredAttempts;
+    public Integer getRequiredAttempts() { return requiredAttempts == null || requiredAttempts < 1 ? 1 : requiredAttempts; }
+    public void setRequiredAttempts(Integer value) { requiredAttempts = value; }
     @Column(name = "status", length = 20, nullable = false)
     private String status;
     @Column(name = "display_order", nullable = false)

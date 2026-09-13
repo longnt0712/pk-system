@@ -19,6 +19,7 @@ public class EnrolmentClassScheduleDayDto implements Serializable {
     private String movedToDate;
     private String moveReason;
     private String defaultHomeworkDeadline;
+    private String defaultTaskStart;
     public String getSessionStartTime() { return sessionStartTime; }
     public void setSessionStartTime(String value) { sessionStartTime = value; }
     public String getSessionEndTime() { return sessionEndTime; }
@@ -31,6 +32,8 @@ public class EnrolmentClassScheduleDayDto implements Serializable {
     public void setMoveReason(String value) { moveReason = value; }
     public String getDefaultHomeworkDeadline() { return defaultHomeworkDeadline; }
     public void setDefaultHomeworkDeadline(String value) { defaultHomeworkDeadline = value; }
+    public String getDefaultTaskStart() { return defaultTaskStart; }
+    public void setDefaultTaskStart(String value) { defaultTaskStart = value; }
     private Long version;
     private String classNotes;
     private String homeworkNotes;

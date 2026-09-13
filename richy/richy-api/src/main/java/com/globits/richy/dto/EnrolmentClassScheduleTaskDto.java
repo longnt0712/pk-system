@@ -17,6 +17,9 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
     /* Read-only effective deadline; automatic deadlines are never frozen as manual dates. */
     private String resolvedDueDate;
     private String resolvedDueTime;
+    /* Read-only effective start: the end of the class session assigning this task. */
+    private String resolvedStartDate;
+    private String resolvedStartTime;
     public String getDueTime() { return dueTime; }
     public void setDueTime(String value) { dueTime = value; }
     public Boolean getDeadlineAutomatic() { return deadlineAutomatic; }
@@ -25,9 +28,16 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
     public void setResolvedDueDate(String value) { resolvedDueDate = value; }
     public String getResolvedDueTime() { return resolvedDueTime; }
     public void setResolvedDueTime(String value) { resolvedDueTime = value; }
+    public String getResolvedStartDate() { return resolvedStartDate; }
+    public void setResolvedStartDate(String value) { resolvedStartDate = value; }
+    public String getResolvedStartTime() { return resolvedStartTime; }
+    public void setResolvedStartTime(String value) { resolvedStartTime = value; }
     private Boolean autoCompleteFromTopic;
     public Boolean getAutoCompleteFromTopic() { return autoCompleteFromTopic; }
     public void setAutoCompleteFromTopic(Boolean value) { autoCompleteFromTopic = value; }
+    private Integer requiredAttempts;
+    public Integer getRequiredAttempts() { return requiredAttempts == null || requiredAttempts < 1 ? 1 : requiredAttempts; }
+    public void setRequiredAttempts(Integer value) { requiredAttempts = value; }
     private String status;
     private Long topicId;
     private String topicName;
@@ -40,6 +50,7 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
         dueDate = task.getDueDate(); status = task.getStatus();
         dueTime = task.getDueTime(); deadlineAutomatic = task.getDeadlineAutomatic();
         autoCompleteFromTopic = task.getAutoCompleteFromTopic();
+        requiredAttempts = task.getRequiredAttempts();
         if (task.getTopic() != null) {
             topicId = task.getTopic().getId(); topicName = task.getTopic().getName();
             if (task.getTopic().getTopicCategory() != null) {

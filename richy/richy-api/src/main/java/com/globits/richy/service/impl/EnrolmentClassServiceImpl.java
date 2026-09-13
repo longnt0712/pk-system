@@ -706,15 +706,20 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
         List<Long> studentIds = new ArrayList<Long>();
         for (User student : scheduleStudentDomains(classId, getCurrentUser())) { studentIds.add(student.getId()); }
         if (studentIds.isEmpty()) { return dto; }
-        java.time.LocalDate startDate = java.time.LocalDate.parse(day.getScheduleDate());
-        if (day.getMovedFromDate() != null && day.getMovedFromDate().compareTo(day.getScheduleDate()) < 0) {
-            startDate = java.time.LocalDate.parse(day.getMovedFromDate());
-        }
-        LocalDateTime start = HomeworkTopicCompletion.midnight(startDate), maximumEnd = start;
+        EffectiveClassSchedule.Slot assignedSession = timeline.on(day.getScheduleDate());
+        EffectiveClassSchedule.Slot previousSession = timeline.previous(day.getScheduleDate());
+        LocalDateTime start = previousSession == null
+                ? HomeworkTopicCompletion.midnight(java.time.LocalDate.parse(day.getScheduleDate()))
+                : HomeworkTopicCompletion.at(previousSession.date, previousSession.endTime);
+        LocalDateTime maximumEnd = start;
         Map<EnrolmentClassScheduleTaskDto, LocalDateTime> ends = new LinkedHashMap<EnrolmentClassScheduleTaskDto, LocalDateTime>();
         for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
             if (!HomeworkTopicCompletion.enabled(task)) { continue; }
             LocalDateTime end = HomeworkTopicCompletion.deadlineEnd(task.getResolvedDueDate(), task.getResolvedDueTime());
+            if (end == null && "CLASS".equals(task.getSection()) && assignedSession != null) {
+                end = HomeworkTopicCompletion.at(assignedSession.date, assignedSession.endTime);
+                if (end != null) { end = end.plusMillis(1); }
+            }
             if (end == null || !end.isAfter(start)) { continue; }
             ends.put(task, end); if (end.isAfter(maximumEnd)) { maximumEnd = end; }
         }
@@ -739,11 +744,15 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
     private void enrichScheduleDeadline(EnrolmentClassScheduleDayDto dto, EffectiveClassSchedule timeline) {
         if (dto.getMovedToDate() != null) { return; }
+        EffectiveClassSchedule.Slot previous = timeline.previous(dto.getScheduleDate());
         EffectiveClassSchedule.Slot current = timeline.on(dto.getScheduleDate()), next = timeline.next(dto.getScheduleDate());
         if (current != null) { dto.setSessionStartTime(current.startTime); dto.setSessionEndTime(current.endTime); }
+        dto.setDefaultTaskStart(previous == null ? dto.getScheduleDate() + "T00:00" : previous.deadline());
         dto.setDefaultHomeworkDeadline(next == null ? null : next.deadline());
         if (dto.getTasks() == null) { return; }
         for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
+            task.setResolvedStartDate(previous == null ? dto.getScheduleDate() : previous.date);
+            task.setResolvedStartTime(previous == null ? null : previous.endTime);
             if (HomeworkTopicCompletion.automaticDeadline(task)) {
                 task.setResolvedDueDate(next == null || next.endTime == null ? null : next.date);
                 task.setResolvedDueTime(next == null ? null : next.endTime);
@@ -1100,6 +1109,11 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			}
 			task.setAutoCompleteFromTopic(value.getAutoCompleteFromTopic() == null && value.getId() != null
 					? oldTasks.get(value.getId()).getAutoCompleteFromTopic() : value.getAutoCompleteFromTopic());
+			int requiredAttempts = value.getRequiredAttempts();
+			if (requiredAttempts < 1 || requiredAttempts > 100) {
+				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Số lần phải làm cần từ 1 đến 100.");
+			}
+			task.setRequiredAttempts(requiredAttempts);
 			if (value.getTopicId() != null) {
 				Topic topic = topicRepository.findOne(value.getTopicId());
 				if (topic == null) { throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Topic không còn tồn tại."); }

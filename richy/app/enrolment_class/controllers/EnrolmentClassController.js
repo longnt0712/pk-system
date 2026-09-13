@@ -1014,6 +1014,109 @@
             return vm.previousHomeworkDay ? moment(vm.previousHomeworkDay.scheduleDate, 'YYYY-MM-DD').format('DD/MM/YYYY') : '';
         };
 
+        vm.exportingHomeworkImage = false;
+
+        function homeworkExportValue(text, original) {
+            var value = document.createElement('div');
+            value.textContent = text || '—';
+            value.style.cssText = 'min-width:180px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;'
+                + 'background:#f8fafc;color:#334155;font-size:12px;font-weight:700;white-space:normal;';
+            if (original && original.classList.contains('is-done')) {
+                value.style.background = '#e6f7ed'; value.style.color = '#17633a'; value.style.borderColor = '#86cea7';
+            } else if (original && original.classList.contains('is-review')) {
+                value.style.background = '#fff4db'; value.style.color = '#85520b'; value.style.borderColor = '#e4bd69';
+            } else if (original && original.classList.contains('is-todo')) {
+                value.style.background = '#fff0f2'; value.style.color = '#a12740'; value.style.borderColor = '#e9a6b2';
+            } else if (original && original.classList.contains('is-progress')) {
+                value.style.background = '#eaf2ff'; value.style.color = '#2757a1'; value.style.borderColor = '#91b4e8';
+            }
+            return value;
+        }
+
+        function prepareHomeworkImageElement(sourceTable) {
+            var root = document.createElement('div');
+            root.className = 'class-homework-review-table';
+            root.style.cssText = 'position:fixed;left:0;top:0;z-index:-2147483647;overflow:visible;max-height:none;'
+                + 'width:max-content;padding:22px;background:#fff;border:0;border-radius:0;color:#25324b;pointer-events:none;';
+
+            var title = document.createElement('h2');
+            title.textContent = 'TIẾN ĐỘ BÀI TẬP VỀ NHÀ';
+            title.style.cssText = 'margin:0 0 6px;color:#25324b;font:700 20px Arial,sans-serif;';
+            root.appendChild(title);
+
+            var subtitle = document.createElement('div');
+            subtitle.textContent = (vm.scheduleClass && vm.scheduleClass.name ? vm.scheduleClass.name + ' · ' : '')
+                + 'Buổi học ' + vm.previousHomeworkLabel() + ' · '
+                + vm.filteredHomeworkRows().length + ' học sinh · ' + vm.previousHomeworkTasks.length + ' tasks';
+            subtitle.style.cssText = 'margin-bottom:16px;color:#64748b;font:13px Arial,sans-serif;';
+            root.appendChild(subtitle);
+
+            var table = sourceTable.cloneNode(true);
+            table.style.cssText = 'width:max-content;min-width:100%;margin:0;border-collapse:collapse;table-layout:auto;'
+                + 'background:#fff;color:#25324b;font-family:Arial,sans-serif;';
+
+            var originalSelects = sourceTable.querySelectorAll('select.class-homework-progress-select');
+            var clonedSelects = table.querySelectorAll('select.class-homework-progress-select');
+            angular.forEach(clonedSelects, function (select, index) {
+                var original = originalSelects[index];
+                var selected = original && original.options[original.selectedIndex];
+                select.parentNode.replaceChild(homeworkExportValue(selected ? selected.text : '', original), select);
+            });
+
+            var originalNotes = sourceTable.querySelectorAll('input.class-homework-cell-note');
+            var clonedNotes = table.querySelectorAll('input.class-homework-cell-note');
+            angular.forEach(clonedNotes, function (input, index) {
+                var note = document.createElement('div');
+                note.textContent = originalNotes[index] && originalNotes[index].value
+                    ? originalNotes[index].value : '—';
+                note.style.cssText = 'margin-top:7px;max-width:260px;color:#64748b;font-size:11px;white-space:normal;overflow-wrap:anywhere;';
+                var field = input.parentNode;
+                field.parentNode.replaceChild(note, field);
+            });
+
+            angular.forEach(table.querySelectorAll('button,[role="status"],[role="alert"]'), function (element) {
+                if (element.parentNode) { element.parentNode.removeChild(element); }
+            });
+            angular.forEach(table.querySelectorAll('th,td'), function (cell) {
+                cell.style.position = 'static'; cell.style.backgroundColor = cell.tagName === 'TH' ? '#f1f4fc' : '#fff';
+                cell.style.color = '#25324b'; cell.style.border = '1px solid #dfe6f1';
+            });
+            root.appendChild(table);
+            return root;
+        }
+
+        vm.exportHomeworkReviewImage = function () {
+            if (vm.exportingHomeworkImage) { return; }
+            if (!window.html2canvas) { toastr.error('Thiếu thư viện html2canvas để xuất ảnh.', 'Lỗi'); return; }
+            if (!vm.previousHomeworkTasks.length || !vm.filteredHomeworkRows().length) {
+                toastr.warning('Không có dữ liệu để xuất ảnh.', 'Thông báo'); return;
+            }
+            var source = document.querySelector('.class-schedule-day-modal-window .class-homework-review-table table');
+            if (!source) { toastr.error('Không tìm thấy bảng tiến độ để xuất ảnh.', 'Lỗi'); return; }
+
+            vm.exportingHomeworkImage = true;
+            var exportElement = prepareHomeworkImageElement(source);
+            document.body.appendChild(exportElement);
+            var width = Math.ceil(exportElement.scrollWidth), height = Math.ceil(exportElement.scrollHeight);
+            var scale = Math.min(2, 16000 / Math.max(width, 1), 16000 / Math.max(height, 1),
+                Math.sqrt(100000000 / Math.max(width * height, 1)));
+
+            window.html2canvas(exportElement, {backgroundColor:'#ffffff', scale:scale, useCORS:true, logging:false,
+                width:width, height:height, windowWidth:width, windowHeight:height}).then(function (canvas) {
+                var link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = 'tien_do_homework_' + (vm.previousHomeworkDay.scheduleDate || moment().format('YYYY-MM-DD'))
+                    + '_' + moment().format('HHmm') + '.png';
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                document.body.removeChild(exportElement);
+                $scope.$evalAsync(function () { vm.exportingHomeworkImage = false; });
+            }).catch(function () {
+                if (exportElement.parentNode) { exportElement.parentNode.removeChild(exportElement); }
+                $scope.$evalAsync(function () { vm.exportingHomeworkImage = false; });
+                toastr.error('Có lỗi khi xuất ảnh bảng tiến độ.', 'Lỗi');
+            });
+        };
+
         vm.homeworkHasDrafts = function () { return Object.keys(homeworkCellDrafts).length > 0; };
         vm.markHomeworkCellDirty = function (cell) {
             cell.dirty = cell.editStatus !== cell.status || (cell.editNotes || '') !== cell.notes;
@@ -1202,7 +1305,8 @@
 			if (vm.scheduleDaySaving || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor) { return; }
 			if (!task && vm.scheduleDay.tasks.length >= 100) { toastr.warning('Tối đa 100 tasks cho một ngày.'); return; }
 			vm.taskEditorIndex = task ? vm.scheduleDay.tasks.indexOf(task) : -1;
-			vm.taskEditor = angular.copy(task || {section: section, title: '', notes: '', status: 'TODO', topicId: null, studentProgress: []});
+			vm.taskEditor = angular.copy(task || {section: section, title: '', notes: '', status: 'TODO', topicId: null,
+				requiredAttempts: 1, studentProgress: []});
             vm.taskEditor.deadlineAutomatic = section === 'HOMEWORK' && (task
                 ? task.deadlineAutomatic === true || (task.deadlineAutomatic == null && !task.dueDate) : true);
             vm.taskEditor.legacyDateOnly = !!(task && task.dueDate && !task.dueTime);
@@ -1211,6 +1315,7 @@
 			vm.taskEditor.categoryKey = vm.taskEditor.topicId == null ? null : (vm.taskEditor.categoryId == null ? 'uncategorized' : String(vm.taskEditor.categoryId));
 			vm.taskEditor.studentProgress = vm.taskEditor.studentProgress || [];
 			vm.taskEditor.autoCompleteFromTopic = vm.taskEditor.autoCompleteFromTopic !== false;
+			vm.taskEditor.requiredAttempts = Math.max(1, Number(vm.taskEditor.requiredAttempts) || 1);
 			vm.taskEditor.showProgress = false;
 		};
 
@@ -1254,6 +1359,7 @@
                 deadlineAutomatic: task.deadlineAutomatic == null ? null : task.deadlineAutomatic,
                 status: task.status || 'TODO', topicId: task.topicId || null,
 				autoCompleteFromTopic: task.autoCompleteFromTopic !== false,
+				requiredAttempts: Math.max(1, Number(task.requiredAttempts) || 1),
 				studentProgress: progress};
 		}
 
@@ -1261,6 +1367,11 @@
 			if (!vm.taskEditor || vm.scheduleDaySaving) { return; }
 			var task = angular.copy(vm.taskEditor); task.title = (task.title || '').trim();
 			if (!task.title || task.title.length > 200) { toastr.warning('Nhập tên task từ 1 đến 200 ký tự.'); return; }
+			if (task.topicId && (!/^\d+$/.test(String(task.requiredAttempts)) || Number(task.requiredAttempts) < 1
+					|| Number(task.requiredAttempts) > 100)) {
+				toastr.warning('Số lần phải làm cần từ 1 đến 100.'); return;
+			}
+			task.requiredAttempts = task.topicId ? Number(task.requiredAttempts) : 1;
 			if (task.dueDateValue && !moment(task.dueDateValue).isValid()) { toastr.warning('Hạn hoàn thành không hợp lệ.'); return; }
             if (task.deadlineAutomatic && !vm.scheduleDay.defaultHomeworkDeadline) {
                 toastr.warning('Chưa có giờ tan buổi kế tiếp. Hãy thiết lập lịch hoặc bỏ hạn tự động và nhập ngày giờ.'); return;
@@ -1272,6 +1383,12 @@
 			if (task.dueDate && task.dueDate < assigned) { toastr.warning('Hạn hoàn thành không được trước ngày giao bài.'); return; }
             task.resolvedDueDate = task.deadlineAutomatic ? vm.scheduleDay.defaultHomeworkDeadline.slice(0, 10) : task.dueDate;
             task.resolvedDueTime = task.deadlineAutomatic ? vm.scheduleDay.defaultHomeworkDeadline.slice(11, 16) : task.dueTime;
+			var defaultStart = vm.scheduleDay.defaultTaskStart
+				? moment(vm.scheduleDay.defaultTaskStart, 'YYYY-MM-DDTHH:mm', true) : null;
+			task.resolvedStartDate = defaultStart && defaultStart.isValid()
+				? defaultStart.format('YYYY-MM-DD') : vm.scheduleDay.scheduleDate;
+			task.resolvedStartTime = defaultStart && defaultStart.isValid()
+				? defaultStart.format('HH:mm') : null;
 			var topic = null;
 			angular.forEach(vm.scheduleTopics, function (item) { if (String(item.id) === String(task.topicId)) { topic = item; } });
 			if (task.topicId != null && !topic) { toastr.warning('Topic không còn tồn tại. Hãy chọn lại.'); return; }
@@ -1314,6 +1431,13 @@
         }
 		vm.taskOverdue = function (task) { var due = taskDeadline(task); return !vm.taskIsDone(task) && !!due && due.isBefore(moment()); };
 		vm.taskDueLabel = function (task) { var due = taskDeadline(task); return due ? due.format('DD/MM/YYYY HH:mm') + (!task.resolvedDueTime && !task.dueTime ? ' (hết ngày)' : '') : ''; };
+		vm.taskStartLabel = function (task) {
+			var fallback = vm.scheduleDay && vm.scheduleDay.defaultTaskStart
+				? moment(vm.scheduleDay.defaultTaskStart, 'YYYY-MM-DDTHH:mm', true) : null;
+			var date = task.resolvedStartDate || (fallback && fallback.isValid() ? fallback.format('YYYY-MM-DD') : null);
+			var time = task.resolvedStartTime || (fallback && fallback.isValid() ? fallback.format('HH:mm') : null);
+			return date ? moment(date + 'T' + (time || '00:00'), 'YYYY-MM-DDTHH:mm', true).format('DD/MM/YYYY HH:mm') : '';
+		};
 		vm.taskCompletion = function (task) {
 			if (vm.scheduleStudentsLoading || vm.scheduleStudentsError) { return 'Chưa tải được tiến độ lớp'; }
 			var done = {};
