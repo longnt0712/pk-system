@@ -15,4 +15,7 @@ public interface PersonDateRepository extends JpaRepository<PersonDate, Long> {
 	
 	@Query("select u from PersonDate u where u.user.username = ?1 and u.createDate >= ?2 and u.createDate <= ?3")
 	PersonDate getBy(String username,LocalDateTime startDate, LocalDateTime endDate);
+
+	@Query("select p from PersonDate p where p.user.id in ?1 and p.createDate >= ?2 and p.createDate < ?3 order by p.id asc")
+	List<PersonDate> findByUserIdsAndDate(List<Long> userIds, LocalDateTime startDate, LocalDateTime endDate);
 }

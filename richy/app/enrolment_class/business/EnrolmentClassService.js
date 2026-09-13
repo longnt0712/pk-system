@@ -88,6 +88,18 @@
             return utils.resolve(baseUrl + '/schedule/' + classId + '/students', 'GET', angular.noop, angular.noop);
         };
 
+        self.getScheduleAttendance = function (classId, date) {
+            return utils.resolve(baseUrl + '/schedule/' + classId + '/attendance?date=' + encodeURIComponent(date),
+                'GET', angular.noop, angular.noop);
+        };
+
+        self.updateScheduleAttendance = function (classId, studentUserId, date, object) {
+            return utils.resolveAlt(baseUrl + '/schedule/' + classId + '/attendance/' + studentUserId
+                + '?date=' + encodeURIComponent(date), 'PUT', null, object, {
+                'Content-Type': 'application/json; charset=utf-8'
+            });
+        };
+
         self.getPreviousScheduleDay = function (classId, beforeDate) {
             return utils.resolve(baseUrl + '/schedule/' + classId + '/previous?beforeDate=' + encodeURIComponent(beforeDate),
                 'GET', angular.noop, angular.noop);

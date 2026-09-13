@@ -19,6 +19,9 @@
                     if (event.ctrlKey || !event.cancelable || control.ownerDocument.activeElement !== control || control.disabled) { return; }
                     var table = ancestor(control, 'class-homework-review-table');
                     if (!table) { return; }
+                    // Native select can repaint its selected option while a scroll is composited.
+                    // Remove focus first so the status color stays stable during table scrolling.
+                    control.blur();
                     event.preventDefault(); event.stopPropagation();
                     var dx = event.deltaX || 0, dy = event.deltaY || 0;
                     if (event.deltaMode === 1) { dx *= 20; dy *= 20; }
@@ -109,8 +112,10 @@
 		vm.taskStatuses = [{id: 'TODO', name: 'Chưa làm'}, {id: 'IN_PROGRESS', name: 'Đang thực hiện'}, {id: 'DONE', name: 'Hoàn thành'}];
 		vm.homeworkProgressLevels = [10, 20, 30, 40, 50, 60, 70, 80, 90];
 		vm.studentTaskStatuses = [{id: 'UNRECORDED', name: 'Chưa xác nhận'}, {id: 'TODO', name: 'Chưa làm'}, {id: 'DONE', name: 'Đã làm'}, {id: 'NEEDS_REVIEW', name: 'Cần bổ sung'}];
+        vm.attendanceStatuses = [{id: null, name: 'Chưa điểm danh'}, {id: 1, name: 'Có đi học'}, {id: 2, name: 'Không đi học'}];
         angular.forEach(vm.homeworkProgressLevels, function (percent) { vm.studentTaskStatuses.push({id: 'PROGRESS_' + percent, name: 'Đã làm ' + percent + '%'}); });
 		var scheduleStudentsRequest = 0;
+        var scheduleAttendanceRequest = 0;
         var homeworkReviewRequest = 0;
         var homeworkCellSaveRequest = 0;
         var homeworkCellDrafts = {};
@@ -122,6 +127,9 @@
         vm.homeworkReviewError = false;
         vm.homeworkReviewSearch = '';
         vm.homeworkReviewFilter = 'ALL';
+        vm.scheduleAttendanceByStudent = {};
+        vm.scheduleAttendanceLoading = false;
+        vm.scheduleAttendanceError = false;
 		vm.topicSelectionOpen = {classTopicIds: false, homeworkTopicIds: false};
 		vm.weeklyDayOptions = [
 			{value: 1, label: 'Thứ 2', shortLabel: 'T2'},
@@ -876,6 +884,10 @@
 		vm.openScheduleDay = function (cell) {
 			if (!cell || cell.isBlank || vm.scheduleLoading || vm.scheduleMoving) { return; }
             homeworkCellSaveRequest++; homeworkCellDrafts = {}; vm.homeworkCellSaving = false;
+			scheduleAttendanceRequest++;
+			vm.scheduleAttendanceByStudent = {};
+			vm.scheduleAttendanceLoading = false;
+			vm.scheduleAttendanceError = false;
 			vm.scheduleDay = angular.copy(cell.entry || {
 				enrolmentClassId: vm.scheduleClass.id,
 				scheduleDate: cell.dateKey,
@@ -909,6 +921,7 @@
             }
             vm.homeworkReviewSearch = ''; vm.homeworkReviewFilter = 'ALL';
             vm.loadPreviousHomework();
+            vm.loadScheduleAttendance();
             vm.loadScheduleSession();
 		};
 
@@ -1029,6 +1042,10 @@
                 value.style.background = '#fff0f2'; value.style.color = '#a12740'; value.style.borderColor = '#e9a6b2';
             } else if (original && original.classList.contains('is-progress')) {
                 value.style.background = '#eaf2ff'; value.style.color = '#2757a1'; value.style.borderColor = '#91b4e8';
+            } else if (original && original.classList.contains('is-present')) {
+                value.style.background = '#e6f7ed'; value.style.color = '#17633a'; value.style.borderColor = '#86cea7';
+            } else if (original && original.classList.contains('is-absent')) {
+                value.style.background = '#fff0f2'; value.style.color = '#a12740'; value.style.borderColor = '#e9a6b2';
             }
             return value;
         }
@@ -1063,6 +1080,14 @@
                 select.parentNode.replaceChild(homeworkExportValue(selected ? selected.text : '', original), select);
             });
 
+            var originalAttendanceSelects = sourceTable.querySelectorAll('select.class-attendance-select');
+            var clonedAttendanceSelects = table.querySelectorAll('select.class-attendance-select');
+            angular.forEach(clonedAttendanceSelects, function (select, index) {
+                var original = originalAttendanceSelects[index];
+                var selected = original && original.options[original.selectedIndex];
+                select.parentNode.replaceChild(homeworkExportValue(selected ? selected.text : '', original), select);
+            });
+
             var originalNotes = sourceTable.querySelectorAll('input.class-homework-cell-note');
             var clonedNotes = table.querySelectorAll('input.class-homework-cell-note');
             angular.forEach(clonedNotes, function (input, index) {
@@ -1072,6 +1097,16 @@
                 note.style.cssText = 'margin-top:7px;max-width:260px;color:#64748b;font-size:11px;white-space:normal;overflow-wrap:anywhere;';
                 var field = input.parentNode;
                 field.parentNode.replaceChild(note, field);
+            });
+
+            var originalAttendanceNotes = sourceTable.querySelectorAll('input.class-attendance-note');
+            var clonedAttendanceNotes = table.querySelectorAll('input.class-attendance-note');
+            angular.forEach(clonedAttendanceNotes, function (input, index) {
+                var note = document.createElement('div');
+                note.textContent = originalAttendanceNotes[index] && originalAttendanceNotes[index].value
+                    ? originalAttendanceNotes[index].value : '—';
+                note.style.cssText = 'margin-top:7px;max-width:260px;color:#64748b;font-size:11px;white-space:normal;overflow-wrap:anywhere;';
+                input.parentNode.replaceChild(note, input);
             });
 
             angular.forEach(table.querySelectorAll('button,[role="status"],[role="alert"]'), function (element) {
@@ -1161,6 +1196,91 @@
             });
         };
 
+        function scheduleAttendanceCell(studentId, record) {
+            var key = String(studentId);
+            var current = vm.scheduleAttendanceByStudent[key];
+            if (current && !record) { return current; }
+            if (current && current.dirty) { return current; }
+            var status = record && record.statusClass != null ? Number(record.statusClass) : null;
+            var notes = record && record.description ? record.description : '';
+            current = current || {};
+            current.id = record && record.id ? record.id : null;
+            current.status = status;
+            current.notes = notes;
+            current.editStatus = status;
+            current.editNotes = notes;
+            current.dirty = false;
+            current.saving = false;
+            current.error = '';
+            vm.scheduleAttendanceByStudent[key] = current;
+            return current;
+        }
+
+        vm.loadScheduleAttendance = function () {
+            if (!vm.scheduleClass || !vm.scheduleDay || !vm.scheduleDay.scheduleDate) { return; }
+            var request = ++scheduleAttendanceRequest;
+            var classId = vm.scheduleClass.id;
+            var date = vm.scheduleDay.scheduleDate;
+            vm.scheduleAttendanceLoading = true;
+            vm.scheduleAttendanceError = false;
+            return service.getScheduleAttendance(classId, date).then(function (records) {
+                if (request !== scheduleAttendanceRequest || !vm.scheduleClass || vm.scheduleClass.id !== classId
+                    || !vm.scheduleDay || vm.scheduleDay.scheduleDate !== date) { return; }
+                angular.forEach(angular.isArray(records) ? records : [], function (record) {
+                    if (record && record.user && record.user.id != null) {
+                        scheduleAttendanceCell(record.user.id, record);
+                    }
+                });
+                vm.scheduleAttendanceLoading = false;
+                vm.buildHomeworkReviewRows();
+            }, function () {
+                if (request !== scheduleAttendanceRequest) { return; }
+                vm.scheduleAttendanceLoading = false;
+                vm.scheduleAttendanceError = true;
+            });
+        };
+
+        vm.markScheduleAttendanceDirty = function (row) {
+            var cell = row && row.attendance;
+            if (!cell) { return; }
+            cell.dirty = cell.editStatus !== cell.status || (cell.editNotes || '') !== (cell.notes || '');
+            cell.error = '';
+        };
+
+        vm.saveScheduleAttendance = function (row) {
+            var cell = row && row.attendance;
+            if (!cell || !cell.dirty || cell.saving || !vm.scheduleClass || !vm.scheduleDay) { return; }
+            if ((cell.editNotes || '').length > 1000) { cell.error = 'Ghi chú tối đa 1000 ký tự.'; return; }
+            var classId = vm.scheduleClass.id;
+            var date = vm.scheduleDay.scheduleDate;
+            cell.saving = true;
+            cell.error = '';
+            return service.updateScheduleAttendance(classId, row.id, date, {
+                statusClass: cell.editStatus,
+                description: cell.editNotes || ''
+            }).then(function (saved) {
+                if (!vm.scheduleClass || vm.scheduleClass.id !== classId || !vm.scheduleDay
+                    || vm.scheduleDay.scheduleDate !== date) { return; }
+                if (!saved || !saved.user || String(saved.user.id) !== String(row.id)) {
+                    cell.saving = false;
+                    cell.error = 'Backend chưa xác nhận lưu điểm danh.';
+                    return;
+                }
+                cell.id = saved.id;
+                cell.status = saved.statusClass == null ? null : Number(saved.statusClass);
+                cell.notes = saved.description || '';
+                cell.editStatus = cell.status;
+                cell.editNotes = cell.notes;
+                cell.dirty = false;
+                cell.saving = false;
+            }, function (error) {
+                cell.saving = false;
+                cell.error = error && error.data && error.data.message
+                    ? error.data.message
+                    : 'Không lưu được điểm danh. Vui lòng thử lại.';
+            });
+        };
+
         vm.buildHomeworkReviewRows = function () {
             var lookups = vm.previousHomeworkTasks.map(function (task) {
                 var lookup = {};
@@ -1191,6 +1311,7 @@
                     : recorded ? 'INCOMPLETE' : 'UNRECORDED';
                 return {id: student.id, name: student.taskDisplayName || student.displayName || student.username,
                     username: student.username || '', cells: cells, done: done, total: total, status: status,
+                    attendance: scheduleAttendanceCell(student.id, null),
                     progressPercent: total ? Math.round(progressTotal / total) : 0,
                     label: !total ? 'Chưa có Tasks để đối chiếu' : status === 'DONE' ? 'Đã hoàn thành'
                         : status === 'NEEDS_REVIEW' ? 'Cần bổ sung' : status === 'UNRECORDED' ? 'Chưa xác nhận'

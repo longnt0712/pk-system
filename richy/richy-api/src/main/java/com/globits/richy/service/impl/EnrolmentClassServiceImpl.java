@@ -37,8 +37,10 @@ import com.globits.richy.domain.EnrolmentClassWeeklySession;
 import com.globits.richy.domain.Topic;
 import com.globits.richy.domain.EnrolmentClassScheduleTask;
 import com.globits.richy.domain.EnrolmentClassTaskProgress;
+import com.globits.richy.domain.PersonDate;
 import com.globits.richy.dto.EnrolmentClassScheduleTaskDto;
 import com.globits.richy.dto.EnrolmentClassTaskProgressDto;
+import com.globits.richy.dto.PersonDateDto;
 import com.globits.richy.service.EnrolmentClassScheduleException;
 import org.springframework.http.HttpStatus;
 import com.globits.richy.dto.EnrolmentClassDto;
@@ -53,6 +55,7 @@ import com.globits.richy.repository.EnrolmentClassScheduleDayRepository;
 import com.globits.richy.repository.EnrolmentClassWeeklySessionRepository;
 import com.globits.richy.repository.TopicRepository;
 import com.globits.richy.repository.TestResultRepository;
+import com.globits.richy.repository.PersonDateRepository;
 import com.globits.richy.service.EnrolmentClassService;
 import com.globits.security.domain.Role;
 import com.globits.security.domain.User;
@@ -74,6 +77,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	EnrolmentClassWeeklySessionRepository weeklySessionRepository;
 	@Autowired
 	TopicRepository topicRepository;
+	@Autowired
+	PersonDateRepository personDateRepository;
 
 	private static final List<String> TEACHER_ROLE_NAMES = Arrays.asList(
 			"ROLE_ADMIN",
@@ -959,6 +964,77 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		List<UserDto> result = new ArrayList<UserDto>();
 		for (User student : scheduleStudentDomains(classId, currentUser)) { result.add(new UserDto(student, true)); }
 		return result;
+	}
+
+	@Override
+	public List<PersonDateDto> getScheduleAttendance(Long classId, String date) {
+		EnrolmentClass selectedClass = classId == null ? null : enrolmentClassRepository.findOne(classId);
+		User teacher = getCurrentUser();
+		if (selectedClass == null || !canEditClass(teacher, selectedClass)) {
+			throw new AccessDeniedException("Bạn không được xem điểm danh lớp này.");
+		}
+		if (!isValidDate(date)) {
+			throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Ngày điểm danh không hợp lệ.");
+		}
+		List<Long> studentIds = new ArrayList<Long>();
+		for (User student : scheduleStudentDomains(classId, teacher)) {
+			if (student.getId() != null) { studentIds.add(student.getId()); }
+		}
+		List<PersonDateDto> result = new ArrayList<PersonDateDto>();
+		if (studentIds.isEmpty()) { return result; }
+		LocalDateTime[] bounds = attendanceDateBounds(date);
+		Map<Long, PersonDate> latestByStudent = new LinkedHashMap<Long, PersonDate>();
+		for (PersonDate attendance : personDateRepository.findByUserIdsAndDate(studentIds, bounds[0], bounds[1])) {
+			if (attendance.getUser() != null && attendance.getUser().getId() != null) {
+				latestByStudent.put(attendance.getUser().getId(), attendance);
+			}
+		}
+		for (PersonDate attendance : latestByStudent.values()) { result.add(new PersonDateDto(attendance)); }
+		return result;
+	}
+
+	@Override
+	public PersonDateDto updateScheduleAttendance(Long classId, Long studentUserId, String date, PersonDateDto dto) {
+		EnrolmentClass selectedClass = classId == null ? null : enrolmentClassRepository.findOne(classId);
+		User teacher = getCurrentUser();
+		if (selectedClass == null || !canEditClass(teacher, selectedClass)) {
+			throw new AccessDeniedException("Bạn không được sửa điểm danh lớp này.");
+		}
+		if (!isValidDate(date) || studentUserId == null || dto == null) {
+			throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Thông tin điểm danh không hợp lệ.");
+		}
+		Integer status = dto.getStatusClass();
+		if (status != null && status.intValue() != 1 && status.intValue() != 2) {
+			throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Chỉ được chọn Có đi học hoặc Không đi học.");
+		}
+		User selectedStudent = null;
+		for (User student : scheduleStudentDomains(classId, teacher)) {
+			if (studentUserId.equals(student.getId())) { selectedStudent = student; break; }
+		}
+		if (selectedStudent == null) { throw new AccessDeniedException("Học sinh không thuộc lớp này."); }
+
+		LocalDateTime[] bounds = attendanceDateBounds(date);
+		List<PersonDate> existing = personDateRepository.findByUserIdsAndDate(
+				Collections.singletonList(studentUserId), bounds[0], bounds[1]);
+		PersonDate attendance = existing.isEmpty() ? new PersonDate() : existing.get(existing.size() - 1);
+		LocalDateTime now = LocalDateTime.now();
+		if (attendance.getId() == null) {
+			attendance.setUser(selectedStudent);
+			attendance.setCreateDate(bounds[0]);
+			attendance.setCreatedBy(teacher.getUsername());
+		}
+		attendance.setStatusClass(status);
+		attendance.setTimeGoToClass(Integer.valueOf(1).equals(status) ? bounds[0] : null);
+		attendance.setDescription(scheduleText(dto.getDescription(), 1000, false));
+		attendance.setModifyDate(now);
+		attendance.setModifiedBy(teacher.getUsername());
+		return new PersonDateDto(personDateRepository.saveAndFlush(attendance));
+	}
+
+	private LocalDateTime[] attendanceDateBounds(String date) {
+		java.time.LocalDate parsed = java.time.LocalDate.parse(date);
+		LocalDateTime start = new LocalDateTime(parsed.getYear(), parsed.getMonthValue(), parsed.getDayOfMonth(), 0, 0);
+		return new LocalDateTime[] {start, start.plusDays(1)};
 	}
 
     @Override

@@ -10,11 +10,13 @@ import org.springframework.data.repository.query.Param;
 import com.globits.richy.domain.TestResult;
 @Repository
 public interface TestResultRepository extends JpaRepository<TestResult, Long> {
-    @Query("select r from TestResult r where r.user.id = :userId and r.clientAttemptKey = :attemptKey and r.testType = 1")
-    TestResult findDailyVocabAttempt(@Param("userId") Long userId,@Param("attemptKey") String attemptKey);
+    @Query("select r from TestResult r where r.user.id = :userId and r.clientAttemptKey = :attemptKey and r.testType = :testType")
+    TestResult findAttempt(@Param("userId") Long userId, @Param("attemptKey") String attemptKey,
+            @Param("testType") Integer testType);
     @Query("select distinct r.user.id, t.id, r.createDate, r.id from TestResult r join r.topics t "
-            + "where r.user.id in :students and t.id in :topics and r.testType = 1 "
-            + "and (r.resultStatus is null or r.resultStatus = 'SUCCESS') "
+            + "where r.user.id in :students and t.id in :topics and r.testType in (1, 3) "
+            + "and ((r.testType = 1 and (r.resultStatus is null or r.resultStatus = 'SUCCESS')) "
+            + "or (r.testType = 3 and r.resultStatus = 'SUCCESS')) "
             + "and r.createDate >= :fromDate and r.createDate <= :toDate "
             + "order by r.createDate asc, r.id asc")
     List<Object[]> findVocabularyCompletions(@Param("students") List<Long> students, @Param("topics") List<Long> topics,

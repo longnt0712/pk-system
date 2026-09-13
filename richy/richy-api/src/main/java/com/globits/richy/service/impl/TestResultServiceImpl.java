@@ -7,6 +7,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.LinkedHashSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import com.globits.richy.domain.Topic;
 import com.globits.richy.domain.Question;
 import com.globits.richy.domain.QuestionTopic;
@@ -48,6 +50,9 @@ import com.globits.security.repository.UserRepository;
 
 @Service
 public class TestResultServiceImpl implements TestResultService {
+	private static final Pattern DAILY_LISTENING_SCORE = Pattern.compile(
+			"^\\s*GAPS\\s+([0-9]+(?:\\.[0-9]+)?)%\\s*$",
+			Pattern.CASE_INSENSITIVE);
 	@Autowired
 	EntityManager manager;
 	@Autowired
@@ -380,9 +385,6 @@ public class TestResultServiceImpl implements TestResultService {
 	            sum = 0;
 	        }
 
-	        // Students without a successful attempt do not enter the ranking.
-	        if (times == null || times == 0) { continue; }
-
 	        dto.setTimes(times);
 	        dto.setNumberOfWords(sum);
 
@@ -497,9 +499,10 @@ public class TestResultServiceImpl implements TestResultService {
 		TestResult domain = null;
 		boolean newResult = false;
         boolean passedDailyVocab=true;
+        boolean passedDailyListening=false;
 
         // Retry is scoped to the authenticated student, never a client-supplied user.
-        TestResult previousAttempt=findDailyVocabRetry(dto,modifiedUser);
+        TestResult previousAttempt=findRetryAttempt(dto,modifiedUser);
         if(previousAttempt!=null)return new TestResultDto(previousAttempt);
 		
 		//daily vocab
@@ -507,7 +510,18 @@ public class TestResultServiceImpl implements TestResultService {
             if(dto.getTotalWord()==null||dto.getTotalWord()<=0||dto.getNumberOfWords()==null
                     ||dto.getNumberOfWords()<0||dto.getNumberOfWords()>dto.getTotalWord())
                 throw new IllegalArgumentException("Số từ của kết quả Daily Vocab không hợp lệ.");
-            passedDailyVocab=dto.checkRestult(dto);
+			passedDailyVocab=dto.checkRestult(dto);
+		}
+		if (Integer.valueOf(3).equals(dto.getTestType())) {
+			Matcher score = DAILY_LISTENING_SCORE.matcher(dto.getTestTime() == null ? "" : dto.getTestTime());
+			if (!score.matches()) {
+				throw new IllegalArgumentException("Kết quả Daily Listening không hợp lệ.");
+			}
+			double percentage = Double.parseDouble(score.group(1));
+			if (percentage < 0D || percentage > 100D) {
+				throw new IllegalArgumentException("Điểm Daily Listening phải từ 0 đến 100%.");
+			}
+			passedDailyListening = percentage > 85D;
 		}
 		
 		
@@ -542,14 +556,16 @@ public class TestResultServiceImpl implements TestResultService {
 		if(domain == null) {
 			domain = new TestResult();
 			newResult = true;
-            if(Integer.valueOf(1).equals(dto.getTestType()))domain.setClientAttemptKey(dto.getClientAttemptKey());
+			if(Integer.valueOf(1).equals(dto.getTestType()) || Integer.valueOf(3).equals(dto.getTestType())) {
+				domain.setClientAttemptKey(dto.getClientAttemptKey());
+			}
 			domain.setCreateDate(currentDate);
 			domain.setCreatedBy(currentUserName);
 		}
 		User resultUser = null;
-		if(dto.getTestType() != null && dto.getTestType() == 1
+		if(dto.getTestType() != null && (dto.getTestType() == 1 || dto.getTestType() == 3)
 				&& modifiedUser != null && modifiedUser.getId() != null) {
-			// Daily Vocab chỉ được ghi nhận cho chính tài khoản đang đăng nhập.
+			// Daily Vocab / Listening chỉ được ghi nhận cho chính tài khoản đang đăng nhập.
 			resultUser = userRepository.findById(modifiedUser.getId());
 		} else if(dto.getUser() != null && dto.getUser().getId() != null) {
 			resultUser = userRepository.getOne(dto.getUser().getId());
@@ -569,7 +585,11 @@ public class TestResultServiceImpl implements TestResultService {
 		domain.setTestName(dto.getTestName());
 		domain.setTestTime(dto.getTestTime());
 		domain.setTestType(dto.getTestType());
-        domain.setResultStatus(Integer.valueOf(1).equals(dto.getTestType())?(passedDailyVocab?"SUCCESS":"FAILED"):null);
+        domain.setResultStatus(Integer.valueOf(1).equals(dto.getTestType())
+                ? (passedDailyVocab ? "SUCCESS" : "FAILED")
+                : Integer.valueOf(3).equals(dto.getTestType())
+                    ? (passedDailyListening ? "SUCCESS" : "FAILED")
+                    : null);
 		domain.setNumberOfWords(dto.getNumberOfWords());
 		domain.setTestTakerPerformance(dto.getTestTakerPerformance());
 		if(dto.getQuestionAnswerTestResult() !=null && dto.getQuestionAnswerTestResult().size()>0) {
@@ -615,13 +635,9 @@ public class TestResultServiceImpl implements TestResultService {
 		
 		domain = testResultRepository.save(domain);
 
-		/*
-		 * Chỉ kết quả Daily Vocab SUCCESS mới cộng số từ đúng vào kinh nghiệm.
-		 * FAILED vẫn lưu lịch sử, không cộng EXP và không hoàn thành homework.
-		 * Lưu lại cùng result id hoặc mã lượt không cộng lần hai.
-		 */
+		/* Chỉ kết quả Daily Vocab đạt mới cộng kinh nghiệm; mỗi lượt chỉ cộng một lần. */
 		if(newResult && domain.getTestType() != null && domain.getTestType() == 1
-				&& "SUCCESS".equals(domain.getResultStatus())
+				&& passedDailyVocab
 				&& domain.getVocabularyExperienceAwardedWords() == 0
 				&& domain.getNumberOfWords() != null && domain.getNumberOfWords() > 0
 				&& domain.getUser() != null) {
@@ -635,14 +651,15 @@ public class TestResultServiceImpl implements TestResultService {
 		return new TestResultDto(domain);
 	}
 
-    private TestResult findDailyVocabRetry(TestResultDto dto,User actor) {
+    private TestResult findRetryAttempt(TestResultDto dto,User actor) {
         if(dto.getClientAttemptKey()==null)return null; // Older clients remain compatible.
-        if(!Integer.valueOf(1).equals(dto.getTestType())||!dto.getClientAttemptKey().matches("[a-f0-9]{32}"))
-            throw new IllegalArgumentException("Mã lượt Daily Vocab không hợp lệ.");
+        if((!Integer.valueOf(1).equals(dto.getTestType()) && !Integer.valueOf(3).equals(dto.getTestType()))
+                || !dto.getClientAttemptKey().matches("[a-f0-9]{32}"))
+            throw new IllegalArgumentException("Mã lượt làm không hợp lệ.");
         if(actor==null||actor.getId()==null)throw new AccessDeniedException("Cần đăng nhập để lưu kết quả.");
         if(dto.getUser()!=null&&dto.getUser().getId()!=null&&!actor.getId().equals(dto.getUser().getId()))
             throw new AccessDeniedException("Lượt làm này thuộc tài khoản khác.");
-        return testResultRepository.findDailyVocabAttempt(actor.getId(),dto.getClientAttemptKey());
+        return testResultRepository.findAttempt(actor.getId(),dto.getClientAttemptKey(),dto.getTestType());
     }
 	@Override
 	public boolean deleteObject(Long id) {

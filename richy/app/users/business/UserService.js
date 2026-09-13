@@ -50,8 +50,10 @@
 
         self.getEnrolmentClass = getEnrolmentClass;
 		self.getEnrollmentClassTree = getEnrollmentClassTree;
-		function getEnrollmentClassTree() {
-			var url = baseUrl + 'enrolment_class/tree';
+		function getEnrollmentClassTree(schoolId) {
+			var selectedSchoolId = Number(schoolId) || 2;
+			var url = baseUrl + 'enrolment_class/tree?schoolId=' +
+				encodeURIComponent(selectedSchoolId);
 			return utils.resolve(url, 'GET', angular.noop, angular.noop);
 		}
         function getEnrolmentClass(searchDto, pageIndex, pageSize, successCallback, errorCallback) {

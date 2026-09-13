@@ -212,6 +212,15 @@
         $rootScope.settings.layout.pageSidebarClosed = false;
         var vm = this;
 
+        function isIeltsRoomDomain() {
+            var hostname = String(window.location.hostname || '')
+                .toLowerCase()
+                .replace(/^www\./, '');
+            return hostname === 'ieltsroom.com';
+        }
+
+        vm.directorySchoolId = isIeltsRoomDomain() ? 1 : 2;
+
         vm.currentUser = JSON.parse($cookies.getAll()["education.user"]);
         vm.myUser = {};
         vm.myUser.id = vm.currentUser.id;
@@ -937,13 +946,21 @@
                 vm.enrollmentClassMap[cls.id] = cls.name;
             });
 
-            if (vm.enrollmentClasses.length > 0) {
-                vm.searchDto.user.person.enrollmentClassId = vm.enrollmentClasses[0].id;
-            }
+            var firstDirectoryClass = null;
+            angular.forEach(vm.enrollmentClasses, function (cls) {
+                if (!firstDirectoryClass &&
+                    Number(cls.schoolId) === vm.directorySchoolId) {
+                    firstDirectoryClass = cls;
+                }
+            });
+
+            vm.searchDto.user.person.enrollmentClassId = firstDirectoryClass
+                ? firstDirectoryClass.id
+                : null;
         });
 
         // =====================================================
-        // THỐNG KÊ ĐIỂM DANH THEO LỚP / ĐỘI - SCHOOL ID 2
+        // THỐNG KÊ ĐIỂM DANH THEO LỚP / ĐỘI - THEO DOMAIN
         // =====================================================
 
         function createEmptyStudentCountStatistics() {
@@ -956,6 +973,8 @@
                 excused: 0,
                 unexcused: 0,
                 unmarked: 0,
+                massPresent: 0,
+                massExcused: 0,
                 classes: []
             };
         }
@@ -977,9 +996,10 @@
             return found;
         }
 
-        function getSchoolTwoParentClasses() {
+        function getDirectorySchoolParentClasses() {
             return (vm.enrollmentClasses || []).filter(function (enrollmentClass) {
-                if (!enrollmentClass || Number(enrollmentClass.schoolId) !== 2) return false;
+                if (!enrollmentClass ||
+                    Number(enrollmentClass.schoolId) !== vm.directorySchoolId) return false;
                 var parentId = normalizeId(enrollmentClass.parentId);
                 return parentId === null || !findEnrollmentClass(parentId);
             }).sort(function (a, b) {
@@ -990,7 +1010,8 @@
         function getDirectChildClasses(parentClassId) {
             var parentId = normalizeId(parentClassId);
             return (vm.enrollmentClasses || []).filter(function (enrollmentClass) {
-                return enrollmentClass && Number(enrollmentClass.schoolId) === 2 &&
+                return enrollmentClass &&
+                    Number(enrollmentClass.schoolId) === vm.directorySchoolId &&
                     normalizeId(enrollmentClass.parentId) === parentId;
             }).sort(function (a, b) {
                 return String(a.name || '').localeCompare(String(b.name || ''), 'vi');
@@ -1029,7 +1050,7 @@
             return ids;
         }
 
-        function getRootSchoolTwoClass(enrollmentClass) {
+        function getRootDirectorySchoolClass(enrollmentClass) {
             var current = enrollmentClass;
             var visited = {};
 
@@ -1038,16 +1059,18 @@
                 if (currentId !== null && visited[currentId]) break;
                 if (currentId !== null) visited[currentId] = true;
                 var parent = findEnrollmentClass(current.parentId);
-                if (!parent || Number(parent.schoolId) !== 2) break;
+                if (!parent || Number(parent.schoolId) !== vm.directorySchoolId) break;
                 current = parent;
             }
-            return current && Number(current.schoolId) === 2 ? current : null;
+            return current && Number(current.schoolId) === vm.directorySchoolId
+                ? current
+                : null;
         }
 
         function getUserParentClass(user) {
             var ids = getUserClassIds(user);
             for (var i = 0; i < ids.length; i++) {
-                var parentClass = getRootSchoolTwoClass(findEnrollmentClass(ids[i]));
+                var parentClass = getRootDirectorySchoolClass(findEnrollmentClass(ids[i]));
                 if (parentClass) return parentClass;
             }
             return null;
@@ -1057,7 +1080,7 @@
             var parentId = normalizeId(parentClassId);
             var belongs = false;
             angular.forEach(getUserClassIds(user), function (classId) {
-                var root = getRootSchoolTwoClass(findEnrollmentClass(classId));
+                var root = getRootDirectorySchoolClass(findEnrollmentClass(classId));
                 if (root && normalizeId(root.id) === parentId) belongs = true;
             });
             return belongs;
@@ -1087,9 +1110,10 @@
                 user.active === true || user.active === 1 || user.active === '1' ||
                 String(user.active).toLowerCase() === 'true'
             );
+            var expectedRole = isIeltsRoomDomain() ? 'ROLE_VIEWER' : 'ROLE_STUDENT';
             var student = false;
             angular.forEach((user && user.roles) || [], function (role) {
-                if (role && role.name === 'ROLE_STUDENT') student = true;
+                if (role && role.name === expectedRole) student = true;
             });
             return active && student;
         }
@@ -1105,7 +1129,9 @@
                 present: 0,
                 excused: 0,
                 unexcused: 0,
-                unmarked: 0
+                unmarked: 0,
+                massPresent: 0,
+                massExcused: 0
             };
         }
 
@@ -1123,6 +1149,14 @@
             else if (status === 6) target.excused += 1;
             else if (status === 2) target.unexcused += 1;
             else target.unmarked += 1;
+
+            var massStatus = attendance ? Number(attendance.statusMass) : null;
+            // Giữ đúng quy ước tổng hiện có: có đi lễ + ca đoàn.
+            if (massStatus === 1 || massStatus === 5) {
+                target.massPresent += 1;
+            } else if (massStatus === 6) {
+                target.massExcused += 1;
+            }
         }
 
         function buildAttendanceByUserId(records) {
@@ -1274,7 +1308,7 @@
 
             var userFilter = {
                 active: true,
-                schoolId: 2,
+                schoolId: vm.directorySchoolId,
                 roles: [],
                 groups: [],
                 enrollmentClassIds: requestedClassIds
@@ -1306,7 +1340,7 @@
 
         vm.openStudentCountStatisticsModal = function () {
             var selectedDate = parseDateOnly(vm.attendanceDate);
-            vm.studentCountParentClasses = getSchoolTwoParentClasses();
+            vm.studentCountParentClasses = getDirectorySchoolParentClasses();
             vm.studentCountSelectedClassIds = [];
             vm.studentCountSelectedParentClassId = null;
             vm.studentCountStatistics = createEmptyStudentCountStatistics();

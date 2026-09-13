@@ -841,6 +841,20 @@
                             'gap-english-theme': vm.mode.id == 8,
                             'gap-vni-tntt-theme': vm.mode.id == 11 || vm.mode.id == 15
                          }">
+                    <div class="col-md-12" ng-if="vm.mode.id == 8 && vm.dailyListeningDraftAvailable && !vm.dailyListeningDraftRestored">
+                        <div class="daily-listening-resume-banner">
+                            <div class="daily-listening-resume-copy">
+                                <i class="fa fa-history" aria-hidden="true"></i>
+                                <span><strong>Có bài đang làm dở:</strong> {{vm.dailyListeningDraftAvailable.card.question}}</span>
+                            </div>
+                            <div class="daily-listening-resume-actions">
+                                <button type="button" class="btn btn-primary" ng-click="vm.resumeDailyListeningDraft()">
+                                    <i class="fa fa-play" aria-hidden="true"></i> Tiếp tục
+                                </button>
+                                <button type="button" class="btn btn-default" ng-click="vm.discardDailyListeningDraft()">Làm lại</button>
+                            </div>
+                        </div>
+                    </div>
                     <div class="row gap-filling-equal-row">
                         <div ng-if="vm.showGapTitleTable" class="col-md-3 gap-left-list-col">
 
@@ -866,9 +880,23 @@
 
                                     <span>Progress: {{vm.percentage}}%</span>
 
-                                    <button class="btn btn-danger" ng-click="vm.saveTestResult()">
+                                    <button ng-if="vm.mode.id == 8" type="button" class="btn btn-info daily-listening-save-draft-btn"
+                                            ng-click="vm.saveDailyListeningDraft()"
+                                            ng-disabled="vm.savingTestResult || !vm.currentCard.id">
+                                        <i class="fa fa-save" aria-hidden="true"></i> LƯU BÀI ĐANG LÀM
+                                    </button>
+
+                                    <button class="btn btn-danger" ng-click="vm.saveTestResult()"
+                                            ng-disabled="vm.savingTestResult || vm.isSaveTestResult || !vm.currentCard.id">
                                         SURRENDER
                                     </button>
+
+                                    <small ng-if="vm.mode.id == 8 && vm.dailyListeningDraftMessage"
+                                           class="daily-listening-draft-status"
+                                           ng-class="{'is-error': vm.dailyListeningDraftStatus === 'error'}">
+                                        <i class="fa" ng-class="vm.dailyListeningDraftStatus === 'saving' ? 'fa-spinner fa-spin' : vm.dailyListeningDraftStatus === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle'"></i>
+                                        {{vm.dailyListeningDraftMessage}}
+                                    </small>
 
                                 <span ng-if="vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15" class="gap-rate-control">
                                     <label class="bold gap-rate-label">Gap rate:</label>
@@ -5993,6 +6021,58 @@
         flex-wrap: wrap;
     }
 
+    .daily-listening-resume-banner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin: 0 0 16px;
+        padding: 12px 14px;
+        border: 1px solid #a9c8ff;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #edf5ff 0%, #f4f0ff 100%);
+        color: #294b7a;
+        box-shadow: 0 4px 12px rgba(53, 101, 180, .10);
+    }
+
+    .daily-listening-resume-copy,
+    .daily-listening-resume-actions {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+    }
+
+    .daily-listening-resume-copy {
+        min-width: 0;
+    }
+
+    .daily-listening-resume-copy span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .daily-listening-resume-actions {
+        flex: 0 0 auto;
+    }
+
+    .daily-listening-save-draft-btn {
+        border-radius: 8px;
+        font-weight: 700;
+    }
+
+    .daily-listening-draft-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: #267348;
+        font-weight: 600;
+    }
+
+    .daily-listening-draft-status.is-error {
+        color: #b33b4c;
+    }
+
     .youtube-gap-split-layout {
         margin-top: 10px;
     }
@@ -6257,6 +6337,19 @@
     }
 
     @media (max-width: 767px) {
+        .daily-listening-resume-banner {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .daily-listening-resume-copy span {
+            white-space: normal;
+        }
+
+        .daily-listening-resume-actions button {
+            flex: 1 1 0;
+        }
+
         .gap-top-info-line {
             display: flex;
             flex-wrap: wrap;

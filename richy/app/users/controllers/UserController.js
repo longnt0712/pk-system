@@ -154,6 +154,18 @@
 
         var vm = this;
 
+        function isIeltsRoomDomain() {
+            var hostname = String(window.location.hostname || '')
+                .toLowerCase()
+                .replace(/^www\./, '');
+            return hostname === 'ieltsroom.com';
+        }
+
+        vm.directorySchoolId = isIeltsRoomDomain() ? 1 : 2;
+        vm.directorySchoolName = vm.directorySchoolId === 1
+            ? 'IELTS ROOM'
+            : 'TNTT PHÙNG KHOANG';
+
         // window.addEventListener('beforeunload', function (e) {
         //     // Cancel the event
         //     e.preventDefault(); // If you prevent default behavior in Mozilla Firefox prompt will always be shown
@@ -184,21 +196,21 @@
         vm.appliedCreatedDateFrom = null;
         vm.appliedCreatedDateTo = null;
 
-        // Hiện tại chỉ cho phép tìm trong trường TNTT Phùng Khoang (schoolId = 2).
+        // Trường được chọn theo domain hiện tại để danh sách và bộ lọc luôn đồng bộ.
         vm.advancedSearchSchools = [
-            {id: 2, name: 'TNTT PHÙNG KHOANG'}
+            {id: vm.directorySchoolId, name: vm.directorySchoolName}
         ];
 
         vm.advancedSearchApplied = {
             active: false,
-            schoolId: 2,
+            schoolId: vm.directorySchoolId,
             startDate: null,
             endDate: null,
             classIds: []
         };
 
         vm.advancedSearchDraft = {
-            schoolId: 2,
+            schoolId: vm.directorySchoolId,
             startDate: null,
             endDate: null,
             classIds: []
@@ -213,7 +225,8 @@
         };
 
         vm.filterQuickEnrollmentClass = function (enrollmentClass) {
-            return enrollmentClass && Number(enrollmentClass.schoolId) === 2;
+            return enrollmentClass &&
+                Number(enrollmentClass.schoolId) === vm.directorySchoolId;
         };
 
         vm.searchByQuickEnrollmentClass = function () {
@@ -223,7 +236,7 @@
              */
             vm.advancedSearchApplied = {
                 active: false,
-                schoolId: 2,
+                schoolId: vm.directorySchoolId,
                 startDate: null,
                 endDate: null,
                 classIds: []
@@ -290,7 +303,7 @@
             // {id: 24, name: "KHÁC"}
 
         ];
-		service.getEnrollmentClassTree().then(function (data) {
+		service.getEnrollmentClassTree(vm.directorySchoolId).then(function (data) {
 			vm.enrollmentClasses = angular.isArray(data) ? data : [];
 			prepareEnrollmentClassTree();
         });
@@ -518,8 +531,7 @@
         }
 
         function getStudentDirectoryRole() {
-            var hostname = window.location.hostname.toLowerCase().replace(/^www\./, '');
-            var roleName = hostname === 'ieltsroom.com'
+            var roleName = isIeltsRoomDomain()
                 ? 'ROLE_VIEWER'
                 : 'ROLE_STUDENT';
             var role = findRoleByName(roleName);
@@ -647,6 +659,7 @@
             vm.filter.roles = getStudentDirectoryRole();
 
 			var requestFilter = angular.copy(vm.filter);
+			requestFilter.schoolId = vm.directorySchoolId;
 			requestFilter.enrollmentClassIds = vm.advancedSearchApplied.active
 				? vm.advancedSearchApplied.classIds.slice()
 				: vm.getClassAndDescendantIds(requestFilter.enrollmentClass);
@@ -687,7 +700,7 @@
         }
 
         // =====================================================
-        // THỐNG KÊ TÀI KHOẢN ĐANG KÍCH HOẠT - SCHOOL ID 2
+        // THỐNG KÊ TÀI KHOẢN ĐANG KÍCH HOẠT - THEO DOMAIN
         // =====================================================
 
         function createEmptyStudentStatistics() {
@@ -725,29 +738,30 @@
             return ids;
         }
 
-        function isSchoolTwoAccount(user) {
+        function isDirectorySchoolAccount(user) {
             if (!user) {
                 return false;
             }
 
             if (
-                Number(user.schoolId) === 2 ||
-                (user.person && Number(user.person.schoolId) === 2)
+                Number(user.schoolId) === vm.directorySchoolId ||
+                (user.person && Number(user.person.schoolId) === vm.directorySchoolId)
             ) {
                 return true;
             }
 
-            var belongsToSchoolTwo = false;
+            var belongsToDirectorySchool = false;
 
             angular.forEach(getUserEnrollmentClassIds(user), function (classId) {
                 var enrollmentClass = vm.findEnrollmentClass(classId);
 
-                if (enrollmentClass && Number(enrollmentClass.schoolId) === 2) {
-                    belongsToSchoolTwo = true;
+                if (enrollmentClass &&
+                    Number(enrollmentClass.schoolId) === vm.directorySchoolId) {
+                    belongsToDirectorySchool = true;
                 }
             });
 
-            return belongsToSchoolTwo;
+            return belongsToDirectorySchool;
         }
 
         function isActiveStudentAccount(user) {
@@ -823,9 +837,10 @@
             delete row.roleCountMap;
         }
 
-        function getSchoolTwoParentClasses() {
+        function getDirectorySchoolParentClasses() {
             return (vm.enrollmentClasses || []).filter(function (enrollmentClass) {
-                if (!enrollmentClass || Number(enrollmentClass.schoolId) !== 2) {
+                if (!enrollmentClass ||
+                    Number(enrollmentClass.schoolId) !== vm.directorySchoolId) {
                     return false;
                 }
 
@@ -841,14 +856,14 @@
 
             return (vm.enrollmentClasses || []).filter(function (enrollmentClass) {
                 return enrollmentClass &&
-                    Number(enrollmentClass.schoolId) === 2 &&
+                    Number(enrollmentClass.schoolId) === vm.directorySchoolId &&
                     toNumberOrNull(enrollmentClass.parentId) === normalizedParentId;
             }).sort(function (a, b) {
                 return String(a.name || '').localeCompare(String(b.name || ''), 'vi');
             });
         }
 
-        function getRootSchoolTwoClass(enrollmentClass) {
+        function getRootDirectorySchoolClass(enrollmentClass) {
             var current = enrollmentClass;
             var visited = {};
 
@@ -865,14 +880,16 @@
 
                 var parent = vm.findEnrollmentClass(current.parentId);
 
-                if (!parent || Number(parent.schoolId) !== 2) {
+                if (!parent || Number(parent.schoolId) !== vm.directorySchoolId) {
                     break;
                 }
 
                 current = parent;
             }
 
-            return current && Number(current.schoolId) === 2 ? current : null;
+            return current && Number(current.schoolId) === vm.directorySchoolId
+                ? current
+                : null;
         }
 
         function getUserParentClass(user) {
@@ -880,7 +897,7 @@
 
             for (var i = 0; i < classIds.length; i++) {
                 var enrollmentClass = vm.findEnrollmentClass(classIds[i]);
-                var parentClass = getRootSchoolTwoClass(enrollmentClass);
+                var parentClass = getRootDirectorySchoolClass(enrollmentClass);
 
                 if (parentClass) {
                     return parentClass;
@@ -927,7 +944,7 @@
             var belongs = false;
 
             angular.forEach(getUserEnrollmentClassIds(user), function (classId) {
-                var rootClass = getRootSchoolTwoClass(vm.findEnrollmentClass(classId));
+                var rootClass = getRootDirectorySchoolClass(vm.findEnrollmentClass(classId));
 
                 if (rootClass && toNumberOrNull(rootClass.id) === normalizedParentId) {
                     belongs = true;
@@ -981,7 +998,8 @@
             }
 
             angular.forEach(users || [], function (user) {
-                if (isActiveStudentAccount(user) !== true || isSchoolTwoAccount(user) !== true) {
+                if (isActiveStudentAccount(user) !== true ||
+                    isDirectorySchoolAccount(user) !== true) {
                     return;
                 }
                 var row;
@@ -1148,7 +1166,7 @@
                 roles: getStudentDirectoryRole(),
                 groups: [],
                 filtered: 0,
-                schoolId: 2,
+                schoolId: vm.directorySchoolId,
                 enrollmentClassIds: requestedClassIds
             };
 
@@ -1176,7 +1194,7 @@
             vm.studentStatisticsLoading = false;
             vm.studentStatisticsMode = null;
             vm.studentStatisticsStep = 'mode';
-            vm.studentStatisticsParentClasses = getSchoolTwoParentClasses();
+            vm.studentStatisticsParentClasses = getDirectorySchoolParentClasses();
             vm.studentStatisticsSelectedClassIds = [];
             vm.studentStatisticsSelectedParentClassId = null;
 
@@ -1823,14 +1841,14 @@
         }
 
         vm.resetAdvancedSearchDraft = function () {
-            vm.advancedSearchDraft.schoolId = 2;
+            vm.advancedSearchDraft.schoolId = vm.directorySchoolId;
             vm.advancedSearchDraft.startDate = null;
             vm.advancedSearchDraft.endDate = null;
             vm.advancedSearchDraft.classIds = getAllAdvancedSearchClassIds();
         };
 
         vm.onAdvancedSearchSchoolChanged = function () {
-            // schoolId = 1 đang tạm ẩn; đổi trường sẽ luôn chọn toàn bộ lớp của trường đó.
+            // Đổi trường sẽ luôn chọn toàn bộ lớp của trường đó.
             vm.advancedSearchDraft.classIds = getAllAdvancedSearchClassIds();
         };
 
@@ -1907,7 +1925,7 @@
                 } else if (confirm === 'clear') {
                     vm.advancedSearchApplied = {
                         active: false,
-                        schoolId: 2,
+                        schoolId: vm.directorySchoolId,
                         startDate: null,
                         endDate: null,
                         classIds: []
@@ -3467,17 +3485,7 @@
         });
 
         vm.filterEnrollmentClassByRole = function (so) {
-            if (!so) {
-                return false;
-            }
-
-            // Admin nhìn thấy tất cả lớp
-            if (vm.isRoleAdmin) {
-                return true;
-            }
-
-            // Không phải admin thì ẩn schoolId = 1
-            return Number(so.schoolId) !== 1;
+            return so && Number(so.schoolId) === vm.directorySchoolId;
         };
 
     }

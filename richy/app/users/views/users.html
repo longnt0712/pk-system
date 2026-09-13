@@ -373,7 +373,7 @@
                             ng-options="school.id as school.name for school in vm.advancedSearchSchools"
                             ng-change="vm.onAdvancedSearchSchoolChanged()">
                     </select>
-                    <p class="help-block">Hiện tại chỉ hiển thị trường schoolId = 2. Trường schoolId = 1 đang được tạm ẩn.</p>
+                    <p class="help-block">Đang hiển thị trường schoolId = {{vm.directorySchoolId}} theo domain hiện tại.</p>
                 </div>
             </div>
 
@@ -467,7 +467,7 @@
                 Thống kê tài khoản đang kích hoạt
             </h4>
             <p class="student-statistics-subtitle">
-                Phạm vi: tất cả tài khoản thuộc schoolId = 2 và có trạng thái đang kích hoạt
+                Phạm vi: tất cả tài khoản thuộc schoolId = {{vm.directorySchoolId}} và có trạng thái đang kích hoạt
             </p>
         </div>
 
@@ -501,7 +501,7 @@
                 <div class="student-statistics-selection-heading">
                     <div>
                         <h4>Chọn các lớp muốn thống kê</h4>
-                        <p>Danh sách chỉ gồm lớp cha thuộc schoolId = 2.</p>
+                        <p>Danh sách chỉ gồm lớp cha thuộc schoolId = {{vm.directorySchoolId}}.</p>
                     </div>
                     <label class="student-statistics-select-all">
                         <input type="checkbox"
@@ -620,7 +620,7 @@
                             </td>
                         </tr>
                         <tr ng-if="vm.studentStatistics.classes.length === 0">
-                            <td colspan="7" class="text-center text-muted">Không có lớp thuộc schoolId = 2.</td>
+                            <td colspan="7" class="text-center text-muted">Không có lớp thuộc schoolId = {{vm.directorySchoolId}}.</td>
                         </tr>
                         </tbody>
                     </table>
@@ -757,13 +757,11 @@
                 </div>
 				<div class="col-md-6 margin-top-10">
 					<label class="bold">CÁC LỚP ĐANG HỌC</label>
-					<ui-select multiple theme="bootstrap"
+					<ui-select multiple theme="bootstrap" class="user-enrollment-classes-select"
 							   data-ng-model="vm.user.enrollmentClassIds"
 							   data-ng-change="vm.syncPrimaryClassMembership()"
-							   sortable="true" close-on-select="false" style="width:100%">
-						<ui-select-match placeholder="Có thể chọn nhiều lớp...">
-							{{$item.treeLabel || $item.name}}
-						</ui-select-match>
+							   sortable="true" close-on-select="true" style="width:100%">
+						<ui-select-match placeholder="Có thể chọn nhiều lớp...">{{$item.name}}</ui-select-match>
 						<ui-select-choices repeat="so.id as so in vm.enrollmentClasses | filter:vm.filterEnrollmentClassByRole | propsFilter:{treeLabel:$select.search, name:$select.search}">
 							<div class="bold" ng-bind-html="(so.treeLabel || so.name) | highlight:$select.search"></div>
 							<small>{{so.code}}</small>
@@ -928,14 +926,20 @@
                                 {{vm.getVocabularyExperienceThreshold() | number:0}} từ
                             </span>
                         </div>
-                        <div class="progress vocabulary-progress">
-                            <div class="progress-bar"
-                                 role="progressbar"
-                                 aria-valuemin="0"
-                                 aria-valuemax="100"
-                                 aria-valuenow="{{vm.getVocabularyExperiencePercent()}}"
-                                 ng-style="{'width': vm.getVocabularyExperiencePercent() + '%'}">
-                                <span>{{vm.getVocabularyExperiencePercent()}}%</span>
+                        <div class="vocabulary-progress-stage">
+                            <span class="vocabulary-progress-sparkle sparkle-a" aria-hidden="true">✦</span>
+                            <span class="vocabulary-progress-sparkle sparkle-b" aria-hidden="true">★</span>
+                            <div class="progress vocabulary-progress">
+                                <div class="progress-bar"
+                                     role="progressbar"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100"
+                                     aria-valuenow="{{vm.getVocabularyExperiencePercent()}}"
+                                     ng-style="{'width': vm.getVocabularyExperiencePercent() + '%'}">
+                                </div>
+                                <span class="vocabulary-progress-percent">
+                                    {{vm.getVocabularyExperiencePercent()}}%
+                                </span>
                             </div>
                         </div>
                         <div class="vocabulary-total-words">
@@ -1383,6 +1387,31 @@
     .disable-remove-program .ui-select-match-close {
         display: none !important;
     }
+
+    .user-enrollment-classes-select.ui-select-multiple.ui-select-bootstrap {
+        min-height: 40px;
+        height: auto !important;
+        padding: 4px 6px !important;
+    }
+
+    .user-enrollment-classes-select.ui-select-multiple.ui-select-bootstrap .ui-select-match-item {
+        display: inline-flex !important;
+        width: auto !important;
+        max-width: calc(100% - 4px);
+        min-height: 26px !important;
+        height: 26px !important;
+        margin: 2px 3px 2px 0 !important;
+        padding: 4px 22px 4px 10px !important;
+        align-items: center;
+        overflow: hidden;
+        white-space: nowrap !important;
+        text-overflow: ellipsis;
+    }
+
+    .user-enrollment-classes-select .ui-select-match-close {
+        top: 3px;
+        right: 6px;
+    }
 </style>
 
 <style>
@@ -1444,20 +1473,95 @@
     }
 
     .vocabulary-progress {
+        position: relative;
         height: 22px;
         margin-bottom: 11px;
         border-radius: 999px;
-        background: #e2e7f4;
-        box-shadow: inset 0 1px 2px rgba(37, 48, 83, .12);
+        border: 1px solid rgba(255, 255, 255, .72);
+        background: #d9def0;
+        box-shadow:
+            inset 0 1px 3px rgba(37, 48, 83, .18),
+            0 0 13px rgba(255, 220, 85, .42);
         overflow: hidden;
     }
 
     .vocabulary-progress .progress-bar {
+        position: relative;
         min-width: 0;
         border-radius: 999px;
-        background: linear-gradient(90deg, #40c9a2, #6179f6, #8b58ed);
+        background: linear-gradient(90deg, #ffca46 0%, #fff09a 48%, #ff9f5a 100%);
+        box-shadow:
+            0 0 12px rgba(255, 220, 85, .92),
+            inset 0 1px 0 rgba(255, 255, 255, .82);
         line-height: 22px;
-        transition: width .25s ease;
+        transition: width .45s ease;
+        overflow: hidden;
+    }
+
+    .vocabulary-progress .progress-bar:after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+            105deg,
+            transparent 20%,
+            rgba(255, 255, 255, .9) 48%,
+            transparent 72%
+        );
+        background-size: 70px 100%;
+        animation: vocabulary-progress-shine 2.2s linear infinite;
+    }
+
+    .vocabulary-progress-percent {
+        position: absolute;
+        z-index: 2;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #5b4310;
+        font-size: 11px;
+        line-height: 20px;
+        font-weight: 800;
+        text-shadow: 0 1px 1px rgba(255, 255, 255, .68);
+        pointer-events: none;
+    }
+
+    .vocabulary-progress-stage {
+        position: relative;
+    }
+
+    .vocabulary-progress-sparkle {
+        position: absolute;
+        z-index: 3;
+        color: #ffd84f;
+        line-height: 1;
+        pointer-events: none;
+        text-shadow: 0 0 9px rgba(255, 216, 79, .95);
+        animation: vocabulary-progress-twinkle 1.8s ease-in-out infinite;
+    }
+
+    .vocabulary-progress-sparkle.sparkle-a {
+        top: -8px;
+        right: 18%;
+        font-size: 11px;
+    }
+
+    .vocabulary-progress-sparkle.sparkle-b {
+        right: -3px;
+        bottom: 5px;
+        font-size: 8px;
+        animation-delay: .75s;
+    }
+
+    @keyframes vocabulary-progress-shine {
+        from { background-position: -80px 0; }
+        to { background-position: 180px 0; }
+    }
+
+    @keyframes vocabulary-progress-twinkle {
+        0%, 100% { opacity: .28; transform: scale(.72) rotate(0deg); }
+        50% { opacity: 1; transform: scale(1.25) rotate(16deg); }
     }
 
     .vocabulary-total-words {
@@ -1488,7 +1592,18 @@
     }
 
     html.global-dark-mode .vocabulary-progress {
+        border-color: rgba(181, 195, 255, .34);
         background: #39435b;
+        box-shadow:
+            inset 0 1px 3px rgba(0, 0, 0, .28),
+            0 0 14px rgba(255, 220, 85, .32);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .vocabulary-progress .progress-bar:after,
+        .vocabulary-progress-sparkle {
+            animation: none !important;
+        }
     }
 
     @media (max-width: 767px) {

@@ -118,7 +118,7 @@
                                 <ui-select-match allow-clear="true" placeholder="Chọn lớp để lọc">
                                     {{$select.selected.name}}
                                 </ui-select-match>
-                                <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | filter:{schoolId: 2} | propsFilter:{name:$select.search}">
+                                <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | filter:{schoolId: vm.directorySchoolId} | propsFilter:{name:$select.search}">
                                     <div ng-bind-html="cls.name | highlight:$select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -393,7 +393,7 @@
                                         {{$select.selected.name}}
                                     </ui-select-match>
 
-                                    <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | filter:{schoolId: 2} | propsFilter:{name:$select.search}">
+                                    <ui-select-choices repeat="cls.id as cls in vm.enrollmentClasses | filter:{schoolId: vm.directorySchoolId} | propsFilter:{name:$select.search}">
                                         <div ng-bind-html="cls.name | highlight:$select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
@@ -1062,7 +1062,7 @@
                 <i class="fa fa-bar-chart"></i> Thống kê học sinh theo ngày
             </h4>
             <p class="student-count-statistics-subtitle">
-                Học sinh đang active thuộc schoolId = 2 · Ngày {{vm.studentCountStatisticsDateText}}
+                Học sinh đang active thuộc schoolId = {{vm.directorySchoolId}} · Ngày {{vm.studentCountStatisticsDateText}}
             </p>
         </div>
 
@@ -1094,7 +1094,7 @@
                 <div class="student-count-selection-heading">
                     <div>
                         <strong>Chọn lớp cần thống kê</strong>
-                        <p>Mặc định hệ thống đã chọn tất cả các lớp thuộc schoolId = 2.</p>
+                        <p>Mặc định hệ thống đã chọn tất cả các lớp thuộc schoolId = {{vm.directorySchoolId}}.</p>
                     </div>
 
                     <label class="student-count-select-all">
@@ -1117,7 +1117,7 @@
 
                     <div class="alert alert-warning"
                          ng-if="vm.studentCountParentClasses.length === 0">
-                        Không tìm thấy lớp cha nào thuộc schoolId = 2.
+                        Không tìm thấy lớp cha nào thuộc schoolId = {{vm.directorySchoolId}}.
                     </div>
                 </div>
 
@@ -1212,6 +1212,18 @@
                                 <strong>{{vm.studentCountStatistics.unmarked}}</strong>
                             </div>
                         </div>
+                        <div class="col-sm-3 col-xs-6">
+                            <div class="student-count-stat-card is-mass-present">
+                                <span>Đi lễ</span>
+                                <strong>{{vm.studentCountStatistics.massPresent}}</strong>
+                            </div>
+                        </div>
+                        <div class="col-sm-3 col-xs-6">
+                            <div class="student-count-stat-card is-mass-excused">
+                                <span>Nghỉ phép lễ</span>
+                                <strong>{{vm.studentCountStatistics.massExcused}}</strong>
+                            </div>
+                        </div>
                     </div>
 
                     <h4 class="student-count-table-title">{{vm.studentCountStatisticsResultTitle}}</h4>
@@ -1230,6 +1242,8 @@
                                 <th>Nghỉ có phép</th>
                                 <th>Nghỉ không phép</th>
                                 <th>Chưa điểm danh / khác</th>
+                                <th>Đi lễ</th>
+                                <th>Nghỉ phép lễ</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -1244,6 +1258,8 @@
                                 <td>{{row.excused}}</td>
                                 <td>{{row.unexcused}}</td>
                                 <td>{{row.unmarked}}</td>
+                                <td>{{row.massPresent}}</td>
+                                <td>{{row.massExcused}}</td>
                             </tr>
                             </tbody>
                         </table>
@@ -2027,6 +2043,8 @@
     .student-count-stat-card.is-excused { border-top: 4px solid #e6a23c; }
     .student-count-stat-card.is-unexcused { border-top: 4px solid #e05252; }
     .student-count-stat-card.is-unmarked { border-top: 4px solid #7c8799; }
+    .student-count-stat-card.is-mass-present { border-top: 4px solid #8b5cf6; }
+    .student-count-stat-card.is-mass-excused { border-top: 4px solid #d97706; }
 
     .student-count-table-title {
         margin: 0 0 10px;

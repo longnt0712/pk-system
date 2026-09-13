@@ -19,6 +19,7 @@ import com.globits.richy.dto.EnrolmentClassMoveStudentDto;
 import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
 import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
 import com.globits.richy.dto.TopicForListAllDto;
+import com.globits.richy.dto.PersonDateDto;
 import com.globits.richy.service.EnrolmentClassService;
 import com.globits.security.dto.UserDto;
 import com.globits.richy.service.EnrolmentClassScheduleException;
@@ -48,6 +49,19 @@ public class RestEnrolmentClassController {
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/schedule/{classId}/students", method = RequestMethod.GET)
 	public List<UserDto> getScheduleStudents(@PathVariable Long classId) { return service.getScheduleStudents(classId); }
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/schedule/{classId}/attendance", method = RequestMethod.GET)
+	public List<PersonDateDto> getScheduleAttendance(@PathVariable Long classId, @RequestParam String date) {
+		return service.getScheduleAttendance(classId, date);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/schedule/{classId}/attendance/{studentUserId}", method = RequestMethod.PUT)
+	public PersonDateDto updateScheduleAttendance(@PathVariable Long classId, @PathVariable Long studentUserId,
+			@RequestParam String date, @RequestBody PersonDateDto dto) {
+		return service.updateScheduleAttendance(classId, studentUserId, date, dto);
+	}
 	
 	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_STUDENT","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)

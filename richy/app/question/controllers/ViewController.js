@@ -879,8 +879,14 @@
         };
 
         $scope.chooseFillingGaps = function (index) {
+            if (vm.mode && vm.mode.id == 8 && vm.currentCard && vm.currentCard.id != null) {
+                persistDailyListeningDraft(false, false);
+            }
             vm.currentPosition = index;
             vm.currentCard = vm.questions[index];
+            vm.dailyListeningAttemptKey = null;
+            vm.dailyListeningDraftRestored = false;
+            vm.dailyListeningDraftStarted = false;
 
             vm.resetFillingGapsRun();
 
@@ -995,6 +1001,7 @@
             if (vm.testResult) {
                 vm.testResult.testTime = 'GAPS 0%';
             }
+
         };
 
 
@@ -1124,6 +1131,10 @@
 
             if (vm.testResult) {
                 vm.testResult.testTime = 'GAPS 0%';
+            }
+
+            if (vm.mode && vm.mode.id == 8) {
+                $timeout(function () { persistDailyListeningDraft(false, true); }, 0);
             }
         };
 
@@ -1292,8 +1303,12 @@
             } else {
 
                 if(vm.currentPosition + 1 < vm.totalCard){
+                    if (vm.mode && vm.mode.id == 8) { persistDailyListeningDraft(false, false); }
                     vm.currentPosition = vm.currentPosition + 1;
                     vm.currentCard = vm.questions[vm.currentPosition];
+                    vm.dailyListeningAttemptKey = null;
+                    vm.dailyListeningDraftRestored = false;
+                    vm.dailyListeningDraftStarted = false;
                     vm.answerRewriteWord = '';
 
                     if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15 || vm.mode.id == 12){
@@ -1327,8 +1342,12 @@
             }else {
 
                 if(vm.currentPosition > 0){
+                    if (vm.mode && vm.mode.id == 8) { persistDailyListeningDraft(false, false); }
                     vm.currentPosition = vm.currentPosition - 1;
                     vm.currentCard = vm.questions[vm.currentPosition];
+                    vm.dailyListeningAttemptKey = null;
+                    vm.dailyListeningDraftRestored = false;
+                    vm.dailyListeningDraftStarted = false;
                     vm.answerRewriteWord = '';
 
                     if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15 || vm.mode.id == 12){
@@ -3452,9 +3471,18 @@
             var isDailyVocabMode = vm.mode.id == 5;
 
             if (isFillingGapMode) {
+                if (vm.mode.id == 8) {
+                    persistDailyListeningDraft(false, true);
+                    vm.dailyListeningAttemptKey = vm.dailyListeningAttemptKey || createDailyListeningAttemptKey();
+                    vm.testResult.clientAttemptKey = vm.dailyListeningAttemptKey;
+                }
                 vm.testResult.testType = 3;
                 vm.testResult.testName = vm.currentCard.question;
                 vm.testResult.testTime = "GAPS " + vm.percentage + "%";
+                vm.testResult.resultStatus = Number(vm.percentage) > 85 ? 'SUCCESS' : 'FAILED';
+                vm.testResult.sourceQuestionId = vm.currentCard && vm.currentCard.id
+                    ? vm.currentCard.id
+                    : null;
             } else if (isDailyVocabMode) {
                 vm.testResult.testType = 1;
                 vm.testResult.testName = vm.title.substring(0, 50);
@@ -3483,6 +3511,12 @@
                 if (isFillingGapMode) {
                     vm.testResult.id = data1.id;
                     vm.finishFillingGaps = "Finished";
+                    vm.isSaveTestResult = true;
+                    if (vm.mode.id == 8 && data1 && Number(data1.id) > 0) {
+                        clearCurrentDailyListeningDraft();
+                        vm.dailyListeningDraftStatus = 'submitted';
+                        vm.dailyListeningDraftMessage = 'Kết quả đã được lưu trên hệ thống.';
+                    }
                     return;
                 }
 
@@ -3497,7 +3531,15 @@
 
             }, function () {
                 blockUI.stop();
-                toastr.error('Có lỗi xảy ra.', 'Thông báo');
+                if (vm.mode.id == 8) {
+                    vm.isSaveTestResult = false;
+                    persistDailyListeningDraft(false, true);
+                    vm.dailyListeningDraftStatus = 'error';
+                    vm.dailyListeningDraftMessage = 'Chưa gửi được kết quả. Bản nháp vẫn được giữ để bạn thử lại.';
+                    toastr.error(vm.dailyListeningDraftMessage, 'Thông báo');
+                } else {
+                    toastr.error('Có lỗi xảy ra.', 'Thông báo');
+                }
 
             }).finally(function () {
                 vm.savingTestResult = false;
@@ -3582,6 +3624,352 @@
         vm.isYoutubeAudio = false;
         vm.youtubeVideoId = null;
         vm.youtubeStartSeconds = 0;
+
+        var dailyListeningDraftTtl = 7 * 24 * 60 * 60 * 1000;
+        var dailyListeningDraftSaveTimer = null;
+        var dailyListeningDraftHeartbeatTimer = null;
+        vm.dailyListeningDraftAvailable = null;
+        vm.dailyListeningDraftRestored = false;
+        vm.dailyListeningDraftStatus = 'idle';
+        vm.dailyListeningDraftMessage = '';
+        vm.dailyListeningAttemptKey = null;
+        vm.dailyListeningDraftStarted = false;
+
+        function isDailyListeningMode() {
+            return vm.mode && vm.mode.id == 8;
+        }
+
+        function dailyListeningDraftPrefix() {
+            return 'daily-listening-progress:v1:' + String(vm.currentUser && vm.currentUser.id || '') + ':';
+        }
+
+        function dailyListeningDraftKey(questionId) {
+            return dailyListeningDraftPrefix() + String(questionId);
+        }
+
+        function createDailyListeningAttemptKey() {
+            var bytes = new Uint8Array(16);
+            var crypto = window.crypto || window.msCrypto;
+
+            if (crypto && crypto.getRandomValues) {
+                crypto.getRandomValues(bytes);
+            } else {
+                for (var i = 0; i < bytes.length; i++) {
+                    bytes[i] = Math.floor(Math.random() * 256);
+                }
+            }
+
+            return Array.prototype.map.call(bytes, function (value) {
+                return ('0' + value.toString(16)).slice(-2);
+            }).join('');
+        }
+
+        function isValidDailyListeningDraft(draft) {
+            return !!(draft && draft.version === 1 && draft.modeId === 8
+                && String(draft.ownerId) === String(vm.currentUser && vm.currentUser.id)
+                && draft.card && draft.card.id != null && draft.card.motherTongue
+                && typeof draft.fillingGapQuestion === 'string'
+                && draft.gapAnswers && typeof draft.gapAnswers === 'object'
+                && /^[a-f0-9]{32}$/.test(draft.clientAttemptKey || '')
+                && Number(draft.updatedAt) > 0
+                && Date.now() - Number(draft.updatedAt) <= dailyListeningDraftTtl);
+        }
+
+        function findLatestDailyListeningDraft() {
+            var prefix = dailyListeningDraftPrefix();
+            var latest = null;
+            var staleKeys = [];
+
+            try {
+                for (var i = 0; i < window.localStorage.length; i++) {
+                    var key = window.localStorage.key(i);
+                    if (!key || key.indexOf(prefix) !== 0) { continue; }
+
+                    var draft = null;
+                    try { draft = JSON.parse(window.localStorage.getItem(key)); } catch (ignore) {}
+                    if (!isValidDailyListeningDraft(draft)) {
+                        staleKeys.push(key);
+                    } else if (!latest || Number(draft.updatedAt) > Number(latest.updatedAt)) {
+                        latest = draft;
+                    }
+                }
+                angular.forEach(staleKeys, function (key) { window.localStorage.removeItem(key); });
+            } catch (ignore) {
+                vm.dailyListeningDraftStatus = 'error';
+                vm.dailyListeningDraftMessage = 'Trình duyệt không đọc được bản nháp.';
+            }
+
+            return latest;
+        }
+
+        vm.refreshDailyListeningDraft = function () {
+            vm.dailyListeningDraftAvailable = findLatestDailyListeningDraft();
+            return vm.dailyListeningDraftAvailable;
+        };
+
+        function getDailyListeningAudioTime() {
+            if (vm.isYoutubeAudio && youtubeGapPlayerReady && youtubeGapPlayer
+                    && typeof youtubeGapPlayer.getCurrentTime === 'function') {
+                try { return Math.max(0, Number(youtubeGapPlayer.getCurrentTime()) || 0); } catch (ignore) {}
+            }
+
+            var audio = getMainAudio();
+            return audio ? Math.max(0, Number(audio.currentTime) || 0) : 0;
+        }
+
+        function syncDailyListeningValuesFromInputs() {
+            vm.gapValues = vm.gapValues || {};
+            angular.forEach(vm.gapAnswers || {}, function (answer, index) {
+                var input = document.getElementById('gap-number-' + index);
+                if (input) { vm.gapValues[index] = input.value || ''; }
+            });
+        }
+
+        function hasDailyListeningProgress() {
+            var hasValue = false;
+            angular.forEach(vm.gapValues || {}, function (value) {
+                if (value != null && String(value).trim()) { hasValue = true; }
+            });
+            return hasValue;
+        }
+
+        function currentDailyListeningCardSnapshot() {
+            var card = vm.currentCard || {};
+            return {
+                id: card.id,
+                question: card.question || '',
+                motherTongue: card.motherTongue || '',
+                pronounce: card.pronounce || '',
+                questionTopics: angular.copy(card.questionTopics || [])
+            };
+        }
+
+        function persistDailyListeningDraft(manual, force) {
+            if (!isDailyListeningMode() || !vm.currentCard || vm.currentCard.id == null
+                    || !vm.fillingGapQuestion || !Object.keys(vm.gapAnswers || {}).length) {
+                if (manual) { toastr.warning('Chưa có bài Daily Listening để lưu.'); }
+                return false;
+            }
+
+            syncDailyListeningValuesFromInputs();
+            if (!force && !hasDailyListeningProgress() && !vm.dailyListeningDraftRestored) { return false; }
+            vm.dailyListeningAttemptKey = vm.dailyListeningAttemptKey || createDailyListeningAttemptKey();
+
+            var draft = {
+                version: 1,
+                modeId: 8,
+                ownerId: vm.currentUser.id,
+                updatedAt: Date.now(),
+                clientAttemptKey: vm.dailyListeningAttemptKey,
+                card: currentDailyListeningCardSnapshot(),
+                fillingGapQuestion: vm.fillingGapQuestion,
+                gapAnswers: angular.copy(vm.gapAnswers || {}),
+                gapValues: angular.copy(vm.gapValues || {}),
+                gapCorrectMap: angular.copy(vm.gapCorrectMap || {}),
+                currentGapAnswers: angular.copy(vm.currentGapAnswers || []),
+                gapRatePercent: Number(vm.gapRatePercent) || 35,
+                percentage: Number(vm.percentage) || 0,
+                numberOfGaps: Number(vm.numberOfGaps) || 0,
+                audioTime: getDailyListeningAudioTime(),
+                playbackValue: Number(vm.playbackValue) || 1,
+                volumeValue: Number(vm.volumeValue),
+                showGapTitleTable: vm.showGapTitleTable !== false
+            };
+
+            if (!isFinite(draft.volumeValue)) { draft.volumeValue = 1; }
+
+            try {
+                window.localStorage.setItem(dailyListeningDraftKey(draft.card.id), JSON.stringify(draft));
+                if (vm.dailyListeningDraftAvailable && vm.dailyListeningDraftAvailable.card
+                        && String(vm.dailyListeningDraftAvailable.card.id) === String(draft.card.id)) {
+                    vm.dailyListeningDraftAvailable = null;
+                }
+                vm.dailyListeningDraftStarted = true;
+                vm.dailyListeningDraftStatus = 'saved';
+                vm.dailyListeningDraftMessage = (manual ? 'Đã lưu bài đang làm lúc ' : 'Đã tự động lưu lúc ')
+                    + new Date(draft.updatedAt).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'});
+                if (manual) { toastr.success('Đã lưu bài Daily Listening đang làm trên trình duyệt này.'); }
+                return true;
+            } catch (ignore) {
+                vm.dailyListeningDraftStatus = 'error';
+                vm.dailyListeningDraftMessage = 'Không lưu được bản nháp trên trình duyệt này.';
+                if (manual) { toastr.error(vm.dailyListeningDraftMessage); }
+                return false;
+            }
+        }
+
+        vm.saveDailyListeningDraft = function () {
+            persistDailyListeningDraft(true, true);
+        };
+
+        function scheduleDailyListeningDraftSave() {
+            if (!isDailyListeningMode()) { return; }
+            if (dailyListeningDraftSaveTimer) { $timeout.cancel(dailyListeningDraftSaveTimer); }
+            vm.dailyListeningDraftStatus = 'saving';
+            vm.dailyListeningDraftMessage = 'Đang lưu bản nháp...';
+            dailyListeningDraftSaveTimer = $timeout(function () {
+                dailyListeningDraftSaveTimer = null;
+                persistDailyListeningDraft(false, false);
+            }, 450);
+        }
+
+        function removeDailyListeningDraft(draft) {
+            if (!draft || !draft.card || draft.card.id == null) { return; }
+            try { window.localStorage.removeItem(dailyListeningDraftKey(draft.card.id)); } catch (ignore) {}
+        }
+
+        function clearCurrentDailyListeningDraft() {
+            var questionId = vm.currentCard && vm.currentCard.id;
+            if (questionId != null) {
+                try { window.localStorage.removeItem(dailyListeningDraftKey(questionId)); } catch (ignore) {}
+            }
+            vm.dailyListeningDraftAvailable = findLatestDailyListeningDraft();
+            vm.dailyListeningDraftRestored = false;
+            vm.dailyListeningAttemptKey = null;
+            vm.dailyListeningDraftStarted = false;
+        }
+
+        vm.discardDailyListeningDraft = function () {
+            var draft = vm.dailyListeningDraftAvailable;
+            if (!draft) { return; }
+            if (!window.confirm('Làm lại từ đầu? Bản nháp Daily Listening này sẽ bị xóa.')) { return; }
+
+            var wasCurrent = vm.currentCard && draft.card && String(vm.currentCard.id) === String(draft.card.id);
+            removeDailyListeningDraft(draft);
+            vm.dailyListeningDraftAvailable = findLatestDailyListeningDraft();
+            vm.dailyListeningDraftRestored = false;
+            vm.dailyListeningAttemptKey = null;
+            vm.dailyListeningDraftStarted = false;
+            vm.dailyListeningDraftStatus = 'idle';
+            vm.dailyListeningDraftMessage = '';
+
+            if (wasCurrent && vm.currentCard && vm.currentCard.motherTongue) {
+                vm.resetFillingGapsRun();
+                vm.fillingGapQuestion = processFillingGapsByMode(vm.currentCard.motherTongue, false, true);
+                vm.setUpTestResult();
+                vm.setUpAudio();
+            }
+            toastr.info('Đã xóa bản nháp. Bạn có thể làm lại từ đầu.');
+        };
+
+        function restoreDailyListeningAudioPosition(seconds) {
+            seconds = Math.max(0, Number(seconds) || 0);
+            if (!seconds) { return; }
+
+            $timeout(function () {
+                if (vm.isYoutubeAudio) {
+                    runYoutubeAction(function (player) {
+                        try { player.seekTo(seconds, true); } catch (ignore) {}
+                    });
+                    return;
+                }
+
+                var audio = getMainAudio();
+                if (!audio) { return; }
+                var applyTime = function () {
+                    try { audio.currentTime = Math.min(seconds, isFinite(audio.duration) ? audio.duration : seconds); }
+                    catch (ignore) {}
+                };
+                if (audio.readyState >= 1) { applyTime(); }
+                else { audio.addEventListener('loadedmetadata', applyTime, {once: true}); }
+            }, 250);
+        }
+
+        vm.resumeDailyListeningDraft = function () {
+            var draft = vm.dailyListeningDraftAvailable || findLatestDailyListeningDraft();
+            if (!isValidDailyListeningDraft(draft)) {
+                vm.dailyListeningDraftAvailable = null;
+                toastr.warning('Bản nháp không còn hợp lệ hoặc đã quá 7 ngày.');
+                return;
+            }
+
+            var card = null;
+            angular.forEach(vm.questions || [], function (item) {
+                if (item && String(item.id) === String(draft.card.id)) { card = item; }
+            });
+            if (card && String(card.motherTongue || '') !== String(draft.card.motherTongue || '')) {
+                removeDailyListeningDraft(draft);
+                vm.dailyListeningDraftAvailable = findLatestDailyListeningDraft();
+                toastr.warning('Nội dung bài nghe đã được thay đổi nên không thể dùng bản nháp cũ.');
+                return;
+            }
+            card = card || angular.copy(draft.card);
+
+            vm.mode = {id: 8, name: 'FILLING GAPS'};
+            vm.currentCard = card;
+            var existingIndex = -1;
+            angular.forEach(vm.questions || [], function (item, index) {
+                if (item && String(item.id) === String(card.id)) { existingIndex = index; }
+            });
+            if (existingIndex < 0) {
+                vm.questions = [card];
+                vm.allGapQuestions = angular.copy(vm.questions);
+                existingIndex = 0;
+            }
+            vm.currentPosition = existingIndex;
+            vm.totalCard = vm.questions.length;
+            vm.resetFillingGapsRun();
+            vm.gapRatePercent = draft.gapRatePercent;
+            vm.fillingGapQuestion = draft.fillingGapQuestion;
+            vm.gapAnswers = angular.copy(draft.gapAnswers || {});
+            vm.gapValues = angular.copy(draft.gapValues || {});
+            vm.gapCorrectMap = angular.copy(draft.gapCorrectMap || {});
+            vm.currentGapAnswers = angular.copy(draft.currentGapAnswers || []);
+            vm.numberOfGaps = Number(draft.numberOfGaps) || Object.keys(vm.gapAnswers).length;
+            vm.percentage = Number(draft.percentage) || 0;
+            vm.playbackValue = Number(draft.playbackValue) || 1;
+            vm.volumeValue = isFinite(Number(draft.volumeValue)) ? Number(draft.volumeValue) : 1;
+            vm.showGapTitleTable = draft.showGapTitleTable !== false;
+            vm.dailyListeningAttemptKey = draft.clientAttemptKey;
+            vm.dailyListeningDraftRestored = true;
+            vm.dailyListeningDraftStarted = true;
+            vm.dailyListeningDraftAvailable = null;
+            vm.dailyListeningDraftStatus = 'restored';
+            vm.dailyListeningDraftMessage = 'Đã khôi phục bài đang làm.';
+            vm.setUpTestResult();
+            vm.testResult.clientAttemptKey = vm.dailyListeningAttemptKey;
+
+            vm.setUpTable();
+            vm.bsTableControl.options.sidePagination = 'client';
+            vm.bsTableControl.options.data = vm.questions;
+            vm.bsTableControl.options.totalRows = vm.questions.length;
+            vm.setUpAudio();
+            restoreDailyListeningAudioPosition(draft.audioTime);
+
+            $timeout(function () {
+                angular.forEach(vm.gapAnswers || {}, function (answer, index) {
+                    syncGapInputState(index, answer);
+                });
+            }, 100);
+            toastr.success('Đã tiếp tục đúng bài Daily Listening đang làm dở.');
+        };
+
+        function dailyListeningDraftHeartbeat() {
+            if (isDailyListeningMode() && (vm.dailyListeningDraftStarted || hasDailyListeningProgress())) {
+                persistDailyListeningDraft(false, false);
+            }
+            dailyListeningDraftHeartbeatTimer = $timeout(dailyListeningDraftHeartbeat, 5000);
+        }
+
+        function persistDailyListeningOnHide() {
+            if (document.visibilityState === 'hidden') { persistDailyListeningDraft(false, false); }
+        }
+
+        function persistDailyListeningBeforeUnload() {
+            persistDailyListeningDraft(false, false);
+        }
+
+        vm.refreshDailyListeningDraft();
+        dailyListeningDraftHeartbeatTimer = $timeout(dailyListeningDraftHeartbeat, 5000);
+        document.addEventListener('visibilitychange', persistDailyListeningOnHide, false);
+        window.addEventListener('beforeunload', persistDailyListeningBeforeUnload, false);
+
+        $scope.$on('$destroy', function () {
+            if (dailyListeningDraftSaveTimer) { $timeout.cancel(dailyListeningDraftSaveTimer); }
+            if (dailyListeningDraftHeartbeatTimer) { $timeout.cancel(dailyListeningDraftHeartbeatTimer); }
+            document.removeEventListener('visibilitychange', persistDailyListeningOnHide, false);
+            window.removeEventListener('beforeunload', persistDailyListeningBeforeUnload, false);
+        });
 
         function getMainAudio() {
             if (!mainAudio) {
@@ -5528,6 +5916,9 @@
             }
 
             vm.tryAutoSaveFillingGaps();
+            if (vm.mode && vm.mode.id == 8 && vm.isSaveTestResult !== true) {
+                scheduleDailyListeningDraftSave();
+            }
         };
         vm.onGapKeyup = function ($event, totalWords, index, fullText, gapWord) {
             var target = $event && $event.target;

@@ -392,6 +392,26 @@
     .class-schedule-day-modal-window .class-homework-review-table select.class-homework-progress-select option[value="DONE"] { background:#e6f7ed !important; color:#17633a !important; }
     .class-schedule-day-modal-window .class-homework-review-table select.class-homework-progress-select option[value="NEEDS_REVIEW"] { background:#fff4db !important; color:#85520b !important; }
     .class-schedule-day-modal-window .class-homework-review-table select.class-homework-progress-select option[value^="PROGRESS_"] { background:#eaf2ff !important; color:#2757a1 !important; }
+    .class-homework-review-table .class-attendance-cell { min-width:210px; }
+    .class-schedule-day-modal-window .class-homework-review-table select.class-attendance-select {
+        width:100%; height:36px !important; min-height:36px !important; margin:0;
+        padding:6px 10px !important; border:1px solid #c5cddd !important;
+        border-left-width:4px !important; border-radius:9px !important;
+        background-color:#eef2f7 !important; color:#46546c !important;
+        background-image:none !important; font-weight:700 !important; line-height:22px;
+        box-shadow:none !important; transition:none !important; opacity:1 !important; filter:none !important;
+    }
+    .class-schedule-day-modal-window .class-homework-review-table select.class-attendance-select.is-present {
+        border-color:#86cea7 !important; background-color:#e6f7ed !important; color:#17633a !important;
+    }
+    .class-schedule-day-modal-window .class-homework-review-table select.class-attendance-select.is-absent {
+        border-color:#e9a6b2 !important; background-color:#fff0f2 !important; color:#a12740 !important;
+    }
+    .class-schedule-day-modal-window .class-homework-review-table input.class-attendance-note {
+        width:100%; height:32px !important; min-height:32px !important; margin-top:7px;
+        padding:5px 10px !important; border-radius:8px !important; font-size:12px !important;
+        font-weight:500 !important; line-height:20px; box-shadow:none !important;
+    }
     .class-homework-note-field { position:relative; margin-top:7px; height:32px; }
     .class-homework-note-measure { display:block; width:max-content; height:32px; padding:5px 12px; white-space:pre; visibility:hidden; pointer-events:none; }
     .class-homework-note-field,
@@ -417,6 +437,18 @@
         --progress-bg:#223957; --progress-ink:#bad6ff; --progress-border:#668fc3;
     }
     .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table input.class-homework-cell-note {
+        background:#1d293d !important; color:#eaf0ff !important; border-color:#465a77 !important;
+    }
+    .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table select.class-attendance-select {
+        border-color:#566581 !important; background-color:#293448 !important; color:#dde6f5 !important;
+    }
+    .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table select.class-attendance-select.is-present {
+        border-color:#509c75 !important; background-color:#203d32 !important; color:#a6ebc5 !important;
+    }
+    .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table select.class-attendance-select.is-absent {
+        border-color:#ad6075 !important; background-color:#482834 !important; color:#ffbfca !important;
+    }
+    .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table input.class-attendance-note {
         background:#1d293d !important; color:#eaf0ff !important; border-color:#465a77 !important;
     }
     .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table input.class-homework-cell-note::placeholder { color:#aebbd1; }
@@ -864,12 +896,6 @@
                         <div class="class-day-plan-actions">
                         <button type="button" class="btn btn-primary" data-ng-click="vm.openScheduleTask('CLASS')"
                                 data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor"><i class="fa fa-plus"></i> Tasks</button>
-                        <button type="button" class="btn btn-primary class-day-add-btn"
-                                data-ng-click="vm.toggleTopicSelection('classTopicIds')"
-                                data-ng-disabled="vm.scheduleTopicsLoading || vm.scheduleDaySaving" title="Chọn topic học trên lớp">
-                            <i class="fa" data-ng-class="vm.scheduleTopicsLoading ? 'fa-spinner fa-spin' : (vm.topicSelectionOpen.classTopicIds ? 'fa-minus' : 'fa-plus')"></i>
-                            Topic
-                        </button>
                         </div>
                     </div>
                     <ui-select multiple theme="bootstrap" class="class-day-topic-select"
@@ -885,7 +911,7 @@
                         <li data-ng-repeat="topic in vm.selectedScheduleTopics('classTopicIds') track by topic.id">
                             <i class="fa fa-check-circle"></i> {{topic.name}}
                         </li>
-                        <li class="class-day-empty" data-ng-if="!vm.scheduleDay.classTopicIds.length">Chưa chọn topic học trên lớp.</li>
+                        <li class="class-day-empty" data-ng-if="!vm.scheduleDay.classTopicIds.length">Chưa thiết lập bài học.</li>
                     </ul>
                     <div data-ng-repeat="taskSection in ['CLASS']" data-ng-include="'class_schedule_tasks.html'"></div>
                 </section>
@@ -896,12 +922,6 @@
                         <div class="class-day-plan-actions">
                         <button type="button" class="btn btn-warning" data-ng-click="vm.openScheduleTask('HOMEWORK')"
                                 data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor"><i class="fa fa-plus"></i> Tasks</button>
-                        <button type="button" class="btn btn-warning class-day-add-btn"
-                                data-ng-click="vm.toggleTopicSelection('homeworkTopicIds')"
-                                data-ng-disabled="vm.scheduleTopicsLoading || vm.scheduleDaySaving" title="Chọn topic bài tập về nhà">
-                            <i class="fa" data-ng-class="vm.scheduleTopicsLoading ? 'fa-spinner fa-spin' : (vm.topicSelectionOpen.homeworkTopicIds ? 'fa-minus' : 'fa-plus')"></i>
-                            Topic
-                        </button>
                         </div>
                     </div>
                     <ui-select multiple theme="bootstrap" class="class-day-topic-select"
@@ -917,7 +937,7 @@
                         <li data-ng-repeat="topic in vm.selectedScheduleTopics('homeworkTopicIds') track by topic.id">
                             <i class="fa fa-check-circle"></i> {{topic.name}}
                         </li>
-                        <li class="class-day-empty" data-ng-if="!vm.scheduleDay.homeworkTopicIds.length">Chưa chọn topic bài tập về nhà.</li>
+                        <li class="class-day-empty" data-ng-if="!vm.scheduleDay.homeworkTopicIds.length">Chưa thiết lập bài tập về nhà.</li>
                     </ul>
                     <div data-ng-repeat="taskSection in ['HOMEWORK']" data-ng-include="'class_schedule_tasks.html'"></div>
                 </section>
@@ -934,8 +954,12 @@
                 <p class="class-task-help" data-ng-if="vm.homeworkReviewLoading || vm.scheduleStudentsLoading" role="status">
                     <i class="fa fa-spinner fa-spin"></i> Đang tải buổi trước và danh sách học sinh...
                 </p>
+                <p class="class-task-help" data-ng-if="vm.scheduleAttendanceLoading" role="status">
+                    <i class="fa fa-spinner fa-spin"></i> Đang tải điểm danh ngày {{vm.scheduleDayLabel()}}...
+                </p>
                 <button type="button" class="btn btn-default btn-sm" data-ng-if="vm.homeworkReviewError" data-ng-click="vm.loadPreviousHomework()">Không tải được buổi trước — Thử lại</button>
                 <button type="button" class="btn btn-default btn-sm" data-ng-if="vm.scheduleStudentsError" data-ng-click="vm.loadScheduleStudents()">Không tải được học sinh — Thử lại</button>
+                <button type="button" class="btn btn-default btn-sm" data-ng-if="vm.scheduleAttendanceError" data-ng-click="vm.loadScheduleAttendance()">Không tải được điểm danh — Thử lại</button>
                 <div data-ng-if="!vm.homeworkReviewLoading && !vm.homeworkReviewError">
                     <p class="class-task-help" data-ng-if="!vm.previousHomeworkDay">Chưa có buổi học trước để đối chiếu.</p>
                     <p class="class-task-help" data-ng-if="vm.previousHomeworkDay && !vm.previousHomeworkTasks.length">Buổi trước chưa giao Homework bằng Tasks nên chưa có tiến độ từng học sinh để đối chiếu.</p>
@@ -962,6 +986,7 @@
                         <div class="class-homework-review-table" data-ng-if="vm.scheduleStudents.length" tabindex="0" aria-label="Bảng tiến độ Homework, cuộn để xem thêm">
                             <table>
                                 <thead><tr><th scope="col">#</th><th scope="col" class="class-homework-review-name">Học sinh</th><th scope="col">Tình trạng chung</th>
+                                    <th scope="col" class="class-attendance-cell">Điểm danh<small class="class-homework-review-note">{{vm.scheduleDayLabel()}}</small></th>
                                     <th scope="col" class="class-homework-review-cell" data-ng-repeat="task in vm.previousHomeworkTasks track by $index">{{task.title}}<small class="class-homework-review-note" data-ng-if="task.topicName">{{task.topicName}}</small><small class="class-homework-review-note" data-ng-if="task.resolvedDueDate || task.dueDate">Hạn: {{vm.taskDueLabel(task)}}</small></th>
                                 </tr></thead>
                                 <tbody>
@@ -969,6 +994,27 @@
                                         <td>{{$index + 1}}</td>
                                         <td class="class-homework-review-name"><strong>{{row.name}}</strong><small class="class-homework-review-note">{{row.username}}</small></td>
                                         <td><span class="class-homework-status" data-ng-class="{'is-done': row.status === 'DONE', 'is-review': row.status === 'NEEDS_REVIEW', 'is-todo': row.status === 'INCOMPLETE'}">{{row.label}}</span><small class="class-homework-review-note" data-ng-if="row.total">{{row.done}}/{{row.total}} Tasks đã làm</small></td>
+                                        <td class="class-attendance-cell">
+                                            <select class="form-control input-sm class-attendance-select"
+                                                    homework-progress-wheel
+                                                    data-ng-model="row.attendance.editStatus"
+                                                    data-ng-options="status.id as status.name for status in vm.attendanceStatuses"
+                                                    data-ng-class="{'is-present': row.attendance.editStatus === 1, 'is-absent': row.attendance.editStatus === 2}"
+                                                    data-ng-disabled="row.attendance.saving || vm.scheduleAttendanceLoading"
+                                                    data-ng-change="vm.markScheduleAttendanceDirty(row); vm.saveScheduleAttendance(row)"
+                                                    data-ng-attr-aria-label="Điểm danh {{row.name}}">
+                                            </select>
+                                            <input type="text" class="form-control input-sm class-attendance-note" maxlength="1000"
+                                                   data-ng-model="row.attendance.editNotes"
+                                                   data-ng-change="vm.markScheduleAttendanceDirty(row)"
+                                                   data-ng-blur="vm.saveScheduleAttendance(row)"
+                                                   data-ng-disabled="row.attendance.saving || vm.scheduleAttendanceLoading"
+                                                   placeholder="Ghi chú điểm danh..."
+                                                   data-ng-attr-aria-label="Ghi chú điểm danh {{row.name}}" />
+                                            <small class="class-homework-review-note" data-ng-if="row.attendance.saving" role="status"><i class="fa fa-spinner fa-spin"></i> Đang lưu...</small>
+                                            <small class="class-homework-review-note" data-ng-if="row.attendance.dirty && !row.attendance.saving && !row.attendance.error">Chưa lưu</small>
+                                            <small class="text-danger" data-ng-if="row.attendance.error" role="alert">{{row.attendance.error}}</small>
+                                        </td>
                                         <td class="class-homework-review-cell" data-ng-repeat="cell in row.cells track by $index">
                                             <select class="form-control input-sm class-homework-progress-select" data-ng-model="cell.editStatus"
                                                     homework-progress-wheel
@@ -997,7 +1043,7 @@
                                                     data-ng-click="vm.saveHomeworkCell(row, cell)">Lưu ô này / Thử lại</button>
                                         </td>
                                     </tr>
-                                    <tr data-ng-if="!vm.filteredHomeworkRows().length"><td colspan="{{3 + vm.previousHomeworkTasks.length}}">Không có học sinh khớp bộ lọc.</td></tr>
+                                    <tr data-ng-if="!vm.filteredHomeworkRows().length"><td colspan="{{4 + vm.previousHomeworkTasks.length}}">Không có học sinh khớp bộ lọc.</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1093,8 +1139,8 @@
                 </div>
             </div>
             <div class="form-group" data-ng-if="vm.taskEditor.topicId">
-                <label><input type="checkbox" data-ng-model="vm.taskEditor.autoCompleteFromTopic" /> Tự đánh dấu khi hoàn thành Daily Vocab của topic này</label>
-                <p class="class-task-help">Chỉ tính lượt thành công từ giờ kết thúc buổi học trước đến hạn task. Với task trên lớp không đặt hạn, mốc kết thúc là giờ tan của buổi hiện tại. Bài chưa đạt, Daily Listening và IELTS không được tính.</p>
+                <label><input type="checkbox" data-ng-model="vm.taskEditor.autoCompleteFromTopic" /> Tự đánh dấu khi hoàn thành Daily Vocab / Daily Listening của topic này</label>
+                <p class="class-task-help">Chỉ tính lượt thành công từ giờ kết thúc buổi học trước đến hạn task. Với task trên lớp không đặt hạn, mốc kết thúc là giờ tan của buổi hiện tại. Daily Listening chỉ được tính khi đạt trên 85%; IELTS không được tính.</p>
             </div>
             <div class="form-group">
                 <label>Ghi chú / Hướng dẫn làm bài</label>
