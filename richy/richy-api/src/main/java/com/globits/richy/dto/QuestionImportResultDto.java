@@ -9,6 +9,7 @@ public class QuestionImportResultDto implements Serializable {
     private boolean success;
     private int createdCount;
     private int topicAddedCount;
+    private int updatedCount;
     private int skippedCount;
     private int errorCount;
     private String message;
@@ -35,6 +36,14 @@ public class QuestionImportResultDto implements Serializable {
 
     public void setTopicAddedCount(int topicAddedCount) {
         this.topicAddedCount = topicAddedCount;
+    }
+
+    public int getUpdatedCount() {
+        return updatedCount;
+    }
+
+    public void setUpdatedCount(int updatedCount) {
+        this.updatedCount = updatedCount;
     }
 
     public int getSkippedCount() {

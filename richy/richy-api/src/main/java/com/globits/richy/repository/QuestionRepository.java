@@ -18,7 +18,7 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 	List<Question> findByQuestion(String question, Long userId);
 	
 	@Query("select new com.globits.richy.dto.QuestionImportExistingDto("
-	        + "q.id, q.question, q.pronounce, q.motherTongue) "
+	        + "q.id, q.question, q.pronounce, q.motherTongue, q.level) "
 	        + "from Question q "
 	        + "where q.user.id = ?1 "
 	        + "and q.questionType.id = ?2")

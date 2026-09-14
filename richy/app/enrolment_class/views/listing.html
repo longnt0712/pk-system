@@ -392,20 +392,15 @@
     .class-schedule-day-modal-window .class-homework-review-table select.class-homework-progress-select option[value="DONE"] { background:#e6f7ed !important; color:#17633a !important; }
     .class-schedule-day-modal-window .class-homework-review-table select.class-homework-progress-select option[value="NEEDS_REVIEW"] { background:#fff4db !important; color:#85520b !important; }
     .class-schedule-day-modal-window .class-homework-review-table select.class-homework-progress-select option[value^="PROGRESS_"] { background:#eaf2ff !important; color:#2757a1 !important; }
-    .class-homework-review-table .class-attendance-cell { min-width:210px; }
-    .class-schedule-day-modal-window .class-homework-review-table select.class-attendance-select {
-        width:100%; height:36px !important; min-height:36px !important; margin:0;
-        padding:6px 10px !important; border:1px solid #c5cddd !important;
-        border-left-width:4px !important; border-radius:9px !important;
-        background-color:#eef2f7 !important; color:#46546c !important;
-        background-image:none !important; font-weight:700 !important; line-height:22px;
-        box-shadow:none !important; transition:none !important; opacity:1 !important; filter:none !important;
-    }
-    .class-schedule-day-modal-window .class-homework-review-table select.class-attendance-select.is-present {
-        border-color:#86cea7 !important; background-color:#e6f7ed !important; color:#17633a !important;
-    }
-    .class-schedule-day-modal-window .class-homework-review-table select.class-attendance-select.is-absent {
-        border-color:#e9a6b2 !important; background-color:#fff0f2 !important; color:#a12740 !important;
+    .class-homework-review-table .class-attendance-cell { min-width:230px; }
+    .class-attendance-flags { display:flex; align-items:center; gap:12px; min-height:36px; }
+    .class-attendance-absent { display:flex; align-items:center; gap:7px; margin:0; color:#17633a; font-size:12px; font-weight:800; cursor:pointer; }
+    .class-attendance-absent.is-absent { color:#a12740; }
+    .class-attendance-absent input { width:17px; height:17px; margin:0; accent-color:#dc536b; }
+    .class-attendance-makeup { display:flex; align-items:center; gap:6px; margin-left:auto; color:#52617c; font-size:12px; font-weight:700; }
+    .class-schedule-day-modal-window .class-homework-review-table input.class-attendance-makeup-input {
+        width:72px; height:32px !important; min-height:32px !important; padding:5px 8px !important;
+        border-radius:8px !important; text-align:right; font-size:12px !important; box-shadow:none !important;
     }
     .class-schedule-day-modal-window .class-homework-review-table input.class-attendance-note {
         width:100%; height:32px !important; min-height:32px !important; margin-top:7px;
@@ -439,15 +434,10 @@
     .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table input.class-homework-cell-note {
         background:#1d293d !important; color:#eaf0ff !important; border-color:#465a77 !important;
     }
-    .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table select.class-attendance-select {
-        border-color:#566581 !important; background-color:#293448 !important; color:#dde6f5 !important;
-    }
-    .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table select.class-attendance-select.is-present {
-        border-color:#509c75 !important; background-color:#203d32 !important; color:#a6ebc5 !important;
-    }
-    .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table select.class-attendance-select.is-absent {
-        border-color:#ad6075 !important; background-color:#482834 !important; color:#ffbfca !important;
-    }
+    .global-dark-mode .class-attendance-absent { color:#a6ebc5; }
+    .global-dark-mode .class-attendance-absent.is-absent { color:#ffbfca; }
+    .global-dark-mode .class-attendance-makeup { color:#c5cee0; }
+    .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table input.class-attendance-makeup-input,
     .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table input.class-attendance-note {
         background:#1d293d !important; color:#eaf0ff !important; border-color:#465a77 !important;
     }
@@ -995,15 +985,24 @@
                                         <td class="class-homework-review-name"><strong>{{row.name}}</strong><small class="class-homework-review-note">{{row.username}}</small></td>
                                         <td><span class="class-homework-status" data-ng-class="{'is-done': row.status === 'DONE', 'is-review': row.status === 'NEEDS_REVIEW', 'is-todo': row.status === 'INCOMPLETE'}">{{row.label}}</span><small class="class-homework-review-note" data-ng-if="row.total">{{row.done}}/{{row.total}} Tasks đã làm</small></td>
                                         <td class="class-attendance-cell">
-                                            <select class="form-control input-sm class-attendance-select"
-                                                    homework-progress-wheel
-                                                    data-ng-model="row.attendance.editStatus"
-                                                    data-ng-options="status.id as status.name for status in vm.attendanceStatuses"
-                                                    data-ng-class="{'is-present': row.attendance.editStatus === 1, 'is-absent': row.attendance.editStatus === 2}"
-                                                    data-ng-disabled="row.attendance.saving || vm.scheduleAttendanceLoading"
-                                                    data-ng-change="vm.markScheduleAttendanceDirty(row); vm.saveScheduleAttendance(row)"
-                                                    data-ng-attr-aria-label="Điểm danh {{row.name}}">
-                                            </select>
+                                            <div class="class-attendance-flags">
+                                                <label class="class-attendance-absent" data-ng-class="{'is-absent': row.attendance.absent}">
+                                                    <input type="checkbox" data-ng-model="row.attendance.absent"
+                                                           data-ng-disabled="row.attendance.saving || vm.scheduleAttendanceLoading"
+                                                           data-ng-change="vm.markScheduleAttendanceDirty(row); vm.saveScheduleAttendance(row)" />
+                                                    {{row.attendance.absent ? 'Nghỉ học' : 'Có đi học'}}
+                                                </label>
+                                                <label class="class-attendance-makeup">
+                                                    Học bù
+                                                    <input type="number" class="form-control input-sm class-attendance-makeup-input"
+                                                           min="0" max="1440" step="1" inputmode="numeric"
+                                                           data-ng-model="row.attendance.editMakeupMinutes"
+                                                           data-ng-change="vm.markScheduleAttendanceDirty(row)"
+                                                           data-ng-blur="vm.saveScheduleAttendance(row)"
+                                                           data-ng-disabled="row.attendance.saving || vm.scheduleAttendanceLoading"
+                                                           data-ng-attr-aria-label="Số phút học bù của {{row.name}}" placeholder="0" /> phút
+                                                </label>
+                                            </div>
                                             <input type="text" class="form-control input-sm class-attendance-note" maxlength="1000"
                                                    data-ng-model="row.attendance.editNotes"
                                                    data-ng-change="vm.markScheduleAttendanceDirty(row)"

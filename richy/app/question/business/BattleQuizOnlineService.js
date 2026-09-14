@@ -130,6 +130,29 @@
             ).then(function (response) { return response.data; });
         };
 
+        self.answerText = function (
+            roomCode,
+            questionId,
+            answerText,
+            questionSequence
+        ) {
+            return $http.post(
+                apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/answer',
+                {
+                    questionId: questionId,
+                    answerText: answerText,
+                    questionSequence: questionSequence
+                }
+            ).then(function (response) { return response.data; });
+        };
+
+        self.revealGuessLetter = function (roomCode, index) {
+            return $http.post(
+                apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/guess-letter',
+                {index: index}
+            ).then(function (response) { return response.data; });
+        };
+
         self.choosePassword = function (roomCode, optionKey, customPassword) {
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/password',

@@ -693,6 +693,15 @@
                     </small>
                 </button>
 
+                <button type="button"
+                        class="battle-online-mode-card"
+                        ng-class="{'is-active is-guess-word': vm.hostSettings.mode === 'GUESS_WORD'}"
+                        ng-click="vm.selectMode('GUESS_WORD')">
+                    <span class="battle-online-mode-icon">🔤</span>
+                    <strong>GUESS THE WORD</strong>
+                    <small>Nhìn nghĩa tiếng Việt, đoán đầy đủ từ tiếng Anh nhanh nhất.</small>
+                </button>
+
             </div>
 
 
@@ -791,12 +800,39 @@
                     Mỗi người nhận câu random riêng và trả lời xong có câu tiếp ngay,
                     không chờ người khác. Đúng đẩy QUỶ NGU sang đối thủ 1 bước;
                     sai kéo quỷ về đội mình 1 bước; CHÁY LÊN đẩy 2 bước.
-                    Khi lệch người, HOST được chọn một người ở đội ít quân hơn
-                    làm NGƯỜI GÁNH ĐỘI x2.
+                    HOST có thể chọn một thành viên bất kỳ làm NGƯỜI GÁNH ĐỘI x2.
                     Không có PHÁ STREAK và CƯỚP ĐIỂM; ĐẢO LỘN làm màn hình
                     trả lời của đối thủ lật ngược trong 7 giây.
                     Mỗi nửa thanh dài bằng 20% tổng số câu của bài.
                 </p>
+            </div>
+
+            <div class="battle-online-mode-settings is-guess-word"
+                 ng-if="vm.hostSettings.mode === 'GUESS_WORD'">
+                <div class="battle-online-mode-badge">🔤 GUESS THE WORD</div>
+                <div class="battle-online-setting-grid">
+                    <div>
+                        <label>SỐ CÂU</label>
+                        <input type="number" min="1" max="5000"
+                               class="form-control"
+                               ng-change="vm.markClassicQuestionCountTouched()"
+                               ng-model="vm.hostSettings.questionCount">
+                    </div>
+                    <div>
+                        <label>GIÂY / CÂU</label>
+                        <input type="number" min="3" max="120"
+                               class="form-control"
+                               ng-model="vm.hostSettings.secondsPerQuestion">
+                    </div>
+                </div>
+                <label>MỨC TỪ VỰNG</label>
+                <div class="battle-online-level-picker">
+                    <button type="button"
+                            ng-repeat="level in vm.guessLevelOptions track by level"
+                            ng-class="{'is-active': vm.isGuessLevelSelected(level)}"
+                            ng-click="vm.toggleGuessLevel(level)">{{level}}</button>
+                </div>
+                <p>Mỗi 2 giây server mở ngẫu nhiên một chữ cái. Học sinh vẫn phải nhập đầy đủ từ; người đúng nhanh hơn nhận nhiều điểm hơn.</p>
             </div>
 
 
@@ -825,7 +861,7 @@
                 </p>
 
                 <div class="battle-online-double-action-setting"
-                     ng-if="vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'">
+                     ng-if="vm.hasTeamMode()">
                     <div class="battle-online-double-action-title">
                         ⚡ NGƯỜI GÁNH ĐỘI x2
                     </div>
@@ -834,15 +870,9 @@
                         Hãy lưu mode trước để server chia ĐỘI 1 và ĐỘI 2.
                     </p>
 
-                    <p ng-if="vm.hasTeamMode() && !vm.areEscapeTeamsUneven()">
-                        Hai đội đang bằng người
-                        ({{vm.getEscapeTeamPlayerCount(1)}}–{{vm.getEscapeTeamPlayerCount(2)}}),
-                        nên không cần chọn người gánh đội.
-                    </p>
-
-                    <div ng-if="vm.hasTeamMode() && vm.areEscapeTeamsUneven()">
+                    <div ng-if="vm.hasTeamMode()">
                         <label>
-                            CHỌN 1 NGƯỜI Ở ĐỘI {{vm.getEscapeSmallerTeamNumber()}}
+                            CHỌN 1 NGƯỜI GÁNH ĐỘI
                         </label>
 
                         <select class="form-control"
@@ -853,10 +883,8 @@
                         </select>
 
                         <p>
-                            ĐỘI 1 có {{vm.getEscapeTeamPlayerCount(1)}} người,
-                            ĐỘI 2 có {{vm.getEscapeTeamPlayerCount(2)}} người.
-                            Người được chọn: điểm câu trả lời ×2; đúng đẩy 2 bước;
-                            FIRE đẩy 4 bước; sai kéo về 2 bước. Skill khác giữ nguyên.
+                            Mọi điểm số của người được chọn đều ×2.
+                            Trong THOÁT KHỎI QUỶ NGU, tác động đẩy/kéo quỷ cũng ×2.
                         </p>
                     </div>
                 </div>
@@ -927,11 +955,14 @@
                 <strong ng-if="vm.room.settings.mode === 'ESCAPE_DUMB_DEMON'">
                     👹 THOÁT KHỎI QUỶ NGU
                 </strong>
+                <strong ng-if="vm.room.settings.mode === 'GUESS_WORD'">
+                    🔤 GUESS THE WORD
+                </strong>
             </div>
 
 
             <div class="battle-online-info-row"
-                 ng-if="vm.room.settings.mode === 'CLASSIC'">
+                 ng-if="vm.room.settings.mode === 'CLASSIC' || vm.room.settings.mode === 'GUESS_WORD'">
 
                 <span>Số câu</span>
                 <strong>{{vm.room.settings.questionCount}}</strong>
@@ -939,7 +970,7 @@
 
 
             <div class="battle-online-info-row"
-                 ng-if="vm.room.settings.mode === 'CLASSIC'">
+                 ng-if="vm.room.settings.mode === 'CLASSIC' || vm.room.settings.mode === 'GUESS_WORD'">
 
                 <span>Thời gian</span>
                 <strong>{{vm.room.settings.secondsPerQuestion}}s / câu</strong>
@@ -972,9 +1003,15 @@
             </div>
 
             <div class="battle-online-info-row"
-                 ng-if="vm.room.settings.mode === 'ESCAPE_DUMB_DEMON' && vm.room.settings.doubleActionUsername">
+                 ng-if="vm.room.settings.teamCount >= 2 && vm.room.settings.doubleActionUsername">
                 <span>Người gánh đội</span>
                 <strong>⚡ {{vm.getDoubleActionPlayerName()}} — x2</strong>
+            </div>
+
+            <div class="battle-online-info-row"
+                 ng-if="vm.room.settings.mode === 'GUESS_WORD'">
+                <span>Mức từ</span>
+                <strong>{{(vm.room.settings.guessLevels || []).join(', ')}}</strong>
             </div>
 
 
@@ -991,8 +1028,7 @@
                 <span ng-if="vm.room.settings.mode === 'ESCAPE_DUMB_DEMON'">
                     Mỗi người nhận câu random riêng, trả lời xong sang câu tiếp ngay
                     và không chờ người khác. Đúng đẩy QUỶ NGU sang đội kia;
-                    sai kéo quỷ về đội mình. Nếu hai đội lệch người, HOST có thể
-                    chọn một người ở đội ít quân hơn để nhân đôi điểm và tác động
+                    sai kéo quỷ về đội mình. HOST có thể chọn một thành viên để nhân đôi điểm và tác động
                     lên QUỶ NGU. Mode này không có skill CƯỚP ĐIỂM và PHÁ STREAK;
                     skill ĐẢO LỘN sẽ lật ngược màn hình trả lời trong 7 giây.
                 </span>
@@ -1010,7 +1046,7 @@
          ng-if="vm.room && vm.room.status === 'PLAYING'">
 
         <main class="battle-online-card battle-online-question-card"
-              ng-if="!vm.isSpectator()"
+              ng-if="!vm.isSpectator() || vm.isGuessWordMode()"
               ng-class="{
                   'is-player-frozen': vm.isMeFrozen() || vm.isWrongAnswerPenaltyActive(),
                   'is-player-inverted': vm.isMeInverted(),
@@ -1063,6 +1099,16 @@
                 </small>
             </div>
 
+            <div class="battle-online-game-topline battle-online-guess-topline"
+                 ng-if="vm.isGuessWordMode()">
+                <span>🔤 GUESS THE WORD • CÂU <b>{{vm.room.currentQuestionIndex}}</b> / {{vm.room.totalQuestions}}</span>
+                <div class="battle-online-countdown" ng-class="{'is-danger': vm.countdown <= 3}">⏱ {{vm.countdown}}</div>
+            </div>
+
+            <div class="battle-online-guess-timer" ng-if="vm.isGuessWordMode()">
+                <span ng-style="{'width': vm.getQuestionTimePercent() + '%'}"></span>
+            </div>
+
             <!-- CLASSIC TOP -->
             <div class="battle-online-game-topline"
                  ng-if="vm.room.settings.mode === 'CLASSIC'">
@@ -1113,7 +1159,7 @@
             </div>
 
             <div class="battle-online-word"
-                 ng-if="vm.room.currentQuestion">
+                 ng-if="vm.room.currentQuestion && !vm.isGuessWordMode()">
 
                 <div class="battle-online-burning-indicator"
                      ng-if="vm.isMeBurning()"
@@ -1156,6 +1202,36 @@
             </div>
 
 
+            <section class="battle-online-guess-stage"
+                     ng-if="vm.isGuessWordMode() && vm.room.currentQuestion">
+                <small>NGHĨA TIẾNG VIỆT • {{vm.room.currentQuestion.level}}</small>
+                <h2>{{vm.room.currentQuestion.meaning || vm.room.currentQuestion.question}}</h2>
+                <div class="battle-online-guess-letters">
+                    <button type="button"
+                            ng-repeat="letter in vm.getGuessLetters() track by letter.index"
+                            ng-class="{'is-hidden': letter.blank, 'is-space': letter.space}"
+                            ng-disabled="!vm.isHost() || !letter.blank || vm.revealingGuessLetter"
+                            ng-click="vm.revealGuessLetter(letter)">
+                        {{letter.space ? ' ' : letter.value}}
+                    </button>
+                </div>
+                <form class="battle-online-guess-form" ng-submit="vm.submitGuessWord()">
+                    <input type="text" class="form-control"
+                           autocomplete="off" autocapitalize="none" spellcheck="false"
+                           placeholder="Nhập đầy đủ từ tiếng Anh..."
+                           ng-model="vm.guessAnswerText"
+                           ng-disabled="vm.isSpectator() || vm.answerLocked || vm.countdown <= 0">
+                    <button type="submit"
+                            ng-disabled="vm.isSpectator() || vm.answerLocked || vm.countdown <= 0 || !vm.guessAnswerText">
+                        GỬI ĐÁP ÁN
+                    </button>
+                </form>
+                <p class="battle-online-guess-view-note" ng-if="vm.isSpectator()">
+                    👁️ Chế độ xem: bạn thấy cùng câu hỏi với người chơi nhưng không thể gửi đáp án.
+                </p>
+            </section>
+
+
             <div class="battle-online-private-loading"
                  ng-if="!vm.room.currentQuestion && !vm.room.pendingSkillType && !vm.room.passwordSelectionRequired && !vm.room.pendingPasswordGuessTargetUsername">
 
@@ -1166,7 +1242,7 @@
 
 
             <div class="battle-online-answer-grid"
-                 ng-if="vm.room.currentQuestion">
+                 ng-if="vm.room.currentQuestion && !vm.isGuessWordMode()">
 
                 <button type="button"
                         ng-repeat="option in vm.room.currentQuestion.answers track by option.key"
@@ -1202,6 +1278,23 @@
 
                 ❌ {{vm.lastAnswerMessage}}
             </div>
+
+
+            <section class="battle-online-guess-review"
+                     ng-if="vm.isGuessWordMode() && vm.isHost() && vm.room.lastGuessSequence">
+                <div class="battle-online-guess-review-title">
+                    <strong>ĐÁP ÁN CÂU {{vm.room.lastGuessSequence}}: {{vm.room.lastGuessWord}}</strong>
+                    <span>{{vm.room.lastGuessMeaning}}</span>
+                </div>
+                <div class="battle-online-guess-review-row"
+                     ng-repeat="answer in vm.room.lastGuessAnswers track by answer.username"
+                     ng-class="{'is-correct': answer.correct, 'is-wrong': !answer.correct}">
+                    <b>{{answer.correct ? '✓' : '✕'}}</b>
+                    <span>{{answer.displayName}}</span>
+                    <strong>{{answer.answer || 'Không trả lời'}}</strong>
+                    <small ng-if="answer.correct">#{{answer.correctOrder}} • +{{answer.scoreDelta}}</small>
+                </div>
+            </section>
 
             <div class="battle-online-game-topline"
                  ng-if="vm.isEscapeDumbDemonMode()">
@@ -1276,7 +1369,7 @@
         </main>
 
         <main class="battle-online-card battle-online-spectator-panel"
-              ng-if="vm.isSpectator()">
+              ng-if="vm.isSpectator() && !vm.isGuessWordMode()">
             <div class="battle-online-spectator-icon">👁️</div>
             <span class="battle-online-small-title">CHẾ ĐỘ KHÁN GIẢ</span>
             <h2>Bạn đang xem trận đấu</h2>
@@ -6804,6 +6897,173 @@
         .battle-online-key-help {
             display: none;
         }
+    }
+
+    .battle-online-mode-card.is-guess-word,
+    .battle-online-mode-settings.is-guess-word {
+        border-color: #7c3aed;
+        background: linear-gradient(135deg, #faf5ff, #eef2ff);
+    }
+
+    .battle-online-level-picker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 9px 0 14px;
+    }
+
+    .battle-online-level-picker button {
+        min-width: 48px;
+        padding: 8px 12px;
+        border: 1px solid #c7d2fe;
+        border-radius: 999px;
+        background: #fff;
+        color: #475569;
+        font-weight: 800;
+    }
+
+    .battle-online-level-picker button.is-active {
+        border-color: #7c3aed;
+        background: #7c3aed;
+        color: #fff;
+        box-shadow: 0 7px 18px rgba(124, 58, 237, .24);
+    }
+
+    .battle-online-guess-timer {
+        height: 10px;
+        overflow: hidden;
+        margin: 8px 0 18px;
+        border-radius: 999px;
+        background: #e2e8f0;
+    }
+
+    .battle-online-guess-timer span {
+        display: block;
+        height: 100%;
+        margin-left: 0;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e);
+        transition: width .25s linear;
+    }
+
+    .battle-online-guess-stage {
+        padding: 28px 20px;
+        text-align: center;
+        border: 1px solid #ddd6fe;
+        border-radius: 22px;
+        background: radial-gradient(circle at top, #faf5ff, #fff 62%);
+    }
+
+    .battle-online-guess-stage > small {
+        color: #7c3aed;
+        font-weight: 900;
+        letter-spacing: .08em;
+    }
+
+    .battle-online-guess-stage h2 {
+        margin: 12px 0 24px;
+        color: #172554;
+        font-size: clamp(25px, 4vw, 44px);
+    }
+
+    .battle-online-guess-letters {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 7px;
+        margin-bottom: 25px;
+    }
+
+    .battle-online-guess-letters button {
+        width: 42px;
+        height: 50px;
+        border: 0;
+        border-bottom: 4px solid #6366f1;
+        border-radius: 10px 10px 4px 4px;
+        background: #eef2ff;
+        color: #312e81;
+        font-size: 25px;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+
+    .battle-online-guess-letters button.is-hidden {
+        color: #94a3b8;
+        cursor: pointer;
+    }
+
+    .battle-online-guess-letters button.is-space {
+        width: 18px;
+        border: 0;
+        background: transparent;
+    }
+
+    .battle-online-guess-form {
+        display: flex;
+        gap: 10px;
+        max-width: 720px;
+        margin: 0 auto;
+    }
+
+    .battle-online-guess-form input {
+        height: 52px;
+        font-size: 20px;
+        text-align: center;
+        font-weight: 700;
+    }
+
+    .battle-online-guess-form button {
+        flex: 0 0 auto;
+        padding: 0 22px;
+        border: 0;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #7c3aed, #4f46e5);
+        color: #fff;
+        font-weight: 900;
+    }
+
+    .battle-online-guess-view-note {
+        margin: 16px 0 0;
+        color: #64748b;
+        font-weight: 700;
+    }
+
+    .battle-online-guess-review {
+        margin-top: 16px;
+        padding: 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 16px;
+        background: #f8fafc;
+    }
+
+    .battle-online-guess-review-title {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+        color: #172554;
+    }
+
+    .battle-online-guess-review-row {
+        display: grid;
+        grid-template-columns: 28px minmax(110px, 1fr) minmax(120px, 2fr) auto;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 10px;
+        border-radius: 10px;
+        margin-top: 6px;
+    }
+
+    .battle-online-guess-review-row.is-correct { background: #dcfce7; color: #166534; }
+    .battle-online-guess-review-row.is-wrong { background: #fee2e2; color: #991b1b; }
+
+    @media (max-width: 640px) {
+        .battle-online-guess-form { flex-direction: column; }
+        .battle-online-guess-form button { min-height: 48px; }
+        .battle-online-guess-letters button { width: 33px; height: 42px; font-size: 20px; }
+        .battle-online-guess-review-row { grid-template-columns: 24px 1fr; }
+        .battle-online-guess-review-row strong,
+        .battle-online-guess-review-row small { grid-column: 2; }
     }
 
     @media (prefers-reduced-motion: reduce) {

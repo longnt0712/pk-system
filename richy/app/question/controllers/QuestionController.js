@@ -404,6 +404,97 @@
             });
         };
 
+        vm.exportFlashCardsExcel = function () {
+            if(!vm.searchDto.questionTopics || vm.searchDto.questionTopics.length === 0) {
+                toastr.warning('Vui lòng chọn ít nhất một topic trước khi xuất Excel.');
+                return;
+            }
+
+            if(typeof ExcelJS === 'undefined' || typeof saveAs === 'undefined') {
+                toastr.error('Không thể tải thư viện xuất Excel.');
+                return;
+            }
+
+            var levelSearch = angular.copy(vm.searchDto);
+            levelSearch.questionType = {id: 6};
+            levelSearch.username = vm.currentUser.username;
+            levelSearch.userId = vm.currentUser.id;
+            blockUI.start();
+
+            service.getFlashCardLevels(levelSearch).then(function (data) {
+                var words = data || [];
+                var workbook = new ExcelJS.Workbook();
+                var worksheet = workbook.addWorksheet('Flashcards');
+
+                worksheet.columns = [
+                    {header: 'Word', key: 'word', width: 32},
+                    {header: 'Pronounce', key: 'pronounce', width: 28},
+                    {header: 'First language', key: 'firstLanguage', width: 42},
+                    {header: 'CEFR level', key: 'level', width: 16}
+                ];
+
+                angular.forEach(words, function (item) {
+                    worksheet.addRow({
+                        word: item.question || '',
+                        pronounce: item.pronounce || '',
+                        firstLanguage: item.motherTongue || '',
+                        level: item.level || ''
+                    });
+                });
+
+                worksheet.views = [{state: 'frozen', ySplit: 1}];
+                worksheet.autoFilter = {
+                    from: 'A1',
+                    to: 'D' + Math.max(1, words.length + 1)
+                };
+
+                var headerRow = worksheet.getRow(1);
+                headerRow.font = {bold: true, color: {argb: 'FFFFFFFF'}};
+                headerRow.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: {argb: 'FF4F6BED'}
+                };
+                headerRow.alignment = {vertical: 'middle'};
+                headerRow.height = 24;
+
+                for(var rowIndex = 2; rowIndex <= Math.max(2, words.length + 1); rowIndex++) {
+                    worksheet.getCell('D' + rowIndex).dataValidation = {
+                        type: 'list',
+                        allowBlank: true,
+                        formulae: ['"A1,A2,B1,B2,C1,C2"'],
+                        showErrorMessage: true,
+                        errorTitle: 'CEFR level không hợp lệ',
+                        error: 'Chỉ chọn A1, A2, B1, B2, C1 hoặc C2.'
+                    };
+                }
+
+                return workbook.xlsx.writeBuffer().then(function (buffer) {
+                    var topicName = (vm.title || 'flashcards')
+                        .trim()
+                        .replace(/[^a-zA-Z0-9À-ỹ_-]+/g, '-')
+                        .replace(/^-+|-+$/g, '') || 'flashcards';
+                    var blob = new Blob([buffer], {
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    });
+                    saveAs(blob, topicName + '-cefr.xlsx');
+                    toastr.success('Đã xuất ' + words.length + ' flashcard.');
+                });
+            }).catch(function (error) {
+                toastr.error(error && error.data && error.data.message
+                    ? error.data.message : 'Không thể xuất danh sách flashcard.');
+            }).finally(function () {
+                blockUI.stop();
+            });
+        };
+
+        vm.onFlashCardImported = function () {
+            vm.getPageFlashCard();
+            if(vm.showLevelTable) {
+                vm.loadLevelTable();
+            }
+        };
+
         vm.toggleLevelTable = function () {
             vm.showLevelTable = !vm.showLevelTable;
             if(vm.showLevelTable) {

@@ -1148,7 +1148,7 @@ public class QuestionServiceImpl implements QuestionService {
 		}
 
 		String hql = "select new com.globits.richy.dto.QuestionLevelDto("
-				+ "q.id, q.question, q.motherTongue, q.level) "
+				+ "q.id, q.question, q.pronounce, q.motherTongue, q.level) "
 				+ "from Question q "
 				+ "where q.questionType.id = 6 "
 				+ "and exists (select qt.id from QuestionTopic qt "
@@ -1209,7 +1209,7 @@ public class QuestionServiceImpl implements QuestionService {
 		domain.setModifyDate(LocalDateTime.now());
 		domain = questionRepository.save(domain);
 		return new QuestionLevelDto(domain.getId(), domain.getQuestion(),
-				domain.getMotherTongue(), domain.getLevel());
+				domain.getPronounce(), domain.getMotherTongue(), domain.getLevel());
 	}
 
 	@Override

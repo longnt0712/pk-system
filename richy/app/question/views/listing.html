@@ -750,13 +750,17 @@
 
                             <div class="col-md-12" style="margin-top: 10px">
                                 <div class="row">
-                                    <div class="col-xs-6 text-left">
-                                        <button type="button" class="btn btn-success" question-excel-import topics="vm.topics" on-imported="vm.getPageFlashCard()">
+                                    <div class="col-xs-8 text-left">
+                                        <button type="button" class="btn btn-success" question-excel-import topics="vm.topics" on-imported="vm.onFlashCardImported()">
                                             <i class="fa fa-file-excel-o"></i> Import Excel
+                                        </button>
+
+                                        <button type="button" class="btn btn-primary margin-left-10" data-ng-click="vm.exportFlashCardsExcel()">
+                                            <i class="fa fa-download"></i> Export Excel
                                         </button>
                                     </div>
 
-                                    <div class="col-xs-6 text-right">
+                                    <div class="col-xs-4 text-right">
                                         <button type="button" class="btn btn-brown margin-left-10" data-ng-click="vm.newFlashCard()">
                                             <i class="fa-solid fa-file-circle-plus"></i> <strong>New card</strong>
                                         </button>
@@ -831,9 +835,10 @@
                 <div class="alert alert-info">
                     <strong>Excel format</strong>
                     <div style="margin-top: 6px">
-                        Row 1: <strong>word | pronounce | first language</strong>
+                        Row 1: <strong>word | pronounce | first language | CEFR level</strong>
                     </div>
                     <div>Data starts from row 2.</div>
+                    <div>CEFR level accepts A1, A2, B1, B2, C1 or C2 and may be left blank.</div>
                     <div>Topic is selected below; the Excel file does not need a Topic ID.</div>
                 </div>
 
@@ -940,7 +945,7 @@
 
                 <div class="checkbox">
                     <label>
-                        <input type="checkbox" ng-model="importVm.updateEmptyFields"> Fill pronounce and first language only when existing values are empty
+                        <input type="checkbox" ng-model="importVm.updateEmptyFields"> Fill pronounce, first language and CEFR level only when existing values are empty
                     </label>
                 </div>
 
@@ -974,6 +979,10 @@
 
                             <th style="min-width: 180px;">
                                 First language
+                            </th>
+
+                            <th style="width: 110px; min-width: 110px;">
+                                CEFR level
                             </th>
 
                             <!-- Cột mới dùng khi có nhiều dữ liệu trùng -->
@@ -1014,6 +1023,10 @@
 
                             <td style="vertical-align: middle;">
                                 {{row.firstLanguage}}
+                            </td>
+
+                            <td style="vertical-align: middle;">
+                                {{row.level || '--'}}
                             </td>
 
                             <!-- Dropdown chỉ xuất hiện khi status = CONFLICT -->
@@ -1073,7 +1086,7 @@
                         <tr ng-if="!importVm.preview.rows
                             || importVm.preview.rows.length === 0">
 
-                            <td colspan="8" class="text-center text-muted">
+                            <td colspan="9" class="text-center text-muted">
 
                                 No data found in the Excel file.
                             </td>

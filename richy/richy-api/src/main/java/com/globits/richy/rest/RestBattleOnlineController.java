@@ -22,6 +22,7 @@ import com.globits.richy.dto.BattleOnlinePasswordChoiceDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessResultDto;
 import com.globits.richy.dto.BattleOnlineReadyDto;
+import com.globits.richy.dto.BattleOnlineRevealLetterDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
 import com.globits.richy.dto.BattleOnlineSpectatorDto;
@@ -157,6 +158,18 @@ public class RestBattleOnlineController {
             @RequestBody BattleOnlineAnswerDto dto) {
 
         return battleOnlineService.answer(
+                roomCode,
+                currentUsername(),
+                dto
+        );
+    }
+
+    @RequestMapping(value = "/rooms/{roomCode}/guess-letter", method = RequestMethod.POST)
+    public BattleOnlineRoomDto revealGuessLetter(
+            @PathVariable String roomCode,
+            @RequestBody BattleOnlineRevealLetterDto dto) {
+
+        return battleOnlineService.revealGuessLetter(
                 roomCode,
                 currentUsername(),
                 dto

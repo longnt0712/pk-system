@@ -58,6 +58,13 @@ public class BattleOnlineRoomDto implements Serializable {
     private int loadedQuestionCount;
     private int totalLessonWords;
 
+    /* GUESS_WORD: kết quả câu vừa kết thúc, chỉ HOST dùng để đối chiếu. */
+    private String lastGuessWord;
+    private String lastGuessMeaning;
+    private long lastGuessSequence;
+    private List<BattleOnlineGuessAnswerDto> lastGuessAnswers =
+            new ArrayList<BattleOnlineGuessAnswerDto>();
+
     /*
      * COUNTDOWN: chỉ REST snapshot riêng của account mới có pendingSkillType.
      * WebSocket generic luôn để null để không lộ state cá nhân.
@@ -264,6 +271,15 @@ public class BattleOnlineRoomDto implements Serializable {
     public void setTotalLessonWords(int totalLessonWords) {
         this.totalLessonWords = totalLessonWords;
     }
+
+    public String getLastGuessWord() { return lastGuessWord; }
+    public void setLastGuessWord(String lastGuessWord) { this.lastGuessWord = lastGuessWord; }
+    public String getLastGuessMeaning() { return lastGuessMeaning; }
+    public void setLastGuessMeaning(String lastGuessMeaning) { this.lastGuessMeaning = lastGuessMeaning; }
+    public long getLastGuessSequence() { return lastGuessSequence; }
+    public void setLastGuessSequence(long lastGuessSequence) { this.lastGuessSequence = lastGuessSequence; }
+    public List<BattleOnlineGuessAnswerDto> getLastGuessAnswers() { return lastGuessAnswers; }
+    public void setLastGuessAnswers(List<BattleOnlineGuessAnswerDto> lastGuessAnswers) { this.lastGuessAnswers = lastGuessAnswers; }
 
     public String getPendingSkillType() {
         return pendingSkillType;

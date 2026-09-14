@@ -1007,6 +1007,10 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		if (status != null && status.intValue() != 1 && status.intValue() != 2) {
 			throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Chỉ được chọn Có đi học hoặc Không đi học.");
 		}
+		Integer makeupMinutes = dto.getMakeupMinutes();
+		if (makeupMinutes != null && (makeupMinutes.intValue() < 0 || makeupMinutes.intValue() > 1440)) {
+			throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Số phút học bù phải từ 0 đến 1440.");
+		}
 		User selectedStudent = null;
 		for (User student : scheduleStudentDomains(classId, teacher)) {
 			if (studentUserId.equals(student.getId())) { selectedStudent = student; break; }
@@ -1025,6 +1029,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 		attendance.setStatusClass(status);
 		attendance.setTimeGoToClass(Integer.valueOf(1).equals(status) ? bounds[0] : null);
+		if (makeupMinutes != null) {
+			attendance.setMakeupMinutes(makeupMinutes.intValue() == 0 ? null : makeupMinutes);
+		}
 		attendance.setDescription(scheduleText(dto.getDescription(), 1000, false));
 		attendance.setModifyDate(now);
 		attendance.setModifiedBy(teacher.getUsername());

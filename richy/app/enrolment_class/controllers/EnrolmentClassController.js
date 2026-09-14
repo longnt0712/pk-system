@@ -112,7 +112,6 @@
 		vm.taskStatuses = [{id: 'TODO', name: 'Chưa làm'}, {id: 'IN_PROGRESS', name: 'Đang thực hiện'}, {id: 'DONE', name: 'Hoàn thành'}];
 		vm.homeworkProgressLevels = [10, 20, 30, 40, 50, 60, 70, 80, 90];
 		vm.studentTaskStatuses = [{id: 'UNRECORDED', name: 'Chưa xác nhận'}, {id: 'TODO', name: 'Chưa làm'}, {id: 'DONE', name: 'Đã làm'}, {id: 'NEEDS_REVIEW', name: 'Cần bổ sung'}];
-        vm.attendanceStatuses = [{id: null, name: 'Chưa điểm danh'}, {id: 1, name: 'Có đi học'}, {id: 2, name: 'Không đi học'}];
         angular.forEach(vm.homeworkProgressLevels, function (percent) { vm.studentTaskStatuses.push({id: 'PROGRESS_' + percent, name: 'Đã làm ' + percent + '%'}); });
 		var scheduleStudentsRequest = 0;
         var scheduleAttendanceRequest = 0;
@@ -129,6 +128,7 @@
         vm.homeworkReviewFilter = 'ALL';
         vm.scheduleAttendanceByStudent = {};
         vm.scheduleAttendanceLoading = false;
+        vm.scheduleAttendanceLoaded = false;
         vm.scheduleAttendanceError = false;
 		vm.topicSelectionOpen = {classTopicIds: false, homeworkTopicIds: false};
 		vm.weeklyDayOptions = [
@@ -887,6 +887,7 @@
 			scheduleAttendanceRequest++;
 			vm.scheduleAttendanceByStudent = {};
 			vm.scheduleAttendanceLoading = false;
+			vm.scheduleAttendanceLoaded = false;
 			vm.scheduleAttendanceError = false;
 			vm.scheduleDay = angular.copy(cell.entry || {
 				enrolmentClassId: vm.scheduleClass.id,
@@ -1080,12 +1081,17 @@
                 select.parentNode.replaceChild(homeworkExportValue(selected ? selected.text : '', original), select);
             });
 
-            var originalAttendanceSelects = sourceTable.querySelectorAll('select.class-attendance-select');
-            var clonedAttendanceSelects = table.querySelectorAll('select.class-attendance-select');
-            angular.forEach(clonedAttendanceSelects, function (select, index) {
-                var original = originalAttendanceSelects[index];
-                var selected = original && original.options[original.selectedIndex];
-                select.parentNode.replaceChild(homeworkExportValue(selected ? selected.text : '', original), select);
+            var originalAttendanceFlags = sourceTable.querySelectorAll('.class-attendance-flags');
+            var clonedAttendanceFlags = table.querySelectorAll('.class-attendance-flags');
+            angular.forEach(clonedAttendanceFlags, function (flags, index) {
+                var original = originalAttendanceFlags[index];
+                var absent = original && original.querySelector('input[type="checkbox"]');
+                var minutes = original && original.querySelector('input.class-attendance-makeup-input');
+                var text = absent && absent.checked ? 'Nghỉ học' : 'Có đi học';
+                if (minutes && Number(minutes.value) > 0) { text += ' · Học bù ' + Number(minutes.value) + ' phút'; }
+                flags.parentNode.replaceChild(homeworkExportValue(text, absent && absent.checked
+                    ? {classList: {contains: function (name) { return name === 'is-absent'; }}}
+                    : {classList: {contains: function (name) { return name === 'is-present'; }}}), flags);
             });
 
             var originalNotes = sourceTable.querySelectorAll('input.class-homework-cell-note');
@@ -1199,17 +1205,31 @@
         function scheduleAttendanceCell(studentId, record) {
             var key = String(studentId);
             var current = vm.scheduleAttendanceByStudent[key];
-            if (current && !record) { return current; }
+            if (current && !record) {
+                if (vm.scheduleAttendanceLoaded && current.status == null && !current.dirty && !current.saving) {
+                    current.editStatus = 1;
+                    current.absent = false;
+                    current.dirty = true;
+                    current.defaultPending = true;
+                }
+                return current;
+            }
             if (current && current.dirty) { return current; }
             var status = record && record.statusClass != null ? Number(record.statusClass) : null;
             var notes = record && record.description ? record.description : '';
+            var makeupMinutes = record && record.makeupMinutes != null ? Number(record.makeupMinutes) : null;
+            var shouldDefaultPresent = vm.scheduleAttendanceLoaded && status == null;
             current = current || {};
             current.id = record && record.id ? record.id : null;
             current.status = status;
             current.notes = notes;
-            current.editStatus = status;
+            current.makeupMinutes = makeupMinutes;
+            current.editStatus = status == null ? 1 : status;
             current.editNotes = notes;
-            current.dirty = false;
+            current.editMakeupMinutes = makeupMinutes;
+            current.absent = current.editStatus === 2;
+            current.dirty = shouldDefaultPresent;
+            current.defaultPending = shouldDefaultPresent;
             current.saving = false;
             current.error = '';
             vm.scheduleAttendanceByStudent[key] = current;
@@ -1222,10 +1242,12 @@
             var classId = vm.scheduleClass.id;
             var date = vm.scheduleDay.scheduleDate;
             vm.scheduleAttendanceLoading = true;
+            vm.scheduleAttendanceLoaded = false;
             vm.scheduleAttendanceError = false;
             return service.getScheduleAttendance(classId, date).then(function (records) {
                 if (request !== scheduleAttendanceRequest || !vm.scheduleClass || vm.scheduleClass.id !== classId
                     || !vm.scheduleDay || vm.scheduleDay.scheduleDate !== date) { return; }
+                vm.scheduleAttendanceLoaded = true;
                 angular.forEach(angular.isArray(records) ? records : [], function (record) {
                     if (record && record.user && record.user.id != null) {
                         scheduleAttendanceCell(record.user.id, record);
@@ -1236,6 +1258,7 @@
             }, function () {
                 if (request !== scheduleAttendanceRequest) { return; }
                 vm.scheduleAttendanceLoading = false;
+                vm.scheduleAttendanceLoaded = false;
                 vm.scheduleAttendanceError = true;
             });
         };
@@ -1243,7 +1266,12 @@
         vm.markScheduleAttendanceDirty = function (row) {
             var cell = row && row.attendance;
             if (!cell) { return; }
-            cell.dirty = cell.editStatus !== cell.status || (cell.editNotes || '') !== (cell.notes || '');
+            cell.editStatus = cell.absent ? 2 : 1;
+            var savedStatus = cell.status == null ? 1 : cell.status;
+            var editMinutes = cell.editMakeupMinutes == null || cell.editMakeupMinutes === '' ? null : Number(cell.editMakeupMinutes);
+            var savedMinutes = cell.makeupMinutes == null ? null : Number(cell.makeupMinutes);
+            cell.dirty = cell.editStatus !== savedStatus || editMinutes !== savedMinutes
+                || (cell.editNotes || '') !== (cell.notes || '');
             cell.error = '';
         };
 
@@ -1251,12 +1279,18 @@
             var cell = row && row.attendance;
             if (!cell || !cell.dirty || cell.saving || !vm.scheduleClass || !vm.scheduleDay) { return; }
             if ((cell.editNotes || '').length > 1000) { cell.error = 'Ghi chú tối đa 1000 ký tự.'; return; }
+            var makeupMinutes = cell.editMakeupMinutes == null || cell.editMakeupMinutes === ''
+                ? 0 : Number(cell.editMakeupMinutes);
+            if (!isFinite(makeupMinutes) || makeupMinutes < 0 || makeupMinutes > 1440 || Math.floor(makeupMinutes) !== makeupMinutes) {
+                cell.error = 'Số phút học bù phải là số nguyên từ 0 đến 1440.'; return;
+            }
             var classId = vm.scheduleClass.id;
             var date = vm.scheduleDay.scheduleDate;
             cell.saving = true;
             cell.error = '';
             return service.updateScheduleAttendance(classId, row.id, date, {
                 statusClass: cell.editStatus,
+                makeupMinutes: makeupMinutes,
                 description: cell.editNotes || ''
             }).then(function (saved) {
                 if (!vm.scheduleClass || vm.scheduleClass.id !== classId || !vm.scheduleDay
@@ -1269,9 +1303,13 @@
                 cell.id = saved.id;
                 cell.status = saved.statusClass == null ? null : Number(saved.statusClass);
                 cell.notes = saved.description || '';
+                cell.makeupMinutes = saved.makeupMinutes == null ? null : Number(saved.makeupMinutes);
                 cell.editStatus = cell.status;
                 cell.editNotes = cell.notes;
+                cell.editMakeupMinutes = cell.makeupMinutes;
+                cell.absent = cell.editStatus === 2;
                 cell.dirty = false;
+                cell.defaultPending = false;
                 cell.saving = false;
             }, function (error) {
                 cell.saving = false;
@@ -1280,6 +1318,16 @@
                     : 'Không lưu được điểm danh. Vui lòng thử lại.';
             });
         };
+
+        function saveDefaultScheduleAttendanceRows() {
+            if (!vm.scheduleAttendanceLoaded || vm.scheduleAttendanceLoading || vm.scheduleAttendanceError) { return; }
+            angular.forEach(vm.homeworkReviewRows || [], function (row) {
+                if (row.attendance && row.attendance.defaultPending && row.attendance.dirty && !row.attendance.saving) {
+                    row.attendance.defaultPending = false;
+                    vm.saveScheduleAttendance(row);
+                }
+            });
+        }
 
         vm.buildHomeworkReviewRows = function () {
             var lookups = vm.previousHomeworkTasks.map(function (task) {
@@ -1319,6 +1367,7 @@
                         : done + '/' + total + ' đã làm'};
             });
             vm.homeworkReviewDoneCount = vm.homeworkReviewRows.filter(function (row) { return row.status === 'DONE'; }).length;
+            saveDefaultScheduleAttendanceRows();
         };
 
         vm.filteredHomeworkRows = function () {

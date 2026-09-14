@@ -10,6 +10,7 @@ public class QuestionImportExistingDto implements Serializable {
     private String question;
     private String pronounce;
     private String motherTongue;
+    private String level;
 
     public QuestionImportExistingDto() {
     }
@@ -18,12 +19,14 @@ public class QuestionImportExistingDto implements Serializable {
             Long id,
             String question,
             String pronounce,
-            String motherTongue) {
+            String motherTongue,
+            String level) {
 
         this.id = id;
         this.question = question;
         this.pronounce = pronounce;
         this.motherTongue = motherTongue;
+        this.level = level;
     }
 
     public Long getId() {
@@ -56,5 +59,13 @@ public class QuestionImportExistingDto implements Serializable {
 
     public void setMotherTongue(String motherTongue) {
         this.motherTongue = motherTongue;
+    }
+
+    public String getLevel() {
+        return level;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
     }
 }

@@ -10,6 +10,9 @@ public class BattleOnlineQuestionDto implements Serializable {
     private Long id;
     private String question;
     private String pronounce;
+    private String meaning;
+    private String maskedWord;
+    private String level;
 
     /*
      * sequence giúp server chặn request trả lời cũ/double-submit.
@@ -58,6 +61,30 @@ public class BattleOnlineQuestionDto implements Serializable {
 
     public void setPronounce(String pronounce) {
         this.pronounce = pronounce;
+    }
+
+    public String getMeaning() {
+        return meaning;
+    }
+
+    public void setMeaning(String meaning) {
+        this.meaning = meaning;
+    }
+
+    public String getMaskedWord() {
+        return maskedWord;
+    }
+
+    public void setMaskedWord(String maskedWord) {
+        this.maskedWord = maskedWord;
+    }
+
+    public String getLevel() {
+        return level;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
     }
 
     public long getSequence() {

@@ -19,6 +19,7 @@ public class PersonDateDto implements Serializable{
 	// 1: có đi lễ ; 2: không đi lễ; 3: muộn; 5: ca đoàn; 6: Phép (lễ)
 	private Integer statusClass;
 	// 1: có đi học ; 2: không đi học; 3: muộn; 5: ca đoàn; 6: Phép (GL)
+	private Integer makeupMinutes;
 	private Integer extraClass;
 	// 1: có đi học ; 2: không đi học; 3: muộn; 5: ca đoàn; 6: Phép (NK)
 
@@ -122,6 +123,12 @@ public class PersonDateDto implements Serializable{
 	public void setStatusClass(Integer statusClass) {
 		this.statusClass = statusClass;
 	}
+	public Integer getMakeupMinutes() {
+		return makeupMinutes;
+	}
+	public void setMakeupMinutes(Integer makeupMinutes) {
+		this.makeupMinutes = makeupMinutes;
+	}
 	public String getDescription() {
 		return description;
 	}
@@ -198,6 +205,7 @@ public class PersonDateDto implements Serializable{
 		
 		this.statusMass = domain.getStatusMass();
 		this.statusClass = domain.getStatusClass();
+		this.makeupMinutes = domain.getMakeupMinutes();
 		this.extraClass = domain.getExtraClass();
 		this.description = domain.getDescription();
 		this.modifiedBy = domain.getModifiedBy();

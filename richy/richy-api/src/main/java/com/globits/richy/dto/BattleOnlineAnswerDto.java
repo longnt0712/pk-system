@@ -7,6 +7,7 @@ public class BattleOnlineAnswerDto implements Serializable {
 
     private Long questionId;
     private String answerKey;
+    private String answerText;
     private long questionSequence;
 
     public BattleOnlineAnswerDto() {
@@ -26,6 +27,14 @@ public class BattleOnlineAnswerDto implements Serializable {
 
     public void setAnswerKey(String answerKey) {
         this.answerKey = answerKey;
+    }
+
+    public String getAnswerText() {
+        return answerText;
+    }
+
+    public void setAnswerText(String answerText) {
+        this.answerText = answerText;
     }
 
     public long getQuestionSequence() {

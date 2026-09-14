@@ -8,6 +8,7 @@ import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessResultDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
+import com.globits.richy.dto.BattleOnlineRevealLetterDto;
 import com.globits.richy.dto.BattleOnlineTeamAssignmentDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
 
@@ -77,6 +78,12 @@ public interface BattleOnlineService {
             String roomCode,
             String username,
             BattleOnlineAnswerDto answerDto
+    );
+
+    BattleOnlineRoomDto revealGuessLetter(
+            String roomCode,
+            String username,
+            BattleOnlineRevealLetterDto revealDto
     );
 
     BattleOnlineRoomDto useSkill(

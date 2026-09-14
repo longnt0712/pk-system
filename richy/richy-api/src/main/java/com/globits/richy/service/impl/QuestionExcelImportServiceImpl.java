@@ -162,6 +162,7 @@ public class QuestionExcelImportServiceImpl
                     candidate.setMotherTongue(
                             existing.getMotherTongue()
                     );
+                    candidate.setLevel(existing.getLevel());
 
                     candidate.setAlreadyInTopic(
                             questionIdsInTopic.contains(
@@ -198,8 +199,8 @@ public class QuestionExcelImportServiceImpl
                 setRowStatus(
                         row,
                         QuestionImportStatus.ALREADY_IN_TOPIC,
-                        "Flashcard đã thuộc topic này",
-                        false
+                        "Flashcard đã thuộc topic; sẽ bổ sung Pronounce, First language hoặc CEFR level còn trống",
+                        true
                 );
             } else {
                 setRowStatus(
@@ -461,55 +462,35 @@ public class QuestionExcelImportServiceImpl
                                 );
 
                 /*
-                 * Đã có topic thì không tạo QuestionTopic mới.
+                 * Chỉ điền dữ liệu nếu trường cũ đang trống.
+                 * Không ghi đè dữ liệu đã tồn tại.
                  */
-                if (topicCount != null && topicCount > 0) {
-                    result.setSkippedCount(
-                            result.getSkippedCount() + 1
+                boolean changed = false;
+
+                if (dto.isUpdateEmptyFields()) {
+                    changed = fillEmptyFields(selectedQuestion, row);
+                }
+
+                if (changed) {
+                    selectedQuestion.setModifiedBy(username);
+                    selectedQuestion.setModifyDate(now);
+                    questionRepository.save(selectedQuestion);
+                    result.setUpdatedCount(
+                            result.getUpdatedCount() + 1
                     );
-                    continue;
                 }
 
                 /*
-                 * Chỉ điền dữ liệu nếu trường cũ đang trống.
-                 * Không ghi đè nghĩa và phát âm đã tồn tại.
+                 * Đã có topic thì chỉ cập nhật trường trống, không tạo
+                 * QuestionTopic trùng.
                  */
-                if (dto.isUpdateEmptyFields()) {
-
-                    boolean changed = false;
-
-                    if (isBlank(selectedQuestion.getPronounce())
-                            && !isBlank(row.getPronounce())) {
-
-                        selectedQuestion.setPronounce(
-                                cleanText(row.getPronounce())
-                        );
-
-                        changed = true;
-                    }
-
-                    String importedMotherTongue =
-                            getImportedMotherTongue(row);
-
-                    if (isBlank(
-                            selectedQuestion.getMotherTongue())
-                            && !isBlank(importedMotherTongue)) {
-
-                        selectedQuestion.setMotherTongue(
-                                cleanText(importedMotherTongue)
-                        );
-
-                        changed = true;
-                    }
-
-                    if (changed) {
-                        selectedQuestion.setModifiedBy(username);
-                        selectedQuestion.setModifyDate(now);
-
-                        questionRepository.save(
-                                selectedQuestion
+                if (topicCount != null && topicCount > 0) {
+                    if (!changed) {
+                        result.setSkippedCount(
+                                result.getSkippedCount() + 1
                         );
                     }
+                    continue;
                 }
 
                 createQuestionTopic(
@@ -541,13 +522,6 @@ public class QuestionExcelImportServiceImpl
                                         topic.getId()
                                 );
 
-                if (topicCount != null && topicCount > 0) {
-                    result.setSkippedCount(
-                            result.getSkippedCount() + 1
-                    );
-                    continue;
-                }
-
                 Question existingQuestion =
                         questionRepository.findOne(
                                 existingQuestionId
@@ -563,29 +537,8 @@ public class QuestionExcelImportServiceImpl
                 boolean questionChanged = false;
 
                 if (dto.isUpdateEmptyFields()) {
-
-                    if (isBlank(existingQuestion.getPronounce())
-                            && !isBlank(row.getPronounce())) {
-
-                        existingQuestion.setPronounce(
-                                cleanText(row.getPronounce())
-                        );
-
-                        questionChanged = true;
-                    }
-
-                    String importedMotherTongue =
-                            getImportedMotherTongue(row);
-
-                    if (isBlank(existingQuestion.getMotherTongue())
-                            && !isBlank(importedMotherTongue)) {
-
-                        existingQuestion.setMotherTongue(
-                                cleanText(importedMotherTongue)
-                        );
-
-                        questionChanged = true;
-                    }
+                    questionChanged =
+                            fillEmptyFields(existingQuestion, row);
                 }
 
                 if (questionChanged) {
@@ -593,6 +546,18 @@ public class QuestionExcelImportServiceImpl
                     existingQuestion.setModifyDate(now);
 
                     questionRepository.save(existingQuestion);
+                    result.setUpdatedCount(
+                            result.getUpdatedCount() + 1
+                    );
+                }
+
+                if (topicCount != null && topicCount > 0) {
+                    if (!questionChanged) {
+                        result.setSkippedCount(
+                                result.getSkippedCount() + 1
+                        );
+                    }
+                    continue;
                 }
 
                 createQuestionTopic(
@@ -618,6 +583,7 @@ public class QuestionExcelImportServiceImpl
             question.setMotherTongue(
                     cleanText(getImportedMotherTongue(row))
             );
+            question.setLevel(normalizeLevel(row.getLevel()));
 
             question.setQuestionType(flashCardType);
             question.setUser(currentUser);
@@ -642,7 +608,8 @@ public class QuestionExcelImportServiceImpl
                             question.getId(),
                             question.getQuestion(),
                             question.getPronounce(),
-                            question.getMotherTongue()
+                            question.getMotherTongue(),
+                            question.getLevel()
                     );
 
             List<QuestionImportExistingDto> newList =
@@ -663,6 +630,8 @@ public class QuestionExcelImportServiceImpl
                         + result.getCreatedCount()
                         + ", thêm topic "
                         + result.getTopicAddedCount()
+                        + ", cập nhật trường trống "
+                        + result.getUpdatedCount()
                         + ", bỏ qua "
                         + result.getSkippedCount()
                         + ", lỗi "
@@ -718,6 +687,7 @@ public class QuestionExcelImportServiceImpl
                     headerIndexes.get("pronounce");
             Integer firstLanguageIndex =
                     headerIndexes.get("firstLanguage");
+            Integer levelIndex = headerIndexes.get("level");
 
             if (wordIndex == null) {
                 throw new IllegalArgumentException(
@@ -783,9 +753,17 @@ public class QuestionExcelImportServiceImpl
                         evaluator
                 );
 
+                String level = getCellValue(
+                        excelRow,
+                        levelIndex,
+                        formatter,
+                        evaluator
+                );
+
                 if (isBlank(word)
                         && isBlank(pronounce)
-                        && isBlank(firstLanguage)) {
+                        && isBlank(firstLanguage)
+                        && isBlank(level)) {
                     continue;
                 }
 
@@ -802,6 +780,7 @@ public class QuestionExcelImportServiceImpl
                 row.setFirstLanguage(
                         cleanText(firstLanguage)
                 );
+                row.setLevel(cleanText(level));
 
                 rows.add(row);
             }
@@ -857,6 +836,14 @@ public class QuestionExcelImportServiceImpl
                     || "mothertongue".equals(normalizedHeader)) {
 
                 indexes.put("firstLanguage", i);
+            }
+
+            if ("level".equals(normalizedHeader)
+                    || "cefr".equals(normalizedHeader)
+                    || "cefrlevel".equals(normalizedHeader)
+                    || "a1c2".equals(normalizedHeader)) {
+
+                indexes.put("level", i);
             }
         }
 
@@ -1019,7 +1006,50 @@ public class QuestionExcelImportServiceImpl
             return "First language vượt quá 200 ký tự";
         }
 
+        if (!isBlank(row.getLevel())
+                && normalizeLevel(row.getLevel()) == null) {
+
+            return "CEFR level chỉ chấp nhận A1, A2, B1, B2, C1, C2";
+        }
+
         return null;
+    }
+
+    private boolean fillEmptyFields(
+            Question question,
+            QuestionImportRowDto row) {
+
+        boolean changed = false;
+
+        if (isBlank(question.getPronounce())
+                && !isBlank(row.getPronounce())) {
+
+            question.setPronounce(cleanText(row.getPronounce()));
+            changed = true;
+        }
+
+        String importedMotherTongue =
+                getImportedMotherTongue(row);
+
+        if (isBlank(question.getMotherTongue())
+                && !isBlank(importedMotherTongue)) {
+
+            question.setMotherTongue(
+                    cleanText(importedMotherTongue)
+            );
+            changed = true;
+        }
+
+        String importedLevel = normalizeLevel(row.getLevel());
+
+        if (isBlank(question.getLevel())
+                && importedLevel != null) {
+
+            question.setLevel(importedLevel);
+            changed = true;
+        }
+
+        return changed;
     }
 
     private void setRowStatus(
@@ -1205,6 +1235,28 @@ public class QuestionExcelImportServiceImpl
                 .trim()
                 .replaceAll("\\s+", " ")
                 .toLowerCase(Locale.ENGLISH);
+    }
+
+    private String normalizeLevel(String level) {
+
+        if (isBlank(level)) {
+            return null;
+        }
+
+        String normalized =
+                level.trim().toUpperCase(Locale.ENGLISH);
+
+        if ("A1".equals(normalized)
+                || "A2".equals(normalized)
+                || "B1".equals(normalized)
+                || "B2".equals(normalized)
+                || "C1".equals(normalized)
+                || "C2".equals(normalized)) {
+
+            return normalized;
+        }
+
+        return null;
     }
 
     private String normalizeHeader(String header) {

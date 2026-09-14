@@ -27,6 +27,7 @@ public class QuestionForGamesDto implements Serializable  {
 	private String pronounce;
 	
 	private String motherTongue;
+	private String level;
 	private Long numberOfWords;
 	private List<QuestionForGamesDto> questions = new ArrayList<QuestionForGamesDto>(); 
 	private List<QuestionAnswerDto> questionAnswers;
@@ -89,6 +90,12 @@ public class QuestionForGamesDto implements Serializable  {
 	public void setMotherTongue(String motherTongue) {
 		this.motherTongue = motherTongue;
 	}
+	public String getLevel() {
+		return level;
+	}
+	public void setLevel(String level) {
+		this.level = level;
+	}
 	
 	public QuestionForGamesDto() {
 		super();
@@ -104,6 +111,7 @@ public class QuestionForGamesDto implements Serializable  {
 		this.ordinalNumber = domain.getOrdinalNumber();
 		this.pronounce = domain.getPronounce();
 		this.motherTongue = domain.getMotherTongue();	
+		this.level = domain.getLevel();
 		
 		if (domain.getQuestionAnswers() != null && domain.getQuestionAnswers().size() > 0) {
 		    this.questionAnswers = new ArrayList<QuestionAnswerDto>();

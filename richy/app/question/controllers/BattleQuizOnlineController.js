@@ -73,6 +73,8 @@
         vm.answerLocked = false;
         vm.lastAnswerCorrect = null;
         vm.lastAnswerMessage = '';
+        vm.guessAnswerText = '';
+        vm.revealingGuessLetter = false;
 
         vm.usingSkill = false;
         vm.choosingPassword = false;
@@ -139,8 +141,11 @@
             countdownMinutes: 5,
             wrongAnswerFreezeSeconds: 3,
             teamCount: 0,
-            doubleActionUsername: ''
+            doubleActionUsername: '',
+            guessLevels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
         };
+
+        vm.guessLevelOptions = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
         vm.teamCountOptions = [
             {value: 0, label: 'KHÔNG CHIA ĐỘI'},
@@ -202,6 +207,8 @@
         var battleViewMusicLastTrackId = '';
         var battleViewMusicLoadFailures = 0;
         var finishCelebrationAudio = null;
+        var guessTickAudio = null;
+        var lastGuessTickSecond = null;
         var finishCelebrationAudioUnlocked = false;
         var finishCelebrationAudioUnlocking = false;
         var finishCelebrationPlaybackPending = false;
@@ -235,6 +242,7 @@
         vm.isCountdownMode = isCountdownMode;
         vm.isMoneyBegMode = isMoneyBegMode;
         vm.isEscapeDumbDemonMode = isEscapeDumbDemonMode;
+        vm.isGuessWordMode = isGuessWordMode;
         vm.getBattleModeLabel = getBattleModeLabel;
         vm.getDumbBallPercent = getDumbBallPercent;
         vm.getDumbBallStatus = getDumbBallStatus;
@@ -261,6 +269,8 @@
         vm.saveSettings = saveSettings;
         vm.markWrongFreezeTouched = markWrongFreezeTouched;
         vm.markTeamCountTouched = markTeamCountTouched;
+        vm.toggleGuessLevel = toggleGuessLevel;
+        vm.isGuessLevelSelected = isGuessLevelSelected;
 
         vm.toggleReady = toggleReady;
         vm.toggleSpectator = toggleSpectator;
@@ -290,6 +300,10 @@
         vm.restartMatch = restartMatch;
 
         vm.answer = answer;
+        vm.submitGuessWord = submitGuessWord;
+        vm.revealGuessLetter = revealGuessLetter;
+        vm.getGuessLetters = getGuessLetters;
+        vm.getQuestionTimePercent = getQuestionTimePercent;
         vm.useSkill = useSkill;
         vm.choosePassword = choosePassword;
         vm.guessPassword = guessPassword;
@@ -645,6 +659,15 @@
 
             return mode === 'ESCAPE_DUMB_DEMON' ||
                 mode === 'WHO_IS_DUMBER';
+        }
+
+
+        function isGuessWordMode() {
+            var mode = vm.room && vm.room.settings
+                ? vm.room.settings.mode
+                : vm.hostSettings.mode;
+
+            return String(mode || '').toUpperCase().trim() === 'GUESS_WORD';
         }
 
 
@@ -1638,6 +1661,11 @@
                     vm.hostSettings
                         .secondsPerQuestion;
 
+                vm.hostSettings.guessLevels =
+                    incoming.settings.guessLevels && incoming.settings.guessLevels.length
+                        ? incoming.settings.guessLevels.slice(0)
+                        : ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+
                 if (
                     !isHost() ||
                     incoming.status !== 'LOBBY' ||
@@ -1725,7 +1753,7 @@
                 vm.lastAnswerCorrect = null;
                 vm.lastAnswerMessage = '';
 
-                if (!isWrongAnswerPenaltyActive()) {
+                if (!isWrongAnswerPenaltyActive() && !isGuessWordMode()) {
                     sayCurrentQuestion();
                 }
             }
@@ -1772,6 +1800,8 @@
                 prepareWrongQuestionHistory(incoming);
                 vm.lastAnswerCorrect = null;
                 vm.lastAnswerMessage = '';
+                vm.guessAnswerText = '';
+                lastGuessTickSecond = null;
                 vm.personalSkillNotice = null;
                 clearSkillHitEffect();
             }
@@ -1805,16 +1835,14 @@
             vm.hostSettings.mode =
                 mode === 'COUNTDOWN' ||
                 mode === 'MONEY_BEG' ||
-                mode === 'ESCAPE_DUMB_DEMON'
+                mode === 'ESCAPE_DUMB_DEMON' ||
+                mode === 'GUESS_WORD'
                     ? mode
                     : 'CLASSIC';
 
             if (vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON') {
                 vm.hostSettings.teamCount = 2;
                 vm.hostTeamCountDirty = true;
-            } else {
-                vm.hostSettings.doubleActionUsername = '';
-                vm.hostDoubleActionDirty = true;
             }
 
             /*
@@ -1851,6 +1879,24 @@
         }
 
 
+        function isGuessLevelSelected(level) {
+            return vm.hostSettings.guessLevels.indexOf(level) >= 0;
+        }
+
+
+        function toggleGuessLevel(level) {
+            var index = vm.hostSettings.guessLevels.indexOf(level);
+            if (index >= 0) {
+                if (vm.hostSettings.guessLevels.length > 1) {
+                    vm.hostSettings.guessLevels.splice(index, 1);
+                }
+            } else {
+                vm.hostSettings.guessLevels.push(level);
+            }
+            vm.hostModeDirty = true;
+        }
+
+
         function clampInteger(
             value,
             min,
@@ -1882,7 +1928,8 @@
                 mode:
                     vm.hostSettings.mode === 'COUNTDOWN' ||
                     vm.hostSettings.mode === 'MONEY_BEG' ||
-                    vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'
+                    vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' ||
+                    vm.hostSettings.mode === 'GUESS_WORD'
                         ? vm.hostSettings.mode
                         : 'CLASSIC',
 
@@ -1917,6 +1964,8 @@
                         5
                     ),
 
+                guessLevels: vm.hostSettings.guessLevels.slice(0),
+
                 wrongAnswerFreezeSeconds:
                     clampInteger(
                         vm.hostSettings.wrongAnswerFreezeSeconds,
@@ -1936,7 +1985,10 @@
                         ),
 
                 doubleActionUsername:
-                    vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'
+                    (
+                        vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' ||
+                        Number(vm.hostSettings.teamCount || 0) >= 2
+                    )
                         ? String(
                             vm.hostSettings.doubleActionUsername || ''
                         ).trim()
@@ -2374,10 +2426,9 @@
 
 
         function getEscapeDoubleActionCandidates() {
-            var smallerTeam = getEscapeSmallerTeamNumber();
             var result = [];
 
-            if (!smallerTeam) {
+            if (!hasTeamMode()) {
                 return result;
             }
 
@@ -2388,7 +2439,7 @@
                         player &&
                         player.connected === true &&
                         player.spectator !== true &&
-                        Number(player.teamNumber || 0) === smallerTeam
+                        Number(player.teamNumber || 0) > 0
                     ) {
                         result.push(player);
                     }
@@ -2795,6 +2846,80 @@
                         vm.usingSkill = false;
                     }
                 );
+        }
+
+
+        function submitGuessWord() {
+            var text = String(vm.guessAnswerText || '').trim();
+            if (!isGuessWordMode() || !text || !vm.room ||
+                vm.room.status !== 'PLAYING' || !vm.room.currentQuestion ||
+                vm.answerLocked || isSpectator() || vm.countdown <= 0) {
+                return;
+            }
+
+            vm.answerLocked = true;
+            var question = vm.room.currentQuestion;
+            battleService.answerText(
+                vm.room.code,
+                question.id,
+                text,
+                question.sequence
+            ).then(
+                function (result) {
+                    vm.lastAnswerCorrect = result.correct === true;
+                    vm.lastAnswerMessage = result.message ||
+                        (result.correct ? 'CHÍNH XÁC!' : 'CHƯA ĐÚNG.');
+                },
+                function (error) {
+                    vm.answerLocked = false;
+                    showRequestError(error);
+                }
+            );
+        }
+
+
+        function getGuessLetters() {
+            var masked = String(
+                vm.room && vm.room.currentQuestion &&
+                vm.room.currentQuestion.maskedWord || ''
+            );
+            var result = [];
+            for (var index = 0; index < masked.length; index += 1) {
+                result.push({
+                    index: index,
+                    value: masked.charAt(index),
+                    blank: masked.charAt(index) === '_',
+                    space: /\s/.test(masked.charAt(index))
+                });
+            }
+            return result;
+        }
+
+
+        function revealGuessLetter(letter) {
+            if (!isHost() || !isGuessWordMode() || !letter ||
+                !letter.blank || vm.revealingGuessLetter) {
+                return;
+            }
+
+            vm.revealingGuessLetter = true;
+            battleService.revealGuessLetter(vm.room.code, letter.index)
+                .then(function (room) {
+                    applyRoom(room, false);
+                }, showRequestError)
+                .finally(function () {
+                    vm.revealingGuessLetter = false;
+                });
+        }
+
+
+        function getQuestionTimePercent() {
+            var total = Math.max(
+                1,
+                Number(vm.room && vm.room.settings &&
+                    vm.room.settings.secondsPerQuestion || 1)
+            );
+            return Math.max(0, Math.min(100, (Number(vm.countdown || 0) / total) * 100));
         }
 
 
@@ -4242,6 +4367,23 @@
            TIMER
            ===================================================== */
 
+        function playGuessTick() {
+            try {
+                if (!guessTickAudio) {
+                    guessTickAudio = new $window.Audio('music/tick-tock.mp3');
+                    guessTickAudio.preload = 'auto';
+                    guessTickAudio.volume = 0.35;
+                }
+                guessTickAudio.currentTime = 0;
+                var playResult = guessTickAudio.play();
+                if (playResult && angular.isFunction(playResult.catch)) {
+                    playResult.catch(angular.noop);
+                }
+            } catch (ignoreGuessTickError) {
+                /* Trình duyệt có thể chặn audio trước tương tác đầu tiên. */
+            }
+        }
+
         function updateCountdown() {
             vm.finishedRoomRemainingLabel = '';
             if (vm.room && vm.room.status === 'FINISHED' && vm.room.finishedExpiresAt) {
@@ -4292,6 +4434,12 @@
                         1000
                     )
                 );
+
+            if (isGuessWordMode() && vm.countdown > 0 &&
+                vm.countdown !== lastGuessTickSecond) {
+                lastGuessTickSecond = vm.countdown;
+                playGuessTick();
+            }
 
             if (
                 vm.countdown <= 0
@@ -5397,6 +5545,10 @@
                 resetPasswordGuessDisplay();
                 destroyBattleViewMusic();
                 destroyFinishCelebrationAudio();
+                if (guessTickAudio) {
+                    guessTickAudio.pause();
+                    guessTickAudio = null;
+                }
                 stopQrScanner();
 
                 angular.element(

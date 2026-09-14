@@ -14,7 +14,7 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     private List<String> topicNames = new ArrayList<String>();
 
     /*
-     * CLASSIC | COUNTDOWN | MONEY_BEG | ESCAPE_DUMB_DEMON
+     * CLASSIC | COUNTDOWN | MONEY_BEG | ESCAPE_DUMB_DEMON | GUESS_WORD
      */
     private String mode = "CLASSIC";
 
@@ -24,6 +24,9 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
      */
     private int questionCount = 20;
     private int secondsPerQuestion = 10;
+
+    /* GUESS_WORD: các mức CEFR được phép xuất hiện. */
+    private List<String> guessLevels = new ArrayList<String>();
 
     /*
      * COUNTDOWN:
@@ -42,9 +45,8 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     private int teamCount = 0;
 
     /*
-     * ESCAPE_DUMB_DEMON:
-     * HOST có thể chọn một người ở đội ít quân hơn làm NGƯỜI GÁNH ĐỘI.
-     * Điểm câu trả lời và tác động lên QUỶ NGU của người này được nhân 2.
+     * Mọi mode có chia đội: HOST có thể chọn một NGƯỜI GÁNH ĐỘI.
+     * Toàn bộ tác động điểm/mode của người này được nhân 2.
      */
     private String doubleActionUsername;
 
@@ -89,6 +91,14 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
 
     public void setSecondsPerQuestion(int secondsPerQuestion) {
         this.secondsPerQuestion = secondsPerQuestion;
+    }
+
+    public List<String> getGuessLevels() {
+        return guessLevels;
+    }
+
+    public void setGuessLevels(List<String> guessLevels) {
+        this.guessLevels = guessLevels;
     }
 
     public int getCountdownMinutes() {

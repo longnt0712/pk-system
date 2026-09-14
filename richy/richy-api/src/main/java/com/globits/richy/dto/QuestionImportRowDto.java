@@ -11,6 +11,7 @@ public class QuestionImportRowDto implements Serializable {
     private Integer rowNumber;
     private String word;
     private String pronounce;
+    private String level;
 
     /*
      * Preview trả về frontend dùng firstLanguage.
@@ -75,6 +76,14 @@ public class QuestionImportRowDto implements Serializable {
 
     public void setPronounce(String pronounce) {
         this.pronounce = pronounce;
+    }
+
+    public String getLevel() {
+        return level;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
     }
 
     public String getFirstLanguage() {

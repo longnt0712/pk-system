@@ -10,6 +10,7 @@ public class QuestionImportCandidateDto implements Serializable {
     private String word;
     private String pronounce;
     private String motherTongue;
+    private String level;
     private Boolean alreadyInTopic;
 
     public Long getId() {
@@ -42,6 +43,14 @@ public class QuestionImportCandidateDto implements Serializable {
 
     public void setMotherTongue(String motherTongue) {
         this.motherTongue = motherTongue;
+    }
+
+    public String getLevel() {
+        return level;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
     }
 
     public Boolean getAlreadyInTopic() {

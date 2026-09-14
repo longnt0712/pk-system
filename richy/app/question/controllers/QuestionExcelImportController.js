@@ -253,6 +253,7 @@
                         word: row.word,
                         pronounce: row.pronounce,
                         motherTongue: row.firstLanguage,
+                        level: row.level,
                         status: row.status,
 
                         existingQuestionId:
@@ -353,6 +354,12 @@
                     row.first_language ||
                     '';
 
+                row.level =
+                    row.level ||
+                    row.cefrLevel ||
+                    row.cefr ||
+                    '';
+
                 row.status =
                     (row.status || 'INVALID').toUpperCase();
 
@@ -383,6 +390,10 @@
                             candidate.firstLanguage ||
                             'No first language';
 
+                        var candidateLevel =
+                            candidate.level ||
+                            'No CEFR level';
+
                         var topicStatus =
                             candidate.alreadyInTopic === true
                                 ? ' | Already in topic'
@@ -393,6 +404,7 @@
                             + ' | ' + candidateWord
                             + ' | ' + candidatePronounce
                             + ' | ' + candidateMeaning
+                            + ' | ' + candidateLevel
                             + topicStatus;
                     }
                 );
@@ -586,7 +598,8 @@
             return status === 'NEW' ||
                 status === 'CREATE_NEW' ||
                 status === 'ADD_TOPIC' ||
-                status === 'EXISTING_ADD_TOPIC';
+                status === 'EXISTING_ADD_TOPIC' ||
+                status === 'ALREADY_IN_TOPIC';
         }
 
         function getStatusText(row) {
@@ -602,7 +615,7 @@
                     return 'Từ đã tồn tại, sẽ gán thêm topic';
 
                 case 'ALREADY_IN_TOPIC':
-                    return 'Từ đã thuộc topic này';
+                    return 'Cập nhật trường còn trống';
 
                 case 'DUPLICATE_IN_FILE':
                     return 'Bị trùng trong file Excel';
@@ -630,7 +643,7 @@
             }
 
             if (status === 'ALREADY_IN_TOPIC') {
-                return 'label label-default';
+                return 'label label-primary';
             }
 
             if (status === 'DUPLICATE_IN_FILE') {

@@ -29,6 +29,9 @@ public class PersonDate extends BaseObject{
 	@Column(name = "status_class")
 	private Integer statusClass;
 	// 1: có đi học ; 2: không đi học; 3: muộn; 5: ca đoàn; 6: Phép (GL)
+
+	@Column(name = "makeup_minutes")
+	private Integer makeupMinutes;
 	
 	@Column(name = "extra_class")
 	private Integer extraClass;
@@ -103,6 +106,14 @@ public class PersonDate extends BaseObject{
 
 	public void setStatusClass(Integer statusClass) {
 		this.statusClass = statusClass;
+	}
+
+	public Integer getMakeupMinutes() {
+		return makeupMinutes;
+	}
+
+	public void setMakeupMinutes(Integer makeupMinutes) {
+		this.makeupMinutes = makeupMinutes;
 	}
 
 	public String getDescription() {
