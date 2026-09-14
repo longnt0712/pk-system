@@ -135,7 +135,7 @@
                                 <tr>
                                     <th scope="col">STT</th>
 
-                                    <th scope="col" class="sortable" ng-click="vm.sortBy('patron')">
+                                    <th scope="col" ng-if="!vm.isIeltsRoomDomain" class="sortable" ng-click="vm.sortBy('patron')">
                                         TÊN THÁNH
                                         <i class="fa" ng-class="vm.getSortIcon('patron')"></i>
                                     </th>
@@ -144,11 +144,11 @@
                                             class="sortable"
                                             style="text-align: right;"
                                             ng-click="vm.sortBy('fullName')">
-                                        TÊN
+                                        {{vm.isIeltsRoomDomain ? 'HỌ VÀ TÊN' : 'TÊN'}}
                                         <i class="fa" ng-class="vm.getSortIcon('fullName')"></i>
                                     </th>
 
-                                    <th scope="col" class="sortable" ng-click="vm.sortBy('birthDate')">
+                                    <th scope="col" ng-if="!vm.isIeltsRoomDomain" class="sortable" ng-click="vm.sortBy('birthDate')">
                                         NGÀY SINH
                                         <i class="fa" ng-class="vm.getSortIcon('birthDate')"></i>
                                     </th>
@@ -158,27 +158,27 @@
                                         <i class="fa" ng-class="vm.getSortIcon('username')"></i>
                                     </th>
 
-                                    <th scope="col" class="sortable" ng-click="vm.sortBy('motherFullName')">
+                                    <th scope="col" ng-if="!vm.isIeltsRoomDomain" class="sortable" ng-click="vm.sortBy('motherFullName')">
                                         HỌ VÀ TÊN MẸ
                                         <i class="fa" ng-class="vm.getSortIcon('motherFullName')"></i>
                                     </th>
 
-                                    <th scope="col" class="sortable" ng-click="vm.sortBy('motherPhoneNumber')">
+                                    <th scope="col" ng-if="!vm.isIeltsRoomDomain" class="sortable" ng-click="vm.sortBy('motherPhoneNumber')">
                                         SĐT MẸ
                                         <i class="fa" ng-class="vm.getSortIcon('motherPhoneNumber')"></i>
                                     </th>
 
-                                    <th scope="col" class="sortable" ng-click="vm.sortBy('fatherFullName')">
+                                    <th scope="col" ng-if="!vm.isIeltsRoomDomain" class="sortable" ng-click="vm.sortBy('fatherFullName')">
                                         HỌ VÀ TÊN BỐ
                                         <i class="fa" ng-class="vm.getSortIcon('fatherFullName')"></i>
                                     </th>
 
-                                    <th scope="col" class="sortable" ng-click="vm.sortBy('fatherPhoneNumber')">
+                                    <th scope="col" ng-if="!vm.isIeltsRoomDomain" class="sortable" ng-click="vm.sortBy('fatherPhoneNumber')">
                                         SĐT BỐ
                                         <i class="fa" ng-class="vm.getSortIcon('fatherPhoneNumber')"></i>
                                     </th>
 
-                                    <th scope="col" class="sortable" ng-click="vm.sortBy('phoneNumber')">
+                                    <th scope="col" ng-if="!vm.isIeltsRoomDomain" class="sortable" ng-click="vm.sortBy('phoneNumber')">
                                         SĐT CÁ NHÂN
                                         <i class="fa" ng-class="vm.getSortIcon('phoneNumber')"></i>
                                     </th>
@@ -188,7 +188,7 @@
                                         <i class="fa" ng-class="vm.getSortIcon('enrollmentClass')"></i>
                                     </th>
 
-                                    <th scope="col" class="sortable" ng-click="vm.sortBy('zaloStatus')">
+                                    <th scope="col" ng-if="!vm.isIeltsRoomDomain" class="sortable" ng-click="vm.sortBy('zaloStatus')">
                                         CÓ BỐ MẸ TRONG NHÓM ZALO?
                                         <i class="fa" ng-class="vm.getSortIcon('zaloStatus')"></i>
                                     </th>
@@ -208,12 +208,12 @@
                                 <tr ng-repeat="user in vm.users | orderBy:vm.getSortValue:vm.sortReverse track by user.id">
 
                                     <th scope="row">{{$index + 1}}</th>
-                                    <td>{{user.person.patron}}</td>
+                                    <td ng-if="!vm.isIeltsRoomDomain">{{user.person.patron}}</td>
                                     <td style="text-align: right;">
                                         {{user.person.lastName}} {{user.person.firstName}}
                                     </td>
                                     <!--<td></td>-->
-                                    <td>{{user.person.birthDate | date:'dd/MM/yyyy' }}</td>
+                                    <td ng-if="!vm.isIeltsRoomDomain">{{user.person.birthDate | date:'dd/MM/yyyy' }}</td>
                                     <td>
                                         {{user.username}}<br>
                                         <!--<img ng-if="user.qrcodeByUsername"-->
@@ -230,11 +230,11 @@
                                     <!--</ui-select></td>-->
                                     <!--<td>{{user.person.diocese}}</td>-->
                                     <!--<td>{{user.person.addressString}}</td>-->
-                                    <td>{{user.person.motherFullName}}</td>
-                                    <td>{{user.person.motherPhoneNumber}}</td>
-                                    <td>{{user.person.fatherFullName}}</td>
-                                    <td>{{user.person.fatherPhoneNumber}}</td>
-                                    <td>
+                                    <td ng-if="!vm.isIeltsRoomDomain">{{user.person.motherFullName}}</td>
+                                    <td ng-if="!vm.isIeltsRoomDomain">{{user.person.motherPhoneNumber}}</td>
+                                    <td ng-if="!vm.isIeltsRoomDomain">{{user.person.fatherFullName}}</td>
+                                    <td ng-if="!vm.isIeltsRoomDomain">{{user.person.fatherPhoneNumber}}</td>
+                                    <td ng-if="!vm.isIeltsRoomDomain">
                                         {{user.person.phoneNumber}}
                                     </td>
                                     <td>
@@ -246,7 +246,7 @@
                                         <!--</ui-select>-->
 										{{ vm.getEnrollmentClassNames(user) }}
                                     </td>
-                                    <td ng-class="vm.getZaloStatusClass(user.person.zaloStatus)">
+                                    <td ng-if="!vm.isIeltsRoomDomain" ng-class="vm.getZaloStatusClass(user.person.zaloStatus)">
                                         {{ vm.getZaloStatusName(user.person.zaloStatus) }}
                                     </td>
                                     <td ng-if="vm.isRoleAdmin">
@@ -674,27 +674,27 @@
         </div>
         <div class="modal-body">
             <div class="row">
-                <div class="col-md-4 margin-top-10">
+                <div class="col-md-4 margin-top-10" ng-if="!vm.isIeltsRoomDomain">
                     <label class="bold">Tên Thánh</label>
                     <input id="vm.user.person.patron" data-ng-model="vm.user.person.patron" type="text" autofocus="autofocus" class="form-control" />
                 </div>
-                <div class="col-md-4 margin-top-10">
+                <div class="margin-top-10" ng-class="vm.isIeltsRoomDomain ? 'col-md-6' : 'col-md-4'">
                     <label class="bold">Họ</label>
                     <input id="vm.user.person.lastName" data-ng-model="vm.user.person.lastName" type="text" autofocus="autofocus" class="form-control" />
                 </div>
-                <div class="col-md-4 margin-top-10">
+                <div class="margin-top-10" ng-class="vm.isIeltsRoomDomain ? 'col-md-6' : 'col-md-4'">
                     <label class="bold">Tên</label>
                     <input id="vm.user.person.firstName" data-ng-model="vm.user.person.firstName" type="text" autofocus="autofocus" class="form-control" />
                 </div>
-                <div class="col-md-6 margin-top-10">
+                <div class="col-md-6 margin-top-10" ng-if="!vm.isIeltsRoomDomain">
                     <label class="bold">Ngày sinh</label>
                     <input data-ng-model="vm.user.person.birthDate" type="text" class="form-control" placeholder="NGÀY SINH" my-date-picker />
                 </div>
-                <div class="col-md-6 margin-top-10">
+                <div class="col-md-6 margin-top-10" ng-if="!vm.isIeltsRoomDomain">
                     <label class="bold">Số điện thoại</label>
                     <input id="vm.user.person.phoneNumber" data-ng-model="vm.user.person.phoneNumber" type="text" autofocus="autofocus" class="form-control" />
                 </div>
-                <div class="col-md-6 margin-top-10">
+                <div class="col-md-6 margin-top-10" ng-if="!vm.isIeltsRoomDomain">
                     <label class="bold">Đã lãnh phép</label>
                     <input id="vm.user.person.sacrament" data-ng-model="vm.user.person.sacrament" type="text" autofocus="autofocus" class="form-control" />
                 </div>
@@ -702,7 +702,7 @@
                     <!--<label class="bold">Họ và tên</label>-->
                     <!--<input id="vm.user.person.displayName" data-ng-model="vm.user.person.displayName" type="text" autofocus="autofocus" class="form-control" />-->
                 <!--</div>-->
-                <div class="col-md-6 margin-top-10">
+                <div class="col-md-6 margin-top-10" ng-if="!vm.isIeltsRoomDomain">
                     <label class="bold">Giới tính</label>
                     <select data-ng-model="vm.user.person.gender"class="form-control">
                         <option value="M">Nam</option>
@@ -710,27 +710,27 @@
                         <option value="U">Không rõ</option>
                     </select>
                 </div>
-                <div class="col-md-6 margin-top-10">
+                <div class="col-md-6 margin-top-10" ng-if="!vm.isIeltsRoomDomain">
                     <label class="bold">GIÁO PHẬN</label>
                     <input id="vm.user.person.diocese" data-ng-model="vm.user.person.diocese" type="text" autofocus="autofocus" class="form-control" />
                 </div>
-                <div class="col-md-6 margin-top-10">
+                <div class="col-md-6 margin-top-10" ng-if="!vm.isIeltsRoomDomain">
                     <label class="bold">ĐỊA CHỈ</label>
                     <input id="vm.user.person.stringAddress" data-ng-model="vm.user.person.addressString" type="text" autofocus="autofocus" class="form-control" />
                 </div>
-                <div class="col-md-6 margin-top-10">
+                <div class="col-md-6 margin-top-10" ng-if="!vm.isIeltsRoomDomain">
                     <label class="bold">Tên Thánh, họ và tên mẹ</label>
                     <input id="vm.user.person.motherFullName" data-ng-model="vm.user.person.motherFullName" type="text" autofocus="autofocus" class="form-control" />
                 </div>
-                <div class="col-md-6 margin-top-10">
+                <div class="col-md-6 margin-top-10" ng-if="!vm.isIeltsRoomDomain">
                     <label class="bold">SĐT MẸ</label>
                     <input id="vm.user.person.motherNumber" data-ng-model="vm.user.person.motherPhoneNumber" type="text" autofocus="autofocus" class="form-control" />
                 </div>
-                <div class="col-md-6 margin-top-10">
+                <div class="col-md-6 margin-top-10" ng-if="!vm.isIeltsRoomDomain">
                     <label class="bold">Tên Thánh, họ và tên bố</label>
                     <input id="vm.user.person.fatherFullName" data-ng-model="vm.user.person.fatherFullName" type="text" autofocus="autofocus" class="form-control" />
                 </div>
-                <div class="col-md-6 margin-top-10">
+                <div class="col-md-6 margin-top-10" ng-if="!vm.isIeltsRoomDomain">
                     <label class="bold">SĐT BỐ</label>
                     <input id="vm.user.person.fatherNumber" data-ng-model="vm.user.person.fatherPhoneNumber" type="text" autofocus="autofocus" class="form-control" />
                 </div>
@@ -769,7 +769,7 @@
 					</ui-select>
 					<small class="text-muted">Lớp chính luôn được giữ trong danh sách này.</small>
 				</div>
-                <div class="col-md-6 margin-top-10">
+                <div class="col-md-6 margin-top-10" ng-if="!vm.isIeltsRoomDomain">
                     <label class="bold">CÓ TRONG NHÓM ZALO KHÔNG?</label>
                     <ui-select ng-model="vm.user.person.zaloStatus" data-ng-change="" sortable="true" close-on-select="true">
                         <ui-select-match allow-clear="true" placeholder="CÓ TRONG NHÓM ZALO KHÔNG?">{{$select.selected.name}}</ui-select-match>

@@ -195,18 +195,9 @@
             vm.users.push(vm.myUser);
         }
 
-        if (vm.isRoleUser === true) {
-            vm.selectedUser = vm.myUser;
-        } else if (vm.isRoleView === true) {
-            vm.selectedUser = vm.myUser.id != null ? vm.myUser : {
-                id: 26,
-                name: 'EM YÊU INH LÍCH'
-            };
-        } else {
-            vm.selectedUser = vm.myUser.id != null
-                ? vm.myUser
-                : vm.users[0];
-        }
+        // This selects the vocabulary source, not the student taking the task.
+        // Set it before loading topics so assignment links resolve shared lessons.
+        vm.selectedUser = vm.users[0];
 
         // =====================================================
         // SEARCH / TOPIC

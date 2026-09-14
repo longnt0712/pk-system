@@ -161,7 +161,8 @@
             return hostname === 'ieltsroom.com';
         }
 
-        vm.directorySchoolId = isIeltsRoomDomain() ? 1 : 2;
+        vm.isIeltsRoomDomain = isIeltsRoomDomain();
+        vm.directorySchoolId = vm.isIeltsRoomDomain ? 1 : 2;
         vm.directorySchoolName = vm.directorySchoolId === 1
             ? 'IELTS ROOM'
             : 'TNTT PHÙNG KHOANG';
@@ -526,8 +527,7 @@
         }
 
         function getDefaultStudentRole() {
-            var studentRole = findRoleByName('ROLE_STUDENT');
-            return studentRole ? [studentRole] : [];
+            return getStudentDirectoryRole();
         }
 
         function getStudentDirectoryRole() {
