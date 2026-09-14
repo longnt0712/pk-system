@@ -38,3 +38,7 @@ Thumbs.db
 application-local.properties
 application-local.yml
 application-dev-local.yml
+# Local backup archives
+/core.zip
+/richy/app.zip
+/richy/richy-api.zip
