@@ -3093,6 +3093,15 @@
                 vm.answerLocked = true;
             }
 
+            // A late response for the previous question must not lock the new input.
+            var submittedRoomCode = vm.room.code;
+            function isCurrentGuessRequest() {
+                var current = vm.room && vm.room.currentQuestion;
+                return vm.room && vm.room.code === submittedRoomCode &&
+                    vm.room.status === 'PLAYING' && current &&
+                    current.id === question.id && current.sequence === question.sequence;
+            }
+
             vm.guessSubmitting = true;
             battleService.answerText(
                 vm.room.code,
@@ -3102,6 +3111,7 @@
                 autoSubmitted
             ).then(
                 function (result) {
+                    if (!isCurrentGuessRequest()) { return; }
                     vm.answerLocked = true;
                     vm.lastAnswerCorrect = result.correct === true;
                     vm.lastAnswerMessage =
@@ -3112,6 +3122,7 @@
                         );
                 },
                 function (error) {
+                    if (!isCurrentGuessRequest()) { return; }
                     if (autoSubmitted) {
                         /*
                          * Có thể server vừa chốt câu vì người khác cũng nộp
@@ -3126,7 +3137,7 @@
                     }
                 }
             ).finally(function () {
-                vm.guessSubmitting = false;
+                if (isCurrentGuessRequest()) { vm.guessSubmitting = false; }
             });
         }
 
