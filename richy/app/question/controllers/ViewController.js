@@ -395,15 +395,10 @@
             vm.users.push(vm.myUser);
         }
 
-        if(vm.isRoleUser == true){
-            vm.selectedUser = vm.myUser;
-        }else if(vm.isRoleView == true) {
-            vm.selectedUser = vm.myUser.id != null ? vm.myUser : {
-                id:26,name: 'EM YÊU INH LÍCH'
-            };
-        } else if(vm.myUser.id != null){
-            vm.selectedUser = vm.myUser;
-        }
+        // Đây là nguồn dữ liệu từ vựng, không phải người đang làm bài.
+        // Chọn nguồn dùng chung trước khi tải category/topic để link giao bài
+        // của học sinh luôn tìm thấy topic thuộc EM YÊU INH LÍCH.
+        vm.selectedUser = vm.users[0];
 
         vm.type = {id: 1, name: "Multiple Choices", notice: "T/F/NG or Y/N/NG is also multiple choice question"};
         vm.types = [
