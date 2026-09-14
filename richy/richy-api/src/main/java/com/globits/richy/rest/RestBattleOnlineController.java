@@ -176,6 +176,22 @@ public class RestBattleOnlineController {
         );
     }
 
+    @RequestMapping(value = "/rooms/{roomCode}/guess-answer", method = RequestMethod.POST)
+    public BattleOnlineRoomDto revealGuessAnswer(@PathVariable String roomCode) {
+        return battleOnlineService.revealGuessAnswer(
+                roomCode,
+                currentUsername()
+        );
+    }
+
+    @RequestMapping(value = "/rooms/{roomCode}/guess-next", method = RequestMethod.POST)
+    public BattleOnlineRoomDto nextGuessQuestion(@PathVariable String roomCode) {
+        return battleOnlineService.nextGuessQuestion(
+                roomCode,
+                currentUsername()
+        );
+    }
+
     @RequestMapping(value = "/rooms/{roomCode}/skill", method = RequestMethod.POST)
     public BattleOnlineRoomDto useSkill(
             @PathVariable String roomCode,

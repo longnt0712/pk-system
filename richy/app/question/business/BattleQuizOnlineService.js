@@ -134,14 +134,16 @@
             roomCode,
             questionId,
             answerText,
-            questionSequence
+            questionSequence,
+            autoSubmitted
         ) {
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/answer',
                 {
                     questionId: questionId,
                     answerText: answerText,
-                    questionSequence: questionSequence
+                    questionSequence: questionSequence,
+                    autoSubmitted: autoSubmitted === true
                 }
             ).then(function (response) { return response.data; });
         };
@@ -150,6 +152,20 @@
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/guess-letter',
                 {index: index}
+            ).then(function (response) { return response.data; });
+        };
+
+        self.revealGuessAnswer = function (roomCode) {
+            return $http.post(
+                apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/guess-answer',
+                {}
+            ).then(function (response) { return response.data; });
+        };
+
+        self.nextGuessQuestion = function (roomCode) {
+            return $http.post(
+                apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/guess-next',
+                {}
             ).then(function (response) { return response.data; });
         };
 

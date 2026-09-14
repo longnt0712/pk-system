@@ -7,11 +7,12 @@ import java.util.List;
 public class BattleOnlineRoomSettingsDto implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    /*
-     * Topic được khóa ngay từ lúc CREATE ROOM.
-     */
+    /* Topic được HOST chọn khi tạo phòng hoặc thay đổi trong LOBBY. */
     private List<Long> topicIds = new ArrayList<Long>();
     private List<String> topicNames = new ArrayList<String>();
+
+    /* Chỉ chấp nhận chính HOST hoặc bộ từ dùng chung ID 26. */
+    private Long questionOwnerUserId;
 
     /*
      * CLASSIC | COUNTDOWN | MONEY_BEG | ESCAPE_DUMB_DEMON | GUESS_WORD
@@ -27,6 +28,9 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
 
     /* GUESS_WORD: các mức CEFR được phép xuất hiện. */
     private List<String> guessLevels = new ArrayList<String>();
+
+    /* GUESS_WORD: AUTO | HOST_CONTROL. */
+    private String guessAdvanceMode = "AUTO";
 
     /*
      * COUNTDOWN:
@@ -69,6 +73,14 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
         this.topicNames = topicNames;
     }
 
+    public Long getQuestionOwnerUserId() {
+        return questionOwnerUserId;
+    }
+
+    public void setQuestionOwnerUserId(Long questionOwnerUserId) {
+        this.questionOwnerUserId = questionOwnerUserId;
+    }
+
     public String getMode() {
         return mode;
     }
@@ -99,6 +111,14 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
 
     public void setGuessLevels(List<String> guessLevels) {
         this.guessLevels = guessLevels;
+    }
+
+    public String getGuessAdvanceMode() {
+        return guessAdvanceMode;
+    }
+
+    public void setGuessAdvanceMode(String guessAdvanceMode) {
+        this.guessAdvanceMode = guessAdvanceMode;
     }
 
     public int getCountdownMinutes() {

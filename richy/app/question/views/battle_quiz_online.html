@@ -264,7 +264,15 @@
              ng-if="vm.room">
 
         <div class="battle-online-lesson-copy">
-            <span>📘 BÀI ĐÃ CHỌN</span>
+            <div class="battle-online-lesson-copy-head">
+                <span>📘 BÀI ĐÃ CHỌN</span>
+                <button type="button"
+                        ng-if="vm.room.status === 'LOBBY' && vm.isHost()"
+                        ng-click="vm.openLobbyTopicEditor()">
+                    <i class="fa fa-exchange"></i>
+                    ĐỔI BÀI
+                </button>
+            </div>
 
             <strong>
                 {{vm.formatTopicNames(vm.room.settings.topicNames)}}
@@ -312,6 +320,119 @@
 
         </div>
     </section>
+
+    <div class="battle-online-lobby-topic-backdrop"
+         ng-if="vm.room && vm.room.status === 'LOBBY' && vm.isHost() && vm.lobbyTopicEditorOpen"
+         ng-click="vm.closeLobbyTopicEditor()">
+    <section class="battle-online-card battle-online-lobby-topic-editor"
+             ng-click="$event.stopPropagation()">
+        <div class="battle-online-lobby-topic-editor-head">
+            <div>
+                <small>THAY BÀI TRONG LOBBY</small>
+                <h3>Chọn topic mới</h3>
+            </div>
+            <button type="button"
+                    title="Đóng"
+                    ng-disabled="vm.savingLobbyTopics"
+                    ng-click="vm.closeLobbyTopicEditor()">×</button>
+        </div>
+
+        <div class="battle-online-create-form battle-online-lobby-topic-form">
+            <label>NGUỒN TỪ VỰNG</label>
+            <ui-select ng-model="vm.selectedTopicOwner"
+                       ng-change="vm.chooseTopicOwner()"
+                       ng-disabled="vm.savingLobbyTopics"
+                       theme="bootstrap">
+                <ui-select-match placeholder="Chọn nguồn từ vựng">
+                    {{$select.selected.name}}
+                </ui-select-match>
+                <ui-select-choices repeat="owner in vm.topicOwners | filter:$select.search">
+                    <div ng-bind-html="owner.name | highlight:$select.search"></div>
+                </ui-select-choices>
+            </ui-select>
+
+            <label>GRADE / CATEGORY</label>
+            <ui-select ng-model="vm.searchTopicDto.topicCategory"
+                       ng-change="vm.getTopics()"
+                       ng-disabled="vm.loadingTopicCategories || vm.savingLobbyTopics"
+                       theme="bootstrap">
+                <ui-select-match placeholder="Chọn Grade / Category">
+                    {{$select.selected.name}}
+                </ui-select-match>
+                <ui-select-choices repeat="category in vm.topicCategories | filter:$select.search">
+                    <div ng-bind-html="category.name | highlight:$select.search"></div>
+                </ui-select-choices>
+            </ui-select>
+
+            <label>BÀI TỪ VỰNG</label>
+            <div class="battle-online-topic-loading"
+                 ng-if="vm.loadingTopics || vm.loadingTopicCategories"
+                 role="status" aria-live="polite">
+                <span class="battle-online-topic-spinner" aria-hidden="true"></span>
+                {{vm.loadingTopicCategories ? 'Đang tải category...' : 'Đang tải bài từ vựng...'}}
+            </div>
+            <button type="button"
+                    class="battle-online-topic-load-error"
+                    ng-if="vm.topicLoadError && !vm.loadingTopics"
+                    ng-click="vm.getTopics()">
+                {{vm.topicLoadError}}
+            </button>
+
+            <div class="battle-online-topic-picker-row">
+                <ui-select ng-model="vm.selectedTopicToCreate"
+                           ng-disabled="vm.loadingTopics || vm.loadingTopicCategories || vm.savingLobbyTopics || !vm.topics.length"
+                           theme="bootstrap">
+                    <ui-select-match placeholder="Chọn bài muốn thêm">
+                        {{$select.selected.name}}
+                    </ui-select-match>
+                    <ui-select-choices repeat="topic in vm.topics | filter:$select.search">
+                        <div ng-bind-html="topic.name | highlight:$select.search"></div>
+                    </ui-select-choices>
+                </ui-select>
+
+                <button type="button"
+                        class="battle-online-add-topic-btn"
+                        ng-disabled="vm.loadingTopics || vm.savingLobbyTopics || !vm.selectedTopicToCreate"
+                        ng-click="vm.addTopicToCreate()">
+                    <i class="fa fa-plus"></i>
+                    THÊM BÀI
+                </button>
+            </div>
+
+            <div class="battle-online-selected-topics"
+                 ng-if="vm.selectedTopicsToCreate.length">
+                <div class="battle-online-selected-topic"
+                     ng-repeat="topic in vm.selectedTopicsToCreate track by topic.id">
+                    <span>
+                        <small>{{topic.ownerName}} • {{topic.categoryName}}</small>
+                        <strong>{{topic.name}}</strong>
+                    </span>
+                    <button type="button"
+                            title="Bỏ bài này"
+                            ng-disabled="vm.savingLobbyTopics"
+                            ng-click="vm.removeTopicToCreate(topic)">×</button>
+                </div>
+            </div>
+
+            <div class="battle-online-lobby-topic-actions">
+                <button type="button"
+                        class="is-cancel"
+                        ng-disabled="vm.savingLobbyTopics"
+                        ng-click="vm.closeLobbyTopicEditor()">
+                    HỦY
+                </button>
+                <button type="button"
+                        class="is-save"
+                        ng-disabled="vm.savingLobbyTopics || !vm.selectedTopicsToCreate.length"
+                        ng-click="vm.saveLobbyTopics()">
+                    <i class="fa"
+                       ng-class="vm.savingLobbyTopics ? 'fa-circle-o-notch fa-spin' : 'fa-save'"></i>
+                    {{vm.savingLobbyTopics ? 'ĐANG ĐỔI BÀI...' : 'LƯU VÀ NẠP LẠI BÀI'}}
+                </button>
+            </div>
+        </div>
+    </section>
+    </div>
 
 
     <!-- =====================================================
@@ -603,6 +724,21 @@
                 </div>
             </div>
 
+            <section class="battle-online-lobby-topic-shortcut">
+                <div class="battle-online-lobby-topic-shortcut-icon">📚</div>
+                <div class="battle-online-lobby-topic-shortcut-copy">
+                    <small>TOPIC CỦA PHÒNG</small>
+                    <strong>{{vm.formatTopicNames(vm.room.settings.topicNames)}}</strong>
+                    <span>Có thể đổi topic ngay tại lobby này.</span>
+                </div>
+                <button type="button"
+                        ng-click="vm.openLobbyTopicEditor()"
+                        ng-disabled="vm.savingLobbyTopics">
+                    <i class="fa fa-list-ul"></i>
+                    CHỌN / ĐỔI TOPIC
+                </button>
+            </section>
+
             <button type="button"
                     class="battle-online-spectator-toggle"
                     ng-class="{'is-active': vm.isSpectator()}"
@@ -829,8 +965,26 @@
                 <div class="battle-online-level-picker">
                     <button type="button"
                             ng-repeat="level in vm.guessLevelOptions track by level"
-                            ng-class="{'is-active': vm.isGuessLevelSelected(level)}"
+                            ng-class="{
+                                'is-active': vm.isGuessLevelSelected(level),
+                                'is-inactive': !vm.isGuessLevelSelected(level)
+                            }"
                             ng-click="vm.toggleGuessLevel(level)">{{level}}</button>
+                </div>
+                <label>CÁCH CHUYỂN CÂU</label>
+                <div class="battle-online-guess-advance-picker">
+                    <button type="button"
+                            ng-class="{'is-active': vm.hostSettings.guessAdvanceMode === 'AUTO'}"
+                            ng-click="vm.selectGuessAdvanceMode('AUTO')">
+                        <strong>⚡ TỰ ĐỘNG CHUYỂN CÂU</strong>
+                        <small>Học sinh xem đáp án đúng 3 giây rồi tự sang câu tiếp theo.</small>
+                    </button>
+                    <button type="button"
+                            ng-class="{'is-active': vm.hostSettings.guessAdvanceMode === 'HOST_CONTROL'}"
+                            ng-click="vm.selectGuessAdvanceMode('HOST_CONTROL')">
+                        <strong>🎛️ HOST ĐIỀU KHIỂN</strong>
+                        <small>Hết giờ hiện bài làm; host chủ động hiện đáp án và chuyển câu.</small>
+                    </button>
                 </div>
                 <p>Mỗi 2 giây server mở ngẫu nhiên một chữ cái. Học sinh vẫn phải nhập đầy đủ từ; người đúng nhanh hơn nhận nhiều điểm hơn.</p>
             </div>
@@ -894,7 +1048,7 @@
             <button type="button"
                     class="battle-online-save-btn"
                     ng-click="vm.saveSettings(false)"
-                    ng-disabled="vm.savingSettings">
+                    ng-disabled="vm.savingSettings || vm.savingLobbyTopics">
 
                 💾 LƯU MODE
             </button>
@@ -903,19 +1057,24 @@
             <button type="button"
                     class="battle-online-start-btn"
                     ng-click="vm.startMatch()"
-                    ng-disabled="vm.startingMatch || !vm.room.questionsReady">
+                    ng-disabled="vm.startingMatch || vm.savingLobbyTopics || vm.lobbyTopicEditorOpen || !vm.room.questionsReady">
 
                 🚀 START BATTLE
             </button>
 
 
             <div class="battle-online-host-note"
-                 ng-if="!vm.room.questionsReady">
+                 ng-if="vm.lobbyTopicEditorOpen">
+                Hãy lưu hoặc hủy phần đổi bài trước khi START.
+            </div>
+
+            <div class="battle-online-host-note"
+                 ng-if="!vm.lobbyTopicEditorOpen && !vm.room.questionsReady">
                 Server cần READY tối thiểu 4 từ để START.
             </div>
 
             <div class="battle-online-host-note"
-                 ng-if="vm.room.questionsReady">
+                 ng-if="!vm.lobbyTopicEditorOpen && vm.room.questionsReady">
                 Có thể START. Preload vẫn tiếp tục chạy ẩn nếu bài chưa load hết.
             </div>
 
@@ -1043,7 +1202,8 @@
          PLAYING
          ===================================================== -->
     <div class="battle-online-game-layout"
-         ng-if="vm.room && vm.room.status === 'PLAYING'">
+         ng-if="vm.room && vm.room.status === 'PLAYING'"
+         ng-class="{'is-guess-word-layout': vm.isGuessWordMode()}">
 
         <main class="battle-online-card battle-online-question-card"
               ng-if="!vm.isSpectator() || vm.isGuessWordMode()"
@@ -1215,20 +1375,80 @@
                         {{letter.space ? ' ' : letter.value}}
                     </button>
                 </div>
-                <form class="battle-online-guess-form" ng-submit="vm.submitGuessWord()">
+                <!--
+                    Luôn giữ form trong DOM khi đang có câu GUESS WORD.
+                    Trạng thái realtime có thể về chậm hơn câu hỏi; nếu dùng
+                    ng-if theo guessPhase thì toàn bộ ô nhập sẽ biến mất và
+                    người chơi không còn chỗ để gõ.
+                -->
+                <div class="battle-online-guess-form"
+                     ng-class="{'is-view-only': vm.isSpectator()}">
                     <input type="text" class="form-control"
                            autocomplete="off" autocapitalize="none" spellcheck="false"
                            placeholder="Nhập đầy đủ từ tiếng Anh..."
                            ng-model="vm.guessAnswerText"
-                           ng-disabled="vm.isSpectator() || vm.answerLocked || vm.countdown <= 0">
-                    <button type="submit"
-                            ng-disabled="vm.isSpectator() || vm.answerLocked || vm.countdown <= 0 || !vm.guessAnswerText">
-                        GỬI ĐÁP ÁN
+                           ng-keydown="vm.submitGuessWordOnKeydown($event)"
+                           ng-disabled="vm.isSpectator()"
+                           ng-readonly="vm.answerLocked || vm.guessSubmitting">
+                    <button type="button"
+                            ng-click="vm.submitGuessWord()"
+                            ng-disabled="vm.isSpectator() || vm.answerLocked || vm.guessSubmitting || vm.countdown <= 0 || !vm.guessAnswerText">
+                        {{vm.guessSubmitting ? 'ĐANG GỬI...' : 'GỬI ĐÁP ÁN'}}
                     </button>
-                </form>
-                <p class="battle-online-guess-view-note" ng-if="vm.isSpectator()">
-                    👁️ Chế độ xem: bạn thấy cùng câu hỏi với người chơi nhưng không thể gửi đáp án.
-                </p>
+                </div>
+                <div class="battle-online-guess-auto-submit-note"
+                     ng-if="!vm.isSpectator() && vm.room.guessPhase === 'QUESTION' && !vm.answerLocked">
+                    <span>⏳</span>
+                    Hết giờ, hệ thống sẽ tự nộp từ bạn đang gõ.
+                </div>
+                <div class="battle-online-guess-correct-glow"
+                     ng-if="vm.isSpectator() &&
+                            vm.room.guessAnswerRevealed &&
+                            vm.room.lastGuessWord">
+                    <i class="sparkle sparkle-one" aria-hidden="true">✦</i>
+                    <i class="sparkle sparkle-two" aria-hidden="true">✧</i>
+                    <span>💡 ĐÁP ÁN ĐÚNG</span>
+                    <strong>{{vm.room.lastGuessWord}}</strong>
+                    <i class="sparkle sparkle-three" aria-hidden="true">★</i>
+                </div>
+
+                <!-- HOST_CONTROL: đặt thao tác ngay dưới khu trả lời. -->
+                <div class="battle-online-guess-host-actions"
+                     ng-if="vm.isHost() &&
+                            vm.room.settings.guessAdvanceMode === 'HOST_CONTROL' &&
+                            vm.room.guessPhase === 'WAITING_HOST'">
+                    <button type="button"
+                            class="is-reveal"
+                            ng-if="!vm.room.guessAnswerRevealed"
+                            ng-disabled="vm.revealingGuessAnswer"
+                            ng-click="vm.revealGuessAnswer()">
+                        <span>💡</span>
+                        {{vm.revealingGuessAnswer ? 'ĐANG HIỆN...' : 'HIỆN ĐÁP ÁN ĐÚNG'}}
+                    </button>
+                    <button type="button"
+                            class="is-next"
+                            ng-disabled="vm.advancingGuessQuestion"
+                            ng-click="vm.nextGuessQuestion()">
+                        <span>🚀</span>
+                        {{vm.advancingGuessQuestion
+                            ? 'ĐANG CHUYỂN...'
+                            : (vm.room.currentQuestionIndex >= vm.room.totalQuestions
+                                ? 'KẾT THÚC TRẬN'
+                                : 'CÂU TIẾP THEO')}}
+                    </button>
+                </div>
+            </section>
+
+            <section class="battle-online-guess-answer-card"
+                     ng-if="vm.isGuessWordMode() && !vm.isSpectator() && vm.room.guessPhase === 'REVIEW'">
+                <small>ĐÁP ÁN ĐÚNG</small>
+                <strong>{{vm.room.lastGuessWord}}</strong>
+                <span>Tự động chuyển câu sau {{vm.countdown}} giây</span>
+            </section>
+
+            <section class="battle-online-guess-waiting"
+                     ng-if="vm.isGuessWordMode() && !vm.isHost() && vm.room.guessPhase === 'WAITING_HOST'">
+                ⏳ Đang chờ host chuyển sang câu tiếp theo...
             </section>
 
 
@@ -1266,33 +1486,79 @@
             </div>
 
 
+            <div class="battle-online-guess-feedback-slot"
+                 ng-if="vm.isGuessWordMode()">
+                <div class="battle-online-feedback"
+                     ng-class="vm.lastAnswerCorrect === true ? 'is-correct' : 'is-wrong'"
+                     ng-if="vm.lastAnswerCorrect !== null">
+                    {{vm.lastAnswerCorrect === true ? '✅' : '❌'}} {{vm.lastAnswerMessage}}
+                </div>
+            </div>
+
             <div class="battle-online-feedback is-correct"
-                 ng-if="vm.lastAnswerCorrect === true">
+                 ng-if="!vm.isGuessWordMode() && vm.lastAnswerCorrect === true">
 
                 ✅ {{vm.lastAnswerMessage}}
             </div>
 
 
             <div class="battle-online-feedback is-wrong"
-                 ng-if="vm.lastAnswerCorrect === false">
+                 ng-if="!vm.isGuessWordMode() && vm.lastAnswerCorrect === false">
 
                 ❌ {{vm.lastAnswerMessage}}
             </div>
 
 
             <section class="battle-online-guess-review"
-                     ng-if="vm.isGuessWordMode() && vm.isHost() && vm.room.lastGuessSequence">
+                     ng-if="vm.isGuessWordMode() && vm.isHost() &&
+                            vm.room.settings.guessAdvanceMode === 'HOST_CONTROL' &&
+                            vm.room.guessPhase === 'WAITING_HOST' && vm.room.lastGuessSequence">
                 <div class="battle-online-guess-review-title">
-                    <strong>ĐÁP ÁN CÂU {{vm.room.lastGuessSequence}}: {{vm.room.lastGuessWord}}</strong>
+                    <div>
+                        <small>📋 BẢNG KẾT QUẢ</small>
+                        <strong>
+                            CÂU {{vm.room.lastGuessSequence}}
+                            <span ng-if="vm.room.guessAnswerRevealed">: {{vm.room.lastGuessWord}}</span>
+                        </strong>
+                    </div>
                     <span>{{vm.room.lastGuessMeaning}}</span>
+                </div>
+                <div class="battle-online-guess-review-head">
+                    <span>KẾT QUẢ</span>
+                    <span>HỌC SINH</span>
+                    <span>CÂU TRẢ LỜI</span>
+                    <span>THỨ HẠNG / ĐIỂM</span>
+                </div>
+                <div class="battle-online-guess-review-empty"
+                     ng-if="!vm.room.lastGuessAnswers.length">
+                    Chưa có học sinh gửi đáp án ở câu này.
                 </div>
                 <div class="battle-online-guess-review-row"
                      ng-repeat="answer in vm.room.lastGuessAnswers track by answer.username"
-                     ng-class="{'is-correct': answer.correct, 'is-wrong': !answer.correct}">
-                    <b>{{answer.correct ? '✓' : '✕'}}</b>
-                    <span>{{answer.displayName}}</span>
-                    <strong>{{answer.answer || 'Không trả lời'}}</strong>
-                    <small ng-if="answer.correct">#{{answer.correctOrder}} • +{{answer.scoreDelta}}</small>
+                     ng-class="{
+                         'is-correct': answer.correct,
+                         'is-wrong': !answer.correct,
+                         'is-rank-1': answer.correct && answer.correctOrder === 1,
+                         'is-rank-2': answer.correct && answer.correctOrder === 2,
+                         'is-rank-3': answer.correct && answer.correctOrder === 3
+                     }">
+                    <b class="battle-online-guess-result-icon">{{answer.correct ? '✓' : '✕'}}</b>
+                    <span class="battle-online-guess-result-student">
+                        <i>{{$index + 1}}</i>
+                        {{answer.displayName}}
+                    </span>
+                    <strong class="battle-online-guess-result-answer">
+                        {{answer.answer || 'Không trả lời'}}
+                    </strong>
+                    <small class="battle-online-guess-result-score"
+                           ng-if="answer.correct">
+                        <em ng-if="answer.correctOrder === 1">🥇</em>
+                        <em ng-if="answer.correctOrder === 2">🥈</em>
+                        <em ng-if="answer.correctOrder === 3">🥉</em>
+                        #{{answer.correctOrder}} • +{{answer.scoreDelta}} ĐIỂM
+                    </small>
+                    <small class="battle-online-guess-result-score is-wrong"
+                           ng-if="!answer.correct">THỬ LẠI NHÉ</small>
                 </div>
             </section>
 
@@ -1353,7 +1619,8 @@
                 ⏳ Chờ người chơi khác / câu tiếp theo...
             </div>
 
-            <div class="battle-online-key-help">
+            <div class="battle-online-key-help"
+                 ng-if="!vm.isGuessWordMode()">
                 Phím nhanh:
                 <kbd>1</kbd>
                 <kbd>2</kbd>
@@ -2823,6 +3090,24 @@
         display: block;
     }
 
+    .battle-online-lesson-copy-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .battle-online-lesson-copy-head button {
+        flex: 0 0 auto;
+        padding: 6px 9px;
+        border: 0;
+        border-radius: 9px;
+        background: #eee9ff;
+        color: #6644d8;
+        font-size: 8px;
+        font-weight: 900;
+    }
+
     .battle-online-lesson-copy span {
         color: var(--bo-muted);
 
@@ -2893,6 +3178,174 @@
         transition: width .25s ease;
     }
 
+    .battle-online-lobby-topic-backdrop {
+        position: fixed;
+        z-index: 10050;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 22px;
+        background: rgba(30, 41, 59, .58);
+        backdrop-filter: blur(5px);
+    }
+
+    .battle-online-lobby-topic-editor {
+        width: min(760px, 100%);
+        max-height: calc(100dvh - 44px);
+        margin: 0;
+        padding: 20px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        border: 2px solid #c4b5fd;
+        border-radius: 22px;
+        background:
+            radial-gradient(circle at 95% 5%, rgba(56, 189, 248, .13), transparent 25%),
+            linear-gradient(145deg, #fff, #faf5ff);
+        box-shadow: 0 28px 70px rgba(30, 41, 59, .28);
+    }
+
+    .battle-online-lobby-topic-editor-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .battle-online-lobby-topic-editor-head small {
+        color: #7c3aed;
+        font-size: 8px;
+        font-weight: 900;
+        letter-spacing: .08em;
+    }
+
+    .battle-online-lobby-topic-editor-head h3 {
+        margin: 2px 0 0;
+        color: var(--bo-text);
+        font-size: 17px;
+        font-weight: 900;
+    }
+
+    .battle-online-lobby-topic-editor-head > button {
+        width: 31px;
+        height: 31px;
+        border: 0;
+        border-radius: 50%;
+        background: #f1f5f9;
+        color: #64748b;
+        font-size: 20px;
+        line-height: 1;
+    }
+
+    .battle-online-lobby-topic-form {
+        max-width: 780px;
+        margin: 4px auto 0;
+    }
+
+    .battle-online-lobby-topic-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 13px;
+    }
+
+    .battle-online-lobby-topic-actions button {
+        min-height: 40px;
+        padding: 0 15px;
+        border: 0;
+        border-radius: 11px;
+        font-size: 9px;
+        font-weight: 900;
+    }
+
+    .battle-online-lobby-topic-actions .is-cancel {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .battle-online-lobby-topic-shortcut {
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr);
+        gap: 9px 11px;
+        align-items: center;
+        margin: 0 0 12px;
+        padding: 12px;
+        border: 2px solid #bfdbfe;
+        border-radius: 16px;
+        background:
+            radial-gradient(circle at 100% 0, rgba(250, 204, 21, .22), transparent 32%),
+            linear-gradient(135deg, #eff6ff, #faf5ff);
+        box-shadow: 0 8px 18px rgba(79, 70, 229, .08);
+    }
+
+    .battle-online-lobby-topic-shortcut-icon {
+        width: 42px;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        grid-row: span 2;
+        border-radius: 13px;
+        background: #fff;
+        font-size: 22px;
+        box-shadow: 0 6px 14px rgba(79, 70, 229, .12);
+    }
+
+    .battle-online-lobby-topic-shortcut-copy {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .battle-online-lobby-topic-shortcut-copy small {
+        color: #7c3aed;
+        font-size: 8px;
+        font-weight: 950;
+        letter-spacing: .07em;
+    }
+
+    .battle-online-lobby-topic-shortcut-copy strong {
+        overflow: hidden;
+        color: #172554;
+        font-size: 11px;
+        line-height: 1.35;
+        text-overflow: ellipsis;
+    }
+
+    .battle-online-lobby-topic-shortcut-copy span {
+        color: #64748b;
+        font-size: 9px;
+        font-weight: 650;
+    }
+
+    .battle-online-lobby-topic-shortcut > button {
+        grid-column: 1 / -1;
+        min-height: 39px;
+        border: 0;
+        border-radius: 11px;
+        color: #fff;
+        background: linear-gradient(135deg, #7c3aed, #4f46e5, #2563eb);
+        font-size: 10px;
+        font-weight: 950;
+        letter-spacing: .03em;
+        box-shadow: 0 8px 18px rgba(79, 70, 229, .22);
+    }
+
+    .battle-online-lobby-topic-shortcut > button:not(:disabled):hover {
+        transform: translateY(-1px);
+        box-shadow: 0 11px 22px rgba(79, 70, 229, .28);
+    }
+
+    .battle-online-lobby-topic-shortcut > button:disabled {
+        opacity: .55;
+    }
+
+    .battle-online-lobby-topic-actions .is-save {
+        background: linear-gradient(135deg, #7c3aed, #4f46e5);
+        color: #fff;
+    }
+
 
     /* =====================================================
        LOBBY
@@ -2948,11 +3401,19 @@
 
         .battle-online-question-card {
             box-sizing: border-box;
-            height: 620px;
             min-height: 620px;
-            max-height: 620px;
-            overflow-x: hidden;
-            overflow-y: auto;
+            height: auto;
+            max-height: none;
+            overflow: visible;
+        }
+
+        /* GUESS WORD có bảng kết quả dài: để trang cuộn tự nhiên. */
+        .battle-online-game-layout.is-guess-word-layout
+        .battle-online-question-card {
+            height: auto;
+            min-height: 620px;
+            max-height: none;
+            overflow: visible;
         }
     }
 
@@ -6576,6 +7037,18 @@
     }
 
     @media (max-width: 560px) {
+        .battle-online-lobby-topic-backdrop {
+            align-items: flex-start;
+            padding: 8px;
+        }
+
+        .battle-online-lobby-topic-editor {
+            width: 100%;
+            max-height: calc(100dvh - 16px);
+            padding: 14px;
+            border-radius: 17px;
+        }
+
         .battle-online-qr-modal-backdrop {
             padding: 6px;
         }
@@ -6680,6 +7153,15 @@
             grid-template-columns: 1fr;
 
             gap: 7px;
+        }
+
+        .battle-online-lobby-topic-editor {
+            padding: 12px;
+        }
+
+        .battle-online-lobby-topic-actions {
+            display: grid;
+            grid-template-columns: 1fr;
         }
 
         .battle-online-player-grid {
@@ -6905,6 +7387,22 @@
         background: linear-gradient(135deg, #faf5ff, #eef2ff);
     }
 
+    .battle-online-mode-card.is-active.is-guess-word {
+        border-color: #5b21b6;
+        background: linear-gradient(135deg, #6d28d9, #4f46e5);
+        color: #fff;
+        box-shadow: 0 13px 30px rgba(91, 33, 182, .3);
+    }
+
+    .battle-online-mode-card.is-active.is-guess-word strong,
+    .battle-online-mode-card.is-active.is-guess-word small {
+        color: #fff;
+    }
+
+    .battle-online-mode-card.is-active.is-guess-word small {
+        opacity: .88;
+    }
+
     .battle-online-level-picker {
         display: flex;
         flex-wrap: wrap;
@@ -6913,6 +7411,7 @@
     }
 
     .battle-online-level-picker button {
+        position: relative;
         min-width: 48px;
         padding: 8px 12px;
         border: 1px solid #c7d2fe;
@@ -6927,6 +7426,63 @@
         background: #7c3aed;
         color: #fff;
         box-shadow: 0 7px 18px rgba(124, 58, 237, .24);
+    }
+
+    .battle-online-level-picker button.is-inactive {
+        border-color: #fca5a5;
+        background: #fff7f7;
+        color: #64748b;
+        overflow: hidden;
+    }
+
+    .battle-online-level-picker button.is-inactive::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 8px;
+        right: 8px;
+        height: 2px;
+        border-radius: 999px;
+        background: #ef4444;
+        transform: rotate(-35deg);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, .75);
+        pointer-events: none;
+    }
+
+    .battle-online-guess-advance-picker {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin: 9px 0 14px;
+    }
+
+    .battle-online-guess-advance-picker > button {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        min-height: 82px;
+        padding: 13px 15px;
+        border: 1px solid #cbd5e1;
+        border-radius: 14px;
+        background: #fff;
+        color: #334155;
+        text-align: left;
+    }
+
+    .battle-online-guess-advance-picker > button strong {
+        color: #172554;
+        font-size: 13px;
+    }
+
+    .battle-online-guess-advance-picker > button small {
+        color: #64748b;
+        line-height: 1.35;
+    }
+
+    .battle-online-guess-advance-picker > button.is-active {
+        border-color: #7c3aed;
+        background: #f3e8ff;
+        box-shadow: 0 0 0 2px rgba(124, 58, 237, .13);
     }
 
     .battle-online-guess-timer {
@@ -6947,23 +7503,70 @@
     }
 
     .battle-online-guess-stage {
-        padding: 28px 20px;
+        position: relative;
+        overflow: hidden;
+        padding: 34px 24px 28px;
         text-align: center;
-        border: 1px solid #ddd6fe;
-        border-radius: 22px;
-        background: radial-gradient(circle at top, #faf5ff, #fff 62%);
+        border: 2px solid #c4b5fd;
+        border-radius: 26px;
+        background:
+            radial-gradient(circle at 8% 12%, rgba(253, 224, 71, .28), transparent 17%),
+            radial-gradient(circle at 94% 12%, rgba(56, 189, 248, .18), transparent 20%),
+            linear-gradient(145deg, #fffdf5 0%, #f5f3ff 48%, #eff6ff 100%);
+        box-shadow:
+            0 15px 34px rgba(99, 102, 241, .12),
+            inset 0 1px 0 rgba(255, 255, 255, .92);
+    }
+
+    .battle-online-guess-stage::before,
+    .battle-online-guess-stage::after {
+        position: absolute;
+        z-index: 0;
+        color: rgba(124, 58, 237, .13);
+        font-size: 46px;
+        line-height: 1;
+        pointer-events: none;
+    }
+
+    .battle-online-guess-stage::before {
+        content: '✦';
+        top: 18px;
+        left: 24px;
+        transform: rotate(-12deg);
+    }
+
+    .battle-online-guess-stage::after {
+        content: '★';
+        right: 28px;
+        bottom: 22px;
+        color: rgba(14, 165, 233, .12);
+        transform: rotate(14deg);
+    }
+
+    .battle-online-guess-stage > * {
+        position: relative;
+        z-index: 1;
     }
 
     .battle-online-guess-stage > small {
-        color: #7c3aed;
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        color: #6d28d9;
+        background: rgba(237, 233, 254, .88);
         font-weight: 900;
         letter-spacing: .08em;
     }
 
     .battle-online-guess-stage h2 {
-        margin: 12px 0 24px;
+        margin: 15px 0 25px;
         color: #172554;
-        font-size: clamp(25px, 4vw, 44px);
+        font-size: clamp(28px, 4vw, 46px);
+        font-weight: 950;
+        line-height: 1.16;
+        text-wrap: balance;
     }
 
     .battle-online-guess-letters {
@@ -6977,14 +7580,15 @@
     .battle-online-guess-letters button {
         width: 42px;
         height: 50px;
-        border: 0;
-        border-bottom: 4px solid #6366f1;
-        border-radius: 10px 10px 4px 4px;
-        background: #eef2ff;
+        border: 1px solid #ddd6fe;
+        border-bottom: 4px solid #7c3aed;
+        border-radius: 12px 12px 6px 6px;
+        background: linear-gradient(180deg, #fff, #ede9fe);
         color: #312e81;
         font-size: 25px;
         font-weight: 900;
         text-transform: uppercase;
+        box-shadow: 0 7px 15px rgba(99, 102, 241, .12);
     }
 
     .battle-online-guess-letters button.is-hidden {
@@ -7003,13 +7607,29 @@
         gap: 10px;
         max-width: 720px;
         margin: 0 auto;
+        padding: 7px;
+        border: 1px solid rgba(196, 181, 253, .8);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, .82);
+        box-shadow: 0 10px 24px rgba(79, 70, 229, .08);
     }
 
     .battle-online-guess-form input {
         height: 52px;
+        border: 0;
+        border-radius: 11px;
+        color: #172554;
+        background: #fff;
         font-size: 20px;
         text-align: center;
         font-weight: 700;
+        box-shadow: inset 0 0 0 1px #dbeafe;
+    }
+
+    .battle-online-guess-form input:focus {
+        box-shadow:
+            inset 0 0 0 2px #8b5cf6,
+            0 0 0 4px rgba(139, 92, 246, .12);
     }
 
     .battle-online-guess-form button {
@@ -7017,53 +7637,490 @@
         padding: 0 22px;
         border: 0;
         border-radius: 12px;
-        background: linear-gradient(135deg, #7c3aed, #4f46e5);
+        background: linear-gradient(135deg, #8b5cf6, #4f46e5 62%, #2563eb);
         color: #fff;
         font-weight: 900;
+        letter-spacing: .02em;
+        box-shadow: 0 9px 20px rgba(79, 70, 229, .25);
     }
 
-    .battle-online-guess-view-note {
-        margin: 16px 0 0;
-        color: #64748b;
-        font-weight: 700;
+    .battle-online-guess-form button:not(:disabled):hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 24px rgba(79, 70, 229, .32);
+    }
+
+    .battle-online-guess-form button:disabled {
+        opacity: .55;
+        box-shadow: none;
+    }
+
+    .battle-online-guess-auto-submit-note {
+        width: fit-content;
+        max-width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin: 9px auto 0;
+        padding: 7px 13px;
+        border: 1px dashed #a5b4fc;
+        border-radius: 999px;
+        color: #4338ca;
+        background: linear-gradient(90deg, #eef2ff, #f5f3ff, #ecfeff);
+        font-size: 12px;
+        font-weight: 850;
+        box-shadow: 0 5px 15px rgba(99, 102, 241, .08);
+    }
+
+    .battle-online-guess-auto-submit-note span {
+        display: inline-flex;
+        animation: battle-online-auto-submit-pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes battle-online-auto-submit-pulse {
+        50% { transform: scale(1.18) rotate(8deg); }
+    }
+
+    .battle-online-guess-correct-glow {
+        position: relative;
+        width: min(520px, 100%);
+        min-height: 78px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        margin: 16px auto 0;
+        padding: 12px 48px;
+        overflow: hidden;
+        border: 2px solid #facc15;
+        border-radius: 18px;
+        color: #713f12;
+        background:
+            radial-gradient(circle at 50% 0, rgba(255, 255, 255, .95), transparent 48%),
+            linear-gradient(135deg, #fef9c3, #fde68a 54%, #fef3c7);
+        box-shadow:
+            0 0 0 5px rgba(250, 204, 21, .12),
+            0 0 28px rgba(245, 158, 11, .38),
+            inset 0 1px 0 #fff;
+        animation: battle-online-answer-glow 1.8s ease-in-out infinite;
+    }
+
+    .battle-online-guess-correct-glow > span {
+        color: #a16207;
+        font-size: 10px;
+        font-weight: 950;
+        letter-spacing: .09em;
+    }
+
+    .battle-online-guess-correct-glow > strong {
+        color: #4c1d95;
+        font-size: clamp(23px, 3vw, 34px);
+        font-weight: 950;
+        line-height: 1.12;
+        text-transform: uppercase;
+        text-shadow:
+            0 0 8px rgba(255, 255, 255, .95),
+            0 0 17px rgba(139, 92, 246, .38);
+    }
+
+    .battle-online-guess-correct-glow .sparkle {
+        position: absolute;
+        color: #f59e0b;
+        line-height: 1;
+        text-shadow: 0 0 9px rgba(250, 204, 21, .88);
+        animation: battle-online-answer-sparkle 1.35s ease-in-out infinite;
+    }
+
+    .battle-online-guess-correct-glow .sparkle-one {
+        top: 13px;
+        left: 21px;
+        font-size: 25px;
+    }
+
+    .battle-online-guess-correct-glow .sparkle-two {
+        right: 25px;
+        bottom: 12px;
+        color: #8b5cf6;
+        font-size: 21px;
+        animation-delay: .38s;
+    }
+
+    .battle-online-guess-correct-glow .sparkle-three {
+        top: 11px;
+        right: 18px;
+        color: #22c55e;
+        font-size: 15px;
+        animation-delay: .72s;
+    }
+
+    @keyframes battle-online-answer-glow {
+        0%, 100% {
+            box-shadow:
+                0 0 0 5px rgba(250, 204, 21, .10),
+                0 0 22px rgba(245, 158, 11, .28),
+                inset 0 1px 0 #fff;
+        }
+        50% {
+            box-shadow:
+                0 0 0 7px rgba(139, 92, 246, .12),
+                0 0 38px rgba(245, 158, 11, .52),
+                inset 0 1px 0 #fff;
+        }
+    }
+
+    @keyframes battle-online-answer-sparkle {
+        0%, 100% {
+            opacity: .35;
+            transform: scale(.72) rotate(-12deg);
+        }
+        50% {
+            opacity: 1;
+            transform: scale(1.22) rotate(12deg);
+        }
+    }
+
+    .battle-online-guess-host-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        max-width: 720px;
+        margin: 16px auto 0;
+        padding-top: 16px;
+        border-top: 1px dashed #c4b5fd;
+    }
+
+    .battle-online-guess-host-actions button {
+        min-height: 54px;
+        padding: 10px 16px;
+        border: 0;
+        border-radius: 15px;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 950;
+        letter-spacing: .025em;
+        box-shadow: 0 10px 22px rgba(49, 46, 129, .18);
+    }
+
+    .battle-online-guess-host-actions button span {
+        margin-right: 6px;
+        font-size: 19px;
+    }
+
+    .battle-online-guess-host-actions .is-reveal {
+        background: linear-gradient(135deg, #f59e0b, #f97316);
+    }
+
+    .battle-online-guess-host-actions .is-next {
+        background: linear-gradient(135deg, #06b6d4, #2563eb);
+    }
+
+    .battle-online-guess-host-actions button:not(:disabled):hover {
+        transform: translateY(-2px);
+        filter: saturate(1.08);
+    }
+
+    .battle-online-guess-host-actions button:disabled {
+        opacity: .58;
+    }
+
+    .battle-online-guess-feedback-slot {
+        min-height: 58px;
+        padding-top: 10px;
+    }
+
+    .battle-online-guess-feedback-slot .battle-online-feedback {
+        margin: 0;
+    }
+
+    .battle-online-guess-answer-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        margin-top: 16px;
+        padding: 20px;
+        border: 1px solid #86efac;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #f0fdf4, #ecfeff);
+        color: #166534;
+        text-align: center;
+    }
+
+    .battle-online-guess-answer-card small {
+        font-weight: 900;
+        letter-spacing: .1em;
+    }
+
+    .battle-online-guess-answer-card strong {
+        color: #14532d;
+        font-size: clamp(28px, 5vw, 52px);
+        text-transform: uppercase;
+    }
+
+    .battle-online-guess-answer-card span,
+    .battle-online-guess-waiting {
+        font-weight: 800;
+    }
+
+    .battle-online-guess-waiting {
+        margin-top: 16px;
+        padding: 16px;
+        border-radius: 14px;
+        background: #f1f5f9;
+        color: #475569;
+        text-align: center;
     }
 
     .battle-online-guess-review {
-        margin-top: 16px;
-        padding: 14px;
-        border: 1px solid #cbd5e1;
-        border-radius: 16px;
-        background: #f8fafc;
+        position: relative;
+        overflow: hidden;
+        margin-top: 22px;
+        padding: 20px;
+        border: 2px solid transparent;
+        border-radius: 24px;
+        background:
+            linear-gradient(#fbfdff, #f8f7ff) padding-box,
+            linear-gradient(115deg, #22d3ee, #6366f1, #d946ef, #f59e0b) border-box;
+        box-shadow:
+            0 18px 38px rgba(79, 70, 229, .14),
+            0 3px 0 rgba(255, 255, 255, .9) inset;
+    }
+
+    .battle-online-guess-review::before {
+        content: '';
+        position: absolute;
+        inset: 0 0 auto;
+        height: 7px;
+        background: linear-gradient(90deg, #22d3ee, #6366f1 32%, #d946ef 65%, #fbbf24);
+        background-size: 180% 100%;
+        animation: battle-online-review-rainbow 5s linear infinite;
+    }
+
+    .battle-online-guess-review::after {
+        content: '';
+        position: absolute;
+        z-index: 0;
+        width: 170px;
+        height: 170px;
+        top: -90px;
+        right: -65px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(217, 70, 239, .18), transparent 68%);
+        pointer-events: none;
+    }
+
+    @keyframes battle-online-review-rainbow {
+        to { background-position: 180% 0; }
     }
 
     .battle-online-guess-review-title {
+        position: relative;
+        z-index: 1;
         display: flex;
+        align-items: flex-end;
         justify-content: space-between;
         gap: 12px;
-        margin-bottom: 10px;
+        margin-bottom: 14px;
         color: #172554;
     }
 
-    .battle-online-guess-review-row {
-        display: grid;
-        grid-template-columns: 28px minmax(110px, 1fr) minmax(120px, 2fr) auto;
-        gap: 8px;
-        align-items: center;
-        padding: 8px 10px;
-        border-radius: 10px;
-        margin-top: 6px;
+    .battle-online-guess-review-title > div {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
     }
 
-    .battle-online-guess-review-row.is-correct { background: #dcfce7; color: #166534; }
-    .battle-online-guess-review-row.is-wrong { background: #fee2e2; color: #991b1b; }
+    .battle-online-guess-review-title small {
+        color: #7c3aed;
+        font-weight: 950;
+        letter-spacing: .07em;
+    }
+
+    .battle-online-guess-review-title strong {
+        font-size: 19px;
+    }
+
+    .battle-online-guess-review-title > span {
+        color: #475569;
+        font-weight: 800;
+    }
+
+    .battle-online-guess-review-head,
+    .battle-online-guess-review-row {
+        display: grid;
+        grid-template-columns: 86px minmax(110px, 1fr) minmax(120px, 2fr) minmax(120px, auto);
+        gap: 10px;
+        align-items: center;
+    }
+
+    .battle-online-guess-review-head {
+        position: relative;
+        z-index: 1;
+        padding: 10px 13px;
+        border-radius: 12px;
+        color: #fff;
+        background: linear-gradient(110deg, #4f46e5, #7c3aed 48%, #0891b2);
+        font-size: 10px;
+        font-weight: 950;
+        letter-spacing: .045em;
+        box-shadow: 0 8px 18px rgba(79, 70, 229, .18);
+    }
+
+    .battle-online-guess-review-row {
+        position: relative;
+        z-index: 1;
+        overflow: hidden;
+        min-height: 48px;
+        margin-top: 9px;
+        padding: 10px 13px;
+        border: 1px solid transparent;
+        border-radius: 15px;
+        box-shadow: 0 6px 15px rgba(15, 23, 42, .055);
+        transition: transform .18s ease, box-shadow .18s ease;
+    }
+
+    .battle-online-guess-review-row:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 22px rgba(79, 70, 229, .12);
+    }
+
+    .battle-online-guess-review-row.is-correct {
+        border-color: #6ee7b7;
+        background: linear-gradient(105deg, #ecfdf5, #f0fdfa 54%, #ecfeff);
+        color: #065f46;
+    }
+
+    .battle-online-guess-review-row.is-wrong {
+        border-color: #fda4af;
+        background: linear-gradient(105deg, #fff1f2, #fff7ed 68%, #fefce8);
+        color: #9f1239;
+    }
+
+    .battle-online-guess-review-row.is-rank-1 {
+        border-color: #f59e0b;
+        background: linear-gradient(105deg, #fef3c7, #fff7ed 52%, #fffbeb);
+        box-shadow: 0 8px 22px rgba(245, 158, 11, .18);
+    }
+
+    .battle-online-guess-review-row.is-rank-2 {
+        border-color: #94a3b8;
+        background: linear-gradient(105deg, #f1f5f9, #f8fafc 52%, #eef2ff);
+    }
+
+    .battle-online-guess-review-row.is-rank-3 {
+        border-color: #fb923c;
+        background: linear-gradient(105deg, #ffedd5, #fff7ed 55%, #fef2f2);
+    }
+
+    .battle-online-guess-result-icon {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        color: #fff;
+        box-shadow: 0 5px 12px rgba(15, 23, 42, .12);
+    }
+
+    .battle-online-guess-review-row.is-correct
+    .battle-online-guess-result-icon {
+        background: #16a34a;
+    }
+
+    .battle-online-guess-review-row.is-wrong
+    .battle-online-guess-result-icon {
+        background: linear-gradient(135deg, #f43f5e, #e11d48);
+    }
+
+    .battle-online-guess-review-row.is-correct
+    .battle-online-guess-result-icon {
+        background: linear-gradient(135deg, #34d399, #059669);
+    }
+
+    .battle-online-guess-review-row.is-rank-1
+    .battle-online-guess-result-icon {
+        background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    }
+
+    .battle-online-guess-result-student {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 900;
+    }
+
+    .battle-online-guess-result-student i {
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        flex: 0 0 24px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        color: #4f46e5;
+        background: rgba(255, 255, 255, .78);
+        font-size: 10px;
+        font-style: normal;
+        box-shadow: 0 3px 8px rgba(15, 23, 42, .09);
+    }
+
+    .battle-online-guess-result-answer {
+        width: fit-content;
+        max-width: 100%;
+        padding: 6px 11px;
+        border: 1px solid rgba(255, 255, 255, .84);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, .67);
+        color: inherit;
+        word-break: break-word;
+        box-shadow: inset 0 1px 0 #fff;
+    }
+
+    .battle-online-guess-result-score {
+        width: fit-content;
+        padding: 6px 10px;
+        border-radius: 999px;
+        color: #fff;
+        background: linear-gradient(135deg, #8b5cf6, #4f46e5);
+        font-weight: 950;
+        letter-spacing: .025em;
+        box-shadow: 0 5px 12px rgba(79, 70, 229, .2);
+    }
+
+    .battle-online-guess-result-score em {
+        margin-right: 3px;
+        font-style: normal;
+    }
+
+    .battle-online-guess-result-score.is-wrong {
+        background: linear-gradient(135deg, #fb7185, #f97316);
+        box-shadow: 0 5px 12px rgba(244, 63, 94, .17);
+    }
+
+    .battle-online-guess-review-empty {
+        margin-top: 8px;
+        padding: 18px;
+        border: 1px dashed #a5b4fc;
+        border-radius: 13px;
+        color: #64748b;
+        background: rgba(255, 255, 255, .64);
+        text-align: center;
+        font-weight: 750;
+    }
 
     @media (max-width: 640px) {
+        .battle-online-guess-advance-picker { grid-template-columns: 1fr; }
+        .battle-online-guess-stage { padding: 24px 12px 20px; }
         .battle-online-guess-form { flex-direction: column; }
         .battle-online-guess-form button { min-height: 48px; }
+        .battle-online-guess-host-actions { grid-template-columns: 1fr; }
         .battle-online-guess-letters button { width: 33px; height: 42px; font-size: 20px; }
-        .battle-online-guess-review-row { grid-template-columns: 24px 1fr; }
-        .battle-online-guess-review-row strong,
-        .battle-online-guess-review-row small { grid-column: 2; }
+        .battle-online-guess-review-head { display: none; }
+        .battle-online-guess-review-row { grid-template-columns: 36px 1fr; }
+        .battle-online-guess-review-row .battle-online-guess-result-answer,
+        .battle-online-guess-review-row .battle-online-guess-result-score { grid-column: 2; }
+        .battle-online-guess-review-title { align-items: flex-start; flex-direction: column; }
     }
 
     @media (prefers-reduced-motion: reduce) {

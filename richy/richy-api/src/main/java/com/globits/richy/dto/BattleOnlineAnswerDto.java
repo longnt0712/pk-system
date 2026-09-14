@@ -10,6 +10,12 @@ public class BattleOnlineAnswerDto implements Serializable {
     private String answerText;
     private long questionSequence;
 
+    /*
+     * GUESS_WORD: frontend tự nộp phần học sinh đang gõ khi đồng hồ về 0.
+     * Server chỉ cho phép cờ này trong khoảng grace rất ngắn sau hạn.
+     */
+    private boolean autoSubmitted;
+
     public BattleOnlineAnswerDto() {
     }
 
@@ -43,5 +49,13 @@ public class BattleOnlineAnswerDto implements Serializable {
 
     public void setQuestionSequence(long questionSequence) {
         this.questionSequence = questionSequence;
+    }
+
+    public boolean isAutoSubmitted() {
+        return autoSubmitted;
+    }
+
+    public void setAutoSubmitted(boolean autoSubmitted) {
+        this.autoSubmitted = autoSubmitted;
     }
 }

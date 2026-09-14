@@ -67,6 +67,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String MODE_ESCAPE_DUMB_DEMON = "ESCAPE_DUMB_DEMON";
     private static final String MODE_GUESS_WORD = "GUESS_WORD";
 
+    private static final String GUESS_ADVANCE_AUTO = "AUTO";
+    private static final String GUESS_ADVANCE_HOST_CONTROL = "HOST_CONTROL";
+    private static final String GUESS_PHASE_QUESTION = "QUESTION";
+    private static final String GUESS_PHASE_REVIEW = "REVIEW";
+    private static final String GUESS_PHASE_WAITING_HOST = "WAITING_HOST";
+    private static final long GUESS_REVIEW_DURATION_MS = 3000L;
+    private static final long GUESS_AUTO_SUBMIT_GRACE_MS = 1500L;
+
     private static final String SKILL_FREEZE = "FREEZE";
     private static final String SKILL_INVERT = "INVERT";
     private static final String SKILL_BREAK_STREAK = "BREAK_STREAK";
@@ -245,6 +253,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.code = newRoomCode();
         room.status = LOBBY;
         room.hostUsername = username;
+        room.hostUserId = identity.userId;
         room.ownerUserId = questionOwnerUserId;
 
         room.settings.topicIds = topicIds;
@@ -255,6 +264,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.settings.questionCount = 20;
         room.settings.secondsPerQuestion = 10;
         room.settings.guessLevels = allGuessLevels();
+        room.settings.guessAdvanceMode = GUESS_ADVANCE_AUTO;
         room.settings.countdownMinutes = 5;
         room.settings.wrongAnswerFreezeSeconds =
                 DEFAULT_WRONG_ANSWER_FREEZE_SECONDS;
@@ -262,6 +272,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.settings.doubleActionUsername = null;
 
         PlayerState host = new PlayerState();
+        host.userId = identity.userId;
         host.username = username;
         host.displayName = identity.displayName;
         host.host = true;
@@ -346,6 +357,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     room.players.get(username);
 
             if (existing != null) {
+                existing.userId = identity.userId;
                 existing.connected = true;
                 existing.displayName = identity.displayName;
 
@@ -407,6 +419,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 detachFromOldRooms(username);
 
                 PlayerState player = new PlayerState();
+                player.userId = identity.userId;
                 player.username = username;
                 player.displayName = identity.displayName;
                 player.connected = true;
@@ -788,10 +801,38 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
-            /*
-             * Topic đã khóa từ lúc CREATE.
-             * Trong lobby chỉ đổi mode và các tham số của mode.
-             */
+            List<Long> requestedTopicIds =
+                    cleanTopicIds(settings.getTopicIds());
+
+            if (!requestedTopicIds.isEmpty()) {
+                Long requestedOwnerUserId =
+                        settings.getQuestionOwnerUserId() != null
+                                ? settings.getQuestionOwnerUserId()
+                                : room.ownerUserId;
+
+                Long resolvedOwnerUserId =
+                        resolveQuestionOwnerUserId(
+                                room.hostUserId,
+                                requestedOwnerUserId
+                        );
+
+                List<String> requestedTopicNames =
+                        cleanTopicNames(settings.getTopicNames());
+
+                boolean topicsChanged =
+                        !requestedTopicIds.equals(room.settings.topicIds) ||
+                        !resolvedOwnerUserId.equals(room.ownerUserId);
+
+                room.settings.topicIds = requestedTopicIds;
+                room.settings.topicNames = requestedTopicNames;
+                room.ownerUserId = resolvedOwnerUserId;
+
+                if (topicsChanged) {
+                    resetTopicPreloadLocked(room);
+                    schedulePreload(room.code, 0L);
+                }
+            }
+
             room.settings.mode =
                     normalizeMode(settings.getMode());
 
@@ -811,6 +852,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             room.settings.guessLevels =
                     normalizeGuessLevels(settings.getGuessLevels());
+
+            room.settings.guessAdvanceMode =
+                    normalizeGuessAdvanceMode(settings.getGuessAdvanceMode());
 
             room.settings.countdownMinutes =
                     clamp(
@@ -957,6 +1001,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             room.lastGuessMeaning = null;
             room.lastGuessSequence = 0L;
             room.lastGuessAnswers.clear();
+            room.guessPhase = GUESS_PHASE_QUESTION;
+            room.guessAnswerRevealed = false;
+            room.guessReviewEndsAt = 0L;
 
             for (PlayerState player : room.players.values()) {
                 resetPlayerMatchState(player);
@@ -1091,6 +1138,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.lastGuessMeaning = null;
         room.lastGuessSequence = 0L;
         room.lastGuessAnswers.clear();
+        room.guessPhase = GUESS_PHASE_QUESTION;
+        room.guessAnswerRevealed = false;
+        room.guessReviewEndsAt = 0L;
         startClassicQuestionLocked(room);
     }
 
@@ -1221,14 +1271,23 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             BattleOnlineAnswerDto answerDto) {
 
         BattleOnlineAnswerResultDto result = new BattleOnlineAnswerResultDto();
+        boolean advanceSoon;
+        int expectedIndex;
 
         synchronized (room) {
             requirePlaying(room);
             PlayerState player = requirePlayer(room, username);
             requireActivePlayer(player);
             QuestionState question = currentClassicQuestionLocked(room);
+            long now = System.currentTimeMillis();
+            boolean autoSubmitted =
+                    answerDto != null && answerDto.isAutoSubmitted();
+            long answerDeadline =
+                    room.questionEndsAt +
+                    (autoSubmitted ? GUESS_AUTO_SUBMIT_GRACE_MS : 0L);
 
-            if (question == null || System.currentTimeMillis() > room.questionEndsAt) {
+            if (!GUESS_PHASE_QUESTION.equals(room.guessPhase) ||
+                question == null || now > answerDeadline) {
                 throw new BattleOnlineException(
                         HttpStatus.CONFLICT,
                         "Câu hỏi đã hết giờ."
@@ -1276,7 +1335,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         player,
                         false,
                         false,
-                        System.currentTimeMillis()
+                        now
                 );
             }
 
@@ -1301,9 +1360,26 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             } else {
                 result.setMessage("CHƯA ĐÚNG. Đáp án sẽ hiện khi hết giờ.");
             }
+
+            expectedIndex = room.classicQuestionIndex;
+            advanceSoon = allConnectedClassicAnsweredLocked(room);
         }
 
         broadcastGeneric(room);
+
+        /*
+         * Không bắt cả phòng chờ hết đồng hồ: khi toàn bộ người đang chơi
+         * đã nộp, kết thúc câu sớm. HOST_CONTROL sẽ chuyển sang WAITING_HOST
+         * để host có thể hiện đáp án; AUTO sẽ hiện đáp án 3 giây.
+         */
+        if (advanceSoon) {
+            scheduleClassicAdvance(
+                    room.code,
+                    expectedIndex,
+                    250L
+            );
+        }
+
         return result;
     }
 
@@ -1329,6 +1405,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
+            if (!GUESS_PHASE_QUESTION.equals(room.guessPhase)) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Câu hỏi đã kết thúc."
+                );
+            }
+
             QuestionState question = currentClassicQuestionLocked(room);
             int index = revealDto != null ? revealDto.getIndex() : -1;
             if (question == null || index < 0 || index >= question.correctText.length() ||
@@ -1340,6 +1423,68 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             room.revealedGuessIndices.add(index);
+            result = snapshotLocked(room, username);
+        }
+
+        broadcastGeneric(room);
+        return result;
+    }
+
+
+    @Override
+    public BattleOnlineRoomDto revealGuessAnswer(
+            String roomCode,
+            String username) {
+
+        username = requireUsername(username);
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto result;
+
+        synchronized (room) {
+            requirePlaying(room);
+            requireHost(room, username);
+
+            if (!MODE_GUESS_WORD.equals(room.settings.mode) ||
+                !GUESS_ADVANCE_HOST_CONTROL.equals(room.settings.guessAdvanceMode) ||
+                !GUESS_PHASE_WAITING_HOST.equals(room.guessPhase)) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Chỉ có thể hiện đáp án khi GUESS THE WORD đang chờ HOST."
+                );
+            }
+
+            room.guessAnswerRevealed = true;
+            result = snapshotLocked(room, username);
+        }
+
+        broadcastGeneric(room);
+        return result;
+    }
+
+
+    @Override
+    public BattleOnlineRoomDto nextGuessQuestion(
+            String roomCode,
+            String username) {
+
+        username = requireUsername(username);
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto result;
+
+        synchronized (room) {
+            requirePlaying(room);
+            requireHost(room, username);
+
+            if (!MODE_GUESS_WORD.equals(room.settings.mode) ||
+                !GUESS_ADVANCE_HOST_CONTROL.equals(room.settings.guessAdvanceMode) ||
+                !GUESS_PHASE_WAITING_HOST.equals(room.guessPhase)) {
+                throw new BattleOnlineException(
+                        HttpStatus.CONFLICT,
+                        "Chưa thể chuyển sang câu tiếp theo."
+                );
+            }
+
+            advanceGuessQuestionLocked(room);
             result = snapshotLocked(room, username);
         }
 
@@ -2953,6 +3098,16 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.currentGuessAnswers.clear();
         room.revealedGuessIndices.clear();
 
+        if (MODE_GUESS_WORD.equals(room.settings.mode)) {
+            room.guessPhase = GUESS_PHASE_QUESTION;
+            room.guessAnswerRevealed = false;
+            room.guessReviewEndsAt = 0L;
+            room.lastGuessWord = null;
+            room.lastGuessMeaning = null;
+            room.lastGuessSequence = 0L;
+            room.lastGuessAnswers.clear();
+        }
+
         room.questionEndsAt =
                 System.currentTimeMillis() +
                 (
@@ -2960,13 +3115,23 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     1000L
                 );
 
+        long classicAdvanceDelay =
+                room.settings.secondsPerQuestion * 1000L;
+
+        if (MODE_GUESS_WORD.equals(room.settings.mode)) {
+            /*
+             * Chừa một khoảng rất ngắn để request auto-submit tại mốc 0 giây
+             * kịp tới server trước khi chốt bảng kết quả.
+             */
+            classicAdvanceDelay += GUESS_AUTO_SUBMIT_GRACE_MS + 150L;
+        } else {
+            classicAdvanceDelay += 80L;
+        }
+
         scheduleClassicAdvance(
                 room.code,
                 room.classicQuestionIndex,
-                (
-                    room.settings.secondsPerQuestion *
-                    1000L
-                ) + 80L
+                classicAdvanceDelay
         );
 
         if (MODE_GUESS_WORD.equals(room.settings.mode)) {
@@ -3003,6 +3168,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         synchronized (room) {
             if (!PLAYING.equals(room.status) ||
                 !MODE_GUESS_WORD.equals(room.settings.mode) ||
+                !GUESS_PHASE_QUESTION.equals(room.guessPhase) ||
                 room.classicQuestionIndex != expectedIndex) {
                 cancelGuessRevealTimer(roomCode);
                 return;
@@ -3088,25 +3254,55 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             if (MODE_GUESS_WORD.equals(room.settings.mode)) {
-                finalizeGuessRoundLocked(room);
-                cancelGuessRevealTimer(room.code);
-            }
+                if (GUESS_PHASE_QUESTION.equals(room.guessPhase)) {
+                    finalizeGuessRoundLocked(room);
+                    cancelGuessRevealTimer(room.code);
 
-            int next =
-                    room.classicQuestionIndex + 1;
-
-            if (
-                next >=
-                room.classicQuestions.size()
-            ) {
-                finishMatchLocked(room);
+                    if (GUESS_ADVANCE_HOST_CONTROL.equals(room.settings.guessAdvanceMode)) {
+                        room.guessPhase = GUESS_PHASE_WAITING_HOST;
+                        room.guessAnswerRevealed = false;
+                        room.guessReviewEndsAt = 0L;
+                        room.questionEndsAt = 0L;
+                    } else {
+                        room.guessPhase = GUESS_PHASE_REVIEW;
+                        room.guessAnswerRevealed = true;
+                        room.guessReviewEndsAt =
+                                System.currentTimeMillis() + GUESS_REVIEW_DURATION_MS;
+                        room.questionEndsAt = room.guessReviewEndsAt;
+                        scheduleClassicAdvance(
+                                room.code,
+                                room.classicQuestionIndex,
+                                GUESS_REVIEW_DURATION_MS + 80L
+                        );
+                    }
+                } else if (GUESS_PHASE_REVIEW.equals(room.guessPhase)) {
+                    advanceGuessQuestionLocked(room);
+                }
             } else {
-                room.classicQuestionIndex = next;
-                startClassicQuestionLocked(room);
+                int next = room.classicQuestionIndex + 1;
+
+                if (next >= room.classicQuestions.size()) {
+                    finishMatchLocked(room);
+                } else {
+                    room.classicQuestionIndex = next;
+                    startClassicQuestionLocked(room);
+                }
             }
         }
 
         broadcastGeneric(room);
+    }
+
+
+    private void advanceGuessQuestionLocked(RoomState room) {
+        int next = room.classicQuestionIndex + 1;
+
+        if (next >= room.classicQuestions.size()) {
+            finishMatchLocked(room);
+        } else {
+            room.classicQuestionIndex = next;
+            startClassicQuestionLocked(room);
+        }
     }
 
 
@@ -4523,6 +4719,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.status = FINISHED;
         room.questionEndsAt = 0L;
         room.matchEndsAt = 0L;
+        room.guessReviewEndsAt = 0L;
 
         cancelClassicTimer(room.code);
         cancelGuessRevealTimer(room.code);
@@ -4551,12 +4748,39 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
        SERVER-SIDE LAZY PRELOAD
        ========================================================= */
 
+    private void resetTopicPreloadLocked(RoomState room) {
+        cancelPreloadTimer(room.code);
+        room.preloadGeneration += 1L;
+        room.rawQuestions.clear();
+        room.preparedQuestions.clear();
+        room.classicQuestions.clear();
+        room.classicQuestionIndex = -1;
+        room.nextPreloadPage = 1;
+        room.totalLessonWords = 0;
+        room.loadingQuestions = false;
+        room.allQuestionsLoaded = false;
+        room.preloadError = false;
+        room.preloadRetryCount = 0;
+    }
+
     private void schedulePreload(
             final String roomCode,
             long delayMillis) {
 
         String code =
                 normalizeRoomCode(roomCode);
+
+        final RoomState scheduledRoom = rooms.get(code);
+
+        if (scheduledRoom == null) {
+            return;
+        }
+
+        final long expectedGeneration;
+
+        synchronized (scheduledRoom) {
+            expectedGeneration = scheduledRoom.preloadGeneration;
+        }
 
         ScheduledFuture<?> existing =
                 preloadTimers.get(code);
@@ -4574,7 +4798,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         @Override
                         public void run() {
                             loadNextPreloadBatch(
-                                    roomCode
+                                    roomCode,
+                                    expectedGeneration
                             );
                         }
                     },
@@ -4590,7 +4815,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
 
     private void loadNextPreloadBatch(
-            String roomCode) {
+            String roomCode,
+            long expectedGeneration) {
 
         final String code =
                 normalizeRoomCode(roomCode);
@@ -4608,6 +4834,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         List<Long> topicIds;
 
         synchronized (room) {
+            if (room.preloadGeneration != expectedGeneration) {
+                return;
+            }
+
             if (
                 room.allQuestionsLoaded ||
                 FINISHED.equals(room.status)
@@ -4658,6 +4888,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 PRELOAD_BATCH_DELAY_MS;
 
         synchronized (room) {
+            if (room.preloadGeneration != expectedGeneration) {
+                return;
+            }
+
             room.loadingQuestions = false;
 
             if (loadException != null) {
@@ -5188,11 +5422,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 room.hostUsername
         );
 
-        dto.setSettings(
-                copySettings(
-                    room.settings
-                )
-        );
+        BattleOnlineRoomSettingsDto roomSettingsDto =
+                copySettings(room.settings);
+        roomSettingsDto.setQuestionOwnerUserId(room.ownerUserId);
+        dto.setSettings(roomSettingsDto);
 
         dto.setServerTime(
                 System.currentTimeMillis()
@@ -5251,6 +5484,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         dto.setLastGuessAnswers(
                 new ArrayList<BattleOnlineGuessAnswerDto>(room.lastGuessAnswers)
         );
+        dto.setGuessPhase(room.guessPhase);
+        dto.setGuessAnswerRevealed(room.guessAnswerRevealed);
+        dto.setGuessReviewEndsAt(room.guessReviewEndsAt);
 
         dto.setRecentEvents(
                 new ArrayList<BattleOnlineEventDto>(
@@ -6077,6 +6313,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         if (next == null) {
             room.hostUsername = null;
+            room.hostUserId = null;
             return;
         }
 
@@ -6089,6 +6326,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         room.hostUsername =
                 next.username;
+        room.hostUserId = next.userId;
     }
 
 
@@ -6488,6 +6726,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 new ArrayList<String>(source.guessLevels)
         );
 
+        dto.setGuessAdvanceMode(source.guessAdvanceMode);
+
         dto.setCountdownMinutes(
                 source.countdownMinutes
         );
@@ -6733,6 +6973,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
+    private String normalizeGuessAdvanceMode(String value) {
+        return GUESS_ADVANCE_HOST_CONTROL.equalsIgnoreCase(safe(value).trim())
+                ? GUESS_ADVANCE_HOST_CONTROL
+                : GUESS_ADVANCE_AUTO;
+    }
+
+
     private String normalizeGuessAnswer(String value) {
         return clean(value).toLowerCase(Locale.ENGLISH);
     }
@@ -6865,6 +7112,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         String code;
         String status;
         String hostUsername;
+        Long hostUserId;
 
         long finishedExpiresAt = 0L;
         long finishedExpirationGeneration = 0L;
@@ -6901,6 +7149,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         boolean preloadError = false;
 
         int preloadRetryCount = 0;
+        long preloadGeneration = 0L;
 
         /*
          * CLASSIC.
@@ -6920,6 +7169,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         long lastGuessSequence = 0L;
         List<BattleOnlineGuessAnswerDto> lastGuessAnswers =
                 new ArrayList<BattleOnlineGuessAnswerDto>();
+        String guessPhase = GUESS_PHASE_QUESTION;
+        boolean guessAnswerRevealed = false;
+        long guessReviewEndsAt = 0L;
 
         /*
          * COUNTDOWN.
@@ -6957,6 +7209,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         int secondsPerQuestion = 10;
 
         List<String> guessLevels = new ArrayList<String>();
+        String guessAdvanceMode = GUESS_ADVANCE_AUTO;
 
         int countdownMinutes = 5;
 
@@ -6970,6 +7223,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
 
     private static class PlayerState {
+        Long userId;
         String username;
         String displayName;
 

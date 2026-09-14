@@ -65,6 +65,11 @@ public class BattleOnlineRoomDto implements Serializable {
     private List<BattleOnlineGuessAnswerDto> lastGuessAnswers =
             new ArrayList<BattleOnlineGuessAnswerDto>();
 
+    /* GUESS_WORD: QUESTION | REVIEW | WAITING_HOST. */
+    private String guessPhase;
+    private boolean guessAnswerRevealed;
+    private long guessReviewEndsAt;
+
     /*
      * COUNTDOWN: chỉ REST snapshot riêng của account mới có pendingSkillType.
      * WebSocket generic luôn để null để không lộ state cá nhân.
@@ -280,6 +285,12 @@ public class BattleOnlineRoomDto implements Serializable {
     public void setLastGuessSequence(long lastGuessSequence) { this.lastGuessSequence = lastGuessSequence; }
     public List<BattleOnlineGuessAnswerDto> getLastGuessAnswers() { return lastGuessAnswers; }
     public void setLastGuessAnswers(List<BattleOnlineGuessAnswerDto> lastGuessAnswers) { this.lastGuessAnswers = lastGuessAnswers; }
+    public String getGuessPhase() { return guessPhase; }
+    public void setGuessPhase(String guessPhase) { this.guessPhase = guessPhase; }
+    public boolean isGuessAnswerRevealed() { return guessAnswerRevealed; }
+    public void setGuessAnswerRevealed(boolean guessAnswerRevealed) { this.guessAnswerRevealed = guessAnswerRevealed; }
+    public long getGuessReviewEndsAt() { return guessReviewEndsAt; }
+    public void setGuessReviewEndsAt(long guessReviewEndsAt) { this.guessReviewEndsAt = guessReviewEndsAt; }
 
     public String getPendingSkillType() {
         return pendingSkillType;

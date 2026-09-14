@@ -86,6 +86,16 @@ public interface BattleOnlineService {
             BattleOnlineRevealLetterDto revealDto
     );
 
+    BattleOnlineRoomDto revealGuessAnswer(
+            String roomCode,
+            String username
+    );
+
+    BattleOnlineRoomDto nextGuessQuestion(
+            String roomCode,
+            String username
+    );
+
     BattleOnlineRoomDto useSkill(
             String roomCode,
             String username,
