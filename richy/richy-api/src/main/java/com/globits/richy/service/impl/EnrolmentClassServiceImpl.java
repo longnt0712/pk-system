@@ -50,6 +50,7 @@ import com.globits.richy.dto.EnrolmentClassMoveStudentDto;
 import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
 import com.globits.richy.dto.EnrolmentClassTeamDto;
 import com.globits.richy.dto.TopicForListAllDto;
+import com.globits.richy.dto.StudentAssignedTaskDto;
 import com.globits.richy.repository.EnrolmentClassRepository;
 import com.globits.richy.repository.EnrolmentClassScheduleDayRepository;
 import com.globits.richy.repository.EnrolmentClassWeeklySessionRepository;
@@ -93,6 +94,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	private static final String ROLE_STUDENT_MANAGERMENT = "ROLE_STUDENT_MANAGERMENT";
 	private static final Integer HIDDEN_SCHOOL_ID = Integer.valueOf(1);
 	private static final Integer EDUCATION_MANAGER_SCHOOL_ID = Integer.valueOf(2);
+	private static final List<String> ASSIGNMENT_ACTIVITY_TYPES = Arrays.asList(
+			"DAILY_VOCAB", "DAILY_LISTENING", "IELTS_READING", "IELTS_LISTENING", "OTHER");
 
 	@Override
 	public Page<EnrolmentClassDto> getPageObject(EnrolmentClassDto searchDto, int pageIndex, int pageSize) {
@@ -669,6 +672,97 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		return result;
 	}
 
+	@Override
+	public List<StudentAssignedTaskDto> getMyAssignedTasks() {
+		User student = getCurrentUser();
+		if (student == null || student.getId() == null) { return new ArrayList<StudentAssignedTaskDto>(); }
+		Set<Long> classIds = studentClassAndAncestorIds(student);
+		if (classIds.isEmpty()) { return new ArrayList<StudentAssignedTaskDto>(); }
+
+		java.time.LocalDate today = java.time.LocalDate.now();
+		String fromDate = today.minusDays(45).toString();
+		String toDate = today.plusDays(60).toString();
+		LocalDateTime now = LocalDateTime.now();
+		List<StudentAssignedTaskDto> result = new ArrayList<StudentAssignedTaskDto>();
+		Set<Long> seenTasks = new HashSet<Long>();
+
+		for (Long classId : classIds) {
+			EnrolmentClass selectedClass = enrolmentClassRepository.findOne(classId);
+			if (selectedClass == null || !canViewClass(student, selectedClass)) { continue; }
+			EffectiveClassSchedule timeline = effectiveSchedule(classId);
+			for (EnrolmentClassScheduleDay day : scheduleDayRepository
+					.findByEnrolmentClassIdAndScheduleDateBetweenOrderByScheduleDateAsc(classId, fromDate, toDate)) {
+				if (day.getMovedToDate() != null) { continue; }
+				EnrolmentClassScheduleDayDto dayDto = new EnrolmentClassScheduleDayDto(day);
+				enrichScheduleDeadline(dayDto, timeline);
+				EffectiveClassSchedule.Slot previous = timeline.previous(day.getScheduleDate());
+				LocalDateTime start = previous == null
+						? HomeworkTopicCompletion.midnight(java.time.LocalDate.parse(day.getScheduleDate()))
+						: HomeworkTopicCompletion.at(previous.date, previous.endTime);
+				if (start != null && now.isBefore(start)) { continue; }
+
+				for (EnrolmentClassScheduleTaskDto task : dayDto.getTasks()) {
+					if (!"HOMEWORK".equals(task.getSection()) || task.getTopicId() == null || task.getId() == null
+							|| !seenTasks.add(task.getId())) { continue; }
+					LocalDateTime deadline = HomeworkTopicCompletion.deadlineEnd(task.getResolvedDueDate(), task.getResolvedDueTime());
+					if (deadline == null || !deadline.isAfter(start)) { continue; }
+
+					int required = task.getRequiredAttempts();
+					int completed = 0;
+					if ("DAILY_VOCAB".equals(task.getActivityType()) || "DAILY_LISTENING".equals(task.getActivityType())) {
+						completed = (int) Math.min(Integer.MAX_VALUE, testResultRepository.countSuccessfulAssignmentAttempts(
+								student.getId(), task.getTopicId(), Integer.valueOf(HomeworkTopicCompletion.testType(task)),
+								start, deadline));
+					}
+					for (EnrolmentClassTaskProgressDto progress : task.getStudentProgress()) {
+						if (student.getId().equals(progress.getStudentUserId()) && "DONE".equals(progress.getStatus())) {
+							completed = required;
+							break;
+						}
+					}
+					int remaining = Math.max(0, required - completed);
+					if (remaining == 0) { continue; }
+
+					StudentAssignedTaskDto item = new StudentAssignedTaskDto();
+					item.setTaskId(task.getId()); item.setClassId(classId); item.setClassName(selectedClass.getName());
+					item.setTitle(task.getTitle()); item.setNotes(task.getNotes()); item.setActivityType(task.getActivityType());
+					item.setTopicId(task.getTopicId()); item.setTopicName(task.getTopicName());
+					item.setCategoryId(task.getCategoryId()); item.setCategoryName(task.getCategoryName());
+					item.setAssignedDate(day.getScheduleDate()); item.setDueDate(task.getResolvedDueDate());
+					item.setDueTime(task.getResolvedDueTime()); item.setRequiredAttempts(required);
+					item.setCompletedAttempts(Math.min(required, completed)); item.setRemainingAttempts(remaining);
+					item.setOverdue(!now.isBefore(deadline)); result.add(item);
+				}
+			}
+		}
+		Collections.sort(result, new Comparator<StudentAssignedTaskDto>() {
+			@Override public int compare(StudentAssignedTaskDto a, StudentAssignedTaskDto b) {
+				String aDue = (a.getDueDate() == null ? "9999-12-31" : a.getDueDate()) + (a.getDueTime() == null ? "" : a.getDueTime());
+				String bDue = (b.getDueDate() == null ? "9999-12-31" : b.getDueDate()) + (b.getDueTime() == null ? "" : b.getDueTime());
+				int due = aDue.compareTo(bDue);
+				return due != 0 ? due : String.valueOf(a.getTitle()).compareToIgnoreCase(String.valueOf(b.getTitle()));
+			}
+		});
+		return result.size() > 20 ? new ArrayList<StudentAssignedTaskDto>(result.subList(0, 20)) : result;
+	}
+
+	private Set<Long> studentClassAndAncestorIds(User student) {
+		Set<Long> direct = new LinkedHashSet<Long>();
+		if (student.getPerson() != null && student.getPerson().getEnrollmentClassId() != null) {
+			direct.add(student.getPerson().getEnrollmentClassId().longValue());
+		}
+		if (student.getEnrollmentClassIds() != null) { direct.addAll(student.getEnrollmentClassIds()); }
+		Set<Long> result = new LinkedHashSet<Long>();
+		for (Long id : direct) {
+			EnrolmentClass current = id == null ? null : enrolmentClassRepository.findOne(id);
+			Set<Long> visited = new HashSet<Long>();
+			while (current != null && current.getId() != null && visited.add(current.getId())) {
+				result.add(current.getId()); current = current.getParent();
+			}
+		}
+		return result;
+	}
+
     @Override
     public EnrolmentClassScheduleDayDto getPreviousScheduleDay(Long classId, String beforeDate) {
         if (!isValidDate(beforeDate)) {
@@ -888,6 +982,10 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 		String classNotes = scheduleText(dto.getClassNotes(), 4000, false);
 		String homeworkNotes = scheduleText(dto.getHomeworkNotes(), 4000, false);
+		Integer makeupMinutes = dto.getMakeupMinutes();
+		if (makeupMinutes != null && (makeupMinutes.intValue() < 0 || makeupMinutes.intValue() > 1440)) {
+			throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Số phút học bù chung phải từ 0 đến 1440.");
+		}
 		if (dto.getTasks() != null) {
 			for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
 				if (task != null && task.getId() == null && !Boolean.TRUE.equals(task.getDeadlineAutomatic())
@@ -920,6 +1018,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 		domain.setClassTopics(classTopics);
 		domain.setHomeworkTopics(homeworkTopics);
+		domain.setMakeupMinutes(makeupMinutes == null || makeupMinutes.intValue() == 0 ? null : makeupMinutes);
 		if (dto.getClassNotes() != null) { domain.setClassNotes(classNotes); }
 		if (dto.getHomeworkNotes() != null) { domain.setHomeworkNotes(homeworkNotes); }
 		if (preparedTasks != null) {
@@ -1007,10 +1106,6 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		if (status != null && status.intValue() != 1 && status.intValue() != 2) {
 			throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Chỉ được chọn Có đi học hoặc Không đi học.");
 		}
-		Integer makeupMinutes = dto.getMakeupMinutes();
-		if (makeupMinutes != null && (makeupMinutes.intValue() < 0 || makeupMinutes.intValue() > 1440)) {
-			throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Số phút học bù phải từ 0 đến 1440.");
-		}
 		User selectedStudent = null;
 		for (User student : scheduleStudentDomains(classId, teacher)) {
 			if (studentUserId.equals(student.getId())) { selectedStudent = student; break; }
@@ -1029,9 +1124,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		}
 		attendance.setStatusClass(status);
 		attendance.setTimeGoToClass(Integer.valueOf(1).equals(status) ? bounds[0] : null);
-		if (makeupMinutes != null) {
-			attendance.setMakeupMinutes(makeupMinutes.intValue() == 0 ? null : makeupMinutes);
-		}
+		/* Học bù là thiết lập chung của buổi học, không lưu riêng theo học sinh. */
+		attendance.setMakeupMinutes(null);
 		attendance.setDescription(scheduleText(dto.getDescription(), 1000, false));
 		attendance.setModifyDate(now);
 		attendance.setModifiedBy(teacher.getUsername());
@@ -1192,6 +1286,12 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			}
 			task.setAutoCompleteFromTopic(value.getAutoCompleteFromTopic() == null && value.getId() != null
 					? oldTasks.get(value.getId()).getAutoCompleteFromTopic() : value.getAutoCompleteFromTopic());
+			String activityType = value.getActivityType();
+			if (activityType == null && oldTask != null) { activityType = oldTask.getActivityType(); }
+			if (activityType == null || !ASSIGNMENT_ACTIVITY_TYPES.contains(activityType)) {
+				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Loại hoạt động của task không hợp lệ.");
+			}
+			task.setActivityType(activityType);
 			int requiredAttempts = value.getRequiredAttempts();
 			if (requiredAttempts < 1 || requiredAttempts > 100) {
 				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Số lần phải làm cần từ 1 đến 100.");

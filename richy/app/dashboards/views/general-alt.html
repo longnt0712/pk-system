@@ -64,6 +64,57 @@
         </div>
     </section>
 
+    <section class="student-assignment-board"
+             ng-if="settings.ieltsRoom == true && vm.permissionsLoaded && (vm.isRoleView || vm.isRoleUser || vm.hasRole('ROLE_STUDENT'))">
+        <div class="student-assignment-heading">
+            <div>
+                <span class="student-assignment-kicker"><i class="fa fa-paper-plane"></i> NHIỆM VỤ CỦA MÌNH</span>
+                <h2>Bài cần hoàn thành</h2>
+                <p>Chọn bài để vào đúng topic; hệ thống đã tính sẵn số lượt còn thiếu.</p>
+            </div>
+            <span class="student-assignment-count" ng-if="!vm.assignedTasksLoading">{{vm.assignedTasks.length}} bài</span>
+        </div>
+
+        <div class="student-assignment-loading" ng-if="vm.assignedTasksLoading">
+            <i class="fa fa-spinner fa-spin"></i> Đang lấy bài được giao...
+        </div>
+        <div class="student-assignment-empty" ng-if="!vm.assignedTasksLoading && !vm.assignedTasksError && !vm.assignedTasks.length">
+            <span>🎉</span><strong>Hiện tại bạn không còn bài nào phải làm.</strong>
+        </div>
+        <div class="student-assignment-empty is-error" ng-if="!vm.assignedTasksLoading && vm.assignedTasksError">
+            <span>☁️</span><strong>Chưa tải được bài. Bạn có thể tải lại trang để thử lại.</strong>
+        </div>
+
+        <div class="student-assignment-grid" ng-if="!vm.assignedTasksLoading && vm.assignedTasks.length">
+            <article class="student-assignment-card"
+                     ng-repeat="task in vm.assignedTasks track by task.taskId"
+                     ng-class="{'is-overdue': task.overdue, 'is-listening': task.activityType === 'DAILY_LISTENING', 'is-ielts': (task.activityType || '').indexOf('IELTS') === 0}">
+                <div class="student-assignment-icon"><i class="fa" ng-class="vm.assignmentIcon(task)"></i></div>
+                <div class="student-assignment-copy">
+                    <div class="student-assignment-badges">
+                        <span>{{vm.assignmentTypeLabel(task)}}</span>
+                        <span class="is-overdue" ng-if="task.overdue">Quá hạn</span>
+                    </div>
+                    <h3>{{task.title}}</h3>
+                    <p class="student-assignment-topic">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
+                    <p class="student-assignment-class"><i class="fa fa-users"></i> {{task.className}}</p>
+                    <p class="student-assignment-note" ng-if="task.notes">{{task.notes}}</p>
+                    <div class="student-assignment-progress">
+                        <span>Đã đạt <strong>{{task.completedAttempts}}/{{task.requiredAttempts}}</strong> lần</span>
+                        <b>Còn {{task.remainingAttempts}} lần</b>
+                    </div>
+                    <div class="student-assignment-bar"><span ng-style="{'width': (task.completedAttempts * 100 / task.requiredAttempts) + '%'}"></span></div>
+                    <div class="student-assignment-footer">
+                        <small><i class="fa fa-clock-o"></i> Hạn {{task.dueDate | date:'dd/MM/yyyy'}}{{task.dueTime ? ' ' + task.dueTime : ''}}</small>
+                        <button type="button" ng-click="vm.openAssignedTask(task)">
+                            {{vm.assignmentActionLabel(task)}} <i class="fa fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+
 
     <!-- =========================
          MENU
@@ -787,6 +838,44 @@
         object-position: center;
     }
 
+    .student-assignment-board {
+        margin: 14px 0;
+        padding: 15px;
+        border: 1px solid #e0ddff;
+        border-radius: 22px;
+        background: linear-gradient(145deg, #fff 0%, #fbfaff 54%, #f2fbff 100%);
+        box-shadow: 0 12px 30px rgba(75, 70, 150, .10);
+    }
+    .student-assignment-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .student-assignment-heading h2 { margin:4px 0 2px; font-size:18px; line-height:1.2; font-weight:900; color:#29275c; }
+    .student-assignment-heading p { margin:0; font-size:11px; color:#7c8097; }
+    .student-assignment-kicker { color:#7057ee; font-size:9px; font-weight:900; letter-spacing:1px; }
+    .student-assignment-count { flex:none; padding:7px 10px; border-radius:999px; color:#fff; background:linear-gradient(135deg,#735af2,#9b63f3); font-size:10px; font-weight:900; }
+    .student-assignment-grid { display:grid; grid-template-columns:1fr; gap:10px; margin-top:13px; }
+    .student-assignment-card { position:relative; display:flex; gap:11px; padding:13px; overflow:hidden; border:1px solid #e6e2ff; border-radius:17px; background:#fff; box-shadow:0 7px 17px rgba(76,69,140,.08); }
+    .student-assignment-card:after { content:""; position:absolute; right:-24px; top:-28px; width:70px; height:70px; border-radius:50%; background:rgba(117,91,242,.08); }
+    .student-assignment-card.is-listening:after { background:rgba(30,180,192,.10); }
+    .student-assignment-card.is-ielts:after { background:rgba(255,167,63,.12); }
+    .student-assignment-card.is-overdue { border-color:#ffc9cf; background:linear-gradient(145deg,#fff,#fff7f8); }
+    .student-assignment-icon { position:relative; z-index:1; flex:0 0 42px; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:14px; color:#fff; background:linear-gradient(135deg,#637bff,#8c5bea); box-shadow:0 8px 16px rgba(104,91,226,.22); font-size:17px; }
+    .student-assignment-copy { position:relative; z-index:1; min-width:0; flex:1; }
+    .student-assignment-badges { display:flex; gap:5px; flex-wrap:wrap; }
+    .student-assignment-badges span { padding:3px 7px; border-radius:999px; color:#674fe1; background:#eeebff; font-size:8px; font-weight:900; text-transform:uppercase; }
+    .student-assignment-badges span.is-overdue { color:#bd3e50; background:#ffe3e7; }
+    .student-assignment-copy h3 { margin:6px 0 3px; color:#26304c; font-size:13px; line-height:1.3; font-weight:900; }
+    .student-assignment-topic,.student-assignment-class,.student-assignment-note { margin:2px 0; color:#77809a; font-size:9px; line-height:1.35; }
+    .student-assignment-note { color:#525c76; }
+    .student-assignment-progress { display:flex; justify-content:space-between; gap:8px; margin-top:8px; color:#68718d; font-size:9px; }
+    .student-assignment-progress b { color:#f05f80; }
+    .student-assignment-bar { height:6px; margin-top:4px; overflow:hidden; border-radius:999px; background:#eceefa; }
+    .student-assignment-bar span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#40d3bd,#6c7cff,#a45ee8); }
+    .student-assignment-footer { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:9px; }
+    .student-assignment-footer small { color:#8b91a7; font-size:8px; }
+    .student-assignment-footer button { flex:none; border:0; border-radius:11px; padding:8px 10px; color:#fff; background:linear-gradient(135deg,#6f63ee,#9d5bea); box-shadow:0 6px 13px rgba(111,91,225,.22); font-size:9px; font-weight:900; }
+    .student-assignment-loading,.student-assignment-empty { display:flex; align-items:center; justify-content:center; gap:8px; min-height:72px; margin-top:12px; border:1px dashed #d9d4ff; border-radius:16px; color:#676f8a; background:#faf9ff; font-size:10px; }
+    .student-assignment-empty span { font-size:20px; }
+    .student-assignment-empty.is-error { color:#a14b56; background:#fff8f8; border-color:#f1cfd3; }
+
     .learning-hub-star {
         position: absolute;
         z-index: 4;
@@ -1334,6 +1423,14 @@
         }
     }
 
+    @media (max-width: 767px) {
+        .learning-hub-brand-mark { display:none !important; }
+        .learning-hub-hero-art { flex-basis:0; width:0; height:0; }
+        .student-assignment-board { padding:12px; border-radius:19px; }
+        .student-assignment-heading p { max-width:235px; }
+        .student-assignment-footer { align-items:flex-end; }
+    }
+
 
     /* =====================================================
        TABLET
@@ -1408,6 +1505,8 @@
             border-radius: 22px;
             font-size: 29px;
         }
+
+        .student-assignment-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 
         .learning-hub-brand-logo {
             border-radius: 17px;

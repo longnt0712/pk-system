@@ -532,7 +532,7 @@
             <h4 class="modal-title" data-ng-if="vm.questionType.isNew == false"><i class="fa fa-pencil-square-o"></i>Cập nhật tôn giáo</h4>
         </div>
         <div class="modal-body">
-            <table class="table">
+            <table class="table" data-ng-if="vm.testResult.questionAnswerTestResult && vm.testResult.questionAnswerTestResult.length">
                 <thead>
                 <tr>
                     <th scope="col">Index</th>

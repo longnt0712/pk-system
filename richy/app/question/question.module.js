@@ -305,7 +305,7 @@
 
 
             .state('application.daily_vocab', {
-                url: '/daily-vocab/:listFlashCard',
+                url: '/daily-vocab/:listFlashCard?assignmentTopicId&assignmentCategoryId&assignmentTaskId',
                 templateUrl: 'question/views/daily_vocab.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'DAILY VOCAB'},
                 controller: 'DailyVocabController as vm',
@@ -385,7 +385,7 @@
             })
 
             .state('application.view', {
-                url: '/view/:listFlashCard',
+                url: '/view/:listFlashCard?assignmentTopicId&assignmentCategoryId&assignmentTaskId',
                 templateUrl: 'question/views/view.html',
                 data: {pageTitle: 'IELTS VIEW'},
                 controller: 'ViewController as vm',

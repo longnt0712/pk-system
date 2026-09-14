@@ -15,6 +15,7 @@ public class EnrolmentClassScheduleDayDto implements Serializable {
     private String scheduleDate;
     private String sessionStartTime;
     private String sessionEndTime;
+    private Integer makeupMinutes;
     private String movedFromDate;
     private String movedToDate;
     private String moveReason;
@@ -24,6 +25,8 @@ public class EnrolmentClassScheduleDayDto implements Serializable {
     public void setSessionStartTime(String value) { sessionStartTime = value; }
     public String getSessionEndTime() { return sessionEndTime; }
     public void setSessionEndTime(String value) { sessionEndTime = value; }
+    public Integer getMakeupMinutes() { return makeupMinutes; }
+    public void setMakeupMinutes(Integer value) { makeupMinutes = value; }
     public String getMovedFromDate() { return movedFromDate; }
     public void setMovedFromDate(String value) { movedFromDate = value; }
     public String getMovedToDate() { return movedToDate; }
@@ -50,6 +53,7 @@ public class EnrolmentClassScheduleDayDto implements Serializable {
         enrolmentClassId = domain.getEnrolmentClass() == null ? null : domain.getEnrolmentClass().getId();
         scheduleDate = domain.getScheduleDate();
         sessionStartTime = domain.getSessionStartTime(); sessionEndTime = domain.getSessionEndTime();
+        makeupMinutes = domain.getMakeupMinutes();
         movedFromDate = domain.getMovedFromDate(); movedToDate = domain.getMovedToDate(); moveReason = domain.getMoveReason();
         version = domain.getScheduleVersion();
         classNotes = domain.getClassNotes();

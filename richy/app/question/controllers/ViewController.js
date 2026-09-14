@@ -398,7 +398,7 @@
         if(vm.isRoleUser == true){
             vm.selectedUser = vm.myUser;
         }else if(vm.isRoleView == true) {
-            vm.selectedUser = {
+            vm.selectedUser = vm.myUser.id != null ? vm.myUser : {
                 id:26,name: 'EM YÊU INH LÍCH'
             };
         } else if(vm.myUser.id != null){
@@ -1172,6 +1172,12 @@
 
         vm.listFlashCard = 0;
         vm.listFlashCard = $stateParams.listFlashCard;
+        vm.assignmentLaunch = {
+            taskId: $stateParams.assignmentTaskId || null,
+            topicId: $stateParams.assignmentTopicId || null,
+            categoryId: $stateParams.assignmentCategoryId || null,
+            applied: false
+        };
         vm.isFlashCardMode = $stateParams.flashCardModeId | 0;
 
         vm.totalItems = 0;
@@ -1198,10 +1204,29 @@
         vm.searchTopicDto = {};
         vm.searchTopicDto.userId = vm.selectedUser.id;
 
+        function assignmentItemById(items, id) {
+            var found = null;
+            angular.forEach(items || [], function (item) {
+                if (!found && item && String(item.id) === String(id)) { found = item; }
+            });
+            return found;
+        }
+
+        function applyAssignedListeningTopic() {
+            if (!vm.assignmentLaunch.topicId || vm.assignmentLaunch.applied) { return; }
+            var topic = assignmentItemById(vm.topics, vm.assignmentLaunch.topicId);
+            if (!topic) { toastr.warning('Topic của bài được giao không còn trong danh sách.'); return; }
+            vm.assignmentLaunch.applied = true;
+            vm.mode = {id: 8, name: 'FILLING GAPS'};
+            vm.selectedTopicToSearch = [topic];
+            vm.searchTopicChange();
+        }
+
         vm.getTopics = function () {
             blockUI.start();
             service.getTopicsForGames(vm.searchTopicDto,1, 10000000).then(function (data) {
                 vm.topics = data.content;
+                applyAssignedListeningTopic();
                 blockUI.stop();
             });
         };
@@ -1255,6 +1280,7 @@
                         });
 
                         vm.searchTopicDto.topicCategory =
+                            assignmentItemById(vm.topicCategories, vm.assignmentLaunch.categoryId) ||
                             grade6Category || vm.topicCategories[0];
 
                         /*

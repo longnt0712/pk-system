@@ -63,6 +63,10 @@
          CHỌN BÀI
          ===================================================== -->
     <section class="daily-panel daily-lesson-panel">
+        <div class="daily-assignment-ready" ng-if="vm.assignmentLaunch.taskId">
+            <span class="daily-assignment-ready-icon">✓</span>
+            <div><strong>Bài được giao đã thiết lập sẵn</strong><small>Category và topic đã được chọn. Kiểm tra số giây rồi bấm đồng hồ để bắt đầu.</small></div>
+        </div>
         <div class="daily-section-heading">
             <div class="daily-section-icon daily-section-icon-blue">
                 <i class="fa fa-graduation-cap"></i>
@@ -177,6 +181,12 @@
             </div>
         </div>
     </section>
+
+    <style>
+        .daily-vocab-page .daily-assignment-ready{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:11px 13px;border:1px solid #a8ead2;border-radius:14px;color:#176548;background:linear-gradient(135deg,#ecfff7,#f2fbff);box-shadow:0 7px 18px rgba(35,166,124,.10)}
+        .daily-vocab-page .daily-assignment-ready-icon{display:flex;align-items:center;justify-content:center;flex:0 0 32px;width:32px;height:32px;border-radius:11px;color:#fff;background:linear-gradient(135deg,#26c99b,#57bce8);font-weight:900}
+        .daily-vocab-page .daily-assignment-ready strong,.daily-vocab-page .daily-assignment-ready small{display:block}.daily-vocab-page .daily-assignment-ready strong{font-size:12px}.daily-vocab-page .daily-assignment-ready small{margin-top:2px;color:#568274;font-size:9px;line-height:1.35}
+    </style>
 
 
     <!-- =====================================================

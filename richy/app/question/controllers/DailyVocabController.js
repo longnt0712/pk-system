@@ -52,6 +52,12 @@
         };
 
         vm.listFlashCard = $stateParams.listFlashCard || 0;
+        vm.assignmentLaunch = {
+            taskId: $stateParams.assignmentTaskId || null,
+            topicId: $stateParams.assignmentTopicId || null,
+            categoryId: $stateParams.assignmentCategoryId || null,
+            applied: false
+        };
 
         // =====================================================
         // USER
@@ -90,6 +96,53 @@
         }
 
         vm.currentUser = getCurrentUser();
+
+        var activeDailyResumeDraft = null;
+        var activeDailyLastPersistAt = 0;
+
+        function activeDailyDraftKey(userId) {
+            return 'daily-vocab-active:v1:' + userId;
+        }
+
+        function removeActiveDailyDraft(ownerId) {
+            if (!ownerId) { return; }
+            try { window.localStorage.removeItem(activeDailyDraftKey(ownerId)); } catch (ignore) {}
+        }
+
+        function readActiveDailyDraft() {
+            if (!vm.currentUser || !vm.currentUser.id) { return null; }
+            try {
+                var raw = window.localStorage.getItem(activeDailyDraftKey(vm.currentUser.id));
+                if (!raw) { return null; }
+                var draft = JSON.parse(raw);
+                if (!draft || draft.version !== 1 || draft.ownerId !== vm.currentUser.id ||
+                    !draft.savedAt || Date.now() - draft.savedAt > 7 * 86400000 ||
+                    !angular.isArray(draft.topicIds) || draft.topicIds.length === 0 ||
+                    !angular.isArray(draft.questions) || draft.questions.length === 0) {
+                    removeActiveDailyDraft(vm.currentUser.id);
+                    return null;
+                }
+                return draft;
+            } catch (ignore) {
+                return null;
+            }
+        }
+
+        function chooseActiveDailyResume() {
+            var draft = readActiveDailyDraft();
+            if (!draft) { return; }
+            if (window.confirm('Bạn có một bài Daily Vocab đang làm dở. Bạn muốn tiếp tục không?')) {
+                activeDailyResumeDraft = draft;
+                return;
+            }
+            if (window.confirm('Bạn muốn làm lại thật chứ? Toàn bộ tiến độ đang làm dở sẽ bị xóa.')) {
+                removeActiveDailyDraft(vm.currentUser.id);
+                return;
+            }
+            activeDailyResumeDraft = draft;
+        }
+
+        chooseActiveDailyResume();
 
         vm.myUser = {
             id: vm.currentUser.id,
@@ -145,7 +198,7 @@
         if (vm.isRoleUser === true) {
             vm.selectedUser = vm.myUser;
         } else if (vm.isRoleView === true) {
-            vm.selectedUser = {
+            vm.selectedUser = vm.myUser.id != null ? vm.myUser : {
                 id: 26,
                 name: 'EM YÊU INH LÍCH'
             };
@@ -236,6 +289,45 @@
             return found;
         }
 
+        function findById(items, id) {
+            var found = null;
+            angular.forEach(items || [], function (item) {
+                if (!found && item && String(item.id) === String(id)) { found = item; }
+            });
+            return found;
+        }
+
+        function applyAssignedTopic() {
+            if (!vm.assignmentLaunch.topicId || vm.assignmentLaunch.applied) { return; }
+            var assignedTopic = findById(vm.topics, vm.assignmentLaunch.topicId);
+            if (!assignedTopic) {
+                toastr.warning('Topic của bài được giao không còn trong danh sách.');
+                return;
+            }
+            vm.assignmentLaunch.applied = true;
+            vm.selectedTopicToSearch = [assignedTopic];
+            vm.searchTopicChange();
+        }
+
+        function applyResumeTopics() {
+            if (!activeDailyResumeDraft || activeDailyResumeDraft.topicApplied) { return false; }
+            var selected = [];
+            angular.forEach(activeDailyResumeDraft.topicIds || [], function (topicId) {
+                var topic = findById(vm.topics, topicId);
+                if (topic) { selected.push(topic); }
+            });
+            if (!selected.length) {
+                toastr.warning('Bài đang làm dở không còn topic tương ứng nên không thể tiếp tục.');
+                removeActiveDailyDraft(vm.currentUser.id);
+                activeDailyResumeDraft = null;
+                return false;
+            }
+            activeDailyResumeDraft.topicApplied = true;
+            vm.selectedTopicToSearch = selected;
+            vm.searchTopicChange();
+            return true;
+        }
+
         vm.getTopics = function () {
             if (!vm.searchTopicDto.topicCategory) {
                 vm.topics = [];
@@ -254,6 +346,7 @@
                         data && data.content
                             ? data.content
                             : [];
+                    if (!applyResumeTopics()) { applyAssignedTopic(); }
                 },
                 function () {
                     vm.topics = [];
@@ -290,8 +383,9 @@
                      * Mặc định Grade 6 giống yêu cầu hiện tại.
                      */
                     vm.searchTopicDto.topicCategory =
-                        findGrade6Category(vm.topicCategories) ||
-                        vm.topicCategories[0];
+                        findById(vm.topicCategories, activeDailyResumeDraft && activeDailyResumeDraft.categoryId) ||
+                        findById(vm.topicCategories, vm.assignmentLaunch.categoryId) ||
+                        findGrade6Category(vm.topicCategories) || vm.topicCategories[0];
 
                     vm.getTopics();
                 },
@@ -1380,6 +1474,7 @@
                     vm.loadingMoreQuestions = false;
 
                     vm.resetDailyVocabRun();
+                    resumeActiveDailySession();
                 },
                 function () {
                     if (
@@ -1553,6 +1648,7 @@
                 vm.saveTestResult();
             }
 
+            removeActiveDailyDraft(vm.currentUser.id);
             vm.stopDailyVocabTimer();
         }
 
@@ -1566,6 +1662,103 @@
         vm.dailyVocabCounter = 900;
         vm.dailyVocabRunning = false;
         vm.dailyVocabAnswersEnabled = false;
+
+        function persistActiveDailySession(force) {
+            if (!vm.currentUser || !vm.currentUser.id || vm.dailyVocabRunning !== true ||
+                !vm.questions || !vm.questions.length) { return; }
+            var now = Date.now();
+            if (force !== true && now - activeDailyLastPersistAt < 3000) { return; }
+            var category = vm.searchTopicDto && vm.searchTopicDto.topicCategory;
+            var topicIds = (vm.selectedTopicToSearch || []).map(function (topic) { return topic.id; });
+            if (!topicIds.length) { return; }
+            var draft = {
+                version: 1,
+                ownerId: vm.currentUser.id,
+                savedAt: now,
+                categoryId: category && category.id,
+                topicIds: topicIds,
+                title: vm.title,
+                rawQuestions: angular.copy(vm.rawQuestions || []),
+                questions: angular.copy(vm.questions || []),
+                currentPosition: Number(vm.currentPosition) || 0,
+                totalCard: Number(vm.totalCard) || vm.questions.length,
+                loadedCardCount: Number(vm.loadedCardCount) || vm.questions.length,
+                dailyLazyNextPage: dailyLazyNextPage,
+                dailyPreparedRawCount: dailyPreparedRawCount,
+                allQuestionsLoaded: vm.allQuestionsLoaded === true,
+                duration: Number(vm.dailyVocabDuration) || 900,
+                counter: Math.max(1, Number(vm.dailyVocabCounter) || 1),
+                score: Number(vm.score1) || 0,
+                streak: Number(vm.streakPlayer1) || 0,
+                wrong: Number(vm.wrongPlayer1) || 0,
+                tempWrong: vm.tempWrong || '',
+                testResult: angular.copy(vm.testResult || {}),
+                attemptedQuestionIds: angular.copy(vm.attemptedDailyQuestionIds || {}),
+                completedQuestionIds: angular.copy(vm.completedDailyQuestionIds || {}),
+                runningManEnabled: vm.runningManEnabled === true,
+                runningManDifficulty: vm.runningManDifficulty,
+                runningManGap: vm.runningManGap
+            };
+            try {
+                window.localStorage.setItem(activeDailyDraftKey(vm.currentUser.id), JSON.stringify(draft));
+                activeDailyLastPersistAt = now;
+            } catch (ignore) {
+                /* Nếu topic quá lớn, giữ bản nhẹ nhưng vẫn đủ để tiếp tục từ câu hiện tại. */
+                try {
+                    draft.rawQuestions = [];
+                    draft.questions = [angular.copy(vm.currentCard)];
+                    draft.currentPosition = 0;
+                    draft.totalCard = 1;
+                    draft.loadedCardCount = 1;
+                    draft.allQuestionsLoaded = true;
+                    window.localStorage.setItem(activeDailyDraftKey(vm.currentUser.id), JSON.stringify(draft));
+                    activeDailyLastPersistAt = now;
+                } catch (ignoredAgain) {}
+            }
+        }
+
+        function resumeActiveDailySession() {
+            var draft = activeDailyResumeDraft;
+            if (!draft || !angular.isArray(draft.questions) || !draft.questions.length) { return; }
+            activeDailyResumeDraft = null;
+
+            vm.rawQuestions = angular.copy(draft.rawQuestions || []);
+            vm.questions = angular.copy(draft.questions);
+            vm.currentPosition = Math.max(0, Math.min(Number(draft.currentPosition) || 0, vm.questions.length - 1));
+            vm.currentCard = vm.questions[vm.currentPosition] || {};
+            vm.totalCard = Math.max(vm.questions.length, Number(draft.totalCard) || vm.questions.length);
+            vm.loadedCardCount = Number(draft.loadedCardCount) || vm.questions.length;
+            dailyLazyNextPage = Math.max(2, Number(draft.dailyLazyNextPage) || 2);
+            dailyPreparedRawCount = Math.max(vm.questions.length, Number(draft.dailyPreparedRawCount) || 0);
+            vm.allQuestionsLoaded = draft.allQuestionsLoaded === true;
+            vm.dailyVocabDuration = Math.max(1, Number(draft.duration) || getDefaultDailyVocabTimerSeconds() || 900);
+            vm.dailyVocabCounter = Math.max(1, Number(draft.counter) || vm.dailyVocabDuration);
+            vm.score1 = Number(draft.score) || 0;
+            vm.streakPlayer1 = Number(draft.streak) || 0;
+            vm.wrongPlayer1 = Number(draft.wrong) || 0;
+            vm.tempWrong = draft.tempWrong || '';
+            vm.testResult = angular.copy(draft.testResult || {});
+            vm.attemptedDailyQuestionIds = angular.copy(draft.attemptedQuestionIds || {});
+            vm.completedDailyQuestionIds = angular.copy(draft.completedQuestionIds || {});
+            vm.runningManEnabled = draft.runningManEnabled === true;
+            vm.runningManDifficulty = draft.runningManDifficulty || vm.runningManDifficulty;
+            if (angular.isDefined(draft.runningManGap)) { vm.runningManGap = Number(draft.runningManGap); }
+            vm.finishDailyVocab = 'Unfinished';
+            vm.dailyVocabRunning = true;
+            vm.dailyVocabAnswersEnabled = true;
+            vm.dailyBufferWaiting = false;
+            vm.showTimer = true;
+            vm.showStart = true;
+            vm.showWrong = false;
+            vm.showCorrect = false;
+            stillInAQuestion1 = false;
+            startBackgroundMusic();
+            cancelDailyVocabTimeout();
+            dailyVocabTimeout = $timeout(dailyVocabTick, 1000);
+            scheduleDailyQuestionPrefetch(false);
+            persistActiveDailySession(true);
+            toastr.success('Đã tiếp tục bài Daily Vocab đang làm dở.', 'Daily Vocab');
+        }
 
         // =====================================================
         // RUNNING MAN MODE
@@ -1982,6 +2175,8 @@
 
             playAudioById('boom-sound', false);
 
+            removeActiveDailyDraft(vm.currentUser.id);
+
             toastr.error(
                 'NGU đã bắt kịp HỌC SINH! Reset để thử lại.',
                 'RUNNING MAN'
@@ -2186,7 +2381,10 @@
         };
 
         vm.resetDailyVocabTimer = function () {
+            var wasRunning = vm.dailyVocabRunning === true;
             vm.stopDailyVocabTimer();
+
+            if (wasRunning) { removeActiveDailyDraft(vm.currentUser.id); }
 
             vm.dailyVocabCounter =
                 parseInt(
@@ -2218,6 +2416,7 @@
             shutUp();
 
             playAudioById('boom-sound', false);
+            removeActiveDailyDraft(vm.currentUser.id);
         }
 
         function dailyVocabTick() {
@@ -2246,6 +2445,8 @@
 
             vm.dailyVocabCounter =
                 Number(vm.dailyVocabCounter) - 1;
+
+            persistActiveDailySession(false);
 
             dailyVocabTimeout =
                 $timeout(dailyVocabTick, 1000);
@@ -2309,6 +2510,7 @@
             vm.showCorrect = false;
 
             startBackgroundMusic();
+            persistActiveDailySession(true);
 
             /*
              * Nếu đã chọn RUNNING MAN thì cuộc đuổi bắt
@@ -2932,6 +3134,7 @@
                 }
 
                 vm.nextCard();
+                persistActiveDailySession(true);
                 return;
             }
 
@@ -3001,6 +3204,7 @@
             }
 
             vm.sayingWhenWrong();
+            persistActiveDailySession(true);
         };
 
         // =====================================================
@@ -3179,7 +3383,10 @@
                         (data.resultStatus === 'FAILED' || data.messageCode == 1)
                     ) {
                         vm.dailySaveStatus = 'failed';
-                        vm.dailySaveMessage = 'Đã lưu kết quả: Thất bại vì sai quá nhiều. Lượt này không cộng EXP, không tính vào bảng xếp hạng và chưa được tính hoàn thành bài tập.';
+                        vm.dailySaveMessage = 'Đã lưu kết quả: Thất bại vì sai quá nhiều. Lượt này chưa được tính hoàn thành bài tập.';
+                        if (Number(data.vocabularyExperienceAwardedWords) > 0) {
+                            vm.dailySaveMessage += ' Đã ghi nhận ' + Number(data.vocabularyExperienceAwardedWords) + ' từ đúng vào kinh nghiệm.';
+                        }
                         removeDailyDraft(pending.ownerId);
                         toastr.warning(
                             vm.dailySaveMessage,
@@ -3265,12 +3472,22 @@
         vm.setUpTestResult();
         restoreDailyDraft();
 
+        function saveActiveDailyBeforeLeaving() {
+            persistActiveDailySession(true);
+        }
+
+        window.addEventListener('pagehide', saveActiveDailyBeforeLeaving, false);
+        window.addEventListener('beforeunload', saveActiveDailyBeforeLeaving, false);
+
         // =====================================================
         // CLEANUP
         // =====================================================
 
         $scope.$on('$destroy', function () {
+            persistActiveDailySession(true);
             dailySaveDestroyed = true;
+            window.removeEventListener('pagehide', saveActiveDailyBeforeLeaving, false);
+            window.removeEventListener('beforeunload', saveActiveDailyBeforeLeaving, false);
             cancelDailyVocabTimeout();
             cancelRunningManTimeout();
             cancelRunningManTauntTimeout();

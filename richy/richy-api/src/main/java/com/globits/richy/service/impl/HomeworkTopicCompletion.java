@@ -14,7 +14,11 @@ public final class HomeworkTopicCompletion {
     private HomeworkTopicCompletion() { }
     public static boolean enabled(EnrolmentClassScheduleTaskDto task) {
         return ("CLASS".equals(task.getSection()) || "HOMEWORK".equals(task.getSection())) && task.getTopicId() != null
-                && !Boolean.FALSE.equals(task.getAutoCompleteFromTopic());
+                && !Boolean.FALSE.equals(task.getAutoCompleteFromTopic())
+                && ("DAILY_VOCAB".equals(task.getActivityType()) || "DAILY_LISTENING".equals(task.getActivityType()));
+    }
+    public static int testType(EnrolmentClassScheduleTaskDto task) {
+        return "DAILY_LISTENING".equals(task.getActivityType()) ? 3 : 1;
     }
     public static LocalDate windowEnd(String assigned, String due, Set<Integer> weekdays, String nextSaved) {
         LocalDate start = LocalDate.parse(assigned);
@@ -61,7 +65,9 @@ public final class HomeworkTopicCompletion {
         for (Object[] row : completions) {
             Long studentId = (Long) row[0], topicId = (Long) row[1];
             LocalDateTime completed = (LocalDateTime) row[2];
-            if (!task.getTopicId().equals(topicId) || completed.isBefore(start) || !completed.isBefore(end)) { continue; }
+            Integer resultTestType = row.length > 4 ? (Integer) row[4] : Integer.valueOf(1);
+            if (!task.getTopicId().equals(topicId) || resultTestType.intValue() != testType(task)
+                    || completed.isBefore(start) || !completed.isBefore(end)) { continue; }
             int count = counts.containsKey(studentId) ? counts.get(studentId) + 1 : 1;
             counts.put(studentId, count);
             EnrolmentClassTaskProgressDto existing = null;

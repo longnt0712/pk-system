@@ -74,6 +74,7 @@ public class TestResultServiceImpl implements TestResultService {
 		if ("VOCAB".equals(group)) { return " and s.testType = 1 "; }
 		if ("DAILY_LISTENING".equals(group)) { return " and s.testType = 3 "; }
 		if ("IELTS".equals(group)) { return " and s.testType in (2,4) "; }
+		if ("BATTLE".equals(group)) { return " and s.testType = 5 "; }
 		if (group == null || "ALL".equals(group)) { return ""; }
 		throw new IllegalArgumentException("Unknown result group");
 	}

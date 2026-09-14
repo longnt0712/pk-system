@@ -122,7 +122,7 @@
                 return escapeText(value); // Historical title-only results remain readable.
             }
             function typeFormatter(value) {
-                return {1: 'Daily Vocab', 3: 'Daily Listening', 2: 'IELTS Listening', 4: 'IELTS Reading'}[value] || 'Khác';
+                return {1: 'Daily Vocab', 3: 'Daily Listening', 2: 'IELTS Listening', 4: 'IELTS Reading', 5: 'Battle Online'}[value] || 'Khác';
             }
 
             var _tableOperation = function (value, row, index) {
@@ -178,6 +178,9 @@
                 }, {
                     field: 'resultStatus', title: 'Kết quả', switchable: true,
                     formatter: function (value, row) {
+                        if (Number(row.testType) === 5 || value === 'BATTLE') {
+                            return '<span class="label" style="background:linear-gradient(135deg,#6d5dfc,#168fc6);color:#fff">Battle</span>';
+                        }
                         if (Number(row.testType) !== 1) return '';
                         return value === 'FAILED'
                             ? '<span class="label label-danger">Thất bại</span>'
@@ -243,6 +246,7 @@
                 if (group === 'VOCAB') { return column.field !== 'bandScore' && column.field !== 'correctAnswer'; }
                 if (group === 'DAILY_LISTENING') { return column.field !== 'resultStatus' && column.field !== 'bandScore' && column.field !== 'numberOfWords'; }
                 if (group === 'IELTS') { return column.field !== 'resultStatus' && column.field !== 'numberOfWords'; }
+                if (group === 'BATTLE') { return column.field !== 'bandScore' && column.field !== 'correctAnswer' && column.field !== 'numberOfWords'; }
                 return true;
             });
         }

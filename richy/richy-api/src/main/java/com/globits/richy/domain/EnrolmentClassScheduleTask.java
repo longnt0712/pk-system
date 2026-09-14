@@ -31,6 +31,13 @@ public class EnrolmentClassScheduleTask extends BaseObject {
     private Boolean autoCompleteFromTopic;
     public Boolean getAutoCompleteFromTopic() { return autoCompleteFromTopic; }
     public void setAutoCompleteFromTopic(Boolean value) { autoCompleteFromTopic = value; }
+    @Column(name = "activity_type", length = 30)
+    private String activityType;
+    /** Legacy topic tasks were Daily Vocab, so they keep working after this field is introduced. */
+    public String getActivityType() {
+        return activityType == null || activityType.trim().isEmpty() ? "DAILY_VOCAB" : activityType;
+    }
+    public void setActivityType(String value) { activityType = value; }
     @Column(name = "required_attempts")
     private Integer requiredAttempts;
     public Integer getRequiredAttempts() { return requiredAttempts == null || requiredAttempts < 1 ? 1 : requiredAttempts; }

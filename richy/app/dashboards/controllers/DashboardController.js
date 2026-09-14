@@ -39,6 +39,9 @@
         };
 
         vm.permissionsLoaded = false;
+        vm.assignedTasks = [];
+        vm.assignedTasksLoading = false;
+        vm.assignedTasksError = false;
 
         vm.isRoleView = false;
         vm.isRoleUser = false;
@@ -128,6 +131,69 @@
             vm.applyRoles(vm.myUser.roles);
         };
 
+        vm.loadAssignedTasks = function () {
+            if (!settings.ieltsRoom || !vm.myUser.id || !(vm.isRoleView || vm.isRoleUser || vm.hasRole('ROLE_STUDENT'))) {
+                vm.assignedTasks = [];
+                return;
+            }
+            vm.assignedTasksLoading = true;
+            vm.assignedTasksError = false;
+            var url = settings.api.baseUrl + settings.api.apiV1Url + 'enrolment_class/schedule/my-assignments';
+            $http.get(url).then(function (response) {
+                vm.assignedTasks = angular.isArray(response.data) ? response.data : [];
+            }, function () {
+                vm.assignedTasks = [];
+                vm.assignedTasksError = true;
+            }).finally(function () {
+                vm.assignedTasksLoading = false;
+            });
+        };
+
+        vm.assignmentTypeLabel = function (task) {
+            var labels = {
+                DAILY_VOCAB: 'Daily Vocab',
+                DAILY_LISTENING: 'Daily Listening',
+                IELTS_READING: 'IELTS Reading',
+                IELTS_LISTENING: 'IELTS Listening',
+                OTHER: 'Bài được giao'
+            };
+            return labels[(task || {}).activityType] || 'Bài được giao';
+        };
+
+        vm.assignmentIcon = function (task) {
+            var icons = {
+                DAILY_VOCAB: 'fa-language',
+                DAILY_LISTENING: 'fa-headphones',
+                IELTS_READING: 'fa-file-text-o',
+                IELTS_LISTENING: 'fa-volume-up',
+                OTHER: 'fa-bookmark'
+            };
+            return icons[(task || {}).activityType] || 'fa-bookmark';
+        };
+
+        vm.assignmentActionLabel = function (task) {
+            if (task && task.activityType === 'DAILY_VOCAB') { return 'Làm Daily Vocab'; }
+            if (task && task.activityType === 'DAILY_LISTENING') { return 'Làm Daily Listening'; }
+            return 'Xem bài được giao';
+        };
+
+        vm.openAssignedTask = function (task) {
+            if (!task) { return; }
+            var params = {
+                listFlashCard: 0,
+                assignmentTopicId: task.topicId,
+                assignmentCategoryId: task.categoryId,
+                assignmentTaskId: task.taskId
+            };
+            if (task.activityType === 'DAILY_VOCAB') {
+                $state.go('application.daily_vocab', params);
+            } else if (task.activityType === 'DAILY_LISTENING') {
+                $state.go('application.view', params);
+            } else {
+                $state.go('application.englishClass');
+            }
+        };
+
         vm.loadCurrentUserFromCookie = function () {
             vm.permissionsLoaded = false;
 
@@ -148,6 +214,7 @@
                 }
 
                 vm.permissionsLoaded = true;
+                vm.loadAssignedTasks();
                 return;
             }
 
@@ -178,6 +245,7 @@
                 }
 
                 vm.permissionsLoaded = true;
+                vm.loadAssignedTasks();
             }, 300);
         };
 

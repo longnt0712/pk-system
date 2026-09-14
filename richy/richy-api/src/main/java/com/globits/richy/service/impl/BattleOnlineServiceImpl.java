@@ -1,6 +1,7 @@
 package com.globits.richy.service.impl;
 
 import java.security.SecureRandom;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -11,6 +12,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -26,6 +28,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.joda.time.LocalDateTime;
 
 import com.globits.richy.dto.BattleOnlineAnswerDto;
 import com.globits.richy.dto.BattleOnlineAnswerOptionDto;
@@ -49,9 +52,15 @@ import com.globits.richy.dto.QuestionForGamesDto;
 import com.globits.richy.dto.QuestionTopicDto;
 import com.globits.richy.dto.QuestionTypeDto;
 import com.globits.richy.dto.TopicDto;
+import com.globits.richy.domain.TestResult;
+import com.globits.richy.domain.Topic;
+import com.globits.richy.repository.TestResultRepository;
+import com.globits.richy.repository.TopicRepository;
 import com.globits.richy.service.BattleOnlineException;
 import com.globits.richy.service.BattleOnlineService;
 import com.globits.richy.service.QuestionService;
+import com.globits.security.domain.User;
+import com.globits.security.repository.UserRepository;
 
 @Service
 public class BattleOnlineServiceImpl implements BattleOnlineService {
@@ -203,6 +212,15 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+
+    @Autowired
+    private TestResultRepository testResultRepository;
+
+    @Autowired
+    private TopicRepository topicRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
 
     /* =========================================================
@@ -938,6 +956,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             resetScoresLocked(room);
+            room.battleResultsSaved = false;
             room.recentEvents.clear();
 
             if (MODE_GUESS_WORD.equals(room.settings.mode)) {
@@ -986,6 +1005,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             cancelMatchTimer(room.code);
 
             room.status = LOBBY;
+            room.battleResultsSaved = false;
 
             room.classicQuestions.clear();
             room.classicQuestionIndex = -1;
@@ -1331,6 +1351,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 correctOrder = room.classicCorrectAnswerCount;
                 scoreDelta = applyClassicSpeedScore(player, correctOrder);
             } else {
+                recordWrongWordLocked(player, question, submitted);
                 scoreDelta = applyScore(
                         player,
                         false,
@@ -1594,6 +1615,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         correctOrder
                 );
             } else {
+                recordWrongWordLocked(
+                        player,
+                        question,
+                        findAnswerText(question, answerDto.getAnswerKey())
+                );
                 scoreDelta = applyScore(
                         player,
                         false,
@@ -1747,6 +1773,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     );
 
             if (!correct) {
+                recordWrongWordLocked(
+                        player,
+                        question,
+                        findAnswerText(question, answerDto.getAnswerKey())
+                );
                 applyWrongAnswerPenaltyLocked(
                         room,
                         player,
@@ -2971,6 +3002,49 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
+    private boolean recordWrongWordLocked(
+            PlayerState player,
+            QuestionState question,
+            String selectedAnswer) {
+
+        if (player == null || question == null || question.id == null) {
+            return false;
+        }
+
+        WrongWordState wrong = player.wrongWords.get(question.id);
+        boolean added = wrong == null;
+        if (wrong == null) {
+            wrong = new WrongWordState();
+            wrong.questionId = question.id;
+            player.wrongWords.put(question.id, wrong);
+        }
+
+        boolean guessWord = !isBlank(question.correctText) && question.options.isEmpty();
+        wrong.word = guessWord ? clean(question.correctText) : clean(question.question);
+        wrong.meaning = guessWord
+                ? clean(question.meaning)
+                : clean(findAnswerText(question, question.correctKey));
+        wrong.selectedAnswer = clean(selectedAnswer);
+        return added;
+    }
+
+
+    private void recordUnansweredClassicPlayersLocked(RoomState room) {
+        if (room == null || room.classicQuestionIndex < 0) { return; }
+        QuestionState question = currentClassicQuestionLocked(room);
+        if (question == null) { return; }
+
+        for (PlayerState player : room.players.values()) {
+            if (player.spectator || player.answeredClassicIndex == room.classicQuestionIndex) {
+                continue;
+            }
+            if (recordWrongWordLocked(player, question, "Không trả lời")) {
+                player.wrongCount += 1;
+            }
+        }
+    }
+
+
     private double applyScore(
             PlayerState player,
             boolean correct,
@@ -3255,6 +3329,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             if (MODE_GUESS_WORD.equals(room.settings.mode)) {
                 if (GUESS_PHASE_QUESTION.equals(room.guessPhase)) {
+                    recordUnansweredClassicPlayersLocked(room);
                     finalizeGuessRoundLocked(room);
                     cancelGuessRevealTimer(room.code);
 
@@ -3279,6 +3354,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     advanceGuessQuestionLocked(room);
                 }
             } else {
+                recordUnansweredClassicPlayersLocked(room);
                 int next = room.classicQuestionIndex + 1;
 
                 if (next >= room.classicQuestions.size()) {
@@ -4716,6 +4792,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             return;
         }
 
+        if (MODE_CLASSIC.equals(room.settings.mode) || MODE_GUESS_WORD.equals(room.settings.mode)) {
+            recordUnansweredClassicPlayersLocked(room);
+        }
+
         room.status = FINISHED;
         room.questionEndsAt = 0L;
         room.matchEndsAt = 0L;
@@ -4740,7 +4820,125 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.burningUntil = 0L;
         }
 
+        saveBattleResultsLocked(room);
         scheduleFinishedExpiration(room);
+    }
+
+
+    private void saveBattleResultsLocked(RoomState room) {
+        if (room == null || room.battleResultsSaved) { return; }
+
+        boolean allSaved = true;
+        for (PlayerState player : room.players.values()) {
+            if (player == null || player.spectator || player.userId == null) { continue; }
+            try {
+                String attemptKey = UUID.nameUUIDFromBytes(
+                        ("BATTLE:" + room.code + ":" + player.username)
+                                .getBytes(StandardCharsets.UTF_8)
+                ).toString().replace("-", "");
+
+                if (testResultRepository.findAttempt(player.userId, attemptKey, 5) != null) {
+                    continue;
+                }
+
+                User user = userRepository.findById(player.userId);
+                if (user == null) {
+                    allSaved = false;
+                    continue;
+                }
+
+                TestResult result = new TestResult();
+                result.setClientAttemptKey(attemptKey);
+                result.setResultStatus("BATTLE");
+                result.setTestType(5);
+                result.setUser(user);
+                result.setTestTakerName(displayName(player));
+                result.setTestName(battleResultName(room));
+                result.setTestTime(
+                        "MODE: " + safe(room.settings.mode) +
+                        " | SCORE: " + formatScore(player.score) +
+                        " | CORRECT: " + player.correctCount +
+                        " | INCORRECT: " + player.wrongCount
+                );
+                result.setNumberOfWords(player.correctCount);
+                result.setVocabularyExperienceAwardedWords(0);
+                result.setTestTakerPerformance(buildBattleWrongWordsHtml(room, player));
+                result.setCreateDate(LocalDateTime.now());
+                result.setCreatedBy(player.username);
+
+                for (Long topicId : new LinkedHashSet<Long>(room.settings.topicIds)) {
+                    Topic topic = topicId == null ? null : topicRepository.findOne(topicId);
+                    if (topic != null) { result.getTopics().add(topic); }
+                }
+
+                testResultRepository.save(result);
+            } catch (RuntimeException saveError) {
+                allSaved = false;
+            }
+        }
+        room.battleResultsSaved = allSaved;
+    }
+
+
+    private String battleResultName(RoomState room) {
+        String mode = MODE_GUESS_WORD.equals(room.settings.mode)
+                ? "GUESS THE WORD"
+                : safe(room.settings.mode).replace('_', ' ');
+        String topics = room.settings.topicNames == null || room.settings.topicNames.isEmpty()
+                ? "Battle Online"
+                : joinText(room.settings.topicNames, " — ");
+        return mode + " · " + topics;
+    }
+
+
+    private String buildBattleWrongWordsHtml(RoomState room, PlayerState player) {
+        StringBuilder html = new StringBuilder();
+        html.append("<div style=\"font-family:Arial,sans-serif;color:#172554\">")
+            .append("<div style=\"padding:18px 20px;border-radius:16px;background:linear-gradient(135deg,#6d5dfc,#168fc6);color:#fff;margin-bottom:14px\">")
+            .append("<div style=\"font-size:12px;font-weight:800;letter-spacing:.7px\">BATTLE ONLINE · ")
+            .append(escapeHtml(room.settings.mode)).append("</div>")
+            .append("<div style=\"font-size:22px;font-weight:900;margin-top:4px\">Các từ cần ôn lại</div>")
+            .append("<div style=\"margin-top:6px\">Điểm: ").append(escapeHtml(formatScore(player.score)))
+            .append(" · Đúng: ").append(player.correctCount)
+            .append(" · Sai: ").append(player.wrongCount).append("</div></div>");
+
+        if (player.wrongWords.isEmpty()) {
+            html.append("<div style=\"padding:18px;border:1px solid #bbf7d0;border-radius:14px;background:#f0fdf4;color:#166534;font-weight:800\">🎉 Không có từ sai trong trận này.</div>");
+        } else {
+            int index = 0;
+            for (WrongWordState wrong : player.wrongWords.values()) {
+                String background = index++ % 2 == 0 ? "#f5f3ff" : "#ecfeff";
+                html.append("<div style=\"margin:10px 0;padding:14px 16px;border:1px solid #d8d7ff;border-radius:14px;background:")
+                    .append(background).append("\">")
+                    .append("<div style=\"font-size:18px;font-weight:900;color:#4f46e5\">")
+                    .append(escapeHtml(wrong.word)).append("</div>")
+                    .append("<div style=\"margin-top:5px;color:#0f766e\"><b>Nghĩa/đáp án đúng:</b> ")
+                    .append(escapeHtml(wrong.meaning)).append("</div>")
+                    .append("<div style=\"margin-top:4px;color:#be123c\"><b>Đã trả lời:</b> ")
+                    .append(escapeHtml(wrong.selectedAnswer)).append("</div></div>");
+            }
+        }
+        return html.append("</div>").toString();
+    }
+
+
+    private String joinText(List<String> values, String separator) {
+        StringBuilder result = new StringBuilder();
+        for (String value : values) {
+            if (isBlank(value)) { continue; }
+            if (result.length() > 0) { result.append(separator); }
+            result.append(clean(value));
+        }
+        return result.toString();
+    }
+
+
+    private String escapeHtml(String value) {
+        return safe(value).replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
 
@@ -6133,6 +6331,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         player.streak = 0;
         player.correctCount = 0;
         player.wrongCount = 0;
+        player.wrongWords.clear();
 
         player.answeredClassicIndex = -1;
 
@@ -7116,6 +7315,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         long finishedExpiresAt = 0L;
         long finishedExpirationGeneration = 0L;
+        boolean battleResultsSaved = false;
 
         Long ownerUserId;
 
@@ -7285,6 +7485,17 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         String wrongAnswerQuestion;
         String wrongAnswerCorrectAnswer;
         String wrongAnswerSelectedAnswer;
+
+        Map<Long, WrongWordState> wrongWords =
+                new LinkedHashMap<Long, WrongWordState>();
+    }
+
+
+    private static class WrongWordState {
+        Long questionId;
+        String word;
+        String meaning;
+        String selectedAnswer;
     }
 
 

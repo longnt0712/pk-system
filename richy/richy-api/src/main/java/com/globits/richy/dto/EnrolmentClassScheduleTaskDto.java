@@ -35,6 +35,9 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
     private Boolean autoCompleteFromTopic;
     public Boolean getAutoCompleteFromTopic() { return autoCompleteFromTopic; }
     public void setAutoCompleteFromTopic(Boolean value) { autoCompleteFromTopic = value; }
+    private String activityType;
+    public String getActivityType() { return activityType == null || activityType.trim().isEmpty() ? "DAILY_VOCAB" : activityType; }
+    public void setActivityType(String value) { activityType = value; }
     private Integer requiredAttempts;
     public Integer getRequiredAttempts() { return requiredAttempts == null || requiredAttempts < 1 ? 1 : requiredAttempts; }
     public void setRequiredAttempts(Integer value) { requiredAttempts = value; }
@@ -50,6 +53,7 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
         dueDate = task.getDueDate(); status = task.getStatus();
         dueTime = task.getDueTime(); deadlineAutomatic = task.getDeadlineAutomatic();
         autoCompleteFromTopic = task.getAutoCompleteFromTopic();
+        activityType = task.getActivityType();
         requiredAttempts = task.getRequiredAttempts();
         if (task.getTopic() != null) {
             topicId = task.getTopic().getId(); topicName = task.getTopic().getName();

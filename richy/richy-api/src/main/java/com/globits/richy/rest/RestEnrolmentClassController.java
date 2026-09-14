@@ -20,6 +20,7 @@ import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
 import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
 import com.globits.richy.dto.TopicForListAllDto;
 import com.globits.richy.dto.PersonDateDto;
+import com.globits.richy.dto.StudentAssignedTaskDto;
 import com.globits.richy.service.EnrolmentClassService;
 import com.globits.security.dto.UserDto;
 import com.globits.richy.service.EnrolmentClassScheduleException;
@@ -78,6 +79,12 @@ public class RestEnrolmentClassController {
 	@RequestMapping(value = "/tree", method = RequestMethod.GET)
 	public List<EnrolmentClassDto> getTree(@RequestParam(defaultValue = "2") Integer schoolId) {
 		return service.getTreeObjects(schoolId);
+	}
+
+	@Secured({"ROLE_USER","ROLE_VIEWER","ROLE_STUDENT"})
+	@RequestMapping(value = "/schedule/my-assignments", method = RequestMethod.GET)
+	public List<StudentAssignedTaskDto> getMyAssignedTasks() {
+		return service.getMyAssignedTasks();
 	}
 
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT","ROLE_STAFF"})

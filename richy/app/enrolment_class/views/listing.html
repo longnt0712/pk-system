@@ -237,7 +237,7 @@
     .class-day-plan-footer .btn { margin:0 !important; flex:0 0 auto; }
     .class-image-preview-modal-window .modal-dialog { width:min(1120px, calc(100vw - 28px)); margin:18px auto; }
     .class-image-preview-modal-window .modal-content { overflow:hidden; border:0; border-radius:18px; box-shadow:0 24px 70px rgba(30,41,90,.25); }
-    .class-image-preview-modal { display:flex; flex-direction:column; max-height:calc(100vh - 36px); background:#f6f7fc; }
+    .class-image-preview-modal { display:flex; flex-direction:column; width:100%; max-height:calc(100vh - 36px); overflow:hidden; background:#f6f7fc; }
     .class-image-preview-header {
         display:flex; flex:0 0 auto; align-items:flex-start; justify-content:space-between; gap:18px;
         padding:18px 22px; border:0; color:#fff; background:linear-gradient(125deg,#6156ed,#8052e5 52%,#159cbd);
@@ -245,10 +245,10 @@
     .class-image-preview-header small { display:block; margin-bottom:5px; color:rgba(255,255,255,.82); font-size:10px; font-weight:900; letter-spacing:.9px; }
     .class-image-preview-header h4 { color:#fff; font-size:20px; font-weight:900; }
     .class-image-preview-header p { margin:5px 0 0; color:rgba(255,255,255,.86); font-size:12px; }
-    .class-image-preview-header .close { flex:0 0 auto; color:#fff; opacity:.85; }
-    .class-image-preview-body { flex:1 1 auto; min-height:0; padding:18px; overflow:auto; background:linear-gradient(145deg,#eef2ff,#f8fafc 55%,#ecfeff); }
-    .class-image-preview-canvas { width:max-content; min-width:100%; padding:16px; border:1px solid #dbe3f1; border-radius:14px; background:#dfe5f0; text-align:center; box-shadow:inset 0 2px 12px rgba(30,41,59,.08); }
-    .class-image-preview-canvas img { display:block; max-width:min(100%, 1040px); height:auto; margin:0 auto; border-radius:4px; background:#fff; box-shadow:0 12px 30px rgba(30,41,59,.18); }
+    .class-image-preview-header .close { flex:0 0 auto; width:34px; height:34px; margin:0; color:#fff; opacity:.9; font-size:27px; line-height:30px; text-shadow:none; }
+    .class-image-preview-body { flex:1 1 auto; min-width:0; min-height:0; padding:18px; overflow-y:auto; overflow-x:hidden; background:linear-gradient(145deg,#eef2ff,#f8fafc 55%,#ecfeff); }
+    .class-image-preview-canvas { box-sizing:border-box; width:100%; min-width:0; padding:16px; overflow:hidden; border:1px solid #dbe3f1; border-radius:14px; background:#dfe5f0; text-align:center; box-shadow:inset 0 2px 12px rgba(30,41,59,.08); }
+    .class-image-preview-canvas img { display:block; width:auto; max-width:100%; height:auto; max-height:calc(100vh - 245px); object-fit:contain; margin:0 auto; border-radius:4px; background:#fff; box-shadow:0 12px 30px rgba(30,41,59,.18); }
     .class-image-preview-size { margin-top:9px; color:#718096; font-size:11px; font-weight:700; text-align:center; }
     .class-image-preview-footer { display:flex; flex:0 0 auto; align-items:center; justify-content:flex-end; gap:9px; padding:13px 18px; border-top:1px solid #dce4f2; background:#fff; }
     .class-image-preview-footer .btn { min-width:110px; margin:0 !important; border-radius:9px; font-weight:800; }
@@ -333,6 +333,8 @@
     .class-day-editable-content { border:0; margin:0; padding:0; min-width:0; }
     .class-session-info { display:flex; flex-wrap:wrap; align-items:center; gap:12px 20px; margin-bottom:16px; }
     .class-session-info .btn { margin-left:auto; }
+    .class-session-makeup { display:flex; align-items:center; gap:7px; margin:0; padding:7px 10px; border:1px solid #d9e1f0; border-radius:9px; background:#fff; color:#52617c; font-size:12px; font-weight:800; }
+    .class-session-makeup input { width:76px; height:31px !important; min-height:31px !important; padding:4px 8px !important; border-radius:7px !important; text-align:right; }
     .class-session-move { margin-bottom:18px; }
     .class-session-move-grid { display:grid; grid-template-columns:1fr 140px 140px 2fr; gap:12px; margin-top:14px; }
     @media(max-width:800px) { .class-session-move-grid { grid-template-columns:1fr 1fr; } }
@@ -419,14 +421,9 @@
     .class-schedule-day-modal-window .class-homework-review-table select.class-homework-progress-select option[value^="PROGRESS_"] { background:#eaf2ff !important; color:#2757a1 !important; }
     .class-homework-review-table .class-attendance-cell { min-width:230px; }
     .class-attendance-flags { display:flex; align-items:center; gap:12px; min-height:36px; }
-    .class-attendance-absent { display:flex; align-items:center; gap:7px; margin:0; color:#17633a; font-size:12px; font-weight:800; cursor:pointer; }
-    .class-attendance-absent.is-absent { color:#a12740; }
-    .class-attendance-absent input { width:17px; height:17px; margin:0; accent-color:#dc536b; }
-    .class-attendance-makeup { display:flex; align-items:center; gap:6px; margin-left:auto; color:#52617c; font-size:12px; font-weight:700; }
-    .class-schedule-day-modal-window .class-homework-review-table input.class-attendance-makeup-input {
-        width:72px; height:32px !important; min-height:32px !important; padding:5px 8px !important;
-        border-radius:8px !important; text-align:right; font-size:12px !important; box-shadow:none !important;
-    }
+    .class-attendance-present { display:flex; align-items:center; gap:7px; margin:0; color:#a12740; font-size:12px; font-weight:800; cursor:pointer; }
+    .class-attendance-present.is-present { color:#17633a; }
+    .class-attendance-present input { width:17px; height:17px; margin:0; accent-color:#24a466; }
     .class-schedule-day-modal-window .class-homework-review-table input.class-attendance-note {
         width:100%; height:32px !important; min-height:32px !important; margin-top:7px;
         padding:5px 10px !important; border-radius:8px !important; font-size:12px !important;
@@ -459,10 +456,10 @@
     .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table input.class-homework-cell-note {
         background:#1d293d !important; color:#eaf0ff !important; border-color:#465a77 !important;
     }
-    .global-dark-mode .class-attendance-absent { color:#a6ebc5; }
-    .global-dark-mode .class-attendance-absent.is-absent { color:#ffbfca; }
-    .global-dark-mode .class-attendance-makeup { color:#c5cee0; }
-    .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table input.class-attendance-makeup-input,
+    .global-dark-mode .class-attendance-present { color:#ffbfca; }
+    .global-dark-mode .class-attendance-present.is-present { color:#a6ebc5; }
+    .global-dark-mode .class-session-makeup { border-color:#46526b; background:#242c3b; color:#c5cee0; }
+    .global-dark-mode .class-session-makeup input,
     .global-dark-mode .class-schedule-day-modal-window .class-homework-review-table input.class-attendance-note {
         background:#1d293d !important; color:#eaf0ff !important; border-color:#465a77 !important;
     }
@@ -886,6 +883,11 @@
             <div class="class-session-info">
                 <span data-ng-if="vm.scheduleDay.sessionStartTime">Giờ học: <strong>{{vm.scheduleDay.sessionStartTime}}–{{vm.scheduleDay.sessionEndTime}}</strong></span>
                 <span data-ng-if="vm.scheduleDay.defaultHomeworkDeadline">Hạn Homework mặc định: <strong>{{vm.scheduleDay.defaultHomeworkDeadline | date:'dd/MM/yyyy HH:mm'}}</strong></span>
+                <label class="class-session-makeup">Học bù chung
+                    <input type="number" class="form-control input-sm" min="0" max="1440" step="1" inputmode="numeric"
+                           data-ng-model="vm.scheduleDay.makeupMinutes" data-ng-disabled="vm.scheduleDaySaving || vm.scheduleMoving"
+                           aria-label="Số phút học bù chung của buổi học" /> phút
+                </label>
                 <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.openScheduleMove()"
                         data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor || vm.homeworkCellSaving || vm.homeworkHasDrafts()"><i class="fa fa-calendar"></i> Dời buổi học</button>
             </div>
@@ -967,7 +969,7 @@
                 <h4><i class="fa fa-list-alt"></i> Bài tập về nhà buổi trước
                     <small data-ng-if="vm.previousHomeworkDay">— {{vm.previousHomeworkLabel()}}</small>
                 </h4>
-                <p class="class-task-help">Sửa trạng thái hoặc mức 10%–90% ngay dưới từng task; nhận xét lưu khi rời ô. “Đã làm” tương ứng 100%. “Chưa xác nhận”, mức % và “Cần bổ sung” do giáo viên chọn được giữ, không bị tự đối chiếu ghi đè. Chọn “Chưa làm” để cho phép tự đối chiếu lại kết quả đúng topic/thời hạn.</p>
+                <p class="class-task-help">Mặc định mỗi task là “Chưa làm”. Sửa trạng thái hoặc mức 10%–90% ngay dưới từng task; nhận xét lưu khi rời ô. “Đã làm” tương ứng 100%. Mức % và “Cần bổ sung” do giáo viên chọn được giữ, không bị tự đối chiếu ghi đè. Chọn “Chưa làm” để cho phép tự đối chiếu lại kết quả đúng topic/thời hạn.</p>
                 <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.loadPreviousHomework()"
                         data-ng-disabled="vm.homeworkReviewLoading || vm.homeworkCellSaving || vm.homeworkHasDrafts()"><i class="fa fa-refresh"></i> Cập nhật kết quả mới</button>
                 <button type="button" class="btn btn-default btn-sm" data-ng-if="vm.homeworkHasDrafts() && !vm.homeworkCellSaving"
@@ -995,7 +997,7 @@
                             <select class="form-control" data-ng-model="vm.homeworkReviewFilter" aria-label="Lọc tiến độ" data-ng-disabled="!vm.previousHomeworkTasks.length">
                                 <option value="ALL">Tất cả học sinh</option>
                                 <option value="DONE">Đã hoàn thành</option>
-                                <option value="REMAINING">Chưa hoàn thành / chưa xác nhận</option>
+                                <option value="REMAINING">Chưa hoàn thành</option>
                             </select>
                             <button type="button" class="btn btn-primary btn-sm class-homework-export-btn"
                                     data-ng-click="vm.exportHomeworkReviewImage()"
@@ -1017,21 +1019,11 @@
                                         <td><span class="class-homework-status" data-ng-class="{'is-done': row.status === 'DONE', 'is-review': row.status === 'NEEDS_REVIEW', 'is-todo': row.status === 'INCOMPLETE'}">{{row.label}}</span><small class="class-homework-review-note" data-ng-if="row.total">{{row.done}}/{{row.total}} Tasks đã làm</small></td>
                                         <td class="class-attendance-cell">
                                             <div class="class-attendance-flags">
-                                                <label class="class-attendance-absent" data-ng-class="{'is-absent': row.attendance.absent}">
-                                                    <input type="checkbox" data-ng-model="row.attendance.absent"
+                                                <label class="class-attendance-present" data-ng-class="{'is-present': row.attendance.present}">
+                                                    <input type="checkbox" data-ng-model="row.attendance.present"
                                                            data-ng-disabled="row.attendance.saving || vm.scheduleAttendanceLoading"
                                                            data-ng-change="vm.markScheduleAttendanceDirty(row); vm.saveScheduleAttendance(row)" />
-                                                    {{row.attendance.absent ? 'Nghỉ học' : 'Có đi học'}}
-                                                </label>
-                                                <label class="class-attendance-makeup">
-                                                    Học bù
-                                                    <input type="number" class="form-control input-sm class-attendance-makeup-input"
-                                                           min="0" max="1440" step="1" inputmode="numeric"
-                                                           data-ng-model="row.attendance.editMakeupMinutes"
-                                                           data-ng-change="vm.markScheduleAttendanceDirty(row)"
-                                                           data-ng-blur="vm.saveScheduleAttendance(row)"
-                                                           data-ng-disabled="row.attendance.saving || vm.scheduleAttendanceLoading"
-                                                           data-ng-attr-aria-label="Số phút học bù của {{row.name}}" placeholder="0" /> phút
+                                                    {{row.attendance.present ? 'Có đi học' : 'Nghỉ học'}}
                                                 </label>
                                             </div>
                                             <input type="text" class="form-control input-sm class-attendance-note" maxlength="1000"
@@ -1052,7 +1044,6 @@
                                                     data-ng-disabled="vm.homeworkCellSaving || vm.scheduleDaySaving"
                                                     data-ng-change="vm.markHomeworkCellDirty(cell); vm.saveHomeworkCell(row, cell)"
                                                     data-ng-attr-aria-label="Trạng thái của {{row.name}}, {{vm.previousHomeworkTasks[$index].title}}">
-                                                <option value="UNRECORDED">Chưa xác nhận</option>
                                                 <option value="TODO">Chưa làm</option>
                                                 <option data-ng-repeat="percent in vm.homeworkProgressLevels track by percent" value="PROGRESS_{{percent}}">Đã làm {{percent}}%</option>
                                                 <option value="DONE">{{cell.automatic && cell.editStatus === 'DONE' ? 'Đã làm — tự động' : 'Đã làm (100%)'}}</option>
@@ -1102,7 +1093,7 @@
                 <h4 class="modal-title">{{vm.imagePreview.title}}</h4>
                 <p>{{vm.imagePreview.description}}</p>
             </div>
-            <button type="button" class="close" data-ng-click="$dismiss()" aria-label="Đóng"></button>
+            <button type="button" class="close" data-ng-click="$dismiss()" aria-label="Đóng"><span aria-hidden="true">&times;</span></button>
         </div>
         <div class="modal-body class-image-preview-body">
             <div class="class-image-preview-canvas">
@@ -1139,6 +1130,7 @@
             <strong class="class-task-title">{{$index + 1}}. {{task.title}}</strong>
             <div class="class-task-meta">
                 <span>{{vm.taskStatusLabel(task)}}</span>
+                <span data-ng-if="task.topicId">{{task.activityType === 'DAILY_LISTENING' ? 'Daily Listening' : task.activityType === 'IELTS_READING' ? 'IELTS Reading' : task.activityType === 'IELTS_LISTENING' ? 'IELTS Listening' : task.activityType === 'OTHER' ? 'Bài khác' : 'Daily Vocab'}}</span>
                 <span data-ng-if="task.topicId">Bắt đầu: {{vm.taskStartLabel(task)}}</span>
                 <span data-ng-if="task.topicId">Yêu cầu: {{task.requiredAttempts || 1}} lần đạt</span>
                 <span data-ng-if="task.resolvedDueDate || task.dueDate">Hạn: {{vm.taskDueLabel(task)}}{{task.deadlineAutomatic ? ' · tự động' : ''}}</span>
@@ -1187,19 +1179,34 @@
             <p class="class-task-help" data-ng-if="vm.scheduleTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải category / topic...</p>
             <div class="class-task-editor-grid" data-ng-if="vm.taskEditor.topicId">
                 <div class="form-group">
+                    <label>Loại bài học</label>
+                    <select class="form-control" data-ng-model="vm.taskEditor.activityType" data-ng-change="vm.taskActivityTypeChanged()">
+                        <option value="DAILY_VOCAB">Daily Vocab</option>
+                        <option value="DAILY_LISTENING">Daily Listening</option>
+                        <option value="IELTS_READING">IELTS Reading</option>
+                        <option value="IELTS_LISTENING">IELTS Listening</option>
+                        <option value="OTHER">Bài khác / chỉ xem hướng dẫn</option>
+                    </select>
+                    <small>Dashboard dùng loại này để mở đúng màn hình làm bài.</small>
+                </div>
+                <div class="form-group">
                     <label>Số lần học sinh phải làm đạt</label>
                     <input type="number" min="1" max="100" step="1" required class="form-control"
                            data-ng-model="vm.taskEditor.requiredAttempts" />
                     <small>Chỉ khi đủ số lượt thành công này mới được tính là đã làm bài.</small>
                 </div>
+            </div>
+            <div class="class-task-editor-grid" data-ng-if="vm.taskEditor.topicId">
                 <div class="form-group">
                     <label>Thời gian bắt đầu</label>
                     <input type="text" class="form-control" readonly value="{{vm.taskStartLabel(vm.taskEditor)}}" />
                     <small>Tự động lấy thời điểm kết thúc của buổi giao task.</small>
                 </div>
+                <div></div>
             </div>
             <div class="form-group" data-ng-if="vm.taskEditor.topicId">
-                <label><input type="checkbox" data-ng-model="vm.taskEditor.autoCompleteFromTopic" /> Tự đánh dấu khi hoàn thành Daily Vocab / Daily Listening của topic này</label>
+                <label><input type="checkbox" data-ng-model="vm.taskEditor.autoCompleteFromTopic"
+                              data-ng-disabled="vm.taskEditor.activityType !== 'DAILY_VOCAB' && vm.taskEditor.activityType !== 'DAILY_LISTENING'" /> Tự đánh dấu khi hoàn thành Daily Vocab / Daily Listening của topic này</label>
                 <p class="class-task-help">Chỉ tính lượt thành công từ giờ kết thúc buổi học trước đến hạn task. Với task trên lớp không đặt hạn, mốc kết thúc là giờ tan của buổi hiện tại. Daily Listening chỉ được tính khi đạt trên 85%; IELTS không được tính.</p>
             </div>
             <div class="form-group">
