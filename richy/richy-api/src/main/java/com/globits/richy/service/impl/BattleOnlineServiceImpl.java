@@ -28,6 +28,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.joda.time.LocalDateTime;
 
 import com.globits.richy.dto.BattleOnlineAnswerDto;
@@ -64,6 +69,10 @@ import com.globits.security.repository.UserRepository;
 
 @Service
 public class BattleOnlineServiceImpl implements BattleOnlineService {
+    private static final Logger LOG = LoggerFactory.getLogger(BattleOnlineServiceImpl.class);
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     private static final String LOBBY = "LOBBY";
     private static final String PLAYING = "PLAYING";
@@ -957,6 +966,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             resetScoresLocked(room);
             room.battleResultsSaved = false;
+            room.battleAttemptId = UUID.randomUUID().toString();
             room.recentEvents.clear();
 
             if (MODE_GUESS_WORD.equals(room.settings.mode)) {
@@ -1006,6 +1016,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             room.status = LOBBY;
             room.battleResultsSaved = false;
+            room.battleAttemptId = UUID.randomUUID().toString();
 
             room.classicQuestions.clear();
             room.classicQuestionIndex = -1;
@@ -4828,52 +4839,60 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private void saveBattleResultsLocked(RoomState room) {
         if (room == null || room.battleResultsSaved) { return; }
 
+        // Timer callbacks have no request transaction. Keep the user managed
+        // through persist because TestResult cascades persistence to its user.
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         boolean allSaved = true;
         for (PlayerState player : room.players.values()) {
             if (player == null || player.spectator || player.userId == null) { continue; }
             try {
-                String attemptKey = UUID.nameUUIDFromBytes(
-                        ("BATTLE:" + room.code + ":" + player.username)
-                                .getBytes(StandardCharsets.UTF_8)
-                ).toString().replace("-", "");
+                transaction.execute(status -> {
+                    String attemptKey = UUID.nameUUIDFromBytes(
+                            ("BATTLE:" + room.battleAttemptId + ":" + player.username)
+                                    .getBytes(StandardCharsets.UTF_8)
+                    ).toString().replace("-", "");
 
-                if (testResultRepository.findAttempt(player.userId, attemptKey, 5) != null) {
-                    continue;
-                }
+                    if (testResultRepository.findAttempt(player.userId, attemptKey, 5) != null) {
+                        return null;
+                    }
 
-                User user = userRepository.findById(player.userId);
-                if (user == null) {
-                    allSaved = false;
-                    continue;
-                }
+                    User user = userRepository.findById(player.userId);
+                    if (user == null) {
+                        throw new IllegalStateException("Battle result user not found: " + player.userId);
+                    }
 
-                TestResult result = new TestResult();
-                result.setClientAttemptKey(attemptKey);
-                result.setResultStatus("BATTLE");
-                result.setTestType(5);
-                result.setUser(user);
-                result.setTestTakerName(displayName(player));
-                result.setTestName(battleResultName(room));
-                result.setTestTime(
-                        "MODE: " + safe(room.settings.mode) +
-                        " | SCORE: " + formatScore(player.score) +
-                        " | CORRECT: " + player.correctCount +
-                        " | INCORRECT: " + player.wrongCount
-                );
-                result.setNumberOfWords(player.correctCount);
-                result.setVocabularyExperienceAwardedWords(0);
-                result.setTestTakerPerformance(buildBattleWrongWordsHtml(room, player));
-                result.setCreateDate(LocalDateTime.now());
-                result.setCreatedBy(player.username);
+                    TestResult result = new TestResult();
+                    result.setClientAttemptKey(attemptKey);
+                    result.setResultStatus("BATTLE");
+                    result.setTestType(5);
+                    result.setUser(user);
+                    result.setTestTakerName(displayName(player));
+                    result.setTestName(battleResultName(room));
+                    result.setTestTime(
+                            "MODE: " + safe(room.settings.mode) +
+                            " | SCORE: " + formatScore(player.score) +
+                            " | CORRECT: " + player.correctCount +
+                            " | INCORRECT: " + player.wrongCount
+                    );
+                    result.setNumberOfWords(player.correctCount);
+                    result.setVocabularyExperienceAwardedWords(0);
+                    result.setTestTakerPerformance(buildBattleWrongWordsHtml(room, player));
+                    result.setCreateDate(LocalDateTime.now());
+                    result.setCreatedBy(player.username);
 
-                for (Long topicId : new LinkedHashSet<Long>(room.settings.topicIds)) {
-                    Topic topic = topicId == null ? null : topicRepository.findOne(topicId);
-                    if (topic != null) { result.getTopics().add(topic); }
-                }
+                    for (Long topicId : new LinkedHashSet<Long>(room.settings.topicIds)) {
+                        Topic topic = topicId == null ? null : topicRepository.findOne(topicId);
+                        if (topic != null) { result.getTopics().add(topic); }
+                    }
 
-                testResultRepository.save(result);
+                    testResultRepository.saveAndFlush(result);
+                    return null;
+                });
             } catch (RuntimeException saveError) {
                 allSaved = false;
+                LOG.error("Failed to save battle result for room " + room.code
+                        + ", user " + player.userId, saveError);
             }
         }
         room.battleResultsSaved = allSaved;
@@ -7316,6 +7335,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         long finishedExpiresAt = 0L;
         long finishedExpirationGeneration = 0L;
         boolean battleResultsSaved = false;
+        String battleAttemptId = UUID.randomUUID().toString();
 
         Long ownerUserId;
 
