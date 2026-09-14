@@ -1029,6 +1029,9 @@
         };
 
         vm.exportingHomeworkImage = false;
+        vm.exportingHomeworkTasksImage = false;
+        vm.imagePreview = null;
+        vm.imagePreviewModal = null;
 
         function homeworkExportValue(text, original) {
             var value = document.createElement('div');
@@ -1126,6 +1129,68 @@
             return root;
         }
 
+        function openClassImagePreview(canvas, fileName, title, description) {
+            vm.imagePreview = {
+                dataUrl: canvas.toDataURL('image/png'),
+                fileName: fileName,
+                title: title,
+                description: description,
+                width: canvas.width,
+                height: canvas.height
+            };
+            vm.imagePreviewModal = modal.open({
+                animation: true,
+                templateUrl: 'class_image_preview_modal.html',
+                scope: $scope,
+                size: 'lg',
+                windowClass: 'class-management-modal-window class-image-preview-modal-window',
+                backdrop: 'static'
+            });
+            if (vm.imagePreviewModal.result && angular.isFunction(vm.imagePreviewModal.result.then)) {
+                var openedModal = vm.imagePreviewModal;
+                var clearPreview = function () {
+                    if (vm.imagePreviewModal === openedModal) {
+                        vm.imagePreviewModal = null;
+                        vm.imagePreview = null;
+                    }
+                };
+                vm.imagePreviewModal.result.then(clearPreview, clearPreview);
+            }
+        }
+
+        vm.downloadImagePreview = function () {
+            if (!vm.imagePreview || !vm.imagePreview.dataUrl) { return; }
+            var link = document.createElement('a');
+            link.href = vm.imagePreview.dataUrl;
+            link.download = vm.imagePreview.fileName || ('homework_' + moment().format('YYYYMMDD_HHmm') + '.png');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toastr.success('Đã tải ảnh xuống máy.', 'Thông báo');
+        };
+
+        function renderClassImagePreview(exportElement, options) {
+            document.body.appendChild(exportElement);
+            var width = Math.ceil(exportElement.scrollWidth), height = Math.ceil(exportElement.scrollHeight);
+            var scale = Math.min(2, 16000 / Math.max(width, 1), 16000 / Math.max(height, 1),
+                Math.sqrt(100000000 / Math.max(width * height, 1)));
+
+            return window.html2canvas(exportElement, {
+                backgroundColor: '#ffffff', scale: scale, useCORS: true, logging: false,
+                width: width, height: height, windowWidth: width, windowHeight: height
+            }).then(function (canvas) {
+                if (exportElement.parentNode) { exportElement.parentNode.removeChild(exportElement); }
+                $scope.$evalAsync(function () {
+                    options.onDone();
+                    openClassImagePreview(canvas, options.fileName, options.title, options.description);
+                });
+            }).catch(function () {
+                if (exportElement.parentNode) { exportElement.parentNode.removeChild(exportElement); }
+                $scope.$evalAsync(function () { options.onDone(); });
+                toastr.error(options.errorMessage || 'Có lỗi khi tạo ảnh xem trước.', 'Lỗi');
+            });
+        }
+
         vm.exportHomeworkReviewImage = function () {
             if (vm.exportingHomeworkImage) { return; }
             if (!window.html2canvas) { toastr.error('Thiếu thư viện html2canvas để xuất ảnh.', 'Lỗi'); return; }
@@ -1137,24 +1202,118 @@
 
             vm.exportingHomeworkImage = true;
             var exportElement = prepareHomeworkImageElement(source);
-            document.body.appendChild(exportElement);
-            var width = Math.ceil(exportElement.scrollWidth), height = Math.ceil(exportElement.scrollHeight);
-            var scale = Math.min(2, 16000 / Math.max(width, 1), 16000 / Math.max(height, 1),
-                Math.sqrt(100000000 / Math.max(width * height, 1)));
+            renderClassImagePreview(exportElement, {
+                fileName: 'tien_do_homework_' + (vm.previousHomeworkDay.scheduleDate || moment().format('YYYY-MM-DD'))
+                    + '_' + moment().format('HHmm') + '.png',
+                title: 'Xem trước tiến độ Homework',
+                description: 'Kiểm tra nội dung và bảng tiến độ trước khi tải ảnh.',
+                errorMessage: 'Có lỗi khi tạo ảnh xem trước bảng tiến độ.',
+                onDone: function () { vm.exportingHomeworkImage = false; }
+            });
+        };
 
-            window.html2canvas(exportElement, {backgroundColor:'#ffffff', scale:scale, useCORS:true, logging:false,
-                width:width, height:height, windowWidth:width, windowHeight:height}).then(function (canvas) {
-                var link = document.createElement('a');
-                link.href = canvas.toDataURL('image/png');
-                link.download = 'tien_do_homework_' + (vm.previousHomeworkDay.scheduleDate || moment().format('YYYY-MM-DD'))
-                    + '_' + moment().format('HHmm') + '.png';
-                document.body.appendChild(link); link.click(); document.body.removeChild(link);
-                document.body.removeChild(exportElement);
-                $scope.$evalAsync(function () { vm.exportingHomeworkImage = false; });
-            }).catch(function () {
-                if (exportElement.parentNode) { exportElement.parentNode.removeChild(exportElement); }
-                $scope.$evalAsync(function () { vm.exportingHomeworkImage = false; });
-                toastr.error('Có lỗi khi xuất ảnh bảng tiến độ.', 'Lỗi');
+        function prepareHomeworkTasksImageElement() {
+            var tasks = vm.tasksForSection('HOMEWORK');
+            var root = document.createElement('div');
+            root.style.cssText = 'position:fixed;left:0;top:0;z-index:-2147483647;overflow:visible;'
+                + 'width:900px;padding:34px;background:linear-gradient(145deg,#f5f3ff,#eff6ff 46%,#ecfeff);'
+                + 'color:#172554;font-family:Arial,sans-serif;pointer-events:none;';
+
+            var header = document.createElement('div');
+            header.style.cssText = 'position:relative;overflow:hidden;padding:24px 26px;border-radius:22px;'
+                + 'background:linear-gradient(125deg,#6d5dfc,#8055e9 52%,#169bc5);color:#fff;'
+                + 'box-shadow:0 14px 30px rgba(79,70,229,.22);';
+            var kicker = document.createElement('div');
+            kicker.textContent = 'KẾ HOẠCH HỌC TẬP';
+            kicker.style.cssText = 'font-size:11px;font-weight:900;letter-spacing:1.6px;opacity:.82;';
+            var title = document.createElement('h1');
+            title.textContent = 'BÀI TẬP VỀ NHÀ';
+            title.style.cssText = 'margin:7px 0 8px;font-size:30px;line-height:1.1;font-weight:900;';
+            var subtitle = document.createElement('div');
+            subtitle.textContent = (vm.scheduleClass && vm.scheduleClass.name ? vm.scheduleClass.name : 'Lớp học')
+                + '  •  Buổi học ' + vm.scheduleDayLabel();
+            subtitle.style.cssText = 'font-size:14px;font-weight:700;opacity:.92;';
+            header.appendChild(kicker); header.appendChild(title); header.appendChild(subtitle);
+            root.appendChild(header);
+
+            var topics = vm.selectedScheduleTopics('homeworkTopicIds');
+            if (topics.length) {
+                var topicBox = document.createElement('div');
+                topicBox.textContent = '📚 Bài học: ' + topics.map(function (topic) { return topic.name; }).join('  •  ');
+                topicBox.style.cssText = 'margin-top:18px;padding:13px 16px;border:1px solid #c4b5fd;border-radius:14px;'
+                    + 'background:rgba(255,255,255,.88);color:#5b21b6;font-size:13px;font-weight:800;';
+                root.appendChild(topicBox);
+            }
+
+            if (vm.scheduleDay.homeworkNotes) {
+                var reminder = document.createElement('div');
+                reminder.textContent = '💬 Dặn dò: ' + vm.scheduleDay.homeworkNotes;
+                reminder.style.cssText = 'margin-top:12px;padding:13px 16px;border:1px solid #fde68a;border-radius:14px;'
+                    + 'background:#fffbeb;color:#854d0e;font-size:13px;font-weight:700;white-space:pre-wrap;';
+                root.appendChild(reminder);
+            }
+
+            var list = document.createElement('div');
+            list.style.cssText = 'display:flex;flex-direction:column;gap:12px;margin-top:18px;';
+            angular.forEach(tasks, function (task, index) {
+                var card = document.createElement('div');
+                card.style.cssText = 'display:grid;grid-template-columns:46px 1fr;gap:14px;padding:17px 18px;'
+                    + 'border:1px solid ' + (index % 2 ? '#bae6fd' : '#ddd6fe') + ';border-radius:17px;'
+                    + 'background:' + (index % 2 ? 'linear-gradient(110deg,#fff,#ecfeff)' : 'linear-gradient(110deg,#fff,#f5f3ff)') + ';'
+                    + 'box-shadow:0 8px 18px rgba(30,64,175,.07);';
+                var number = document.createElement('div');
+                number.textContent = index + 1;
+                number.style.cssText = 'width:42px;height:42px;display:flex;align-items:center;justify-content:center;'
+                    + 'border-radius:14px;background:linear-gradient(135deg,#8b5cf6,#2563eb);color:#fff;'
+                    + 'font-size:18px;font-weight:900;box-shadow:0 7px 15px rgba(79,70,229,.22);';
+                var content = document.createElement('div');
+                var taskTitle = document.createElement('div');
+                taskTitle.textContent = task.title;
+                taskTitle.style.cssText = 'color:#172554;font-size:17px;font-weight:900;line-height:1.35;';
+                content.appendChild(taskTitle);
+
+                var metaItems = [];
+                if (task.topicName) { metaItems.push((task.categoryName || 'Topic') + ': ' + task.topicName); }
+                if (task.topicId) { metaItems.push('Bắt đầu: ' + vm.taskStartLabel(task)); }
+                if (task.topicId) { metaItems.push('Yêu cầu: ' + (task.requiredAttempts || 1) + ' lần đạt'); }
+                if (task.resolvedDueDate || task.dueDate) { metaItems.push('Hạn: ' + vm.taskDueLabel(task)); }
+                if (metaItems.length) {
+                    var meta = document.createElement('div');
+                    meta.textContent = metaItems.join('  •  ');
+                    meta.style.cssText = 'margin-top:7px;color:#475569;font-size:12px;font-weight:700;line-height:1.5;';
+                    content.appendChild(meta);
+                }
+                if (task.notes) {
+                    var notes = document.createElement('div');
+                    notes.textContent = task.notes;
+                    notes.style.cssText = 'margin-top:8px;padding:9px 11px;border-radius:10px;background:#f8fafc;'
+                        + 'color:#64748b;font-size:12px;line-height:1.45;white-space:pre-wrap;';
+                    content.appendChild(notes);
+                }
+                card.appendChild(number); card.appendChild(content); list.appendChild(card);
+            });
+            root.appendChild(list);
+
+            var footer = document.createElement('div');
+            footer.textContent = '✨ Hoàn thành từng nhiệm vụ đúng hạn nhé!';
+            footer.style.cssText = 'margin-top:20px;text-align:center;color:#6d28d9;font-size:13px;font-weight:900;';
+            root.appendChild(footer);
+            return root;
+        }
+
+        vm.previewHomeworkTasksImage = function () {
+            if (vm.exportingHomeworkTasksImage) { return; }
+            if (!window.html2canvas) { toastr.error('Thiếu thư viện html2canvas để xuất ảnh.', 'Lỗi'); return; }
+            var tasks = vm.tasksForSection('HOMEWORK');
+            if (!tasks.length) { toastr.warning('Chưa có Homework task để xuất ảnh.', 'Thông báo'); return; }
+            vm.exportingHomeworkTasksImage = true;
+            renderClassImagePreview(prepareHomeworkTasksImageElement(), {
+                fileName: 'homework_phai_lam_' + (vm.scheduleDay.scheduleDate || moment().format('YYYY-MM-DD'))
+                    + '_' + moment().format('HHmm') + '.png',
+                title: 'Xem trước Homework phải làm',
+                description: 'Ảnh này chỉ gồm nội dung bài giao để gửi cho học sinh.',
+                errorMessage: 'Có lỗi khi tạo ảnh Homework phải làm.',
+                onDone: function () { vm.exportingHomeworkTasksImage = false; }
             });
         };
 

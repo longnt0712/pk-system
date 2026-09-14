@@ -106,6 +106,40 @@
         </div>
 
 
+        <!-- QUẢN LÝ LỚP HỌC - ĐẶT GIỮA DAILY VOCAB VÀ BATTLE MODES -->
+        <div
+                class="learning-tile-wrap"
+                ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin || vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleStaff)">
+
+            <a
+                    ui-sref="application.englishClass"
+                    href="english_classes"
+                    class="learning-tile learning-tile-classes">
+
+                <span class="learning-tile-tag learning-classes-tag">LỚP CỦA TÔI</span>
+
+                <span class="learning-tile-icon">
+                    <i class="fa fa-university"></i>
+                </span>
+
+                <span class="learning-tile-title">
+                    QUẢN LÝ LỚP HỌC
+                </span>
+
+                <span class="learning-tile-desc">
+                    Lịch học, bài học và Homework
+                </span>
+
+                <span class="learning-tile-go">
+                    <i class="fa fa-arrow-right"></i>
+                </span>
+
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+
         <!-- =================================================
              BATTLE MODES
              Click để mở / đóng các battle game bên dưới.
@@ -1015,6 +1049,20 @@
                         #8f5cf4 52%,
                         #b45eee 100%
                 );
+    }
+
+    .learning-tile-classes {
+        background:
+                linear-gradient(
+                        135deg,
+                        #13b8a6 0%,
+                        #1f9cc9 54%,
+                        #4f6ee8 100%
+                );
+    }
+
+    .learning-classes-tag {
+        color: #087c83;
     }
 
     .learning-tile-games {

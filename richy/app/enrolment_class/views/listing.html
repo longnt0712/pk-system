@@ -235,6 +235,31 @@
     }
     .class-day-plan-footer::before, .class-day-plan-footer::after { display:none; }
     .class-day-plan-footer .btn { margin:0 !important; flex:0 0 auto; }
+    .class-image-preview-modal-window .modal-dialog { width:min(1120px, calc(100vw - 28px)); margin:18px auto; }
+    .class-image-preview-modal-window .modal-content { overflow:hidden; border:0; border-radius:18px; box-shadow:0 24px 70px rgba(30,41,90,.25); }
+    .class-image-preview-modal { display:flex; flex-direction:column; max-height:calc(100vh - 36px); background:#f6f7fc; }
+    .class-image-preview-header {
+        display:flex; flex:0 0 auto; align-items:flex-start; justify-content:space-between; gap:18px;
+        padding:18px 22px; border:0; color:#fff; background:linear-gradient(125deg,#6156ed,#8052e5 52%,#159cbd);
+    }
+    .class-image-preview-header small { display:block; margin-bottom:5px; color:rgba(255,255,255,.82); font-size:10px; font-weight:900; letter-spacing:.9px; }
+    .class-image-preview-header h4 { color:#fff; font-size:20px; font-weight:900; }
+    .class-image-preview-header p { margin:5px 0 0; color:rgba(255,255,255,.86); font-size:12px; }
+    .class-image-preview-header .close { flex:0 0 auto; color:#fff; opacity:.85; }
+    .class-image-preview-body { flex:1 1 auto; min-height:0; padding:18px; overflow:auto; background:linear-gradient(145deg,#eef2ff,#f8fafc 55%,#ecfeff); }
+    .class-image-preview-canvas { width:max-content; min-width:100%; padding:16px; border:1px solid #dbe3f1; border-radius:14px; background:#dfe5f0; text-align:center; box-shadow:inset 0 2px 12px rgba(30,41,59,.08); }
+    .class-image-preview-canvas img { display:block; max-width:min(100%, 1040px); height:auto; margin:0 auto; border-radius:4px; background:#fff; box-shadow:0 12px 30px rgba(30,41,59,.18); }
+    .class-image-preview-size { margin-top:9px; color:#718096; font-size:11px; font-weight:700; text-align:center; }
+    .class-image-preview-footer { display:flex; flex:0 0 auto; align-items:center; justify-content:flex-end; gap:9px; padding:13px 18px; border-top:1px solid #dce4f2; background:#fff; }
+    .class-image-preview-footer .btn { min-width:110px; margin:0 !important; border-radius:9px; font-weight:800; }
+    .class-image-preview-footer .btn-primary { border-color:#5b54e9; background:linear-gradient(135deg,#6d5df5,#4f6fe8); box-shadow:0 7px 16px rgba(79,70,229,.2); }
+    @media(max-width:640px) {
+        .class-image-preview-modal-window .modal-dialog { width:calc(100vw - 16px); margin:8px auto; }
+        .class-image-preview-modal { max-height:calc(100vh - 16px); }
+        .class-image-preview-header { padding:14px 15px; }
+        .class-image-preview-body { padding:10px; }
+        .class-image-preview-canvas { padding:8px; }
+    }
     /* The page's floating scroll-to-top button must not cover modal actions. */
     body.modal-open .scroll-to-top { display:none !important; }
     .class-schedule-modal { height:100%; max-height:none; overflow:hidden; }
@@ -910,6 +935,12 @@
                     <div class="class-day-plan-heading">
                         <h4><i class="fa fa-pencil-square-o"></i> Homework</h4>
                         <div class="class-day-plan-actions">
+                        <button type="button" class="btn btn-info"
+                                data-ng-click="vm.previewHomeworkTasksImage()"
+                                data-ng-disabled="vm.exportingHomeworkTasksImage || !vm.tasksForSection('HOMEWORK').length">
+                            <i class="fa" data-ng-class="vm.exportingHomeworkTasksImage ? 'fa-spinner fa-spin' : 'fa-image'"></i>
+                            {{vm.exportingHomeworkTasksImage ? 'Đang tạo ảnh...' : 'Xuất ảnh Homework'}}
+                        </button>
                         <button type="button" class="btn btn-warning" data-ng-click="vm.openScheduleTask('HOMEWORK')"
                                 data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor"><i class="fa fa-plus"></i> Tasks</button>
                         </div>
@@ -968,9 +999,9 @@
                             </select>
                             <button type="button" class="btn btn-primary btn-sm class-homework-export-btn"
                                     data-ng-click="vm.exportHomeworkReviewImage()"
-                                    data-ng-disabled="vm.exportingHomeworkImage || !vm.previousHomeworkTasks.length || !vm.filteredHomeworkRows().length">
+                                data-ng-disabled="vm.exportingHomeworkImage || !vm.previousHomeworkTasks.length || !vm.filteredHomeworkRows().length">
                                 <i class="fa" data-ng-class="vm.exportingHomeworkImage ? 'fa-spinner fa-spin' : 'fa-image'"></i>
-                                {{vm.exportingHomeworkImage ? 'Đang xuất ảnh...' : 'Xuất ảnh'}}
+                                {{vm.exportingHomeworkImage ? 'Đang tạo ảnh...' : 'Xem trước ảnh'}}
                             </button>
                         </div>
                         <div class="class-homework-review-table" data-ng-if="vm.scheduleStudents.length" tabindex="0" aria-label="Bảng tiến độ Homework, cuộn để xem thêm">
@@ -1058,6 +1089,36 @@
             <button type="button" class="btn btn-primary" data-ng-if="!vm.scheduleDay.movedToDate" data-ng-click="vm.saveScheduleDay()" data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor || vm.homeworkCellSaving || vm.homeworkHasDrafts() || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError">
                 <i class="fa" data-ng-class="vm.scheduleDaySaving ? 'fa-spinner fa-spin' : 'fa-save'"></i>
                 {{vm.scheduleDaySaving ? 'Đang lưu...' : 'Lưu kế hoạch'}}
+            </button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="class_image_preview_modal.html">
+    <div class="class-image-preview-modal">
+        <div class="modal-header class-image-preview-header">
+            <div>
+                <small><i class="fa fa-eye"></i> XEM TRƯỚC TRƯỚC KHI TẢI</small>
+                <h4 class="modal-title">{{vm.imagePreview.title}}</h4>
+                <p>{{vm.imagePreview.description}}</p>
+            </div>
+            <button type="button" class="close" data-ng-click="$dismiss()" aria-label="Đóng"></button>
+        </div>
+        <div class="modal-body class-image-preview-body">
+            <div class="class-image-preview-canvas">
+                <img data-ng-if="vm.imagePreview.dataUrl"
+                     data-ng-src="{{vm.imagePreview.dataUrl}}"
+                     alt="Ảnh xem trước" />
+            </div>
+            <div class="class-image-preview-size" data-ng-if="vm.imagePreview.width && vm.imagePreview.height">
+                Kích thước ảnh: {{vm.imagePreview.width}} × {{vm.imagePreview.height}} px
+            </div>
+        </div>
+        <div class="modal-footer class-image-preview-footer">
+            <button type="button" class="btn btn-default" data-ng-click="$dismiss()">Quay lại</button>
+            <button type="button" class="btn btn-primary"
+                    data-ng-click="vm.downloadImagePreview(); $close()">
+                <i class="fa fa-download"></i> Tải ảnh PNG
             </button>
         </div>
     </div>
