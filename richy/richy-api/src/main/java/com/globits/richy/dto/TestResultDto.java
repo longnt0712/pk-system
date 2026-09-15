@@ -32,6 +32,8 @@ public class TestResultDto implements Serializable{
 	public void setCompletedVocabularyTopicIds(List<Long> value) { completedVocabularyTopicIds = value; }
 	private List<TestResultTopicDto> topics;
 	private Long sourceQuestionId;
+	private Integer completedPart;
+	private Long assignmentTaskId;
 	private String resultGroup;
 	public List<Long> getTopicIds() { return topicIds; }
 	public void setTopicIds(List<Long> value) { topicIds = value; }
@@ -39,11 +41,18 @@ public class TestResultDto implements Serializable{
 	public void setTopics(List<TestResultTopicDto> value) { topics = value; }
 	public Long getSourceQuestionId() { return sourceQuestionId; }
 	public void setSourceQuestionId(Long value) { sourceQuestionId = value; }
+	public Integer getCompletedPart() { return completedPart; }
+	public void setCompletedPart(Integer value) { completedPart = value; }
+	public Long getAssignmentTaskId() { return assignmentTaskId; }
+	public void setAssignmentTaskId(Long value) { assignmentTaskId = value; }
 	public String getResultGroup() { return resultGroup; }
 	public void setResultGroup(String value) { resultGroup = value; }
 	private void copyTopics(TestResult domain) {
         clientAttemptKey=domain.getClientAttemptKey();
         resultStatus=domain.getResultStatus();
+        sourceQuestionId=domain.getSourceQuestionId();
+        completedPart=domain.getCompletedPart();
+        assignmentTaskId=domain.getAssignmentTaskId();
         if(Integer.valueOf(1).equals(domain.getTestType())&&resultStatus==null)resultStatus="SUCCESS";
         if("FAILED".equals(resultStatus))messageCode=1;
 		completedVocabularyTopicIds = new ArrayList<Long>();

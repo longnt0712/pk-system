@@ -15,6 +15,9 @@ public class StudentAssignedTaskDto implements Serializable {
     private String topicName;
     private Long categoryId;
     private String categoryName;
+    private Long ieltsTestId;
+    private String ieltsTestTitle;
+    private Integer ieltsPart;
     private String assignedDate;
     private String dueDate;
     private String dueTime;
@@ -43,6 +46,12 @@ public class StudentAssignedTaskDto implements Serializable {
     public void setCategoryId(Long value) { categoryId = value; }
     public String getCategoryName() { return categoryName; }
     public void setCategoryName(String value) { categoryName = value; }
+    public Long getIeltsTestId() { return ieltsTestId; }
+    public void setIeltsTestId(Long value) { ieltsTestId = value; }
+    public String getIeltsTestTitle() { return ieltsTestTitle; }
+    public void setIeltsTestTitle(String value) { ieltsTestTitle = value; }
+    public Integer getIeltsPart() { return ieltsPart; }
+    public void setIeltsPart(Integer value) { ieltsPart = value; }
     public String getAssignedDate() { return assignedDate; }
     public void setAssignedDate(String value) { assignedDate = value; }
     public String getDueDate() { return dueDate; }

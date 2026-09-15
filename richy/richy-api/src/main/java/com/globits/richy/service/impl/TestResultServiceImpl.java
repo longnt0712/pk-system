@@ -33,6 +33,7 @@ import com.globits.richy.domain.Answer;
 import com.globits.richy.domain.QuestionAnswer;
 import com.globits.richy.domain.QuestionAnswerTestResult;
 import com.globits.richy.domain.TestResult;
+import com.globits.richy.domain.EnrolmentClassScheduleTask;
 import com.globits.richy.dto.QuestionAnswerDto;
 import com.globits.richy.dto.QuestionAnswerTestResultDto;
 import com.globits.richy.dto.TestResultDto;
@@ -43,6 +44,7 @@ import com.globits.richy.repository.QuestionAnswerRepository;
 import com.globits.richy.repository.QuestionAnswerTestResultRepository;
 import com.globits.richy.repository.QuestionRepository;
 import com.globits.richy.repository.TestResultRepository;
+import com.globits.richy.repository.EnrolmentClassScheduleTaskRepository;
 import com.globits.richy.service.TestResultService;
 import com.globits.security.domain.User;
 import com.globits.security.dto.UserDto;
@@ -69,6 +71,8 @@ public class TestResultServiceImpl implements TestResultService {
 	QuestionRepository questionRepository;
 	@Autowired
 	TopicRepository topicRepository;
+	@Autowired
+	EnrolmentClassScheduleTaskRepository scheduleTaskRepository;
 
 	private String resultGroupClause(String group) {
 		if ("VOCAB".equals(group)) { return " and s.testType = 1 "; }
@@ -535,6 +539,21 @@ public class TestResultServiceImpl implements TestResultService {
 			// A passed vocabulary completion is immutable: no later ID/topic/time forgery.
 			if (Integer.valueOf(1).equals(domain.getTestType())) { return new TestResultDto(domain); }
 		}
+		if (dto.getCompletedPart() != null || dto.getAssignmentTaskId() != null) {
+			EnrolmentClassScheduleTask assignedTask = dto.getAssignmentTaskId() == null ? null
+					: scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
+			boolean ieltsType = Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType());
+			boolean matchingType = assignedTask != null && ((Integer.valueOf(2).equals(dto.getTestType())
+					&& "IELTS_LISTENING".equals(assignedTask.getActivityType()))
+					|| (Integer.valueOf(4).equals(dto.getTestType()) && "IELTS_READING".equals(assignedTask.getActivityType())));
+			if (!ieltsType || assignedTask == null || assignedTask.getIeltsTest() == null
+					|| !assignedTask.getIeltsTest().getId().equals(dto.getSourceQuestionId())
+					|| !dto.getCompletedPart().equals(assignedTask.getIeltsPart()) || !matchingType
+					|| dto.getCompletedPart() < 1 || dto.getCompletedPart() > 3
+					|| dto.getQuestionAnswerTestResult() == null || dto.getQuestionAnswerTestResult().isEmpty()) {
+				throw new IllegalArgumentException("Kết quả không khớp với đề IELTS và Part được giao.");
+			}
+		}
 		Set<Topic> resultTopics = null;
 		if (dto.getTopicIds() != null) {
 			if (dto.getTopicIds().size() > 100) { throw new IllegalArgumentException("Tối đa 100 topic trong một kết quả."); }
@@ -564,7 +583,7 @@ public class TestResultServiceImpl implements TestResultService {
 			domain.setCreatedBy(currentUserName);
 		}
 		User resultUser = null;
-		if(dto.getTestType() != null && (dto.getTestType() == 1 || dto.getTestType() == 3)
+		if(dto.getTestType() != null && (dto.getTestType() == 1 || dto.getTestType() == 3 || dto.getCompletedPart() != null)
 				&& modifiedUser != null && modifiedUser.getId() != null) {
 			// Daily Vocab / Listening chỉ được ghi nhận cho chính tài khoản đang đăng nhập.
 			resultUser = userRepository.findById(modifiedUser.getId());
@@ -586,11 +605,15 @@ public class TestResultServiceImpl implements TestResultService {
 		domain.setTestName(dto.getTestName());
 		domain.setTestTime(dto.getTestTime());
 		domain.setTestType(dto.getTestType());
+		domain.setSourceQuestionId(dto.getSourceQuestionId());
+		domain.setCompletedPart(dto.getCompletedPart());
+		domain.setAssignmentTaskId(dto.getAssignmentTaskId());
         domain.setResultStatus(Integer.valueOf(1).equals(dto.getTestType())
                 ? (passedDailyVocab ? "SUCCESS" : "FAILED")
                 : Integer.valueOf(3).equals(dto.getTestType())
                     ? (passedDailyListening ? "SUCCESS" : "FAILED")
-                    : null);
+                    : ((Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType()))
+                            && dto.getCompletedPart() != null ? "SUCCESS" : null));
 		domain.setNumberOfWords(dto.getNumberOfWords());
 		domain.setTestTakerPerformance(dto.getTestTakerPerformance());
 		if(dto.getQuestionAnswerTestResult() !=null && dto.getQuestionAnswerTestResult().size()>0) {

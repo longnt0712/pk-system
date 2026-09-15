@@ -55,5 +55,8 @@ public class QuestionForTestsDto implements Serializable  {
 		this.pronounce = domain.getPronounce();
 		this.status = domain.getStatus();
 	}
+	public QuestionForTestsDto(Long id, String title, String pronounce, int status) {
+		this.id = id; this.title = title; this.pronounce = pronounce; this.status = status;
+	}
 
 }

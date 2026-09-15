@@ -20,6 +20,14 @@ public final class HomeworkTopicCompletion {
     public static int testType(EnrolmentClassScheduleTaskDto task) {
         return "DAILY_LISTENING".equals(task.getActivityType()) ? 3 : 1;
     }
+    public static boolean ieltsEnabled(EnrolmentClassScheduleTaskDto task) {
+        return ("CLASS".equals(task.getSection()) || "HOMEWORK".equals(task.getSection()))
+                && task.getIeltsTestId() != null && task.getIeltsPart() != null
+                && ("IELTS_READING".equals(task.getActivityType()) || "IELTS_LISTENING".equals(task.getActivityType()));
+    }
+    public static int ieltsTestType(EnrolmentClassScheduleTaskDto task) {
+        return "IELTS_LISTENING".equals(task.getActivityType()) ? 2 : 4;
+    }
     public static LocalDate windowEnd(String assigned, String due, Set<Integer> weekdays, String nextSaved) {
         LocalDate start = LocalDate.parse(assigned);
         if (due != null && !due.isEmpty()) { return LocalDate.parse(due).plusDays(1); }
@@ -92,6 +100,44 @@ public final class HomeworkTopicCompletion {
             }
             existing.setAutomatic(true);
             existing.setTestResultId((Long) row[3]); existing.setCompletedAt(completed.toDate());
+        }
+    }
+
+    public static void applyIelts(EnrolmentClassScheduleTaskDto task, List<Object[]> completions,
+            LocalDateTime start, LocalDateTime end) {
+        if (!ieltsEnabled(task)) { return; }
+        int required = task.getRequiredAttempts();
+        Map<Long, Integer> counts = new LinkedHashMap<Long, Integer>();
+        for (Object[] row : completions) {
+            Long studentId = (Long) row[0], testId = (Long) row[1];
+            Integer part = (Integer) row[2], resultTestType = (Integer) row[5];
+            LocalDateTime completed = (LocalDateTime) row[3];
+            if (!task.getIeltsTestId().equals(testId) || !task.getIeltsPart().equals(part)
+                    || task.getId() == null || !task.getId().equals((Long) row[6])
+                    || resultTestType.intValue() != ieltsTestType(task)
+                    || completed.isBefore(start) || !completed.isBefore(end)) { continue; }
+            int count = counts.containsKey(studentId) ? counts.get(studentId) + 1 : 1;
+            counts.put(studentId, count);
+            EnrolmentClassTaskProgressDto existing = null;
+            for (EnrolmentClassTaskProgressDto progress : task.getStudentProgress()) {
+                if (studentId.equals(progress.getStudentUserId())) { existing = progress; break; }
+            }
+            if (existing != null && !existing.isAutomatic()
+                    && ("NEEDS_REVIEW".equals(existing.getStatus()) || "DONE".equals(existing.getStatus())
+                    || "UNRECORDED".equals(existing.getStatus())
+                    || (existing.getStatus() != null && existing.getStatus().startsWith("PROGRESS_")))) { continue; }
+            if (existing == null) {
+                existing = new EnrolmentClassTaskProgressDto(); existing.setStudentUserId(studentId);
+                task.getStudentProgress().add(existing);
+            }
+            if (!existing.isAutomatic()) { existing.setManualStatus(existing.getStatus()); }
+            if (count >= required) { existing.setStatus("DONE"); }
+            else {
+                int roundedPercent = (int) Math.ceil((count * 100.0 / required) / 10.0) * 10;
+                existing.setStatus("PROGRESS_" + Math.max(10, Math.min(90, roundedPercent)));
+            }
+            existing.setAutomatic(true);
+            existing.setTestResultId((Long) row[4]); existing.setCompletedAt(completed.toDate());
         }
     }
 }

@@ -30,5 +30,20 @@ public interface TestResultRepository extends JpaRepository<TestResult, Long> {
     long countSuccessfulAssignmentAttempts(@Param("studentId") Long studentId, @Param("topicId") Long topicId,
             @Param("testType") Integer testType, @Param("fromDate") LocalDateTime fromDate,
             @Param("toDate") LocalDateTime toDate);
+
+    @Query("select count(distinct r.id) from TestResult r where r.user.id = :studentId "
+            + "and r.assignmentTaskId = :taskId and r.sourceQuestionId = :testId and r.completedPart = :part and r.testType = :testType "
+            + "and r.createDate >= :fromDate and r.createDate <= :toDate")
+    long countIeltsPartAssignmentAttempts(@Param("studentId") Long studentId, @Param("taskId") Long taskId,
+            @Param("testId") Long testId,
+            @Param("part") Integer part, @Param("testType") Integer testType,
+            @Param("fromDate") LocalDateTime fromDate, @Param("toDate") LocalDateTime toDate);
+
+    @Query("select r.user.id, r.sourceQuestionId, r.completedPart, r.createDate, r.id, r.testType, r.assignmentTaskId "
+            + "from TestResult r where r.user.id in :students and r.sourceQuestionId in :tests "
+            + "and r.completedPart is not null and r.testType in (2, 4) "
+            + "and r.createDate >= :fromDate and r.createDate <= :toDate order by r.createDate asc, r.id asc")
+    List<Object[]> findIeltsPartCompletions(@Param("students") List<Long> students, @Param("tests") List<Long> tests,
+            @Param("fromDate") LocalDateTime fromDate, @Param("toDate") LocalDateTime toDate);
 	
 }

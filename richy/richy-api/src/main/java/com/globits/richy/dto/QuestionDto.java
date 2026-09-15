@@ -31,6 +31,7 @@ public class QuestionDto implements Serializable  {
 	private String description;
 	private int type = 1;//1: flash_card
 	private String pronounce;
+	private Boolean listeningTest;
 	private String level;
 	private int status = 3;//1: chưa thuộc; 2: đã thuộc; 3: tat ca; 4: quan trong
 	private String examples;
@@ -74,6 +75,14 @@ public class QuestionDto implements Serializable  {
 	
 	private String message;
 	private boolean findExactWord = true;
+
+	public Boolean getListeningTest() {
+		return listeningTest;
+	}
+
+	public void setListeningTest(Boolean listeningTest) {
+		this.listeningTest = listeningTest;
+	}
 	
 	public boolean isFindExactWord() {
 		return findExactWord;

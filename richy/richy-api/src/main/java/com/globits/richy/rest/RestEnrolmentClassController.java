@@ -21,6 +21,7 @@ import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
 import com.globits.richy.dto.TopicForListAllDto;
 import com.globits.richy.dto.PersonDateDto;
 import com.globits.richy.dto.StudentAssignedTaskDto;
+import com.globits.richy.dto.QuestionForTestsDto;
 import com.globits.richy.service.EnrolmentClassService;
 import com.globits.security.dto.UserDto;
 import com.globits.richy.service.EnrolmentClassScheduleException;
@@ -173,6 +174,12 @@ public class RestEnrolmentClassController {
 	@RequestMapping(value = "/schedule/topics", method = RequestMethod.GET)
 	public List<TopicForListAllDto> getScheduleTopics() {
 		return service.getScheduleTopics();
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/schedule/ielts-tests", method = RequestMethod.GET)
+	public List<QuestionForTestsDto> getAssignableIeltsTests() {
+		return service.getAssignableIeltsTests();
 	}
 	
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})

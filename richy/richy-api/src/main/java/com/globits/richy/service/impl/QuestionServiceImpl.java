@@ -144,8 +144,7 @@ public class QuestionServiceImpl implements QuestionService {
 		if(searchDto.getWebsite() != null) {
 			whereClause += " and (s.website = :website) ";
 		}
-		
-		
+
 		if (textSearch != null && textSearch.length() > 0) {
 			if(searchDto.isFindExactWord()) {
 				whereClause += " and (s.question = :textSearch ) ";	
@@ -481,6 +480,16 @@ public class QuestionServiceImpl implements QuestionService {
 		
 		if(searchDto.getWebsite() != null) {
 			whereClause += " and (s.website = :website) ";
+		}
+
+		// Current IELTS Reading and Listening tests share question type 11.
+		// A non-empty main audio URL identifies Listening tests.
+		if (searchDto.getListeningTest() != null) {
+			if (searchDto.getListeningTest()) {
+				whereClause += " and (s.pronounce is not null and length(trim(s.pronounce)) > 0) ";
+			} else {
+				whereClause += " and (s.pronounce is null or length(trim(s.pronounce)) = 0) ";
+			}
 		}
 		
 		

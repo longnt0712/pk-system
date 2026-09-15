@@ -36,6 +36,18 @@ public class TestResult extends BaseObject{
     private String resultStatus;
     public String getResultStatus(){return resultStatus;}
     public void setResultStatus(String value){resultStatus=value;}
+    @Column(name="source_question_id")
+    private Long sourceQuestionId;
+    @Column(name="completed_part")
+    private Integer completedPart;
+    @Column(name="assignment_task_id")
+    private Long assignmentTaskId;
+    public Long getSourceQuestionId(){return sourceQuestionId;}
+    public void setSourceQuestionId(Long value){sourceQuestionId=value;}
+    public Integer getCompletedPart(){return completedPart;}
+    public void setCompletedPart(Integer value){completedPart=value;}
+    public Long getAssignmentTaskId(){return assignmentTaskId;}
+    public void setAssignmentTaskId(Long value){assignmentTaskId=value;}
 
 	@ManyToMany(fetch = FetchType.LAZY)
 	@JoinTable(name = "tbl_test_result_topic", joinColumns = @JoinColumn(name = "test_result_id"),

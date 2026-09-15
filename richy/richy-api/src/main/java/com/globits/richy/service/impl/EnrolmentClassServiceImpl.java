@@ -35,6 +35,7 @@ import com.globits.richy.domain.EnrolmentClass;
 import com.globits.richy.domain.EnrolmentClassScheduleDay;
 import com.globits.richy.domain.EnrolmentClassWeeklySession;
 import com.globits.richy.domain.Topic;
+import com.globits.richy.domain.Question;
 import com.globits.richy.domain.EnrolmentClassScheduleTask;
 import com.globits.richy.domain.EnrolmentClassTaskProgress;
 import com.globits.richy.domain.PersonDate;
@@ -51,11 +52,13 @@ import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
 import com.globits.richy.dto.EnrolmentClassTeamDto;
 import com.globits.richy.dto.TopicForListAllDto;
 import com.globits.richy.dto.StudentAssignedTaskDto;
+import com.globits.richy.dto.QuestionForTestsDto;
 import com.globits.richy.repository.EnrolmentClassRepository;
 import com.globits.richy.repository.EnrolmentClassScheduleDayRepository;
 import com.globits.richy.repository.EnrolmentClassWeeklySessionRepository;
 import com.globits.richy.repository.TopicRepository;
 import com.globits.richy.repository.TestResultRepository;
+import com.globits.richy.repository.QuestionRepository;
 import com.globits.richy.repository.PersonDateRepository;
 import com.globits.richy.service.EnrolmentClassService;
 import com.globits.security.domain.Role;
@@ -78,6 +81,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	EnrolmentClassWeeklySessionRepository weeklySessionRepository;
 	@Autowired
 	TopicRepository topicRepository;
+	@Autowired
+	QuestionRepository questionRepository;
 	@Autowired
 	PersonDateRepository personDateRepository;
 
@@ -715,6 +720,11 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 								student.getId(), task.getTopicId(), Integer.valueOf(HomeworkTopicCompletion.testType(task)),
 								start, deadline));
 					}
+					if (HomeworkTopicCompletion.ieltsEnabled(task)) {
+						completed = (int) Math.min(Integer.MAX_VALUE, testResultRepository.countIeltsPartAssignmentAttempts(
+								student.getId(), task.getId(), task.getIeltsTestId(), task.getIeltsPart(),
+								Integer.valueOf(HomeworkTopicCompletion.ieltsTestType(task)), start, deadline));
+					}
 					for (EnrolmentClassTaskProgressDto progress : task.getStudentProgress()) {
 						if (student.getId().equals(progress.getStudentUserId()) && "DONE".equals(progress.getStatus())) {
 							completed = required;
@@ -729,6 +739,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					item.setTitle(task.getTitle()); item.setNotes(task.getNotes()); item.setActivityType(task.getActivityType());
 					item.setTopicId(task.getTopicId()); item.setTopicName(task.getTopicName());
 					item.setCategoryId(task.getCategoryId()); item.setCategoryName(task.getCategoryName());
+					item.setIeltsTestId(task.getIeltsTestId()); item.setIeltsTestTitle(task.getIeltsTestTitle());
+					item.setIeltsPart(task.getIeltsPart());
 					item.setAssignedDate(day.getScheduleDate()); item.setDueDate(task.getResolvedDueDate());
 					item.setDueTime(task.getResolvedDueTime()); item.setRequiredAttempts(required);
 					item.setCompletedAttempts(Math.min(required, completed)); item.setRemainingAttempts(remaining);
@@ -798,10 +810,12 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
         enrichScheduleDeadline(dto, timeline);
         if (day.getMovedToDate() != null) { return dto; }
         List<Long> topicIds = new ArrayList<Long>();
+        List<Long> ieltsTestIds = new ArrayList<Long>();
         for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
             if (HomeworkTopicCompletion.enabled(task) && !topicIds.contains(task.getTopicId())) { topicIds.add(task.getTopicId()); }
+            if (HomeworkTopicCompletion.ieltsEnabled(task) && !ieltsTestIds.contains(task.getIeltsTestId())) { ieltsTestIds.add(task.getIeltsTestId()); }
         }
-        if (topicIds.isEmpty()) { return dto; }
+        if (topicIds.isEmpty() && ieltsTestIds.isEmpty()) { return dto; }
         Long classId = day.getEnrolmentClass().getId();
         List<Long> studentIds = new ArrayList<Long>();
         for (User student : scheduleStudentDomains(classId, getCurrentUser())) { studentIds.add(student.getId()); }
@@ -814,7 +828,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
         LocalDateTime maximumEnd = start;
         Map<EnrolmentClassScheduleTaskDto, LocalDateTime> ends = new LinkedHashMap<EnrolmentClassScheduleTaskDto, LocalDateTime>();
         for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
-            if (!HomeworkTopicCompletion.enabled(task)) { continue; }
+            if (!HomeworkTopicCompletion.enabled(task) && !HomeworkTopicCompletion.ieltsEnabled(task)) { continue; }
             LocalDateTime end = HomeworkTopicCompletion.deadlineEnd(task.getResolvedDueDate(), task.getResolvedDueTime());
             if (end == null && "CLASS".equals(task.getSection()) && assignedSession != null) {
                 end = HomeworkTopicCompletion.at(assignedSession.date, assignedSession.endTime);
@@ -824,10 +838,13 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
             ends.put(task, end); if (end.isAfter(maximumEnd)) { maximumEnd = end; }
         }
         if (ends.isEmpty()) { return dto; }
-        List<Object[]> completions = testResultRepository.findVocabularyCompletions(studentIds, topicIds, start,
-                maximumEnd);
+        List<Object[]> completions = topicIds.isEmpty() ? new ArrayList<Object[]>()
+                : testResultRepository.findVocabularyCompletions(studentIds, topicIds, start, maximumEnd);
+        List<Object[]> ieltsCompletions = ieltsTestIds.isEmpty() ? new ArrayList<Object[]>()
+                : testResultRepository.findIeltsPartCompletions(studentIds, ieltsTestIds, start, maximumEnd);
         for (Map.Entry<EnrolmentClassScheduleTaskDto, LocalDateTime> entry : ends.entrySet()) {
             HomeworkTopicCompletion.apply(entry.getKey(), completions, start, entry.getValue());
+            HomeworkTopicCompletion.applyIelts(entry.getKey(), ieltsCompletions, start, entry.getValue());
         }
         return dto;
     }
@@ -1298,7 +1315,18 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Số lần phải làm cần từ 1 đến 100.");
 			}
 			task.setRequiredAttempts(requiredAttempts);
-			if (value.getTopicId() != null) {
+			boolean ieltsActivity = "IELTS_READING".equals(activityType) || "IELTS_LISTENING".equals(activityType);
+			if (ieltsActivity) {
+				Question test = value.getIeltsTestId() == null ? null : questionRepository.findOne(value.getIeltsTestId());
+				boolean listeningTest = test != null && test.getPronounce() != null && !test.getPronounce().trim().isEmpty();
+				if (test == null || test.getQuestionType() == null || !Long.valueOf(11L).equals(test.getQuestionType().getId())
+						|| test.getStatus() != 7 || value.getIeltsPart() == null || value.getIeltsPart() < 1 || value.getIeltsPart() > 3
+						|| ("IELTS_LISTENING".equals(activityType) != listeningTest)) {
+					throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Đề IELTS hoặc Part được chọn không hợp lệ.");
+				}
+				task.setIeltsTest(test); task.setIeltsPart(value.getIeltsPart()); task.setTopic(null);
+				task.setAutoCompleteFromTopic(false);
+			} else if (value.getTopicId() != null) {
 				Topic topic = topicRepository.findOne(value.getTopicId());
 				if (topic == null) { throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Topic không còn tồn tại."); }
 				task.setTopic(topic);
@@ -1343,6 +1371,11 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			}
 		});
 		return topics;
+	}
+
+	@Override
+	public List<QuestionForTestsDto> getAssignableIeltsTests() {
+		return questionRepository.findPublishedIeltsTests();
 	}
 
 	private Set<Topic> loadTopics(List<Long> topicIds) {

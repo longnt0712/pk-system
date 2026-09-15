@@ -46,6 +46,9 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
     private String topicName;
     private Long categoryId;
     private String categoryName;
+    private Long ieltsTestId;
+    private String ieltsTestTitle;
+    private Integer ieltsPart;
     private List<EnrolmentClassTaskProgressDto> studentProgress = new ArrayList<EnrolmentClassTaskProgressDto>();
     public EnrolmentClassScheduleTaskDto() { }
     public EnrolmentClassScheduleTaskDto(EnrolmentClassScheduleTask task) {
@@ -62,6 +65,11 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
                 categoryName = task.getTopic().getTopicCategory().getName();
             }
         }
+        if (task.getIeltsTest() != null) {
+            ieltsTestId = task.getIeltsTest().getId();
+            ieltsTestTitle = task.getIeltsTest().getTitle();
+        }
+        ieltsPart = task.getIeltsPart();
         for (EnrolmentClassTaskProgress progress : task.getStudentProgress()) {
             studentProgress.add(new EnrolmentClassTaskProgressDto(progress));
         }
@@ -86,6 +94,12 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
     public void setCategoryId(Long value) { categoryId = value; }
     public String getCategoryName() { return categoryName; }
     public void setCategoryName(String value) { categoryName = value; }
+    public Long getIeltsTestId() { return ieltsTestId; }
+    public void setIeltsTestId(Long value) { ieltsTestId = value; }
+    public String getIeltsTestTitle() { return ieltsTestTitle; }
+    public void setIeltsTestTitle(String value) { ieltsTestTitle = value; }
+    public Integer getIeltsPart() { return ieltsPart; }
+    public void setIeltsPart(Integer value) { ieltsPart = value; }
     public List<EnrolmentClassTaskProgressDto> getStudentProgress() { return studentProgress; }
     public void setStudentProgress(List<EnrolmentClassTaskProgressDto> value) { studentProgress = value; }
 }

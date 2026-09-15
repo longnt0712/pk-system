@@ -95,9 +95,10 @@ public class QuestionAnswerTestResultDto implements Serializable{
 		boolean hasSubmittedAnswer = submittedAnswer.length() > 0;
 
 		// Single-option modes. Matching Information (12) and Complete List of
-		// Words (13) use the same persisted QuestionAnswer contract as Matching
+		// Words (13) and Sentence Endings (14) use the same persisted
+		// QuestionAnswer contract as Matching
 		// Names (10), Maps (9), and normal single-choice questions.
-		if(type == 1 || type == 6 || type == 9 || type == 10 || type == 12 || type == 13) {
+		if(type == 1 || type == 6 || type == 9 || type == 10 || type == 12 || type == 13 || type == 14) {
 			this.isCorrectTestResultDetail = hasSubmittedAnswer && selectedAnswer.isCorrect();
 			return;
 		}
