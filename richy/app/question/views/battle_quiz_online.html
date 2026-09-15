@@ -850,24 +850,6 @@
                 </div>
 
                 <div class="battle-online-setting-grid">
-
-                    <div>
-                        <label>
-                            SỐ CÂU
-                            <small>
-                                mặc định = toàn bộ bài
-                            </small>
-                        </label>
-
-                        <input type="number"
-                               min="1"
-                               max="5000"
-                               class="form-control"
-                               ng-change="vm.markClassicQuestionCountTouched()"
-                               ng-model="vm.hostSettings.questionCount">
-                    </div>
-
-
                     <div>
                         <label>GIÂY / CÂU</label>
 
@@ -948,28 +930,11 @@
                 <div class="battle-online-mode-badge">🔤 GUESS THE WORD</div>
                 <div class="battle-online-setting-grid">
                     <div>
-                        <label>SỐ CÂU</label>
-                        <input type="number" min="1" max="5000"
-                               class="form-control"
-                               ng-change="vm.markClassicQuestionCountTouched()"
-                               ng-model="vm.hostSettings.questionCount">
-                    </div>
-                    <div>
                         <label>GIÂY / CÂU</label>
                         <input type="number" min="3" max="120"
                                class="form-control"
                                ng-model="vm.hostSettings.secondsPerQuestion">
                     </div>
-                </div>
-                <label>MỨC TỪ VỰNG</label>
-                <div class="battle-online-level-picker">
-                    <button type="button"
-                            ng-repeat="level in vm.guessLevelOptions track by level"
-                            ng-class="{
-                                'is-active': vm.isGuessLevelSelected(level),
-                                'is-inactive': !vm.isGuessLevelSelected(level)
-                            }"
-                            ng-click="vm.toggleGuessLevel(level)">{{level}}</button>
                 </div>
                 <label>CÁCH CHUYỂN CÂU</label>
                 <div class="battle-online-guess-advance-picker">
@@ -987,6 +952,35 @@
                     </button>
                 </div>
                 <p>Mỗi 2 giây server mở ngẫu nhiên một chữ cái. Học sinh vẫn phải nhập đầy đủ từ; người đúng nhanh hơn nhận nhiều điểm hơn.</p>
+            </div>
+
+            <div class="battle-online-mode-settings battle-online-vocab-settings">
+                <div class="battle-online-mode-badge">📚 BỘ TỪ SẼ CHƠI — ÁP DỤNG CHO MỌI MODE</div>
+                <div class="battle-online-setting-grid">
+                    <div>
+                        <label>SỐ TỪ MUỐN CHƠI</label>
+                        <input type="number" min="1" max="5000"
+                               class="form-control"
+                               ng-change="vm.markClassicQuestionCountTouched()"
+                               ng-model="vm.hostSettings.questionCount">
+                    </div>
+                    <div class="battle-online-word-count-summary">
+                        <label>SỐ TỪ SẼ CHƠI / TỔNG PHÙ HỢP</label>
+                        <strong>{{vm.getPlayableQuestionCount()}} / {{vm.room.availableQuestionCount || 0}}</strong>
+                        <small ng-if="vm.getPlayableQuestionCount() < (vm.room.availableQuestionCount || 0)">Hệ thống lấy ngẫu nhiên trong tổng số từ phù hợp.</small>
+                    </div>
+                </div>
+                <label>MỨC TỪ VỰNG</label>
+                <div class="battle-online-level-picker">
+                    <button type="button"
+                            ng-repeat="level in vm.guessLevelOptions track by level"
+                            ng-class="{
+                                'is-active': vm.isGuessLevelSelected(level),
+                                'is-inactive': !vm.isGuessLevelSelected(level)
+                            }"
+                            ng-click="vm.toggleGuessLevel(level)">{{level}}</button>
+                </div>
+                <p>Bỏ hoặc thêm mức sẽ cập nhật tổng số từ phù hợp. Nếu số muốn chơi nhỏ hơn tổng, mỗi trận sẽ chọn một bộ từ ngẫu nhiên.</p>
             </div>
 
 
@@ -7459,6 +7453,33 @@
         transform: rotate(-35deg);
         box-shadow: 0 0 0 1px rgba(255, 255, 255, .75);
         pointer-events: none;
+    }
+
+    .battle-online-vocab-settings {
+        border-color: #8b5cf6;
+        background: linear-gradient(135deg, #faf5ff, #eff6ff);
+    }
+
+    .battle-online-word-count-summary {
+        display: flex;
+        min-height: 74px;
+        flex-direction: column;
+        justify-content: center;
+        padding: 10px 14px;
+        border: 1px solid #c4b5fd;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, .82);
+    }
+
+    .battle-online-word-count-summary strong {
+        color: #5b21b6;
+        font-size: 25px;
+        line-height: 1.15;
+    }
+
+    .battle-online-word-count-summary small {
+        margin-top: 4px;
+        color: #64748b;
     }
 
     .battle-online-guess-advance-picker {

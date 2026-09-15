@@ -231,6 +231,7 @@
         var qrScannerRunning = false;
         var qrScanHandled = false;
         var qrZoomApplyTimer = null;
+        var levelPreviewTimer = null;
         var destroyed = false;
 
         /*
@@ -283,6 +284,7 @@
         vm.markTeamCountTouched = markTeamCountTouched;
         vm.toggleGuessLevel = toggleGuessLevel;
         vm.isGuessLevelSelected = isGuessLevelSelected;
+        vm.getPlayableQuestionCount = getPlayableQuestionCount;
 
         vm.toggleReady = toggleReady;
         vm.toggleSpectator = toggleSpectator;
@@ -1873,10 +1875,10 @@
                     incoming.status ===
                         'LOBBY' &&
                     !vm.classicQuestionCountTouched &&
-                    incoming.totalLessonWords > 0
+                    incoming.availableQuestionCount > 0
                 ) {
                     vm.hostSettings.questionCount =
-                        incoming.totalLessonWords;
+                        incoming.availableQuestionCount;
                 } else {
                     vm.hostSettings.questionCount =
                         incoming.settings
@@ -2074,6 +2076,35 @@
                 vm.hostSettings.guessLevels.push(level);
             }
             vm.hostGuessLevelsDirty = true;
+            scheduleLevelPreviewSave();
+        }
+
+
+        function scheduleLevelPreviewSave() {
+            if (levelPreviewTimer) {
+                $timeout.cancel(levelPreviewTimer);
+            }
+
+            levelPreviewTimer = $timeout(function persistLevelPreview() {
+                levelPreviewTimer = null;
+                if (!vm.room || vm.room.status !== 'LOBBY' || !isHost()) {
+                    return;
+                }
+                if (vm.savingSettings) {
+                    scheduleLevelPreviewSave();
+                    return;
+                }
+                saveSettings(true);
+            }, 250, false);
+        }
+
+
+        function getPlayableQuestionCount() {
+            var requested = parseInt(vm.hostSettings.questionCount, 10) || 0;
+            var available = vm.room
+                ? parseInt(vm.room.availableQuestionCount, 10) || 0
+                : 0;
+            return available > 0 ? Math.min(requested, available) : 0;
         }
 
 
@@ -2205,6 +2236,8 @@
             vm.savingSettings =
                 true;
 
+            var guessLevelsSent = vm.hostSettings.guessLevels.slice(0).sort().join(',');
+
             var promise =
                 battleService
                     .updateSettings(
@@ -2224,13 +2257,18 @@
                         vm.hostWrongFreezeDirty = false;
                         vm.hostTeamCountDirty = false;
                         vm.hostDoubleActionDirty = false;
-                        vm.hostGuessLevelsDirty = false;
+                        var levelsChangedWhileSaving = vm.hostSettings.guessLevels.slice(0).sort().join(',') !== guessLevelsSent;
+                        vm.hostGuessLevelsDirty = levelsChangedWhileSaving;
                         vm.hostGuessAdvanceModeDirty = false;
 
                         applyRoom(
                             room,
                             false
                         );
+
+                        if (levelsChangedWhileSaving) {
+                            scheduleLevelPreviewSave();
+                        }
 
                         if (
                             silent !==
@@ -5916,6 +5954,11 @@
 
                     countdownTimer =
                         null;
+                }
+
+                if (levelPreviewTimer) {
+                    $timeout.cancel(levelPreviewTimer);
+                    levelPreviewTimer = null;
                 }
 
                 clearSkillHitEffect();

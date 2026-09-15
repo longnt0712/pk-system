@@ -57,6 +57,7 @@ public class BattleOnlineRoomDto implements Serializable {
 
     private int loadedQuestionCount;
     private int totalLessonWords;
+    private int availableQuestionCount;
 
     /* GUESS_WORD: kết quả câu vừa kết thúc, chỉ HOST dùng để đối chiếu. */
     private String lastGuessWord;
@@ -275,6 +276,14 @@ public class BattleOnlineRoomDto implements Serializable {
 
     public void setTotalLessonWords(int totalLessonWords) {
         this.totalLessonWords = totalLessonWords;
+    }
+
+    public int getAvailableQuestionCount() {
+        return availableQuestionCount;
+    }
+
+    public void setAvailableQuestionCount(int availableQuestionCount) {
+        this.availableQuestionCount = availableQuestionCount;
     }
 
     public String getLastGuessWord() { return lastGuessWord; }

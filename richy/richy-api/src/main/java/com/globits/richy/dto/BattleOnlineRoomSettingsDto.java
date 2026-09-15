@@ -26,7 +26,7 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     private int questionCount = 20;
     private int secondsPerQuestion = 10;
 
-    /* GUESS_WORD: các mức CEFR được phép xuất hiện. */
+    /* Mọi mode: các mức CEFR được phép xuất hiện. */
     private List<String> guessLevels = new ArrayList<String>();
 
     /* GUESS_WORD: AUTO | HOST_CONTROL. */

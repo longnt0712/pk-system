@@ -76,6 +76,208 @@
         }
     });
 
+    angular.module('Hrm.Question').directive('touchDndDrop', function () {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                element[0].__ieltsTouchDrop = function (item) {
+                    scope.$evalAsync(function () {
+                        scope.$eval(attrs.touchDndDrop, {item: item, index: 0});
+                    });
+                };
+
+                scope.$on('$destroy', function () {
+                    delete element[0].__ieltsTouchDrop;
+                });
+            }
+        };
+    });
+
+    angular.module('Hrm.Question').directive('touchDndSource', ['$document', '$window', function ($document, $window) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var documentNode = $document[0];
+                var active = false;
+                var dragging = false;
+                var startX = 0;
+                var startY = 0;
+                var draggedItem = null;
+                var ghost = null;
+                var activeDrop = null;
+                var suppressClick = false;
+                var usingPointer = !!$window.PointerEvent;
+
+                element.css({
+                    'touch-action': 'none',
+                    '-webkit-user-select': 'none',
+                    'user-select': 'none'
+                });
+
+                function eventPoint(event) {
+                    var source = event.touches && event.touches.length
+                        ? event.touches[0]
+                        : (event.changedTouches && event.changedTouches.length
+                            ? event.changedTouches[0]
+                            : event);
+                    return {x: source.clientX, y: source.clientY};
+                }
+
+                function closestDropTarget(node) {
+                    while (node && node !== documentNode.body) {
+                        if (node.__ieltsTouchDrop) {
+                            return node;
+                        }
+                        node = node.parentNode;
+                    }
+                    return null;
+                }
+
+                function setActiveDrop(target) {
+                    if (activeDrop === target) {
+                        return;
+                    }
+                    if (activeDrop) {
+                        angular.element(activeDrop).removeClass('touch-dnd-over');
+                    }
+                    activeDrop = target;
+                    if (activeDrop) {
+                        angular.element(activeDrop).addClass('touch-dnd-over');
+                    }
+                }
+
+                function createGhost() {
+                    ghost = element[0].cloneNode(true);
+                    ghost.removeAttribute('id');
+                    ghost.className += ' touch-dnd-ghost';
+                    angular.element(documentNode.body).append(ghost);
+                    angular.element(documentNode.body).addClass('touch-dnd-active');
+                }
+
+                function moveGhost(point) {
+                    if (!ghost) {
+                        return;
+                    }
+                    ghost.style.left = (point.x + 14) + 'px';
+                    ghost.style.top = (point.y + 14) + 'px';
+                }
+
+                function onMove(event) {
+                    if (!active) {
+                        return;
+                    }
+                    var point = eventPoint(event);
+                    if (!dragging && Math.max(Math.abs(point.x - startX), Math.abs(point.y - startY)) >= 7) {
+                        dragging = true;
+                        createGhost();
+                    }
+                    if (!dragging) {
+                        return;
+                    }
+                    event.preventDefault();
+                    moveGhost(point);
+                    setActiveDrop(closestDropTarget(documentNode.elementFromPoint(point.x, point.y)));
+
+                    if (point.y < 55) {
+                        $window.scrollBy(0, -12);
+                    } else if (point.y > $window.innerHeight - 55) {
+                        $window.scrollBy(0, 12);
+                    }
+                }
+
+                function unbindDocumentEvents() {
+                    if (usingPointer) {
+                        documentNode.removeEventListener('pointermove', onMove, false);
+                        documentNode.removeEventListener('pointerup', onEnd, false);
+                        documentNode.removeEventListener('pointercancel', onEnd, false);
+                    } else {
+                        documentNode.removeEventListener('touchmove', onMove, false);
+                        documentNode.removeEventListener('touchend', onEnd, false);
+                        documentNode.removeEventListener('touchcancel', onEnd, false);
+                    }
+                }
+
+                function cleanup() {
+                    unbindDocumentEvents();
+                    setActiveDrop(null);
+                    if (ghost && ghost.parentNode) {
+                        ghost.parentNode.removeChild(ghost);
+                    }
+                    ghost = null;
+                    angular.element(documentNode.body).removeClass('touch-dnd-active');
+                    active = false;
+                    dragging = false;
+                    draggedItem = null;
+                }
+
+                function onEnd(event) {
+                    if (!active) {
+                        return;
+                    }
+                    if (dragging) {
+                        event.preventDefault();
+                        suppressClick = true;
+                        if (activeDrop && activeDrop.__ieltsTouchDrop) {
+                            activeDrop.__ieltsTouchDrop(draggedItem);
+                        }
+                    }
+                    cleanup();
+                }
+
+                function onStart(event) {
+                    if (usingPointer && event.pointerType === 'mouse') {
+                        return;
+                    }
+                    if (active) {
+                        cleanup();
+                    }
+                    draggedItem = scope.$eval(attrs.touchDndSource);
+                    if (!draggedItem) {
+                        return;
+                    }
+                    var point = eventPoint(event);
+                    startX = point.x;
+                    startY = point.y;
+                    active = true;
+                    if (usingPointer) {
+                        documentNode.addEventListener('pointermove', onMove, {passive: false});
+                        documentNode.addEventListener('pointerup', onEnd, false);
+                        documentNode.addEventListener('pointercancel', onEnd, false);
+                    } else {
+                        documentNode.addEventListener('touchmove', onMove, {passive: false});
+                        documentNode.addEventListener('touchend', onEnd, false);
+                        documentNode.addEventListener('touchcancel', onEnd, false);
+                    }
+                }
+
+                function onClick(event) {
+                    if (suppressClick) {
+                        suppressClick = false;
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                    }
+                }
+
+                if (usingPointer) {
+                    element[0].addEventListener('pointerdown', onStart, false);
+                } else {
+                    element[0].addEventListener('touchstart', onStart, {passive: true});
+                }
+                element[0].addEventListener('click', onClick, true);
+
+                scope.$on('$destroy', function () {
+                    cleanup();
+                    if (usingPointer) {
+                        element[0].removeEventListener('pointerdown', onStart, false);
+                    } else {
+                        element[0].removeEventListener('touchstart', onStart, false);
+                    }
+                    element[0].removeEventListener('click', onClick, true);
+                });
+            }
+        };
+    }]);
+
     angular.module('Hrm.Question').directive('myDraggable', ['$document', function($document) {
         return {
             link: function(scope, element, attr) {
@@ -1165,24 +1367,27 @@
         //--------------------- Reading Actual test -------------------------//
         var mainAudio = document.getElementById('main-audio');
 
-        function readingPassagePlainText(partIndex) {
-            var passage = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.subQuestions
-                ? vm.ieltsReadingActualTest.subQuestions[partIndex]
-                : null;
-            return String(passage && passage.question || '')
-                .replace(/<[^>]*>/g, ' ')
-                .replace(/&nbsp;/gi, ' ')
-                .replace(/\s+/g, ' ')
-                .trim();
+        function stripEmbeddedReadingIntro(passage) {
+            if (vm.isListeningRoute || !passage || !passage.question) {
+                return;
+            }
+
+            var container = document.createElement('div');
+            container.innerHTML = String(passage.question);
+            var nodes = container.querySelectorAll('h1,h2,h3,h4,h5,h6,p,div');
+            angular.forEach(nodes, function (node) {
+                var text = String(node.textContent || '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                if (/^READING\s+PASSAGE\s+[123]$/i.test(text) ||
+                    /^You\s+should\s+spend\s+about\s+20\s+minutes\s+on\s+Questions.+Reading\s+Passage.+below\.?$/i.test(text)) {
+                    if (node.parentNode) {
+                        node.parentNode.removeChild(node);
+                    }
+                }
+            });
+            passage.question = container.innerHTML;
         }
-
-        vm.hasEmbeddedReadingPassageTitle = function (partIndex) {
-            return /READING\s+PASSAGE\s+[123]/i.test(readingPassagePlainText(partIndex));
-        };
-
-        vm.hasEmbeddedReadingTimingInstruction = function (partIndex) {
-            return /You\s+should\s+spend\s+about\s+20\s+minutes\s+on\s+Questions/i.test(readingPassagePlainText(partIndex));
-        };
 
 
         vm.setUpAudio = function () {
@@ -1668,6 +1873,7 @@
                     'id="question-number-' + ordinalNumber + '" ' +
                     'dnd-list="completeListPackage.completeListSlots[' + questionIndex + '].items" ' +
                     'dnd-drop="vm.dropCompleteListWord(completeListPackage,' + questionIndex + ',item)" ' +
+                    'touch-dnd-drop="vm.dropCompleteListWord(completeListPackage,' + questionIndex + ',item)" ' +
                     'ng-click="$event.stopPropagation(); vm.clearCompleteListSlot(completeListPackage,' + questionIndex + ')">' +
                     '<span ng-if="!completeListPackage.completeListSlots[' + questionIndex + '].items.length" class="complete-list-drop-number">' + ordinalNumber + '</span>' +
                     '<span ng-if="completeListPackage.completeListSlots[' + questionIndex + '].items.length" ' +
@@ -1866,6 +2072,7 @@
             var z2 = 0;
             var z3 = 0;
             for(var k = 0; k < data.subQuestions.length; k++){
+                stripEmbeddedReadingIntro(data.subQuestions[k]);
                 // Older imports may have valid Matching Heading questions but no
                 // }{HEADING}{ markers in the passage. Repair them at render time
                 // so already-saved tests also display their drop targets.
@@ -2005,6 +2212,7 @@
                                 if(typeof $scope.listA[z] !== "undefined"){
                                     var inputMatchingHeading =
                                         '<span dnd-drop="onDropA(listA['+z+'], item, 0)" ' +
+                                        'touch-dnd-drop="onDropA(listA['+z+'], item, 0)" ' +
                                         'dnd-draggable="getSelectedItemsIncluding(listA['+z+'], listA['+z+'].items[0])" ' +
                                         'class="matching-heading-drop-box" id="question-number-'+ question.ordinalNumber +'" ' +
                                         'dnd-list="listA['+z+'].items" ' +
@@ -2023,6 +2231,7 @@
                                 if(typeof $scope.listA2[z2] !== "undefined"){
                                     var inputMatchingHeading =
                                         '<span dnd-drop="onDropA2(listA2['+z2+'], item, 0)" ' +
+                                        'touch-dnd-drop="onDropA2(listA2['+z2+'], item, 0)" ' +
                                         'dnd-draggable="getSelectedItemsIncluding(listA2['+z2+'], listA2['+z2+'].items[0])" ' +
                                         'class="matching-heading-drop-box" id="question-number-'+ question.ordinalNumber +'" ' +
                                         'dnd-list="listA2['+z2+'].items" ' +
@@ -2042,6 +2251,7 @@
                                 if(typeof $scope.listA3[z3] !== "undefined"){
                                     var inputMatchingHeading =
                                         '<span dnd-drop="onDropA3(listA3['+z3+'], item, 0)" ' +
+                                        'touch-dnd-drop="onDropA3(listA3['+z3+'], item, 0)" ' +
                                         'dnd-draggable="getSelectedItemsIncluding(listA3['+z3+'], listA3['+z3+'].items[0])" ' +
                                         'class="matching-heading-drop-box" id="question-number-'+ question.ordinalNumber +'" ' +
                                         'dnd-list="listA3['+z3+'].items" ' +

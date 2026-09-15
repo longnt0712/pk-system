@@ -2550,7 +2550,7 @@
             var audioInstruction = vm.isListeningMode
                 ? 'Bắt buộc nhập URL HTTPS công khai trỏ trực tiếp tới file audio (ví dụ .mp3 hoặc .m4a). Không dùng link trang nghe cần đăng nhập.'
                 : 'Phải để trống. Nếu có Audio URL, file thuộc Listening và phải import ở trang IELTS Listening.';
-            var automaticReadingHeader = 'Riêng Reading: không nhập các dòng “READING PASSAGE 1/2/3” và “You should spend about 20 minutes on Questions ...”. Hệ thống tự hiện đúng Part và khoảng câu khi học sinh làm bài. Passage HTML bắt đầu từ tiêu đề riêng của bài đọc.';
+            var automaticReadingHeader = 'Riêng Reading: không nhập dòng “READING PASSAGE 1/2/3” vì giao diện bài làm đã bỏ dòng này. Không nhập câu “You should spend about 20 minutes on Questions ...” vì hệ thống tự hiện đúng khoảng câu. Passage HTML bắt đầu từ tiêu đề riêng của bài đọc.';
             var passageHtmlInstruction = vm.isListeningMode
                 ? 'Giữ đủ tiêu đề riêng, phụ đề, ký hiệu A/B/C…, xuống dòng và nội dung gốc. Không tóm tắt hoặc tự sửa câu chữ của đề.'
                 : 'Giữ đủ tiêu đề riêng của bài đọc, phụ đề, ký hiệu A/B/C…, xuống dòng và nội dung gốc. Không lặp tiêu đề READING PASSAGE và câu You should spend vì hệ thống tự hiện. Không tóm tắt hoặc tự sửa câu chữ của đề.';

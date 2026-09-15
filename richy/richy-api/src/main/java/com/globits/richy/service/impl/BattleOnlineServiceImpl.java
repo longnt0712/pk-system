@@ -954,7 +954,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             if (
                 !MODE_GUESS_WORD.equals(room.settings.mode) &&
-                room.preparedQuestions.size() < 4
+                eligiblePreparedQuestionsLocked(room).size() < 4
             ) {
                 throw new BattleOnlineException(
                         HttpStatus.CONFLICT,
@@ -1067,8 +1067,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     MAX_CLASSIC_QUESTIONS
                 );
 
+        List<QuestionState> prepared =
+                eligiblePreparedQuestionsLocked(room);
+
         if (
-            requested > room.preparedQuestions.size() &&
+            requested > prepared.size() &&
             !room.allQuestionsLoaded
         ) {
             throw new BattleOnlineException(
@@ -1076,7 +1079,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     "CLASSIC cần " +
                     requested +
                     " câu nhưng server mới READY " +
-                    room.preparedQuestions.size() +
+                    prepared.size() +
                     "/" +
                     displayTotal(room) +
                     ". Chờ preload thêm một chút."
@@ -1086,12 +1089,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         int target =
                 Math.min(
                     requested,
-                    room.preparedQuestions.size()
-                );
-
-        List<QuestionState> prepared =
-                new ArrayList<QuestionState>(
-                    room.preparedQuestions.values()
+                    prepared.size()
                 );
 
         Collections.shuffle(
@@ -1205,7 +1203,68 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
+    private boolean isSelectedLevelLocked(RoomState room, String value) {
+        String level = normalizeGuessLevel(value);
+        if (isBlank(level)) {
+            return room.settings.guessLevels.size() >= allGuessLevels().size();
+        }
+        return room.settings.guessLevels.contains(level);
+    }
+
+
+    private List<QuestionState> eligiblePreparedQuestionsLocked(RoomState room) {
+        List<QuestionState> result = new ArrayList<QuestionState>();
+        for (QuestionState question : room.preparedQuestions.values()) {
+            if (question != null && isSelectedLevelLocked(room, question.level)) {
+                result.add(question);
+            }
+        }
+        return result;
+    }
+
+
+    private int availableLevelWordCountLocked(RoomState room) {
+        int count = 0;
+        for (QuestionForGamesDto question : room.rawQuestions.values()) {
+            if (question != null && isSelectedLevelLocked(room, question.getLevel())) {
+                count += 1;
+            }
+        }
+        return count;
+    }
+
+
     private void startCountdownLocked(RoomState room) {
+        int requested = clamp(
+                room.settings.questionCount,
+                MIN_CLASSIC_QUESTIONS,
+                MAX_CLASSIC_QUESTIONS
+        );
+
+        List<QuestionState> eligible = eligiblePreparedQuestionsLocked(room);
+        if (requested > eligible.size() && !room.allQuestionsLoaded) {
+            throw new BattleOnlineException(
+                    HttpStatus.CONFLICT,
+                    "Mode này cần " + requested +
+                    " từ nhưng server mới nạp được " + eligible.size() +
+                    " từ phù hợp. Chờ preload thêm một chút."
+            );
+        }
+
+        Collections.shuffle(eligible, random);
+        room.countdownQuestionIds.clear();
+        int target = Math.min(requested, eligible.size());
+        for (int index = 0; index < target; index++) {
+            room.countdownQuestionIds.add(eligible.get(index).id);
+        }
+
+        if (room.countdownQuestionIds.isEmpty()) {
+            throw new BattleOnlineException(
+                    HttpStatus.BAD_REQUEST,
+                    "Không có từ phù hợp với mức A1-C2 đã chọn."
+            );
+        }
+
         room.status = PLAYING;
 
         room.classicQuestions.clear();
@@ -4346,7 +4405,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     player,
                     wordId
                 ) &&
-                room.preparedQuestions.size() >
+                room.countdownQuestionIds.size() >
                     countConnectedPlayersLocked(room)
             ) {
                 /*
@@ -4412,9 +4471,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             PlayerState player) {
 
         List<QuestionState> candidates =
-                new ArrayList<QuestionState>(
-                    room.preparedQuestions.values()
-                );
+                new ArrayList<QuestionState>();
+
+        for (Long id : room.countdownQuestionIds) {
+            QuestionState candidate = room.preparedQuestions.get(id);
+            if (candidate != null) {
+                candidates.add(candidate);
+            }
+        }
 
         Collections.shuffle(candidates, random);
 
@@ -4638,7 +4702,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         List<Long> unseen =
                 new ArrayList<Long>();
 
-        for (Long id : room.preparedQuestions.keySet()) {
+        for (Long id : room.countdownQuestionIds) {
             if (
                 !player.uniqueWordIds.contains(id) &&
                 !player.countdownReviewQuestions
@@ -4655,7 +4719,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
          * - nếu đã load hết: bắt đầu vòng review mới.
          */
         if (unseen.isEmpty()) {
-            for (Long id : room.preparedQuestions.keySet()) {
+            for (Long id : room.countdownQuestionIds) {
                 if (
                     !player.countdownReviewQuestions
                         .containsKey(id)
@@ -4700,6 +4764,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             for (Long id : newIds) {
                 if (
+                    room.countdownQuestionIds.contains(id) &&
                     !player.uniqueWordIds.contains(id) &&
                     !player.pendingWordIds.contains(id)
                 ) {
@@ -4971,6 +5036,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.rawQuestions.clear();
         room.preparedQuestions.clear();
         room.classicQuestions.clear();
+        room.countdownQuestionIds.clear();
         room.classicQuestionIndex = -1;
         room.nextPreloadPage = 1;
         room.totalLessonWords = 0;
@@ -5689,10 +5755,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 room.totalLessonWords
         );
 
+        dto.setAvailableQuestionCount(
+                availableLevelWordCountLocked(room)
+        );
+
         dto.setQuestionsReady(
                 MODE_GUESS_WORD.equals(room.settings.mode)
                         ? !eligibleGuessQuestionsLocked(room).isEmpty()
-                        : room.preparedQuestions.size() >= 4
+                        : eligiblePreparedQuestionsLocked(room).size() >= 4
         );
 
         dto.setLastGuessWord(room.lastGuessWord);
@@ -6969,6 +7039,24 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private int displayTotal(
             RoomState room) {
 
+        if ((PLAYING.equals(room.status) || FINISHED.equals(room.status)) &&
+            isCountdownLikeMode(room.settings.mode) &&
+            !room.countdownQuestionIds.isEmpty()) {
+            return room.countdownQuestionIds.size();
+        }
+
+        if ((PLAYING.equals(room.status) || FINISHED.equals(room.status)) &&
+            (MODE_CLASSIC.equals(room.settings.mode) ||
+             MODE_GUESS_WORD.equals(room.settings.mode)) &&
+            !room.classicQuestions.isEmpty()) {
+            return room.classicQuestions.size();
+        }
+
+        int available = availableLevelWordCountLocked(room);
+        if (available > 0) {
+            return Math.min(room.settings.questionCount, available);
+        }
+
         if (room.totalLessonWords > 0) {
             return room.totalLessonWords;
         }
@@ -7360,6 +7448,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
          */
         Map<Long, QuestionState> preparedQuestions =
                 new LinkedHashMap<Long, QuestionState>();
+
+        List<Long> countdownQuestionIds =
+                new ArrayList<Long>();
 
         int nextPreloadPage = 1;
         int totalLessonWords = 0;

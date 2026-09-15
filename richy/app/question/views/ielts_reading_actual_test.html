@@ -97,14 +97,14 @@
                                 <input type="checkbox" ng-model="vm.showAudio" ng-if="vm.showAudioListening"> <strong ng-if="vm.showAudioListening">Show audio </strong>
                             </div>
                             <div ng-show="!vm.isListeningRoute" class="col-md-12" style="margin-left: 20px;margin-bottom: 0 !important" >
-                                <h3 ng-show="vm.passageNumber == 1" class="bold text-media">Reading Passage 1</h3>
-                                <h4 class="not-for-media" ng-show="vm.passageNumber == 1">You should spend about 20 minutes on on Questions 1-13, which are based on Reading Passage 1 below.</h4>
+                                <h3 ng-show="vm.passageNumber == 1" class="bold text-media">Part 1</h3>
+                                <h4 class="not-for-media" ng-show="vm.passageNumber == 1">Read the text and answer questions 1–13.</h4>
 
-                                <h3 ng-show="vm.passageNumber == 2" class="bold text-media">Reading Passage 2</h3>
-                                <h4 class="not-for-media" ng-show="vm.passageNumber == 2">You should spend about 20 minutes on Questions 14-26, which are based on Reading Passage 2 below.</h4>
+                                <h3 ng-show="vm.passageNumber == 2" class="bold text-media">Part 2</h3>
+                                <h4 class="not-for-media" ng-show="vm.passageNumber == 2">Read the text and answer questions 14–26.</h4>
 
-                                <h3 ng-show="vm.passageNumber == 3" class="bold text-media">Reading Passage 3</h3>
-                                <h4 class="not-for-media" ng-show="vm.passageNumber == 3">You should spend about 20 minutes on Questions 27-40, which are based on Reading Passage 3 below.</h4>
+                                <h3 ng-show="vm.passageNumber == 3" class="bold text-media">Part 3</h3>
+                                <h4 class="not-for-media" ng-show="vm.passageNumber == 3">Read the text and answer questions 27–40.</h4>
                             </div>
                         </div>
                     </div>
@@ -120,8 +120,7 @@
                                 <!--<h3>{{vm.ieltsReadingActualTest.subQuestions[0].type}}</h3>-->
                                 <div class="row">
                                     <div class="col-md-12 reading-passage-auto-intro" ng-if="!vm.isListeningRoute">
-                                        <h2 ng-if="!vm.hasEmbeddedReadingPassageTitle(0)">READING PASSAGE 1</h2>
-                                        <p ng-if="!vm.hasEmbeddedReadingTimingInstruction(0)"><em>You should spend about 20 minutes on Questions 1–13, which are based on Reading Passage 1 below.</em></p>
+                                        <p><em>You should spend about 20 minutes on Questions 1–13.</em></p>
                                     </div>
                                     <div class="notes-highlight actual-test-font-global" id="passage-1-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes">
                                         <div  class="close-highlight text-right">
@@ -329,6 +328,7 @@
                                                 <span class="sentence-ending-slot" ng-class="{'is-active': endingPackage.activeSentenceEndingSlot === $index}"
                                                       dnd-list="endingPackage.sentenceEndingSlots[$index].items"
                                                       dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
+                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
                                                       ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
                                                     <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Kéo đáp án vào đây</span>
                                                     <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length">
@@ -347,6 +347,7 @@
                                                   ng-repeat="ending in endingPackage.sentenceEndingBank track by ending.answerIndex"
                                                   ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
                                                   dnd-draggable="ending" dnd-effect-allowed="copy"
+                                                  touch-dnd-source="ending"
                                                   ng-click="vm.chooseSentenceEnding(endingPackage, ending)">
                                                 <b>{{ending.label}}</b><span>{{ending.clientAnswer}}</span>
                                             </span>
@@ -359,6 +360,7 @@
                                         <span
                                                 dnd-draggable="getSelectedItemsIncluding(listB, itemB)"
                                                 dnd-draggable="itemB"
+                                                touch-dnd-source="itemB"
                                                 dnd-effect-allowed="move"
                                                 ng-hide="itemB.isHide == true"
                                                 class="drag-matching-heading actual-test-font-global"
@@ -500,8 +502,7 @@
                             <div class="col-md-6" ng-hide="vm.ieltsReadingActualTest.subQuestions[1].type === 6">
                                 <div class="row">
                                     <div class="col-md-12 reading-passage-auto-intro" ng-if="!vm.isListeningRoute">
-                                        <h2 ng-if="!vm.hasEmbeddedReadingPassageTitle(1)">READING PASSAGE 2</h2>
-                                        <p ng-if="!vm.hasEmbeddedReadingTimingInstruction(1)"><em>You should spend about 20 minutes on Questions 14–26, which are based on Reading Passage 2 below.</em></p>
+                                        <p><em>You should spend about 20 minutes on Questions 14–26.</em></p>
                                     </div>
                                     <div class="notes-highlight actual-test-font-global" id="passage-2-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes2">
                                         <div  class="close-highlight text-right">
@@ -706,6 +707,7 @@
                                                 <span class="sentence-ending-slot" ng-class="{'is-active': endingPackage.activeSentenceEndingSlot === $index}"
                                                       dnd-list="endingPackage.sentenceEndingSlots[$index].items"
                                                       dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
+                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
                                                       ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
                                                     <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Kéo đáp án vào đây</span>
                                                     <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length">
@@ -724,6 +726,7 @@
                                                   ng-repeat="ending in endingPackage.sentenceEndingBank track by ending.answerIndex"
                                                   ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
                                                   dnd-draggable="ending" dnd-effect-allowed="copy"
+                                                  touch-dnd-source="ending"
                                                   ng-click="vm.chooseSentenceEnding(endingPackage, ending)">
                                                 <b>{{ending.label}}</b><span>{{ending.clientAnswer}}</span>
                                             </span>
@@ -736,6 +739,7 @@
                                         <span
                                                 dnd-draggable="getSelectedItemsIncluding(listB2, itemB)"
                                                 dnd-draggable="itemB"
+                                                touch-dnd-source="itemB"
                                                 dnd-effect-allowed="move"
                                                 ng-hide="itemB.isHide == true"
                                                 class="drag-matching-heading actual-test-font-global"
@@ -861,8 +865,7 @@
                             <div class="col-md-6" ng-hide="vm.ieltsReadingActualTest.subQuestions[2].type === 6">
                                 <div class="row">
                                     <div class="col-md-12 reading-passage-auto-intro" ng-if="!vm.isListeningRoute">
-                                        <h2 ng-if="!vm.hasEmbeddedReadingPassageTitle(2)">READING PASSAGE 3</h2>
-                                        <p ng-if="!vm.hasEmbeddedReadingTimingInstruction(2)"><em>You should spend about 20 minutes on Questions 27–40, which are based on Reading Passage 3 below.</em></p>
+                                        <p><em>You should spend about 20 minutes on Questions 27–40.</em></p>
                                     </div>
                                     <div class="notes-highlight actual-test-font-global" id="passage-3-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes3">
                                         <div  class="close-highlight text-right">
@@ -1065,6 +1068,7 @@
                                                 <span class="sentence-ending-slot" ng-class="{'is-active': endingPackage.activeSentenceEndingSlot === $index}"
                                                       dnd-list="endingPackage.sentenceEndingSlots[$index].items"
                                                       dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
+                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
                                                       ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
                                                     <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Kéo đáp án vào đây</span>
                                                     <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length">
@@ -1083,6 +1087,7 @@
                                                   ng-repeat="ending in endingPackage.sentenceEndingBank track by ending.answerIndex"
                                                   ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
                                                   dnd-draggable="ending" dnd-effect-allowed="copy"
+                                                  touch-dnd-source="ending"
                                                   ng-click="vm.chooseSentenceEnding(endingPackage, ending)">
                                                 <b>{{ending.label}}</b><span>{{ending.clientAnswer}}</span>
                                             </span>
@@ -1095,6 +1100,7 @@
                                         <span
                                                 dnd-draggable="getSelectedItemsIncluding(listB3, itemB)"
                                                 dnd-draggable="itemB"
+                                                touch-dnd-source="itemB"
                                                 dnd-effect-allowed="move"
                                                 ng-hide="itemB.isHide == true"
                                                 class="drag-matching-heading actual-test-font-global"
@@ -1907,6 +1913,33 @@
         resize: none;
     }
 
+    .touch-dnd-ghost {
+        position: fixed !important;
+        z-index: 100000 !important;
+        width: auto !important;
+        max-width: 72vw;
+        margin: 0 !important;
+        padding: 9px 12px !important;
+        border: 2px solid #4f46e5 !important;
+        border-radius: 8px !important;
+        background: #fff !important;
+        color: #1f2937 !important;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, .28) !important;
+        opacity: .94;
+        pointer-events: none !important;
+    }
+
+    .touch-dnd-over {
+        border-color: #4f46e5 !important;
+        background: #eef2ff !important;
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, .2) !important;
+    }
+
+    .touch-dnd-active,
+    .touch-dnd-active * {
+        cursor: grabbing !important;
+    }
+
     .page-header{
         display: none;
     }
@@ -1995,14 +2028,8 @@
         display: none !important;
     }
 
-    @media only screen and (max-width: 1500px) {
-        .for-media-screen{
-            display: block !important;
-        }
-
-        .not-for-media-screen{
-            display: none;
-        }
+    .not-for-media-screen{
+        display: block;
     }
 
     .text-media{
