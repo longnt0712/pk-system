@@ -229,7 +229,7 @@
 
             .state('application.create_ielts_reading_test', {
                 url: '/create_ielts_reading_test',
-                templateUrl: 'question/views/create_ielts_reading_test.html',
+                templateUrl: 'question/views/create_ielts_reading_test.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'Create IELTS Reading Test'},
                 controller: 'IELTSCreateReadingTestController as vm',
                 resolve: {
@@ -248,16 +248,16 @@
 
             .state('application.create_ielts_listening_test', {
                 url: '/create_ielts_listening_test',
-                templateUrl: 'question/views/create_ielts_listening_test.html',
+                templateUrl: 'question/views/create_ielts_reading_test.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'Create IELTS Listening Test'},
-                controller: 'IELTSCreateListeningTestController as vm',
+                controller: 'IELTSCreateReadingTestController as vm',
                 resolve: {
                     deps: ['$ocLazyLoad', function ($ocLazyLoad) {
                         return $ocLazyLoad.load({
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/IELTSCreateListeningTestController.js?v=' + window.APP_VERSION,
+                                'question/controllers/IELTSCreateReadingTestController.js?v=' + window.APP_VERSION,
                                 'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
                         });
@@ -266,7 +266,7 @@
             })
 
             .state('application.ielts_reading_actual_test', {
-                url: '/ielts_reading_actual_test/:ieltsReadingTestId',
+                url: '/ielts_reading_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart',
                 templateUrl: 'question/views/ielts_reading_actual_test_idp.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'IELTS Reading Actual Test'},
                 controller: 'IELTSReadingActualTestController as vm',
@@ -285,17 +285,17 @@
             })
 
             .state('application.ielts_listening_actual_test', {
-                url: '/ielts_listening_actual_test/:ieltsReadingTestId',
-                templateUrl: 'question/views/ielts_listening_actual_test.html',
+                url: '/ielts_listening_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart',
+                templateUrl: 'question/views/ielts_reading_actual_test_idp.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'IELTS Listening Actual Test'},
-                controller: 'IELTSListeningActualTestController as vm',
+                controller: 'IELTSReadingActualTestController as vm',
                 resolve: {
                     deps: ['$ocLazyLoad', function ($ocLazyLoad) {
                         return $ocLazyLoad.load({
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/IELTSListeningActualTestController.js?v=' + window.APP_VERSION,
+                                'question/controllers/IELTSReadingActualTestController.js?v=' + window.APP_VERSION,
                                 'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
                         });

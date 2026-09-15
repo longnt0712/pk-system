@@ -1130,14 +1130,15 @@
             <strong class="class-task-title">{{$index + 1}}. {{task.title}}</strong>
             <div class="class-task-meta">
                 <span>{{vm.taskStatusLabel(task)}}</span>
-                <span data-ng-if="task.topicId">{{task.activityType === 'DAILY_LISTENING' ? 'Daily Listening' : task.activityType === 'IELTS_READING' ? 'IELTS Reading' : task.activityType === 'IELTS_LISTENING' ? 'IELTS Listening' : task.activityType === 'OTHER' ? 'Bài khác' : 'Daily Vocab'}}</span>
-                <span data-ng-if="task.topicId">Bắt đầu: {{vm.taskStartLabel(task)}}</span>
-                <span data-ng-if="task.topicId">Yêu cầu: {{task.requiredAttempts || 1}} lần đạt</span>
+                <span data-ng-if="task.topicId || task.ieltsTestId">{{task.activityType === 'DAILY_LISTENING' ? 'Daily Listening' : task.activityType === 'IELTS_READING' ? 'IELTS Reading' : task.activityType === 'IELTS_LISTENING' ? 'IELTS Listening' : task.activityType === 'OTHER' ? 'Bài khác' : 'Daily Vocab'}}</span>
+                <span data-ng-if="task.topicId || task.ieltsTestId">Bắt đầu: {{vm.taskStartLabel(task)}}</span>
+                <span data-ng-if="task.topicId || task.ieltsTestId">Yêu cầu: {{task.requiredAttempts || 1}} lần đạt</span>
                 <span data-ng-if="task.resolvedDueDate || task.dueDate">Hạn: {{vm.taskDueLabel(task)}}{{task.deadlineAutomatic ? ' · tự động' : ''}}</span>
                 <span class="task-overdue" data-ng-if="vm.taskOverdue(task)">Quá hạn</span>
                 <span>{{vm.taskCompletion(task)}}</span>
             </div>
             <p class="class-task-help" data-ng-if="task.topicName">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
+            <p class="class-task-help" data-ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}} · Part {{task.ieltsPart}}</p>
             <div class="class-task-notes" data-ng-if="task.notes">{{task.notes}}</div>
             <div class="class-task-buttons">
                 <button type="button" class="btn btn-default btn-xs" data-ng-click="vm.openScheduleTask(taskSection, task)"
@@ -1155,6 +1156,41 @@
                        placeholder="VD: Học 20 từ mới, làm bài trang 35..." autofocus />
             </div>
             <div class="class-task-editor-grid">
+                <div class="form-group">
+                    <label>Loại bài học</label>
+                    <select class="form-control" data-ng-model="vm.taskEditor.activityType" data-ng-change="vm.taskActivityTypeChanged()">
+                        <option value="DAILY_VOCAB">Daily Vocab</option>
+                        <option value="DAILY_LISTENING">Daily Listening</option>
+                        <option value="IELTS_READING">IELTS Reading</option>
+                        <option value="IELTS_LISTENING">IELTS Listening</option>
+                        <option value="OTHER">Bài khác / chỉ xem hướng dẫn</option>
+                    </select>
+                    <small>Chọn Reading hoặc Listening để giao đúng đề và đúng Part.</small>
+                </div>
+                <div class="form-group" data-ng-if="vm.taskEditor.topicId || vm.isIeltsTask(vm.taskEditor)">
+                    <label>Số lần học sinh phải hoàn thành</label>
+                    <input type="number" min="1" max="100" step="1" required class="form-control" data-ng-model="vm.taskEditor.requiredAttempts" />
+                    <small>Mỗi lần nộp đúng Part được tính là một lượt hoàn thành.</small>
+                </div>
+            </div>
+            <div class="class-task-editor-grid" data-ng-if="vm.isIeltsTask(vm.taskEditor)">
+                <div class="form-group">
+                    <label>Đề {{vm.taskEditor.activityType === 'IELTS_LISTENING' ? 'Listening' : 'Reading'}} <span class="font-red">*</span></label>
+                    <ui-select theme="bootstrap" data-ng-model="vm.taskEditor.ieltsTestId" data-ng-disabled="vm.assignableIeltsTestsLoading" required>
+                        <ui-select-match placeholder="Chọn đề IELTS...">{{$select.selected.title}}</ui-select-match>
+                        <ui-select-choices repeat="test.id as test in vm.ieltsTestsForTask() | propsFilter:{title:$select.search}">
+                            <div data-ng-bind-html="test.title | highlight:$select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                <div class="form-group">
+                    <label>Part cần làm <span class="font-red">*</span></label>
+                    <select class="form-control" data-ng-model="vm.taskEditor.ieltsPart" data-ng-options="part as ('Part ' + part) for part in [1,2,3]" required></select>
+                    <small>Học sinh chỉ làm Part đã chọn; nộp Part này là được tính làm bài.</small>
+                </div>
+            </div>
+            <p class="class-task-help" data-ng-if="vm.assignableIeltsTestsLoading && vm.isIeltsTask(vm.taskEditor)"><i class="fa fa-spinner fa-spin"></i> Đang tải danh sách đề IELTS...</p>
+            <div class="class-task-editor-grid" data-ng-if="!vm.isIeltsTask(vm.taskEditor)">
                 <div class="form-group">
                     <label>Category (không bắt buộc)</label>
                     <ui-select theme="bootstrap" data-ng-model="vm.taskEditor.categoryKey" data-ng-change="vm.taskCategoryChanged()"
@@ -1177,26 +1213,7 @@
                 </div>
             </div>
             <p class="class-task-help" data-ng-if="vm.scheduleTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải category / topic...</p>
-            <div class="class-task-editor-grid" data-ng-if="vm.taskEditor.topicId">
-                <div class="form-group">
-                    <label>Loại bài học</label>
-                    <select class="form-control" data-ng-model="vm.taskEditor.activityType" data-ng-change="vm.taskActivityTypeChanged()">
-                        <option value="DAILY_VOCAB">Daily Vocab</option>
-                        <option value="DAILY_LISTENING">Daily Listening</option>
-                        <option value="IELTS_READING">IELTS Reading</option>
-                        <option value="IELTS_LISTENING">IELTS Listening</option>
-                        <option value="OTHER">Bài khác / chỉ xem hướng dẫn</option>
-                    </select>
-                    <small>Dashboard dùng loại này để mở đúng màn hình làm bài.</small>
-                </div>
-                <div class="form-group">
-                    <label>Số lần học sinh phải làm đạt</label>
-                    <input type="number" min="1" max="100" step="1" required class="form-control"
-                           data-ng-model="vm.taskEditor.requiredAttempts" />
-                    <small>Chỉ khi đủ số lượt thành công này mới được tính là đã làm bài.</small>
-                </div>
-            </div>
-            <div class="class-task-editor-grid" data-ng-if="vm.taskEditor.topicId">
+            <div class="class-task-editor-grid" data-ng-if="vm.taskEditor.topicId || vm.isIeltsTask(vm.taskEditor)">
                 <div class="form-group">
                     <label>Thời gian bắt đầu</label>
                     <input type="text" class="form-control" readonly value="{{vm.taskStartLabel(vm.taskEditor)}}" />
@@ -1207,7 +1224,7 @@
             <div class="form-group" data-ng-if="vm.taskEditor.topicId">
                 <label><input type="checkbox" data-ng-model="vm.taskEditor.autoCompleteFromTopic"
                               data-ng-disabled="vm.taskEditor.activityType !== 'DAILY_VOCAB' && vm.taskEditor.activityType !== 'DAILY_LISTENING'" /> Tự đánh dấu khi hoàn thành Daily Vocab / Daily Listening của topic này</label>
-                <p class="class-task-help">Chỉ tính lượt thành công từ giờ kết thúc buổi học trước đến hạn task. Với task trên lớp không đặt hạn, mốc kết thúc là giờ tan của buổi hiện tại. Daily Listening chỉ được tính khi đạt trên 85%; IELTS không được tính.</p>
+                <p class="class-task-help">Chỉ tính lượt thành công từ giờ kết thúc buổi học trước đến hạn task. Với IELTS, hệ thống chỉ tính kết quả của đúng đề và đúng Part đã giao.</p>
             </div>
             <div class="form-group">
                 <label>Ghi chú / Hướng dẫn làm bài</label>

@@ -39,6 +39,10 @@
 
         var vm = this;
 
+        vm.isListeningMode = /\/create_ielts_listening_test(?:\/|$)/i.test($location.path());
+        vm.testModeName = vm.isListeningMode ? 'Listening' : 'Reading';
+        vm.testModeIcon = vm.isListeningMode ? 'fa-headphones' : 'fa-book';
+
         window.addEventListener('beforeunload', function (e) {
             // Cancel the event
             e.preventDefault(); // If you prevent default behavior in Mozilla Firefox prompt will always be shown
@@ -78,12 +82,26 @@
             {id: 7, name: "Multiple Answers - Listening", notice: "T/F/NG or Y/N/NG is also multiple choice question"},
             {id: 8, name: "Matching Heading - Listening", notice: "Drop box (temp)"},
             {id: 9, name: "MAPS - Listening", notice: "..."},
-            {id: 10, name: "MATCHING NAMES", notice: "temp"},
+            {id: 10, name: "MATCHING NAMES", notice: "Use one shared A–Z researcher list; the list appears below the matching table"},
             {id: 11, name: "Filling Gaps New (One Editor)", notice: "Write all questions in one editor; each }{SPACE}{ becomes the next numbered answer"},
             {id: 12, name: "MATCHING INFORMATION", notice: "Same creation and test layout as Matching Names"},
-            {id: 13, name: "COMPLETE LIST OF WORDS", notice: "One editor with ordered correct words followed by distractors; students drag a shuffled word list into the gaps"}
+            {id: 13, name: "COMPLETE LIST OF WORDS", notice: "One editor with ordered correct words followed by distractors; students drag a shuffled word list into the gaps"},
+            {id: 14, name: "Complete each sentence with the correct ending", notice: "Use one shared A–Z list of endings; students drag each ending into the blank after a sentence"}
         ];
         vm.passageTypes = vm.types.slice(0, 10);
+
+        vm.matchingOptionLabel = function (index) {
+            index = parseInt(index, 10);
+            if (isNaN(index) || index < 0) {
+                return '';
+            }
+            var label = '';
+            do {
+                label = String.fromCharCode(65 + (index % 26)) + label;
+                index = Math.floor(index / 26) - 1;
+            } while (index >= 0);
+            return label;
+        };
 
         vm.status = {id: 1, name: "Chưa thuộc"};
         vm.statuses = [
@@ -109,7 +127,7 @@
             questionType: {
                 code: 'IELTSRT',
                 id: 11,
-                name: 'IELTS Writing Test',
+                name: 'IELTS ' + vm.testModeName + ' Test',
                 textSearch: null
             },
             type: 0,
@@ -123,6 +141,7 @@
 
         vm.getPageCreateIELTSReadingTest = function () {
             vm.searchDto.questionType = {id: 11};
+            vm.searchDto.listeningTest = vm.isListeningMode;
             blockUI.start();
             service.getPageForTests(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
                 blockUI.stop();
@@ -204,7 +223,7 @@
             questionType : {
                 code: 'IELTSRT',
                 id: 11,
-                name: 'IELTS Reading Test',
+                name: vm.isListeningMode ? 'IELTS Listening Test' : 'IELTS Reading Test',
                 textSearch: null
             },
             status : 6,
@@ -322,13 +341,13 @@
 
                 vm.refreshBuilderValidation();
                 vm.getPageCreateIELTSReadingTest();
-                var saveMessage = saveMode === 'publish' ? 'Đã kiểm tra và xuất bản bài Reading.' :
+                var saveMessage = saveMode === 'publish' ? 'Đã kiểm tra và xuất bản bài ' + vm.testModeName + '.' :
                     (saveMode === 'preview' ? 'Đã lưu dữ liệu để mở bản xem trước.' : 'Đã lưu bản nháp.');
                 toastr.success(saveMessage, 'Thông báo');
                 return data;
             }, function failure() {
                 blockUI.stop();
-                toastr.error('Không thể lưu bài Reading. Vui lòng thử lại.', 'Thông báo');
+                toastr.error('Không thể lưu bài ' + vm.testModeName + '. Vui lòng thử lại.', 'Thông báo');
             });
         };
 
@@ -440,6 +459,113 @@
             }
         }
 
+        function isSharedChoicePackage(questionPackage) {
+            var type = Number(questionPackage && questionPackage.type);
+            return type === 4 || type === 10 || type === 14;
+        }
+
+        function ensureSharedChoicePackage(questionPackage) {
+            if (!isSharedChoicePackage(questionPackage)) {
+                return;
+            }
+            questionPackage.subQuestions = questionPackage.subQuestions || [];
+            questionPackage.subQuestions.sort(function (left, right) {
+                return Number(left.ordinalNumber) - Number(right.ordinalNumber);
+            });
+            if (!questionPackage.subQuestions.length) {
+                return;
+            }
+
+            var firstQuestion = questionPackage.subQuestions[0];
+            firstQuestion.questionAnswers = firstQuestion.questionAnswers || [];
+            firstQuestion.questionAnswers.sort(function (left, right) {
+                return Number(left.ordinalNumberQuestionAnswer) - Number(right.ordinalNumberQuestionAnswer);
+            });
+            var sourceAnswers = firstQuestion.questionAnswers;
+
+            angular.forEach(questionPackage.subQuestions, function (question, questionIndex) {
+                question.questionAnswers = question.questionAnswers || [];
+                question.questionAnswers.sort(function (left, right) {
+                    return Number(left.ordinalNumberQuestionAnswer) - Number(right.ordinalNumberQuestionAnswer);
+                });
+                while (question.questionAnswers.length < sourceAnswers.length) {
+                    question.questionAnswers.push(angular.copy(sourceAnswers[question.questionAnswers.length]));
+                }
+                if (question.questionAnswers.length > sourceAnswers.length) {
+                    question.questionAnswers = question.questionAnswers.slice(0, sourceAnswers.length);
+                }
+                angular.forEach(question.questionAnswers, function (answer, answerIndex) {
+                    answer.answer = answer.answer || {answer: ''};
+                    answer.ordinalNumberQuestionAnswer = answerIndex + 1;
+                    if (questionIndex > 0 && sourceAnswers[answerIndex] && sourceAnswers[answerIndex].answer) {
+                        answer.answer.answer = sourceAnswers[answerIndex].answer.answer;
+                    }
+                });
+            });
+        }
+
+        vm.sharedChoiceTitle = function (type) {
+            type = Number(type);
+            if (type === 4) {
+                return 'List of Headings';
+            }
+            if (type === 14) {
+                return 'List of Endings';
+            }
+            return 'List of Researchers';
+        };
+
+        vm.sharedChoiceLabel = function (type, index) {
+            if (Number(type) === 4) {
+                var roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii'];
+                return roman[index] || String(index + 1);
+            }
+            return vm.matchingOptionLabel(index);
+        };
+
+        vm.sharedChoiceHelp = function (type) {
+            type = Number(type);
+            if (type === 4) {
+                return 'Nhập toàn bộ heading một lần tại đây theo thứ tự i, ii, iii… Hệ thống dùng chung danh sách này cho cả nhóm câu.';
+            }
+            if (type === 14) {
+                return 'Nhập các phần kết thúc A, B, C… một lần tại đây. Học sinh sẽ kéo từng lựa chọn vào ô trống sau câu.';
+            }
+            return 'Nhập tên một lần tại đây. Hệ thống hiển thị A, B, C… trên đầu bảng và danh sách tên ở dưới bảng.';
+        };
+
+        vm.sharedChoicePlaceholder = function (type, index) {
+            if (Number(type) === 4) {
+                return 'Heading ' + (index + 1);
+            }
+            if (Number(type) === 14) {
+                return 'Nội dung ending ' + vm.matchingOptionLabel(index);
+            }
+            return 'Tên người hoặc nhóm nghiên cứu ' + vm.matchingOptionLabel(index);
+        };
+
+        vm.updateSharedChoice = function (questionPackage, sourceAnswer) {
+            if (!questionPackage || !sourceAnswer) {
+                return;
+            }
+            ensureSharedChoicePackage(questionPackage);
+            var ordinal = parseInt(sourceAnswer.ordinalNumberQuestionAnswer, 10);
+            angular.forEach(questionPackage.subQuestions || [], function (question, questionIndex) {
+                if (questionIndex === 0) {
+                    return;
+                }
+                angular.forEach(question.questionAnswers || [], function (answer) {
+                    if (parseInt(answer.ordinalNumberQuestionAnswer, 10) === ordinal) {
+                        answer.answer = answer.answer || {};
+                        answer.answer.answer = sourceAnswer.answer ? sourceAnswer.answer.answer : '';
+                    }
+                });
+            });
+            vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
+        };
+
+        vm.updateMatchingName = vm.updateSharedChoice;
+
         vm.updateCompleteListContent = function (questionPackage) {
             ensureCompleteListPackage(questionPackage);
             vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
@@ -476,11 +602,28 @@
             if (questionPackage && Number(questionPackage.type) === 13) {
                 ensureCompleteListPackage(questionPackage);
             }
+            if (isSharedChoicePackage(questionPackage)) {
+                ensureSharedChoicePackage(questionPackage);
+            }
+            if (questionPackage && Number(questionPackage.type) === 4 && vm.ieltsReadingTest.subQuestions[partIndex]) {
+                vm.ieltsReadingTest.subQuestions[partIndex].type = 4;
+            }
             vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
         };
 
         vm.updateOneEditorContent = function (questionPackage) {
             ensureOneEditorPackage(questionPackage);
+            vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
+        };
+
+        vm.appendOneEditorGap = function (questionPackage) {
+            ensureOneEditorPackage(questionPackage);
+            if (!questionPackage || !questionPackage.subQuestions || !questionPackage.subQuestions.length) {
+                return;
+            }
+            var firstQuestion = questionPackage.subQuestions[0];
+            var content = String(firstQuestion.question || '');
+            firstQuestion.question = content + (content ? ' ' : '') + '}{SPACE}{';
             vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
         };
 
@@ -513,6 +656,9 @@
             if (!plainText(test.title)) {
                 addIssue('Chưa nhập tên bài thi.', 'reading-builder-info');
             }
+            if (vm.isListeningMode && !plainText(test.pronounce)) {
+                addIssue('Bài Listening chưa có link audio chính.', 'reading-builder-info');
+            }
 
             angular.forEach(readingPartRules, function (rule, partIndex) {
                 var passage = (test.subQuestions || [])[partIndex] || {};
@@ -521,6 +667,7 @@
                 var numberMap = {};
                 var missing = [];
                 var partIssueStart = result.issues.length;
+                var matchingHeadingQuestionCount = 0;
 
                 result.totalQuestions += questionEntries.length;
 
@@ -545,6 +692,9 @@
                     }
                     if (!(questionPackage.subQuestions || []).length) {
                         addIssue(rule.name + ', nhóm ' + (packageIndex + 1) + ': chưa tạo câu hỏi.', packageTarget, partIndex);
+                    }
+                    if (Number(questionPackage.type) === 4) {
+                        matchingHeadingQuestionCount += (questionPackage.subQuestions || []).length;
                     }
                     if (Number(questionPackage.type) === 11 && (questionPackage.subQuestions || []).length) {
                         var oneEditorContent = questionPackage.subQuestions[0].question;
@@ -571,6 +721,16 @@
                         }
                     }
                 });
+
+                if (matchingHeadingQuestionCount > 0) {
+                    var headingPlaceholderCount = countHeadingPlaceholders(passage.question);
+                    if (headingPlaceholderCount !== matchingHeadingQuestionCount) {
+                        addIssue(rule.name + ': Matching Heading có ' + headingPlaceholderCount +
+                            ' vị trí }{HEADING}{ nhưng cần đúng ' + matchingHeadingQuestionCount +
+                            ' vị trí, đặt ngay sau nhãn Section A, B, C...',
+                            'reading-builder-part-' + (partIndex + 1), partIndex);
+                    }
+                }
 
                 angular.forEach(questionEntries, function (entry) {
                     var question = entry.question || {};
@@ -728,7 +888,8 @@
             }
             var baseElement = document.getElementsByTagName('base')[0];
             var appBaseUrl = baseElement ? baseElement.href : ($window.location.protocol + '//' + $window.location.host + '/');
-            var previewUrl = appBaseUrl.replace(/\/?$/, '/') + 'ielts_reading_actual_test/preview-local' +
+            var previewRoute = vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/';
+            var previewUrl = appBaseUrl.replace(/\/?$/, '/') + previewRoute + 'preview-local' +
                 '?preview=1&previewPart=' + targetPart + '&previewKey=' + encodeURIComponent(previewKey) +
                 '&previewStorage=' + previewStorage;
             var previewWindow = $window.open(previewUrl, '_blank');
@@ -817,6 +978,7 @@
                             var questions = packages[j].subQuestions;
                             ensureOneEditorPackage(packages[j]);
                             ensureCompleteListPackage(packages[j]);
+                            ensureSharedChoicePackage(packages[j]);
                             if(questions != null && questions.length > 0){
                                 packages[j].isHaveChildren = true;
                             } else {
@@ -1140,6 +1302,7 @@
             }
             ensureOneEditorPackage(vm.ieltsReadingTest.subQuestions[0].subQuestions[index]);
             ensureCompleteListPackage(vm.ieltsReadingTest.subQuestions[0].subQuestions[index]);
+            ensureSharedChoicePackage(vm.ieltsReadingTest.subQuestions[0].subQuestions[index]);
             vm.ieltsReadingTest.subQuestions[0].subQuestions[index].isHaveChildren = true;
             vm.getOrdinalNumber(vm.ieltsReadingTest);
             vm.refreshBuilderValidation();
@@ -1307,6 +1470,7 @@
             }
             ensureOneEditorPackage(vm.ieltsReadingTest.subQuestions[1].subQuestions[index]);
             ensureCompleteListPackage(vm.ieltsReadingTest.subQuestions[1].subQuestions[index]);
+            ensureSharedChoicePackage(vm.ieltsReadingTest.subQuestions[1].subQuestions[index]);
             vm.ieltsReadingTest.subQuestions[1].subQuestions[index].isHaveChildren = true;
             vm.getOrdinalNumber(vm.ieltsReadingTest);
             vm.refreshBuilderValidation();
@@ -1463,6 +1627,7 @@
             }
             ensureOneEditorPackage(vm.ieltsReadingTest.subQuestions[2].subQuestions[index]);
             ensureCompleteListPackage(vm.ieltsReadingTest.subQuestions[2].subQuestions[index]);
+            ensureSharedChoicePackage(vm.ieltsReadingTest.subQuestions[2].subQuestions[index]);
             vm.ieltsReadingTest.subQuestions[2].subQuestions[index].isHaveChildren = true;
             vm.getOrdinalNumber(vm.ieltsReadingTest);
             vm.refreshBuilderValidation();
@@ -1672,7 +1837,9 @@
                 pageList: [10, 25, 50, 100],
                 locale: settings.locale,
                 sidePagination: 'server',
-                columns: service.getTableDefinitionCreateIELTSReadingTest(),
+                columns: service.getTableDefinitionCreateIELTSReadingTest(
+                    vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'
+                ),
                 onCheck: function (row, $element) {
                     $scope.$apply(function () {
                         vm.selectedQuestions.push(row);
@@ -1861,7 +2028,7 @@
                 questionType: readingQuestionType(
                     passageTypeIds[partIndex],
                     'IELTSRTP' + (partIndex + 1),
-                    'IELTS Reading Test Passage ' + (partIndex + 1)
+                    'IELTS ' + vm.testModeName + ' Test Part ' + (partIndex + 1)
                 ),
                 ordinalNumber: partIndex + 1,
                 subQuestions: groups.map(importedGroup)
@@ -1912,7 +2079,7 @@
                 test = {
                     title: source.title,
                     pronounce: source.audioUrl || source.pronounce || null,
-                    questionType: readingQuestionType(11, 'IELTSRT', 'IELTS Reading Test'),
+                    questionType: readingQuestionType(11, 'IELTSRT', 'IELTS ' + vm.testModeName + ' Test'),
                     type: 0,
                     status: 6,
                     questionTopics: [],
@@ -1933,7 +2100,14 @@
 
             removeImportedIdentifiers(test);
             test.title = String(test.title).trim();
-            test.questionType = readingQuestionType(11, 'IELTSRT', 'IELTS Reading Test');
+            test.pronounce = test.pronounce == null ? '' : String(test.pronounce).trim();
+            if (vm.isListeningMode && !test.pronounce) {
+                throw new Error('File Listening chưa có Audio URL trong sheet THONG_TIN.');
+            }
+            if (!vm.isListeningMode && test.pronounce) {
+                throw new Error('File này có Audio URL nên được xác định là Listening. Hãy import tại trang Tạo IELTS Listening Test.');
+            }
+            test.questionType = readingQuestionType(11, 'IELTSRT', 'IELTS ' + vm.testModeName + ' Test');
             test.status = 6;
             test.userId = vm.currentUser.id;
             test.ordinalNumber = parseInt(test.ordinalNumber, 10) || 1;
@@ -1947,7 +2121,7 @@
                 part.questionType = readingQuestionType(
                     passageTypeIds[partIndex],
                     'IELTSRTP' + (partIndex + 1),
-                    'IELTS Reading Test Passage ' + (partIndex + 1)
+                    'IELTS ' + vm.testModeName + ' Test Part ' + (partIndex + 1)
                 );
                 part.subQuestions = part.subQuestions || [];
                 angular.forEach(part.subQuestions, function (group, groupIndex) {
@@ -1970,6 +2144,7 @@
                         question.subQuestions = question.subQuestions || [];
                         question.questionAnswers = question.questionAnswers || [];
                     });
+                    ensureSharedChoicePackage(group);
                 });
             });
             if (!questionCount) {
@@ -2032,7 +2207,7 @@
                 return fallbackType || 1;
             }
             var numericType = parseInt(value, 10);
-            if (numericType >= 1 && numericType <= 13) {
+            if (numericType >= 1 && numericType <= 14) {
                 return numericType;
             }
             var normalizedType = normalizedExcelText(value);
@@ -2057,7 +2232,7 @@
             angular.forEach(tokens, function (token) {
                 var tokenMatched = false;
                 var answerIndex = parseInt(token, 10) - 1;
-                if (!/^\d+$/.test(token) && /^[a-h]$/i.test(token)) {
+                if (!/^\d+$/.test(token) && /^[a-z]$/i.test(token)) {
                     answerIndex = token.toUpperCase().charCodeAt(0) - 65;
                 }
                 if (answerIndex >= 0 && answerIndex < answers.length) {
@@ -2085,6 +2260,83 @@
             }
         }
 
+        function parseExcelMatchingOptions(value, rowNumber) {
+            var text = String(value === null || value === undefined ? '' : value).trim();
+            if (!text) {
+                return [];
+            }
+            var chunks = text.split(/\r?\n|\s*\|\s*/);
+            if (chunks.length === 1 && text.indexOf(';') >= 0) {
+                chunks = text.split(/\s*;\s*/);
+            }
+            var options = chunks.map(function (chunk) {
+                return String(chunk || '')
+                    .replace(/^\s*(?:[ivxlcdm]+|[A-Z]|\d+)\s*[\).:=\-–—]\s*/i, '')
+                    .trim();
+            }).filter(function (option) {
+                return option.length > 0;
+            });
+            if (options.length < 2 || options.length > 26) {
+                throw new Error('Dòng ' + rowNumber + ': Danh sách dùng chung phải có từ 2 đến 26 lựa chọn, ngăn cách bằng dấu | hoặc xuống dòng.');
+            }
+            return options;
+        }
+
+        function countHeadingPlaceholders(content) {
+            var matches = String(content || '').match(/\}\{\s*HEADING\s*\}\{/gi);
+            return matches ? matches.length : 0;
+        }
+
+        function escapeRegularExpression(value) {
+            return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function matchingHeadingSectionLabel(question, fallbackIndex) {
+            var text = plainText(question && (question.text || question.question));
+            var match = text.match(/(?:section|paragraph)\s+([A-Z])\b/i) || text.match(/^([A-Z])(?:\s|$)/i);
+            return match ? match[1].toUpperCase() : vm.matchingOptionLabel(fallbackIndex);
+        }
+
+        function ensureImportedHeadingPlaceholders(part, partIndex) {
+            var passageHtml = String((part && part.passageHtml) || '');
+            var matchingQuestions = [];
+            angular.forEach((part && part.groups) || [], function (group) {
+                if (Number(group.type) === 4) {
+                    matchingQuestions = matchingQuestions.concat(group.questions || []);
+                }
+            });
+            if (!matchingQuestions.length) {
+                return;
+            }
+
+            angular.forEach(matchingQuestions, function (question, questionIndex) {
+                var label = escapeRegularExpression(matchingHeadingSectionLabel(question, questionIndex));
+                var alreadyMarked = new RegExp(
+                    '<(?:p|h[1-6]|div)\\b[^>]*>\\s*(?:<(?:strong|b)\\b[^>]*>\\s*)?' + label +
+                    '\\s*(?:</(?:strong|b)>\\s*)?\\}\{\\s*HEADING\\s*\\}\{',
+                    'i'
+                );
+                if (alreadyMarked.test(passageHtml)) {
+                    return;
+                }
+                var sectionMarker = new RegExp(
+                    '(<(?:p|h[1-6]|div)\\b[^>]*>\\s*(?:<(?:strong|b)\\b[^>]*>\\s*)?' + label +
+                    '\\s*(?:</(?:strong|b)>\\s*)?)(\\s*</(?:p|h[1-6]|div)>)',
+                    'i'
+                );
+                passageHtml = passageHtml.replace(sectionMarker, '$1 }{HEADING}{$2');
+            });
+
+            var expectedCount = matchingQuestions.length;
+            var actualCount = countHeadingPlaceholders(passageHtml);
+            if (actualCount !== expectedCount) {
+                throw new Error('Part ' + (partIndex + 1) + ': Matching Heading có ' + actualCount +
+                    '/' + expectedCount + ' vị trí }{HEADING}{. Hãy đặt mỗi ký hiệu ngay sau nhãn Section A, B, C... trong Passage HTML.');
+            }
+            part.passageHtml = passageHtml;
+            part.type = 4;
+        }
+
         function readingTestFromExcel(workbook) {
             var infoSheet = findExcelSheet(workbook, ['THONG_TIN', 'THÔNG TIN', 'INFO'], 1);
             var contentSheet = findExcelSheet(workbook, ['NOI_DUNG', 'NỘI DUNG', 'CONTENT'], 2);
@@ -2102,6 +2354,13 @@
             });
             var title = info['tieu de'] || info.title || '';
             var audioUrl = info['audio url'] || info.audio || '';
+            var workbookMode = normalizedExcelText(info['loai bai'] || info['test type'] || '');
+            if (workbookMode && vm.isListeningMode && workbookMode.indexOf('listening') < 0) {
+                throw new Error('Đây là file mẫu Reading. Hãy import tại trang IELTS Reading hoặc tải mẫu Listening mới.');
+            }
+            if (workbookMode && !vm.isListeningMode && workbookMode.indexOf('reading') < 0) {
+                throw new Error('Đây là file mẫu Listening. Hãy import tại trang IELTS Listening.');
+            }
 
             var source = {
                 title: title,
@@ -2149,6 +2408,7 @@
                         type: excelQuestionType(typeCell, 1),
                         instructionHtml: instruction || '',
                         ordinalNumber: groupNumber,
+                        matchingOptions: [],
                         questions: []
                     };
                     groupsByPart[currentPartNumber - 1][groupNumber] = group;
@@ -2160,6 +2420,24 @@
                     if (String(instruction).trim()) {
                         group.instructionHtml = instruction;
                     }
+                }
+
+                var matchingOptionsCell = excelRowValue(row, [
+                    'Danh sách dùng chung (A=... | B=...)',
+                    'Danh sách dùng chung',
+                    'Danh sách ghép (Matching Names)',
+                    'Danh sách ghép',
+                    'Danh sách người',
+                    'Danh sách heading',
+                    'Danh sách headings',
+                    'Danh sách ending',
+                    'Danh sách endings',
+                    'Shared choices',
+                    'Matching options',
+                    'Option list'
+                ]);
+                if (String(matchingOptionsCell).trim()) {
+                    group.matchingOptions = parseExcelMatchingOptions(matchingOptionsCell, rowIndex + 2);
                 }
 
                 var questionNumberCell = excelRowValue(row, ['Số câu', 'Question number', 'Number']);
@@ -2174,10 +2452,16 @@
                         ' chỉ được dùng câu ' + questionRange.start + '–' + questionRange.end + '.');
                 }
                 var answers = [];
-                for (var answerNumber = 1; answerNumber <= 8; answerNumber++) {
-                    var answerText = excelRowValue(row, ['Đáp án ' + answerNumber, 'Answer ' + answerNumber]);
-                    if (String(answerText).trim()) {
-                        answers.push({text: String(answerText).trim(), correct: false});
+                if ((Number(group.type) === 4 || Number(group.type) === 10 || Number(group.type) === 14) && group.matchingOptions.length) {
+                    angular.forEach(group.matchingOptions, function (option) {
+                        answers.push({text: option, correct: false});
+                    });
+                } else {
+                    for (var answerNumber = 1; answerNumber <= 8; answerNumber++) {
+                        var answerText = excelRowValue(row, ['Đáp án ' + answerNumber, 'Answer ' + answerNumber]);
+                        if (String(answerText).trim()) {
+                            answers.push({text: String(answerText).trim(), correct: false});
+                        }
                     }
                 }
                 if (!answers.length) {
@@ -2199,24 +2483,29 @@
                 part.groups.sort(function (left, right) {
                     return Number(left.ordinalNumber) - Number(right.ordinalNumber);
                 });
+                if (!part.type) {
+                    part.type = 1;
+                }
             });
+            angular.forEach(source.parts, ensureImportedHeadingPlaceholders);
             return normalizeImportedReadingTest(source);
         }
 
         vm.importReadingTestFile = function (file, invalidFiles) {
+            var importTitle = 'Import IELTS ' + vm.testModeName;
             if ((!file && invalidFiles && invalidFiles.length) || (file && file.size > 10 * 1024 * 1024)) {
-                toastr.warning('File Excel không được lớn hơn 10 MB.', 'Import IELTS Reading');
+                toastr.warning('File Excel không được lớn hơn 10 MB.', importTitle);
                 return;
             }
             if (!file) {
                 return;
             }
             if (!/\.(xlsx|xls)$/i.test(file.name || '')) {
-                toastr.warning('Vui lòng chọn file Excel có đuôi .xlsx hoặc .xls.', 'Import IELTS Reading');
+                toastr.warning('Vui lòng chọn file Excel có đuôi .xlsx hoặc .xls.', importTitle);
                 return;
             }
             if (!$window.XLSX) {
-                toastr.error('Thư viện đọc Excel chưa tải được. Vui lòng tải lại trang.', 'Import IELTS Reading');
+                toastr.error('Thư viện đọc Excel chưa tải được. Vui lòng tải lại trang.', importTitle);
                 return;
             }
 
@@ -2238,82 +2527,240 @@
                             vm.importingReadingTest = false;
                         });
                         if (importedQuestionCount < 40) {
-                            toastr.warning('Đã nhập ' + importedQuestionCount + '/40 câu. Bạn có thể bổ sung trước khi xuất bản.', 'Import IELTS Reading');
+                            toastr.warning('Đã nhập ' + importedQuestionCount + '/40 câu. Bạn có thể bổ sung trước khi xuất bản.', importTitle);
                         }
                     } catch (error) {
                         vm.importingReadingTest = false;
-                        toastr.error(error.message || 'File Excel không đúng định dạng.', 'Import IELTS Reading');
+                        toastr.error(error.message || 'File Excel không đúng định dạng.', importTitle);
                     }
                 });
             };
             reader.onerror = function () {
                 $scope.$applyAsync(function () {
                     vm.importingReadingTest = false;
-                    toastr.error('Không thể đọc file Excel đã chọn.', 'Import IELTS Reading');
+                    toastr.error('Không thể đọc file Excel đã chọn.', importTitle);
                 });
             };
             reader.readAsArrayBuffer(file);
         };
 
         vm.downloadReadingImportTemplate = function () {
+            var modeName = vm.testModeName;
+            var modeUpper = String(modeName).toUpperCase();
+            var audioInstruction = vm.isListeningMode
+                ? 'Bắt buộc nhập URL HTTPS công khai trỏ trực tiếp tới file audio (ví dụ .mp3 hoặc .m4a). Không dùng link trang nghe cần đăng nhập.'
+                : 'Phải để trống. Nếu có Audio URL, file thuộc Listening và phải import ở trang IELTS Listening.';
+            var automaticReadingHeader = 'Riêng Reading: không nhập các dòng “READING PASSAGE 1/2/3” và “You should spend about 20 minutes on Questions ...”. Hệ thống tự hiện đúng Part và khoảng câu khi học sinh làm bài. Passage HTML bắt đầu từ tiêu đề riêng của bài đọc.';
+            var passageHtmlInstruction = vm.isListeningMode
+                ? 'Giữ đủ tiêu đề riêng, phụ đề, ký hiệu A/B/C…, xuống dòng và nội dung gốc. Không tóm tắt hoặc tự sửa câu chữ của đề.'
+                : 'Giữ đủ tiêu đề riêng của bài đọc, phụ đề, ký hiệu A/B/C…, xuống dòng và nội dung gốc. Không lặp tiêu đề READING PASSAGE và câu You should spend vì hệ thống tự hiện. Không tóm tắt hoặc tự sửa câu chữ của đề.';
+            var promptPartHeaderInstruction = vm.isListeningMode
+                ? 'Với Listening, nhập nội dung/bối cảnh được in trong đề nếu có; không tự thêm nội dung không có trong đề gốc.'
+                : automaticReadingHeader;
+            var part1PassageExample = vm.isListeningMode
+                ? '<h2>Listening Part 1</h2><p>Nhập nội dung hoặc bối cảnh của Part 1 nếu đề gốc có.</p>'
+                : '<h2>Tiêu đề riêng của bài đọc</h2><p><em>Phụ đề nếu có</em></p><p>Dán nội dung bài tại đây; không nhập READING PASSAGE 1 và câu You should spend.</p>';
+            var part2PassageExample = vm.isListeningMode
+                ? '<h2>Listening Part 2</h2><p><strong>A</strong></p><p>Nội dung đoạn A.</p><p><strong>B</strong></p><p>Nội dung đoạn B.</p>'
+                : '<h2>Tiêu đề riêng của bài đọc Part 2</h2><p><strong>A</strong> }{HEADING}{</p><p>Nội dung đoạn A.</p><p><strong>B</strong> }{HEADING}{</p><p>Nội dung đoạn B.</p>';
+            var part3PassageExample = vm.isListeningMode
+                ? '<h2>Listening Part 3</h2><p>Nhập nội dung hoặc bối cảnh của Part 3 nếu đề gốc có.</p>'
+                : '<h2>Tiêu đề riêng của bài đọc Part 3</h2><p>Dán nội dung bài tại đây; không lặp tiêu đề Part tự động.</p>';
             if (!$window.XLSX) {
-                toastr.error('Thư viện tạo Excel chưa tải được. Vui lòng tải lại trang.', 'IELTS Reading');
+                toastr.error('Thư viện tạo Excel chưa tải được. Vui lòng tải lại trang.', 'IELTS ' + modeName);
                 return;
             }
             var workbook = XLSX.utils.book_new();
             workbook.Props = {
-                Title: 'Mẫu import IELTS Reading Test',
-                Subject: 'IELTS Reading',
+                Title: 'Mẫu import IELTS ' + modeName + ' Test',
+                Subject: 'IELTS ' + modeName,
                 Author: 'IELTS Room'
             };
 
             var guideRows = [
-                ['HƯỚNG DẪN IMPORT IELTS READING TEST'],
-                ['1. Nhập tiêu đề bài test trong sheet THONG_TIN.'],
-                ['2. Mỗi dòng trong sheet NOI_DUNG là một câu hỏi.'],
-                ['3. Part 1 dùng câu 1–13; Part 2 dùng câu 14–26; Part 3 dùng câu 27–40.'],
-                ['4. Passage, Nhóm, Loại câu hỏi và Hướng dẫn có thể để trống ở dòng sau để kế thừa dòng trước.'],
-                ['5. Cột Đáp án đúng nhập số thứ tự như 1 hoặc nhiều đáp án như 1,3. Có thể nhập A, B, C...'],
-                ['6. Không đổi tên các sheet và tiêu đề cột. Xóa các dòng ví dụ trước khi nhập bài thật.'],
-                ['7. Xem mã loại câu hỏi trong sheet LOAI_CAU_HOI.']
+                ['HƯỚNG DẪN IMPORT IELTS ' + modeUpper + ' TEST', 'ĐỌC KỸ TRƯỚC KHI TẠO FILE'],
+                ['Mục tiêu', 'Tạo đúng một bài IELTS ' + modeName + ' gồm 3 parts và tối đa 40 câu, sau đó import trực tiếp tại trang IELTS ' + modeName + '.'],
+                ['Bước 1', 'Trong THONG_TIN, giữ Loại bài=' + modeUpper + ', nhập Tiêu đề và Audio URL theo quy tắc bên dưới.'],
+                ['Audio URL', audioInstruction],
+                ['Bước 2', 'Thay toàn bộ dòng ví dụ trong NOI_DUNG bằng dữ liệu của đề thật; giữ nguyên tên sheet và tiêu đề cột.'],
+                ['Bước 3', 'Mỗi dòng trong NOI_DUNG là một câu hỏi. Các dòng cùng Part + Nhóm tạo thành một question package.'],
+                ['Bước 4', 'Part 1 chỉ dùng câu 1–13; Part 2 chỉ dùng câu 14–26; Part 3 chỉ dùng câu 27–40. Không lặp số câu.'],
+                ['Bước 5', 'Passage HTML chỉ cần nhập ở dòng đầu của mỗi Part. Nhóm, Loại câu hỏi, Hướng dẫn HTML và Danh sách dùng chung có thể bỏ trống ở dòng sau để kế thừa.'],
+                ['Reading: tiêu đề Part tự động', automaticReadingHeader],
+                ['Bước 6', 'Đáp án đúng có thể nhập số thứ tự 1,2… hoặc chữ A,B,C…; nhiều đáp án ngăn cách bằng dấu phẩy, ví dụ A,C.'],
+                ['HTML được phép', 'Dùng HTML đơn giản như <h2>, <h3>, <p>, <strong>, <em>, <br>, <ul>, <ol>, <li>. Không chèn script, iframe, CSS hoặc công thức Excel.'],
+                ['Passage HTML', passageHtmlInstruction],
+                ['Hướng dẫn HTML', 'Ghi nguyên phần Questions x–y và yêu cầu của nhóm, ví dụ Choose the correct letter, A–F.'],
+                ['Nội dung câu hỏi', 'Ghi phần statement/question của đúng số câu. Không thêm số câu vào nội dung vì hệ thống tự hiển thị số.'],
+                ['Đáp án 1–8', 'Dùng cho Multiple Choices và các loại thông thường. Nhập đúng thứ tự lựa chọn. Ô không dùng phải để trống.'],
+                ['MATCHING HEADINGS (mã 4)', 'Nhóm câu hỏi dùng Loại câu hỏi=4. Cột Danh sách dùng chung nhập i=Heading thứ nhất | ii=Heading thứ hai | iii=Heading thứ ba... ở dòng đầu nhóm. Mỗi câu nhập Section A, Section B...; Đáp án đúng nhập vị trí heading A/B/C... hoặc 1/2/3...'],
+                ['MATCHING HEADINGS - Passage', 'Trong Passage HTML, đặt đúng một }{HEADING}{ ngay sau từng nhãn đoạn cần ghép, ví dụ <p><strong>A</strong> }{HEADING}{</p>. Số ký hiệu phải bằng số câu Matching Heading và theo đúng thứ tự câu.'],
+                ['MATCHING HEADINGS - tự sửa', 'Importer sẽ tự chèn ký hiệu nếu nhãn A/B/C... nằm riêng trong thẻ như <p><strong>A</strong></p>. Tuy vậy ChatGPT phải tạo sẵn }{HEADING}{ để file rõ ràng và không phụ thuộc tự nhận diện. Khi import, Part có nhóm mã 4 tự chuyển sang Matching Heading; không cần chọn tay.'],
+                ['MATCHING NAMES (mã 10)', 'Nhập danh sách chung tại cột Danh sách dùng chung theo dạng A=Jim Bowler | B=Alan Thorne | C=Tim Flannery. Chỉ cần nhập ở dòng đầu của nhóm.'],
+                ['MATCHING NAMES - đáp án', 'Các cột Đáp án 1–8 để trống. Cột Đáp án đúng của mỗi câu nhập A/B/C… tương ứng người đúng. Trên bài làm, bảng hiện A/B/C… và danh sách tên hiện dưới bảng.'],
+                ['SENTENCE ENDINGS (mã 14)', 'Dùng cho “Complete each sentence with the correct ending”. Cột Danh sách dùng chung nhập A=is not backed... | B=is provided... ở dòng đầu nhóm. Nội dung câu hỏi là phần đầu của câu; Đáp án đúng nhập A/B/C... Học sinh kéo ending vào ô sau câu.'],
+                ['ONE WORD ONLY (mã 11)', 'Dòng đầu nhóm: Nội dung câu hỏi chứa toàn bộ đoạn/các câu và chèn đúng một ký hiệu }{SPACE}{ tại mỗi ô trống. Mỗi dòng vẫn đại diện một số câu; Đáp án 1 là từ đúng của câu đó, Đáp án đúng nhập A. Các dòng sau có thể để trống Nội dung câu hỏi.'],
+                ['ONE WORD ONLY - ví dụ', 'Koster believes that games remove people’s fear of }{SPACE}{. Robertson’s view is associated with }{SPACE}{. Nếu nhóm có 2 câu thì phải có đúng 2 ký hiệu }{SPACE}{. Không gõ dấu chấm thay cho ô trống.'],
+                ['Filling Gaps', 'Đáp án đúng phải trùng chính xác với một đáp án đã nhập; có thể thêm các cách viết chấp nhận được ở các cột đáp án kế tiếp và đánh dấu nhiều đáp án đúng.'],
+                ['Multiple Answers', 'Nhập toàn bộ lựa chọn vào Đáp án 1–8 và các chữ/số đúng, ngăn cách bằng dấu phẩy, trong Đáp án đúng.'],
+                ['Kiểm tra trước import', 'Đủ title; đúng 3 parts; đúng khoảng số câu; không trùng số; mỗi câu có đáp án; đáp án đúng khớp danh sách; không còn chữ mẫu.'],
+                ['Dùng với ChatGPT', 'Gửi đề gốc cùng file mẫu này và yêu cầu ChatGPT đọc sheet PROMPT_CHATGPT. ChatGPT phải trả về một file .xlsx theo đúng cấu trúc, không trả JSON/CSV.']
             ];
             var guideSheet = XLSX.utils.aoa_to_sheet(guideRows);
-            guideSheet['!cols'] = [{wch: 115}];
+            guideSheet['!cols'] = [{wch: 31}, {wch: 125}];
             XLSX.utils.book_append_sheet(workbook, guideSheet, 'HUONG_DAN');
+
+            var promptRows = [
+                ['PROMPT DÀNH CHO CHATGPT - PHẢI THỰC HIỆN ĐÚNG TOÀN BỘ'],
+                ['Bạn là chuyên gia số hóa đề IELTS ' + modeName + '. Tôi gửi kèm (1) đề IELTS ' + modeName + ' gốc và (2) file Excel mẫu này. Hãy phân tích toàn bộ đề và tạo một file Excel .xlsx hoàn chỉnh để tôi import trực tiếp vào hệ thống.'],
+                ['YÊU CẦU BẮT BUỘC'],
+                ['1. Giữ nguyên các sheet HUONG_DAN, PROMPT_CHATGPT, THONG_TIN, NOI_DUNG, LOAI_CAU_HOI và toàn bộ sheet VI_DU_*; không đổi tên cột trong NOI_DUNG.'],
+                ['2. Trong THONG_TIN, giữ nguyên Loại bài=' + modeUpper + ', điền Tiêu đề và xử lý Audio URL theo quy tắc: ' + audioInstruction],
+                ['3. Tạo đúng 3 parts. Part 1 dùng câu 1–13, Part 2 dùng câu 14–26, Part 3 dùng câu 27–40. Giữ đúng số câu, thứ tự câu và đáp án gốc.'],
+                ['4. Mỗi nhóm câu liên tiếp có cùng Part, Nhóm, Loại câu hỏi và Hướng dẫn HTML. Passage HTML chỉ lặp một lần ở dòng đầu mỗi Part.'],
+                ['4A. ' + promptPartHeaderInstruction],
+                ['5. Chọn mã theo LOAI_CAU_HOI: Matching Headings=4, Matching Names/List of Researchers=10, ONE WORD ONLY dạng nhiều ô trong một đoạn=11, Complete each sentence with the correct ending=14.'],
+                ['6. Với mã 4, 10 hoặc 14, cột Danh sách dùng chung nhập một lần ở dòng đầu nhóm theo dạng ký hiệu=nội dung, ngăn cách bằng |. Các dòng sau để trống cột này để kế thừa. Các cột Đáp án 1–8 để trống; Đáp án đúng nhập A/B/C… theo vị trí.'],
+                ['6A. Riêng Matching Headings mã 4: Passage HTML phải có đúng một }{HEADING}{ sau từng nhãn đoạn được hỏi, ví dụ <p><strong>A</strong> }{HEADING}{</p>. Số }{HEADING}{ phải bằng số câu của nhóm và thứ tự A/B/C... phải trùng Nội dung câu hỏi Section A/Section B/Section C...'],
+                ['7. Với mã 11, Nội dung câu hỏi ở dòng đầu nhóm chứa toàn bộ đoạn và đúng một }{SPACE}{ cho mỗi số câu. Mỗi dòng nhập từ đúng tại Đáp án 1 và nhập A tại Đáp án đúng. Không tự thay }{SPACE}{ bằng dấu chấm hoặc gạch dưới.'],
+                ['8. Với loại khác, nhập lựa chọn/đáp án vào Đáp án 1–8. Đáp án đúng nhập vị trí 1–8 hoặc chữ A–H; nhiều đáp án ngăn cách bằng dấu phẩy.'],
+                ['9. Passage và hướng dẫn dùng HTML đơn giản. Giữ nguyên nội dung đề, chính tả, dấu câu, tên riêng, tiêu đề đoạn và ký hiệu A/B/C…; không tóm tắt.'],
+                ['10. Không tạo macro, công thức, link ngoài, sheet phụ hoặc cột phụ. Không để ô lỗi Excel. File phải mở được bằng Excel và SheetJS.'],
+                ['11. Tự kiểm tra: đủ 40 câu nếu đề đủ 40; không trùng/thiếu số; đúng part; mỗi câu có đáp án; Đáp án đúng khớp lựa chọn; nhóm mã 4 có số }{HEADING}{ bằng số câu; mã 11 có số }{SPACE}{ bằng số câu.'],
+                ['KẾT QUẢ ĐẦU RA'],
+                ['Chỉ gửi lại file .xlsx hoàn chỉnh. Không gửi JSON, CSV hoặc hướng dẫn thay thế cho file. Nếu đề gốc thiếu dữ liệu, ghi rõ phần thiếu trong một tin nhắn ngắn và không tự bịa đáp án.']
+            ];
+            var promptSheet = XLSX.utils.aoa_to_sheet(promptRows);
+            promptSheet['!cols'] = [{wch: 150}];
+            XLSX.utils.book_append_sheet(workbook, promptSheet, 'PROMPT_CHATGPT');
 
             var infoSheet = XLSX.utils.aoa_to_sheet([
                 ['Trường', 'Giá trị'],
-                ['Tiêu đề', 'IELTS Academic Reading Test 01'],
-                ['Audio URL', '']
+                ['Loại bài', modeUpper],
+                ['Tiêu đề', 'IELTS Academic ' + modeName + ' Test 01'],
+                ['Audio URL', vm.isListeningMode ? 'https://example.com/audio/ielts-listening-test-01.mp3' : '']
             ]);
             infoSheet['!cols'] = [{wch: 22}, {wch: 70}];
             XLSX.utils.book_append_sheet(workbook, infoSheet, 'THONG_TIN');
 
             var contentRows = [
-                ['Part', 'Passage HTML', 'Nhóm', 'Loại câu hỏi', 'Hướng dẫn HTML', 'Số câu', 'Nội dung câu hỏi', 'Đáp án 1', 'Đáp án 2', 'Đáp án 3', 'Đáp án 4', 'Đáp án 5', 'Đáp án 6', 'Đáp án 7', 'Đáp án 8', 'Đáp án đúng'],
-                [1, '<h2>Reading Passage 1</h2><p>Dán nội dung passage tại đây.</p>', 1, 1, '<p><strong>Questions 1–2</strong></p><p>Choose the correct answer.</p>', 1, 'Question 1', 'A', 'B', 'C', 'D', '', '', '', '', 1],
-                ['', '', '', '', '', 2, 'Question 2', 'TRUE', 'FALSE', 'NOT GIVEN', '', '', '', '', '', 1],
-                [2, '<h2>Reading Passage 2</h2><p>Dán nội dung passage tại đây.</p>', 1, 2, '<p><strong>Question 14</strong></p><p>Complete the sentence.</p>', 14, 'Question 14', 'sample answer', '', '', '', '', '', '', '', 1],
-                [3, '<h2>Reading Passage 3</h2><p>Dán nội dung passage tại đây.</p>', 1, 5, '<p><strong>Question 27</strong></p><p>Choose TWO answers.</p>', 27, 'Question 27', 'A', 'B', 'C', 'D', '', '', '', '', '1,3']
+                ['Part', 'Passage HTML', 'Nhóm', 'Loại câu hỏi', 'Hướng dẫn HTML', 'Số câu', 'Nội dung câu hỏi', 'Đáp án 1', 'Đáp án 2', 'Đáp án 3', 'Đáp án 4', 'Đáp án 5', 'Đáp án 6', 'Đáp án 7', 'Đáp án 8', 'Danh sách dùng chung (A=... | B=...)', 'Đáp án đúng'],
+                [1, part1PassageExample, 1, 1, '<p><strong>Questions 1–2</strong></p><p>Choose the correct answer.</p>', 1, 'Nội dung câu hỏi 1', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', 'Lựa chọn D', '', '', '', '', '', 'A'],
+                ['', '', '', '', '', 2, 'Nội dung câu hỏi 2', 'TRUE', 'FALSE', 'NOT GIVEN', '', '', '', '', '', '', '', 'A'],
+                [2, part2PassageExample, 1, 4, '<p><strong>Questions 14–15</strong></p><p>Choose the correct heading for each section.</p>', 14, 'Section A', '', '', '', '', '', '', '', '', 'i=Heading about section B | ii=Heading about section A | iii=Heading not used', 'B'],
+                ['', '', '', '', '', 15, 'Section B', '', '', '', '', '', '', '', '', '', '', 'A'],
+                [3, part3PassageExample, 1, 10, '<p><strong>Questions 27–28</strong></p><p>Match each statement with the correct researcher, A–F.</p>', 27, 'Our human ancestors did not originate in only one area.', '', '', '', '', '', '', '', '', 'A=Jim Bowler | B=Alan Thorne | C=Tim Flannery | D=Rainer Grün | E=Richard Roberts and Tim Flannery | F=Judith Field and Richard Fullager', 'A'],
+                ['', '', '', '', '', 28, 'The extinction of the megafauna happened within a particular period.', '', '', '', '', '', '', '', '', '', '', 'C']
             ];
             var contentSheet = XLSX.utils.aoa_to_sheet(contentRows);
             contentSheet['!cols'] = [
                 {wch: 8}, {wch: 55}, {wch: 9}, {wch: 18}, {wch: 55}, {wch: 10}, {wch: 35},
-                {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 16}
+                {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 90}, {wch: 16}
             ];
-            contentSheet['!autofilter'] = {ref: 'A1:P5'};
+            contentSheet['!autofilter'] = {ref: 'A1:Q8'};
             XLSX.utils.book_append_sheet(workbook, contentSheet, 'NOI_DUNG');
 
-            var typeRows = [['Mã', 'Loại câu hỏi', 'Ghi chú']];
+            var typeImportNotes = {
+                1: 'Một đáp án: dùng cho Multiple Choice, TRUE/FALSE/NOT GIVEN, YES/NO/NOT GIVEN. Nhập lựa chọn ở Đáp án 1–8 và một Đáp án đúng.',
+                2: 'Điền từ từng câu. Nhập các cách viết được chấp nhận ở Đáp án 1–8 và đánh dấu tất cả cách đúng.',
+                3: 'Điền chữ A–G hoặc lựa chọn ngắn vào chỗ trống. Đáp án đúng phải khớp một lựa chọn đã nhập.',
+                4: 'Matching Headings. Danh sách heading dùng chung nhập một lần; Passage HTML có một }{HEADING}{ sau mỗi nhãn A/B/C...; mỗi câu dùng Đáp án đúng A–Z theo vị trí heading. Importer tự đặt Part về loại Matching Heading.',
+                5: 'Multiple Choice có nhiều đáp án. Đáp án đúng nhập nhiều vị trí/chữ, ví dụ A,C.',
+                6: vm.isListeningMode ? 'Bố cục lựa chọn ngang cho câu hỏi Listening.' : 'Bố cục lựa chọn ngang, chủ yếu dùng Listening; chỉ dùng khi đề Reading thật sự yêu cầu.',
+                7: vm.isListeningMode ? 'Multiple Answers cho Listening; nhập nhiều đáp án đúng, ngăn cách bằng dấu phẩy.' : 'Multiple Answers kiểu Listening; không ưu tiên cho IELTS Reading.',
+                8: vm.isListeningMode ? 'Matching/drop box cho Listening; giữ đúng danh sách lựa chọn và thứ tự đáp án.' : 'Matching Heading kiểu Listening/drop box; không ưu tiên cho IELTS Reading.',
+                9: vm.isListeningMode ? 'Map/diagram Listening; Passage HTML giữ ảnh/bản đồ và các vị trí cần trả lời.' : 'Map/diagram kiểu Listening; không ưu tiên cho IELTS Reading.',
+                10: 'MATCHING NAMES. Danh sách người dùng chung nhập ở cột Danh sách dùng chung; mỗi câu dùng Đáp án đúng A–Z.',
+                11: 'ONE WORD ONLY / một editor. Dòng đầu chứa toàn bộ nội dung và đúng một }{SPACE}{ cho mỗi câu; Đáp án 1 từng dòng là từ đúng, Đáp án đúng=A.',
+                12: 'MATCHING INFORMATION. Nhập cùng danh sách lựa chọn theo thứ tự ở Đáp án 1–8 cho mỗi câu.',
+                13: 'Complete list of words. Một editor; các đáp án đúng theo thứ tự câu trước, sau đó mới tới từ nhiễu.',
+                14: 'Complete each sentence with the correct ending. Danh sách endings chung nhập ở cột Danh sách dùng chung; mỗi câu dùng Đáp án đúng A–Z.'
+            };
+            var typeRows = [['Mã', 'Loại câu hỏi', 'Quy tắc nhập chính xác']];
             angular.forEach(vm.types, function (type) {
-                typeRows.push([type.id, type.name, type.notice]);
+                typeRows.push([type.id, type.name, typeImportNotes[type.id] || type.notice]);
             });
             var typeSheet = XLSX.utils.aoa_to_sheet(typeRows);
             typeSheet['!cols'] = [{wch: 10}, {wch: 42}, {wch: 75}];
             XLSX.utils.book_append_sheet(workbook, typeSheet, 'LOAI_CAU_HOI');
 
-            XLSX.writeFile(workbook, 'mau_import_ielts_reading.xlsx');
-            toastr.success('Đã tải file Excel mẫu.', 'IELTS Reading');
+            var matchingExampleSheet = XLSX.utils.aoa_to_sheet([
+                ['MATCHING NAMES - VÍ DỤ CHUẨN'],
+                ['Tên hiển thị dưới bảng', 'Giá trị trong cột Danh sách dùng chung'],
+                ['A', 'Jim Bowler'],
+                ['B', 'Alan Thorne'],
+                ['C', 'Tim Flannery'],
+                ['D', 'Rainer Grün'],
+                ['E', 'Richard Roberts and Tim Flannery'],
+                ['F', 'Judith Field and Richard Fullager'],
+                [],
+                ['Chuỗi nhập vào NOI_DUNG'],
+                ['A=Jim Bowler | B=Alan Thorne | C=Tim Flannery | D=Rainer Grün | E=Richard Roberts and Tim Flannery | F=Judith Field and Richard Fullager'],
+                [],
+                ['Quy tắc', 'Nhập chuỗi trên ở dòng đầu của nhóm mã 10. Các dòng câu tiếp theo cùng nhóm để trống cột Danh sách dùng chung. Đáp án đúng dùng A–F.']
+            ]);
+            matchingExampleSheet['!cols'] = [{wch: 28}, {wch: 125}];
+            XLSX.utils.book_append_sheet(workbook, matchingExampleSheet, 'VI_DU_MATCHING_NAMES');
+
+            var headingExampleSheet = XLSX.utils.aoa_to_sheet([
+                ['MATCHING HEADINGS (MÃ 4) - VÍ DỤ CHUẨN'],
+                ['Ký hiệu trong đề', 'Nội dung heading'],
+                ['i', 'Being able to experiment without consequences'],
+                ['ii', 'Why stories are included in games'],
+                ['iii', 'The key role of the unexpected for game players'],
+                ['iv', 'Transferring features of games to other types of products'],
+                [],
+                ['Chuỗi nhập vào cột Danh sách dùng chung'],
+                ['i=Being able to experiment without consequences | ii=Why stories are included in games | iii=The key role of the unexpected for game players | iv=Transferring features of games to other types of products'],
+                [],
+                ['Nội dung câu hỏi', 'Nhập tên section/đoạn cần ghép, ví dụ Section A.'],
+                ['Đáp án đúng', 'Nhập A nếu đúng heading đầu tiên (i), B nếu đúng heading thứ hai (ii), C nếu đúng heading thứ ba (iii)… Hệ thống chấm theo vị trí trong danh sách.'],
+                [],
+                ['Passage HTML chuẩn', '<p><strong>A</strong> }{HEADING}{</p><p>Nội dung Section A...</p><p><strong>B</strong> }{HEADING}{</p><p>Nội dung Section B...</p>'],
+                ['Vị trí ký hiệu', '}{HEADING}{ phải nằm ngay sau nhãn của section cần ghép. Có 6 câu Section A–F thì Passage phải có đúng 6 ký hiệu theo thứ tự A–F.'],
+                ['Tự nhận diện khi import', 'Nếu passage chỉ có <p><strong>A</strong></p>, <p><strong>B</strong></p>..., hệ thống sẽ thử tự chèn. File do ChatGPT tạo vẫn phải ghi sẵn ký hiệu để tránh sai khi HTML phức tạp.'],
+                ['Loại của Passage', 'Chỉ cần nhóm câu hỏi dùng mã 4. Khi import, hệ thống tự đặt Part/Passage thành Matching Heading; không cần sửa tay sau import.']
+            ]);
+            headingExampleSheet['!cols'] = [{wch: 34}, {wch: 125}];
+            XLSX.utils.book_append_sheet(workbook, headingExampleSheet, 'VI_DU_MATCHING_HEADING');
+
+            var endingExampleSheet = XLSX.utils.aoa_to_sheet([
+                ['COMPLETE EACH SENTENCE WITH THE CORRECT ENDING (MÃ 14)'],
+                ['Ký hiệu', 'Ending'],
+                ['A', 'is not backed by scientific evidence.'],
+                ['B', 'is provided by memory.'],
+                ['C', 'has been especially fruitful in recent times.'],
+                ['D', 'causes us to overlook other details.'],
+                ['E', 'has sparked significant public debate.'],
+                ['F', 'is challenging for us to accept.'],
+                ['G', 'helps us see the overall picture more clearly.'],
+                [],
+                ['Chuỗi nhập vào cột Danh sách dùng chung'],
+                ['A=is not backed by scientific evidence. | B=is provided by memory. | C=has been especially fruitful in recent times. | D=causes us to overlook other details. | E=has sparked significant public debate. | F=is challenging for us to accept. | G=helps us see the overall picture more clearly.'],
+                [],
+                ['Nội dung câu hỏi', 'Chỉ nhập phần đầu của từng câu, không thêm ending và không cần tự gõ ô trống. Giao diện tự đặt ô kéo-thả ngay sau nội dung.'],
+                ['Đáp án đúng', 'Nhập A–G theo ending đúng. Chỉ nhập danh sách dùng chung ở dòng đầu của nhóm; các dòng sau để trống.']
+            ]);
+            endingExampleSheet['!cols'] = [{wch: 34}, {wch: 145}];
+            XLSX.utils.book_append_sheet(workbook, endingExampleSheet, 'VI_DU_SENTENCE_ENDINGS');
+
+            var oneWordExampleSheet = XLSX.utils.aoa_to_sheet([
+                ['ONE WORD ONLY / FILLING GAPS NEW (MÃ 11)'],
+                ['Trường', 'Giá trị mẫu và quy tắc'],
+                ['Hướng dẫn HTML', '<p><strong>Questions 24–26</strong></p><p>Complete the sentences. Choose ONE WORD ONLY from the passage for each answer.</p>'],
+                ['Nội dung câu hỏi ở dòng câu 24', 'Koster believes that games remove people’s fear of }{SPACE}{. Robertson’s view is that games feel exciting partly because of the }{SPACE}{ associated with them. Narrative games are structured so that the first and last parts are both }{SPACE}{.'],
+                ['Nội dung câu hỏi ở dòng 25 và 26', 'Để trống. Toàn bộ nội dung chung chỉ đặt ở dòng đầu nhóm.'],
+                ['Đáp án 1 dòng 24', 'Nhập đúng một từ là đáp án câu 24.'],
+                ['Đáp án 1 dòng 25', 'Nhập đúng một từ là đáp án câu 25.'],
+                ['Đáp án 1 dòng 26', 'Nhập đúng một từ là đáp án câu 26.'],
+                ['Đáp án đúng của cả ba dòng', 'A'],
+                ['Kiểm tra bắt buộc', 'Nhóm có 3 câu thì nội dung dòng đầu phải có đúng 3 ký hiệu }{SPACE}{ theo đúng thứ tự câu 24, 25, 26.']
+            ]);
+            oneWordExampleSheet['!cols'] = [{wch: 38}, {wch: 145}];
+            XLSX.utils.book_append_sheet(workbook, oneWordExampleSheet, 'VI_DU_ONE_WORD_ONLY');
+
+            XLSX.writeFile(workbook, vm.isListeningMode ? 'mau_import_ielts_listening.xlsx' : 'mau_import_ielts_reading.xlsx');
+            toastr.success('Đã tải file Excel mẫu ' + modeName + '.', 'IELTS ' + modeName);
         };
 
         vm.status = {id: 3, name: "Tất cả (no listening)"};

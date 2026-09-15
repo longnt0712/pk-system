@@ -1,6 +1,26 @@
 <!-- END PAGE HEADER-->
 <!-- BEGIN MAIN CONTENT -->
-<div class="row margin-top-10 ielts-reading-builder-page">
+<div class="row margin-top-10 ielts-reading-builder-page"
+     ng-class="vm.isListeningMode ? 'is-listening-builder' : 'is-reading-builder'">
+    <div class="col-md-12">
+        <section class="ielts-builder-mode-hero">
+            <div class="ielts-builder-mode-hero__icon"><i class="fa" ng-class="vm.testModeIcon"></i></div>
+            <div class="ielts-builder-mode-hero__copy">
+                <span>IELTS TEST BUILDER</span>
+                <h1>Tạo đề IELTS {{vm.testModeName}}</h1>
+                <p ng-if="!vm.isListeningMode">Trang này chỉ hiển thị và tạo đề Reading. Đề Reading không sử dụng audio chính.</p>
+                <p ng-if="vm.isListeningMode">Trang này chỉ hiển thị và tạo đề Listening. Audio chính là trường bắt buộc trước khi xuất bản.</p>
+            </div>
+            <nav class="ielts-builder-mode-switch" aria-label="Chọn loại đề IELTS">
+                <a href="create_ielts_reading_test" ng-class="{'is-active': !vm.isListeningMode}">
+                    <i class="fa fa-book"></i> Reading
+                </a>
+                <a href="create_ielts_listening_test" ng-class="{'is-active': vm.isListeningMode}">
+                    <i class="fa fa-headphones"></i> Listening
+                </a>
+            </nav>
+        </section>
+    </div>
     <div class="col-md-12 margin-bottom-10" >
         <div class="portlet light bordered">
             <div class="portlet-body">
@@ -16,7 +36,7 @@
                     </div>
                     <div class="col-md-8 reading-admin-toolbar__actions">
                         <button type="button" class="btn btn-default" ng-click="vm.downloadReadingImportTemplate()">
-                            <i class="fa fa-file-excel-o"></i> Tải file Excel mẫu
+                            <i class="fa fa-file-excel-o"></i> Tải mẫu {{vm.testModeName}}
                         </button>
                         <button type="button" class="btn btn-primary"
                                 ngf-select="vm.importReadingTestFile($file, $invalidFiles)"
@@ -46,9 +66,10 @@
                     <section class="reading-test-catalog" ng-if="!settings.isAdmin">
                         <div class="reading-test-catalog__header">
                             <div>
-                                <span class="reading-test-catalog__eyebrow">IELTS PRACTICE LIBRARY</span>
-                                <h2>Chọn bài luyện tập</h2>
-                                <p>Luyện Reading hoặc Listening với giao diện thi thật.</p>
+                                <span class="reading-test-catalog__eyebrow">IELTS {{vm.testModeName | uppercase}} LIBRARY</span>
+                                <h2>Chọn bài {{vm.testModeName}}</h2>
+                                <p ng-if="!vm.isListeningMode">Đọc 3 passages và hoàn thành bài thi với giao diện thi thật.</p>
+                                <p ng-if="vm.isListeningMode">Nghe audio chính và hoàn thành bài thi với giao diện thi thật.</p>
                             </div>
                             <span class="reading-test-catalog__count">
                                 {{vm.bsTableControlCreateIELTSReadingTest.options.totalRows || 0}} bài test
@@ -67,25 +88,24 @@
 
                         <div class="reading-test-grid" ng-if="vm.ieltsReadingTests.length">
                             <a class="reading-test-card"
-                               ng-class="{'is-listening': item.pronounce != null && item.pronounce.length > 0,
-                                          'is-reading': item.pronounce == null || item.pronounce.length <= 0}"
+                               ng-class="vm.isListeningMode ? 'is-listening' : 'is-reading'"
                                target="_blank"
                                rel="noopener"
-                               href="ielts_reading_actual_test/{{item.id}}"
+                               ng-href="{{vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'}}{{item.id}}"
                                ng-repeat="item in vm.ieltsReadingTests track by item.id">
                                 <div class="reading-test-card__top">
                                     <span class="reading-test-card__type">
-                                        <i class="fa" ng-class="item.pronounce != null && item.pronounce.length > 0 ? 'fa-headphones' : 'fa-book'" aria-hidden="true"></i>
-                                        {{item.pronounce != null && item.pronounce.length > 0 ? 'Listening' : 'Reading'}}
+                                        <i class="fa" ng-class="vm.testModeIcon" aria-hidden="true"></i>
+                                        {{vm.testModeName}}
                                     </span>
                                     <span class="reading-test-card__open"><i class="fa fa-external-link" aria-hidden="true"></i></span>
                                 </div>
                                 <div class="reading-test-card__visual">
-                                    <i class="fa" ng-class="item.pronounce != null && item.pronounce.length > 0 ? 'fa-headphones' : 'fa-book'" aria-hidden="true"></i>
+                                    <i class="fa" ng-class="vm.testModeIcon" aria-hidden="true"></i>
                                 </div>
                                 <div class="reading-test-card__body">
                                     <h3>{{item.title}}</h3>
-                                    <p>{{item.pronounce != null && item.pronounce.length > 0 ? 'Nghe và hoàn thành bài thi theo thời gian thực.' : 'Đọc 3 passages và hoàn thành 40 câu hỏi.'}}</p>
+                                    <p>{{vm.isListeningMode ? 'Nghe và hoàn thành bài thi theo thời gian thực.' : 'Đọc 3 passages và hoàn thành 40 câu hỏi.'}}</p>
                                 </div>
                                 <div class="reading-test-card__footer">
                                     <span>Bắt đầu làm bài</span>
@@ -124,9 +144,9 @@
         <div class="reading-builder-guide">
             <div class="reading-builder-guide__top">
                 <div>
-                    <span class="reading-builder-eyebrow">IELTS READING TEST BUILDER</span>
-                    <h2>Tạo đề nhanh, đủ và đúng thứ tự</h2>
-                    <p>Hoàn thành lần lượt 3 Part. Hệ thống tự kiểm tra đủ câu 1–40, nội dung và đáp án đúng trước khi xuất bản.</p>
+                    <span class="reading-builder-eyebrow">IELTS {{vm.testModeName | uppercase}} TEST BUILDER</span>
+                    <h2>Tạo đề {{vm.testModeName}} nhanh, đủ và đúng thứ tự</h2>
+                    <p>Hoàn thành lần lượt 3 Part. Hệ thống tự kiểm tra câu 1–40, nội dung, đáp án và {{vm.isListeningMode ? 'audio chính' : 'cấu trúc Reading'}} trước khi xuất bản.</p>
                 </div>
                 <div class="reading-builder-progress-box">
                     <strong>{{vm.builderValidation.percent}}%</strong>
@@ -165,9 +185,16 @@
                     <div class="col-md-6">
                         <h3 class="reading-builder-section-title"><span>1</span> Thông tin bài thi</h3>
                         <label>Tên bài thi <span class="font-red">*</span></label>
-                        <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" style="height: 50px" data-ng-model="vm.ieltsReadingTest.title" type="text" class="form-control" placeholder="Ví dụ: IELTS Academic Reading Test 01" />
-                        <label class="margin-top-10">Link audio <small>(không bắt buộc)</small></label>
-                        <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" style="height: 50px" data-ng-model="vm.ieltsReadingTest.pronounce" type="text" class="form-control" placeholder="Dán link audio nếu đề có audio..." />
+                        <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" style="height: 50px" data-ng-model="vm.ieltsReadingTest.title" type="text" class="form-control" placeholder="Ví dụ: IELTS Academic {{vm.testModeName}} Test 01" />
+                        <div ng-if="vm.isListeningMode">
+                            <label class="margin-top-10">Link audio chính <span class="font-red">*</span></label>
+                            <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" style="height: 50px" data-ng-model="vm.ieltsReadingTest.pronounce" type="url" class="form-control" placeholder="https://.../ielts-listening-test-01.mp3" />
+                            <small class="reading-audio-mode-help"><i class="fa fa-headphones"></i> Audio này xác định đề thuộc danh sách Listening và được phát trong bài thi.</small>
+                        </div>
+                        <div class="reading-mode-info" ng-if="!vm.isListeningMode">
+                            <i class="fa fa-book"></i>
+                            <span><strong>Đề Reading</strong> không cần audio chính. Danh sách Reading chỉ chứa các đề không có audio.</span>
+                        </div>
                         <label class="margin-top-10">Trạng thái</label>
                         <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest()" data-ng-model="vm.ieltsReadingTest.status" sortable="true" close-on-select="true" style="width: 100% !important;margin-top: 10px">
                             <ui-select-match placeholder="">{{$select.selected.name}}</ui-select-match>
@@ -247,6 +274,26 @@
 
                             <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
 
+                            <div class="reading-matching-names-builder" ng-if="(item.type == 4 || item.type == 10 || item.type == 14) && item.subQuestions.length">
+                                <div class="reading-matching-names-builder__header">
+                                    <div>
+                                        <strong>{{vm.sharedChoiceTitle(item.type)}}</strong>
+                                        <small>{{vm.sharedChoiceHelp(item.type)}}</small>
+                                    </div>
+                                    <span>{{item.subQuestions[0].questionAnswers.length}} lựa chọn</span>
+                                </div>
+                                <div class="reading-matching-names-builder__grid">
+                                    <label ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                        <b>{{vm.sharedChoiceLabel(item.type, $index)}}</b>
+                                        <input class="form-control"
+                                               type="text"
+                                               ng-model="a.answer.answer"
+                                               ng-change="vm.updateSharedChoice(item, a)"
+                                               placeholder="{{vm.sharedChoicePlaceholder(item.type, $index)}}">
+                                    </label>
+                                </div>
+                            </div>
+
 
 
                             <div class="col-md-12" ng-show="item.isHaveChildren == false">
@@ -292,6 +339,10 @@
                                     </span>
                                 </div>
                                 <textarea ng-change="vm.updateOneEditorContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <button type="button" class="btn btn-info reading-insert-gap-button" ng-click="vm.appendOneEditorGap(item)">
+                                    <i class="fa fa-plus-circle"></i> Chèn ô trống cuối nội dung
+                                </button>
+                                <small class="reading-insert-gap-help">Có thể kéo ký hiệu <strong>}{SPACE}{</strong> vừa chèn đến đúng vị trí trong editor.</small>
                                 <div class="reading-one-editor-answers">
                                     <div ng-repeat="q in item.subQuestions | orderBy:'ordinalNumber'">
                                         <label>Đáp án câu {{q.ordinalNumber}}</label>
@@ -343,10 +394,12 @@
                                             <div class="row">
                                                 <div class="col-md-2"></div>
                                                 <div class="col-md-2">
-                                                    <h4 class="bold">Answer {{a.ordinalNumberQuestionAnswer}}</h4>
+                                                    <h4 class="bold" ng-if="item.type != 4 && item.type != 10 && item.type != 14">Answer {{a.ordinalNumberQuestionAnswer}}</h4>
+                                                    <h4 class="bold" ng-if="item.type == 4 || item.type == 10 || item.type == 14">{{vm.sharedChoiceLabel(item.type, $index)}}</h4>
                                                 </div>
                                                 <div class="col-md-7">
-                                                    <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                    <textarea ng-if="item.type != 4 && item.type != 10 && item.type != 14" ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                    <div ng-if="item.type == 4 || item.type == 10 || item.type == 14" class="reading-shared-choice-preview">{{a.answer.answer}}</div>
                                                 </div>
                                                 <div class="col-md-1">
                                                     <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  type="checkbox"  id="defaultCheck1" data-ng-model="a.correct">
@@ -453,6 +506,26 @@
 
                             <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
 
+                            <div class="reading-matching-names-builder" ng-if="(item.type == 4 || item.type == 10 || item.type == 14) && item.subQuestions.length">
+                                <div class="reading-matching-names-builder__header">
+                                    <div>
+                                        <strong>{{vm.sharedChoiceTitle(item.type)}}</strong>
+                                        <small>{{vm.sharedChoiceHelp(item.type)}}</small>
+                                    </div>
+                                    <span>{{item.subQuestions[0].questionAnswers.length}} lựa chọn</span>
+                                </div>
+                                <div class="reading-matching-names-builder__grid">
+                                    <label ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                        <b>{{vm.sharedChoiceLabel(item.type, $index)}}</b>
+                                        <input class="form-control"
+                                               type="text"
+                                               ng-model="a.answer.answer"
+                                               ng-change="vm.updateSharedChoice(item, a)"
+                                               placeholder="{{vm.sharedChoicePlaceholder(item.type, $index)}}">
+                                    </label>
+                                </div>
+                            </div>
+
                             <div class="col-md-12" ng-show="item.isHaveChildren == false">
                                 <div class="col-md-12">
 
@@ -496,6 +569,10 @@
                                     </span>
                                 </div>
                                 <textarea ng-change="vm.updateOneEditorContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <button type="button" class="btn btn-info reading-insert-gap-button" ng-click="vm.appendOneEditorGap(item)">
+                                    <i class="fa fa-plus-circle"></i> Chèn ô trống cuối nội dung
+                                </button>
+                                <small class="reading-insert-gap-help">Có thể kéo ký hiệu <strong>}{SPACE}{</strong> vừa chèn đến đúng vị trí trong editor.</small>
                                 <div class="reading-one-editor-answers">
                                     <div ng-repeat="q in item.subQuestions | orderBy:'ordinalNumber'">
                                         <label>Đáp án câu {{q.ordinalNumber}}</label>
@@ -550,10 +627,12 @@
                                             <div class="row">
                                                 <div class="col-md-2"></div>
                                                 <div class="col-md-2">
-                                                    <h4 class="bold">Answer {{a.ordinalNumberQuestionAnswer}}</h4>
+                                                    <h4 class="bold" ng-if="item.type != 4 && item.type != 10 && item.type != 14">Answer {{a.ordinalNumberQuestionAnswer}}</h4>
+                                                    <h4 class="bold" ng-if="item.type == 4 || item.type == 10 || item.type == 14">{{vm.sharedChoiceLabel(item.type, $index)}}</h4>
                                                 </div>
                                                 <div class="col-md-7">
-                                                    <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                    <textarea ng-if="item.type != 4 && item.type != 10 && item.type != 14" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                    <div ng-if="item.type == 4 || item.type == 10 || item.type == 14" class="reading-shared-choice-preview">{{a.answer.answer}}</div>
                                                 </div>
                                                 <div class="col-md-1">
                                                     <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  type="checkbox"  id="defaultCheck1" data-ng-model="a.correct">
@@ -655,6 +734,26 @@
 
                             <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
 
+                            <div class="reading-matching-names-builder" ng-if="(item.type == 4 || item.type == 10 || item.type == 14) && item.subQuestions.length">
+                                <div class="reading-matching-names-builder__header">
+                                    <div>
+                                        <strong>{{vm.sharedChoiceTitle(item.type)}}</strong>
+                                        <small>{{vm.sharedChoiceHelp(item.type)}}</small>
+                                    </div>
+                                    <span>{{item.subQuestions[0].questionAnswers.length}} lựa chọn</span>
+                                </div>
+                                <div class="reading-matching-names-builder__grid">
+                                    <label ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                        <b>{{vm.sharedChoiceLabel(item.type, $index)}}</b>
+                                        <input class="form-control"
+                                               type="text"
+                                               ng-model="a.answer.answer"
+                                               ng-change="vm.updateSharedChoice(item, a)"
+                                               placeholder="{{vm.sharedChoicePlaceholder(item.type, $index)}}">
+                                    </label>
+                                </div>
+                            </div>
+
                             <div class="col-md-12" ng-show="item.isHaveChildren == false">
                                 <div class="col-md-12">
 
@@ -699,6 +798,10 @@
                                     </span>
                                 </div>
                                 <textarea ng-change="vm.updateOneEditorContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <button type="button" class="btn btn-info reading-insert-gap-button" ng-click="vm.appendOneEditorGap(item)">
+                                    <i class="fa fa-plus-circle"></i> Chèn ô trống cuối nội dung
+                                </button>
+                                <small class="reading-insert-gap-help">Có thể kéo ký hiệu <strong>}{SPACE}{</strong> vừa chèn đến đúng vị trí trong editor.</small>
                                 <div class="reading-one-editor-answers">
                                     <div ng-repeat="q in item.subQuestions | orderBy:'ordinalNumber'">
                                         <label>Đáp án câu {{q.ordinalNumber}}</label>
@@ -751,10 +854,12 @@
                                             <div class="row">
                                                 <div class="col-md-2"></div>
                                                 <div class="col-md-2">
-                                                    <h4 class="bold">Answer {{a.ordinalNumberQuestionAnswer}}</h4>
+                                                    <h4 class="bold" ng-if="item.type != 4 && item.type != 10 && item.type != 14">Answer {{a.ordinalNumberQuestionAnswer}}</h4>
+                                                    <h4 class="bold" ng-if="item.type == 4 || item.type == 10 || item.type == 14">{{vm.sharedChoiceLabel(item.type, $index)}}</h4>
                                                 </div>
                                                 <div class="col-md-7">
-                                                    <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                    <textarea ng-if="item.type != 4 && item.type != 10 && item.type != 14" ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                    <div ng-if="item.type == 4 || item.type == 10 || item.type == 14" class="reading-shared-choice-preview">{{a.answer.answer}}</div>
                                                 </div>
                                                 <div class="col-md-1">
                                                     <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  type="checkbox"  id="defaultCheck1" data-ng-model="a.correct">
@@ -874,6 +979,122 @@
 </script>
 
 <style>
+    .ielts-builder-mode-hero {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin: 0 0 14px;
+        padding: 20px 24px;
+        border-radius: 16px;
+        color: #fff;
+        box-shadow: 0 12px 30px rgba(52, 58, 130, .2);
+        overflow: hidden;
+        position: relative;
+    }
+
+    .is-reading-builder .ielts-builder-mode-hero {
+        background: linear-gradient(135deg, #435fe0 0%, #7658ef 58%, #9d5fe5 100%);
+    }
+
+    .is-listening-builder .ielts-builder-mode-hero {
+        background: linear-gradient(135deg, #0d9e91 0%, #237fc4 52%, #6258d9 100%);
+    }
+
+    .ielts-builder-mode-hero:after {
+        content: '';
+        position: absolute;
+        width: 220px;
+        height: 220px;
+        right: 22%;
+        top: -140px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, .1);
+    }
+
+    .ielts-builder-mode-hero__icon {
+        display: grid;
+        place-items: center;
+        width: 58px;
+        height: 58px;
+        border: 1px solid rgba(255, 255, 255, .35);
+        border-radius: 15px;
+        background: rgba(255, 255, 255, .17);
+        font-size: 27px;
+        flex: 0 0 auto;
+    }
+
+    .ielts-builder-mode-hero__copy {
+        min-width: 0;
+        flex: 1;
+        position: relative;
+        z-index: 1;
+    }
+
+    .ielts-builder-mode-hero__copy > span {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 1.7px;
+        opacity: .82;
+    }
+
+    .ielts-builder-mode-hero__copy h1 {
+        margin: 3px 0 3px;
+        color: #fff;
+        font-size: 26px;
+        font-weight: 800;
+    }
+
+    .ielts-builder-mode-hero__copy p {
+        margin: 0;
+        font-size: 13px;
+        opacity: .9;
+    }
+
+    .ielts-builder-mode-switch {
+        display: flex;
+        gap: 6px;
+        padding: 5px;
+        border: 1px solid rgba(255, 255, 255, .28);
+        border-radius: 12px;
+        background: rgba(20, 24, 70, .18);
+        position: relative;
+        z-index: 1;
+    }
+
+    .ielts-builder-mode-switch a {
+        padding: 10px 14px;
+        border-radius: 8px;
+        color: rgba(255, 255, 255, .78);
+        font-size: 13px;
+        font-weight: 800;
+        text-decoration: none;
+    }
+
+    .ielts-builder-mode-switch a.is-active {
+        color: #303969;
+        background: #fff;
+        box-shadow: 0 5px 15px rgba(25, 30, 80, .18);
+    }
+
+    .reading-audio-mode-help {
+        display: block;
+        margin-top: 7px;
+        color: #377a8e;
+        font-weight: 600;
+    }
+
+    .reading-mode-info {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-top: 14px;
+        padding: 11px 13px;
+        border: 1px solid #dce4ff;
+        border-radius: 9px;
+        color: #445179;
+        background: #f4f6ff;
+    }
+
     .reading-admin-toolbar {
         display: flex;
         align-items: center;
@@ -927,6 +1148,25 @@
     }
 
     @media (max-width: 991px) {
+        .ielts-builder-mode-hero {
+            align-items: flex-start;
+            flex-wrap: wrap;
+            padding: 17px;
+        }
+
+        .ielts-builder-mode-hero__copy {
+            flex: 1 1 calc(100% - 78px);
+        }
+
+        .ielts-builder-mode-switch {
+            width: 100%;
+        }
+
+        .ielts-builder-mode-switch a {
+            flex: 1;
+            text-align: center;
+        }
+
         .reading-admin-toolbar {
             display: block;
         }
@@ -1525,6 +1765,29 @@
         font-weight: 600;
     }
 
+    .reading-insert-gap-button {
+        margin-top: 10px;
+        border-radius: 8px;
+        font-weight: 700;
+    }
+
+    .reading-insert-gap-help {
+        display: inline-block;
+        margin: 10px 0 0 8px;
+        color: #667085;
+    }
+
+    .reading-shared-choice-preview {
+        min-height: 42px;
+        margin-bottom: 5px;
+        padding: 10px 12px;
+        border: 1px solid #d7deee;
+        border-radius: 8px;
+        background: #f7f9fc;
+        color: #344054;
+        line-height: 1.45;
+    }
+
     .reading-one-editor-builder {
         margin: 18px 0;
         padding: 16px;
@@ -1539,6 +1802,76 @@
         border: 2px solid #bfe3d5;
         border-radius: 10px;
         background: #f5fcf9;
+    }
+
+    .reading-matching-names-builder {
+        margin: 18px 0;
+        padding: 16px;
+        border: 2px solid #bfdbfe;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #f8fbff, #f5f3ff);
+    }
+
+    .reading-matching-names-builder__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .reading-matching-names-builder__header strong,
+    .reading-matching-names-builder__header small {
+        display: block;
+    }
+
+    .reading-matching-names-builder__header strong {
+        color: #263f83;
+        font-size: 16px;
+    }
+
+    .reading-matching-names-builder__header small {
+        margin-top: 4px;
+        color: #68738d;
+    }
+
+    .reading-matching-names-builder__header > span {
+        flex: 0 0 auto;
+        padding: 6px 11px;
+        border-radius: 18px;
+        background: #e0e7ff;
+        color: #4338ca;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .reading-matching-names-builder__grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px 14px;
+    }
+
+    .reading-matching-names-builder__grid label {
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr);
+        align-items: center;
+        margin: 0;
+    }
+
+    .reading-matching-names-builder__grid b {
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        border-radius: 8px;
+        background: #4f46e5;
+        color: #fff;
+    }
+
+    @media (max-width: 767px) {
+        .reading-matching-names-builder__grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     .reading-one-editor-builder__header {

@@ -83,20 +83,20 @@
                 <div class="portlet bg-white bordered" style="margin-top: 10px;border-radius: 7px !important;" ng-hide="vm.passageNumber == 4">
                     <div class="portlet-body">
                         <div class="row">
-                            <div ng-show="vm.ieltsReadingActualTest.pronounce !=null" class="col-md-12 text-center" style="margin-left: 20px;margin-bottom: 0 !important" >
+                            <div ng-show="vm.isListeningRoute" class="col-md-12 text-center" style="margin-left: 20px;margin-bottom: 0 !important" >
                                 <audio ng-show="vm.showAudio" id="main-audio" controls controlsList="nodownload" style="width: 70%" preload="metadata">
                                     <source src="http://docs.google.com/uc?export=open&id=1rU-C_PU00o_tdFAMFqpyB5hGMSYk2z8L" type="audio/mpeg">
                                     Your browser does not support the audio element.
                                 </audio>
                             </div>
-                            <div ng-show="vm.ieltsReadingActualTest.pronounce !=null" class="col-md-12 text-center">
+                            <div ng-show="vm.isListeningRoute" class="col-md-12 text-center">
                                 Speed: <input class="input-underline-only" style="width:70px;text-align: center" id="play-back-input" ng-disabled="true" type="number" min="0.5" max="4"  ng-value="vm.playbackValue | number : 1"/>
 
                                 <button ng-click="vm.increaseSpeed()"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>
                                 <button ng-click="vm.decreaseSpeed()"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>
                                 <input type="checkbox" ng-model="vm.showAudio" ng-if="vm.showAudioListening"> <strong ng-if="vm.showAudioListening">Show audio </strong>
                             </div>
-                            <div ng-show="vm.ieltsReadingActualTest.pronounce == null" class="col-md-12"style="margin-left: 20px;margin-bottom: 0 !important" >
+                            <div ng-show="!vm.isListeningRoute" class="col-md-12" style="margin-left: 20px;margin-bottom: 0 !important" >
                                 <h3 ng-show="vm.passageNumber == 1" class="bold text-media">Reading Passage 1</h3>
                                 <h4 class="not-for-media" ng-show="vm.passageNumber == 1">You should spend about 20 minutes on on Questions 1-13, which are based on Reading Passage 1 below.</h4>
 
@@ -119,6 +119,10 @@
                             <div class="col-md-6" ng-hide="vm.ieltsReadingActualTest.subQuestions[0].type === 6">
                                 <!--<h3>{{vm.ieltsReadingActualTest.subQuestions[0].type}}</h3>-->
                                 <div class="row">
+                                    <div class="col-md-12 reading-passage-auto-intro" ng-if="!vm.isListeningRoute">
+                                        <h2 ng-if="!vm.hasEmbeddedReadingPassageTitle(0)">READING PASSAGE 1</h2>
+                                        <p ng-if="!vm.hasEmbeddedReadingTimingInstruction(0)"><em>You should spend about 20 minutes on Questions 1–13, which are based on Reading Passage 1 below.</em></p>
+                                    </div>
                                     <div class="notes-highlight actual-test-font-global" id="passage-1-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes">
                                         <div  class="close-highlight text-right">
                                             <i class="fa fa-times text-right close-note-icon" ng-click="closeASpecificNote1($index+1)"></i>
@@ -233,7 +237,8 @@
                                                     <td></td>
                                                     <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
                                                         <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
-                                                        {{a.answer.answer}}
+                                                        <span ng-if="item.type == 10">{{vm.matchingOptionLabel($index)}}</span>
+                                                        <span ng-if="item.type != 10">{{a.answer.answer}}</span>
                                                     </td>
                                                 </tr>
 
@@ -252,6 +257,17 @@
                                                     </td>
                                                 </tr>
                                             </table>
+
+                                            <div class="idp-matching-name-list"
+                                                 ng-if="item.type == 10 && item.subQuestions.length">
+                                                <div class="idp-matching-name-list__title">List of Researchers</div>
+                                                <div class="idp-matching-name-list__item"
+                                                     ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                                    <strong>{{vm.matchingOptionLabel($index)}}</strong>
+                                                    <span>{{a.answer.answer}}</span>
+                                                </div>
+                                            </div>
+
 
                                         </div>
 
@@ -301,6 +317,41 @@
 
                                     <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11">
                                         <span compile="item.oneEditorRenderedQuestion"></span>
+                                    </div>
+
+                                    <div class="sentence-ending-runtime actual-test-font-global" ng-if="item.type == 14" ng-init="endingPackage=item">
+                                        <div class="sentence-ending-questions">
+                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by endingQuestion.id">
+                                                <span id="question-number-{{endingQuestion.ordinalNumber}}" class="sentence-ending-stem">
+                                                    <strong>{{endingQuestion.ordinalNumber}}.</strong>
+                                                    <span compile="endingQuestion.question"></span>
+                                                </span>
+                                                <span class="sentence-ending-slot" ng-class="{'is-active': endingPackage.activeSentenceEndingSlot === $index}"
+                                                      dnd-list="endingPackage.sentenceEndingSlots[$index].items"
+                                                      dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
+                                                      ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
+                                                    <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Kéo đáp án vào đây</span>
+                                                    <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length">
+                                                        <strong>{{endingPackage.sentenceEndingSlots[$index].items[0].label}}</strong>
+                                                        {{endingPackage.sentenceEndingSlots[$index].items[0].clientAnswer}}
+                                                    </span>
+                                                    <button type="button" ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
+                                                            ng-click="$event.stopPropagation(); vm.clearSentenceEndingSlot(endingPackage,$index); vm.activateSentenceEndingSlot(endingPackage,$index)"
+                                                            aria-label="Xóa đáp án">&times;</button>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="sentence-ending-bank" aria-label="List of Endings">
+                                            <strong class="sentence-ending-bank__title">List of Endings</strong>
+                                            <span class="sentence-ending-choice"
+                                                  ng-repeat="ending in endingPackage.sentenceEndingBank track by ending.answerIndex"
+                                                  ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
+                                                  dnd-draggable="ending" dnd-effect-allowed="copy"
+                                                  ng-click="vm.chooseSentenceEnding(endingPackage, ending)">
+                                                <b>{{ending.label}}</b><span>{{ending.clientAnswer}}</span>
+                                            </span>
+                                            <small>Kéo đáp án vào ô sau câu, hoặc chọn một ô rồi bấm đáp án.</small>
+                                        </div>
                                     </div>
 
                                     <div class="row">
@@ -448,6 +499,10 @@
                         <div ng-show="vm.passageNumber == 2" class="row" >
                             <div class="col-md-6" ng-hide="vm.ieltsReadingActualTest.subQuestions[1].type === 6">
                                 <div class="row">
+                                    <div class="col-md-12 reading-passage-auto-intro" ng-if="!vm.isListeningRoute">
+                                        <h2 ng-if="!vm.hasEmbeddedReadingPassageTitle(1)">READING PASSAGE 2</h2>
+                                        <p ng-if="!vm.hasEmbeddedReadingTimingInstruction(1)"><em>You should spend about 20 minutes on Questions 14–26, which are based on Reading Passage 2 below.</em></p>
+                                    </div>
                                     <div class="notes-highlight actual-test-font-global" id="passage-2-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes2">
                                         <div  class="close-highlight text-right">
                                             <i class="fa fa-times text-right close-note-icon" ng-click="closeASpecificNote2($index + 1)"></i>
@@ -561,7 +616,8 @@
                                                     <td></td>
                                                     <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
                                                         <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
-                                                        {{a.answer.answer}}
+                                                        <span ng-if="item.type == 10">{{vm.matchingOptionLabel($index)}}</span>
+                                                        <span ng-if="item.type != 10">{{a.answer.answer}}</span>
                                                     </td>
                                                 </tr>
 
@@ -580,6 +636,17 @@
                                                     </td>
                                                 </tr>
                                             </table>
+
+                                            <div class="idp-matching-name-list"
+                                                 ng-if="item.type == 10 && item.subQuestions.length">
+                                                <div class="idp-matching-name-list__title">List of Researchers</div>
+                                                <div class="idp-matching-name-list__item"
+                                                     ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                                    <strong>{{vm.matchingOptionLabel($index)}}</strong>
+                                                    <span>{{a.answer.answer}}</span>
+                                                </div>
+                                            </div>
+
 
                                         </div>
 
@@ -627,6 +694,41 @@
 
                                     <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11">
                                         <span compile="item.oneEditorRenderedQuestion"></span>
+                                    </div>
+
+                                    <div class="sentence-ending-runtime actual-test-font-global" ng-if="item.type == 14" ng-init="endingPackage=item">
+                                        <div class="sentence-ending-questions">
+                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by endingQuestion.id">
+                                                <span id="question-number-{{endingQuestion.ordinalNumber}}" class="sentence-ending-stem">
+                                                    <strong>{{endingQuestion.ordinalNumber}}.</strong>
+                                                    <span compile="endingQuestion.question"></span>
+                                                </span>
+                                                <span class="sentence-ending-slot" ng-class="{'is-active': endingPackage.activeSentenceEndingSlot === $index}"
+                                                      dnd-list="endingPackage.sentenceEndingSlots[$index].items"
+                                                      dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
+                                                      ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
+                                                    <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Kéo đáp án vào đây</span>
+                                                    <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length">
+                                                        <strong>{{endingPackage.sentenceEndingSlots[$index].items[0].label}}</strong>
+                                                        {{endingPackage.sentenceEndingSlots[$index].items[0].clientAnswer}}
+                                                    </span>
+                                                    <button type="button" ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
+                                                            ng-click="$event.stopPropagation(); vm.clearSentenceEndingSlot(endingPackage,$index); vm.activateSentenceEndingSlot(endingPackage,$index)"
+                                                            aria-label="Xóa đáp án">&times;</button>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="sentence-ending-bank" aria-label="List of Endings">
+                                            <strong class="sentence-ending-bank__title">List of Endings</strong>
+                                            <span class="sentence-ending-choice"
+                                                  ng-repeat="ending in endingPackage.sentenceEndingBank track by ending.answerIndex"
+                                                  ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
+                                                  dnd-draggable="ending" dnd-effect-allowed="copy"
+                                                  ng-click="vm.chooseSentenceEnding(endingPackage, ending)">
+                                                <b>{{ending.label}}</b><span>{{ending.clientAnswer}}</span>
+                                            </span>
+                                            <small>Kéo đáp án vào ô sau câu, hoặc chọn một ô rồi bấm đáp án.</small>
+                                        </div>
                                     </div>
 
                                     <div class="row">
@@ -758,6 +860,10 @@
 
                             <div class="col-md-6" ng-hide="vm.ieltsReadingActualTest.subQuestions[2].type === 6">
                                 <div class="row">
+                                    <div class="col-md-12 reading-passage-auto-intro" ng-if="!vm.isListeningRoute">
+                                        <h2 ng-if="!vm.hasEmbeddedReadingPassageTitle(2)">READING PASSAGE 3</h2>
+                                        <p ng-if="!vm.hasEmbeddedReadingTimingInstruction(2)"><em>You should spend about 20 minutes on Questions 27–40, which are based on Reading Passage 3 below.</em></p>
+                                    </div>
                                     <div class="notes-highlight actual-test-font-global" id="passage-3-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes3">
                                         <div  class="close-highlight text-right">
                                             <i class="fa fa-times text-right close-note-icon" ng-click="closeASpecificNote3($index + 1)"></i>
@@ -871,7 +977,8 @@
                                                     <td></td>
                                                     <td class="bold center" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
                                                         <!--<input ng-click="vm.checkBoxMultipleChoiceQuestions(a,q,a.selected)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">-->
-                                                        {{a.answer.answer}}
+                                                        <span ng-if="item.type == 10">{{vm.matchingOptionLabel($index)}}</span>
+                                                        <span ng-if="item.type != 10">{{a.answer.answer}}</span>
                                                     </td>
                                                 </tr>
 
@@ -890,6 +997,17 @@
                                                     </td>
                                                 </tr>
                                             </table>
+
+                                            <div class="idp-matching-name-list"
+                                                 ng-if="item.type == 10 && item.subQuestions.length">
+                                                <div class="idp-matching-name-list__title">List of Researchers</div>
+                                                <div class="idp-matching-name-list__item"
+                                                     ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                                    <strong>{{vm.matchingOptionLabel($index)}}</strong>
+                                                    <span>{{a.answer.answer}}</span>
+                                                </div>
+                                            </div>
+
 
                                         </div>
                                     </div>
@@ -935,6 +1053,41 @@
 
                                     <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11">
                                         <span compile="item.oneEditorRenderedQuestion"></span>
+                                    </div>
+
+                                    <div class="sentence-ending-runtime actual-test-font-global" ng-if="item.type == 14" ng-init="endingPackage=item">
+                                        <div class="sentence-ending-questions">
+                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by endingQuestion.id">
+                                                <span id="question-number-{{endingQuestion.ordinalNumber}}" class="sentence-ending-stem">
+                                                    <strong>{{endingQuestion.ordinalNumber}}.</strong>
+                                                    <span compile="endingQuestion.question"></span>
+                                                </span>
+                                                <span class="sentence-ending-slot" ng-class="{'is-active': endingPackage.activeSentenceEndingSlot === $index}"
+                                                      dnd-list="endingPackage.sentenceEndingSlots[$index].items"
+                                                      dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
+                                                      ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
+                                                    <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Kéo đáp án vào đây</span>
+                                                    <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length">
+                                                        <strong>{{endingPackage.sentenceEndingSlots[$index].items[0].label}}</strong>
+                                                        {{endingPackage.sentenceEndingSlots[$index].items[0].clientAnswer}}
+                                                    </span>
+                                                    <button type="button" ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
+                                                            ng-click="$event.stopPropagation(); vm.clearSentenceEndingSlot(endingPackage,$index); vm.activateSentenceEndingSlot(endingPackage,$index)"
+                                                            aria-label="Xóa đáp án">&times;</button>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="sentence-ending-bank" aria-label="List of Endings">
+                                            <strong class="sentence-ending-bank__title">List of Endings</strong>
+                                            <span class="sentence-ending-choice"
+                                                  ng-repeat="ending in endingPackage.sentenceEndingBank track by ending.answerIndex"
+                                                  ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
+                                                  dnd-draggable="ending" dnd-effect-allowed="copy"
+                                                  ng-click="vm.chooseSentenceEnding(endingPackage, ending)">
+                                                <b>{{ending.label}}</b><span>{{ending.clientAnswer}}</span>
+                                            </span>
+                                            <small>Kéo đáp án vào ô sau câu, hoặc chọn một ô rồi bấm đáp án.</small>
+                                        </div>
                                     </div>
 
                                     <div class="row">
@@ -1185,9 +1338,11 @@
                     || item.questionAnswer.question.parent.type == 7
                     || item.questionAnswer.question.parent.type == 9
                     || item.questionAnswer.question.parent.type == 10
-                    || item.questionAnswer.question.parent.type == 12">{{item.questionAnswer.answer.answer}}</td>
+                    || item.questionAnswer.question.parent.type == 12
+                    || item.questionAnswer.question.parent.type == 13
+                    || item.questionAnswer.question.parent.type == 14">{{item.questionAnswer.answer.answer}}</td>
 
-                            <td ng-if="item.questionAnswer.question.parent.type == 1 || item.questionAnswer.question.parent.type == 6|| item.questionAnswer.question.parent.type == 9|| item.questionAnswer.question.parent.type == 10 || item.questionAnswer.question.parent.type == 12">{{item.questionAnswer.correctAnswer}}</td>
+                            <td ng-if="item.questionAnswer.question.parent.type == 1 || item.questionAnswer.question.parent.type == 6|| item.questionAnswer.question.parent.type == 9|| item.questionAnswer.question.parent.type == 10 || item.questionAnswer.question.parent.type == 12 || item.questionAnswer.question.parent.type == 13 || item.questionAnswer.question.parent.type == 14">{{item.questionAnswer.correctAnswer}}</td>
 
                             <td ng-if="item.questionAnswer.question.parent.type == 5 || item.questionAnswer.question.parent.type == 7" ng-bind-html="item.correctAnswerForMultipleAnswer"></td>
 
@@ -1290,6 +1445,42 @@
         text-align: center;
     }
 
+    .idp-matching-name-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px 22px;
+        margin: 14px 0 4px;
+        padding: 16px 18px;
+        border: 1px solid currentColor;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, .55);
+    }
+
+    .idp-matching-name-list__title {
+        grid-column: 1 / -1;
+        margin-bottom: 3px;
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    .idp-matching-name-list__item {
+        display: grid;
+        grid-template-columns: 30px minmax(0, 1fr);
+        align-items: baseline;
+        line-height: 1.45;
+    }
+
+    .idp-matching-name-list__item strong {
+        font-size: 16px;
+    }
+
+    @media (max-width: 767px) {
+        .idp-matching-name-list {
+            grid-template-columns: 1fr;
+        }
+    }
+
+
     .idp-matching-radio {
         -webkit-appearance: none;
         appearance: none;
@@ -1328,6 +1519,123 @@
         box-shadow: 0 5px 18px rgba(20, 31, 75, .25);
         font-weight: 700;
     }
+
+
+    .sentence-ending-runtime {
+        clear: both;
+        margin: 12px 0 28px;
+    }
+
+    .sentence-ending-questions {
+        display: grid;
+        gap: 12px;
+    }
+
+    .sentence-ending-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        border-bottom: 1px solid rgba(69, 82, 110, .25);
+        line-height: 1.6;
+    }
+
+    .sentence-ending-stem {
+        flex: 1 1 360px;
+    }
+
+    .sentence-ending-slot {
+        position: relative;
+        display: inline-flex;
+        flex: 1 1 280px;
+        min-height: 46px;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 42px 8px 13px;
+        border: 2px dashed #687386;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, .92);
+        color: #202124;
+        cursor: pointer;
+    }
+
+    .sentence-ending-slot.is-active,
+    .sentence-ending-slot.dndDragover {
+        border-color: #1683d8;
+        outline: 2px solid rgba(22, 131, 216, .24);
+        background: rgba(226, 243, 255, .96);
+    }
+
+    .sentence-ending-slot > button {
+        position: absolute;
+        top: 7px;
+        right: 8px;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: #e8edf5;
+        color: #26344d;
+        font-size: 20px;
+        line-height: 28px;
+    }
+
+    .sentence-ending-bank {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 22px;
+        padding: 18px;
+        border: 1px solid currentColor;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .5);
+    }
+
+    .sentence-ending-bank__title,
+    .sentence-ending-bank > small {
+        flex-basis: 100%;
+    }
+
+    .sentence-ending-bank__title {
+        font-size: 18px;
+    }
+
+    .sentence-ending-choice {
+        display: inline-grid;
+        grid-template-columns: 30px minmax(0, 1fr);
+        gap: 7px;
+        min-height: 42px;
+        align-items: center;
+        padding: 7px 13px;
+        border: 1px solid #697386;
+        border-radius: 5px;
+        background: #fff;
+        color: #202124;
+        cursor: grab;
+        user-select: none;
+    }
+
+    .sentence-ending-choice b {
+        font-size: 16px;
+    }
+
+    .sentence-ending-choice:active {
+        cursor: grabbing;
+    }
+
+    @media (max-width: 767px) {
+        .sentence-ending-row {
+            padding-right: 4px;
+            padding-left: 4px;
+        }
+
+        .sentence-ending-slot {
+            flex-basis: 100%;
+        }
+    }
+
 
     .reading-one-editor-runtime {
         width: 100%;

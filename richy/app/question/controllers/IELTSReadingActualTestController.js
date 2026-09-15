@@ -258,6 +258,11 @@
         $rootScope.settings.layout.pageSidebarClosed = false;
 
         var vm = this;
+        vm.isListeningRoute = /\/ielts_listening_actual_test(?:\/|$)/i.test($location.path());
+        vm.assignmentTaskId = /^\d+$/.test(String($stateParams.assignmentTaskId || '')) ? Number($stateParams.assignmentTaskId) : null;
+        vm.assignedPart = /^[123]$/.test(String($stateParams.assignmentPart || '')) ? Number($stateParams.assignmentPart) : null;
+        vm.isPartAssignment = !!(vm.assignmentTaskId && vm.assignedPart);
+        vm.resultQuestionTotal = 40;
 
         function getResultQuestionType(item) {
             return item && item.questionAnswer && item.questionAnswer.question &&
@@ -443,13 +448,6 @@
 
         $scope.$on('$destroy', stopReadingResize);
 
-        window.addEventListener('beforeunload', function (e) {
-            // Cancel the event
-            e.preventDefault(); // If you prevent default behavior in Mozilla Firefox prompt will always be shown
-            // Chrome requires returnValue to be set
-            e.returnValue = '';
-        });
-
         vm.currentUser = JSON.parse($cookies.getAll()["education.user"]);
         if(vm.currentUser.roles != null){
             angular.forEach(vm.currentUser.roles, function(value, key) {
@@ -463,6 +461,19 @@
         vm.question = {};
         vm.questions = [];
         vm.selectedQuestions = [];
+
+        vm.matchingOptionLabel = function (index) {
+            index = parseInt(index, 10);
+            if (isNaN(index) || index < 0) {
+                return '';
+            }
+            var label = '';
+            do {
+                label = String.fromCharCode(65 + (index % 26)) + label;
+                index = Math.floor(index / 26) - 1;
+            } while (index >= 0);
+            return label;
+        };
         vm.pageIndex = 1;
         vm.pageSize = 10000;
         vm.searchDto = {};
@@ -479,6 +490,266 @@
 
         vm.testResult.questionAnswerTestResult = [];
         vm.testResult.user = vm.currentUser;
+
+        var readingDraftStorageKey = 'ieltsReadingInProgress:' + (vm.currentUser.id || 'anonymous')
+            + (vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId : '');
+        var readingDraftAutosaveTimer = null;
+        var readingDraftSubmitted = false;
+
+        function readReadingDraft() {
+            if (vm.isPreviewMode) {
+                return null;
+            }
+            try {
+                var draft = JSON.parse($window.localStorage.getItem(readingDraftStorageKey));
+                if (!draft || String(draft.userId) !== String(vm.currentUser.id) || !draft.testId) {
+                    return null;
+                }
+                return draft;
+            } catch (ignoreReadingDraftReadError) {
+                return null;
+            }
+        }
+
+        function clearReadingDraft() {
+            try {
+                $window.localStorage.removeItem(readingDraftStorageKey);
+            } catch (ignoreReadingDraftClearError) {
+                // Submission can still finish when browser storage is unavailable.
+            }
+        }
+
+        function serializeReadingDraftResults() {
+            return (vm.testResult.questionAnswerTestResult || []).map(function (result) {
+                var questionAnswer = result.questionAnswer || {};
+                var question = questionAnswer.question || {};
+                return {
+                    ordinalNumber: result.ordinalNumber,
+                    questionId: question.id,
+                    answerId: questionAnswer.id,
+                    answerOrdinal: questionAnswer.ordinalNumberQuestionAnswer,
+                    clientAnswer: result.clientAnswer == null ? '' : String(result.clientAnswer)
+                };
+            });
+        }
+
+        function serializeReadingQuestionStates() {
+            return getReadingQuestionEntries().map(function (entry) {
+                var question = entry.question || {};
+                return {
+                    questionId: question.id,
+                    ordinalNumber: question.ordinalNumber,
+                    needReview: question.needReview === true,
+                    answered: question.answered === true,
+                    answers: (question.questionAnswers || []).map(function (questionAnswer) {
+                        return {
+                            answerId: questionAnswer.id,
+                            answerOrdinal: questionAnswer.ordinalNumberQuestionAnswer,
+                            selected: questionAnswer.selected === true,
+                            clientAnswer: questionAnswer.clientAnswer == null ? '' : String(questionAnswer.clientAnswer)
+                        };
+                    })
+                };
+            });
+        }
+
+        function saveReadingDraft() {
+            var testId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
+            if (vm.isPreviewMode || readingDraftSubmitted || !vm.currentUser.id || !testId || vm.isStartTest !== true || vm.passageNumber == 4) {
+                return;
+            }
+            try {
+                var results = serializeReadingDraftResults();
+                var answeredNumbers = {};
+                angular.forEach(results, function (result) {
+                    if (String(result.clientAnswer || '').trim()) {
+                        answeredNumbers[result.ordinalNumber] = true;
+                    }
+                });
+                $window.localStorage.setItem(readingDraftStorageKey, JSON.stringify({
+                    version: 1,
+                    userId: vm.currentUser.id,
+                    testId: testId,
+                    title: vm.ieltsReadingActualTest.title || 'IELTS Reading Test',
+                    savedAt: new Date().toISOString(),
+                    passageNumber: vm.passageNumber || 1,
+                    currentOrdinalNumber: Number(vm.tempOrdinalNumber) || null,
+                    remainingSeconds: Math.max(0, Number($scope.counter) || 0),
+                    answeredCount: Object.keys(answeredNumbers).length,
+                    totalQuestions: getReadingQuestionEntries().length,
+                    results: results,
+                    questionStates: serializeReadingQuestionStates()
+                }));
+            } catch (ignoreReadingDraftWriteError) {
+                // The test remains usable when private browsing blocks localStorage.
+            }
+        }
+
+        function findDraftQuestionState(draft, question) {
+            var states = (draft && draft.questionStates) || [];
+            for (var index = 0; index < states.length; index++) {
+                if ((question.id != null && states[index].questionId == question.id) ||
+                        states[index].ordinalNumber == question.ordinalNumber) {
+                    return states[index];
+                }
+            }
+            return null;
+        }
+
+        function findDraftResult(draft, question) {
+            var results = findDraftResults(draft, question);
+            return results.length ? results[0] : null;
+        }
+
+        function findDraftResults(draft, question) {
+            return ((draft && draft.results) || []).filter(function (result) {
+                return (question.id != null && result.questionId == question.id) ||
+                    result.ordinalNumber == question.ordinalNumber;
+            });
+        }
+
+        function findQuestionAnswer(question, draftAnswer) {
+            var questionAnswers = (question && question.questionAnswers) || [];
+            for (var index = 0; index < questionAnswers.length; index++) {
+                if ((draftAnswer.answerId != null && questionAnswers[index].id == draftAnswer.answerId) ||
+                        Number(questionAnswers[index].ordinalNumberQuestionAnswer) === Number(draftAnswer.answerOrdinal)) {
+                    return questionAnswers[index];
+                }
+            }
+            return questionAnswers.length ? questionAnswers[0] : null;
+        }
+
+        function restoreMatchingHeadingDraft(draft, lists, bank) {
+            angular.forEach(lists || [], function (list) {
+                var slot = list && list.items && list.items[0];
+                var question = slot && slot.question;
+                var savedResult = question ? findDraftResult(draft, question) : null;
+                if (!slot || !savedResult || !String(savedResult.clientAnswer || '').trim()) {
+                    return;
+                }
+                var selectedHeading = null;
+                angular.forEach((bank && bank.items) || [], function (heading) {
+                    if (!selectedHeading && heading.answer &&
+                            String(heading.answer.answer || '').trim() === String(savedResult.clientAnswer).trim()) {
+                        selectedHeading = heading;
+                    }
+                });
+                if (!selectedHeading) {
+                    return;
+                }
+                slot.clientAnswer = selectedHeading.clientAnswer || selectedHeading.answer.answer;
+                slot.ordinalFromListB = selectedHeading.ordinalNumberQuestionAnswer;
+                slot.objectFromListB = selectedHeading;
+                selectedHeading.isHide = true;
+                question.answered = true;
+                vm.testResult.questionAnswerTestResult.push({
+                    questionAnswer: slot,
+                    ordinalNumber: question.ordinalNumber,
+                    clientAnswer: slot.clientAnswer
+                });
+            });
+        }
+
+        function restoreReadingDraft() {
+            var draft = readReadingDraft();
+            var currentTestId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
+            if (!draft || String(draft.testId) !== String(currentTestId)) {
+                return;
+            }
+
+            vm.testResult.questionAnswerTestResult = [];
+            angular.forEach(getReadingQuestionEntries(), function (entry) {
+                var question = entry.question;
+                var state = findDraftQuestionState(draft, question);
+                if (state) {
+                    question.needReview = state.needReview === true;
+                    angular.forEach(state.answers || [], function (savedAnswer) {
+                        var questionAnswer = findQuestionAnswer(question, savedAnswer);
+                        if (questionAnswer) {
+                            questionAnswer.selected = savedAnswer.selected === true;
+                            questionAnswer.clientAnswer = savedAnswer.clientAnswer || '';
+                        }
+                    });
+                }
+
+                var savedResults = findDraftResults(draft, question);
+                var savedResult = savedResults.length ? savedResults[0] : null;
+                if (!savedResult || Number(entry.packageType) === 4) {
+                    return;
+                }
+                var answer = findQuestionAnswer(question, savedResult);
+                if (!answer) {
+                    return;
+                }
+                if (Number(entry.packageType) === 13 && entry.questionPackage.completeListWordBank) {
+                    var completeWord = entry.questionPackage.completeListWordBank[Number(savedResult.answerOrdinal) - 1];
+                    if (completeWord) {
+                        vm.dropCompleteListWord(entry.questionPackage, entry.questionPackage.subQuestions.indexOf(question), completeWord);
+                    }
+                    return;
+                }
+                if (Number(entry.packageType) === 14 && entry.questionPackage.sentenceEndingBank) {
+                    var ending = entry.questionPackage.sentenceEndingBank[Number(savedResult.answerOrdinal) - 1];
+                    if (ending) {
+                        vm.dropSentenceEnding(entry.questionPackage, entry.questionPackage.subQuestions.indexOf(question), ending);
+                    }
+                    return;
+                }
+                angular.forEach(savedResults, function (result) {
+                    var restoredAnswer = findQuestionAnswer(question, result);
+                    if (!restoredAnswer) {
+                        return;
+                    }
+                    question.answered = question.answered || !!String(result.clientAnswer || '').trim() || restoredAnswer.selected === true;
+                    vm.testResult.questionAnswerTestResult.push({
+                        questionAnswer: restoredAnswer,
+                        ordinalNumber: question.ordinalNumber,
+                        clientAnswer: result.clientAnswer || ''
+                    });
+                });
+            });
+
+            restoreMatchingHeadingDraft(draft, $scope.listA, $scope.listB);
+            restoreMatchingHeadingDraft(draft, $scope.listA2, $scope.listB2);
+            restoreMatchingHeadingDraft(draft, $scope.listA3, $scope.listB3);
+            vm.passageNumber = vm.assignedPart || Math.max(1, Math.min(3, Number(draft.passageNumber) || 1));
+            if (Number(draft.currentOrdinalNumber) > 0) {
+                vm.tempOrdinalNumber = Number(draft.currentOrdinalNumber);
+                $timeout(function () {
+                    vm.autoScrollToView(vm.tempOrdinalNumber);
+                }, 250);
+            }
+            if (Number(draft.remainingSeconds) > 0) {
+                $scope.counter = Number(draft.remainingSeconds);
+                $scope.minuteDisplay = parseInt($scope.counter / 60, 10);
+                $scope.secondDisplay = $scope.counter % 60;
+            }
+            toastr.success('Đã khôi phục bài test đang làm dở.', 'Tiếp tục bài thi');
+        }
+
+        function startReadingDraftAutosave() {
+            $timeout.cancel(readingDraftAutosaveTimer);
+            function autosave() {
+                saveReadingDraft();
+                readingDraftAutosaveTimer = $timeout(autosave, 3000);
+            }
+            readingDraftAutosaveTimer = $timeout(autosave, 1000);
+        }
+
+        function handleReadingBeforeUnload(event) {
+            saveReadingDraft();
+            if (vm.isStartTest === true && vm.passageNumber != 4) {
+                event.preventDefault();
+                event.returnValue = '';
+            }
+        }
+
+        $window.addEventListener('beforeunload', handleReadingBeforeUnload);
+        $scope.$on('$destroy', function () {
+            saveReadingDraft();
+            $timeout.cancel(readingDraftAutosaveTimer);
+            $window.removeEventListener('beforeunload', handleReadingBeforeUnload);
+        });
 
         var currentPerson = vm.currentUser.person || {};
         vm.testResult.testTakerName = [
@@ -756,6 +1027,13 @@
                             vm.ieltsReadingActualTest = vm.processQuestionATT(data);
                             if (vm.isPreviewMode) {
                                 vm.passageNumber = vm.previewPart;
+                            } else {
+                                restoreReadingDraft();
+                                if (vm.isPartAssignment) {
+                                    vm.passageNumber = vm.assignedPart;
+                                    vm.resultQuestionTotal = assignedPartQuestionOrdinals().length || 1;
+                                }
+                                startReadingDraftAutosave();
                             }
                             myCallback(vm.ieltsReadingActualTest);
                         },0);
@@ -815,6 +1093,25 @@
             // vm.testResult.testTakerPerformance = all;
 
             vm.testResult.testName = vm.ieltsReadingActualTest.title;
+			vm.testResult.sourceQuestionId = Number($stateParams.ieltsReadingTestId);
+			if (vm.isPartAssignment) {
+				var allowedOrdinals = assignedPartQuestionOrdinals();
+				if (!allowedOrdinals.length) {
+					toastr.error('Part được giao không có câu hỏi để nộp.', 'Không thể hoàn thành');
+					return;
+				}
+				var allowed = {};
+				angular.forEach(allowedOrdinals, function (ordinal) { allowed[String(ordinal)] = true; });
+				vm.testResult.questionAnswerTestResult = (vm.testResult.questionAnswerTestResult || []).filter(function (answer) {
+					return allowed[String(answer.ordinalNumber)] === true;
+				});
+				vm.testResult.completedPart = vm.assignedPart;
+				vm.testResult.assignmentTaskId = vm.assignmentTaskId;
+				vm.testResult.testName += ' · Part ' + vm.assignedPart;
+				vm.testResult.testTakerPerformance = '<h2>Part ' + vm.assignedPart + '</h2>'
+					+ [passage1, passage2, passage3][vm.assignedPart - 1];
+				vm.resultQuestionTotal = allowedOrdinals.length || 1;
+			}
 
 
             vm.testResult.testType = 4; // ielts read
@@ -827,6 +1124,9 @@
             blockUI.start();
             service.saveTestResult(vm.testResult).then(function (data) {
                 blockUI.stop();
+                readingDraftSubmitted = true;
+                clearReadingDraft();
+                $timeout.cancel(readingDraftAutosaveTimer);
                 // vm.testResultAfterSubmitting = data;
 
                 service.getOneTestResult(data.id).then(function (data1) {
@@ -835,7 +1135,7 @@
                     vm.passageNumber = 4;
                     console.log(vm.testResultAfterSubmitting);
 
-                    vm.percentageAfterSubmit = (vm.testResultAfterSubmitting.correctAnswer / 40)*100;
+                    vm.percentageAfterSubmit = (vm.testResultAfterSubmitting.correctAnswer / vm.resultQuestionTotal)*100;
                     vm.textBandScore = 'Band ' + vm.testResultAfterSubmitting.bandScore.toString();
 
                     var x = document.getElementById('circlechart');
@@ -865,8 +1165,28 @@
         //--------------------- Reading Actual test -------------------------//
         var mainAudio = document.getElementById('main-audio');
 
+        function readingPassagePlainText(partIndex) {
+            var passage = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.subQuestions
+                ? vm.ieltsReadingActualTest.subQuestions[partIndex]
+                : null;
+            return String(passage && passage.question || '')
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/&nbsp;/gi, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        vm.hasEmbeddedReadingPassageTitle = function (partIndex) {
+            return /READING\s+PASSAGE\s+[123]/i.test(readingPassagePlainText(partIndex));
+        };
+
+        vm.hasEmbeddedReadingTimingInstruction = function (partIndex) {
+            return /You\s+should\s+spend\s+about\s+20\s+minutes\s+on\s+Questions/i.test(readingPassagePlainText(partIndex));
+        };
+
 
         vm.setUpAudio = function () {
+            if (!vm.isListeningRoute) { return; }
             mainAudio.src = vm.ieltsReadingActualTest.pronounce; // local server
             mainAudio.load();
             mainAudio.play();
@@ -1056,6 +1376,10 @@
             if(items!= null && items.length > 0 && items[0] != null){
                 if(items[0].parent != null){
                     if(items[0].parent.questionType != null){
+						var requestedPart = items[0].parent.questionType.code == "IELTSRTP1" ? 1
+							: items[0].parent.questionType.code == "IELTSRTP2" ? 2
+							: items[0].parent.questionType.code == "IELTSRTP3" ? 3 : null;
+						if (vm.isPartAssignment && requestedPart !== vm.assignedPart) { return; }
                         if(items[0].parent.questionType.code == "IELTSRTP1"){
                             vm.passageNumber = 1;
                         }
@@ -1104,6 +1428,19 @@
             });
             return entries;
         }
+
+		function assignedPartQuestionOrdinals() {
+			if (!vm.isPartAssignment || !vm.ieltsReadingActualTest || !vm.ieltsReadingActualTest.subQuestions) { return []; }
+			var ordinals = [], seen = {};
+			var passage = vm.ieltsReadingActualTest.subQuestions[vm.assignedPart - 1];
+			angular.forEach((passage && passage.subQuestions) || [], function (questionPackage) {
+				angular.forEach(questionPackage.subQuestions || [], function (question) {
+					var key = String(question.ordinalNumber);
+					if (!seen[key]) { seen[key] = true; ordinals.push(question.ordinalNumber); }
+				});
+			});
+			return ordinals;
+		}
 
         function synchronizeReadingResultsBeforeSubmit() {
             var results = vm.testResult.questionAnswerTestResult || [];
@@ -1389,11 +1726,150 @@
             return true;
         };
 
+        function buildSentenceEndingQuestion(questionPackage) {
+            var questions = questionPackage.subQuestions || [];
+            questions.sort(function (left, right) {
+                return Number(left.ordinalNumber) - Number(right.ordinalNumber);
+            });
+            angular.forEach(questions, function (question) {
+                question.questionAnswers = question.questionAnswers || [];
+                question.questionAnswers.sort(function (left, right) {
+                    return Number(left.ordinalNumberQuestionAnswer) - Number(right.ordinalNumberQuestionAnswer);
+                });
+            });
+
+            var sourceAnswers = questions.length ? questions[0].questionAnswers : [];
+            questionPackage.sentenceEndingSlots = [];
+            questionPackage.sentenceEndingBank = sourceAnswers.map(function (questionAnswer, answerIndex) {
+                return {
+                    answerIndex: answerIndex,
+                    label: vm.matchingOptionLabel(answerIndex),
+                    clientAnswer: questionAnswer.answer ? questionAnswer.answer.answer : ''
+                };
+            });
+            angular.forEach(questions, function () {
+                questionPackage.sentenceEndingSlots.push({items: []});
+            });
+            questionPackage.activeSentenceEndingSlot = questions.length ? 0 : null;
+        }
+
+        vm.isSentenceEndingUsed = function (questionPackage, ending) {
+            var used = false;
+            angular.forEach((questionPackage && questionPackage.sentenceEndingSlots) || [], function (slot) {
+                if (slot.items && slot.items.length && slot.items[0].answerIndex === ending.answerIndex) {
+                    used = true;
+                }
+            });
+            return used;
+        };
+
+        vm.clearSentenceEndingSlot = function (questionPackage, slotIndex) {
+            var slot = questionPackage && questionPackage.sentenceEndingSlots ? questionPackage.sentenceEndingSlots[slotIndex] : null;
+            var question = questionPackage && questionPackage.subQuestions ? questionPackage.subQuestions[slotIndex] : null;
+            if (!slot || !slot.items || !slot.items.length || !question) {
+                return;
+            }
+            var questionAnswer = (question.questionAnswers || [])[slot.items[0].answerIndex];
+            if (questionAnswer) {
+                vm.checkBoxMultipleChoiceQuestions(questionAnswer, question, false);
+            }
+            slot.items = [];
+        };
+
+        vm.activateSentenceEndingSlot = function (questionPackage, slotIndex) {
+            if (!questionPackage) {
+                return;
+            }
+            questionPackage.activeSentenceEndingSlot = slotIndex;
+        };
+
+        vm.dropSentenceEnding = function (questionPackage, slotIndex, droppedEnding) {
+            if (!questionPackage || !droppedEnding || !questionPackage.subQuestions || !questionPackage.sentenceEndingSlots) {
+                return false;
+            }
+            angular.forEach(questionPackage.sentenceEndingSlots, function (slot, existingIndex) {
+                if (existingIndex !== slotIndex && slot.items && slot.items.length && slot.items[0].answerIndex === droppedEnding.answerIndex) {
+                    vm.clearSentenceEndingSlot(questionPackage, existingIndex);
+                }
+            });
+            vm.clearSentenceEndingSlot(questionPackage, slotIndex);
+
+            var question = questionPackage.subQuestions[slotIndex];
+            var questionAnswer = question && question.questionAnswers ? question.questionAnswers[droppedEnding.answerIndex] : null;
+            if (question && questionAnswer) {
+                questionPackage.sentenceEndingSlots[slotIndex].items = [angular.copy(droppedEnding)];
+                vm.checkBoxMultipleChoiceQuestions(questionAnswer, question, true);
+                vm.clickShowChildren(question, questionPackage.subQuestions);
+                var nextSlot = null;
+                for (var slotNumber = slotIndex + 1; slotNumber < questionPackage.sentenceEndingSlots.length; slotNumber++) {
+                    if (!questionPackage.sentenceEndingSlots[slotNumber].items.length) {
+                        nextSlot = slotNumber;
+                        break;
+                    }
+                }
+                questionPackage.activeSentenceEndingSlot = nextSlot;
+            }
+            $scope.$evalAsync();
+            return true;
+        };
+
+        vm.chooseSentenceEnding = function (questionPackage, ending) {
+            if (!questionPackage || questionPackage.activeSentenceEndingSlot === null ||
+                    questionPackage.activeSentenceEndingSlot === undefined) {
+                return;
+            }
+            vm.dropSentenceEnding(questionPackage, questionPackage.activeSentenceEndingSlot, ending);
+        };
+
+        function actualHeadingLabel(question, fallbackIndex) {
+            var text = String((question && question.question) || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+            var match = text.match(/(?:section|paragraph|part)\s*([A-Z])/i);
+            return match ? match[1].toUpperCase() : String.fromCharCode(65 + fallbackIndex);
+        }
+
+        function ensureActualHeadingPlaceholders(passage) {
+            if (!passage || !passage.subQuestions || !passage.question) {
+                return;
+            }
+            var matchingQuestions = [];
+            angular.forEach(passage.subQuestions, function (questionPackage) {
+                if (Number(questionPackage.type) === 4) {
+                    angular.forEach(questionPackage.subQuestions || [], function (question) {
+                        matchingQuestions.push(question);
+                    });
+                }
+            });
+            if (!matchingQuestions.length) {
+                return;
+            }
+
+            var html = String(passage.question);
+            var placeholderCount = (html.match(/\}\{\s*HEADING\s*\}\{/gi) || []).length;
+            if (placeholderCount >= matchingQuestions.length) {
+                return;
+            }
+
+            angular.forEach(matchingQuestions, function (question, index) {
+                var label = actualHeadingLabel(question, index).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                var marker = new RegExp(
+                    '(<(?:p|h[1-6]|div)\\b[^>]*>\\s*(?:<(?:strong|b)\\b[^>]*>\\s*)?' + label +
+                    '\\s*(?:</(?:strong|b)>\\s*)?)(\\s*</(?:p|h[1-6]|div)>)',
+                    'i'
+                );
+                html = html.replace(marker, '$1 }{HEADING}{$2');
+            });
+            passage.question = html;
+        }
+
         vm.processQuestionATT = function (data,idName) {
             var z = 0;
             var z2 = 0;
             var z3 = 0;
             for(var k = 0; k < data.subQuestions.length; k++){
+                // Older imports may have valid Matching Heading questions but no
+                // }{HEADING}{ markers in the passage. Repair them at render time
+                // so already-saved tests also display their drop targets.
+                ensureActualHeadingPlaceholders(data.subQuestions[k]);
                 //process passage for matching heading
                 // var passage = data.subQuestions[k].subQuestions[i].question;
                 var typePassage = data.subQuestions[k].type;
@@ -1418,6 +1894,9 @@
                         }
                         if (data.subQuestions[k].subQuestions[i].type == 13) {
                             buildCompleteListQuestion(data.subQuestions[k].subQuestions[i]);
+                        }
+                        if (data.subQuestions[k].subQuestions[i].type == 14) {
+                            buildSentenceEndingQuestion(data.subQuestions[k].subQuestions[i]);
                         }
                         for (var j = 0; j < data.subQuestions[k].subQuestions[i].subQuestions.length; j++) {
                             var parentType = 4;
@@ -1529,7 +2008,7 @@
                                         'dnd-draggable="getSelectedItemsIncluding(listA['+z+'], listA['+z+'].items[0])" ' +
                                         'class="matching-heading-drop-box" id="question-number-'+ question.ordinalNumber +'" ' +
                                         'dnd-list="listA['+z+'].items" ' +
-                                        'dnd-selected="listA.items['+z+'].selected = !listA.items['+z+'].selected" ' +
+                                        'dnd-selected="listA['+z+'].items[0].selected = !listA['+z+'].items[0].selected" ' +
                                         'dnd-effect-allowed="move" ' +
 
                                         'type="text"  rows="1"' +
@@ -1537,17 +2016,17 @@
                                         '</span>';
 
                                     z = z+1;
-                                    data.subQuestions[k].question = data.subQuestions[k].question.replace('}{HEADING}{', inputMatchingHeading);
+                                    data.subQuestions[k].question = data.subQuestions[k].question.replace(/\}\{\s*HEADING\s*\}\{/i, inputMatchingHeading);
                                 }
 
                                 //passage 2
                                 if(typeof $scope.listA2[z2] !== "undefined"){
                                     var inputMatchingHeading =
                                         '<span dnd-drop="onDropA2(listA2['+z2+'], item, 0)" ' +
-                                        'dnd-draggable="getSelectedItemsIncluding(listA2['+z+'], listA2['+z2+'].items[0])" ' +
+                                        'dnd-draggable="getSelectedItemsIncluding(listA2['+z2+'], listA2['+z2+'].items[0])" ' +
                                         'class="matching-heading-drop-box" id="question-number-'+ question.ordinalNumber +'" ' +
                                         'dnd-list="listA2['+z2+'].items" ' +
-                                        'dnd-selected="listA2.items['+z2+'].selected = !listA2.items['+2+'].selected" ' +
+                                        'dnd-selected="listA2['+z2+'].items[0].selected = !listA2['+z2+'].items[0].selected" ' +
                                         'dnd-effect-allowed="move" ' +
 
                                         'type="text"  rows="1"' +
@@ -1555,7 +2034,7 @@
                                         '</span>';
 
                                     z2 = z2 + 1;
-                                    data.subQuestions[k].question = data.subQuestions[k].question.replace('}{HEADING}{', inputMatchingHeading);
+                                    data.subQuestions[k].question = data.subQuestions[k].question.replace(/\}\{\s*HEADING\s*\}\{/i, inputMatchingHeading);
 
                                 }
 
@@ -1566,7 +2045,7 @@
                                         'dnd-draggable="getSelectedItemsIncluding(listA3['+z3+'], listA3['+z3+'].items[0])" ' +
                                         'class="matching-heading-drop-box" id="question-number-'+ question.ordinalNumber +'" ' +
                                         'dnd-list="listA3['+z3+'].items" ' +
-                                        'dnd-selected="listA3.items['+z3+'].selected = !listA3.items['+z3+'].selected" ' +
+                                        'dnd-selected="listA3['+z3+'].items[0].selected = !listA3['+z3+'].items[0].selected" ' +
                                         'dnd-effect-allowed="move" ' +
 
                                         'type="text"  rows="1"' +
@@ -1574,7 +2053,7 @@
                                         '</span>';
 
                                     z3 = z3 + 1;
-                                    data.subQuestions[k].question = data.subQuestions[k].question.replace('}{HEADING}{', inputMatchingHeading);
+                                    data.subQuestions[k].question = data.subQuestions[k].question.replace(/\}\{\s*HEADING\s*\}\{/i, inputMatchingHeading);
                                 }
                             }
                         }
@@ -3941,6 +4420,13 @@
             $timeout(function () {
                 vm.startTest();
             }, 0);
+        } else {
+            var pendingReadingDraft = readReadingDraft();
+            if (pendingReadingDraft && String(pendingReadingDraft.testId) === String($stateParams.ieltsReadingTestId)) {
+                $timeout(function () {
+                    vm.startTest();
+                }, 0);
+            }
         }
 
         //--------------------- End Reading Actual test -------------------------//

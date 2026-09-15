@@ -94,6 +94,8 @@
 		vm.scheduleWeekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 		vm.scheduleMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 		vm.scheduleTopics = [];
+		vm.assignableIeltsTests = [];
+		vm.assignableIeltsTestsLoading = false;
 		vm.scheduleLoading = false;
 		vm.scheduleSettingsLoading = false;
 		vm.scheduleSettingsError = false;
@@ -673,12 +675,14 @@
 			vm.loadScheduleStudents();
 			vm.scheduleClass.weeklySessions = [];
 			vm.scheduleTopics = [];
+			vm.assignableIeltsTests = [];
 			vm.scheduleMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 			vm.scheduleMonthLabel = 'THÁNG ' + (vm.scheduleMonthDate.getMonth() + 1)
 				+ ' / ' + vm.scheduleMonthDate.getFullYear();
 			vm.scheduleSettingsLoading = true;
 			vm.scheduleSettingsError = false;
 			vm.scheduleTopicsLoading = true;
+			vm.assignableIeltsTestsLoading = true;
 			vm.scheduleLoading = true;
 			vm.scheduleModal = modal.open({
 				animation: true,
@@ -718,6 +722,14 @@
 			}, function () {
 				vm.scheduleTopicsLoading = false;
 				toastr.error('Không tải được danh sách topic.', 'Lỗi');
+			});
+
+			service.getAssignableIeltsTests().then(function (tests) {
+				vm.assignableIeltsTests = angular.isArray(tests) ? tests : [];
+				vm.assignableIeltsTestsLoading = false;
+			}, function () {
+				vm.assignableIeltsTestsLoading = false;
+				toastr.error('Không tải được danh sách đề IELTS.', 'Lỗi');
 			});
 
 			vm.loadScheduleMonth();
@@ -1661,6 +1673,22 @@
 			if (!vm.taskEditor) { return; }
 			vm.taskEditor.autoCompleteFromTopic = vm.taskEditor.activityType === 'DAILY_VOCAB'
 				|| vm.taskEditor.activityType === 'DAILY_LISTENING';
+			if (vm.isIeltsTask(vm.taskEditor)) {
+				vm.taskEditor.topicId = null; vm.taskEditor.categoryKey = null;
+				vm.taskEditor.ieltsTestId = null; vm.taskEditor.ieltsPart = 1;
+			} else {
+				vm.taskEditor.ieltsTestId = null; vm.taskEditor.ieltsPart = null;
+			}
+		};
+		vm.isIeltsTask = function (task) {
+			return !!task && (task.activityType === 'IELTS_READING' || task.activityType === 'IELTS_LISTENING');
+		};
+		vm.ieltsTestsForTask = function () {
+			if (!vm.taskEditor) { return []; }
+			var listening = vm.taskEditor.activityType === 'IELTS_LISTENING';
+			return vm.assignableIeltsTests.filter(function (test) {
+				return listening === !!(test.pronounce && String(test.pronounce).trim());
+			});
 		};
 		vm.taskTopics = function () {
 			if (!vm.taskEditor || !vm.taskEditor.categoryKey) { return []; }
@@ -1690,6 +1718,7 @@
                 dueTime: task.deadlineAutomatic === true ? null : task.dueTime || null,
                 deadlineAutomatic: task.deadlineAutomatic == null ? null : task.deadlineAutomatic,
                 status: task.status || 'TODO', topicId: task.topicId || null,
+				ieltsTestId: task.ieltsTestId || null, ieltsPart: task.ieltsPart || null,
 				activityType: task.activityType || 'DAILY_VOCAB',
 				autoCompleteFromTopic: task.autoCompleteFromTopic !== false,
 				requiredAttempts: Math.max(1, Number(task.requiredAttempts) || 1),
@@ -1700,11 +1729,14 @@
 			if (!vm.taskEditor || vm.scheduleDaySaving) { return; }
 			var task = angular.copy(vm.taskEditor); task.title = (task.title || '').trim();
 			if (!task.title || task.title.length > 200) { toastr.warning('Nhập tên task từ 1 đến 200 ký tự.'); return; }
-			if (task.topicId && (!/^\d+$/.test(String(task.requiredAttempts)) || Number(task.requiredAttempts) < 1
+			if ((task.topicId || vm.isIeltsTask(task)) && (!/^\d+$/.test(String(task.requiredAttempts)) || Number(task.requiredAttempts) < 1
 					|| Number(task.requiredAttempts) > 100)) {
 				toastr.warning('Số lần phải làm cần từ 1 đến 100.'); return;
 			}
-			task.requiredAttempts = task.topicId ? Number(task.requiredAttempts) : 1;
+			if (vm.isIeltsTask(task) && (!task.ieltsTestId || !/^[123]$/.test(String(task.ieltsPart)))) {
+				toastr.warning('Hãy chọn đề IELTS và Part 1, 2 hoặc 3.'); return;
+			}
+			task.requiredAttempts = (task.topicId || vm.isIeltsTask(task)) ? Number(task.requiredAttempts) : 1;
 			if (task.dueDateValue && !moment(task.dueDateValue).isValid()) { toastr.warning('Hạn hoàn thành không hợp lệ.'); return; }
             if (task.deadlineAutomatic && !vm.scheduleDay.defaultHomeworkDeadline) {
                 toastr.warning('Chưa có giờ tan buổi kế tiếp. Hãy thiết lập lịch hoặc bỏ hạn tự động và nhập ngày giờ.'); return;
@@ -1727,6 +1759,10 @@
 			if (task.topicId != null && !topic) { toastr.warning('Topic không còn tồn tại. Hãy chọn lại.'); return; }
 			task.topicName = topic ? topic.name : ''; task.categoryId = topic ? topic.categoryId : null;
 			task.categoryName = topic ? topic.categoryName : '';
+			var ieltsTest = null;
+			angular.forEach(vm.assignableIeltsTests, function (item) { if (String(item.id) === String(task.ieltsTestId)) { ieltsTest = item; } });
+			if (vm.isIeltsTask(task) && !ieltsTest) { toastr.warning('Đề IELTS không còn tồn tại. Hãy chọn lại.'); return; }
+			task.ieltsTestTitle = ieltsTest ? ieltsTest.title : '';
 			task.studentProgress = scheduleTaskPayload(task).studentProgress;
 			delete task.showProgress; delete task.dueDateValue; delete task.categoryKey; delete task._confirmDelete; delete task.legacyDateOnly;
 			if (vm.taskEditorIndex < 0) { vm.scheduleDay.tasks.push(task); }

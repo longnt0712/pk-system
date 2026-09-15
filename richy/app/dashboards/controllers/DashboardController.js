@@ -42,6 +42,7 @@
         vm.assignedTasks = [];
         vm.assignedTasksLoading = false;
         vm.assignedTasksError = false;
+        vm.readingDraft = null;
 
         vm.isRoleView = false;
         vm.isRoleUser = false;
@@ -129,6 +130,7 @@
             };
 
             vm.applyRoles(vm.myUser.roles);
+            vm.loadReadingDraft();
         };
 
         vm.loadAssignedTasks = function () {
@@ -174,8 +176,14 @@
         vm.assignmentActionLabel = function (task) {
             if (task && task.activityType === 'DAILY_VOCAB') { return 'Làm Daily Vocab'; }
             if (task && task.activityType === 'DAILY_LISTENING') { return 'Làm Daily Listening'; }
+			if (task && task.activityType === 'IELTS_READING') { return 'Làm Reading Part ' + task.ieltsPart; }
+			if (task && task.activityType === 'IELTS_LISTENING') { return 'Làm Listening Part ' + task.ieltsPart; }
             return 'Xem bài được giao';
         };
+
+		vm.isIeltsAssignment = function (task) {
+			return !!task && !!task.ieltsTestId && (task.activityType === 'IELTS_READING' || task.activityType === 'IELTS_LISTENING');
+		};
 
         vm.openAssignedTask = function (task) {
             if (!task) { return; }
@@ -189,9 +197,68 @@
                 $state.go('application.daily_vocab', params);
             } else if (task.activityType === 'DAILY_LISTENING') {
                 $state.go('application.view', params);
+			} else if (vm.isIeltsAssignment(task)) {
+				$state.go(task.activityType === 'IELTS_LISTENING'
+					? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test', {
+					ieltsReadingTestId: task.ieltsTestId,
+					assignmentTaskId: task.taskId,
+					assignmentPart: task.ieltsPart
+				});
             } else {
                 $state.go('application.englishClass');
             }
+        };
+
+        vm.loadReadingDraft = function () {
+            vm.readingDraft = null;
+            if (!vm.myUser.id) {
+                return;
+            }
+            var storageKey = 'ieltsReadingInProgress:' + vm.myUser.id;
+            try {
+                var draft = JSON.parse($window.localStorage.getItem(storageKey));
+                if (draft && draft.testId && String(draft.userId) === String(vm.myUser.id)) {
+                    vm.readingDraft = draft;
+                }
+            } catch (readingDraftError) {
+                try {
+                    $window.localStorage.removeItem(storageKey);
+                } catch (ignoreReadingDraftClearError) {
+                    // Keep the dashboard usable when browser storage is unavailable.
+                }
+            }
+        };
+
+        vm.formatReadingDraftTime = function (seconds) {
+            var totalSeconds = Math.max(0, Number(seconds) || 0);
+            var minutes = Math.floor(totalSeconds / 60);
+            var remainingSeconds = totalSeconds % 60;
+            return minutes + ':' + (remainingSeconds < 10 ? '0' : '') + remainingSeconds;
+        };
+
+        vm.resumeReadingDraft = function () {
+            if (!vm.readingDraft || !vm.readingDraft.testId) {
+                return;
+            }
+            $state.go('application.ielts_reading_actual_test', {
+                ieltsReadingTestId: vm.readingDraft.testId
+            });
+        };
+
+        vm.cancelReadingDraft = function () {
+            if (!vm.readingDraft || !vm.myUser.id) {
+                return;
+            }
+            var confirmed = $window.confirm('Bạn có chắc muốn hủy bài test đang làm dở? Toàn bộ đáp án đã lưu của bài này sẽ bị xóa.');
+            if (!confirmed) {
+                return;
+            }
+            try {
+                $window.localStorage.removeItem('ieltsReadingInProgress:' + vm.myUser.id);
+            } catch (ignoreReadingDraftCancelError) {
+                return;
+            }
+            vm.readingDraft = null;
         };
 
         vm.loadCurrentUserFromCookie = function () {

@@ -75,10 +75,35 @@
             <span class="student-assignment-count" ng-if="!vm.assignedTasksLoading">{{vm.assignedTasks.length}} bài</span>
         </div>
 
+        <article class="reading-resume-card" ng-if="vm.readingDraft">
+            <div class="reading-resume-icon"><i class="fa fa-bookmark"></i></div>
+            <div class="reading-resume-copy">
+                <span class="reading-resume-kicker">BÀI TEST ĐANG LÀM DỞ</span>
+                <h3>Bạn còn một bài test đang làm dở</h3>
+                <p class="reading-resume-title">{{vm.readingDraft.title}}</p>
+                <div class="reading-resume-meta">
+                    <span><i class="fa fa-check-circle-o"></i> Đã trả lời {{vm.readingDraft.answeredCount || 0}}/{{vm.readingDraft.totalQuestions || 40}} câu</span>
+                    <span><i class="fa fa-clock-o"></i> Còn {{vm.formatReadingDraftTime(vm.readingDraft.remainingSeconds)}}</span>
+                    <span ng-if="vm.readingDraft.savedAt"><i class="fa fa-save"></i> Lưu lúc {{vm.readingDraft.savedAt | date:'HH:mm dd/MM/yyyy'}}</span>
+                </div>
+            </div>
+            <div class="reading-resume-actions">
+                <strong>Bạn có muốn làm tiếp không?</strong>
+                <div>
+                    <button type="button" class="is-continue" ng-click="vm.resumeReadingDraft()">
+                        <i class="fa fa-play"></i> Có, làm tiếp
+                    </button>
+                    <button type="button" class="is-cancel" ng-click="vm.cancelReadingDraft()">
+                        Không, hủy bài
+                    </button>
+                </div>
+            </div>
+        </article>
+
         <div class="student-assignment-loading" ng-if="vm.assignedTasksLoading">
             <i class="fa fa-spinner fa-spin"></i> Đang lấy bài được giao...
         </div>
-        <div class="student-assignment-empty" ng-if="!vm.assignedTasksLoading && !vm.assignedTasksError && !vm.assignedTasks.length">
+        <div class="student-assignment-empty" ng-if="!vm.assignedTasksLoading && !vm.assignedTasksError && !vm.assignedTasks.length && !vm.readingDraft">
             <span>🎉</span><strong>Hiện tại bạn không còn bài nào phải làm.</strong>
         </div>
         <div class="student-assignment-empty is-error" ng-if="!vm.assignedTasksLoading && vm.assignedTasksError">
@@ -88,30 +113,32 @@
         <div class="student-assignment-grid" ng-if="!vm.assignedTasksLoading && vm.assignedTasks.length">
             <article class="student-assignment-card"
                      ng-repeat="task in vm.assignedTasks track by task.taskId"
-                     ng-class="{'is-overdue': task.overdue, 'is-listening': task.activityType === 'DAILY_LISTENING', 'is-ielts': (task.activityType || '').indexOf('IELTS') === 0, 'is-free-task': !task.topicId}">
+                     ng-class="{'is-overdue': task.overdue, 'is-listening': task.activityType === 'DAILY_LISTENING', 'is-ielts': (task.activityType || '').indexOf('IELTS') === 0, 'is-free-task': !task.topicId && !task.ieltsTestId}">
                 <div class="student-assignment-icon"><i class="fa" ng-class="vm.assignmentIcon(task)"></i></div>
                 <div class="student-assignment-copy">
                     <div class="student-assignment-badges">
                         <span>{{vm.assignmentTypeLabel(task)}}</span>
-                        <span class="is-free" ng-if="!task.topicId">Nhiệm vụ lớp</span>
+                        <span class="is-free" ng-if="!task.topicId && !task.ieltsTestId">Nhiệm vụ lớp</span>
+                        <span ng-if="task.ieltsTestId">Part {{task.ieltsPart}}</span>
                         <span class="is-overdue" ng-if="task.overdue">Quá hạn</span>
                     </div>
                     <h3>{{task.title}}</h3>
                     <p class="student-assignment-topic" ng-if="task.topicId">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
-                    <p class="student-assignment-topic is-free" ng-if="!task.topicId"><i class="fa fa-lightbulb-o"></i> Không yêu cầu topic</p>
+                    <p class="student-assignment-topic" ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}} · Part {{task.ieltsPart}}</p>
+                    <p class="student-assignment-topic is-free" ng-if="!task.topicId && !task.ieltsTestId"><i class="fa fa-lightbulb-o"></i> Không yêu cầu topic</p>
                     <p class="student-assignment-class"><i class="fa fa-users"></i> {{task.className}}</p>
                     <p class="student-assignment-note" ng-if="task.notes">{{task.notes}}</p>
                     <div class="student-assignment-progress">
-                        <span>Đã đạt <strong>{{task.completedAttempts}}/{{task.requiredAttempts}}</strong> lần</span>
+						<span>{{vm.isIeltsAssignment(task) ? 'Đã làm' : 'Đã đạt'}} <strong>{{task.completedAttempts}}/{{task.requiredAttempts}}</strong> lần</span>
                         <b>Còn {{task.remainingAttempts}} lần</b>
                     </div>
                     <div class="student-assignment-bar"><span ng-style="{'width': (task.completedAttempts * 100 / task.requiredAttempts) + '%'}"></span></div>
                     <div class="student-assignment-footer">
                         <small><i class="fa fa-clock-o"></i> Hạn {{task.dueDate | date:'dd/MM/yyyy'}}{{task.dueTime ? ' ' + task.dueTime : ''}}</small>
-                        <button type="button" ng-if="task.topicId" ng-click="vm.openAssignedTask(task)">
+                        <button type="button" ng-if="task.topicId || task.ieltsTestId" ng-click="vm.openAssignedTask(task)">
                             {{vm.assignmentActionLabel(task)}} <i class="fa fa-arrow-right"></i>
                         </button>
-                        <span class="student-assignment-read-note" ng-if="!task.topicId"><i class="fa fa-check-circle-o"></i> Đọc yêu cầu phía trên</span>
+                        <span class="student-assignment-read-note" ng-if="!task.topicId && !task.ieltsTestId"><i class="fa fa-check-circle-o"></i> Đọc yêu cầu phía trên</span>
                     </div>
                 </div>
             </article>
@@ -356,7 +383,7 @@
         </div>
 
 
-        <!-- IELTS -->
+        <!-- IELTS READING -->
         <div
                 class="learning-tile-wrap"
                 ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin)">
@@ -370,7 +397,7 @@
                 </span>
 
                 <span class="learning-tile-title">
-                    IELTS TEST
+                    IELTS READING
                 </span>
 
                 <span class="learning-tile-desc">
@@ -381,6 +408,23 @@
                     <i class="fa fa-arrow-right"></i>
                 </span>
 
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+        <!-- IELTS LISTENING -->
+        <div
+                class="learning-tile-wrap"
+                ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin)">
+            <a href="create_ielts_listening_test"
+               class="learning-tile learning-tile-listening">
+                <span class="learning-tile-icon">
+                    <i class="fa fa-headphones"></i>
+                </span>
+                <span class="learning-tile-title">IELTS LISTENING</span>
+                <span class="learning-tile-desc">Nghe và luyện đề mỗi ngày</span>
+                <span class="learning-tile-go"><i class="fa fa-arrow-right"></i></span>
                 <span class="learning-blob learning-blob-1"></span>
                 <span class="learning-blob learning-blob-2"></span>
             </a>
@@ -854,6 +898,23 @@
     .student-assignment-heading p { margin:0; font-size:13px; color:#70758e; }
     .student-assignment-kicker { color:#7057ee; font-size:11px; font-weight:900; letter-spacing:1px; }
     .student-assignment-count { flex:none; padding:8px 12px; border-radius:999px; color:#fff; background:linear-gradient(135deg,#735af2,#9b63f3); font-size:12px; font-weight:900; }
+    .reading-resume-card { position:relative; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:15px; margin-top:14px; padding:16px; overflow:hidden; border:1px solid #cfc7ff; border-radius:18px; background:linear-gradient(125deg,#f2efff 0%,#fff 50%,#eafcff 100%); box-shadow:0 10px 24px rgba(92,73,194,.13); }
+    .reading-resume-card:before { content:""; position:absolute; top:0; bottom:0; left:0; width:5px; background:linear-gradient(180deg,#745af2,#28c8bd); }
+    .reading-resume-card:after { content:""; position:absolute; right:-45px; top:-55px; width:130px; height:130px; border-radius:50%; background:rgba(116,90,242,.07); pointer-events:none; }
+    .reading-resume-icon { position:relative; z-index:1; display:flex; align-items:center; justify-content:center; width:50px; height:50px; border-radius:16px; color:#fff; background:linear-gradient(135deg,#7259ef,#36c7bc); box-shadow:0 8px 18px rgba(105,83,224,.24); font-size:21px; }
+    .reading-resume-copy { position:relative; z-index:1; min-width:0; }
+    .reading-resume-kicker { display:inline-block; margin-bottom:4px; color:#7057ee; font-size:10px; font-weight:900; letter-spacing:.8px; }
+    .reading-resume-copy h3 { margin:0; color:#28265c; font-size:17px; line-height:1.3; font-weight:900; }
+    .reading-resume-title { margin:4px 0 6px; overflow:hidden; color:#49516e; font-size:13px; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
+    .reading-resume-meta { display:flex; flex-wrap:wrap; gap:6px 12px; color:#707892; font-size:11px; }
+    .reading-resume-meta i { color:#6d5ae8; }
+    .reading-resume-actions { position:relative; z-index:1; min-width:225px; text-align:right; }
+    .reading-resume-actions strong { display:block; margin-bottom:8px; color:#393660; font-size:12px; }
+    .reading-resume-actions > div { display:flex; justify-content:flex-end; gap:7px; }
+    .reading-resume-actions button { border:0; border-radius:11px; padding:9px 12px; font-size:11px; font-weight:900; transition:transform .18s ease,box-shadow .18s ease; }
+    .reading-resume-actions button:hover { transform:translateY(-1px); }
+    .reading-resume-actions .is-continue { color:#fff; background:linear-gradient(135deg,#7059ef,#4f8df4); box-shadow:0 6px 14px rgba(99,82,222,.22); }
+    .reading-resume-actions .is-cancel { color:#7b718d; background:#fff; border:1px solid #ded9ef; }
     .student-assignment-grid { display:grid; grid-template-columns:1fr; gap:10px; margin-top:13px; }
     .student-assignment-card { position:relative; display:flex; flex-direction:column; gap:9px; min-height:210px; padding:14px; overflow:hidden; border:1px solid #e6e2ff; border-radius:18px; background:linear-gradient(155deg,#fff 0%,#fbfaff 100%); box-shadow:0 9px 20px rgba(76,69,140,.10); transition:transform .2s ease,box-shadow .2s ease; }
     .student-assignment-card:hover { transform:translateY(-3px); box-shadow:0 13px 25px rgba(76,69,140,.16); }
@@ -1433,11 +1494,25 @@
         }
     }
 
+    .learning-tile-listening {
+        background:
+                linear-gradient(
+                        135deg,
+                        #7655ef 0%,
+                        #d557b5 100%
+                );
+    }
+
     @media (max-width: 767px) {
         .learning-hub-brand-mark { display:none !important; }
         .learning-hub-hero-art { flex-basis:0; width:0; height:0; }
         .student-assignment-board { padding:12px; border-radius:19px; }
         .student-assignment-heading p { max-width:235px; }
+        .reading-resume-card { grid-template-columns:auto minmax(0,1fr); gap:11px; padding:14px 12px; }
+        .reading-resume-icon { width:43px; height:43px; border-radius:14px; }
+        .reading-resume-actions { grid-column:1 / -1; min-width:0; padding-top:3px; text-align:left; }
+        .reading-resume-actions > div { justify-content:flex-start; }
+        .reading-resume-actions button { flex:1; padding:10px 8px; }
         .student-assignment-footer { align-items:flex-end; }
     }
 
