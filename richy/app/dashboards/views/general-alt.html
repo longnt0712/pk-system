@@ -64,6 +64,42 @@
         </div>
     </section>
 
+    <section class="student-resume-board"
+             ng-if="settings.ieltsRoom == true && vm.permissionsLoaded && vm.resumeDrafts.length">
+        <div class="student-resume-heading">
+            <div>
+                <span class="student-assignment-kicker"><i class="fa fa-history"></i> BÀI ĐANG LÀM DỞ</span>
+                <h2>Bạn có muốn làm tiếp không?</h2>
+                <p>Tiến độ được tự động lưu trên trình duyệt này.</p>
+            </div>
+            <span class="student-assignment-count">{{vm.resumeDrafts.length}} bài</span>
+        </div>
+
+        <article class="reading-resume-card" ng-repeat="draft in vm.resumeDrafts track by draft.storageKey">
+            <div class="reading-resume-icon">
+                <i class="fa" ng-class="draft.kind === 'DAILY_VOCAB' ? 'fa-language' : draft.kind === 'DAILY_LISTENING' || draft.kind === 'IELTS_LISTENING' ? 'fa-headphones' : 'fa-file-text-o'"></i>
+            </div>
+            <div class="reading-resume-copy">
+                <span class="reading-resume-kicker">{{draft.kind === 'DAILY_VOCAB' ? 'DAILY VOCAB' : draft.kind === 'DAILY_LISTENING' ? 'DAILY LISTENING' : draft.kind === 'IELTS_LISTENING' ? 'IELTS LISTENING' : 'IELTS READING'}}</span>
+                <h3>Bạn còn một bài đang làm dở</h3>
+                <p class="reading-resume-title">{{draft.title}}</p>
+                <div class="reading-resume-meta">
+                    <span><i class="fa fa-check-circle-o"></i> {{draft.progressLabel}} {{draft.progressValue}}</span>
+                    <span ng-if="draft.remainingSeconds"><i class="fa fa-clock-o"></i> Còn {{vm.formatReadingDraftTime(draft.remainingSeconds)}}</span>
+                    <span ng-if="draft.savedAt"><i class="fa fa-save"></i> Lưu lúc {{draft.savedAt | date:'HH:mm dd/MM/yyyy'}}</span>
+                </div>
+            </div>
+            <div class="reading-resume-actions">
+                <button type="button" class="is-continue" ng-click="vm.resumeDraft(draft)">
+                    <i class="fa fa-play"></i> Có, làm tiếp
+                </button>
+                <button type="button" class="is-cancel" ng-click="vm.cancelDraft(draft)">
+                    Không, hủy bài
+                </button>
+            </div>
+        </article>
+    </section>
+
     <section class="student-assignment-board"
              ng-if="settings.ieltsRoom == true && vm.permissionsLoaded && (vm.isRoleView || vm.isRoleUser || vm.hasRole('ROLE_STUDENT'))">
         <div class="student-assignment-heading">
@@ -75,35 +111,10 @@
             <span class="student-assignment-count" ng-if="!vm.assignedTasksLoading">{{vm.assignedTasks.length}} bài</span>
         </div>
 
-        <article class="reading-resume-card" ng-if="vm.readingDraft">
-            <div class="reading-resume-icon"><i class="fa fa-bookmark"></i></div>
-            <div class="reading-resume-copy">
-                <span class="reading-resume-kicker">BÀI TEST ĐANG LÀM DỞ</span>
-                <h3>Bạn còn một bài test đang làm dở</h3>
-                <p class="reading-resume-title">{{vm.readingDraft.title}}</p>
-                <div class="reading-resume-meta">
-                    <span><i class="fa fa-check-circle-o"></i> Đã trả lời {{vm.readingDraft.answeredCount || 0}}/{{vm.readingDraft.totalQuestions || 40}} câu</span>
-                    <span><i class="fa fa-clock-o"></i> Còn {{vm.formatReadingDraftTime(vm.readingDraft.remainingSeconds)}}</span>
-                    <span ng-if="vm.readingDraft.savedAt"><i class="fa fa-save"></i> Lưu lúc {{vm.readingDraft.savedAt | date:'HH:mm dd/MM/yyyy'}}</span>
-                </div>
-            </div>
-            <div class="reading-resume-actions">
-                <strong>Bạn có muốn làm tiếp không?</strong>
-                <div>
-                    <button type="button" class="is-continue" ng-click="vm.resumeReadingDraft()">
-                        <i class="fa fa-play"></i> Có, làm tiếp
-                    </button>
-                    <button type="button" class="is-cancel" ng-click="vm.cancelReadingDraft()">
-                        Không, hủy bài
-                    </button>
-                </div>
-            </div>
-        </article>
-
         <div class="student-assignment-loading" ng-if="vm.assignedTasksLoading">
             <i class="fa fa-spinner fa-spin"></i> Đang lấy bài được giao...
         </div>
-        <div class="student-assignment-empty" ng-if="!vm.assignedTasksLoading && !vm.assignedTasksError && !vm.assignedTasks.length && !vm.readingDraft">
+        <div class="student-assignment-empty" ng-if="!vm.assignedTasksLoading && !vm.assignedTasksError && !vm.assignedTasks.length">
             <span>🎉</span><strong>Hiện tại bạn không còn bài nào phải làm.</strong>
         </div>
         <div class="student-assignment-empty is-error" ng-if="!vm.assignedTasksLoading && vm.assignedTasksError">
@@ -885,7 +896,8 @@
         object-position: center;
     }
 
-    .student-assignment-board {
+    .student-assignment-board,
+    .student-resume-board {
         margin: 14px 0;
         padding: 15px;
         border: 1px solid #e0ddff;
@@ -893,9 +905,13 @@
         background: linear-gradient(145deg, #fff 0%, #fbfaff 54%, #f2fbff 100%);
         box-shadow: 0 12px 30px rgba(75, 70, 150, .10);
     }
-    .student-assignment-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-    .student-assignment-heading h2 { margin:5px 0 3px; font-size:22px; line-height:1.2; font-weight:900; color:#29275c; }
-    .student-assignment-heading p { margin:0; font-size:13px; color:#70758e; }
+    .student-resume-board { border-color:#cfc7ff; background:linear-gradient(145deg,#f8f6ff 0%,#fff 55%,#effcff 100%); }
+    .student-assignment-heading,
+    .student-resume-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .student-assignment-heading h2,
+    .student-resume-heading h2 { margin:5px 0 3px; font-size:22px; line-height:1.2; font-weight:900; color:#29275c; }
+    .student-assignment-heading p,
+    .student-resume-heading p { margin:0; font-size:13px; color:#70758e; }
     .student-assignment-kicker { color:#7057ee; font-size:11px; font-weight:900; letter-spacing:1px; }
     .student-assignment-count { flex:none; padding:8px 12px; border-radius:999px; color:#fff; background:linear-gradient(135deg,#735af2,#9b63f3); font-size:12px; font-weight:900; }
     .reading-resume-card { position:relative; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:15px; margin-top:14px; padding:16px; overflow:hidden; border:1px solid #cfc7ff; border-radius:18px; background:linear-gradient(125deg,#f2efff 0%,#fff 50%,#eafcff 100%); box-shadow:0 10px 24px rgba(92,73,194,.13); }
@@ -908,9 +924,7 @@
     .reading-resume-title { margin:4px 0 6px; overflow:hidden; color:#49516e; font-size:13px; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
     .reading-resume-meta { display:flex; flex-wrap:wrap; gap:6px 12px; color:#707892; font-size:11px; }
     .reading-resume-meta i { color:#6d5ae8; }
-    .reading-resume-actions { position:relative; z-index:1; min-width:225px; text-align:right; }
-    .reading-resume-actions strong { display:block; margin-bottom:8px; color:#393660; font-size:12px; }
-    .reading-resume-actions > div { display:flex; justify-content:flex-end; gap:7px; }
+    .reading-resume-actions { position:relative; z-index:1; min-width:225px; display:flex; justify-content:flex-end; gap:7px; text-align:right; }
     .reading-resume-actions button { border:0; border-radius:11px; padding:9px 12px; font-size:11px; font-weight:900; transition:transform .18s ease,box-shadow .18s ease; }
     .reading-resume-actions button:hover { transform:translateY(-1px); }
     .reading-resume-actions .is-continue { color:#fff; background:linear-gradient(135deg,#7059ef,#4f8df4); box-shadow:0 6px 14px rgba(99,82,222,.22); }
@@ -1506,12 +1520,13 @@
     @media (max-width: 767px) {
         .learning-hub-brand-mark { display:none !important; }
         .learning-hub-hero-art { flex-basis:0; width:0; height:0; }
-        .student-assignment-board { padding:12px; border-radius:19px; }
+        .student-assignment-board,
+        .student-resume-board { padding:12px; border-radius:19px; }
         .student-assignment-heading p { max-width:235px; }
         .reading-resume-card { grid-template-columns:auto minmax(0,1fr); gap:11px; padding:14px 12px; }
         .reading-resume-icon { width:43px; height:43px; border-radius:14px; }
         .reading-resume-actions { grid-column:1 / -1; min-width:0; padding-top:3px; text-align:left; }
-        .reading-resume-actions > div { justify-content:flex-start; }
+        .reading-resume-actions { justify-content:flex-start; }
         .reading-resume-actions button { flex:1; padding:10px 8px; }
         .student-assignment-footer { align-items:flex-end; }
     }

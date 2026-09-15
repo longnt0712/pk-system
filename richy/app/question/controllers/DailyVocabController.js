@@ -131,6 +131,14 @@
         function chooseActiveDailyResume() {
             var draft = readActiveDailyDraft();
             if (!draft) { return; }
+            try {
+                var dashboardResumeKey = 'daily-vocab-dashboard-resume:v1:' + vm.currentUser.id;
+                if (window.sessionStorage.getItem(dashboardResumeKey) === '1') {
+                    window.sessionStorage.removeItem(dashboardResumeKey);
+                    activeDailyResumeDraft = draft;
+                    return;
+                }
+            } catch (ignoreDashboardResumeFlagError) {}
             if (window.confirm('Bạn có một bài Daily Vocab đang làm dở. Bạn muốn tiếp tục không?')) {
                 activeDailyResumeDraft = draft;
                 return;

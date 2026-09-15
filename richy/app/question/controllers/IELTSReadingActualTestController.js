@@ -693,8 +693,11 @@
         vm.testResult.questionAnswerTestResult = [];
         vm.testResult.user = vm.currentUser;
 
-        var readingDraftStorageKey = 'ieltsReadingInProgress:' + (vm.currentUser.id || 'anonymous')
-            + (vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId : '');
+        var readingDraftBaseKey = 'ieltsReadingInProgress:' + (vm.currentUser.id || 'anonymous');
+        var readingDraftTaskSuffix = vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId : '';
+        var legacyReadingDraftStorageKey = readingDraftBaseKey + readingDraftTaskSuffix;
+        var readingDraftStorageKey = readingDraftBaseKey
+            + (vm.isListeningRoute ? ':listening' : ':reading') + readingDraftTaskSuffix;
         var readingDraftAutosaveTimer = null;
         var readingDraftSubmitted = false;
 
@@ -703,10 +706,14 @@
                 return null;
             }
             try {
-                var draft = JSON.parse($window.localStorage.getItem(readingDraftStorageKey));
+                var raw = $window.localStorage.getItem(readingDraftStorageKey);
+                if (!raw) { raw = $window.localStorage.getItem(legacyReadingDraftStorageKey); }
+                var draft = JSON.parse(raw);
                 if (!draft || String(draft.userId) !== String(vm.currentUser.id) || !draft.testId) {
                     return null;
                 }
+                if ((draft.testMode === 'LISTENING' || draft.isListening === true) !== vm.isListeningRoute
+                        && (draft.testMode || angular.isDefined(draft.isListening))) { return null; }
                 return draft;
             } catch (ignoreReadingDraftReadError) {
                 return null;
@@ -716,6 +723,7 @@
         function clearReadingDraft() {
             try {
                 $window.localStorage.removeItem(readingDraftStorageKey);
+                $window.localStorage.removeItem(legacyReadingDraftStorageKey);
             } catch (ignoreReadingDraftClearError) {
                 // Submission can still finish when browser storage is unavailable.
             }
@@ -773,6 +781,10 @@
                     userId: vm.currentUser.id,
                     testId: testId,
                     title: vm.ieltsReadingActualTest.title || 'IELTS Reading Test',
+                    isListening: vm.isListeningRoute === true,
+                    testMode: vm.isListeningRoute ? 'LISTENING' : 'READING',
+                    assignmentTaskId: vm.assignmentTaskId || null,
+                    assignmentPart: vm.assignedPart || null,
                     savedAt: new Date().toISOString(),
                     passageNumber: vm.passageNumber || 1,
                     currentOrdinalNumber: Number(vm.tempOrdinalNumber) || null,
@@ -782,6 +794,9 @@
                     results: results,
                     questionStates: serializeReadingQuestionStates()
                 }));
+                if (legacyReadingDraftStorageKey !== readingDraftStorageKey) {
+                    $window.localStorage.removeItem(legacyReadingDraftStorageKey);
+                }
             } catch (ignoreReadingDraftWriteError) {
                 // The test remains usable when private browsing blocks localStorage.
             }

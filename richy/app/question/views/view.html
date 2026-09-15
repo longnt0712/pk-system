@@ -881,16 +881,13 @@
 
                                     <span>Progress: {{vm.percentage}}%</span>
 
-                                    <button ng-if="vm.mode.id == 8" type="button" class="btn btn-info daily-listening-save-draft-btn"
-                                            ng-click="vm.saveDailyListeningDraft()"
-                                            ng-disabled="vm.savingTestResult || !vm.currentCard.id">
-                                        <i class="fa fa-save" aria-hidden="true"></i> LƯU BÀI ĐANG LÀM
-                                    </button>
-
-                                    <button class="btn btn-danger" ng-click="vm.saveTestResult()"
-                                            ng-disabled="vm.savingTestResult || vm.isSaveTestResult || !vm.currentCard.id">
-                                        SURRENDER
-                                    </button>
+                                    <span class="daily-listening-surrender-wrap">
+                                        <button class="btn btn-danger" ng-click="vm.saveTestResult()"
+                                                ng-disabled="vm.savingTestResult || vm.isSaveTestResult || !vm.currentCard.id">
+                                            SURRENDER
+                                        </button>
+                                        <small ng-if="vm.mode.id == 8">Ấn vào đây để nộp khi bạn không thể làm thêm</small>
+                                    </span>
 
                                     <small ng-if="vm.mode.id == 8 && vm.dailyListeningDraftMessage"
                                            class="daily-listening-draft-status"
@@ -6060,6 +6057,21 @@
     .daily-listening-save-draft-btn {
         border-radius: 8px;
         font-weight: 700;
+    }
+
+    .daily-listening-surrender-wrap {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        max-width: 210px;
+    }
+
+    .daily-listening-surrender-wrap small {
+        color: #73768a;
+        font-size: 10px;
+        line-height: 1.25;
+        font-weight: 600;
     }
 
     .daily-listening-draft-status {

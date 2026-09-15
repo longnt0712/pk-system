@@ -700,17 +700,20 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 				if (day.getMovedToDate() != null) { continue; }
 				EnrolmentClassScheduleDayDto dayDto = new EnrolmentClassScheduleDayDto(day);
 				enrichScheduleDeadline(dayDto, timeline);
-				EffectiveClassSchedule.Slot previous = timeline.previous(day.getScheduleDate());
-				LocalDateTime start = previous == null
+				EffectiveClassSchedule.Slot assignedSession = timeline.on(day.getScheduleDate());
+				LocalDateTime start = assignedSession == null
 						? HomeworkTopicCompletion.midnight(java.time.LocalDate.parse(day.getScheduleDate()))
-						: HomeworkTopicCompletion.at(previous.date, previous.endTime);
+						: HomeworkTopicCompletion.at(assignedSession.date, assignedSession.endTime);
+				if (start == null) {
+					start = HomeworkTopicCompletion.midnight(java.time.LocalDate.parse(day.getScheduleDate()));
+				}
 				if (start != null && now.isBefore(start)) { continue; }
 
 				for (EnrolmentClassScheduleTaskDto task : dayDto.getTasks()) {
 					if (!"HOMEWORK".equals(task.getSection()) || task.getId() == null
 							|| !seenTasks.add(task.getId())) { continue; }
 					LocalDateTime deadline = HomeworkTopicCompletion.deadlineEnd(task.getResolvedDueDate(), task.getResolvedDueTime());
-					if (deadline == null || !deadline.isAfter(start)) { continue; }
+					if (deadline == null || !deadline.isAfter(start) || !now.isBefore(deadline)) { continue; }
 
 					int required = task.getRequiredAttempts();
 					int completed = 0;
@@ -744,7 +747,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					item.setAssignedDate(day.getScheduleDate()); item.setDueDate(task.getResolvedDueDate());
 					item.setDueTime(task.getResolvedDueTime()); item.setRequiredAttempts(required);
 					item.setCompletedAttempts(Math.min(required, completed)); item.setRemainingAttempts(remaining);
-					item.setOverdue(!now.isBefore(deadline)); result.add(item);
+					item.setOverdue(false); result.add(item);
 				}
 			}
 		}
@@ -821,10 +824,12 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
         for (User student : scheduleStudentDomains(classId, getCurrentUser())) { studentIds.add(student.getId()); }
         if (studentIds.isEmpty()) { return dto; }
         EffectiveClassSchedule.Slot assignedSession = timeline.on(day.getScheduleDate());
-        EffectiveClassSchedule.Slot previousSession = timeline.previous(day.getScheduleDate());
-        LocalDateTime start = previousSession == null
+        LocalDateTime start = assignedSession == null
                 ? HomeworkTopicCompletion.midnight(java.time.LocalDate.parse(day.getScheduleDate()))
-                : HomeworkTopicCompletion.at(previousSession.date, previousSession.endTime);
+                : HomeworkTopicCompletion.at(assignedSession.date, assignedSession.endTime);
+        if (start == null) {
+            start = HomeworkTopicCompletion.midnight(java.time.LocalDate.parse(day.getScheduleDate()));
+        }
         LocalDateTime maximumEnd = start;
         Map<EnrolmentClassScheduleTaskDto, LocalDateTime> ends = new LinkedHashMap<EnrolmentClassScheduleTaskDto, LocalDateTime>();
         for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
@@ -861,15 +866,15 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
     private void enrichScheduleDeadline(EnrolmentClassScheduleDayDto dto, EffectiveClassSchedule timeline) {
         if (dto.getMovedToDate() != null) { return; }
-        EffectiveClassSchedule.Slot previous = timeline.previous(dto.getScheduleDate());
         EffectiveClassSchedule.Slot current = timeline.on(dto.getScheduleDate()), next = timeline.next(dto.getScheduleDate());
         if (current != null) { dto.setSessionStartTime(current.startTime); dto.setSessionEndTime(current.endTime); }
-        dto.setDefaultTaskStart(previous == null ? dto.getScheduleDate() + "T00:00" : previous.deadline());
+        dto.setDefaultTaskStart(current == null || current.deadline() == null
+                ? dto.getScheduleDate() + "T00:00" : current.deadline());
         dto.setDefaultHomeworkDeadline(next == null ? null : next.deadline());
         if (dto.getTasks() == null) { return; }
         for (EnrolmentClassScheduleTaskDto task : dto.getTasks()) {
-            task.setResolvedStartDate(previous == null ? dto.getScheduleDate() : previous.date);
-            task.setResolvedStartTime(previous == null ? null : previous.endTime);
+            task.setResolvedStartDate(current == null ? dto.getScheduleDate() : current.date);
+            task.setResolvedStartTime(current == null ? null : current.endTime);
             if (HomeworkTopicCompletion.automaticDeadline(task)) {
                 task.setResolvedDueDate(next == null || next.endTime == null ? null : next.date);
                 task.setResolvedDueTime(next == null ? null : next.endTime);

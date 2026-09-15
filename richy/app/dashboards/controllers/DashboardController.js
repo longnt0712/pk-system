@@ -42,7 +42,7 @@
         vm.assignedTasks = [];
         vm.assignedTasksLoading = false;
         vm.assignedTasksError = false;
-        vm.readingDraft = null;
+        vm.resumeDrafts = [];
 
         vm.isRoleView = false;
         vm.isRoleUser = false;
@@ -130,7 +130,7 @@
             };
 
             vm.applyRoles(vm.myUser.roles);
-            vm.loadReadingDraft();
+            vm.loadResumeDrafts();
         };
 
         vm.loadAssignedTasks = function () {
@@ -209,24 +209,88 @@
             }
         };
 
-        vm.loadReadingDraft = function () {
-            vm.readingDraft = null;
-            if (!vm.myUser.id) {
-                return;
+        vm.loadResumeDrafts = function () {
+            vm.resumeDrafts = [];
+            if (!vm.myUser.id) { return; }
+
+            var userId = String(vm.myUser.id);
+            var ieltsPrefix = 'ieltsReadingInProgress:' + userId;
+            var dailyVocabKey = 'daily-vocab-active:v1:' + userId;
+            var dailyListeningPrefix = 'daily-listening-progress:v1:' + userId + ':';
+            var now = Date.now();
+
+            function readDraft(key) {
+                try { return JSON.parse($window.localStorage.getItem(key)); }
+                catch (ignoreDraftReadError) { return null; }
             }
-            var storageKey = 'ieltsReadingInProgress:' + vm.myUser.id;
+
+            function addIeltsDraft(key, draft) {
+                if (!draft || !draft.testId || String(draft.userId) !== userId) { return; }
+                var savedAt = new Date(draft.savedAt || 0).getTime();
+                var taskMatch = /:task:(\d+)$/.exec(key);
+                var listening = draft.isListening === true || draft.testMode === 'LISTENING'
+                    || key.indexOf(ieltsPrefix + ':listening') === 0
+                    || /listening/i.test(String(draft.title || ''));
+                vm.resumeDrafts.push({
+                    kind: listening ? 'IELTS_LISTENING' : 'IELTS_READING',
+                    storageKey: key,
+                    title: draft.title || (listening ? 'IELTS Listening Test' : 'IELTS Reading Test'),
+                    savedAt: isFinite(savedAt) ? savedAt : 0,
+                    remainingSeconds: Number(draft.remainingSeconds) || 0,
+                    progressLabel: 'Đã trả lời',
+                    progressValue: (Number(draft.answeredCount) || 0) + '/' + (Number(draft.totalQuestions) || 40) + ' câu',
+                    testId: draft.testId,
+                    assignmentTaskId: draft.assignmentTaskId || (taskMatch ? Number(taskMatch[1]) : null),
+                    assignmentPart: draft.assignmentPart || (taskMatch ? draft.passageNumber : null)
+                });
+            }
+
+            function addDailyVocabDraft(draft) {
+                if (!draft || draft.version !== 1 || String(draft.ownerId) !== userId
+                        || !draft.savedAt || now - Number(draft.savedAt) > 7 * 86400000
+                        || !angular.isArray(draft.questions) || !draft.questions.length) { return; }
+                var completed = Math.max(0, Math.min(Number(draft.currentPosition) || 0, Number(draft.totalCard) || draft.questions.length));
+                vm.resumeDrafts.push({
+                    kind: 'DAILY_VOCAB',
+                    storageKey: dailyVocabKey,
+                    title: draft.title || 'Daily Vocab',
+                    savedAt: Number(draft.savedAt) || 0,
+                    remainingSeconds: Number(draft.counter) || 0,
+                    progressLabel: 'Đã làm',
+                    progressValue: completed + '/' + (Number(draft.totalCard) || draft.questions.length) + ' từ'
+                });
+            }
+
+            function addDailyListeningDraft(key, draft) {
+                if (!draft || draft.version !== 1 || draft.modeId !== 8 || String(draft.ownerId) !== userId
+                        || !draft.card || draft.card.id == null || !draft.updatedAt
+                        || now - Number(draft.updatedAt) > 7 * 86400000) { return; }
+                vm.resumeDrafts.push({
+                    kind: 'DAILY_LISTENING',
+                    storageKey: key,
+                    title: draft.card.question || 'Daily Listening',
+                    savedAt: Number(draft.updatedAt) || 0,
+                    progressLabel: 'Tiến độ',
+                    progressValue: (Number(draft.percentage) || 0) + '%'
+                });
+            }
+
             try {
-                var draft = JSON.parse($window.localStorage.getItem(storageKey));
-                if (draft && draft.testId && String(draft.userId) === String(vm.myUser.id)) {
-                    vm.readingDraft = draft;
+                addDailyVocabDraft(readDraft(dailyVocabKey));
+                for (var index = 0; index < $window.localStorage.length; index++) {
+                    var key = $window.localStorage.key(index);
+                    if (!key) { continue; }
+                    if (key === ieltsPrefix || key.indexOf(ieltsPrefix + ':task:') === 0
+                            || key.indexOf(ieltsPrefix + ':reading') === 0
+                            || key.indexOf(ieltsPrefix + ':listening') === 0) {
+                        addIeltsDraft(key, readDraft(key));
+                    }
+                    if (key.indexOf(dailyListeningPrefix) === 0) { addDailyListeningDraft(key, readDraft(key)); }
                 }
-            } catch (readingDraftError) {
-                try {
-                    $window.localStorage.removeItem(storageKey);
-                } catch (ignoreReadingDraftClearError) {
-                    // Keep the dashboard usable when browser storage is unavailable.
-                }
+            } catch (ignoreDraftStorageError) {
+                vm.resumeDrafts = [];
             }
+            vm.resumeDrafts.sort(function (a, b) { return Number(b.savedAt) - Number(a.savedAt); });
         };
 
         vm.formatReadingDraftTime = function (seconds) {
@@ -236,29 +300,33 @@
             return minutes + ':' + (remainingSeconds < 10 ? '0' : '') + remainingSeconds;
         };
 
-        vm.resumeReadingDraft = function () {
-            if (!vm.readingDraft || !vm.readingDraft.testId) {
+        vm.resumeDraft = function (draft) {
+            if (!draft) { return; }
+            if (draft.kind === 'DAILY_VOCAB') {
+                try { $window.sessionStorage.setItem('daily-vocab-dashboard-resume:v1:' + vm.myUser.id, '1'); } catch (ignoreResumeFlagError) {}
+                $state.go('application.daily_vocab', {listFlashCard: 0});
                 return;
             }
-            $state.go('application.ielts_reading_actual_test', {
-                ieltsReadingTestId: vm.readingDraft.testId
+            if (draft.kind === 'DAILY_LISTENING') {
+                try { $window.sessionStorage.setItem('daily-listening-dashboard-resume:v1:' + vm.myUser.id, '1'); } catch (ignoreListeningResumeFlagError) {}
+                $state.go('application.view', {listFlashCard: 0});
+                return;
+            }
+            if (!draft.testId) { return; }
+            $state.go(draft.kind === 'IELTS_LISTENING'
+                ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test', {
+                ieltsReadingTestId: draft.testId,
+                assignmentTaskId: draft.assignmentTaskId,
+                assignmentPart: draft.assignmentPart
             });
         };
 
-        vm.cancelReadingDraft = function () {
-            if (!vm.readingDraft || !vm.myUser.id) {
-                return;
-            }
-            var confirmed = $window.confirm('Bạn có chắc muốn hủy bài test đang làm dở? Toàn bộ đáp án đã lưu của bài này sẽ bị xóa.');
-            if (!confirmed) {
-                return;
-            }
-            try {
-                $window.localStorage.removeItem('ieltsReadingInProgress:' + vm.myUser.id);
-            } catch (ignoreReadingDraftCancelError) {
-                return;
-            }
-            vm.readingDraft = null;
+        vm.cancelDraft = function (draft) {
+            if (!draft || !draft.storageKey) { return; }
+            if (!$window.confirm('Bạn có chắc muốn hủy bài đang làm dở? Toàn bộ tiến độ đã tự lưu của bài này sẽ bị xóa.')) { return; }
+            try { $window.localStorage.removeItem(draft.storageKey); }
+            catch (ignoreDraftCancelError) { return; }
+            vm.loadResumeDrafts();
         };
 
         vm.loadCurrentUserFromCookie = function () {

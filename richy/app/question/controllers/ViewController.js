@@ -3981,6 +3981,14 @@
         }
 
         vm.refreshDailyListeningDraft();
+        try {
+            var dashboardListeningResumeKey = 'daily-listening-dashboard-resume:v1:'
+                + String(vm.currentUser && vm.currentUser.id || '');
+            if (window.sessionStorage.getItem(dashboardListeningResumeKey) === '1') {
+                window.sessionStorage.removeItem(dashboardListeningResumeKey);
+                $timeout(function () { vm.resumeDailyListeningDraft(); }, 0);
+            }
+        } catch (ignoreDashboardListeningResumeError) {}
         dailyListeningDraftHeartbeatTimer = $timeout(dailyListeningDraftHeartbeat, 5000);
         document.addEventListener('visibilitychange', persistDailyListeningOnHide, false);
         window.addEventListener('beforeunload', persistDailyListeningBeforeUnload, false);
