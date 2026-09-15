@@ -385,7 +385,7 @@
             })
 
             .state('application.view', {
-                url: '/view/:listFlashCard?assignmentTopicId&assignmentCategoryId&assignmentTaskId',
+                url: '/view/:listFlashCard?assignmentTopicId&assignmentCategoryId&assignmentTaskId&assignmentSourceQuestionId',
                 templateUrl: 'question/views/view.html',
                 data: {pageTitle: 'IELTS VIEW'},
                 controller: 'ViewController as vm',

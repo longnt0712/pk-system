@@ -561,6 +561,15 @@
             blockUI.start();
             service.getPageForGames(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
                 blockUI.stop();
+                if (vm.mode.id === 8 && vm.assignmentLaunch.sourceQuestionId && data && angular.isArray(data.content)) {
+                    data.content = data.content.filter(function (question) {
+                        return question && String(question.id) === String(vm.assignmentLaunch.sourceQuestionId);
+                    });
+                    data.totalElements = data.content.length;
+                    if (!data.content.length) {
+                        toastr.warning('Bài nghe/Track được giao không còn trong Topic này.');
+                    }
+                }
                 vm.rawQuestions = data.content;
 
                 if (vm.mode.id == 13) {
@@ -1171,6 +1180,7 @@
             taskId: $stateParams.assignmentTaskId || null,
             topicId: $stateParams.assignmentTopicId || null,
             categoryId: $stateParams.assignmentCategoryId || null,
+            sourceQuestionId: $stateParams.assignmentSourceQuestionId || null,
             applied: false
         };
         vm.isFlashCardMode = $stateParams.flashCardModeId | 0;
@@ -3504,6 +3514,7 @@
                 vm.testResult.sourceQuestionId = vm.currentCard && vm.currentCard.id
                     ? vm.currentCard.id
                     : null;
+                vm.testResult.assignmentTaskId = vm.assignmentLaunch.taskId || null;
             } else if (isDailyVocabMode) {
                 vm.testResult.testType = 1;
                 vm.testResult.testName = vm.title.substring(0, 50);
@@ -3782,6 +3793,10 @@
                 ownerId: vm.currentUser.id,
                 updatedAt: Date.now(),
                 clientAttemptKey: vm.dailyListeningAttemptKey,
+                assignmentTaskId: vm.assignmentLaunch.taskId || null,
+                assignmentTopicId: vm.assignmentLaunch.topicId || null,
+                assignmentCategoryId: vm.assignmentLaunch.categoryId || null,
+                assignmentSourceQuestionId: vm.assignmentLaunch.sourceQuestionId || null,
                 card: currentDailyListeningCardSnapshot(),
                 fillingGapQuestion: vm.fillingGapQuestion,
                 gapAnswers: angular.copy(vm.gapAnswers || {}),
@@ -3917,6 +3932,12 @@
             card = card || angular.copy(draft.card);
 
             vm.mode = {id: 8, name: 'FILLING GAPS'};
+            if (draft.assignmentTaskId) {
+                vm.assignmentLaunch.taskId = draft.assignmentTaskId;
+                vm.assignmentLaunch.topicId = draft.assignmentTopicId || null;
+                vm.assignmentLaunch.categoryId = draft.assignmentCategoryId || null;
+                vm.assignmentLaunch.sourceQuestionId = draft.assignmentSourceQuestionId || draft.card.id;
+            }
             vm.currentCard = card;
             var existingIndex = -1;
             angular.forEach(vm.questions || [], function (item, index) {

@@ -191,7 +191,8 @@
                 listFlashCard: 0,
                 assignmentTopicId: task.topicId,
                 assignmentCategoryId: task.categoryId,
-                assignmentTaskId: task.taskId
+                assignmentTaskId: task.taskId,
+                assignmentSourceQuestionId: task.sourceQuestionId
             };
             if (task.activityType === 'DAILY_VOCAB') {
                 $state.go('application.daily_vocab', params);
@@ -271,7 +272,11 @@
                     title: draft.card.question || 'Daily Listening',
                     savedAt: Number(draft.updatedAt) || 0,
                     progressLabel: 'Tiến độ',
-                    progressValue: (Number(draft.percentage) || 0) + '%'
+                    progressValue: (Number(draft.percentage) || 0) + '%',
+                    assignmentTaskId: draft.assignmentTaskId || null,
+                    assignmentTopicId: draft.assignmentTopicId || null,
+                    assignmentCategoryId: draft.assignmentCategoryId || null,
+                    assignmentSourceQuestionId: draft.assignmentSourceQuestionId || draft.card.id
                 });
             }
 
@@ -309,7 +314,13 @@
             }
             if (draft.kind === 'DAILY_LISTENING') {
                 try { $window.sessionStorage.setItem('daily-listening-dashboard-resume:v1:' + vm.myUser.id, '1'); } catch (ignoreListeningResumeFlagError) {}
-                $state.go('application.view', {listFlashCard: 0});
+                $state.go('application.view', {
+                    listFlashCard: 0,
+                    assignmentTaskId: draft.assignmentTaskId,
+                    assignmentTopicId: draft.assignmentTopicId,
+                    assignmentCategoryId: draft.assignmentCategoryId,
+                    assignmentSourceQuestionId: draft.assignmentSourceQuestionId
+                });
                 return;
             }
             if (!draft.testId) { return; }

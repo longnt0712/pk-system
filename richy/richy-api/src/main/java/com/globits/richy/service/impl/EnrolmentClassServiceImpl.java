@@ -53,12 +53,14 @@ import com.globits.richy.dto.EnrolmentClassTeamDto;
 import com.globits.richy.dto.TopicForListAllDto;
 import com.globits.richy.dto.StudentAssignedTaskDto;
 import com.globits.richy.dto.QuestionForTestsDto;
+import com.globits.richy.dto.QuestionForGamesDto;
 import com.globits.richy.repository.EnrolmentClassRepository;
 import com.globits.richy.repository.EnrolmentClassScheduleDayRepository;
 import com.globits.richy.repository.EnrolmentClassWeeklySessionRepository;
 import com.globits.richy.repository.TopicRepository;
 import com.globits.richy.repository.TestResultRepository;
 import com.globits.richy.repository.QuestionRepository;
+import com.globits.richy.repository.QuestionTopicRepository;
 import com.globits.richy.repository.PersonDateRepository;
 import com.globits.richy.service.EnrolmentClassService;
 import com.globits.security.domain.Role;
@@ -83,6 +85,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	TopicRepository topicRepository;
 	@Autowired
 	QuestionRepository questionRepository;
+	@Autowired
+	QuestionTopicRepository questionTopicRepository;
 	@Autowired
 	PersonDateRepository personDateRepository;
 
@@ -719,9 +723,12 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					int completed = 0;
 					if (task.getTopicId() != null && ("DAILY_VOCAB".equals(task.getActivityType())
 							|| "DAILY_LISTENING".equals(task.getActivityType()))) {
-						completed = (int) Math.min(Integer.MAX_VALUE, testResultRepository.countSuccessfulAssignmentAttempts(
-								student.getId(), task.getTopicId(), Integer.valueOf(HomeworkTopicCompletion.testType(task)),
-								start, deadline));
+						long completedCount = "DAILY_LISTENING".equals(task.getActivityType()) && task.getSourceQuestionId() != null
+								? testResultRepository.countSuccessfulListeningItemAttempts(student.getId(), task.getTopicId(),
+										task.getSourceQuestionId(), start, deadline)
+								: testResultRepository.countSuccessfulAssignmentAttempts(student.getId(), task.getTopicId(),
+										Integer.valueOf(HomeworkTopicCompletion.testType(task)), start, deadline);
+						completed = (int) Math.min(Integer.MAX_VALUE, completedCount);
 					}
 					if (HomeworkTopicCompletion.ieltsEnabled(task)) {
 						completed = (int) Math.min(Integer.MAX_VALUE, testResultRepository.countIeltsPartAssignmentAttempts(
@@ -742,6 +749,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					item.setTitle(task.getTitle()); item.setNotes(task.getNotes()); item.setActivityType(task.getActivityType());
 					item.setTopicId(task.getTopicId()); item.setTopicName(task.getTopicName());
 					item.setCategoryId(task.getCategoryId()); item.setCategoryName(task.getCategoryName());
+					item.setSourceQuestionId(task.getSourceQuestionId()); item.setSourceQuestionTitle(task.getSourceQuestionTitle());
 					item.setIeltsTestId(task.getIeltsTestId()); item.setIeltsTestTitle(task.getIeltsTestTitle());
 					item.setIeltsPart(task.getIeltsPart());
 					item.setAssignedDate(day.getScheduleDate()); item.setDueDate(task.getResolvedDueDate());
@@ -1060,6 +1068,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
                 task.setDueTime(prepared.getDueTime()); task.setDeadlineAutomatic(prepared.getDeadlineAutomatic());
 				task.setTopic(prepared.getTopic()); task.setDisplayOrder(prepared.getDisplayOrder());
 				task.setAutoCompleteFromTopic(prepared.getAutoCompleteFromTopic());
+				task.setActivityType(prepared.getActivityType()); task.setRequiredAttempts(prepared.getRequiredAttempts());
+				task.setIeltsTest(prepared.getIeltsTest()); task.setIeltsPart(prepared.getIeltsPart());
+				task.setSourceQuestion(prepared.getSourceQuestion());
 				if (task != prepared) {
 					task.getStudentProgress().clear(); task.getStudentProgress().addAll(prepared.getStudentProgress());
 				}
@@ -1329,12 +1340,27 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 						|| ("IELTS_LISTENING".equals(activityType) != listeningTest)) {
 					throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Đề IELTS hoặc Part được chọn không hợp lệ.");
 				}
-				task.setIeltsTest(test); task.setIeltsPart(value.getIeltsPart()); task.setTopic(null);
+				task.setIeltsTest(test); task.setIeltsPart(value.getIeltsPart()); task.setTopic(null); task.setSourceQuestion(null);
 				task.setAutoCompleteFromTopic(false);
 			} else if (value.getTopicId() != null) {
 				Topic topic = topicRepository.findOne(value.getTopicId());
 				if (topic == null) { throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Topic không còn tồn tại."); }
 				task.setTopic(topic);
+				if ("DAILY_LISTENING".equals(activityType) && value.getSourceQuestionId() != null) {
+					Question sourceQuestion = questionRepository.findOne(value.getSourceQuestionId());
+					Long linkCount = sourceQuestion == null ? Long.valueOf(0L)
+							: questionTopicRepository.countByQuestionIdAndTopicId(sourceQuestion.getId(), topic.getId());
+					if (sourceQuestion == null || sourceQuestion.getQuestionType() == null
+							|| !Long.valueOf(6L).equals(sourceQuestion.getQuestionType().getId())
+							|| linkCount == null || linkCount.longValue() < 1L) {
+						throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Bài nghe/Track không thuộc Topic đã chọn.");
+					}
+					task.setSourceQuestion(sourceQuestion);
+				} else {
+					task.setSourceQuestion(null);
+				}
+			} else if (value.getSourceQuestionId() != null) {
+				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Hãy chọn Topic trước khi chọn bài nghe/Track.");
 			}
 			task.setDisplayOrder(result.size());
 			Set<Long> allowedStudentIds = new HashSet<Long>(studentIds);
@@ -1376,6 +1402,32 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			}
 		});
 		return topics;
+	}
+
+	@Override
+	public List<QuestionForGamesDto> getScheduleListeningItems(Long topicId) {
+		List<QuestionForGamesDto> result = new ArrayList<QuestionForGamesDto>();
+		if (topicId == null || topicRepository.findOne(topicId) == null) { return result; }
+		Set<Long> seen = new HashSet<Long>();
+		for (Long questionId : questionTopicRepository.findQuestionIdsByTopicId(topicId)) {
+			if (questionId == null || !seen.add(questionId)) { continue; }
+			Question question = questionRepository.findOne(questionId);
+			if (question != null && question.getQuestionType() != null
+					&& Long.valueOf(6L).equals(question.getQuestionType().getId())) {
+				QuestionForGamesDto item = new QuestionForGamesDto();
+				item.setId(question.getId()); item.setQuestion(question.getQuestion());
+				result.add(item);
+			}
+		}
+		Collections.sort(result, new Comparator<QuestionForGamesDto>() {
+			@Override
+			public int compare(QuestionForGamesDto first, QuestionForGamesDto second) {
+				String a = first == null || first.getQuestion() == null ? "" : first.getQuestion();
+				String b = second == null || second.getQuestion() == null ? "" : second.getQuestion();
+				return a.compareToIgnoreCase(b);
+			}
+		});
+		return result;
 	}
 
 	@Override

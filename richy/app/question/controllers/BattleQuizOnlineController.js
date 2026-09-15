@@ -1305,10 +1305,13 @@
            ===================================================== */
 
         function connectRealtime(code) {
-            stopPolling();
-
             vm.connectionMode =
                 'CONNECTING';
+
+            /* Keep a lightweight REST reconciliation while the client is still
+               in the lobby/countdown. A mobile WebSocket can stay connected yet
+               miss the host's START frame when the browser is briefly suspended. */
+            startPolling();
 
             battleService
                 .connectRealtime(
@@ -1333,7 +1336,7 @@
                             vm.connectionMode =
                                 'REALTIME';
 
-                            stopPolling();
+                            startPolling();
                         } else {
                             vm.connectionMode =
                                 'POLLING';
@@ -1370,6 +1373,14 @@
                         if (
                             !vm.room ||
                             destroyed
+                        ) {
+                            return;
+                        }
+
+                        if (
+                            vm.realtimeConnected &&
+                            vm.room.status !== 'LOBBY' &&
+                            vm.room.status !== 'COUNTDOWN'
                         ) {
                             return;
                         }

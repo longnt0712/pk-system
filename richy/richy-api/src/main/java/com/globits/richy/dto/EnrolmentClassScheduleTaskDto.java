@@ -46,6 +46,8 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
     private String topicName;
     private Long categoryId;
     private String categoryName;
+    private Long sourceQuestionId;
+    private String sourceQuestionTitle;
     private Long ieltsTestId;
     private String ieltsTestTitle;
     private Integer ieltsPart;
@@ -64,6 +66,10 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
                 categoryId = task.getTopic().getTopicCategory().getId();
                 categoryName = task.getTopic().getTopicCategory().getName();
             }
+        }
+        if (task.getSourceQuestion() != null) {
+            sourceQuestionId = task.getSourceQuestion().getId();
+            sourceQuestionTitle = task.getSourceQuestion().getQuestion();
         }
         if (task.getIeltsTest() != null) {
             ieltsTestId = task.getIeltsTest().getId();
@@ -94,6 +100,10 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
     public void setCategoryId(Long value) { categoryId = value; }
     public String getCategoryName() { return categoryName; }
     public void setCategoryName(String value) { categoryName = value; }
+    public Long getSourceQuestionId() { return sourceQuestionId; }
+    public void setSourceQuestionId(Long value) { sourceQuestionId = value; }
+    public String getSourceQuestionTitle() { return sourceQuestionTitle; }
+    public void setSourceQuestionTitle(String value) { sourceQuestionTitle = value; }
     public Long getIeltsTestId() { return ieltsTestId; }
     public void setIeltsTestId(Long value) { ieltsTestId = value; }
     public String getIeltsTestTitle() { return ieltsTestTitle; }

@@ -157,13 +157,10 @@
                             <!--<div class="col-md-6 passage-text-for-media">-->
                             <!--ng-style="(x.selectedMedia == true  && {'color':'black'})"-->
                             <div class="col-md-6 idp-reading-pane"
-                                 ng-style="{'width': vm.readingPanePercent + '%'}"
+                                 ng-style="vm.readingPaneStyle()"
                                  ng-hide="vm.ieltsReadingActualTest.subQuestions[0].type === 6">
                                 <!--<h3>{{vm.ieltsReadingActualTest.subQuestions[0].type}}</h3>-->
                                 <div class="row">
-                                    <div class="col-md-12 reading-passage-auto-intro" ng-if="!vm.isListeningRoute">
-                                        <p><em>You should spend about 20 minutes on Questions 1–13.</em></p>
-                                    </div>
                                     <div class="notes-highlight actual-test-font-global" id="passage-1-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes">
                                         <div  class="close-highlight text-right">
                                             <i class="fa fa-times text-right close-note-icon" ng-click="closeASpecificNote1($index+1)"></i>
@@ -180,14 +177,14 @@
                             </div>
 
                             <div class="idp-split-divider"
-                                 ng-style="{'left': vm.readingPanePercent + '%'}"
+                                 ng-style="vm.readingDividerStyle()"
                                  ng-hide="vm.ieltsReadingActualTest.subQuestions[0].type === 6"
-                                 ng-mousedown="vm.startReadingResize($event)"
+                                 reading-split-resize="vm.startReadingResize($event)"
                                  ng-dblclick="vm.resetReadingResize()"
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-style="{'width': vm.ieltsReadingActualTest.subQuestions[0].type === 6 ? '100%' : (100 - vm.readingPanePercent) + '%'}" class="col-md-6 question-content idp-question-pane" ng-mousedown="closeNotes1()" id="passage-question-text-1">
+                            <div ng-style="vm.questionPaneStyle(vm.ieltsReadingActualTest.subQuestions[0].type === 6)" class="col-md-6 question-content idp-question-pane" ng-mousedown="closeNotes1()" id="passage-question-text-1">
                                 <!--<span style="" my-draggable>Drag Me</span>-->
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
@@ -418,7 +415,7 @@
                                     </div>
 
                                     <div class="row">
-                                        <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB.items" dnd-drop="onDropB(listB, item, index)" ng-repeat="itemB in listB.items"  ng-if="item.type == 4">
+                                        <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB.items" dnd-drop="onDropB(listB, item, index)" touch-dnd-drop="onDropB(listB, item, index)" ng-repeat="itemB in listB.items"  ng-if="item.type == 4">
                                         <span
                                                 dnd-draggable="getSelectedItemsIncluding(listB, itemB)"
                                                 dnd-draggable="itemB"
@@ -582,12 +579,9 @@
                     <div class="portlet-body">
                         <div ng-show="vm.passageNumber == 2" class="row idp-split-row" >
                             <div class="col-md-6 idp-reading-pane"
-                                 ng-style="{'width': vm.readingPanePercent + '%'}"
+                                 ng-style="vm.readingPaneStyle()"
                                  ng-hide="vm.ieltsReadingActualTest.subQuestions[1].type === 6">
                                 <div class="row">
-                                    <div class="col-md-12 reading-passage-auto-intro" ng-if="!vm.isListeningRoute">
-                                        <p><em>You should spend about 20 minutes on Questions 14–26.</em></p>
-                                    </div>
                                     <div class="notes-highlight actual-test-font-global" id="passage-2-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes2">
                                         <div  class="close-highlight text-right">
                                             <i class="fa fa-times text-right close-note-icon" ng-click="closeASpecificNote2($index + 1)"></i>
@@ -604,14 +598,14 @@
                             </div>
 
                             <div class="idp-split-divider"
-                                 ng-style="{'left': vm.readingPanePercent + '%'}"
+                                 ng-style="vm.readingDividerStyle()"
                                  ng-hide="vm.ieltsReadingActualTest.subQuestions[1].type === 6"
-                                 ng-mousedown="vm.startReadingResize($event)"
+                                 reading-split-resize="vm.startReadingResize($event)"
                                  ng-dblclick="vm.resetReadingResize()"
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-style="{'width': vm.ieltsReadingActualTest.subQuestions[1].type === 6 ? '100%' : (100 - vm.readingPanePercent) + '%'}" class="col-md-6 question-content idp-question-pane" id="passage-question-text-2">
+                            <div ng-style="vm.questionPaneStyle(vm.ieltsReadingActualTest.subQuestions[1].type === 6)" class="col-md-6 question-content idp-question-pane" id="passage-question-text-2">
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[1].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-2" class="row" >
@@ -834,7 +828,7 @@
                                     </div>
 
                                     <div class="row">
-                                        <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB2.items" dnd-drop="onDropB2(listB2, item, index)" ng-repeat="itemB in listB2.items"  ng-if="item.type == 4">
+                                        <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB2.items" dnd-drop="onDropB2(listB2, item, index)" touch-dnd-drop="onDropB2(listB2, item, index)" ng-repeat="itemB in listB2.items"  ng-if="item.type == 4">
                                         <span
                                                 dnd-draggable="getSelectedItemsIncluding(listB2, itemB)"
                                                 dnd-draggable="itemB"
@@ -982,12 +976,9 @@
                         <div ng-show="vm.passageNumber == 3" class="row idp-split-row" >
 
                             <div class="col-md-6 idp-reading-pane"
-                                 ng-style="{'width': vm.readingPanePercent + '%'}"
+                                 ng-style="vm.readingPaneStyle()"
                                  ng-hide="vm.ieltsReadingActualTest.subQuestions[2].type === 6">
                                 <div class="row">
-                                    <div class="col-md-12 reading-passage-auto-intro" ng-if="!vm.isListeningRoute">
-                                        <p><em>You should spend about 20 minutes on Questions 27–40.</em></p>
-                                    </div>
                                     <div class="notes-highlight actual-test-font-global" id="passage-3-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes3">
                                         <div  class="close-highlight text-right">
                                             <i class="fa fa-times text-right close-note-icon" ng-click="closeASpecificNote3($index + 1)"></i>
@@ -1004,14 +995,14 @@
                             </div>
 
                             <div class="idp-split-divider"
-                                 ng-style="{'left': vm.readingPanePercent + '%'}"
+                                 ng-style="vm.readingDividerStyle()"
                                  ng-hide="vm.ieltsReadingActualTest.subQuestions[2].type === 6"
-                                 ng-mousedown="vm.startReadingResize($event)"
+                                 reading-split-resize="vm.startReadingResize($event)"
                                  ng-dblclick="vm.resetReadingResize()"
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-style="{'width': vm.ieltsReadingActualTest.subQuestions[2].type === 6 ? '100%' : (100 - vm.readingPanePercent) + '%'}" class="col-md-6 question-content idp-question-pane" id="passage-question-text-3">
+                            <div ng-style="vm.questionPaneStyle(vm.ieltsReadingActualTest.subQuestions[2].type === 6)" class="col-md-6 question-content idp-question-pane" id="passage-question-text-3">
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[2].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-3" class="row">
@@ -1232,7 +1223,7 @@
                                     </div>
 
                                     <div class="row">
-                                        <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB3.items" dnd-drop="onDropB3(listB3, item, index)" ng-repeat="itemB in listB3.items"  ng-if="item.type == 4">
+                                        <div class="drag-matching-heading-root not-for-media-screen" dnd-list="listB3.items" dnd-drop="onDropB3(listB3, item, index)" touch-dnd-drop="onDropB3(listB3, item, index)" ng-repeat="itemB in listB3.items"  ng-if="item.type == 4">
                                         <span
                                                 dnd-draggable="getSelectedItemsIncluding(listB3, itemB)"
                                                 dnd-draggable="itemB"
@@ -3333,7 +3324,7 @@
             z-index: 35;
             top: 0;
             bottom: 0;
-            width: 14px;
+            width: 38px;
             transform: translateX(-50%);
             cursor: col-resize;
             touch-action: none;
@@ -3344,7 +3335,7 @@
             position: absolute;
             top: 0;
             bottom: 0;
-            left: 6px;
+            left: 18px;
             width: 2px;
             background: #9da0a5;
             box-shadow: 0 0 0 1px rgba(255,255,255,.75);
@@ -3376,7 +3367,7 @@
 
         .idp-split-divider:hover::before,
         body.idp-is-resizing .idp-split-divider::before {
-            left: 5px;
+            left: 17px;
             width: 4px;
             background: #2f82bf;
         }
@@ -4443,7 +4434,8 @@
 
         body.ielts-reading-test-running .idp-reading-pane,
         body.ielts-reading-test-running .idp-question-pane {
-            flex: 1 1 50%;
+            flex-grow: 0;
+            flex-shrink: 0;
             min-height: 0;
             overflow: hidden;
         }
@@ -4515,7 +4507,52 @@
         }
 
         .idp-split-divider {
-            display: none !important;
+            position: absolute;
+            z-index: 35;
+            right: 0;
+            left: 0 !important;
+            display: block !important;
+            width: 100%;
+            height: 18px;
+            transform: translateY(-50%);
+            cursor: row-resize;
+            touch-action: none;
+        }
+
+        .idp-split-divider::before {
+            content: "";
+            position: absolute;
+            top: 8px;
+            right: 0;
+            left: 0;
+            height: 2px;
+            background: #9da0a5;
+            box-shadow: 0 0 0 1px rgba(255,255,255,.75);
+        }
+
+        .idp-split-divider::after {
+            content: "\2195";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border: 2px solid #7f8388;
+            border-radius: 50%;
+            color: #33373c;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+            font: 700 24px/1 Arial, Helvetica, sans-serif !important;
+            transform: translate(-50%, -50%);
+        }
+
+        body.idp-is-resizing,
+        body.idp-is-resizing * {
+            cursor: row-resize !important;
+            user-select: none !important;
         }
 
         .idp-reading-pane,

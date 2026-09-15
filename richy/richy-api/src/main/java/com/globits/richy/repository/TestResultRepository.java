@@ -13,7 +13,7 @@ public interface TestResultRepository extends JpaRepository<TestResult, Long> {
     @Query("select r from TestResult r where r.user.id = :userId and r.clientAttemptKey = :attemptKey and r.testType = :testType")
     TestResult findAttempt(@Param("userId") Long userId, @Param("attemptKey") String attemptKey,
             @Param("testType") Integer testType);
-    @Query("select distinct r.user.id, t.id, r.createDate, r.id, r.testType from TestResult r join r.topics t "
+    @Query("select distinct r.user.id, t.id, r.createDate, r.id, r.testType, r.sourceQuestionId from TestResult r join r.topics t "
             + "where r.user.id in :students and t.id in :topics and r.testType in (1, 3) "
             + "and ((r.testType = 1 and (r.resultStatus is null or r.resultStatus = 'SUCCESS')) "
             + "or (r.testType = 3 and r.resultStatus = 'SUCCESS')) "
@@ -29,6 +29,14 @@ public interface TestResultRepository extends JpaRepository<TestResult, Long> {
             + "and r.createDate >= :fromDate and r.createDate <= :toDate")
     long countSuccessfulAssignmentAttempts(@Param("studentId") Long studentId, @Param("topicId") Long topicId,
             @Param("testType") Integer testType, @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate);
+
+    @Query("select count(distinct r.id) from TestResult r join r.topics t "
+            + "where r.user.id = :studentId and t.id = :topicId and r.testType = 3 "
+            + "and r.sourceQuestionId = :sourceQuestionId and r.resultStatus = 'SUCCESS' "
+            + "and r.createDate >= :fromDate and r.createDate <= :toDate")
+    long countSuccessfulListeningItemAttempts(@Param("studentId") Long studentId, @Param("topicId") Long topicId,
+            @Param("sourceQuestionId") Long sourceQuestionId, @Param("fromDate") LocalDateTime fromDate,
             @Param("toDate") LocalDateTime toDate);
 
     @Query("select count(distinct r.id) from TestResult r where r.user.id = :studentId "

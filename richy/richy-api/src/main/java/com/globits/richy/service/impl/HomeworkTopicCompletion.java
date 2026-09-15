@@ -74,7 +74,9 @@ public final class HomeworkTopicCompletion {
             Long studentId = (Long) row[0], topicId = (Long) row[1];
             LocalDateTime completed = (LocalDateTime) row[2];
             Integer resultTestType = row.length > 4 ? (Integer) row[4] : Integer.valueOf(1);
+            Long sourceQuestionId = row.length > 5 ? (Long) row[5] : null;
             if (!task.getTopicId().equals(topicId) || resultTestType.intValue() != testType(task)
+                    || (task.getSourceQuestionId() != null && !task.getSourceQuestionId().equals(sourceQuestionId))
                     || completed.isBefore(start) || !completed.isBefore(end)) { continue; }
             int count = counts.containsKey(studentId) ? counts.get(studentId) + 1 : 1;
             counts.put(studentId, count);

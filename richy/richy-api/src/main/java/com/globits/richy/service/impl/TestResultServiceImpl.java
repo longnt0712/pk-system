@@ -539,7 +539,15 @@ public class TestResultServiceImpl implements TestResultService {
 			// A passed vocabulary completion is immutable: no later ID/topic/time forgery.
 			if (Integer.valueOf(1).equals(domain.getTestType())) { return new TestResultDto(domain); }
 		}
-		if (dto.getCompletedPart() != null || dto.getAssignmentTaskId() != null) {
+		if (dto.getAssignmentTaskId() != null && Integer.valueOf(3).equals(dto.getTestType())) {
+			EnrolmentClassScheduleTask assignedTask = scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
+			if (assignedTask == null || !"DAILY_LISTENING".equals(assignedTask.getActivityType())
+					|| assignedTask.getTopic() == null || dto.getSourceQuestionId() == null
+					|| (assignedTask.getSourceQuestion() != null
+							&& !assignedTask.getSourceQuestion().getId().equals(dto.getSourceQuestionId()))) {
+				throw new IllegalArgumentException("Kết quả không khớp với bài nghe/Track được giao.");
+			}
+		} else if (dto.getCompletedPart() != null || dto.getAssignmentTaskId() != null) {
 			EnrolmentClassScheduleTask assignedTask = dto.getAssignmentTaskId() == null ? null
 					: scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
 			boolean ieltsType = Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType());

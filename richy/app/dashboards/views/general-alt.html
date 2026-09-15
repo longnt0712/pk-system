@@ -135,6 +135,7 @@
                     </div>
                     <h3>{{task.title}}</h3>
                     <p class="student-assignment-topic" ng-if="task.topicId">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
+                    <p class="student-assignment-topic" ng-if="task.sourceQuestionId"><i class="fa fa-headphones"></i> {{task.sourceQuestionTitle}}</p>
                     <p class="student-assignment-topic" ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}} · Part {{task.ieltsPart}}</p>
                     <p class="student-assignment-topic is-free" ng-if="!task.topicId && !task.ieltsTestId"><i class="fa fa-lightbulb-o"></i> Không yêu cầu topic</p>
                     <p class="student-assignment-class"><i class="fa fa-users"></i> {{task.className}}</p>

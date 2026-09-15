@@ -94,6 +94,9 @@
 		vm.scheduleWeekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 		vm.scheduleMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 		vm.scheduleTopics = [];
+		vm.scheduleListeningItems = [];
+		vm.scheduleListeningItemsLoading = false;
+		var scheduleListeningItemsRequest = 0;
 		vm.assignableIeltsTests = [];
 		vm.assignableIeltsTestsLoading = false;
 		vm.scheduleLoading = false;
@@ -681,6 +684,8 @@
 			vm.loadScheduleStudents();
 			vm.scheduleClass.weeklySessions = [];
 			vm.scheduleTopics = [];
+			vm.scheduleListeningItems = [];
+			vm.scheduleListeningItemsLoading = false;
 			vm.assignableIeltsTests = [];
 			vm.scheduleMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 			vm.scheduleMonthLabel = 'THÁNG ' + (vm.scheduleMonthDate.getMonth() + 1)
@@ -1296,6 +1301,7 @@
 
                 var metaItems = [];
                 if (task.topicName) { metaItems.push((task.categoryName || 'Topic') + ': ' + task.topicName); }
+                if (task.sourceQuestionTitle) { metaItems.push('Track: ' + task.sourceQuestionTitle); }
                 if (task.topicId) { metaItems.push('Bắt đầu: ' + vm.taskStartLabel(task)); }
                 if (task.topicId) { metaItems.push('Yêu cầu: ' + (task.requiredAttempts || 1) + ' lần đạt'); }
                 if (task.resolvedDueDate || task.dueDate) { metaItems.push('Hạn: ' + vm.taskDueLabel(task)); }
@@ -1772,6 +1778,7 @@
 			vm.taskEditor.autoCompleteFromTopic = vm.taskEditor.autoCompleteFromTopic !== false;
 			vm.taskEditor.requiredAttempts = Math.max(1, Number(vm.taskEditor.requiredAttempts) || 1);
 			vm.taskEditor.showProgress = false;
+			vm.loadTaskListeningItems(true);
 		};
 
 		vm.cancelScheduleTask = function () { vm.taskEditor = null; vm.taskEditorIndex = -1; };
@@ -1784,16 +1791,52 @@
             }
         };
         vm.taskDeadlineEdited = function () { if (vm.taskEditor) { vm.taskEditor.legacyDateOnly = false; } };
-		vm.taskCategoryChanged = function () { vm.taskEditor.topicId = null; };
+		vm.taskCategoryChanged = function () {
+			vm.taskEditor.topicId = null;
+			vm.taskEditor.sourceQuestionId = null;
+			vm.scheduleListeningItems = [];
+		};
+		vm.taskTopicChanged = function () {
+			if (!vm.taskEditor) { return; }
+			vm.taskEditor.sourceQuestionId = null;
+			vm.loadTaskListeningItems(false);
+		};
+		vm.loadTaskListeningItems = function (keepSelection) {
+			var request = ++scheduleListeningItemsRequest;
+			vm.scheduleListeningItems = [];
+			if (!vm.taskEditor || vm.taskEditor.activityType !== 'DAILY_LISTENING' || !vm.taskEditor.topicId) {
+				vm.scheduleListeningItemsLoading = false;
+				if (!keepSelection && vm.taskEditor) { vm.taskEditor.sourceQuestionId = null; }
+				return;
+			}
+			vm.scheduleListeningItemsLoading = true;
+			service.getScheduleListeningItems(vm.taskEditor.topicId).then(function (items) {
+				if (request !== scheduleListeningItemsRequest) { return; }
+				vm.scheduleListeningItems = (angular.isArray(items) ? items : []).sort(function (a, b) {
+					return String(a.question || '').localeCompare(String(b.question || ''), 'en', {numeric: true, sensitivity: 'base'});
+				});
+				vm.scheduleListeningItemsLoading = false;
+			}, function () {
+				if (request !== scheduleListeningItemsRequest) { return; }
+				vm.scheduleListeningItemsLoading = false;
+				toastr.error('Không tải được danh sách bài nghe/Track.', 'Lỗi');
+			});
+		};
 		vm.taskActivityTypeChanged = function () {
 			if (!vm.taskEditor) { return; }
 			vm.taskEditor.autoCompleteFromTopic = vm.taskEditor.activityType === 'DAILY_VOCAB'
 				|| vm.taskEditor.activityType === 'DAILY_LISTENING';
 			if (vm.isIeltsTask(vm.taskEditor)) {
 				vm.taskEditor.topicId = null; vm.taskEditor.categoryKey = null;
+				vm.taskEditor.sourceQuestionId = null; vm.scheduleListeningItems = [];
 				vm.taskEditor.ieltsTestId = null; vm.taskEditor.ieltsPart = 1;
 			} else {
 				vm.taskEditor.ieltsTestId = null; vm.taskEditor.ieltsPart = null;
+				if (vm.taskEditor.activityType !== 'DAILY_LISTENING') {
+					vm.taskEditor.sourceQuestionId = null; vm.scheduleListeningItems = [];
+				} else {
+					vm.loadTaskListeningItems(false);
+				}
 			}
 		};
 		vm.isIeltsTask = function (task) {
@@ -1834,6 +1877,7 @@
                 dueTime: task.deadlineAutomatic === true ? null : task.dueTime || null,
                 deadlineAutomatic: task.deadlineAutomatic == null ? null : task.deadlineAutomatic,
                 status: task.status || 'TODO', topicId: task.topicId || null,
+				sourceQuestionId: task.sourceQuestionId || null,
 				ieltsTestId: task.ieltsTestId || null, ieltsPart: task.ieltsPart || null,
 				activityType: task.activityType || 'DAILY_VOCAB',
 				autoCompleteFromTopic: task.autoCompleteFromTopic !== false,
@@ -1851,6 +1895,9 @@
 			}
 			if (vm.isIeltsTask(task) && (!task.ieltsTestId || !/^[123]$/.test(String(task.ieltsPart)))) {
 				toastr.warning('Hãy chọn đề IELTS và Part 1, 2 hoặc 3.'); return;
+			}
+			if (task.activityType === 'DAILY_LISTENING' && task.topicId && !task.sourceQuestionId) {
+				toastr.warning('Hãy chọn bài nghe/Track cụ thể trong Topic.'); return;
 			}
 			task.requiredAttempts = (task.topicId || vm.isIeltsTask(task)) ? Number(task.requiredAttempts) : 1;
 			if (task.dueDateValue && !moment(task.dueDateValue).isValid()) { toastr.warning('Hạn hoàn thành không hợp lệ.'); return; }
@@ -1875,6 +1922,14 @@
 			if (task.topicId != null && !topic) { toastr.warning('Topic không còn tồn tại. Hãy chọn lại.'); return; }
 			task.topicName = topic ? topic.name : ''; task.categoryId = topic ? topic.categoryId : null;
 			task.categoryName = topic ? topic.categoryName : '';
+			var listeningItem = null;
+			angular.forEach(vm.scheduleListeningItems, function (item) {
+				if (String(item.id) === String(task.sourceQuestionId)) { listeningItem = item; }
+			});
+			if (task.sourceQuestionId != null && !listeningItem) {
+				toastr.warning('Bài nghe/Track không còn thuộc Topic. Hãy chọn lại.'); return;
+			}
+			task.sourceQuestionTitle = listeningItem ? listeningItem.question : '';
 			var ieltsTest = null;
 			angular.forEach(vm.assignableIeltsTests, function (item) { if (String(item.id) === String(task.ieltsTestId)) { ieltsTest = item; } });
 			if (vm.isIeltsTask(task) && !ieltsTest) { toastr.warning('Đề IELTS không còn tồn tại. Hãy chọn lại.'); return; }

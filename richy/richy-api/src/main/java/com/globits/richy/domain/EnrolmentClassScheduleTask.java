@@ -48,6 +48,8 @@ public class EnrolmentClassScheduleTask extends BaseObject {
     private int displayOrder;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "topic_id")
     private Topic topic;
+    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "source_question_id")
+    private Question sourceQuestion;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "ielts_test_id")
     private Question ieltsTest;
     @Column(name = "ielts_part")
@@ -71,6 +73,8 @@ public class EnrolmentClassScheduleTask extends BaseObject {
     public void setDisplayOrder(int value) { displayOrder = value; }
     public Topic getTopic() { return topic; }
     public void setTopic(Topic value) { topic = value; }
+    public Question getSourceQuestion() { return sourceQuestion; }
+    public void setSourceQuestion(Question value) { sourceQuestion = value; }
     public Question getIeltsTest() { return ieltsTest; }
     public void setIeltsTest(Question value) { ieltsTest = value; }
     public Integer getIeltsPart() { return ieltsPart; }

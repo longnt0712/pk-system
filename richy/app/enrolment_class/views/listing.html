@@ -1041,6 +1041,7 @@
                                     <th scope="col" class="class-homework-review-cell" data-ng-repeat="task in vm.previousHomeworkTasks track by task.id" data-ng-if="vm.isHomeworkTaskColumnVisible(task)">
                                         {{task.title}}
                                         <small class="class-homework-review-note" data-ng-if="task.topicName">{{task.topicName}}</small>
+                                        <small class="class-homework-review-note" data-ng-if="task.sourceQuestionTitle">{{task.sourceQuestionTitle}}</small>
                                         <small class="class-homework-review-note" data-ng-if="task.resolvedDueDate || task.dueDate">Hạn: {{vm.taskDueLabel(task)}}</small>
                                         <select class="form-control input-sm class-homework-bulk-select class-export-ignore"
                                                 data-ng-model="task.bulkStatus"
@@ -1183,6 +1184,7 @@
                 <span>{{vm.taskCompletion(task)}}</span>
             </div>
             <p class="class-task-help" data-ng-if="task.topicName">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
+            <p class="class-task-help" data-ng-if="task.sourceQuestionId"><i class="fa fa-headphones"></i> {{task.sourceQuestionTitle}}</p>
             <p class="class-task-help" data-ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}} · Part {{task.ieltsPart}}</p>
             <div class="class-task-notes" data-ng-if="task.notes">{{task.notes}}</div>
             <div class="class-task-buttons">
@@ -1248,7 +1250,7 @@
                 </div>
                 <div class="form-group">
                     <label>Topic / Bài học (không bắt buộc)</label>
-                    <ui-select theme="bootstrap" data-ng-model="vm.taskEditor.topicId" allow-clear="true"
+                    <ui-select theme="bootstrap" data-ng-model="vm.taskEditor.topicId" allow-clear="true" data-ng-change="vm.taskTopicChanged()"
                                data-ng-disabled="vm.scheduleTopicsLoading || !vm.taskEditor.categoryKey">
                         <ui-select-match placeholder="Chọn bài học..." allow-clear="true">{{$select.selected.name}}</ui-select-match>
                         <ui-select-choices repeat="topic.id as topic in vm.taskTopics() | propsFilter:{name:$select.search}">
@@ -1256,6 +1258,21 @@
                         </ui-select-choices>
                     </ui-select>
                 </div>
+            </div>
+            <div class="class-task-editor-grid" data-ng-if="vm.taskEditor.activityType === 'DAILY_LISTENING' && vm.taskEditor.topicId">
+                <div class="form-group">
+                    <label>Bài nghe / Track cần làm <span class="font-red">*</span></label>
+                    <ui-select theme="bootstrap" data-ng-model="vm.taskEditor.sourceQuestionId" required
+                               data-ng-disabled="vm.scheduleListeningItemsLoading">
+                        <ui-select-match placeholder="Chọn Track cụ thể...">{{$select.selected.question}}</ui-select-match>
+                        <ui-select-choices repeat="item.id as item in vm.scheduleListeningItems | propsFilter:{question:$select.search}">
+                            <div data-ng-bind-html="item.question | highlight:$select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                    <small data-ng-if="vm.scheduleListeningItemsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải các bài con...</small>
+                    <small data-ng-if="!vm.scheduleListeningItemsLoading">Kết quả chỉ được tính khi học sinh hoàn thành đúng Track này.</small>
+                </div>
+                <div></div>
             </div>
             <p class="class-task-help" data-ng-if="vm.scheduleTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải category / topic...</p>
             <div class="class-task-editor-grid" data-ng-if="vm.taskEditor.topicId || vm.isIeltsTask(vm.taskEditor)">
@@ -1291,7 +1308,7 @@
             <p class="class-task-help">Nội dung task được lưu khi bấm “Lưu kế hoạch”. Tiến độ Homework buổi trước sửa trực tiếp trong bảng học sinh bên dưới.</p>
             <div class="class-task-buttons">
                 <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.cancelScheduleTask()">Hủy sửa</button>
-                <button type="submit" class="btn btn-primary btn-sm" data-ng-disabled="taskForm.$invalid || vm.scheduleDaySaving">{{vm.taskEditorIndex < 0 ? 'Thêm task' : 'Cập nhật task'}}</button>
+                <button type="submit" class="btn btn-primary btn-sm" data-ng-disabled="taskForm.$invalid || vm.scheduleDaySaving || vm.scheduleListeningItemsLoading">{{vm.taskEditorIndex < 0 ? 'Thêm task' : 'Cập nhật task'}}</button>
             </div>
         </form>
     </div>

@@ -73,6 +73,12 @@
             return utils.resolve(baseUrl + '/schedule/topics', 'GET', angular.noop, angular.noop);
         };
 
+        self.getScheduleListeningItems = function (topicId) {
+            if (!topicId) { return $q.when([]); }
+            return utils.resolve(baseUrl + '/schedule/topics/' + topicId + '/listening-items',
+                'GET', angular.noop, angular.noop);
+        };
+
         self.getAssignableIeltsTests = function () {
             return utils.resolve(baseUrl + '/schedule/ielts-tests', 'GET', angular.noop, angular.noop);
         };

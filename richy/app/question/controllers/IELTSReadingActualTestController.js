@@ -93,6 +93,35 @@
         };
     });
 
+    /* AngularJS does not provide an ng-touchstart/ng-pointerdown directive. Keep
+       the reading splitter on one native start event so touch does not also fire
+       a second synthetic mouse drag on mobile browsers. */
+    angular.module('Hrm.Question').directive('readingSplitResize', ['$window', function ($window) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var eventName = $window.PointerEvent ? 'pointerdown' : 'touchstart';
+                var node = element[0];
+
+                function startResize(event) {
+                    scope.$eval(attrs.readingSplitResize, {$event: event});
+                }
+
+                node.addEventListener(eventName, startResize, false);
+                if (!$window.PointerEvent) {
+                    node.addEventListener('mousedown', startResize, false);
+                }
+
+                scope.$on('$destroy', function () {
+                    node.removeEventListener(eventName, startResize, false);
+                    if (!$window.PointerEvent) {
+                        node.removeEventListener('mousedown', startResize, false);
+                    }
+                });
+            }
+        };
+    }]);
+
     angular.module('Hrm.Question').directive('touchDndSource', ['$document', '$window', function ($document, $window) {
         return {
             restrict: 'A',
@@ -521,7 +550,7 @@
             $window.document.body.classList.remove(examBodyClass);
         });
 
-        /* Adjustable Reading / Questions split (desktop only). */
+        /* Adjustable Reading / Questions split for mouse, pen and touch. */
         vm.readingPanePercent = 50;
         var readingResizeState = null;
 
@@ -543,6 +572,12 @@
 
             $window.document.removeEventListener('mousemove', readingResizeState.onMove, false);
             $window.document.removeEventListener('mouseup', stopReadingResize, false);
+            $window.document.removeEventListener('pointermove', readingResizeState.onMove, false);
+            $window.document.removeEventListener('pointerup', stopReadingResize, false);
+            $window.document.removeEventListener('pointercancel', stopReadingResize, false);
+            $window.document.removeEventListener('touchmove', readingResizeState.onMove, false);
+            $window.document.removeEventListener('touchend', stopReadingResize, false);
+            $window.document.removeEventListener('touchcancel', stopReadingResize, false);
             $window.document.body.classList.remove('idp-is-resizing');
 
             try {
@@ -558,17 +593,35 @@
         }
 
         vm.startReadingResize = function ($event) {
-            if (!$event || $window.innerWidth <= 996) {
+            if (!$event) {
                 return;
             }
 
             $event.preventDefault();
 
+            stopReadingResize();
+
             var splitRow = $event.currentTarget.parentNode;
             var splitBounds = splitRow.getBoundingClientRect();
+            var verticalSplit = $window.innerWidth <= 996;
+
+            function eventPoint(event) {
+                var source = event.touches && event.touches.length
+                    ? event.touches[0]
+                    : (event.changedTouches && event.changedTouches.length
+                        ? event.changedTouches[0]
+                        : event);
+                return {x: source.clientX, y: source.clientY};
+            }
 
             function onMove(moveEvent) {
-                var nextPercent = ((moveEvent.clientX - splitBounds.left) / splitBounds.width) * 100;
+                if (moveEvent.cancelable) {
+                    moveEvent.preventDefault();
+                }
+                var point = eventPoint(moveEvent);
+                var nextPercent = verticalSplit
+                    ? ((point.y - splitBounds.top) / splitBounds.height) * 100
+                    : ((point.x - splitBounds.left) / splitBounds.width) * 100;
                 nextPercent = Math.max(25, Math.min(75, nextPercent));
 
                 $scope.$evalAsync(function () {
@@ -578,8 +631,41 @@
 
             readingResizeState = {onMove: onMove};
             $window.document.body.classList.add('idp-is-resizing');
-            $window.document.addEventListener('mousemove', onMove, false);
-            $window.document.addEventListener('mouseup', stopReadingResize, false);
+            if ($event.type.indexOf('pointer') === 0) {
+                $window.document.addEventListener('pointermove', onMove, false);
+                $window.document.addEventListener('pointerup', stopReadingResize, false);
+                $window.document.addEventListener('pointercancel', stopReadingResize, false);
+            } else if ($event.type.indexOf('touch') === 0) {
+                $window.document.addEventListener('touchmove', onMove, false);
+                $window.document.addEventListener('touchend', stopReadingResize, false);
+                $window.document.addEventListener('touchcancel', stopReadingResize, false);
+            } else {
+                $window.document.addEventListener('mousemove', onMove, false);
+                $window.document.addEventListener('mouseup', stopReadingResize, false);
+            }
+        };
+
+        vm.readingPaneStyle = function () {
+            if ($window.innerWidth <= 996) {
+                return {'flex-basis': vm.readingPanePercent + '%'};
+            }
+            return {'width': vm.readingPanePercent + '%'};
+        };
+
+        vm.questionPaneStyle = function (isFullWidth) {
+            if (isFullWidth) {
+                return $window.innerWidth <= 996 ? {'flex-basis': '100%'} : {'width': '100%'};
+            }
+            if ($window.innerWidth <= 996) {
+                return {'flex-basis': (100 - vm.readingPanePercent) + '%'};
+            }
+            return {'width': (100 - vm.readingPanePercent) + '%'};
+        };
+
+        vm.readingDividerStyle = function () {
+            return $window.innerWidth <= 996
+                ? {'top': vm.readingPanePercent + '%'}
+                : {'left': vm.readingPanePercent + '%'};
         };
 
         vm.resetReadingResize = function () {
@@ -1902,8 +1988,15 @@
 
         vm.isCompleteListWordUsed = function (questionPackage, word) {
             var used = false;
+            var wordIdentity = word && word.answerId != null
+                ? 'id:' + String(word.answerId)
+                : 'index:' + String(word && word.answerIndex);
             angular.forEach((questionPackage && questionPackage.completeListSlots) || [], function (slot) {
-                if (slot.items && slot.items.length && slot.items[0].answerIndex === word.answerIndex) {
+                var slotWord = slot.items && slot.items.length ? slot.items[0] : null;
+                var slotIdentity = slotWord && slotWord.answerId != null
+                    ? 'id:' + String(slotWord.answerId)
+                    : 'index:' + String(slotWord && slotWord.answerIndex);
+                if (slotWord && slotIdentity === wordIdentity) {
                     used = true;
                 }
             });
@@ -1930,7 +2023,12 @@
             }
 
             angular.forEach(questionPackage.completeListSlots, function (slot, existingIndex) {
-                if (existingIndex !== slotIndex && slot.items && slot.items.length && slot.items[0].answerIndex === droppedWord.answerIndex) {
+                var existingWord = slot.items && slot.items.length ? slot.items[0] : null;
+                var sameWord = existingWord && (
+                    (existingWord.answerId != null && droppedWord.answerId != null && String(existingWord.answerId) === String(droppedWord.answerId)) ||
+                    (String(existingWord.answerIndex) === String(droppedWord.answerIndex))
+                );
+                if (existingIndex !== slotIndex && sameWord) {
                     vm.clearCompleteListSlot(questionPackage, existingIndex);
                 }
             });
@@ -2229,6 +2327,7 @@
                                         '<span dnd-drop="onDropA(listA['+z+'], item, 0)" ' +
                                         'touch-dnd-drop="onDropA(listA['+z+'], item, 0)" ' +
                                         'dnd-draggable="getSelectedItemsIncluding(listA['+z+'], listA['+z+'].items[0])" ' +
+                                        'touch-dnd-source="listA['+z+'].items[0]" ' +
                                         'class="matching-heading-drop-box" id="question-number-'+ question.ordinalNumber +'" ' +
                                         'dnd-list="listA['+z+'].items" ' +
                                         'dnd-selected="listA['+z+'].items[0].selected = !listA['+z+'].items[0].selected" ' +
@@ -2248,6 +2347,7 @@
                                         '<span dnd-drop="onDropA2(listA2['+z2+'], item, 0)" ' +
                                         'touch-dnd-drop="onDropA2(listA2['+z2+'], item, 0)" ' +
                                         'dnd-draggable="getSelectedItemsIncluding(listA2['+z2+'], listA2['+z2+'].items[0])" ' +
+                                        'touch-dnd-source="listA2['+z2+'].items[0]" ' +
                                         'class="matching-heading-drop-box" id="question-number-'+ question.ordinalNumber +'" ' +
                                         'dnd-list="listA2['+z2+'].items" ' +
                                         'dnd-selected="listA2['+z2+'].items[0].selected = !listA2['+z2+'].items[0].selected" ' +
@@ -2268,6 +2368,7 @@
                                         '<span dnd-drop="onDropA3(listA3['+z3+'], item, 0)" ' +
                                         'touch-dnd-drop="onDropA3(listA3['+z3+'], item, 0)" ' +
                                         'dnd-draggable="getSelectedItemsIncluding(listA3['+z3+'], listA3['+z3+'].items[0])" ' +
+                                        'touch-dnd-source="listA3['+z3+'].items[0]" ' +
                                         'class="matching-heading-drop-box" id="question-number-'+ question.ordinalNumber +'" ' +
                                         'dnd-list="listA3['+z3+'].items" ' +
                                         'dnd-selected="listA3['+z3+'].items[0].selected = !listA3['+z3+'].items[0].selected" ' +
