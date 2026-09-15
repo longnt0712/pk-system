@@ -314,6 +314,7 @@
         vm.answer = answer;
         vm.submitGuessWord = submitGuessWord;
         vm.submitGuessWordOnKeydown = submitGuessWordOnKeydown;
+        vm.activateGuessInput = activateGuessInput;
         vm.revealGuessLetter = revealGuessLetter;
         vm.revealGuessAnswer = revealGuessAnswer;
         vm.nextGuessQuestion = nextGuessQuestion;
@@ -1898,15 +1899,16 @@
                     ? newQuestion.sequence
                     : null;
 
-            if (
-                newQuestion &&
+            var questionChanged =
+                !!newQuestion &&
                 (
                     newQuestionId !==
                         previousQuestionId ||
                     newQuestionSequence !==
                         previousQuestionSequence
-                )
-            ) {
+                );
+
+            if (questionChanged) {
                 vm.answerLocked = false;
                 vm.guessSubmitting = false;
                 vm.lastAnswerCorrect = null;
@@ -1938,7 +1940,7 @@
                 vm.answerLocked = true;
             } else if (isGuessWordMode() && incoming.currentQuestion) {
                 var currentGuessPlayer = getMe();
-                vm.answerLocked = !!(
+                vm.answerLocked = !questionChanged && !!(
                     currentGuessPlayer &&
                     currentGuessPlayer.answeredCurrentQuestion === true
                 );
@@ -3150,6 +3152,44 @@
             event.preventDefault();
             event.stopPropagation();
             submitGuessWord(false);
+        }
+
+
+        function activateGuessInput(event) {
+            if (isSpectator()) {
+                return;
+            }
+
+            /*
+             * Safari iOS có thể giữ trạng thái bàn phím đóng sau khi input từng
+             * là readonly. Input luôn được phép focus; quyền gửi đáp án vẫn được
+             * kiểm tra ở submitGuessWord và phía server.
+             */
+            if (
+                vm.room &&
+                vm.room.status === 'PLAYING' &&
+                vm.room.guessPhase === 'QUESTION' &&
+                vm.countdown > 0
+            ) {
+                var currentGuessPlayer = getMe();
+                if (!currentGuessPlayer || currentGuessPlayer.answeredCurrentQuestion !== true) {
+                    vm.answerLocked = false;
+                }
+            }
+
+            var input = event && (event.currentTarget || event.target);
+            if (!input || typeof input.focus !== 'function') {
+                return;
+            }
+            try {
+                input.focus({preventScroll: true});
+            } catch (ignore) {
+                input.focus();
+            }
+            if (typeof input.setSelectionRange === 'function') {
+                var cursorPosition = String(input.value || '').length;
+                input.setSelectionRange(cursorPosition, cursorPosition);
+            }
         }
 
 

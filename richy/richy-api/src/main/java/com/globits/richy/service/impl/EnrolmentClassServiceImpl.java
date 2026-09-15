@@ -702,14 +702,15 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 				if (start != null && now.isBefore(start)) { continue; }
 
 				for (EnrolmentClassScheduleTaskDto task : dayDto.getTasks()) {
-					if (!"HOMEWORK".equals(task.getSection()) || task.getTopicId() == null || task.getId() == null
+					if (!"HOMEWORK".equals(task.getSection()) || task.getId() == null
 							|| !seenTasks.add(task.getId())) { continue; }
 					LocalDateTime deadline = HomeworkTopicCompletion.deadlineEnd(task.getResolvedDueDate(), task.getResolvedDueTime());
 					if (deadline == null || !deadline.isAfter(start)) { continue; }
 
 					int required = task.getRequiredAttempts();
 					int completed = 0;
-					if ("DAILY_VOCAB".equals(task.getActivityType()) || "DAILY_LISTENING".equals(task.getActivityType())) {
+					if (task.getTopicId() != null && ("DAILY_VOCAB".equals(task.getActivityType())
+							|| "DAILY_LISTENING".equals(task.getActivityType()))) {
 						completed = (int) Math.min(Integer.MAX_VALUE, testResultRepository.countSuccessfulAssignmentAttempts(
 								student.getId(), task.getTopicId(), Integer.valueOf(HomeworkTopicCompletion.testType(task)),
 								start, deadline));

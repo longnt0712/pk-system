@@ -136,7 +136,10 @@
         };
 
         vm.searchDto.pageSize = 12;
+        vm.showHiddenTests = false;
         if(settings.isAdmin){
+            // 9 is a search-only status: show drafts and published tests, excluding hidden tests.
+            vm.searchDto.status = 9;
             vm.getPageCreateIELTSReadingTest();
             console.log('admin');
         }else{
@@ -1772,6 +1775,545 @@
             vm.searchDto.pageIndex = 1;
             vm.searchDto.findExactWord = false;
             vm.getPageCreateIELTSReadingTest();
+        };
+
+        vm.toggleHiddenTests = function () {
+            vm.showHiddenTests = !vm.showHiddenTests;
+            vm.searchDto.status = vm.showHiddenTests ? 8 : 9;
+            vm.searchDto.pageIndex = 1;
+            vm.getPageCreateIELTSReadingTest();
+        };
+
+        function updateReadingTestCatalogStatus(id, status, successMessage) {
+            if (!id) {
+                return;
+            }
+            blockUI.start();
+            service.getOne(id).then(function (test) {
+                if (!test) {
+                    throw new Error('Không tìm thấy bài test.');
+                }
+                test.status = status;
+                return service.saveObject(test);
+            }).then(function () {
+                blockUI.stop();
+                toastr.success(successMessage, 'Thông báo');
+                vm.getPageCreateIELTSReadingTest();
+            }, function () {
+                blockUI.stop();
+                toastr.error('Không thể cập nhật trạng thái bài test.', 'Thông báo');
+            });
+        }
+
+        $scope.hideReadingTest = function (id) {
+            updateReadingTestCatalogStatus(id, 8, 'Đã ẩn bài test khỏi danh sách.');
+        };
+
+        $scope.restoreReadingTest = function (id) {
+            // Restore as a draft so an old hidden test is never published accidentally.
+            updateReadingTestCatalogStatus(id, 6, 'Đã khôi phục bài test về bản nháp.');
+        };
+
+        function readingQuestionType(id, code, name) {
+            return {id: id, code: code, name: name};
+        }
+
+        function importedAnswer(answer, answerIndex) {
+            var rawAnswer = angular.isObject(answer) ? answer : {text: answer};
+            return {
+                answer: {answer: String(rawAnswer.text || rawAnswer.answer || '')},
+                question: {},
+                ordinalNumberQuestionAnswer: answerIndex + 1,
+                correct: rawAnswer.correct === true
+            };
+        }
+
+        function importedQuestion(question, fallbackNumber) {
+            var number = parseInt(question.number || question.ordinalNumber || fallbackNumber, 10);
+            return {
+                question: question.text || question.question || ('Question number ' + number),
+                questionType: readingQuestionType(19, 'IELTSRTQ', 'IELTS Reading Test Question'),
+                ordinalNumber: number,
+                subQuestions: [],
+                questionAnswers: (question.answers || question.questionAnswers || []).map(importedAnswer)
+            };
+        }
+
+        function importedGroup(group, groupIndex) {
+            var questions = group.questions || group.subQuestions || [];
+            return {
+                question: group.instructionHtml || group.instruction || group.question || '',
+                questionType: readingQuestionType(18, 'IELTSRTPK', 'IELTS Reading Test Package'),
+                ordinalNumber: parseInt(group.ordinalNumber || (groupIndex + 1), 10),
+                type: parseInt(group.type, 10) || 1,
+                isHaveChildren: questions.length > 0,
+                subQuestions: questions.map(function (question, questionIndex) {
+                    return importedQuestion(question, questionIndex + 1);
+                })
+            };
+        }
+
+        function importedPart(part, partIndex) {
+            var passageTypeIds = [13, 14, 15];
+            var groups = part.groups || part.subQuestions || [];
+            return {
+                question: part.passageHtml || part.passage || part.question || '',
+                questionType: readingQuestionType(
+                    passageTypeIds[partIndex],
+                    'IELTSRTP' + (partIndex + 1),
+                    'IELTS Reading Test Passage ' + (partIndex + 1)
+                ),
+                ordinalNumber: partIndex + 1,
+                subQuestions: groups.map(importedGroup)
+            };
+        }
+
+        function removeImportedIdentifiers(question) {
+            if (!question) {
+                return;
+            }
+            delete question.id;
+            delete question.parent;
+            delete question.user;
+            delete question.createDate;
+            delete question.modifiedDate;
+            delete question.modifyDate;
+            angular.forEach(question.questionTopics || [], function (questionTopic) {
+                if (questionTopic) {
+                    delete questionTopic.id;
+                    delete questionTopic.question;
+                }
+            });
+            angular.forEach(question.questionAnswers || [], function (questionAnswer, answerIndex) {
+                if (!questionAnswer) {
+                    return;
+                }
+                delete questionAnswer.id;
+                questionAnswer.question = {};
+                questionAnswer.ordinalNumberQuestionAnswer =
+                    parseInt(questionAnswer.ordinalNumberQuestionAnswer, 10) || (answerIndex + 1);
+                questionAnswer.answer = questionAnswer.answer || {answer: ''};
+                delete questionAnswer.answer.id;
+            });
+            angular.forEach(question.subQuestions || [], removeImportedIdentifiers);
+        }
+
+        function normalizeImportedReadingTest(source) {
+            source = source && source.test ? source.test : source;
+            if (!source || !angular.isObject(source)) {
+                throw new Error('File import không chứa dữ liệu bài test.');
+            }
+
+            var test;
+            if (angular.isArray(source.parts)) {
+                if (source.parts.length !== 3) {
+                    throw new Error('File import phải có đúng 3 parts.');
+                }
+                test = {
+                    title: source.title,
+                    pronounce: source.audioUrl || source.pronounce || null,
+                    questionType: readingQuestionType(11, 'IELTSRT', 'IELTS Reading Test'),
+                    type: 0,
+                    status: 6,
+                    questionTopics: [],
+                    countWords: 0,
+                    ordinalNumber: 1,
+                    subQuestions: source.parts.map(importedPart)
+                };
+            } else {
+                test = angular.copy(source);
+            }
+
+            if (!test.title || !String(test.title).trim()) {
+                throw new Error('File import chưa có title.');
+            }
+            if (!angular.isArray(test.subQuestions) || test.subQuestions.length !== 3) {
+                throw new Error('Bài test phải có đúng 3 parts.');
+            }
+
+            removeImportedIdentifiers(test);
+            test.title = String(test.title).trim();
+            test.questionType = readingQuestionType(11, 'IELTSRT', 'IELTS Reading Test');
+            test.status = 6;
+            test.userId = vm.currentUser.id;
+            test.ordinalNumber = parseInt(test.ordinalNumber, 10) || 1;
+            test.questionTopics = test.questionTopics || [];
+
+            var seenNumbers = {};
+            var questionCount = 0;
+            angular.forEach(test.subQuestions, function (part, partIndex) {
+                var passageTypeIds = [13, 14, 15];
+                part.ordinalNumber = partIndex + 1;
+                part.questionType = readingQuestionType(
+                    passageTypeIds[partIndex],
+                    'IELTSRTP' + (partIndex + 1),
+                    'IELTS Reading Test Passage ' + (partIndex + 1)
+                );
+                part.subQuestions = part.subQuestions || [];
+                angular.forEach(part.subQuestions, function (group, groupIndex) {
+                    group.ordinalNumber = parseInt(group.ordinalNumber, 10) || (groupIndex + 1);
+                    group.questionType = readingQuestionType(18, 'IELTSRTPK', 'IELTS Reading Test Package');
+                    group.type = parseInt(group.type, 10) || 1;
+                    group.subQuestions = group.subQuestions || [];
+                    group.isHaveChildren = group.subQuestions.length > 0;
+                    angular.forEach(group.subQuestions, function (question) {
+                        var questionNumber = parseInt(question.ordinalNumber, 10);
+                        if (!questionNumber || questionNumber < 1 || questionNumber > 40) {
+                            throw new Error('Số câu hỏi phải nằm trong khoảng 1–40.');
+                        }
+                        if (seenNumbers[questionNumber]) {
+                            throw new Error('Câu số ' + questionNumber + ' đang bị lặp trong file.');
+                        }
+                        seenNumbers[questionNumber] = true;
+                        questionCount += 1;
+                        question.questionType = readingQuestionType(19, 'IELTSRTQ', 'IELTS Reading Test Question');
+                        question.subQuestions = question.subQuestions || [];
+                        question.questionAnswers = question.questionAnswers || [];
+                    });
+                });
+            });
+            if (!questionCount) {
+                throw new Error('File import chưa có câu hỏi nào.');
+            }
+            test.importedQuestionCount = questionCount;
+            return test;
+        }
+
+        function normalizedExcelText(value) {
+            return String(value === null || value === undefined ? '' : value)
+                .toLowerCase()
+                .trim()
+                .replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g, 'a')
+                .replace(/[èéẹẻẽêềếệểễ]/g, 'e')
+                .replace(/[ìíịỉĩ]/g, 'i')
+                .replace(/[òóọỏõôồốộổỗơờớợởỡ]/g, 'o')
+                .replace(/[ùúụủũưừứựửữ]/g, 'u')
+                .replace(/[ỳýỵỷỹ]/g, 'y')
+                .replace(/đ/g, 'd')
+                .replace(/[^a-z0-9]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function excelRowValue(row, aliases) {
+            var result = '';
+            angular.forEach(row, function (value, key) {
+                if (result !== '') {
+                    return;
+                }
+                var normalizedKey = normalizedExcelText(key);
+                for (var i = 0; i < aliases.length; i++) {
+                    if (normalizedKey === normalizedExcelText(aliases[i])) {
+                        result = value;
+                        return;
+                    }
+                }
+            });
+            return result;
+        }
+
+        function findExcelSheet(workbook, aliases, fallbackIndex) {
+            for (var i = 0; i < workbook.SheetNames.length; i++) {
+                var normalizedName = normalizedExcelText(workbook.SheetNames[i]);
+                for (var j = 0; j < aliases.length; j++) {
+                    if (normalizedName === normalizedExcelText(aliases[j])) {
+                        return workbook.Sheets[workbook.SheetNames[i]];
+                    }
+                }
+            }
+            if (fallbackIndex < workbook.SheetNames.length) {
+                return workbook.Sheets[workbook.SheetNames[fallbackIndex]];
+            }
+            return null;
+        }
+
+        function excelQuestionType(value, fallbackType) {
+            if (value === '' || value === null || value === undefined) {
+                return fallbackType || 1;
+            }
+            var numericType = parseInt(value, 10);
+            if (numericType >= 1 && numericType <= 13) {
+                return numericType;
+            }
+            var normalizedType = normalizedExcelText(value);
+            for (var i = 0; i < vm.types.length; i++) {
+                if (normalizedExcelText(vm.types[i].name) === normalizedType) {
+                    return vm.types[i].id;
+                }
+            }
+            throw new Error('Loại câu hỏi "' + value + '" không hợp lệ. Vui lòng xem sheet LOAI_CAU_HOI.');
+        }
+
+        function markExcelCorrectAnswers(answers, correctValue, questionNumber) {
+            var tokens = String(correctValue === null || correctValue === undefined ? '' : correctValue)
+                .split(/[,;|]/)
+                .map(function (token) { return token.trim(); })
+                .filter(function (token) { return token.length > 0; });
+            if (!tokens.length) {
+                throw new Error('Câu ' + questionNumber + ' chưa nhập cột Đáp án đúng.');
+            }
+
+            var matched = 0;
+            angular.forEach(tokens, function (token) {
+                var tokenMatched = false;
+                var answerIndex = parseInt(token, 10) - 1;
+                if (!/^\d+$/.test(token) && /^[a-h]$/i.test(token)) {
+                    answerIndex = token.toUpperCase().charCodeAt(0) - 65;
+                }
+                if (answerIndex >= 0 && answerIndex < answers.length) {
+                    if (!answers[answerIndex].correct) {
+                        answers[answerIndex].correct = true;
+                        matched += 1;
+                    }
+                    tokenMatched = true;
+                    return;
+                }
+                var normalizedToken = normalizedExcelText(token);
+                angular.forEach(answers, function (answer) {
+                    if (!answer.correct && normalizedExcelText(answer.text) === normalizedToken) {
+                        answer.correct = true;
+                        matched += 1;
+                        tokenMatched = true;
+                    }
+                });
+                if (!tokenMatched) {
+                    throw new Error('Đáp án đúng "' + token + '" của câu ' + questionNumber + ' không khớp với các đáp án đã nhập.');
+                }
+            });
+            if (!matched) {
+                throw new Error('Đáp án đúng của câu ' + questionNumber + ' không khớp với các đáp án đã nhập.');
+            }
+        }
+
+        function readingTestFromExcel(workbook) {
+            var infoSheet = findExcelSheet(workbook, ['THONG_TIN', 'THÔNG TIN', 'INFO'], 1);
+            var contentSheet = findExcelSheet(workbook, ['NOI_DUNG', 'NỘI DUNG', 'CONTENT'], 2);
+            if (!infoSheet || !contentSheet) {
+                throw new Error('File Excel phải có sheet THONG_TIN và NOI_DUNG. Hãy tải file mẫu để nhập đúng cấu trúc.');
+            }
+
+            var infoRows = XLSX.utils.sheet_to_json(infoSheet, {header: 1, defval: '', raw: false});
+            var info = {};
+            angular.forEach(infoRows, function (row) {
+                var key = normalizedExcelText(row[0]);
+                if (key) {
+                    info[key] = row[1];
+                }
+            });
+            var title = info['tieu de'] || info.title || '';
+            var audioUrl = info['audio url'] || info.audio || '';
+
+            var source = {
+                title: title,
+                audioUrl: audioUrl,
+                parts: [
+                    {passageHtml: '', groups: []},
+                    {passageHtml: '', groups: []},
+                    {passageHtml: '', groups: []}
+                ]
+            };
+            var rows = XLSX.utils.sheet_to_json(contentSheet, {defval: '', raw: false});
+            var currentPartNumber = null;
+            var currentGroupByPart = {};
+            var groupsByPart = [{}, {}, {}];
+
+            angular.forEach(rows, function (row, rowIndex) {
+                var partCell = excelRowValue(row, ['Part', 'Phần']);
+                if (partCell !== '') {
+                    currentPartNumber = parseInt(partCell, 10);
+                }
+                if (!currentPartNumber || currentPartNumber < 1 || currentPartNumber > 3) {
+                    throw new Error('Dòng ' + (rowIndex + 2) + ': Part phải là 1, 2 hoặc 3.');
+                }
+
+                var part = source.parts[currentPartNumber - 1];
+                var passage = excelRowValue(row, ['Passage HTML', 'Nội dung passage', 'Passage']);
+                if (String(passage).trim()) {
+                    part.passageHtml = passage;
+                }
+
+                var groupCell = excelRowValue(row, ['Nhóm', 'Group']);
+                if (groupCell !== '') {
+                    currentGroupByPart[currentPartNumber] = parseInt(groupCell, 10);
+                }
+                var groupNumber = currentGroupByPart[currentPartNumber];
+                if (!groupNumber || groupNumber < 1) {
+                    throw new Error('Dòng ' + (rowIndex + 2) + ': chưa có số Nhóm.');
+                }
+
+                var typeCell = excelRowValue(row, ['Loại câu hỏi', 'Type']);
+                var instruction = excelRowValue(row, ['Hướng dẫn HTML', 'Hướng dẫn', 'Instruction HTML']);
+                var group = groupsByPart[currentPartNumber - 1][groupNumber];
+                if (!group) {
+                    group = {
+                        type: excelQuestionType(typeCell, 1),
+                        instructionHtml: instruction || '',
+                        ordinalNumber: groupNumber,
+                        questions: []
+                    };
+                    groupsByPart[currentPartNumber - 1][groupNumber] = group;
+                    part.groups.push(group);
+                } else {
+                    if (typeCell !== '') {
+                        group.type = excelQuestionType(typeCell, group.type);
+                    }
+                    if (String(instruction).trim()) {
+                        group.instructionHtml = instruction;
+                    }
+                }
+
+                var questionNumberCell = excelRowValue(row, ['Số câu', 'Question number', 'Number']);
+                if (questionNumberCell === '') {
+                    return;
+                }
+                var questionNumber = parseInt(questionNumberCell, 10);
+                var questionRanges = [{start: 1, end: 13}, {start: 14, end: 26}, {start: 27, end: 40}];
+                var questionRange = questionRanges[currentPartNumber - 1];
+                if (!questionNumber || questionNumber < questionRange.start || questionNumber > questionRange.end) {
+                    throw new Error('Dòng ' + (rowIndex + 2) + ': Part ' + currentPartNumber +
+                        ' chỉ được dùng câu ' + questionRange.start + '–' + questionRange.end + '.');
+                }
+                var answers = [];
+                for (var answerNumber = 1; answerNumber <= 8; answerNumber++) {
+                    var answerText = excelRowValue(row, ['Đáp án ' + answerNumber, 'Answer ' + answerNumber]);
+                    if (String(answerText).trim()) {
+                        answers.push({text: String(answerText).trim(), correct: false});
+                    }
+                }
+                if (!answers.length) {
+                    throw new Error('Dòng ' + (rowIndex + 2) + ': câu ' + questionNumber + ' chưa có đáp án.');
+                }
+                markExcelCorrectAnswers(
+                    answers,
+                    excelRowValue(row, ['Đáp án đúng', 'Correct answer', 'Correct']),
+                    questionNumber
+                );
+                group.questions.push({
+                    number: questionNumber,
+                    text: excelRowValue(row, ['Nội dung câu hỏi', 'Question']) || ('Question number ' + questionNumber),
+                    answers: answers
+                });
+            });
+
+            angular.forEach(source.parts, function (part) {
+                part.groups.sort(function (left, right) {
+                    return Number(left.ordinalNumber) - Number(right.ordinalNumber);
+                });
+            });
+            return normalizeImportedReadingTest(source);
+        }
+
+        vm.importReadingTestFile = function (file, invalidFiles) {
+            if ((!file && invalidFiles && invalidFiles.length) || (file && file.size > 10 * 1024 * 1024)) {
+                toastr.warning('File Excel không được lớn hơn 10 MB.', 'Import IELTS Reading');
+                return;
+            }
+            if (!file) {
+                return;
+            }
+            if (!/\.(xlsx|xls)$/i.test(file.name || '')) {
+                toastr.warning('Vui lòng chọn file Excel có đuôi .xlsx hoặc .xls.', 'Import IELTS Reading');
+                return;
+            }
+            if (!$window.XLSX) {
+                toastr.error('Thư viện đọc Excel chưa tải được. Vui lòng tải lại trang.', 'Import IELTS Reading');
+                return;
+            }
+
+            vm.importingReadingTest = true;
+            var reader = new FileReader();
+            reader.onload = function (event) {
+                $scope.$applyAsync(function () {
+                    try {
+                        var workbook = XLSX.read(event.target.result, {type: 'array'});
+                        var importedTest = readingTestFromExcel(workbook);
+                        var importedQuestionCount = importedTest.importedQuestionCount;
+                        delete importedTest.importedQuestionCount;
+                        vm.ieltsReadingTest = importedTest;
+                        vm.createPackage = true;
+                        vm.getOrdinalNumber(vm.ieltsReadingTest);
+                        isHavingQuestions(vm.ieltsReadingTest);
+                        vm.refreshBuilderValidation();
+                        vm.saveReadingTest('draft').finally(function () {
+                            vm.importingReadingTest = false;
+                        });
+                        if (importedQuestionCount < 40) {
+                            toastr.warning('Đã nhập ' + importedQuestionCount + '/40 câu. Bạn có thể bổ sung trước khi xuất bản.', 'Import IELTS Reading');
+                        }
+                    } catch (error) {
+                        vm.importingReadingTest = false;
+                        toastr.error(error.message || 'File Excel không đúng định dạng.', 'Import IELTS Reading');
+                    }
+                });
+            };
+            reader.onerror = function () {
+                $scope.$applyAsync(function () {
+                    vm.importingReadingTest = false;
+                    toastr.error('Không thể đọc file Excel đã chọn.', 'Import IELTS Reading');
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        };
+
+        vm.downloadReadingImportTemplate = function () {
+            if (!$window.XLSX) {
+                toastr.error('Thư viện tạo Excel chưa tải được. Vui lòng tải lại trang.', 'IELTS Reading');
+                return;
+            }
+            var workbook = XLSX.utils.book_new();
+            workbook.Props = {
+                Title: 'Mẫu import IELTS Reading Test',
+                Subject: 'IELTS Reading',
+                Author: 'IELTS Room'
+            };
+
+            var guideRows = [
+                ['HƯỚNG DẪN IMPORT IELTS READING TEST'],
+                ['1. Nhập tiêu đề bài test trong sheet THONG_TIN.'],
+                ['2. Mỗi dòng trong sheet NOI_DUNG là một câu hỏi.'],
+                ['3. Part 1 dùng câu 1–13; Part 2 dùng câu 14–26; Part 3 dùng câu 27–40.'],
+                ['4. Passage, Nhóm, Loại câu hỏi và Hướng dẫn có thể để trống ở dòng sau để kế thừa dòng trước.'],
+                ['5. Cột Đáp án đúng nhập số thứ tự như 1 hoặc nhiều đáp án như 1,3. Có thể nhập A, B, C...'],
+                ['6. Không đổi tên các sheet và tiêu đề cột. Xóa các dòng ví dụ trước khi nhập bài thật.'],
+                ['7. Xem mã loại câu hỏi trong sheet LOAI_CAU_HOI.']
+            ];
+            var guideSheet = XLSX.utils.aoa_to_sheet(guideRows);
+            guideSheet['!cols'] = [{wch: 115}];
+            XLSX.utils.book_append_sheet(workbook, guideSheet, 'HUONG_DAN');
+
+            var infoSheet = XLSX.utils.aoa_to_sheet([
+                ['Trường', 'Giá trị'],
+                ['Tiêu đề', 'IELTS Academic Reading Test 01'],
+                ['Audio URL', '']
+            ]);
+            infoSheet['!cols'] = [{wch: 22}, {wch: 70}];
+            XLSX.utils.book_append_sheet(workbook, infoSheet, 'THONG_TIN');
+
+            var contentRows = [
+                ['Part', 'Passage HTML', 'Nhóm', 'Loại câu hỏi', 'Hướng dẫn HTML', 'Số câu', 'Nội dung câu hỏi', 'Đáp án 1', 'Đáp án 2', 'Đáp án 3', 'Đáp án 4', 'Đáp án 5', 'Đáp án 6', 'Đáp án 7', 'Đáp án 8', 'Đáp án đúng'],
+                [1, '<h2>Reading Passage 1</h2><p>Dán nội dung passage tại đây.</p>', 1, 1, '<p><strong>Questions 1–2</strong></p><p>Choose the correct answer.</p>', 1, 'Question 1', 'A', 'B', 'C', 'D', '', '', '', '', 1],
+                ['', '', '', '', '', 2, 'Question 2', 'TRUE', 'FALSE', 'NOT GIVEN', '', '', '', '', '', 1],
+                [2, '<h2>Reading Passage 2</h2><p>Dán nội dung passage tại đây.</p>', 1, 2, '<p><strong>Question 14</strong></p><p>Complete the sentence.</p>', 14, 'Question 14', 'sample answer', '', '', '', '', '', '', '', 1],
+                [3, '<h2>Reading Passage 3</h2><p>Dán nội dung passage tại đây.</p>', 1, 5, '<p><strong>Question 27</strong></p><p>Choose TWO answers.</p>', 27, 'Question 27', 'A', 'B', 'C', 'D', '', '', '', '', '1,3']
+            ];
+            var contentSheet = XLSX.utils.aoa_to_sheet(contentRows);
+            contentSheet['!cols'] = [
+                {wch: 8}, {wch: 55}, {wch: 9}, {wch: 18}, {wch: 55}, {wch: 10}, {wch: 35},
+                {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 16}
+            ];
+            contentSheet['!autofilter'] = {ref: 'A1:P5'};
+            XLSX.utils.book_append_sheet(workbook, contentSheet, 'NOI_DUNG');
+
+            var typeRows = [['Mã', 'Loại câu hỏi', 'Ghi chú']];
+            angular.forEach(vm.types, function (type) {
+                typeRows.push([type.id, type.name, type.notice]);
+            });
+            var typeSheet = XLSX.utils.aoa_to_sheet(typeRows);
+            typeSheet['!cols'] = [{wch: 10}, {wch: 42}, {wch: 75}];
+            XLSX.utils.book_append_sheet(workbook, typeSheet, 'LOAI_CAU_HOI');
+
+            XLSX.writeFile(workbook, 'mau_import_ielts_reading.xlsx');
+            toastr.success('Đã tải file Excel mẫu.', 'IELTS Reading');
         };
 
         vm.status = {id: 3, name: "Tất cả (no listening)"};

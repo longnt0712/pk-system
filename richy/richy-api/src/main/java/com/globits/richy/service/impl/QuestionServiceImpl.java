@@ -468,7 +468,11 @@ public class QuestionServiceImpl implements QuestionService {
 			}
 		}
 		
-		if (searchDto.getStatus() != 3) {
+		// Status 8 is reserved for tests hidden from the administrator catalog.
+		// Status 9 is a search-only value meaning "all tests except hidden".
+		if (searchDto.getStatus() == 9) {
+			whereClause += "and (s.status is null or s.status <> 8) ";
+		} else if (searchDto.getStatus() != 3) {
 			whereClause += "and (s.status =:status) ";
 		}
 //		else {
@@ -543,7 +547,7 @@ public class QuestionServiceImpl implements QuestionService {
 //			qCountAll.setParameter("userId", searchDto.getUserId());
 		}
 		
-		if(searchDto.getStatus() != 3) {
+		if(searchDto.getStatus() != 3 && searchDto.getStatus() != 9) {
 			q.setParameter("status", searchDto.getStatus());
 			qCount.setParameter("status", searchDto.getStatus());
 		}

@@ -5,15 +5,40 @@
         <div class="portlet light bordered">
             <div class="portlet-body">
 
-                <div class="row" ng-if="settings.isAdmin == true">
-                    <div class="col-md-4 margin-bottom-20">
+                <div class="row reading-admin-toolbar" ng-if="settings.isAdmin == true">
+                    <div class="col-md-4">
                         <div class="input-group">
-                            <input ng-model="vm.searchDto.textSearch" ng-keyup="vm.enterSearchCode($event)" type="text"  class="form-control" placeholder="Find test...">
+                            <input ng-model="vm.searchDto.textSearch" ng-keyup="vm.enterSearchCode($event)" type="text" class="form-control" placeholder="Tìm bài test...">
                             <div class="input-group-btn">
                                 <button ng-click="vm.codeChange()" class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>
                             </div>
                         </div>
                     </div>
+                    <div class="col-md-8 reading-admin-toolbar__actions">
+                        <button type="button" class="btn btn-default" ng-click="vm.downloadReadingImportTemplate()">
+                            <i class="fa fa-file-excel-o"></i> Tải file Excel mẫu
+                        </button>
+                        <button type="button" class="btn btn-primary"
+                                ngf-select="vm.importReadingTestFile($file, $invalidFiles)"
+                                accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                                ngf-max-size="10MB"
+                                ng-disabled="vm.importingReadingTest">
+                            <i class="fa" ng-class="vm.importingReadingTest ? 'fa-spinner fa-spin' : 'fa-upload'"></i>
+                            {{vm.importingReadingTest ? 'Đang import...' : 'Import Excel'}}
+                        </button>
+                        <button type="button" class="btn"
+                                ng-class="vm.showHiddenTests ? 'btn-warning' : 'btn-default'"
+                                ng-click="vm.toggleHiddenTests()">
+                            <i class="fa" ng-class="vm.showHiddenTests ? 'fa-arrow-left' : 'fa-eye-slash'"></i>
+                            {{vm.showHiddenTests ? 'Quay lại danh sách' : 'Bài test đã ẩn'}}
+                            <span class="badge" ng-if="vm.showHiddenTests">{{vm.bsTableControlCreateIELTSReadingTest.options.totalRows || 0}}</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="reading-hidden-notice" ng-if="settings.isAdmin == true && vm.showHiddenTests">
+                    <i class="fa fa-eye-slash"></i>
+                    <div><strong>Danh sách bài test đã ẩn</strong><span>Bấm nút khôi phục ở cột Thao tác để đưa bài về trạng thái bản nháp.</span></div>
                 </div>
 
                 <div class="row">
@@ -849,6 +874,70 @@
 </script>
 
 <style>
+    .reading-admin-toolbar {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .reading-admin-toolbar__actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .reading-admin-toolbar__actions .btn {
+        min-height: 34px;
+        border-radius: 7px !important;
+        font-weight: 700;
+    }
+
+    .reading-admin-toolbar__actions .badge {
+        margin-left: 4px;
+        background: rgba(255, 255, 255, .85);
+        color: #8a5a00;
+    }
+
+    .reading-hidden-notice {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding: 13px 16px;
+        border: 1px solid #f1d28a;
+        border-radius: 9px;
+        background: #fff9e9;
+        color: #72500b;
+    }
+
+    .reading-hidden-notice > i {
+        font-size: 22px;
+    }
+
+    .reading-hidden-notice strong,
+    .reading-hidden-notice span {
+        display: block;
+    }
+
+    .reading-hidden-notice span {
+        margin-top: 2px;
+        color: #8b733e;
+        font-size: 12px;
+    }
+
+    @media (max-width: 991px) {
+        .reading-admin-toolbar {
+            display: block;
+        }
+
+        .reading-admin-toolbar__actions {
+            justify-content: flex-start;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+    }
+
     .ielts-reading-builder-page {
         padding-bottom: 82px;
     }

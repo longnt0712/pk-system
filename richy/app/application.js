@@ -58,8 +58,16 @@
     // Hrm.API_SERVER_URL = 'https://tnttphungkhoang.com/service/';
     /*Hrm.API_SERVER_URL = 'https://ieltsroom.com:8443/service/';*/
     /*Hrm.API_SERVER_URL = 'https://tnttphungkhoang.com:8443/service/';*/
-    Hrm.API_SERVER_URL = window.location.origin + '/service/';
-    // Hrm.API_SERVER_URL = 'http://localhost:8443/service/'; // đoạn này mình call local
+    var localApiHosts = ['localhost', '127.0.0.1', '::1', '[::1]'];
+    var isLocalFrontend = localApiHosts.indexOf(window.location.hostname) >= 0;
+
+    /*
+     * Production is proxied by IIS at /service. Local IIS only serves the
+     * frontend, while Spring Boot listens directly on 127.0.0.1:8085.
+     */
+    Hrm.API_SERVER_URL = isLocalFrontend
+        ? 'http://127.0.0.1:8085/service/'
+        : window.location.origin + '/service/';
     //--------------------//
 
     // Hrm.API_SERVER_URL = 'https://localhost:8085/service/'; // đoạn này mình call local

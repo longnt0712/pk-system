@@ -758,11 +758,13 @@
         function getTableDefinitionCreateIELTSReadingTest () {
 
             var _tableOperation = function (value, row, index) {
-                return '<a  class="green-dark margin-right-10" href="#" data-ng-click="$parent.editCreateIELTSReadingTest(' + "'" + row.id + "'" + ')"><i class="icon-eye"></i></a>'
-                    + '<a target="_blank" class="green-dark margin-right-10" href="ielts_reading_actual_test/' + row.id + '" ><i class="icon-pencil"></i></a>'
-                    + '<a ng-show="' + "'" + row.status + "'" + '== 6"  class="green-dark margin-right-10" href="#" data-ng-click="$parent.changeStatus(' + "'" + row.id + "',7" + ')"><i class="fa fa-times"></i></a>'
-                    + '<a ng-show="' + "'" + row.status + "'" + '== 7"  class="green-dark margin-right-10" href="#" data-ng-click="$parent.changeStatus(' + "'" + row.id + "',6" + ')"><i class="fa fa-check"></i></a>'
-                    + '<a class="green-dark " href="#" ng-show="settings.isAdmin == true" data-ng-click="$parent.deleteIELTSWriting(' + "'" + row.id + "'" + ')"><i class="fa fa-trash"></i></a>';
+                return '<a class="green-dark margin-right-10" href="#" title="Mở trong trình soạn thảo" data-ng-click="$parent.editCreateIELTSReadingTest(' + "'" + row.id + "'" + ')"><i class="icon-eye"></i></a>'
+                    + '<a target="_blank" class="green-dark margin-right-10" title="Xem trước bài test" href="ielts_reading_actual_test/' + row.id + '"><i class="icon-pencil"></i></a>'
+                    + '<a ng-show="' + "'" + row.status + "'" + '== 6" class="green-dark margin-right-10" href="#" title="Xuất bản" data-ng-click="$parent.changeStatus(' + "'" + row.id + "',7" + ')"><i class="fa fa-times"></i></a>'
+                    + '<a ng-show="' + "'" + row.status + "'" + '== 7" class="green-dark margin-right-10" href="#" title="Chuyển về bản nháp" data-ng-click="$parent.changeStatus(' + "'" + row.id + "',6" + ')"><i class="fa fa-check"></i></a>'
+                    + '<a ng-show="settings.isAdmin == true && ' + "'" + row.status + "'" + '!= 8" class="font-grey-cascade margin-right-10" href="#" title="Ẩn khỏi danh sách" data-ng-click="$parent.hideReadingTest(' + "'" + row.id + "'" + ')"><i class="fa fa-eye-slash"></i></a>'
+                    + '<a ng-show="settings.isAdmin == true && ' + "'" + row.status + "'" + '== 8" class="font-green-jungle margin-right-10" href="#" title="Khôi phục về bản nháp" data-ng-click="$parent.restoreReadingTest(' + "'" + row.id + "'" + ')"><i class="fa fa-undo"></i></a>'
+                    + '<a class="green-dark" href="#" ng-show="settings.isAdmin == true" title="Xóa" data-ng-click="$parent.deleteIELTSWriting(' + "'" + row.id + "'" + ')"><i class="fa fa-trash"></i></a>';
                 ;
             };
 
