@@ -227,7 +227,7 @@
             }
 
             function addIeltsDraft(key, draft) {
-                if (!draft || !draft.testId || String(draft.userId) !== userId) { return; }
+                if (!draft || !draft.testId || String(draft.userId) !== userId || draft.completed === true) { return; }
                 var savedAt = new Date(draft.savedAt || 0).getTime();
                 var taskMatch = /:task:(\d+)$/.exec(key);
                 var listening = draft.isListening === true || draft.testMode === 'LISTENING'

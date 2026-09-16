@@ -146,6 +146,66 @@
         };
     }]);
 
+    /* Mobile Safari/Chrome update the native text selection after touchend and
+       while the selection handles are moving. Angular's ng-mouseup never sees
+       those changes, so forward a settled in-test selection to the same menu
+       handler used by desktop mouse selection. */
+    angular.module('Hrm.Question').directive('readingSelectionTools', ['$document', '$timeout', '$window', function ($document, $timeout, $window) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var node = element[0];
+                var pending = null;
+
+                function nodeInsideReadingTest(candidate) {
+                    if (!candidate) { return false; }
+                    if (candidate.nodeType === 3) { candidate = candidate.parentNode; }
+                    return candidate === node || node.contains(candidate);
+                }
+
+                function dispatchSelection(event) {
+                    $timeout.cancel(pending);
+                    pending = $timeout(function () {
+                        var selection = $window.getSelection && $window.getSelection();
+                        if (!selection || selection.rangeCount === 0 || selection.isCollapsed || !selection.toString().trim()
+                                || !nodeInsideReadingTest(selection.anchorNode) || !nodeInsideReadingTest(selection.focusNode)) {
+                            return;
+                        }
+                        var target = event && event.target;
+                        if (!nodeInsideReadingTest(target)) {
+                            target = selection.anchorNode && (selection.anchorNode.nodeType === 3
+                                ? selection.anchorNode.parentNode : selection.anchorNode);
+                        }
+                        scope.$eval(attrs.readingSelectionTools, {
+                            $event: {target: target || node, type: event && event.type}
+                        });
+                    }, event && event.type === 'selectionchange' ? 140 : 70);
+                }
+
+                function onPointerUp(event) {
+                    if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+                        dispatchSelection(event);
+                    }
+                }
+
+                node.addEventListener('touchend', dispatchSelection, {passive: true});
+                if ($window.PointerEvent) {
+                    node.addEventListener('pointerup', onPointerUp, false);
+                }
+                $document[0].addEventListener('selectionchange', dispatchSelection, false);
+
+                scope.$on('$destroy', function () {
+                    $timeout.cancel(pending);
+                    node.removeEventListener('touchend', dispatchSelection, false);
+                    if ($window.PointerEvent) {
+                        node.removeEventListener('pointerup', onPointerUp, false);
+                    }
+                    $document[0].removeEventListener('selectionchange', dispatchSelection, false);
+                });
+            }
+        };
+    }]);
+
     angular.module('Hrm.Question').directive('touchDndSource', ['$document', '$window', function ($document, $window) {
         return {
             restrict: 'A',
@@ -967,25 +1027,52 @@
         var readingDraftBaseKey = 'ieltsReadingInProgress:' + (vm.currentUser.id || 'anonymous');
         var readingDraftTaskSuffix = vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId : '';
         var legacyReadingDraftStorageKey = readingDraftBaseKey + readingDraftTaskSuffix;
-        var readingDraftStorageKey = readingDraftBaseKey
+        var legacyModeDraftStorageKey = readingDraftBaseKey
             + (vm.isListeningRoute ? ':listening' : ':reading') + readingDraftTaskSuffix;
         var readingDraftAutosaveTimer = null;
         var readingDraftSubmitted = false;
 
-        function readReadingDraft() {
+        function readingDraftStorageKey(testId) {
+            testId = testId || (vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id)
+                || $stateParams.ieltsReadingTestId;
+            return readingDraftBaseKey + (vm.isListeningRoute ? ':listening:test:' : ':reading:test:')
+                + String(testId || 'unknown') + readingDraftTaskSuffix;
+        }
+
+        function readStoredDraft(key) {
+            try {
+                var raw = $window.localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : null;
+            } catch (ignoreStoredDraftReadError) {
+                return null;
+            }
+        }
+
+        function readReadingDraft(testId) {
             if (vm.isPreviewMode) {
                 return null;
             }
             try {
-                var raw = $window.localStorage.getItem(readingDraftStorageKey);
-                if (!raw) { raw = $window.localStorage.getItem(legacyReadingDraftStorageKey); }
-                var draft = JSON.parse(raw);
-                if (!draft || String(draft.userId) !== String(vm.currentUser.id) || !draft.testId) {
-                    return null;
+                var expectedTestId = testId || (vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id)
+                    || $stateParams.ieltsReadingTestId;
+                var candidateKeys = [
+                    readingDraftStorageKey(expectedTestId),
+                    legacyModeDraftStorageKey,
+                    legacyReadingDraftStorageKey
+                ];
+                for (var keyIndex = 0; keyIndex < candidateKeys.length; keyIndex++) {
+                    var draft = readStoredDraft(candidateKeys[keyIndex]);
+                    if (!draft || String(draft.userId) !== String(vm.currentUser.id) || !draft.testId
+                            || (expectedTestId && String(draft.testId) !== String(expectedTestId))) {
+                        continue;
+                    }
+                    if ((draft.testMode === 'LISTENING' || draft.isListening === true) !== vm.isListeningRoute
+                            && (draft.testMode || angular.isDefined(draft.isListening))) {
+                        continue;
+                    }
+                    return draft;
                 }
-                if ((draft.testMode === 'LISTENING' || draft.isListening === true) !== vm.isListeningRoute
-                        && (draft.testMode || angular.isDefined(draft.isListening))) { return null; }
-                return draft;
+                return null;
             } catch (ignoreReadingDraftReadError) {
                 return null;
             }
@@ -993,8 +1080,14 @@
 
         function clearReadingDraft() {
             try {
-                $window.localStorage.removeItem(readingDraftStorageKey);
-                $window.localStorage.removeItem(legacyReadingDraftStorageKey);
+                var currentTestId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
+                $window.localStorage.removeItem(readingDraftStorageKey(currentTestId));
+                angular.forEach([legacyModeDraftStorageKey, legacyReadingDraftStorageKey], function (key) {
+                    var legacyDraft = readStoredDraft(key);
+                    if (!legacyDraft || String(legacyDraft.testId) === String(currentTestId)) {
+                        $window.localStorage.removeItem(key);
+                    }
+                });
             } catch (ignoreReadingDraftClearError) {
                 // Submission can still finish when browser storage is unavailable.
             }
@@ -1048,7 +1141,9 @@
                         answeredNumbers[result.ordinalNumber] = true;
                     }
                 });
-                $window.localStorage.setItem(readingDraftStorageKey, JSON.stringify({
+                var activeDraftKey = readingDraftStorageKey(testId);
+                var previousDraft = readStoredDraft(activeDraftKey) || {};
+                $window.localStorage.setItem(activeDraftKey, JSON.stringify({
                     version: 2,
                     userId: vm.currentUser.id,
                     testId: testId,
@@ -1068,13 +1163,34 @@
                     results: results,
                     questionStates: serializeReadingQuestionStates(),
                     annotationNotes: angular.copy(vm.annotationNotes || []),
-                    annotations: serializeReadingAnnotations()
+                    annotations: serializeReadingAnnotations(),
+                    completed: previousDraft.completed === true,
+                    resultId: previousDraft.resultId || null
                 }));
-                if (legacyReadingDraftStorageKey !== readingDraftStorageKey) {
-                    $window.localStorage.removeItem(legacyReadingDraftStorageKey);
-                }
+                angular.forEach([legacyModeDraftStorageKey, legacyReadingDraftStorageKey], function (key) {
+                    var legacyDraft = readStoredDraft(key);
+                    if (legacyDraft && String(legacyDraft.testId) === String(testId)) {
+                        $window.localStorage.removeItem(key);
+                    }
+                });
             } catch (ignoreReadingDraftWriteError) {
                 // The test remains usable when private browsing blocks localStorage.
+            }
+        }
+
+        function markStudyDraftCompleted(resultId) {
+            if (vm.testSessionMode !== 'STUDY') { return; }
+            try {
+                var testId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
+                var key = readingDraftStorageKey(testId);
+                var draft = readStoredDraft(key);
+                if (!draft) { return; }
+                draft.completed = true;
+                draft.resultId = resultId || null;
+                draft.savedAt = new Date().toISOString();
+                $window.localStorage.setItem(key, JSON.stringify(draft));
+            } catch (ignoreStudyDraftCompletionError) {
+                // The submitted server result is still available when storage is blocked.
             }
         }
 
@@ -1144,7 +1260,7 @@
         }
 
         function restoreReadingDraft() {
-            var draft = readReadingDraft();
+            var draft = readReadingDraft(vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id);
             var currentTestId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
             if (!draft || String(draft.testId) !== String(currentTestId)) {
                 return;
@@ -1462,7 +1578,7 @@
         vm.isStartTest = false;
 
         var requestedSessionMode = String($location.search().sessionMode || '').toUpperCase();
-        var existingSessionDraft = readReadingDraft();
+        var existingSessionDraft = readReadingDraft($stateParams.ieltsReadingTestId);
         if (requestedSessionMode === 'STUDY' || requestedSessionMode === 'SERIOUS') {
             vm.selectedTestSessionMode = requestedSessionMode;
         } else if (existingSessionDraft && String(existingSessionDraft.testId) === String($stateParams.ieltsReadingTestId)
@@ -1662,8 +1778,12 @@
             blockUI.start();
             service.saveTestResult(vm.testResult).then(function (data) {
                 blockUI.stop();
+                saveReadingDraft();
+                markStudyDraftCompleted(data && data.id);
                 readingDraftSubmitted = true;
-                clearReadingDraft();
+                if (vm.testSessionMode !== 'STUDY') {
+                    clearReadingDraft();
+                }
                 $timeout.cancel(readingDraftAutosaveTimer);
                 // vm.testResultAfterSubmitting = data;
 
@@ -3788,21 +3908,30 @@
             hideSelectionMenu(true);
         };
 
+        function showAnnotationNoteForMarker(marker) {
+            if (!marker) { return false; }
+            var note = noteById(marker.getAttribute('data-note-id'));
+            if (!note) {
+                return false;
+            }
+            var rect = marker.getBoundingClientRect();
+            vm.activeAnnotationNote = note;
+            vm.isShowContextMenu = false;
+            vm.isAnnotationRemoveMenu = false;
+            clickedAnnotationMarker = null;
+            vm.annotationNoteStyle = {
+                left: Math.max(8, Math.min(rect.left, window.innerWidth - 292)) + 'px',
+                top: Math.max(8, Math.min(rect.bottom + 8, window.innerHeight - 218)) + 'px'
+            };
+            return true;
+        }
+
         $scope.openAnnotationNote = function ($event) {
             var marker = closestElement($event.target, '.ielts-annotation.has-note');
             if (!marker || (window.getSelection && window.getSelection().toString().trim())) {
                 return;
             }
-            var note = noteById(marker.getAttribute('data-note-id'));
-            if (!note) {
-                return;
-            }
-            var rect = marker.getBoundingClientRect();
-            vm.activeAnnotationNote = note;
-            vm.annotationNoteStyle = {
-                left: Math.max(8, Math.min(rect.left, window.innerWidth - 292)) + 'px',
-                top: Math.max(8, Math.min(rect.bottom + 8, window.innerHeight - 218)) + 'px'
-            };
+            showAnnotationNoteForMarker(marker);
         };
 
         $scope.closeAnnotationNote = function () {
@@ -3817,6 +3946,13 @@
             var marker = closestElement($event.target, '.ielts-annotation');
             var selection = window.getSelection && window.getSelection();
             if (!marker || (selection && !selection.isCollapsed && selection.toString().trim())) {
+                return;
+            }
+
+            // A note marker is itself the control for reopening the saved note.
+            // This also works for a tap on mobile because the root click handler
+            // receives the generated click after text selection has collapsed.
+            if ($(marker).hasClass('has-note') && showAnnotationNoteForMarker(marker)) {
                 return;
             }
 
@@ -5213,8 +5349,11 @@
                 vm.startTest();
             }, 0);
         } else {
-            var pendingReadingDraft = readReadingDraft();
+            var pendingReadingDraft = readReadingDraft($stateParams.ieltsReadingTestId);
             if (pendingReadingDraft && String(pendingReadingDraft.testId) === String($stateParams.ieltsReadingTestId)) {
+                vm.testSessionMode = pendingReadingDraft.sessionMode === 'STUDY' ? 'STUDY' : 'SERIOUS';
+                vm.selectedTestSessionMode = vm.testSessionMode;
+                vm.isLearningReview = pendingReadingDraft.completed === true;
                 $timeout(function () {
                     vm.startTest();
                 }, 0);

@@ -8,6 +8,7 @@
 -->
 <div class="idp-reading-page"
      ng-class="('idp-contrast-' + vm.displayContrast + ' idp-text-' + vm.readingTextSize) + (vm.isListeningRoute ? ' idp-listening-page' : '')"
+     reading-selection-tools="showSelectionTools($event)"
      ng-mouseup="showSelectionTools($event)"
      ng-click="handleReadingAnnotationClick($event)">
 
@@ -86,7 +87,7 @@
             <button type="button" class="idp-tool-icon" title="Highlight and notes" aria-label="Highlight and notes">
                 <i class="fa fa-pencil-square-o"></i>
             </button>
-            <button ng-if="!vm.isPreviewMode" type="button" class="idp-top-finish" data-ng-click="vm.saveTestResult()">
+            <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" type="button" class="idp-top-finish" data-ng-click="vm.saveTestResult()">
                 {{vm.isPartAssignment ? 'Finish Part ' + vm.assignedPart : 'Finish test'}}
             </button>
         </div>
@@ -110,7 +111,7 @@
                                 <p class="idp-timer" style="font-size: 15px;font-weight: 700;"><i class="fa fa-clock-o"></i><span style="font-weight:bold;font-size:20px;">{{vm.getRemainingMinutes()}}</span> minute<span ng-show="vm.getRemainingMinutes() != 1">s</span><small>{{vm.getTimerStatusLabel()}}</small></p>
                             </div>
                             <div style="padding-top: 15px;padding-right: 40px" class="col-md-4 text-right" ng-show="vm.isStartTest">
-                                <button ng-if="!vm.isPreviewMode" style="padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" data-ng-click="vm.saveTestResult()">
+                                <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" style="padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" data-ng-click="vm.saveTestResult()">
                                     <span class="bold actual-test-font-global">{{vm.isPartAssignment ? 'Finish Part ' + vm.assignedPart : 'Finish test'}}</span>
                                 </button>
                             </div>
@@ -119,7 +120,7 @@
 
                         <div class="row for-media text-center idp-candidate-mobile" style="width: 100%;background-color: white" ng-show="vm.isStartTest">
                         <div class="col-md-6 margin-top-10">
-                            <button ng-if="!vm.isPreviewMode" style="margin-left: 10px;padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">Finish</span></button>
+                            <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" style="margin-left: 10px;padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">Finish</span></button>
                         </div>
                         <div class="col-md-6">
                             <p class="idp-timer" ng-click="vm.toggleTimerDetails()">
@@ -1534,15 +1535,15 @@
      class="dropdown-menu-highlight idp-selection-menu"
      role="menu"
     aria-label="Text tools">
-    <button type="button" class="context-menu-highlight" ng-mousedown="applySelectionNote()" ng-hide="vm.isAnnotationRemoveMenu">
+    <button type="button" class="context-menu-highlight" ng-click="$event.stopPropagation(); applySelectionNote()" ng-hide="vm.isAnnotationRemoveMenu">
         <i class="fa fa-sticky-note" aria-hidden="true"></i>
         <span>Take note</span>
     </button>
-    <button type="button" class="context-menu-highlight" ng-mousedown="applySelectionHighlight()" ng-hide="vm.isAnnotationRemoveMenu">
+    <button type="button" class="context-menu-highlight" ng-click="$event.stopPropagation(); applySelectionHighlight()" ng-hide="vm.isAnnotationRemoveMenu">
         <i class="fa fa-paint-brush" aria-hidden="true"></i>
         <span>Highlight</span>
     </button>
-    <button type="button" class="context-menu-highlight is-remove idp-remove-annotation-action" ng-mousedown="removeClickedAnnotation()" ng-show="vm.isAnnotationRemoveMenu">
+    <button type="button" class="context-menu-highlight is-remove idp-remove-annotation-action" ng-click="$event.stopPropagation(); removeClickedAnnotation()" ng-show="vm.isAnnotationRemoveMenu">
         <i class="fa fa-times" aria-hidden="true"></i>
         <span>Remove</span>
     </button>

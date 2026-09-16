@@ -123,6 +123,66 @@
         vm.ieltsWritingTests = [];
 
         vm.ieltsReadingTests = [];
+        vm.learningProgressByTestId = {};
+
+        vm.refreshLearningProgress = function () {
+            var progressByTestId = {};
+            var userId = String(vm.currentUser.id || '');
+            var prefix = 'ieltsReadingInProgress:' + userId;
+            try {
+                for (var storageIndex = 0; storageIndex < $window.localStorage.length; storageIndex++) {
+                    var storageKey = $window.localStorage.key(storageIndex);
+                    if (!storageKey || (storageKey !== prefix && storageKey.indexOf(prefix + ':') !== 0)) {
+                        continue;
+                    }
+                    var draft = JSON.parse($window.localStorage.getItem(storageKey));
+                    if (!draft || !draft.testId || String(draft.userId) !== userId || draft.sessionMode !== 'STUDY') {
+                        continue;
+                    }
+                    var isListeningDraft = draft.isListening === true || draft.testMode === 'LISTENING';
+                    if (isListeningDraft !== vm.isListeningMode) {
+                        continue;
+                    }
+                    var mapKey = String(draft.testId);
+                    var savedAt = new Date(draft.savedAt || 0).getTime() || 0;
+                    if (!progressByTestId[mapKey] || savedAt > progressByTestId[mapKey].savedAtValue) {
+                        draft.savedAtValue = savedAt;
+                        progressByTestId[mapKey] = draft;
+                    }
+                }
+            } catch (ignoreLearningProgressStorageError) {
+                progressByTestId = {};
+            }
+            vm.learningProgressByTestId = progressByTestId;
+        };
+
+        vm.getLearningProgress = function (testId) {
+            return vm.learningProgressByTestId[String(testId)] || null;
+        };
+
+        vm.formatLearningDuration = function (seconds) {
+            var totalMinutes = Math.floor(Math.max(0, Number(seconds) || 0) / 60);
+            if (totalMinutes < 60) { return totalMinutes + ' phút'; }
+            return Math.floor(totalMinutes / 60) + ' giờ ' + (totalMinutes % 60) + ' phút';
+        };
+
+        vm.testCatalogUrl = function (item) {
+            var route = vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/';
+            return route + item.id + (vm.getLearningProgress(item.id) ? '?sessionMode=STUDY' : '');
+        };
+
+        function refreshLearningProgressOnFocus() {
+            $scope.$evalAsync(vm.refreshLearningProgress);
+        }
+
+        $window.addEventListener('focus', refreshLearningProgressOnFocus);
+        $window.addEventListener('storage', refreshLearningProgressOnFocus);
+        $scope.$on('$destroy', function () {
+            $window.removeEventListener('focus', refreshLearningProgressOnFocus);
+            $window.removeEventListener('storage', refreshLearningProgressOnFocus);
+        });
+        vm.refreshLearningProgress();
+
         vm.ieltsReadingTest = {
             questionType: {
                 code: 'IELTSRT',
@@ -146,6 +206,7 @@
             service.getPageForTests(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
                 blockUI.stop();
                 vm.ieltsReadingTests = data.content;
+                vm.refreshLearningProgress();
                 vm.bsTableControlCreateIELTSReadingTest.options.data = vm.ieltsReadingTests;
                 vm.bsTableControlCreateIELTSReadingTest.options.totalRows = data.totalElements;
                 // x.focus();
