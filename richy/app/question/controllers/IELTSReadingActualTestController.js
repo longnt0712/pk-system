@@ -1032,11 +1032,13 @@
         var readingDraftAutosaveTimer = null;
         var readingDraftSubmitted = false;
 
-        function readingDraftStorageKey(testId) {
+        function readingDraftStorageKey(testId, sessionMode) {
             testId = testId || (vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id)
                 || $stateParams.ieltsReadingTestId;
+            var normalizedMode = String(sessionMode || vm.testSessionMode || vm.selectedTestSessionMode || '').toUpperCase();
+            var sessionSuffix = normalizedMode === 'SERIOUS' ? ':serious' : '';
             return readingDraftBaseKey + (vm.isListeningRoute ? ':listening:test:' : ':reading:test:')
-                + String(testId || 'unknown') + readingDraftTaskSuffix;
+                + String(testId || 'unknown') + sessionSuffix + readingDraftTaskSuffix;
         }
 
         function readStoredDraft(key) {
@@ -1048,18 +1050,21 @@
             }
         }
 
-        function readReadingDraft(testId) {
+        function readReadingDraft(testId, sessionMode) {
             if (vm.isPreviewMode) {
                 return null;
             }
             try {
                 var expectedTestId = testId || (vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id)
                     || $stateParams.ieltsReadingTestId;
-                var candidateKeys = [
-                    readingDraftStorageKey(expectedTestId),
-                    legacyModeDraftStorageKey,
-                    legacyReadingDraftStorageKey
-                ];
+                var expectedMode = String(sessionMode || '').toUpperCase();
+                var candidateKeys = expectedMode === 'SERIOUS'
+                    ? [readingDraftStorageKey(expectedTestId, 'SERIOUS'), legacyModeDraftStorageKey, legacyReadingDraftStorageKey]
+                    : expectedMode === 'STUDY'
+                        ? [readingDraftStorageKey(expectedTestId, 'STUDY'), legacyModeDraftStorageKey, legacyReadingDraftStorageKey]
+                        : [readingDraftStorageKey(expectedTestId, 'STUDY'), readingDraftStorageKey(expectedTestId, 'SERIOUS'), legacyModeDraftStorageKey, legacyReadingDraftStorageKey];
+                var newestDraft = null;
+                var newestDraftTime = -1;
                 for (var keyIndex = 0; keyIndex < candidateKeys.length; keyIndex++) {
                     var draft = readStoredDraft(candidateKeys[keyIndex]);
                     if (!draft || String(draft.userId) !== String(vm.currentUser.id) || !draft.testId
@@ -1070,9 +1075,16 @@
                             && (draft.testMode || angular.isDefined(draft.isListening))) {
                         continue;
                     }
-                    return draft;
+                    if (expectedMode && String(draft.sessionMode || '').toUpperCase() !== expectedMode) {
+                        continue;
+                    }
+                    var draftTime = new Date(draft.savedAt || 0).getTime() || 0;
+                    if (!newestDraft || draftTime > newestDraftTime) {
+                        newestDraft = draft;
+                        newestDraftTime = draftTime;
+                    }
                 }
-                return null;
+                return newestDraft;
             } catch (ignoreReadingDraftReadError) {
                 return null;
             }
@@ -1081,10 +1093,12 @@
         function clearReadingDraft() {
             try {
                 var currentTestId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
-                $window.localStorage.removeItem(readingDraftStorageKey(currentTestId));
+                var currentMode = vm.testSessionMode === 'STUDY' ? 'STUDY' : 'SERIOUS';
+                $window.localStorage.removeItem(readingDraftStorageKey(currentTestId, currentMode));
                 angular.forEach([legacyModeDraftStorageKey, legacyReadingDraftStorageKey], function (key) {
                     var legacyDraft = readStoredDraft(key);
-                    if (!legacyDraft || String(legacyDraft.testId) === String(currentTestId)) {
+                    var legacyMode = String((legacyDraft || {}).sessionMode || 'STUDY').toUpperCase();
+                    if (!legacyDraft || (String(legacyDraft.testId) === String(currentTestId) && legacyMode === currentMode)) {
                         $window.localStorage.removeItem(key);
                     }
                 });
@@ -1141,7 +1155,7 @@
                         answeredNumbers[result.ordinalNumber] = true;
                     }
                 });
-                var activeDraftKey = readingDraftStorageKey(testId);
+                var activeDraftKey = readingDraftStorageKey(testId, vm.testSessionMode);
                 var previousDraft = readStoredDraft(activeDraftKey) || {};
                 $window.localStorage.setItem(activeDraftKey, JSON.stringify({
                     version: 2,
@@ -1169,7 +1183,8 @@
                 }));
                 angular.forEach([legacyModeDraftStorageKey, legacyReadingDraftStorageKey], function (key) {
                     var legacyDraft = readStoredDraft(key);
-                    if (legacyDraft && String(legacyDraft.testId) === String(testId)) {
+                    if (legacyDraft && String(legacyDraft.testId) === String(testId)
+                            && String(legacyDraft.sessionMode || 'STUDY').toUpperCase() === String(vm.testSessionMode || '').toUpperCase()) {
                         $window.localStorage.removeItem(key);
                     }
                 });
@@ -1182,7 +1197,7 @@
             if (vm.testSessionMode !== 'STUDY') { return; }
             try {
                 var testId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
-                var key = readingDraftStorageKey(testId);
+                var key = readingDraftStorageKey(testId, 'STUDY');
                 var draft = readStoredDraft(key);
                 if (!draft) { return; }
                 draft.completed = true;
@@ -1260,7 +1275,7 @@
         }
 
         function restoreReadingDraft() {
-            var draft = readReadingDraft(vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id);
+            var draft = readReadingDraft(vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id, vm.testSessionMode);
             var currentTestId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
             if (!draft || String(draft.testId) !== String(currentTestId)) {
                 return;
@@ -1578,7 +1593,10 @@
         vm.isStartTest = false;
 
         var requestedSessionMode = String($location.search().sessionMode || '').toUpperCase();
-        var existingSessionDraft = readReadingDraft($stateParams.ieltsReadingTestId);
+        var startFreshSeriousTest = requestedSessionMode === 'SERIOUS'
+            && String($location.search().startFresh || '') === '1';
+        var existingSessionDraft = startFreshSeriousTest ? null
+            : readReadingDraft($stateParams.ieltsReadingTestId, requestedSessionMode);
         if (requestedSessionMode === 'STUDY' || requestedSessionMode === 'SERIOUS') {
             vm.selectedTestSessionMode = requestedSessionMode;
         } else if (existingSessionDraft && String(existingSessionDraft.testId) === String($stateParams.ieltsReadingTestId)
@@ -1589,6 +1607,12 @@
         vm.requestStartTest = function () {
             if (vm.isPreviewMode) {
                 vm.testSessionMode = 'SERIOUS';
+                vm.startTest();
+                return;
+            }
+            if (startFreshSeriousTest) {
+                vm.testSessionMode = 'SERIOUS';
+                vm.selectedTestSessionMode = 'SERIOUS';
                 vm.startTest();
                 return;
             }
@@ -1676,7 +1700,9 @@
                             if (vm.isPreviewMode) {
                                 vm.passageNumber = vm.previewPart;
                             } else {
-                                restoreReadingDraft();
+                                if (!startFreshSeriousTest) {
+                                    restoreReadingDraft();
+                                }
                                 if (vm.isPartAssignment) {
                                     vm.passageNumber = vm.assignedPart;
                                     vm.resultQuestionTotal = assignedPartQuestionOrdinals().length || 1;
@@ -5349,7 +5375,8 @@
                 vm.startTest();
             }, 0);
         } else {
-            var pendingReadingDraft = readReadingDraft($stateParams.ieltsReadingTestId);
+            var pendingReadingDraft = startFreshSeriousTest ? null
+                : readReadingDraft($stateParams.ieltsReadingTestId, requestedSessionMode);
             if (pendingReadingDraft && String(pendingReadingDraft.testId) === String($stateParams.ieltsReadingTestId)) {
                 vm.testSessionMode = pendingReadingDraft.sessionMode === 'STUDY' ? 'STUDY' : 'SERIOUS';
                 vm.selectedTestSessionMode = vm.testSessionMode;

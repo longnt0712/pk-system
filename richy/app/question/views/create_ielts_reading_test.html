@@ -87,11 +87,8 @@
                         </div>
 
                         <div class="reading-test-grid" ng-if="vm.ieltsReadingTests.length">
-                            <a class="reading-test-card"
+                            <article class="reading-test-card"
                                ng-class="{'is-listening': vm.isListeningMode, 'is-reading': !vm.isListeningMode, 'has-learning-progress': !!vm.getLearningProgress(item.id)}"
-                               target="_blank"
-                               rel="noopener"
-                               ng-href="{{vm.testCatalogUrl(item)}}"
                                ng-repeat="item in vm.ieltsReadingTests track by item.id">
                                 <div class="reading-test-card__top">
                                     <span class="reading-test-card__type">
@@ -116,10 +113,23 @@
                                     </div>
                                 </div>
                                 <div class="reading-test-card__footer">
-                                    <span>{{vm.getLearningProgress(item.id) ? (vm.getLearningProgress(item.id).completed ? 'Xem lại bài đã học' : 'Xem lại / tiếp tục học') : 'Bắt đầu làm bài'}}</span>
-                                    <i class="fa" ng-class="vm.getLearningProgress(item.id) ? 'fa-history' : 'fa-arrow-right'" aria-hidden="true"></i>
+                                    <a class="reading-test-card__action is-study"
+                                       target="_blank"
+                                       rel="noopener"
+                                       ng-href="{{vm.testCatalogUrl(item)}}">
+                                        <span>{{vm.getLearningProgress(item.id) ? (vm.getLearningProgress(item.id).completed ? 'Xem lại bài đã học' : 'Xem lại / tiếp tục học') : 'Bắt đầu làm bài'}}</span>
+                                        <i class="fa" ng-class="vm.getLearningProgress(item.id) ? 'fa-history' : 'fa-arrow-right'" aria-hidden="true"></i>
+                                    </a>
+                                    <a class="reading-test-card__action is-serious"
+                                       ng-if="vm.getLearningProgress(item.id)"
+                                       target="_blank"
+                                       rel="noopener"
+                                       ng-href="{{vm.seriousTestCatalogUrl(item)}}">
+                                        <span>Làm bài test</span>
+                                        <i class="fa fa-clock-o" aria-hidden="true"></i>
+                                    </a>
                                 </div>
-                            </a>
+                            </article>
                         </div>
 
                         <div class="reading-test-empty" ng-if="!vm.ieltsReadingTests.length">
@@ -1545,9 +1555,8 @@
 
     .reading-test-card__footer {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 13px 18px;
+        align-items: stretch;
+        padding: 0;
         border-top: 1px solid #edf0f5;
         color: #4b5fce;
         background: #fbfcff;
@@ -1560,15 +1569,53 @@
         background: #fbfefd;
     }
 
-    .reading-test-card__footer span {
-        font-size: 12px !important;
+    .reading-test-card__action {
+        display: flex;
+        min-width: 0;
+        min-height: 50px;
+        flex: 1 1 50%;
+        align-items: center;
+        justify-content: space-between;
+        gap: 7px;
+        padding: 11px 13px;
+        color: inherit !important;
+        background: transparent;
+        text-decoration: none !important;
+        transition: background .18s ease, color .18s ease;
     }
 
-    .reading-test-card:hover .reading-test-card__footer i {
+    .reading-test-card__action + .reading-test-card__action {
+        border-left: 1px solid #e3e7f2;
+    }
+
+    .reading-test-card__action:hover,
+    .reading-test-card__action:focus {
+        background: #f0f3ff;
+        outline: 0;
+    }
+
+    .reading-test-card__action.is-serious {
+        color: #a44a0c !important;
+        background: #fffaf2;
+    }
+
+    .reading-test-card__action.is-serious:hover,
+    .reading-test-card__action.is-serious:focus {
+        background: #fff1dc;
+    }
+
+    .reading-test-card__action span {
+        font-size: 11px !important;
+        line-height: 1.25;
+    }
+
+    .reading-test-card__action.is-study:hover i,
+    .reading-test-card__action.is-study:focus i {
         transform: translateX(3px);
     }
 
-    .reading-test-card__footer i {
+    .reading-test-card__action i {
+        flex: 0 0 auto;
         transition: transform .2s ease;
     }
 

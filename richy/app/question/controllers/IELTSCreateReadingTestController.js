@@ -171,6 +171,11 @@
             return route + item.id + (vm.getLearningProgress(item.id) ? '?sessionMode=STUDY' : '');
         };
 
+        vm.seriousTestCatalogUrl = function (item) {
+            var route = vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/';
+            return route + item.id + '?sessionMode=SERIOUS&startFresh=1';
+        };
+
         function refreshLearningProgressOnFocus() {
             $scope.$evalAsync(vm.refreshLearningProgress);
         }

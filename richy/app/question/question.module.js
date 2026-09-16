@@ -266,7 +266,7 @@
             })
 
             .state('application.ielts_reading_actual_test', {
-                url: '/ielts_reading_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&sessionMode',
+                url: '/ielts_reading_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&sessionMode&startFresh',
                 templateUrl: 'question/views/ielts_reading_actual_test_idp.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'IELTS Reading Actual Test'},
                 controller: 'IELTSReadingActualTestController as vm',
@@ -285,7 +285,7 @@
             })
 
             .state('application.ielts_listening_actual_test', {
-                url: '/ielts_listening_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&sessionMode',
+                url: '/ielts_listening_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&sessionMode&startFresh',
                 templateUrl: 'question/views/ielts_reading_actual_test_idp.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'IELTS Listening Actual Test'},
                 controller: 'IELTSReadingActualTestController as vm',
