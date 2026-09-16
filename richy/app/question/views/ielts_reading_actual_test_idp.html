@@ -3717,8 +3717,8 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 68px;
-        height: 70px;
+        width: 48px;
+        height: 50px;
         padding: 0;
         border: 0;
         border-radius: 3px;
@@ -4532,7 +4532,32 @@
         }
 
         .idp-exam-tools {
-            display: none;
+            display: flex;
+            flex: 0 0 auto;
+            gap: 0;
+            margin-left: auto;
+        }
+
+        .idp-exam-tools > .idp-top-timer,
+        .idp-exam-tools > .idp-tool-icon:not(.idp-display-settings-trigger),
+        .idp-exam-tools > .idp-top-finish {
+            display: none !important;
+        }
+
+        .idp-exam-tools > .idp-display-settings-trigger {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border: 1px solid #c5c9ce;
+            border-radius: 3px;
+            background: #ffffff;
+            font-size: 23px !important;
+        }
+
+        .idp-exam-name {
+            min-width: 0;
         }
 
         .idp-exam-name span {
