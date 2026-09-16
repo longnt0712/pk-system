@@ -12,11 +12,37 @@
      ng-click="handleReadingAnnotationClick($event)">
 
 <div class="row margin-top-10 wrap-test text-center idp-start-screen" ng-show="vm.isHasTestTakerName === true && vm.isStartTest === false">
-    <h1 class="start-test-button" ng-show="vm.isHasTestTakerName === true" style="cursor: pointer" ng-click="vm.startTest()">
+    <h1 class="start-test-button" ng-show="vm.isHasTestTakerName === true" style="cursor: pointer" ng-click="vm.requestStartTest()">
         <span class="idp-start-icon"><i class="fa fa-play"></i></span>
         Start {{vm.isListeningRoute ? 'Listening' : 'Reading'}} {{vm.isPartAssignment ? 'Part ' + vm.assignedPart : 'test'}}
         <small>{{vm.isPartAssignment ? 'Assigned task · Part ' + vm.assignedPart + ' only' : '60 minutes · 3 parts · 40 questions'}}</small>
     </h1>
+</div>
+<div class="idp-test-mode-backdrop" ng-if="vm.showTestModeDialog" ng-click="vm.closeTestSessionMode()">
+    <section class="idp-test-mode-dialog" role="dialog" aria-modal="true" aria-labelledby="idp-test-mode-title" ng-click="$event.stopPropagation()">
+        <button type="button" class="idp-test-mode-close" aria-label="Close" ng-click="vm.closeTestSessionMode()"><i class="fa fa-times"></i></button>
+        <span class="idp-test-mode-kicker">CHOOSE YOUR MODE</span>
+        <h2 id="idp-test-mode-title">How would you like to do this {{vm.isListeningRoute ? 'Listening' : 'Reading'}} test?</h2>
+        <p class="idp-test-mode-intro">You can keep your answers, notes and highlights in either mode.</p>
+        <div class="idp-test-mode-options">
+            <button type="button" class="idp-test-mode-option" ng-class="{'is-selected': vm.selectedTestSessionMode === 'SERIOUS'}" ng-click="vm.selectTestSessionMode('SERIOUS')">
+                <span class="idp-test-mode-icon"><i class="fa fa-clock-o"></i></span>
+                <strong>Serious test</strong>
+                <small>The timer counts down continuously, including when you leave this tab.</small>
+                <span class="idp-test-mode-check"><i class="fa fa-check"></i></span>
+            </button>
+            <button type="button" class="idp-test-mode-option" ng-class="{'is-selected': vm.selectedTestSessionMode === 'STUDY'}" ng-click="vm.selectTestSessionMode('STUDY')">
+                <span class="idp-test-mode-icon"><i class="fa fa-book"></i></span>
+                <strong>Study mode</strong>
+                <small>The timer counts only the time you actively spend on this page.</small>
+                <span class="idp-test-mode-check"><i class="fa fa-check"></i></span>
+            </button>
+        </div>
+        <div class="idp-test-mode-default" ng-if="vm.isPartAssignment"><i class="fa fa-info-circle"></i> Assigned tasks start in Study mode by default.</div>
+        <button type="button" class="idp-test-mode-start" ng-click="vm.confirmTestSessionMode()">
+            Start in {{vm.selectedTestSessionMode === 'STUDY' ? 'Study mode' : 'Serious test mode'}} <i class="fa fa-arrow-right"></i>
+        </button>
+    </section>
 </div>
 <div class="row margin-top-10 wrap-test idp-reading-test-shell" ng-show="vm.isHasTestTakerName === true && vm.isStartTest === true" id="test-performance">
     <div class="idp-reading-preview-banner" ng-if="vm.isPreviewMode">
@@ -41,7 +67,7 @@
                 <i class="fa fa-clock-o"></i>
                 <span ng-if="vm.displayAllTimer">{{vm.getRemainingClock()}}</span>
                 <span ng-if="!vm.displayAllTimer">{{vm.getRemainingMinutes()}} min</span>
-                <small> remaining</small>
+                <small> {{vm.getTimerStatusLabel()}}</small>
             </span>
             <button type="button" class="idp-tool-icon" title="Connection status" aria-label="Connection status">
                 <i class="fa fa-wifi"></i>
@@ -78,10 +104,10 @@
                                 </p>
                             </div>
                             <div style="padding-top: 20px;" ng-show="vm.displayAllTimer == true" ng-mouseleave="vm.displayOnlyMinute()" class="col-md-4  text-center">
-                                <p class="idp-timer"><i class="fa fa-clock-o"></i><span style="font-weight:bold;font-size:20px;">{{vm.getRemainingClock()}}</span><small>remaining</small></p>
+                                <p class="idp-timer"><i class="fa fa-clock-o"></i><span style="font-weight:bold;font-size:20px;">{{vm.getRemainingClock()}}</span><small>{{vm.getTimerStatusLabel()}}</small></p>
                             </div>
                             <div style="padding-top: 20px;" ng-show="vm.displayAllTimer == false" ng-mouseover="vm.displayTimer()" class="col-md-4  text-center" >
-                                <p class="idp-timer" style="font-size: 15px;font-weight: 700;"><i class="fa fa-clock-o"></i><span style="font-weight:bold;font-size:20px;">{{vm.getRemainingMinutes()}}</span> minute<span ng-show="vm.getRemainingMinutes() != 1">s</span><small>remaining</small></p>
+                                <p class="idp-timer" style="font-size: 15px;font-weight: 700;"><i class="fa fa-clock-o"></i><span style="font-weight:bold;font-size:20px;">{{vm.getRemainingMinutes()}}</span> minute<span ng-show="vm.getRemainingMinutes() != 1">s</span><small>{{vm.getTimerStatusLabel()}}</small></p>
                             </div>
                             <div style="padding-top: 15px;padding-right: 40px" class="col-md-4 text-right" ng-show="vm.isStartTest">
                                 <button ng-if="!vm.isPreviewMode" style="padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" data-ng-click="vm.saveTestResult()">
@@ -100,7 +126,7 @@
                                 <i class="fa fa-clock-o"></i>
                                 <span style="font-weight:bold;font-size:20px;" ng-if="vm.displayAllTimer">{{vm.getRemainingClock()}}</span>
                                 <span style="font-weight:bold;font-size:20px;" ng-if="!vm.displayAllTimer">{{vm.getRemainingMinutes()}} min</span>
-                                <small>remaining</small>
+                                <small>{{vm.getTimerStatusLabel()}}</small>
                             </p>
                         </div>
 
@@ -481,7 +507,7 @@
                                             <div id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global idp-selectable-question-text">{{q.question}}</div>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                             <div class="row" ng-if="$index == vm.type5Index">
-                                                <div style="padding-left: 25px" ng-show="q.showChildren == true" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                <div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
                                                     <div class="col-md-1">
                                                         <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
                                                     </div>
@@ -877,7 +903,7 @@
                                             <div id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global idp-selectable-question-text"><span compile="q.question"> </span></div>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                             <div class="row" ng-if="$index == vm.type5Index">
-                                                <div style="padding-left: 25px" ng-show="q.showChildren == true" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                <div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
                                                     <div class="col-md-1">
                                                         <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
                                                     </div>
@@ -1289,7 +1315,7 @@
                                             <div id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global idp-selectable-question-text">{{q.question}}</div>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                             <div class="row" ng-if="$index == vm.type5Index">
-                                                <div style="padding-left: 25px" ng-show="q.showChildren == true" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                <div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
                                                     <div class="col-md-1">
                                                         <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
                                                     </div>
@@ -5347,6 +5373,165 @@
         /*bottom:61px;*/
     /*}*/
 
+    .idp-test-mode-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 10080;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(15, 23, 42, .62);
+        backdrop-filter: blur(5px);
+    }
+
+    .idp-test-mode-dialog {
+        position: relative;
+        width: min(720px, 100%);
+        max-height: calc(100vh - 32px);
+        overflow: auto;
+        padding: 34px;
+        border: 1px solid #d9e2f0;
+        border-radius: 24px;
+        background: #fff;
+        color: #17264b;
+        box-shadow: 0 28px 70px rgba(15, 23, 42, .28);
+        text-align: left;
+    }
+
+    .idp-test-mode-close {
+        position: absolute;
+        top: 18px;
+        right: 18px;
+        width: 38px;
+        height: 38px;
+        border: 0;
+        border-radius: 50%;
+        background: #eef2ff;
+        color: #516080;
+    }
+
+    .idp-test-mode-kicker {
+        color: #6557e8;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .12em;
+    }
+
+    .idp-test-mode-dialog h2 {
+        margin: 8px 42px 8px 0;
+        color: inherit;
+        font-size: 27px;
+        font-weight: 800;
+        line-height: 1.25;
+    }
+
+    .idp-test-mode-intro {
+        margin: 0 0 22px;
+        color: #65708a;
+    }
+
+    .idp-test-mode-options {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .idp-test-mode-option {
+        position: relative;
+        min-height: 180px;
+        padding: 23px;
+        border: 2px solid #e2e8f3;
+        border-radius: 18px;
+        background: #f8faff;
+        color: #17264b;
+        text-align: left;
+        transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+        touch-action: manipulation;
+    }
+
+    .idp-test-mode-option:hover,
+    .idp-test-mode-option:focus,
+    .idp-test-mode-option.is-selected {
+        border-color: #6b5cf6;
+        box-shadow: 0 10px 28px rgba(93, 76, 233, .14);
+        outline: 0;
+    }
+
+    .idp-test-mode-option.is-selected { transform: translateY(-2px); }
+    .idp-test-mode-option strong,
+    .idp-test-mode-option small { display: block; }
+    .idp-test-mode-option strong { margin: 16px 28px 7px 0; font-size: 19px; }
+    .idp-test-mode-option small { color: #65708a; font-size: 13px; line-height: 1.55; }
+    .idp-test-mode-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #6657ed, #31b8cd);
+        color: #fff;
+        font-size: 21px;
+    }
+    .idp-test-mode-check {
+        position: absolute;
+        top: 18px;
+        right: 18px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        width: 27px;
+        height: 27px;
+        border-radius: 50%;
+        background: #6858ef;
+        color: #fff;
+    }
+    .idp-test-mode-option.is-selected .idp-test-mode-check { display: inline-flex; }
+    .idp-test-mode-default {
+        margin-top: 16px;
+        padding: 11px 13px;
+        border-radius: 10px;
+        background: #eef8ff;
+        color: #315e85;
+        font-size: 13px;
+    }
+    .idp-test-mode-start {
+        width: 100%;
+        margin-top: 18px;
+        padding: 14px 20px;
+        border: 0;
+        border-radius: 13px;
+        background: linear-gradient(90deg, #5c63ed, #7a4df1);
+        color: #fff;
+        font-size: 16px;
+        font-weight: 800;
+        box-shadow: 0 10px 24px rgba(93, 76, 233, .25);
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-test-mode-dialog,
+    .idp-reading-page.idp-contrast-white-black .idp-test-mode-option,
+    .idp-reading-page.idp-contrast-yellow-black .idp-test-mode-dialog,
+    .idp-reading-page.idp-contrast-yellow-black .idp-test-mode-option {
+        border-color: #747474;
+        background: #050505;
+        color: #fff;
+    }
+    .idp-reading-page.idp-contrast-yellow-black .idp-test-mode-dialog,
+    .idp-reading-page.idp-contrast-yellow-black .idp-test-mode-option { color: #ffeb00; }
+    .idp-reading-page.idp-contrast-white-black .idp-test-mode-intro,
+    .idp-reading-page.idp-contrast-white-black .idp-test-mode-option small,
+    .idp-reading-page.idp-contrast-yellow-black .idp-test-mode-intro,
+    .idp-reading-page.idp-contrast-yellow-black .idp-test-mode-option small { color: inherit; }
+
+    @media (max-width: 640px) {
+        .idp-test-mode-backdrop { padding: 10px; }
+        .idp-test-mode-dialog { padding: 26px 18px 20px; border-radius: 18px; }
+        .idp-test-mode-dialog h2 { font-size: 21px; }
+        .idp-test-mode-options { grid-template-columns: 1fr; }
+        .idp-test-mode-option { min-height: 130px; padding: 17px; }
+        .idp-test-mode-option strong { margin-top: 10px; }
+    }
 </style>
 
 <!-- BEGIN MAIN JS -->

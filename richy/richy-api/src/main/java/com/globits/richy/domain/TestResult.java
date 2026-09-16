@@ -42,12 +42,25 @@ public class TestResult extends BaseObject{
     private Integer completedPart;
     @Column(name="assignment_task_id")
     private Long assignmentTaskId;
+    @Column(name="ielts_session_mode", length=20)
+    private String ieltsSessionMode;
+    @Column(name="active_duration_seconds")
+    private Integer activeDurationSeconds;
+    @Lob
+    @Column(name="ielts_learning_state")
+    private String ieltsLearningState;
     public Long getSourceQuestionId(){return sourceQuestionId;}
     public void setSourceQuestionId(Long value){sourceQuestionId=value;}
     public Integer getCompletedPart(){return completedPart;}
     public void setCompletedPart(Integer value){completedPart=value;}
     public Long getAssignmentTaskId(){return assignmentTaskId;}
     public void setAssignmentTaskId(Long value){assignmentTaskId=value;}
+    public String getIeltsSessionMode(){return ieltsSessionMode;}
+    public void setIeltsSessionMode(String value){ieltsSessionMode=value;}
+    public Integer getActiveDurationSeconds(){return activeDurationSeconds;}
+    public void setActiveDurationSeconds(Integer value){activeDurationSeconds=value;}
+    public String getIeltsLearningState(){return ieltsLearningState;}
+    public void setIeltsLearningState(String value){ieltsLearningState=value;}
 
 	@ManyToMany(fetch = FetchType.LAZY)
 	@JoinTable(name = "tbl_test_result_topic", joinColumns = @JoinColumn(name = "test_result_id"),

@@ -34,6 +34,9 @@ public class TestResultDto implements Serializable{
 	private Long sourceQuestionId;
 	private Integer completedPart;
 	private Long assignmentTaskId;
+	private String ieltsSessionMode;
+	private Integer activeDurationSeconds;
+	private String ieltsLearningState;
 	private String resultGroup;
 	public List<Long> getTopicIds() { return topicIds; }
 	public void setTopicIds(List<Long> value) { topicIds = value; }
@@ -45,6 +48,12 @@ public class TestResultDto implements Serializable{
 	public void setCompletedPart(Integer value) { completedPart = value; }
 	public Long getAssignmentTaskId() { return assignmentTaskId; }
 	public void setAssignmentTaskId(Long value) { assignmentTaskId = value; }
+	public String getIeltsSessionMode() { return ieltsSessionMode; }
+	public void setIeltsSessionMode(String value) { ieltsSessionMode = value; }
+	public Integer getActiveDurationSeconds() { return activeDurationSeconds; }
+	public void setActiveDurationSeconds(Integer value) { activeDurationSeconds = value; }
+	public String getIeltsLearningState() { return ieltsLearningState; }
+	public void setIeltsLearningState(String value) { ieltsLearningState = value; }
 	public String getResultGroup() { return resultGroup; }
 	public void setResultGroup(String value) { resultGroup = value; }
 	private void copyTopics(TestResult domain) {
@@ -53,6 +62,8 @@ public class TestResultDto implements Serializable{
         sourceQuestionId=domain.getSourceQuestionId();
         completedPart=domain.getCompletedPart();
         assignmentTaskId=domain.getAssignmentTaskId();
+        ieltsSessionMode=domain.getIeltsSessionMode();
+        activeDurationSeconds=domain.getActiveDurationSeconds();
         if(Integer.valueOf(1).equals(domain.getTestType())&&resultStatus==null)resultStatus="SUCCESS";
         if("FAILED".equals(resultStatus))messageCode=1;
 		completedVocabularyTopicIds = new ArrayList<Long>();
@@ -384,7 +395,8 @@ public class TestResultDto implements Serializable{
 		this.testTakerName = domain.getTestTakerName();
 		this.vocabularyExperienceAwardedWords = domain.getVocabularyExperienceAwardedWords();
 		if(isGetOne == true) {
-			this.testTakerPerformance = domain.getTestTakerPerformance();	
+			this.testTakerPerformance = domain.getTestTakerPerformance();
+			this.ieltsLearningState = domain.getIeltsLearningState();
 		}
 		if(domain.getTestType() == null) {
 			this.testType = 1;

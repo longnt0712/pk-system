@@ -587,6 +587,9 @@
         vm.assignmentTaskId = /^\d+$/.test(String($stateParams.assignmentTaskId || '')) ? Number($stateParams.assignmentTaskId) : null;
         vm.assignedPart = /^[123]$/.test(String($stateParams.assignmentPart || '')) ? Number($stateParams.assignmentPart) : null;
         vm.isPartAssignment = !!(vm.assignmentTaskId && vm.assignedPart);
+        vm.testSessionMode = vm.assignmentTaskId ? 'STUDY' : 'SERIOUS';
+        vm.selectedTestSessionMode = vm.testSessionMode;
+        vm.showTestModeDialog = false;
         vm.resultQuestionTotal = 40;
 
         function getResultQuestionType(item) {
@@ -671,7 +674,7 @@
                 $window.localStorage.getItem('ieltsReadingPanePercent')
             );
             if (!isNaN(savedReadingPanePercent)) {
-                vm.readingPanePercent = Math.max(25, Math.min(75, savedReadingPanePercent));
+                vm.readingPanePercent = Math.max(5, Math.min(95, savedReadingPanePercent));
             }
         } catch (ignoreReadingPaneStorageError) {
             vm.readingPanePercent = 50;
@@ -731,7 +734,7 @@
                 ? ((point.y - splitBounds.top) / splitBounds.height) * 100
                 : ((point.x - splitBounds.left) / splitBounds.width) * 100;
             vm.readingPanePercent = Math.round(
-                Math.max(25, Math.min(75, nextPercent)) * 10
+                Math.max(5, Math.min(95, nextPercent)) * 10
             ) / 10;
             $scope.$evalAsync();
         }
@@ -1036,7 +1039,7 @@
                 return;
             }
             try {
-                syncCountdownFromDeadline();
+                syncTimerForPersistence();
                 var results = serializeReadingDraftResults();
                 var answeredNumbers = {};
                 angular.forEach(results, function (result) {
@@ -1045,22 +1048,26 @@
                     }
                 });
                 $window.localStorage.setItem(readingDraftStorageKey, JSON.stringify({
-                    version: 1,
+                    version: 2,
                     userId: vm.currentUser.id,
                     testId: testId,
                     title: vm.ieltsReadingActualTest.title || 'IELTS Reading Test',
                     isListening: vm.isListeningRoute === true,
                     testMode: vm.isListeningRoute ? 'LISTENING' : 'READING',
+                    sessionMode: vm.testSessionMode,
                     assignmentTaskId: vm.assignmentTaskId || null,
                     assignmentPart: vm.assignedPart || null,
                     savedAt: new Date().toISOString(),
                     passageNumber: vm.passageNumber || 1,
                     currentOrdinalNumber: Number(vm.tempOrdinalNumber) || null,
                     remainingSeconds: Math.max(0, Number($scope.counter) || 0),
+                    elapsedSeconds: getActiveDurationSeconds(),
                     answeredCount: Object.keys(answeredNumbers).length,
                     totalQuestions: getReadingQuestionEntries().length,
                     results: results,
-                    questionStates: serializeReadingQuestionStates()
+                    questionStates: serializeReadingQuestionStates(),
+                    annotationNotes: angular.copy(vm.annotationNotes || []),
+                    annotations: serializeReadingAnnotations()
                 }));
                 if (legacyReadingDraftStorageKey !== readingDraftStorageKey) {
                     $window.localStorage.removeItem(legacyReadingDraftStorageKey);
@@ -1204,9 +1211,17 @@
                     vm.autoScrollToView(vm.tempOrdinalNumber);
                 }, 250);
             }
-            if (Number(draft.remainingSeconds) > 0) {
+            if (vm.testSessionMode === 'STUDY' && draft.sessionMode === 'STUDY') {
+                timerRestoredFromDraft = true;
+                setStudyElapsedSeconds(Number(draft.elapsedSeconds) || 0);
+            } else if (vm.testSessionMode !== 'STUDY' && Number(draft.remainingSeconds) > 0) {
+                timerRestoredFromDraft = true;
                 setCountdownSeconds(Number(draft.remainingSeconds));
             }
+            vm.annotationNotes = angular.copy(draft.annotationNotes || []);
+            $timeout(function () {
+                restoreReadingAnnotations(draft.annotations || []);
+            }, 350);
             toastr.success('Your in-progress test has been restored.', 'Continue test');
         }
 
@@ -1445,6 +1460,38 @@
         vm.isHasTestTakerName = true;
         vm.isStartTest = false;
 
+        var requestedSessionMode = String($location.search().sessionMode || '').toUpperCase();
+        var existingSessionDraft = readReadingDraft();
+        if (requestedSessionMode === 'STUDY' || requestedSessionMode === 'SERIOUS') {
+            vm.selectedTestSessionMode = requestedSessionMode;
+        } else if (existingSessionDraft && String(existingSessionDraft.testId) === String($stateParams.ieltsReadingTestId)
+                && (existingSessionDraft.sessionMode === 'STUDY' || existingSessionDraft.sessionMode === 'SERIOUS')) {
+            vm.selectedTestSessionMode = existingSessionDraft.sessionMode;
+        }
+
+        vm.requestStartTest = function () {
+            if (vm.isPreviewMode) {
+                vm.testSessionMode = 'SERIOUS';
+                vm.startTest();
+                return;
+            }
+            vm.showTestModeDialog = true;
+        };
+
+        vm.selectTestSessionMode = function (mode) {
+            vm.selectedTestSessionMode = mode === 'STUDY' ? 'STUDY' : 'SERIOUS';
+        };
+
+        vm.confirmTestSessionMode = function () {
+            vm.testSessionMode = vm.selectedTestSessionMode === 'STUDY' ? 'STUDY' : 'SERIOUS';
+            vm.showTestModeDialog = false;
+            vm.startTest();
+        };
+
+        vm.closeTestSessionMode = function () {
+            vm.showTestModeDialog = false;
+        };
+
         function normalizeLocalReadingPreview(data) {
             angular.forEach(data.subQuestions || [], function (passage, passageIndex) {
                 angular.forEach(passage.subQuestions || [], function (questionPackage, packageIndex) {
@@ -1470,6 +1517,7 @@
         }
 
         vm.startTest = function () {
+            if (vm.isStartTest) { return; }
             function loadReadingTest(data) {
                     vm.ieltsReadingActualTest = data;
                     vm.getOrdinalNumber(data);
@@ -1563,7 +1611,13 @@
 
         vm.saveTestResult = function () {
             synchronizeReadingResultsBeforeSubmit();
-            vm.testResult.testTime = $scope.minuteDisplay + ":" + $scope.secondDisplay;
+            syncTimerForPersistence();
+            var activeDurationSeconds = getActiveDurationSeconds();
+            vm.testResult.testTime = formatTimerClock(vm.testSessionMode === 'STUDY'
+                ? activeDurationSeconds : Math.max(0, Number($scope.counter) || 0));
+            vm.testResult.ieltsSessionMode = vm.testSessionMode;
+            vm.testResult.activeDurationSeconds = activeDurationSeconds;
+            vm.testResult.ieltsLearningState = JSON.stringify(buildIeltsLearningState());
             var passage1 = document.getElementById('passage-text-1').innerHTML;
             var passage2 = document.getElementById('passage-text-2').innerHTML;
             var passage3 = document.getElementById('passage-text-3').innerHTML;
@@ -1712,6 +1766,10 @@
         vm.totalAudioSeconds = 0;
         var mytimeout = null; // the current timeoutID
         var countdownEndsAt = null;
+        var seriousTotalSeconds = 3600;
+        var studyElapsedSeconds = 0;
+        var studyActiveSince = null;
+        var timerRestoredFromDraft = false;
         var audio = document.getElementById("audio1");
         
         vm.showAudio = false;
@@ -1728,6 +1786,44 @@
             updateCountdownDisplay();
         }
 
+        vm.isStudyMode = function () {
+            return vm.testSessionMode === 'STUDY';
+        };
+
+        function currentStudyElapsedSeconds() {
+            var elapsed = studyElapsedSeconds;
+            if (studyActiveSince !== null && vm.isStartTest === true) {
+                elapsed += Math.max(0, Math.floor((Date.now() - studyActiveSince) / 1000));
+            }
+            return Math.max(0, elapsed);
+        }
+
+        function updateStudyDisplay() {
+            $scope.counter = currentStudyElapsedSeconds();
+            updateCountdownDisplay();
+        }
+
+        function pauseStudyTimer() {
+            if (studyActiveSince !== null) {
+                studyElapsedSeconds = currentStudyElapsedSeconds();
+                studyActiveSince = null;
+            }
+            updateStudyDisplay();
+        }
+
+        function resumeStudyTimer() {
+            if (vm.isStudyMode() && vm.isStartTest === true && !$window.document.hidden && studyActiveSince === null) {
+                studyActiveSince = Date.now();
+            }
+            updateStudyDisplay();
+        }
+
+        function setStudyElapsedSeconds(seconds) {
+            studyElapsedSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
+            studyActiveSince = null;
+            resumeStudyTimer();
+        }
+
         function syncCountdownFromDeadline() {
             if (countdownEndsAt === null) {
                 return;
@@ -1739,10 +1835,39 @@
             updateCountdownDisplay();
         }
 
+        function syncTimerForPersistence() {
+            if (vm.isStudyMode()) {
+                pauseStudyTimer();
+                resumeStudyTimer();
+            } else {
+                syncCountdownFromDeadline();
+            }
+        }
+
+        function getActiveDurationSeconds() {
+            if (vm.isStudyMode()) {
+                return currentStudyElapsedSeconds();
+            }
+            syncCountdownFromDeadline();
+            return Math.max(0, seriousTotalSeconds - Math.max(0, Number($scope.counter) || 0));
+        }
+
+        function formatTimerClock(totalSeconds) {
+            totalSeconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+            var minutes = Math.floor(totalSeconds / 60);
+            var seconds = totalSeconds % 60;
+            return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+        }
+
         // Browser background tabs throttle JavaScript timers. Derive the
         // remaining time from an absolute deadline instead of counter-- so the
         // exam clock stays correct after switching tabs or locking the screen.
         $scope.onTimeout = function() {
+            if (vm.isStudyMode()) {
+                updateStudyDisplay();
+                mytimeout = $timeout($scope.onTimeout, 1000);
+                return;
+            }
             syncCountdownFromDeadline();
             if($scope.counter <= 0) {
                 countdownEndsAt = null;
@@ -1764,23 +1889,38 @@
 
         $scope.refreshTimer = function () {
             $timeout.cancel(mytimeout);
+            if (vm.isStudyMode()) {
+                countdownEndsAt = null;
+                setStudyElapsedSeconds(0);
+                return;
+            }
+            seriousTotalSeconds = 3600;
             setCountdownSeconds(3600);
             vm.totalAudioSeconds = 0;
             mainAudio.onloadedmetadata = function() {
                 vm.totalAudioSeconds = mainAudio.duration;
                 if(vm.isListeningRoute && vm.totalAudioSeconds > 0){
-                    setCountdownSeconds(parseInt(vm.totalAudioSeconds, 10) + 60);
+                    seriousTotalSeconds = Math.max(parseInt(vm.totalAudioSeconds, 10) + 60, Number($scope.counter) || 0);
+                    if (!timerRestoredFromDraft) { setCountdownSeconds(seriousTotalSeconds); }
                     $scope.$evalAsync();
                 }
             };
             if (vm.isListeningRoute && isFinite(mainAudio.duration) && mainAudio.duration > 0) {
                 vm.totalAudioSeconds = mainAudio.duration;
-                setCountdownSeconds(parseInt(vm.totalAudioSeconds, 10) + 60);
+                seriousTotalSeconds = Math.max(parseInt(vm.totalAudioSeconds, 10) + 60, Number($scope.counter) || 0);
+                if (!timerRestoredFromDraft) { setCountdownSeconds(seriousTotalSeconds); }
             }
         };
 
         function syncTimerWhenVisible() {
-            if (!$window.document.hidden) {
+            if (vm.isStudyMode()) {
+                if ($window.document.hidden) {
+                    pauseStudyTimer();
+                    saveReadingDraft();
+                } else {
+                    $scope.$evalAsync(resumeStudyTimer);
+                }
+            } else if (!$window.document.hidden) {
                 $scope.$evalAsync(syncCountdownFromDeadline);
             }
         }
@@ -1815,13 +1955,23 @@
         };
 
         vm.getRemainingMinutes = function () {
+            if (vm.isStudyMode()) {
+                return Math.max(0, Math.floor(currentStudyElapsedSeconds() / 60));
+            }
             return Math.max(0, Math.ceil(Number($scope.counter || 0) / 60));
         };
 
         vm.getRemainingClock = function () {
+            if (vm.isStudyMode()) {
+                return formatTimerClock(currentStudyElapsedSeconds());
+            }
             var minutes = Math.max(0, Number($scope.minuteDisplay || 0));
             var seconds = Math.max(0, Number($scope.secondDisplay || 0));
             return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+        };
+
+        vm.getTimerStatusLabel = function () {
+            return vm.isStudyMode() ? 'studied' : 'remaining';
         };
 
         vm.ieltsReadingActualTest = {};
@@ -3248,6 +3398,103 @@
                 element = element.parentNode;
             }
             return null;
+        }
+
+        var annotationContainerIds = [
+            'passage-text-1', 'passage-question-text-1',
+            'passage-text-2', 'passage-question-text-2',
+            'passage-text-3', 'passage-question-text-3'
+        ];
+
+        function serializeReadingAnnotations() {
+            var records = [];
+            angular.forEach(annotationContainerIds, function (containerId) {
+                var container = document.getElementById(containerId);
+                if (!container) { return; }
+                angular.forEach(container.querySelectorAll('.ielts-annotation'), function (marker) {
+                    try {
+                        var before = document.createRange();
+                        before.selectNodeContents(container);
+                        before.setEndBefore(marker);
+                        var start = before.toString().length;
+                        records.push({
+                            containerId: containerId,
+                            start: start,
+                            end: start + (marker.textContent || '').length,
+                            highlighted: marker.classList.contains('is-highlighted'),
+                            hasNote: marker.classList.contains('has-note'),
+                            noteId: marker.getAttribute('data-note-id') || null,
+                            groupId: marker.getAttribute('data-annotation-group') || null
+                        });
+                    } catch (ignoreAnnotationSerializeError) {}
+                });
+            });
+            return records;
+        }
+
+        function textRangeForOffsets(container, start, end) {
+            var showText = window.NodeFilter ? window.NodeFilter.SHOW_TEXT : 4;
+            var walker = document.createTreeWalker(container, showText, null, false);
+            var range = document.createRange();
+            var offset = 0;
+            var startNode = null;
+            var endNode = null;
+            var startOffset = 0;
+            var endOffset = 0;
+            var node;
+            while ((node = walker.nextNode())) {
+                var nextOffset = offset + node.nodeValue.length;
+                if (!startNode && start >= offset && start <= nextOffset) {
+                    startNode = node;
+                    startOffset = Math.max(0, Math.min(node.nodeValue.length, start - offset));
+                }
+                if (endNode === null && end >= offset && end <= nextOffset) {
+                    endNode = node;
+                    endOffset = Math.max(0, Math.min(node.nodeValue.length, end - offset));
+                    break;
+                }
+                offset = nextOffset;
+            }
+            if (!startNode || !endNode || end <= start) { return null; }
+            range.setStart(startNode, startOffset);
+            range.setEnd(endNode, endOffset);
+            return range;
+        }
+
+        function restoreReadingAnnotations(records) {
+            angular.forEach(records || [], function (record) {
+                var container = document.getElementById(record.containerId);
+                if (!container || Number(record.end) <= Number(record.start)) { return; }
+                var range = textRangeForOffsets(container, Number(record.start), Number(record.end));
+                if (!range || !range.toString()) { return; }
+                var restored = [];
+                if (record.highlighted) {
+                    restored = addAnnotationClass(range, 'is-highlighted', record.hasNote ? record.noteId : null);
+                } else if (record.hasNote) {
+                    restored = addAnnotationClass(range, 'has-note', record.noteId);
+                }
+                angular.forEach(restored, function (marker) {
+                    if (record.highlighted) { marker.classList.add('is-highlighted'); }
+                    if (record.hasNote) {
+                        marker.classList.add('has-note');
+                        if (record.noteId) { marker.setAttribute('data-note-id', record.noteId); }
+                    }
+                    if (record.groupId) { marker.setAttribute('data-annotation-group', record.groupId); }
+                });
+            });
+        }
+
+        function buildIeltsLearningState() {
+            return {
+                version: 1,
+                sessionMode: vm.testSessionMode,
+                activeDurationSeconds: getActiveDurationSeconds(),
+                passageNumber: vm.passageNumber || 1,
+                results: serializeReadingDraftResults(),
+                questionStates: serializeReadingQuestionStates(),
+                annotationNotes: angular.copy(vm.annotationNotes || []),
+                annotations: serializeReadingAnnotations()
+            };
         }
 
         function selectionBelongsToReadingTest(range) {

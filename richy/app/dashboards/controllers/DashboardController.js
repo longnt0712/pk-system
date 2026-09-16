@@ -203,7 +203,8 @@
 					? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test', {
 					ieltsReadingTestId: task.ieltsTestId,
 					assignmentTaskId: task.taskId,
-					assignmentPart: task.ieltsPart
+					assignmentPart: task.ieltsPart,
+					sessionMode: 'STUDY'
 				});
             } else {
                 $state.go('application.englishClass');
@@ -238,6 +239,8 @@
                     title: draft.title || (listening ? 'IELTS Listening Test' : 'IELTS Reading Test'),
                     savedAt: isFinite(savedAt) ? savedAt : 0,
                     remainingSeconds: Number(draft.remainingSeconds) || 0,
+                    elapsedSeconds: Number(draft.elapsedSeconds) || 0,
+                    sessionMode: draft.sessionMode || 'SERIOUS',
                     progressLabel: 'Đã trả lời',
                     progressValue: (Number(draft.answeredCount) || 0) + '/' + (Number(draft.totalQuestions) || 40) + ' câu',
                     testId: draft.testId,
@@ -328,7 +331,8 @@
                 ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test', {
                 ieltsReadingTestId: draft.testId,
                 assignmentTaskId: draft.assignmentTaskId,
-                assignmentPart: draft.assignmentPart
+                assignmentPart: draft.assignmentPart,
+                sessionMode: draft.sessionMode || (draft.assignmentTaskId ? 'STUDY' : 'SERIOUS')
             });
         };
 

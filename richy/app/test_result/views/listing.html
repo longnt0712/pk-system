@@ -532,6 +532,20 @@
             <h4 class="modal-title" data-ng-if="vm.questionType.isNew == false"><i class="fa fa-pencil-square-o"></i>Cập nhật tôn giáo</h4>
         </div>
         <div class="modal-body">
+            <section class="ielts-learning-state" data-ng-if="vm.testResult.ieltsSessionMode || (vm.ieltsLearningState.annotationNotes || []).length || (vm.ieltsLearningState.annotations || []).length">
+                <div class="ielts-learning-state-summary">
+                    <span><strong>Chế độ:</strong> {{vm.testResult.ieltsSessionMode === 'STUDY' ? 'Học tập' : 'Test nghiêm túc'}}</span>
+                    <span><strong>Thời gian làm thực tế:</strong> {{vm.formatIeltsActiveDuration(vm.testResult.activeDurationSeconds)}}</span>
+                    <span><strong>Highlight:</strong> {{(vm.ieltsLearningState.annotations || []).length}}</span>
+                </div>
+                <div class="ielts-learning-notes" data-ng-if="(vm.ieltsLearningState.annotationNotes || []).length">
+                    <h4>Take notes của học sinh</h4>
+                    <article data-ng-repeat="note in vm.ieltsLearningState.annotationNotes track by note.id">
+                        <strong>{{note.header}}</strong>
+                        <p>{{note.specificNote || '(Chưa nhập nội dung ghi chú)'}}</p>
+                    </article>
+                </div>
+            </section>
             <table class="table" data-ng-if="vm.testResult.questionAnswerTestResult && vm.testResult.questionAnswerTestResult.length">
                 <thead>
                 <tr>
@@ -588,6 +602,28 @@
     .ielts-result-detail-modal .ielts-result-passage * {
         font-family: Arial, Helvetica, sans-serif !important;
     }
+
+    .ielts-learning-state {
+        margin-bottom: 18px;
+        padding: 15px;
+        border: 1px solid #dce3f4;
+        border-radius: 10px;
+        background: #f7f9ff;
+    }
+    .ielts-learning-state-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 24px;
+    }
+    .ielts-learning-notes { margin-top: 14px; }
+    .ielts-learning-notes h4 { margin: 0 0 9px; font-weight: 700; }
+    .ielts-learning-notes article {
+        margin-top: 8px;
+        padding: 10px 12px;
+        border-left: 4px solid #6959ef;
+        background: #fff;
+    }
+    .ielts-learning-notes p { margin: 4px 0 0; white-space: pre-wrap; }
 
     .ielts-result-detail-modal .fa {
         font-family: FontAwesome !important;

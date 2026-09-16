@@ -223,6 +223,25 @@
         };
 
         vm.testResult = {};
+        vm.ieltsLearningState = {};
+
+        vm.loadIeltsLearningState = function (testResult) {
+            vm.ieltsLearningState = {};
+            if (!testResult || !testResult.ieltsLearningState) { return; }
+            try {
+                vm.ieltsLearningState = JSON.parse(testResult.ieltsLearningState) || {};
+            } catch (ignoreInvalidIeltsLearningState) {
+                vm.ieltsLearningState = {};
+            }
+        };
+
+        vm.formatIeltsActiveDuration = function (seconds) {
+            seconds = Math.max(0, Math.floor(Number(seconds) || 0));
+            var hours = Math.floor(seconds / 3600);
+            var minutes = Math.floor((seconds % 3600) / 60);
+            var remainingSeconds = seconds % 60;
+            return (hours ? hours + ' giờ ' : '') + minutes + ' phút ' + remainingSeconds + ' giây';
+        };
         vm.testResults = [];
         vm.selectedTestResults = [];
         vm.searchDto = {};
@@ -732,6 +751,7 @@
         $scope.editObject = function (id) {
             service.getOne(id).then(function (data) {
                 vm.testResult = addMissingResultRows(data);
+                vm.loadIeltsLearningState(vm.testResult);
                 console.log(data);
                 vm.testResult.isNew = false;
                 var modalInstance = modal.open({

@@ -85,7 +85,8 @@
                 <p class="reading-resume-title">{{draft.title}}</p>
                 <div class="reading-resume-meta">
                     <span><i class="fa fa-check-circle-o"></i> {{draft.progressLabel}} {{draft.progressValue}}</span>
-                    <span ng-if="draft.remainingSeconds"><i class="fa fa-clock-o"></i> Còn {{vm.formatReadingDraftTime(draft.remainingSeconds)}}</span>
+                    <span ng-if="draft.sessionMode === 'STUDY'"><i class="fa fa-clock-o"></i> Đã học {{vm.formatReadingDraftTime(draft.elapsedSeconds)}}</span>
+                    <span ng-if="draft.sessionMode !== 'STUDY' && draft.remainingSeconds"><i class="fa fa-clock-o"></i> Còn {{vm.formatReadingDraftTime(draft.remainingSeconds)}}</span>
                     <span ng-if="draft.savedAt"><i class="fa fa-save"></i> Lưu lúc {{draft.savedAt | date:'HH:mm dd/MM/yyyy'}}</span>
                 </div>
             </div>

@@ -616,6 +616,20 @@ public class TestResultServiceImpl implements TestResultService {
 		domain.setSourceQuestionId(dto.getSourceQuestionId());
 		domain.setCompletedPart(dto.getCompletedPart());
 		domain.setAssignmentTaskId(dto.getAssignmentTaskId());
+		if (Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType())) {
+			String sessionMode = "STUDY".equalsIgnoreCase(dto.getIeltsSessionMode()) ? "STUDY" : "SERIOUS";
+			Integer activeSeconds = dto.getActiveDurationSeconds() == null ? 0 : dto.getActiveDurationSeconds();
+			if (activeSeconds < 0 || activeSeconds > 604800) {
+				throw new IllegalArgumentException("Thời gian làm bài IELTS không hợp lệ.");
+			}
+			String learningState = dto.getIeltsLearningState();
+			if (learningState != null && learningState.length() > 2000000) {
+				throw new IllegalArgumentException("Dữ liệu ghi chú của bài IELTS quá lớn.");
+			}
+			domain.setIeltsSessionMode(sessionMode);
+			domain.setActiveDurationSeconds(activeSeconds);
+			domain.setIeltsLearningState(learningState);
+		}
         domain.setResultStatus(Integer.valueOf(1).equals(dto.getTestType())
                 ? (passedDailyVocab ? "SUCCESS" : "FAILED")
                 : Integer.valueOf(3).equals(dto.getTestType())
