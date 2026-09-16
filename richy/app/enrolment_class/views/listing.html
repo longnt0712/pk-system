@@ -240,15 +240,20 @@
     .class-image-preview-modal { display:flex; flex-direction:column; width:100%; max-height:calc(100vh - 36px); overflow:hidden; background:#f6f7fc; }
     .class-image-preview-header {
         display:flex; flex:0 0 auto; align-items:flex-start; justify-content:space-between; gap:18px;
-        padding:18px 22px; border:0; color:#fff; background:linear-gradient(125deg,#6156ed,#8052e5 52%,#159cbd);
+        padding:18px 22px; border:0; color:#fff !important; background:#6156ed !important;
+        background-image:linear-gradient(125deg,#6156ed,#8052e5 52%,#159cbd) !important;
     }
-    .class-image-preview-header small { display:block; margin-bottom:5px; color:rgba(255,255,255,.82); font-size:10px; font-weight:900; letter-spacing:.9px; }
-    .class-image-preview-header h4 { color:#fff; font-size:20px; font-weight:900; }
-    .class-image-preview-header p { margin:5px 0 0; color:rgba(255,255,255,.86); font-size:12px; }
+    .class-image-preview-header small { display:block; margin-bottom:5px; color:#eef2ff !important; font-size:10px; font-weight:900; letter-spacing:.9px; }
+    .class-image-preview-header h4 { margin:0; color:#fff !important; font-size:20px; font-weight:900; }
+    .class-image-preview-header p { margin:5px 0 0; color:#f1f5f9 !important; font-size:12px; }
     .class-image-preview-header .close { flex:0 0 auto; width:34px; height:34px; margin:0; color:#fff; opacity:.9; font-size:27px; line-height:30px; text-shadow:none; }
-    .class-image-preview-body { flex:1 1 auto; min-width:0; min-height:0; padding:18px; overflow-y:auto; overflow-x:hidden; background:linear-gradient(145deg,#eef2ff,#f8fafc 55%,#ecfeff); }
-    .class-image-preview-canvas { box-sizing:border-box; width:100%; min-width:0; padding:16px; overflow:hidden; border:1px solid #dbe3f1; border-radius:14px; background:#dfe5f0; text-align:center; box-shadow:inset 0 2px 12px rgba(30,41,59,.08); }
-    .class-image-preview-canvas img { display:block; width:auto; max-width:100%; height:auto; max-height:calc(100vh - 245px); object-fit:contain; margin:0 auto; border-radius:4px; background:#fff; box-shadow:0 12px 30px rgba(30,41,59,.18); }
+    .class-image-preview-body { flex:1 1 auto; min-width:0; min-height:0; padding:18px; overflow:hidden; background:linear-gradient(145deg,#eef2ff,#f8fafc 55%,#ecfeff); }
+    .class-image-preview-toolbar { display:flex; align-items:center; justify-content:center; gap:8px; margin:0 0 10px; color:#334155; font-size:12px; font-weight:800; }
+    .class-image-preview-toolbar button { width:34px; height:32px; padding:0; border:1px solid #cbd5e1; border-radius:8px; color:#334155; background:#fff; font-size:17px; }
+    .class-image-preview-toolbar input[type="range"] { width:min(280px,42vw); accent-color:#6d5df5; }
+    .class-image-preview-toolbar output { min-width:48px; color:#4f46e5; text-align:center; font-variant-numeric:tabular-nums; }
+    .class-image-preview-canvas { box-sizing:border-box; width:100%; height:calc(100vh - 310px); min-height:260px; padding:16px; overflow:auto; border:1px solid #dbe3f1; border-radius:14px; background:#dfe5f0; text-align:center; box-shadow:inset 0 2px 12px rgba(30,41,59,.08); touch-action:pan-x pan-y pinch-zoom; }
+    .class-image-preview-canvas img { display:block; max-width:none; max-height:none; height:auto; object-fit:contain; margin:0 auto; border-radius:4px; background:#fff; box-shadow:0 12px 30px rgba(30,41,59,.18); transition:width .16s ease; }
     .class-image-preview-size { margin-top:9px; color:#718096; font-size:11px; font-weight:700; text-align:center; }
     .class-image-preview-footer { display:flex; flex:0 0 auto; align-items:center; justify-content:flex-end; gap:9px; padding:13px 18px; border-top:1px solid #dce4f2; background:#fff; }
     .class-image-preview-footer .btn { min-width:110px; margin:0 !important; border-radius:9px; font-weight:800; }
@@ -259,6 +264,8 @@
         .class-image-preview-header { padding:14px 15px; }
         .class-image-preview-body { padding:10px; }
         .class-image-preview-canvas { padding:8px; }
+        .class-image-preview-toolbar { flex-wrap:wrap; }
+        .class-image-preview-toolbar input[type="range"] { width:48vw; }
     }
     /* The page's floating scroll-to-top button must not cover modal actions. */
     body.modal-open .scroll-to-top { display:none !important; }
@@ -1142,9 +1149,21 @@
             <button type="button" class="close" data-ng-click="$dismiss()" aria-label="Đóng"><span aria-hidden="true">&times;</span></button>
         </div>
         <div class="modal-body class-image-preview-body">
+            <div class="class-image-preview-toolbar" aria-label="Điều chỉnh độ phóng đại ảnh">
+                <button type="button" data-ng-click="vm.changeImagePreviewZoom(-10)" title="Thu nhỏ" aria-label="Thu nhỏ">&minus;</button>
+                <input type="range" min="20" max="200" step="5"
+                       data-ng-model="vm.imagePreview.zoomPercent"
+                       data-ng-change="vm.setImagePreviewZoom(vm.imagePreview.zoomPercent)"
+                       aria-label="Độ phóng đại ảnh" />
+                <output>{{vm.imagePreview.zoomPercent}}%</output>
+                <button type="button" data-ng-click="vm.changeImagePreviewZoom(10)" title="Phóng to" aria-label="Phóng to">+</button>
+                <button type="button" data-ng-click="vm.setImagePreviewZoom(100)" title="Kích thước thật" aria-label="Kích thước thật" style="width:auto;padding:0 10px;font-size:11px">100%</button>
+            </div>
             <div class="class-image-preview-canvas">
                 <img data-ng-if="vm.imagePreview.dataUrl"
                      data-ng-src="{{vm.imagePreview.dataUrl}}"
+                     data-ng-style="{'width': (vm.imagePreview.width * vm.imagePreview.zoomPercent / 100) + 'px'}"
+                     draggable="false"
                      alt="Ảnh xem trước" />
             </div>
             <div class="class-image-preview-size" data-ng-if="vm.imagePreview.width && vm.imagePreview.height">

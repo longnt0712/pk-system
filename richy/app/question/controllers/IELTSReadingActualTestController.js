@@ -680,21 +680,27 @@
         /* Reading display preferences (the three IDP contrast and text modes). */
         var readingContrastStorageKey = 'ieltsReadingContrast';
         var readingTextSizeStorageKey = 'ieltsReadingTextSize';
+        var readingZoomStorageKey = 'ieltsReadingZoomPercent';
         var allowedReadingContrasts = ['black-white', 'white-black', 'yellow-black'];
         var allowedReadingTextSizes = ['regular', 'large', 'extra-large'];
 
         vm.displayContrast = 'black-white';
         vm.readingTextSize = 'regular';
+        vm.readingPageZoom = 100;
         vm.showDisplaySettings = false;
 
         try {
             var savedReadingContrast = $window.localStorage.getItem(readingContrastStorageKey);
             var savedReadingTextSize = $window.localStorage.getItem(readingTextSizeStorageKey);
+            var savedReadingZoom = Number($window.localStorage.getItem(readingZoomStorageKey));
             if (allowedReadingContrasts.indexOf(savedReadingContrast) !== -1) {
                 vm.displayContrast = savedReadingContrast;
             }
             if (allowedReadingTextSizes.indexOf(savedReadingTextSize) !== -1) {
                 vm.readingTextSize = savedReadingTextSize;
+            }
+            if (isFinite(savedReadingZoom) && savedReadingZoom >= 60 && savedReadingZoom <= 160) {
+                vm.readingPageZoom = Math.round(savedReadingZoom / 10) * 10;
             }
         } catch (ignoreReadingDisplayStorageError) {
             // Display settings still work for the current test session.
@@ -732,6 +738,24 @@
             } catch (ignoreReadingDisplayStorageError) {
                 // Keep the in-memory preference when storage is unavailable.
             }
+        };
+
+        vm.setReadingPageZoom = function (percent) {
+            var next = Math.round((Number(percent) || 100) / 10) * 10;
+            vm.readingPageZoom = Math.max(60, Math.min(160, next));
+            try {
+                $window.localStorage.setItem(readingZoomStorageKey, String(vm.readingPageZoom));
+            } catch (ignoreReadingDisplayStorageError) {
+                // Keep the in-memory preference when storage is unavailable.
+            }
+        };
+
+        vm.changeReadingPageZoom = function (delta) {
+            vm.setReadingPageZoom(vm.readingPageZoom + Number(delta || 0));
+        };
+
+        vm.readingZoomInverse = function () {
+            return 10000 / (Number(vm.readingPageZoom) || 100);
         };
 
         $scope.$on('$destroy', stopReadingResize);
@@ -1027,7 +1051,7 @@
                 $scope.minuteDisplay = parseInt($scope.counter / 60, 10);
                 $scope.secondDisplay = $scope.counter % 60;
             }
-            toastr.success('Đã khôi phục bài test đang làm dở.', 'Tiếp tục bài thi');
+            toastr.success('Your in-progress test has been restored.', 'Continue test');
         }
 
         function startReadingDraftAutosave() {
@@ -1357,17 +1381,17 @@
                         return;
                     }
                 } catch (previewReadError) {
-                    toastr.error('Dữ liệu Preview không hợp lệ.', 'Không thể mở Preview');
+                    toastr.error('The preview data is invalid.', 'Unable to open preview');
                     return;
                 }
-                toastr.warning('Bản Preview đã hết hạn. Vui lòng mở lại từ trang tạo đề.', 'Không tìm thấy Preview');
+                toastr.warning('This preview has expired. Open it again from the test builder.', 'Preview not found');
                 return;
             }
 
             if ($stateParams.ieltsReadingTestId != null) {
                 blockUI.start();
                 service.getOne($stateParams.ieltsReadingTestId).then(loadReadingTest, function failure() {
-                    toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
+                    toastr.error('An error occurred while creating the account.', 'Notification');
                 });
             }
 
@@ -1377,7 +1401,7 @@
             service.getOneTestResult(id).then(function (data) {
                 vm.testResultAfterSubmitting = data;
             }, function failure() {
-                toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
+                toastr.error('An error occurred while creating the account.', 'Notification');
             });
         };
 
@@ -1400,7 +1424,7 @@
 			if (vm.isPartAssignment) {
 				var allowedOrdinals = assignedPartQuestionOrdinals();
 				if (!allowedOrdinals.length) {
-					toastr.error('Part được giao không có câu hỏi để nộp.', 'Không thể hoàn thành');
+					toastr.error('The assigned part has no questions to submit.', 'Unable to finish');
 					return;
 				}
 				var allowed = {};
@@ -1446,13 +1470,13 @@
                     $('.circlechart').circlechart(vm.textBandScore);
 
                 }, function failure() {
-                    toastr.error('Có lỗi xảy ra khi tải kết quả thi.', 'Thông báo');
+                    toastr.error('An error occurred while loading the test result.', 'Notification');
                 });
 
             }, function success() {
-                toastr.info('Bạn đã tạo mới thành công một tài khoản.', 'Thông báo');
+                toastr.info('The account was created successfully.', 'Notification');
             }, function failure() {
-                toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
+                toastr.error('An error occurred while creating the account.', 'Notification');
             });
         };
 
@@ -1604,6 +1628,20 @@
 
         vm.displayOnlyMinute = function () {
             vm.displayAllTimer = false;
+        };
+
+        vm.toggleTimerDetails = function () {
+            vm.displayAllTimer = !vm.displayAllTimer;
+        };
+
+        vm.getRemainingMinutes = function () {
+            return Math.max(0, Math.ceil(Number($scope.counter || 0) / 60));
+        };
+
+        vm.getRemainingClock = function () {
+            var minutes = Math.max(0, Number($scope.minuteDisplay || 0));
+            var seconds = Math.max(0, Number($scope.secondDisplay || 0));
+            return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
         };
 
         vm.ieltsReadingActualTest = {};

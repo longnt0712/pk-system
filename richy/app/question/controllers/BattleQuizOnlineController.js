@@ -217,6 +217,7 @@
         var finishCelebrationAudio = null;
         var guessTickAudio = null;
         var lastGuessTickSecond = null;
+        var lastSpokenGuessRevealKey = '';
         var autoSubmittedGuessQuestionKey = '';
         var finishCelebrationAudioUnlocked = false;
         var finishCelebrationAudioUnlocking = false;
@@ -322,6 +323,9 @@
         vm.nextGuessQuestion = nextGuessQuestion;
         vm.selectGuessAdvanceMode = selectGuessAdvanceMode;
         vm.getGuessLetters = getGuessLetters;
+        vm.getGuessTypedLetterCount = getGuessTypedLetterCount;
+        vm.getGuessRequiredLetterCount = getGuessRequiredLetterCount;
+        vm.getGuessInputMaxLength = getGuessInputMaxLength;
         vm.getQuestionTimePercent = getQuestionTimePercent;
         vm.useSkill = useSkill;
         vm.choosePassword = choosePassword;
@@ -1596,6 +1600,19 @@
                     ? previousRoom.status
                     : null;
 
+            var shouldSpeakGuessReveal = !!(
+                incoming.settings &&
+                incoming.settings.mode === 'GUESS_WORD' &&
+                incoming.guessAnswerRevealed === true &&
+                incoming.lastGuessWord &&
+                (
+                    !previousRoom ||
+                    previousRoom.guessAnswerRevealed !== true ||
+                    previousRoom.lastGuessWord !== incoming.lastGuessWord ||
+                    previousRoom.lastGuessSequence !== incoming.lastGuessSequence
+                )
+            );
+
             /*
              * COUNTDOWN websocket broadcast không có câu private.
              * Giữ câu hiện tại của account thay vì bị null.
@@ -1730,6 +1747,10 @@
             vm.room = incoming;
             syncMobilePlayingPageState();
             syncBattleViewMusic();
+
+            if (shouldSpeakGuessReveal) {
+                speakRevealedGuessAnswer(incoming);
+            }
 
             if (incoming.status !== 'LOBBY') {
                 vm.lobbyTopicEditorOpen = false;
@@ -3267,6 +3288,14 @@
                 return;
             }
 
+            try {
+                if ($window.speechSynthesis) {
+                    $window.speechSynthesis.resume();
+                }
+            } catch (e) {
+                // Trình duyệt không hỗ trợ resume vẫn được phép mở đáp án.
+            }
+
             vm.revealingGuessAnswer = true;
             battleService.revealGuessAnswer(vm.room.code)
                 .then(function (room) {
@@ -3310,6 +3339,52 @@
                 });
             }
             return result;
+        }
+
+
+        function isGuessLetter(value) {
+            if (!value) {
+                return false;
+            }
+            if (value === '_') {
+                return true;
+            }
+            return /[0-9]/.test(value) ||
+                value.toLocaleUpperCase() !== value.toLocaleLowerCase();
+        }
+
+
+        function countGuessLetters(value) {
+            var source = String(value || '');
+            var total = 0;
+            for (var index = 0; index < source.length; index += 1) {
+                if (isGuessLetter(source.charAt(index))) {
+                    total += 1;
+                }
+            }
+            return total;
+        }
+
+
+        function getGuessTypedLetterCount() {
+            return countGuessLetters(vm.guessAnswerText);
+        }
+
+
+        function getGuessRequiredLetterCount() {
+            return countGuessLetters(
+                vm.room && vm.room.currentQuestion &&
+                vm.room.currentQuestion.maskedWord
+            );
+        }
+
+
+        function getGuessInputMaxLength() {
+            var masked = String(
+                vm.room && vm.room.currentQuestion &&
+                vm.room.currentQuestion.maskedWord || ''
+            );
+            return Math.max(1, masked.length || getGuessRequiredLetterCount());
         }
 
 
@@ -4955,6 +5030,32 @@
         /* =====================================================
            SPEECH / COPY
            ===================================================== */
+
+        function speakRevealedGuessAnswer(room) {
+            var word = String(room && room.lastGuessWord || '').trim();
+            var revealKey = [
+                room && room.code || '',
+                room && room.lastGuessSequence || '',
+                word
+            ].join(':');
+
+            if (!word || revealKey === lastSpokenGuessRevealKey ||
+                !$window.speechSynthesis || !$window.SpeechSynthesisUtterance) {
+                return;
+            }
+
+            lastSpokenGuessRevealKey = revealKey;
+
+            try {
+                $window.speechSynthesis.cancel();
+                var utterance = new $window.SpeechSynthesisUtterance(word);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                $window.speechSynthesis.speak(utterance);
+            } catch (e) {
+                // Speech không được ảnh hưởng game.
+            }
+        }
 
         function sayCurrentQuestion() {
             if (

@@ -340,6 +340,8 @@
         <div class="battle-online-create-form battle-online-lobby-topic-form">
             <label>NGUỒN TỪ VỰNG</label>
             <ui-select ng-model="vm.selectedTopicOwner"
+                       class="battle-online-lobby-ui-select"
+                       append-to-body="true"
                        ng-change="vm.chooseTopicOwner()"
                        ng-disabled="vm.savingLobbyTopics"
                        theme="bootstrap">
@@ -353,6 +355,8 @@
 
             <label>GRADE / CATEGORY</label>
             <ui-select ng-model="vm.searchTopicDto.topicCategory"
+                       class="battle-online-lobby-ui-select"
+                       append-to-body="true"
                        ng-change="vm.getTopics()"
                        ng-disabled="vm.loadingTopicCategories || vm.savingLobbyTopics"
                        theme="bootstrap">
@@ -380,6 +384,8 @@
 
             <div class="battle-online-topic-picker-row">
                 <ui-select ng-model="vm.selectedTopicToCreate"
+                           class="battle-online-lobby-ui-select"
+                           append-to-body="true"
                            ng-disabled="vm.loadingTopics || vm.loadingTopicCategories || vm.savingLobbyTopics || !vm.topics.length"
                            theme="bootstrap">
                     <ui-select-match placeholder="Chọn bài muốn thêm">
@@ -1377,25 +1383,32 @@
                 -->
                 <div class="battle-online-guess-form"
                      ng-class="{'is-view-only': vm.isSpectator(), 'is-locked': vm.answerLocked || vm.guessSubmitting}">
-                    <input type="text" class="form-control"
-                           id="battle-online-guess-answer"
-                           name="battle_guess_free_text"
-                           autocomplete="new-password"
-                           autocorrect="off"
-                           autocapitalize="none"
-                           inputmode="text"
-                           enterkeyhint="send"
-                           spellcheck="false"
-                           aria-label="Nhập từ tiếng Anh"
-                           aria-autocomplete="none"
-                           data-lpignore="true"
-                           data-1p-ignore="true"
-                           placeholder="Nhập đầy đủ từ tiếng Anh..."
-                           ng-model="vm.guessAnswerText"
-                           ng-click="vm.activateGuessInput($event)"
-                           ng-keydown="vm.submitGuessWordOnKeydown($event)"
-                           ng-disabled="vm.isSpectator()"
-                           ng-attr-aria-disabled="{{vm.answerLocked || vm.guessSubmitting}}">
+                    <div class="battle-online-guess-input-wrap">
+                        <input type="text" class="form-control"
+                               id="battle-online-guess-answer"
+                               name="battle_guess_free_text"
+                               autocomplete="new-password"
+                               autocorrect="off"
+                               autocapitalize="none"
+                               inputmode="text"
+                               enterkeyhint="send"
+                               spellcheck="false"
+                               aria-label="Nhập từ tiếng Anh"
+                               aria-autocomplete="none"
+                               data-lpignore="true"
+                               data-1p-ignore="true"
+                               placeholder="Nhập đầy đủ từ tiếng Anh..."
+                               ng-model="vm.guessAnswerText"
+                               ng-click="vm.activateGuessInput($event)"
+                               ng-keydown="vm.submitGuessWordOnKeydown($event)"
+                               ng-disabled="vm.isSpectator()"
+                               ng-attr-maxlength="{{vm.getGuessInputMaxLength()}}"
+                               ng-attr-aria-disabled="{{vm.answerLocked || vm.guessSubmitting}}">
+                        <small class="battle-online-guess-letter-count"
+                               ng-class="{'is-complete': vm.getGuessTypedLetterCount() === vm.getGuessRequiredLetterCount()}">
+                            {{vm.getGuessTypedLetterCount()}} / {{vm.getGuessRequiredLetterCount()}} chữ cái
+                        </small>
+                    </div>
                     <button type="button"
                             ng-click="vm.submitGuessWord()"
                             ng-disabled="vm.isSpectator() || vm.answerLocked || vm.guessSubmitting || vm.countdown <= 0 || !vm.guessAnswerText">
@@ -3194,6 +3207,25 @@
         padding: 22px;
         background: rgba(30, 41, 59, .58);
         backdrop-filter: blur(5px);
+        overflow-y: auto;
+    }
+
+    /* ui-select moves an open menu under <body>. Keep that menu above the
+       lobby modal/backdrop; ui-select itself closes the previous menu when
+       another selector is activated. */
+    body > .battle-online-lobby-ui-select.ui-select-container,
+    body > .battle-online-lobby-ui-select.ui-select-container.open,
+    body > .battle-online-lobby-ui-select.ui-select-container .ui-select-choices,
+    body > .battle-online-lobby-ui-select.ui-select-container .dropdown-menu {
+        z-index: 10080 !important;
+    }
+
+    body > .battle-online-lobby-ui-select.ui-select-container .ui-select-choices,
+    body > .battle-online-lobby-ui-select.ui-select-container .dropdown-menu {
+        max-height: min(320px, 52vh) !important;
+        overflow-y: auto !important;
+        border: 1px solid #c4b5fd;
+        box-shadow: 0 18px 38px rgba(30, 41, 59, .28);
     }
 
     .battle-online-lobby-topic-editor {
@@ -7647,6 +7679,12 @@
         box-shadow: 0 10px 24px rgba(79, 70, 229, .08);
     }
 
+    .battle-online-guess-input-wrap {
+        position: relative;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
     .battle-online-guess-form input {
         position: relative;
         z-index: 3;
@@ -7659,12 +7697,35 @@
         font-size: 20px;
         text-align: center;
         font-weight: 700;
+        padding-right: 112px;
         box-shadow: inset 0 0 0 1px #dbeafe;
         pointer-events: auto;
         touch-action: manipulation;
         -webkit-user-select: text;
         user-select: text;
         -webkit-appearance: none;
+    }
+
+    .battle-online-guess-letter-count {
+        position: absolute;
+        z-index: 4;
+        top: 50%;
+        right: 13px;
+        transform: translateY(-50%);
+        padding: 4px 7px;
+        border-radius: 999px;
+        color: #64748b;
+        background: rgba(241, 245, 249, .94);
+        font-size: 11px;
+        font-weight: 850;
+        line-height: 1;
+        white-space: nowrap;
+        pointer-events: none;
+    }
+
+    .battle-online-guess-letter-count.is-complete {
+        color: #047857;
+        background: rgba(209, 250, 229, .96);
     }
 
     .battle-online-guess-form.is-locked input {

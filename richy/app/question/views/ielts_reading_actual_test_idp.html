@@ -8,6 +8,7 @@
 -->
 <div class="idp-reading-page"
      ng-class="('idp-contrast-' + vm.displayContrast + ' idp-text-' + vm.readingTextSize) + (vm.isListeningRoute ? ' idp-listening-page' : '')"
+     style="--idp-test-zoom: {{vm.readingPageZoom / 100}}; zoom: {{vm.readingPageZoom / 100}}; width: {{vm.readingZoomInverse()}}vw !important; height: {{vm.readingZoomInverse()}}vh !important;"
      ng-mouseup="showSelectionTools($event)"
      ng-click="handleReadingAnnotationClick($event)">
 
@@ -15,13 +16,13 @@
     <h1 class="start-test-button" ng-show="vm.isHasTestTakerName === true" style="cursor: pointer" ng-click="vm.startTest()">
         <span class="idp-start-icon"><i class="fa fa-play"></i></span>
         Start {{vm.isListeningRoute ? 'Listening' : 'Reading'}} {{vm.isPartAssignment ? 'Part ' + vm.assignedPart : 'test'}}
-        <small>{{vm.isPartAssignment ? 'Bài được giao · chỉ làm Part ' + vm.assignedPart : '60 minutes · 3 parts · 40 questions'}}</small>
+        <small>{{vm.isPartAssignment ? 'Assigned task · Part ' + vm.assignedPart + ' only' : '60 minutes · 3 parts · 40 questions'}}</small>
     </h1>
 </div>
 <div class="row margin-top-10 wrap-test idp-reading-test-shell" ng-show="vm.isHasTestTakerName === true && vm.isStartTest === true" id="test-performance">
     <div class="idp-reading-preview-banner" ng-if="vm.isPreviewMode">
         <i class="fa fa-eye"></i> PREVIEW MODE · Part {{vm.passageNumber}}
-        <span>Đây là giao diện học viên sẽ nhìn thấy</span>
+        <span>This is the candidate view</span>
     </div>
     <div class="idp-exam-topbar" ng-show="vm.isStartTest && vm.passageNumber != 4">
         <div class="idp-exam-logo">IELTS <small>{{vm.isListeningRoute ? 'LISTENING' : 'READING'}}</small></div>
@@ -33,9 +34,15 @@
              src="assets/images/troop.jpg"
              alt="IELTS Room logo">
         <div class="idp-exam-tools">
-            <span class="idp-top-timer">
+            <span class="idp-top-timer"
+                  ng-mouseenter="vm.displayTimer()"
+                  ng-mouseleave="vm.displayOnlyMinute()"
+                  ng-click="vm.toggleTimerDetails()"
+                  title="Hover or tap to show minutes and seconds">
                 <i class="fa fa-clock-o"></i>
-                {{minuteDisplay}} : {{secondDisplay}}
+                <span ng-if="vm.displayAllTimer">{{vm.getRemainingClock()}}</span>
+                <span ng-if="!vm.displayAllTimer">{{vm.getRemainingMinutes()}} min</span>
+                <small> remaining</small>
             </span>
             <button type="button" class="idp-tool-icon" title="Connection status" aria-label="Connection status">
                 <i class="fa fa-wifi"></i>
@@ -72,10 +79,10 @@
                                 </p>
                             </div>
                             <div style="padding-top: 20px;" ng-show="vm.displayAllTimer == true" ng-mouseleave="vm.displayOnlyMinute()" class="col-md-4  text-center">
-                                <p class="idp-timer"><i class="fa fa-clock-o"></i><span style="font-weight:bold;font-size:20px;">{{minuteDisplay}} : {{secondDisplay}}</span><small>remaining</small></p>
+                                <p class="idp-timer"><i class="fa fa-clock-o"></i><span style="font-weight:bold;font-size:20px;">{{vm.getRemainingClock()}}</span><small>remaining</small></p>
                             </div>
                             <div style="padding-top: 20px;" ng-show="vm.displayAllTimer == false" ng-mouseover="vm.displayTimer()" class="col-md-4  text-center" >
-                                <p class="idp-timer" style="font-size: 15px;font-weight: 700;"><i class="fa fa-clock-o"></i><span style="font-weight:bold;font-size:20px;">{{minuteDisplay+1}}</span> minute<span ng-show="minuteDisplay != 1">s</span><small>remaining</small></p>
+                                <p class="idp-timer" style="font-size: 15px;font-weight: 700;"><i class="fa fa-clock-o"></i><span style="font-weight:bold;font-size:20px;">{{vm.getRemainingMinutes()}}</span> minute<span ng-show="vm.getRemainingMinutes() != 1">s</span><small>remaining</small></p>
                             </div>
                             <div style="padding-top: 15px;padding-right: 40px" class="col-md-4 text-right" ng-show="vm.isStartTest">
                                 <button ng-if="!vm.isPreviewMode" style="padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" data-ng-click="vm.saveTestResult()">
@@ -90,7 +97,12 @@
                             <button ng-if="!vm.isPreviewMode" style="margin-left: 10px;padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">Finish</span></button>
                         </div>
                         <div class="col-md-6">
-                            <i class="fa fa-clock-o"></i> <span style="font-weight:bold;font-size:20px;">{{minuteDisplay}} : {{secondDisplay}}</span>
+                            <p class="idp-timer" ng-click="vm.toggleTimerDetails()">
+                                <i class="fa fa-clock-o"></i>
+                                <span style="font-weight:bold;font-size:20px;" ng-if="vm.displayAllTimer">{{vm.getRemainingClock()}}</span>
+                                <span style="font-weight:bold;font-size:20px;" ng-if="!vm.displayAllTimer">{{vm.getRemainingMinutes()}} min</span>
+                                <small>remaining</small>
+                            </p>
                         </div>
 
                     </div>
@@ -361,7 +373,7 @@
 
                                     <div class="complete-list-runtime actual-test-font-global" ng-if="item.type == 13" ng-init="completeListPackage=item">
                                         <div class="complete-list-text" compile="item.completeListRenderedQuestion"></div>
-                                        <div class="complete-list-word-bank" aria-label="Danh sách từ để kéo vào ô trống">
+                                        <div class="complete-list-word-bank" aria-label="Answer choices to drag into the blanks">
                                             <span class="complete-list-word"
                                                   ng-repeat="word in item.completeListWordBank track by $index"
                                                   ng-if="!vm.isCompleteListWordUsed(item, word)"
@@ -386,7 +398,7 @@
                                                       dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
                                                       touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
                                                       ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
-                                                    <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Kéo đáp án vào đây</span>
+                                                    <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Drag an answer here</span>
                                                     <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length">
                                                         <strong>{{endingPackage.sentenceEndingSlots[$index].items[0].label}}</strong>
                                                         {{endingPackage.sentenceEndingSlots[$index].items[0].clientAnswer}}
@@ -394,7 +406,7 @@
                                                     <button type="button"
                                                             ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
                                                             ng-click="$event.stopPropagation(); vm.clearSentenceEndingSlot(endingPackage,$index); vm.activateSentenceEndingSlot(endingPackage,$index)"
-                                                            aria-label="Xóa đáp án">&times;</button>
+                                                            aria-label="Remove answer">&times;</button>
                                                 </span>
                                             </div>
                                         </div>
@@ -410,7 +422,7 @@
                                                 <b>{{ending.label}}</b>
                                                 <span>{{ending.clientAnswer}}</span>
                                             </span>
-                                            <small>Kéo đáp án vào ô sau câu, hoặc chọn một ô rồi bấm đáp án.</small>
+                                            <small>Drag an ending into the box after each sentence, or select a box and tap an ending.</small>
                                         </div>
                                     </div>
 
@@ -779,7 +791,7 @@
 
                                     <div class="complete-list-runtime actual-test-font-global" ng-if="item.type == 13" ng-init="completeListPackage=item">
                                         <div class="complete-list-text" compile="item.completeListRenderedQuestion"></div>
-                                        <div class="complete-list-word-bank" aria-label="Danh sách từ để kéo vào ô trống">
+                                        <div class="complete-list-word-bank" aria-label="Answer choices to drag into the blanks">
                                             <span class="complete-list-word"
                                                   ng-repeat="word in item.completeListWordBank track by $index"
                                                   ng-if="!vm.isCompleteListWordUsed(item, word)"
@@ -802,14 +814,14 @@
                                                       dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
                                                       touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
                                                       ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
-                                                    <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Kéo đáp án vào đây</span>
+                                                    <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Drag an answer here</span>
                                                     <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length">
                                                         <strong>{{endingPackage.sentenceEndingSlots[$index].items[0].label}}</strong>
                                                         {{endingPackage.sentenceEndingSlots[$index].items[0].clientAnswer}}
                                                     </span>
                                                     <button type="button" ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
                                                             ng-click="$event.stopPropagation(); vm.clearSentenceEndingSlot(endingPackage,$index); vm.activateSentenceEndingSlot(endingPackage,$index)"
-                                                            aria-label="Xóa đáp án">&times;</button>
+                                                            aria-label="Remove answer">&times;</button>
                                                 </span>
                                             </div>
                                         </div>
@@ -823,7 +835,7 @@
                                                   ng-click="vm.chooseSentenceEnding(endingPackage, ending)">
                                                 <b>{{ending.label}}</b><span>{{ending.clientAnswer}}</span>
                                             </span>
-                                            <small>Kéo đáp án vào ô sau câu, hoặc chọn một ô rồi bấm đáp án.</small>
+                                            <small>Drag an ending into the box after each sentence, or select a box and tap an ending.</small>
                                         </div>
                                     </div>
 
@@ -1174,7 +1186,7 @@
 
                                     <div class="complete-list-runtime actual-test-font-global" ng-if="item.type == 13" ng-init="completeListPackage=item">
                                         <div class="complete-list-text" compile="item.completeListRenderedQuestion"></div>
-                                        <div class="complete-list-word-bank" aria-label="Danh sách từ để kéo vào ô trống">
+                                        <div class="complete-list-word-bank" aria-label="Answer choices to drag into the blanks">
                                             <span class="complete-list-word"
                                                   ng-repeat="word in item.completeListWordBank track by $index"
                                                   ng-if="!vm.isCompleteListWordUsed(item, word)"
@@ -1197,14 +1209,14 @@
                                                       dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
                                                       touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
                                                       ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
-                                                    <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Kéo đáp án vào đây</span>
+                                                    <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Drag an answer here</span>
                                                     <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length">
                                                         <strong>{{endingPackage.sentenceEndingSlots[$index].items[0].label}}</strong>
                                                         {{endingPackage.sentenceEndingSlots[$index].items[0].clientAnswer}}
                                                     </span>
                                                     <button type="button" ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
                                                             ng-click="$event.stopPropagation(); vm.clearSentenceEndingSlot(endingPackage,$index); vm.activateSentenceEndingSlot(endingPackage,$index)"
-                                                            aria-label="Xóa đáp án">&times;</button>
+                                                            aria-label="Remove answer">&times;</button>
                                                 </span>
                                             </div>
                                         </div>
@@ -1218,7 +1230,7 @@
                                                   ng-click="vm.chooseSentenceEnding(endingPackage, ending)">
                                                 <b>{{ending.label}}</b><span>{{ending.clientAnswer}}</span>
                                             </span>
-                                            <small>Kéo đáp án vào ô sau câu, hoặc chọn một ô rồi bấm đáp án.</small>
+                                            <small>Drag an ending into the box after each sentence, or select a box and tap an ending.</small>
                                         </div>
                                     </div>
 
@@ -1412,7 +1424,7 @@
                             </section>
                         </div>
 
-                        <label class="idp-review-control actual-test-font-global" for="idpReviewQuestion">
+                        <label class="idp-review-control actual-test-font-global" for="idpReviewQuestion" ng-if="false">
                             <input ng-model="vm.tempQuestion.needReview"
                                    ng-click="vm.setReviewQuestion()"
                                    type="checkbox"
@@ -1439,7 +1451,7 @@
                     <h1><i class="fa fa-calendar"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testDate | date: 'dd/MM/yyyy HH:mm:ss'}}</h1>
                     <h1><i class="fa fa-pencil"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.correctAnswer}}/{{vm.resultQuestionTotal}}</h1>
                     <h1 class="bold text-red" ng-if="!vm.isPartAssignment"><i class="fa fa-graduation-cap"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.bandScore}}</h1>
-                    <h1 class="bold text-green" ng-if="vm.isPartAssignment"><i class="fa fa-check-circle"></i> &nbsp;Part {{vm.assignedPart}} đã được ghi nhận</h1>
+                    <h1 class="bold text-green" ng-if="vm.isPartAssignment"><i class="fa fa-check-circle"></i> &nbsp;Part {{vm.assignedPart}} has been recorded</h1>
                     <h1 class="bold text-blue" style="cursor: pointer" ng-click="vm.showDetailTestAfterSubmit()"><i class="fa fa-info-circle" aria-hidden="true"></i> &nbsp;<i class="fa fa-caret-right"></i> CLICK TO SEE DETAILS</h1>
                 </div>
 
@@ -1616,6 +1628,30 @@
                     <span class="idp-text-size-preview is-extra-large" aria-hidden="true">Aa</span>
                 </button>
             </div>
+
+            <h3>Page zoom</h3>
+            <div class="idp-page-zoom" aria-label="Page zoom">
+                <button type="button"
+                        ng-click="vm.changeReadingPageZoom(-10)"
+                        ng-disabled="vm.readingPageZoom <= 60"
+                        aria-label="Zoom out">&minus;</button>
+                <input type="range"
+                       min="60"
+                       max="160"
+                       step="10"
+                       ng-model="vm.readingPageZoom"
+                       ng-change="vm.setReadingPageZoom(vm.readingPageZoom)"
+                       aria-label="Test page zoom percentage">
+                <output>{{vm.readingPageZoom}}%</output>
+                <button type="button"
+                        ng-click="vm.changeReadingPageZoom(10)"
+                        ng-disabled="vm.readingPageZoom >= 160"
+                        aria-label="Zoom in">+</button>
+                <button type="button"
+                        class="idp-page-zoom-reset"
+                        ng-click="vm.setReadingPageZoom(100)">Reset</button>
+            </div>
+            <p class="idp-page-zoom-help">On a phone or tablet, you can also pinch with two fingers to zoom.</p>
         </div>
     </section>
 </div>
@@ -1626,14 +1662,14 @@
     <div modal-movable>
         <div class="modal-header">
             <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
-            <h4 class="modal-title"><i class="fa fa-check"></i>Đáp án</h4>
+            <h4 class="modal-title"><i class="fa fa-check"></i> Answers</h4>
         </div>
         <div class="modal-body">
 
         </div>
         <div class="modal-footer">
-            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
-            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Có</button>
+            <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">No</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-primary" data-dismiss="modal">Yes</button>
         </div>
     </div>
 </script>
@@ -3061,6 +3097,9 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        min-width: 112px;
+        justify-content: center;
+        cursor: pointer;
         font-size: 14px !important;
         font-variant-numeric: tabular-nums;
     }
@@ -4864,6 +4903,67 @@
     .idp-text-size-preview.is-regular { font-size: 19px !important; }
     .idp-text-size-preview.is-large { font-size: 24px !important; }
     .idp-text-size-preview.is-extra-large { font-size: 29px !important; }
+
+    .idp-page-zoom {
+        display: grid;
+        grid-template-columns: 42px minmax(150px, 1fr) 62px 42px auto;
+        align-items: center;
+        gap: 12px;
+        padding: 15px 18px;
+        border: 1px solid #bfc1c4;
+        border-radius: 5px;
+        background: #f8fafc;
+    }
+
+    .idp-page-zoom button {
+        min-width: 42px;
+        min-height: 40px;
+        padding: 0 10px;
+        border: 1px solid #bfc5cc;
+        border-radius: 4px;
+        color: #111214 !important;
+        background: #ffffff !important;
+        font-size: 20px !important;
+        font-weight: 700;
+    }
+
+    .idp-page-zoom button:disabled { opacity: .38; }
+    .idp-page-zoom .idp-page-zoom-reset { width: auto; font-size: 14px !important; }
+    .idp-page-zoom input[type="range"] { width: 100%; accent-color: #2563eb; }
+    .idp-page-zoom output {
+        color: #111214 !important;
+        font-size: 18px !important;
+        font-weight: 700;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .idp-page-zoom-help {
+        margin: 9px 0 0 !important;
+        color: #4b5563 !important;
+        font-size: 13px !important;
+        text-align: center;
+    }
+
+    .idp-reading-page {
+        touch-action: pan-x pan-y pinch-zoom;
+        transform-origin: top left;
+    }
+
+    @supports not (zoom: 1) {
+        .idp-reading-page {
+            transform: scale(var(--idp-test-zoom));
+        }
+    }
+
+    @media (max-width: 560px) {
+        .idp-page-zoom {
+            grid-template-columns: 40px minmax(100px, 1fr) 54px 40px;
+            gap: 7px;
+            padding: 12px;
+        }
+        .idp-page-zoom .idp-page-zoom-reset { grid-column: 1 / -1; }
+    }
 
     /* Contrast modes. These rules deliberately come after the global site
        dark-mode compatibility rules so the candidate's own choice wins. */

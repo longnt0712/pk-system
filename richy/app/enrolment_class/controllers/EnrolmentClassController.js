@@ -1163,7 +1163,8 @@
                 title: title,
                 description: description,
                 width: canvas.width,
-                height: canvas.height
+                height: canvas.height,
+                zoomPercent: 35
             };
             vm.imagePreviewModal = modal.open({
                 animation: true,
@@ -1194,6 +1195,17 @@
             link.click();
             document.body.removeChild(link);
             toastr.success('Đã tải ảnh xuống máy.', 'Thông báo');
+        };
+
+        vm.setImagePreviewZoom = function (percent) {
+            if (!vm.imagePreview) { return; }
+            var next = Math.round(Number(percent) || 100);
+            vm.imagePreview.zoomPercent = Math.max(20, Math.min(200, next));
+        };
+
+        vm.changeImagePreviewZoom = function (delta) {
+            if (!vm.imagePreview) { return; }
+            vm.setImagePreviewZoom((vm.imagePreview.zoomPercent || 100) + Number(delta || 0));
         };
 
         function renderClassImagePreview(exportElement, options) {

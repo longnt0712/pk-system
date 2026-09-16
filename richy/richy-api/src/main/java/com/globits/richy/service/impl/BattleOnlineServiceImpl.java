@@ -1184,6 +1184,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 continue;
             }
 
+            String playableText = guessPlayableText(source.getQuestion());
+            if (isBlank(playableText)) {
+                continue;
+            }
+
             String level = normalizeGuessLevel(source.getLevel());
             if (!levels.contains(level)) {
                 continue;
@@ -1192,7 +1197,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             QuestionState question = new QuestionState();
             question.id = source.getId();
             question.question = clean(source.getMotherTongue());
-            question.correctText = clean(source.getQuestion());
+            question.correctText = playableText;
             question.meaning = clean(source.getMotherTongue());
             question.pronounce = null;
             question.level = level;
@@ -7288,6 +7293,20 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private String normalizeGuessAnswer(String value) {
         return clean(value).toLowerCase(Locale.ENGLISH);
+    }
+
+
+    /**
+     * Parenthetical text at either edge is vocabulary metadata/a hint, not a
+     * part students must type. Keep parentheses inside the actual phrase.
+     */
+    private String guessPlayableText(String value) {
+        String original = clean(value);
+        String playable = original
+                .replaceAll("^(?:\\s*\\([^()]*\\)\\s*)+", "")
+                .replaceAll("(?:\\s*\\([^()]*\\)\\s*)+$", "");
+        playable = clean(playable);
+        return isBlank(playable) ? original : playable;
     }
 
 
