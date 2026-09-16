@@ -28,6 +28,7 @@
         self.confirmExcelImport = confirmExcelImport;
         
         self.saveObject = saveObject;
+        self.updateTestStatus = updateTestStatus;
         self.getFlashCardLevels = getFlashCardLevels;
         self.updateFlashCardLevel = updateFlashCardLevel;
         self.saveMaterial = saveMaterial;
@@ -255,6 +256,19 @@
             return utils.resolveAlt(url, 'POST', null, object, {
                 'Content-Type': 'application/json; charset=utf-8'
             }, successCallback, errorCallback);
+        }
+
+        function updateTestStatus(id, status) {
+            if (!id) {
+                return $q.reject({data: {message: 'Test id is required.'}});
+            }
+            return utils.resolveAlt(
+                baseUrl + restUrl + '/update_test_status/' + id + '/' + status,
+                'POST',
+                null,
+                null,
+                {'Content-Type': 'application/json; charset=utf-8'}
+            );
         }
 
         function getFlashCardLevels(searchDto) {
@@ -762,10 +776,10 @@
             var _tableOperation = function (value, row, index) {
                 return '<a class="green-dark margin-right-10" href="#" title="Mở trong trình soạn thảo" data-ng-click="$parent.editCreateIELTSReadingTest(' + "'" + row.id + "'" + ')"><i class="icon-eye"></i></a>'
                     + '<a target="_blank" class="green-dark margin-right-10" title="Xem trước bài test" href="' + actualTestPath + row.id + '"><i class="icon-pencil"></i></a>'
-                    + '<a ng-show="' + "'" + row.status + "'" + '== 6" class="green-dark margin-right-10" href="#" title="Xuất bản" data-ng-click="$parent.changeStatus(' + "'" + row.id + "',7" + ')"><i class="fa fa-times"></i></a>'
-                    + '<a ng-show="' + "'" + row.status + "'" + '== 7" class="green-dark margin-right-10" href="#" title="Chuyển về bản nháp" data-ng-click="$parent.changeStatus(' + "'" + row.id + "',6" + ')"><i class="fa fa-check"></i></a>'
-                    + '<a ng-show="' + "'" + row.status + "'" + '!= 8" class="btn btn-xs btn-default margin-right-10" href="#" title="Ẩn khỏi danh sách" data-ng-click="$parent.hideReadingTest(' + "'" + row.id + "'" + ')"><i class="fa fa-eye-slash"></i> Ẩn</a>'
-                    + '<a ng-show="' + "'" + row.status + "'" + '== 8" class="btn btn-xs btn-success margin-right-10" href="#" title="Khôi phục về bản nháp" data-ng-click="$parent.restoreReadingTest(' + "'" + row.id + "'" + ')"><i class="fa fa-undo"></i> Khôi phục</a>'
+                    + '<a ng-show="' + "'" + row.status + "'" + '== 6" class="green-dark margin-right-10" href="#" title="Xuất bản" data-ng-click="$event.preventDefault(); $parent.changeStatus(' + "'" + row.id + "',7" + ')"><i class="fa fa-times"></i></a>'
+                    + '<a ng-show="' + "'" + row.status + "'" + '== 7" class="green-dark margin-right-10" href="#" title="Chuyển về bản nháp" data-ng-click="$event.preventDefault(); $parent.changeStatus(' + "'" + row.id + "',6" + ')"><i class="fa fa-check"></i></a>'
+                    + '<a ng-show="' + "'" + row.status + "'" + '!= 8" class="btn btn-xs btn-default margin-right-10" href="#" title="Ẩn khỏi danh sách" data-ng-click="$event.preventDefault(); $parent.hideReadingTest(' + "'" + row.id + "'" + ')"><i class="fa fa-eye-slash"></i> Ẩn</a>'
+                    + '<a ng-show="' + "'" + row.status + "'" + '== 8" class="btn btn-xs btn-success margin-right-10" href="#" title="Khôi phục về bản nháp" data-ng-click="$event.preventDefault(); $parent.restoreReadingTest(' + "'" + row.id + "'" + ')"><i class="fa fa-undo"></i> Khôi phục</a>'
                     + '<a class="green-dark" href="#" title="Xóa" data-ng-click="$parent.deleteIELTSWriting(' + "'" + row.id + "'" + ')"><i class="fa fa-trash"></i></a>';
                 ;
             };

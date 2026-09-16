@@ -397,9 +397,14 @@
                         correct: true
                     });
                 }
-                question.questionAnswers = [question.questionAnswers[0]];
-                question.questionAnswers[0].ordinalNumberQuestionAnswer = 1;
-                question.questionAnswers[0].correct = true;
+                question.questionAnswers.sort(function (left, right) {
+                    return Number(left.ordinalNumberQuestionAnswer) - Number(right.ordinalNumberQuestionAnswer);
+                });
+                angular.forEach(question.questionAnswers, function (answer, answerIndex) {
+                    answer.answer = answer.answer || {answer: ''};
+                    answer.ordinalNumberQuestionAnswer = answerIndex + 1;
+                    answer.correct = true;
+                });
                 if (questionIndex > 0 && /^Question number\s*\d*$/i.test(plainText(question.question))) {
                     question.question = '';
                 }
@@ -564,6 +569,40 @@
             vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
         };
 
+        vm.addSharedChoiceAnswer = function (questionPackage) {
+            if (!isSharedChoicePackage(questionPackage) || !questionPackage.subQuestions || !questionPackage.subQuestions.length) {
+                return;
+            }
+            ensureSharedChoicePackage(questionPackage);
+            var answerIndex = questionPackage.subQuestions[0].questionAnswers.length;
+            angular.forEach(questionPackage.subQuestions, function (question) {
+                question.questionAnswers = question.questionAnswers || [];
+                question.questionAnswers.push({
+                    answer: {answer: ''},
+                    question: question.id ? {id: question.id} : {},
+                    ordinalNumberQuestionAnswer: answerIndex + 1,
+                    correct: false
+                });
+            });
+            vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
+        };
+
+        vm.removeSharedChoiceAnswer = function (questionPackage, answerIndex) {
+            if (!isSharedChoicePackage(questionPackage) || !questionPackage.subQuestions || !questionPackage.subQuestions.length) {
+                return;
+            }
+            if ((questionPackage.subQuestions[0].questionAnswers || []).length <= 1) {
+                toastr.warning('Danh sách lựa chọn phải còn ít nhất 1 đáp án.', 'Không thể xóa');
+                return;
+            }
+            angular.forEach(questionPackage.subQuestions, function (question) {
+                question.questionAnswers = question.questionAnswers || [];
+                question.questionAnswers.splice(answerIndex, 1);
+            });
+            ensureSharedChoicePackage(questionPackage);
+            vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
+        };
+
         vm.updateMatchingName = vm.updateSharedChoice;
 
         vm.updateCompleteListContent = function (questionPackage) {
@@ -585,6 +624,74 @@
                 }
             });
             vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
+        };
+
+        vm.addCompleteListAnswer = function (questionPackage) {
+            if (!questionPackage || Number(questionPackage.type) !== 13 ||
+                !questionPackage.subQuestions || !questionPackage.subQuestions.length) {
+                return;
+            }
+            ensureCompleteListPackage(questionPackage);
+            var answerIndex = questionPackage.subQuestions[0].questionAnswers.length;
+            angular.forEach(questionPackage.subQuestions, function (question, questionIndex) {
+                question.questionAnswers = question.questionAnswers || [];
+                question.questionAnswers.push({
+                    answer: {answer: ''},
+                    question: question.id ? {id: question.id} : {},
+                    ordinalNumberQuestionAnswer: answerIndex + 1,
+                    correct: answerIndex === questionIndex
+                });
+            });
+            vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
+        };
+
+        vm.removeCompleteListAnswer = function (questionPackage, answerIndex) {
+            if (!questionPackage || Number(questionPackage.type) !== 13 ||
+                !questionPackage.subQuestions || !questionPackage.subQuestions.length) {
+                return;
+            }
+            var minimumAnswers = questionPackage.subQuestions.length;
+            var currentAnswers = questionPackage.subQuestions[0].questionAnswers || [];
+            if (currentAnswers.length <= minimumAnswers) {
+                toastr.warning('Nhóm ' + minimumAnswers + ' câu phải có ít nhất ' + minimumAnswers + ' đáp án đúng.', 'Không thể xóa');
+                return;
+            }
+            angular.forEach(questionPackage.subQuestions, function (question) {
+                question.questionAnswers = question.questionAnswers || [];
+                question.questionAnswers.splice(answerIndex, 1);
+            });
+            ensureCompleteListPackage(questionPackage);
+            vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
+        };
+
+        vm.addReadingQuestionAnswer = function (question, questionType) {
+            if (!question) {
+                return;
+            }
+            question.questionAnswers = question.questionAnswers || [];
+            question.questionAnswers.push({
+                answer: {answer: ''},
+                question: question.id ? {id: question.id} : {},
+                ordinalNumberQuestionAnswer: question.questionAnswers.length + 1,
+                correct: Number(questionType) === 2 || Number(questionType) === 3 || Number(questionType) === 11
+            });
+            vm.changeInTheProcessOfCreatingReadingTest();
+        };
+
+        vm.removeReadingQuestionAnswer = function (question, answerIndex) {
+            if (!question) {
+                return;
+            }
+            question.questionAnswers = question.questionAnswers || [];
+            if (question.questionAnswers.length <= 1) {
+                toastr.warning('Mỗi câu phải còn ít nhất 1 đáp án.', 'Không thể xóa');
+                return;
+            }
+            question.questionAnswers.splice(answerIndex, 1);
+            angular.forEach(question.questionAnswers, function (answer, index) {
+                answer.ordinalNumberQuestionAnswer = index + 1;
+            });
+            vm.changeInTheProcessOfCreatingReadingTest();
         };
 
         vm.onReadingPackageTypeChange = function (questionPackage, partIndex, packageIndex) {
@@ -767,11 +874,11 @@
                         }
                         if (correctAnswerCount === 0) {
                             addIssue('Câu ' + (number || '?') + ': chưa đánh dấu đáp án đúng.', questionTarget, partIndex);
-                        } else if (Number(entry.questionPackage.type) === 11 && answers.length !== 1) {
-                            addIssue('Câu ' + (number || '?') + ': Filling Gaps New chỉ dùng 1 đáp án.', questionTarget, partIndex);
-                        } else if ((entry.questionPackage.type === 5 || entry.questionPackage.type === 7) && correctAnswerCount < 2) {
+                        } else if ((Number(entry.questionPackage.type) === 5 || Number(entry.questionPackage.type) === 7) && correctAnswerCount < 2) {
                             addIssue('Câu ' + (number || '?') + ': dạng nhiều đáp án cần đánh dấu ít nhất 2 đáp án đúng.', questionTarget, partIndex);
-                        } else if (entry.questionPackage.type !== 5 && entry.questionPackage.type !== 7 && correctAnswerCount > 1) {
+                        } else if (Number(entry.questionPackage.type) !== 2 && Number(entry.questionPackage.type) !== 3 &&
+                            Number(entry.questionPackage.type) !== 5 && Number(entry.questionPackage.type) !== 7 &&
+                            Number(entry.questionPackage.type) !== 11 && correctAnswerCount > 1) {
                             addIssue('Câu ' + (number || '?') + ': dạng này chỉ nên có 1 đáp án đúng.', questionTarget, partIndex);
                         }
                     }
@@ -819,6 +926,10 @@
         };
 
         vm.goToBuilderStep = function (stepIndex) {
+            if (stepIndex === 4) {
+                vm.openBuilderReviewModal();
+                return;
+            }
             if (stepIndex === 2 && vm.createPassageNumber < 2) {
                 vm.createPassageNumber = 2;
             }
@@ -835,13 +946,33 @@
             if (validation.issues.length) {
                 vm.goToBuilderTarget(validation.issues[0].target);
             } else {
-                vm.goToBuilderTarget('reading-builder-review');
+                vm.openBuilderReviewModal();
             }
         };
 
-        vm.toggleBuilderReview = function () {
-            vm.showBuilderReview = !vm.showBuilderReview;
+        vm.openBuilderReviewModal = function () {
             vm.refreshBuilderValidation();
+            vm.showBuilderReview = true;
+        };
+
+        vm.closeBuilderReviewModal = function () {
+            vm.showBuilderReview = false;
+        };
+
+        vm.toggleBuilderReview = function () {
+            if (vm.showBuilderReview) {
+                vm.closeBuilderReviewModal();
+            } else {
+                vm.openBuilderReviewModal();
+            }
+        };
+
+        vm.openBuilderIssue = function (issue) {
+            if (!issue || !issue.target) { return; }
+            vm.closeBuilderReviewModal();
+            $timeout(function () {
+                vm.goToBuilderTarget(issue.target);
+            }, 120);
         };
 
         vm.saveDraftReadingTest = function () {
@@ -901,12 +1032,9 @@
 
         vm.publishReadingTest = function () {
             var validation = vm.refreshBuilderValidation();
-            vm.showBuilderReview = true;
             if (!validation.valid) {
                 toastr.warning('Bài thi còn ' + validation.issues.length + ' mục cần hoàn thiện.', 'Chưa thể xuất bản');
-                if (validation.issues.length) {
-                    vm.goToBuilderTarget(validation.issues[0].target);
-                }
+                vm.openBuilderReviewModal();
                 return;
             }
             vm.ieltsReadingTest.status = 7;
@@ -1951,24 +2079,75 @@
             vm.getPageCreateIELTSReadingTest();
         };
 
+        vm.catalogStatusUpdating = {};
+
+        function findReadingTestCatalogRow(id) {
+            var matched = null;
+            angular.forEach(vm.ieltsReadingTests || [], function (item) {
+                if (!matched && item && String(item.id) === String(id)) {
+                    matched = item;
+                }
+            });
+            return matched;
+        }
+
+        function removeReadingTestCatalogRow(id) {
+            for (var index = (vm.ieltsReadingTests || []).length - 1; index >= 0; index--) {
+                if (String(vm.ieltsReadingTests[index].id) === String(id)) {
+                    vm.ieltsReadingTests.splice(index, 1);
+                    break;
+                }
+            }
+            vm.bsTableControlCreateIELTSReadingTest.options.totalRows = Math.max(
+                0,
+                Number(vm.bsTableControlCreateIELTSReadingTest.options.totalRows || 0) - 1
+            );
+            try {
+                $('#bsTableControl').bootstrapTable('removeByUniqueId', id);
+            } catch (ignoreCatalogTableRemoveError) {
+                vm.bsTableControlCreateIELTSReadingTest.options.data = vm.ieltsReadingTests;
+            }
+        }
+
+        function updateReadingTestCatalogRow(id, status) {
+            var row = findReadingTestCatalogRow(id);
+            if (row) {
+                row.status = status;
+            }
+            try {
+                $('#bsTableControl').bootstrapTable('updateByUniqueId', {
+                    id: id,
+                    row: {status: status}
+                });
+            } catch (ignoreCatalogTableUpdateError) {
+                vm.bsTableControlCreateIELTSReadingTest.options.data = vm.ieltsReadingTests;
+            }
+        }
+
+        function statusBelongsToCurrentCatalog(status) {
+            return vm.showHiddenTests ? Number(status) === 8 : Number(status) !== 8;
+        }
+
         function updateReadingTestCatalogStatus(id, status, successMessage) {
-            if (!id) {
+            if (!id || vm.catalogStatusUpdating[id]) {
                 return;
             }
-            blockUI.start();
-            service.getOne(id).then(function (test) {
-                if (!test) {
-                    throw new Error('Không tìm thấy bài test.');
+            vm.catalogStatusUpdating[id] = true;
+            service.updateTestStatus(id, status).then(function (savedTest) {
+                if (vm.ieltsReadingTest && String(vm.ieltsReadingTest.id) === String(id)) {
+                    vm.ieltsReadingTest.status = status;
                 }
-                test.status = status;
-                return service.saveObject(test);
-            }).then(function () {
-                blockUI.stop();
+                if (statusBelongsToCurrentCatalog(status)) {
+                    updateReadingTestCatalogRow(id, status);
+                } else {
+                    removeReadingTestCatalogRow(id);
+                }
                 toastr.success(successMessage, 'Thông báo');
-                vm.getPageCreateIELTSReadingTest();
+                return savedTest;
             }, function () {
-                blockUI.stop();
                 toastr.error('Không thể cập nhật trạng thái bài test.', 'Thông báo');
+            }).finally(function () {
+                delete vm.catalogStatusUpdating[id];
             });
         }
 
@@ -2457,7 +2636,7 @@
                         answers.push({text: option, correct: false});
                     });
                 } else {
-                    for (var answerNumber = 1; answerNumber <= 8; answerNumber++) {
+                    for (var answerNumber = 1; answerNumber <= 12; answerNumber++) {
                         var answerText = excelRowValue(row, ['Đáp án ' + answerNumber, 'Answer ' + answerNumber]);
                         if (String(answerText).trim()) {
                             answers.push({text: String(answerText).trim(), correct: false});
@@ -2592,17 +2771,18 @@
                 ['Passage HTML', passageHtmlInstruction],
                 ['Hướng dẫn HTML', 'Ghi nguyên phần Questions x–y và yêu cầu của nhóm, ví dụ Choose the correct letter, A–F.'],
                 ['Nội dung câu hỏi', 'Ghi phần statement/question của đúng số câu. Không thêm số câu vào nội dung vì hệ thống tự hiển thị số.'],
-                ['Đáp án 1–8', 'Dùng cho Multiple Choices và các loại thông thường. Nhập đúng thứ tự lựa chọn. Ô không dùng phải để trống.'],
+                ['Đáp án 1–12', 'Dùng cho Multiple Choices, Complete List of Words và các loại thông thường. Nhập đủ lựa chọn theo đúng thứ tự; ô không dùng để trống.'],
                 ['MATCHING HEADINGS (mã 4)', 'Nhóm câu hỏi dùng Loại câu hỏi=4. Cột Danh sách dùng chung nhập i=Heading thứ nhất | ii=Heading thứ hai | iii=Heading thứ ba... ở dòng đầu nhóm. Mỗi câu nhập Section A, Section B...; Đáp án đúng nhập vị trí heading A/B/C... hoặc 1/2/3...'],
                 ['MATCHING HEADINGS - Passage', 'Trong Passage HTML, đặt đúng một }{HEADING}{ ngay sau từng nhãn đoạn cần ghép, ví dụ <p><strong>A</strong> }{HEADING}{</p>. Số ký hiệu phải bằng số câu Matching Heading và theo đúng thứ tự câu.'],
                 ['MATCHING HEADINGS - tự sửa', 'Importer sẽ tự chèn ký hiệu nếu nhãn A/B/C... nằm riêng trong thẻ như <p><strong>A</strong></p>. Tuy vậy ChatGPT phải tạo sẵn }{HEADING}{ để file rõ ràng và không phụ thuộc tự nhận diện. Khi import, Part có nhóm mã 4 tự chuyển sang Matching Heading; không cần chọn tay.'],
                 ['MATCHING NAMES (mã 10)', 'Nhập danh sách chung tại cột Danh sách dùng chung theo dạng A=Jim Bowler | B=Alan Thorne | C=Tim Flannery. Chỉ cần nhập ở dòng đầu của nhóm.'],
-                ['MATCHING NAMES - đáp án', 'Các cột Đáp án 1–8 để trống. Cột Đáp án đúng của mỗi câu nhập A/B/C… tương ứng người đúng. Trên bài làm, bảng hiện A/B/C… và danh sách tên hiện dưới bảng.'],
+                ['MATCHING NAMES - đáp án', 'Các cột Đáp án 1–12 để trống. Cột Đáp án đúng của mỗi câu nhập A/B/C… tương ứng người đúng. Trên bài làm, bảng hiện A/B/C… và danh sách tên hiện dưới bảng.'],
                 ['SENTENCE ENDINGS (mã 14)', 'Dùng cho “Complete each sentence with the correct ending”. Cột Danh sách dùng chung nhập A=is not backed... | B=is provided... ở dòng đầu nhóm. Nội dung câu hỏi là phần đầu của câu; Đáp án đúng nhập A/B/C... Học sinh kéo ending vào ô sau câu.'],
-                ['ONE WORD ONLY (mã 11)', 'Dòng đầu nhóm: Nội dung câu hỏi chứa toàn bộ đoạn/các câu và chèn đúng một ký hiệu }{SPACE}{ tại mỗi ô trống. Mỗi dòng vẫn đại diện một số câu; Đáp án 1 là từ đúng của câu đó, Đáp án đúng nhập A. Các dòng sau có thể để trống Nội dung câu hỏi.'],
-                ['ONE WORD ONLY - ví dụ', 'Koster believes that games remove people’s fear of }{SPACE}{. Robertson’s view is associated with }{SPACE}{. Nếu nhóm có 2 câu thì phải có đúng 2 ký hiệu }{SPACE}{. Không gõ dấu chấm thay cho ô trống.'],
-                ['Filling Gaps', 'Đáp án đúng phải trùng chính xác với một đáp án đã nhập; có thể thêm các cách viết chấp nhận được ở các cột đáp án kế tiếp và đánh dấu nhiều đáp án đúng.'],
-                ['Multiple Answers', 'Nhập toàn bộ lựa chọn vào Đáp án 1–8 và các chữ/số đúng, ngăn cách bằng dấu phẩy, trong Đáp án đúng.'],
+                ['FILLING GAPS MỚI / ONE EDITOR (mã 11)', 'Mọi dạng điền từ mới phải dùng mã 11. Dòng đầu nhóm chứa toàn bộ đoạn/các câu và đúng một ký hiệu }{SPACE}{ cho mỗi số câu. Mỗi số câu bắt buộc có một dòng riêng; Đáp án 1 của từng dòng là từ đúng của chính câu đó, Đáp án đúng nhập A. Các dòng sau chỉ được để trống Nội dung câu hỏi, không được bỏ dòng hoặc bỏ Đáp án 1.'],
+                ['FILLING GAPS MỚI - ví dụ', 'Koster believes that games remove people’s fear of }{SPACE}{. Robertson’s view is associated with }{SPACE}{. Nhóm 2 câu phải có đúng 2 ký hiệu, đúng 2 dòng câu và cả 2 dòng đều phải có Đáp án 1. Không gõ dấu chấm/gạch dưới thay cho ô trống.'],
+                ['FILLING GAPS CŨ (mã 2 và 3)', 'Chỉ giữ để tương thích và chỉnh sửa dữ liệu cũ. Không dùng mã 2 hoặc 3 khi ChatGPT tạo file import mới; luôn chuyển dạng điền từ mới sang mã 11.'],
+                ['COMPLETE LIST OF WORDS (mã 13)', 'Dùng một editor và đúng một }{SPACE}{ cho mỗi câu. Nếu nhóm có N câu, phải tạo đủ N dòng câu. Trên MỌI dòng của nhóm, lặp lại nguyên vẹn cùng danh sách ở Đáp án 1–12: N đáp án đúng đặt trước theo đúng thứ tự số câu, rồi mới tới từ nhiễu. Danh sách A–J phải điền đủ cả 10 cột, không được dừng ở đáp án đầu. Đáp án đúng của dòng thứ 1/2/3... lần lượt là A/B/C...; không được chỉ nhập đáp án cho dòng đầu.'],
+                ['Multiple Answers', 'Nhập toàn bộ lựa chọn vào Đáp án 1–12 và các chữ/số đúng, ngăn cách bằng dấu phẩy, trong Đáp án đúng.'],
                 ['Kiểm tra trước import', 'Đủ title; đúng 3 parts; đúng khoảng số câu; không trùng số; mỗi câu có đáp án; đáp án đúng khớp danh sách; không còn chữ mẫu.'],
                 ['Dùng với ChatGPT', 'Gửi đề gốc cùng file mẫu này và yêu cầu ChatGPT đọc sheet PROMPT_CHATGPT. ChatGPT phải trả về một file .xlsx theo đúng cấu trúc, không trả JSON/CSV.']
             ];
@@ -2619,14 +2799,15 @@
                 ['3. Tạo đúng 3 parts. Part 1 dùng câu 1–13, Part 2 dùng câu 14–26, Part 3 dùng câu 27–40. Giữ đúng số câu, thứ tự câu và đáp án gốc.'],
                 ['4. Mỗi nhóm câu liên tiếp có cùng Part, Nhóm, Loại câu hỏi và Hướng dẫn HTML. Passage HTML chỉ lặp một lần ở dòng đầu mỗi Part.'],
                 ['4A. ' + promptPartHeaderInstruction],
-                ['5. Chọn mã theo LOAI_CAU_HOI: Matching Headings=4, Matching Names/List of Researchers=10, ONE WORD ONLY dạng nhiều ô trong một đoạn=11, Complete each sentence with the correct ending=14.'],
-                ['6. Với mã 4, 10 hoặc 14, cột Danh sách dùng chung nhập một lần ở dòng đầu nhóm theo dạng ký hiệu=nội dung, ngăn cách bằng |. Các dòng sau để trống cột này để kế thừa. Các cột Đáp án 1–8 để trống; Đáp án đúng nhập A/B/C… theo vị trí.'],
+                ['5. Chọn mã theo LOAI_CAU_HOI: Matching Headings=4, Matching Names/List of Researchers=10, mọi dạng điền từ/gap mới=11 (Filling Gaps New - One Editor), Complete List of Words có danh sách từ cho sẵn=13, Complete each sentence with the correct ending=14. TUYỆT ĐỐI không dùng mã 2 hoặc 3 trong file mới; hai mã đó chỉ dành cho dữ liệu cũ.'],
+                ['6. Với mã 4, 10 hoặc 14, cột Danh sách dùng chung nhập một lần ở dòng đầu nhóm theo dạng ký hiệu=nội dung, ngăn cách bằng |. Các dòng sau để trống cột này để kế thừa. Các cột Đáp án 1–12 để trống; Đáp án đúng nhập A/B/C… theo vị trí.'],
                 ['6A. Riêng Matching Headings mã 4: Passage HTML phải có đúng một }{HEADING}{ sau từng nhãn đoạn được hỏi, ví dụ <p><strong>A</strong> }{HEADING}{</p>. Số }{HEADING}{ phải bằng số câu của nhóm và thứ tự A/B/C... phải trùng Nội dung câu hỏi Section A/Section B/Section C...'],
-                ['7. Với mã 11, Nội dung câu hỏi ở dòng đầu nhóm chứa toàn bộ đoạn và đúng một }{SPACE}{ cho mỗi số câu. Mỗi dòng nhập từ đúng tại Đáp án 1 và nhập A tại Đáp án đúng. Không tự thay }{SPACE}{ bằng dấu chấm hoặc gạch dưới.'],
-                ['8. Với loại khác, nhập lựa chọn/đáp án vào Đáp án 1–8. Đáp án đúng nhập vị trí 1–8 hoặc chữ A–H; nhiều đáp án ngăn cách bằng dấu phẩy.'],
+                ['7. Với mã 11, Nội dung câu hỏi ở dòng đầu nhóm chứa toàn bộ đoạn và đúng một }{SPACE}{ cho mỗi số câu theo đúng thứ tự. BẮT BUỘC tạo một dòng cho từng số câu; trên mỗi dòng nhập đầy đủ từ đúng của chính câu đó tại Đáp án 1 và nhập A tại Đáp án đúng. Chỉ Nội dung câu hỏi ở các dòng sau được để trống. Không được bỏ Đáp án 1 của câu thứ hai trở đi và không thay }{SPACE}{ bằng dấu chấm/gạch dưới.'],
+                ['7A. Với mã 13 Complete List of Words: nhóm N câu phải có đúng N ký hiệu }{SPACE}{ và đúng N dòng. Xác định đủ N đáp án đúng trước, sắp theo số câu tăng dần, rồi mới thêm từ nhiễu. Lặp lại TOÀN BỘ danh sách giống hệt ở các cột Đáp án 1–12 trên TẤT CẢ N dòng; Đáp án đúng của các dòng lần lượt A, B, C... Không chỉ điền dòng đầu và không được bỏ bất kỳ lựa chọn nào ở cuối danh sách. Ví dụ câu 31–35 có danh sách A–J: cả 5 dòng đều phải điền đủ cùng 10 đáp án, và Đáp án đúng lần lượt A/B/C/D/E.'],
+                ['8. Với loại khác (không phải mã 11 hoặc 13), nhập lựa chọn/đáp án vào Đáp án 1–12. Đáp án đúng nhập vị trí 1–12 hoặc chữ A–L; nhiều đáp án ngăn cách bằng dấu phẩy.'],
                 ['9. Passage và hướng dẫn dùng HTML đơn giản. Giữ nguyên nội dung đề, chính tả, dấu câu, tên riêng, tiêu đề đoạn và ký hiệu A/B/C…; không tóm tắt.'],
                 ['10. Không tạo macro, công thức, link ngoài, sheet phụ hoặc cột phụ. Không để ô lỗi Excel. File phải mở được bằng Excel và SheetJS.'],
-                ['11. Tự kiểm tra: đủ 40 câu nếu đề đủ 40; không trùng/thiếu số; đúng part; mỗi câu có đáp án; Đáp án đúng khớp lựa chọn; nhóm mã 4 có số }{HEADING}{ bằng số câu; mã 11 có số }{SPACE}{ bằng số câu.'],
+                ['11. Tự kiểm tra từng dòng trước khi xuất file: đủ 40 câu nếu đề đủ 40; không trùng/thiếu số; đúng part; KHÔNG có dòng câu nào thiếu Đáp án 1 khi loại yêu cầu đáp án; Đáp án đúng khớp lựa chọn; mã 4 có số }{HEADING}{ bằng số câu; mã 11 và 13 có số }{SPACE}{ bằng số câu. Với mã 13, kiểm tra mọi dòng đều có cùng danh sách đầy đủ và số đáp án đúng không nhỏ hơn số câu. Nếu còn thiếu dù chỉ một đáp án thì phải sửa xong mới tạo file.'],
                 ['KẾT QUẢ ĐẦU RA'],
                 ['Chỉ gửi lại file .xlsx hoàn chỉnh. Không gửi JSON, CSV hoặc hướng dẫn thay thế cho file. Nếu đề gốc thiếu dữ liệu, ghi rõ phần thiếu trong một tin nhắn ngắn và không tự bịa đáp án.']
             ];
@@ -2644,26 +2825,27 @@
             XLSX.utils.book_append_sheet(workbook, infoSheet, 'THONG_TIN');
 
             var contentRows = [
-                ['Part', 'Passage HTML', 'Nhóm', 'Loại câu hỏi', 'Hướng dẫn HTML', 'Số câu', 'Nội dung câu hỏi', 'Đáp án 1', 'Đáp án 2', 'Đáp án 3', 'Đáp án 4', 'Đáp án 5', 'Đáp án 6', 'Đáp án 7', 'Đáp án 8', 'Danh sách dùng chung (A=... | B=...)', 'Đáp án đúng'],
-                [1, part1PassageExample, 1, 1, '<p><strong>Questions 1–2</strong></p><p>Choose the correct answer.</p>', 1, 'Nội dung câu hỏi 1', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', 'Lựa chọn D', '', '', '', '', '', 'A'],
-                ['', '', '', '', '', 2, 'Nội dung câu hỏi 2', 'TRUE', 'FALSE', 'NOT GIVEN', '', '', '', '', '', '', '', 'A'],
-                [2, part2PassageExample, 1, 4, '<p><strong>Questions 14–15</strong></p><p>Choose the correct heading for each section.</p>', 14, 'Section A', '', '', '', '', '', '', '', '', 'i=Heading about section B | ii=Heading about section A | iii=Heading not used', 'B'],
-                ['', '', '', '', '', 15, 'Section B', '', '', '', '', '', '', '', '', '', '', 'A'],
-                [3, part3PassageExample, 1, 10, '<p><strong>Questions 27–28</strong></p><p>Match each statement with the correct researcher, A–F.</p>', 27, 'Our human ancestors did not originate in only one area.', '', '', '', '', '', '', '', '', 'A=Jim Bowler | B=Alan Thorne | C=Tim Flannery | D=Rainer Grün | E=Richard Roberts and Tim Flannery | F=Judith Field and Richard Fullager', 'A'],
-                ['', '', '', '', '', 28, 'The extinction of the megafauna happened within a particular period.', '', '', '', '', '', '', '', '', '', '', 'C']
+                ['Part', 'Passage HTML', 'Nhóm', 'Loại câu hỏi', 'Hướng dẫn HTML', 'Số câu', 'Nội dung câu hỏi', 'Đáp án 1', 'Đáp án 2', 'Đáp án 3', 'Đáp án 4', 'Đáp án 5', 'Đáp án 6', 'Đáp án 7', 'Đáp án 8', 'Đáp án 9', 'Đáp án 10', 'Đáp án 11', 'Đáp án 12', 'Danh sách dùng chung (A=... | B=...)', 'Đáp án đúng'],
+                [1, part1PassageExample, 1, 1, '<p><strong>Questions 1–2</strong></p><p>Choose the correct answer.</p>', 1, 'Nội dung câu hỏi 1', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', 'Lựa chọn D', '', '', '', '', '', '', '', '', '', 'A'],
+                ["","","","","",2,"Nội dung câu hỏi 2","TRUE","FALSE","NOT GIVEN","","","","","","","","","","","A"],
+                [2, part2PassageExample, 1, 4, '<p><strong>Questions 14–15</strong></p><p>Choose the correct heading for each section.</p>', 14, 'Section A', '', '', '', '', '', '', '', '', '', '', '', '', 'i=Heading about section B | ii=Heading about section A | iii=Heading not used', 'B'],
+                ["","","","","",15,"Section B","","","","","","","","","","","","","","A"],
+                [3, part3PassageExample, 1, 10, '<p><strong>Questions 27–28</strong></p><p>Match each statement with the correct researcher, A–F.</p>', 27, 'Our human ancestors did not originate in only one area.', '', '', '', '', '', '', '', '', '', '', '', '', 'A=Jim Bowler | B=Alan Thorne | C=Tim Flannery | D=Rainer Grün | E=Richard Roberts and Tim Flannery | F=Judith Field and Richard Fullager', 'A'],
+                ["","","","","",28,"The extinction of the megafauna happened within a particular period.","","","","","","","","","","","","","","C"]
             ];
             var contentSheet = XLSX.utils.aoa_to_sheet(contentRows);
             contentSheet['!cols'] = [
                 {wch: 8}, {wch: 55}, {wch: 9}, {wch: 18}, {wch: 55}, {wch: 10}, {wch: 35},
-                {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 90}, {wch: 16}
+                {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20},
+                {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 90}, {wch: 16}
             ];
-            contentSheet['!autofilter'] = {ref: 'A1:Q8'};
+            contentSheet['!autofilter'] = {ref: 'A1:U7'};
             XLSX.utils.book_append_sheet(workbook, contentSheet, 'NOI_DUNG');
 
             var typeImportNotes = {
-                1: 'Một đáp án: dùng cho Multiple Choice, TRUE/FALSE/NOT GIVEN, YES/NO/NOT GIVEN. Nhập lựa chọn ở Đáp án 1–8 và một Đáp án đúng.',
-                2: 'Điền từ từng câu. Nhập các cách viết được chấp nhận ở Đáp án 1–8 và đánh dấu tất cả cách đúng.',
-                3: 'Điền chữ A–G hoặc lựa chọn ngắn vào chỗ trống. Đáp án đúng phải khớp một lựa chọn đã nhập.',
+                1: 'Một đáp án: dùng cho Multiple Choice, TRUE/FALSE/NOT GIVEN, YES/NO/NOT GIVEN. Nhập lựa chọn ở Đáp án 1–12 và một Đáp án đúng.',
+                2: 'LEGACY - Filling Gaps cũ. Chỉ dùng cho đề cũ; không dùng trong file import mới. Dạng điền từ mới phải dùng mã 11.',
+                3: 'LEGACY - Filling Gaps Enter cũ. Chỉ dùng cho đề cũ; không dùng trong file import mới. Dạng điền từ mới phải dùng mã 11.',
                 4: 'Matching Headings. Danh sách heading dùng chung nhập một lần; Passage HTML có một }{HEADING}{ sau mỗi nhãn A/B/C...; mỗi câu dùng Đáp án đúng A–Z theo vị trí heading. Importer tự đặt Part về loại Matching Heading.',
                 5: 'Multiple Choice có nhiều đáp án. Đáp án đúng nhập nhiều vị trí/chữ, ví dụ A,C.',
                 6: vm.isListeningMode ? 'Bố cục lựa chọn ngang cho câu hỏi Listening.' : 'Bố cục lựa chọn ngang, chủ yếu dùng Listening; chỉ dùng khi đề Reading thật sự yêu cầu.',
@@ -2671,9 +2853,9 @@
                 8: vm.isListeningMode ? 'Matching/drop box cho Listening; giữ đúng danh sách lựa chọn và thứ tự đáp án.' : 'Matching Heading kiểu Listening/drop box; không ưu tiên cho IELTS Reading.',
                 9: vm.isListeningMode ? 'Map/diagram Listening; Passage HTML giữ ảnh/bản đồ và các vị trí cần trả lời.' : 'Map/diagram kiểu Listening; không ưu tiên cho IELTS Reading.',
                 10: 'MATCHING NAMES. Danh sách người dùng chung nhập ở cột Danh sách dùng chung; mỗi câu dùng Đáp án đúng A–Z.',
-                11: 'ONE WORD ONLY / một editor. Dòng đầu chứa toàn bộ nội dung và đúng một }{SPACE}{ cho mỗi câu; Đáp án 1 từng dòng là từ đúng, Đáp án đúng=A.',
-                12: 'MATCHING INFORMATION. Nhập cùng danh sách lựa chọn theo thứ tự ở Đáp án 1–8 cho mỗi câu.',
-                13: 'Complete list of words. Một editor; các đáp án đúng theo thứ tự câu trước, sau đó mới tới từ nhiễu.',
+                11: 'Filling Gaps New / ONE WORD ONLY / một editor. Dòng đầu chứa toàn bộ nội dung và đúng một }{SPACE}{ cho mỗi câu; bắt buộc đủ một dòng cho từng số câu; Đáp án 1 từng dòng là từ đúng, Đáp án đúng=A. Không dùng mã 2 hoặc 3 cho đề mới.',
+                12: 'MATCHING INFORMATION. Nhập cùng danh sách lựa chọn theo thứ tự ở Đáp án 1–12 cho mỗi câu.',
+                13: 'Complete List of Words. Một editor; N đáp án đúng đặt trước theo thứ tự N câu, sau đó mới tới từ nhiễu. Phải lặp nguyên danh sách Đáp án 1–12 trên mọi dòng trong nhóm; danh sách A–J phải đủ 10 mục; Đáp án đúng lần lượt A/B/C... Không chỉ nhập dòng đầu.',
                 14: 'Complete each sentence with the correct ending. Danh sách endings chung nhập ở cột Danh sách dùng chung; mỗi câu dùng Đáp án đúng A–Z.'
             };
             var typeRows = [['Mã', 'Loại câu hỏi', 'Quy tắc nhập chính xác']];
@@ -2759,6 +2941,27 @@
             oneWordExampleSheet['!cols'] = [{wch: 38}, {wch: 145}];
             XLSX.utils.book_append_sheet(workbook, oneWordExampleSheet, 'VI_DU_ONE_WORD_ONLY');
 
+            var completeListExampleSheet = XLSX.utils.aoa_to_sheet([
+                ['COMPLETE LIST OF WORDS (MÃ 13) - VÍ DỤ KHÔNG ĐƯỢC THIẾU ĐÁP ÁN'],
+                ['Nhóm câu', '31–35 (5 câu, vì vậy phải có đúng 5 dòng và đúng 5 ký hiệu }{SPACE}{)'],
+                ['Nội dung câu hỏi dòng 31', 'In cities, horse manure led to }{SPACE}{ and diseases. Horses might cause }{SPACE}{. The }{SPACE}{ was damaged. Producers created }{SPACE}{. Workers needed }{SPACE}{.'],
+                ['Nội dung câu hỏi dòng 32–35', 'Để trống vì toàn bộ nội dung nằm trong editor chung ở dòng 31.'],
+                [],
+                ['Số câu', 'Đáp án 1 (A)', 'Đáp án 2 (B)', 'Đáp án 3 (C)', 'Đáp án 4 (D)', 'Đáp án 5 (E)', 'Đáp án 6 (F)', 'Đáp án 7 (G)', 'Đáp án 8 (H)', 'Đáp án 9 (I)', 'Đáp án 10 (J)', 'Đáp án đúng'],
+                [31, 'unpleasant smells', 'injuries', 'environment', 'financial controls', 'food', 'diseases', 'untrained workers', 'small-scale cultivation', 'migrant workers', 'national governments', 'A'],
+                [32, 'unpleasant smells', 'injuries', 'environment', 'financial controls', 'food', 'diseases', 'untrained workers', 'small-scale cultivation', 'migrant workers', 'national governments', 'B'],
+                [33, 'unpleasant smells', 'injuries', 'environment', 'financial controls', 'food', 'diseases', 'untrained workers', 'small-scale cultivation', 'migrant workers', 'national governments', 'C'],
+                [34, 'unpleasant smells', 'injuries', 'environment', 'financial controls', 'food', 'diseases', 'untrained workers', 'small-scale cultivation', 'migrant workers', 'national governments', 'D'],
+                [35, 'unpleasant smells', 'injuries', 'environment', 'financial controls', 'food', 'diseases', 'untrained workers', 'small-scale cultivation', 'migrant workers', 'national governments', 'E'],
+                [],
+                ['Quy tắc bắt buộc', 'Danh sách A–J (Đáp án 1–10) phải được lặp giống hệt trên cả 5 dòng. Năm đáp án đúng nằm ở 5 vị trí đầu theo thứ tự câu 31–35; năm từ nhiễu đặt phía sau. Không được chỉ điền danh sách ở dòng 31 hoặc bỏ các đáp án cuối.']
+            ]);
+            completeListExampleSheet['!cols'] = [
+                {wch: 28}, {wch: 30}, {wch: 24}, {wch: 24}, {wch: 24}, {wch: 24}, {wch: 24},
+                {wch: 24}, {wch: 26}, {wch: 24}, {wch: 26}, {wch: 18}
+            ];
+            XLSX.utils.book_append_sheet(workbook, completeListExampleSheet, 'VI_DU_COMPLETE_LIST');
+
             XLSX.writeFile(workbook, vm.isListeningMode ? 'mau_import_ielts_listening.xlsx' : 'mau_import_ielts_reading.xlsx');
             toastr.success('Đã tải file Excel mẫu ' + modeName + '.', 'IELTS ' + modeName);
         };
@@ -2775,44 +2978,11 @@
         ];
         
         $scope.changeStatus = function (id,status) {
-            service.getOne(id).then(function (data) {
-                vm.ieltsReadingTest = data;
-                vm.getOrdinalNumber(data);
-
-                isHavingQuestions(vm.ieltsReadingTest);
-
-                if(vm.createPassageNumber == 1){
-                    vm.fromQuestion = vm.highestOrdinalNumberQuestionForPassage1 + 1;
-                    // vm.toQuestion = vm.fromQuestion + 1;
-                    if(vm.fromQuestion > 0){
-                        vm.disableFromQuestion = true;
-                    }
-                }
-                if(vm.createPassageNumber == 2){
-                    vm.fromQuestion = vm.highestOrdinalNumberQuestionForPassage2 + 1;
-                    // vm.toQuestion = vm.fromQuestion + 1;
-                    if(vm.fromQuestion > 0){
-                        vm.disableFromQuestion = true;
-                    }
-                }
-
-                if(vm.createPassageNumber == 3){
-                    vm.fromQuestion = vm.highestOrdinalNumberQuestionForPassage3 + 1;
-                    // vm.toQuestion = vm.fromQuestion + 1;
-                    if(vm.fromQuestion > 0){
-                        vm.disableFromQuestion = true;
-                    }
-                }
-
-                vm.ieltsReadingTest.status = status;
-                vm.saveReadingTest();
-
-                console.log(data);
-            }, function failure() {
-                toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
-            });
-
-
+            updateReadingTestCatalogStatus(
+                id,
+                status,
+                Number(status) === 7 ? 'Đã xuất bản bài test.' : 'Đã chuyển bài test về bản nháp.'
+            );
         };
 
         vm.showAudioListening = false;

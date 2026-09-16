@@ -624,8 +624,9 @@
                     .trim();
             }
             if (type == 2 || type == 3 || type == 11) {
-                return questionAnswer && questionAnswer.answer &&
-                    questionAnswer.answer.answer != null ? questionAnswer.answer.answer : '';
+                return questionAnswer && questionAnswer.correctAnswer ? questionAnswer.correctAnswer :
+                    (questionAnswer && questionAnswer.answer && questionAnswer.answer.answer != null ?
+                        questionAnswer.answer.answer : '');
             }
 
             return questionAnswer && questionAnswer.correctAnswer != null ?

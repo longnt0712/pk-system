@@ -379,14 +379,14 @@
                                     </div>
 
                                     <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2">
-                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer' | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
                                     </span>
 
                                     <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3">
-                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer' | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
@@ -507,7 +507,7 @@
                                             <div id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global idp-selectable-question-text">{{q.question}}</div>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                             <div class="row" ng-if="$index == vm.type5Index">
-                                                <div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                <div style="padding-left: 25px" class="col-md-12 idp-multiple-answer-option" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
                                                     <div class="col-md-1">
                                                         <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
                                                     </div>
@@ -568,7 +568,7 @@
                                             <button id="question-number-{{q.ordinalNumber}}" ng-show="$index == 0" class="text-left button-question-click actual-test-font-global">{{q.question}}</button>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                             <div class="row" ng-if="$index == vm.type5Index">
-                                                <div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                <div style="padding-left: 25px" class="col-md-12 idp-multiple-answer-option" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
                                                     <div class="col-md-1">
                                                         <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
                                                     </div>
@@ -797,14 +797,14 @@
                                     </div>
 
                                     <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2">
-                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer' | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
                                     </span>
 
                                     <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3">
-                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer' | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
@@ -903,7 +903,7 @@
                                             <div id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global idp-selectable-question-text"><span compile="q.question"> </span></div>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                             <div class="row" ng-if="$index == vm.type5Index">
-                                                <div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                <div style="padding-left: 25px" class="col-md-12 idp-multiple-answer-option" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
                                                     <div class="col-md-1">
                                                         <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
                                                     </div>
@@ -964,7 +964,7 @@
                                             <button id="question-number-{{q.ordinalNumber}}" ng-show="$index == 0" class="text-left button-question-click actual-test-font-global">{{q.question}}</button>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                             <div class="row" ng-if="$index == vm.type5Index">
-                                                <div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                <div style="padding-left: 25px" class="col-md-12 idp-multiple-answer-option" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
                                                     <div class="col-md-1">
                                                         <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
                                                     </div>
@@ -1192,14 +1192,14 @@
                                     </div>
 
                                     <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2">
-                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer' | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
                                     </span>
 
                                     <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3">
-                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer' | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
@@ -1315,7 +1315,7 @@
                                             <div id="question-number-{{q.ordinalNumber}}" ng-show="q.showChildren == true && $index == 0" class="text-left button-question-click actual-test-font-global idp-selectable-question-text">{{q.question}}</div>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                             <div class="row" ng-if="$index == vm.type5Index">
-                                                <div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                <div style="padding-left: 25px" class="col-md-12 idp-multiple-answer-option" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
                                                     <div class="col-md-1">
                                                         <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
                                                     </div>
@@ -1376,7 +1376,7 @@
                                             <button id="question-number-{{q.ordinalNumber}}" ng-show="$index == 0" class="text-left button-question-click actual-test-font-global">{{q.question}}</button>
                                             <!--<button style="border:none;border-radius:7px;background-color: #0096D6;color: white;font-size: 19px;font-weight: 500; padding-top: 10px;padding-bottom: 10px" class=" text-left">{{q.ordinalNumber}}. &nbsp;{{q.question}}</button>-->
                                             <div class="row" ng-if="$index == vm.type5Index">
-                                                <div style="padding-left: 25px" class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'" >
+                                                <div style="padding-left: 25px" class="col-md-12 idp-multiple-answer-option" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
                                                     <div class="col-md-1">
                                                         <input ng-click="vm.checkBoxMultipleChoiceMultipleAnswerQuestions(a,q,a.selected,$index,item)" ng-model="a.selected" style="margin-top:5px;height: 18px;width: 18px" class="form-check-input" type="checkbox" name="flexRadioDisabled">
                                                     </div>
@@ -3910,6 +3910,19 @@
         outline: 2px solid transparent;
     }
 
+    .idp-reading-page .idp-multiple-answer-option {
+        min-height: 36px;
+        padding-top: 5px;
+        padding-bottom: 5px;
+        border-radius: 2px;
+        transition: background-color .12s ease;
+    }
+
+    .idp-reading-page .idp-multiple-answer-option:hover,
+    .idp-reading-page .idp-multiple-answer-option:focus-within {
+        background: #f1f3f5;
+    }
+
     /* The heading drop area fills the remaining width of its line. */
     .idp-reading-page .passage-text .matching-heading-drop-box {
         display: inline-flex !important;
@@ -5127,6 +5140,10 @@
     .idp-reading-page.idp-contrast-white-black .idp-single-choice-title:focus,
     .idp-reading-page.idp-contrast-yellow-black .idp-single-choice-title:hover,
     .idp-reading-page.idp-contrast-yellow-black .idp-single-choice-title:focus,
+    .idp-reading-page.idp-contrast-white-black .idp-multiple-answer-option:hover,
+    .idp-reading-page.idp-contrast-white-black .idp-multiple-answer-option:focus-within,
+    .idp-reading-page.idp-contrast-yellow-black .idp-multiple-answer-option:hover,
+    .idp-reading-page.idp-contrast-yellow-black .idp-multiple-answer-option:focus-within,
     .idp-reading-page.idp-contrast-white-black .button-question-not-click,
     .idp-reading-page.idp-contrast-white-black .button-question-click,
     .idp-reading-page.idp-contrast-yellow-black .button-question-not-click,

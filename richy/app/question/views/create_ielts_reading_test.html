@@ -166,7 +166,7 @@
                 </button>
             </div>
             <div class="reading-builder-guide__actions">
-                <button type="button" class="btn btn-default" ng-click="vm.toggleBuilderReview()">
+                <button type="button" class="btn btn-default" ng-click="vm.openBuilderReviewModal()">
                     <i class="fa fa-check-square-o"></i> Xem checklist
                 </button>
                 <button type="button" class="btn btn-primary" ng-click="vm.continueBuilder()">
@@ -283,15 +283,25 @@
                                     <span>{{item.subQuestions[0].questionAnswers.length}} lựa chọn</span>
                                 </div>
                                 <div class="reading-matching-names-builder__grid">
-                                    <label ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
-                                        <b>{{vm.sharedChoiceLabel(item.type, $index)}}</b>
+                                    <div class="reading-shared-choice-option" ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                        <div class="reading-shared-choice-option__header">
+                                            <b>{{vm.sharedChoiceLabel(item.type, $index)}}</b>
+                                            <button type="button" ng-click="vm.removeSharedChoiceAnswer(item, $index)"
+                                                    ng-disabled="item.subQuestions[0].questionAnswers.length <= 1"
+                                                    title="Xóa lựa chọn này" aria-label="Xóa lựa chọn này">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
                                         <input class="form-control"
                                                type="text"
                                                ng-model="a.answer.answer"
                                                ng-change="vm.updateSharedChoice(item, a)"
                                                placeholder="{{vm.sharedChoicePlaceholder(item.type, $index)}}">
-                                    </label>
+                                    </div>
                                 </div>
+                                <button type="button" class="btn btn-info reading-answer-add-button" ng-click="vm.addSharedChoiceAnswer(item)">
+                                    <i class="fa fa-plus-circle"></i> Thêm lựa chọn
+                                </button>
                             </div>
 
 
@@ -346,7 +356,11 @@
                                 <div class="reading-one-editor-answers">
                                     <div ng-repeat="q in item.subQuestions | orderBy:'ordinalNumber'">
                                         <label>Đáp án câu {{q.ordinalNumber}}</label>
-                                        <input class="form-control" type="text" ng-model="q.questionAnswers[0].answer.answer" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" placeholder="Nhập đáp án đúng của câu {{q.ordinalNumber}}">
+                                        <div class="reading-one-editor-answer-row" ng-repeat="a in q.questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                            <input class="form-control" type="text" ng-model="a.answer.answer" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" placeholder="Đáp án được chấp nhận {{$index + 1}}">
+                                            <button type="button" class="reading-answer-remove-button" ng-click="vm.removeReadingQuestionAnswer(q, $index)" ng-disabled="q.questionAnswers.length <= 1" title="Xóa đáp án này" aria-label="Xóa đáp án này"><i class="fa fa-trash"></i></button>
+                                        </div>
+                                        <button type="button" class="btn btn-info reading-answer-add-button" ng-click="vm.addReadingQuestionAnswer(q, 11)"><i class="fa fa-plus-circle"></i> Thêm đáp án được chấp nhận</button>
                                     </div>
                                 </div>
                             </div>
@@ -364,10 +378,27 @@
                                 <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
                                 <div class="reading-complete-list-words">
                                     <div ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
-                                        <label ng-if="$index < item.subQuestions.length">Đáp án đúng câu {{item.subQuestions[$index].ordinalNumber}}</label>
-                                        <label ng-if="$index >= item.subQuestions.length">Từ nhiễu {{$index - item.subQuestions.length + 1}}</label>
+                                        <div class="reading-complete-list-word__header">
+                                            <label ng-if="$index < item.subQuestions.length">Đáp án đúng câu {{item.subQuestions[$index].ordinalNumber}}</label>
+                                            <label ng-if="$index >= item.subQuestions.length">Từ nhiễu {{$index - item.subQuestions.length + 1}}</label>
+                                            <button type="button" class="reading-complete-list-word__remove"
+                                                    ng-click="vm.removeCompleteListAnswer(item, $index)"
+                                                    ng-disabled="item.subQuestions[0].questionAnswers.length <= item.subQuestions.length"
+                                                    title="Xóa đáp án này" aria-label="Xóa đáp án này">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
                                         <input class="form-control" type="text" ng-model="a.answer.answer" ng-change="vm.updateCompleteListWord(item, $index)" placeholder="Nhập từ hoặc cụm từ">
                                     </div>
+                                </div>
+                                <div class="reading-complete-list-actions">
+                                    <span>
+                                        {{item.subQuestions[0].questionAnswers.length}} mục / tối thiểu {{item.subQuestions.length}}
+                                    </span>
+                                    <button type="button" class="btn btn-info" ng-click="vm.addCompleteListAnswer(item)">
+                                        <i class="fa fa-plus-circle"></i>
+                                        {{item.subQuestions[0].questionAnswers.length < item.subQuestions.length ? 'Thêm đáp án đúng' : 'Thêm từ nhiễu'}}
+                                    </button>
                                 </div>
                             </div>
 
@@ -402,12 +433,20 @@
                                                     <div ng-if="item.type == 4 || item.type == 10 || item.type == 14" class="reading-shared-choice-preview">{{a.answer.answer}}</div>
                                                 </div>
                                                 <div class="col-md-1">
-                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  type="checkbox"  id="defaultCheck1" data-ng-model="a.correct">
+                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" type="checkbox" id="defaultCheck1" data-ng-model="a.correct">
+                                                    <button type="button" class="reading-answer-remove-button" ng-if="item.type != 4 && item.type != 10 && item.type != 14" ng-click="vm.removeReadingQuestionAnswer(q, $index)" ng-disabled="q.questionAnswers.length <= 1" title="Xóa answer này" aria-label="Xóa answer này"><i class="fa fa-trash"></i></button>
                                                 </div>
                                             </div>
 
                                         </div>
 
+                                    </div>
+
+                                    <div class="row" ng-if="item.type != 4 && item.type != 10 && item.type != 14">
+                                        <div class="col-md-2"></div>
+                                        <div class="col-md-10">
+                                            <button type="button" class="btn btn-info reading-answer-add-button" ng-click="vm.addReadingQuestionAnswer(q, item.type)"><i class="fa fa-plus-circle"></i> Thêm đáp án</button>
+                                        </div>
                                     </div>
 
                                     <hr>
@@ -515,15 +554,25 @@
                                     <span>{{item.subQuestions[0].questionAnswers.length}} lựa chọn</span>
                                 </div>
                                 <div class="reading-matching-names-builder__grid">
-                                    <label ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
-                                        <b>{{vm.sharedChoiceLabel(item.type, $index)}}</b>
+                                    <div class="reading-shared-choice-option" ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                        <div class="reading-shared-choice-option__header">
+                                            <b>{{vm.sharedChoiceLabel(item.type, $index)}}</b>
+                                            <button type="button" ng-click="vm.removeSharedChoiceAnswer(item, $index)"
+                                                    ng-disabled="item.subQuestions[0].questionAnswers.length <= 1"
+                                                    title="Xóa lựa chọn này" aria-label="Xóa lựa chọn này">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
                                         <input class="form-control"
                                                type="text"
                                                ng-model="a.answer.answer"
                                                ng-change="vm.updateSharedChoice(item, a)"
                                                placeholder="{{vm.sharedChoicePlaceholder(item.type, $index)}}">
-                                    </label>
+                                    </div>
                                 </div>
+                                <button type="button" class="btn btn-info reading-answer-add-button" ng-click="vm.addSharedChoiceAnswer(item)">
+                                    <i class="fa fa-plus-circle"></i> Thêm lựa chọn
+                                </button>
                             </div>
 
                             <div class="col-md-12" ng-show="item.isHaveChildren == false">
@@ -576,7 +625,11 @@
                                 <div class="reading-one-editor-answers">
                                     <div ng-repeat="q in item.subQuestions | orderBy:'ordinalNumber'">
                                         <label>Đáp án câu {{q.ordinalNumber}}</label>
-                                        <input class="form-control" type="text" ng-model="q.questionAnswers[0].answer.answer" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" placeholder="Nhập đáp án đúng của câu {{q.ordinalNumber}}">
+                                        <div class="reading-one-editor-answer-row" ng-repeat="a in q.questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                            <input class="form-control" type="text" ng-model="a.answer.answer" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" placeholder="Đáp án được chấp nhận {{$index + 1}}">
+                                            <button type="button" class="reading-answer-remove-button" ng-click="vm.removeReadingQuestionAnswer(q, $index)" ng-disabled="q.questionAnswers.length <= 1" title="Xóa đáp án này" aria-label="Xóa đáp án này"><i class="fa fa-trash"></i></button>
+                                        </div>
+                                        <button type="button" class="btn btn-info reading-answer-add-button" ng-click="vm.addReadingQuestionAnswer(q, 11)"><i class="fa fa-plus-circle"></i> Thêm đáp án được chấp nhận</button>
                                     </div>
                                 </div>
                             </div>
@@ -594,10 +647,20 @@
                                 <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
                                 <div class="reading-complete-list-words">
                                     <div ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
-                                        <label ng-if="$index < item.subQuestions.length">Đáp án đúng câu {{item.subQuestions[$index].ordinalNumber}}</label>
-                                        <label ng-if="$index >= item.subQuestions.length">Từ nhiễu {{$index - item.subQuestions.length + 1}}</label>
+                                        <div class="reading-complete-list-word__header">
+                                            <label ng-if="$index < item.subQuestions.length">Đáp án đúng câu {{item.subQuestions[$index].ordinalNumber}}</label>
+                                            <label ng-if="$index >= item.subQuestions.length">Từ nhiễu {{$index - item.subQuestions.length + 1}}</label>
+                                            <button type="button" class="reading-complete-list-word__remove" ng-click="vm.removeCompleteListAnswer(item, $index)" ng-disabled="item.subQuestions[0].questionAnswers.length <= item.subQuestions.length" title="Xóa đáp án này" aria-label="Xóa đáp án này"><i class="fa fa-trash"></i></button>
+                                        </div>
                                         <input class="form-control" type="text" ng-model="a.answer.answer" ng-change="vm.updateCompleteListWord(item, $index)" placeholder="Nhập từ hoặc cụm từ">
                                     </div>
+                                </div>
+                                <div class="reading-complete-list-actions">
+                                    <span>{{item.subQuestions[0].questionAnswers.length}} mục / tối thiểu {{item.subQuestions.length}}</span>
+                                    <button type="button" class="btn btn-info" ng-click="vm.addCompleteListAnswer(item)">
+                                        <i class="fa fa-plus-circle"></i>
+                                        {{item.subQuestions[0].questionAnswers.length < item.subQuestions.length ? 'Thêm đáp án đúng' : 'Thêm từ nhiễu'}}
+                                    </button>
                                 </div>
                             </div>
 
@@ -635,13 +698,21 @@
                                                     <div ng-if="item.type == 4 || item.type == 10 || item.type == 14" class="reading-shared-choice-preview">{{a.answer.answer}}</div>
                                                 </div>
                                                 <div class="col-md-1">
-                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  type="checkbox"  id="defaultCheck1" data-ng-model="a.correct">
+                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" type="checkbox" id="defaultCheck1" data-ng-model="a.correct">
+                                                    <button type="button" class="reading-answer-remove-button" ng-if="item.type != 4 && item.type != 10 && item.type != 14" ng-click="vm.removeReadingQuestionAnswer(q, $index)" ng-disabled="q.questionAnswers.length <= 1" title="Xóa answer này" aria-label="Xóa answer này"><i class="fa fa-trash"></i></button>
                                                 </div>
                                             </div>
 
 
                                         </div>
 
+                                    </div>
+
+                                    <div class="row" ng-if="item.type != 4 && item.type != 10 && item.type != 14">
+                                        <div class="col-md-2"></div>
+                                        <div class="col-md-10">
+                                            <button type="button" class="btn btn-info reading-answer-add-button" ng-click="vm.addReadingQuestionAnswer(q, item.type)"><i class="fa fa-plus-circle"></i> Thêm đáp án</button>
+                                        </div>
                                     </div>
 
                                     <hr>
@@ -743,15 +814,25 @@
                                     <span>{{item.subQuestions[0].questionAnswers.length}} lựa chọn</span>
                                 </div>
                                 <div class="reading-matching-names-builder__grid">
-                                    <label ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
-                                        <b>{{vm.sharedChoiceLabel(item.type, $index)}}</b>
+                                    <div class="reading-shared-choice-option" ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                        <div class="reading-shared-choice-option__header">
+                                            <b>{{vm.sharedChoiceLabel(item.type, $index)}}</b>
+                                            <button type="button" ng-click="vm.removeSharedChoiceAnswer(item, $index)"
+                                                    ng-disabled="item.subQuestions[0].questionAnswers.length <= 1"
+                                                    title="Xóa lựa chọn này" aria-label="Xóa lựa chọn này">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
                                         <input class="form-control"
                                                type="text"
                                                ng-model="a.answer.answer"
                                                ng-change="vm.updateSharedChoice(item, a)"
                                                placeholder="{{vm.sharedChoicePlaceholder(item.type, $index)}}">
-                                    </label>
+                                    </div>
                                 </div>
+                                <button type="button" class="btn btn-info reading-answer-add-button" ng-click="vm.addSharedChoiceAnswer(item)">
+                                    <i class="fa fa-plus-circle"></i> Thêm lựa chọn
+                                </button>
                             </div>
 
                             <div class="col-md-12" ng-show="item.isHaveChildren == false">
@@ -805,7 +886,11 @@
                                 <div class="reading-one-editor-answers">
                                     <div ng-repeat="q in item.subQuestions | orderBy:'ordinalNumber'">
                                         <label>Đáp án câu {{q.ordinalNumber}}</label>
-                                        <input class="form-control" type="text" ng-model="q.questionAnswers[0].answer.answer" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" placeholder="Nhập đáp án đúng của câu {{q.ordinalNumber}}">
+                                        <div class="reading-one-editor-answer-row" ng-repeat="a in q.questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                            <input class="form-control" type="text" ng-model="a.answer.answer" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" placeholder="Đáp án được chấp nhận {{$index + 1}}">
+                                            <button type="button" class="reading-answer-remove-button" ng-click="vm.removeReadingQuestionAnswer(q, $index)" ng-disabled="q.questionAnswers.length <= 1" title="Xóa đáp án này" aria-label="Xóa đáp án này"><i class="fa fa-trash"></i></button>
+                                        </div>
+                                        <button type="button" class="btn btn-info reading-answer-add-button" ng-click="vm.addReadingQuestionAnswer(q, 11)"><i class="fa fa-plus-circle"></i> Thêm đáp án được chấp nhận</button>
                                     </div>
                                 </div>
                             </div>
@@ -823,10 +908,20 @@
                                 <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
                                 <div class="reading-complete-list-words">
                                     <div ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
-                                        <label ng-if="$index < item.subQuestions.length">Đáp án đúng câu {{item.subQuestions[$index].ordinalNumber}}</label>
-                                        <label ng-if="$index >= item.subQuestions.length">Từ nhiễu {{$index - item.subQuestions.length + 1}}</label>
+                                        <div class="reading-complete-list-word__header">
+                                            <label ng-if="$index < item.subQuestions.length">Đáp án đúng câu {{item.subQuestions[$index].ordinalNumber}}</label>
+                                            <label ng-if="$index >= item.subQuestions.length">Từ nhiễu {{$index - item.subQuestions.length + 1}}</label>
+                                            <button type="button" class="reading-complete-list-word__remove" ng-click="vm.removeCompleteListAnswer(item, $index)" ng-disabled="item.subQuestions[0].questionAnswers.length <= item.subQuestions.length" title="Xóa đáp án này" aria-label="Xóa đáp án này"><i class="fa fa-trash"></i></button>
+                                        </div>
                                         <input class="form-control" type="text" ng-model="a.answer.answer" ng-change="vm.updateCompleteListWord(item, $index)" placeholder="Nhập từ hoặc cụm từ">
                                     </div>
+                                </div>
+                                <div class="reading-complete-list-actions">
+                                    <span>{{item.subQuestions[0].questionAnswers.length}} mục / tối thiểu {{item.subQuestions.length}}</span>
+                                    <button type="button" class="btn btn-info" ng-click="vm.addCompleteListAnswer(item)">
+                                        <i class="fa fa-plus-circle"></i>
+                                        {{item.subQuestions[0].questionAnswers.length < item.subQuestions.length ? 'Thêm đáp án đúng' : 'Thêm từ nhiễu'}}
+                                    </button>
                                 </div>
                             </div>
 
@@ -862,9 +957,16 @@
                                                     <div ng-if="item.type == 4 || item.type == 10 || item.type == 14" class="reading-shared-choice-preview">{{a.answer.answer}}</div>
                                                 </div>
                                                 <div class="col-md-1">
-                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  type="checkbox"  id="defaultCheck1" data-ng-model="a.correct">
+                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" type="checkbox" id="defaultCheck1" data-ng-model="a.correct">
+                                                    <button type="button" class="reading-answer-remove-button" ng-if="item.type != 4 && item.type != 10 && item.type != 14" ng-click="vm.removeReadingQuestionAnswer(q, $index)" ng-disabled="q.questionAnswers.length <= 1" title="Xóa answer này" aria-label="Xóa answer này"><i class="fa fa-trash"></i></button>
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+                                    <div class="row" ng-if="item.type != 4 && item.type != 10 && item.type != 14">
+                                        <div class="col-md-2"></div>
+                                        <div class="col-md-10">
+                                            <button type="button" class="btn btn-info reading-answer-add-button" ng-click="vm.addReadingQuestionAnswer(q, item.type)"><i class="fa fa-plus-circle"></i> Thêm đáp án</button>
                                         </div>
                                     </div>
                                     <hr>
@@ -889,37 +991,37 @@
 
     </div>
 
-    <div id="reading-builder-review" class="col-md-12 reading-builder-review reading-builder-section" ng-if="settings.isAdmin == true">
-        <div class="portlet light bordered">
-            <div class="portlet-body">
-                <div class="reading-builder-review__header">
-                    <div>
-                        <h3><span>5</span> Kiểm tra trước khi xuất bản</h3>
-                        <p ng-if="!vm.builderValidation.valid">Còn {{vm.builderValidation.issues.length}} mục cần hoàn thiện. Nhấn vào từng mục để đi thẳng tới vị trí cần sửa.</p>
-                        <p class="is-ready" ng-if="vm.builderValidation.valid"><i class="fa fa-check-circle"></i> Đề đã đủ 40 câu và sẵn sàng xuất bản.</p>
-                    </div>
-                    <button type="button" class="btn btn-default" ng-click="vm.toggleBuilderReview()">
-                        {{vm.showBuilderReview ? 'Thu gọn' : 'Mở checklist'}}
-                    </button>
+    <div class="reading-builder-review-modal-backdrop" ng-if="settings.isAdmin == true && vm.showBuilderReview" ng-click="vm.closeBuilderReviewModal()">
+        <section id="reading-builder-review" class="reading-builder-review-modal" role="dialog" aria-modal="true" aria-labelledby="reading-builder-review-title" ng-click="$event.stopPropagation()">
+            <div class="reading-builder-review__header">
+                <div>
+                    <h3 id="reading-builder-review-title"><span>5</span> Kiểm tra trước khi xuất bản</h3>
+                    <p ng-if="!vm.builderValidation.valid">Còn {{vm.builderValidation.issues.length}} mục cần hoàn thiện. Nhấn vào từng mục để đi thẳng tới vị trí cần sửa.</p>
+                    <p class="is-ready" ng-if="vm.builderValidation.valid"><i class="fa fa-check-circle"></i> Đề đã đủ 40 câu và sẵn sàng xuất bản.</p>
                 </div>
-                <div class="reading-builder-part-summary">
-                    <div ng-repeat="part in vm.builderValidation.parts" ng-class="{'is-complete': part.issueCount === 0}">
-                        <strong>{{part.name}}</strong>
-                        <span>{{part.count}}/{{part.expected}} câu</span>
-                        <small>{{part.issueCount === 0 ? 'Đã hoàn tất' : part.issueCount + ' mục cần sửa'}}</small>
-                    </div>
-                </div>
-                <div class="reading-builder-checklist" ng-show="vm.showBuilderReview">
-                    <button type="button" ng-repeat="issue in vm.builderValidation.issues | limitTo:30" ng-click="vm.goToBuilderTarget(issue.target)">
-                        <i class="fa fa-exclamation-circle"></i> {{issue.message}} <i class="fa fa-chevron-right"></i>
-                    </button>
-                    <div class="reading-builder-checklist__ok" ng-if="vm.builderValidation.issues.length === 0">
-                        <i class="fa fa-check"></i> Không còn lỗi nào được phát hiện.
-                    </div>
-                    <p class="text-center" ng-if="vm.builderValidation.issues.length > 30">Và {{vm.builderValidation.issues.length - 30}} mục khác.</p>
+                <button type="button" class="reading-builder-review-modal__close" ng-click="vm.closeBuilderReviewModal()" aria-label="Đóng"><i class="fa fa-times"></i></button>
+            </div>
+            <div class="reading-builder-part-summary">
+                <div ng-repeat="part in vm.builderValidation.parts" ng-class="{'is-complete': part.issueCount === 0}">
+                    <strong>{{part.name}}</strong>
+                    <span>{{part.count}}/{{part.expected}} câu</span>
+                    <small>{{part.issueCount === 0 ? 'Đã hoàn tất' : part.issueCount + ' mục cần sửa'}}</small>
                 </div>
             </div>
-        </div>
+            <div class="reading-builder-checklist">
+                <button type="button" ng-repeat="issue in vm.builderValidation.issues | limitTo:30" ng-click="vm.openBuilderIssue(issue)">
+                    <i class="fa fa-exclamation-circle"></i> {{issue.message}} <i class="fa fa-chevron-right"></i>
+                </button>
+                <div class="reading-builder-checklist__ok" ng-if="vm.builderValidation.issues.length === 0">
+                    <i class="fa fa-check"></i> Không còn lỗi nào được phát hiện.
+                </div>
+                <p class="text-center" ng-if="vm.builderValidation.issues.length > 30">Và {{vm.builderValidation.issues.length - 30}} mục khác.</p>
+            </div>
+            <div class="reading-builder-review-modal__footer">
+                <button type="button" class="btn btn-default" ng-click="vm.closeBuilderReviewModal()">Đóng</button>
+                <button type="button" class="btn btn-success" ng-if="vm.builderValidation.valid" ng-click="vm.closeBuilderReviewModal(); vm.publishReadingTest()"><i class="fa fa-paper-plane"></i> Xuất bản</button>
+            </div>
+        </section>
     </div>
 
     <div class="reading-builder-actionbar" ng-if="settings.isAdmin == true">
@@ -932,7 +1034,7 @@
             <button type="button" class="btn btn-default" ng-click="vm.previewReadingTest(1)">
                 <i class="fa fa-eye"></i> Preview đề
             </button>
-            <button type="button" class="btn btn-default" ng-click="vm.toggleBuilderReview(); vm.goToBuilderTarget('reading-builder-review')">
+            <button type="button" class="btn btn-default" ng-click="vm.openBuilderReviewModal()">
                 <i class="fa fa-list-ul"></i> Kiểm tra
             </button>
             <button type="button" class="btn btn-primary" ng-click="vm.saveDraftReadingTest()">
@@ -1851,11 +1953,41 @@
         gap: 10px 14px;
     }
 
-    .reading-matching-names-builder__grid label {
-        display: grid;
-        grid-template-columns: 34px minmax(0, 1fr);
+    .reading-shared-choice-option {
+        padding: 9px;
+        border: 1px solid #d7def3;
+        border-radius: 9px;
+        background: #fff;
+    }
+
+    .reading-shared-choice-option__header,
+    .reading-complete-list-word__header {
+        display: flex;
         align-items: center;
-        margin: 0;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 7px;
+    }
+
+    .reading-shared-choice-option__header button,
+    .reading-complete-list-word__remove,
+    .reading-answer-remove-button {
+        display: inline-grid;
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
+        place-items: center;
+        border: 1px solid #fecdd3;
+        border-radius: 8px;
+        background: #fff1f2;
+        color: #e11d48;
+    }
+
+    .reading-shared-choice-option__header button:disabled,
+    .reading-complete-list-word__remove:disabled,
+    .reading-answer-remove-button:disabled {
+        cursor: not-allowed;
+        opacity: .38;
     }
 
     .reading-matching-names-builder__grid b {
@@ -1866,6 +1998,16 @@
         border-radius: 8px;
         background: #4f46e5;
         color: #fff;
+    }
+
+    .reading-answer-add-button {
+        margin-top: 10px;
+        border-radius: 8px;
+        font-weight: 700;
+    }
+
+    .reading-answer-remove-button {
+        margin-top: 7px;
     }
 
     @media (max-width: 767px) {
@@ -1921,6 +2063,24 @@
         margin-top: 16px;
     }
 
+    .reading-complete-list-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 12px;
+        padding: 10px 12px;
+        border: 1px dashed #9bd1bc;
+        border-radius: 9px;
+        background: #ecfaf4;
+        color: #22654e;
+        font-weight: 700;
+    }
+
+    .reading-complete-list-actions .btn {
+        margin: 0;
+    }
+
     .reading-complete-list-words > div {
         padding: 10px;
         border: 1px solid #d5e9e1;
@@ -1944,6 +2104,22 @@
 
     .reading-one-editor-answers label {
         color: #34405f;
+    }
+
+    .reading-one-editor-answer-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .reading-one-editor-answer-row .form-control {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .reading-one-editor-answer-row .reading-answer-remove-button {
+        margin-top: 0;
     }
 
     .reading-builder-part .btn-success[ng-click="vm.saveReadingTest()"] {
@@ -2027,6 +2203,65 @@
         font-weight: 700;
     }
 
+    .reading-builder-review-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 2060;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(20, 29, 58, .62);
+        backdrop-filter: blur(4px);
+    }
+
+    .reading-builder-review-modal {
+        display: flex;
+        width: min(1180px, 100%);
+        max-height: calc(100vh - 40px);
+        flex-direction: column;
+        overflow: hidden;
+        padding: 22px;
+        border: 1px solid #e0e5f2;
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: 0 24px 80px rgba(13, 25, 56, .32);
+    }
+
+    .reading-builder-review-modal .reading-builder-review__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .reading-builder-review-modal__close {
+        display: inline-grid;
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+        place-items: center;
+        border: 0;
+        border-radius: 50%;
+        background: #f1f4fa;
+        color: #4c5872;
+        font-size: 18px;
+    }
+
+    .reading-builder-review-modal .reading-builder-checklist {
+        min-height: 0;
+        max-height: min(430px, 50vh);
+        flex: 1 1 auto;
+    }
+
+    .reading-builder-review-modal__footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding-top: 14px;
+        border-top: 1px solid #e7eaf2;
+    }
+
     .reading-builder-actionbar {
         position: fixed;
         right: 20px;
@@ -2065,6 +2300,17 @@
         }
         .reading-builder-actionbar > div:first-child {
             display: none;
+        }
+        .reading-builder-review-modal-backdrop {
+            padding: 8px;
+        }
+        .reading-builder-review-modal {
+            max-height: calc(100vh - 16px);
+            padding: 15px;
+        }
+        .reading-complete-list-actions {
+            align-items: stretch;
+            flex-direction: column;
         }
     }
 

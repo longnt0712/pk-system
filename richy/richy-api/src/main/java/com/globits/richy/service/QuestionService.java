@@ -23,6 +23,7 @@ public interface QuestionService {
 	public QuestionDto saveObject(QuestionDto dto);
 	public List<QuestionLevelDto> getFlashCardLevels(QuestionDto searchDto);
 	public QuestionLevelDto updateFlashCardLevel(Long id, String level);
+	public QuestionForTestsDto updateTestStatus(Long id, int status);
 	public boolean deleteObject(Long id);
 	
 	public QuestionDto getRandomObject(int from, int to);

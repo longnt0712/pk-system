@@ -1226,6 +1226,40 @@ public class QuestionServiceImpl implements QuestionService {
 	}
 
 	@Override
+	public QuestionForTestsDto updateTestStatus(Long id, int status) {
+		if(id == null) {
+			throw new IllegalArgumentException("Test id is required");
+		}
+		if(status != 6 && status != 7 && status != 8) {
+			throw new IllegalArgumentException("Test status must be draft, published, or hidden");
+		}
+
+		Question domain = questionRepository.findOne(id);
+		if(domain == null) {
+			throw new IllegalArgumentException("Test was not found");
+		}
+
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if(authentication == null || !(authentication.getPrincipal() instanceof User)) {
+			throw new SecurityException("You do not have permission to update this test");
+		}
+		User currentUser = (User) authentication.getPrincipal();
+		boolean isAdmin = authentication.getAuthorities() != null
+				&& authentication.getAuthorities().stream()
+						.anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+		if(!isAdmin && (domain.getUser() == null || domain.getUser().getId() == null
+				|| !domain.getUser().getId().equals(currentUser.getId()))) {
+			throw new SecurityException("You do not have permission to update this test");
+		}
+
+		domain.setStatus(status);
+		domain.setModifiedBy(currentUser.getUsername());
+		domain.setModifyDate(LocalDateTime.now());
+		domain = questionRepository.save(domain);
+		return new QuestionForTestsDto(domain);
+	}
+
+	@Override
 	public QuestionDto saveObject(QuestionDto dto) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		User modifiedUser = null;

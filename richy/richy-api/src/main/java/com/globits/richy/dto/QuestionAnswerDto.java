@@ -138,19 +138,28 @@ public class QuestionAnswerDto implements Serializable{
 	            this.question.setParent(qDto);
 	        }
 
-	        if (domain.getQuestion().getQuestionAnswers() != null 
+	        if (domain.getQuestion().getQuestionAnswers() != null
 	                && domain.getQuestion().getQuestionAnswers().size() > 0) {
+	            Integer parentType = domain.getQuestion().getParent() != null
+	                    ? domain.getQuestion().getParent().getType() : null;
+	            boolean textAnswerMode = Integer.valueOf(2).equals(parentType)
+	                    || Integer.valueOf(3).equals(parentType)
+	                    || Integer.valueOf(11).equals(parentType);
+	            StringBuilder acceptedAnswers = new StringBuilder();
 
 	            for (QuestionAnswer qadto : domain.getQuestion().getQuestionAnswers()) {
-	                if (qadto != null 
-	                        && qadto.isCorrect() 
-	                        && qadto.getAnswer() != null 
+	                if (qadto != null && qadto.isCorrect() && qadto.getAnswer() != null
 	                        && qadto.getAnswer().getAnswer() != null) {
-
-	                    this.correctAnswer = qadto.getAnswer().getAnswer();
-	                    break;
+	                    if (acceptedAnswers.length() > 0) {
+	                        acceptedAnswers.append(" / ");
+	                    }
+	                    acceptedAnswers.append(qadto.getAnswer().getAnswer());
+	                    if (!textAnswerMode) {
+	                        break;
+	                    }
 	                }
 	            }
+	            this.correctAnswer = acceptedAnswers.toString();
 	        }
 	    }
 

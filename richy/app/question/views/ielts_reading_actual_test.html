@@ -301,14 +301,14 @@
                                     </div>
 
                                     <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2">
-                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer' | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
                                     </span>
 
                                     <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3">
-                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer' | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
@@ -680,14 +680,14 @@
                                     </div>
 
                                     <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2">
-                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer' | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
                                     </span>
 
                                     <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3">
-                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer' | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
@@ -1041,14 +1041,14 @@
                                     </div>
 
                                     <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 2">
-                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer' | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
                                     </span>
 
                                     <span style="padding-bottom: 50px;"  ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 3">
-                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                        <span  class="question-filling-root" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer' | limitTo:1">
                                             <span style="font-size: 17px" compile="q.question">
                                             </span>
                                         </span>
