@@ -102,17 +102,41 @@
             link: function (scope, element, attrs) {
                 var eventName = $window.PointerEvent ? 'pointerdown' : 'touchstart';
                 var node = element[0];
+                var capturedPointerId = null;
 
                 function startResize(event) {
+                    if (event.type === 'pointerdown') {
+                        if (event.isPrimary === false || (event.button != null && event.button !== 0)) {
+                            return;
+                        }
+                        capturedPointerId = event.pointerId;
+                        if (node.setPointerCapture) {
+                            try {
+                                node.setPointerCapture(capturedPointerId);
+                            } catch (ignorePointerCaptureError) {
+                                // Document listeners remain as the fallback.
+                            }
+                        }
+                    }
+                    if (event.cancelable) {
+                        event.preventDefault();
+                    }
                     scope.$eval(attrs.readingSplitResize, {$event: event});
                 }
 
-                node.addEventListener(eventName, startResize, false);
+                node.addEventListener(eventName, startResize, {passive: false});
                 if (!$window.PointerEvent) {
-                    node.addEventListener('mousedown', startResize, false);
+                    node.addEventListener('mousedown', startResize, {passive: false});
                 }
 
                 scope.$on('$destroy', function () {
+                    if (capturedPointerId !== null && node.releasePointerCapture) {
+                        try {
+                            node.releasePointerCapture(capturedPointerId);
+                        } catch (ignorePointerReleaseError) {
+                            // The browser may already have released it.
+                        }
+                    }
                     node.removeEventListener(eventName, startResize, false);
                     if (!$window.PointerEvent) {
                         node.removeEventListener('mousedown', startResize, false);
@@ -136,6 +160,9 @@
                 var activeDrop = null;
                 var suppressClick = false;
                 var usingPointer = !!$window.PointerEvent;
+                var activePointerId = null;
+                var moveFrame = null;
+                var pendingPoint = null;
 
                 element.css({
                     'touch-action': 'none',
@@ -179,6 +206,9 @@
                     ghost = element[0].cloneNode(true);
                     ghost.removeAttribute('id');
                     ghost.className += ' touch-dnd-ghost';
+                    ghost.style.left = '0';
+                    ghost.style.top = '0';
+                    ghost.style.willChange = 'transform';
                     angular.element(documentNode.body).append(ghost);
                     angular.element(documentNode.body).addClass('touch-dnd-active');
                 }
@@ -187,12 +217,56 @@
                     if (!ghost) {
                         return;
                     }
-                    ghost.style.left = (point.x + 14) + 'px';
-                    ghost.style.top = (point.y + 14) + 'px';
+                    ghost.style.transform = 'translate3d(' + (point.x + 14) + 'px,' + (point.y + 14) + 'px,0)';
+                }
+
+                function closestScrollable(node) {
+                    while (node && node !== documentNode.body) {
+                        var style = $window.getComputedStyle(node);
+                        if (/(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 2) {
+                            return node;
+                        }
+                        node = node.parentNode;
+                    }
+                    return null;
+                }
+
+                function processMove(point) {
+                    if (!active || !dragging || !point) {
+                        return;
+                    }
+                    var pointNode = documentNode.elementFromPoint(point.x, point.y);
+                    moveGhost(point);
+                    setActiveDrop(closestDropTarget(pointNode));
+
+                    var scrollHost = closestScrollable(pointNode);
+                    if (scrollHost) {
+                        var bounds = scrollHost.getBoundingClientRect();
+                        var edge = Math.min(70, Math.max(42, bounds.height * 0.12));
+                        if (point.y < bounds.top + edge) {
+                            scrollHost.scrollTop -= 14;
+                        } else if (point.y > bounds.bottom - edge) {
+                            scrollHost.scrollTop += 14;
+                        }
+                    } else if (point.y < 55) {
+                        $window.scrollBy(0, -12);
+                    } else if (point.y > $window.innerHeight - 55) {
+                        $window.scrollBy(0, 12);
+                    }
+                }
+
+                function flushMove() {
+                    moveFrame = null;
+                    var point = pendingPoint;
+                    pendingPoint = null;
+                    processMove(point);
                 }
 
                 function onMove(event) {
                     if (!active) {
+                        return;
+                    }
+                    if (usingPointer && activePointerId !== null && event.pointerId !== activePointerId) {
                         return;
                     }
                     var point = eventPoint(event);
@@ -204,13 +278,9 @@
                         return;
                     }
                     event.preventDefault();
-                    moveGhost(point);
-                    setActiveDrop(closestDropTarget(documentNode.elementFromPoint(point.x, point.y)));
-
-                    if (point.y < 55) {
-                        $window.scrollBy(0, -12);
-                    } else if (point.y > $window.innerHeight - 55) {
-                        $window.scrollBy(0, 12);
+                    pendingPoint = point;
+                    if (moveFrame === null) {
+                        moveFrame = $window.requestAnimationFrame(flushMove);
                     }
                 }
 
@@ -228,6 +298,11 @@
 
                 function cleanup() {
                     unbindDocumentEvents();
+                    if (moveFrame !== null) {
+                        $window.cancelAnimationFrame(moveFrame);
+                        moveFrame = null;
+                    }
+                    pendingPoint = null;
                     setActiveDrop(null);
                     if (ghost && ghost.parentNode) {
                         ghost.parentNode.removeChild(ghost);
@@ -237,14 +312,22 @@
                     active = false;
                     dragging = false;
                     draggedItem = null;
+                    activePointerId = null;
                 }
 
                 function onEnd(event) {
                     if (!active) {
                         return;
                     }
+                    if (usingPointer && activePointerId !== null && event.pointerId !== activePointerId) {
+                        return;
+                    }
                     if (dragging) {
                         event.preventDefault();
+                        if (pendingPoint) {
+                            processMove(pendingPoint);
+                            pendingPoint = null;
+                        }
                         suppressClick = true;
                         if (activeDrop && activeDrop.__ieltsTouchDrop) {
                             activeDrop.__ieltsTouchDrop(draggedItem);
@@ -255,6 +338,9 @@
 
                 function onStart(event) {
                     if (usingPointer && event.pointerType === 'mouse') {
+                        return;
+                    }
+                    if (usingPointer && event.isPrimary === false) {
                         return;
                     }
                     if (active) {
@@ -269,6 +355,14 @@
                     startY = point.y;
                     active = true;
                     if (usingPointer) {
+                        activePointerId = event.pointerId;
+                        if (element[0].setPointerCapture) {
+                            try {
+                                element[0].setPointerCapture(activePointerId);
+                            } catch (ignorePointerCaptureError) {
+                                // Document listeners remain as the fallback.
+                            }
+                        }
                         documentNode.addEventListener('pointermove', onMove, {passive: false});
                         documentNode.addEventListener('pointerup', onEnd, false);
                         documentNode.addEventListener('pointercancel', onEnd, false);
@@ -538,21 +632,39 @@
         /* Keep the active exam inside one viewport and restore the normal site
            layout as soon as the test ends or this screen is left. */
         var examBodyClass = 'ielts-reading-test-running';
+        var viewportMeta = $window.document.querySelector('meta[name="viewport"]');
+        var normalViewportContent = 'width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1';
+        var examViewportContent = 'width=device-width, initial-scale=1, minimum-scale=0.5, maximum-scale=5, user-scalable=yes, viewport-fit=cover';
+
+        function setExamViewportZoom(enabled) {
+            if (!viewportMeta) {
+                return;
+            }
+            viewportMeta.setAttribute(
+                'content',
+                enabled ? examViewportContent : normalViewportContent
+            );
+        }
+
         var unwatchExamLayout = $scope.$watch(function () {
             return vm.isStartTest === true && vm.passageNumber != 4;
         }, function (isRunning) {
             $window.document.body.classList.toggle(examBodyClass, isRunning);
+            setExamViewportZoom(isRunning);
         });
 
         $scope.$on('$destroy', function () {
             stopReadingResize();
             unwatchExamLayout();
             $window.document.body.classList.remove(examBodyClass);
+            setExamViewportZoom(false);
         });
 
         /* Adjustable Reading / Questions split for mouse, pen and touch. */
         vm.readingPanePercent = 50;
         var readingResizeState = null;
+        var readingResizeFrame = null;
+        var pendingReadingResizePoint = null;
 
         try {
             var savedReadingPanePercent = parseFloat(
@@ -570,6 +682,15 @@
                 return;
             }
 
+            if (readingResizeFrame !== null) {
+                $window.cancelAnimationFrame(readingResizeFrame);
+                readingResizeFrame = null;
+            }
+            if (pendingReadingResizePoint) {
+                applyReadingResizePoint(pendingReadingResizePoint);
+                pendingReadingResizePoint = null;
+            }
+
             $window.document.removeEventListener('mousemove', readingResizeState.onMove, false);
             $window.document.removeEventListener('mouseup', stopReadingResize, false);
             $window.document.removeEventListener('pointermove', readingResizeState.onMove, false);
@@ -579,6 +700,15 @@
             $window.document.removeEventListener('touchend', stopReadingResize, false);
             $window.document.removeEventListener('touchcancel', stopReadingResize, false);
             $window.document.body.classList.remove('idp-is-resizing');
+
+            if (readingResizeState.target && readingResizeState.pointerId != null &&
+                readingResizeState.target.releasePointerCapture) {
+                try {
+                    readingResizeState.target.releasePointerCapture(readingResizeState.pointerId);
+                } catch (ignorePointerReleaseError) {
+                    // The browser may already have released it.
+                }
+            }
 
             try {
                 $window.localStorage.setItem(
@@ -590,6 +720,27 @@
             }
 
             readingResizeState = null;
+        }
+
+        function applyReadingResizePoint(point) {
+            if (!readingResizeState || !point) {
+                return;
+            }
+            var splitBounds = readingResizeState.bounds;
+            var nextPercent = readingResizeState.vertical
+                ? ((point.y - splitBounds.top) / splitBounds.height) * 100
+                : ((point.x - splitBounds.left) / splitBounds.width) * 100;
+            vm.readingPanePercent = Math.round(
+                Math.max(25, Math.min(75, nextPercent)) * 10
+            ) / 10;
+            $scope.$evalAsync();
+        }
+
+        function flushReadingResize() {
+            readingResizeFrame = null;
+            var point = pendingReadingResizePoint;
+            pendingReadingResizePoint = null;
+            applyReadingResizePoint(point);
         }
 
         vm.startReadingResize = function ($event) {
@@ -615,28 +766,34 @@
             }
 
             function onMove(moveEvent) {
+                if (readingResizeState && readingResizeState.pointerId != null &&
+                    moveEvent.pointerId != null &&
+                    moveEvent.pointerId !== readingResizeState.pointerId) {
+                    return;
+                }
                 if (moveEvent.cancelable) {
                     moveEvent.preventDefault();
                 }
-                var point = eventPoint(moveEvent);
-                var nextPercent = verticalSplit
-                    ? ((point.y - splitBounds.top) / splitBounds.height) * 100
-                    : ((point.x - splitBounds.left) / splitBounds.width) * 100;
-                nextPercent = Math.max(25, Math.min(75, nextPercent));
-
-                $scope.$evalAsync(function () {
-                    vm.readingPanePercent = Math.round(nextPercent * 10) / 10;
-                });
+                pendingReadingResizePoint = eventPoint(moveEvent);
+                if (readingResizeFrame === null) {
+                    readingResizeFrame = $window.requestAnimationFrame(flushReadingResize);
+                }
             }
 
-            readingResizeState = {onMove: onMove};
+            readingResizeState = {
+                onMove: onMove,
+                bounds: splitBounds,
+                vertical: verticalSplit,
+                target: $event.currentTarget,
+                pointerId: $event.pointerId != null ? $event.pointerId : null
+            };
             $window.document.body.classList.add('idp-is-resizing');
             if ($event.type.indexOf('pointer') === 0) {
-                $window.document.addEventListener('pointermove', onMove, false);
+                $window.document.addEventListener('pointermove', onMove, {passive: false});
                 $window.document.addEventListener('pointerup', stopReadingResize, false);
                 $window.document.addEventListener('pointercancel', stopReadingResize, false);
             } else if ($event.type.indexOf('touch') === 0) {
-                $window.document.addEventListener('touchmove', onMove, false);
+                $window.document.addEventListener('touchmove', onMove, {passive: false});
                 $window.document.addEventListener('touchend', stopReadingResize, false);
                 $window.document.addEventListener('touchcancel', stopReadingResize, false);
             } else {
@@ -879,6 +1036,7 @@
                 return;
             }
             try {
+                syncCountdownFromDeadline();
                 var results = serializeReadingDraftResults();
                 var answeredNumbers = {};
                 angular.forEach(results, function (result) {
@@ -1047,9 +1205,7 @@
                 }, 250);
             }
             if (Number(draft.remainingSeconds) > 0) {
-                $scope.counter = Number(draft.remainingSeconds);
-                $scope.minuteDisplay = parseInt($scope.counter / 60, 10);
-                $scope.secondDisplay = $scope.counter % 60;
+                setCountdownSeconds(Number(draft.remainingSeconds));
             }
             toastr.success('Your in-progress test has been restored.', 'Continue test');
         }
@@ -1551,44 +1707,51 @@
 
         $scope.counter = 3600;
         $scope.minuteDisplay = 60;
-        $scope.secondDisplay = 60;
+        $scope.secondDisplay = 0;
 
         vm.totalAudioSeconds = 0;
-        mainAudio.onloadedmetadata = function() {
-            vm.totalAudioSeconds = mainAudio.duration;
-            if(vm.totalAudioSeconds > 0){
-                $scope.counter = 10;
-                $scope.minuteDisplay = vm.totalAudioSeconds/60;
-                $scope.secondDisplay = 60;
-                alert('here');
-            }
-        };
-
-
         var mytimeout = null; // the current timeoutID
+        var countdownEndsAt = null;
         var audio = document.getElementById("audio1");
         
         vm.showAudio = false;
 
 
-        // actual timer method, counts down every second, stops on zero
+        function updateCountdownDisplay() {
+            $scope.minuteDisplay = parseInt($scope.counter / 60, 10);
+            $scope.secondDisplay = $scope.counter % 60;
+        }
+
+        function setCountdownSeconds(seconds) {
+            $scope.counter = Math.max(0, Math.ceil(Number(seconds) || 0));
+            countdownEndsAt = Date.now() + ($scope.counter * 1000);
+            updateCountdownDisplay();
+        }
+
+        function syncCountdownFromDeadline() {
+            if (countdownEndsAt === null) {
+                return;
+            }
+            $scope.counter = Math.max(
+                0,
+                Math.ceil((countdownEndsAt - Date.now()) / 1000)
+            );
+            updateCountdownDisplay();
+        }
+
+        // Browser background tabs throttle JavaScript timers. Derive the
+        // remaining time from an absolute deadline instead of counter-- so the
+        // exam clock stays correct after switching tabs or locking the screen.
         $scope.onTimeout = function() {
-            if($scope.counter ===  0 || $scope.counter < 0) {
-                $scope.counter = 0;
+            syncCountdownFromDeadline();
+            if($scope.counter <= 0) {
+                countdownEndsAt = null;
                 vm.saveTestResult();
                 mainAudio.load();
                 $scope.$broadcast('timer-stopped', 0);
                 $timeout.cancel(mytimeout);
                 return;
             }
-            $scope.counter--;
-            $scope.minuteDisplay = parseInt($scope.counter/60);
-            $scope.secondDisplay = $scope.counter%60;
-            // if($scope.counter == 60){
-            //     // var audio = document.getElementById("audio1");
-            //     audio.load();
-            //     audio.play();
-            // }
             mytimeout = $timeout($scope.onTimeout, 1000);
         };
 
@@ -1601,15 +1764,32 @@
 
         $scope.refreshTimer = function () {
             $timeout.cancel(mytimeout);
-            $scope.counter = 3600;
+            setCountdownSeconds(3600);
             vm.totalAudioSeconds = 0;
             mainAudio.onloadedmetadata = function() {
                 vm.totalAudioSeconds = mainAudio.duration;
-                if(vm.totalAudioSeconds > 0){
-                    $scope.counter = parseInt(vm.totalAudioSeconds)+60;
+                if(vm.isListeningRoute && vm.totalAudioSeconds > 0){
+                    setCountdownSeconds(parseInt(vm.totalAudioSeconds, 10) + 60);
+                    $scope.$evalAsync();
                 }
             };
+            if (vm.isListeningRoute && isFinite(mainAudio.duration) && mainAudio.duration > 0) {
+                vm.totalAudioSeconds = mainAudio.duration;
+                setCountdownSeconds(parseInt(vm.totalAudioSeconds, 10) + 60);
+            }
         };
+
+        function syncTimerWhenVisible() {
+            if (!$window.document.hidden) {
+                $scope.$evalAsync(syncCountdownFromDeadline);
+            }
+        }
+
+        $window.document.addEventListener('visibilitychange', syncTimerWhenVisible);
+        $scope.$on('$destroy', function () {
+            $timeout.cancel(mytimeout);
+            $window.document.removeEventListener('visibilitychange', syncTimerWhenVisible);
+        });
 
         // $scope.startCount();
 

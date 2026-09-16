@@ -1617,6 +1617,8 @@
                 return;
             }
 
+            syncDailyVocabCountdown();
+
             vm.score1 =
                 Number(vm.score1 || 0) +
                 (Number(vm.dailyVocabCounter) / 12);
@@ -1656,15 +1658,54 @@
         // =====================================================
 
         var dailyVocabTimeout = null;
+        var dailyVocabDeadline = null;
+        var dailyVocabPausedAt = null;
 
         vm.dailyVocabDuration = 900;
         vm.dailyVocabCounter = 900;
         vm.dailyVocabRunning = false;
         vm.dailyVocabAnswersEnabled = false;
 
+        function setDailyVocabCountdown(seconds) {
+            vm.dailyVocabCounter = Math.max(0, Math.ceil(Number(seconds) || 0));
+            dailyVocabDeadline = Date.now() + (vm.dailyVocabCounter * 1000);
+            dailyVocabPausedAt = vm.dailyBufferWaiting === true ? Date.now() : null;
+        }
+
+        function syncDailyVocabCountdown() {
+            if (vm.dailyVocabRunning !== true || dailyVocabDeadline === null) {
+                return;
+            }
+
+            var now = Date.now();
+
+            /* Không tính thời gian khi hệ thống đang chờ nạp thêm câu. */
+            if (vm.dailyBufferWaiting === true) {
+                if (dailyVocabPausedAt === null) {
+                    dailyVocabPausedAt = now;
+                }
+                return;
+            }
+
+            if (dailyVocabPausedAt !== null) {
+                dailyVocabDeadline += now - dailyVocabPausedAt;
+                dailyVocabPausedAt = null;
+            }
+
+            vm.dailyVocabCounter = Math.max(
+                0,
+                Math.ceil((dailyVocabDeadline - now) / 1000)
+            );
+        }
+
         function persistActiveDailySession(force) {
             if (!vm.currentUser || !vm.currentUser.id || vm.dailyVocabRunning !== true ||
                 !vm.questions || !vm.questions.length) { return; }
+            syncDailyVocabCountdown();
+            if (Number(vm.dailyVocabCounter) <= 0) {
+                removeActiveDailyDraft(vm.currentUser.id);
+                return;
+            }
             var now = Date.now();
             if (force !== true && now - activeDailyLastPersistAt < 3000) { return; }
             var category = vm.searchTopicDto && vm.searchTopicDto.topicCategory;
@@ -1746,6 +1787,7 @@
             vm.dailyVocabRunning = true;
             vm.dailyVocabAnswersEnabled = true;
             vm.dailyBufferWaiting = false;
+            setDailyVocabCountdown(vm.dailyVocabCounter);
             vm.showTimer = true;
             vm.showStart = true;
             vm.showWrong = false;
@@ -2360,10 +2402,13 @@
              */
             if (vm.dailyVocabRunning !== true) {
                 vm.dailyVocabCounter = value;
+                dailyVocabDeadline = null;
+                dailyVocabPausedAt = null;
             }
         };
 
         vm.stopDailyVocabTimer = function () {
+            syncDailyVocabCountdown();
             cancelDailyVocabTimeout();
             cancelRunningManTimeout();
             cancelRunningManTauntTimeout();
@@ -2374,6 +2419,8 @@
             vm.dailyVocabAnswersEnabled = false;
             vm.dailyBufferWaiting = false;
             vm.runningManActive = false;
+            dailyVocabDeadline = null;
+            dailyVocabPausedAt = null;
 
             stopBackgroundMusic();
             shutUp();
@@ -2393,6 +2440,9 @@
                 getDefaultDailyVocabTimerSeconds() ||
                 900;
 
+            dailyVocabDeadline = null;
+            dailyVocabPausedAt = null;
+
             vm.dailyVocabRunning = false;
             vm.dailyVocabAnswersEnabled = false;
 
@@ -2410,6 +2460,8 @@
             vm.dailyVocabAnswersEnabled = false;
             vm.dailyBufferWaiting = false;
             vm.runningManActive = false;
+            dailyVocabDeadline = null;
+            dailyVocabPausedAt = null;
 
             stopBackgroundMusic();
             shutUp();
@@ -2422,6 +2474,8 @@
             if (vm.dailyVocabRunning !== true) {
                 return;
             }
+
+            syncDailyVocabCountdown();
 
             /*
              * Nếu mạng chậm đến mức hết buffer:
@@ -2437,13 +2491,10 @@
                 return;
             }
 
-            if (Number(vm.dailyVocabCounter) <= 1) {
+            if (Number(vm.dailyVocabCounter) <= 0) {
                 dailyVocabTimeUp();
                 return;
             }
-
-            vm.dailyVocabCounter =
-                Number(vm.dailyVocabCounter) - 1;
 
             persistActiveDailySession(false);
 
@@ -2496,6 +2547,7 @@
 
             vm.dailyVocabRunning = true;
             vm.dailyVocabAnswersEnabled = true;
+            setDailyVocabCountdown(vm.dailyVocabCounter);
 
             vm.score1 = 0;
             vm.streakPlayer1 = 0;
@@ -2533,6 +2585,27 @@
             dailyVocabTimeout =
                 $timeout(dailyVocabTick, 1000);
         };
+
+        function handleDailyVocabVisibilityChange() {
+            if (vm.dailyVocabRunning !== true) {
+                return;
+            }
+
+            $scope.$evalAsync(function () {
+                syncDailyVocabCountdown();
+                if (Number(vm.dailyVocabCounter) <= 0) {
+                    dailyVocabTimeUp();
+                    return;
+                }
+                persistActiveDailySession(document.hidden === true);
+            });
+        }
+
+        document.addEventListener(
+            'visibilitychange',
+            handleDailyVocabVisibilityChange,
+            false
+        );
 
         // =====================================================
         // AUDIO / SPEECH
@@ -3057,6 +3130,12 @@
             item,
             questions
         ) {
+            syncDailyVocabCountdown();
+            if (vm.dailyVocabRunning === true && Number(vm.dailyVocabCounter) <= 0) {
+                dailyVocabTimeUp();
+                return;
+            }
+
             /*
              * Khi 4 đáp án đang hiện thì click phải được xử lý.
              */
@@ -3487,6 +3566,7 @@
             dailySaveDestroyed = true;
             window.removeEventListener('pagehide', saveActiveDailyBeforeLeaving, false);
             window.removeEventListener('beforeunload', saveActiveDailyBeforeLeaving, false);
+            document.removeEventListener('visibilitychange', handleDailyVocabVisibilityChange, false);
             cancelDailyVocabTimeout();
             cancelRunningManTimeout();
             cancelRunningManTauntTimeout();
