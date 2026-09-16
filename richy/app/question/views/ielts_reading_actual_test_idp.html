@@ -8,7 +8,6 @@
 -->
 <div class="idp-reading-page"
      ng-class="('idp-contrast-' + vm.displayContrast + ' idp-text-' + vm.readingTextSize) + (vm.isListeningRoute ? ' idp-listening-page' : '')"
-     style="--idp-test-zoom: {{vm.readingPageZoom / 100}}; zoom: {{vm.readingPageZoom / 100}}; width: {{vm.readingZoomInverse()}}vw !important; height: {{vm.readingZoomInverse()}}vh !important;"
      ng-mouseup="showSelectionTools($event)"
      ng-click="handleReadingAnnotationClick($event)">
 
@@ -1629,29 +1628,7 @@
                 </button>
             </div>
 
-            <h3>Page zoom</h3>
-            <div class="idp-page-zoom" aria-label="Page zoom">
-                <button type="button"
-                        ng-click="vm.changeReadingPageZoom(-10)"
-                        ng-disabled="vm.readingPageZoom <= 60"
-                        aria-label="Zoom out">&minus;</button>
-                <input type="range"
-                       min="60"
-                       max="160"
-                       step="10"
-                       ng-model="vm.readingPageZoom"
-                       ng-change="vm.setReadingPageZoom(vm.readingPageZoom)"
-                       aria-label="Test page zoom percentage">
-                <output>{{vm.readingPageZoom}}%</output>
-                <button type="button"
-                        ng-click="vm.changeReadingPageZoom(10)"
-                        ng-disabled="vm.readingPageZoom >= 160"
-                        aria-label="Zoom in">+</button>
-                <button type="button"
-                        class="idp-page-zoom-reset"
-                        ng-click="vm.setReadingPageZoom(100)">Reset</button>
-            </div>
-            <p class="idp-page-zoom-help">On a phone or tablet, you can also pinch with two fingers to zoom.</p>
+            <!-- Page zoom is temporarily disabled. Browser pinch zoom remains available during a test. -->
         </div>
     </section>
 </div>
@@ -4972,13 +4949,6 @@
 
     .idp-reading-page {
         touch-action: pan-x pan-y pinch-zoom;
-        transform-origin: top left;
-    }
-
-    @supports not (zoom: 1) {
-        .idp-reading-page {
-            transform: scale(var(--idp-test-zoom));
-        }
     }
 
     @media (max-width: 560px) {
@@ -4992,9 +4962,11 @@
 
     /* Contrast modes. These rules deliberately come after the global site
        dark-mode compatibility rules so the candidate's own choice wins. */
+    .idp-reading-page.idp-contrast-white-black,
     .idp-reading-page.idp-contrast-white-black .idp-reading-test-shell,
     .idp-reading-page.idp-contrast-white-black .idp-exam-stage,
     .idp-reading-page.idp-contrast-white-black .idp-main-test,
+    .idp-reading-page.idp-contrast-yellow-black,
     .idp-reading-page.idp-contrast-yellow-black .idp-reading-test-shell,
     .idp-reading-page.idp-contrast-yellow-black .idp-exam-stage,
     .idp-reading-page.idp-contrast-yellow-black .idp-main-test {
@@ -5011,6 +4983,13 @@
     .idp-reading-page.idp-contrast-white-black .idp-question-nav .col-md-1,
     .idp-reading-page.idp-contrast-white-black .idp-question-nav .col-md-10,
     .idp-reading-page.idp-contrast-white-black .idp-part-group,
+    .idp-reading-page.idp-contrast-white-black .idp-candidate-bar,
+    .idp-reading-page.idp-contrast-white-black .idp-candidate-mobile,
+    .idp-reading-page.idp-contrast-white-black .idp-display-settings,
+    .idp-reading-page.idp-contrast-white-black .idp-display-settings-header,
+    .idp-reading-page.idp-contrast-white-black .idp-display-settings-body,
+    .idp-reading-page.idp-contrast-white-black .idp-setting-options,
+    .idp-reading-page.idp-contrast-white-black .idp-setting-option,
     .idp-reading-page.idp-contrast-yellow-black .idp-exam-topbar,
     .idp-reading-page.idp-contrast-yellow-black .idp-instruction-bar,
     .idp-reading-page.idp-contrast-yellow-black .idp-workspace,
@@ -5020,7 +4999,14 @@
     .idp-reading-page.idp-contrast-yellow-black .idp-question-nav-inner,
     .idp-reading-page.idp-contrast-yellow-black .idp-question-nav .col-md-1,
     .idp-reading-page.idp-contrast-yellow-black .idp-question-nav .col-md-10,
-    .idp-reading-page.idp-contrast-yellow-black .idp-part-group {
+    .idp-reading-page.idp-contrast-yellow-black .idp-part-group,
+    .idp-reading-page.idp-contrast-yellow-black .idp-candidate-bar,
+    .idp-reading-page.idp-contrast-yellow-black .idp-candidate-mobile,
+    .idp-reading-page.idp-contrast-yellow-black .idp-display-settings,
+    .idp-reading-page.idp-contrast-yellow-black .idp-display-settings-header,
+    .idp-reading-page.idp-contrast-yellow-black .idp-display-settings-body,
+    .idp-reading-page.idp-contrast-yellow-black .idp-setting-options,
+    .idp-reading-page.idp-contrast-yellow-black .idp-setting-option {
         border-color: #6b6b6b !important;
         background: #050505 !important;
     }
@@ -5031,6 +5017,12 @@
     .idp-reading-page.idp-contrast-white-black .passage-text *,
     .idp-reading-page.idp-contrast-white-black .question-content *,
     .idp-reading-page.idp-contrast-white-black .idp-question-nav *,
+    .idp-reading-page.idp-contrast-white-black .idp-candidate-bar *,
+    .idp-reading-page.idp-contrast-white-black .idp-display-settings-header h2,
+    .idp-reading-page.idp-contrast-white-black .idp-display-settings-body h3,
+    .idp-reading-page.idp-contrast-white-black .idp-setting-option,
+    .idp-reading-page.idp-contrast-white-black .idp-setting-check,
+    .idp-reading-page.idp-contrast-white-black .idp-text-size-preview,
     .idp-reading-page.idp-contrast-yellow-black .idp-exam-topbar,
     .idp-reading-page.idp-contrast-yellow-black .idp-exam-topbar *:not(.idp-exam-logo),
     .idp-reading-page.idp-contrast-yellow-black .idp-instruction-bar *,
@@ -5045,13 +5037,56 @@
     .idp-reading-page.idp-contrast-yellow-black .idp-instruction-bar *,
     .idp-reading-page.idp-contrast-yellow-black .passage-text *,
     .idp-reading-page.idp-contrast-yellow-black .question-content *,
-    .idp-reading-page.idp-contrast-yellow-black .idp-question-nav * {
+    .idp-reading-page.idp-contrast-yellow-black .idp-question-nav *,
+    .idp-reading-page.idp-contrast-yellow-black .idp-candidate-bar *,
+    .idp-reading-page.idp-contrast-yellow-black .idp-display-settings-header h2,
+    .idp-reading-page.idp-contrast-yellow-black .idp-display-settings-body h3,
+    .idp-reading-page.idp-contrast-yellow-black .idp-setting-option,
+    .idp-reading-page.idp-contrast-yellow-black .idp-setting-check,
+    .idp-reading-page.idp-contrast-yellow-black .idp-text-size-preview {
+        color: #ffe600 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-display-settings-header button,
+    .idp-reading-page.idp-contrast-yellow-black .idp-display-settings-header button,
+    .idp-reading-page.idp-contrast-white-black .idp-setting-option:hover,
+    .idp-reading-page.idp-contrast-white-black .idp-setting-option:focus,
+    .idp-reading-page.idp-contrast-white-black .idp-setting-option.is-selected,
+    .idp-reading-page.idp-contrast-yellow-black .idp-setting-option:hover,
+    .idp-reading-page.idp-contrast-yellow-black .idp-setting-option:focus,
+    .idp-reading-page.idp-contrast-yellow-black .idp-setting-option.is-selected {
+        border-color: #777777 !important;
+        background: #242424 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-display-settings-header button {
+        color: #ffffff !important;
+    }
+
+    .idp-reading-page.idp-contrast-yellow-black .idp-display-settings-header button {
         color: #ffe600 !important;
     }
 
     .idp-reading-page.idp-contrast-white-black .idp-exam-logo,
     .idp-reading-page.idp-contrast-yellow-black .idp-exam-logo {
         color: #e31837 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-display-settings-trigger {
+        border-color: #ffffff !important;
+        color: #ffffff !important;
+        background: #050505 !important;
+    }
+
+    .idp-reading-page.idp-contrast-yellow-black .idp-display-settings-trigger {
+        border-color: #ffe600 !important;
+        color: #ffe600 !important;
+        background: #050505 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-display-settings-trigger .fa,
+    .idp-reading-page.idp-contrast-yellow-black .idp-display-settings-trigger .fa {
+        color: inherit !important;
     }
 
     .idp-reading-page.idp-contrast-white-black .idp-display-settings-trigger:hover,
@@ -5134,11 +5169,18 @@
         background: #ffe600 !important;
     }
 
-    .idp-reading-page.idp-contrast-white-black .idp-split-divider::after,
+    .idp-reading-page.idp-contrast-white-black .idp-split-divider::before,
+    .idp-reading-page.idp-contrast-white-black .idp-split-divider::after {
+        border-color: #ffffff;
+        color: #ffffff;
+        background: #050505;
+    }
+
+    .idp-reading-page.idp-contrast-yellow-black .idp-split-divider::before,
     .idp-reading-page.idp-contrast-yellow-black .idp-split-divider::after {
-        border-color: #a2a2a2;
-        color: #050505;
-        background: #ffffff;
+        border-color: #ffe600;
+        color: #ffe600;
+        background: #050505;
     }
 
     .idp-reading-page.idp-contrast-white-black *::-webkit-scrollbar-track,
