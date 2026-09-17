@@ -1117,7 +1117,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		if (studentIds.isEmpty()) { return result; }
 		LocalDateTime[] bounds = attendanceDateBounds(date);
 		Map<Long, PersonDate> latestByStudent = new LinkedHashMap<Long, PersonDate>();
-		for (PersonDate attendance : personDateRepository.findByUserIdsAndDate(studentIds, bounds[0], bounds[1])) {
+		for (PersonDate attendance : personDateRepository.findByUserIdsDateSchoolAndClass(studentIds, bounds[0], bounds[1], selectedClass.getSchoolId(), selectedClass.getId())) {
 			if (attendance.getUser() != null && attendance.getUser().getId() != null) {
 				latestByStudent.put(attendance.getUser().getId(), attendance);
 			}
@@ -1147,12 +1147,14 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		if (selectedStudent == null) { throw new AccessDeniedException("Học sinh không thuộc lớp này."); }
 
 		LocalDateTime[] bounds = attendanceDateBounds(date);
-		List<PersonDate> existing = personDateRepository.findByUserIdsAndDate(
-				Collections.singletonList(studentUserId), bounds[0], bounds[1]);
+		List<PersonDate> existing = personDateRepository.findByUserIdsDateSchoolAndClass(
+				Collections.singletonList(studentUserId), bounds[0], bounds[1], selectedClass.getSchoolId(), selectedClass.getId());
 		PersonDate attendance = existing.isEmpty() ? new PersonDate() : existing.get(existing.size() - 1);
 		LocalDateTime now = LocalDateTime.now();
 		if (attendance.getId() == null) {
 			attendance.setUser(selectedStudent);
+			attendance.setSchoolId(selectedClass.getSchoolId());
+			attendance.setAttendanceClassId(selectedClass.getId());
 			attendance.setCreateDate(bounds[0]);
 			attendance.setCreatedBy(teacher.getUsername());
 		}
@@ -1335,8 +1337,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			if (ieltsActivity) {
 				Question test = value.getIeltsTestId() == null ? null : questionRepository.findOne(value.getIeltsTestId());
 				boolean listeningTest = test != null && test.getPronounce() != null && !test.getPronounce().trim().isEmpty();
+				int maximumPart = "IELTS_LISTENING".equals(activityType) ? 4 : 3;
 				if (test == null || test.getQuestionType() == null || !Long.valueOf(11L).equals(test.getQuestionType().getId())
-						|| test.getStatus() != 7 || value.getIeltsPart() == null || value.getIeltsPart() < 1 || value.getIeltsPart() > 3
+						|| test.getStatus() != 7 || value.getIeltsPart() == null || value.getIeltsPart() < 1 || value.getIeltsPart() > maximumPart
 						|| ("IELTS_LISTENING".equals(activityType) != listeningTest)) {
 					throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Đề IELTS hoặc Part được chọn không hợp lệ.");
 				}
@@ -1392,16 +1395,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 	@Override
 	public List<TopicForListAllDto> getScheduleTopics() {
-		List<TopicForListAllDto> topics = topicRepository.getAllTopics();
-		Collections.sort(topics, new Comparator<TopicForListAllDto>() {
-			@Override
-			public int compare(TopicForListAllDto first, TopicForListAllDto second) {
-				String a = first == null || first.getName() == null ? "" : first.getName();
-				String b = second == null || second.getName() == null ? "" : second.getName();
-				return a.compareToIgnoreCase(b);
-			}
-		});
-		return topics;
+		return topicRepository.getAllTopicsNewestFirst();
 	}
 
 	@Override

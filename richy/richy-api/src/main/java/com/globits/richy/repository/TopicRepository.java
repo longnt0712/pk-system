@@ -20,6 +20,9 @@ public interface TopicRepository extends JpaRepository<Topic, Long> {
 	
 	@Query("select new com.globits.richy.dto.TopicForListAllDto(u) from Topic u")
 	List<TopicForListAllDto> getAllTopics();
+
+	@Query("select new com.globits.richy.dto.TopicForListAllDto(u) from Topic u order by u.createDate desc, u.id desc")
+	List<TopicForListAllDto> getAllTopicsNewestFirst();
 	
 	@Query("select count(i.id) from Topic i where i.user.id = ?1")
 	Long countByUserId(Long userId);

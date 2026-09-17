@@ -25,6 +25,8 @@
         self.getTableDefinition = getTableDefinition;
         self.getUsers = getUsers;
         self.saveListByEnrollmentClass = saveListByEnrollmentClass;
+        self.getAttendanceClassStatuses = getAttendanceClassStatuses;
+        self.saveListByEnrollmentClasses = saveListByEnrollmentClasses;
         self.getAllGroups = getAllGroups;
 
         self.getEnrolmentClass = getEnrolmentClass;
@@ -77,17 +79,30 @@
             }, successCallback, errorCallback);
         }
 
-        function saveListByEnrollmentClass(enrollmentClass, attendanceDate, successCallback, errorCallback) {
+        function getAttendanceClassStatuses(attendanceDate, schoolId) {
+            var url = baseUrl + restUrl + '/attendance_classes/' + attendanceDate + '/'
+                + (Number(schoolId) === 1 ? 1 : 2);
+            return utils.resolve(url, 'GET', angular.noop, angular.noop);
+        }
+
+        function saveListByEnrollmentClasses(request) {
+            return utils.resolveAlt(baseUrl + restUrl + '/save_list_by_enrollment_classes', 'POST', null, request, {
+                'Content-Type': 'application/json; charset=utf-8'
+            }, angular.noop, angular.noop);
+        }
+        function saveListByEnrollmentClass(enrollmentClass, attendanceDate, schoolId, successCallback, errorCallback) {
             enrollmentClass = 0;
             var url = baseUrl + restUrl + '/save_list_by_enrollment_class/' + enrollmentClass;
 
             if (attendanceDate) {
                 url += '/' + attendanceDate; // yyyy-MM-dd
             }
+            url += '/' + (Number(schoolId) === 1 ? 1 : 2);
 
             return utils.resolveAlt(url, 'POST', null, {
                 enrollmentClass: enrollmentClass,
-                attendanceDate: attendanceDate
+                attendanceDate: attendanceDate,
+                schoolId: Number(schoolId) === 1 ? 1 : 2
             }, {
                 'Content-Type': 'application/json; charset=utf-8'
             }, successCallback, errorCallback);

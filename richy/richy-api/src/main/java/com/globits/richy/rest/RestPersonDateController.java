@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.globits.richy.dto.PersonDateBulkCreateDto;
+import com.globits.richy.dto.PersonDateClassReportDto;
 import com.globits.richy.dto.PersonDateDto;
 import com.globits.richy.service.PersonDateService;
 
@@ -39,11 +41,34 @@ public class RestPersonDateController {
 	public ResponseEntity<Boolean> saveListByEnrollmentClass(
 	        @PathVariable("enrollmentClass") int enrollmentClass,
 	        @PathVariable("attendanceDate") String attendanceDate) {
+	    Boolean result = service.saveListByEnrollmentClass(enrollmentClass, attendanceDate, Integer.valueOf(2));
+	    return new ResponseEntity<Boolean>(result, HttpStatus.OK);
+	}
 
-	    Boolean result = service.saveListByEnrollmentClass(enrollmentClass, attendanceDate);
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@RequestMapping(value = "/save_list_by_enrollment_class/{enrollmentClass}/{attendanceDate}/{schoolId}", method = RequestMethod.POST)
+	public ResponseEntity<Boolean> saveListByEnrollmentClassForSchool(
+	        @PathVariable("enrollmentClass") int enrollmentClass,
+	        @PathVariable("attendanceDate") String attendanceDate,
+	        @PathVariable("schoolId") Integer schoolId) {
+	    Boolean result = service.saveListByEnrollmentClass(enrollmentClass, attendanceDate, schoolId);
 	    return new ResponseEntity<Boolean>(result, HttpStatus.OK);
 	}
 	
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@RequestMapping(value = "/attendance_classes/{attendanceDate}/{schoolId}", method = RequestMethod.GET)
+	public List<PersonDateClassReportDto> getAttendanceClassStatuses(
+	        @PathVariable("attendanceDate") String attendanceDate,
+	        @PathVariable("schoolId") Integer schoolId) {
+		return service.getAttendanceClassStatuses(attendanceDate, schoolId);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@RequestMapping(value = "/save_list_by_enrollment_classes", method = RequestMethod.POST)
+	public ResponseEntity<List<PersonDateClassReportDto>> saveListByEnrollmentClasses(@RequestBody PersonDateBulkCreateDto dto) {
+		return new ResponseEntity<List<PersonDateClassReportDto>>(service.saveListByEnrollmentClasses(dto), HttpStatus.OK);
+	}
+
 	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/save", method = RequestMethod.POST)
 	public PersonDateDto saveOne(@RequestBody PersonDateDto searchDto) {

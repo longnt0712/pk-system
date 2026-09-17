@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import javax.persistence.Query;
 
@@ -22,8 +23,12 @@ import org.springframework.transaction.annotation.Transactional;
 import com.globits.core.repository.PersonRepository;
 import com.globits.core.service.impl.GenericServiceImpl;
 import com.globits.richy.domain.BillProduct;
+import com.globits.richy.domain.EnrolmentClass;
 import com.globits.richy.domain.PersonDate;
+import com.globits.richy.dto.PersonDateBulkCreateDto;
+import com.globits.richy.dto.PersonDateClassReportDto;
 import com.globits.richy.dto.PersonDateDto;
+import com.globits.richy.repository.EnrolmentClassRepository;
 import com.globits.richy.repository.PersonDateRepository;
 import com.globits.richy.service.PersonDateService;
 import com.globits.security.domain.User;
@@ -37,6 +42,8 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 	// private BCryptPasswordEncoder bCryptPasswordEncoder;
 	@Autowired
 	private PersonRepository studentRepository;
+	@Autowired
+	private EnrolmentClassRepository enrolmentClassRepository;
 	@Autowired
 	private PersonDateRepository personDateRepository;
 	@Autowired
@@ -167,6 +174,15 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 	     */
 	    whereClause += " and u.active = true";
 
+	    if (searchDto != null && searchDto.getSchoolId() != null) {
+	        whereClause += " and (s.schoolId = :schoolId "
+                + "or (s.schoolId is null and ((:schoolId = 2 and (s.statusMass is not null or s.extraClass is not null)) "
+                + "or (:schoolId = 1 and s.statusMass is null and s.extraClass is null))))";
+	    }
+	    if (searchDto != null && searchDto.getAttendanceClassId() != null) {
+	        whereClause += " and (s.attendanceClassId = :attendanceClassId or s.attendanceClassId is null)";
+	    }
+
 	    /*
 	     * Lọc nhóm.
 	     */
@@ -233,6 +249,15 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 	    );
 
 	    Query qCount = manager.createQuery(sqlCount);
+
+	    if (searchDto != null && searchDto.getSchoolId() != null) {
+	        q.setParameter("schoolId", searchDto.getSchoolId());
+	        qCount.setParameter("schoolId", searchDto.getSchoolId());
+	    }
+	    if (searchDto != null && searchDto.getAttendanceClassId() != null) {
+	        q.setParameter("attendanceClassId", searchDto.getAttendanceClassId());
+	        qCount.setParameter("attendanceClassId", searchDto.getAttendanceClassId());
+	    }
 
 	    /*
 	     * Set group.
@@ -383,6 +408,11 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 		if(dto == null) {
 			return ret;
 		}
+		Integer targetSchoolId = dto.getSchoolId() == null ? Integer.valueOf(2) : dto.getSchoolId();
+		Long targetAttendanceClassId = dto.getAttendanceClassId();
+		if (!Integer.valueOf(1).equals(targetSchoolId) && !Integer.valueOf(2).equals(targetSchoolId)) {
+			throw new IllegalArgumentException("SchoolId điểm danh không hợp lệ.");
+		}
 		
 		PersonDate domain = null;
 		boolean isChoir = false;
@@ -399,7 +429,13 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 	    	LocalDateTime startOfToday = today.toDateTimeAtStartOfDay().toLocalDateTime();
 	    	LocalDateTime startOfTomorrow = today.plusDays(1).toDateTimeAtStartOfDay().toLocalDateTime();
 	    	
-			domain = personDateRepository.getBy(dto.getUser().getUsername(),startOfToday,startOfTomorrow);
+			if (targetAttendanceClassId != null) {
+				List<PersonDate> matches = personDateRepository.findForUserDateSchoolAndClass(
+						dto.getUser().getUsername(), targetSchoolId, targetAttendanceClassId, startOfToday, startOfTomorrow);
+				domain = matches.isEmpty() ? null : matches.get(0);
+			} else {
+				domain = personDateRepository.getBy(dto.getUser().getUsername(), targetSchoolId, startOfToday, startOfTomorrow);
+			}
 			if(domain == null) {
 				return dto;
 			}
@@ -416,6 +452,12 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 			domain = new PersonDate();
 			domain.setCreateDate(currentDate);
 			domain.setCreatedBy(currentUserName);
+		}
+		if (domain.getSchoolId() == null || dto.getSchoolId() != null) {
+			domain.setSchoolId(targetSchoolId);
+		}
+		if (domain.getAttendanceClassId() == null || dto.getAttendanceClassId() != null) {
+			domain.setAttendanceClassId(targetAttendanceClassId);
 		}
 		
 		if(dto.getUser() != null && dto.getUser().getId() != null) {
@@ -527,115 +569,210 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 		return true;
 	}
 
+	private Integer normalizeAttendanceSchoolId(Integer schoolId) {
+		Integer target = schoolId == null ? Integer.valueOf(2) : schoolId;
+		if (!Integer.valueOf(1).equals(target) && !Integer.valueOf(2).equals(target)) {
+			throw new IllegalArgumentException("SchoolId điểm danh không hợp lệ.");
+		}
+		return target;
+	}
+
+	private LocalDate parseAttendanceDate(String attendanceDate) {
+		if (attendanceDate != null && attendanceDate.trim().length() > 0) {
+			DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd");
+			return formatter.parseLocalDate(attendanceDate.trim());
+		}
+		return LocalDate.now();
+	}
+
+	private List<User> getAttendanceStudents(Long classId) {
+		List<User> result = new ArrayList<User>();
+		if (classId == null) { return result; }
+		List<User> users = userRepository.getUsersByEnrollmentClass(classId.intValue());
+		if (users == null) { return result; }
+		for (User user : users) {
+			if (user != null && user.getId() != null && Boolean.TRUE.equals(user.getActive())) {
+				result.add(user);
+			}
+		}
+		return result;
+	}
+
+	private HashSet<Long> getExistingAttendanceUserIds(
+			List<User> students,
+			Integer schoolId,
+			Long classId,
+			LocalDateTime startDate,
+			LocalDateTime endDate) {
+		HashSet<Long> result = new HashSet<Long>();
+		List<Long> userIds = new ArrayList<Long>();
+		for (User student : students) {
+			if (student != null && student.getId() != null) { userIds.add(student.getId()); }
+		}
+		if (userIds.isEmpty()) { return result; }
+		List<PersonDate> existing = personDateRepository.findByUserIdsDateSchoolAndClass(
+				userIds, startDate, endDate, schoolId, classId);
+		if (existing == null) { return result; }
+		for (PersonDate item : existing) {
+			if (item != null && item.getUser() != null && item.getUser().getId() != null) {
+				result.add(item.getUser().getId());
+			}
+		}
+		return result;
+	}
+
+	private String getAttendanceStudentName(User student) {
+		if (student != null && student.getPerson() != null) {
+			String displayName = student.getPerson().getDisplayName();
+			if (displayName != null && displayName.trim().length() > 0) {
+				return displayName.trim();
+			}
+		}
+		return student == null || student.getUsername() == null ? "Không rõ học sinh" : student.getUsername();
+	}
+
+	private PersonDateClassReportDto buildAttendanceClassReport(
+			Long classId,
+			Integer schoolId,
+			LocalDateTime startDate,
+			LocalDateTime endDate,
+			int createdStudents) {
+		PersonDateClassReportDto report = new PersonDateClassReportDto();
+		report.setClassId(classId);
+		EnrolmentClass enrolmentClass = classId == null ? null : enrolmentClassRepository.findOne(classId);
+		report.setClassName(enrolmentClass == null ? "Lớp không xác định" : enrolmentClass.getName());
+		List<User> students = getAttendanceStudents(classId);
+		HashSet<Long> existingUserIds = getExistingAttendanceUserIds(
+				students, schoolId, classId, startDate, endDate);
+		List<String> missingNames = new ArrayList<String>();
+		for (User student : students) {
+			if (!existingUserIds.contains(student.getId())) {
+				missingNames.add(getAttendanceStudentName(student));
+			}
+		}
+		report.setTotalStudents(students.size());
+		report.setExistingStudents(existingUserIds.size());
+		report.setCreatedStudents(createdStudents);
+		report.setMissingStudentNames(missingNames);
+		return report;
+	}
+
+	@Override
+	public List<PersonDateClassReportDto> getAttendanceClassStatuses(String attendanceDate, Integer schoolId) {
+		Integer targetSchoolId = normalizeAttendanceSchoolId(schoolId);
+		LocalDate selectedDate = parseAttendanceDate(attendanceDate);
+		LocalDateTime start = selectedDate.toDateTimeAtStartOfDay().toLocalDateTime();
+		LocalDateTime end = start.plusDays(1);
+		List<PersonDateClassReportDto> result = new ArrayList<PersonDateClassReportDto>();
+		List<Long> classIds = enrolmentClassRepository.findIdsBySchoolId(targetSchoolId);
+		if (classIds == null) { return result; }
+		for (Long classId : classIds) {
+			result.add(buildAttendanceClassReport(classId, targetSchoolId, start, end, 0));
+		}
+		return result;
+	}
+
 	@Transactional(rollbackFor = Exception.class)
 	@Override
-	public boolean saveListByEnrollmentClass(int enrollmentClass, String attendanceDate) {
-	    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+	public boolean saveListByEnrollmentClass(int enrollmentClass, String attendanceDate, Integer schoolId) {
+		Integer targetSchoolId = normalizeAttendanceSchoolId(schoolId);
+		List<Long> classIds = new ArrayList<Long>();
+		if (enrollmentClass == 0) {
+			classIds.addAll(enrolmentClassRepository.findIdsBySchoolId(targetSchoolId));
+		} else {
+			classIds.add(Long.valueOf(enrollmentClass));
+		}
+		PersonDateBulkCreateDto dto = new PersonDateBulkCreateDto();
+		dto.setAttendanceDate(attendanceDate);
+		dto.setSchoolId(targetSchoolId);
+		dto.setClassIds(classIds);
+		return !saveListByEnrollmentClasses(dto).isEmpty();
+	}
 
-	    String currentUserName = "Unknown User";
-	    if (authentication != null) {
-	        User modifiedUser = (User) authentication.getPrincipal();
-	        currentUserName = modifiedUser.getUsername();
-	    }
+	@Transactional(rollbackFor = Exception.class)
+	@Override
+	public List<PersonDateClassReportDto> saveListByEnrollmentClasses(PersonDateBulkCreateDto dto) {
+		if (dto == null || dto.getClassIds() == null || dto.getClassIds().isEmpty()) {
+			throw new IllegalArgumentException("Hãy chọn ít nhất một lớp để tạo bảng điểm danh.");
+		}
+		Integer targetSchoolId = normalizeAttendanceSchoolId(dto.getSchoolId());
+		LocalDate selectedDate = parseAttendanceDate(dto.getAttendanceDate());
+		LocalDateTime startOfSelectedDate = selectedDate.toDateTimeAtStartOfDay().toLocalDateTime();
+		LocalDateTime startOfNextDate = startOfSelectedDate.plusDays(1);
+		List<Long> schoolClassIds = enrolmentClassRepository.findIdsBySchoolId(targetSchoolId);
+		LinkedHashSet<Long> selectedClassIds = new LinkedHashSet<Long>();
+		for (Long classId : dto.getClassIds()) {
+			if (classId != null && schoolClassIds != null && schoolClassIds.contains(classId)) {
+				selectedClassIds.add(classId);
+			}
+		}
+		if (selectedClassIds.isEmpty() || selectedClassIds.size() > 500) {
+			throw new IllegalArgumentException("Danh sách lớp điểm danh không hợp lệ.");
+		}
 
-	    LocalDate selectedDate;
-	    if (attendanceDate != null && attendanceDate.trim().length() > 0) {
-	        DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd");
-	        selectedDate = formatter.parseLocalDate(attendanceDate.trim());
-	    } else {
-	        selectedDate = LocalDate.now();
-	    }
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		String currentUserName = "Unknown User";
+		if (authentication != null) {
+			User modifiedUser = (User) authentication.getPrincipal();
+			currentUserName = modifiedUser.getUsername();
+		}
 
-	    LocalDateTime startOfSelectedDate = selectedDate.toDateTimeAtStartOfDay().toLocalDateTime();
-	    LocalDateTime startOfNextDate = selectedDate.plusDays(1).toDateTimeAtStartOfDay().toLocalDateTime();
+		List<PersonDate> personDates = new ArrayList<PersonDate>();
+		List<Long> processedClassIds = new ArrayList<Long>();
+		List<Integer> createdCounts = new ArrayList<Integer>();
+		for (Long classId : selectedClassIds) {
+			List<User> students = getAttendanceStudents(classId);
+			HashSet<Long> existingUserIds = getExistingAttendanceUserIds(
+					students, targetSchoolId, classId, startOfSelectedDate, startOfNextDate);
+			int createdCount = 0;
+			for (User user : students) {
+				if (existingUserIds.contains(user.getId())) { continue; }
+				PersonDate personDate = new PersonDate();
+				personDate.setUser(user);
+				personDate.setSchoolId(targetSchoolId);
+				personDate.setAttendanceClassId(classId);
+				personDate.setStatusClass(2);
+				personDate.setStatusMass(2);
+				personDate.setExtraClass(2);
+				personDate.setCreateDate(startOfSelectedDate);
+				personDate.setModifyDate(startOfSelectedDate);
+				personDate.setCreatedBy(currentUserName);
+				personDate.setModifiedBy(currentUserName);
+				personDates.add(personDate);
+				createdCount++;
+			}
+			processedClassIds.add(classId);
+			createdCounts.add(Integer.valueOf(createdCount));
+		}
 
-	    // Kiểm tra ngày đã có bảng điểm danh chưa
-	    Long personDateNumbers = personDateRepository.countPersonDateBy(
-	            startOfSelectedDate,
-	            startOfNextDate
-	    );
+		if (!personDates.isEmpty()) {
+			List<PersonDate> savedPersonDates = personDateRepository.save(personDates);
+			manager.flush();
+			List<Long> ids = new ArrayList<Long>();
+			for (PersonDate item : savedPersonDates) {
+				if (item != null && item.getId() != null) { ids.add(item.getId()); }
+			}
+			if (!ids.isEmpty()) {
+				Query updateQuery = manager.createQuery(
+						"update PersonDate p set p.createDate = :createDate, p.modifyDate = :modifyDate, "
+						+ "p.createdBy = :createdBy, p.modifiedBy = :modifiedBy where p.id in (:ids)");
+				updateQuery.setParameter("createDate", startOfSelectedDate);
+				updateQuery.setParameter("modifyDate", startOfSelectedDate);
+				updateQuery.setParameter("createdBy", currentUserName);
+				updateQuery.setParameter("modifiedBy", currentUserName);
+				updateQuery.setParameter("ids", ids);
+				updateQuery.executeUpdate();
+				manager.flush();
+				manager.clear();
+			}
+		}
 
-	    if (personDateNumbers != null && personDateNumbers > 0) {
-	        return true;
-	    }
-
-	    List<User> users = new ArrayList<User>();
-
-	    if (enrollmentClass == 0) {
-	        users = userRepository.getUsersByAllEnrollmentClass();
-	    } else {
-	        users = userRepository.getUsersByEnrollmentClass(enrollmentClass);
-	    }
-
-	    List<PersonDate> personDates = new ArrayList<PersonDate>();
-
-	    for (User user : users) {
-	        /*
-	         * Không tạo bản ghi điểm danh cho user
-	         * đã ngừng hoạt động hoặc active bị null.
-	         */
-	        if (
-	                user == null ||
-	                !Boolean.TRUE.equals(user.getActive())
-	        ) {
-	            continue;
-	        }
-
-	        PersonDate personDate = new PersonDate();
-
-	        personDate.setUser(user);
-	        personDate.setStatusClass(2);
-	        personDate.setStatusMass(2);
-	        personDate.setExtraClass(2);
-
-	        personDate.setCreateDate(startOfSelectedDate);
-	        personDate.setModifyDate(startOfSelectedDate);
-	        personDate.setCreatedBy(currentUserName);
-	        personDate.setModifiedBy(currentUserName);
-
-	        personDates.add(personDate);
-	    }
-
-	    if (personDates != null && personDates.size() > 0) {
-	        // Bước 1: save trước để có id
-	        List<PersonDate> savedPersonDates = personDateRepository.save(personDates);
-
-	        // Ép Hibernate insert xuống DB trước
-	        manager.flush();
-
-	        // Bước 2: lấy id các bản ghi vừa tạo
-	        List<Long> ids = new ArrayList<Long>();
-
-	        for (PersonDate item : savedPersonDates) {
-	            if (item != null && item.getId() != null) {
-	                ids.add(item.getId());
-	            }
-	        }
-
-	        // Bước 3: update lại createDate về ngày đã chọn
-	        if (ids != null && ids.size() > 0) {
-	            Query updateQuery = manager.createQuery(
-	                    "update PersonDate p " +
-	                    "set p.createDate = :createDate, " +
-	                    "    p.modifyDate = :modifyDate, " +
-	                    "    p.createdBy = :createdBy, " +
-	                    "    p.modifiedBy = :modifiedBy " +
-	                    "where p.id in (:ids)"
-	            );
-
-	            updateQuery.setParameter("createDate", startOfSelectedDate);
-	            updateQuery.setParameter("modifyDate", startOfSelectedDate);
-	            updateQuery.setParameter("createdBy", currentUserName);
-	            updateQuery.setParameter("modifiedBy", currentUserName);
-	            updateQuery.setParameter("ids", ids);
-
-	            updateQuery.executeUpdate();
-
-	            manager.flush();
-	            manager.clear();
-	        }
-	    }
-
-	    return true;
+		List<PersonDateClassReportDto> reports = new ArrayList<PersonDateClassReportDto>();
+		for (int i = 0; i < processedClassIds.size(); i++) {
+			reports.add(buildAttendanceClassReport(
+					processedClassIds.get(i), targetSchoolId, startOfSelectedDate, startOfNextDate,
+					createdCounts.get(i).intValue()));
+		}
+		return reports;
 	}
 }

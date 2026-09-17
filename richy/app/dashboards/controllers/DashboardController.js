@@ -219,11 +219,27 @@
             var ieltsPrefix = 'ieltsReadingInProgress:' + userId;
             var dailyVocabKey = 'daily-vocab-active:v1:' + userId;
             var dailyListeningPrefix = 'daily-listening-progress:v1:' + userId + ':';
-            var now = Date.now();
 
             function readDraft(key) {
                 try { return JSON.parse($window.localStorage.getItem(key)); }
                 catch (ignoreDraftReadError) { return null; }
+            }
+
+            function pushResumeDraft(item) {
+                if (!item || !item.storageKey) { return; }
+                for (var i = 0; i < vm.resumeDrafts.length; i++) {
+                    if (vm.resumeDrafts[i].storageKey === item.storageKey) {
+                        if (Number(item.savedAt) >= Number(vm.resumeDrafts[i].savedAt)) {
+                            vm.resumeDrafts[i] = item;
+                        }
+                        return;
+                    }
+                }
+                vm.resumeDrafts.push(item);
+            }
+
+            function sortResumeDrafts() {
+                vm.resumeDrafts.sort(function (a, b) { return Number(b.savedAt) - Number(a.savedAt); });
             }
 
             function addIeltsDraft(key, draft) {
@@ -233,7 +249,7 @@
                 var listening = draft.isListening === true || draft.testMode === 'LISTENING'
                     || key.indexOf(ieltsPrefix + ':listening') === 0
                     || /listening/i.test(String(draft.title || ''));
-                vm.resumeDrafts.push({
+                pushResumeDraft({
                     kind: listening ? 'IELTS_LISTENING' : 'IELTS_READING',
                     storageKey: key,
                     title: draft.title || (listening ? 'IELTS Listening Test' : 'IELTS Reading Test'),
@@ -251,10 +267,10 @@
 
             function addDailyVocabDraft(draft) {
                 if (!draft || draft.version !== 1 || String(draft.ownerId) !== userId
-                        || !draft.savedAt || now - Number(draft.savedAt) > 7 * 86400000
+                        || !draft.savedAt
                         || !angular.isArray(draft.questions) || !draft.questions.length) { return; }
                 var completed = Math.max(0, Math.min(Number(draft.currentPosition) || 0, Number(draft.totalCard) || draft.questions.length));
-                vm.resumeDrafts.push({
+                pushResumeDraft({
                     kind: 'DAILY_VOCAB',
                     storageKey: dailyVocabKey,
                     title: draft.title || 'Daily Vocab',
@@ -267,9 +283,8 @@
 
             function addDailyListeningDraft(key, draft) {
                 if (!draft || draft.version !== 1 || draft.modeId !== 8 || String(draft.ownerId) !== userId
-                        || !draft.card || draft.card.id == null || !draft.updatedAt
-                        || now - Number(draft.updatedAt) > 7 * 86400000) { return; }
-                vm.resumeDrafts.push({
+                        || !draft.card || draft.card.id == null || !draft.updatedAt) { return; }
+                pushResumeDraft({
                     kind: 'DAILY_LISTENING',
                     storageKey: key,
                     title: draft.card.question || 'Daily Listening',
@@ -298,7 +313,30 @@
             } catch (ignoreDraftStorageError) {
                 vm.resumeDrafts = [];
             }
-            vm.resumeDrafts.sort(function (a, b) { return Number(b.savedAt) - Number(a.savedAt); });
+            sortResumeDrafts();
+
+            var draftsUrl = settings.api.baseUrl + settings.api.apiV1Url + 'test_result/drafts';
+            $http.get(draftsUrl).then(function (response) {
+                angular.forEach(angular.isArray(response.data) ? response.data : [], function (item) {
+                    if (!item || !item.draftKey || !item.payload) { return; }
+                    var payload = null;
+                    try { payload = JSON.parse(item.payload); } catch (ignoreServerPayload) { return; }
+                    var displayPayload = payload;
+                    try {
+                        var local = readDraft(item.draftKey);
+                        var localTime = new Date((local || {}).savedAt || (local || {}).updatedAt || (local || {}).createdAt || 0).getTime() || 0;
+                        if (!local || Number(item.savedAt) >= localTime) {
+                            $window.localStorage.setItem(item.draftKey, item.payload);
+                        } else {
+                            displayPayload = local;
+                        }
+                    } catch (ignoreServerCacheError) {}
+                    if (item.draftType === 'IELTS') { addIeltsDraft(item.draftKey, displayPayload); }
+                    if (item.draftType === 'DAILY_VOCAB') { addDailyVocabDraft(displayPayload); }
+                    if (item.draftType === 'DAILY_LISTENING') { addDailyListeningDraft(item.draftKey, displayPayload); }
+                });
+                sortResumeDrafts();
+            }, angular.noop);
         };
 
         vm.formatReadingDraftTime = function (seconds) {
@@ -341,7 +379,10 @@
             if (!$window.confirm('Bạn có chắc muốn hủy bài đang làm dở? Toàn bộ tiến độ đã tự lưu của bài này sẽ bị xóa.')) { return; }
             try { $window.localStorage.removeItem(draft.storageKey); }
             catch (ignoreDraftCancelError) { return; }
-            vm.loadResumeDrafts();
+            var deleteUrl = settings.api.baseUrl + settings.api.apiV1Url + 'test_result/draft/delete';
+            $http.post(deleteUrl, {draftKey: draft.storageKey}).finally(function () {
+                vm.loadResumeDrafts();
+            });
         };
 
         vm.loadCurrentUserFromCookie = function () {

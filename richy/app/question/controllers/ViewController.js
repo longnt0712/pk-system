@@ -3657,7 +3657,6 @@
         vm.youtubeVideoId = null;
         vm.youtubeStartSeconds = 0;
 
-        var dailyListeningDraftTtl = 7 * 24 * 60 * 60 * 1000;
         var dailyListeningDraftSaveTimer = null;
         var dailyListeningDraftHeartbeatTimer = null;
         vm.dailyListeningDraftAvailable = null;
@@ -3677,6 +3676,46 @@
 
         function dailyListeningDraftKey(questionId) {
             return dailyListeningDraftPrefix() + String(questionId);
+        }
+
+        function saveDailyListeningLearningDraft(key, draft, manual) {
+            service.saveLearningDraft({
+                draftKey: key,
+                draftType: 'DAILY_LISTENING',
+                title: (draft.card && draft.card.question) || 'Daily Listening',
+                payload: JSON.stringify(draft),
+                savedAt: Number(draft.updatedAt) || Date.now()
+            }).then(function () {
+                vm.dailyListeningDraftStatus = 'saved';
+                vm.dailyListeningDraftMessage = (manual ? 'Đã lưu bài đang làm lúc ' : 'Đã tự động lưu lúc ')
+                    + new Date(draft.updatedAt).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'});
+            }, function () {
+                vm.dailyListeningDraftStatus = 'error';
+                vm.dailyListeningDraftMessage = 'Chưa đồng bộ được bản nháp lên database. Hệ thống sẽ thử lại.';
+            });
+        }
+
+        function deleteDailyListeningLearningDraft(key) {
+            if (key) { service.deleteLearningDraft(key).catch(angular.noop); }
+        }
+
+        function loadDailyListeningLearningDrafts() {
+            if (!vm.currentUser || !vm.currentUser.id) { return null; }
+            var prefix = dailyListeningDraftPrefix();
+            return service.getLearningDrafts().then(function (items) {
+                angular.forEach(items || [], function (item) {
+                    if (!item || item.draftType !== 'DAILY_LISTENING' || !item.draftKey
+                            || item.draftKey.indexOf(prefix) !== 0 || !item.payload) { return; }
+                    try {
+                        var serverDraft = JSON.parse(item.payload);
+                        var localDraft = null;
+                        try { localDraft = JSON.parse(window.localStorage.getItem(item.draftKey)); } catch (ignoreLocalRead) {}
+                        if (!localDraft || Number(item.savedAt) >= Number(localDraft.updatedAt || 0)) {
+                            window.localStorage.setItem(item.draftKey, item.payload);
+                        }
+                    } catch (ignoreServerDraft) {}
+                });
+            }, angular.noop);
         }
 
         function createDailyListeningAttemptKey() {
@@ -3703,8 +3742,7 @@
                 && typeof draft.fillingGapQuestion === 'string'
                 && draft.gapAnswers && typeof draft.gapAnswers === 'object'
                 && /^[a-f0-9]{32}$/.test(draft.clientAttemptKey || '')
-                && Number(draft.updatedAt) > 0
-                && Date.now() - Number(draft.updatedAt) <= dailyListeningDraftTtl);
+                && Number(draft.updatedAt) > 0);
         }
 
         function findLatestDailyListeningDraft() {
@@ -3725,7 +3763,10 @@
                         latest = draft;
                     }
                 }
-                angular.forEach(staleKeys, function (key) { window.localStorage.removeItem(key); });
+                angular.forEach(staleKeys, function (key) {
+                    window.localStorage.removeItem(key);
+                    deleteDailyListeningLearningDraft(key);
+                });
             } catch (ignore) {
                 vm.dailyListeningDraftStatus = 'error';
                 vm.dailyListeningDraftMessage = 'Trình duyệt không đọc được bản nháp.';
@@ -3814,6 +3855,7 @@
 
             if (!isFinite(draft.volumeValue)) { draft.volumeValue = 1; }
 
+            saveDailyListeningLearningDraft(dailyListeningDraftKey(draft.card.id), draft, manual === true);
             try {
                 window.localStorage.setItem(dailyListeningDraftKey(draft.card.id), JSON.stringify(draft));
                 if (vm.dailyListeningDraftAvailable && vm.dailyListeningDraftAvailable.card
@@ -3824,7 +3866,7 @@
                 vm.dailyListeningDraftStatus = 'saved';
                 vm.dailyListeningDraftMessage = (manual ? 'Đã lưu bài đang làm lúc ' : 'Đã tự động lưu lúc ')
                     + new Date(draft.updatedAt).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'});
-                if (manual) { toastr.success('Đã lưu bài Daily Listening đang làm trên trình duyệt này.'); }
+                if (manual) { toastr.success('Đã gửi bản nháp Daily Listening lên database.'); }
                 return true;
             } catch (ignore) {
                 vm.dailyListeningDraftStatus = 'error';
@@ -3851,13 +3893,17 @@
 
         function removeDailyListeningDraft(draft) {
             if (!draft || !draft.card || draft.card.id == null) { return; }
-            try { window.localStorage.removeItem(dailyListeningDraftKey(draft.card.id)); } catch (ignore) {}
+            var key = dailyListeningDraftKey(draft.card.id);
+            try { window.localStorage.removeItem(key); } catch (ignore) {}
+            deleteDailyListeningLearningDraft(key);
         }
 
         function clearCurrentDailyListeningDraft() {
             var questionId = vm.currentCard && vm.currentCard.id;
             if (questionId != null) {
-                try { window.localStorage.removeItem(dailyListeningDraftKey(questionId)); } catch (ignore) {}
+                var key = dailyListeningDraftKey(questionId);
+                try { window.localStorage.removeItem(key); } catch (ignore) {}
+                deleteDailyListeningLearningDraft(key);
             }
             vm.dailyListeningDraftAvailable = findLatestDailyListeningDraft();
             vm.dailyListeningDraftRestored = false;
@@ -3915,7 +3961,7 @@
             var draft = vm.dailyListeningDraftAvailable || findLatestDailyListeningDraft();
             if (!isValidDailyListeningDraft(draft)) {
                 vm.dailyListeningDraftAvailable = null;
-                toastr.warning('Bản nháp không còn hợp lệ hoặc đã quá 7 ngày.');
+                toastr.warning('Bản nháp không còn hợp lệ.');
                 return;
             }
 
@@ -4001,15 +4047,23 @@
             persistDailyListeningDraft(false, false);
         }
 
-        vm.refreshDailyListeningDraft();
-        try {
-            var dashboardListeningResumeKey = 'daily-listening-dashboard-resume:v1:'
-                + String(vm.currentUser && vm.currentUser.id || '');
-            if (window.sessionStorage.getItem(dashboardListeningResumeKey) === '1') {
-                window.sessionStorage.removeItem(dashboardListeningResumeKey);
-                $timeout(function () { vm.resumeDailyListeningDraft(); }, 0);
-            }
-        } catch (ignoreDashboardListeningResumeError) {}
+        function initializeDailyListeningDrafts() {
+            vm.refreshDailyListeningDraft();
+            try {
+                var dashboardListeningResumeKey = 'daily-listening-dashboard-resume:v1:'
+                    + String(vm.currentUser && vm.currentUser.id || '');
+                if (window.sessionStorage.getItem(dashboardListeningResumeKey) === '1') {
+                    window.sessionStorage.removeItem(dashboardListeningResumeKey);
+                    $timeout(function () { vm.resumeDailyListeningDraft(); }, 0);
+                }
+            } catch (ignoreDashboardListeningResumeError) {}
+        }
+        var dailyListeningLearningDraftsReady = loadDailyListeningLearningDrafts();
+        if (dailyListeningLearningDraftsReady && angular.isFunction(dailyListeningLearningDraftsReady.finally)) {
+            dailyListeningLearningDraftsReady.finally(initializeDailyListeningDrafts);
+        } else {
+            initializeDailyListeningDrafts();
+        }
         dailyListeningDraftHeartbeatTimer = $timeout(dailyListeningDraftHeartbeat, 5000);
         document.addEventListener('visibilitychange', persistDailyListeningOnHide, false);
         window.addEventListener('beforeunload', persistDailyListeningBeforeUnload, false);

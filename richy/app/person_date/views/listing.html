@@ -31,7 +31,7 @@
                                    my-date-picker />
                             <button class="btn btn-primary attendance-create-button"
                                     ng-click="vm.createCheckList()">
-                                <i class="fa fa-check"></i> Tạo bảng điểm danh
+                                <i class="fa" ng-class="vm.attendanceClassCreationSaving ? 'fa-spinner fa-spin' : 'fa-check'"></i> {{vm.attendanceClassCreationSaving ? 'Đang tạo...' : 'Tạo bảng điểm danh'}}
                             </button>
                         </div>
                     </div>
@@ -662,6 +662,135 @@
     </div>
 </script>
 
+<script type="text/ng-template" id="attendance_class_selection_modal.html">
+    <div class="attendance-class-selection-modal">
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true">&times;</button>
+            <h4 class="modal-title">
+                <i class="fa fa-calendar-check-o"></i> Chọn lớp tạo bảng điểm danh
+            </h4>
+            <p class="attendance-class-selection-date">
+                Ngày {{vm.attendanceSetupSelectedDate | date:'dd/MM/yyyy'}}
+            </p>
+        </div>
+
+        <div class="modal-body">
+            <div class="text-center attendance-class-selection-loading"
+                 ng-if="vm.attendanceClassSelectionLoading">
+                <i class="fa fa-spinner fa-spin"></i> Đang tải danh sách lớp...
+            </div>
+
+            <div class="alert alert-danger"
+                 ng-if="!vm.attendanceClassSelectionLoading && vm.attendanceClassSelectionError">
+                {{vm.attendanceClassSelectionError}}
+            </div>
+
+            <div ng-if="!vm.attendanceClassSelectionLoading && !vm.attendanceClassSelectionError">
+                <div class="attendance-class-selection-actions"
+                     ng-if="vm.attendanceClassSelection.length">
+                    <p>
+                        Các lớp còn thiếu học sinh được chọn sẵn. Chỉ lớp đã đủ toàn bộ học sinh mới bị khóa.
+                    </p>
+                    <div>
+                        <button type="button"
+                                class="btn btn-default btn-sm"
+                                ng-click="vm.selectAllAvailableAttendanceClasses(true)">
+                            <i class="fa fa-check-square-o"></i> Chọn tất cả lớp còn lại
+                        </button>
+                        <button type="button"
+                                class="btn btn-default btn-sm"
+                                ng-click="vm.selectAllAvailableAttendanceClasses(false)">
+                            <i class="fa fa-square-o"></i> Bỏ chọn
+                        </button>
+                    </div>
+                </div>
+
+                <div class="alert alert-info" ng-if="!vm.attendanceClassSelection.length">
+                    Không có lớp nào thuộc cơ sở này.
+                </div>
+
+                <div class="attendance-class-selection-list">
+                    <label class="attendance-class-selection-item"
+                           ng-repeat="item in vm.attendanceClassSelection track by item.id"
+                           ng-class="{'is-created': item.alreadyCreated, 'is-selected': item.selected, 'is-partial': !item.alreadyCreated && item.existingStudents > 0}">
+                        <input type="checkbox"
+                               ng-model="item.selected"
+                               ng-disabled="item.alreadyCreated">
+                        <span class="attendance-class-selection-name">
+                            <strong>{{item.name}}</strong>
+                            <small>{{item.existingStudents}}/{{item.totalStudents}} học sinh đã có điểm danh</small>
+                        </span>
+                        <span class="label label-default" ng-if="item.totalStudents === 0">Không có học sinh</span>
+                        <span class="label label-success" ng-if="item.alreadyCreated && item.totalStudents > 0">Đã đủ</span>
+                        <span class="label label-danger" ng-if="!item.alreadyCreated && item.missingStudents > 0">Thiếu {{item.missingStudents}}</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-default" ng-click="$dismiss()">Hủy</button>
+            <button type="button"
+                    class="btn btn-primary"
+                    ng-disabled="vm.attendanceClassSelectionLoading || vm.attendanceClassCreationSaving || !vm.hasSelectedAttendanceClass()"
+                    ng-click="vm.confirmCreateCheckList()">
+                <i class="fa" ng-class="vm.attendanceClassCreationSaving ? 'fa-spinner fa-spin' : 'fa-check'"></i> {{vm.attendanceClassCreationSaving ? 'Đang tạo...' : 'Tạo bảng điểm danh'}}
+            </button>
+        </div>
+    </div>
+</script>
+<script type="text/ng-template" id="attendance_creation_report_modal.html">
+    <div class="attendance-creation-report-modal">
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true">&times;</button>
+            <h4 class="modal-title"><i class="fa fa-clipboard"></i> Báo cáo tạo bảng điểm danh</h4>
+            <p class="attendance-class-selection-date">
+                Ngày {{vm.attendanceCreationReportDate | date:'dd/MM/yyyy'}}
+            </p>
+        </div>
+
+        <div class="modal-body">
+            <div class="alert alert-info" ng-if="!vm.attendanceCreationReport.length">
+                Không có lớp nào được xử lý.
+            </div>
+
+            <div class="attendance-creation-report-list">
+                <div class="attendance-creation-report-item"
+                     ng-repeat="item in vm.attendanceCreationReport track by item.classId"
+                     ng-class="{'is-complete': item.complete, 'is-incomplete': !item.complete}">
+                    <div class="attendance-creation-report-heading">
+                        <div>
+                            <strong>{{item.className}}</strong>
+                            <span>({{item.existingStudents}}/{{item.totalStudents}})</span>
+                        </div>
+                        <span class="label"
+                              ng-class="item.complete ? 'label-success' : 'label-danger'">
+                            {{item.complete ? 'Đã đủ' : 'Còn thiếu'}}
+                        </span>
+                    </div>
+                    <p class="attendance-creation-created-count">
+                        Đã tạo thêm {{item.createdStudents}} bản ghi PersonDate.
+                    </p>
+                    <div class="attendance-creation-missing"
+                         ng-if="!item.complete && item.missingStudentNames.length">
+                        <strong>Học sinh còn thiếu:</strong>
+                        <ul>
+                            <li ng-repeat="studentName in item.missingStudentNames track by $index">
+                                {{studentName}}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" ng-click="$close()">
+                <i class="fa fa-check"></i> Đóng báo cáo
+            </button>
+        </div>
+    </div>
+</script>
 <script type="text/ng-template" id="qr_attendance_type_modal.html">
     <div class="qr-attendance-type-modal">
         <div class="modal-header">
@@ -712,6 +841,177 @@
 </script>
 
 <style>
+    .attendance-class-selection-date {
+        margin: 5px 28px 0 0;
+        color: #6c7890;
+    }
+
+    .attendance-class-selection-loading {
+        padding: 32px 10px;
+        color: #667085;
+    }
+
+    .attendance-class-selection-actions {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .attendance-class-selection-actions p {
+        margin: 5px 0 0;
+        color: #667085;
+    }
+
+    .attendance-class-selection-actions > div {
+        display: flex;
+        flex: 0 0 auto;
+        gap: 6px;
+    }
+
+    .attendance-class-selection-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 9px;
+        max-height: 390px;
+        overflow-y: auto;
+        padding: 2px;
+    }
+
+    .attendance-class-selection-item {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-width: 0;
+        margin: 0;
+        padding: 11px 12px;
+        border: 1px solid #dfe5f0;
+        border-radius: 9px;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .attendance-class-selection-item.is-selected {
+        border-color: #7971ea;
+        background: #f4f2ff;
+    }
+
+    .attendance-class-selection-item.is-created {
+        color: #7a8497;
+        background: #f3f5f8;
+        cursor: not-allowed;
+    }
+
+    .attendance-class-selection-item input {
+        flex: 0 0 auto;
+        margin: 0;
+    }
+
+    .attendance-class-selection-name {
+        min-width: 0;
+        flex: 1 1 auto;
+        overflow-wrap: anywhere;
+    }
+
+    .attendance-class-selection-item .label {
+        flex: 0 0 auto;
+        white-space: normal;
+        line-height: 1.3;
+        text-align: center;
+    }
+    .attendance-class-selection-name strong,
+    .attendance-class-selection-name small {
+        display: block;
+    }
+
+    .attendance-class-selection-name small {
+        margin-top: 3px;
+        color: #7a8497;
+        font-weight: 400;
+    }
+
+    .attendance-class-selection-item.is-partial:not(.is-selected) {
+        border-color: #f3aaa7;
+        background: #fff7f6;
+    }
+
+    .attendance-creation-report-list {
+        display: grid;
+        gap: 11px;
+        max-height: 460px;
+        overflow-y: auto;
+        padding: 2px;
+    }
+
+    .attendance-creation-report-item {
+        padding: 14px;
+        border: 1px solid #dfe5f0;
+        border-left-width: 5px;
+        border-radius: 10px;
+    }
+
+    .attendance-creation-report-item.is-complete {
+        border-left-color: #36a269;
+        background: #f1fbf5;
+    }
+
+    .attendance-creation-report-item.is-incomplete {
+        color: #8d2520;
+        border-color: #efaaa6;
+        border-left-color: #d9534f;
+        background: #fff0ef;
+    }
+
+    .attendance-creation-report-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 16px;
+    }
+
+    .attendance-creation-report-heading > div {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .attendance-creation-created-count {
+        margin: 7px 0 0;
+        color: #657188;
+    }
+
+    .attendance-creation-missing {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(217, 83, 79, .28);
+    }
+
+    .attendance-creation-missing ul {
+        margin: 6px 0 0;
+        padding-left: 21px;
+        columns: 2;
+    }
+
+
+    @media (max-width: 767px) {
+        .attendance-class-selection-actions {
+            display: block;
+        }
+
+        .attendance-class-selection-actions > div {
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .attendance-class-selection-list {
+            grid-template-columns: minmax(0, 1fr);
+        }
+        .attendance-creation-missing ul {
+            columns: 1;
+        }
+    }
+
     .attendance-control-panel {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3280,6 +3580,39 @@
        MODALS / EXPORT PREVIEW
        ===================================================== */
 
+    html.global-dark-mode .attendance-class-selection-item {
+        color: #e3e9f4 !important;
+        border-color: #354159 !important;
+        background: #172236 !important;
+    }
+
+    html.global-dark-mode .attendance-class-selection-item.is-selected {
+        border-color: #8e85ff !important;
+        background: #2c2850 !important;
+    }
+
+    html.global-dark-mode .attendance-class-selection-item.is-created {
+        color: #9da9bc !important;
+        background: #111a2a !important;
+    }
+
+    html.global-dark-mode .attendance-class-selection-name small,
+    html.global-dark-mode .attendance-creation-created-count,
+    html.global-dark-mode .attendance-class-selection-date {
+        color: #aeb9ca !important;
+    }
+
+    html.global-dark-mode .attendance-creation-report-item.is-complete {
+        color: #dff7e8 !important;
+        border-color: #2f6f4d !important;
+        background: #142b22 !important;
+    }
+
+    html.global-dark-mode .attendance-creation-report-item.is-incomplete {
+        color: #ffd7d3 !important;
+        border-color: #8a4542 !important;
+        background: #351d22 !important;
+    }
     html.global-dark-mode .modal-content,
     html.global-dark-mode .modal-header,
     html.global-dark-mode .modal-body,

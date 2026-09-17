@@ -33,10 +33,12 @@ import com.globits.richy.domain.Answer;
 import com.globits.richy.domain.QuestionAnswer;
 import com.globits.richy.domain.QuestionAnswerTestResult;
 import com.globits.richy.domain.TestResult;
+import com.globits.richy.domain.LearningDraft;
 import com.globits.richy.domain.EnrolmentClassScheduleTask;
 import com.globits.richy.dto.QuestionAnswerDto;
 import com.globits.richy.dto.QuestionAnswerTestResultDto;
 import com.globits.richy.dto.TestResultDto;
+import com.globits.richy.dto.LearningDraftDto;
 import com.globits.richy.dto.TestResultStudyCalendarItemDto;
 import com.globits.richy.dto.TestResultDto.sortByOrdinalNumberQuestionAnswerTestResult;
 import com.globits.richy.repository.AnswerRepository;
@@ -44,6 +46,7 @@ import com.globits.richy.repository.QuestionAnswerRepository;
 import com.globits.richy.repository.QuestionAnswerTestResultRepository;
 import com.globits.richy.repository.QuestionRepository;
 import com.globits.richy.repository.TestResultRepository;
+import com.globits.richy.repository.LearningDraftRepository;
 import com.globits.richy.repository.EnrolmentClassScheduleTaskRepository;
 import com.globits.richy.service.TestResultService;
 import com.globits.security.domain.User;
@@ -59,6 +62,8 @@ public class TestResultServiceImpl implements TestResultService {
 	EntityManager manager;
 	@Autowired
 	TestResultRepository testResultRepository;
+	@Autowired
+	LearningDraftRepository learningDraftRepository;
 	@Autowired
 	UserRepository userRepository;
 	@Autowired
@@ -554,10 +559,11 @@ public class TestResultServiceImpl implements TestResultService {
 			boolean matchingType = assignedTask != null && ((Integer.valueOf(2).equals(dto.getTestType())
 					&& "IELTS_LISTENING".equals(assignedTask.getActivityType()))
 					|| (Integer.valueOf(4).equals(dto.getTestType()) && "IELTS_READING".equals(assignedTask.getActivityType())));
+			int maximumPart = Integer.valueOf(2).equals(dto.getTestType()) ? 4 : 3;
 			if (!ieltsType || assignedTask == null || assignedTask.getIeltsTest() == null
 					|| !assignedTask.getIeltsTest().getId().equals(dto.getSourceQuestionId())
 					|| !dto.getCompletedPart().equals(assignedTask.getIeltsPart()) || !matchingType
-					|| dto.getCompletedPart() < 1 || dto.getCompletedPart() > 3
+					|| dto.getCompletedPart() < 1 || dto.getCompletedPart() > maximumPart
 					|| dto.getQuestionAnswerTestResult() == null || dto.getQuestionAnswerTestResult().isEmpty()) {
 				throw new IllegalArgumentException("Kết quả không khớp với đề IELTS và Part được giao.");
 			}
@@ -723,4 +729,74 @@ public class TestResultServiceImpl implements TestResultService {
 		return true;
 	}
 
+	private User currentAuthenticatedUser() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || authentication.getName() == null) {
+			throw new AccessDeniedException("Cần đăng nhập để lưu tiến độ học tập.");
+		}
+		User user = userRepository.findByUsername(authentication.getName());
+		if (user == null || user.getId() == null) {
+			throw new AccessDeniedException("Không tìm thấy tài khoản đang đăng nhập.");
+		}
+		return user;
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<LearningDraftDto> getLearningDrafts() {
+		User user = currentAuthenticatedUser();
+		List<LearningDraftDto> result = new ArrayList<LearningDraftDto>();
+		for (LearningDraft draft : learningDraftRepository.findByUser_IdOrderBySavedAtDesc(user.getId())) {
+			result.add(new LearningDraftDto(draft));
+		}
+		return result;
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public LearningDraftDto saveLearningDraft(LearningDraftDto dto) {
+		User user = currentAuthenticatedUser();
+		if (dto == null || dto.getDraftKey() == null || dto.getDraftKey().trim().isEmpty()
+				|| dto.getDraftType() == null || dto.getDraftType().trim().isEmpty()
+				|| dto.getPayload() == null || dto.getPayload().trim().isEmpty()) {
+			throw new IllegalArgumentException("Bản nháp học tập không hợp lệ.");
+		}
+		String draftKey = dto.getDraftKey().trim();
+		String draftType = dto.getDraftType().trim().toUpperCase();
+		String title = dto.getTitle() == null ? null : dto.getTitle().trim();
+		if (draftKey.length() > 300 || draftType.length() > 40
+				|| (title != null && title.length() > 500) || dto.getPayload().length() > 10000000) {
+			throw new IllegalArgumentException("Bản nháp học tập vượt quá giới hạn cho phép.");
+		}
+
+		LearningDraft draft = learningDraftRepository.findByUser_IdAndDraftKey(user.getId(), draftKey);
+		LocalDateTime now = LocalDateTime.now();
+		if (draft == null) {
+			draft = new LearningDraft();
+			draft.setUser(user);
+			draft.setDraftKey(draftKey);
+			draft.setCreateDate(now);
+			draft.setCreatedBy(user.getUsername());
+		}
+		draft.setDraftType(draftType);
+		draft.setTitle(title);
+		draft.setPayload(dto.getPayload());
+		draft.setSavedAt(System.currentTimeMillis());
+		draft.setModifyDate(now);
+		draft.setModifiedBy(user.getUsername());
+		return new LearningDraftDto(learningDraftRepository.save(draft));
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public boolean deleteLearningDraft(LearningDraftDto dto) {
+		User user = currentAuthenticatedUser();
+		if (dto == null || dto.getDraftKey() == null || dto.getDraftKey().trim().isEmpty()) {
+			return false;
+		}
+		LearningDraft draft = learningDraftRepository.findByUser_IdAndDraftKey(user.getId(), dto.getDraftKey().trim());
+		if (draft == null) { return true; }
+		learningDraftRepository.delete(draft);
+		return true;
+	}
 }

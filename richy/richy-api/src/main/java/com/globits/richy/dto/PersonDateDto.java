@@ -15,6 +15,8 @@ public class PersonDateDto implements Serializable{
 	private Long id;
 //	private PersonDto person;
 	private UserDto user;
+	private Integer schoolId;
+	private Long attendanceClassId;
 	private Integer statusMass;
 	// 1: có đi lễ ; 2: không đi lễ; 3: muộn; 5: ca đoàn; 6: Phép (lễ)
 	private Integer statusClass;
@@ -105,6 +107,10 @@ public class PersonDateDto implements Serializable{
 	public void setUser(UserDto user) {
 		this.user = user;
 	}
+	public Integer getSchoolId() { return schoolId; }
+	public void setSchoolId(Integer value) { schoolId = value; }
+	public Long getAttendanceClassId() { return attendanceClassId; }
+	public void setAttendanceClassId(Long value) { attendanceClassId = value; }
 //	public PersonDto getPerson() {
 //		return person;
 //	}
@@ -154,6 +160,8 @@ public class PersonDateDto implements Serializable{
 	
 	public PersonDateDto(PersonDate domain) {
 		this.id = domain.getId();
+		this.schoolId = domain.getSchoolId();
+		this.attendanceClassId = domain.getAttendanceClassId();
 		
 		if(domain.getUser() != null) {
 			UserDto userDto = new UserDto();

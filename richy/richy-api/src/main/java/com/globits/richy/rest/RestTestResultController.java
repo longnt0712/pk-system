@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.globits.richy.dto.LearningDraftDto;
 import com.globits.richy.dto.TestResultDto;
 import com.globits.richy.dto.TestResultStudyCalendarItemDto;
 import com.globits.richy.service.TestResultService;
@@ -55,5 +56,22 @@ public class RestTestResultController {
 	@RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)
 	public boolean saveOne(@PathVariable Long id) {
 		return service.deleteObject(id);
+	}
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STUDENT"})
+	@RequestMapping(value = "/drafts", method = RequestMethod.GET)
+	public List<LearningDraftDto> getLearningDrafts() {
+		return service.getLearningDrafts();
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STUDENT"})
+	@RequestMapping(value = "/draft/save", method = RequestMethod.POST)
+	public LearningDraftDto saveLearningDraft(@RequestBody LearningDraftDto dto) {
+		return service.saveLearningDraft(dto);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STUDENT"})
+	@RequestMapping(value = "/draft/delete", method = RequestMethod.POST)
+	public boolean deleteLearningDraft(@RequestBody LearningDraftDto dto) {
+		return service.deleteLearningDraft(dto);
 	}
 }

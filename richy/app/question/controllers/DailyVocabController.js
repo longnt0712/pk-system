@@ -100,13 +100,55 @@
         var activeDailyResumeDraft = null;
         var activeDailyLastPersistAt = 0;
 
+        function saveDailyLearningDraft(key, type, title, draft) {
+            if (!key || !draft) { return; }
+            service.saveLearningDraft({
+                draftKey: key,
+                draftType: type,
+                title: title || 'Daily Vocab',
+                payload: JSON.stringify(draft),
+                savedAt: Number(draft.savedAt || draft.createdAt) || Date.now()
+            }).catch(angular.noop);
+        }
+
+        function deleteDailyLearningDraft(key) {
+            if (key) { service.deleteLearningDraft(key).catch(angular.noop); }
+        }
+
+        function dailyDraftTimestamp(draft) {
+            return Number((draft || {}).savedAt || (draft || {}).createdAt || (draft || {}).updatedAt) || 0;
+        }
+
+        function loadDailyLearningDrafts() {
+            if (!vm.currentUser || !vm.currentUser.id) { return null; }
+            return service.getLearningDrafts().then(function (items) {
+                angular.forEach(items || [], function (item) {
+                    if (!item || (item.draftType !== 'DAILY_VOCAB' && item.draftType !== 'DAILY_VOCAB_PENDING')
+                            || !item.draftKey || !item.payload) { return; }
+                    var expectedActive = activeDailyDraftKey(vm.currentUser.id);
+                    var expectedPending = dailyDraftKey(vm.currentUser.id);
+                    if (item.draftKey !== expectedActive && item.draftKey !== expectedPending) { return; }
+                    try {
+                        var serverDraft = JSON.parse(item.payload);
+                        var localDraft = null;
+                        try { localDraft = JSON.parse(window.localStorage.getItem(item.draftKey)); } catch (ignoreLocalRead) {}
+                        if (!localDraft || Number(item.savedAt) >= dailyDraftTimestamp(localDraft)) {
+                            window.localStorage.setItem(item.draftKey, item.payload);
+                        }
+                    } catch (ignoreServerDraft) {}
+                });
+            }, angular.noop);
+        }
+
         function activeDailyDraftKey(userId) {
             return 'daily-vocab-active:v1:' + userId;
         }
 
         function removeActiveDailyDraft(ownerId) {
             if (!ownerId) { return; }
-            try { window.localStorage.removeItem(activeDailyDraftKey(ownerId)); } catch (ignore) {}
+            var key = activeDailyDraftKey(ownerId);
+            try { window.localStorage.removeItem(key); } catch (ignore) {}
+            deleteDailyLearningDraft(key);
         }
 
         function readActiveDailyDraft() {
@@ -116,7 +158,7 @@
                 if (!raw) { return null; }
                 var draft = JSON.parse(raw);
                 if (!draft || draft.version !== 1 || draft.ownerId !== vm.currentUser.id ||
-                    !draft.savedAt || Date.now() - draft.savedAt > 7 * 86400000 ||
+                    !draft.savedAt ||
                     !angular.isArray(draft.topicIds) || draft.topicIds.length === 0 ||
                     !angular.isArray(draft.questions) || draft.questions.length === 0) {
                     removeActiveDailyDraft(vm.currentUser.id);
@@ -150,7 +192,7 @@
             activeDailyResumeDraft = draft;
         }
 
-        chooseActiveDailyResume();
+        var dailyLearningDraftsReady = loadDailyLearningDrafts();
 
         vm.myUser = {
             id: vm.currentUser.id,
@@ -1755,6 +1797,12 @@
                     activeDailyLastPersistAt = now;
                 } catch (ignoredAgain) {}
             }
+            saveDailyLearningDraft(
+                activeDailyDraftKey(vm.currentUser.id),
+                'DAILY_VOCAB',
+                draft.title || 'Daily Vocab',
+                draft
+            );
         }
 
         function resumeActiveDailySession() {
@@ -3301,7 +3349,9 @@
 
         function dailyDraftKey(userId) { return 'daily-vocab-pending:v1:' + userId; }
         function removeDailyDraft(ownerId) {
-            try { window.localStorage.removeItem(dailyDraftKey(ownerId)); } catch (ignore) {}
+            var key = dailyDraftKey(ownerId);
+            try { window.localStorage.removeItem(key); } catch (ignore) {}
+            deleteDailyLearningDraft(key);
         }
         function persistDailyDraft() {
             if (!vm.dailyVocabPendingResult || !vm.dailyVocabPendingResult.ownerId) return;
@@ -3311,6 +3361,12 @@
             } catch (ignore) {
                 vm.dailySaveStorageNotice = 'Trình duyệt không giữ được bản tạm. Hãy giữ trang này mở và không tải lại trang trước khi lưu thành công.';
             }
+            saveDailyLearningDraft(
+                dailyDraftKey(vm.dailyVocabPendingResult.ownerId),
+                'DAILY_VOCAB_PENDING',
+                'Kết quả Daily Vocab chưa xác nhận',
+                vm.dailyVocabPendingResult
+            );
         }
         function restoreDailyDraft() {
             if (!vm.currentUser.id) return;
@@ -3320,7 +3376,7 @@
                 var draft = JSON.parse(raw), result = draft && draft.payload;
                 if (draft.version !== 1 || draft.ownerId !== vm.currentUser.id || !result || result.testType !== 1 ||
                     !/^[a-f0-9]{32}$/.test(result.clientAttemptKey || '') || !result.user || result.user.id !== draft.ownerId ||
-                    !(result.totalWord > 0) || !(draft.createdAt > 0) || Date.now() - draft.createdAt > 7 * 86400000) {
+                    !(result.totalWord > 0) || !(draft.createdAt > 0)) {
                     removeDailyDraft(vm.currentUser.id); return;
                 }
                 vm.dailyVocabPendingResult = draft;
@@ -3548,7 +3604,6 @@
         };
 
         vm.setUpTestResult();
-        restoreDailyDraft();
 
         function saveActiveDailyBeforeLeaving() {
             persistActiveDailySession(true);
@@ -3579,6 +3634,15 @@
         /*
          * Load Grade 6 + danh sách bài ngay khi vào trang.
          */
-        vm.getPageTopicCategory();
+        function initializeDailyVocabFromDrafts() {
+            chooseActiveDailyResume();
+            restoreDailyDraft();
+            vm.getPageTopicCategory();
+        }
+        if (dailyLearningDraftsReady && angular.isFunction(dailyLearningDraftsReady.finally)) {
+            dailyLearningDraftsReady.finally(initializeDailyVocabFromDrafts);
+        } else {
+            initializeDailyVocabFromDrafts();
+        }
     }
 })();

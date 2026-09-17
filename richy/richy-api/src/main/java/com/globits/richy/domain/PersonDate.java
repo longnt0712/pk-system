@@ -22,6 +22,18 @@ public class PersonDate extends BaseObject{
 	@JoinColumn(name="user_id")
 	private User user;
 
+	@Column(name = "school_id")
+	private Integer schoolId;
+
+	public Integer getSchoolId() { return schoolId; }
+	public void setSchoolId(Integer value) { schoolId = value; }
+
+	@Column(name = "attendance_class_id")
+	private Long attendanceClassId;
+
+	public Long getAttendanceClassId() { return attendanceClassId; }
+	public void setAttendanceClassId(Long value) { attendanceClassId = value; }
+
 	@Column(name = "status_mass")
 	private Integer statusMass;
 	// 1: có đi lễ ; 2: không đi lễ; 3: muộn; 5: ca đoàn; 6: Phép (lễ)

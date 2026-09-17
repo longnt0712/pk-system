@@ -1033,6 +1033,7 @@
             + (vm.isListeningRoute ? ':listening' : ':reading') + readingDraftTaskSuffix;
         var readingDraftAutosaveTimer = null;
         var readingDraftSubmitted = false;
+        var readingLearningDraftsReady = null;
 
         function readingDraftStorageKey(testId, sessionMode) {
             testId = testId || (vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id)
@@ -1051,6 +1052,40 @@
                 return null;
             }
         }
+
+        function saveReadingLearningDraft(key, draft) {
+            service.saveLearningDraft({
+                draftKey: key,
+                draftType: 'IELTS',
+                title: draft.title || (draft.isListening ? 'IELTS Listening Test' : 'IELTS Reading Test'),
+                payload: JSON.stringify(draft),
+                savedAt: new Date(draft.savedAt || 0).getTime() || Date.now()
+            }).catch(angular.noop);
+        }
+
+        function deleteReadingLearningDraft(key) {
+            if (key) { service.deleteLearningDraft(key).catch(angular.noop); }
+        }
+
+        function loadReadingLearningDrafts() {
+            if (vm.isPreviewMode || !vm.currentUser || !vm.currentUser.id) { return null; }
+            return service.getLearningDrafts().then(function (items) {
+                angular.forEach(items || [], function (item) {
+                    if (!item || item.draftType !== 'IELTS' || !item.draftKey
+                            || item.draftKey.indexOf(readingDraftBaseKey) !== 0 || !item.payload) { return; }
+                    try {
+                        var serverDraft = JSON.parse(item.payload);
+                        var localDraft = readStoredDraft(item.draftKey);
+                        var localSavedAt = new Date((localDraft || {}).savedAt || 0).getTime() || 0;
+                        if (!localDraft || Number(item.savedAt) >= localSavedAt) {
+                            $window.localStorage.setItem(item.draftKey, item.payload);
+                        }
+                    } catch (ignoreServerDraft) {}
+                });
+            }, angular.noop);
+        }
+
+        readingLearningDraftsReady = loadReadingLearningDrafts();
 
         function readReadingDraft(testId, sessionMode) {
             if (vm.isPreviewMode) {
@@ -1096,12 +1131,15 @@
             try {
                 var currentTestId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
                 var currentMode = vm.testSessionMode === 'STUDY' ? 'STUDY' : 'SERIOUS';
-                $window.localStorage.removeItem(readingDraftStorageKey(currentTestId, currentMode));
+                var currentKey = readingDraftStorageKey(currentTestId, currentMode);
+                $window.localStorage.removeItem(currentKey);
+                deleteReadingLearningDraft(currentKey);
                 angular.forEach([legacyModeDraftStorageKey, legacyReadingDraftStorageKey], function (key) {
                     var legacyDraft = readStoredDraft(key);
                     var legacyMode = String((legacyDraft || {}).sessionMode || 'STUDY').toUpperCase();
                     if (!legacyDraft || (String(legacyDraft.testId) === String(currentTestId) && legacyMode === currentMode)) {
                         $window.localStorage.removeItem(key);
+                        deleteReadingLearningDraft(key);
                     }
                 });
             } catch (ignoreReadingDraftClearError) {
@@ -1159,7 +1197,7 @@
                 });
                 var activeDraftKey = readingDraftStorageKey(testId, vm.testSessionMode);
                 var previousDraft = readStoredDraft(activeDraftKey) || {};
-                $window.localStorage.setItem(activeDraftKey, JSON.stringify({
+                var readingDraft = {
                     version: 2,
                     userId: vm.currentUser.id,
                     testId: testId,
@@ -1182,7 +1220,9 @@
                     annotations: serializeReadingAnnotations(),
                     completed: previousDraft.completed === true,
                     resultId: previousDraft.resultId || null
-                }));
+                };
+                $window.localStorage.setItem(activeDraftKey, JSON.stringify(readingDraft));
+                saveReadingLearningDraft(activeDraftKey, readingDraft);
                 angular.forEach([legacyModeDraftStorageKey, legacyReadingDraftStorageKey], function (key) {
                     var legacyDraft = readStoredDraft(key);
                     if (legacyDraft && String(legacyDraft.testId) === String(testId)
@@ -1201,6 +1241,7 @@
                 var testId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
                 var key = readingDraftStorageKey(testId, 'STUDY');
                 var draft = readStoredDraft(key);
+                deleteReadingLearningDraft(key);
                 if (!draft) { return; }
                 draft.completed = true;
                 draft.resultId = resultId || null;
@@ -1724,24 +1765,32 @@
                             vm.ieltsReadingActualTest = vm.processQuestionATT(data);
                             if (vm.isPreviewMode) {
                                 vm.passageNumber = vm.previewPart;
+                                myCallback(vm.ieltsReadingActualTest);
                             } else {
-                                if (!startFreshSeriousTest) {
-                                    restoreReadingDraft();
+                                var initializeLoadedTest = function () {
+                                    if (!startFreshSeriousTest) {
+                                        restoreReadingDraft();
+                                    }
+                                    if (vm.isPartAssignment) {
+                                        vm.passageNumber = displayPassageForAssignedPart();
+                                        vm.resultQuestionTotal = assignedPartQuestionOrdinals().length || 1;
+                                        $timeout(function () {
+                                            var assignedEntries = getReadingQuestionEntries();
+                                            if (assignedEntries.length) {
+                                                vm.openReadingQuestion(assignedEntries[0].question,
+                                                    assignedEntries[0].packageQuestions, assignedEntries[0].passageQuestions);
+                                            }
+                                        }, 0);
+                                    }
+                                    startReadingDraftAutosave();
+                                    myCallback(vm.ieltsReadingActualTest);
+                                };
+                                if (readingLearningDraftsReady && angular.isFunction(readingLearningDraftsReady.finally)) {
+                                    readingLearningDraftsReady.finally(initializeLoadedTest);
+                                } else {
+                                    initializeLoadedTest();
                                 }
-                                if (vm.isPartAssignment) {
-                                    vm.passageNumber = displayPassageForAssignedPart();
-                                    vm.resultQuestionTotal = assignedPartQuestionOrdinals().length || 1;
-                                    $timeout(function () {
-                                        var assignedEntries = getReadingQuestionEntries();
-                                        if (assignedEntries.length) {
-                                            vm.openReadingQuestion(assignedEntries[0].question,
-                                                assignedEntries[0].packageQuestions, assignedEntries[0].passageQuestions);
-                                        }
-                                    }, 0);
-                                }
-                                startReadingDraftAutosave();
                             }
-                            myCallback(vm.ieltsReadingActualTest);
                         },0);
                     }
 
@@ -1836,9 +1885,8 @@
             blockUI.start();
             service.saveTestResult(vm.testResult).then(function (data) {
                 blockUI.stop();
-                saveReadingDraft();
-                markStudyDraftCompleted(data && data.id);
                 readingDraftSubmitted = true;
+                markStudyDraftCompleted(data && data.id);
                 if (vm.testSessionMode !== 'STUDY') {
                     clearReadingDraft();
                 }

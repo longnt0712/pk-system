@@ -17,6 +17,9 @@
     function QuestionService($http, $q, $filter, settings, utils) {
         var self = this;
         var baseUrl = settings.api.baseUrl + settings.api.apiV1Url;
+        var learningDraftSaveInFlight = {};
+        var learningDraftQueued = {};
+        var learningDraftDeleting = {};
         // console.log(baseUrl);
         self.getPage = getPage;
         self.getPageForGames = getPageForGames;
@@ -32,6 +35,9 @@
         self.updateTestStatus = updateTestStatus;
         self.getFlashCardLevels = getFlashCardLevels;
         self.updateFlashCardLevel = updateFlashCardLevel;
+        self.getLearningDrafts = getLearningDrafts;
+        self.saveLearningDraft = saveLearningDraft;
+        self.deleteLearningDraft = deleteLearningDraft;
         self.saveMaterial = saveMaterial;
         self.getOne = getOne;
         self.deleteObject = deleteObject;
@@ -194,6 +200,54 @@
                 }
             ).then(function (response) {
                 return response.data;
+            });
+        }
+        function getLearningDrafts() {
+            return $http.get(baseUrl + 'test_result/drafts').then(function (response) {
+                return angular.isArray(response.data) ? response.data : [];
+            });
+        }
+
+        function flushLearningDraftSave(draftKey) {
+            if (!draftKey || learningDraftDeleting[draftKey] || learningDraftSaveInFlight[draftKey]
+                    || !learningDraftQueued[draftKey]) {
+                return learningDraftSaveInFlight[draftKey] || $q.when(null);
+            }
+            var draft = learningDraftQueued[draftKey];
+            learningDraftQueued[draftKey] = null;
+            var request = $http.post(baseUrl + 'test_result/draft/save', draft, {
+                headers: {'Content-Type': 'application/json; charset=utf-8'}
+            }).then(function (response) { return response.data; });
+            learningDraftSaveInFlight[draftKey] = request;
+            request.finally(function () {
+                if (learningDraftSaveInFlight[draftKey] === request) {
+                    learningDraftSaveInFlight[draftKey] = null;
+                }
+                if (!learningDraftDeleting[draftKey] && learningDraftQueued[draftKey]) {
+                    flushLearningDraftSave(draftKey).catch(angular.noop);
+                }
+            });
+            return request;
+        }
+
+        function saveLearningDraft(draft) {
+            if (!draft || !draft.draftKey || learningDraftDeleting[draft.draftKey]) {
+                return $q.when(null);
+            }
+            learningDraftQueued[draft.draftKey] = angular.copy(draft);
+            return flushLearningDraftSave(draft.draftKey);
+        }
+
+        function deleteLearningDraft(draftKey) {
+            if (!draftKey) { return $q.when(true); }
+            learningDraftDeleting[draftKey] = true;
+            learningDraftQueued[draftKey] = null;
+            return $q.when(learningDraftSaveInFlight[draftKey]).catch(angular.noop).then(function () {
+                return $http.post(baseUrl + 'test_result/draft/delete', {draftKey: draftKey}, {
+                    headers: {'Content-Type': 'application/json; charset=utf-8'}
+                }).then(function (response) { return response.data; });
+            }).finally(function () {
+                learningDraftDeleting[draftKey] = false;
             });
         }
         function getPage(searchDto, pageIndex, pageSize, successCallback, errorCallback) {

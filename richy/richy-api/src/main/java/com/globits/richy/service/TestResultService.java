@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 
+import com.globits.richy.dto.LearningDraftDto;
 import com.globits.richy.dto.TestResultDto;
 import com.globits.richy.dto.TestResultStudyCalendarItemDto;
 
@@ -15,4 +16,7 @@ public interface TestResultService {
 	public TestResultDto getObjectById(Long id);
 	public TestResultDto saveObject(TestResultDto dto);
 	public boolean deleteObject(Long id);
+	public List<LearningDraftDto> getLearningDrafts();
+	public LearningDraftDto saveLearningDraft(LearningDraftDto dto);
+	public boolean deleteLearningDraft(LearningDraftDto dto);
 }

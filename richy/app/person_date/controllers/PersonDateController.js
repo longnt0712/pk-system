@@ -270,6 +270,7 @@
         vm.pageIndex = 1;
         vm.pageSize = 1000;
         vm.searchDto = vm.searchDto || {};
+        vm.searchDto.schoolId = vm.directorySchoolId;
         vm.searchDto.user = vm.searchDto.user || {};
         vm.searchDto.user.person = vm.searchDto.user.person || {};
         vm.searchTextClient = '';
@@ -629,6 +630,15 @@
 
 // ===== Ngày dùng để tạo bảng điểm danh trong phần thiết lập =====
         vm.setupAttendanceDate = new Date();
+        vm.attendanceClassSelection = [];
+        vm.attendanceClassSelectionLoading = false;
+        vm.attendanceClassCreationSaving = false;
+        vm.attendanceClassSelectionError = '';
+        vm.attendanceClassModalInstance = null;
+        vm.attendanceSetupSelectedDate = null;
+        vm.attendanceCreationReport = [];
+        vm.attendanceCreationReportDate = null;
+        vm.attendanceReportModalInstance = null;
 
         vm.searchDto.user = {};
         vm.searchDto.user.person = {};
@@ -874,6 +884,8 @@
             // Danh sách phía trên chỉ lấy đúng 1 ngày
             vm.searchDto.startDate = selectedDate.getTime();
             vm.searchDto.endDate = selectedDate.getTime();
+            vm.searchDto.attendanceClassId = vm.searchDto.user && vm.searchDto.user.person
+                ? (vm.searchDto.user.person.enrollmentClassId || null) : null;
 
             vm.resetSum();
             blockUI.start();
@@ -1364,6 +1376,8 @@
          */
         vm.newObject = function () {
 
+            vm.personDate.schoolId = vm.directorySchoolId;
+            vm.personDate.attendanceClassId = vm.searchDto.user.person.enrollmentClassId || null;
             vm.personDate.isNew = true;
             // vm.personDate.userId = vm.currentUser.id;
 
@@ -1675,6 +1689,8 @@
 
         vm.resetPersonDate = function (user,status,username) {
             vm.personDate = {};
+            vm.personDate.schoolId = vm.directorySchoolId;
+            vm.personDate.attendanceClassId = vm.searchDto.user.person.enrollmentClassId || null;
             vm.personDate.user = {};
             vm.personDate.user.username = username;
             if(user != null){
@@ -1906,40 +1922,129 @@
             vm.getPage();
         };
 
+        function directoryAttendanceClasses() {
+            return (vm.enrollmentClasses || []).filter(function (item) {
+                return item && item.id != null && Number(item.schoolId) === Number(vm.directorySchoolId);
+            }).sort(function (first, second) {
+                return String(first.name || '').localeCompare(String(second.name || ''), 'vi');
+            });
+        }
+
+        vm.hasSelectedAttendanceClass = function () {
+            return (vm.attendanceClassSelection || []).some(function (item) {
+                return item.selected === true && item.alreadyCreated !== true;
+            });
+        };
+
+        vm.selectAllAvailableAttendanceClasses = function (selected) {
+            angular.forEach(vm.attendanceClassSelection || [], function (item) {
+                if (!item.alreadyCreated) { item.selected = selected === true; }
+            });
+        };
+
         vm.createCheckList = function () {
             var selectedDate = parseDateOnly(vm.setupAttendanceDate);
-
             if (!selectedDate) {
                 toastr.warning('Vui lòng chọn ngày hợp lệ theo định dạng dd/MM/yyyy.', 'Thông báo');
                 return;
             }
+            vm.attendanceSetupSelectedDate = selectedDate;
+            vm.attendanceClassSelection = [];
+            vm.attendanceClassSelectionLoading = true;
+            vm.attendanceClassCreationSaving = false;
+            vm.attendanceClassSelectionError = '';
+            vm.attendanceClassModalInstance = modal.open({
+                animation: true,
+                templateUrl: 'attendance_class_selection_modal.html',
+                scope: $scope,
+                size: 'md',
+                backdrop: 'static'
+            });
+            vm.attendanceClassModalInstance.result.finally(function () {
+                vm.attendanceClassModalInstance = null;
+            });
 
             var attendanceDate = moment(selectedDate).format('YYYY-MM-DD');
-
-            blockUI.start();
-
-            service.saveListByEnrollmentClass(0, attendanceDate)
-                .then(function (data) {
-                    // Sau khi tạo xong thì phần danh sách phía trên tự nhảy về đúng ngày vừa tạo
-                    vm.attendanceDate = new Date(selectedDate);
-
-                    // Chỉ tải lại danh sách điểm danh 1 ngày, không đụng phần thống kê
-                    vm.getPage();
-
-                    toastr.success(
-                        'Đã tạo bảng điểm danh ngày ' + moment(selectedDate).format('DD/MM/YYYY'),
-                        'Thông báo'
-                    );
-                })
-                .catch(function (err) {
-                    console.error(err);
-                    toastr.error('Tạo bảng điểm danh thất bại.', 'Lỗi');
-                })
-                .finally(function () {
-                    blockUI.stop();
+            service.getAttendanceClassStatuses(attendanceDate, vm.directorySchoolId).then(function (statuses) {
+                var statusByClassId = {};
+                angular.forEach(angular.isArray(statuses) ? statuses : [], function (status) {
+                    if (status && status.classId != null) { statusByClassId[String(status.classId)] = status; }
                 });
+                vm.attendanceClassSelection = directoryAttendanceClasses().map(function (item) {
+                    var status = statusByClassId[String(item.id)] || {};
+                    var totalStudents = Math.max(0, Number(status.totalStudents) || 0);
+                    var existingStudents = Math.max(0, Number(status.existingStudents) || 0);
+                    var alreadyCreated = totalStudents === 0 || existingStudents >= totalStudents;
+                    return {
+                        id: item.id,
+                        name: item.name,
+                        totalStudents: totalStudents,
+                        existingStudents: Math.min(existingStudents, totalStudents),
+                        missingStudents: Math.max(0, totalStudents - existingStudents),
+                        alreadyCreated: alreadyCreated,
+                        selected: !alreadyCreated
+                    };
+                });
+            }, function () {
+                vm.attendanceClassSelectionError = 'Không tải được trạng thái điểm danh của các lớp.';
+            }).finally(function () {
+                vm.attendanceClassSelectionLoading = false;
+            });
         };
 
+        vm.confirmCreateCheckList = function () {
+            if (vm.attendanceClassSelectionLoading || vm.attendanceClassCreationSaving) { return; }
+            var classIds = (vm.attendanceClassSelection || []).filter(function (item) {
+                return item.selected === true && item.alreadyCreated !== true;
+            }).map(function (item) { return item.id; });
+            if (!classIds.length) {
+                toastr.warning('Không còn lớp nào được chọn để tạo bảng điểm danh.', 'Thông báo');
+                return;
+            }
+            var selectedDate = vm.attendanceSetupSelectedDate;
+            var attendanceDate = moment(selectedDate).format('YYYY-MM-DD');
+            vm.attendanceClassCreationSaving = true;
+            blockUI.start();
+            service.saveListByEnrollmentClasses({
+                attendanceDate: attendanceDate,
+                schoolId: vm.directorySchoolId,
+                classIds: classIds
+            }).then(function (reports) {
+                vm.attendanceCreationReport = (angular.isArray(reports) ? reports : []).map(function (item) {
+                    item = item || {};
+                    item.totalStudents = Math.max(0, Number(item.totalStudents) || 0);
+                    item.existingStudents = Math.max(0, Number(item.existingStudents) || 0);
+                    item.createdStudents = Math.max(0, Number(item.createdStudents) || 0);
+                    item.missingStudentNames = angular.isArray(item.missingStudentNames)
+                        ? item.missingStudentNames.sort(function (first, second) {
+                            return String(first || '').localeCompare(String(second || ''), 'vi');
+                        }) : [];
+                    item.complete = item.existingStudents >= item.totalStudents && item.missingStudentNames.length === 0;
+                    return item;
+                }).sort(function (first, second) {
+                    return String(first.className || '').localeCompare(String(second.className || ''), 'vi');
+                });
+                vm.attendanceCreationReportDate = new Date(selectedDate);
+                if (vm.attendanceClassModalInstance) { vm.attendanceClassModalInstance.close('created'); }
+                vm.attendanceReportModalInstance = modal.open({
+                    animation: true,
+                    templateUrl: 'attendance_creation_report_modal.html',
+                    scope: $scope,
+                    size: 'md',
+                    backdrop: 'static'
+                });
+                vm.attendanceReportModalInstance.result.finally(function () {
+                    vm.attendanceReportModalInstance = null;
+                });
+                vm.attendanceDate = new Date(selectedDate);
+                vm.getPage();
+            }, function () {
+                toastr.error('Tạo bảng điểm danh thất bại.', 'Lỗi');
+            }).finally(function () {
+                vm.attendanceClassCreationSaving = false;
+                blockUI.stop();
+            });
+        };
         vm.checkType = null; // 1 là lễ 2 là giáo lý
         vm.checkDate = new Date();
 
