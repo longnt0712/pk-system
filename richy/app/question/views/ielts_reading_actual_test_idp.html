@@ -16,7 +16,7 @@
     <h1 class="start-test-button" ng-show="vm.isHasTestTakerName === true" style="cursor: pointer" ng-click="vm.requestStartTest()">
         <span class="idp-start-icon"><i class="fa fa-play"></i></span>
         Start {{vm.isListeningRoute ? 'Listening' : 'Reading'}} {{vm.isPartAssignment ? 'Part ' + vm.assignedPart : 'test'}}
-        <small>{{vm.isPartAssignment ? 'Assigned task · Part ' + vm.assignedPart + ' only' : '60 minutes · 3 parts · 40 questions'}}</small>
+        <small>{{vm.isPartAssignment ? 'Assigned task · Part ' + vm.assignedPart + ' only' : '60 minutes · ' + (vm.isListeningRoute ? '4' : '3') + ' parts · 40 questions'}}</small>
     </h1>
 </div>
 <div class="idp-test-mode-backdrop" ng-if="vm.showTestModeDialog" ng-click="vm.closeTestSessionMode()">
@@ -1420,32 +1420,30 @@
                     <div class="portlet-body idp-question-nav-inner">
                         <div class="idp-part-switcher">
                              <section class="idp-part-group"
-                                     ng-repeat="item in vm.ieltsReadingActualTest.subQuestions track by $index"
-                                     ng-if="!vm.isPartAssignment || ($index + 1) === vm.assignedPart"
-                                     ng-class="{'is-active': vm.passageNumber == ($index + 1)}"
-                                     ng-click="vm.changePassage(item.subQuestions)">
+                                     ng-repeat="part in vm.getIeltsNavigationParts() track by part.number"
+                                     ng-if="!vm.isPartAssignment || part.number === vm.assignedPart"
+                                     ng-class="{'is-active': vm.activeIeltsNavigationPart() === part.number}"
+                                     ng-click="vm.openIeltsNavigationPart(part)">
                                 <button type="button"
                                         class="idp-part-tab actual-test-font-global">
-                                    <strong>Part {{item.ordinalNumber || ($index + 1)}}</strong>
-                                    <span class="idp-part-progress" ng-if="vm.passageNumber != ($index + 1)">
-                                        {{item.subQuestions | ieltsAnsweredCount}} of {{item.subQuestions | ieltsQuestionCount}}
+                                    <strong>Part {{part.number}}</strong>
+                                    <span class="idp-part-progress" ng-if="vm.activeIeltsNavigationPart() !== part.number">
+                                        {{vm.ieltsNavigationAnsweredCount(part)}} of {{part.questions.length}}
                                     </span>
                                 </button>
 
-                                <div class="idp-part-questions" ng-if="vm.passageNumber == ($index + 1)">
-                                    <span ng-repeat="package in item.subQuestions track by $index">
-                                        <button type="button"
-                                                class="idp-part-question-button"
-                                                ng-repeat="q in package.subQuestions track by $index"
-                                                ng-class="{
-                                                    'is-current': q.showChildren == true,
-                                                    'is-answered': q.answered == true,
-                                                    'needs-review': q.needReview == true
-                                                }"
-                                                ng-click="$event.stopPropagation();vm.openReadingQuestion(q,package.subQuestions,item.subQuestions)">
-                                            {{q.ordinalNumber}}
-                                        </button>
-                                    </span>
+                                <div class="idp-part-questions" ng-if="vm.activeIeltsNavigationPart() === part.number">
+                                    <button type="button"
+                                            class="idp-part-question-button"
+                                            ng-repeat="entry in part.questions track by entry.question.id"
+                                            ng-class="{
+                                                'is-current': entry.question.showChildren == true,
+                                                'is-answered': entry.question.answered == true,
+                                                'needs-review': entry.question.needReview == true
+                                            }"
+                                            ng-click="$event.stopPropagation();vm.openReadingQuestion(entry.question,entry.packageQuestions,entry.passageQuestions)">
+                                        {{entry.question.ordinalNumber}}
+                                    </button>
                                 </div>
                             </section>
                         </div>
@@ -5269,6 +5267,10 @@
 
     .idp-reading-page.idp-text-regular .question-content p,
     .idp-reading-page.idp-text-regular .question-content p span,
+    .idp-reading-page.idp-text-regular .question-content span,
+    .idp-reading-page.idp-text-regular .question-content strong,
+    .idp-reading-page.idp-text-regular .question-content th,
+    .idp-reading-page.idp-text-regular .question-content .idp-matching-name-list__title,
     .idp-reading-page.idp-text-regular .question-content .actual-test-font-global,
     .idp-reading-page.idp-text-regular .question-content .actual-test-font-global span,
     .idp-reading-page.idp-text-regular .question-content label,
@@ -5281,6 +5283,10 @@
 
     .idp-reading-page.idp-text-large .question-content p,
     .idp-reading-page.idp-text-large .question-content p span,
+    .idp-reading-page.idp-text-large .question-content span,
+    .idp-reading-page.idp-text-large .question-content strong,
+    .idp-reading-page.idp-text-large .question-content th,
+    .idp-reading-page.idp-text-large .question-content .idp-matching-name-list__title,
     .idp-reading-page.idp-text-large .question-content .actual-test-font-global,
     .idp-reading-page.idp-text-large .question-content .actual-test-font-global span,
     .idp-reading-page.idp-text-large .question-content label,
@@ -5293,6 +5299,10 @@
 
     .idp-reading-page.idp-text-extra-large .question-content p,
     .idp-reading-page.idp-text-extra-large .question-content p span,
+    .idp-reading-page.idp-text-extra-large .question-content span,
+    .idp-reading-page.idp-text-extra-large .question-content strong,
+    .idp-reading-page.idp-text-extra-large .question-content th,
+    .idp-reading-page.idp-text-extra-large .question-content .idp-matching-name-list__title,
     .idp-reading-page.idp-text-extra-large .question-content .actual-test-font-global,
     .idp-reading-page.idp-text-extra-large .question-content .actual-test-font-global span,
     .idp-reading-page.idp-text-extra-large .question-content label,

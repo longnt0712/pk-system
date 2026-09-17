@@ -1854,6 +1854,10 @@
 		vm.isIeltsTask = function (task) {
 			return !!task && (task.activityType === 'IELTS_READING' || task.activityType === 'IELTS_LISTENING');
 		};
+		vm.ieltsPartsForTask = function () {
+			return vm.taskEditor && vm.taskEditor.activityType === 'IELTS_LISTENING'
+				? [1, 2, 3, 4] : [1, 2, 3];
+		};
 		vm.ieltsTestsForTask = function () {
 			if (!vm.taskEditor) { return []; }
 			var listening = vm.taskEditor.activityType === 'IELTS_LISTENING';
@@ -1905,8 +1909,10 @@
 					|| Number(task.requiredAttempts) > 100)) {
 				toastr.warning('Số lần phải làm cần từ 1 đến 100.'); return;
 			}
-			if (vm.isIeltsTask(task) && (!task.ieltsTestId || !/^[123]$/.test(String(task.ieltsPart)))) {
-				toastr.warning('Hãy chọn đề IELTS và Part 1, 2 hoặc 3.'); return;
+			var maximumIeltsPart = task.activityType === 'IELTS_LISTENING' ? 4 : 3;
+			if (vm.isIeltsTask(task) && (!task.ieltsTestId || !/^\d+$/.test(String(task.ieltsPart))
+					|| Number(task.ieltsPart) < 1 || Number(task.ieltsPart) > maximumIeltsPart)) {
+				toastr.warning('Hãy chọn đề IELTS và Part từ 1 đến ' + maximumIeltsPart + '.'); return;
 			}
 			if (task.activityType === 'DAILY_LISTENING' && task.topicId && !task.sourceQuestionId) {
 				toastr.warning('Hãy chọn bài nghe/Track cụ thể trong Topic.'); return;

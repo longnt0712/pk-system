@@ -509,6 +509,49 @@
     .class-task-editor .form-group { margin-bottom:10px; }
     .class-task-editor .form-control { max-width:100%; }
     .class-task-editor-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .class-task-editor-grid > .form-group { min-width:0; }
+    .class-task-wrapping-select.ui-select-bootstrap { width:100%; min-width:0; }
+    .class-task-wrapping-select.ui-select-bootstrap > .ui-select-match > .btn,
+    .class-task-wrapping-select.ui-select-bootstrap .ui-select-toggle {
+        display:flex;
+        align-items:flex-start;
+        width:100%;
+        min-height:46px;
+        height:auto !important;
+        padding-top:10px;
+        padding-right:38px;
+        padding-bottom:10px;
+        white-space:normal !important;
+        text-align:left;
+    }
+    .class-task-wrapping-select .ui-select-match-text {
+        display:block;
+        float:none !important;
+        min-width:0;
+        max-width:100%;
+        line-height:1.4;
+        text-align:left;
+        white-space:normal !important;
+        overflow-wrap:anywhere;
+        word-break:break-word;
+        text-overflow:clip !important;
+        overflow:visible !important;
+    }
+    .class-task-wrapping-select .ui-select-choices,
+    .class-task-wrapping-select .ui-select-choices-row,
+    .class-task-wrapping-select .ui-select-choices-row > a,
+    .class-task-wrapping-select .ui-select-choices-row-inner {
+        max-width:100%;
+        white-space:normal !important;
+        overflow-wrap:anywhere;
+        word-break:break-word;
+    }
+    .class-task-wrapping-select .ui-select-choices-row > a,
+    .class-task-wrapping-select .ui-select-choices-row-inner {
+        line-height:1.4;
+        padding-top:9px;
+        padding-bottom:9px;
+    }
     .class-task-help { display:block; color:#74819a; font-size:11px; margin:6px 0; }
     .class-task-progress { max-height:300px; overflow-y:auto; margin:10px 0; }
     .class-task-student { display:grid; grid-template-columns:minmax(0,1fr) 125px; gap:7px; padding:10px 0; border-bottom:1px solid #e0e6f2; }
@@ -1242,7 +1285,7 @@
             <div class="class-task-editor-grid" data-ng-if="vm.isIeltsTask(vm.taskEditor)">
                 <div class="form-group">
                     <label>Đề {{vm.taskEditor.activityType === 'IELTS_LISTENING' ? 'Listening' : 'Reading'}} <span class="font-red">*</span></label>
-                    <ui-select theme="bootstrap" data-ng-model="vm.taskEditor.ieltsTestId" data-ng-disabled="vm.assignableIeltsTestsLoading" required>
+                    <ui-select class="class-task-wrapping-select" theme="bootstrap" data-ng-model="vm.taskEditor.ieltsTestId" data-ng-disabled="vm.assignableIeltsTestsLoading" required>
                         <ui-select-match placeholder="Chọn đề IELTS...">{{$select.selected.title}}</ui-select-match>
                         <ui-select-choices repeat="test.id as test in vm.ieltsTestsForTask() | propsFilter:{title:$select.search}">
                             <div data-ng-bind-html="test.title | highlight:$select.search"></div>
@@ -1251,7 +1294,7 @@
                 </div>
                 <div class="form-group">
                     <label>Part cần làm <span class="font-red">*</span></label>
-                    <select class="form-control" data-ng-model="vm.taskEditor.ieltsPart" data-ng-options="part as ('Part ' + part) for part in [1,2,3]" required></select>
+                    <select class="form-control" data-ng-model="vm.taskEditor.ieltsPart" data-ng-options="part as ('Part ' + part) for part in vm.ieltsPartsForTask()" required></select>
                     <small>Học sinh chỉ làm Part đã chọn; nộp Part này là được tính làm bài.</small>
                 </div>
             </div>
@@ -1269,7 +1312,7 @@
                 </div>
                 <div class="form-group">
                     <label>Topic / Bài học (không bắt buộc)</label>
-                    <ui-select theme="bootstrap" data-ng-model="vm.taskEditor.topicId" allow-clear="true" data-ng-change="vm.taskTopicChanged()"
+                    <ui-select class="class-task-wrapping-select" theme="bootstrap" data-ng-model="vm.taskEditor.topicId" allow-clear="true" data-ng-change="vm.taskTopicChanged()"
                                data-ng-disabled="vm.scheduleTopicsLoading || !vm.taskEditor.categoryKey">
                         <ui-select-match placeholder="Chọn bài học..." allow-clear="true">{{$select.selected.name}}</ui-select-match>
                         <ui-select-choices repeat="topic.id as topic in vm.taskTopics() | propsFilter:{name:$select.search}">
@@ -1281,7 +1324,7 @@
             <div class="class-task-editor-grid" data-ng-if="vm.taskEditor.activityType === 'DAILY_LISTENING' && vm.taskEditor.topicId">
                 <div class="form-group">
                     <label>Bài nghe / Track cần làm <span class="font-red">*</span></label>
-                    <ui-select theme="bootstrap" data-ng-model="vm.taskEditor.sourceQuestionId" required
+                    <ui-select class="class-task-wrapping-select" theme="bootstrap" data-ng-model="vm.taskEditor.sourceQuestionId" required
                                data-ng-disabled="vm.scheduleListeningItemsLoading">
                         <ui-select-match placeholder="Chọn Track cụ thể...">{{$select.selected.question}}</ui-select-match>
                         <ui-select-choices repeat="item.id as item in vm.scheduleListeningItems | propsFilter:{question:$select.search}">

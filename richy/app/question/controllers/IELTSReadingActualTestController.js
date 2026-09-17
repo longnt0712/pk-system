@@ -645,7 +645,9 @@
         var vm = this;
         vm.isListeningRoute = /\/ielts_listening_actual_test(?:\/|$)/i.test($location.path());
         vm.assignmentTaskId = /^\d+$/.test(String($stateParams.assignmentTaskId || '')) ? Number($stateParams.assignmentTaskId) : null;
-        vm.assignedPart = /^[123]$/.test(String($stateParams.assignmentPart || '')) ? Number($stateParams.assignmentPart) : null;
+        var requestedAssignedPart = /^\d+$/.test(String($stateParams.assignmentPart || '')) ? Number($stateParams.assignmentPart) : null;
+        var maximumAssignedPart = vm.isListeningRoute ? 4 : 3;
+        vm.assignedPart = requestedAssignedPart >= 1 && requestedAssignedPart <= maximumAssignedPart ? requestedAssignedPart : null;
         vm.isPartAssignment = !!(vm.assignmentTaskId && vm.assignedPart);
         vm.testSessionMode = vm.assignmentTaskId ? 'STUDY' : 'SERIOUS';
         vm.selectedTestSessionMode = vm.testSessionMode;
@@ -1336,7 +1338,9 @@
             restoreMatchingHeadingDraft(draft, $scope.listA, $scope.listB);
             restoreMatchingHeadingDraft(draft, $scope.listA2, $scope.listB2);
             restoreMatchingHeadingDraft(draft, $scope.listA3, $scope.listB3);
-            vm.passageNumber = vm.assignedPart || Math.max(1, Math.min(3, Number(draft.passageNumber) || 1));
+            vm.passageNumber = vm.isPartAssignment
+                ? displayPassageForAssignedPart()
+                : Math.max(1, Math.min(3, Number(draft.passageNumber) || 1));
             if (Number(draft.currentOrdinalNumber) > 0) {
                 vm.tempOrdinalNumber = Number(draft.currentOrdinalNumber);
                 $timeout(function () {
@@ -1625,6 +1629,8 @@
 
         vm.confirmTestSessionMode = function () {
             vm.testSessionMode = vm.selectedTestSessionMode === 'STUDY' ? 'STUDY' : 'SERIOUS';
+            vm.showAudioListening = vm.isListeningRoute && vm.testSessionMode === 'STUDY';
+            vm.showAudio = vm.showAudioListening;
             vm.showTestModeDialog = false;
             vm.startTest();
         };
@@ -1657,9 +1663,28 @@
             return data;
         }
 
+        function normalizeListeningCandidateParts(data) {
+            if (!vm.isListeningRoute || !data || !angular.isArray(data.subQuestions)
+                    || data.subQuestions.length <= 3) {
+                return data;
+            }
+
+            var thirdWorkspace = data.subQuestions[2];
+            if (!thirdWorkspace) { return data; }
+            thirdWorkspace.subQuestions = thirdWorkspace.subQuestions || [];
+
+            angular.forEach(data.subQuestions.slice(3), function (extraPart) {
+                Array.prototype.push.apply(thirdWorkspace.subQuestions,
+                    (extraPart && extraPart.subQuestions) || []);
+            });
+            data.subQuestions = data.subQuestions.slice(0, 3);
+            return data;
+        }
+
         vm.startTest = function () {
             if (vm.isStartTest) { return; }
             function loadReadingTest(data) {
+                    data = normalizeListeningCandidateParts(data);
                     vm.ieltsReadingActualTest = data;
                     vm.getOrdinalNumber(data);
                     blockUI.stop();
@@ -1704,8 +1729,15 @@
                                     restoreReadingDraft();
                                 }
                                 if (vm.isPartAssignment) {
-                                    vm.passageNumber = vm.assignedPart;
+                                    vm.passageNumber = displayPassageForAssignedPart();
                                     vm.resultQuestionTotal = assignedPartQuestionOrdinals().length || 1;
+                                    $timeout(function () {
+                                        var assignedEntries = getReadingQuestionEntries();
+                                        if (assignedEntries.length) {
+                                            vm.openReadingQuestion(assignedEntries[0].question,
+                                                assignedEntries[0].packageQuestions, assignedEntries[0].passageQuestions);
+                                        }
+                                    }, 0);
                                 }
                                 startReadingDraftAutosave();
                             }
@@ -1789,7 +1821,7 @@
 				vm.testResult.assignmentTaskId = vm.assignmentTaskId;
 				vm.testResult.testName += ' · Part ' + vm.assignedPart;
 				vm.testResult.testTakerPerformance = '<h2>Part ' + vm.assignedPart + '</h2>'
-					+ [passage1, passage2, passage3][vm.assignedPart - 1];
+					+ ([passage1, passage2, passage3][Math.min(vm.assignedPart, 3) - 1] || '');
 				vm.resultQuestionTotal = allowedOrdinals.length || 1;
 			}
 
@@ -1919,7 +1951,8 @@
         var timerRestoredFromDraft = false;
         var audio = document.getElementById("audio1");
         
-        vm.showAudio = false;
+        vm.showAudioListening = vm.isListeningRoute && vm.testSessionMode === 'STUDY';
+        vm.showAudio = vm.showAudioListening;
 
 
         function updateCountdownDisplay() {
@@ -2200,7 +2233,8 @@
 						var requestedPart = items[0].parent.questionType.code == "IELTSRTP1" ? 1
 							: items[0].parent.questionType.code == "IELTSRTP2" ? 2
 							: items[0].parent.questionType.code == "IELTSRTP3" ? 3 : null;
-						if (vm.isPartAssignment && requestedPart !== vm.assignedPart) { return; }
+						var assignedPassage = displayPassageForAssignedPart();
+						if (vm.isPartAssignment && requestedPart !== assignedPassage) { return; }
                         if(items[0].parent.questionType.code == "IELTSRTP1"){
                             vm.passageNumber = 1;
                         }
@@ -2226,11 +2260,21 @@
             }
         };
 
-        function getReadingQuestionEntries() {
+        function listeningPartNumberForOrdinal(ordinalNumber) {
+            var ordinal = Number(ordinalNumber);
+            return ordinal >= 1 && ordinal <= 40 ? Math.ceil(ordinal / 10) : null;
+        }
+
+        function displayPassageForAssignedPart() {
+            if (!vm.isPartAssignment) { return vm.passageNumber || 1; }
+            return vm.isListeningRoute ? Math.min(vm.assignedPart, 3) : vm.assignedPart;
+        }
+
+        function getAllReadingQuestionEntries() {
             var entries = [];
             var passages = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.subQuestions;
 
-            angular.forEach(passages || [], function (passage) {
+            angular.forEach(passages || [], function (passage, passageIndex) {
                 angular.forEach(passage.subQuestions || [], function (questionPackage) {
                     angular.forEach(questionPackage.subQuestions || [], function (question) {
                         entries.push({
@@ -2238,7 +2282,8 @@
                             questionPackage: questionPackage,
                             packageType: questionPackage.type,
                             packageQuestions: questionPackage.subQuestions,
-                            passageQuestions: passage.subQuestions
+                            passageQuestions: passage.subQuestions,
+                            passageNumber: passageIndex + 1
                         });
                     });
                 });
@@ -2250,18 +2295,69 @@
             return entries;
         }
 
-		function assignedPartQuestionOrdinals() {
-			if (!vm.isPartAssignment || !vm.ieltsReadingActualTest || !vm.ieltsReadingActualTest.subQuestions) { return []; }
-			var ordinals = [], seen = {};
-			var passage = vm.ieltsReadingActualTest.subQuestions[vm.assignedPart - 1];
-			angular.forEach((passage && passage.subQuestions) || [], function (questionPackage) {
-				angular.forEach(questionPackage.subQuestions || [], function (question) {
-					var key = String(question.ordinalNumber);
-					if (!seen[key]) { seen[key] = true; ordinals.push(question.ordinalNumber); }
-				});
-			});
-			return ordinals;
-		}
+        function getReadingQuestionEntries() {
+            var entries = getAllReadingQuestionEntries();
+            if (!vm.isPartAssignment) { return entries; }
+
+            return entries.filter(function (entry) {
+                return vm.isListeningRoute
+                    ? listeningPartNumberForOrdinal(entry.question.ordinalNumber) === vm.assignedPart
+                    : entry.passageNumber === vm.assignedPart;
+            });
+        }
+
+        function assignedPartQuestionOrdinals() {
+            if (!vm.isPartAssignment) { return []; }
+            return getReadingQuestionEntries().map(function (entry) {
+                return entry.question.ordinalNumber;
+            });
+        }
+
+        vm.getIeltsNavigationParts = function () {
+            var partCount = vm.isListeningRoute ? 4
+                : Math.min(3, ((vm.ieltsReadingActualTest || {}).subQuestions || []).length);
+            var parts = [];
+            var partByNumber = {};
+
+            for (var number = 1; number <= partCount; number++) {
+                var part = {number: number, questions: []};
+                parts.push(part);
+                partByNumber[number] = part;
+            }
+
+            angular.forEach(getReadingQuestionEntries(), function (entry) {
+                var partNumber = vm.isListeningRoute
+                    ? listeningPartNumberForOrdinal(entry.question.ordinalNumber)
+                    : entry.passageNumber;
+                if (partByNumber[partNumber]) {
+                    partByNumber[partNumber].questions.push(entry);
+                }
+            });
+            return parts;
+        };
+
+        vm.activeIeltsNavigationPart = function () {
+            if (vm.isListeningRoute) {
+                var currentPart = listeningPartNumberForOrdinal(vm.tempQuestion && vm.tempQuestion.ordinalNumber);
+                return currentPart || vm.assignedPart || Math.min(vm.passageNumber || 1, 4);
+            }
+            return vm.assignedPart || vm.passageNumber;
+        };
+
+        vm.ieltsNavigationAnsweredCount = function (part) {
+            var answered = 0;
+            angular.forEach((part && part.questions) || [], function (entry) {
+                if (entry.question && entry.question.answered === true) { answered++; }
+            });
+            return answered;
+        };
+
+        vm.openIeltsNavigationPart = function (part) {
+            if (part && part.questions && part.questions.length) {
+                var entry = part.questions[0];
+                vm.openReadingQuestion(entry.question, entry.packageQuestions, entry.passageQuestions);
+            }
+        };
 
         function synchronizeReadingResultsBeforeSubmit() {
             var results = vm.testResult.questionAnswerTestResult || [];
@@ -3971,20 +4067,30 @@
 
             var marker = closestElement($event.target, '.ielts-annotation');
             var selection = window.getSelection && window.getSelection();
-            if (!marker || (selection && !selection.isCollapsed && selection.toString().trim())) {
+            if (selection && !selection.isCollapsed && selection.toString().trim()) {
                 return;
             }
 
-            // A note marker is itself the control for reopening the saved note.
-            // This also works for a tap on mobile because the root click handler
-            // receives the generated click after text selection has collapsed.
-            if ($(marker).hasClass('has-note') && showAnnotationNoteForMarker(marker)) {
+            // A normal click anywhere outside annotated text dismisses the
+            // open note and its action menu.
+            if (!marker) {
+                vm.activeAnnotationNote = null;
+                vm.isShowContextMenu = false;
+                vm.isAnnotationRemoveMenu = false;
+                clickedAnnotationMarker = null;
                 return;
+            }
+
+            // Reopen the note on a left click, but keep exposing the Remove
+            // action for the annotated text as well.
+            if ($(marker).hasClass('has-note')) {
+                showAnnotationNoteForMarker(marker);
+            } else {
+                vm.activeAnnotationNote = null;
             }
 
             clickedAnnotationMarker = marker;
             savedAnnotationRange = null;
-            vm.activeAnnotationNote = null;
             vm.isAnnotationRemoveMenu = true;
 
             var rect = marker.getBoundingClientRect();
