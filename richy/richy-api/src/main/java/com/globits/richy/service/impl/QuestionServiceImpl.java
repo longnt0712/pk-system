@@ -257,6 +257,16 @@ public class QuestionServiceImpl implements QuestionService {
 	
 	@Override
 	public Page<QuestionForGamesDto> getPageObjectForGames(QuestionDto searchDto, int pageIndex, int pageSize) {
+		return getPageObjectForGames(searchDto, pageIndex, pageSize, false);
+	}
+
+	@Override
+	public Page<QuestionForGamesDto> getPageObjectForDailyVocab(QuestionDto searchDto, int pageIndex, int pageSize) {
+		return getPageObjectForGames(searchDto, pageIndex, pageSize, true);
+	}
+
+	private Page<QuestionForGamesDto> getPageObjectForGames(
+			QuestionDto searchDto, int pageIndex, int pageSize, boolean filterByStudentVocabularyLevel) {
 		if (pageIndex > 0)
 			pageIndex = pageIndex - 1;
 		else
@@ -271,6 +281,14 @@ public class QuestionServiceImpl implements QuestionService {
 		
 		if(searchDto.getUserId() != null) {
 			whereClause += " and s.user.id = :userId ";
+		}
+
+		List<String> allowedVocabularyLevels = Collections.emptyList();
+		if (filterByStudentVocabularyLevel) {
+			allowedVocabularyLevels = getAllowedVocabularyLevelsForCurrentUser();
+			if (!allowedVocabularyLevels.isEmpty()) {
+				whereClause += " and s.level in :allowedVocabularyLevels ";
+			}
 		}
 		List<Long> ids = new ArrayList<Long>();
 		
@@ -372,6 +390,11 @@ public class QuestionServiceImpl implements QuestionService {
 			qCount.setParameter("userId", searchDto.getUserId());
 //			qCountAll.setParameter("userId", searchDto.getUserId());
 		}
+
+		if (!allowedVocabularyLevels.isEmpty()) {
+			q.setParameter("allowedVocabularyLevels", allowedVocabularyLevels);
+			qCount.setParameter("allowedVocabularyLevels", allowedVocabularyLevels);
+		}
 		
 		if(searchDto.getStatus() != 3) {
 			q.setParameter("status", searchDto.getStatus());
@@ -420,6 +443,34 @@ public class QuestionServiceImpl implements QuestionService {
 		return page;
 	}
 	
+	private List<String> getAllowedVocabularyLevelsForCurrentUser() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
+			return Collections.emptyList();
+		}
+
+		String studentLevel = ((User) authentication.getPrincipal()).getVocabularyLevel();
+		if (studentLevel == null) {
+			return Collections.emptyList();
+		}
+
+		studentLevel = studentLevel.trim().toUpperCase(Locale.ROOT);
+		String[] cefrOrder = new String[] {"A1", "A2", "B1", "B2", "C1", "C2"};
+		List<String> result = new ArrayList<String>();
+		boolean includeLevel = false;
+
+		for (String level : cefrOrder) {
+			if (level.equals(studentLevel)) {
+				includeLevel = true;
+			}
+			if (includeLevel) {
+				result.add(level);
+			}
+		}
+
+		return result;
+	}
+
 	@Override
 	public Page<QuestionForTestsDto> getPageObjectForTests(QuestionDto searchDto, int pageIndex, int pageSize) {
 		if (pageIndex > 0)

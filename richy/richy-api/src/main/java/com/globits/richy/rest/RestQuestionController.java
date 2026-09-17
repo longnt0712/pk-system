@@ -61,6 +61,16 @@ public class RestQuestionController {
     }
 
     @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})
+    @RequestMapping(value = "/get_page_for_daily_vocab/{pageIndex}/{pageSize}", method = RequestMethod.POST)
+    public Page<QuestionForGamesDto> getPageForDailyVocab(
+            @RequestBody QuestionDto searchDto,
+            @PathVariable int pageIndex,
+            @PathVariable int pageSize) {
+
+        return service.getPageObjectForDailyVocab(searchDto, pageIndex, pageSize);
+    }
+
+    @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})
     @RequestMapping(value = "/get_page_for_tests/{pageIndex}/{pageSize}", method = RequestMethod.POST)
     public Page<QuestionForTestsDto> getPageForTests(
             @RequestBody QuestionDto searchDto,

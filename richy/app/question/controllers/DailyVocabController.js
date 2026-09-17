@@ -1248,7 +1248,7 @@
              * Background request:
              * KHÔNG blockUI để gameplay không bị che/giật.
              */
-            service.getPageForGames(
+            service.getPageForDailyVocab(
                 vm.searchDto,
                 page,
                 DAILY_LAZY_PAGE_SIZE
@@ -1409,7 +1409,7 @@
 
             blockUI.start();
 
-            service.getPageForGames(
+            service.getPageForDailyVocab(
                 vm.searchDto,
                 1,
                 DAILY_LAZY_PAGE_SIZE

@@ -15,6 +15,7 @@ import com.globits.richy.dto.QuizDto;
 public interface QuestionService {
 	public Page<QuestionDto> getPageObject(QuestionDto searchDto, int pageIndex, int pageSize);
 	public Page<QuestionForGamesDto> getPageObjectForGames(QuestionDto searchDto, int pageIndex, int pageSize);
+	public Page<QuestionForGamesDto> getPageObjectForDailyVocab(QuestionDto searchDto, int pageIndex, int pageSize);
 	public Page<QuestionForTestsDto> getPageObjectForTests(QuestionDto searchDto, int pageIndex, int pageSize);
 	public Page<QuestionOnlyQuestionDto> getPageObjectOnlyQuestion(QuestionDto searchDto, int pageIndex, int pageSize);
 	public Page<QuestionDto> getPageObjectReverse(QuestionDto searchDto, int pageIndex, int pageSize);

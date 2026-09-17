@@ -1,6 +1,7 @@
 package com.globits.richy.service.impl;
 
 import java.io.InputStream;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -841,7 +842,9 @@ public class QuestionExcelImportServiceImpl
             if ("level".equals(normalizedHeader)
                     || "cefr".equals(normalizedHeader)
                     || "cefrlevel".equals(normalizedHeader)
-                    || "a1c2".equals(normalizedHeader)) {
+                    || "a1c2".equals(normalizedHeader)
+                    || "mucdo".equals(normalizedHeader)
+                    || "mucdoa1c2".equals(normalizedHeader)) {
 
                 indexes.put("level", i);
             }
@@ -1265,10 +1268,12 @@ public class QuestionExcelImportServiceImpl
             return "";
         }
 
-        return header
-                .trim()
+        return Normalizer.normalize(header, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
                 .toLowerCase(Locale.ENGLISH)
-                .replaceAll("[\\s_\\-]+", "");
+                .replace('đ', 'd')
+                .trim()
+                .replaceAll("[^a-z0-9]+", "");
     }
 
     private String cleanText(String text) {

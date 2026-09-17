@@ -21,6 +21,7 @@
         self.getPage = getPage;
         self.getPageForGames = getPageForGames;
         self.getPageForTests = getPageForTests;
+        self.getPageForDailyVocab = getPageForDailyVocab;
         self.getPageOnlyQuestion = getPageOnlyQuestion;
 
         // Excel import
@@ -211,6 +212,16 @@
             url += '/'+pageIndex;
             url += '/' + ((pageSize > 0) ? pageSize : 25);
             // console.log(url);
+
+            return utils.resolveAlt(url, 'POST', null, searchDto, {
+                'Content-Type': 'application/json; charset=utf-8'
+            }, successCallback, errorCallback);
+        }
+
+        function getPageForDailyVocab(searchDto, pageIndex, pageSize, successCallback, errorCallback) {
+            var url = baseUrl + restUrl + '/get_page_for_daily_vocab';
+            url += '/' + pageIndex;
+            url += '/' + ((pageSize > 0) ? pageSize : 25);
 
             return utils.resolveAlt(url, 'POST', null, searchDto, {
                 'Content-Type': 'application/json; charset=utf-8'
