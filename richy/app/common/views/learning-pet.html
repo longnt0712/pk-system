@@ -1,6 +1,7 @@
 <aside class="learning-pet-shell"
        ng-if="pet.visible"
-       ng-class="{'is-open': pet.panelOpen, 'is-minimized': pet.minimized, 'has-alert': pet.overdueCount > 0}"
+       ng-style="pet.shellStyle"
+       ng-class="{'is-open': pet.panelOpen, 'is-minimized': pet.minimized, 'has-alert': pet.overdueCount > 0, 'is-dragging': pet.dragging, 'is-panel-below': pet.panelBelow, 'is-panel-left': pet.panelAlignLeft}"
        aria-live="polite">
     <section class="learning-pet-panel" ng-if="pet.panelOpen && !pet.minimized">
         <header class="learning-pet-panel-header">
@@ -42,9 +43,9 @@
     </section>
     <button type="button" class="learning-pet-message" ng-if="!pet.panelOpen && !pet.minimized && pet.message" ng-click="pet.openPanel($event)">{{pet.message}}</button>
     <div class="learning-pet-stage">
-        <button type="button" class="learning-pet-character" ng-click="pet.togglePanel($event)" ng-attr-aria-label="{{pet.panelOpen ? 'Đóng trợ lý Mầm Học' : 'Mở trợ lý Mầm Học'}}">
+        <button type="button" class="learning-pet-character" ng-click="pet.togglePanel($event)" ng-attr-aria-grabbed="{{pet.dragging}}" ng-attr-aria-label="{{pet.panelOpen ? 'Đóng trợ lý Mầm Học' : 'Mở hoặc kéo trợ lý Mầm Học'}}">
             <span class="learning-pet-sprite" ng-if="pet.petForm === 'hatched'" ng-style="pet.spriteStyle"></span>
-            <img class="learning-pet-egg" ng-if="pet.petForm !== 'hatched'" ng-src="{{pet.petImage}}" alt="" aria-hidden="true" />
+            <img class="learning-pet-egg" ng-if="pet.petForm !== 'hatched'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
             <span class="learning-pet-badge" ng-if="pet.notificationCount > 0">{{pet.notificationCount > 99 ? '99+' : pet.notificationCount}}</span>
         </button>
         <button type="button" class="learning-pet-minimize" ng-click="pet.toggleMinimized($event)" ng-attr-aria-label="{{pet.minimized ? 'Hiện Mầm Học' : 'Thu nhỏ Mầm Học'}}"><i class="fa" ng-class="pet.minimized ? 'fa-commenting' : 'fa-minus'"></i></button>

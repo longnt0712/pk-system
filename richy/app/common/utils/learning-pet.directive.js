@@ -14,7 +14,10 @@
             bindToController: true,
             controllerAs: 'pet',
             controller: LearningPetController,
-            templateUrl: 'common/views/learning-pet.html?v=' + version
+            templateUrl: 'common/views/learning-pet.html?v=' + version,
+            link: function (scope, element, attrs, controller) {
+                controller.attachDragHost(element[0]);
+            }
         };
 
         function LearningPetController($scope) {
@@ -25,6 +28,11 @@
             var frameIndex = 0;
             var currentAnimation = '';
             var liveUser = null;
+            var dragHost = null;
+            var dragHandle = null;
+            var dragFrame = null;
+            var dragCleanup = angular.noop;
+            var dragPosition = null;
             var spriteScale = 0.5;
             var atlasWidth = 1536;
             var atlasHeight = 2288;
@@ -57,6 +65,8 @@
             vm.summaryTitle = 'Tiến độ học tập của bạn';
             vm.message = '';
             vm.spriteStyle = {};
+            vm.shellStyle = {};
+            vm.dragging = false;
             vm.petForm = 'egg-intact';
             vm.petImage = 'assets/images/learning-pets/mam-hoc/egg-level-0.png?v=' + version;
 
@@ -69,6 +79,11 @@
             }
 
             function updatePetForm(user) {
+                if (hasAdminRole(user)) {
+                    vm.petForm = 'hatched';
+                    vm.petImage = '';
+                    return;
+                }
                 var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
                 if (level === 0) {
                     vm.petForm = 'egg-intact';
@@ -91,10 +106,218 @@
                 return false;
             }
 
+            function hasAdminRole(user) {
+                var roles = (user || {}).roles || [];
+                for (var i = 0; i < roles.length; i++) {
+                    if (roles[i] && roles[i].name === 'ROLE_ADMIN') { return true; }
+                }
+                return false;
+            }
+
             function sessionKey(suffix) {
                 var user = readCurrentUser();
                 return 'learning-pet:' + suffix + ':v1:' + (user && user.id ? user.id : 'guest');
             }
+
+            function positionKey() {
+                var user = readCurrentUser();
+                return 'learning-pet:position:v1:' + (user && user.id ? user.id : 'guest');
+            }
+
+            function clamp(value, minimum, maximum) {
+                return Math.max(minimum, Math.min(maximum, value));
+            }
+
+            function petBounds() {
+                return {
+                    width: dragHandle ? Math.max(76, dragHandle.offsetWidth || 96) : 96,
+                    height: dragHandle ? Math.max(84, dragHandle.offsetHeight || 104) : 104
+                };
+            }
+
+            function clampPosition(position) {
+                var bounds = petBounds();
+                return {
+                    left: clamp(Number(position.left) || 0, 8, Math.max(8, $window.innerWidth - bounds.width - 8)),
+                    top: clamp(Number(position.top) || 0, 8, Math.max(8, $window.innerHeight - bounds.height - 8))
+                };
+            }
+
+            function applyPosition(position, updateAngularStyle) {
+                if (!dragHost) { return; }
+                var shell = dragHost.querySelector('.learning-pet-shell');
+                if (!shell) { return; }
+                dragPosition = clampPosition(position);
+                shell.style.left = dragPosition.left + 'px';
+                shell.style.top = dragPosition.top + 'px';
+                shell.style.right = 'auto';
+                shell.style.bottom = 'auto';
+                if (updateAngularStyle) {
+                    vm.shellStyle = {
+                        left: dragPosition.left + 'px',
+                        top: dragPosition.top + 'px',
+                        right: 'auto',
+                        bottom: 'auto'
+                    };
+                }
+            }
+
+            function savePosition() {
+                if (!dragPosition) { return; }
+                try {
+                    $window.localStorage.setItem(positionKey(), angular.toJson(dragPosition));
+                } catch (ignorePositionStorage) {}
+            }
+
+            function restorePosition() {
+                try {
+                    var saved = angular.fromJson($window.localStorage.getItem(positionKey()) || 'null');
+                    if (saved && isFinite(saved.left) && isFinite(saved.top)) {
+                        applyPosition(saved, true);
+                    }
+                } catch (ignoreRestorePosition) {}
+            }
+
+            function refreshPanelPlacement() {
+                if (!dragPosition) {
+                    vm.panelBelow = false;
+                    vm.panelAlignLeft = false;
+                    return;
+                }
+                vm.panelBelow = dragPosition.top < Math.min(410, $window.innerHeight * 0.48);
+                vm.panelAlignLeft = dragPosition.left < Math.min(390, $window.innerWidth * 0.45);
+            }
+
+            function setupDrag() {
+                if (!dragHost) { return; }
+                var nextHandle = dragHost.querySelector('.learning-pet-character');
+                if (!nextHandle || nextHandle === dragHandle) { return; }
+                dragCleanup();
+                dragHandle = nextHandle;
+                restorePosition();
+
+                var active = false;
+                var moved = false;
+                var pointerId = null;
+                var startX = 0;
+                var startY = 0;
+                var offsetX = 0;
+                var offsetY = 0;
+                var visualX = 0;
+                var visualY = 0;
+                var targetX = 0;
+                var targetY = 0;
+                var touchLift = 0;
+                var suppressClick = false;
+
+                function renderDrag() {
+                    dragFrame = null;
+                    visualX += (targetX - visualX) * 0.48;
+                    visualY += (targetY - visualY) * 0.48;
+                    if (Math.abs(targetX - visualX) < 0.35) { visualX = targetX; }
+                    if (Math.abs(targetY - visualY) < 0.35) { visualY = targetY; }
+                    applyPosition({left: visualX, top: visualY}, false);
+                    if (active || visualX !== targetX || visualY !== targetY) {
+                        dragFrame = $window.requestAnimationFrame(renderDrag);
+                    } else {
+                        applyPosition({left: targetX, top: targetY}, true);
+                    }
+                }
+
+                function scheduleDragFrame() {
+                    if (!dragFrame) { dragFrame = $window.requestAnimationFrame(renderDrag); }
+                }
+
+                function onPointerDown(event) {
+                    if (event.pointerType === 'mouse' && event.button !== 0) { return; }
+                    var shell = dragHost.querySelector('.learning-pet-shell');
+                    if (!shell) { return; }
+                    var shellRect = shell.getBoundingClientRect();
+                    active = true;
+                    moved = false;
+                    pointerId = event.pointerId;
+                    startX = event.clientX;
+                    startY = event.clientY;
+                    offsetX = event.clientX - shellRect.left;
+                    offsetY = event.clientY - shellRect.top;
+                    touchLift = event.pointerType === 'touch' ? 22 : 0;
+                    visualX = shellRect.left;
+                    visualY = shellRect.top;
+                    targetX = visualX;
+                    targetY = visualY;
+                    if (dragHandle.setPointerCapture) {
+                        try { dragHandle.setPointerCapture(pointerId); } catch (ignorePointerCapture) {}
+                    }
+                }
+
+                function onPointerMove(event) {
+                    if (!active || event.pointerId !== pointerId) { return; }
+                    var distance = Math.max(Math.abs(event.clientX - startX), Math.abs(event.clientY - startY));
+                    if (!moved && distance >= 2) {
+                        moved = true;
+                        vm.dragging = true;
+                        $scope.$evalAsync();
+                    }
+                    if (!moved) { return; }
+                    var next = clampPosition({
+                        left: event.clientX - offsetX,
+                        top: event.clientY - offsetY - touchLift
+                    });
+                    targetX = next.left;
+                    targetY = next.top;
+                    scheduleDragFrame();
+                    event.preventDefault();
+                }
+
+                function finishDrag(event) {
+                    if (!active || (event && event.pointerId !== pointerId)) { return; }
+                    active = false;
+                    if (dragHandle.releasePointerCapture && pointerId != null) {
+                        try { dragHandle.releasePointerCapture(pointerId); } catch (ignorePointerRelease) {}
+                    }
+                    if (moved) {
+                        suppressClick = true;
+                        vm.dragging = false;
+                        dragPosition = clampPosition({left: targetX, top: targetY});
+                        refreshPanelPlacement();
+                        savePosition();
+                        scheduleDragFrame();
+                        $scope.$evalAsync();
+                    }
+                    pointerId = null;
+                }
+
+                function onClick(event) {
+                    if (!suppressClick) { return; }
+                    suppressClick = false;
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                }
+
+                function onDragStart(event) {
+                    event.preventDefault();
+                }
+
+                dragHandle.addEventListener('pointerdown', onPointerDown, {passive: false});
+                dragHandle.addEventListener('pointermove', onPointerMove, {passive: false});
+                dragHandle.addEventListener('pointerup', finishDrag, {passive: false});
+                dragHandle.addEventListener('pointercancel', finishDrag, {passive: false});
+                dragHandle.addEventListener('click', onClick, true);
+                dragHandle.addEventListener('dragstart', onDragStart);
+                dragCleanup = function () {
+                    dragHandle.removeEventListener('pointerdown', onPointerDown);
+                    dragHandle.removeEventListener('pointermove', onPointerMove);
+                    dragHandle.removeEventListener('pointerup', finishDrag);
+                    dragHandle.removeEventListener('pointercancel', finishDrag);
+                    dragHandle.removeEventListener('click', onClick, true);
+                    dragHandle.removeEventListener('dragstart', onDragStart);
+                };
+            }
+
+            vm.attachDragHost = function (host) {
+                dragHost = host;
+                $timeout(setupDrag, 0);
+            };
 
             function isMuted() {
                 try { return $window.sessionStorage.getItem(sessionKey('muted')) === '1'; }
@@ -103,7 +326,8 @@
 
             function shouldDisplay() {
                 var user = readCurrentUser();
-                return !!settings.ieltsRoom && !!user && !!user.id && hasStudentRole(user) && !isMuted();
+                return !!settings.ieltsRoom && !!user && !!user.id
+                    && (hasStudentRole(user) || hasAdminRole(user)) && !isMuted();
             }
 
             function spritePosition(row, frame) {
@@ -296,6 +520,7 @@
                 vm.panelOpen = true;
                 vm.minimized = false;
                 vm.activeSection = vm.drafts.length ? 'drafts' : 'tasks';
+                refreshPanelPlacement();
                 playAnimation(vm.activeSection === 'drafts' ? 'review' : derivedAnimation(), true);
             };
 
@@ -331,6 +556,7 @@
                 updatePetForm(readCurrentUser());
                 vm.visible = shouldDisplay();
                 if (!vm.visible) { return; }
+                $timeout(setupDrag, 0);
                 playAnimation('waving', true);
                 vm.refresh();
                 greetingTimer = $timeout(function () { playAnimation(derivedAnimation(), true); }, 2200);
@@ -345,8 +571,19 @@
                 vm.visible = shouldDisplay();
             });
             var routeListener = $scope.$on('$stateChangeSuccess', function () {
-                if (vm.visible) { $timeout(vm.refresh, 600); }
+                if (vm.visible) {
+                    $timeout(setupDrag, 0);
+                    $timeout(vm.refresh, 600);
+                }
             });
+
+            function handleViewportResize() {
+                if (!dragPosition) { return; }
+                applyPosition(dragPosition, true);
+                refreshPanelPlacement();
+                $scope.$evalAsync();
+            }
+            $window.addEventListener('resize', handleViewportResize);
 
             $timeout(initialize, 350);
 
@@ -354,6 +591,9 @@
                 stopSpriteTimer();
                 if (refreshTimer) { $interval.cancel(refreshTimer); }
                 if (greetingTimer) { $timeout.cancel(greetingTimer); }
+                if (dragFrame) { $window.cancelAnimationFrame(dragFrame); }
+                dragCleanup();
+                $window.removeEventListener('resize', handleViewportResize);
                 permissionsListener();
                 userListener();
                 routeListener();

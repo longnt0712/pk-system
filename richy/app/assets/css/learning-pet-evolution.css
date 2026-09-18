@@ -30,3 +30,74 @@
 @media (prefers-reduced-motion: reduce) {
     .learning-pet-egg { animation: none !important; }
 }
+
+.learning-pet-character {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-user-drag: none;
+}
+
+.learning-pet-character * {
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.learning-pet-shell.is-dragging {
+    z-index: 2147483000;
+}
+
+.learning-pet-shell.is-dragging .learning-pet-character {
+    cursor: grabbing;
+}
+
+.learning-pet-shell.is-dragging .learning-pet-stage {
+    filter: drop-shadow(0 14px 12px rgba(33, 39, 82, .22));
+    transform: translateY(-6px) scale(1.045);
+}
+
+.learning-pet-stage {
+    transition: transform .18s cubic-bezier(.2, .8, .2, 1),
+                filter .18s ease;
+    will-change: transform;
+}
+
+.learning-pet-shell.is-panel-below .learning-pet-panel {
+    top: 108px;
+    bottom: auto;
+}
+
+.learning-pet-shell.is-panel-left .learning-pet-panel {
+    right: auto;
+    left: 0;
+}
+
+.learning-pet-shell.is-panel-left .learning-pet-message {
+    right: auto;
+    left: 58px;
+    border-radius: 18px 18px 18px 4px;
+}
+
+.learning-pet-shell.is-panel-left .learning-pet-message::after {
+    right: auto;
+    left: 13px;
+    transform: rotate(102deg);
+}
+
+@media (max-width: 767px) {
+    .learning-pet-shell.is-dragging .learning-pet-stage {
+        transform: translateY(-10px) scale(.94);
+    }
+
+    .learning-pet-shell.is-open .learning-pet-panel {
+        position: fixed;
+        right: 10px;
+        bottom: 10px;
+        left: 10px;
+        top: auto;
+        width: auto;
+        max-height: calc(100vh - 20px);
+    }
+}
