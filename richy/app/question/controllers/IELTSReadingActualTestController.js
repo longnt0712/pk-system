@@ -1399,6 +1399,9 @@
             $timeout(function () {
                 restoreReadingAnnotations(draft.annotations || []);
             }, 350);
+            vm.isStartTest = true;
+            vm.isStartingTest = false;
+            vm.showTestModeDialog = false;
             toastr.success('Your in-progress test has been restored.', 'Continue test');
         }
 
@@ -1636,6 +1639,8 @@
         vm.previewStorage = $location.search().previewStorage === 'session' ? 'session' : 'local';
         vm.isHasTestTakerName = true;
         vm.isStartTest = false;
+        vm.isStartingTest = false;
+        vm.startTestError = '';
 
         var requestedSessionMode = String($location.search().sessionMode || '').toUpperCase();
         var startFreshSeriousTest = requestedSessionMode === 'SERIOUS'
@@ -1650,6 +1655,7 @@
         }
 
         vm.requestStartTest = function () {
+            if (vm.isStartingTest) { return; }
             if (vm.isPreviewMode) {
                 vm.testSessionMode = 'SERIOUS';
                 vm.startTest();
@@ -1669,14 +1675,15 @@
         };
 
         vm.confirmTestSessionMode = function () {
+            if (vm.isStartingTest) { return; }
             vm.testSessionMode = vm.selectedTestSessionMode === 'STUDY' ? 'STUDY' : 'SERIOUS';
             vm.showAudioListening = vm.isListeningRoute && vm.testSessionMode === 'STUDY';
             vm.showAudio = vm.showAudioListening;
-            vm.showTestModeDialog = false;
             vm.startTest();
         };
 
         vm.closeTestSessionMode = function () {
+            if (vm.isStartingTest) { return; }
             vm.showTestModeDialog = false;
         };
 
@@ -1723,9 +1730,24 @@
         }
 
         vm.startTest = function () {
-            if (vm.isStartTest) { return; }
+            if (vm.isStartTest || vm.isStartingTest) { return; }
+            vm.isStartingTest = true;
+            vm.startTestError = '';
+
+            function failToStartTest(message, title) {
+                blockUI.stop();
+                vm.isStartingTest = false;
+                vm.startTestError = message;
+                toastr.error(message, title || 'Unable to start test');
+            }
+
             function loadReadingTest(data) {
+                    if (!data || !angular.isArray(data.subQuestions)) {
+                        failToStartTest('The test data could not be loaded. Please try again.');
+                        return;
+                    }
                     data = normalizeListeningCandidateParts(data);
+                    cachedIeltsNavigationParts = null;
                     vm.ieltsReadingActualTest = data;
                     vm.getOrdinalNumber(data);
                     blockUI.stop();
@@ -1763,8 +1785,11 @@
                         var timeout;
                         timeout = $timeout(function(){
                             vm.ieltsReadingActualTest = vm.processQuestionATT(data);
+                            cachedIeltsNavigationParts = null;
                             if (vm.isPreviewMode) {
                                 vm.passageNumber = vm.previewPart;
+                                vm.isStartingTest = false;
+                                vm.showTestModeDialog = false;
                                 myCallback(vm.ieltsReadingActualTest);
                             } else {
                                 var initializeLoadedTest = function () {
@@ -1783,6 +1808,10 @@
                                         }, 0);
                                     }
                                     startReadingDraftAutosave();
+                                    vm.isStartTest = true;
+                                    vm.isStartingTest = false;
+                                    vm.showTestModeDialog = false;
+                                    $scope.$evalAsync(angular.noop);
                                     myCallback(vm.ieltsReadingActualTest);
                                 };
                                 if (readingLearningDraftsReady && angular.isFunction(readingLearningDraftsReady.finally)) {
@@ -1809,18 +1838,22 @@
                         return;
                     }
                 } catch (previewReadError) {
-                    toastr.error('The preview data is invalid.', 'Unable to open preview');
+                    failToStartTest('The preview data is invalid.', 'Unable to open preview');
                     return;
                 }
-                toastr.warning('This preview has expired. Open it again from the test builder.', 'Preview not found');
+                vm.isStartingTest = false;
+                vm.startTestError = 'This preview has expired. Open it again from the test builder.';
+                toastr.warning(vm.startTestError, 'Preview not found');
                 return;
             }
 
             if ($stateParams.ieltsReadingTestId != null) {
                 blockUI.start();
                 service.getOne($stateParams.ieltsReadingTestId).then(loadReadingTest, function failure() {
-                    toastr.error('An error occurred while creating the account.', 'Notification');
+                    failToStartTest('The test could not be loaded. Please check your connection and try again.');
                 });
+            } else {
+                failToStartTest('The test ID is missing. Please return to the test list and open it again.');
             }
 
         };
@@ -2361,7 +2394,12 @@
             });
         }
 
+        var cachedIeltsNavigationParts = null;
+
         vm.getIeltsNavigationParts = function () {
+            if (cachedIeltsNavigationParts) {
+                return cachedIeltsNavigationParts;
+            }
             var partCount = vm.isListeningRoute ? 4
                 : Math.min(3, ((vm.ieltsReadingActualTest || {}).subQuestions || []).length);
             var parts = [];
@@ -2381,7 +2419,8 @@
                     partByNumber[partNumber].questions.push(entry);
                 }
             });
-            return parts;
+            cachedIeltsNavigationParts = parts;
+            return cachedIeltsNavigationParts;
         };
 
         vm.activeIeltsNavigationPart = function () {

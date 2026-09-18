@@ -12,11 +12,18 @@
      ng-mouseup="showSelectionTools($event)"
      ng-click="handleReadingAnnotationClick($event)">
 
-<div class="row margin-top-10 wrap-test text-center idp-start-screen" ng-show="vm.isHasTestTakerName === true && vm.isStartTest === false">
+<div class="row margin-top-10 wrap-test text-center idp-start-screen" ng-if="vm.isHasTestTakerName === true && vm.isStartTest !== true && vm.isStartingTest !== true">
     <h1 class="start-test-button" ng-show="vm.isHasTestTakerName === true" style="cursor: pointer" ng-click="vm.requestStartTest()">
         <span class="idp-start-icon"><i class="fa fa-play"></i></span>
         Start {{vm.isListeningRoute ? 'Listening' : 'Reading'}} {{vm.isPartAssignment ? 'Part ' + vm.assignedPart : 'test'}}
         <small>{{vm.isPartAssignment ? 'Assigned task · Part ' + vm.assignedPart + ' only' : '60 minutes · ' + (vm.isListeningRoute ? '4' : '3') + ' parts · 40 questions'}}</small>
+    </h1>
+</div>
+<div class="row margin-top-10 wrap-test text-center idp-start-screen" ng-if="vm.isStartingTest === true && vm.showTestModeDialog !== true">
+    <h1 class="start-test-button" style="cursor: default">
+        <span class="idp-start-icon"><i class="fa fa-spinner fa-spin"></i></span>
+        Loading {{vm.isListeningRoute ? 'Listening' : 'Reading'}} test...
+        <small>Please wait while your saved progress is restored.</small>
     </h1>
 </div>
 <div class="idp-test-mode-backdrop" ng-if="vm.showTestModeDialog" ng-click="vm.closeTestSessionMode()">
@@ -26,13 +33,13 @@
         <h2 id="idp-test-mode-title">How would you like to do this {{vm.isListeningRoute ? 'Listening' : 'Reading'}} test?</h2>
         <p class="idp-test-mode-intro">You can keep your answers, notes and highlights in either mode.</p>
         <div class="idp-test-mode-options">
-            <button type="button" class="idp-test-mode-option" ng-class="{'is-selected': vm.selectedTestSessionMode === 'SERIOUS'}" ng-click="vm.selectTestSessionMode('SERIOUS')">
+            <button type="button" class="idp-test-mode-option" ng-disabled="vm.isStartingTest" ng-class="{'is-selected': vm.selectedTestSessionMode === 'SERIOUS'}" ng-click="vm.selectTestSessionMode('SERIOUS')">
                 <span class="idp-test-mode-icon"><i class="fa fa-clock-o"></i></span>
                 <strong>Serious test</strong>
                 <small>The timer counts down continuously, including when you leave this tab.</small>
                 <span class="idp-test-mode-check"><i class="fa fa-check"></i></span>
             </button>
-            <button type="button" class="idp-test-mode-option" ng-class="{'is-selected': vm.selectedTestSessionMode === 'STUDY'}" ng-click="vm.selectTestSessionMode('STUDY')">
+            <button type="button" class="idp-test-mode-option" ng-disabled="vm.isStartingTest" ng-class="{'is-selected': vm.selectedTestSessionMode === 'STUDY'}" ng-click="vm.selectTestSessionMode('STUDY')">
                 <span class="idp-test-mode-icon"><i class="fa fa-book"></i></span>
                 <strong>Study mode</strong>
                 <small>The timer counts only the time you actively spend on this page.</small>
@@ -40,12 +47,14 @@
             </button>
         </div>
         <div class="idp-test-mode-default" ng-if="vm.isPartAssignment"><i class="fa fa-info-circle"></i> Assigned tasks start in Study mode by default.</div>
-        <button type="button" class="idp-test-mode-start" ng-click="vm.confirmTestSessionMode()">
-            Start in {{vm.selectedTestSessionMode === 'STUDY' ? 'Study mode' : 'Serious test mode'}} <i class="fa fa-arrow-right"></i>
+        <div class="alert alert-danger" ng-if="vm.startTestError" style="margin-top: 14px; margin-bottom: 0;">{{vm.startTestError}}</div>
+        <button type="button" class="idp-test-mode-start" ng-disabled="vm.isStartingTest" ng-click="vm.confirmTestSessionMode()">
+            <span ng-if="vm.isStartingTest"><i class="fa fa-spinner fa-spin"></i> Loading test...</span>
+            <span ng-if="!vm.isStartingTest">Start in {{vm.selectedTestSessionMode === 'STUDY' ? 'Study mode' : 'Serious test mode'}} <i class="fa fa-arrow-right"></i></span>
         </button>
     </section>
 </div>
-<div class="row margin-top-10 wrap-test idp-reading-test-shell" ng-show="vm.isHasTestTakerName === true && vm.isStartTest === true" id="test-performance">
+<div class="row margin-top-10 wrap-test idp-reading-test-shell" ng-if="vm.isHasTestTakerName === true && vm.isStartTest === true" id="test-performance">
     <div class="idp-reading-preview-banner" ng-if="vm.isPreviewMode">
         <i class="fa fa-eye"></i> PREVIEW MODE · Part {{vm.passageNumber}}
         <span>This is the candidate view</span>
