@@ -201,6 +201,54 @@
         });
         vm.refreshLearningProgress();
 
+        function createListeningPartFour() {
+            return {
+                question: '',
+                questionType: {
+                    code: 'IELTSRTP4',
+                    id: 15,
+                    name: 'IELTS Listening Test Part 4'
+                },
+                ordinalNumber: 4,
+                subQuestions: []
+            };
+        }
+
+        function ensureListeningBuilderParts(test) {
+            if (!vm.isListeningMode || !test || !angular.isArray(test.subQuestions)) {
+                return test;
+            }
+            if (test.subQuestions.length < 4) {
+                var partFour = createListeningPartFour();
+                var partThree = test.subQuestions[2];
+                if (partThree && angular.isArray(partThree.subQuestions)) {
+                    var partThreePackages = [];
+                    angular.forEach(partThree.subQuestions, function (questionPackage) {
+                        var questions = (questionPackage && questionPackage.subQuestions) || [];
+                        var belongsToPartFour = questions.length && questions.every(function (question) {
+                            return Number(question.ordinalNumber) >= 31;
+                        });
+                        if (belongsToPartFour) {
+                            partFour.subQuestions.push(questionPackage);
+                        } else {
+                            partThreePackages.push(questionPackage);
+                        }
+                    });
+                    partThree.subQuestions = partThreePackages;
+                }
+                test.subQuestions.push(partFour);
+            }
+            test.subQuestions = test.subQuestions.slice(0, 4);
+            angular.forEach(test.subQuestions, function (part, partIndex) {
+                part.ordinalNumber = partIndex + 1;
+                part.subQuestions = part.subQuestions || [];
+                angular.forEach(part.subQuestions, function (questionPackage, packageIndex) {
+                    questionPackage.ordinalNumber = packageIndex + 1;
+                });
+            });
+            return test;
+        }
+
         vm.ieltsReadingTest = {
             questionType: {
                 code: 'IELTSRT',
@@ -379,13 +427,16 @@
                 }
             ]
         };  //create a new test
+        if (vm.isListeningMode) {
+            vm.ieltsReadingTest.subQuestions.push(createListeningPartFour());
+        }
         vm.createPassageNumber = 1;
 
         vm.saveReadingTest = function (saveMode) {
             blockUI.start();
             return service.saveObject(vm.ieltsReadingTest).then(function (data) {
                 blockUI.stop();
-                vm.ieltsReadingTest = data;
+                vm.ieltsReadingTest = ensureListeningBuilderParts(data);
                 vm.getOrdinalNumber(data);
                 isHavingQuestions(vm.ieltsReadingTest);
 
@@ -433,7 +484,8 @@
         var readingPartRules = vm.isListeningMode ? [
             {name: 'Part 1', start: 1, end: 10},
             {name: 'Part 2', start: 11, end: 20},
-            {name: 'Part 3–4', start: 21, end: 40}
+            {name: 'Part 3', start: 21, end: 30},
+            {name: 'Part 4', start: 31, end: 40}
         ] : [
             {name: 'Part 1', start: 1, end: 13},
             {name: 'Part 2', start: 14, end: 26},
@@ -444,9 +496,14 @@
             {number: 1, title: 'Thông tin bài thi', target: 'reading-builder-info'},
             {number: 2, title: 'Part 1', target: 'reading-builder-part-1'},
             {number: 3, title: 'Part 2', target: 'reading-builder-part-2'},
-            {number: 4, title: vm.isListeningMode ? 'Part 3–4' : 'Part 3', target: 'reading-builder-part-3'},
-            {number: 5, title: 'Kiểm tra & xuất bản', target: 'reading-builder-review'}
+            {number: 4, title: 'Part 3', target: 'reading-builder-part-3'},
+            {number: 5, title: 'Part 4', target: 'reading-builder-part-4', listeningOnly: true},
+            {number: vm.isListeningMode ? 6 : 5, title: 'Kiểm tra & xuất bản', target: 'reading-builder-review'}
         ];
+
+        vm.visibleBuilderSteps = vm.builderSteps.filter(function (step) {
+            return !step.listeningOnly || vm.isListeningMode;
+        });
 
         function plainText(value) {
             return (value || '')
@@ -1092,7 +1149,8 @@
         }
 
         vm.previewReadingTest = function (partIndex) {
-            var targetPart = Math.max(1, Math.min(3, parseInt(partIndex, 10) || 1));
+            var maximumPreviewPart = vm.isListeningMode ? 4 : 3;
+            var targetPart = Math.max(1, Math.min(maximumPreviewPart, parseInt(partIndex, 10) || 1));
             var previewKey = 'ieltsReadingPreview-' + new Date().getTime();
             var previewStorage = 'local';
             var previewJson;
@@ -1180,16 +1238,11 @@
         }
 
         function isHavingQuestions (ieltsReadingTest) {
+            ensureListeningBuilderParts(ieltsReadingTest);
             var passages = ieltsReadingTest.subQuestions;
 
-            if(passages != null){
-                if(passages[2].subQuestions != null && passages.length > 0){
-                    vm.createPassageNumber = 3;
-                } else if(passages[1].subQuestions != null && passages.length > 0){
-                    vm.createPassageNumber = 2;
-                }else if(passages[0].subQuestions != null && passages.length > 0){
-                    vm.createPassageNumber = 1;
-                }
+            if(passages != null && passages.length){
+                vm.createPassageNumber = Math.min(passages.length, vm.isListeningMode ? 4 : 3);
                 // var packagesForPassage2 = ieltsReadingTest.subQuestions[1].subQuestions;
                 for(var i = 0; i< passages.length; i++){
                     var packages = passages[i].subQuestions;
@@ -1239,6 +1292,81 @@
             }
             return temp;
         }
+
+        function createReadingQuestionPackage() {
+            return {
+                question: example,
+                questionType: {
+                    code: 'IELTSRTQ',
+                    id: 18,
+                    name: 'IELTS Reading Test Package'
+                },
+                ordinalNumber: 0,
+                subQuestions: [],
+                isHaveChildren: false
+            };
+        }
+
+        function renumberReadingPackages(partIndex) {
+            var passage = (vm.ieltsReadingTest.subQuestions || [])[partIndex];
+            angular.forEach((passage && passage.subQuestions) || [], function (questionPackage, packageIndex) {
+                questionPackage.ordinalNumber = packageIndex + 1;
+            });
+        }
+
+        vm.insertPackageAfter = function (partIndex, packageIndex) {
+            var passage = (vm.ieltsReadingTest.subQuestions || [])[partIndex];
+            if (!passage) {
+                return;
+            }
+            vm.isShowConfigureQuestion = true;
+            vm.createPackage = true;
+            passage.subQuestions = passage.subQuestions || [];
+            var insertIndex = Math.max(0, Math.min(passage.subQuestions.length, Number(packageIndex) + 1));
+            passage.subQuestions.splice(insertIndex, 0, createReadingQuestionPackage());
+            renumberReadingPackages(partIndex);
+            vm.preparePart(partIndex);
+            vm.refreshBuilderValidation();
+        };
+
+        vm.addQuestionForPart = function (partIndex, packageIndex) {
+            if (!validateQuestionRange(partIndex)) {
+                return;
+            }
+            var passage = (vm.ieltsReadingTest.subQuestions || [])[partIndex];
+            var questionPackage = passage && passage.subQuestions && passage.subQuestions[packageIndex];
+            if (!questionPackage || !validateCompleteListOptionCount(questionPackage)) {
+                return;
+            }
+            if (vm.tempAnswers.length !== parseInt(vm.numberOfAnswers, 10)) {
+                vm.createTempAnswers(packageIndex);
+            }
+            for (var questionNumber = vm.fromQuestion; questionNumber <= vm.toQuestion; questionNumber++) {
+                var question = {
+                    question: 'Question number ' + questionNumber,
+                    questionType: {
+                        code: 'IELTSRTQ',
+                        id: 19,
+                        name: 'IELTS Reading Test Question'
+                    },
+                    ordinalNumber: questionNumber,
+                    subQuestions: [],
+                    questionAnswers: []
+                };
+                angular.forEach(vm.tempAnswers, function (tempAnswer, answerIndex) {
+                    var answer = angular.copy(tempAnswer);
+                    answer.ordinalNumberQuestionAnswer = answerIndex + 1;
+                    question.questionAnswers.push(answer);
+                });
+                questionPackage.subQuestions.push(question);
+            }
+            ensureOneEditorPackage(questionPackage);
+            ensureCompleteListPackage(questionPackage);
+            ensureSharedChoicePackage(questionPackage);
+            questionPackage.isHaveChildren = true;
+            vm.getOrdinalNumber(vm.ieltsReadingTest);
+            vm.refreshBuilderValidation();
+        };
 
         vm.getOrdinalNumberPassage3 = function (ieltsReadingTest){
             vm.highestOrdinalNumberPackageForPassage3 = 0;
@@ -1373,8 +1501,8 @@
 
             // console.log(vm.ieltsReadingTest.subQuestions[0]);
             service.getOne(id).then(function (data) {
-                vm.ieltsReadingTest = data;
-                vm.getOrdinalNumber(data);
+                vm.ieltsReadingTest = ensureListeningBuilderParts(data);
+                vm.getOrdinalNumber(vm.ieltsReadingTest);
 
                 isHavingQuestions(vm.ieltsReadingTest);
 
@@ -1402,7 +1530,7 @@
                 }
 
                 vm.refreshBuilderValidation();
-                console.log(data);
+                console.log(vm.ieltsReadingTest);
             }, function failure() {
                 toastr.error('Có lỗi xảy ra khi thêm mới một tài khoản.', 'Thông báo');
             });
@@ -1916,6 +2044,24 @@
 
         };
 
+        vm.startCreatePassage4 = function () {
+            if (!vm.isListeningMode) {
+                return;
+            }
+            ensureListeningBuilderParts(vm.ieltsReadingTest);
+            vm.createPassageNumber = 4;
+            vm.createPackage = true;
+            if (!vm.ieltsReadingTest.subQuestions[3].subQuestions.length) {
+                vm.insertPackageAfter(3, -1);
+            }
+        };
+
+        vm.addPackageForPassage4 = function () {
+            var passage = (vm.ieltsReadingTest.subQuestions || [])[3];
+            var lastIndex = passage && passage.subQuestions ? passage.subQuestions.length - 1 : -1;
+            vm.insertPackageAfter(3, lastIndex);
+        };
+
         var _timeoutReading;
         vm.changeInTheProcessOfCreatingReadingTest = function (q) {
             // console.log(q);
@@ -2122,6 +2268,7 @@
 
             var removeFromForm = function () {
                 passage.subQuestions.splice(packageIndex, 1);
+                renumberReadingPackages(partIndex);
                 vm.getOrdinalNumber(vm.ieltsReadingTest);
                 vm.refreshBuilderValidation();
             };
@@ -2293,7 +2440,7 @@
         }
 
         function importedPart(part, partIndex) {
-            var passageTypeIds = [13, 14, 15];
+            var passageTypeIds = [13, 14, 15, 15];
             var groups = part.groups || part.subQuestions || [];
             return {
                 question: part.passageHtml || part.passage || part.question || '',
@@ -2345,8 +2492,9 @@
 
             var test;
             if (angular.isArray(source.parts)) {
-                if (source.parts.length !== 3) {
-                    throw new Error('File import phải có đúng 3 parts.');
+                var expectedPartCount = vm.isListeningMode ? 4 : 3;
+                if (source.parts.length !== expectedPartCount) {
+                    throw new Error('File import phải có đúng ' + expectedPartCount + ' parts.');
                 }
                 test = {
                     title: source.title,
@@ -2366,8 +2514,9 @@
             if (!test.title || !String(test.title).trim()) {
                 throw new Error('File import chưa có title.');
             }
-            if (!angular.isArray(test.subQuestions) || test.subQuestions.length !== 3) {
-                throw new Error('Bài test phải có đúng 3 parts.');
+            var expectedTestPartCount = vm.isListeningMode ? 4 : 3;
+            if (!angular.isArray(test.subQuestions) || test.subQuestions.length !== expectedTestPartCount) {
+                throw new Error('Bài test phải có đúng ' + expectedTestPartCount + ' parts.');
             }
 
             removeImportedIdentifiers(test);
@@ -2388,7 +2537,7 @@
             var seenNumbers = {};
             var questionCount = 0;
             angular.forEach(test.subQuestions, function (part, partIndex) {
-                var passageTypeIds = [13, 14, 15];
+                var passageTypeIds = [13, 14, 15, 15];
                 part.ordinalNumber = partIndex + 1;
                 part.questionType = readingQuestionType(
                     passageTypeIds[partIndex],
@@ -2637,7 +2786,12 @@
             var source = {
                 title: title,
                 audioUrl: audioUrl,
-                parts: [
+                parts: vm.isListeningMode ? [
+                    {passageHtml: '', groups: []},
+                    {passageHtml: '', groups: []},
+                    {passageHtml: '', groups: []},
+                    {passageHtml: '', groups: []}
+                ] : [
                     {passageHtml: '', groups: []},
                     {passageHtml: '', groups: []},
                     {passageHtml: '', groups: []}
@@ -2670,13 +2824,11 @@
                         (vm.isListeningMode ? '1, 2, 3 hoặc 4.' : '1, 2 hoặc 3.'));
                 }
 
-                var storagePartIndex = vm.isListeningMode && currentPartNumber === 4 ? 2 : currentPartNumber - 1;
+                var storagePartIndex = currentPartNumber - 1;
                 var part = source.parts[storagePartIndex];
                 var passage = excelRowValue(row, ['Passage HTML', 'Nội dung passage', 'Passage']);
                 if (String(passage).trim()) {
-                    if (vm.isListeningMode && currentPartNumber === 4 && !logicalPartPassageSeen[currentPartNumber]) {
-                        part.passageHtml = (part.passageHtml ? part.passageHtml + '<hr>' : '') + passage;
-                    } else if (!logicalPartPassageSeen[currentPartNumber]) {
+                    if (!logicalPartPassageSeen[currentPartNumber]) {
                         part.passageHtml = passage;
                     }
                     logicalPartPassageSeen[currentPartNumber] = true;
@@ -2699,7 +2851,7 @@
                         type: excelQuestionType(typeCell, 1),
                         instructionHtml: instruction || '',
                         listTitle: excelRowValue(row, ['Tiêu đề danh sách', 'List title', 'Answer bank title']),
-                        ordinalNumber: vm.isListeningMode && currentPartNumber === 4 ? 1000 + groupNumber : groupNumber,
+                        ordinalNumber: groupNumber,
                         matchingOptions: [],
                         questions: []
                     };

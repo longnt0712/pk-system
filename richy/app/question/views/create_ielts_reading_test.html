@@ -87,7 +87,7 @@
             </div>
             <div class="reading-builder-progress"><span ng-style="{'width': vm.builderValidation.percent + '%'}"></span></div>
             <div class="reading-builder-steps">
-                <button type="button" ng-repeat="step in vm.builderSteps" ng-click="vm.goToBuilderStep($index)"
+                <button type="button" ng-repeat="step in vm.visibleBuilderSteps" ng-click="vm.goToBuilderTarget(step.target)"
                         ng-class="{'is-done': $index > 0 && $index < 4 && vm.builderValidation.parts[$index - 1].issueCount === 0,
                                    'has-issues': $index > 0 && $index < 4 && vm.builderValidation.parts[$index - 1].issueCount > 0}">
                     <span>{{$index + 1}}</span>
@@ -152,7 +152,6 @@
                             <div><span class="reading-builder-part-number">2</span><strong>Part 1</strong><small>{{vm.isListeningMode ? 'Câu 1–10' : 'Câu 1–13'}}</small></div>
                             <div class="reading-builder-part-heading__actions">
                                 <span ng-class="{'is-complete': vm.builderValidation.parts[0].issueCount === 0}">{{vm.builderValidation.parts[0].count}}/{{vm.isListeningMode ? 10 : 13}} câu · {{vm.builderValidation.parts[0].issueCount}} lỗi</span>
-                                <button type="button" class="btn btn-primary btn-sm" ng-click="vm.addPackageForPassage1()"><i class="fa fa-plus"></i> Thêm package</button>
                                 <button type="button" class="btn btn-default btn-sm" ng-click="vm.previewReadingTest(1)"><i class="fa fa-eye"></i> Preview Part 1</button>
                             </div>
                         </div>
@@ -187,6 +186,10 @@
                     <!-- add question -->
 
                     <div class="col-md-6">
+
+                        <div class="col-md-12 reading-package-empty" ng-if="!vm.ieltsReadingTest.subQuestions[0].subQuestions.length">
+                            <button type="button" class="btn btn-info" ng-click="vm.insertPackageAfter(0, -1)"><i class="fa fa-plus"></i> Thêm package đầu tiên</button>
+                        </div>
 
                         <div class="col-md-12 reading-builder-package" ng-repeat="item in vm.ieltsReadingTest.subQuestions[0].subQuestions">
                             <div class="row margin-bottom-5">
@@ -389,6 +392,9 @@
 
                                 </div>
                             </div>
+                            <div class="reading-package-insert">
+                                <button type="button" class="btn btn-info btn-sm" ng-click="vm.insertPackageAfter(0, $index)"><i class="fa fa-plus"></i> Thêm package bên dưới</button>
+                            </div>
 
                         </div>
 
@@ -398,7 +404,6 @@
                             <!--<div class="col-md-12" ng-show="vm.createPassageNumber == 1">-->
                             <div class="col-md-12">
                                 <button class="btn btn-success" ng-click="vm.saveReadingTest()">SAVE</button>
-                                <button type="button" class="btn btn-info" data-ng-click="$event.preventDefault(); vm.addPackageForPassage1()"><i class="fa fa-plus"></i> Thêm nhóm câu hỏi Part 1</button>
                             </div>
                             <!--<div class="col-md-9" ng-show="vm.createPassageNumber == 2">-->
                             <!--</div>-->
@@ -419,7 +424,7 @@
     </div>
 
     <!-- Passage 2 -->
-    <div id="reading-builder-part-2" class="col-md-12 reading-builder-part reading-builder-section" ng-show="vm.createPassageNumber == 2 || vm.createPassageNumber == 3" ng-if="settings.isAdmin == true">
+    <div id="reading-builder-part-2" class="col-md-12 reading-builder-part reading-builder-section" ng-show="vm.createPassageNumber >= 2" ng-if="settings.isAdmin == true">
 
         <div class="portlet light bordered">
             <div class="portlet-body">
@@ -429,7 +434,6 @@
                             <div><span class="reading-builder-part-number">3</span><strong>Part 2</strong><small>{{vm.isListeningMode ? 'Câu 11–20' : 'Câu 14–26'}}</small></div>
                             <div class="reading-builder-part-heading__actions">
                                 <span ng-class="{'is-complete': vm.builderValidation.parts[1].issueCount === 0}">{{vm.builderValidation.parts[1].count}}/{{vm.isListeningMode ? 10 : 13}} câu · {{vm.builderValidation.parts[1].issueCount}} lỗi</span>
-                                <button type="button" class="btn btn-primary btn-sm" ng-click="vm.addPackageForPassage2()"><i class="fa fa-plus"></i> Thêm package</button>
                                 <button type="button" class="btn btn-default btn-sm" ng-click="vm.previewReadingTest(2)"><i class="fa fa-eye"></i> Preview Part 2</button>
                             </div>
                         </div>
@@ -461,6 +465,10 @@
                     <!-- add question -->
 
                     <div class="col-md-6">
+
+                        <div class="col-md-12 reading-package-empty" ng-if="!vm.ieltsReadingTest.subQuestions[1].subQuestions.length">
+                            <button type="button" class="btn btn-info" ng-click="vm.insertPackageAfter(1, -1)"><i class="fa fa-plus"></i> Thêm package đầu tiên</button>
+                        </div>
 
                         <div class="col-md-12 reading-builder-package" ng-repeat="item in vm.ieltsReadingTest.subQuestions[1].subQuestions">
                             <div class="row margin-bottom-5">
@@ -659,6 +667,9 @@
 
                                 </div>
                             </div>
+                            <div class="reading-package-insert">
+                                <button type="button" class="btn btn-info btn-sm" ng-click="vm.insertPackageAfter(1, $index)"><i class="fa fa-plus"></i> Thêm package bên dưới</button>
+                            </div>
 
                         </div>
                         <div class="col-md-12 margin-bottom-10" ng-show="vm.createPackage == true">
@@ -666,7 +677,6 @@
                             <!--<hr>-->
                             <div class="col-md-12" style="margin-top: 20px; margin-bottom: 20px">
                                 <button class="btn btn-success" ng-click="vm.saveReadingTest()">SAVE</button>
-                                <button type="button" class="btn btn-info" data-ng-click="$event.preventDefault(); vm.addPackageForPassage2()"><i class="fa fa-plus"></i> Thêm nhóm câu hỏi Part 2</button>
                             </div>
                             <!--<div class="col-md-9" ng-show="vm.createPassageNumber == 3">-->
                             <!--</div>-->
@@ -689,17 +699,16 @@
 
 
     <!-- Passage 3 -->
-    <div id="reading-builder-part-3" class="col-md-12 reading-builder-part reading-builder-section" ng-show="vm.createPassageNumber == 3" ng-if="settings.isAdmin == true">
+    <div id="reading-builder-part-3" class="col-md-12 reading-builder-part reading-builder-section" ng-show="vm.createPassageNumber >= 3" ng-if="settings.isAdmin == true">
 
         <div class="portlet light bordered">
             <div class="portlet-body">
                 <div class="row">
                     <div class="col-md-6">
                         <div class="reading-builder-part-heading">
-                            <div><span class="reading-builder-part-number">4</span><strong>{{vm.isListeningMode ? 'Part 3–4' : 'Part 3'}}</strong><small>{{vm.isListeningMode ? 'Câu 21–40' : 'Câu 27–40'}}</small></div>
+                            <div><span class="reading-builder-part-number">4</span><strong>Part 3</strong><small>{{vm.isListeningMode ? 'Câu 21–30' : 'Câu 27–40'}}</small></div>
                             <div class="reading-builder-part-heading__actions">
-                                <span ng-class="{'is-complete': vm.builderValidation.parts[2].issueCount === 0}">{{vm.builderValidation.parts[2].count}}/{{vm.isListeningMode ? 20 : 14}} câu · {{vm.builderValidation.parts[2].issueCount}} lỗi</span>
-                                <button type="button" class="btn btn-primary btn-sm" ng-click="vm.addPackageForPassage3()"><i class="fa fa-plus"></i> Thêm package</button>
+                                <span ng-class="{'is-complete': vm.builderValidation.parts[2].issueCount === 0}">{{vm.builderValidation.parts[2].count}}/{{vm.isListeningMode ? 10 : 14}} câu · {{vm.builderValidation.parts[2].issueCount}} lỗi</span>
                                 <button type="button" class="btn btn-default btn-sm" ng-click="vm.previewReadingTest(3)"><i class="fa fa-eye"></i> Preview Part 3</button>
                             </div>
                         </div>
@@ -726,6 +735,10 @@
                     <!-- add question -->
 
                     <div class="col-md-6">
+
+                        <div class="col-md-12 reading-package-empty" ng-if="!vm.ieltsReadingTest.subQuestions[2].subQuestions.length">
+                            <button type="button" class="btn btn-info" ng-click="vm.insertPackageAfter(2, -1)"><i class="fa fa-plus"></i> Thêm package đầu tiên</button>
+                        </div>
 
                         <div class="col-md-12 reading-builder-package" ng-repeat="item in vm.ieltsReadingTest.subQuestions[2].subQuestions">
                             <div class="row margin-bottom-5">
@@ -788,12 +801,12 @@
                                     From question
                                 </label>
                                 <!--<input style="margin-top: 5px;margin-bottom: 5px" type="number" data-ng-disabled="vm.disableFromQuestion == true" id="fromOfQuestions"  data-ng-model="vm.fromQuestion">-->
-                                <input ng-attr-min="{{vm.isListeningMode ? 21 : 27}}" max="40" style="margin-top: 5px;margin-bottom: 5px" type="number" id="fromOfQuestions" data-ng-model="vm.fromQuestion">
+                                <input ng-attr-min="{{vm.isListeningMode ? 21 : 27}}" ng-attr-max="{{vm.isListeningMode ? 30 : 40}}" style="margin-top: 5px;margin-bottom: 5px" type="number" id="fromOfQuestions" data-ng-model="vm.fromQuestion">
 
                                 <label class="bold" for="toOfQuestions">
                                     To question
                                 </label>
-                                <input ng-attr-min="{{vm.isListeningMode ? 21 : 27}}" max="40" style="margin-top: 5px;margin-bottom: 5px" type="number" id="toOfQuestions" data-ng-model="vm.toQuestion" ng-change="vm.validateFromToQuestion()">
+                                <input ng-attr-min="{{vm.isListeningMode ? 21 : 27}}" ng-attr-max="{{vm.isListeningMode ? 30 : 40}}" style="margin-top: 5px;margin-bottom: 5px" type="number" id="toOfQuestions" data-ng-model="vm.toQuestion" ng-change="vm.validateFromToQuestion()">
 
                                 <br>
                                 <label class="bold" for="numberConfig">
@@ -917,13 +930,16 @@
 
                                 </div>
                             </div>
+                            <div class="reading-package-insert">
+                                <button type="button" class="btn btn-info btn-sm" ng-click="vm.insertPackageAfter(2, $index)"><i class="fa fa-plus"></i> Thêm package bên dưới</button>
+                            </div>
 
                         </div>
                         <div class="col-md-12 margin-bottom-10" ng-show="vm.createPackage == true">
                             <hr>
                             <div class="col-md-12">
                                 <button class="btn btn-success" ng-click="vm.saveReadingTest()">SAVE</button>
-                                <button type="button" class="btn btn-info" data-ng-click="$event.preventDefault(); vm.addPackageForPassage3()"><i class="fa fa-plus"></i> Thêm nhóm câu hỏi Part 3</button>
+                                <button type="button" class="btn btn-warning" ng-if="vm.isListeningMode" data-ng-click="vm.startCreatePassage4()">Tiếp tục Part 4 <i class="fa fa-arrow-right"></i></button>
                             </div>
                         </div>
                     </div>
@@ -935,11 +951,264 @@
 
     </div>
 
+    <!-- Passage 4 (Listening) -->
+    <div id="reading-builder-part-4" class="col-md-12 reading-builder-part reading-builder-section" ng-show="vm.createPassageNumber >= 4" ng-if="settings.isAdmin == true && vm.isListeningMode">
+
+        <div class="portlet light bordered">
+            <div class="portlet-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="reading-builder-part-heading">
+                            <div><span class="reading-builder-part-number">5</span><strong>Part 4</strong><small>Câu 31–40</small></div>
+                            <div class="reading-builder-part-heading__actions">
+                                <span ng-class="{'is-complete': vm.builderValidation.parts[3].issueCount === 0}">{{vm.builderValidation.parts[3].count}}/10 câu · {{vm.builderValidation.parts[3].issueCount}} lỗi</span>
+                                <button type="button" class="btn btn-default btn-sm" ng-click="vm.previewReadingTest(4)"><i class="fa fa-eye"></i> Preview Part 4</button>
+                            </div>
+                        </div>
+                        <div class="row" style="margin-bottom: 5px">
+                            <div class="col-md-3">
+                                <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest()" data-ng-model="vm.ieltsReadingTest.subQuestions[3].type" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                    <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
+                                    <ui-select-choices repeat="type.id as type in vm.passageTypes | propsFilter: {name: $select.search}">
+                                        <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
+                                        <small>{{type.notice}}</small>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                            <div class="col-md-6 text-center" style="margin-bottom: 5px">
+                                <p class="bold" style="font-size: 18px">Passage 4</p>
+                            </div>
+
+                            <div class="col-md-12">
+                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[3].question" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- add question -->
+
+                    <div class="col-md-6">
+
+                        <div class="col-md-12 reading-package-empty" ng-if="!vm.ieltsReadingTest.subQuestions[3].subQuestions.length">
+                            <button type="button" class="btn btn-info" ng-click="vm.insertPackageAfter(3, -1)"><i class="fa fa-plus"></i> Thêm package đầu tiên</button>
+                        </div>
+
+                        <div class="col-md-12 reading-builder-package" ng-repeat="item in vm.ieltsReadingTest.subQuestions[3].subQuestions">
+                            <div class="row margin-bottom-5">
+                                <div class="col-md-6">
+                                    <p style="font-size: 18px" class="bold">Question for package {{item.ordinalNumber}}</p>
+                                    <button type="button" class="btn btn-danger" ng-click="vm.removeReadingPackage(3, $index, item)"><i class="fa fa-trash"></i> Xóa nhóm</button>
+                                </div>
+                                <div class="col-md-6">
+                                    <ui-select ng-change="vm.onReadingPackageTypeChange(item, 3, $index)" data-ng-model="item.type" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                        <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
+                                        <ui-select-choices repeat="type.id as type in vm.questionPackageTypes | propsFilter: {name: $select.search}">
+                                            <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
+                                            <small>{{type.notice}}</small>
+                                        </ui-select-choices>
+                                    </ui-select>
+                                </div>
+                            </div>
+
+                            <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+
+                            <div class="reading-matching-names-builder" ng-if="(item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15) && item.subQuestions.length">
+                                <div class="reading-matching-names-builder__header">
+                                    <div>
+                                        <strong>{{vm.sharedChoiceTitle(item.type)}}</strong>
+                                        <small>{{vm.sharedChoiceHelp(item.type)}}</small>
+                                        <input ng-if="item.type == 10 || item.type == 15" class="form-control reading-shared-list-title" type="text"
+                                               ng-model="item.title" ng-change="vm.changeInTheProcessOfCreatingReadingTest()"
+                                               placeholder="{{item.type == 15 ? 'Ví dụ: Features' : 'Ví dụ: List of Researchers'}}">
+                                    </div>
+                                    <span>{{item.subQuestions[0].questionAnswers.length}} lựa chọn</span>
+                                </div>
+                                <div class="reading-matching-names-builder__grid">
+                                    <div class="reading-shared-choice-option" ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                        <div class="reading-shared-choice-option__header">
+                                            <b>{{vm.sharedChoiceLabel(item.type, $index)}}</b>
+                                            <button type="button" ng-click="vm.removeSharedChoiceAnswer(item, $index)"
+                                                    ng-disabled="item.subQuestions[0].questionAnswers.length <= 1"
+                                                    title="Xóa lựa chọn này" aria-label="Xóa lựa chọn này">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
+                                        <input class="form-control"
+                                               type="text"
+                                               ng-model="a.answer.answer"
+                                               ng-change="vm.updateSharedChoice(item, a)"
+                                               placeholder="{{vm.sharedChoicePlaceholder(item.type, $index)}}">
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-info reading-answer-add-button" ng-click="vm.addSharedChoiceAnswer(item)">
+                                    <i class="fa fa-plus-circle"></i> Thêm lựa chọn
+                                </button>
+                            </div>
+
+                            <div class="col-md-12" ng-show="item.isHaveChildren == false">
+                                <div class="col-md-12">
+
+                                    <p style="font-size: 15px" class="bold">Configuring Answers for Questions</p>
+                                </div>
+                                <label class="bold" for="fromOfQuestions">
+                                    From question
+                                </label>
+                                <!--<input style="margin-top: 5px;margin-bottom: 5px" type="number" data-ng-disabled="vm.disableFromQuestion == true" id="fromOfQuestions"  data-ng-model="vm.fromQuestion">-->
+                                <input min="31" max="40" style="margin-top: 5px;margin-bottom: 5px" type="number" id="fromOfQuestionsPart4" data-ng-model="vm.fromQuestion">
+
+                                <label class="bold" for="toOfQuestions">
+                                    To question
+                                </label>
+                                <input min="31" max="40" style="margin-top: 5px;margin-bottom: 5px" type="number" id="toOfQuestionsPart4" data-ng-model="vm.toQuestion" ng-change="vm.validateFromToQuestion()">
+
+                                <br>
+                                <label class="bold" for="numberConfig">
+                                    <span ng-if="item.type != 13">The number of answers for each question</span>
+                                    <span ng-if="item.type == 13">Tổng số từ lựa chọn (đáp án đúng + từ nhiễu)</span>
+                                </label>
+                                <input ng-disabled="item.type == 11" min="1" style="margin-top: 5px;margin-bottom: 5px" type="number" id="numberConfig" ng-model="vm.numberOfAnswers" ng-change="vm.createTempAnswers($index)">
+                                <!--<button class="btn btn-primary" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.createTempAnswers($index)"><i class="fa fa-arrow-down"></i> Setting up Answers</button>-->
+                                <div ng-if="item.type == 11" class="reading-one-editor-notice">Mỗi câu dùng 1 đáp án. Bạn sẽ nhập đáp án sau khi tạo khoảng câu.</div>
+                                <div ng-if="item.type == 13" class="reading-one-editor-notice">Nhập tổng số từ trong danh sách: đáp án đúng của từng câu trước, sau đó là các từ nhiễu. Tổng số từ phải ít nhất bằng số câu.</div>
+                                <div ng-if="item.type != 11 && item.type != 13" ng-repeat="c in vm.tempAnswers" style="margin-bottom:5px">
+                                    <input class="form-control" type="text" data-ng-model="c.answer.answer">
+                                </div>
+                                <p><span class="font-red bold">WARNING: </span>The process of configuring Answer for each package will disappear if you click ' <span class="bold font-yellow"> Adding questions for Package </span>' => make sure your configuration is correct</p>
+                                <button class="btn btn-warning " data-ng-click="vm.addQuestionForPart(3, $index)"><i class="fa fa-arrow-down"></i> Adding Questions For package {{item.ordinalNumber}}</button>
+                                <button class="btn btn-success" ng-click="vm.saveReadingTest()">SAVE</button>
+                            </div>
+
+                            <div class="reading-one-editor-builder" ng-if="item.type == 11 && item.subQuestions.length">
+                                <div class="reading-one-editor-builder__header">
+                                    <div>
+                                        <strong>Một editor cho toàn bộ {{item.subQuestions.length}} câu</strong>
+                                        <small>Mỗi lần bấm “Chèn ô điền từ” sẽ là câu tiếp theo theo thứ tự.</small>
+                                    </div>
+                                    <span ng-class="{'is-valid': vm.countOneEditorGaps(item.subQuestions[0].question) === item.subQuestions.length}">
+                                        {{vm.countOneEditorGaps(item.subQuestions[0].question)}}/{{item.subQuestions.length}} ô
+                                    </span>
+                                </div>
+                                <textarea ng-change="vm.updateOneEditorContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <button type="button" class="btn btn-info reading-insert-gap-button" ng-click="vm.appendOneEditorGap(item)">
+                                    <i class="fa fa-plus-circle"></i> Chèn ô trống cuối nội dung
+                                </button>
+                                <small class="reading-insert-gap-help">Có thể kéo ký hiệu <strong>}{SPACE}{</strong> vừa chèn đến đúng vị trí trong editor.</small>
+                                <div class="reading-one-editor-answers">
+                                    <div ng-repeat="q in item.subQuestions | orderBy:'ordinalNumber'">
+                                        <label>Đáp án câu {{q.ordinalNumber}}</label>
+                                        <div class="reading-one-editor-answer-row" ng-repeat="a in q.questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                            <input class="form-control" type="text" ng-model="a.answer.answer" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" placeholder="Đáp án được chấp nhận {{$index + 1}}">
+                                            <button type="button" class="reading-answer-remove-button" ng-click="vm.removeReadingQuestionAnswer(q, $index)" ng-disabled="q.questionAnswers.length <= 1" title="Xóa đáp án này" aria-label="Xóa đáp án này"><i class="fa fa-trash"></i></button>
+                                        </div>
+                                        <button type="button" class="btn btn-info reading-answer-add-button" ng-click="vm.addReadingQuestionAnswer(q, 11)"><i class="fa fa-plus-circle"></i> Thêm đáp án được chấp nhận</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="reading-complete-list-builder" ng-if="item.type == 13 && item.subQuestions.length">
+                                <div class="reading-one-editor-builder__header">
+                                    <div>
+                                        <strong>Một editor cho toàn bộ {{item.subQuestions.length}} câu</strong>
+                                        <small>Mỗi }{SPACE}{ tương ứng lần lượt với câu {{item.subQuestions[0].ordinalNumber}} đến {{item.subQuestions[item.subQuestions.length - 1].ordinalNumber}}.</small>
+                                    </div>
+                                    <span ng-class="{'is-valid': vm.countOneEditorGaps(item.subQuestions[0].question) === item.subQuestions.length}">
+                                        {{vm.countOneEditorGaps(item.subQuestions[0].question)}}/{{item.subQuestions.length}} ô
+                                    </span>
+                                </div>
+                                <textarea ng-change="vm.updateCompleteListContent(item)" ui-tinymce="tinyConFigQuestion" ng-model="item.subQuestions[0].question"></textarea>
+                                <div class="reading-complete-list-words">
+                                    <div ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                        <div class="reading-complete-list-word__header">
+                                            <label ng-if="$index < item.subQuestions.length">Đáp án đúng câu {{item.subQuestions[$index].ordinalNumber}}</label>
+                                            <label ng-if="$index >= item.subQuestions.length">Từ nhiễu {{$index - item.subQuestions.length + 1}}</label>
+                                            <button type="button" class="reading-complete-list-word__remove" ng-click="vm.removeCompleteListAnswer(item, $index)" ng-disabled="item.subQuestions[0].questionAnswers.length <= item.subQuestions.length" title="Xóa đáp án này" aria-label="Xóa đáp án này"><i class="fa fa-trash"></i></button>
+                                        </div>
+                                        <input class="form-control" type="text" ng-model="a.answer.answer" ng-change="vm.updateCompleteListWord(item, $index)" placeholder="Nhập từ hoặc cụm từ">
+                                    </div>
+                                </div>
+                                <div class="reading-complete-list-actions">
+                                    <span>{{item.subQuestions[0].questionAnswers.length}} mục / tối thiểu {{item.subQuestions.length}}</span>
+                                    <button type="button" class="btn btn-info" ng-click="vm.addCompleteListAnswer(item)">
+                                        <i class="fa fa-plus-circle"></i>
+                                        {{item.subQuestions[0].questionAnswers.length < item.subQuestions.length ? 'Thêm đáp án đúng' : 'Thêm từ nhiễu'}}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13" style="margin-top: 20px">
+
+                                    <div class="col-md-12">
+                                        <div class="row">
+                                            <div class="col-md-2">
+                                                <h4 class="bold">Question {{q.ordinalNumber}}</h4>
+                                            </div>
+                                            <div class="col-md-10">
+                                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinyConFigQuestion" ng-if="item.type == 2 || item.type == 3" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <textarea ng-if="item.type != 2 && item.type != 3 && item.type != 11" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <small style="font-style: italic;font-weight: bold">(tick 'v' where it is the correct answer)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+
+                                    <div class="row">
+                                        <div class="col-md-12" ng-repeat="a in q.questionAnswers | orderBy: 'ordinalNumberQuestionAnswer'">
+                                            <div class="row">
+                                                <div class="col-md-2"></div>
+                                                <div class="col-md-2">
+                                                    <h4 class="bold" ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15">Answer {{a.ordinalNumberQuestionAnswer}}</h4>
+                                                    <h4 class="bold" ng-if="item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15">{{vm.sharedChoiceLabel(item.type, $index)}}</h4>
+                                                </div>
+                                                <div class="col-md-7">
+                                                    <textarea ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15" ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                    <div ng-if="item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15" class="reading-shared-choice-preview">{{a.answer.answer}}</div>
+                                                </div>
+                                                <div class="col-md-1">
+                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" type="checkbox" id="defaultCheck1" data-ng-model="a.correct">
+                                                    <button type="button" class="reading-answer-remove-button" ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15" ng-click="vm.removeReadingQuestionAnswer(q, $index)" ng-disabled="q.questionAnswers.length <= 1" title="Xóa answer này" aria-label="Xóa answer này"><i class="fa fa-trash"></i></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row" ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15">
+                                        <div class="col-md-2"></div>
+                                        <div class="col-md-10">
+                                            <button type="button" class="btn btn-info reading-answer-add-button" ng-click="vm.addReadingQuestionAnswer(q, item.type)"><i class="fa fa-plus-circle"></i> Thêm đáp án</button>
+                                        </div>
+                                    </div>
+                                    <hr>
+
+                                </div>
+                            </div>
+                            <div class="reading-package-insert">
+                                <button type="button" class="btn btn-info btn-sm" ng-click="vm.insertPackageAfter(3, $index)"><i class="fa fa-plus"></i> Thêm package bên dưới</button>
+                            </div>
+
+                        </div>
+                        <div class="col-md-12 margin-bottom-10" ng-show="vm.createPackage == true">
+                            <hr>
+                            <div class="col-md-12">
+                                <button class="btn btn-success" ng-click="vm.saveReadingTest()">SAVE</button>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
     <div class="reading-builder-review-modal-backdrop" ng-if="settings.isAdmin == true && vm.showBuilderReview" ng-click="vm.closeBuilderReviewModal()">
         <section id="reading-builder-review" class="reading-builder-review-modal" role="dialog" aria-modal="true" aria-labelledby="reading-builder-review-title" ng-click="$event.stopPropagation()">
             <div class="reading-builder-review__header">
                 <div>
-                    <h3 id="reading-builder-review-title"><span>5</span> Kiểm tra trước khi xuất bản</h3>
+                    <h3 id="reading-builder-review-title"><span>{{vm.isListeningMode ? 6 : 5}}</span> Kiểm tra trước khi xuất bản</h3>
                     <p ng-if="!vm.builderValidation.valid">Còn {{vm.builderValidation.issues.length}} mục cần hoàn thiện. Nhấn vào từng mục để đi thẳng tới vị trí cần sửa.</p>
                     <p class="is-ready" ng-if="vm.builderValidation.valid"><i class="fa fa-check-circle"></i> Đề đã đủ 40 câu và sẵn sàng xuất bản.</p>
                 </div>
@@ -1869,6 +2138,31 @@
         border: 1px solid #e1e5ef;
         border-radius: 8px;
         background: #fbfcfe;
+    }
+
+    .reading-package-insert {
+        display: flex;
+        justify-content: center;
+        margin: 18px -16px -30px;
+        padding-top: 12px;
+        border-top: 1px dashed #cbd5e1;
+    }
+
+    .reading-package-insert .btn {
+        position: relative;
+        z-index: 1;
+        border-radius: 999px;
+        font-weight: 700;
+        box-shadow: 0 6px 16px rgba(59, 130, 246, .16);
+    }
+
+    .reading-package-empty {
+        margin-bottom: 16px;
+        padding: 20px !important;
+        text-align: center;
+        border: 1px dashed #aebbea;
+        border-radius: 10px;
+        background: #f8faff;
     }
 
     .reading-one-editor-notice {

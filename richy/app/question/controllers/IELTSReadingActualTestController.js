@@ -1636,7 +1636,14 @@
         vm.searchDto.pageSize = 10;
         // console.log($stateParams.ieltsReadingTestId);
         vm.isPreviewMode = $location.search().preview === '1' || $location.search().preview === 1;
-        vm.previewPart = Math.max(1, Math.min(3, parseInt($location.search().previewPart, 10) || 1));
+        vm.previewPart = Math.max(1, Math.min(vm.isListeningRoute ? 4 : 3,
+            parseInt($location.search().previewPart, 10) || 1));
+        if (vm.isPreviewMode && vm.isListeningRoute && vm.previewPart === 4) {
+            // Giao diện thi cũ có ba workspace hiển thị. Part 4 dùng workspace
+            // thứ ba nhưng phải lọc từ payload bốn Part trước khi gộp dữ liệu.
+            vm.assignedPart = 4;
+            vm.isPartAssignment = true;
+        }
         vm.previewKey = $location.search().previewKey;
         vm.previewStorage = $location.search().previewStorage === 'session' ? 'session' : 'local';
         vm.isHasTestTakerName = true;
@@ -1724,8 +1731,15 @@
             thirdWorkspace.subQuestions = thirdWorkspace.subQuestions || [];
 
             angular.forEach(data.subQuestions.slice(3), function (extraPart) {
+                if (extraPart && extraPart.question) {
+                    thirdWorkspace.question = String(thirdWorkspace.question || '') +
+                        (thirdWorkspace.question ? '<hr>' : '') + String(extraPart.question);
+                }
                 Array.prototype.push.apply(thirdWorkspace.subQuestions,
                     (extraPart && extraPart.subQuestions) || []);
+            });
+            angular.forEach(thirdWorkspace.subQuestions, function (questionPackage, packageIndex) {
+                questionPackage.ordinalNumber = packageIndex + 1;
             });
             data.subQuestions = data.subQuestions.slice(0, 3);
             return data;
@@ -1884,7 +1898,7 @@
                             }
                             cachedIeltsNavigationParts = null;
                             if (vm.isPreviewMode) {
-                                vm.passageNumber = vm.previewPart;
+                                vm.passageNumber = vm.isListeningRoute ? Math.min(vm.previewPart, 3) : vm.previewPart;
                                 vm.isStartingTest = false;
                                 vm.showTestModeDialog = false;
                                 myCallback(vm.ieltsReadingActualTest);
