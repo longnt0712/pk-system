@@ -8,6 +8,15 @@
     transform-origin: 50% 86%;
 }
 
+.learning-pet-hatched-fallback {
+    display: block;
+    width: 96px;
+    height: 104px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
 .learning-pet-shell:not(.is-open) .learning-pet-egg {
     animation: learning-pet-egg-breathe 2.8s ease-in-out infinite;
 }
@@ -99,5 +108,18 @@
         top: auto;
         width: auto;
         max-height: calc(100vh - 20px);
+    }
+}
+
+/* Kept in a versioned stylesheet so cached footer templates cannot move it back over the pet. */
+.student-scroll-top {
+    right: auto !important;
+    left: 15px !important;
+}
+
+@media (max-width: 767px) {
+    .student-scroll-top {
+        right: auto !important;
+        left: 9px !important;
     }
 }

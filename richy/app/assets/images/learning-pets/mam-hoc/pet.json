@@ -4,6 +4,7 @@
   "spriteVersionNumber": 2,
   "atlas": {
     "file": "spritesheet.webp",
+    "fallbackFile": "pet-hatched-fallback.png",
     "width": 1536,
     "height": 2288,
     "columns": 8,
