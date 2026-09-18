@@ -5094,30 +5094,12 @@
                 guessTickAudio.currentTime = 0;
             }
 
-            var restoreMusicVolume = angular.noop;
-            if (battleViewMusicPlayer && battleViewMusicPlayerReady) {
-                try {
-                    battleViewMusicPlayer.setVolume(28);
-                    restoreMusicVolume = function () {
-                        try {
-                            battleViewMusicPlayer.setVolume(65);
-                        } catch (ignoreRestoreMusicError) {
-                            // Player có thể đã bị huỷ khi chuyển trang.
-                        }
-                    };
-                } catch (ignoreDuckMusicError) {
-                    restoreMusicVolume = angular.noop;
-                }
-            }
-
             $window.speechSynthesis.cancel();
             var utterance = new $window.SpeechSynthesisUtterance(word);
             utterance.lang = 'en-US';
             utterance.rate = 0.88;
             utterance.pitch = 1;
             utterance.volume = clampGuessVoiceVolume(vm.guessVoiceVolume) / 100;
-            utterance.onend = restoreMusicVolume;
-            utterance.onerror = restoreMusicVolume;
             $window.speechSynthesis.speak(utterance);
         }
 
