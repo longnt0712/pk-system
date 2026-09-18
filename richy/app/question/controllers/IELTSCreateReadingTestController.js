@@ -43,23 +43,32 @@
         vm.testModeName = vm.isListeningMode ? 'Listening' : 'Reading';
         vm.testModeIcon = vm.isListeningMode ? 'fa-headphones' : 'fa-book';
 
+        var userCookie = $cookies.get('education.user');
+        var hasBuilderAccess = false;
+        try {
+            vm.currentUser = userCookie ? JSON.parse(userCookie) : {};
+        } catch (ignoreInvalidUserCookie) {
+            vm.currentUser = {};
+        }
+
+        angular.forEach(vm.currentUser.roles || [], function (role) {
+            if (role && role.name === 'ROLE_ADMIN') {
+                hasBuilderAccess = true;
+                settings.isAdmin = true;
+            }
+        });
+
+        if (!hasBuilderAccess) {
+            $location.path(vm.isListeningMode ? '/ielts_listening_tests' : '/ielts_reading_tests');
+            return;
+        }
+
         window.addEventListener('beforeunload', function (e) {
             // Cancel the event
             e.preventDefault(); // If you prevent default behavior in Mozilla Firefox prompt will always be shown
             // Chrome requires returnValue to be set
             e.returnValue = '';
         });
-
-        vm.currentUser = JSON.parse($cookies.getAll()["education.user"]);
-        // console.log(vm.currentUser);
-        if(vm.currentUser.roles != null){
-            angular.forEach(vm.currentUser.roles, function(value, key) {
-                if(value.name == "ROLE_ADMIN"){
-                    settings.isAdmin = true;
-                    console.log("ADMIN");
-                }
-            });
-        }
 
         vm.question = {};
         vm.questions = [];

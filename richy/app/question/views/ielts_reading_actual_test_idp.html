@@ -4386,8 +4386,22 @@
     .idp-reading-page .idp-single-choice-title,
     .idp-reading-page .multiple-choice-question-text {
         cursor: text;
+        -webkit-touch-callout: none;
         -webkit-user-select: text;
         user-select: text;
+    }
+
+    .idp-reading-page .passage-text,
+    .idp-reading-page .question-content {
+        -webkit-touch-callout: none;
+        -webkit-user-select: text;
+        user-select: text;
+    }
+
+    .idp-reading-page input,
+    .idp-reading-page textarea,
+    .idp-reading-page select {
+        -webkit-touch-callout: default;
     }
 
     .idp-reading-page .idp-selectable-question-text,
@@ -5056,6 +5070,38 @@
     .idp-reading-page.idp-contrast-yellow-black .idp-setting-option {
         border-color: #6b6b6b !important;
         background: #050505 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-matching-name-list,
+    .idp-reading-page.idp-contrast-white-black .idp-matching-name-list__title,
+    .idp-reading-page.idp-contrast-white-black .idp-matching-name-list__item,
+    .idp-reading-page.idp-contrast-yellow-black .idp-matching-name-list,
+    .idp-reading-page.idp-contrast-yellow-black .idp-matching-name-list__title,
+    .idp-reading-page.idp-contrast-yellow-black .idp-matching-name-list__item {
+        border-color: #6b6b6b !important;
+        background: #050505 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-matching-name-list,
+    .idp-reading-page.idp-contrast-white-black .idp-matching-name-list * {
+        color: #ffffff !important;
+    }
+
+    .idp-reading-page.idp-contrast-yellow-black .idp-matching-name-list,
+    .idp-reading-page.idp-contrast-yellow-black .idp-matching-name-list * {
+        color: #ffe600 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-matching-matrix.table-hover tr:not(:first-child):hover > td {
+        border-color: #8a8a8a !important;
+        color: #ffffff !important;
+        background: #242424 !important;
+    }
+
+    .idp-reading-page.idp-contrast-yellow-black .idp-matching-matrix.table-hover tr:not(:first-child):hover > td {
+        border-color: #8a8a8a !important;
+        color: #ffe600 !important;
+        background: #242424 !important;
     }
 
     .idp-reading-page.idp-contrast-white-black .idp-exam-topbar,

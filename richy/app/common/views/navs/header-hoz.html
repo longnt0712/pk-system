@@ -106,14 +106,21 @@
                     </a>
                     <ul class="dropdown-menu">
                         <li>
-                            <a href="create_ielts_reading_test">
+                            <a href="ielts_reading_tests">
                                 <i class="fa fa-book"></i> IELTS Reading
                             </a>
                         </li>
                         <li>
-                            <a href="create_ielts_listening_test">
+                            <a href="ielts_listening_tests">
                                 <i class="fa fa-headphones"></i> IELTS Listening
                             </a>
+                        </li>
+                        <li role="separator" class="divider" ng-if="settings.isAdmin == true"></li>
+                        <li ng-if="settings.isAdmin == true">
+                            <a href="create_ielts_reading_test"><i class="fa fa-pencil-square-o"></i> Tạo đề Reading</a>
+                        </li>
+                        <li ng-if="settings.isAdmin == true">
+                            <a href="create_ielts_listening_test"><i class="fa fa-pencil-square-o"></i> Tạo đề Listening</a>
                         </li>
                         <li>
                             <a href="test_results">

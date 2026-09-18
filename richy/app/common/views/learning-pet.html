@@ -1,0 +1,52 @@
+<aside class="learning-pet-shell"
+       ng-if="pet.visible"
+       ng-class="{'is-open': pet.panelOpen, 'is-minimized': pet.minimized, 'has-alert': pet.overdueCount > 0}"
+       aria-live="polite">
+    <section class="learning-pet-panel" ng-if="pet.panelOpen && !pet.minimized">
+        <header class="learning-pet-panel-header">
+            <div>
+                <span class="learning-pet-kicker">MẦM HỌC NHẮC BẠN</span>
+                <h3>{{pet.summaryTitle}}</h3>
+            </div>
+            <button type="button" class="learning-pet-icon-button" ng-click="pet.closePanel($event)" aria-label="Đóng thông báo"><i class="fa fa-times"></i></button>
+        </header>
+        <div class="learning-pet-loading" ng-if="pet.loading"><i class="fa fa-spinner fa-spin"></i> Đang kiểm tra tiến độ học tập...</div>
+        <div class="learning-pet-error" ng-if="!pet.loading && pet.error"><strong>Chưa tải được thông tin.</strong><button type="button" ng-click="pet.refresh()">Thử lại</button></div>
+        <div ng-if="!pet.loading && !pet.error">
+            <div class="learning-pet-stats">
+                <button type="button" ng-click="pet.selectSection('tasks')" ng-class="{'is-active': pet.activeSection === 'tasks'}"><strong>{{pet.pendingTaskCount}}</strong><span>Bài cần làm</span></button>
+                <button type="button" ng-click="pet.selectSection('drafts')" ng-class="{'is-active': pet.activeSection === 'drafts'}"><strong>{{pet.drafts.length}}</strong><span>Đang làm dở</span></button>
+                <div ng-class="{'has-value': pet.overdueCount > 0}"><strong>{{pet.overdueCount}}</strong><span>Quá hạn</span></div>
+            </div>
+            <div class="learning-pet-list" ng-if="pet.activeSection === 'tasks' && pet.tasks.length">
+                <button type="button" class="learning-pet-list-item" ng-repeat="task in pet.tasks | limitTo:5 track by task.taskId" ng-click="pet.openTask(task)">
+                    <span class="learning-pet-list-icon" ng-class="{'is-overdue': task.overdue}"><i class="fa" ng-class="pet.taskIcon(task)"></i></span>
+                    <span class="learning-pet-list-copy"><strong>{{task.title || pet.taskTypeLabel(task)}}</strong><small>{{pet.taskTypeLabel(task)}}<span ng-if="task.ieltsPart"> · Part {{task.ieltsPart}}</span></small><small ng-if="task.dueDate" ng-class="{'is-overdue': task.overdue}">Hạn {{task.dueDate | date:'dd/MM/yyyy'}}{{task.dueTime ? ' ' + task.dueTime : ''}}</small></span>
+                    <i class="fa fa-chevron-right"></i>
+                </button>
+            </div>
+            <div class="learning-pet-list" ng-if="pet.activeSection === 'drafts' && pet.drafts.length">
+                <button type="button" class="learning-pet-list-item" ng-repeat="draft in pet.drafts | limitTo:5 track by draft.storageKey" ng-click="pet.resumeDraft(draft)">
+                    <span class="learning-pet-list-icon"><i class="fa" ng-class="pet.draftIcon(draft)"></i></span>
+                    <span class="learning-pet-list-copy"><strong>{{draft.title}}</strong><small>{{draft.typeLabel}}<span ng-if="draft.assignmentPart"> · Part {{draft.assignmentPart}}</span></small><small ng-if="draft.progressValue">{{draft.progressLabel}} {{draft.progressValue}}</small></span>
+                    <i class="fa fa-play"></i>
+                </button>
+            </div>
+            <div class="learning-pet-empty" ng-if="pet.activeSection === 'tasks' && !pet.tasks.length"><i class="fa fa-check-circle"></i><strong>Bạn không còn bài nào cần hoàn thành.</strong></div>
+            <div class="learning-pet-empty" ng-if="pet.activeSection === 'drafts' && !pet.drafts.length"><i class="fa fa-bookmark-o"></i><strong>Không có bài nào đang làm dở.</strong></div>
+        </div>
+        <footer class="learning-pet-panel-footer">
+            <button type="button" ng-click="pet.refresh()" ng-disabled="pet.loading"><i class="fa fa-refresh" ng-class="{'fa-spin': pet.loading}"></i> Cập nhật</button>
+            <button type="button" ng-click="pet.muteForSession()"><i class="fa fa-volume-off"></i> Ẩn trong phiên này</button>
+        </footer>
+    </section>
+    <button type="button" class="learning-pet-message" ng-if="!pet.panelOpen && !pet.minimized && pet.message" ng-click="pet.openPanel($event)">{{pet.message}}</button>
+    <div class="learning-pet-stage">
+        <button type="button" class="learning-pet-character" ng-click="pet.togglePanel($event)" ng-attr-aria-label="{{pet.panelOpen ? 'Đóng trợ lý Mầm Học' : 'Mở trợ lý Mầm Học'}}">
+            <span class="learning-pet-sprite" ng-if="pet.petForm === 'hatched'" ng-style="pet.spriteStyle"></span>
+            <img class="learning-pet-egg" ng-if="pet.petForm !== 'hatched'" ng-src="{{pet.petImage}}" alt="" aria-hidden="true" />
+            <span class="learning-pet-badge" ng-if="pet.notificationCount > 0">{{pet.notificationCount > 99 ? '99+' : pet.notificationCount}}</span>
+        </button>
+        <button type="button" class="learning-pet-minimize" ng-click="pet.toggleMinimized($event)" ng-attr-aria-label="{{pet.minimized ? 'Hiện Mầm Học' : 'Thu nhỏ Mầm Học'}}"><i class="fa" ng-class="pet.minimized ? 'fa-commenting' : 'fa-minus'"></i></button>
+    </div>
+</aside>

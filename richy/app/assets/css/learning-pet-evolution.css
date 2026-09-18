@@ -1,0 +1,32 @@
+.learning-pet-egg {
+    display: block;
+    width: 96px;
+    height: 104px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    transform-origin: 50% 86%;
+}
+
+.learning-pet-shell:not(.is-open) .learning-pet-egg {
+    animation: learning-pet-egg-breathe 2.8s ease-in-out infinite;
+}
+
+.learning-pet-shell.has-alert .learning-pet-egg {
+    animation: learning-pet-egg-alert .72s ease-in-out infinite;
+}
+
+@keyframes learning-pet-egg-breathe {
+    0%, 100% { transform: translateY(0) rotate(0); }
+    50% { transform: translateY(-3px) rotate(1deg); }
+}
+
+@keyframes learning-pet-egg-alert {
+    0%, 100% { transform: rotate(0); }
+    25% { transform: rotate(-4deg); }
+    75% { transform: rotate(4deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .learning-pet-egg { animation: none !important; }
+}

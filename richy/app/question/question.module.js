@@ -227,6 +227,44 @@
                 }
             })
 
+            .state('application.ielts_reading_tests', {
+                url: '/ielts_reading_tests',
+                templateUrl: 'question/views/ielts_test_library.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'IELTS Reading Library'},
+                controller: 'IELTSTestLibraryController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({
+                            name: 'Hrm.Question',
+                            insertBefore: '#ng_load_plugins_before',
+                            files: [
+                                'question/controllers/IELTSTestLibraryController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
+                            ]
+                        });
+                    }]
+                }
+            })
+
+            .state('application.ielts_listening_tests', {
+                url: '/ielts_listening_tests',
+                templateUrl: 'question/views/ielts_test_library.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'IELTS Listening Library'},
+                controller: 'IELTSTestLibraryController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({
+                            name: 'Hrm.Question',
+                            insertBefore: '#ng_load_plugins_before',
+                            files: [
+                                'question/controllers/IELTSTestLibraryController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
+                            ]
+                        });
+                    }]
+                }
+            })
+
             .state('application.create_ielts_reading_test', {
                 url: '/create_ielts_reading_test',
                 templateUrl: 'question/views/create_ielts_reading_test.html?v=' + window.APP_VERSION,

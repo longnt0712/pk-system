@@ -4014,6 +4014,13 @@
                 top: top + 'px'
             };
             vm.isShowContextMenu = true;
+
+            var navigatorInfo = window.navigator || {};
+            var isIosTouchDevice = /iPad|iPhone|iPod/i.test(navigatorInfo.userAgent || '')
+                || (navigatorInfo.platform === 'MacIntel' && Number(navigatorInfo.maxTouchPoints) > 1);
+            if (isIosTouchDevice && selection.removeAllRanges) {
+                selection.removeAllRanges();
+            }
         };
 
         vm.openQuestionIfNotSelecting = function (question, questions, $event) {

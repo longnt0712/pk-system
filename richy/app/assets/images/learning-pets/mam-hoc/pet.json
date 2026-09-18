@@ -1,0 +1,45 @@
+{
+  "id": "mam-hoc",
+  "name": "Mầm Học",
+  "spriteVersionNumber": 2,
+  "atlas": {
+    "file": "spritesheet.webp",
+    "width": 1536,
+    "height": 2288,
+    "columns": 8,
+    "rows": 11,
+    "cellWidth": 192,
+    "cellHeight": 208
+  },
+  "evolution": [
+    {
+      "minimumVocabularyExperienceLevel": 0,
+      "maximumVocabularyExperienceLevel": 0,
+      "form": "egg-intact",
+      "file": "egg-level-0.png"
+    },
+    {
+      "minimumVocabularyExperienceLevel": 1,
+      "maximumVocabularyExperienceLevel": 1,
+      "form": "egg-cracked",
+      "file": "egg-level-1.png"
+    },
+    {
+      "minimumVocabularyExperienceLevel": 2,
+      "form": "hatched",
+      "file": "spritesheet.webp"
+    }
+  ],
+  "animations": {
+    "idle": {"row": 0, "frames": 6},
+    "runningRight": {"row": 1, "frames": 8},
+    "runningLeft": {"row": 2, "frames": 8},
+    "waving": {"row": 3, "frames": 4},
+    "completed": {"row": 4, "frames": 5},
+    "failed": {"row": 5, "frames": 8},
+    "waiting": {"row": 6, "frames": 6},
+    "working": {"row": 7, "frames": 6},
+    "review": {"row": 8, "frames": 6},
+    "lookDirections": {"startRow": 9, "frames": 16}
+  }
+}
