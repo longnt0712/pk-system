@@ -51,7 +51,7 @@
                 failed: {row: 5, durations: [140, 140, 140, 140, 140, 140, 140, 240]},
                 waiting: {row: 6, durations: [150, 150, 150, 150, 150, 260]},
                 working: {row: 7, durations: [120, 120, 120, 120, 120, 220]},
-                review: {row: 8, durations: [150, 150, 150, 150, 150, 280]}
+                review: {row: 8, durations: [190, 190, 190, 190, 190, 350]}
             };
 
             vm.visible = false;

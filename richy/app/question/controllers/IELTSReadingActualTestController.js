@@ -1792,7 +1792,15 @@
                                 vm.showTestModeDialog = false;
                                 myCallback(vm.ieltsReadingActualTest);
                             } else {
+                                var hasInitializedLoadedTest = false;
+                                var draftWaitTimeout = null;
                                 var initializeLoadedTest = function () {
+                                    if (hasInitializedLoadedTest) { return; }
+                                    hasInitializedLoadedTest = true;
+                                    if (draftWaitTimeout) {
+                                        $timeout.cancel(draftWaitTimeout);
+                                        draftWaitTimeout = null;
+                                    }
                                     if (!startFreshSeriousTest) {
                                         restoreReadingDraft();
                                     }
@@ -1816,6 +1824,9 @@
                                 };
                                 if (readingLearningDraftsReady && angular.isFunction(readingLearningDraftsReady.finally)) {
                                     readingLearningDraftsReady.finally(initializeLoadedTest);
+                                    // Draft sync is helpful, but a slow/unavailable draft API must never
+                                    // keep the candidate trapped on "Loading test...".
+                                    draftWaitTimeout = $timeout(initializeLoadedTest, 3000);
                                 } else {
                                     initializeLoadedTest();
                                 }
