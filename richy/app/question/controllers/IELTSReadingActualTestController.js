@@ -648,7 +648,9 @@
         var requestedAssignedPart = /^\d+$/.test(String($stateParams.assignmentPart || '')) ? Number($stateParams.assignmentPart) : null;
         var maximumAssignedPart = vm.isListeningRoute ? 4 : 3;
         vm.assignedPart = requestedAssignedPart >= 1 && requestedAssignedPart <= maximumAssignedPart ? requestedAssignedPart : null;
-        vm.isPartAssignment = !!(vm.assignmentTaskId && vm.assignedPart);
+        // assignmentPart tự nó đã đủ để mở chế độ chỉ làm một Part.
+        // Một số link do giáo viên mở trực tiếp không có assignmentTaskId.
+        vm.isPartAssignment = !!vm.assignedPart;
         vm.testSessionMode = vm.assignmentTaskId ? 'STUDY' : 'SERIOUS';
         vm.selectedTestSessionMode = vm.testSessionMode;
         vm.showTestModeDialog = false;
@@ -1729,6 +1731,63 @@
             return data;
         }
 
+        function restrictListeningAssignmentToSelectedPart(data) {
+            if (!vm.isListeningRoute || !vm.isPartAssignment || !data ||
+                    !angular.isArray(data.subQuestions) || !data.subQuestions.length) {
+                return data;
+            }
+
+            var assignedPart = Number(vm.assignedPart);
+            var passages = data.subQuestions;
+            var displayIndex = Math.min(assignedPart, 3) - 1;
+            var sourceIndex = Math.min(assignedPart - 1, passages.length - 1);
+            var sourcePassage = passages[sourceIndex] || passages[displayIndex];
+            var displayPassages = passages.slice(0, 3);
+            var displayShell = displayPassages[displayIndex] || sourcePassage;
+            var assignedPackages = [];
+
+            angular.forEach(passages, function (passage) {
+                angular.forEach((passage && passage.subQuestions) || [], function (questionPackage) {
+                    var assignedQuestions = (questionPackage.subQuestions || []).filter(function (question) {
+                        return listeningPartNumberForOrdinal(question.ordinalNumber) === assignedPart;
+                    });
+                    if (assignedQuestions.length) {
+                        questionPackage.subQuestions = assignedQuestions;
+                        assignedPackages.push(questionPackage);
+                    }
+                });
+            });
+
+            if (!sourcePassage || !displayShell) {
+                return data;
+            }
+
+            // Part 4 dùng workspace thứ ba của giao diện cũ, nhưng lấy đúng
+            // transcript/nội dung Part 4 nếu payload đã có đủ bốn Part.
+            if (sourcePassage !== displayShell) {
+                sourcePassage.questionType = displayShell.questionType;
+                sourcePassage.ordinalNumber = displayShell.ordinalNumber;
+                displayPassages[displayIndex] = sourcePassage;
+            }
+
+            angular.forEach(displayPassages, function (passage) {
+                if (passage) {
+                    passage.subQuestions = [];
+                }
+            });
+
+            sourcePassage.subQuestions = assignedPackages;
+            angular.forEach(assignedPackages, function (questionPackage) {
+                questionPackage.parent = {
+                    ordinalNumber: sourcePassage.ordinalNumber,
+                    questionType: sourcePassage.questionType
+                };
+            });
+
+            data.subQuestions = displayPassages;
+            return data;
+        }
+
         vm.startTest = function () {
             if (vm.isStartTest || vm.isStartingTest) { return; }
             vm.isStartingTest = true;
@@ -1746,6 +1805,7 @@
                         failToStartTest('The test data could not be loaded. Please try again.');
                         return;
                     }
+                    data = restrictListeningAssignmentToSelectedPart(data);
                     data = normalizeListeningCandidateParts(data);
                     cachedIeltsNavigationParts = null;
                     vm.ieltsReadingActualTest = data;

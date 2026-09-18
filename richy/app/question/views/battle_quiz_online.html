@@ -863,6 +863,7 @@
                                min="3"
                                max="120"
                                class="form-control"
+                               ng-change="vm.markSecondsPerQuestionTouched()"
                                ng-model="vm.hostSettings.secondsPerQuestion">
                     </div>
 
@@ -939,7 +940,21 @@
                         <label>GIÂY / CÂU</label>
                         <input type="number" min="3" max="120"
                                class="form-control"
+                               ng-change="vm.markSecondsPerQuestionTouched()"
                                ng-model="vm.hostSettings.secondsPerQuestion">
+                    </div>
+                    <div class="battle-online-guess-voice-setting">
+                        <label>🔊 ÂM LƯỢNG GIỌNG ĐỌC</label>
+                        <div class="battle-online-guess-volume-control">
+                            <input type="range" min="40" max="100" step="5"
+                                   ng-model="vm.guessVoiceVolume"
+                                   ng-change="vm.updateGuessVoiceVolume()">
+                            <strong>{{vm.guessVoiceVolume}}%</strong>
+                            <button type="button" ng-click="vm.previewGuessVoice()">
+                                <i class="fa fa-volume-up"></i> Nghe thử
+                            </button>
+                        </div>
+                        <small>Nhạc nền sẽ tự giảm khi hệ thống đọc đáp án.</small>
                     </div>
                 </div>
                 <label>CÁCH CHUYỂN CÂU</label>
@@ -1404,16 +1419,18 @@
                                ng-disabled="vm.isSpectator()"
                                ng-attr-maxlength="{{vm.getGuessInputMaxLength()}}"
                                ng-attr-aria-disabled="{{vm.answerLocked || vm.guessSubmitting}}">
+                    </div>
+                    <div class="battle-online-guess-actions">
                         <small class="battle-online-guess-letter-count"
                                ng-class="{'is-complete': vm.getGuessTypedLetterCount() === vm.getGuessRequiredLetterCount()}">
                             {{vm.getGuessTypedLetterCount()}} / {{vm.getGuessRequiredLetterCount()}} chữ cái
                         </small>
+                        <button type="button"
+                                ng-click="vm.submitGuessWord()"
+                                ng-disabled="vm.isSpectator() || vm.answerLocked || vm.guessSubmitting || vm.countdown <= 0 || !vm.guessAnswerText">
+                            {{vm.guessSubmitting ? 'ĐANG GỬI...' : 'GỬI ĐÁP ÁN'}}
+                        </button>
                     </div>
-                    <button type="button"
-                            ng-click="vm.submitGuessWord()"
-                            ng-disabled="vm.isSpectator() || vm.answerLocked || vm.guessSubmitting || vm.countdown <= 0 || !vm.guessAnswerText">
-                        {{vm.guessSubmitting ? 'ĐANG GỬI...' : 'GỬI ĐÁP ÁN'}}
-                    </button>
                 </div>
                 <div class="battle-online-guess-auto-submit-note"
                      ng-if="!vm.isSpectator() && vm.room.guessPhase === 'QUESTION' && !vm.answerLocked">
@@ -7564,7 +7581,52 @@
         margin-left: 0;
         border-radius: inherit;
         background: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e);
-        transition: width .25s linear;
+        will-change: width;
+        transition: width .28s linear;
+    }
+
+    .battle-online-guess-volume-control {
+        display: grid;
+        grid-template-columns: minmax(120px, 1fr) auto auto;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .battle-online-guess-volume-control input[type="range"] {
+        width: 100%;
+        accent-color: #7c3aed;
+        cursor: pointer;
+    }
+
+    .battle-online-guess-volume-control strong {
+        min-width: 46px;
+        color: #6d28d9;
+        text-align: right;
+    }
+
+    .battle-online-guess-volume-control button {
+        padding: 8px 12px;
+        border: 1px solid #c4b5fd;
+        border-radius: 10px;
+        background: #fff;
+        color: #5b21b6;
+        font-weight: 700;
+    }
+
+    .battle-online-guess-voice-setting > small {
+        display: block;
+        margin-top: 7px;
+        color: #64748b;
+    }
+
+    @media (max-width: 640px) {
+        .battle-online-guess-volume-control {
+            grid-template-columns: minmax(100px, 1fr) auto;
+        }
+
+        .battle-online-guess-volume-control button {
+            grid-column: 1 / -1;
+        }
     }
 
     .battle-online-guess-stage {
@@ -7669,6 +7731,7 @@
 
     .battle-online-guess-form {
         display: flex;
+        flex-direction: column;
         gap: 10px;
         max-width: 720px;
         margin: 0 auto;
@@ -7697,7 +7760,7 @@
         font-size: 20px;
         text-align: center;
         font-weight: 700;
-        padding-right: 112px;
+        padding: 0 18px;
         box-shadow: inset 0 0 0 1px #dbeafe;
         pointer-events: auto;
         touch-action: manipulation;
@@ -7707,11 +7770,9 @@
     }
 
     .battle-online-guess-letter-count {
-        position: absolute;
-        z-index: 4;
-        top: 50%;
-        right: 13px;
-        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
         padding: 4px 7px;
         border-radius: 999px;
         color: #64748b;
@@ -7721,6 +7782,13 @@
         line-height: 1;
         white-space: nowrap;
         pointer-events: none;
+    }
+
+    .battle-online-guess-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
     }
 
     .battle-online-guess-letter-count.is-complete {
@@ -7741,6 +7809,7 @@
 
     .battle-online-guess-form button {
         flex: 0 0 auto;
+        min-height: 44px;
         padding: 0 22px;
         border: 0;
         border-radius: 12px;
