@@ -2856,6 +2856,32 @@ h6 {
     background: #ffffff !important;
 }
 
+/* Angular ui-select single-value controls must keep their internal search
+   input in the same slot as the match button. Without these guards the input
+   can remain in normal flow and appears as an extra empty box site-wide. */
+html body .ui-select-container.ui-select-bootstrap:not(.ui-select-multiple):not(.open)
+    > input.ui-select-search,
+html body .ui-select-container.ui-select-bootstrap:not(.ui-select-multiple)
+    > input.ui-select-search.ng-hide {
+    display: none !important;
+}
+
+html body .ui-select-container.ui-select-bootstrap:not(.ui-select-multiple).open
+    > .ui-select-match {
+    display: none !important;
+}
+
+html body .ui-select-container.ui-select-bootstrap:not(.ui-select-multiple).open
+    > input.ui-select-search {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    left: auto !important;
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+}
+
 /* Native select vẫn cùng màu khi trình duyệt cho phép style option. */
 select.form-control,
 select.form-control option {

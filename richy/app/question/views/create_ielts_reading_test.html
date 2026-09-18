@@ -1216,24 +1216,6 @@
         padding-bottom: 82px;
     }
 
-    /* ui-select leaves its internal search input in normal document flow on
-       some cached/browser CSS combinations. Keep it hidden while closed and
-       overlay it on the select control only while the dropdown is open. */
-    .ielts-reading-builder-page .ui-select-bootstrap:not(.open) > input.ui-select-search {
-        display: none !important;
-    }
-
-    .ielts-reading-builder-page .ui-select-bootstrap.open > input.ui-select-search {
-        position: absolute !important;
-        top: 0;
-        right: 0;
-        left: 0;
-        z-index: 5;
-        width: 100% !important;
-        height: 100% !important;
-        margin: 0 !important;
-    }
-
     .reading-test-catalog {
         --reading-accent: #4f63d9;
         --reading-soft: #eef1ff;

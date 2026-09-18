@@ -17,6 +17,10 @@
     image-rendering: crisp-edges;
 }
 
+.learning-pet-shell {
+    z-index: 1070;
+}
+
 .learning-pet-shell:not(.is-open) .learning-pet-egg {
     animation: learning-pet-egg-breathe 2.8s ease-in-out infinite;
 }

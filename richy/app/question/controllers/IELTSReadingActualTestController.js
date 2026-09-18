@@ -1784,7 +1784,14 @@
                     function firstCallFunction(myCallback) {
                         var timeout;
                         timeout = $timeout(function(){
-                            vm.ieltsReadingActualTest = vm.processQuestionATT(data);
+                            try {
+                                vm.ieltsReadingActualTest = vm.processQuestionATT(data);
+                            } catch (questionProcessingError) {
+                                // The raw server payload is still renderable. A malformed legacy
+                                // package must not leave the candidate stuck on the loading screen.
+                                console.error('Unable to finish IELTS question preprocessing.', questionProcessingError);
+                                vm.ieltsReadingActualTest = data;
+                            }
                             cachedIeltsNavigationParts = null;
                             if (vm.isPreviewMode) {
                                 vm.passageNumber = vm.previewPart;
@@ -1822,7 +1829,9 @@
                                     $scope.$evalAsync(angular.noop);
                                     myCallback(vm.ieltsReadingActualTest);
                                 };
-                                if (readingLearningDraftsReady && angular.isFunction(readingLearningDraftsReady.finally)) {
+                                if (startFreshSeriousTest) {
+                                    initializeLoadedTest();
+                                } else if (readingLearningDraftsReady && angular.isFunction(readingLearningDraftsReady.finally)) {
                                     readingLearningDraftsReady.finally(initializeLoadedTest);
                                     // Draft sync is helpful, but a slow/unavailable draft API must never
                                     // keep the candidate trapped on "Loading test...".
@@ -1971,7 +1980,12 @@
         };
 
         //--------------------- Reading Actual test -------------------------//
-        var mainAudio = document.getElementById('main-audio');
+        var mainAudio = null;
+
+        function getMainAudio() {
+            mainAudio = document.getElementById('main-audio');
+            return mainAudio;
+        }
 
         function stripEmbeddedReadingIntro(passage) {
             if (vm.isListeningRoute || !passage || !passage.question) {
@@ -1998,10 +2012,20 @@
 
         vm.setUpAudio = function () {
             if (!vm.isListeningRoute) { return; }
-            mainAudio.src = vm.ieltsReadingActualTest.pronounce; // local server
-            mainAudio.load();
-            mainAudio.play();
-            mainAudio.loop = false;
+            // The audio element is created by ng-if/ng-show after the test data
+            // arrives, so resolve it after Angular has rendered the candidate view.
+            $timeout(function () {
+                var audioElement = getMainAudio();
+                if (!audioElement) { return; }
+                audioElement.src = vm.ieltsReadingActualTest.pronounce || '';
+                audioElement.loop = false;
+                trackAudioDuration(audioElement);
+                audioElement.load();
+                var playPromise = audioElement.play();
+                if (playPromise && angular.isFunction(playPromise.catch)) {
+                    playPromise.catch(angular.noop);
+                }
+            }, 0);
         };
 
         vm.playbackValue = 1.0;
@@ -2013,7 +2037,8 @@
 
             vm.playbackValue = vm.playbackValue + 0.1;
 
-            mainAudio.playbackRate  = vm.playbackValue;
+            var audioElement = getMainAudio();
+            if (audioElement) { audioElement.playbackRate = vm.playbackValue; }
             // loadVideoYouTube.playbackRate  = vm.playbackValue;
             // loadVideo.playbackRate  = vm.playbackValue;
         };
@@ -2025,7 +2050,8 @@
 
             vm.playbackValue = vm.playbackValue - 0.1;
 
-            mainAudio.playbackRate  = vm.playbackValue;
+            var audioElement = getMainAudio();
+            if (audioElement) { audioElement.playbackRate = vm.playbackValue; }
             // loadVideoYouTube.playbackRate  = vm.playbackValue;
             // loadVideo.playbackRate  = vm.playbackValue;
         };
@@ -2144,7 +2170,8 @@
             if($scope.counter <= 0) {
                 countdownEndsAt = null;
                 vm.saveTestResult();
-                mainAudio.load();
+                var finishedAudio = getMainAudio();
+                if (finishedAudio) { finishedAudio.load(); }
                 $scope.$broadcast('timer-stopped', 0);
                 $timeout.cancel(mytimeout);
                 return;
@@ -2159,6 +2186,25 @@
             // audio.load();
         };
 
+        function trackAudioDuration(audioElement) {
+            if (!vm.isListeningRoute || !audioElement) { return; }
+            audioElement.onloadedmetadata = function() {
+                vm.totalAudioSeconds = audioElement.duration;
+                if (vm.totalAudioSeconds > 0) {
+                    seriousTotalSeconds = Math.max(parseInt(vm.totalAudioSeconds, 10) + 60,
+                        Number($scope.counter) || 0);
+                    if (!timerRestoredFromDraft) { setCountdownSeconds(seriousTotalSeconds); }
+                    $scope.$evalAsync();
+                }
+            };
+            if (isFinite(audioElement.duration) && audioElement.duration > 0) {
+                vm.totalAudioSeconds = audioElement.duration;
+                seriousTotalSeconds = Math.max(parseInt(vm.totalAudioSeconds, 10) + 60,
+                    Number($scope.counter) || 0);
+                if (!timerRestoredFromDraft) { setCountdownSeconds(seriousTotalSeconds); }
+            }
+        }
+
         $scope.refreshTimer = function () {
             $timeout.cancel(mytimeout);
             if (vm.isStudyMode()) {
@@ -2169,19 +2215,7 @@
             seriousTotalSeconds = 3600;
             setCountdownSeconds(3600);
             vm.totalAudioSeconds = 0;
-            mainAudio.onloadedmetadata = function() {
-                vm.totalAudioSeconds = mainAudio.duration;
-                if(vm.isListeningRoute && vm.totalAudioSeconds > 0){
-                    seriousTotalSeconds = Math.max(parseInt(vm.totalAudioSeconds, 10) + 60, Number($scope.counter) || 0);
-                    if (!timerRestoredFromDraft) { setCountdownSeconds(seriousTotalSeconds); }
-                    $scope.$evalAsync();
-                }
-            };
-            if (vm.isListeningRoute && isFinite(mainAudio.duration) && mainAudio.duration > 0) {
-                vm.totalAudioSeconds = mainAudio.duration;
-                seriousTotalSeconds = Math.max(parseInt(vm.totalAudioSeconds, 10) + 60, Number($scope.counter) || 0);
-                if (!timerRestoredFromDraft) { setCountdownSeconds(seriousTotalSeconds); }
-            }
+            trackAudioDuration(getMainAudio());
         };
 
         function syncTimerWhenVisible() {
