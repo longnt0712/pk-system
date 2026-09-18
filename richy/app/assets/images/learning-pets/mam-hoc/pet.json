@@ -3,7 +3,8 @@
   "name": "Mầm Học",
   "spriteVersionNumber": 2,
   "atlas": {
-    "file": "spritesheet.webp",
+    "file": "spritesheet.png",
+    "optimizedFile": "spritesheet.webp",
     "fallbackFile": "pet-hatched-fallback.png",
     "width": 1536,
     "height": 2288,
@@ -28,7 +29,7 @@
     {
       "minimumVocabularyExperienceLevel": 2,
       "form": "hatched",
-      "file": "spritesheet.webp"
+      "file": "spritesheet.png"
     }
   ],
   "animations": {

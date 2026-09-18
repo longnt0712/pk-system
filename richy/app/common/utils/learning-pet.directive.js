@@ -33,12 +33,15 @@
             var dragFrame = null;
             var dragCleanup = angular.noop;
             var dragPosition = null;
+            var spriteLoadStarted = false;
             var spriteScale = 0.5;
             var atlasWidth = 1536;
             var atlasHeight = 2288;
             var cellWidth = 192;
             var cellHeight = 208;
-            var spriteUrl = 'assets/images/learning-pets/mam-hoc/spritesheet.webp?v=' + version;
+            // PNG is the primary atlas because the production static-file deploy currently
+            // skips .webp files. The lossless WebP remains packaged as an optional optimized copy.
+            var spriteUrl = 'assets/images/learning-pets/mam-hoc/spritesheet.png?v=' + version;
             var animations = {
                 idle: {row: 0, durations: [280, 110, 110, 140, 140, 320]},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
@@ -65,6 +68,8 @@
             vm.summaryTitle = 'Tiến độ học tập của bạn';
             vm.message = '';
             vm.spriteStyle = {};
+            vm.spriteReady = false;
+            vm.hatchedFallbackImage = 'assets/images/learning-pets/mam-hoc/pet-hatched-fallback.png?v=' + version;
             vm.shellStyle = {};
             vm.dragging = false;
             vm.petForm = 'egg-intact';
@@ -347,6 +352,23 @@
                 }
             }
 
+            function preloadSprite() {
+                if (spriteLoadStarted) { return; }
+                spriteLoadStarted = true;
+                var image = new $window.Image();
+                image.onload = function () {
+                    $scope.$evalAsync(function () {
+                        vm.spriteReady = true;
+                    });
+                };
+                image.onerror = function () {
+                    $scope.$evalAsync(function () {
+                        vm.spriteReady = false;
+                    });
+                };
+                image.src = spriteUrl;
+            }
+
             function tickAnimation(animation) {
                 vm.spriteStyle = spritePosition(animation.row, frameIndex);
                 var delay = animation.durations[frameIndex] || 160;
@@ -556,6 +578,7 @@
                 updatePetForm(readCurrentUser());
                 vm.visible = shouldDisplay();
                 if (!vm.visible) { return; }
+                if (vm.petForm === 'hatched') { preloadSprite(); }
                 $timeout(setupDrag, 0);
                 playAnimation('waving', true);
                 vm.refresh();
@@ -569,6 +592,7 @@
                 liveUser = user;
                 updatePetForm(user);
                 vm.visible = shouldDisplay();
+                if (vm.visible && vm.petForm === 'hatched') { preloadSprite(); }
             });
             var routeListener = $scope.$on('$stateChangeSuccess', function () {
                 if (vm.visible) {

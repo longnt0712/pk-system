@@ -44,7 +44,9 @@
     <button type="button" class="learning-pet-message" ng-if="!pet.panelOpen && !pet.minimized && pet.message" ng-click="pet.openPanel($event)">{{pet.message}}</button>
     <div class="learning-pet-stage">
         <button type="button" class="learning-pet-character" ng-click="pet.togglePanel($event)" ng-attr-aria-grabbed="{{pet.dragging}}" ng-attr-aria-label="{{pet.panelOpen ? 'Đóng trợ lý Mầm Học' : 'Mở hoặc kéo trợ lý Mầm Học'}}">
-            <span class="learning-pet-sprite" ng-if="pet.petForm === 'hatched'" ng-style="pet.spriteStyle"></span>
+            <span class="learning-pet-sprite" ng-if="pet.petForm === 'hatched' && pet.spriteReady" ng-style="pet.spriteStyle"></span>
+            <img class="learning-pet-hatched-fallback" ng-if="pet.petForm === 'hatched' && !pet.spriteReady"
+                 ng-src="{{pet.hatchedFallbackImage}}" draggable="false" alt="" aria-hidden="true" />
             <img class="learning-pet-egg" ng-if="pet.petForm !== 'hatched'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
             <span class="learning-pet-badge" ng-if="pet.notificationCount > 0">{{pet.notificationCount > 99 ? '99+' : pet.notificationCount}}</span>
         </button>
