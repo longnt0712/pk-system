@@ -40,6 +40,12 @@ public interface BattleOnlineService {
             boolean ready
     );
 
+    BattleOnlineRoomDto updateDisplayName(
+            String roomCode,
+            String username,
+            String displayName
+    );
+
     BattleOnlineRoomDto setSpectator(
             String roomCode,
             String username,

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.globits.richy.dto.BattleOnlineAnswerDto;
 import com.globits.richy.dto.BattleOnlineAnswerResultDto;
 import com.globits.richy.dto.BattleOnlineCreateRoomDto;
+import com.globits.richy.dto.BattleOnlineDisplayNameDto;
 import com.globits.richy.dto.BattleOnlinePasswordChoiceDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessResultDto;
@@ -82,6 +83,18 @@ public class RestBattleOnlineController {
                 roomCode,
                 currentUsername(),
                 dto != null && dto.isReady()
+        );
+    }
+
+    @RequestMapping(value = "/rooms/{roomCode}/display-name", method = RequestMethod.PUT)
+    public BattleOnlineRoomDto updateDisplayName(
+            @PathVariable String roomCode,
+            @RequestBody BattleOnlineDisplayNameDto dto) {
+
+        return battleOnlineService.updateDisplayName(
+                roomCode,
+                currentUsername(),
+                dto != null ? dto.getDisplayName() : null
         );
     }
 

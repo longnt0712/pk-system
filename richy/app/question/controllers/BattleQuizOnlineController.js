@@ -193,6 +193,11 @@
                 vm.currentUser
             );
 
+        vm.battleDisplayName = '';
+        vm.battleDisplayNameDirty = false;
+        vm.battleDisplayNameInitialized = false;
+        vm.savingBattleDisplayName = false;
+
         vm.topicOwners = buildTopicOwners();
         vm.selectedTopicOwner = vm.topicOwners.length
             ? vm.topicOwners[0]
@@ -296,6 +301,7 @@
         vm.previewGuessVoice = previewGuessVoice;
 
         vm.toggleReady = toggleReady;
+        vm.saveBattleDisplayName = saveBattleDisplayName;
         vm.toggleSpectator = toggleSpectator;
         vm.assignPlayerTeam = assignPlayerTeam;
         vm.dropPlayerIntoTeam = dropPlayerIntoTeam;
@@ -352,6 +358,7 @@
         vm.getBurnRemaining = getBurnRemaining;
         vm.dismissPersonalSkillNotice = dismissPersonalSkillNotice;
         vm.getPlayerDisplayName = getPlayerDisplayName;
+        vm.getFinalPlayerDisplayName = getFinalPlayerDisplayName;
         vm.getPlayerRankPraise = getPlayerRankPraise;
         vm.getSkillEventMessage = getSkillEventMessage;
         vm.getActiveSkillEffectType = getActiveSkillEffectType;
@@ -468,6 +475,23 @@
             }
 
             return 'Người chơi';
+        }
+
+
+        function getFinalPlayerDisplayName(player) {
+            var displayName = getPlayerDisplayName(player);
+            var realName = String(
+                player && player.realName || ''
+            ).trim();
+
+            if (
+                realName &&
+                realName.toLowerCase() !== displayName.toLowerCase()
+            ) {
+                return displayName + ' - ' + realName;
+            }
+
+            return displayName;
         }
 
 
@@ -1294,6 +1318,9 @@
                         stopRealtimeAndPolling();
 
                         vm.room = null;
+                        vm.battleDisplayName = '';
+                        vm.battleDisplayNameDirty = false;
+                        vm.battleDisplayNameInitialized = false;
                         syncMobilePlayingPageState();
                         stopBattleViewMusic(true);
                         vm.rankingModalOpen = false;
@@ -1753,6 +1780,7 @@
             }
 
             vm.room = incoming;
+            syncBattleDisplayName(incoming);
             syncMobilePlayingPageState();
             syncBattleViewMusic();
 
@@ -2347,6 +2375,69 @@
         /* =====================================================
            READY / START
            ===================================================== */
+
+        function syncBattleDisplayName(room) {
+            if (
+                vm.battleDisplayNameInitialized &&
+                vm.battleDisplayNameDirty
+            ) {
+                return;
+            }
+
+            angular.forEach(room && room.players || [], function (player) {
+                if (
+                    player &&
+                    player.username === vm.currentUser.username
+                ) {
+                    vm.battleDisplayName = String(
+                        player.displayName ||
+                        player.realName ||
+                        vm.currentUserDisplayName ||
+                        ''
+                    ).trim();
+                    vm.battleDisplayNameInitialized = true;
+                }
+            });
+        }
+
+
+        function saveBattleDisplayName() {
+            var displayName = String(vm.battleDisplayName || '')
+                .trim()
+                .replace(/\s+/g, ' ');
+
+            if (
+                !vm.room ||
+                vm.room.status !== 'LOBBY' ||
+                vm.savingBattleDisplayName
+            ) {
+                return;
+            }
+
+            if (!displayName) {
+                toastr.warning('Tên hiển thị không được để trống.', 'BATTLE ONLINE');
+                return;
+            }
+
+            if (displayName.length > 30) {
+                toastr.warning('Tên hiển thị tối đa 30 ký tự.', 'BATTLE ONLINE');
+                return;
+            }
+
+            vm.savingBattleDisplayName = true;
+
+            battleService
+                .updateDisplayName(vm.room.code, displayName)
+                .then(function (room) {
+                    vm.battleDisplayName = displayName;
+                    vm.battleDisplayNameDirty = false;
+                    applyRoom(room, false);
+                    toastr.success('Đã lưu tên hiển thị trong trận.', 'BATTLE ONLINE');
+                }, showRequestError)
+                .finally(function () {
+                    vm.savingBattleDisplayName = false;
+                });
+        }
 
         function toggleReady() {
             var me =
@@ -3489,8 +3580,8 @@
             var options = vm.room && vm.room.passwordGuessOptions || [];
             var groups = [];
 
-            for (var index = 0; index < options.length; index += 2) {
-                groups.push(options.slice(index, index + 2));
+            for (var index = 0; index < options.length; index += 1) {
+                groups.push(options.slice(index, index + 1));
             }
 
             return groups;

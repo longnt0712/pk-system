@@ -110,7 +110,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             TimeUnit.MINUTES.toMillis(5L);
     private static final double FIRE_UP_SCORE_MULTIPLIER = 1.2D;
     private static final double MONEY_BEG_STEAL_RATE = 0.40D;
-    private static final double MONEY_BEG_SKILL_RATE = 0.12D;
+    private static final double MONEY_BEG_SKILL_RATE = 0.17D;
     private static final double COUNTDOWN_SKILL_RATE_FACTOR = 0.75D;
     private static final double ESCAPE_INVERT_SKILL_RATE = 0.08D;
     private static final int SKILL_TARGET_CANDIDATE_COUNT = 4;
@@ -122,17 +122,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             new String[] {"A", "B", "C"};
 
     private static final String[] PASSWORD_GUESS_OPTION_KEYS =
-            new String[] {"A", "B", "C", "D", "E", "F"};
+            new String[] {"A", "B", "C"};
 
-    /*
-     * Cụm gốc chỉ dùng ASCII. Khi sinh mật khẩu, mỗi từ luôn được chèn ký tự
-     * đặc biệt ở giữa nên không còn từ hoàn chỉnh có nghĩa và không có dấu.
-     */
+    /* Mật khẩu chỉ gồm chữ thường ASCII và dấu cách, không có ký hiệu/số. */
     private static final String[] PASSWORD_PHRASES = new String[] {
         "may con ga", "cham hoc di", "dung cuop toi", "chan de",
         "tam bat bien", "tich duc", "cho con", "meo con", "lon con",
         "ga con", "me handsome", "i love football", "di ngu di",
-        "dung hack toi", "xin nhe thoi", "con cai nit", "vi toi rong",
+        "dung hack nua", "xin nhe thoi", "con cai nit", "vi toi rong",
         "tha cho toi", "hoc bai chua", "an com chua", "binh tinh nao",
         "khong co tien", "cho xin lai", "dung tham lam", "lam nguoi tot",
         "toi vo toi", "cuop it thoi", "diem cua toi", "keep calm now",
@@ -301,6 +298,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         PlayerState host = new PlayerState();
         host.userId = identity.userId;
         host.username = username;
+        host.realName = identity.displayName;
         host.displayName = identity.displayName;
         host.host = true;
         host.ready = true;
@@ -384,9 +382,17 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     room.players.get(username);
 
             if (existing != null) {
+                String previousRealName = existing.realName;
                 existing.userId = identity.userId;
                 existing.connected = true;
-                existing.displayName = identity.displayName;
+                existing.realName = identity.displayName;
+
+                if (
+                    isBlank(existing.displayName) ||
+                    existing.displayName.equals(previousRealName)
+                ) {
+                    existing.displayName = identity.displayName;
+                }
 
                 if (
                     !existing.spectator &&
@@ -448,6 +454,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 PlayerState player = new PlayerState();
                 player.userId = identity.userId;
                 player.username = username;
+                player.realName = identity.displayName;
                 player.displayName = identity.displayName;
                 player.connected = true;
                 player.ready = PLAYING.equals(room.status);
@@ -637,6 +644,45 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         broadcastGeneric(room);
 
+        return dto;
+    }
+
+
+    @Override
+    public BattleOnlineRoomDto updateDisplayName(
+            String roomCode,
+            String username,
+            String displayName) {
+
+        username = requireUsername(username);
+        String normalizedDisplayName = clean(displayName)
+                .replaceAll("[\\p{Cntrl}]", "");
+
+        if (isBlank(normalizedDisplayName)) {
+            throw new BattleOnlineException(
+                    HttpStatus.BAD_REQUEST,
+                    "Tên hiển thị không được để trống."
+            );
+        }
+
+        if (normalizedDisplayName.codePointCount(0, normalizedDisplayName.length()) > 30) {
+            throw new BattleOnlineException(
+                    HttpStatus.BAD_REQUEST,
+                    "Tên hiển thị tối đa 30 ký tự."
+            );
+        }
+
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto dto;
+
+        synchronized (room) {
+            requireLobby(room);
+            PlayerState player = requirePlayer(room, username);
+            player.displayName = normalizedDisplayName;
+            dto = snapshotLocked(room, username);
+        }
+
+        broadcastGeneric(room);
         return dto;
     }
 
@@ -2446,12 +2492,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
-    /*
-     * Sáu lựa chọn được chia thành ba cặp:
-     * - một cặp chứa mật khẩu thật và một biến thể rất gần;
-     * - hai cặp còn lại dùng hai kiểu mật khẩu khác hẳn cặp thật;
-     * - vị trí các cặp và vị trí hai mật khẩu trong từng cặp đều được xáo.
-     */
+    /* Ba lựa chọn được chia thành ba nhóm, mỗi nhóm đúng một mật khẩu. */
     private List<List<String>> generatePasswordGuessGroups(
             String realPassword) {
 
@@ -2461,7 +2502,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         Set<String> used = new LinkedHashSet<String>();
         used.add(realPassword);
 
-        addPasswordGuessGroup(groups, used, realPassword);
+        addPasswordGuessGroup(groups, realPassword);
 
         int realTier = passwordDifficultyTier(realPassword);
 
@@ -2470,7 +2511,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             String base = generateDistinctPasswordForTier(tier, used);
 
             used.add(base);
-            addPasswordGuessGroup(groups, used, base);
+            addPasswordGuessGroup(groups, base);
         }
 
         return groups;
@@ -2479,16 +2520,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private void addPasswordGuessGroup(
             List<List<String>> groups,
-            Set<String> used,
             String base) {
 
         List<String> group = new ArrayList<String>();
         group.add(base);
-
-        String pairMate = generatePasswordPairMate(base, used);
-        group.add(pairMate);
-        used.add(pairMate);
-
         groups.add(group);
     }
 
@@ -2600,7 +2635,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         while (result.size() < count) {
-            String fallback = "p!n" + (10 + random.nextInt(90));
+            char suffix = (char) ('a' + random.nextInt(26));
+            String fallback = "mat khau du phong " + suffix;
 
             if (disallowed == null || !disallowed.contains(fallback)) {
                 result.add(fallback);
@@ -2899,20 +2935,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         String phrase = PASSWORD_PHRASES[
                 random.nextInt(PASSWORD_PHRASES.length)
         ];
-        String obfuscatedPhrase = obfuscateEveryPasswordWord(phrase);
-
-        if (difficulty <= 0) {
-            return limitPasswordLength(obfuscatedPhrase);
-        }
-
-        if (difficulty == 1) {
-            return limitPasswordLength(
-                    obfuscatedPhrase + (2 + random.nextInt(8))
-            );
-        }
-
-        String number = String.valueOf(10 + random.nextInt(90));
-        return limitPasswordLength(obfuscatedPhrase + number);
+        return limitPasswordLength(
+                safe(phrase)
+                        .toLowerCase(Locale.ENGLISH)
+                        .trim()
+                        .replaceAll("[^a-z ]", "")
+                        .replaceAll("\\s+", " ")
+        );
     }
 
 
@@ -2968,7 +2997,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (
             key.length() != 1 ||
             key.charAt(0) < 'A' ||
-            key.charAt(0) > 'F'
+            key.charAt(0) > 'C'
         ) {
             return "";
         }
@@ -3649,7 +3678,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
      * Không đặt trần số lượng tuyệt đối, nên phòng 200 câu luôn có nhiều
      * skill hơn phòng 100 câu và không còn bị tụt tỉ lệ vì chạm giới hạn.
      * COUNTDOWN thường chia 4 skill theo vòng ưu tiên. Riêng XIN TÍ TIỀN
-     * dành xấp xỉ 12% tổng số lượt skill cho HACK/MONEY_BEG.
+     * dành xấp xỉ 17% tổng số lượt skill cho HACK/MONEY_BEG.
      */
     private int[] getCountdownSkillCounts(
             int total,
@@ -3684,7 +3713,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         );
 
         /*
-         * Trong mode XIN TÍ TIỀN, HACK/MONEY_BEG chiếm xấp xỉ 12%
+         * Trong mode XIN TÍ TIỀN, HACK/MONEY_BEG chiếm xấp xỉ 17%
          * tổng số skill; phần còn lại giữ cách chia skill COUNTDOWN cũ.
          */
         double expectedMoneyBegCount = includeMoneyBeg
@@ -5956,6 +5985,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     state.displayName
             );
 
+            player.setRealName(
+                    state.realName
+            );
+
             player.setHost(
                     state.host
             );
@@ -7555,6 +7588,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static class PlayerState {
         Long userId;
         String username;
+        String realName;
         String displayName;
 
         boolean host;

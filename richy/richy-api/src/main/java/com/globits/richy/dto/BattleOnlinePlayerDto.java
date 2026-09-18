@@ -7,6 +7,7 @@ public class BattleOnlinePlayerDto implements Serializable {
 
     private String username;
     private String displayName;
+    private String realName;
 
     private boolean host;
     private boolean spectator;
@@ -63,6 +64,14 @@ public class BattleOnlinePlayerDto implements Serializable {
 
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
+    }
+
+    public String getRealName() {
+        return realName;
+    }
+
+    public void setRealName(String realName) {
+        this.realName = realName;
     }
 
     public boolean isHost() {

@@ -192,6 +192,9 @@
                         </div>
 
                         <div class="col-md-12 reading-builder-package" ng-repeat="item in vm.ieltsReadingTest.subQuestions[0].subQuestions">
+                            <div class="reading-package-insert is-above">
+                                <button type="button" class="btn btn-info btn-sm" ng-click="vm.insertPackageAfter(0, $index - 1)"><i class="fa fa-plus"></i> Thêm package phía trên</button>
+                            </div>
                             <div class="row margin-bottom-5">
                                 <div class="col-md-6">
                                     <p style="font-size: 18px" class="bold">Question for package {{item.ordinalNumber}}</p>
@@ -471,6 +474,9 @@
                         </div>
 
                         <div class="col-md-12 reading-builder-package" ng-repeat="item in vm.ieltsReadingTest.subQuestions[1].subQuestions">
+                            <div class="reading-package-insert is-above">
+                                <button type="button" class="btn btn-info btn-sm" ng-click="vm.insertPackageAfter(1, $index - 1)"><i class="fa fa-plus"></i> Thêm package phía trên</button>
+                            </div>
                             <div class="row margin-bottom-5">
                                 <div class="col-md-6">
                                     <p style="font-size: 18px" class="bold">Question for package {{item.ordinalNumber}}</p>
@@ -741,6 +747,9 @@
                         </div>
 
                         <div class="col-md-12 reading-builder-package" ng-repeat="item in vm.ieltsReadingTest.subQuestions[2].subQuestions">
+                            <div class="reading-package-insert is-above">
+                                <button type="button" class="btn btn-info btn-sm" ng-click="vm.insertPackageAfter(2, $index - 1)"><i class="fa fa-plus"></i> Thêm package phía trên</button>
+                            </div>
                             <div class="row margin-bottom-5">
                                 <div class="col-md-6">
                                     <p style="font-size: 18px" class="bold">Question for package {{item.ordinalNumber}}</p>
@@ -994,6 +1003,9 @@
                         </div>
 
                         <div class="col-md-12 reading-builder-package" ng-repeat="item in vm.ieltsReadingTest.subQuestions[3].subQuestions">
+                            <div class="reading-package-insert is-above">
+                                <button type="button" class="btn btn-info btn-sm" ng-click="vm.insertPackageAfter(3, $index - 1)"><i class="fa fa-plus"></i> Thêm package phía trên</button>
+                            </div>
                             <div class="row margin-bottom-5">
                                 <div class="col-md-6">
                                     <p style="font-size: 18px" class="bold">Question for package {{item.ordinalNumber}}</p>
@@ -2146,6 +2158,13 @@
         margin: 18px -16px -30px;
         padding-top: 12px;
         border-top: 1px dashed #cbd5e1;
+    }
+
+    .reading-package-insert.is-above {
+        margin: -4px -16px 16px;
+        padding: 0 0 12px;
+        border-top: 0;
+        border-bottom: 1px dashed #cbd5e1;
     }
 
     .reading-package-insert .btn {

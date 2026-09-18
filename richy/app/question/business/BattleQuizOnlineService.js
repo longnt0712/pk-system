@@ -58,6 +58,13 @@
             ).then(function (response) { return response.data; });
         };
 
+        self.updateDisplayName = function (roomCode, displayName) {
+            return $http.put(
+                apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/display-name',
+                {displayName: displayName}
+            ).then(function (response) { return response.data; });
+        };
+
         self.setSpectator = function (roomCode, spectator) {
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/spectator',
