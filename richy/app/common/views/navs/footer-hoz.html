@@ -748,13 +748,17 @@
             0 9px 20px rgba(91,124,250,.30) !important;
 
         transform: rotate(4deg);
+        opacity: .62 !important;
 
         transition:
             transform .16s ease,
-            box-shadow .16s ease !important;
+            box-shadow .16s ease,
+            opacity .16s ease !important;
     }
 
-    .student-scroll-top:hover {
+    .student-scroll-top:hover,
+    .student-scroll-top:focus-visible {
+        opacity: .96 !important;
         transform:
             translateY(-2px)
             rotate(0deg)

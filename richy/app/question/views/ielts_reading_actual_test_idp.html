@@ -352,7 +352,7 @@
 
                                             <div class="idp-matching-name-list"
                                                  ng-if="item.type == 10 && item.subQuestions.length">
-                                                <div class="idp-matching-name-list__title">List of Researchers</div>
+                                                <div class="idp-matching-name-list__title">{{item.title || 'List of Researchers'}}</div>
                                                 <div class="idp-matching-name-list__item"
                                                      ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
                                                     <strong>{{vm.matchingOptionLabel($index)}}</strong>
@@ -419,9 +419,9 @@
                                     </div>
 
 
-                                    <div class="sentence-ending-runtime actual-test-font-global" ng-if="item.type == 14" ng-init="endingPackage=item">
+                                    <div class="sentence-ending-runtime actual-test-font-global" ng-class="{'listening-two-column-dnd': item.type == 15}" ng-if="item.type == 14 || item.type == 15" ng-init="endingPackage=item">
                                         <div class="sentence-ending-questions">
-                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by endingQuestion.id">
+                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by $index">
                                                 <span id="question-number-{{endingQuestion.ordinalNumber}}" class="sentence-ending-stem">
                                                     <strong>{{endingQuestion.ordinalNumber}}.</strong>
                                                     <span compile="endingQuestion.question"></span>
@@ -445,7 +445,7 @@
                                             </div>
                                         </div>
                                         <div class="sentence-ending-bank" aria-label="List of Endings">
-                                            <strong class="sentence-ending-bank__title">List of Endings</strong>
+                                            <strong class="sentence-ending-bank__title">{{item.type == 15 ? (item.title || 'Answer choices') : 'List of Endings'}}</strong>
                                             <span class="sentence-ending-choice"
                                                   ng-repeat="ending in endingPackage.sentenceEndingBank track by ending.answerIndex"
                                                   ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
@@ -772,7 +772,7 @@
 
                                             <div class="idp-matching-name-list"
                                                  ng-if="item.type == 10 && item.subQuestions.length">
-                                                <div class="idp-matching-name-list__title">List of Researchers</div>
+                                                <div class="idp-matching-name-list__title">{{item.title || 'List of Researchers'}}</div>
                                                 <div class="idp-matching-name-list__item"
                                                      ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
                                                     <strong>{{vm.matchingOptionLabel($index)}}</strong>
@@ -836,9 +836,9 @@
                                         </div>
                                     </div>
 
-                                    <div class="sentence-ending-runtime actual-test-font-global" ng-if="item.type == 14" ng-init="endingPackage=item">
+                                    <div class="sentence-ending-runtime actual-test-font-global" ng-class="{'listening-two-column-dnd': item.type == 15}" ng-if="item.type == 14 || item.type == 15" ng-init="endingPackage=item">
                                         <div class="sentence-ending-questions">
-                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by endingQuestion.id">
+                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by $index">
                                                 <span id="question-number-{{endingQuestion.ordinalNumber}}" class="sentence-ending-stem">
                                                     <strong>{{endingQuestion.ordinalNumber}}.</strong>
                                                     <span compile="endingQuestion.question"></span>
@@ -860,7 +860,7 @@
                                             </div>
                                         </div>
                                         <div class="sentence-ending-bank" aria-label="List of Endings">
-                                            <strong class="sentence-ending-bank__title">List of Endings</strong>
+                                            <strong class="sentence-ending-bank__title">{{item.type == 15 ? (item.title || 'Answer choices') : 'List of Endings'}}</strong>
                                             <span class="sentence-ending-choice"
                                                   ng-repeat="ending in endingPackage.sentenceEndingBank track by ending.answerIndex"
                                                   ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
@@ -1169,7 +1169,7 @@
 
                                             <div class="idp-matching-name-list"
                                                  ng-if="item.type == 10 && item.subQuestions.length">
-                                                <div class="idp-matching-name-list__title">List of Researchers</div>
+                                                <div class="idp-matching-name-list__title">{{item.title || 'List of Researchers'}}</div>
                                                 <div class="idp-matching-name-list__item"
                                                      ng-repeat="a in item.subQuestions[0].questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
                                                     <strong>{{vm.matchingOptionLabel($index)}}</strong>
@@ -1231,9 +1231,9 @@
                                         </div>
                                     </div>
 
-                                    <div class="sentence-ending-runtime actual-test-font-global" ng-if="item.type == 14" ng-init="endingPackage=item">
+                                    <div class="sentence-ending-runtime actual-test-font-global" ng-class="{'listening-two-column-dnd': item.type == 15}" ng-if="item.type == 14 || item.type == 15" ng-init="endingPackage=item">
                                         <div class="sentence-ending-questions">
-                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by endingQuestion.id">
+                                            <div class="sentence-ending-row" ng-repeat="endingQuestion in endingPackage.subQuestions track by $index">
                                                 <span id="question-number-{{endingQuestion.ordinalNumber}}" class="sentence-ending-stem">
                                                     <strong>{{endingQuestion.ordinalNumber}}.</strong>
                                                     <span compile="endingQuestion.question"></span>
@@ -1255,7 +1255,7 @@
                                             </div>
                                         </div>
                                         <div class="sentence-ending-bank" aria-label="List of Endings">
-                                            <strong class="sentence-ending-bank__title">List of Endings</strong>
+                                            <strong class="sentence-ending-bank__title">{{item.type == 15 ? (item.title || 'Answer choices') : 'List of Endings'}}</strong>
                                             <span class="sentence-ending-choice"
                                                   ng-repeat="ending in endingPackage.sentenceEndingBank track by ending.answerIndex"
                                                   ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
@@ -1784,6 +1784,24 @@
         margin: 12px 0 28px;
     }
 
+    .sentence-ending-runtime.listening-two-column-dnd {
+        display: grid;
+        grid-template-columns: minmax(0, 1.12fr) minmax(280px, .88fr);
+        gap: 30px;
+        align-items: start;
+    }
+
+    .listening-two-column-dnd .sentence-ending-bank {
+        position: sticky;
+        top: 12px;
+        margin-top: 0;
+        align-content: flex-start;
+    }
+
+    .listening-two-column-dnd .sentence-ending-choice {
+        width: 100%;
+    }
+
     .sentence-ending-questions {
         display: grid;
         gap: 12px;
@@ -1884,6 +1902,15 @@
     }
 
     @media (max-width: 767px) {
+        .sentence-ending-runtime.listening-two-column-dnd {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .listening-two-column-dnd .sentence-ending-bank {
+            position: static;
+        }
+
         .sentence-ending-row {
             padding-right: 4px;
             padding-left: 4px;

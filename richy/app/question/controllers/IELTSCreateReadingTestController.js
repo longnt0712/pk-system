@@ -91,12 +91,16 @@
             {id: 7, name: "Multiple Answers - Listening", notice: "T/F/NG or Y/N/NG is also multiple choice question"},
             {id: 8, name: "Matching Heading - Listening", notice: "Drop box (temp)"},
             {id: 9, name: "MAPS - Listening", notice: "..."},
-            {id: 10, name: "MATCHING NAMES", notice: "Use one shared A–Z researcher list; the list appears below the matching table"},
+            {id: 10, name: "TABLE AND LIST", notice: "Use one shared A–Z list; its title can be edited for each package"},
             {id: 11, name: "Filling Gaps New (One Editor)", notice: "Write all questions in one editor; each }{SPACE}{ becomes the next numbered answer"},
-            {id: 12, name: "MATCHING INFORMATION", notice: "Same creation and test layout as Matching Names"},
+            {id: 12, name: "MATCHING INFORMATION", notice: "Same creation and test layout as Table and List"},
             {id: 13, name: "COMPLETE LIST OF WORDS", notice: "One editor with ordered correct words followed by distractors; students drag a shuffled word list into the gaps"},
-            {id: 14, name: "Complete each sentence with the correct ending", notice: "Use one shared A–Z list of endings; students drag each ending into the blank after a sentence"}
+            {id: 14, name: "Complete each sentence with the correct ending", notice: "Use one shared A–Z list of endings; students drag each ending into the blank after a sentence"},
+            {id: 15, name: "LISTENING - TWO-COLUMN DRAG & DROP", notice: "Left column contains the questions and drop zones; right column contains the shared answer bank"}
         ];
+        vm.questionPackageTypes = vm.types.filter(function (type) {
+            return vm.isListeningMode || Number(type.id) !== 15;
+        });
         vm.passageTypes = vm.types.slice(0, 10);
 
         vm.matchingOptionLabel = function (index) {
@@ -426,7 +430,11 @@
             });
         };
 
-        var readingPartRules = [
+        var readingPartRules = vm.isListeningMode ? [
+            {name: 'Part 1', start: 1, end: 10},
+            {name: 'Part 2', start: 11, end: 20},
+            {name: 'Part 3–4', start: 21, end: 40}
+        ] : [
             {name: 'Part 1', start: 1, end: 13},
             {name: 'Part 2', start: 14, end: 26},
             {name: 'Part 3', start: 27, end: 40}
@@ -436,7 +444,7 @@
             {number: 1, title: 'Thông tin bài thi', target: 'reading-builder-info'},
             {number: 2, title: 'Part 1', target: 'reading-builder-part-1'},
             {number: 3, title: 'Part 2', target: 'reading-builder-part-2'},
-            {number: 4, title: 'Part 3', target: 'reading-builder-part-3'},
+            {number: 4, title: vm.isListeningMode ? 'Part 3–4' : 'Part 3', target: 'reading-builder-part-3'},
             {number: 5, title: 'Kiểm tra & xuất bản', target: 'reading-builder-review'}
         ];
 
@@ -541,7 +549,7 @@
 
         function isSharedChoicePackage(questionPackage) {
             var type = Number(questionPackage && questionPackage.type);
-            return type === 4 || type === 10 || type === 14;
+            return type === 4 || type === 10 || type === 14 || type === 15;
         }
 
         function ensureSharedChoicePackage(questionPackage) {
@@ -592,7 +600,10 @@
             if (type === 14) {
                 return 'List of Endings';
             }
-            return 'List of Researchers';
+            if (type === 15) {
+                return 'Answer bank';
+            }
+            return 'Table and list';
         };
 
         vm.sharedChoiceLabel = function (type, index) {
@@ -611,6 +622,9 @@
             if (type === 14) {
                 return 'Nhập các phần kết thúc A, B, C… một lần tại đây. Học sinh sẽ kéo từng lựa chọn vào ô trống sau câu.';
             }
+            if (type === 15) {
+                return 'Nhập danh sách đáp án chung ở đây. Khi thi, câu hỏi và ô thả nằm bên trái; ngân hàng đáp án nằm bên phải.';
+            }
             return 'Nhập tên một lần tại đây. Hệ thống hiển thị A, B, C… trên đầu bảng và danh sách tên ở dưới bảng.';
         };
 
@@ -620,6 +634,9 @@
             }
             if (Number(type) === 14) {
                 return 'Nội dung ending ' + vm.matchingOptionLabel(index);
+            }
+            if (Number(type) === 15) {
+                return 'Nội dung đáp án ' + vm.matchingOptionLabel(index);
             }
             return 'Tên người hoặc nhóm nghiên cứu ' + vm.matchingOptionLabel(index);
         };
@@ -1590,11 +1607,11 @@
 
             console.log(item.ordinalNumber);
 
-            item.ordinalNumber = getHighestOrdinalNumber(vm.ieltsReadingTest.subQuestions[0].subQuestions) + 1;
-
             if(vm.ieltsReadingTest.subQuestions[0].subQuestions == null){
                 vm.ieltsReadingTest.subQuestions[0].subQuestions = [];
             }
+
+            item.ordinalNumber = getHighestOrdinalNumber(vm.ieltsReadingTest.subQuestions[0].subQuestions) + 1;
 
             vm.ieltsReadingTest.subQuestions[0].subQuestions.push(item);
             vm.preparePart(0);
@@ -1754,11 +1771,11 @@
 
             console.log(item.ordinalNumber);
 
-            item.ordinalNumber = getHighestOrdinalNumber(vm.ieltsReadingTest.subQuestions[1].subQuestions) + 1;
-
             if(vm.ieltsReadingTest.subQuestions[1].subQuestions == null){
                 vm.ieltsReadingTest.subQuestions[1].subQuestions = [];
             }
+
+            item.ordinalNumber = getHighestOrdinalNumber(vm.ieltsReadingTest.subQuestions[1].subQuestions) + 1;
 
             vm.ieltsReadingTest.subQuestions[1].subQuestions.push(item);
             vm.preparePart(1);
@@ -1885,11 +1902,11 @@
 
             console.log(item.ordinalNumber);
 
-            item.ordinalNumber = getHighestOrdinalNumber(vm.ieltsReadingTest.subQuestions[2].subQuestions) + 1;
-
             if(vm.ieltsReadingTest.subQuestions[2].subQuestions == null){
                 vm.ieltsReadingTest.subQuestions[2].subQuestions = [];
             }
+
+            item.ordinalNumber = getHighestOrdinalNumber(vm.ieltsReadingTest.subQuestions[2].subQuestions) + 1;
 
             vm.ieltsReadingTest.subQuestions[2].subQuestions.push(item);
             vm.preparePart(2);
@@ -2264,6 +2281,7 @@
             var questions = group.questions || group.subQuestions || [];
             return {
                 question: group.instructionHtml || group.instruction || group.question || '',
+                title: group.listTitle || group.title || '',
                 questionType: readingQuestionType(18, 'IELTSRTPK', 'IELTS Reading Test Package'),
                 ordinalNumber: parseInt(group.ordinalNumber || (groupIndex + 1), 10),
                 type: parseInt(group.type, 10) || 1,
@@ -2461,7 +2479,7 @@
                 return fallbackType || 1;
             }
             var numericType = parseInt(value, 10);
-            if (numericType >= 1 && numericType <= 14) {
+            if (numericType >= 1 && numericType <= 15) {
                 return numericType;
             }
             var normalizedType = normalizedExcelText(value);
@@ -2628,21 +2646,40 @@
             var rows = XLSX.utils.sheet_to_json(contentSheet, {defval: '', raw: false});
             var currentPartNumber = null;
             var currentGroupByPart = {};
-            var groupsByPart = [{}, {}, {}];
+            var groupsByPart = vm.isListeningMode ? [{}, {}, {}, {}] : [{}, {}, {}];
+            var logicalPartPassageSeen = {};
+            var maximumPartNumber = vm.isListeningMode ? 4 : 3;
+            var questionRanges = vm.isListeningMode ? [
+                {start: 1, end: 10},
+                {start: 11, end: 20},
+                {start: 21, end: 30},
+                {start: 31, end: 40}
+            ] : [
+                {start: 1, end: 13},
+                {start: 14, end: 26},
+                {start: 27, end: 40}
+            ];
 
             angular.forEach(rows, function (row, rowIndex) {
                 var partCell = excelRowValue(row, ['Part', 'Phần']);
                 if (partCell !== '') {
                     currentPartNumber = parseInt(partCell, 10);
                 }
-                if (!currentPartNumber || currentPartNumber < 1 || currentPartNumber > 3) {
-                    throw new Error('Dòng ' + (rowIndex + 2) + ': Part phải là 1, 2 hoặc 3.');
+                if (!currentPartNumber || currentPartNumber < 1 || currentPartNumber > maximumPartNumber) {
+                    throw new Error('Dòng ' + (rowIndex + 2) + ': Part phải là ' +
+                        (vm.isListeningMode ? '1, 2, 3 hoặc 4.' : '1, 2 hoặc 3.'));
                 }
 
-                var part = source.parts[currentPartNumber - 1];
+                var storagePartIndex = vm.isListeningMode && currentPartNumber === 4 ? 2 : currentPartNumber - 1;
+                var part = source.parts[storagePartIndex];
                 var passage = excelRowValue(row, ['Passage HTML', 'Nội dung passage', 'Passage']);
                 if (String(passage).trim()) {
-                    part.passageHtml = passage;
+                    if (vm.isListeningMode && currentPartNumber === 4 && !logicalPartPassageSeen[currentPartNumber]) {
+                        part.passageHtml = (part.passageHtml ? part.passageHtml + '<hr>' : '') + passage;
+                    } else if (!logicalPartPassageSeen[currentPartNumber]) {
+                        part.passageHtml = passage;
+                    }
+                    logicalPartPassageSeen[currentPartNumber] = true;
                 }
 
                 var groupCell = excelRowValue(row, ['Nhóm', 'Group']);
@@ -2661,7 +2698,8 @@
                     group = {
                         type: excelQuestionType(typeCell, 1),
                         instructionHtml: instruction || '',
-                        ordinalNumber: groupNumber,
+                        listTitle: excelRowValue(row, ['Tiêu đề danh sách', 'List title', 'Answer bank title']),
+                        ordinalNumber: vm.isListeningMode && currentPartNumber === 4 ? 1000 + groupNumber : groupNumber,
                         matchingOptions: [],
                         questions: []
                     };
@@ -2673,6 +2711,10 @@
                     }
                     if (String(instruction).trim()) {
                         group.instructionHtml = instruction;
+                    }
+                    var listTitle = excelRowValue(row, ['Tiêu đề danh sách', 'List title', 'Answer bank title']);
+                    if (String(listTitle).trim()) {
+                        group.listTitle = listTitle;
                     }
                 }
 
@@ -2699,14 +2741,13 @@
                     return;
                 }
                 var questionNumber = parseInt(questionNumberCell, 10);
-                var questionRanges = [{start: 1, end: 13}, {start: 14, end: 26}, {start: 27, end: 40}];
                 var questionRange = questionRanges[currentPartNumber - 1];
                 if (!questionNumber || questionNumber < questionRange.start || questionNumber > questionRange.end) {
                     throw new Error('Dòng ' + (rowIndex + 2) + ': Part ' + currentPartNumber +
                         ' chỉ được dùng câu ' + questionRange.start + '–' + questionRange.end + '.');
                 }
                 var answers = [];
-                if ((Number(group.type) === 4 || Number(group.type) === 10 || Number(group.type) === 14) && group.matchingOptions.length) {
+                if ((Number(group.type) === 4 || Number(group.type) === 10 || Number(group.type) === 14 || Number(group.type) === 15) && group.matchingOptions.length) {
                     angular.forEach(group.matchingOptions, function (option) {
                         answers.push({text: option, correct: false});
                     });
@@ -2811,6 +2852,10 @@
             var promptPartHeaderInstruction = vm.isListeningMode
                 ? 'Với Listening, nhập nội dung/bối cảnh được in trong đề nếu có; không tự thêm nội dung không có trong đề gốc.'
                 : automaticReadingHeader;
+            var partStructureInstruction = vm.isListeningMode
+                ? 'Tạo đúng 4 parts: Part 1 câu 1–10, Part 2 câu 11–20, Part 3 câu 21–30, Part 4 câu 31–40.'
+                : 'Tạo đúng 3 parts: Part 1 câu 1–13, Part 2 câu 14–26, Part 3 câu 27–40.';
+            var partCountText = vm.isListeningMode ? '4 parts' : '3 parts';
             var part1PassageExample = vm.isListeningMode
                 ? '<h2>Listening Part 1</h2><p>Nhập nội dung hoặc bối cảnh của Part 1 nếu đề gốc có.</p>'
                 : '<h2>Tiêu đề riêng của bài đọc</h2><p><em>Phụ đề nếu có</em></p><p>Dán nội dung bài tại đây; không nhập READING PASSAGE 1 và câu You should spend.</p>';
@@ -2820,6 +2865,7 @@
             var part3PassageExample = vm.isListeningMode
                 ? '<h2>Listening Part 3</h2><p>Nhập nội dung hoặc bối cảnh của Part 3 nếu đề gốc có.</p>'
                 : '<h2>Tiêu đề riêng của bài đọc Part 3</h2><p>Dán nội dung bài tại đây; không lặp tiêu đề Part tự động.</p>';
+            var part4PassageExample = '<h2>Listening Part 4</h2><p>Nhập nội dung hoặc bối cảnh của Part 4 nếu đề gốc có.</p>';
             if (!$window.XLSX) {
                 toastr.error('Thư viện tạo Excel chưa tải được. Vui lòng tải lại trang.', 'IELTS ' + modeName);
                 return;
@@ -2833,12 +2879,12 @@
 
             var guideRows = [
                 ['HƯỚNG DẪN IMPORT IELTS ' + modeUpper + ' TEST', 'ĐỌC KỸ TRƯỚC KHI TẠO FILE'],
-                ['Mục tiêu', 'Tạo đúng một bài IELTS ' + modeName + ' gồm 3 parts và tối đa 40 câu, sau đó import trực tiếp tại trang IELTS ' + modeName + '.'],
+                ['Mục tiêu', 'Tạo đúng một bài IELTS ' + modeName + ' gồm ' + partCountText + ' và tối đa 40 câu, sau đó import trực tiếp tại trang IELTS ' + modeName + '.'],
                 ['Bước 1', 'Trong THONG_TIN, giữ Loại bài=' + modeUpper + ', nhập Tiêu đề và Audio URL theo quy tắc bên dưới.'],
                 ['Audio URL', audioInstruction],
                 ['Bước 2', 'Thay toàn bộ dòng ví dụ trong NOI_DUNG bằng dữ liệu của đề thật; giữ nguyên tên sheet và tiêu đề cột.'],
                 ['Bước 3', 'Mỗi dòng trong NOI_DUNG là một câu hỏi. Các dòng cùng Part + Nhóm tạo thành một question package.'],
-                ['Bước 4', 'Part 1 chỉ dùng câu 1–13; Part 2 chỉ dùng câu 14–26; Part 3 chỉ dùng câu 27–40. Không lặp số câu.'],
+                ['Bước 4', partStructureInstruction + ' Không lặp số câu.'],
                 ['Bước 5', 'Passage HTML chỉ cần nhập ở dòng đầu của mỗi Part. Nhóm, Loại câu hỏi, Hướng dẫn HTML và Danh sách dùng chung có thể bỏ trống ở dòng sau để kế thừa.'],
                 ['Reading: tiêu đề Part tự động', automaticReadingHeader],
                 ['Bước 6', 'Đáp án đúng có thể nhập số thứ tự 1,2… hoặc chữ A,B,C…; nhiều đáp án ngăn cách bằng dấu phẩy, ví dụ A,C.'],
@@ -2850,15 +2896,16 @@
                 ['MATCHING HEADINGS (mã 4)', 'Nhóm câu hỏi dùng Loại câu hỏi=4. Cột Danh sách dùng chung nhập i=Heading thứ nhất | ii=Heading thứ hai | iii=Heading thứ ba... ở dòng đầu nhóm. Mỗi câu nhập Section A, Section B...; Đáp án đúng nhập vị trí heading A/B/C... hoặc 1/2/3...'],
                 ['MATCHING HEADINGS - Passage', 'Trong Passage HTML, đặt đúng một }{HEADING}{ ngay sau từng nhãn đoạn cần ghép, ví dụ <p><strong>A</strong> }{HEADING}{</p>. Số ký hiệu phải bằng số câu Matching Heading và theo đúng thứ tự câu.'],
                 ['MATCHING HEADINGS - tự sửa', 'Importer sẽ tự chèn ký hiệu nếu nhãn A/B/C... nằm riêng trong thẻ như <p><strong>A</strong></p>. Tuy vậy ChatGPT phải tạo sẵn }{HEADING}{ để file rõ ràng và không phụ thuộc tự nhận diện. Khi import, Part có nhóm mã 4 tự chuyển sang Matching Heading; không cần chọn tay.'],
-                ['MATCHING NAMES (mã 10)', 'Nhập danh sách chung tại cột Danh sách dùng chung theo dạng A=Jim Bowler | B=Alan Thorne | C=Tim Flannery. Chỉ cần nhập ở dòng đầu của nhóm.'],
-                ['MATCHING NAMES - đáp án', 'Các cột Đáp án 1–12 để trống. Cột Đáp án đúng của mỗi câu nhập A/B/C… tương ứng người đúng. Trên bài làm, bảng hiện A/B/C… và danh sách tên hiện dưới bảng.'],
+                ['TABLE AND LIST (mã 10)', 'Nhập danh sách chung tại cột Danh sách dùng chung theo dạng A=Jim Bowler | B=Alan Thorne | C=Tim Flannery. Có thể nhập tiêu đề riêng của danh sách tại cột Tiêu đề danh sách; nếu trống hệ thống dùng “List of Researchers”.'],
+                ['TABLE AND LIST - đáp án', 'Các cột Đáp án 1–12 để trống. Cột Đáp án đúng của mỗi câu nhập A/B/C… tương ứng lựa chọn đúng. Trên bài làm, bảng hiện A/B/C… và danh sách hiện dưới bảng.'],
+                ['LISTENING TWO-COLUMN DRAG & DROP (mã 15)', 'Dùng cho dạng kéo-thả hai cột. Mỗi dòng là một nhãn/câu bên trái. Danh sách dùng chung là ngân hàng đáp án bên phải; Tiêu đề danh sách có thể là Features, Places, People…; Đáp án đúng nhập A/B/C…'],
                 ['SENTENCE ENDINGS (mã 14)', 'Dùng cho “Complete each sentence with the correct ending”. Cột Danh sách dùng chung nhập A=is not backed... | B=is provided... ở dòng đầu nhóm. Nội dung câu hỏi là phần đầu của câu; Đáp án đúng nhập A/B/C... Học sinh kéo ending vào ô sau câu.'],
                 ['FILLING GAPS MỚI / ONE EDITOR (mã 11)', 'Mọi dạng điền từ mới phải dùng mã 11. Dòng đầu nhóm chứa toàn bộ đoạn/các câu và đúng một ký hiệu }{SPACE}{ cho mỗi số câu. Mỗi số câu bắt buộc có một dòng riêng; Đáp án 1 của từng dòng là từ đúng của chính câu đó, Đáp án đúng nhập A. Các dòng sau chỉ được để trống Nội dung câu hỏi, không được bỏ dòng hoặc bỏ Đáp án 1.'],
                 ['FILLING GAPS MỚI - ví dụ', 'Koster believes that games remove people’s fear of }{SPACE}{. Robertson’s view is associated with }{SPACE}{. Nhóm 2 câu phải có đúng 2 ký hiệu, đúng 2 dòng câu và cả 2 dòng đều phải có Đáp án 1. Không gõ dấu chấm/gạch dưới thay cho ô trống.'],
                 ['FILLING GAPS CŨ (mã 2 và 3)', 'Chỉ giữ để tương thích và chỉnh sửa dữ liệu cũ. Không dùng mã 2 hoặc 3 khi ChatGPT tạo file import mới; luôn chuyển dạng điền từ mới sang mã 11.'],
                 ['COMPLETE LIST OF WORDS (mã 13)', 'Dùng một editor và đúng một }{SPACE}{ cho mỗi câu. Nếu nhóm có N câu, phải tạo đủ N dòng câu. Trên MỌI dòng của nhóm, lặp lại nguyên vẹn cùng danh sách ở Đáp án 1–12: N đáp án đúng đặt trước theo đúng thứ tự số câu, rồi mới tới từ nhiễu. Danh sách A–J phải điền đủ cả 10 cột, không được dừng ở đáp án đầu. Đáp án đúng của dòng thứ 1/2/3... lần lượt là A/B/C...; không được chỉ nhập đáp án cho dòng đầu.'],
                 ['Multiple Answers', 'Nhập toàn bộ lựa chọn vào Đáp án 1–12 và các chữ/số đúng, ngăn cách bằng dấu phẩy, trong Đáp án đúng.'],
-                ['Kiểm tra trước import', 'Đủ title; đúng 3 parts; đúng khoảng số câu; không trùng số; mỗi câu có đáp án; đáp án đúng khớp danh sách; không còn chữ mẫu.'],
+                ['Kiểm tra trước import', 'Đủ title; đúng ' + partCountText + '; đúng khoảng số câu; không trùng số; mỗi câu có đáp án; đáp án đúng khớp danh sách; không còn chữ mẫu.'],
                 ['Dùng với ChatGPT', 'Gửi đề gốc cùng file mẫu này và yêu cầu ChatGPT đọc sheet PROMPT_CHATGPT. ChatGPT phải trả về một file .xlsx theo đúng cấu trúc, không trả JSON/CSV.']
             ];
             var guideSheet = XLSX.utils.aoa_to_sheet(guideRows);
@@ -2871,11 +2918,11 @@
                 ['YÊU CẦU BẮT BUỘC'],
                 ['1. Giữ nguyên các sheet HUONG_DAN, PROMPT_CHATGPT, THONG_TIN, NOI_DUNG, LOAI_CAU_HOI và toàn bộ sheet VI_DU_*; không đổi tên cột trong NOI_DUNG.'],
                 ['2. Trong THONG_TIN, giữ nguyên Loại bài=' + modeUpper + ', điền Tiêu đề và xử lý Audio URL theo quy tắc: ' + audioInstruction],
-                ['3. Tạo đúng 3 parts. Part 1 dùng câu 1–13, Part 2 dùng câu 14–26, Part 3 dùng câu 27–40. Giữ đúng số câu, thứ tự câu và đáp án gốc.'],
+                ['3. ' + partStructureInstruction + ' Giữ đúng số câu, thứ tự câu và đáp án gốc.'],
                 ['4. Mỗi nhóm câu liên tiếp có cùng Part, Nhóm, Loại câu hỏi và Hướng dẫn HTML. Passage HTML chỉ lặp một lần ở dòng đầu mỗi Part.'],
                 ['4A. ' + promptPartHeaderInstruction],
-                ['5. Chọn mã theo LOAI_CAU_HOI: Matching Headings=4, Matching Names/List of Researchers=10, mọi dạng điền từ/gap mới=11 (Filling Gaps New - One Editor), Complete List of Words có danh sách từ cho sẵn=13, Complete each sentence with the correct ending=14. TUYỆT ĐỐI không dùng mã 2 hoặc 3 trong file mới; hai mã đó chỉ dành cho dữ liệu cũ.'],
-                ['6. Với mã 4, 10 hoặc 14, cột Danh sách dùng chung nhập một lần ở dòng đầu nhóm theo dạng ký hiệu=nội dung, ngăn cách bằng |. Các dòng sau để trống cột này để kế thừa. Các cột Đáp án 1–12 để trống; Đáp án đúng nhập A/B/C… theo vị trí.'],
+                ['5. Chọn mã theo LOAI_CAU_HOI: Matching Headings=4, Table and List=10, mọi dạng điền từ/gap mới=11, Complete List of Words=13, Sentence Endings=14, Listening Two-column Drag & Drop=15. TUYỆT ĐỐI không dùng mã 2 hoặc 3 trong file mới; hai mã đó chỉ dành cho dữ liệu cũ.'],
+                ['6. Với mã 4, 10, 14 hoặc 15, cột Danh sách dùng chung nhập một lần ở dòng đầu nhóm theo dạng ký hiệu=nội dung, ngăn cách bằng |. Các dòng sau để trống cột này để kế thừa. Các cột Đáp án 1–12 để trống; Đáp án đúng nhập A/B/C… theo vị trí.'],
                 ['6A. Riêng Matching Headings mã 4: Passage HTML phải có đúng một }{HEADING}{ sau từng nhãn đoạn được hỏi, ví dụ <p><strong>A</strong> }{HEADING}{</p>. Số }{HEADING}{ phải bằng số câu của nhóm và thứ tự A/B/C... phải trùng Nội dung câu hỏi Section A/Section B/Section C...'],
                 ['7. Với mã 11, Nội dung câu hỏi ở dòng đầu nhóm chứa toàn bộ đoạn và đúng một }{SPACE}{ cho mỗi số câu theo đúng thứ tự. BẮT BUỘC tạo một dòng cho từng số câu; trên mỗi dòng nhập đầy đủ từ đúng của chính câu đó tại Đáp án 1 và nhập A tại Đáp án đúng. Chỉ Nội dung câu hỏi ở các dòng sau được để trống. Không được bỏ Đáp án 1 của câu thứ hai trở đi và không thay }{SPACE}{ bằng dấu chấm/gạch dưới.'],
                 ['7A. Với mã 13 Complete List of Words: nhóm N câu phải có đúng N ký hiệu }{SPACE}{ và đúng N dòng. Xác định đủ N đáp án đúng trước, sắp theo số câu tăng dần, rồi mới thêm từ nhiễu. Lặp lại TOÀN BỘ danh sách giống hệt ở các cột Đáp án 1–12 trên TẤT CẢ N dòng; Đáp án đúng của các dòng lần lượt A, B, C... Không chỉ điền dòng đầu và không được bỏ bất kỳ lựa chọn nào ở cuối danh sách. Ví dụ câu 31–35 có danh sách A–J: cả 5 dòng đều phải điền đủ cùng 10 đáp án, và Đáp án đúng lần lượt A/B/C/D/E.'],
@@ -2899,22 +2946,33 @@
             infoSheet['!cols'] = [{wch: 22}, {wch: 70}];
             XLSX.utils.book_append_sheet(workbook, infoSheet, 'THONG_TIN');
 
-            var contentRows = [
-                ['Part', 'Passage HTML', 'Nhóm', 'Loại câu hỏi', 'Hướng dẫn HTML', 'Số câu', 'Nội dung câu hỏi', 'Đáp án 1', 'Đáp án 2', 'Đáp án 3', 'Đáp án 4', 'Đáp án 5', 'Đáp án 6', 'Đáp án 7', 'Đáp án 8', 'Đáp án 9', 'Đáp án 10', 'Đáp án 11', 'Đáp án 12', 'Danh sách dùng chung (A=... | B=...)', 'Đáp án đúng'],
-                [1, part1PassageExample, 1, 1, '<p><strong>Questions 1–2</strong></p><p>Choose the correct answer.</p>', 1, 'Nội dung câu hỏi 1', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', 'Lựa chọn D', '', '', '', '', '', '', '', '', '', 'A'],
-                ["","","","","",2,"Nội dung câu hỏi 2","TRUE","FALSE","NOT GIVEN","","","","","","","","","","","A"],
-                [2, part2PassageExample, 1, 4, '<p><strong>Questions 14–15</strong></p><p>Choose the correct heading for each section.</p>', 14, 'Section A', '', '', '', '', '', '', '', '', '', '', '', '', 'i=Heading about section B | ii=Heading about section A | iii=Heading not used', 'B'],
-                ["","","","","",15,"Section B","","","","","","","","","","","","","","A"],
-                [3, part3PassageExample, 1, 10, '<p><strong>Questions 27–28</strong></p><p>Match each statement with the correct researcher, A–F.</p>', 27, 'Our human ancestors did not originate in only one area.', '', '', '', '', '', '', '', '', '', '', '', '', 'A=Jim Bowler | B=Alan Thorne | C=Tim Flannery | D=Rainer Grün | E=Richard Roberts and Tim Flannery | F=Judith Field and Richard Fullager', 'A'],
-                ["","","","","",28,"The extinction of the megafauna happened within a particular period.","","","","","","","","","","","","","","C"]
+            var contentHeader = ['Part', 'Passage HTML', 'Nhóm', 'Loại câu hỏi', 'Hướng dẫn HTML', 'Số câu', 'Nội dung câu hỏi', 'Đáp án 1', 'Đáp án 2', 'Đáp án 3', 'Đáp án 4', 'Đáp án 5', 'Đáp án 6', 'Đáp án 7', 'Đáp án 8', 'Đáp án 9', 'Đáp án 10', 'Đáp án 11', 'Đáp án 12', 'Danh sách dùng chung (A=... | B=...)', 'Đáp án đúng', 'Tiêu đề danh sách'];
+            var contentRows = vm.isListeningMode ? [
+                contentHeader,
+                [1, part1PassageExample, 1, 11, '<p><strong>Questions 1–2</strong></p><p>Write ONE WORD ONLY for each answer.</p>', 1, 'Name: }{SPACE}{. Preferred day: }{SPACE}{.', 'Harbour', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
+                ['', '', '', '', '', 2, '', 'Tuesday', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
+                [2, part2PassageExample, 1, 7, '<p><strong>Questions 11–12</strong></p><p>Choose TWO letters, A–E.</p>', 11, 'Which TWO features had the greatest impact?', 'the local examples', 'the broad focus', 'the practical suggestions', 'the policy implications', 'the visual material', '', '', '', '', '', '', '', 'A', ''],
+                ['', '', '', '', '', 12, 'Which TWO features had the greatest impact?', 'the local examples', 'the broad focus', 'the practical suggestions', 'the policy implications', 'the visual material', '', '', '', '', '', '', '', 'C', ''],
+                [3, part3PassageExample, 1, 15, '<p><strong>Questions 21–22</strong></p><p>Match each category with the correct feature and move it into the gap.</p>', 21, 'Impression fossils', '', '', '', '', '', '', '', '', '', '', '', '', 'A=They are very rare. | B=They are three-dimensional. | C=They contain plant-cell information.', 'A', 'Features'],
+                ['', '', '', '', '', 22, 'Cast fossils', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'B', 'Features'],
+                [4, part4PassageExample, 1, 1, '<p><strong>Questions 31–32</strong></p><p>Choose the correct answer.</p>', 31, 'Nội dung câu hỏi 31', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', '', '', '', '', '', '', '', '', '', '', 'B', ''],
+                ['', '', '', '', '', 32, 'Nội dung câu hỏi 32', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', '', '', '', '', '', '', '', '', '', '', 'C', '']
+            ] : [
+                contentHeader,
+                [1, part1PassageExample, 1, 1, '<p><strong>Questions 1–2</strong></p><p>Choose the correct answer.</p>', 1, 'Nội dung câu hỏi 1', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', 'Lựa chọn D', '', '', '', '', '', '', '', '', '', 'A', ''],
+                ['', '', '', '', '', 2, 'Nội dung câu hỏi 2', 'TRUE', 'FALSE', 'NOT GIVEN', '', '', '', '', '', '', '', '', '', '', 'A', ''],
+                [2, part2PassageExample, 1, 4, '<p><strong>Questions 14–15</strong></p><p>Choose the correct heading for each section.</p>', 14, 'Section A', '', '', '', '', '', '', '', '', '', '', '', '', 'i=Heading about section B | ii=Heading about section A | iii=Heading not used', 'B', ''],
+                ['', '', '', '', '', 15, 'Section B', '', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
+                [3, part3PassageExample, 1, 10, '<p><strong>Questions 27–28</strong></p><p>Match each statement with the correct option, A–F.</p>', 27, 'Our human ancestors did not originate in only one area.', '', '', '', '', '', '', '', '', '', '', '', '', 'A=Jim Bowler | B=Alan Thorne | C=Tim Flannery | D=Rainer Grün | E=Richard Roberts and Tim Flannery | F=Judith Field and Richard Fullager', 'A', 'List of Researchers'],
+                ['', '', '', '', '', 28, 'The extinction of the megafauna happened within a particular period.', '', '', '', '', '', '', '', '', '', '', '', '', '', 'C', 'List of Researchers']
             ];
             var contentSheet = XLSX.utils.aoa_to_sheet(contentRows);
             contentSheet['!cols'] = [
                 {wch: 8}, {wch: 55}, {wch: 9}, {wch: 18}, {wch: 55}, {wch: 10}, {wch: 35},
                 {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20},
-                {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 90}, {wch: 16}
+                {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 90}, {wch: 16}, {wch: 30}
             ];
-            contentSheet['!autofilter'] = {ref: 'A1:U7'};
+            contentSheet['!autofilter'] = {ref: 'A1:V' + contentRows.length};
             XLSX.utils.book_append_sheet(workbook, contentSheet, 'NOI_DUNG');
 
             var typeImportNotes = {
@@ -2927,14 +2985,15 @@
                 7: vm.isListeningMode ? 'Multiple Answers cho Listening; nhập nhiều đáp án đúng, ngăn cách bằng dấu phẩy.' : 'Multiple Answers kiểu Listening; không ưu tiên cho IELTS Reading.',
                 8: vm.isListeningMode ? 'Matching/drop box cho Listening; giữ đúng danh sách lựa chọn và thứ tự đáp án.' : 'Matching Heading kiểu Listening/drop box; không ưu tiên cho IELTS Reading.',
                 9: vm.isListeningMode ? 'Map/diagram Listening; Passage HTML giữ ảnh/bản đồ và các vị trí cần trả lời.' : 'Map/diagram kiểu Listening; không ưu tiên cho IELTS Reading.',
-                10: 'MATCHING NAMES. Danh sách người dùng chung nhập ở cột Danh sách dùng chung; mỗi câu dùng Đáp án đúng A–Z.',
+                10: 'TABLE AND LIST. Danh sách dùng chung nhập ở cột Danh sách dùng chung; tiêu đề hiển thị nhập ở cột Tiêu đề danh sách; mỗi câu dùng Đáp án đúng A–Z.',
                 11: 'Filling Gaps New / ONE WORD ONLY / một editor. Dòng đầu chứa toàn bộ nội dung và đúng một }{SPACE}{ cho mỗi câu; bắt buộc đủ một dòng cho từng số câu; Đáp án 1 từng dòng là từ đúng, Đáp án đúng=A. Không dùng mã 2 hoặc 3 cho đề mới.',
                 12: 'MATCHING INFORMATION. Nhập cùng danh sách lựa chọn theo thứ tự ở Đáp án 1–12 cho mỗi câu.',
                 13: 'Complete List of Words. Một editor; N đáp án đúng đặt trước theo thứ tự N câu, sau đó mới tới từ nhiễu. Phải lặp nguyên danh sách Đáp án 1–12 trên mọi dòng trong nhóm; danh sách A–J phải đủ 10 mục; Đáp án đúng lần lượt A/B/C... Không chỉ nhập dòng đầu.',
-                14: 'Complete each sentence with the correct ending. Danh sách endings chung nhập ở cột Danh sách dùng chung; mỗi câu dùng Đáp án đúng A–Z.'
+                14: 'Complete each sentence with the correct ending. Danh sách endings chung nhập ở cột Danh sách dùng chung; mỗi câu dùng Đáp án đúng A–Z.',
+                15: 'Listening Two-column Drag & Drop. Mỗi câu là một nhãn bên trái; danh sách dùng chung là các thẻ kéo ở cột phải; dùng Tiêu đề danh sách để đặt tên cột phải.'
             };
             var typeRows = [['Mã', 'Loại câu hỏi', 'Quy tắc nhập chính xác']];
-            angular.forEach(vm.types, function (type) {
+            angular.forEach(vm.questionPackageTypes, function (type) {
                 typeRows.push([type.id, type.name, typeImportNotes[type.id] || type.notice]);
             });
             var typeSheet = XLSX.utils.aoa_to_sheet(typeRows);
@@ -2942,7 +3001,7 @@
             XLSX.utils.book_append_sheet(workbook, typeSheet, 'LOAI_CAU_HOI');
 
             var matchingExampleSheet = XLSX.utils.aoa_to_sheet([
-                ['MATCHING NAMES - VÍ DỤ CHUẨN'],
+                ['TABLE AND LIST (MÃ 10) - VÍ DỤ CHUẨN'],
                 ['Tên hiển thị dưới bảng', 'Giá trị trong cột Danh sách dùng chung'],
                 ['A', 'Jim Bowler'],
                 ['B', 'Alan Thorne'],
@@ -2957,7 +3016,7 @@
                 ['Quy tắc', 'Nhập chuỗi trên ở dòng đầu của nhóm mã 10. Các dòng câu tiếp theo cùng nhóm để trống cột Danh sách dùng chung. Đáp án đúng dùng A–F.']
             ]);
             matchingExampleSheet['!cols'] = [{wch: 28}, {wch: 125}];
-            XLSX.utils.book_append_sheet(workbook, matchingExampleSheet, 'VI_DU_MATCHING_NAMES');
+            XLSX.utils.book_append_sheet(workbook, matchingExampleSheet, 'VI_DU_TABLE_AND_LIST');
 
             var headingExampleSheet = XLSX.utils.aoa_to_sheet([
                 ['MATCHING HEADINGS (MÃ 4) - VÍ DỤ CHUẨN'],

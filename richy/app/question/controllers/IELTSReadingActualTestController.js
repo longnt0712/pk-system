@@ -1357,7 +1357,7 @@
                     }
                     return;
                 }
-                if (Number(entry.packageType) === 14 && entry.questionPackage.sentenceEndingBank) {
+                if ((Number(entry.packageType) === 14 || Number(entry.packageType) === 15) && entry.questionPackage.sentenceEndingBank) {
                     var ending = entry.questionPackage.sentenceEndingBank[Number(savedResult.answerOrdinal) - 1];
                     if (ending) {
                         vm.dropSentenceEnding(entry.questionPackage, entry.questionPackage.subQuestions.indexOf(question), ending);
@@ -1800,6 +1800,35 @@
                 toastr.error(message, title || 'Unable to start test');
             }
 
+            function normalizeLegacyMultipleAnswerPackages(data) {
+                angular.forEach((data && data.subQuestions) || [], function (passage) {
+                    angular.forEach((passage && passage.subQuestions) || [], function (questionPackage) {
+                        var questions = questionPackage.subQuestions || [];
+                        if (Number(questionPackage.type) !== 1 || questions.length < 2) {
+                            return;
+                        }
+                        var instruction = String(questionPackage.question || '').replace(/<[^>]*>/g, ' ').toLowerCase();
+                        if (!/choose\s+(?:two|three|four|2|3|4)\b/.test(instruction)) {
+                            return;
+                        }
+                        var firstText = String(questions[0].question || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+                        var samePrompt = questions.every(function (question) {
+                            return String(question.question || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase() === firstText;
+                        });
+                        if (!samePrompt) {
+                            return;
+                        }
+                        questionPackage.type = vm.isListeningRoute ? 7 : 5;
+                        angular.forEach(questions, function (question) {
+                            if (question.parent) {
+                                question.parent.type = questionPackage.type;
+                            }
+                        });
+                    });
+                });
+                return data;
+            }
+
             function loadReadingTest(data) {
                     if (!data || !angular.isArray(data.subQuestions)) {
                         failToStartTest('The test data could not be loaded. Please try again.');
@@ -1807,6 +1836,7 @@
                     }
                     data = restrictListeningAssignmentToSelectedPart(data);
                     data = normalizeListeningCandidateParts(data);
+                    data = normalizeLegacyMultipleAnswerPackages(data);
                     cachedIeltsNavigationParts = null;
                     vm.ieltsReadingActualTest = data;
                     vm.getOrdinalNumber(data);
@@ -3018,7 +3048,7 @@
                         if (data.subQuestions[k].subQuestions[i].type == 13) {
                             buildCompleteListQuestion(data.subQuestions[k].subQuestions[i]);
                         }
-                        if (data.subQuestions[k].subQuestions[i].type == 14) {
+                        if (data.subQuestions[k].subQuestions[i].type == 14 || data.subQuestions[k].subQuestions[i].type == 15) {
                             buildSentenceEndingQuestion(data.subQuestions[k].subQuestions[i]);
                         }
                         for (var j = 0; j < data.subQuestions[k].subQuestions[i].subQuestions.length; j++) {
