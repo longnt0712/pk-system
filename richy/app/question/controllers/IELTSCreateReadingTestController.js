@@ -87,8 +87,8 @@
             {id: 3, name: "Filling Gaps Enter", notice: "Fill A-G in gaps"},
             {id: 4, name: "Matching Heading", notice: "Drag and Drop"},
             {id: 5, name: "Multiple Choices - Multiple Answers", notice: "T/F/NG or Y/N/NG is also multiple choice question"},
-            {id: 6, name: "Multiple Choices - Listening (horizon)", notice: "T/F/NG or Y/N/NG is also multiple choice question"},
-            {id: 7, name: "Multiple Answers - Listening", notice: "T/F/NG or Y/N/NG is also multiple choice question"},
+            {id: 6, name: "Multiple Choices - Two column", notice: "Display two questions side by side; select this manually only when the original layout needs two columns"},
+            {id: 7, name: "Multiple Answers - Legacy", notice: "Legacy data only; new Reading and Listening tests use Multiple Choices - Multiple Answers"},
             {id: 8, name: "Matching Heading - Listening", notice: "Drop box (temp)"},
             {id: 9, name: "MAPS - Listening", notice: "..."},
             {id: 10, name: "TABLE AND LIST", notice: "Use one shared A–Z list; its title can be edited for each package"},
@@ -99,9 +99,11 @@
             {id: 15, name: "LISTENING - TWO-COLUMN DRAG & DROP", notice: "Left column contains the questions and drop zones; right column contains the shared answer bank"}
         ];
         vm.questionPackageTypes = vm.types.filter(function (type) {
-            return vm.isListeningMode || Number(type.id) !== 15;
+            return Number(type.id) !== 7 && (vm.isListeningMode || Number(type.id) !== 15);
         });
-        vm.passageTypes = vm.types.slice(0, 10);
+        vm.passageTypes = vm.types.filter(function (type) {
+            return Number(type.id) <= 9 && Number(type.id) !== 7;
+        });
 
         vm.matchingOptionLabel = function (index) {
             index = parseInt(index, 10);
@@ -215,7 +217,15 @@
         }
 
         function ensureListeningBuilderParts(test) {
-            if (!vm.isListeningMode || !test || !angular.isArray(test.subQuestions)) {
+            if (!test || !angular.isArray(test.subQuestions)) {
+                return test;
+            }
+            if (!vm.isListeningMode) {
+                angular.forEach(test.subQuestions, function (part) {
+                    angular.forEach((part && part.subQuestions) || [], function (questionPackage) {
+                        ensureMultipleAnswerPackage(questionPackage, true);
+                    });
+                });
                 return test;
             }
             if (test.subQuestions.length < 4) {
@@ -244,6 +254,7 @@
                 part.subQuestions = part.subQuestions || [];
                 angular.forEach(part.subQuestions, function (questionPackage, packageIndex) {
                     questionPackage.ordinalNumber = packageIndex + 1;
+                    ensureMultipleAnswerPackage(questionPackage, true);
                 });
             });
             return test;
@@ -432,7 +443,19 @@
         }
         vm.createPassageNumber = 1;
 
+        function prepareSharedChoicePackagesForSave() {
+            angular.forEach((vm.ieltsReadingTest || {}).subQuestions || [], function (part) {
+                angular.forEach(part.subQuestions || [], function (questionPackage) {
+                    ensureMultipleAnswerPackage(questionPackage, false);
+                    ensureSharedChoicePackage(questionPackage);
+                });
+            });
+        }
+
         vm.saveReadingTest = function (saveMode) {
+            // Keep the shared A/B/C list in every child question before either
+            // Save Draft or Publish serializes the builder model.
+            prepareSharedChoicePackagesForSave();
             blockUI.start();
             return service.saveObject(vm.ieltsReadingTest).then(function (data) {
                 blockUI.stop();
@@ -649,6 +672,79 @@
             });
         }
 
+        function ensureMultipleAnswerPackage(questionPackage, mergeExistingCorrectAnswers) {
+            if (!questionPackage) {
+                return;
+            }
+            if (Number(questionPackage.type) === 7) {
+                questionPackage.type = 5;
+            }
+            if (Number(questionPackage.type) !== 5) {
+                return;
+            }
+
+            questionPackage.subQuestions = questionPackage.subQuestions || [];
+            questionPackage.subQuestions.sort(function (left, right) {
+                return Number(left.ordinalNumber) - Number(right.ordinalNumber);
+            });
+            if (!questionPackage.subQuestions.length) {
+                return;
+            }
+
+            var firstQuestion = questionPackage.subQuestions[0];
+            var sourceQuestion = firstQuestion;
+            if (mergeExistingCorrectAnswers) {
+                angular.forEach(questionPackage.subQuestions, function (question) {
+                    if ((question.questionAnswers || []).length > (sourceQuestion.questionAnswers || []).length) {
+                        sourceQuestion = question;
+                    }
+                });
+            }
+            sourceQuestion.questionAnswers = sourceQuestion.questionAnswers || [];
+            var sourceAnswers = sourceQuestion.questionAnswers;
+            var correctByIndex = {};
+
+            angular.forEach(mergeExistingCorrectAnswers ? questionPackage.subQuestions : [firstQuestion], function (question) {
+                angular.forEach(question.questionAnswers || [], function (answer, answerIndex) {
+                    if (!answer.correct) {
+                        return;
+                    }
+                    var answerText = plainText(answer.answer && answer.answer.answer).toLowerCase();
+                    var matchedIndex = -1;
+                    angular.forEach(sourceAnswers, function (sourceAnswer, sourceIndex) {
+                        if (matchedIndex < 0 && plainText(sourceAnswer.answer && sourceAnswer.answer.answer).toLowerCase() === answerText) {
+                            matchedIndex = sourceIndex;
+                        }
+                    });
+                    correctByIndex[matchedIndex >= 0 ? matchedIndex : answerIndex] = true;
+                });
+            });
+
+            var sharedQuestionText = firstQuestion.question || sourceQuestion.question || '';
+            angular.forEach(questionPackage.subQuestions, function (question) {
+                question.question = sharedQuestionText;
+                question.questionAnswers = question.questionAnswers || [];
+                while (question.questionAnswers.length < sourceAnswers.length) {
+                    question.questionAnswers.push({answer: {answer: ''}, question: {}});
+                }
+                if (question.questionAnswers.length > sourceAnswers.length) {
+                    question.questionAnswers = question.questionAnswers.slice(0, sourceAnswers.length);
+                }
+                angular.forEach(question.questionAnswers, function (answer, answerIndex) {
+                    answer.answer = answer.answer || {answer: ''};
+                    answer.answer.answer = sourceAnswers[answerIndex] && sourceAnswers[answerIndex].answer
+                        ? sourceAnswers[answerIndex].answer.answer : '';
+                    answer.ordinalNumberQuestionAnswer = answerIndex + 1;
+                    answer.correct = !!correctByIndex[answerIndex];
+                });
+            });
+        }
+
+        vm.updateMultipleAnswerPackage = function (questionPackage) {
+            ensureMultipleAnswerPackage(questionPackage, false);
+            vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
+        };
+
         vm.sharedChoiceTitle = function (type) {
             type = Number(type);
             if (type === 4) {
@@ -844,6 +940,12 @@
         };
 
         vm.onReadingPackageTypeChange = function (questionPackage, partIndex, packageIndex) {
+            if (questionPackage && Number(questionPackage.type) === 7) {
+                questionPackage.type = 5;
+            }
+            if (questionPackage && Number(questionPackage.type) === 5) {
+                ensureMultipleAnswerPackage(questionPackage, true);
+            }
             if (questionPackage && Number(questionPackage.type) === 11) {
                 vm.numberOfAnswers = 1;
                 vm.tempAnswers = [{
@@ -2425,6 +2527,7 @@
         }
 
         function importedGroup(group, groupIndex) {
+            group = normalizeImportedMultipleAnswerGroup(group);
             var questions = group.questions || group.subQuestions || [];
             return {
                 question: group.instructionHtml || group.instruction || group.question || '',
@@ -2444,6 +2547,7 @@
             var groups = part.groups || part.subQuestions || [];
             return {
                 question: part.passageHtml || part.passage || part.question || '',
+                pronounce: part.audioUrl || part.pronounce || '',
                 questionType: readingQuestionType(
                     passageTypeIds[partIndex],
                     'IELTSRTP' + (partIndex + 1),
@@ -2452,6 +2556,40 @@
                 ordinalNumber: partIndex + 1,
                 subQuestions: groups.map(importedGroup)
             };
+        }
+
+        function normalizeImportedMultipleAnswerGroup(group) {
+            if (!group) {
+                return group;
+            }
+            if (Number(group.type) === 7) {
+                group.type = 5;
+            }
+            if (Number(group.type) !== 5 || !(group.questions || []).length) {
+                return group;
+            }
+
+            var questions = group.questions;
+            var primary = questions[0];
+            var primaryAnswers = primary.answers || [];
+            var correctByIndex = {};
+            angular.forEach(questions, function (question) {
+                angular.forEach(question.answers || [], function (answer, answerIndex) {
+                    if (answer.correct) {
+                        correctByIndex[answerIndex] = true;
+                    }
+                });
+            });
+            angular.forEach(questions, function (question) {
+                question.text = primary.text;
+                question.answers = primaryAnswers.map(function (answer, answerIndex) {
+                    return {
+                        text: answer.text,
+                        correct: !!correctByIndex[answerIndex]
+                    };
+                });
+            });
+            return group;
         }
 
         function removeImportedIdentifiers(question) {
@@ -2629,11 +2767,15 @@
             }
             var numericType = parseInt(value, 10);
             if (numericType >= 1 && numericType <= 15) {
+                if (numericType === 6) { return 1; }
+                if (numericType === 7) { return 5; }
                 return numericType;
             }
             var normalizedType = normalizedExcelText(value);
             for (var i = 0; i < vm.types.length; i++) {
                 if (normalizedExcelText(vm.types[i].name) === normalizedType) {
+                    if (Number(vm.types[i].id) === 6) { return 1; }
+                    if (Number(vm.types[i].id) === 7) { return 5; }
                     return vm.types[i].id;
                 }
             }
@@ -2797,6 +2939,11 @@
                     {passageHtml: '', groups: []}
                 ]
             };
+            if (vm.isListeningMode) {
+                angular.forEach(source.parts, function (part, partIndex) {
+                    part.audioUrl = info['audio part ' + (partIndex + 1)] || '';
+                });
+            }
             var rows = XLSX.utils.sheet_to_json(contentSheet, {defval: '', raw: false});
             var currentPartNumber = null;
             var currentGroupByPart = {};
@@ -2826,7 +2973,7 @@
 
                 var storagePartIndex = currentPartNumber - 1;
                 var part = source.parts[storagePartIndex];
-                var passage = excelRowValue(row, ['Passage HTML', 'Nội dung passage', 'Passage']);
+                var passage = excelRowValue(row, ['Part HTML', 'Passage HTML', 'Nội dung passage', 'Passage']);
                 if (String(passage).trim()) {
                     if (!logicalPartPassageSeen[currentPartNumber]) {
                         part.passageHtml = passage;
@@ -3033,11 +3180,12 @@
                 ['HƯỚNG DẪN IMPORT IELTS ' + modeUpper + ' TEST', 'ĐỌC KỸ TRƯỚC KHI TẠO FILE'],
                 ['Mục tiêu', 'Tạo đúng một bài IELTS ' + modeName + ' gồm ' + partCountText + ' và tối đa 40 câu, sau đó import trực tiếp tại trang IELTS ' + modeName + '.'],
                 ['Bước 1', 'Trong THONG_TIN, giữ Loại bài=' + modeUpper + ', nhập Tiêu đề và Audio URL theo quy tắc bên dưới.'],
-                ['Audio URL', audioInstruction],
+                ['Audio URL chính', audioInstruction],
+                ['Audio Part 1–4 (Listening)', vm.isListeningMode ? 'Nên nhập URL audio riêng cho từng Part trong THONG_TIN. Khi giao nhiệm vụ chỉ làm một Part, hệ thống chỉ phát audio của Part đó. Nếu ô Part để trống, hệ thống dùng Audio URL chính.' : 'Không áp dụng cho Reading; để trống.'],
                 ['Bước 2', 'Thay toàn bộ dòng ví dụ trong NOI_DUNG bằng dữ liệu của đề thật; giữ nguyên tên sheet và tiêu đề cột.'],
                 ['Bước 3', 'Mỗi dòng trong NOI_DUNG là một câu hỏi. Các dòng cùng Part + Nhóm tạo thành một question package.'],
                 ['Bước 4', partStructureInstruction + ' Không lặp số câu.'],
-                ['Bước 5', 'Passage HTML chỉ cần nhập ở dòng đầu của mỗi Part. Nhóm, Loại câu hỏi, Hướng dẫn HTML và Danh sách dùng chung có thể bỏ trống ở dòng sau để kế thừa.'],
+                ['Bước 5', (vm.isListeningMode ? 'Part HTML' : 'Passage HTML') + ' chỉ cần nhập ở dòng đầu của mỗi Part. Nhóm, Loại câu hỏi, Hướng dẫn HTML và Danh sách dùng chung có thể bỏ trống ở dòng sau để kế thừa.'],
                 ['Reading: tiêu đề Part tự động', automaticReadingHeader],
                 ['Bước 6', 'Đáp án đúng có thể nhập số thứ tự 1,2… hoặc chữ A,B,C…; nhiều đáp án ngăn cách bằng dấu phẩy, ví dụ A,C.'],
                 ['HTML được phép', 'Dùng HTML đơn giản như <h2>, <h3>, <p>, <strong>, <em>, <br>, <ul>, <ol>, <li>. Không chèn script, iframe, CSS hoặc công thức Excel.'],
@@ -3056,7 +3204,8 @@
                 ['FILLING GAPS MỚI - ví dụ', 'Koster believes that games remove people’s fear of }{SPACE}{. Robertson’s view is associated with }{SPACE}{. Nhóm 2 câu phải có đúng 2 ký hiệu, đúng 2 dòng câu và cả 2 dòng đều phải có Đáp án 1. Không gõ dấu chấm/gạch dưới thay cho ô trống.'],
                 ['FILLING GAPS CŨ (mã 2 và 3)', 'Chỉ giữ để tương thích và chỉnh sửa dữ liệu cũ. Không dùng mã 2 hoặc 3 khi ChatGPT tạo file import mới; luôn chuyển dạng điền từ mới sang mã 11.'],
                 ['COMPLETE LIST OF WORDS (mã 13)', 'Dùng một editor và đúng một }{SPACE}{ cho mỗi câu. Nếu nhóm có N câu, phải tạo đủ N dòng câu. Trên MỌI dòng của nhóm, lặp lại nguyên vẹn cùng danh sách ở Đáp án 1–12: N đáp án đúng đặt trước theo đúng thứ tự số câu, rồi mới tới từ nhiễu. Danh sách A–J phải điền đủ cả 10 cột, không được dừng ở đáp án đầu. Đáp án đúng của dòng thứ 1/2/3... lần lượt là A/B/C...; không được chỉ nhập đáp án cho dòng đầu.'],
-                ['Multiple Answers', 'Nhập toàn bộ lựa chọn vào Đáp án 1–12 và các chữ/số đúng, ngăn cách bằng dấu phẩy, trong Đáp án đúng.'],
+                ['MULTIPLE CHOICE - MỘT ĐÁP ÁN (mã 1)', 'Reading và Listening đều dùng mã 1, bố cục dọc một cột. Excel không dùng mã 6/Two column; nếu nhập mã 6, importer tự chuyển về mã 1.'],
+                ['MULTIPLE ANSWERS (mã 5)', 'Reading và Listening dùng chung mã 5. Với nhóm Questions 21–22 hoặc Questions 1–3, tạo đủ 2 hoặc 3 dòng số câu nhưng lặp cùng Nội dung câu hỏi và cùng danh sách Đáp án 1–12. Mỗi dòng có thể đánh dấu một đáp án đúng riêng; importer tự hợp nhất và giao diện chỉ hiện một khối checkbox với dải số câu. Không dùng mã 7.'],
                 ['Kiểm tra trước import', 'Đủ title; đúng ' + partCountText + '; đúng khoảng số câu; không trùng số; mỗi câu có đáp án; đáp án đúng khớp danh sách; không còn chữ mẫu.'],
                 ['Dùng với ChatGPT', 'Gửi đề gốc cùng file mẫu này và yêu cầu ChatGPT đọc sheet PROMPT_CHATGPT. ChatGPT phải trả về một file .xlsx theo đúng cấu trúc, không trả JSON/CSV.']
             ];
@@ -3069,16 +3218,17 @@
                 ['Bạn là chuyên gia số hóa đề IELTS ' + modeName + '. Tôi gửi kèm (1) đề IELTS ' + modeName + ' gốc và (2) file Excel mẫu này. Hãy phân tích toàn bộ đề và tạo một file Excel .xlsx hoàn chỉnh để tôi import trực tiếp vào hệ thống.'],
                 ['YÊU CẦU BẮT BUỘC'],
                 ['1. Giữ nguyên các sheet HUONG_DAN, PROMPT_CHATGPT, THONG_TIN, NOI_DUNG, LOAI_CAU_HOI và toàn bộ sheet VI_DU_*; không đổi tên cột trong NOI_DUNG.'],
-                ['2. Trong THONG_TIN, giữ nguyên Loại bài=' + modeUpper + ', điền Tiêu đề và xử lý Audio URL theo quy tắc: ' + audioInstruction],
+                ['2. Trong THONG_TIN, giữ nguyên Loại bài=' + modeUpper + ', điền Tiêu đề và xử lý Audio URL theo quy tắc: ' + audioInstruction + (vm.isListeningMode ? ' Nếu đề cung cấp audio riêng, điền đúng Audio Part 1, Audio Part 2, Audio Part 3 và Audio Part 4; không tự bịa URL. Nếu chỉ có audio toàn bài, để trống các ô Part.' : '')],
                 ['3. ' + partStructureInstruction + ' Giữ đúng số câu, thứ tự câu và đáp án gốc.'],
                 ['4. Mỗi nhóm câu liên tiếp có cùng Part, Nhóm, Loại câu hỏi và Hướng dẫn HTML. Passage HTML chỉ lặp một lần ở dòng đầu mỗi Part.'],
                 ['4A. ' + promptPartHeaderInstruction],
-                ['5. Chọn mã theo LOAI_CAU_HOI: Matching Headings=4, Table and List=10, mọi dạng điền từ/gap mới=11, Complete List of Words=13, Sentence Endings=14, Listening Two-column Drag & Drop=15. TUYỆT ĐỐI không dùng mã 2 hoặc 3 trong file mới; hai mã đó chỉ dành cho dữ liệu cũ.'],
+                ['5. Chọn mã theo LOAI_CAU_HOI: Multiple Choice một đáp án=1 cho cả Reading/Listening; Multiple Answers=5 cho cả Reading/Listening; Matching Headings=4; Table and List=10; mọi dạng điền từ/gap mới=11; Complete List of Words=13; Sentence Endings=14; Listening Two-column Drag & Drop=15. TUYỆT ĐỐI không dùng mã 2, 3, 6 hoặc 7 trong file mới. Mã 6/7 chỉ là dữ liệu cũ và importer sẽ chuyển 6→1, 7→5.'],
                 ['6. Với mã 4, 10, 14 hoặc 15, cột Danh sách dùng chung nhập một lần ở dòng đầu nhóm theo dạng ký hiệu=nội dung, ngăn cách bằng |. Các dòng sau để trống cột này để kế thừa. Các cột Đáp án 1–12 để trống; Đáp án đúng nhập A/B/C… theo vị trí.'],
                 ['6A. Riêng Matching Headings mã 4: Passage HTML phải có đúng một }{HEADING}{ sau từng nhãn đoạn được hỏi, ví dụ <p><strong>A</strong> }{HEADING}{</p>. Số }{HEADING}{ phải bằng số câu của nhóm và thứ tự A/B/C... phải trùng Nội dung câu hỏi Section A/Section B/Section C...'],
                 ['7. Với mã 11, Nội dung câu hỏi ở dòng đầu nhóm chứa toàn bộ đoạn và đúng một }{SPACE}{ cho mỗi số câu theo đúng thứ tự. BẮT BUỘC tạo một dòng cho từng số câu; trên mỗi dòng nhập đầy đủ từ đúng của chính câu đó tại Đáp án 1 và nhập A tại Đáp án đúng. Chỉ Nội dung câu hỏi ở các dòng sau được để trống. Không được bỏ Đáp án 1 của câu thứ hai trở đi và không thay }{SPACE}{ bằng dấu chấm/gạch dưới.'],
                 ['7A. Với mã 13 Complete List of Words: nhóm N câu phải có đúng N ký hiệu }{SPACE}{ và đúng N dòng. Xác định đủ N đáp án đúng trước, sắp theo số câu tăng dần, rồi mới thêm từ nhiễu. Lặp lại TOÀN BỘ danh sách giống hệt ở các cột Đáp án 1–12 trên TẤT CẢ N dòng; Đáp án đúng của các dòng lần lượt A, B, C... Không chỉ điền dòng đầu và không được bỏ bất kỳ lựa chọn nào ở cuối danh sách. Ví dụ câu 31–35 có danh sách A–J: cả 5 dòng đều phải điền đủ cùng 10 đáp án, và Đáp án đúng lần lượt A/B/C/D/E.'],
-                ['8. Với loại khác (không phải mã 11 hoặc 13), nhập lựa chọn/đáp án vào Đáp án 1–12. Đáp án đúng nhập vị trí 1–12 hoặc chữ A–L; nhiều đáp án ngăn cách bằng dấu phẩy.'],
+                ['8. Với mã 1, nhập lựa chọn vào Đáp án 1–12 và đúng một Đáp án đúng. Tất cả Multiple Choice import từ Reading/Listening đều là một cột dọc; không dùng mã 6.'],
+                ['8A. Với mã 5 Multiple Answers, nhóm N số câu phải có đúng N dòng liên tiếp, cùng Part + Nhóm, cùng câu hỏi và cùng danh sách lựa chọn. Ví dụ Questions 21–22: dòng 21 và 22 lặp nguyên câu hỏi và 5 đáp án; nếu A và C đúng thì nhập A ở dòng 21, C ở dòng 22 (hoặc A,C trên cả hai dòng). Importer hợp nhất thành một khối Questions 21–22, tự tích A và C, người dùng chỉ thấy một câu hỏi và một danh sách checkbox.'],
                 ['9. Passage và hướng dẫn dùng HTML đơn giản. Giữ nguyên nội dung đề, chính tả, dấu câu, tên riêng, tiêu đề đoạn và ký hiệu A/B/C…; không tóm tắt.'],
                 ['10. Không tạo macro, công thức, link ngoài, sheet phụ hoặc cột phụ. Không để ô lỗi Excel. File phải mở được bằng Excel và SheetJS.'],
                 ['11. Tự kiểm tra từng dòng trước khi xuất file: đủ 40 câu nếu đề đủ 40; không trùng/thiếu số; đúng part; KHÔNG có dòng câu nào thiếu Đáp án 1 khi loại yêu cầu đáp án; Đáp án đúng khớp lựa chọn; mã 4 có số }{HEADING}{ bằng số câu; mã 11 và 13 có số }{SPACE}{ bằng số câu. Với mã 13, kiểm tra mọi dòng đều có cùng danh sách đầy đủ và số đáp án đúng không nhỏ hơn số câu. Nếu còn thiếu dù chỉ một đáp án thì phải sửa xong mới tạo file.'],
@@ -3089,21 +3239,30 @@
             promptSheet['!cols'] = [{wch: 150}];
             XLSX.utils.book_append_sheet(workbook, promptSheet, 'PROMPT_CHATGPT');
 
-            var infoSheet = XLSX.utils.aoa_to_sheet([
+            var infoRows = [
                 ['Trường', 'Giá trị'],
                 ['Loại bài', modeUpper],
                 ['Tiêu đề', 'IELTS Academic ' + modeName + ' Test 01'],
                 ['Audio URL', vm.isListeningMode ? 'https://example.com/audio/ielts-listening-test-01.mp3' : '']
-            ]);
+            ];
+            if (vm.isListeningMode) {
+                infoRows.push(
+                    ['Audio Part 1', 'https://example.com/audio/ielts-listening-test-01-part-1.mp3'],
+                    ['Audio Part 2', 'https://example.com/audio/ielts-listening-test-01-part-2.mp3'],
+                    ['Audio Part 3', 'https://example.com/audio/ielts-listening-test-01-part-3.mp3'],
+                    ['Audio Part 4', 'https://example.com/audio/ielts-listening-test-01-part-4.mp3']
+                );
+            }
+            var infoSheet = XLSX.utils.aoa_to_sheet(infoRows);
             infoSheet['!cols'] = [{wch: 22}, {wch: 70}];
             XLSX.utils.book_append_sheet(workbook, infoSheet, 'THONG_TIN');
 
-            var contentHeader = ['Part', 'Passage HTML', 'Nhóm', 'Loại câu hỏi', 'Hướng dẫn HTML', 'Số câu', 'Nội dung câu hỏi', 'Đáp án 1', 'Đáp án 2', 'Đáp án 3', 'Đáp án 4', 'Đáp án 5', 'Đáp án 6', 'Đáp án 7', 'Đáp án 8', 'Đáp án 9', 'Đáp án 10', 'Đáp án 11', 'Đáp án 12', 'Danh sách dùng chung (A=... | B=...)', 'Đáp án đúng', 'Tiêu đề danh sách'];
+            var contentHeader = ['Part', vm.isListeningMode ? 'Part HTML' : 'Passage HTML', 'Nhóm', 'Loại câu hỏi', 'Hướng dẫn HTML', 'Số câu', 'Nội dung câu hỏi', 'Đáp án 1', 'Đáp án 2', 'Đáp án 3', 'Đáp án 4', 'Đáp án 5', 'Đáp án 6', 'Đáp án 7', 'Đáp án 8', 'Đáp án 9', 'Đáp án 10', 'Đáp án 11', 'Đáp án 12', 'Danh sách dùng chung (A=... | B=...)', 'Đáp án đúng', 'Tiêu đề danh sách'];
             var contentRows = vm.isListeningMode ? [
                 contentHeader,
                 [1, part1PassageExample, 1, 11, '<p><strong>Questions 1–2</strong></p><p>Write ONE WORD ONLY for each answer.</p>', 1, 'Name: }{SPACE}{. Preferred day: }{SPACE}{.', 'Harbour', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
                 ['', '', '', '', '', 2, '', 'Tuesday', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
-                [2, part2PassageExample, 1, 7, '<p><strong>Questions 11–12</strong></p><p>Choose TWO letters, A–E.</p>', 11, 'Which TWO features had the greatest impact?', 'the local examples', 'the broad focus', 'the practical suggestions', 'the policy implications', 'the visual material', '', '', '', '', '', '', '', 'A', ''],
+                [2, part2PassageExample, 1, 5, '<p><strong>Questions 11–12</strong></p><p>Choose TWO letters, A–E.</p>', 11, 'Which TWO features had the greatest impact?', 'the local examples', 'the broad focus', 'the practical suggestions', 'the policy implications', 'the visual material', '', '', '', '', '', '', '', 'A', ''],
                 ['', '', '', '', '', 12, 'Which TWO features had the greatest impact?', 'the local examples', 'the broad focus', 'the practical suggestions', 'the policy implications', 'the visual material', '', '', '', '', '', '', '', 'C', ''],
                 [3, part3PassageExample, 1, 15, '<p><strong>Questions 21–22</strong></p><p>Match each category with the correct feature and move it into the gap.</p>', 21, 'Impression fossils', '', '', '', '', '', '', '', '', '', '', '', '', 'A=They are very rare. | B=They are three-dimensional. | C=They contain plant-cell information.', 'A', 'Features'],
                 ['', '', '', '', '', 22, 'Cast fossils', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'B', 'Features'],
@@ -3128,13 +3287,13 @@
             XLSX.utils.book_append_sheet(workbook, contentSheet, 'NOI_DUNG');
 
             var typeImportNotes = {
-                1: 'Một đáp án: dùng cho Multiple Choice, TRUE/FALSE/NOT GIVEN, YES/NO/NOT GIVEN. Nhập lựa chọn ở Đáp án 1–12 và một Đáp án đúng.',
+                1: 'Một đáp án: dùng cho Multiple Choice của cả Reading và Listening, TRUE/FALSE/NOT GIVEN, YES/NO/NOT GIVEN. Nhập lựa chọn ở Đáp án 1–12 và một Đáp án đúng. Import luôn hiển thị dọc một cột.',
                 2: 'LEGACY - Filling Gaps cũ. Chỉ dùng cho đề cũ; không dùng trong file import mới. Dạng điền từ mới phải dùng mã 11.',
                 3: 'LEGACY - Filling Gaps Enter cũ. Chỉ dùng cho đề cũ; không dùng trong file import mới. Dạng điền từ mới phải dùng mã 11.',
                 4: 'Matching Headings. Danh sách heading dùng chung nhập một lần; Passage HTML có một }{HEADING}{ sau mỗi nhãn A/B/C...; mỗi câu dùng Đáp án đúng A–Z theo vị trí heading. Importer tự đặt Part về loại Matching Heading.',
-                5: 'Multiple Choice có nhiều đáp án. Đáp án đúng nhập nhiều vị trí/chữ, ví dụ A,C.',
-                6: vm.isListeningMode ? 'Bố cục lựa chọn ngang cho câu hỏi Listening.' : 'Bố cục lựa chọn ngang, chủ yếu dùng Listening; chỉ dùng khi đề Reading thật sự yêu cầu.',
-                7: vm.isListeningMode ? 'Multiple Answers cho Listening; nhập nhiều đáp án đúng, ngăn cách bằng dấu phẩy.' : 'Multiple Answers kiểu Listening; không ưu tiên cho IELTS Reading.',
+                5: 'Multiple Choices - Multiple Answers dùng chung cho Reading và Listening. Nhóm N số câu tạo N dòng cùng prompt/options; importer hợp nhất các đáp án đúng và người dùng chỉ thấy một khối checkbox có dải số câu.',
+                6: 'LEGACY/UI ONLY - Multiple Choices - Two column. Không dùng trong Excel mới; importer luôn chuyển mã 6 về mã 1 dọc một cột.',
+                7: 'LEGACY - Multiple Answers cũ của Listening. Không dùng trong Excel mới; importer luôn chuyển mã 7 về mã 5.',
                 8: vm.isListeningMode ? 'Matching/drop box cho Listening; giữ đúng danh sách lựa chọn và thứ tự đáp án.' : 'Matching Heading kiểu Listening/drop box; không ưu tiên cho IELTS Reading.',
                 9: vm.isListeningMode ? 'Map/diagram Listening; Passage HTML giữ ảnh/bản đồ và các vị trí cần trả lời.' : 'Map/diagram kiểu Listening; không ưu tiên cho IELTS Reading.',
                 10: 'TABLE AND LIST. Danh sách dùng chung nhập ở cột Danh sách dùng chung; tiêu đề hiển thị nhập ở cột Tiêu đề danh sách; mỗi câu dùng Đáp án đúng A–Z.',
@@ -3146,6 +3305,9 @@
             };
             var typeRows = [['Mã', 'Loại câu hỏi', 'Quy tắc nhập chính xác']];
             angular.forEach(vm.questionPackageTypes, function (type) {
+                if (Number(type.id) === 6 || Number(type.id) === 7) {
+                    return;
+                }
                 typeRows.push([type.id, type.name, typeImportNotes[type.id] || type.notice]);
             });
             var typeSheet = XLSX.utils.aoa_to_sheet(typeRows);
@@ -3247,6 +3409,23 @@
                 {wch: 24}, {wch: 26}, {wch: 24}, {wch: 26}, {wch: 18}
             ];
             XLSX.utils.book_append_sheet(workbook, completeListExampleSheet, 'VI_DU_COMPLETE_LIST');
+
+            var multipleAnswersExampleSheet = XLSX.utils.aoa_to_sheet([
+                ['MULTIPLE CHOICES - MULTIPLE ANSWERS (MÃ 5)'],
+                ['Mục tiêu hiển thị', 'Một khối Questions 21–22, một câu hỏi, một danh sách checkbox; người dùng chọn đúng 2 đáp án.'],
+                ['Part', 'Nhóm', 'Loại câu hỏi', 'Số câu', 'Nội dung câu hỏi', 'Đáp án 1 (A)', 'Đáp án 2 (B)', 'Đáp án 3 (C)', 'Đáp án 4 (D)', 'Đáp án 5 (E)', 'Đáp án đúng'],
+                [3, 1, 5, 21, 'Which TWO features had the greatest impact on the students?', 'the references to local problems', 'the broad focus of the examples', 'the practical suggestions for solutions', 'the type of issues discussed', 'the implications for government policy', 'A'],
+                [3, 1, 5, 22, 'Which TWO features had the greatest impact on the students?', 'the references to local problems', 'the broad focus of the examples', 'the practical suggestions for solutions', 'the type of issues discussed', 'the implications for government policy', 'C'],
+                [],
+                ['Quy tắc bắt buộc', 'Hai dòng dùng cùng Part, cùng Nhóm=1, cùng mã 5, cùng câu hỏi và cùng năm lựa chọn. Dòng 21 đánh dấu A, dòng 22 đánh dấu C. Importer tự hợp nhất A+C và chỉ hiển thị một khối Questions 21–22.'],
+                ['Cách khác hợp lệ', 'Có thể nhập A,C ở cột Đáp án đúng trên cả hai dòng; kết quả import vẫn tự gộp và tích đúng A cùng C.'],
+                ['Không được dùng', 'Không dùng mã 7. Không tách thành hai câu hỏi hiển thị giống nhau. Không dùng mã 6/Two column cho dữ liệu Excel.']
+            ]);
+            multipleAnswersExampleSheet['!cols'] = [
+                {wch: 24}, {wch: 18}, {wch: 18}, {wch: 12}, {wch: 65},
+                {wch: 38}, {wch: 38}, {wch: 42}, {wch: 34}, {wch: 42}, {wch: 18}
+            ];
+            XLSX.utils.book_append_sheet(workbook, multipleAnswersExampleSheet, 'VI_DU_MULTIPLE_ANSWERS');
 
             XLSX.writeFile(workbook, vm.isListeningMode ? 'mau_import_ielts_listening.xlsx' : 'mau_import_ielts_reading.xlsx');
             toastr.success('Đã tải file Excel mẫu ' + modeName + '.', 'IELTS ' + modeName);

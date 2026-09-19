@@ -1815,6 +1815,8 @@ public class QuestionServiceImpl implements QuestionService {
 					subQuestion.setCreatedBy(currentUserName);
 				}
 				subQuestion.setQuestion(sDto.getQuestion());
+				subQuestion.setTitle(sDto.getTitle());
+				subQuestion.setPronounce(sDto.getPronounce());
 				if(sDto.getQuestionType() != null && sDto.getQuestionType().getId() != null) {
 					subQuestion.setQuestionType(questionTypeRepository.getOne(sDto.getQuestionType().getId()));
 				}

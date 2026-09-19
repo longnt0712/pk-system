@@ -43,15 +43,15 @@
             // skips .webp files. The lossless WebP remains packaged as an optional optimized copy.
             var spriteUrl = 'assets/images/learning-pets/mam-hoc/spritesheet.png?v=' + version;
             var animations = {
-                idle: {row: 0, durations: [280, 110, 110, 140, 140, 320]},
+                idle: {row: 0, durations: [280, 110, 110, 140, 140, 320], loopPause: 10000},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
                 left: {row: 2, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
-                waving: {row: 3, durations: [140, 140, 140, 280]},
-                completed: {row: 4, durations: [140, 140, 140, 140, 280]},
-                failed: {row: 5, durations: [140, 140, 140, 140, 140, 140, 140, 240]},
-                waiting: {row: 6, durations: [150, 150, 150, 150, 150, 260]},
-                working: {row: 7, durations: [120, 120, 120, 120, 120, 220]},
-                review: {row: 8, durations: [240, 240, 240, 240, 240, 440]}
+                waving: {row: 3, durations: [140, 140, 140, 280], loopPause: 10000},
+                completed: {row: 4, durations: [140, 140, 140, 140, 280], loopPause: 10000},
+                failed: {row: 5, durations: [140, 140, 140, 140, 140, 140, 140, 240], loopPause: 10000},
+                waiting: {row: 6, durations: [150, 150, 150, 150, 150, 260], loopPause: 10000},
+                working: {row: 7, durations: [120, 120, 120, 120, 120, 220], loopPause: 10000},
+                review: {row: 8, durations: [240, 240, 240, 240, 240, 440], loopPause: 10000}
             };
 
             vm.visible = false;
@@ -372,8 +372,21 @@
             function tickAnimation(animation) {
                 vm.spriteStyle = spritePosition(animation.row, frameIndex);
                 var delay = animation.durations[frameIndex] || 160;
+                var completedCycle = frameIndex === animation.durations.length - 1;
                 frameIndex = (frameIndex + 1) % animation.durations.length;
-                spriteTimer = $timeout(function () { tickAnimation(animation); }, delay);
+                spriteTimer = $timeout(function () {
+                    if (completedCycle && animation.loopPause) {
+                        // Rest on the neutral frame between loops instead of
+                        // stretching every sprite frame and making it jerky.
+                        vm.spriteStyle = spritePosition(animation.row, 0);
+                        frameIndex = animation.durations.length > 1 ? 1 : 0;
+                        spriteTimer = $timeout(function () {
+                            tickAnimation(animation);
+                        }, animation.loopPause);
+                        return;
+                    }
+                    tickAnimation(animation);
+                }, delay);
             }
 
             function playAnimation(name, restart) {

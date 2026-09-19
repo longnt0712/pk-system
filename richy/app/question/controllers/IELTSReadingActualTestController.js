@@ -1818,22 +1818,54 @@
                 angular.forEach((data && data.subQuestions) || [], function (passage) {
                     angular.forEach((passage && passage.subQuestions) || [], function (questionPackage) {
                         var questions = questionPackage.subQuestions || [];
-                        if (Number(questionPackage.type) !== 1 || questions.length < 2) {
+                        if (Number(questionPackage.type) === 7) {
+                            questionPackage.type = 5;
+                        }
+                        var isLegacySingleChoice = Number(questionPackage.type) === 1 && questions.length >= 2;
+                        if (Number(questionPackage.type) !== 5 && !isLegacySingleChoice) {
                             return;
                         }
-                        var instruction = String(questionPackage.question || '').replace(/<[^>]*>/g, ' ').toLowerCase();
-                        if (!/choose\s+(?:two|three|four|2|3|4)\b/.test(instruction)) {
-                            return;
+                        if (isLegacySingleChoice) {
+                            var instruction = String(questionPackage.question || '').replace(/<[^>]*>/g, ' ').toLowerCase();
+                            if (!/choose\s+(?:two|three|four|2|3|4)\b/.test(instruction)) {
+                                return;
+                            }
+                            var firstText = String(questions[0].question || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+                            var samePrompt = questions.every(function (question) {
+                                return String(question.question || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase() === firstText;
+                            });
+                            if (!samePrompt) {
+                                return;
+                            }
+                            questionPackage.type = 5;
                         }
-                        var firstText = String(questions[0].question || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
-                        var samePrompt = questions.every(function (question) {
-                            return String(question.question || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase() === firstText;
-                        });
-                        if (!samePrompt) {
-                            return;
-                        }
-                        questionPackage.type = vm.isListeningRoute ? 7 : 5;
+
+                        var primaryQuestion = questions[0] || {};
+                        var primaryAnswers = primaryQuestion.questionAnswers || [];
+                        var correctByIndex = {};
                         angular.forEach(questions, function (question) {
+                            angular.forEach(question.questionAnswers || [], function (answer, answerIndex) {
+                                if (!answer.correct) { return; }
+                                var answerText = String(answer.answer && answer.answer.answer || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+                                var matchedIndex = -1;
+                                angular.forEach(primaryAnswers, function (primaryAnswer, primaryIndex) {
+                                    var primaryText = String(primaryAnswer.answer && primaryAnswer.answer.answer || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+                                    if (matchedIndex < 0 && primaryText === answerText) {
+                                        matchedIndex = primaryIndex;
+                                    }
+                                });
+                                correctByIndex[matchedIndex >= 0 ? matchedIndex : answerIndex] = true;
+                            });
+                        });
+                        angular.forEach(questions, function (question) {
+                            question.question = primaryQuestion.question;
+                            angular.forEach(question.questionAnswers || [], function (answer, answerIndex) {
+                                if (primaryAnswers[answerIndex] && primaryAnswers[answerIndex].answer) {
+                                    answer.answer = answer.answer || {};
+                                    answer.answer.answer = primaryAnswers[answerIndex].answer.answer;
+                                }
+                                answer.correct = !!correctByIndex[answerIndex];
+                            });
                             if (question.parent) {
                                 question.parent.type = questionPackage.type;
                             }
@@ -1848,6 +1880,9 @@
                         failToStartTest('The test data could not be loaded. Please try again.');
                         return;
                     }
+                    vm.listeningPartAudioUrls = vm.isListeningRoute ? data.subQuestions.map(function (part) {
+                        return String(part && part.pronounce || '').trim();
+                    }) : [];
                     data = restrictListeningAssignmentToSelectedPart(data);
                     data = normalizeListeningCandidateParts(data);
                     data = normalizeLegacyMultipleAnswerPackages(data);
@@ -2114,6 +2149,16 @@
         }
 
 
+        function selectedListeningAudioUrl() {
+            var mainAudioUrl = String(vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.pronounce || '').trim();
+            var selectedPart = vm.isPartAssignment ? Number(vm.assignedPart)
+                : (vm.isPreviewMode ? Number(vm.previewPart) : null);
+            if (!selectedPart || !vm.listeningPartAudioUrls) {
+                return mainAudioUrl;
+            }
+            return vm.listeningPartAudioUrls[selectedPart - 1] || mainAudioUrl;
+        }
+
         vm.setUpAudio = function () {
             if (!vm.isListeningRoute) { return; }
             // The audio element is created by ng-if/ng-show after the test data
@@ -2121,7 +2166,7 @@
             $timeout(function () {
                 var audioElement = getMainAudio();
                 if (!audioElement) { return; }
-                audioElement.src = vm.ieltsReadingActualTest.pronounce || '';
+                audioElement.src = selectedListeningAudioUrl();
                 audioElement.loop = false;
                 trackAudioDuration(audioElement);
                 audioElement.load();
@@ -4475,6 +4520,13 @@
         };
 
         vm.type5Index = 0;
+        vm.multipleAnswerRange = function (questionPackage) {
+            var questions = (questionPackage && questionPackage.subQuestions) || [];
+            if (!questions.length) { return ''; }
+            var first = questions[0].ordinalNumber;
+            var last = questions[questions.length - 1].ordinalNumber;
+            return String(first) + (String(first) === String(last) ? '' : '–' + String(last));
+        };
         vm.numberSelectedAnswers = 0;
         // vm.selectedIndex = [];
         vm.answered = [];
@@ -4519,6 +4571,7 @@
             if(selected === true){
                 if(numberOfSelected > numberOfAnswers){
                     questionAnswer.selected = false;
+                    numberOfSelected = numberOfAnswers;
                 }
             }
 

@@ -67,7 +67,7 @@
             {id: 3, name: "Filling Gaps Enter", notice: "Fill A-G in gaps"},
             {id: 4, name: "Matching Heading", notice: "Drag and Drop"},
             {id: 5, name: "Multiple Choices - Multiple Answers", notice: "T/F/NG or Y/N/NG is also multiple choice question"},
-            {id: 6, name: "Multiple Choices - Listening (horizon)", notice: "T/F/NG or Y/N/NG is also multiple choice question"},
+            {id: 6, name: "Multiple Choices - Two column", notice: "Display two questions side by side"},
         ];
 
         vm.status = {id: 1, name: "Chưa thuộc"};

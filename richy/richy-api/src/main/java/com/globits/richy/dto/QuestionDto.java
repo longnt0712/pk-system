@@ -481,6 +481,7 @@ public class QuestionDto implements Serializable  {
 				sDto.setId(q.getId());
 				sDto.setQuestion(q.getQuestion());
 				sDto.setTitle(q.getTitle());
+				sDto.setPronounce(q.getPronounce());
 				sDto.setOrdinalNumber(q.getOrdinalNumber());
 				sDto.setMotherTongue(q.getMotherTongue());
 				sDto.setLevel(q.getLevel());

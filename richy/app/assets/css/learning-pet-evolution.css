@@ -19,6 +19,29 @@
 
 .learning-pet-shell {
     z-index: 1070;
+    font-family: "Poppins", "Open Sans", Arial, sans-serif !important;
+}
+
+/* IELTS test pages can apply their own serif font to headings and controls.
+   Keep every piece of pet UI on the application's typography instead. */
+.learning-pet-shell button,
+.learning-pet-shell input,
+.learning-pet-shell select,
+.learning-pet-shell textarea,
+.learning-pet-shell h1,
+.learning-pet-shell h2,
+.learning-pet-shell h3,
+.learning-pet-shell h4,
+.learning-pet-shell p,
+.learning-pet-shell a,
+.learning-pet-shell span,
+.learning-pet-shell strong,
+.learning-pet-shell small {
+    font-family: "Poppins", "Open Sans", Arial, sans-serif !important;
+}
+
+.learning-pet-shell .fa {
+    font-family: FontAwesome !important;
 }
 
 .learning-pet-shell:not(.is-open) .learning-pet-egg {

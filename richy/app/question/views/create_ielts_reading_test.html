@@ -78,7 +78,7 @@
                 <div>
                     <span class="reading-builder-eyebrow">IELTS {{vm.testModeName | uppercase}} TEST BUILDER</span>
                     <h2>Tạo đề {{vm.testModeName}} nhanh, đủ và đúng thứ tự</h2>
-                    <p>Hoàn thành lần lượt 3 Part. Hệ thống tự kiểm tra câu 1–40, nội dung, đáp án và {{vm.isListeningMode ? 'audio chính' : 'cấu trúc Reading'}} trước khi xuất bản.</p>
+                    <p>Hoàn thành lần lượt {{vm.isListeningMode ? '4' : '3'}} Part. Hệ thống tự kiểm tra câu 1–40, nội dung, đáp án và {{vm.isListeningMode ? 'audio chính/audio từng Part' : 'cấu trúc Reading'}} trước khi xuất bản.</p>
                 </div>
                 <div class="reading-builder-progress-box">
                     <strong>{{vm.builderValidation.percent}}%</strong>
@@ -121,7 +121,7 @@
                         <div ng-if="vm.isListeningMode">
                             <label class="margin-top-10">Link audio chính <span class="font-red">*</span></label>
                             <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" style="height: 50px" data-ng-model="vm.ieltsReadingTest.pronounce" type="url" class="form-control" placeholder="https://.../ielts-listening-test-01.mp3" />
-                            <small class="reading-audio-mode-help"><i class="fa fa-headphones"></i> Audio này xác định đề thuộc danh sách Listening và được phát trong bài thi.</small>
+                            <small class="reading-audio-mode-help"><i class="fa fa-headphones"></i> Audio chính dùng cho bài đầy đủ và làm dự phòng nếu một Part chưa có audio riêng.</small>
                         </div>
                         <div class="reading-mode-info" ng-if="!vm.isListeningMode">
                             <i class="fa fa-book"></i>
@@ -170,7 +170,12 @@
                                 <button class="btn btn-success" ng-click="vm.saveReadingTest()">SAVE</button>
                             </div>
                             <div class="col-md-12 text-center" >
-                                <p class="bold" style="font-size: 18px">Passage 1</p>
+                                <p class="bold" style="font-size: 18px">{{vm.isListeningMode ? 'Part 1' : 'Passage 1'}}</p>
+                            </div>
+                            <div class="col-md-12 reading-part-audio-field" ng-if="vm.isListeningMode">
+                                <label><i class="fa fa-headphones"></i> Audio Part 1</label>
+                                <input type="url" class="form-control" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ng-model="vm.ieltsReadingTest.subQuestions[0].pronounce" placeholder="https://.../listening-part-1.mp3">
+                                <small>Khi giao riêng Part 1, hệ thống phát audio này; để trống sẽ dùng audio chính.</small>
                             </div>
                             <div class="col-md-12">
                                 <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[0].question" />
@@ -346,15 +351,15 @@
 
                             <hr>
                             <div class="row">
-                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13" style="margin-top: 20px;">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13 && (item.type != 5 || $first)" style="margin-top: 20px;">
                                     <div class="col-md-12">
                                         <div class="row">
                                             <div class="col-md-2">
-                                                <h4 class="bold">Question {{q.ordinalNumber}}</h4>
+                                                <h4 class="bold">Question {{item.type == 5 ? (item.subQuestions[0].ordinalNumber + (item.subQuestions.length > 1 ? '–' + item.subQuestions[item.subQuestions.length - 1].ordinalNumber : '')) : q.ordinalNumber}}</h4>
                                             </div>
                                             <div class="col-md-10">
                                                 <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinyConFigQuestion" ng-if="item.type == 2 || item.type == 3" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
-                                                <textarea ng-if="item.type != 2 && item.type != 3 && item.type != 11" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <textarea ng-if="item.type != 2 && item.type != 3 && item.type != 11" ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
                                                 <small style="font-style: italic;font-weight: bold">(tick 'v' at where it is the correct answer)</small>
                                             </div>
                                         </div>
@@ -371,11 +376,11 @@
                                                     <h4 class="bold" ng-if="item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15">{{vm.sharedChoiceLabel(item.type, $index)}}</h4>
                                                 </div>
                                                 <div class="col-md-7">
-                                                    <textarea ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15" ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                    <textarea ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15" ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
                                                     <div ng-if="item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15" class="reading-shared-choice-preview">{{a.answer.answer}}</div>
                                                 </div>
                                                 <div class="col-md-1">
-                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" type="checkbox" id="defaultCheck1" data-ng-model="a.correct">
+                                                    <input ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()" type="checkbox" id="defaultCheck1" data-ng-model="a.correct">
                                                     <button type="button" class="reading-answer-remove-button" ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15" ng-click="vm.removeReadingQuestionAnswer(q, $index)" ng-disabled="q.questionAnswers.length <= 1" title="Xóa answer này" aria-label="Xóa answer này"><i class="fa fa-trash"></i></button>
                                                 </div>
                                             </div>
@@ -451,9 +456,13 @@
                                 </ui-select>
                             </div>
                             <div class="col-md-6 text-center" style="margin-bottom: 5px">
-                                <p class="bold" style="font-size: 18px">Passage 2</p>
+                                <p class="bold" style="font-size: 18px">{{vm.isListeningMode ? 'Part 2' : 'Passage 2'}}</p>
                             </div>
-
+                            <div class="col-md-12 reading-part-audio-field" ng-if="vm.isListeningMode">
+                                <label><i class="fa fa-headphones"></i> Audio Part 2</label>
+                                <input type="url" class="form-control" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ng-model="vm.ieltsReadingTest.subQuestions[1].pronounce" placeholder="https://.../listening-part-2.mp3">
+                                <small>Khi giao riêng Part 2, hệ thống phát audio này; để trống sẽ dùng audio chính.</small>
+                            </div>
                             <div class="col-md-12">
                                 <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[1].question" />
                             </div>
@@ -620,16 +629,16 @@
 
                             <hr>
                             <div class="row" >
-                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13" style="margin-top: 20px;">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13 && (item.type != 5 || $first)" style="margin-top: 20px;">
 
                                     <div class="col-md-12">
                                         <div class="row">
                                             <div class="col-md-2">
-                                                <h4 class="bold">Question {{q.ordinalNumber}}</h4>
+                                                <h4 class="bold">Question {{item.type == 5 ? (item.subQuestions[0].ordinalNumber + (item.subQuestions.length > 1 ? '–' + item.subQuestions[item.subQuestions.length - 1].ordinalNumber : '')) : q.ordinalNumber}}</h4>
                                             </div>
                                         <div class="col-md-10">
                                             <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinyConFigQuestion" ng-if="item.type == 2 || item.type == 3" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
-                                            <textarea ng-if="item.type != 2 && item.type != 3 && item.type != 11" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                            <textarea ng-if="item.type != 2 && item.type != 3 && item.type != 11" ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
                                             <!--<textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ng-if="item.type == 3"  class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>-->
                                             <!--<button class="btn btn-success" style="margin-top: 5px;margin-bottom: 5px" data-ng-click="vm.addAnswerForQuestionForPassage2($index)"><i class="fa fa-plus-circle"></i> Adding answers For Questions {{q.ordinalNumber}}</button>-->
                                             <small style="font-style: italic;font-weight: bold">(tick 'v' where it is the correct answer)</small>
@@ -648,11 +657,11 @@
                                                     <h4 class="bold" ng-if="item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15">{{vm.sharedChoiceLabel(item.type, $index)}}</h4>
                                                 </div>
                                                 <div class="col-md-7">
-                                                    <textarea ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                    <textarea ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15" ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
                                                     <div ng-if="item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15" class="reading-shared-choice-preview">{{a.answer.answer}}</div>
                                                 </div>
                                                 <div class="col-md-1">
-                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" type="checkbox" id="defaultCheck1" data-ng-model="a.correct">
+                                                    <input ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()" type="checkbox" id="defaultCheck1" data-ng-model="a.correct">
                                                     <button type="button" class="reading-answer-remove-button" ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15" ng-click="vm.removeReadingQuestionAnswer(q, $index)" ng-disabled="q.questionAnswers.length <= 1" title="Xóa answer này" aria-label="Xóa answer này"><i class="fa fa-trash"></i></button>
                                                 </div>
                                             </div>
@@ -729,9 +738,13 @@
                                 </ui-select>
                             </div>
                             <div class="col-md-6 text-center" style="margin-bottom: 5px">
-                                <p class="bold" style="font-size: 18px">Passage 3</p>
+                                <p class="bold" style="font-size: 18px">{{vm.isListeningMode ? 'Part 3' : 'Passage 3'}}</p>
                             </div>
-
+                            <div class="col-md-12 reading-part-audio-field" ng-if="vm.isListeningMode">
+                                <label><i class="fa fa-headphones"></i> Audio Part 3</label>
+                                <input type="url" class="form-control" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ng-model="vm.ieltsReadingTest.subQuestions[2].pronounce" placeholder="https://.../listening-part-3.mp3">
+                                <small>Khi giao riêng Part 3, hệ thống phát audio này; để trống sẽ dùng audio chính.</small>
+                            </div>
                             <div class="col-md-12">
                                 <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[2].question" />
                             </div>
@@ -893,16 +906,16 @@
 
                             <hr>
                             <div class="row">
-                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13" style="margin-top: 20px">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13 && (item.type != 5 || $first)" style="margin-top: 20px">
 
                                     <div class="col-md-12">
                                         <div class="row">
                                             <div class="col-md-2">
-                                                <h4 class="bold">Question {{q.ordinalNumber}}</h4>
+                                                <h4 class="bold">Question {{item.type == 5 ? (item.subQuestions[0].ordinalNumber + (item.subQuestions.length > 1 ? '–' + item.subQuestions[item.subQuestions.length - 1].ordinalNumber : '')) : q.ordinalNumber}}</h4>
                                             </div>
                                             <div class="col-md-10">
                                                 <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinyConFigQuestion" ng-if="item.type == 2 || item.type == 3" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
-                                                <textarea ng-if="item.type != 2 && item.type != 3 && item.type != 11" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <textarea ng-if="item.type != 2 && item.type != 3 && item.type != 11" ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
                                                 <small style="font-style: italic;font-weight: bold">(tick 'v' where it is the correct answer)</small>
                                             </div>
                                         </div>
@@ -919,11 +932,11 @@
                                                     <h4 class="bold" ng-if="item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15">{{vm.sharedChoiceLabel(item.type, $index)}}</h4>
                                                 </div>
                                                 <div class="col-md-7">
-                                                    <textarea ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15" ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                    <textarea ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15" ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
                                                     <div ng-if="item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15" class="reading-shared-choice-preview">{{a.answer.answer}}</div>
                                                 </div>
                                                 <div class="col-md-1">
-                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" type="checkbox" id="defaultCheck1" data-ng-model="a.correct">
+                                                    <input ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()" type="checkbox" id="defaultCheck1" data-ng-model="a.correct">
                                                     <button type="button" class="reading-answer-remove-button" ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15" ng-click="vm.removeReadingQuestionAnswer(q, $index)" ng-disabled="q.questionAnswers.length <= 1" title="Xóa answer này" aria-label="Xóa answer này"><i class="fa fa-trash"></i></button>
                                                 </div>
                                             </div>
@@ -985,9 +998,13 @@
                                 </ui-select>
                             </div>
                             <div class="col-md-6 text-center" style="margin-bottom: 5px">
-                                <p class="bold" style="font-size: 18px">Passage 4</p>
+                                <p class="bold" style="font-size: 18px">Part 4</p>
                             </div>
-
+                            <div class="col-md-12 reading-part-audio-field">
+                                <label><i class="fa fa-headphones"></i> Audio Part 4</label>
+                                <input type="url" class="form-control" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ng-model="vm.ieltsReadingTest.subQuestions[3].pronounce" placeholder="https://.../listening-part-4.mp3">
+                                <small>Khi giao riêng Part 4, hệ thống phát audio này; để trống sẽ dùng audio chính.</small>
+                            </div>
                             <div class="col-md-12">
                                 <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[3].question" />
                             </div>
@@ -1149,16 +1166,16 @@
 
                             <hr>
                             <div class="row">
-                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13" style="margin-top: 20px">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13 && (item.type != 5 || $first)" style="margin-top: 20px">
 
                                     <div class="col-md-12">
                                         <div class="row">
                                             <div class="col-md-2">
-                                                <h4 class="bold">Question {{q.ordinalNumber}}</h4>
+                                                <h4 class="bold">Question {{item.type == 5 ? (item.subQuestions[0].ordinalNumber + (item.subQuestions.length > 1 ? '–' + item.subQuestions[item.subQuestions.length - 1].ordinalNumber : '')) : q.ordinalNumber}}</h4>
                                             </div>
                                             <div class="col-md-10">
                                                 <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinyConFigQuestion" ng-if="item.type == 2 || item.type == 3" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
-                                                <textarea ng-if="item.type != 2 && item.type != 3 && item.type != 11" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
+                                                <textarea ng-if="item.type != 2 && item.type != 3 && item.type != 11" ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()" class="form-control margin-bottom-10" rows="2"  data-ng-model="q.question"/>
                                                 <small style="font-style: italic;font-weight: bold">(tick 'v' where it is the correct answer)</small>
                                             </div>
                                         </div>
@@ -1175,11 +1192,11 @@
                                                     <h4 class="bold" ng-if="item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15">{{vm.sharedChoiceLabel(item.type, $index)}}</h4>
                                                 </div>
                                                 <div class="col-md-7">
-                                                    <textarea ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15" ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
+                                                    <textarea ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15" ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()"  class="form-control margin-bottom-5" rows="2"  data-ng-model="a.answer.answer"/>
                                                     <div ng-if="item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15" class="reading-shared-choice-preview">{{a.answer.answer}}</div>
                                                 </div>
                                                 <div class="col-md-1">
-                                                    <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" type="checkbox" id="defaultCheck1" data-ng-model="a.correct">
+                                                    <input ng-change="item.type == 5 ? vm.updateMultipleAnswerPackage(item) : vm.changeInTheProcessOfCreatingReadingTest()" type="checkbox" id="defaultCheck1" data-ng-model="a.correct">
                                                     <button type="button" class="reading-answer-remove-button" ng-if="item.type != 4 && item.type != 10 && item.type != 14 && item.type != 15" ng-click="vm.removeReadingQuestionAnswer(q, $index)" ng-disabled="q.questionAnswers.length <= 1" title="Xóa answer này" aria-label="Xóa answer này"><i class="fa fa-trash"></i></button>
                                                 </div>
                                             </div>
@@ -1408,6 +1425,23 @@
         margin-top: 7px;
         color: #377a8e;
         font-weight: 600;
+    }
+
+    .reading-part-audio-field {
+        margin: 4px 0 14px;
+        text-align: left;
+    }
+
+    .reading-part-audio-field label {
+        display: block;
+        margin-bottom: 6px;
+        color: #263b68;
+    }
+
+    .reading-part-audio-field small {
+        display: block;
+        margin-top: 6px;
+        color: #5d6b89;
     }
 
     .reading-mode-info {
