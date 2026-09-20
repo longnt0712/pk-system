@@ -538,6 +538,10 @@
             return role ? [role] : [];
         }
 
+        function getDirectorySearchRoles(classIds) {
+            return classIds && classIds.length > 0 ? [] : getStudentDirectoryRole();
+        }
+
         function isEducationManagedRole(role) {
             if (!role || !role.name) {
                 return false;
@@ -636,33 +640,13 @@
          */
         vm.getUsers = function () {
 
-            if (vm.isRoleStudentManagerment === true || vm.isRoleEducationManagerment === true) {
-                vm.filter.roles = [];
-
-                angular.forEach(vm.roles, function (value1) {
-                    if (
-                        value1.name === "ROLE_STUDENT" ||
-                        value1.name === "ROLE_STUDENT_MANAGERMENT" ||
-                        value1.name === "ROLE_EDUCATION_MANAGERMENT" ||
-                        (
-                            vm.isRoleEducationManagerment === true &&
-                            value1.name === "ROLE_STAFF"
-                        )
-                    ) {
-                        vm.filter.roles.push(value1);
-                    }
-                });
-            }
-
-            // The student directory represents a different account type per domain.
-            // Apply it to the server-side query so pagination totals also stay correct.
-            vm.filter.roles = getStudentDirectoryRole();
-
 			var requestFilter = angular.copy(vm.filter);
 			requestFilter.schoolId = vm.directorySchoolId;
 			requestFilter.enrollmentClassIds = vm.advancedSearchApplied.active
 				? vm.advancedSearchApplied.classIds.slice()
 				: vm.getClassAndDescendantIds(requestFilter.enrollmentClass);
+            // Explicit classes include their members regardless of account role (e.g. HT).
+            requestFilter.roles = getDirectorySearchRoles(requestFilter.enrollmentClassIds);
 			requestFilter.startDate = vm.appliedCreatedDateFrom
 				? toCalendarDate(vm.appliedCreatedDateFrom).getTime()
 				: null;
@@ -1163,7 +1147,7 @@
             var statisticsFilter = {
                 keyword: '',
                 active: true,
-                roles: getStudentDirectoryRole(),
+                roles: getDirectorySearchRoles(requestedClassIds),
                 groups: [],
                 filtered: 0,
                 schoolId: vm.directorySchoolId,
