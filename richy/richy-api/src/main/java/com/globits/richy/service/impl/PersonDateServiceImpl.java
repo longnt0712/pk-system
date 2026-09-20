@@ -437,7 +437,8 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 				domain = personDateRepository.getBy(dto.getUser().getUsername(), targetSchoolId, startOfToday, startOfTomorrow);
 			}
 			if(domain == null) {
-				return dto;
+				throw new IllegalArgumentException(
+						"Không tìm thấy bản ghi điểm danh của học sinh trong ngày và lớp đã chọn.");
 			}
 			if(domain.getUser() != null && domain.getUser().getId() != null) {
 				dto.getUser().setId(domain.getUser().getId());	

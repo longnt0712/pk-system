@@ -30,86 +30,109 @@
             require: '?ngModel',
             link: function (scope, element, attrs, ngModelController) {
                 var datepickerFormat = 'dd/mm/yyyy';
-                var momentFormat = 'DD/MM/YYYY';
 
-                function toMoment(value) {
-                    if (!value) return null;
-
-                    if (angular.isDate(value)) {
-                        var mDate = moment(value);
-                        return mDate.isValid() ? mDate : null;
-                    }
-
-                    if (angular.isNumber(value)) {
-                        var mNumber = moment(value);
-                        return mNumber.isValid() ? mNumber : null;
-                    }
-
-                    if (angular.isString(value)) {
-                        var text = value.trim();
-
-                        // Quan trọng: parse string theo DD/MM/YYYY, KHÔNG dùng moment(text)
-                        var mText = moment(text, ['DD/MM/YYYY', 'D/M/YYYY'], true);
-                        if (mText.isValid()) return mText;
-
-                        var mIso = moment(text, moment.ISO_8601, true);
-                        if (mIso.isValid()) return mIso;
-
+                function buildLocalDate(year, month, day) {
+                    var date = new Date(year, month - 1, day);
+                    if (date.getFullYear() !== year ||
+                        date.getMonth() !== month - 1 ||
+                        date.getDate() !== day) {
                         return null;
                     }
+                    date.setHours(0, 0, 0, 0);
+                    return date;
+                }
 
-                    var m = moment(value);
-                    return m.isValid() ? m : null;
+                function toLocalDate(value) {
+                    if (value === null || value === undefined || value === '') return null;
+                    if (angular.isDate(value)) {
+                        if (isNaN(value.getTime())) return null;
+                        return buildLocalDate(value.getFullYear(), value.getMonth() + 1, value.getDate());
+                    }
+                    if (angular.isNumber(value)) {
+                        var numberDate = new Date(value);
+                        return isNaN(numberDate.getTime()) ? null :
+                            buildLocalDate(numberDate.getFullYear(), numberDate.getMonth() + 1, numberDate.getDate());
+                    }
+                    if (angular.isString(value)) {
+                        var text = value.trim();
+                        var vietnameseDate = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text);
+                        if (vietnameseDate) {
+                            return buildLocalDate(parseInt(vietnameseDate[3], 10),
+                                parseInt(vietnameseDate[2], 10), parseInt(vietnameseDate[1], 10));
+                        }
+                        // Preserve the calendar part of ISO values; timezone must not change the date.
+                        var isoDate = /^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/.exec(text);
+                        if (isoDate) {
+                            return buildLocalDate(parseInt(isoDate[1], 10),
+                                parseInt(isoDate[2], 10), parseInt(isoDate[3], 10));
+                        }
+                    }
+                    return null;
+                }
+
+                function formatLocalDate(value) {
+                    var date = toLocalDate(value);
+                    if (!date) return '';
+                    return ('0' + date.getDate()).slice(-2) + '/' +
+                        ('0' + (date.getMonth() + 1)).slice(-2) + '/' + date.getFullYear();
                 }
 
                 element.datepicker({
                     autoclose: true,
                     keyboardNavigation: false,
                     todayHighlight: true,
+                    forceParse: false,
+                    container: 'body',
                     format: datepickerFormat
                 });
 
                 if (!ngModelController) return;
 
                 ngModelController.$formatters.push(function (modelValue) {
-                    var m = toMoment(modelValue);
-                    var viewValue = m ? m.format(momentFormat) : '';
-
-                    element.datepicker('update', viewValue);
-                    return viewValue;
+                    return formatLocalDate(modelValue);
                 });
 
                 ngModelController.$parsers.push(function (viewValue) {
-                    if (!viewValue) return null;
-
-                    var m = moment(String(viewValue).trim(), ['DD/MM/YYYY', 'D/M/YYYY'], true);
-                    return m.isValid() ? m.toDate() : null;
+                    var text = viewValue === null || viewValue === undefined ? '' : String(viewValue).trim();
+                    if (!text) {
+                        ngModelController.$setValidity('date', true);
+                        return null;
+                    }
+                    var parsedDate = toLocalDate(text);
+                    ngModelController.$setValidity('date', !!parsedDate);
+                    return parsedDate || undefined;
                 });
 
                 ngModelController.$render = function () {
-                    var value = ngModelController.$viewValue || '';
+                    var value = formatLocalDate(ngModelController.$modelValue);
                     element.val(value);
-                    element.datepicker('update', value);
+                    element.datepicker('update', value || '');
                 };
 
-                element.on('changeDate', function (evt) {
+                element.on('changeDate.myDatePicker', function (evt) {
                     scope.$applyAsync(function () {
-                        var value = evt.date
-                            ? moment(evt.date).format(momentFormat)
-                            : element.val();
-
+                        var value = evt.date ? formatLocalDate(evt.date) : '';
                         ngModelController.$setViewValue(value);
                         ngModelController.$render();
                     });
                 });
 
-                element.on('blur', function () {
+                element.on('clearDate.myDatePicker', function () {
+                    scope.$applyAsync(function () {
+                        ngModelController.$setViewValue('');
+                        ngModelController.$render();
+                    });
+                });
+
+                element.on('blur.myDatePicker', function () {
                     scope.$applyAsync(function () {
                         ngModelController.$setViewValue(element.val());
+                        if (ngModelController.$valid) ngModelController.$render();
                     });
                 });
 
                 element.on('$destroy', function () {
+                    element.off('.myDatePicker');
                     element.datepicker('destroy');
                 });
             }
@@ -661,6 +684,26 @@
             vm.totalAbsentClass = 0;
         };
 
+        function refreshAttendanceSummary() {
+            vm.resetSum();
+
+            angular.forEach(vm.personDates || [], function (value) {
+                if (value.statusMass == 1) vm.totalMass1 += 1;
+                if (value.statusMass == 2) vm.totalMass2 += 1;
+                if (value.statusMass == 5) vm.totalMass5 += 1;
+                if (value.statusMass == 6) vm.totalMass6 += 1;
+                if (value.statusClass == 1) vm.totalClass1 += 1;
+                if (value.statusClass == 2) vm.totalClass2 += 1;
+                if (value.statusClass == 5) vm.totalClass5 += 1;
+                if (value.statusClass == 6) vm.totalClass6 += 1;
+            });
+
+            vm.totalGoToChurch = vm.totalMass1 + vm.totalMass5;
+            vm.totalGoToClass = vm.totalClass1 + vm.totalClass5;
+            vm.totalAbsentChurch = vm.totalMass2 + vm.totalMass6;
+            vm.totalAbsentClass = vm.totalClass2 + vm.totalClass6;
+        }
+
         function parseDateOnly(value) {
             if (!value) return null;
 
@@ -907,39 +950,7 @@
 
                     vm.totalStudent = data.totalElements || 0;
 
-                    angular.forEach(vm.personDates, function (value) {
-                        if (value.statusMass == 1) {
-                            vm.totalMass1 = vm.totalMass1 + 1;
-                        }
-
-                        if (value.statusMass == 2) {
-                            vm.totalMass2 = vm.totalMass2 + 1;
-                        }
-
-                        if (value.statusMass == 5) {
-                            vm.totalMass5 = vm.totalMass5 + 1;
-                        }
-
-                        if (value.statusMass == 6) {
-                            vm.totalMass6 = vm.totalMass6 + 1;
-                        }
-
-                        if (value.statusClass == 1) {
-                            vm.totalClass1 = vm.totalClass1 + 1;
-                        }
-
-                        if (value.statusClass == 2) {
-                            vm.totalClass2 = vm.totalClass2 + 1;
-                        }
-
-                        if (value.statusClass == 6) {
-                            vm.totalClass6 = vm.totalClass6 + 1;
-                        }
-                    });
-
-                    vm.totalGoToChurch = vm.totalMass1 + vm.totalMass5;
-                    vm.totalAbsentChurch = vm.totalMass2 + vm.totalMass6;
-                    vm.totalAbsentClass = vm.totalClass2 + vm.totalClass6;
+                    refreshAttendanceSummary();
                 })
                 .catch(function (err) {
                     console.error(err);
@@ -1612,12 +1623,12 @@
                         // alert(decodedText);
                         var maybePromise = vm.saveByScanQr(decodedText);
 
-                        // Nếu hàm của bạn trả promise: mở khóa khi xong
-                        if (maybePromise && typeof maybePromise.finally === "function") {
-                            maybePromise.finally(function () {
-                                // mở khóa sau 1 chút để khỏi quét trùng
+                        // Chỉ mở khóa sau khi API đã trả về, kể cả thành công hay thất bại.
+                        if (maybePromise && typeof maybePromise.then === "function") {
+                            var releaseScanLock = function () {
                                 setTimeout(function () { scanLock = false; }, 1200);
-                            });
+                            };
+                            maybePromise.then(releaseScanLock, releaseScanLock);
                         } else {
                             // nếu không trả promise, vẫn mở khóa sau 1 chút
                             setTimeout(function () { scanLock = false; }, 1200);
@@ -1715,23 +1726,82 @@
         };
 
         vm.checkPerson = {};
+
+        function findVisiblePersonDateByUsername(username) {
+            var normalizedUsername = String(username || '').trim().toLowerCase();
+            var matched = null;
+
+            angular.forEach(vm.personDates || [], function (personDate) {
+                var rowUsername = personDate && personDate.user
+                    ? String(personDate.user.username || '').trim().toLowerCase()
+                    : '';
+                if (!matched && rowUsername === normalizedUsername) {
+                    matched = personDate;
+                }
+            });
+
+            return matched;
+        }
+
+        function applySavedPersonDate(target, data) {
+            target.statusMass = data.statusMass;
+            target.timeGoToChurch = data.timeGoToChurch;
+            target.statusClass = data.statusClass;
+            target.timeGoToClass = data.timeGoToClass;
+            target.extraClass = data.extraClass;
+            target.timeGoToExtraClass = data.timeGoToExtraClass;
+            target.modifiedBy = data.modifiedBy;
+            target.modifiedDate = data.modifiedDate;
+        }
+
+        function attendanceSaveErrorMessage(error) {
+            if (error && error.data && error.data.message) return error.data.message;
+            if (error && error.message) return error.message;
+            return 'Điểm danh thất bại. Vui lòng kiểm tra ngày, lớp và thử lại.';
+        }
+
         vm.saveByScanQr = function (username) { // quét qr thì chỉ cho điểm danh là có đi lễ hoặc có đi học giáo lý thôi
-            vm.resetPersonDate(null,1,username); // nên là 2 cái status set là 1 hết
+            var normalizedUsername = String(username || '').trim();
+            var selectedDate = parseDateOnly(vm.attendanceDate);
+            var today = parseDateOnly(new Date());
 
-            service.saveObject(vm.personDate).then(function (data) {
-                // // vm.getPage();
-                // vm.personDate = {};
-                // // console.log(data);
-                // vm.checkPerson = data;
-                // vm.confirmCheck();
+            if (!selectedDate || !today || selectedDate.getTime() !== today.getTime()) {
+                var invalidDateMessage = 'Quét QR chỉ điểm danh cho ngày hôm nay. ' +
+                    'Vui lòng chuyển ngày điểm danh về hôm nay rồi quét lại.';
+                toastr.warning(invalidDateMessage, 'Sai ngày điểm danh');
+                return $q.reject({message: invalidDateMessage});
+            }
 
-                // personDate.statusMass = data.statusMass;
-                // personDate.timeGoToChurch = data.timeGoToChurch;
-                // personDate.statusClass = data.statusClass;
-                // personDate.timeGoToClass = data.timeGoToClass;
-                // personDate = data;
+            var visiblePersonDate = findVisiblePersonDateByUsername(normalizedUsername);
+
+            if (!normalizedUsername || !visiblePersonDate || !visiblePersonDate.id) {
+                var selectedDateText = selectedDate
+                    ? $filter('date')(selectedDate, 'dd/MM/yyyy') : 'ngày đang chọn';
+                var notFoundMessage = 'Không tìm thấy học sinh trong bảng điểm danh ' +
+                    selectedDateText + ' của lớp đang chọn.';
+                toastr.warning(notFoundMessage, 'Không thể điểm danh QR');
+                return $q.reject({message: notFoundMessage});
+            }
+
+            // Dùng đúng ID của dòng đang hiển thị để không ghi nhầm ngày hoặc nhầm lớp.
+            vm.resetPersonDate(visiblePersonDate.user, 1, null);
+            vm.personDate.id = visiblePersonDate.id;
+            vm.personDate.description = visiblePersonDate.description;
+
+            return service.saveObject(vm.personDate).then(function (data) {
+                if (!data || !data.id) {
+                    return $q.reject({message: 'Máy chủ không xác nhận được bản ghi điểm danh.'});
+                }
+
+                var savedStatus = vm.checkType == 1 ? data.statusMass :
+                    (vm.checkType == 2 ? data.statusClass : data.extraClass);
+                if (savedStatus != 1 && !(vm.checkType == 1 && savedStatus == 5)) {
+                    return $q.reject({message: 'Máy chủ chưa lưu trạng thái có đi học/đi lễ.'});
+                }
+
+                applySavedPersonDate(visiblePersonDate, data);
+                refreshAttendanceSummary();
                 vm.personDate = {};
-                // console.log(data);
                 vm.checkPerson = data;
                 if(vm.checkType == 1){
                     vm.checkPerson.status = data.statusMass;
@@ -1743,6 +1813,11 @@
                     vm.checkPerson.status = data.extraClass;
                 }
                 vm.confirmCheck();
+                return data;
+            }).catch(function (error) {
+                vm.personDate = {};
+                toastr.error(attendanceSaveErrorMessage(error), 'Điểm danh QR thất bại');
+                return $q.reject(error);
             });
         };
 
@@ -1809,14 +1884,10 @@
             vm.personDate.id = personDate.id;
             vm.personDate.description = personDate.description;
 
-            service.saveObject(vm.personDate).then(function (data) {
+            return service.saveObject(vm.personDate).then(function (data) {
                 // vm.getPage();
-                personDate.statusMass = data.statusMass;
-                personDate.timeGoToChurch = data.timeGoToChurch;
-                personDate.statusClass = data.statusClass;
-                personDate.timeGoToClass = data.timeGoToClass;
-                personDate.extraClass = data.extraClass;
-                personDate.timeGoToExtraClass = data.timeGoToExtraClass;
+                applySavedPersonDate(personDate, data);
+                refreshAttendanceSummary();
                 // personDate = data;
                 vm.personDate = {};
                 // console.log(data);
@@ -1831,6 +1902,10 @@
                     vm.checkPerson.status = data.extraClass;
                 }
                 vm.confirmCheck();
+                return data;
+            }).catch(function (error) {
+                vm.personDate = {};
+                toastr.error(attendanceSaveErrorMessage(error), 'Điểm danh thất bại');
             });
         };
 

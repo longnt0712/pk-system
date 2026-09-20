@@ -1,6 +1,8 @@
 package com.globits.richy.rest;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -24,6 +26,12 @@ import com.globits.richy.service.PersonDateService;
 public class RestPersonDateController {
 	@Autowired
 	private PersonDateService service;
+
+	@org.springframework.web.bind.annotation.ExceptionHandler(IllegalArgumentException.class)
+	public ResponseEntity<Map<String, String>> invalidAttendanceRequest(IllegalArgumentException error) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(Collections.singletonMap("message", error.getMessage()));
+	}
 	
 	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
