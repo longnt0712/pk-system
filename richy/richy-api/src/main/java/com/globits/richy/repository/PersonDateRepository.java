@@ -24,4 +24,9 @@ public interface PersonDateRepository extends JpaRepository<PersonDate, Long> {
 
 	@Query("select p from PersonDate p where p.user.username = ?1 and (p.schoolId = ?2 or (p.schoolId is null and ((?2 = 2 and (p.statusMass is not null or p.extraClass is not null)) or (?2 = 1 and p.statusMass is null and p.extraClass is null)))) and (p.attendanceClassId = ?3 or p.attendanceClassId is null) and p.createDate >= ?4 and p.createDate < ?5 order by p.id desc")
 	List<PersonDate> findForUserDateSchoolAndClass(String username, Integer schoolId, Long classId, LocalDateTime startDate, LocalDateTime endDate);
+
+	@Query("select p from PersonDate p where lower(p.user.username) = lower(?1) and p.user.active = true "
+			+ "and (p.schoolId = ?2 or (p.schoolId is null and ((?2 = 2 and (p.statusMass is not null or p.extraClass is not null)) or (?2 = 1 and p.statusMass is null and p.extraClass is null)))) "
+			+ "and p.createDate >= ?3 and p.createDate < ?4 order by p.id asc")
+	List<PersonDate> findForQrByUserDateAndSchool(String username, Integer schoolId, LocalDateTime startDate, LocalDateTime endDate);
 }

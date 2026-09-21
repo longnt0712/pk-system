@@ -82,6 +82,14 @@ public class RestPersonDateController {
 	public PersonDateDto saveOne(@RequestBody PersonDateDto searchDto) {
 		return service.saveObject(searchDto);
 	}
+
+	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
+	@RequestMapping(value = "/save_by_qr/{attendanceDate}", method = RequestMethod.POST)
+	public PersonDateDto saveByQr(
+			@RequestBody PersonDateDto dto,
+			@PathVariable("attendanceDate") String attendanceDate) {
+		return service.saveByQr(dto, attendanceDate);
+	}
 	
 	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
 	@RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)

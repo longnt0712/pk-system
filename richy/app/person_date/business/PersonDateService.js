@@ -24,6 +24,7 @@
         self.deleteObject = deleteObject;
         self.getTableDefinition = getTableDefinition;
         self.getUsers = getUsers;
+        self.saveByQr = saveByQr;
         self.saveListByEnrollmentClass = saveListByEnrollmentClass;
         self.getAttendanceClassStatuses = getAttendanceClassStatuses;
         self.saveListByEnrollmentClasses = saveListByEnrollmentClasses;
@@ -77,6 +78,13 @@
             return utils.resolveAlt(url, 'POST', null, object, {
                 'Content-Type': 'application/json; charset=utf-8'
             }, successCallback, errorCallback);
+        }
+
+        function saveByQr(object, attendanceDate) {
+            var url = baseUrl + restUrl + '/save_by_qr/' + encodeURIComponent(attendanceDate);
+            return utils.resolveAlt(url, 'POST', null, object, {
+                'Content-Type': 'application/json; charset=utf-8'
+            }, angular.noop, angular.noop);
         }
 
         function getAttendanceClassStatuses(attendanceDate, schoolId) {

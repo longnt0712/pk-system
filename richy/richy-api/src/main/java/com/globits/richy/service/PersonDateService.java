@@ -14,6 +14,7 @@ public interface PersonDateService extends GenericService<PersonDate, Long> {
 	public Page<PersonDateDto> getPageObject(PersonDateDto searchDto, int pageIndex, int pageSize);
 	public PersonDateDto getObjectById(Long id);
 	public PersonDateDto saveObject(PersonDateDto dto);
+	public PersonDateDto saveByQr(PersonDateDto dto, String attendanceDate);
 	public boolean deleteObject(Long id);
 	public boolean saveListByEnrollmentClass(int enrollmentClass, String attendanceDate, Integer schoolId);
 	public List<PersonDateClassReportDto> getAttendanceClassStatuses(String attendanceDate, Integer schoolId);

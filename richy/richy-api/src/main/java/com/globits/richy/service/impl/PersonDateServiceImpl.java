@@ -558,6 +558,70 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 	}
 
 	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public PersonDateDto saveByQr(PersonDateDto dto, String attendanceDate) {
+		if (dto == null || dto.getUser() == null || dto.getUser().getUsername() == null
+				|| dto.getUser().getUsername().trim().length() == 0) {
+			throw new IllegalArgumentException("Mã học sinh trong QR không hợp lệ.");
+		}
+		boolean markMass = Integer.valueOf(1).equals(dto.getStatusMass());
+		boolean markClass = Integer.valueOf(1).equals(dto.getStatusClass());
+		if ((!markMass && !markClass) || dto.getExtraClass() != null
+				|| (dto.getStatusMass() != null && !markMass)
+				|| (dto.getStatusClass() != null && !markClass)) {
+			throw new IllegalArgumentException("Loại điểm danh QR không hợp lệ.");
+		}
+
+		Integer targetSchoolId = normalizeAttendanceSchoolId(dto.getSchoolId());
+		LocalDate selectedDate = parseAttendanceDate(attendanceDate);
+		LocalDateTime start = selectedDate.toDateTimeAtStartOfDay().toLocalDateTime();
+		LocalDateTime end = start.plusDays(1);
+		String username = dto.getUser().getUsername().trim();
+		List<PersonDate> matches = personDateRepository.findForQrByUserDateAndSchool(
+				username, targetSchoolId, start, end);
+		if (matches == null || matches.isEmpty()) {
+			throw new IllegalArgumentException(
+					"Không tìm thấy học sinh có mã " + username + " trong bảng điểm danh ngày "
+					+ selectedDate.toString("dd/MM/yyyy") + ".");
+		}
+
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		String currentUserName = "Unknown User";
+		if (authentication != null) {
+			User modifiedUser = (User) authentication.getPrincipal();
+			currentUserName = modifiedUser.getUsername();
+		}
+		LocalDateTime now = LocalDateTime.now();
+		PersonDate firstSaved = null;
+		for (PersonDate domain : matches) {
+			if (markClass) {
+				domain.setStatusClass(1);
+				domain.setTimeGoToClass(now);
+			}
+			if (markMass) {
+				boolean isChoir = false;
+				if (domain.getUser() != null && domain.getUser().getGroups() != null) {
+					for (UserGroup group : domain.getUser().getGroups()) {
+						if (group != null && "CADOAN".equals(group.getName())) {
+							isChoir = true;
+							break;
+						}
+					}
+				}
+				domain.setStatusMass(isChoir ? 5 : 1);
+				domain.setTimeGoToChurch(now);
+			}
+			domain.setModifiedBy(currentUserName);
+			domain.setModifyDate(now);
+			PersonDate saved = personDateRepository.save(domain);
+			if (firstSaved == null) {
+				firstSaved = saved;
+			}
+		}
+		return new PersonDateDto(firstSaved);
+	}
+
+	@Override
 	public boolean deleteObject(Long id) {
 		if(id == null) {
 			return false;

@@ -1576,7 +1576,7 @@
                 return;
             }
 
-            vm.openQrAttendanceTypeModal();
+            vm.start();
         };
 
         vm.start = function () {
@@ -1727,22 +1727,6 @@
 
         vm.checkPerson = {};
 
-        function findVisiblePersonDateByUsername(username) {
-            var normalizedUsername = String(username || '').trim().toLowerCase();
-            var matched = null;
-
-            angular.forEach(vm.personDates || [], function (personDate) {
-                var rowUsername = personDate && personDate.user
-                    ? String(personDate.user.username || '').trim().toLowerCase()
-                    : '';
-                if (!matched && rowUsername === normalizedUsername) {
-                    matched = personDate;
-                }
-            });
-
-            return matched;
-        }
-
         function applySavedPersonDate(target, data) {
             target.statusMass = data.statusMass;
             target.timeGoToChurch = data.timeGoToChurch;
@@ -1757,61 +1741,49 @@
         function attendanceSaveErrorMessage(error) {
             if (error && error.data && error.data.message) return error.data.message;
             if (error && error.message) return error.message;
-            return 'Điểm danh thất bại. Vui lòng kiểm tra ngày, lớp và thử lại.';
+            return 'Điểm danh thất bại. Vui lòng kiểm tra ngày và thử lại.';
         }
 
-        vm.saveByScanQr = function (username) { // quét qr thì chỉ cho điểm danh là có đi lễ hoặc có đi học giáo lý thôi
+        vm.saveByScanQr = function (username) {
             var normalizedUsername = String(username || '').trim();
             var selectedDate = parseDateOnly(vm.attendanceDate);
-            var today = parseDateOnly(new Date());
 
-            if (!selectedDate || !today || selectedDate.getTime() !== today.getTime()) {
-                var invalidDateMessage = 'Quét QR chỉ điểm danh cho ngày hôm nay. ' +
-                    'Vui lòng chuyển ngày điểm danh về hôm nay rồi quét lại.';
-                toastr.warning(invalidDateMessage, 'Sai ngày điểm danh');
+            if (!selectedDate) {
+                var invalidDateMessage = 'Ngày điểm danh không hợp lệ.';
                 return $q.reject({message: invalidDateMessage});
             }
-
-            var visiblePersonDate = findVisiblePersonDateByUsername(normalizedUsername);
-
-            if (!normalizedUsername || !visiblePersonDate || !visiblePersonDate.id) {
-                var selectedDateText = selectedDate
-                    ? $filter('date')(selectedDate, 'dd/MM/yyyy') : 'ngày đang chọn';
-                var notFoundMessage = 'Không tìm thấy học sinh trong bảng điểm danh ' +
-                    selectedDateText + ' của lớp đang chọn.';
-                toastr.warning(notFoundMessage, 'Không thể điểm danh QR');
-                return $q.reject({message: notFoundMessage});
+            if (!normalizedUsername) {
+                return $q.reject({message: 'Mã học sinh trong QR không hợp lệ.'});
             }
 
-            // Dùng đúng ID của dòng đang hiển thị để không ghi nhầm ngày hoặc nhầm lớp.
-            vm.resetPersonDate(visiblePersonDate.user, 1, null);
-            vm.personDate.id = visiblePersonDate.id;
-            vm.personDate.description = visiblePersonDate.description;
+            var request = {
+                schoolId: vm.directorySchoolId,
+                user: {username: normalizedUsername},
+                statusMass: 1,
+                statusClass: 1
+            };
 
-            return service.saveObject(vm.personDate).then(function (data) {
-                if (!data || !data.id) {
+            var attendanceDate = moment(selectedDate).format('YYYY-MM-DD');
+            return service.saveByQr(request, attendanceDate).then(function (data) {
+                if (!data || !data.id || !data.user) {
                     return $q.reject({message: 'Máy chủ không xác nhận được bản ghi điểm danh.'});
                 }
 
-                var savedStatus = vm.checkType == 1 ? data.statusMass :
-                    (vm.checkType == 2 ? data.statusClass : data.extraClass);
-                if (savedStatus != 1 && !(vm.checkType == 1 && savedStatus == 5)) {
-                    return $q.reject({message: 'Máy chủ chưa lưu trạng thái có đi học/đi lễ.'});
+                var massSaved = data.statusMass == 1 || data.statusMass == 5;
+                if (!massSaved || data.statusClass != 1) {
+                    return $q.reject({message: 'Máy chủ chưa lưu đủ trạng thái Lễ và Giáo lý.'});
                 }
 
-                applySavedPersonDate(visiblePersonDate, data);
+                angular.forEach(vm.personDates || [], function (personDate) {
+                    if (personDate && personDate.user &&
+                        String(personDate.user.id) === String(data.user.id)) {
+                        applySavedPersonDate(personDate, data);
+                    }
+                });
                 refreshAttendanceSummary();
                 vm.personDate = {};
                 vm.checkPerson = data;
-                if(vm.checkType == 1){
-                    vm.checkPerson.status = data.statusMass;
-                }
-                if(vm.checkType == 2){
-                    vm.checkPerson.status = data.statusClass;
-                }
-                if(vm.checkType == 3){
-                    vm.checkPerson.status = data.extraClass;
-                }
+                vm.checkPerson.status = data.statusMass;
                 vm.confirmCheck();
                 return data;
             }).catch(function (error) {
