@@ -41,7 +41,7 @@
                             <span class="attendance-control-icon is-qr"><i class="fa fa-qrcode"></i></span>
                             <div>
                                 <h3>Điểm danh bằng mã QR</h3>
-                                <p>Chỉ chọn ngày, không cần chọn lớp. Một lần quét sẽ điểm danh cả Lễ và Giáo lý.</p>
+                                <p>Chỉ chọn ngày và loại điểm danh, không cần chọn lớp.</p>
                             </div>
                         </div>
 
@@ -67,7 +67,11 @@
                         </div>
 
                         <small class="qr-attendance-help">
-                            Hệ thống tìm mã học sinh trong toàn bộ bảng điểm danh của ngày này.
+                            Hệ thống tìm mã học sinh trong toàn bộ bảng điểm danh của ngày này và chỉ lưu loại đã chọn.
+                        </small>
+
+                        <small class="qr-attendance-active-type" ng-if="vm.scanning">
+                            Đang quét: {{vm.checkType == 1 ? 'Điểm danh Lễ' : (vm.checkType == 2 ? 'Điểm danh Giáo lý' : 'Điểm danh Ngoại khóa')}}
                         </small>
 
                         <div class="status" ng-if="vm.status">
@@ -808,6 +812,68 @@
         </div>
     </div>
 </script>
+<script type="text/ng-template" id="qr_attendance_type_modal.html">
+    <div class="qr-attendance-type-modal">
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true">&times;</button>
+            <h4 class="modal-title"><i class="fa fa-qrcode"></i> Chọn loại điểm danh QR</h4>
+        </div>
+        <div class="modal-body">
+            <p class="text-muted">Mỗi lượt quét chỉ lưu đúng loại điểm danh bạn chọn.</p>
+
+            <label class="qr-attendance-type-option"
+                   ng-class="{'is-selected': vm.pendingCheckType == 1, 'is-disabled': !vm.isMassAttendanceAllowed()}">
+                <input type="radio"
+                       name="pendingCheckType"
+                       ng-model="vm.pendingCheckType"
+                       ng-value="1"
+                       ng-disabled="!vm.isMassAttendanceAllowed()">
+                <span class="qr-attendance-type-icon is-mass"><i class="fa fa-university"></i></span>
+                <span>
+                    <strong>Điểm danh Lễ</strong>
+                    <small ng-if="vm.isMassAttendanceAllowed()">Có thể chọn trước 09:00 sáng.</small>
+                    <small class="text-danger" ng-if="!vm.isMassAttendanceAllowed()">Đã khóa sau 09:00 sáng.</small>
+                </span>
+            </label>
+
+            <label class="qr-attendance-type-option"
+                   ng-class="{'is-selected': vm.pendingCheckType == 2}">
+                <input type="radio"
+                       name="pendingCheckType"
+                       ng-model="vm.pendingCheckType"
+                       ng-value="2">
+                <span class="qr-attendance-type-icon is-class"><i class="fa fa-book"></i></span>
+                <span>
+                    <strong>Điểm danh Giáo lý</strong>
+                    <small>Chỉ cập nhật trạng thái học Giáo lý.</small>
+                </span>
+            </label>
+
+            <label class="qr-attendance-type-option"
+                   ng-class="{'is-selected': vm.pendingCheckType == 3}">
+                <input type="radio"
+                       name="pendingCheckType"
+                       ng-model="vm.pendingCheckType"
+                       ng-value="3">
+                <span class="qr-attendance-type-icon is-extra"><i class="fa fa-bicycle"></i></span>
+                <span>
+                    <strong>Điểm danh Ngoại khóa</strong>
+                    <small>Chỉ cập nhật trạng thái học Ngoại khóa.</small>
+                </span>
+            </label>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-default" ng-click="$dismiss()">Hủy</button>
+            <button type="button"
+                    class="btn btn-primary"
+                    ng-disabled="!vm.pendingCheckType"
+                    ng-click="vm.confirmQrAttendanceType()">
+                <i class="fa fa-camera"></i> Mở camera
+            </button>
+        </div>
+    </div>
+</script>
+
 <style>
     .attendance-class-selection-date {
         margin: 5px 28px 0 0;
@@ -1079,6 +1145,17 @@
         font-size: 12px;
     }
 
+    .qr-attendance-active-type {
+        display: inline-block;
+        margin-top: 8px;
+        padding: 5px 9px;
+        border-radius: 999px;
+        color: #08745f;
+        background: #dff7ef;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
     .qr-attendance-launcher .status {
         display: inline-block;
         margin: 10px 0 0 8px;
@@ -1112,21 +1189,97 @@
         background: #000;
     }
 
+    .qr-attendance-type-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 76px;
+        margin: 12px 0 0;
+        padding: 13px 15px;
+        border: 1px solid #dce3ef;
+        border-radius: 12px;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .qr-attendance-type-option.is-selected {
+        border-color: #6574e8;
+        background: #f1f3ff;
+        box-shadow: 0 0 0 2px rgba(101, 116, 232, .10);
+    }
+
+    .qr-attendance-type-option.is-disabled {
+        opacity: .62;
+        cursor: not-allowed;
+    }
+
+    .qr-attendance-type-option input {
+        flex: 0 0 auto;
+        margin: 0;
+    }
+
+    .qr-attendance-type-icon {
+        display: inline-flex;
+        flex: 0 0 42px;
+        width: 42px;
+        height: 42px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 11px;
+        color: #5d6ee0;
+        background: #edf0ff;
+        font-size: 18px;
+    }
+
+    .qr-attendance-type-icon.is-mass {
+        color: #996700;
+        background: #fff3d5;
+    }
+
+    .qr-attendance-type-icon.is-extra {
+        color: #9a3f74;
+        background: #fae9f3;
+    }
+
+    .qr-attendance-type-option strong,
+    .qr-attendance-type-option small {
+        display: block;
+    }
+
+    .qr-attendance-type-option small {
+        margin-top: 4px;
+        color: #7b8495;
+        font-weight: 400;
+    }
+
     html.global-dark-mode .qr-attendance-launcher,
-    html.global-dark-mode .attendance-control-card {
+    html.global-dark-mode .attendance-control-card,
+    html.global-dark-mode .qr-attendance-type-option {
         border-color: #344159;
         background: #172236;
     }
 
-    html.global-dark-mode .attendance-control-card-heading h3 {
+    html.global-dark-mode .attendance-control-card-heading h3,
+    html.global-dark-mode .qr-attendance-type-option strong {
         color: #eef3fb;
     }
 
     html.global-dark-mode .attendance-control-card-heading p,
     html.global-dark-mode .qr-attendance-launcher .status,
     html.global-dark-mode .qr-attendance-date-field label,
-    html.global-dark-mode .qr-attendance-help {
+    html.global-dark-mode .qr-attendance-help,
+    html.global-dark-mode .qr-attendance-type-option small {
         color: #aab4c6;
+    }
+
+    html.global-dark-mode .qr-attendance-active-type {
+        color: #9ce8d7;
+        background: #173f38;
+    }
+
+    html.global-dark-mode .qr-attendance-type-option.is-selected {
+        border-color: #8290ff;
+        background: #29365a;
     }
 
     @media (max-width: 767px) {
@@ -1198,6 +1351,9 @@
                 <div class="tntt-rowchips tntt-rowchips--center">
                     <span class="tntt-chip">🎂 {{vm.checkPerson.user.person.birthDate | date:'dd/MM/yyyy'}}</span>
                     <span class="tntt-chip">🆔 <span class="tntt-ellipsis">{{vm.checkPerson.user.username}}</span></span>
+                    <span class="tntt-chip" ng-if="vm.checkPerson.qrCheckType">
+                        ✅ Vừa điểm danh: {{vm.checkPerson.qrCheckType == 1 ? 'Lễ' : (vm.checkPerson.qrCheckType == 2 ? 'Giáo lý' : 'Ngoại khóa')}}
+                    </span>
 
                     <span class="tntt-chip tntt-class-chip">
                         🎒 Lớp:
@@ -1228,6 +1384,13 @@
                         <div class="tntt-time__label">📚 Giờ đến lớp giáo lý</div>
                         <div class="tntt-time__value tntt-wrap">
                             {{vm.checkPerson.timeGoToClass | date:'dd/MM/yyyy HH:mm:ss'}}
+                        </div>
+                    </div>
+
+                    <div class="tntt-time">
+                        <div class="tntt-time__label">🚲 Giờ đến lớp ngoại khóa</div>
+                        <div class="tntt-time__value tntt-wrap">
+                            {{vm.checkPerson.timeGoToExtraClass | date:'dd/MM/yyyy HH:mm:ss'}}
                         </div>
                     </div>
                 </div>
@@ -1274,6 +1437,29 @@
                                 {{$select.selected.name}}
                             </ui-select-match>
                             <ui-select-choices repeat="so.id as so in vm.statusClasses | propsFilter:{name:$select.search}">
+                                <div class="bold" ng-bind-html="so.name | highlight:$select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+
+                    <div class="tntt-statusbox"
+                            ng-class="{
+                             'tntt-ok': vm.checkPerson.extraClass==1,
+                             'tntt-miss': vm.checkPerson.extraClass==2,
+                             'tntt-warn': vm.checkPerson.extraClass==3,
+                             'tntt-blue': vm.checkPerson.extraClass==5,
+                             'tntt-purple': vm.checkPerson.extraClass==6
+                         }">
+                        <div class="tntt-statusbox__title">🚲 Trạng thái điểm danh Ngoại khóa</div>
+
+                        <ui-select ng-disabled="true"
+                                ng-model="vm.checkPerson.extraClass"
+                                sortable="true"
+                                close-on-select="true">
+                            <ui-select-match allow-clear="false" placeholder="Trạng thái Ngoại khóa">
+                                {{$select.selected.name}}
+                            </ui-select-match>
+                            <ui-select-choices repeat="so.id as so in vm.extraClasses | propsFilter:{name:$select.search}">
                                 <div class="bold" ng-bind-html="so.name | highlight:$select.search"></div>
                             </ui-select-choices>
                         </ui-select>

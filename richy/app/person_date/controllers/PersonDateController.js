@@ -1523,6 +1523,50 @@
         var lastText = null;
         var lastAt = 0;
 
+        vm.pendingCheckType = null;
+        vm.qrAttendanceTypeModalInstance = null;
+
+        vm.isMassAttendanceAllowed = function () {
+            return new Date().getHours() < 9;
+        };
+
+        vm.openQrAttendanceTypeModal = function () {
+            vm.pendingCheckType = null;
+            vm.qrAttendanceTypeModalInstance = modal.open({
+                animation: true,
+                templateUrl: 'qr_attendance_type_modal.html',
+                scope: $scope,
+                size: 'md',
+                backdrop: 'static'
+            });
+
+            vm.qrAttendanceTypeModalInstance.result.finally(function () {
+                vm.qrAttendanceTypeModalInstance = null;
+                vm.pendingCheckType = null;
+            });
+        };
+
+        vm.confirmQrAttendanceType = function () {
+            var selectedType = Number(vm.pendingCheckType);
+            if (selectedType !== 1 && selectedType !== 2 && selectedType !== 3) {
+                toastr.warning('Vui lòng chọn loại điểm danh.', 'Thông báo');
+                return;
+            }
+            if (selectedType === 1 && !vm.isMassAttendanceAllowed()) {
+                vm.pendingCheckType = null;
+                toastr.warning('Đã quá 09:00 sáng, không thể điểm danh Lễ.', 'Thông báo');
+                return;
+            }
+
+            vm.checkType = selectedType;
+            if (vm.qrAttendanceTypeModalInstance) {
+                vm.qrAttendanceTypeModalInstance.close('confirmed');
+            }
+            $timeout(function () {
+                vm.start();
+            }, 150);
+        };
+
         vm.toggleCamera = function () {
             if (vm.scanning) {
                 vm.stop();
@@ -1535,7 +1579,7 @@
                 return;
             }
             vm.qrAttendanceDate = selectedDate;
-            vm.start();
+            vm.openQrAttendanceTypeModal();
         };
 
         vm.start = function () {
@@ -1697,6 +1741,21 @@
             target.modifiedDate = data.modifiedDate;
         }
 
+        function applyQrSavedAttendance(target, data, selectedType) {
+            if (selectedType === 1) {
+                target.statusMass = data.statusMass;
+                target.timeGoToChurch = data.timeGoToChurch;
+            } else if (selectedType === 2) {
+                target.statusClass = data.statusClass;
+                target.timeGoToClass = data.timeGoToClass;
+            } else if (selectedType === 3) {
+                target.extraClass = data.extraClass;
+                target.timeGoToExtraClass = data.timeGoToExtraClass;
+            }
+            target.modifiedBy = data.modifiedBy;
+            target.modifiedDate = data.modifiedDate;
+        }
+
         function attendanceSaveErrorMessage(error) {
             if (error && error.data && error.data.message) return error.data.message;
             if (error && error.message) return error.message;
@@ -1706,6 +1765,7 @@
         vm.saveByScanQr = function (username) {
             var normalizedUsername = String(username || '').trim();
             var selectedDate = parseDateOnly(vm.qrAttendanceDate);
+            var selectedType = Number(vm.checkType);
 
             if (!selectedDate) {
                 var invalidDateMessage = 'Ngày điểm danh không hợp lệ.';
@@ -1714,13 +1774,23 @@
             if (!normalizedUsername) {
                 return $q.reject({message: 'Mã học sinh trong QR không hợp lệ.'});
             }
+            if (selectedType !== 1 && selectedType !== 2 && selectedType !== 3) {
+                return $q.reject({message: 'Vui lòng chọn loại điểm danh trước khi quét.'});
+            }
+            if (selectedType === 1 && !vm.isMassAttendanceAllowed()) {
+                var massClosedMessage = 'Đã quá 09:00 sáng, không thể điểm danh Lễ.';
+                toastr.warning(massClosedMessage, 'Thông báo');
+                if (vm.scanning) vm.stop();
+                return $q.reject({message: massClosedMessage});
+            }
 
             var request = {
                 schoolId: vm.directorySchoolId,
-                user: {username: normalizedUsername},
-                statusMass: 1,
-                statusClass: 1
+                user: {username: normalizedUsername}
             };
+            if (selectedType === 1) request.statusMass = 1;
+            if (selectedType === 2) request.statusClass = 1;
+            if (selectedType === 3) request.extraClass = 1;
 
             var attendanceDate = moment(selectedDate).format('YYYY-MM-DD');
             return service.saveByQr(request, attendanceDate).then(function (data) {
@@ -1728,21 +1798,26 @@
                     return $q.reject({message: 'Máy chủ không xác nhận được bản ghi điểm danh.'});
                 }
 
-                var massSaved = data.statusMass == 1 || data.statusMass == 5;
-                if (!massSaved || data.statusClass != 1) {
-                    return $q.reject({message: 'Máy chủ chưa lưu đủ trạng thái Lễ và Giáo lý.'});
+                var selectedTypeSaved = (selectedType === 1 && data.statusMass == 1)
+                    || (selectedType === 2 && data.statusClass == 1)
+                    || (selectedType === 3 && data.extraClass == 1);
+                if (!selectedTypeSaved) {
+                    return $q.reject({message: 'Máy chủ chưa lưu đúng loại điểm danh đã chọn.'});
                 }
 
                 angular.forEach(vm.personDates || [], function (personDate) {
                     if (personDate && personDate.user &&
                         String(personDate.user.id) === String(data.user.id)) {
-                        applySavedPersonDate(personDate, data);
+                        applyQrSavedAttendance(personDate, data, selectedType);
                     }
                 });
                 refreshAttendanceSummary();
                 vm.personDate = {};
                 vm.checkPerson = data;
-                vm.checkPerson.status = data.statusMass;
+                vm.checkPerson.status = selectedType === 1
+                    ? data.statusMass
+                    : (selectedType === 2 ? data.statusClass : data.extraClass);
+                vm.checkPerson.qrCheckType = selectedType;
                 vm.confirmCheck();
                 return data;
             }).catch(function (error) {
@@ -2051,18 +2126,10 @@
                 blockUI.stop();
             });
         };
-        vm.checkType = null; // 1 là lễ 2 là giáo lý
+        vm.checkType = null; // 1: Lễ, 2: Giáo lý, 3: Ngoại khóa
         vm.checkDate = new Date();
 
         vm.checkTypeChange = function () {
-            if (
-                vm.checkType == 3 &&
-                vm.showExtraFeatures !== true
-            ) {
-                vm.checkType = null;
-                return;
-            }
-
             if(vm.checkType == 1){
                 vm.checkDate.setHours(8, 0, 0, 0);
             }
@@ -2113,18 +2180,6 @@
              * Đồng bộ biến này với checkbox tổng.
              */
             vm.showExtra = enabled;
-
-            /*
-             * Nếu đang chọn điểm danh ngoại khóa rồi tắt tính năng,
-             * bỏ lựa chọn để tránh camera tiếp tục lưu loại ngoại khóa.
-             */
-            if (!enabled && vm.checkType == 3) {
-                vm.checkType = null;
-
-                if (vm.scanning && angular.isFunction(vm.stop)) {
-                    vm.stop();
-                }
-            }
 
             /*
              * Ẩn/hiện các cột ngoại khóa trong modal xuất file.
