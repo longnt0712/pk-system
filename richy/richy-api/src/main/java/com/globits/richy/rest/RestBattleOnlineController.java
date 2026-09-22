@@ -22,6 +22,7 @@ import com.globits.richy.dto.BattleOnlineDisplayNameDto;
 import com.globits.richy.dto.BattleOnlinePasswordChoiceDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessResultDto;
+import com.globits.richy.dto.BattleOnlinePetSelectionDto;
 import com.globits.richy.dto.BattleOnlineReadyDto;
 import com.globits.richy.dto.BattleOnlineRevealLetterDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
@@ -39,6 +40,16 @@ public class RestBattleOnlineController {
 
     @Autowired
     private BattleOnlineService battleOnlineService;
+
+    @RequestMapping(value = "/pet-selection", method = RequestMethod.POST)
+    public BattleOnlinePetSelectionDto selectPet(
+            @RequestBody BattleOnlinePetSelectionDto dto) {
+
+        return battleOnlineService.selectPet(
+                currentUsername(),
+                dto
+        );
+    }
 
     @RequestMapping(value = "/rooms", method = RequestMethod.POST)
     public BattleOnlineRoomDto createRoom(

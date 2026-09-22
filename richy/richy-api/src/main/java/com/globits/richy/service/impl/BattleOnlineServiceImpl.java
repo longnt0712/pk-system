@@ -45,6 +45,7 @@ import com.globits.richy.dto.BattleOnlinePasswordChoiceDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessResultDto;
 import com.globits.richy.dto.BattleOnlinePasswordOptionDto;
+import com.globits.richy.dto.BattleOnlinePetSelectionDto;
 import com.globits.richy.dto.BattleOnlinePlayerDto;
 import com.globits.richy.dto.BattleOnlineQuestionDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
@@ -84,6 +85,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String MODE_MONEY_BEG = "MONEY_BEG";
     private static final String MODE_ESCAPE_DUMB_DEMON = "ESCAPE_DUMB_DEMON";
     private static final String MODE_GUESS_WORD = "GUESS_WORD";
+
+    private static final String PET_MAM_HOC = "MAM_HOC";
+    private static final String PET_CAPYBARA_EGG = "CAPYBARA_EGG";
+    private static final int CAPYBARA_UNLOCK_LEVEL = 3;
 
     private static final String GUESS_ADVANCE_AUTO = "AUTO";
     private static final String GUESS_ADVANCE_HOST_CONTROL = "HOST_CONTROL";
@@ -229,6 +234,89 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private UserRepository userRepository;
 
 
+    @Override
+    public BattleOnlinePetSelectionDto selectPet(
+            String username,
+            BattleOnlinePetSelectionDto selectionDto) {
+
+        if (isBlank(username)) {
+            throw new BattleOnlineException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Bạn chưa đăng nhập."
+            );
+        }
+
+        User user = userRepository.findByUsernameAndPerson(username);
+        if (user == null) {
+            throw new BattleOnlineException(
+                    HttpStatus.NOT_FOUND,
+                    "Không tìm thấy người dùng."
+            );
+        }
+
+        int level = Math.max(0, user.getVocabularyExperienceLevel());
+        String selectedPet = normalizePetKey(
+                selectionDto != null ? selectionDto.getPetKey() : null
+        );
+
+        if (PET_CAPYBARA_EGG.equals(selectedPet) && level < CAPYBARA_UNLOCK_LEVEL) {
+            throw new BattleOnlineException(
+                    HttpStatus.BAD_REQUEST,
+                    "Trứng capybara được mở khóa khi đạt level 3."
+            );
+        }
+
+        user.setSelectedLearningPet(selectedPet);
+        userRepository.save(user);
+
+        List<RoomState> changedRooms = new ArrayList<RoomState>();
+        for (RoomState room : rooms.values()) {
+            boolean changed = false;
+            synchronized (room) {
+                PlayerState player = room.players.get(username);
+                if (player != null) {
+                    player.vocabularyExperienceLevel = level;
+                    player.selectedPetKey = selectedPet;
+                    changed = true;
+                }
+            }
+            if (changed) {
+                changedRooms.add(room);
+            }
+        }
+
+        for (RoomState room : changedRooms) {
+            broadcastGeneric(room);
+        }
+
+        return buildPetSelectionDto(selectedPet, level);
+    }
+
+
+    private BattleOnlinePetSelectionDto buildPetSelectionDto(
+            String selectedPet,
+            int level) {
+
+        BattleOnlinePetSelectionDto result = new BattleOnlinePetSelectionDto();
+        result.setSelectedPetKey(normalizePetKey(selectedPet));
+        result.setVocabularyExperienceLevel(Math.max(0, level));
+        List<String> unlocked = new ArrayList<String>();
+        unlocked.add(PET_MAM_HOC);
+        if (level >= CAPYBARA_UNLOCK_LEVEL) {
+            unlocked.add(PET_CAPYBARA_EGG);
+        }
+        result.setUnlockedPetKeys(unlocked);
+        return result;
+    }
+
+
+    private String normalizePetKey(String petKey) {
+        String normalized = clean(petKey).toUpperCase(Locale.ROOT);
+        return PET_CAPYBARA_EGG.equals(normalized)
+                ? PET_CAPYBARA_EGG : PET_MAM_HOC;
+    }
+
+
     /* =========================================================
        ROOM
        ========================================================= */
@@ -300,6 +388,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         host.username = username;
         host.realName = identity.displayName;
         host.displayName = identity.displayName;
+        host.vocabularyExperienceLevel = identity.vocabularyExperienceLevel;
+        host.selectedPetKey = identity.selectedPetKey;
         host.host = true;
         host.ready = true;
         host.connected = true;
@@ -386,6 +476,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 existing.userId = identity.userId;
                 existing.connected = true;
                 existing.realName = identity.displayName;
+                existing.vocabularyExperienceLevel = identity.vocabularyExperienceLevel;
+                existing.selectedPetKey = identity.selectedPetKey;
 
                 if (
                     isBlank(existing.displayName) ||
@@ -456,6 +548,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 player.username = username;
                 player.realName = identity.displayName;
                 player.displayName = identity.displayName;
+                player.vocabularyExperienceLevel = identity.vocabularyExperienceLevel;
+                player.selectedPetKey = identity.selectedPetKey;
                 player.connected = true;
                 player.ready = PLAYING.equals(room.status);
 
@@ -476,6 +570,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     PLAYING.equals(room.status) &&
                     isCountdownLikeMode(room.settings.mode)
                 ) {
+                    buildScoreMultiplierPlanLocked(room, player);
                     if (MODE_MONEY_BEG.equals(room.settings.mode)) {
                         preparePasswordSelectionLocked(player);
                     }
@@ -1937,7 +2032,17 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     now
             );
 
-                scoreDelta = applyDoubleActionScoreLocked(
+            int scoreMultiplier = correct
+                    ? scoreMultiplierForCurrentQuestion(room, player)
+                    : 1;
+            scoreDelta = applyScoreMultiplierLocked(
+                    room,
+                    player,
+                    scoreDelta,
+                    scoreMultiplier
+            );
+
+            scoreDelta = applyDoubleActionScoreLocked(
                     room,
                     player,
                     scoreDelta
@@ -1973,6 +2078,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     fireBoostApplied,
                     fireActivated
             );
+            result.setScoreMultiplier(scoreMultiplier);
+
+            if (correct && scoreMultiplier > 1) {
+                result.setMessage(
+                        "CHÍNH XÁC! LƯỢT MAY MẮN x" + scoreMultiplier +
+                        ": +" + formatScore(scoreDelta) + " điểm."
+                );
+            }
 
             if (MODE_ESCAPE_DUMB_DEMON.equals(room.settings.mode)) {
                 int otherTeam = player.teamNumber == 1 ? 2 : 1;
@@ -3530,6 +3643,94 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     /* =========================================================
        COUNTDOWN PLAYER RANDOM QUESTION
        ========================================================= */
+
+    /**
+     * COUNTDOWN và XIN TÍ TIỀN cho mỗi người một lịch may mắn riêng:
+     * 4 lượt x2, 3 lượt x3 và 1 lượt x4 trong một trận. Các vị trí được
+     * xáo độc lập để người chơi không cùng nhận hệ số ở một câu.
+     */
+    private void buildScoreMultiplierPlanLocked(
+            RoomState room,
+            PlayerState player) {
+
+        player.scoreMultiplierPlan.clear();
+        if (
+            room == null ||
+            player == null ||
+            !(MODE_COUNTDOWN.equals(room.settings.mode) ||
+              MODE_MONEY_BEG.equals(room.settings.mode))
+        ) {
+            return;
+        }
+
+        int positionCount = Math.max(8, displayTotal(room));
+        List<Long> positions = new ArrayList<Long>();
+        for (long position = 1L; position <= positionCount; position++) {
+            positions.add(position);
+        }
+        Collections.shuffle(positions, random);
+
+        List<Integer> multipliers = new ArrayList<Integer>();
+        multipliers.add(2);
+        multipliers.add(2);
+        multipliers.add(2);
+        multipliers.add(2);
+        multipliers.add(3);
+        multipliers.add(3);
+        multipliers.add(3);
+        multipliers.add(4);
+        Collections.shuffle(multipliers, random);
+
+        for (int index = 0; index < multipliers.size(); index++) {
+            player.scoreMultiplierPlan.put(
+                    positions.get(index),
+                    multipliers.get(index)
+            );
+        }
+    }
+
+
+    private int scoreMultiplierForCurrentQuestion(
+            RoomState room,
+            PlayerState player) {
+
+        if (
+            room == null ||
+            player == null ||
+            !(MODE_COUNTDOWN.equals(room.settings.mode) ||
+              MODE_MONEY_BEG.equals(room.settings.mode))
+        ) {
+            return 1;
+        }
+
+        Integer multiplier = player.scoreMultiplierPlan.get(
+                player.currentQuestionSequence
+        );
+        return multiplier == null ? 1 : Math.max(1, multiplier);
+    }
+
+
+    private double applyScoreMultiplierLocked(
+            RoomState room,
+            PlayerState player,
+            double scoreDelta,
+            int multiplier) {
+
+        if (
+            scoreDelta <= 0D ||
+            multiplier <= 1 ||
+            !(MODE_COUNTDOWN.equals(room.settings.mode) ||
+              MODE_MONEY_BEG.equals(room.settings.mode))
+        ) {
+            return scoreDelta;
+        }
+
+        double multiplied = roundScoreToOneDecimal(scoreDelta * multiplier);
+        player.score = roundScoreToOneDecimal(
+                player.score + multiplied - scoreDelta
+        );
+        return multiplied;
+    }
 
     private void buildCountdownSkillPlanLocked(RoomState room) {
         room.countdownSkillPlan.clear();
@@ -5940,15 +6141,18 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     !viewer.spectator &&
                     viewer.currentQuestion != null
                 ) {
-                    dto.setCurrentQuestion(
+                    BattleOnlineQuestionDto currentQuestion =
                             toPublicQuestion(
-                                viewer.currentQuestion,
-                                viewer.currentQuestionSequence,
-                                (int) viewer.currentQuestionSequence,
-                                displayTotal(room),
-                                viewer.currentSkillType
-                            )
+                                    viewer.currentQuestion,
+                                    viewer.currentQuestionSequence,
+                                    (int) viewer.currentQuestionSequence,
+                                    displayTotal(room),
+                                    viewer.currentSkillType
+                            );
+                    currentQuestion.setScoreMultiplier(
+                            scoreMultiplierForCurrentQuestion(room, viewer)
                     );
+                    dto.setCurrentQuestion(currentQuestion);
 
                     dto.setCurrentQuestionIndex(
                             (int) viewer.currentQuestionSequence
@@ -6023,6 +6227,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             player.setTeamNumber(
                     state.teamNumber
+            );
+
+            player.setVocabularyExperienceLevel(
+                    state.vocabularyExperienceLevel
+            );
+
+            player.setSelectedPetKey(
+                    normalizePetKey(state.selectedPetKey)
             );
 
             player.setUniqueWordsSeen(
@@ -6447,6 +6659,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         for (PlayerState player : room.players.values()) {
             resetPlayerMatchState(player);
+            buildScoreMultiplierPlanLocked(room, player);
         }
     }
 
@@ -6484,6 +6697,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         player.pendingWordIds.clear();
         player.uniqueWordIds.clear();
+        player.scoreMultiplierPlan.clear();
         player.countdownReviewQuestions.clear();
     }
 
@@ -6903,7 +7117,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         Query query =
                 entityManager.createQuery(
-                    "select u.id, p.lastName, p.firstName, p.displayName " +
+                    "select u.id, p.lastName, p.firstName, p.displayName, " +
+                    "u.vocabularyExperienceLevel, u.selectedLearningPet " +
                     "from User u left join u.person p " +
                     "where u.username = :username"
                 );
@@ -6974,6 +7189,23 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         if (isBlank(identity.displayName)) {
             identity.displayName = "Người chơi";
+        }
+
+        identity.vocabularyExperienceLevel =
+                row.length > 4 && row[4] instanceof Number
+                        ? Math.max(0, ((Number) row[4]).intValue())
+                        : 0;
+        identity.selectedPetKey = normalizePetKey(
+                row.length > 5 && row[5] != null
+                        ? String.valueOf(row[5])
+                        : PET_MAM_HOC
+        );
+
+        if (
+            PET_CAPYBARA_EGG.equals(identity.selectedPetKey) &&
+            identity.vocabularyExperienceLevel < CAPYBARA_UNLOCK_LEVEL
+        ) {
+            identity.selectedPetKey = PET_MAM_HOC;
         }
 
         return identity;
@@ -7464,6 +7696,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static class PlayerIdentity {
         Long userId;
         String displayName;
+        int vocabularyExperienceLevel;
+        String selectedPetKey = PET_MAM_HOC;
     }
 
     private static class RoomState {
@@ -7590,6 +7824,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         String username;
         String realName;
         String displayName;
+        int vocabularyExperienceLevel;
+        String selectedPetKey = PET_MAM_HOC;
 
         boolean host;
         boolean spectator;
@@ -7618,6 +7854,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         Set<Long> uniqueWordIds =
                 new LinkedHashSet<Long>();
+
+        Map<Long, Integer> scoreMultiplierPlan =
+                new LinkedHashMap<Long, Integer>();
 
         Map<Long, CountdownReviewState> countdownReviewQuestions =
                 new LinkedHashMap<Long, CountdownReviewState>();

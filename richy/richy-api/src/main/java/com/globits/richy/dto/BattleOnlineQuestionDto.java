@@ -29,6 +29,7 @@ public class BattleOnlineQuestionDto implements Serializable {
      * Chỉ công khai loại skill, không công khai đáp án đúng.
      */
     private String skillType;
+    private int scoreMultiplier = 1;
 
     /*
      * Không có thông tin đáp án đúng trong DTO public.
@@ -117,6 +118,14 @@ public class BattleOnlineQuestionDto implements Serializable {
 
     public void setSkillType(String skillType) {
         this.skillType = skillType;
+    }
+
+    public int getScoreMultiplier() {
+        return scoreMultiplier;
+    }
+
+    public void setScoreMultiplier(int scoreMultiplier) {
+        this.scoreMultiplier = scoreMultiplier < 1 ? 1 : scoreMultiplier;
     }
 
     public List<BattleOnlineAnswerOptionDto> getAnswers() {

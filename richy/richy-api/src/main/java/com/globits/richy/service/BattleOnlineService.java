@@ -6,6 +6,7 @@ import com.globits.richy.dto.BattleOnlineCreateRoomDto;
 import com.globits.richy.dto.BattleOnlinePasswordChoiceDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessResultDto;
+import com.globits.richy.dto.BattleOnlinePetSelectionDto;
 import com.globits.richy.dto.BattleOnlineRoomDto;
 import com.globits.richy.dto.BattleOnlineRoomSettingsDto;
 import com.globits.richy.dto.BattleOnlineRevealLetterDto;
@@ -13,6 +14,11 @@ import com.globits.richy.dto.BattleOnlineTeamAssignmentDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
 
 public interface BattleOnlineService {
+
+    BattleOnlinePetSelectionDto selectPet(
+            String username,
+            BattleOnlinePetSelectionDto selectionDto
+    );
 
     BattleOnlineRoomDto createRoom(
             String username,

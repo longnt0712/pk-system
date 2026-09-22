@@ -21,6 +21,8 @@ public class BattleOnlinePlayerDto implements Serializable {
     private int wrongCount;
     private int rank;
     private int teamNumber;
+    private int vocabularyExperienceLevel;
+    private String selectedPetKey;
 
     /*
      * COUNTDOWN progress:
@@ -160,6 +162,22 @@ public class BattleOnlinePlayerDto implements Serializable {
 
     public void setTeamNumber(int teamNumber) {
         this.teamNumber = teamNumber;
+    }
+
+    public int getVocabularyExperienceLevel() {
+        return vocabularyExperienceLevel;
+    }
+
+    public void setVocabularyExperienceLevel(int vocabularyExperienceLevel) {
+        this.vocabularyExperienceLevel = vocabularyExperienceLevel;
+    }
+
+    public String getSelectedPetKey() {
+        return selectedPetKey;
+    }
+
+    public void setSelectedPetKey(String selectedPetKey) {
+        this.selectedPetKey = selectedPetKey;
     }
 
     public int getUniqueWordsSeen() {

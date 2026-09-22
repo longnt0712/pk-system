@@ -10,6 +10,7 @@ public class BattleOnlineAnswerResultDto implements Serializable {
 
     private double score;
     private int streak;
+    private int scoreMultiplier = 1;
 
     private String message;
 
@@ -52,6 +53,14 @@ public class BattleOnlineAnswerResultDto implements Serializable {
 
     public void setStreak(int streak) {
         this.streak = streak;
+    }
+
+    public int getScoreMultiplier() {
+        return scoreMultiplier;
+    }
+
+    public void setScoreMultiplier(int scoreMultiplier) {
+        this.scoreMultiplier = scoreMultiplier < 1 ? 1 : scoreMultiplier;
     }
 
     public String getMessage() {

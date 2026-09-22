@@ -1,0 +1,24 @@
+{
+  "id": "capybara",
+  "name": "Capybara",
+  "unlockVocabularyExperienceLevel": 3,
+  "evolution": [
+    {
+      "minimumVocabularyExperienceLevel": 3,
+      "maximumVocabularyExperienceLevel": 3,
+      "form": "egg-intact",
+      "file": "egg-level-3.png"
+    },
+    {
+      "minimumVocabularyExperienceLevel": 4,
+      "maximumVocabularyExperienceLevel": 4,
+      "form": "egg-cracked",
+      "file": "egg-level-4.png"
+    },
+    {
+      "minimumVocabularyExperienceLevel": 5,
+      "form": "hatched",
+      "file": "pet-level-5.png"
+    }
+  ]
+}

@@ -80,6 +80,10 @@ public class User extends BaseObject implements UserDetails {
 	@Column(name = "total_vocabulary_words_learned", nullable = false)
 	private Long totalVocabularyWordsLearned = 0L;
 
+	/** Pet/trứng người dùng chọn để hiển thị trong hệ thống và Battle Online. */
+	@Column(name = "selected_learning_pet", length = 40, nullable = true)
+	private String selectedLearningPet = "MAM_HOC";
+
 	@ManyToMany(fetch = FetchType.EAGER)
 	@Fetch(FetchMode.SELECT)
 	@JoinTable(name = "tbl_user_role", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
@@ -217,6 +221,16 @@ public class User extends BaseObject implements UserDetails {
 
 	public void setTotalVocabularyWordsLearned(Long totalVocabularyWordsLearned) {
 		this.totalVocabularyWordsLearned = totalVocabularyWordsLearned == null ? 0L : totalVocabularyWordsLearned;
+	}
+
+	public String getSelectedLearningPet() {
+		return selectedLearningPet == null || selectedLearningPet.trim().isEmpty()
+				? "MAM_HOC" : selectedLearningPet;
+	}
+
+	public void setSelectedLearningPet(String selectedLearningPet) {
+		this.selectedLearningPet = selectedLearningPet == null || selectedLearningPet.trim().isEmpty()
+				? "MAM_HOC" : selectedLearningPet;
 	}
 
 	/**

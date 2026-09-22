@@ -188,6 +188,11 @@
         vm.currentUser =
             readCurrentUser();
 
+        vm.selectedBattlePetKey = String(
+            (vm.currentUser || {}).selectedLearningPet || 'MAM_HOC'
+        ).toUpperCase();
+        vm.savingBattlePet = false;
+
         vm.currentUserDisplayName =
             getFullName(
                 vm.currentUser
@@ -358,6 +363,9 @@
         vm.getBurnRemaining = getBurnRemaining;
         vm.dismissPersonalSkillNotice = dismissPersonalSkillNotice;
         vm.getPlayerDisplayName = getPlayerDisplayName;
+        vm.getPlayerPetImage = getPlayerPetImage;
+        vm.getBattlePetOptions = getBattlePetOptions;
+        vm.selectBattlePet = selectBattlePet;
         vm.getFinalPlayerDisplayName = getFinalPlayerDisplayName;
         vm.getPlayerRankPraise = getPlayerRankPraise;
         vm.getSkillEventMessage = getSkillEventMessage;
@@ -475,6 +483,90 @@
             }
 
             return 'Người chơi';
+        }
+
+
+        function getPlayerPetImage(player) {
+            var version = $window.APP_VERSION || '';
+            var suffix = version ? '?v=' + encodeURIComponent(version) : '';
+            var level = Math.max(
+                0,
+                Number(player && player.vocabularyExperienceLevel) || 0
+            );
+            var petKey = String(
+                player && player.selectedPetKey || 'MAM_HOC'
+            ).toUpperCase();
+
+            if (petKey === 'CAPYBARA_EGG' && level >= 3) {
+                if (level >= 5) {
+                    return 'assets/images/learning-pets/capybara/pet-level-5.png' + suffix;
+                }
+                if (level === 4) {
+                    return 'assets/images/learning-pets/capybara/egg-level-4.png' + suffix;
+                }
+                return 'assets/images/learning-pets/capybara/egg-level-3.png' + suffix;
+            }
+
+            if (level === 0) {
+                return 'assets/images/learning-pets/mam-hoc/egg-level-0.png' + suffix;
+            }
+            if (level === 1) {
+                return 'assets/images/learning-pets/mam-hoc/egg-level-1.png' + suffix;
+            }
+            return 'assets/images/learning-pets/mam-hoc/pet-hatched-fallback.png' + suffix;
+        }
+
+
+        function getBattlePetOptions() {
+            var me = getMe();
+            var level = Math.max(
+                0,
+                Number(
+                    me && me.vocabularyExperienceLevel != null
+                        ? me.vocabularyExperienceLevel
+                        : (vm.currentUser || {}).vocabularyExperienceLevel
+                ) || 0
+            );
+            var options = [{
+                key: 'MAM_HOC',
+                label: level < 2 ? 'Trứng Mầm Học' : 'Mầm Học'
+            }];
+            if (level >= 3) {
+                options.push({
+                    key: 'CAPYBARA_EGG',
+                    label: level >= 5
+                        ? 'Capybara'
+                        : (level === 4 ? 'Trứng capybara đang nứt' : 'Trứng capybara')
+                });
+            }
+            return options;
+        }
+
+
+        function selectBattlePet() {
+            if (vm.savingBattlePet || !vm.selectedBattlePetKey) { return; }
+            vm.savingBattlePet = true;
+            battleService.selectPet(vm.selectedBattlePetKey).then(function (data) {
+                vm.selectedBattlePetKey = data.selectedPetKey || 'MAM_HOC';
+                vm.currentUser.selectedLearningPet = vm.selectedBattlePetKey;
+                try {
+                    $cookies.putObject('education.user', vm.currentUser);
+                } catch (ignoreCookie) {}
+                var me = getMe();
+                if (me) {
+                    me.selectedPetKey = vm.selectedBattlePetKey;
+                    me.vocabularyExperienceLevel = data.vocabularyExperienceLevel;
+                }
+                $rootScope.$broadcast(
+                    'learningPetSelectionChanged',
+                    vm.selectedBattlePetKey
+                );
+                toastr.success('Đã đổi pet hiển thị.', 'Battle Online');
+            }, function (error) {
+                showRequestError(error);
+            }).finally(function () {
+                vm.savingBattlePet = false;
+            });
         }
 
 
@@ -1780,6 +1872,12 @@
             }
 
             vm.room = incoming;
+            var currentPetPlayer = getMe();
+            if (currentPetPlayer && !vm.savingBattlePet) {
+                vm.selectedBattlePetKey = String(
+                    currentPetPlayer.selectedPetKey || 'MAM_HOC'
+                ).toUpperCase();
+            }
             syncBattleDisplayName(incoming);
             syncMobilePlayingPageState();
             syncBattleViewMusic();
@@ -1790,6 +1888,7 @@
 
             if (incoming.status !== 'LOBBY') {
                 vm.lobbyTopicEditorOpen = false;
+                vm.qrModalOpen = false;
             }
 
             vm.availableSkillTargets = [];

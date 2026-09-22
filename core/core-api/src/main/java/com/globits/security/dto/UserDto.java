@@ -47,6 +47,8 @@ public class UserDto extends AuditableEntityDto {
 
 	private Long totalVocabularyWordsLearned = 0L;
 
+	private String selectedLearningPet;
+
 	private PersonDto person;
 
 	private boolean hasPhoto;
@@ -80,6 +82,7 @@ public class UserDto extends AuditableEntityDto {
 		this.vocabularyExperienceLevel = entity.getVocabularyExperienceLevel();
 		this.vocabularyExperienceWords = entity.getVocabularyExperienceWords();
 		this.totalVocabularyWordsLearned = entity.getTotalVocabularyWordsLearned();
+		this.selectedLearningPet = entity.getSelectedLearningPet();
 
 		if (entity.getPerson() != null) {
 			this.person = new PersonDto(entity.getPerson());
@@ -142,6 +145,9 @@ public class UserDto extends AuditableEntityDto {
 		entity.setVocabularyExperienceLevel(vocabularyExperienceLevel);
 		entity.setVocabularyExperienceWords(vocabularyExperienceWords);
 		entity.setTotalVocabularyWordsLearned(totalVocabularyWordsLearned);
+		if (selectedLearningPet != null) {
+			entity.setSelectedLearningPet(selectedLearningPet);
+		}
 
 		entity.setAccountNonExpired(true);
 		entity.setAccountNonLocked(true);
@@ -313,6 +319,14 @@ public class UserDto extends AuditableEntityDto {
 
 	public void setTotalVocabularyWordsLearned(Long totalVocabularyWordsLearned) {
 		this.totalVocabularyWordsLearned = totalVocabularyWordsLearned;
+	}
+
+	public String getSelectedLearningPet() {
+		return selectedLearningPet;
+	}
+
+	public void setSelectedLearningPet(String selectedLearningPet) {
+		this.selectedLearningPet = selectedLearningPet;
 	}
 
 	public PersonDto getPerson() {

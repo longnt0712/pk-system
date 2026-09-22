@@ -17,6 +17,107 @@
     image-rendering: crisp-edges;
 }
 
+.learning-pet-egg.is-capybara-pet {
+    width: 104px;
+    height: 108px;
+}
+
+.learning-pet-collection {
+    padding: 12px 14px 4px;
+}
+
+.learning-pet-collection-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+    color: #52607c;
+}
+
+.learning-pet-collection-head strong {
+    font-size: 10px;
+    letter-spacing: .08em;
+}
+
+.learning-pet-collection-head small {
+    color: #8992aa;
+    font-size: 9px;
+}
+
+.learning-pet-choice-grid {
+    display: grid;
+    gap: 7px;
+}
+
+.learning-pet-choice-grid > button {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) 18px;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 58px;
+    padding: 5px 10px 5px 5px;
+    border: 1px solid #e6e8f5;
+    border-radius: 13px;
+    background: #fafbff;
+    color: #58637e;
+    text-align: left;
+}
+
+.learning-pet-choice-grid > button:hover,
+.learning-pet-choice-grid > button:focus,
+.learning-pet-choice-grid > button.is-selected {
+    border-color: #8e88ff;
+    background: #f1f0ff;
+    color: #5148df;
+    outline: 0;
+}
+
+.learning-pet-choice-image {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 11px;
+    background: #fff;
+}
+
+.learning-pet-choice-image img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.learning-pet-choice-image b {
+    position: absolute;
+    top: -4px;
+    right: -5px;
+    padding: 2px 5px;
+    border-radius: 999px;
+    background: #ff5364;
+    color: #fff;
+    font-size: 7px;
+}
+
+.learning-pet-choice-grid > button > span:nth-child(2) strong,
+.learning-pet-choice-grid > button > span:nth-child(2) small {
+    display: block;
+}
+
+.learning-pet-choice-grid > button > span:nth-child(2) strong {
+    color: #2f3955;
+    font-size: 12px;
+}
+
+.learning-pet-choice-grid > button > span:nth-child(2) small {
+    margin-top: 2px;
+    color: #848da3;
+    font-size: 9px;
+}
+
 .learning-pet-shell {
     z-index: 1070;
     font-family: "Poppins", "Open Sans", Arial, sans-serif !important;

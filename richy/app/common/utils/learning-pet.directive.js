@@ -42,6 +42,9 @@
             // PNG is the primary atlas because the production static-file deploy currently
             // skips .webp files. The lossless WebP remains packaged as an optional optimized copy.
             var spriteUrl = 'assets/images/learning-pets/mam-hoc/spritesheet.png?v=' + version;
+            var capybaraEggUrl = 'assets/images/learning-pets/capybara/egg-level-3.png?v=' + version;
+            var capybaraCrackedEggUrl = 'assets/images/learning-pets/capybara/egg-level-4.png?v=' + version;
+            var capybaraPetUrl = 'assets/images/learning-pets/capybara/pet-level-5.png?v=' + version;
             var animations = {
                 idle: {row: 0, durations: [280, 110, 110, 140, 140, 320], loopPause: 10000},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
@@ -74,6 +77,10 @@
             vm.dragging = false;
             vm.petForm = 'egg-intact';
             vm.petImage = 'assets/images/learning-pets/mam-hoc/egg-level-0.png?v=' + version;
+            vm.selectedPetKey = 'MAM_HOC';
+            vm.availablePets = [];
+            vm.selectingPet = false;
+            vm.hasNewCapybaraEgg = false;
 
             function readCurrentUser() {
                 if (liveUser && liveUser.id) { return liveUser; }
@@ -84,12 +91,52 @@
             }
 
             function updatePetForm(user) {
+                var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
+                var selectedPet = String((user || {}).selectedLearningPet || 'MAM_HOC').toUpperCase();
+                if (selectedPet === 'CAPYBARA_EGG' && level < 3) {
+                    selectedPet = 'MAM_HOC';
+                }
+                vm.selectedPetKey = selectedPet;
+                vm.availablePets = [{
+                    key: 'MAM_HOC',
+                    name: 'Mầm Học',
+                    description: level < 2 ? 'Trứng đầu tiên' : 'Pet đầu tiên',
+                    image: level === 0
+                            ? 'assets/images/learning-pets/mam-hoc/egg-level-0.png?v=' + version
+                            : (level === 1
+                                ? 'assets/images/learning-pets/mam-hoc/egg-level-1.png?v=' + version
+                                : vm.hatchedFallbackImage)
+                }];
+                if (level >= 3) {
+                    var capybaraStageImage = level >= 5
+                            ? capybaraPetUrl
+                            : (level === 4 ? capybaraCrackedEggUrl : capybaraEggUrl);
+                    vm.availablePets.push({
+                        key: 'CAPYBARA_EGG',
+                        name: level >= 5 ? 'Capybara' : 'Trứng capybara',
+                        description: level >= 5
+                                ? 'Đã nở hoàn chỉnh'
+                                : (level === 4 ? 'Trứng đang nứt' : 'Mở khóa ở level 3'),
+                        image: capybaraStageImage,
+                        isNew: hasUnseenCapybaraEgg(user)
+                    });
+                    vm.hasNewCapybaraEgg = hasUnseenCapybaraEgg(user);
+                } else {
+                    vm.hasNewCapybaraEgg = false;
+                }
+
+                if (selectedPet === 'CAPYBARA_EGG') {
+                    vm.petForm = level >= 5 ? 'capybara-hatched' : 'capybara-egg';
+                    vm.petImage = level >= 5
+                            ? capybaraPetUrl
+                            : (level === 4 ? capybaraCrackedEggUrl : capybaraEggUrl);
+                    return;
+                }
                 if (hasAdminRole(user)) {
                     vm.petForm = 'hatched';
                     vm.petImage = '';
                     return;
                 }
-                var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
                 if (level === 0) {
                     vm.petForm = 'egg-intact';
                     vm.petImage = 'assets/images/learning-pets/mam-hoc/egg-level-0.png?v=' + version;
@@ -101,6 +148,54 @@
                     vm.petImage = '';
                 }
             }
+
+            function capybaraSeenKey(user) {
+                return 'learning-pet:capybara-seen:v1:' + (user && user.id ? user.id : 'guest');
+            }
+
+            function hasUnseenCapybaraEgg(user) {
+                try {
+                    return $window.localStorage.getItem(capybaraSeenKey(user)) !== '1';
+                } catch (ignoreStorage) {
+                    return true;
+                }
+            }
+
+            function markCapybaraEggSeen(user) {
+                try {
+                    $window.localStorage.setItem(capybaraSeenKey(user), '1');
+                } catch (ignoreStorage) {}
+                vm.hasNewCapybaraEgg = false;
+                angular.forEach(vm.availablePets, function (item) {
+                    if (item.key === 'CAPYBARA_EGG') { item.isNew = false; }
+                });
+            }
+
+            vm.selectPet = function (petKey) {
+                if (vm.selectingPet || !petKey || petKey === vm.selectedPetKey) { return; }
+                vm.selectingPet = true;
+                var apiRoot = settings.api.baseUrl + settings.api.apiV1Url;
+                $http.post(apiRoot + 'battle-online/pet-selection', {petKey: petKey})
+                    .then(function (response) {
+                        var user = readCurrentUser() || {};
+                        user.selectedLearningPet = response.data.selectedPetKey || petKey;
+                        liveUser = user;
+                        try { $cookies.putObject('education.user', user); } catch (ignoreCookie) {}
+                        if (user.selectedLearningPet === 'CAPYBARA_EGG') {
+                            markCapybaraEggSeen(user);
+                        }
+                        updatePetForm(user);
+                        updateMessage();
+                        if (vm.petForm === 'hatched') { preloadSprite(); }
+                        $rootScope.$broadcast('learningPetSelectionChanged', user.selectedLearningPet);
+                    }, function (error) {
+                        vm.error = true;
+                        vm.message = error && error.data && error.data.message
+                                ? error.data.message : 'Chưa đổi được pet. Bạn thử lại nhé!';
+                    }).finally(function () {
+                        vm.selectingPet = false;
+                    });
+            };
 
             function hasStudentRole(user) {
                 var allowed = {ROLE_USER: true, ROLE_VIEWER: true, ROLE_STUDENT: true};
@@ -407,8 +502,11 @@
             }
 
             function updateMessage() {
-                vm.notificationCount = vm.pendingTaskCount + vm.drafts.length;
-                if (vm.overdueCount > 0) {
+                vm.notificationCount = vm.pendingTaskCount + vm.drafts.length + (vm.hasNewCapybaraEgg ? 1 : 0);
+                if (vm.hasNewCapybaraEgg) {
+                    vm.summaryTitle = 'Bạn có một quả trứng mới!';
+                    vm.message = 'Level 3 đã mở khóa trứng capybara. Level 4 trứng sẽ nứt và level 5 sẽ nở.';
+                } else if (vm.overdueCount > 0) {
                     vm.summaryTitle = 'Có bài cần bạn chú ý';
                     vm.message = 'Bạn có ' + vm.overdueCount + ' bài đã quá hạn. Mình xem ngay nhé!';
                 } else if (vm.drafts.length > 0) {
@@ -554,6 +652,10 @@
                 if (event) { event.stopPropagation(); }
                 vm.panelOpen = true;
                 vm.minimized = false;
+                if (vm.hasNewCapybaraEgg) {
+                    markCapybaraEggSeen(readCurrentUser());
+                    updateMessage();
+                }
                 vm.activeSection = vm.drafts.length ? 'drafts' : 'tasks';
                 refreshPanelPlacement();
                 playAnimation(vm.activeSection === 'drafts' ? 'review' : derivedAnimation(), true);
@@ -607,6 +709,12 @@
                 vm.visible = shouldDisplay();
                 if (vm.visible && vm.petForm === 'hatched') { preloadSprite(); }
             });
+            var petSelectionListener = $rootScope.$on('learningPetSelectionChanged', function (event, petKey) {
+                var user = readCurrentUser() || {};
+                user.selectedLearningPet = petKey || 'MAM_HOC';
+                liveUser = user;
+                updatePetForm(user);
+            });
             var routeListener = $scope.$on('$stateChangeSuccess', function () {
                 if (vm.visible) {
                     $timeout(setupDrag, 0);
@@ -633,6 +741,7 @@
                 $window.removeEventListener('resize', handleViewportResize);
                 permissionsListener();
                 userListener();
+                petSelectionListener();
                 routeListener();
             });
         }

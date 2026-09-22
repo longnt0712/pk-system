@@ -14,6 +14,26 @@
         <div class="learning-pet-loading" ng-if="pet.loading"><i class="fa fa-spinner fa-spin"></i> Đang kiểm tra tiến độ học tập...</div>
         <div class="learning-pet-error" ng-if="!pet.loading && pet.error"><strong>Chưa tải được thông tin.</strong><button type="button" ng-click="pet.refresh()">Thử lại</button></div>
         <div ng-if="!pet.loading && !pet.error">
+            <section class="learning-pet-collection" ng-if="pet.availablePets.length">
+                <div class="learning-pet-collection-head">
+                    <strong>TRỨNG &amp; PET CỦA BẠN</strong>
+                    <small>Chọn nhân vật muốn hiển thị</small>
+                </div>
+                <div class="learning-pet-choice-grid">
+                    <button type="button"
+                            ng-repeat="item in pet.availablePets track by item.key"
+                            ng-class="{'is-selected': pet.selectedPetKey === item.key}"
+                            ng-click="pet.selectPet(item.key)"
+                            ng-disabled="pet.selectingPet">
+                        <span class="learning-pet-choice-image">
+                            <img ng-src="{{item.image}}" alt="" aria-hidden="true">
+                            <b ng-if="item.isNew">MỚI</b>
+                        </span>
+                        <span><strong>{{item.name}}</strong><small>{{item.description}}</small></span>
+                        <i class="fa" ng-class="pet.selectedPetKey === item.key ? 'fa-check-circle' : 'fa-circle-o'"></i>
+                    </button>
+                </div>
+            </section>
             <div class="learning-pet-stats">
                 <button type="button" ng-click="pet.selectSection('tasks')" ng-class="{'is-active': pet.activeSection === 'tasks'}"><strong>{{pet.pendingTaskCount}}</strong><span>Bài cần làm</span></button>
                 <button type="button" ng-click="pet.selectSection('drafts')" ng-class="{'is-active': pet.activeSection === 'drafts'}"><strong>{{pet.drafts.length}}</strong><span>Đang làm dở</span></button>
@@ -47,7 +67,9 @@
             <span class="learning-pet-sprite" ng-if="pet.petForm === 'hatched' && pet.spriteReady" ng-style="pet.spriteStyle"></span>
             <img class="learning-pet-hatched-fallback" ng-if="pet.petForm === 'hatched' && !pet.spriteReady"
                  ng-src="{{pet.hatchedFallbackImage}}" draggable="false" alt="" aria-hidden="true" />
-            <img class="learning-pet-egg" ng-if="pet.petForm !== 'hatched'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
+            <img class="learning-pet-egg"
+                 ng-class="{'is-capybara-pet': pet.petForm === 'capybara-hatched'}"
+                 ng-if="pet.petForm !== 'hatched'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
             <span class="learning-pet-badge" ng-if="pet.notificationCount > 0">{{pet.notificationCount > 99 ? '99+' : pet.notificationCount}}</span>
         </button>
         <button type="button" class="learning-pet-minimize" ng-click="pet.toggleMinimized($event)" ng-attr-aria-label="{{pet.minimized ? 'Hiện Mầm Học' : 'Thu nhỏ Mầm Học'}}"><i class="fa" ng-class="pet.minimized ? 'fa-commenting' : 'fa-minus'"></i></button>

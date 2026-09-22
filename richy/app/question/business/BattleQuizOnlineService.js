@@ -65,6 +65,13 @@
             ).then(function (response) { return response.data; });
         };
 
+        self.selectPet = function (petKey) {
+            return $http.post(
+                apiUrl + '/pet-selection',
+                {petKey: petKey}
+            ).then(function (response) { return response.data; });
+        };
+
         self.setSpectator = function (roomCode, spectator) {
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/spectator',
