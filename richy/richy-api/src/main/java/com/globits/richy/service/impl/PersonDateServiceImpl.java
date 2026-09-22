@@ -564,11 +564,9 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 				|| dto.getUser().getUsername().trim().length() == 0) {
 			throw new IllegalArgumentException("Mã học sinh trong QR không hợp lệ.");
 		}
-		boolean markMass = Integer.valueOf(1).equals(dto.getStatusMass());
-		boolean markClass = Integer.valueOf(1).equals(dto.getStatusClass());
-		if ((!markMass && !markClass) || dto.getExtraClass() != null
-				|| (dto.getStatusMass() != null && !markMass)
-				|| (dto.getStatusClass() != null && !markClass)) {
+		if (dto.getExtraClass() != null
+				|| (dto.getStatusMass() != null && !Integer.valueOf(1).equals(dto.getStatusMass()))
+				|| (dto.getStatusClass() != null && !Integer.valueOf(1).equals(dto.getStatusClass()))) {
 			throw new IllegalArgumentException("Loại điểm danh QR không hợp lệ.");
 		}
 
@@ -594,23 +592,21 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 		LocalDateTime now = LocalDateTime.now();
 		PersonDate firstSaved = null;
 		for (PersonDate domain : matches) {
-			if (markClass) {
-				domain.setStatusClass(1);
-				domain.setTimeGoToClass(now);
-			}
-			if (markMass) {
-				boolean isChoir = false;
-				if (domain.getUser() != null && domain.getUser().getGroups() != null) {
-					for (UserGroup group : domain.getUser().getGroups()) {
-						if (group != null && "CADOAN".equals(group.getName())) {
-							isChoir = true;
-							break;
-						}
+			// Một lượt quét QR luôn điểm danh cả Lễ và Giáo lý cho mọi bản ghi
+			// của học sinh trong ngày, không phụ thuộc lớp đang được lọc trên giao diện.
+			domain.setStatusClass(1);
+			domain.setTimeGoToClass(now);
+			boolean isChoir = false;
+			if (domain.getUser() != null && domain.getUser().getGroups() != null) {
+				for (UserGroup group : domain.getUser().getGroups()) {
+					if (group != null && "CADOAN".equals(group.getName())) {
+						isChoir = true;
+						break;
 					}
 				}
-				domain.setStatusMass(isChoir ? 5 : 1);
-				domain.setTimeGoToChurch(now);
 			}
+			domain.setStatusMass(isChoir ? 5 : 1);
+			domain.setTimeGoToChurch(now);
 			domain.setModifiedBy(currentUserName);
 			domain.setModifyDate(now);
 			PersonDate saved = personDateRepository.save(domain);

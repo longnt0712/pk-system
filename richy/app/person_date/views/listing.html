@@ -41,17 +41,34 @@
                             <span class="attendance-control-icon is-qr"><i class="fa fa-qrcode"></i></span>
                             <div>
                                 <h3>Điểm danh bằng mã QR</h3>
-                                <p>Quét một lần để điểm danh Lễ và Giáo lý theo ngày đang chọn.</p>
+                                <p>Chỉ chọn ngày, không cần chọn lớp. Một lần quét sẽ điểm danh cả Lễ và Giáo lý.</p>
                             </div>
                         </div>
 
-                        <button type="button"
-                                class="btn qr-camera-toggle"
-                                ng-class="vm.scanning ? 'btn-danger' : 'btn-primary'"
-                                ng-click="vm.toggleCamera()">
-                            <i class="fa" ng-class="vm.scanning ? 'fa-stop-circle' : 'fa-camera'"></i>
-                            {{vm.scanning ? 'Tắt camera' : 'Mở camera'}}
-                        </button>
+                        <div class="qr-attendance-controls">
+                            <div class="qr-attendance-date-field">
+                                <label for="qr-attendance-date">Ngày điểm danh</label>
+                                <input id="qr-attendance-date"
+                                       data-ng-model="vm.qrAttendanceDate"
+                                       type="text"
+                                       class="form-control"
+                                       placeholder="NGÀY ĐIỂM DANH"
+                                       ng-disabled="vm.scanning"
+                                       my-date-picker />
+                            </div>
+
+                            <button type="button"
+                                    class="btn qr-camera-toggle"
+                                    ng-class="vm.scanning ? 'btn-danger' : 'btn-primary'"
+                                    ng-click="vm.toggleCamera()">
+                                <i class="fa" ng-class="vm.scanning ? 'fa-stop-circle' : 'fa-camera'"></i>
+                                {{vm.scanning ? 'Tắt camera' : 'Mở camera'}}
+                            </button>
+                        </div>
+
+                        <small class="qr-attendance-help">
+                            Hệ thống tìm mã học sinh trong toàn bộ bảng điểm danh của ngày này.
+                        </small>
 
                         <div class="status" ng-if="vm.status">
                             {{vm.status}}
@@ -791,55 +808,6 @@
         </div>
     </div>
 </script>
-<script type="text/ng-template" id="qr_attendance_type_modal.html">
-    <div class="qr-attendance-type-modal">
-        <div class="modal-header">
-            <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true">&times;</button>
-            <h4 class="modal-title"><i class="fa fa-qrcode"></i> Chọn loại điểm danh QR</h4>
-        </div>
-        <div class="modal-body">
-            <p class="text-muted">Chọn loại điểm danh trước khi hệ thống yêu cầu quyền truy cập camera.</p>
-
-            <label class="qr-attendance-type-option"
-                   ng-class="{'is-selected': vm.pendingCheckType == 1, 'is-disabled': !vm.isMassAttendanceAllowed()}">
-                <input type="radio"
-                       name="pendingCheckType"
-                       ng-model="vm.pendingCheckType"
-                       ng-value="1"
-                       ng-disabled="!vm.isMassAttendanceAllowed()">
-                <span class="qr-attendance-type-icon"><i class="fa fa-university"></i></span>
-                <span>
-                    <strong>Điểm danh lễ</strong>
-                    <small ng-if="vm.isMassAttendanceAllowed()">Có thể chọn trước 09:00 sáng.</small>
-                    <small class="text-danger" ng-if="!vm.isMassAttendanceAllowed()">Đã khóa sau 09:00 sáng.</small>
-                </span>
-            </label>
-
-            <label class="qr-attendance-type-option"
-                   ng-class="{'is-selected': vm.pendingCheckType == 2}">
-                <input type="radio"
-                       name="pendingCheckType"
-                       ng-model="vm.pendingCheckType"
-                       ng-value="2">
-                <span class="qr-attendance-type-icon"><i class="fa fa-book"></i></span>
-                <span>
-                    <strong>Điểm danh giáo lý</strong>
-                    <small>Điểm danh học sinh vào lớp giáo lý.</small>
-                </span>
-            </label>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-default" ng-click="$dismiss()">Hủy</button>
-            <button type="button"
-                    class="btn btn-primary"
-                    ng-disabled="!vm.pendingCheckType"
-                    ng-click="vm.confirmQrAttendanceType()">
-                <i class="fa fa-check"></i> Xác nhận và mở camera
-            </button>
-        </div>
-    </div>
-</script>
-
 <style>
     .attendance-class-selection-date {
         margin: 5px 28px 0 0;
@@ -1079,6 +1047,38 @@
         display: block;
     }
 
+    .qr-attendance-controls {
+        display: flex;
+        align-items: flex-end;
+        gap: 9px;
+    }
+
+    .qr-attendance-date-field {
+        flex: 1 1 190px;
+        max-width: 230px;
+        text-align: left;
+    }
+
+    .qr-attendance-date-field label {
+        display: block;
+        margin: 0 0 5px;
+        color: #596579;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .qr-attendance-date-field .form-control {
+        height: 40px;
+        border-radius: 8px !important;
+    }
+
+    .qr-attendance-help {
+        display: block;
+        margin-top: 8px;
+        color: #687386;
+        font-size: 12px;
+    }
+
     .qr-attendance-launcher .status {
         display: inline-block;
         margin: 10px 0 0 8px;
@@ -1112,79 +1112,21 @@
         background: #000;
     }
 
-    .qr-attendance-type-option {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-height: 76px;
-        margin: 12px 0 0;
-        padding: 13px 15px;
-        border: 1px solid #dce3ef;
-        border-radius: 12px;
-        background: #fff;
-        cursor: pointer;
-    }
-
-    .qr-attendance-type-option.is-selected {
-        border-color: #6574e8;
-        background: #f1f3ff;
-        box-shadow: 0 0 0 2px rgba(101, 116, 232, .10);
-    }
-
-    .qr-attendance-type-option.is-disabled {
-        opacity: .62;
-        cursor: not-allowed;
-    }
-
-    .qr-attendance-type-option input {
-        flex: 0 0 auto;
-        margin: 0;
-    }
-
-    .qr-attendance-type-icon {
-        width: 42px;
-        height: 42px;
-        display: inline-flex;
-        flex: 0 0 42px;
-        align-items: center;
-        justify-content: center;
-        border-radius: 11px;
-        color: #5d6ee0;
-        background: #edf0ff;
-        font-size: 18px;
-    }
-
-    .qr-attendance-type-option strong,
-    .qr-attendance-type-option small {
-        display: block;
-    }
-
-    .qr-attendance-type-option small {
-        margin-top: 4px;
-        color: #7b8495;
-        font-weight: 400;
-    }
-
     html.global-dark-mode .qr-attendance-launcher,
-    html.global-dark-mode .attendance-control-card,
-    html.global-dark-mode .qr-attendance-type-option {
+    html.global-dark-mode .attendance-control-card {
         border-color: #344159;
         background: #172236;
     }
 
-    html.global-dark-mode .attendance-control-card-heading h3,
-    html.global-dark-mode .qr-attendance-type-option strong {
+    html.global-dark-mode .attendance-control-card-heading h3 {
         color: #eef3fb;
     }
 
     html.global-dark-mode .attendance-control-card-heading p,
-    html.global-dark-mode .qr-attendance-launcher .status {
+    html.global-dark-mode .qr-attendance-launcher .status,
+    html.global-dark-mode .qr-attendance-date-field label,
+    html.global-dark-mode .qr-attendance-help {
         color: #aab4c6;
-    }
-
-    html.global-dark-mode .qr-attendance-type-option.is-selected {
-        border-color: #8290ff;
-        background: #29365a;
     }
 
     @media (max-width: 767px) {
@@ -1197,7 +1139,13 @@
             flex-direction: column;
         }
 
-        .attendance-setup-fields .form-control {
+        .qr-attendance-controls {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .attendance-setup-fields .form-control,
+        .qr-attendance-date-field {
             max-width: none;
         }
 

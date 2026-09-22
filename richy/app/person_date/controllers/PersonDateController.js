@@ -647,6 +647,9 @@
         // ===== Ngày hiển thị danh sách điểm danh phía trên: chỉ 1 ngày =====
         vm.attendanceDate = new Date();
 
+        // Ngày quét QR độc lập với bộ lọc danh sách và mặc định là ngày mở trang.
+        vm.qrAttendanceDate = new Date();
+
 // ===== Ngày dùng cho phần thống kê: cho chọn khoảng ngày =====
         vm.statStartDate = new Date();
         vm.statEndDate = new Date();
@@ -1520,62 +1523,18 @@
         var lastText = null;
         var lastAt = 0;
 
-        vm.pendingCheckType = null;
-        vm.qrAttendanceTypeModalInstance = null;
-
-        vm.isMassAttendanceAllowed = function () {
-            return new Date().getHours() < 9;
-        };
-
-        vm.openQrAttendanceTypeModal = function () {
-            vm.pendingCheckType = null;
-            vm.qrAttendanceTypeModalInstance = modal.open({
-                animation: true,
-                templateUrl: 'qr_attendance_type_modal.html',
-                scope: $scope,
-                size: 'md',
-                backdrop: 'static'
-            });
-
-            vm.qrAttendanceTypeModalInstance.result.finally(function () {
-                vm.qrAttendanceTypeModalInstance = null;
-                vm.pendingCheckType = null;
-            });
-        };
-
-        vm.confirmQrAttendanceType = function () {
-            var selectedType = Number(vm.pendingCheckType);
-
-            if (selectedType !== 1 && selectedType !== 2) {
-                toastr.warning('Vui lòng chọn loại điểm danh.', 'Thông báo');
-                return;
-            }
-
-            if (selectedType === 1 && !vm.isMassAttendanceAllowed()) {
-                vm.pendingCheckType = null;
-                toastr.warning('Sau 09:00 sáng không thể chọn điểm danh lễ.', 'Thông báo');
-                return;
-            }
-
-            vm.checkType = selectedType;
-            vm.checkTypeChange();
-
-            if (vm.qrAttendanceTypeModalInstance) {
-                vm.qrAttendanceTypeModalInstance.close('confirmed');
-            }
-
-            // Camera permission is requested only after the type is confirmed.
-            $timeout(function () {
-                vm.start();
-            }, 150);
-        };
-
         vm.toggleCamera = function () {
             if (vm.scanning) {
                 vm.stop();
                 return;
             }
 
+            var selectedDate = parseDateOnly(vm.qrAttendanceDate);
+            if (!selectedDate) {
+                toastr.warning('Ngày điểm danh không hợp lệ. Vui lòng nhập theo định dạng dd/MM/yyyy.', 'Thông báo');
+                return;
+            }
+            vm.qrAttendanceDate = selectedDate;
             vm.start();
         };
 
@@ -1746,7 +1705,7 @@
 
         vm.saveByScanQr = function (username) {
             var normalizedUsername = String(username || '').trim();
-            var selectedDate = parseDateOnly(vm.attendanceDate);
+            var selectedDate = parseDateOnly(vm.qrAttendanceDate);
 
             if (!selectedDate) {
                 var invalidDateMessage = 'Ngày điểm danh không hợp lệ.';
