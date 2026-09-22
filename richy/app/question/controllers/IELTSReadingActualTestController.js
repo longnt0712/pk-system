@@ -643,10 +643,11 @@
         $rootScope.settings.layout.pageSidebarClosed = false;
 
         var vm = this;
-        vm.isListeningRoute = /\/ielts_listening_actual_test(?:\/|$)/i.test($location.path());
+        vm.isComprehensiveRoute = /\/comprehensive_test(?:\/|$)/i.test($location.path());
+        vm.isListeningRoute = !vm.isComprehensiveRoute && /\/ielts_listening_actual_test(?:\/|$)/i.test($location.path());
         vm.assignmentTaskId = /^\d+$/.test(String($stateParams.assignmentTaskId || '')) ? Number($stateParams.assignmentTaskId) : null;
         var requestedAssignedPart = /^\d+$/.test(String($stateParams.assignmentPart || '')) ? Number($stateParams.assignmentPart) : null;
-        var maximumAssignedPart = vm.isListeningRoute ? 4 : 3;
+        var maximumAssignedPart = vm.isComprehensiveRoute ? 1 : (vm.isListeningRoute ? 4 : 3);
         vm.assignedPart = requestedAssignedPart >= 1 && requestedAssignedPart <= maximumAssignedPart ? requestedAssignedPart : null;
         // assignmentPart tự nó đã đủ để mở chế độ chỉ làm một Part.
         // Một số link do giáo viên mở trực tiếp không có assignmentTaskId.
@@ -1032,7 +1033,7 @@
         var readingDraftTaskSuffix = vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId : '';
         var legacyReadingDraftStorageKey = readingDraftBaseKey + readingDraftTaskSuffix;
         var legacyModeDraftStorageKey = readingDraftBaseKey
-            + (vm.isListeningRoute ? ':listening' : ':reading') + readingDraftTaskSuffix;
+            + (vm.isComprehensiveRoute ? ':comprehensive' : (vm.isListeningRoute ? ':listening' : ':reading')) + readingDraftTaskSuffix;
         var readingDraftAutosaveTimer = null;
         var readingDraftSubmitted = false;
         var readingLearningDraftsReady = null;
@@ -1042,7 +1043,7 @@
                 || $stateParams.ieltsReadingTestId;
             var normalizedMode = String(sessionMode || vm.testSessionMode || vm.selectedTestSessionMode || '').toUpperCase();
             var sessionSuffix = normalizedMode === 'SERIOUS' ? ':serious' : '';
-            return readingDraftBaseKey + (vm.isListeningRoute ? ':listening:test:' : ':reading:test:')
+            return readingDraftBaseKey + (vm.isComprehensiveRoute ? ':comprehensive:test:' : (vm.isListeningRoute ? ':listening:test:' : ':reading:test:'))
                 + String(testId || 'unknown') + sessionSuffix + readingDraftTaskSuffix;
         }
 
@@ -1059,7 +1060,8 @@
             service.saveLearningDraft({
                 draftKey: key,
                 draftType: 'IELTS',
-                title: draft.title || (draft.isListening ? 'IELTS Listening Test' : 'IELTS Reading Test'),
+                title: draft.title || (draft.testMode === 'COMPREHENSIVE' ? 'Bài tập tổng hợp' :
+                    (draft.isListening ? 'IELTS Listening Test' : 'IELTS Reading Test')),
                 payload: JSON.stringify(draft),
                 savedAt: new Date(draft.savedAt || 0).getTime() || Date.now()
             }).catch(angular.noop);
@@ -1110,7 +1112,10 @@
                             || (expectedTestId && String(draft.testId) !== String(expectedTestId))) {
                         continue;
                     }
-                    if ((draft.testMode === 'LISTENING' || draft.isListening === true) !== vm.isListeningRoute
+                    if ((draft.testMode === 'COMPREHENSIVE') !== vm.isComprehensiveRoute) {
+                        continue;
+                    }
+                    if (!vm.isComprehensiveRoute && (draft.testMode === 'LISTENING' || draft.isListening === true) !== vm.isListeningRoute
                             && (draft.testMode || angular.isDefined(draft.isListening))) {
                         continue;
                     }
@@ -1205,7 +1210,7 @@
                     testId: testId,
                     title: vm.ieltsReadingActualTest.title || 'IELTS Reading Test',
                     isListening: vm.isListeningRoute === true,
-                    testMode: vm.isListeningRoute ? 'LISTENING' : 'READING',
+                    testMode: vm.isComprehensiveRoute ? 'COMPREHENSIVE' : (vm.isListeningRoute ? 'LISTENING' : 'READING'),
                     sessionMode: vm.testSessionMode,
                     assignmentTaskId: vm.assignmentTaskId || null,
                     assignmentPart: vm.assignedPart || null,
@@ -1636,7 +1641,7 @@
         vm.searchDto.pageSize = 10;
         // console.log($stateParams.ieltsReadingTestId);
         vm.isPreviewMode = $location.search().preview === '1' || $location.search().preview === 1;
-        vm.previewPart = Math.max(1, Math.min(vm.isListeningRoute ? 4 : 3,
+        vm.previewPart = Math.max(1, Math.min(vm.isComprehensiveRoute ? 1 : (vm.isListeningRoute ? 4 : 3),
             parseInt($location.search().previewPart, 10) || 1));
         if (vm.isPreviewMode && vm.isListeningRoute && vm.previewPart === 4) {
             // Giao diện thi cũ có ba workspace hiển thị. Part 4 dùng workspace
@@ -1889,6 +1894,9 @@
                     cachedIeltsNavigationParts = null;
                     vm.ieltsReadingActualTest = data;
                     vm.getOrdinalNumber(data);
+                    if (vm.isComprehensiveRoute) {
+                        vm.resultQuestionTotal = getAllReadingQuestionEntries().length || 1;
+                    }
                     blockUI.stop();
                     vm.isStartTest = true;
                     // var timeout10;
@@ -2038,10 +2046,10 @@
             var passage2 = document.getElementById('passage-text-2').innerHTML;
             var passage3 = document.getElementById('passage-text-3').innerHTML;
 
-            vm.testResult.testTakerPerformance =
+            vm.testResult.testTakerPerformance = vm.isComprehensiveRoute ? passage1 :
                 "<h2>Passage 1</h2>" + passage1
                 + "<br><br><h2>Passage 2</h2>" + passage2
-            + "<br><br><h2>Passage 3</h2>" + passage3;
+                + "<br><br><h2>Passage 3</h2>" + passage3;
 
             // vm.testResult.testTakerPerformance = all;
 
@@ -2067,10 +2075,10 @@
 			}
 
 
-            vm.testResult.testType = 4; // ielts read
-            if(vm.ieltsReadingActualTest.pronounce != null && vm.ieltsReadingActualTest.pronounce.length > 0 && angular.isDefined(vm.ieltsReadingActualTest.pronounce)){
+            vm.testResult.testType = vm.isComprehensiveRoute ? 6 : 4;
+            if(!vm.isComprehensiveRoute && vm.ieltsReadingActualTest.pronounce != null && vm.ieltsReadingActualTest.pronounce.length > 0 && angular.isDefined(vm.ieltsReadingActualTest.pronounce)){
                 vm.testResult.testType = 2; //ielts lis
-            }else {
+            }else if (!vm.isComprehensiveRoute) {
                 vm.testResult.testType = 4; // ielts read
             }
 
@@ -2092,7 +2100,9 @@
                     console.log(vm.testResultAfterSubmitting);
 
                     vm.percentageAfterSubmit = (vm.testResultAfterSubmitting.correctAnswer / vm.resultQuestionTotal)*100;
-                    vm.textBandScore = 'Band ' + vm.testResultAfterSubmitting.bandScore.toString();
+                    vm.textBandScore = vm.isComprehensiveRoute ?
+                        (vm.testResultAfterSubmitting.correctAnswer + '/' + vm.resultQuestionTotal) :
+                        ('Band ' + vm.testResultAfterSubmitting.bandScore.toString());
 
                     var x = document.getElementById('circlechart');
                     x.setAttribute("data-percentage", vm.percentageAfterSubmit.toString());
@@ -2594,7 +2604,7 @@
             if (cachedIeltsNavigationParts) {
                 return cachedIeltsNavigationParts;
             }
-            var partCount = vm.isListeningRoute ? 4
+            var partCount = vm.isComprehensiveRoute ? 1 : vm.isListeningRoute ? 4
                 : Math.min(3, ((vm.ieltsReadingActualTest || {}).subQuestions || []).length);
             var parts = [];
             var partByNumber = {};

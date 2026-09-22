@@ -265,6 +265,25 @@
                 }
             })
 
+            .state('application.comprehensive_tests', {
+                url: '/comprehensive_tests',
+                templateUrl: 'question/views/ielts_test_library.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'Bài tập tổng hợp'},
+                controller: 'IELTSTestLibraryController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({
+                            name: 'Hrm.Question',
+                            insertBefore: '#ng_load_plugins_before',
+                            files: [
+                                'question/controllers/IELTSTestLibraryController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
+                            ]
+                        });
+                    }]
+                }
+            })
+
             .state('application.create_ielts_reading_test', {
                 url: '/create_ielts_reading_test',
                 templateUrl: 'question/views/create_ielts_reading_test.html?v=' + window.APP_VERSION,
@@ -277,7 +296,8 @@
                             insertBefore: '#ng_load_plugins_before',
                             files: [
                                 'question/controllers/IELTSCreateReadingTestController.js?v=' + window.APP_VERSION,
-                                'question/business/QuestionService.js?v=' + window.APP_VERSION
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION,
+                                'topic/business/TopicService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
@@ -296,7 +316,28 @@
                             insertBefore: '#ng_load_plugins_before',
                             files: [
                                 'question/controllers/IELTSCreateReadingTestController.js?v=' + window.APP_VERSION,
-                                'question/business/QuestionService.js?v=' + window.APP_VERSION
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION,
+                                'topic/business/TopicService.js?v=' + window.APP_VERSION
+                            ]
+                        });
+                    }]
+                }
+            })
+
+            .state('application.create_comprehensive_test', {
+                url: '/create_comprehensive_test',
+                templateUrl: 'question/views/create_ielts_reading_test.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'Tạo bài tập tổng hợp'},
+                controller: 'IELTSCreateReadingTestController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({
+                            name: 'Hrm.Question',
+                            insertBefore: '#ng_load_plugins_before',
+                            files: [
+                                'question/controllers/IELTSCreateReadingTestController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION,
+                                'topic/business/TopicService.js?v=' + window.APP_VERSION
                             ]
                         });
                     }]
@@ -326,6 +367,25 @@
                 url: '/ielts_listening_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&sessionMode&startFresh',
                 templateUrl: 'question/views/ielts_reading_actual_test_idp.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'IELTS Listening Actual Test'},
+                controller: 'IELTSReadingActualTestController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({
+                            name: 'Hrm.Question',
+                            insertBefore: '#ng_load_plugins_before',
+                            files: [
+                                'question/controllers/IELTSReadingActualTestController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
+                            ]
+                        });
+                    }]
+                }
+            })
+
+            .state('application.comprehensive_actual_test', {
+                url: '/comprehensive_test/:ieltsReadingTestId?sessionMode&startFresh',
+                templateUrl: 'question/views/ielts_reading_actual_test_idp.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'Bài tập tổng hợp'},
                 controller: 'IELTSReadingActualTestController as vm',
                 resolve: {
                     deps: ['$ocLazyLoad', function ($ocLazyLoad) {

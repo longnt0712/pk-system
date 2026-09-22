@@ -122,7 +122,7 @@
                 return escapeText(value); // Historical title-only results remain readable.
             }
             function typeFormatter(value) {
-                return {1: 'Daily Vocab', 3: 'Daily Listening', 2: 'IELTS Listening', 4: 'IELTS Reading', 5: 'Battle Online'}[value] || 'Khác';
+                return {1: 'Daily Vocab', 3: 'Daily Listening', 2: 'IELTS Listening', 4: 'IELTS Reading', 5: 'Battle Online', 6: 'Bài tập tổng hợp'}[value] || 'Khác';
             }
 
             var _tableOperation = function (value, row, index) {
@@ -246,6 +246,7 @@
                 if (group === 'VOCAB') { return column.field !== 'bandScore' && column.field !== 'correctAnswer'; }
                 if (group === 'DAILY_LISTENING') { return column.field !== 'resultStatus' && column.field !== 'bandScore' && column.field !== 'numberOfWords'; }
                 if (group === 'IELTS') { return column.field !== 'resultStatus' && column.field !== 'numberOfWords'; }
+                if (group === 'COMPREHENSIVE') { return column.field !== 'resultStatus' && column.field !== 'bandScore' && column.field !== 'numberOfWords'; }
                 if (group === 'BATTLE') { return column.field !== 'bandScore' && column.field !== 'correctAnswer' && column.field !== 'numberOfWords'; }
                 return true;
             });

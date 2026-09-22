@@ -28,9 +28,10 @@
             vm.currentUser = {};
         }
 
-        vm.isListeningMode = /\/ielts_listening_tests(?:\/|$)/i.test($location.path());
-        vm.testModeName = vm.isListeningMode ? 'Listening' : 'Reading';
-        vm.testModeIcon = vm.isListeningMode ? 'fa-headphones' : 'fa-book';
+        vm.isComprehensiveMode = /\/comprehensive_tests(?:\/|$)/i.test($location.path());
+        vm.isListeningMode = !vm.isComprehensiveMode && /\/ielts_listening_tests(?:\/|$)/i.test($location.path());
+        vm.testModeName = vm.isComprehensiveMode ? 'Tổng hợp' : (vm.isListeningMode ? 'Listening' : 'Reading');
+        vm.testModeIcon = vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book');
         vm.ieltsReadingTests = [];
         vm.learningProgressByTestId = {};
         vm.totalItems = 0;
@@ -43,7 +44,8 @@
             pageIndex: 1,
             status: 7,
             questionType: {id: 11},
-            listeningTest: vm.isListeningMode
+            listeningTest: vm.isComprehensiveMode ? null : vm.isListeningMode,
+            testFormat: vm.isComprehensiveMode ? 'COMPREHENSIVE' : null
         };
 
         function draftSavedAt(draft, serverSavedAt) {
@@ -54,6 +56,8 @@
             if (!draft || !draft.testId || draft.sessionMode !== 'STUDY') { return; }
             if (vm.currentUser.id && draft.userId && String(draft.userId) !== String(vm.currentUser.id)) { return; }
 
+            var isComprehensiveDraft = draft.testMode === 'COMPREHENSIVE';
+            if (isComprehensiveDraft !== vm.isComprehensiveMode) { return; }
             var isListeningDraft = draft.isListening === true || draft.testMode === 'LISTENING';
             if (isListeningDraft !== vm.isListeningMode) { return; }
 
@@ -106,12 +110,14 @@
         };
 
         vm.testCatalogUrl = function (item) {
-            var route = vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/';
+            var route = vm.isComprehensiveMode ? 'comprehensive_test/' :
+                (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/');
             return route + item.id + (vm.getLearningProgress(item.id) ? '?sessionMode=STUDY' : '');
         };
 
         vm.seriousTestCatalogUrl = function (item) {
-            var route = vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/';
+            var route = vm.isComprehensiveMode ? 'comprehensive_test/' :
+                (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/');
             return route + item.id + '?sessionMode=SERIOUS&startFresh=1';
         };
 

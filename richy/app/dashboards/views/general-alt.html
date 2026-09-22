@@ -443,6 +443,19 @@
             </a>
         </div>
 
+        <!-- BÀI TẬP TỔNG HỢP -->
+        <div class="learning-tile-wrap"
+             ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin)">
+            <a href="comprehensive_tests" class="learning-tile learning-tile-comprehensive">
+                <span class="learning-tile-icon"><i class="fa fa-list-alt"></i></span>
+                <span class="learning-tile-title">BÀI TẬP TỔNG HỢP</span>
+                <span class="learning-tile-desc">Danh sách câu hỏi theo topic</span>
+                <span class="learning-tile-go"><i class="fa fa-arrow-right"></i></span>
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
 
         <!-- RESULTS -->
         <div
@@ -1508,6 +1521,10 @@
             right: 8px;
             bottom: 8px;
         }
+    }
+
+    .learning-tile-comprehensive {
+        background: linear-gradient(135deg, #22b8a7 0%, #3585d8 100%);
     }
 
     .learning-tile-listening {

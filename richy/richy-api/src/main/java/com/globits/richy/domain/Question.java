@@ -98,6 +98,21 @@ public class Question extends BaseObject{
 	
 	@Column(name="website")
 	private Integer website;//1: church; 1: richy; 2: shop crocs; 5: clothes
+
+	/**
+	 * Optional discriminator for test roots. Historical IELTS tests keep this
+	 * null and are still distinguished by their audio URL. New free-form tests
+	 * use COMPREHENSIVE so they never leak into the Reading catalogue.
+	 */
+	@Column(name="test_format", length = 30)
+	private String testFormat;
+
+	public String getTestFormat() {
+		return testFormat;
+	}
+	public void setTestFormat(String testFormat) {
+		this.testFormat = testFormat;
+	}
 	
 	public Integer getWebsite() {
 		return website;

@@ -115,12 +115,20 @@
                                 <i class="fa fa-headphones"></i> IELTS Listening
                             </a>
                         </li>
+                        <li>
+                            <a href="comprehensive_tests">
+                                <i class="fa fa-list-alt"></i> Bài tập tổng hợp
+                            </a>
+                        </li>
                         <li role="separator" class="divider" ng-if="settings.isAdmin == true"></li>
                         <li ng-if="settings.isAdmin == true">
                             <a href="create_ielts_reading_test"><i class="fa fa-pencil-square-o"></i> Tạo đề Reading</a>
                         </li>
                         <li ng-if="settings.isAdmin == true">
                             <a href="create_ielts_listening_test"><i class="fa fa-pencil-square-o"></i> Tạo đề Listening</a>
+                        </li>
+                        <li ng-if="settings.isAdmin == true">
+                            <a href="create_comprehensive_test"><i class="fa fa-pencil-square-o"></i> Tạo bài tập tổng hợp</a>
                         </li>
                         <li>
                             <a href="test_results">

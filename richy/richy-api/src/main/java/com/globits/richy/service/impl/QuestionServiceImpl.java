@@ -533,9 +533,13 @@ public class QuestionServiceImpl implements QuestionService {
 			whereClause += " and (s.website = :website) ";
 		}
 
-		// Current IELTS Reading and Listening tests share question type 11.
-		// A non-empty main audio URL identifies Listening tests.
-		if (searchDto.getListeningTest() != null) {
+		// Historical Reading/Listening tests share type 11 and have no explicit
+		// discriminator. Comprehensive tests do, so they can use the same tested
+		// question tree without appearing in either IELTS catalogue.
+		if (searchDto.getTestFormat() != null && !searchDto.getTestFormat().trim().isEmpty()) {
+			whereClause += " and s.testFormat = :testFormat ";
+		} else if (searchDto.getListeningTest() != null) {
+			whereClause += " and (s.testFormat is null or s.testFormat <> 'COMPREHENSIVE') ";
 			if (searchDto.getListeningTest()) {
 				whereClause += " and (s.pronounce is not null and length(trim(s.pronounce)) > 0) ";
 			} else {
@@ -615,6 +619,11 @@ public class QuestionServiceImpl implements QuestionService {
 		if(searchDto.getWebsite() != null) {
 			q.setParameter("website",searchDto.getWebsite());
 			qCount.setParameter("website",searchDto.getWebsite());
+		}
+
+		if (searchDto.getTestFormat() != null && !searchDto.getTestFormat().trim().isEmpty()) {
+			q.setParameter("testFormat", searchDto.getTestFormat().trim());
+			qCount.setParameter("testFormat", searchDto.getTestFormat().trim());
 		}
 		
 		q.setFirstResult((pageIndex) * pageSize);
@@ -1445,6 +1454,7 @@ public class QuestionServiceImpl implements QuestionService {
 		domain.setCountWords(dto.getCountWords());
 		domain.setTitle(dto.getTitle());
 		domain.setWebsite(dto.getWebsite());
+		domain.setTestFormat(dto.getTestFormat());
 		domain.setLevel(level);
 		if(dto.getParent() != null && dto.getParent().getId() !=null) {
 			Question object = questionRepository.getOne(dto.getParent().getId());

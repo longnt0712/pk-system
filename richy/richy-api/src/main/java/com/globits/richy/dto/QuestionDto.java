@@ -32,6 +32,7 @@ public class QuestionDto implements Serializable  {
 	private int type = 1;//1: flash_card
 	private String pronounce;
 	private Boolean listeningTest;
+	private String testFormat;
 	private String level;
 	private int status = 3;//1: chưa thuộc; 2: đã thuộc; 3: tat ca; 4: quan trong
 	private String examples;
@@ -82,6 +83,12 @@ public class QuestionDto implements Serializable  {
 
 	public void setListeningTest(Boolean listeningTest) {
 		this.listeningTest = listeningTest;
+	}
+	public String getTestFormat() {
+		return testFormat;
+	}
+	public void setTestFormat(String testFormat) {
+		this.testFormat = testFormat;
 	}
 	
 	public boolean isFindExactWord() {
@@ -375,6 +382,7 @@ public class QuestionDto implements Serializable  {
 		this.modifiedDate = domain.getModifyDate();
 		this.motherTongue = domain.getMotherTongue();
 		this.website = domain.getWebsite();
+		this.testFormat = domain.getTestFormat();
 		if(domain.getUser() != null && domain.getUser().getId() != null) {
 			this.user = new UserDto();
 			this.user.setId(domain.getUser().getId());

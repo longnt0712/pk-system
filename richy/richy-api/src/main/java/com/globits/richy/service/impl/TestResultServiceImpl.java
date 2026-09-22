@@ -83,6 +83,7 @@ public class TestResultServiceImpl implements TestResultService {
 		if ("VOCAB".equals(group)) { return " and s.testType = 1 "; }
 		if ("DAILY_LISTENING".equals(group)) { return " and s.testType = 3 "; }
 		if ("IELTS".equals(group)) { return " and s.testType in (2,4) "; }
+		if ("COMPREHENSIVE".equals(group)) { return " and s.testType = 6 "; }
 		if ("BATTLE".equals(group)) { return " and s.testType = 5 "; }
 		if (group == null || "ALL".equals(group)) { return ""; }
 		throw new IllegalArgumentException("Unknown result group");
@@ -597,7 +598,7 @@ public class TestResultServiceImpl implements TestResultService {
 			domain.setCreatedBy(currentUserName);
 		}
 		User resultUser = null;
-		if(dto.getTestType() != null && (dto.getTestType() == 1 || dto.getTestType() == 3 || dto.getCompletedPart() != null)
+		if(dto.getTestType() != null && (dto.getTestType() == 1 || dto.getTestType() == 3 || dto.getTestType() == 6 || dto.getCompletedPart() != null)
 				&& modifiedUser != null && modifiedUser.getId() != null) {
 			// Daily Vocab / Listening chỉ được ghi nhận cho chính tài khoản đang đăng nhập.
 			resultUser = userRepository.findById(modifiedUser.getId());
@@ -622,7 +623,7 @@ public class TestResultServiceImpl implements TestResultService {
 		domain.setSourceQuestionId(dto.getSourceQuestionId());
 		domain.setCompletedPart(dto.getCompletedPart());
 		domain.setAssignmentTaskId(dto.getAssignmentTaskId());
-		if (Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType())) {
+		if (Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType()) || Integer.valueOf(6).equals(dto.getTestType())) {
 			String sessionMode = "STUDY".equalsIgnoreCase(dto.getIeltsSessionMode()) ? "STUDY" : "SERIOUS";
 			Integer activeSeconds = dto.getActiveDurationSeconds() == null ? 0 : dto.getActiveDurationSeconds();
 			if (activeSeconds < 0 || activeSeconds > 604800) {

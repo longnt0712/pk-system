@@ -253,6 +253,7 @@
         vm.searchDto.resultGroup = 'ALL';
         vm.resultGroups = [{id: 'ALL', name: 'Tất cả'}, {id: 'VOCAB', name: 'Daily Vocab'},
             {id: 'DAILY_LISTENING', name: 'Daily Listening'}, {id: 'IELTS', name: 'IELTS Tests'},
+            {id: 'COMPREHENSIVE', name: 'Bài tập tổng hợp'},
             {id: 'BATTLE', name: 'Battle Online'}];
         vm.selectResultGroup = function (group) {
             vm.searchDto.resultGroup = group;
@@ -260,13 +261,15 @@
             vm.testTypes = allTestTypes.filter(function (type) {
                 return group === 'ALL' || group === 'VOCAB' && type.id === 1
                     || group === 'DAILY_LISTENING' && type.id === 3 || group === 'IELTS' && (type.id === 2 || type.id === 4)
+                    || group === 'COMPREHENSIVE' && type.id === 6
                     || group === 'BATTLE' && type.id === 5;
             });
             vm.codeChange();
         };
         var allTestTypes = [
             {id: 1, name: 'Daily Vocab'}, {id: 3, name: 'Daily Listening'},
-            {id: 2, name: 'IELTS Listening'}, {id: 4, name: 'IELTS Reading'}, {id: 5, name: 'Battle Online'}
+            {id: 2, name: 'IELTS Listening'}, {id: 4, name: 'IELTS Reading'},
+            {id: 6, name: 'Bài tập tổng hợp'}, {id: 5, name: 'Battle Online'}
         ];
         vm.testTypes = [
             {id: 1, name: "DAILY VOCAB", notice: ""},
@@ -492,6 +495,9 @@
             }
             if (testType === 4) {
                 return 'IELTS Reading';
+            }
+            if (testType === 6) {
+                return 'Bài tập tổng hợp';
             }
             return 'Bài luyện tập';
         };

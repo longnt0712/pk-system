@@ -20,13 +20,14 @@
         '$window',
         'blockUI',
         '$sce',
-        '$cookies'
+        '$cookies',
+        'TopicService'
         // 'dndLists'
         // 'ngSanitize',
         
     ];
 
-    function IELTSCreateReadingTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies) {
+    function IELTSCreateReadingTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,topicService) {
         $scope.$on('$viewContentLoaded', function () {
             // initialize core components
             App.initAjax();
@@ -39,9 +40,10 @@
 
         var vm = this;
 
-        vm.isListeningMode = /\/create_ielts_listening_test(?:\/|$)/i.test($location.path());
-        vm.testModeName = vm.isListeningMode ? 'Listening' : 'Reading';
-        vm.testModeIcon = vm.isListeningMode ? 'fa-headphones' : 'fa-book';
+        vm.isComprehensiveMode = /\/create_comprehensive_test(?:\/|$)/i.test($location.path());
+        vm.isListeningMode = !vm.isComprehensiveMode && /\/create_ielts_listening_test(?:\/|$)/i.test($location.path());
+        vm.testModeName = vm.isComprehensiveMode ? 'Tổng hợp' : (vm.isListeningMode ? 'Listening' : 'Reading');
+        vm.testModeIcon = vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book');
 
         var userCookie = $cookies.get('education.user');
         var hasBuilderAccess = false;
@@ -59,7 +61,8 @@
         });
 
         if (!hasBuilderAccess) {
-            $location.path(vm.isListeningMode ? '/ielts_listening_tests' : '/ielts_reading_tests');
+            $location.path(vm.isComprehensiveMode ? '/comprehensive_tests' :
+                (vm.isListeningMode ? '/ielts_listening_tests' : '/ielts_reading_tests'));
             return;
         }
 
@@ -155,7 +158,8 @@
                         continue;
                     }
                     var isListeningDraft = draft.isListening === true || draft.testMode === 'LISTENING';
-                    if (isListeningDraft !== vm.isListeningMode) {
+                    if ((draft.testMode === 'COMPREHENSIVE') !== vm.isComprehensiveMode ||
+                        isListeningDraft !== vm.isListeningMode) {
                         continue;
                     }
                     var mapKey = String(draft.testId);
@@ -182,12 +186,14 @@
         };
 
         vm.testCatalogUrl = function (item) {
-            var route = vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/';
+            var route = vm.isComprehensiveMode ? 'comprehensive_test/' :
+                (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/');
             return route + item.id + (vm.getLearningProgress(item.id) ? '?sessionMode=STUDY' : '');
         };
 
         vm.seriousTestCatalogUrl = function (item) {
-            var route = vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/';
+            var route = vm.isComprehensiveMode ? 'comprehensive_test/' :
+                (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/');
             return route + item.id + '?sessionMode=SERIOUS&startFresh=1';
         };
 
@@ -260,6 +266,49 @@
             return test;
         }
 
+        function ensureComprehensiveBuilder(test) {
+            if (!vm.isComprehensiveMode || !test) { return test; }
+            test.testFormat = 'COMPREHENSIVE';
+            test.pronounce = null;
+            test.subQuestions = test.subQuestions || [];
+            var partTypes = [13, 14, 15];
+            while (test.subQuestions.length < 3) {
+                var partIndex = test.subQuestions.length;
+                test.subQuestions.push({
+                    question: '',
+                    questionType: {id: partTypes[partIndex], code: 'IELTSRTP' + (partIndex + 1), name: 'Question list'},
+                    ordinalNumber: partIndex + 1,
+                    subQuestions: []
+                });
+            }
+            // Type 6 makes the candidate view full-width and hides the passage pane.
+            test.subQuestions[0].type = 6;
+            test.subQuestions[0].question = test.subQuestions[0].question || '';
+            angular.forEach(test.subQuestions, function (part) {
+                angular.forEach((part && part.subQuestions) || [], function (questionPackage) {
+                    ensureMultipleAnswerPackage(questionPackage, true);
+                });
+            });
+            return test;
+        }
+
+        vm.availableTopics = [];
+        vm.selectedTestTopics = [];
+        vm.loadTestTopics = function () {
+            topicService.getPage({isShow: true}, 1, 10000).then(function (data) {
+                vm.availableTopics = (data && data.content) || [];
+            }, function () {
+                vm.availableTopics = [];
+            });
+        };
+        vm.syncTestTopics = function () {
+            vm.ieltsReadingTest.questionTopics = (vm.selectedTestTopics || []).map(function (topic) {
+                return {topic: {id: topic.id, name: topic.name}};
+            });
+            vm.changeInTheProcessOfCreatingReadingTest();
+        };
+        if (vm.isComprehensiveMode) { vm.loadTestTopics(); }
+
         vm.ieltsReadingTest = {
             questionType: {
                 code: 'IELTSRT',
@@ -278,7 +327,8 @@
 
         vm.getPageCreateIELTSReadingTest = function () {
             vm.searchDto.questionType = {id: 11};
-            vm.searchDto.listeningTest = vm.isListeningMode;
+            vm.searchDto.listeningTest = vm.isComprehensiveMode ? null : vm.isListeningMode;
+            vm.searchDto.testFormat = vm.isComprehensiveMode ? 'COMPREHENSIVE' : null;
             blockUI.start();
             service.getPageForTests(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
                 blockUI.stop();
@@ -369,6 +419,7 @@
             countWords : 0,
             ordinalNumber: 1,
             userId: vm.currentUser.id,
+            testFormat: vm.isComprehensiveMode ? 'COMPREHENSIVE' : null,
             subQuestions : [
                 {
                     question: '',
@@ -441,6 +492,7 @@
         if (vm.isListeningMode) {
             vm.ieltsReadingTest.subQuestions.push(createListeningPartFour());
         }
+        ensureComprehensiveBuilder(vm.ieltsReadingTest);
         vm.createPassageNumber = 1;
 
         function prepareSharedChoicePackagesForSave() {
@@ -456,10 +508,13 @@
             // Keep the shared A/B/C list in every child question before either
             // Save Draft or Publish serializes the builder model.
             prepareSharedChoicePackagesForSave();
+            ensureComprehensiveBuilder(vm.ieltsReadingTest);
+            if (vm.isComprehensiveMode) { vm.syncTestTopics(); }
             blockUI.start();
             return service.saveObject(vm.ieltsReadingTest).then(function (data) {
                 blockUI.stop();
-                vm.ieltsReadingTest = ensureListeningBuilderParts(data);
+                vm.ieltsReadingTest = ensureComprehensiveBuilder(ensureListeningBuilderParts(data));
+                vm.selectedTestTopics = (vm.ieltsReadingTest.questionTopics || []).map(function (link) { return link.topic; });
                 vm.getOrdinalNumber(data);
                 isHavingQuestions(vm.ieltsReadingTest);
 
@@ -504,7 +559,9 @@
             });
         };
 
-        var readingPartRules = vm.isListeningMode ? [
+        var readingPartRules = vm.isComprehensiveMode ? [
+            {name: 'Danh sách câu hỏi', start: 1, end: Number.MAX_SAFE_INTEGER || 9007199254740991}
+        ] : vm.isListeningMode ? [
             {name: 'Part 1', start: 1, end: 10},
             {name: 'Part 2', start: 11, end: 20},
             {name: 'Part 3', start: 21, end: 30},
@@ -515,7 +572,11 @@
             {name: 'Part 3', start: 27, end: 40}
         ];
 
-        vm.builderSteps = [
+        vm.builderSteps = vm.isComprehensiveMode ? [
+            {number: 1, title: 'Thông tin bài tập', target: 'reading-builder-info'},
+            {number: 2, title: 'Danh sách câu hỏi', target: 'reading-builder-part-1'},
+            {number: 3, title: 'Kiểm tra & xuất bản', target: 'reading-builder-review'}
+        ] : [
             {number: 1, title: 'Thông tin bài thi', target: 'reading-builder-info'},
             {number: 2, title: 'Part 1', target: 'reading-builder-part-1'},
             {number: 3, title: 'Part 2', target: 'reading-builder-part-2'},
@@ -525,7 +586,7 @@
         ];
 
         vm.visibleBuilderSteps = vm.builderSteps.filter(function (step) {
-            return !step.listeningOnly || vm.isListeningMode;
+            return vm.isComprehensiveMode || !step.listeningOnly || vm.isListeningMode;
         });
 
         function plainText(value) {
@@ -1014,6 +1075,9 @@
             if (!plainText(test.title)) {
                 addIssue('Chưa nhập tên bài thi.', 'reading-builder-info');
             }
+            if (vm.isComprehensiveMode && !(vm.selectedTestTopics || []).length) {
+                addIssue('Chưa chọn topic cho bài tập.', 'reading-builder-info');
+            }
             if (vm.isListeningMode && !plainText(test.pronounce)) {
                 addIssue('Bài Listening chưa có link audio chính.', 'reading-builder-info');
             }
@@ -1029,10 +1093,10 @@
 
                 result.totalQuestions += questionEntries.length;
 
-                if (!plainText(passage.question)) {
+                if (!vm.isComprehensiveMode && !plainText(passage.question)) {
                     addIssue(rule.name + ': chưa nhập nội dung bài đọc.', 'reading-builder-part-' + (partIndex + 1), partIndex);
                 }
-                if (!passage.type) {
+                if (!vm.isComprehensiveMode && !passage.type) {
                     addIssue(rule.name + ': chưa chọn dạng hiển thị bài đọc.', 'reading-builder-part-' + (partIndex + 1), partIndex);
                 }
                 if (!packages.length) {
@@ -1080,7 +1144,7 @@
                     }
                 });
 
-                if (matchingHeadingQuestionCount > 0) {
+                if (!vm.isComprehensiveMode && matchingHeadingQuestionCount > 0) {
                     var headingPlaceholderCount = countHeadingPlaceholders(passage.question);
                     if (headingPlaceholderCount !== matchingHeadingQuestionCount) {
                         addIssue(rule.name + ': Matching Heading có ' + headingPlaceholderCount +
@@ -1094,8 +1158,9 @@
                     var question = entry.question || {};
                     var number = parseInt(question.ordinalNumber, 10);
                     var questionTarget = 'reading-builder-part-' + (partIndex + 1);
-                    if (!number || number < rule.start || number > rule.end) {
-                        addIssue(rule.name + ': có số câu ngoài khoảng ' + rule.start + '–' + rule.end + '.', questionTarget, partIndex);
+                    if (!number || number < rule.start || (!vm.isComprehensiveMode && number > rule.end)) {
+                        addIssue(vm.isComprehensiveMode ? 'Số thứ tự câu hỏi phải bắt đầu từ 1.' :
+                            rule.name + ': có số câu ngoài khoảng ' + rule.start + '–' + rule.end + '.', questionTarget, partIndex);
                     } else if (numberMap[number]) {
                         addIssue(rule.name + ': câu ' + number + ' bị trùng.', questionTarget, partIndex);
                     } else {
@@ -1135,9 +1200,15 @@
                     }
                 });
 
-                for (var number = rule.start; number <= rule.end; number++) {
-                    if (!numberMap[number]) {
-                        missing.push(number);
+                if (vm.isComprehensiveMode) {
+                    for (var comprehensiveNumber = 1; comprehensiveNumber <= questionEntries.length; comprehensiveNumber++) {
+                        if (!numberMap[comprehensiveNumber]) { missing.push(comprehensiveNumber); }
+                    }
+                } else {
+                    for (var number = rule.start; number <= rule.end; number++) {
+                        if (!numberMap[number]) {
+                            missing.push(number);
+                        }
                     }
                 }
                 if (missing.length) {
@@ -1147,15 +1218,16 @@
                 result.parts.push({
                     name: rule.name,
                     count: questionEntries.length,
-                    expected: rule.end - rule.start + 1,
+                    expected: vm.isComprehensiveMode ? questionEntries.length : rule.end - rule.start + 1,
                     missing: missing,
                     issueCount: result.issues.length - partIssueStart
                 });
             });
 
-            result.valid = result.issues.length === 0 && result.totalQuestions === 40;
+            result.valid = result.issues.length === 0 && (vm.isComprehensiveMode ? result.totalQuestions > 0 : result.totalQuestions === 40);
             var completedChecks = Math.max(0, 5 - Math.min(5, result.issues.length));
-            result.percent = Math.min(100, Math.round(((result.totalQuestions / 40) * 80) + ((completedChecks / 5) * 20)));
+            result.percent = vm.isComprehensiveMode ? (result.valid ? 100 : Math.min(95, result.totalQuestions ? 70 + completedChecks * 5 : completedChecks * 5)) :
+                Math.min(100, Math.round(((result.totalQuestions / 40) * 80) + ((completedChecks / 5) * 20)));
             return result;
         }
 
@@ -1251,7 +1323,7 @@
         }
 
         vm.previewReadingTest = function (partIndex) {
-            var maximumPreviewPart = vm.isListeningMode ? 4 : 3;
+            var maximumPreviewPart = vm.isComprehensiveMode ? 1 : (vm.isListeningMode ? 4 : 3);
             var targetPart = Math.max(1, Math.min(maximumPreviewPart, parseInt(partIndex, 10) || 1));
             var previewKey = 'ieltsReadingPreview-' + new Date().getTime();
             var previewStorage = 'local';
@@ -1271,7 +1343,8 @@
             }
             var baseElement = document.getElementsByTagName('base')[0];
             var appBaseUrl = baseElement ? baseElement.href : ($window.location.protocol + '//' + $window.location.host + '/');
-            var previewRoute = vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/';
+            var previewRoute = vm.isComprehensiveMode ? 'comprehensive_test/' :
+                (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/');
             var previewUrl = appBaseUrl.replace(/\/?$/, '/') + previewRoute + 'preview-local' +
                 '?preview=1&previewPart=' + targetPart + '&previewKey=' + encodeURIComponent(previewKey) +
                 '&previewStorage=' + previewStorage;
@@ -1300,10 +1373,10 @@
                 used[parseInt(entry.question.ordinalNumber, 10)] = true;
             });
             var next = rule.start;
-            while (next <= rule.end && used[next]) {
+            while ((vm.isComprehensiveMode || next <= rule.end) && used[next]) {
                 next++;
             }
-            vm.fromQuestion = next <= rule.end ? next : rule.end;
+            vm.fromQuestion = vm.isComprehensiveMode ? next : (next <= rule.end ? next : rule.end);
             vm.toQuestion = vm.fromQuestion;
             vm.numberOfAnswers = vm.numberOfAnswers > 0 ? vm.numberOfAnswers : 4;
             vm.createPackage = true;
@@ -1318,7 +1391,7 @@
                 toastr.warning('Số câu bắt đầu phải nhỏ hơn hoặc bằng số câu kết thúc.', 'Kiểm tra khoảng câu');
                 return false;
             }
-            if (from < rule.start || to > rule.end) {
+            if (from < rule.start || (!vm.isComprehensiveMode && to > rule.end)) {
                 toastr.warning(rule.name + ' chỉ được dùng câu ' + rule.start + '–' + rule.end + '.', 'Sai khoảng câu');
                 return false;
             }
@@ -1344,7 +1417,7 @@
             var passages = ieltsReadingTest.subQuestions;
 
             if(passages != null && passages.length){
-                vm.createPassageNumber = Math.min(passages.length, vm.isListeningMode ? 4 : 3);
+                vm.createPassageNumber = vm.isComprehensiveMode ? 1 : Math.min(passages.length, vm.isListeningMode ? 4 : 3);
                 // var packagesForPassage2 = ieltsReadingTest.subQuestions[1].subQuestions;
                 for(var i = 0; i< passages.length; i++){
                     var packages = passages[i].subQuestions;
@@ -1603,7 +1676,8 @@
 
             // console.log(vm.ieltsReadingTest.subQuestions[0]);
             service.getOne(id).then(function (data) {
-                vm.ieltsReadingTest = ensureListeningBuilderParts(data);
+                vm.ieltsReadingTest = ensureComprehensiveBuilder(ensureListeningBuilderParts(data));
+                vm.selectedTestTopics = (vm.ieltsReadingTest.questionTopics || []).map(function (link) { return link.topic; });
                 vm.getOrdinalNumber(vm.ieltsReadingTest);
 
                 isHavingQuestions(vm.ieltsReadingTest);
@@ -2306,7 +2380,8 @@
                 locale: settings.locale,
                 sidePagination: 'server',
                 columns: service.getTableDefinitionCreateIELTSReadingTest(
-                    vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'
+                    vm.isComprehensiveMode ? 'comprehensive_test/' :
+                        (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/')
                 ),
                 onCheck: function (row, $element) {
                     $scope.$apply(function () {

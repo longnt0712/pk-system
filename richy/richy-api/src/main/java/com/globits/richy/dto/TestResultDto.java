@@ -94,7 +94,7 @@ public class TestResultDto implements Serializable{
 	private String userDisplayName;
 	private String testName;
 	private String testTakerPerformance;
-	private Integer testType = 0; //1: Daily Vocab, 2: IELTS Listening, 3: Daily Listening, 4: IELTS Reading
+	private Integer testType = 0; //1: Daily Vocab, 2: IELTS Listening, 3: Daily Listening, 4: IELTS Reading, 5: Battle, 6: Comprehensive
 	private Integer times = 0;
 	private Integer numberOfWords = 0;
 	private Integer vocabularyExperienceAwardedWords = 0;

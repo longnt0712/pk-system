@@ -1,20 +1,24 @@
 <div class="row margin-top-10 ielts-test-library-page"
-     ng-class="vm.isListeningMode ? 'is-listening-library' : 'is-reading-library'">
+     ng-class="vm.isComprehensiveMode ? 'is-comprehensive-library' : (vm.isListeningMode ? 'is-listening-library' : 'is-reading-library')">
     <div class="col-md-12">
         <section class="ielts-library-hero">
             <div class="ielts-library-hero__icon"><i class="fa" ng-class="vm.testModeIcon"></i></div>
             <div class="ielts-library-hero__copy">
-                <span>IELTS TEST LIBRARY</span>
-                <h1>Thư viện IELTS {{vm.testModeName}}</h1>
-                <p ng-if="!vm.isListeningMode">Chọn đề Reading để học hoặc làm bài test với giao diện thi thật.</p>
-                <p ng-if="vm.isListeningMode">Chọn đề Listening để nghe, luyện tập hoặc làm bài test.</p>
+                <span>{{vm.isComprehensiveMode ? 'BÀI TẬP TỰ DO' : 'IELTS TEST LIBRARY'}}</span>
+                <h1>{{vm.isComprehensiveMode ? 'Bài tập tổng hợp' : 'Thư viện IELTS ' + vm.testModeName}}</h1>
+                <p ng-if="vm.isComprehensiveMode">Chọn một bài và làm lần lượt danh sách câu hỏi, không chia Passage hay Part.</p>
+                <p ng-if="!vm.isComprehensiveMode && !vm.isListeningMode">Chọn đề Reading để học hoặc làm bài test với giao diện thi thật.</p>
+                <p ng-if="!vm.isComprehensiveMode && vm.isListeningMode">Chọn đề Listening để nghe, luyện tập hoặc làm bài test.</p>
             </div>
             <nav class="ielts-library-mode-switch" aria-label="Chọn thư viện IELTS">
-                <a href="ielts_reading_tests" ng-class="{'is-active': !vm.isListeningMode}">
+                <a href="ielts_reading_tests" ng-class="{'is-active': !vm.isListeningMode && !vm.isComprehensiveMode}">
                     <i class="fa fa-book"></i> Reading
                 </a>
                 <a href="ielts_listening_tests" ng-class="{'is-active': vm.isListeningMode}">
                     <i class="fa fa-headphones"></i> Listening
+                </a>
+                <a href="comprehensive_tests" ng-class="{'is-active': vm.isComprehensiveMode}">
+                    <i class="fa fa-list-alt"></i> Tổng hợp
                 </a>
             </nav>
         </section>
@@ -24,10 +28,12 @@
         <section class="reading-test-catalog">
             <div class="reading-test-catalog__header">
                 <div>
-                    <span class="reading-test-catalog__eyebrow">IELTS {{vm.testModeName | uppercase}} LIBRARY</span>
+                    <span class="reading-test-catalog__eyebrow" ng-if="vm.isComprehensiveMode">BÀI TẬP TỔNG HỢP</span>
+                    <span class="reading-test-catalog__eyebrow" ng-if="!vm.isComprehensiveMode">IELTS {{vm.testModeName | uppercase}} LIBRARY</span>
                     <h2>Chọn bài {{vm.testModeName}}</h2>
-                    <p ng-if="!vm.isListeningMode">Đọc 3 passages và hoàn thành 40 câu hỏi.</p>
-                    <p ng-if="vm.isListeningMode">Nghe audio và hoàn thành 4 Part, mỗi Part 10 câu.</p>
+                    <p ng-if="vm.isComprehensiveMode">Danh sách câu hỏi linh hoạt theo từng bài.</p>
+                    <p ng-if="!vm.isComprehensiveMode && !vm.isListeningMode">Đọc 3 passages và hoàn thành 40 câu hỏi.</p>
+                    <p ng-if="!vm.isComprehensiveMode && vm.isListeningMode">Nghe audio và hoàn thành 4 Part, mỗi Part 10 câu.</p>
                 </div>
                 <span class="reading-test-catalog__count">{{vm.totalItems}} bài test</span>
             </div>
@@ -44,7 +50,7 @@
 
             <div class="reading-test-grid" ng-if="vm.ieltsReadingTests.length">
                 <article class="reading-test-card"
-                         ng-class="{'is-listening': vm.isListeningMode, 'is-reading': !vm.isListeningMode, 'has-learning-progress': !!vm.getLearningProgress(item.id)}"
+                         ng-class="{'is-listening': vm.isListeningMode, 'is-reading': !vm.isListeningMode && !vm.isComprehensiveMode, 'is-comprehensive': vm.isComprehensiveMode, 'has-learning-progress': !!vm.getLearningProgress(item.id)}"
                          ng-repeat="item in vm.ieltsReadingTests track by item.id">
                     <div class="reading-test-card__top">
                         <span class="reading-test-card__type"><i class="fa" ng-class="vm.testModeIcon"></i> {{vm.testModeName}}</span>
@@ -53,7 +59,10 @@
                     <div class="reading-test-card__visual"><i class="fa" ng-class="vm.testModeIcon"></i></div>
                     <div class="reading-test-card__body">
                         <h3>{{item.title}}</h3>
-                        <p>{{vm.isListeningMode ? 'Nghe và hoàn thành 4 Part của bài thi.' : 'Đọc 3 passages và hoàn thành 40 câu hỏi.'}}</p>
+                        <p>{{vm.isComprehensiveMode ? 'Hoàn thành danh sách câu hỏi của bài.' : (vm.isListeningMode ? 'Nghe và hoàn thành 4 Part của bài thi.' : 'Đọc 3 passages và hoàn thành 40 câu hỏi.')}}</p>
+                        <div class="reading-test-card__topics" ng-if="item.topics.length">
+                            <span ng-repeat="topic in item.topics track by topic.id"><i class="fa fa-tag"></i> {{topic.name}}</span>
+                        </div>
                         <div class="reading-test-card__progress"
                              ng-if="vm.getLearningProgress(item.id)"
                              ng-init="progress=vm.getLearningProgress(item.id)">
@@ -94,3 +103,10 @@
         </section>
     </div>
 </div>
+
+<style>
+    .ielts-test-library-page.is-comprehensive-library { --library-accent: #169b8d; --library-accent-2: #357fce; }
+    .reading-test-card__topics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .reading-test-card__topics span { padding: 5px 8px; border-radius: 999px; color: var(--library-accent); background: #eef8f7; font-size: 11px; font-weight: 700; }
+    .global-dark-mode .reading-test-card__topics span { background: #263442; }
+</style>
