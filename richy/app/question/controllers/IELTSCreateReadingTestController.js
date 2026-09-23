@@ -281,8 +281,12 @@
                     subQuestions: []
                 });
             }
-            // Type 6 makes the candidate view full-width and hides the passage pane.
-            test.subQuestions[0].type = 6;
+            // Passage type 6 is the existing candidate-layout flag for a
+            // question-only test. Other values keep the Reading-style split.
+            // Preserve saved choices and show the text by default for new tests.
+            if (!angular.isDefined(test.subQuestions[0].type) || test.subQuestions[0].type === null) {
+                test.subQuestions[0].type = 1;
+            }
             test.subQuestions[0].question = test.subQuestions[0].question || '';
             angular.forEach(test.subQuestions, function (part) {
                 angular.forEach((part && part.subQuestions) || [], function (questionPackage) {
@@ -291,6 +295,19 @@
             });
             return test;
         }
+
+        vm.isComprehensivePassageVisible = function () {
+            var passage = (((vm.ieltsReadingTest || {}).subQuestions || [])[0]) || {};
+            return Number(passage.type) !== 6;
+        };
+
+        vm.setComprehensivePassageVisibility = function (visible) {
+            var passage = (((vm.ieltsReadingTest || {}).subQuestions || [])[0]);
+            if (!passage) { return; }
+            passage.type = visible ? 1 : 6;
+            vm.changeInTheProcessOfCreatingReadingTest();
+            vm.refreshBuilderValidation();
+        };
 
         vm.availableTopics = [];
         vm.selectedTestTopics = [];
@@ -1093,8 +1110,9 @@
 
                 result.totalQuestions += questionEntries.length;
 
-                if (!vm.isComprehensiveMode && !plainText(passage.question)) {
-                    addIssue(rule.name + ': chưa nhập nội dung bài đọc.', 'reading-builder-part-' + (partIndex + 1), partIndex);
+                if ((!vm.isComprehensiveMode || Number(passage.type) !== 6) && !plainText(passage.question)) {
+                    addIssue(vm.isComprehensiveMode ? 'Đang bật hiển thị văn bản nhưng chưa nhập nội dung.' :
+                        rule.name + ': chưa nhập nội dung bài đọc.', 'reading-builder-part-' + (partIndex + 1), partIndex);
                 }
                 if (!vm.isComprehensiveMode && !passage.type) {
                     addIssue(rule.name + ': chưa chọn dạng hiển thị bài đọc.', 'reading-builder-part-' + (partIndex + 1), partIndex);

@@ -162,12 +162,29 @@
         <div class="portlet light bordered">
             <div class="portlet-body">
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <div class="reading-builder-part-heading">
                             <div><span class="reading-builder-part-number">2</span><strong>{{vm.isComprehensiveMode ? 'Danh sách câu hỏi' : 'Part 1'}}</strong><small>{{vm.isComprehensiveMode ? vm.builderValidation.totalQuestions + ' câu' : (vm.isListeningMode ? 'Câu 1–10' : 'Câu 1–13')}}</small></div>
                             <div class="reading-builder-part-heading__actions">
                                 <span ng-class="{'is-complete': vm.builderValidation.parts[0].issueCount === 0}">{{vm.builderValidation.parts[0].count}}{{vm.isComprehensiveMode ? '' : '/' + (vm.isListeningMode ? 10 : 13)}} câu · {{vm.builderValidation.parts[0].issueCount}} lỗi</span>
                                 <button type="button" class="btn btn-default btn-sm" ng-click="vm.previewReadingTest(1)"><i class="fa fa-eye"></i> {{vm.isComprehensiveMode ? 'Xem trước' : 'Preview Part 1'}}</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 reading-builder-text-column">
+                        <div class="reading-comprehensive-column-title" ng-if="vm.isComprehensiveMode">
+                            <div>
+                                <i class="fa fa-file-text-o"></i>
+                                <span><strong>Văn bản</strong><small>Nội dung tham khảo cho danh sách câu hỏi</small></span>
+                            </div>
+                            <div class="reading-passage-visibility">
+                                <span>{{vm.isComprehensivePassageVisible() ? 'Hiện khi làm bài' : 'Ẩn khi làm bài'}}</span>
+                                <button type="button" class="reading-visibility-switch"
+                                        ng-class="{'is-on': vm.isComprehensivePassageVisible()}"
+                                        ng-click="vm.setComprehensivePassageVisibility(!vm.isComprehensivePassageVisible())"
+                                        aria-label="Bật hoặc tắt văn bản ở giao diện làm bài">
+                                    <span></span>
+                                </button>
                             </div>
                         </div>
                         <div class="row" style="margin-bottom: 5px">
@@ -180,7 +197,7 @@
                                     </ui-select-choices>
                                 </ui-select>
                             </div>
-                            <div class="col-md-9 text-left" style="margin-bottom: 10px">
+                            <div class="col-md-9 text-left" style="margin-bottom: 10px" ng-if="!vm.isComprehensiveMode">
                                 <button ng-show="vm.createPackage == false" class="btn btn-primary" data-ng-click="vm.startCreateQuestionForPassage1()"><i class="fa fa-arrow-right"></i> Bắt đầu tạo câu hỏi</button>
                                 <button class="btn btn-success" ng-click="vm.saveReadingTest()">SAVE</button>
                             </div>
@@ -192,7 +209,7 @@
                                 <input type="url" class="form-control" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ng-model="vm.ieltsReadingTest.subQuestions[0].pronounce" placeholder="https://.../listening-part-1.mp3">
                                 <small>Khi giao riêng Part 1, hệ thống phát audio này; để trống sẽ dùng audio chính.</small>
                             </div>
-                            <div class="col-md-12" ng-if="!vm.isComprehensiveMode">
+                            <div class="col-md-12">
                                 <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[0].question" />
                             </div>
                         </div>
@@ -205,7 +222,17 @@
 
                     <!-- add question -->
 
-                    <div class="col-md-6">
+                    <div class="col-md-6 reading-builder-question-column">
+                        <div class="reading-comprehensive-column-title" ng-if="vm.isComprehensiveMode">
+                            <div>
+                                <i class="fa fa-list-ol"></i>
+                                <span><strong>Câu hỏi</strong><small>Cuộn liên tục từ câu 1 đến câu {{vm.builderValidation.totalQuestions || 'n'}}</small></span>
+                            </div>
+                            <div>
+                                <button ng-show="vm.createPackage == false" class="btn btn-primary btn-sm" data-ng-click="vm.startCreateQuestionForPassage1()"><i class="fa fa-arrow-right"></i> Bắt đầu tạo</button>
+                                <button class="btn btn-success btn-sm" ng-click="vm.saveReadingTest()"><i class="fa fa-save"></i> Lưu</button>
+                            </div>
+                        </div>
 
                         <div class="col-md-12 reading-package-empty" ng-if="!vm.ieltsReadingTest.subQuestions[0].subQuestions.length">
                             <button type="button" class="btn btn-info" ng-click="vm.insertPackageAfter(0, -1)"><i class="fa fa-plus"></i> Thêm package đầu tiên</button>
@@ -2719,14 +2746,103 @@
         margin-top: 10px;
     }
 
-    .is-comprehensive-builder #reading-builder-part-1 > .portlet > .portlet-body > .row > .col-md-6 {
-        width: 100%;
+    .is-comprehensive-builder #reading-builder-part-1 .reading-builder-package {
+        max-width: none;
     }
 
-    .is-comprehensive-builder #reading-builder-part-1 .reading-builder-package {
-        max-width: 1100px;
-        margin-right: auto;
-        margin-left: auto;
+    .is-comprehensive-builder .reading-builder-text-column,
+    .is-comprehensive-builder .reading-builder-question-column {
+        padding-top: 14px;
+    }
+
+    .is-comprehensive-builder .reading-builder-text-column {
+        border-right: 1px solid #dfe6ee;
+    }
+
+    .reading-comprehensive-column-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 54px;
+        margin-bottom: 12px;
+        padding: 10px 12px;
+        border: 1px solid #dce5ef;
+        border-radius: 8px;
+        background: #f8fbfd;
+    }
+
+    .reading-comprehensive-column-title > div {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+    }
+
+    .reading-comprehensive-column-title > div > i {
+        color: #169b8d;
+        font-size: 20px;
+    }
+
+    .reading-comprehensive-column-title span strong,
+    .reading-comprehensive-column-title span small {
+        display: block;
+    }
+
+    .reading-comprehensive-column-title span small {
+        margin-top: 2px;
+        color: #718096;
+        font-size: 11px;
+    }
+
+    .reading-passage-visibility > span {
+        color: #526173;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .reading-visibility-switch {
+        position: relative;
+        width: 46px;
+        height: 24px;
+        padding: 0;
+        border: 0;
+        border-radius: 999px;
+        outline: 0;
+        background: #aeb8c5;
+        transition: background .18s ease;
+    }
+
+    .reading-visibility-switch > span {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, .24);
+        transition: transform .18s ease;
+    }
+
+    .reading-visibility-switch.is-on {
+        background: #169b8d;
+    }
+
+    .reading-visibility-switch.is-on > span {
+        transform: translateX(22px);
+    }
+
+    @media (max-width: 991px) {
+        .is-comprehensive-builder .reading-builder-text-column {
+            border-right: 0;
+            border-bottom: 1px solid #dfe6ee;
+        }
+
+        .reading-comprehensive-column-title {
+            align-items: flex-start;
+            flex-direction: column;
+        }
     }
 
     .is-comprehensive-builder .reading-builder-part-number,

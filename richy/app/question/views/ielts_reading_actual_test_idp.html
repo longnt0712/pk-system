@@ -181,7 +181,7 @@
 
                 <div class="portlet bg-white bordered idp-workspace" ng-show="vm.passageNumber == 1">
                 <nav class="idp-question-stepper"
-                     ng-hide="vm.passageNumber == 4"
+                     ng-hide="vm.passageNumber == 4 || vm.isComprehensiveRoute"
                      aria-label="Question navigation">
                     <button type="button"
                             class="idp-question-step-button is-back"
@@ -606,7 +606,7 @@
 
                 <div class="portlet bg-white bordered idp-workspace" ng-show="vm.passageNumber == 2">
                 <nav class="idp-question-stepper"
-                     ng-hide="vm.passageNumber == 4"
+                     ng-hide="vm.passageNumber == 4 || vm.isComprehensiveRoute"
                      aria-label="Question navigation">
                     <button type="button"
                             class="idp-question-step-button is-back"
@@ -1002,7 +1002,7 @@
 
                 <div class="portlet bg-white bordered idp-workspace" ng-show="vm.passageNumber == 3">
                 <nav class="idp-question-stepper"
-                     ng-hide="vm.passageNumber == 4"
+                     ng-hide="vm.passageNumber == 4 || vm.isComprehensiveRoute"
                      aria-label="Question navigation">
                     <button type="button"
                             class="idp-question-step-button is-back"
