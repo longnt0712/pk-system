@@ -124,7 +124,7 @@ public class QuestionServiceImpl implements QuestionService {
 			}
 			
 		}
-		
+
 		QuestionType questionType = null;
 		if(searchDto.getQuestionType() != null && searchDto.getQuestionType().getId() !=null) {
 			questionType = questionTypeRepository.getOne(searchDto.getQuestionType().getId());
@@ -189,7 +189,7 @@ public class QuestionServiceImpl implements QuestionService {
 			q.setParameter("ids", ids);
 			qCount.setParameter("ids", ids);
 		}
-	
+
 		if(questionType != null && questionType.getId() != null) {
 			q.setParameter("questionTypeId", questionType.getId());
 			qCount.setParameter("questionTypeId", questionType.getId());
@@ -311,7 +311,7 @@ public class QuestionServiceImpl implements QuestionService {
 			}
 			
 		}
-		
+
 		QuestionType questionType = null;
 		if(searchDto.getQuestionType() != null && searchDto.getQuestionType().getId() !=null) {
 			questionType = questionTypeRepository.getOne(searchDto.getQuestionType().getId());
@@ -373,7 +373,7 @@ public class QuestionServiceImpl implements QuestionService {
 			q.setParameter("ids", ids);
 			qCount.setParameter("ids", ids);
 		}
-	
+
 		if(questionType != null && questionType.getId() != null) {
 			q.setParameter("questionTypeId", questionType.getId());
 			qCount.setParameter("questionTypeId", questionType.getId());
@@ -510,6 +510,23 @@ public class QuestionServiceImpl implements QuestionService {
 			}
 			
 		}
+
+		boolean hasTopicRelationFilter = searchDto.getTopicOwnerUserId() != null
+				|| searchDto.getTopicCategoryId() != null
+				|| searchDto.getTopicId() != null;
+		if (hasTopicRelationFilter) {
+			whereClause += " and exists (select qt.id from QuestionTopic qt where qt.question.id = s.id ";
+			if (searchDto.getTopicOwnerUserId() != null) {
+				whereClause += "and qt.topic.user.id = :topicOwnerUserId ";
+			}
+			if (searchDto.getTopicCategoryId() != null) {
+				whereClause += "and qt.topic.topicCategory.id = :topicCategoryId ";
+			}
+			if (searchDto.getTopicId() != null) {
+				whereClause += "and qt.topic.id = :filterTopicId ";
+			}
+			whereClause += ") ";
+		}
 		
 		QuestionType questionType = null;
 		if(searchDto.getQuestionType() != null && searchDto.getQuestionType().getId() !=null) {
@@ -569,6 +586,19 @@ public class QuestionServiceImpl implements QuestionService {
 		
 		Query q = manager.createQuery(sql, QuestionForTestsDto.class);
 		Query qCount = manager.createQuery(sqlCount);
+
+		if (searchDto.getTopicOwnerUserId() != null) {
+			q.setParameter("topicOwnerUserId", searchDto.getTopicOwnerUserId());
+			qCount.setParameter("topicOwnerUserId", searchDto.getTopicOwnerUserId());
+		}
+		if (searchDto.getTopicCategoryId() != null) {
+			q.setParameter("topicCategoryId", searchDto.getTopicCategoryId());
+			qCount.setParameter("topicCategoryId", searchDto.getTopicCategoryId());
+		}
+		if (searchDto.getTopicId() != null) {
+			q.setParameter("filterTopicId", searchDto.getTopicId());
+			qCount.setParameter("filterTopicId", searchDto.getTopicId());
+		}
 		
 		Long numberOfWords = (long) 0;
 		if(searchDto.getUserId() != null) {

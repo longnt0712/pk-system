@@ -310,6 +310,7 @@
         };
 
         var DEFAULT_TOPIC_SOURCE_ID = 26;
+        var DEFAULT_TOPIC_CATEGORY_NAME = 'GRADE 6';
         var builderTopicRequestId = 0;
         var catalogTopicRequestId = 0;
 
@@ -373,6 +374,16 @@
             return matched;
         }
 
+        function defaultTopicCategory(categories) {
+            var matched = null;
+            angular.forEach(categories || [], function (category) {
+                if (!matched && category && String(category.name || '').trim().toUpperCase() === DEFAULT_TOPIC_CATEGORY_NAME) {
+                    matched = category;
+                }
+            });
+            return matched;
+        }
+
         function loadAllTopicsForSource(source, requestId, onSuccess, onFailure) {
             if (!source || source.id == null) {
                 onSuccess([]);
@@ -404,7 +415,12 @@
                 if (completedRequestId !== builderTopicRequestId) { return; }
                 vm.builderSourceTopics = topics;
                 vm.builderTopicCategories = topicCategoriesFromTopics(topics);
-                if (preferredCategoryId != null) { setBuilderCategory(preferredCategoryId); }
+                if (preferredCategoryId != null) {
+                    setBuilderCategory(preferredCategoryId);
+                } else {
+                    vm.builderTopicCategory = defaultTopicCategory(vm.builderTopicCategories);
+                    vm.availableTopics = topicsForCategory(vm.builderSourceTopics, vm.builderTopicCategory);
+                }
                 vm.builderTopicsLoading = false;
                 if (!topics.length) { vm.builderTopicsError = 'Nguồn này chưa có topic để chọn.'; }
             }, function (failedRequestId) {
@@ -452,6 +468,8 @@
                 if (completedRequestId !== catalogTopicRequestId) { return; }
                 vm.catalogSourceTopics = topics;
                 vm.catalogTopicCategories = topicCategoriesFromTopics(topics);
+                vm.catalogTopicCategory = defaultTopicCategory(vm.catalogTopicCategories);
+                vm.catalogTopics = topicsForCategory(vm.catalogSourceTopics, vm.catalogTopicCategory);
                 vm.catalogTopicsLoading = false;
                 if (!topics.length) { vm.catalogTopicsError = 'Nguồn này chưa có topic.'; }
                 vm.applyCatalogTopicFilter();
@@ -471,11 +489,10 @@
 
         vm.applyCatalogTopicFilter = function () {
             if (!vm.isComprehensiveMode) { return; }
-            var filterTopics = vm.catalogTopic ? [vm.catalogTopic] :
-                (vm.catalogTopicCategory ? vm.catalogTopics : vm.catalogSourceTopics);
-            vm.searchDto.questionTopics = (filterTopics.length ? filterTopics : [{id: -1}]).map(function (topic) {
-                return {topic: {id: topic.id, name: topic.name}};
-            });
+            vm.searchDto.questionTopics = [];
+            vm.searchDto.topicOwnerUserId = vm.catalogTopicSource ? vm.catalogTopicSource.id : null;
+            vm.searchDto.topicCategoryId = vm.catalogTopicCategory ? vm.catalogTopicCategory.id : null;
+            vm.searchDto.topicId = vm.catalogTopic ? vm.catalogTopic.id : null;
             vm.searchDto.pageIndex = 1;
             vm.getPageCreateIELTSReadingTest();
         };

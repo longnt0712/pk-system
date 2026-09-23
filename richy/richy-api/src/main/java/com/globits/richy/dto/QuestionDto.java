@@ -67,7 +67,10 @@ public class QuestionDto implements Serializable  {
 	
 	private UserDto user;
 	
-	private Long userId; 
+	private Long userId;
+	private Long topicOwnerUserId;
+	private Long topicCategoryId;
+	private Long topicId;
 	
 	private List<QuestionDto> questions = new ArrayList<QuestionDto>(); 
 	private int numberOfAnswers = 4;
@@ -138,6 +141,24 @@ public class QuestionDto implements Serializable  {
 	}
 	public void setUserId(Long userId) {
 		this.userId = userId;
+	}
+	public Long getTopicOwnerUserId() {
+		return topicOwnerUserId;
+	}
+	public void setTopicOwnerUserId(Long topicOwnerUserId) {
+		this.topicOwnerUserId = topicOwnerUserId;
+	}
+	public Long getTopicCategoryId() {
+		return topicCategoryId;
+	}
+	public void setTopicCategoryId(Long topicCategoryId) {
+		this.topicCategoryId = topicCategoryId;
+	}
+	public Long getTopicId() {
+		return topicId;
+	}
+	public void setTopicId(Long topicId) {
+		this.topicId = topicId;
 	}
 	public UserDto getUser() {
 		return user;

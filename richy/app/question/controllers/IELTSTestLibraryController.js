@@ -48,6 +48,7 @@
             testFormat: vm.isComprehensiveMode ? 'COMPREHENSIVE' : null
         };
         var DEFAULT_TOPIC_SOURCE_ID = 26;
+        var DEFAULT_TOPIC_CATEGORY_NAME = 'GRADE 6';
         var topicFilterRequestId = 0;
         var testRequestId = 0;
 
@@ -94,6 +95,16 @@
             });
         }
 
+        function defaultTopicCategory(categories) {
+            var matched = null;
+            angular.forEach(categories || [], function (category) {
+                if (!matched && category && String(category.name || '').trim().toUpperCase() === DEFAULT_TOPIC_CATEGORY_NAME) {
+                    matched = category;
+                }
+            });
+            return matched;
+        }
+
         vm.loadTopicSource = function () {
             if (!vm.isComprehensiveMode) { return; }
             var requestId = ++topicFilterRequestId;
@@ -109,6 +120,8 @@
                 if (requestId !== topicFilterRequestId) { return; }
                 vm.sourceTopics = (data && data.content) || [];
                 vm.topicCategories = topicCategoriesFromTopics(vm.sourceTopics);
+                vm.selectedTopicCategory = defaultTopicCategory(vm.topicCategories);
+                vm.topics = topicsForCategory(vm.sourceTopics, vm.selectedTopicCategory);
                 if (!vm.sourceTopics.length) { vm.topicFiltersError = 'Nguồn này chưa có topic.'; }
                 vm.topicFiltersLoading = false;
                 vm.applyTopicFilter();
@@ -128,11 +141,10 @@
 
         vm.applyTopicFilter = function () {
             if (!vm.isComprehensiveMode) { return; }
-            var filterTopics = vm.selectedTopic ? [vm.selectedTopic] :
-                (vm.selectedTopicCategory ? vm.topics : vm.sourceTopics);
-            vm.searchDto.questionTopics = (filterTopics.length ? filterTopics : [{id: -1}]).map(function (topic) {
-                return {topic: {id: topic.id, name: topic.name}};
-            });
+            vm.searchDto.questionTopics = [];
+            vm.searchDto.topicOwnerUserId = vm.selectedTopicSource ? vm.selectedTopicSource.id : null;
+            vm.searchDto.topicCategoryId = vm.selectedTopicCategory ? vm.selectedTopicCategory.id : null;
+            vm.searchDto.topicId = vm.selectedTopic ? vm.selectedTopic.id : null;
             vm.searchDto.pageIndex = 1;
             vm.loadTests();
         };
