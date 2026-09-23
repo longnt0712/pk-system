@@ -47,6 +47,95 @@
             listeningTest: vm.isComprehensiveMode ? null : vm.isListeningMode,
             testFormat: vm.isComprehensiveMode ? 'COMPREHENSIVE' : null
         };
+        var DEFAULT_TOPIC_SOURCE_ID = 26;
+        var topicFilterRequestId = 0;
+        var testRequestId = 0;
+
+        vm.topicSources = [];
+        vm.selectedTopicSource = null;
+        vm.selectedTopicCategory = null;
+        vm.selectedTopic = null;
+        vm.sourceTopics = [];
+        vm.topicCategories = [];
+        vm.topics = [];
+        vm.topicFiltersLoading = false;
+        vm.topicFiltersError = '';
+
+        function buildTopicSources() {
+            var sources = [{id: DEFAULT_TOPIC_SOURCE_ID, name: 'EM YÊU INH LÍCH'}];
+            var currentUserId = vm.currentUser && vm.currentUser.id;
+            if (currentUserId != null && String(currentUserId) !== String(DEFAULT_TOPIC_SOURCE_ID)) {
+                sources.push({id: currentUserId, name: 'TỪ CỦA TÔI'});
+            } else if (currentUserId != null) {
+                sources[0].name = 'EM YÊU INH LÍCH — TỪ CỦA TÔI';
+            }
+            return sources;
+        }
+
+        function topicCategoriesFromTopics(topics) {
+            var categories = [];
+            var seen = {};
+            angular.forEach(topics || [], function (topic) {
+                var category = topic && topic.topicCategory;
+                if (!category || category.id == null || seen[String(category.id)]) { return; }
+                seen[String(category.id)] = true;
+                categories.push(category);
+            });
+            return categories.sort(function (left, right) {
+                return String(left.name || '').localeCompare(String(right.name || ''));
+            });
+        }
+
+        function topicsForCategory(topics, category) {
+            if (!category || category.id == null) { return []; }
+            return (topics || []).filter(function (topic) {
+                return topic && topic.topicCategory &&
+                    String(topic.topicCategory.id) === String(category.id);
+            });
+        }
+
+        vm.loadTopicSource = function () {
+            if (!vm.isComprehensiveMode) { return; }
+            var requestId = ++topicFilterRequestId;
+            vm.topicFiltersLoading = true;
+            vm.topicFiltersError = '';
+            vm.selectedTopicCategory = null;
+            vm.selectedTopic = null;
+            vm.sourceTopics = [];
+            vm.topicCategories = [];
+            vm.topics = [];
+
+            service.getTopicsForGames({userId: vm.selectedTopicSource && vm.selectedTopicSource.id}, 1, 10000000).then(function (data) {
+                if (requestId !== topicFilterRequestId) { return; }
+                vm.sourceTopics = (data && data.content) || [];
+                vm.topicCategories = topicCategoriesFromTopics(vm.sourceTopics);
+                if (!vm.sourceTopics.length) { vm.topicFiltersError = 'Nguồn này chưa có topic.'; }
+                vm.topicFiltersLoading = false;
+                vm.applyTopicFilter();
+            }, function () {
+                if (requestId !== topicFilterRequestId) { return; }
+                vm.topicFiltersLoading = false;
+                vm.topicFiltersError = 'Không tải được danh sách topic.';
+                vm.applyTopicFilter();
+            });
+        };
+
+        vm.topicCategoryChanged = function () {
+            vm.selectedTopic = null;
+            vm.topics = topicsForCategory(vm.sourceTopics, vm.selectedTopicCategory);
+            vm.applyTopicFilter();
+        };
+
+        vm.applyTopicFilter = function () {
+            if (!vm.isComprehensiveMode) { return; }
+            var filterTopics = vm.selectedTopic ? [vm.selectedTopic] :
+                (vm.selectedTopicCategory ? vm.topics : vm.sourceTopics);
+            vm.searchDto.questionTopics = (filterTopics.length ? filterTopics : [{id: -1}]).map(function (topic) {
+                return {topic: {id: topic.id, name: topic.name}};
+            });
+            vm.searchDto.pageIndex = 1;
+            vm.loadTests();
+        };
 
         function draftSavedAt(draft, serverSavedAt) {
             return new Date((draft || {}).savedAt || (draft || {}).updatedAt || serverSavedAt || 0).getTime() || 0;
@@ -122,17 +211,23 @@
         };
 
         vm.loadTests = function () {
+            var requestId = ++testRequestId;
             vm.loading = true;
             blockUI.start();
             service.getPageForTests(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
+                if (requestId !== testRequestId) { return; }
+                data = data || {content: [], totalElements: 0};
                 vm.ieltsReadingTests = data.content || [];
                 vm.totalItems = Number(data.totalElements) || 0;
             }, function () {
+                if (requestId !== testRequestId) { return; }
                 vm.ieltsReadingTests = [];
                 vm.totalItems = 0;
             }).finally(function () {
-                vm.loading = false;
-                blockUI.stop();
+                if (requestId === testRequestId) {
+                    vm.loading = false;
+                    blockUI.stop();
+                }
             });
         };
 
@@ -162,6 +257,12 @@
         });
 
         vm.refreshLearningProgress();
-        vm.loadTests();
+        if (vm.isComprehensiveMode) {
+            vm.topicSources = buildTopicSources();
+            vm.selectedTopicSource = vm.topicSources[0] || null;
+            vm.loadTopicSource();
+        } else {
+            vm.loadTests();
+        }
     }
 })();

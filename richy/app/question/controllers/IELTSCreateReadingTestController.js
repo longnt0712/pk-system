@@ -309,22 +309,192 @@
             vm.refreshBuilderValidation();
         };
 
+        var DEFAULT_TOPIC_SOURCE_ID = 26;
+        var builderTopicRequestId = 0;
+        var catalogTopicRequestId = 0;
+
+        vm.topicSources = [];
+        vm.builderTopicSource = null;
+        vm.builderTopicCategory = null;
+        vm.builderTopicCategories = [];
+        vm.builderSourceTopics = [];
         vm.availableTopics = [];
         vm.selectedTestTopics = [];
-        vm.loadTestTopics = function () {
-            topicService.getPage({isShow: true}, 1, 10000).then(function (data) {
-                vm.availableTopics = (data && data.content) || [];
+        vm.builderTopicsLoading = false;
+        vm.builderTopicsError = '';
+
+        vm.catalogTopicSource = null;
+        vm.catalogTopicCategory = null;
+        vm.catalogTopic = null;
+        vm.catalogTopicCategories = [];
+        vm.catalogSourceTopics = [];
+        vm.catalogTopics = [];
+        vm.catalogTopicsLoading = false;
+        vm.catalogTopicsError = '';
+
+        function buildTopicSources() {
+            var sources = [{id: DEFAULT_TOPIC_SOURCE_ID, name: 'EM YÊU INH LÍCH'}];
+            var currentUserId = vm.currentUser && vm.currentUser.id;
+            if (currentUserId != null && String(currentUserId) !== String(DEFAULT_TOPIC_SOURCE_ID)) {
+                sources.push({id: currentUserId, name: 'TỪ CỦA TÔI'});
+            } else if (currentUserId != null) {
+                sources[0].name = 'EM YÊU INH LÍCH — TỪ CỦA TÔI';
+            }
+            return sources;
+        }
+
+        function topicCategoriesFromTopics(topics) {
+            var categories = [];
+            var seen = {};
+            angular.forEach(topics || [], function (topic) {
+                var category = topic && topic.topicCategory;
+                if (!category || category.id == null || seen[String(category.id)]) { return; }
+                seen[String(category.id)] = true;
+                categories.push(category);
+            });
+            return categories.sort(function (left, right) {
+                return String(left.name || '').localeCompare(String(right.name || ''));
+            });
+        }
+
+        function topicsForCategory(topics, category) {
+            if (!category || category.id == null) { return []; }
+            return (topics || []).filter(function (topic) {
+                return topic && topic.topicCategory &&
+                    String(topic.topicCategory.id) === String(category.id);
+            });
+        }
+
+        function findItemById(items, id) {
+            var matched = null;
+            angular.forEach(items || [], function (item) {
+                if (!matched && item && String(item.id) === String(id)) { matched = item; }
+            });
+            return matched;
+        }
+
+        function loadAllTopicsForSource(source, requestId, onSuccess, onFailure) {
+            if (!source || source.id == null) {
+                onSuccess([]);
+                return;
+            }
+            service.getTopicsForGames({userId: source.id}, 1, 10000000).then(function (data) {
+                onSuccess((data && data.content) || [], requestId);
             }, function () {
-                vm.availableTopics = [];
+                onFailure(requestId);
+            });
+        }
+
+        function setBuilderCategory(categoryId) {
+            vm.builderTopicCategory = findItemById(vm.builderTopicCategories, categoryId);
+            vm.availableTopics = topicsForCategory(vm.builderSourceTopics, vm.builderTopicCategory);
+        }
+
+        vm.loadBuilderTopicSource = function (keepSelectedTopics, preferredCategoryId) {
+            var requestId = ++builderTopicRequestId;
+            vm.builderTopicsLoading = true;
+            vm.builderTopicsError = '';
+            vm.builderSourceTopics = [];
+            vm.builderTopicCategories = [];
+            vm.builderTopicCategory = null;
+            vm.availableTopics = [];
+            if (!keepSelectedTopics) { vm.selectedTestTopics = []; }
+
+            loadAllTopicsForSource(vm.builderTopicSource, requestId, function (topics, completedRequestId) {
+                if (completedRequestId !== builderTopicRequestId) { return; }
+                vm.builderSourceTopics = topics;
+                vm.builderTopicCategories = topicCategoriesFromTopics(topics);
+                if (preferredCategoryId != null) { setBuilderCategory(preferredCategoryId); }
+                vm.builderTopicsLoading = false;
+                if (!topics.length) { vm.builderTopicsError = 'Nguồn này chưa có topic để chọn.'; }
+            }, function (failedRequestId) {
+                if (failedRequestId !== builderTopicRequestId) { return; }
+                vm.builderTopicsLoading = false;
+                vm.builderTopicsError = 'Không tải được topic. Bấm đổi nguồn để thử lại.';
             });
         };
+
+        vm.builderTopicSourceChanged = function () {
+            vm.loadBuilderTopicSource(false);
+            vm.syncTestTopics();
+        };
+
+        vm.builderTopicCategoryChanged = function () {
+            vm.selectedTestTopics = [];
+            vm.availableTopics = topicsForCategory(vm.builderSourceTopics, vm.builderTopicCategory);
+            vm.syncTestTopics();
+        };
+
+        vm.restoreBuilderTopicContext = function () {
+            var firstTopic = (vm.selectedTestTopics || [])[0];
+            if (!firstTopic) { return; }
+            var source = findItemById(vm.topicSources, firstTopic.userId) || vm.builderTopicSource;
+            var categoryId = firstTopic.topicCategory && firstTopic.topicCategory.id;
+            if (source && (!vm.builderTopicSource || String(source.id) !== String(vm.builderTopicSource.id))) {
+                vm.builderTopicSource = source;
+                vm.loadBuilderTopicSource(true, categoryId);
+                return;
+            }
+            setBuilderCategory(categoryId);
+        };
+
+        vm.loadCatalogTopicSource = function () {
+            var requestId = ++catalogTopicRequestId;
+            vm.catalogTopicsLoading = true;
+            vm.catalogTopicsError = '';
+            vm.catalogTopicCategory = null;
+            vm.catalogTopic = null;
+            vm.catalogSourceTopics = [];
+            vm.catalogTopicCategories = [];
+            vm.catalogTopics = [];
+
+            loadAllTopicsForSource(vm.catalogTopicSource, requestId, function (topics, completedRequestId) {
+                if (completedRequestId !== catalogTopicRequestId) { return; }
+                vm.catalogSourceTopics = topics;
+                vm.catalogTopicCategories = topicCategoriesFromTopics(topics);
+                vm.catalogTopicsLoading = false;
+                if (!topics.length) { vm.catalogTopicsError = 'Nguồn này chưa có topic.'; }
+                vm.applyCatalogTopicFilter();
+            }, function (failedRequestId) {
+                if (failedRequestId !== catalogTopicRequestId) { return; }
+                vm.catalogTopicsLoading = false;
+                vm.catalogTopicsError = 'Không tải được danh sách topic.';
+                vm.applyCatalogTopicFilter();
+            });
+        };
+
+        vm.catalogTopicCategoryChanged = function () {
+            vm.catalogTopic = null;
+            vm.catalogTopics = topicsForCategory(vm.catalogSourceTopics, vm.catalogTopicCategory);
+            vm.applyCatalogTopicFilter();
+        };
+
+        vm.applyCatalogTopicFilter = function () {
+            if (!vm.isComprehensiveMode) { return; }
+            var filterTopics = vm.catalogTopic ? [vm.catalogTopic] :
+                (vm.catalogTopicCategory ? vm.catalogTopics : vm.catalogSourceTopics);
+            vm.searchDto.questionTopics = (filterTopics.length ? filterTopics : [{id: -1}]).map(function (topic) {
+                return {topic: {id: topic.id, name: topic.name}};
+            });
+            vm.searchDto.pageIndex = 1;
+            vm.getPageCreateIELTSReadingTest();
+        };
+
         vm.syncTestTopics = function () {
             vm.ieltsReadingTest.questionTopics = (vm.selectedTestTopics || []).map(function (topic) {
                 return {topic: {id: topic.id, name: topic.name}};
             });
             vm.changeInTheProcessOfCreatingReadingTest();
         };
-        if (vm.isComprehensiveMode) { vm.loadTestTopics(); }
+        if (vm.isComprehensiveMode) {
+            vm.topicSources = buildTopicSources();
+            vm.builderTopicSource = vm.topicSources[0] || null;
+            vm.catalogTopicSource = vm.topicSources[0] || null;
+            $timeout(function () {
+                vm.loadBuilderTopicSource(false);
+                vm.loadCatalogTopicSource();
+            }, 0);
+        }
 
         vm.ieltsReadingTest = {
             questionType: {
@@ -342,20 +512,31 @@
             userId: vm.currentUser.id
         };  //create a new test
 
+        var testCatalogRequestId = 0;
         vm.getPageCreateIELTSReadingTest = function () {
+            var requestId = ++testCatalogRequestId;
             vm.searchDto.questionType = {id: 11};
             vm.searchDto.listeningTest = vm.isComprehensiveMode ? null : vm.isListeningMode;
             vm.searchDto.testFormat = vm.isComprehensiveMode ? 'COMPREHENSIVE' : null;
             blockUI.start();
             service.getPageForTests(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
+                if (requestId !== testCatalogRequestId) { return; }
                 blockUI.stop();
-                vm.ieltsReadingTests = data.content;
+                data = data || {content: [], totalElements: 0};
+                vm.ieltsReadingTests = data.content || [];
                 vm.refreshLearningProgress();
                 vm.bsTableControlCreateIELTSReadingTest.options.data = vm.ieltsReadingTests;
-                vm.bsTableControlCreateIELTSReadingTest.options.totalRows = data.totalElements;
+                vm.bsTableControlCreateIELTSReadingTest.options.totalRows = data.totalElements || 0;
                 // x.focus();
                 console.log(vm.ieltsReadingTests);
 
+            }, function () {
+                if (requestId !== testCatalogRequestId) { return; }
+                blockUI.stop();
+                vm.ieltsReadingTests = [];
+                vm.bsTableControlCreateIELTSReadingTest.options.data = [];
+                vm.bsTableControlCreateIELTSReadingTest.options.totalRows = 0;
+                toastr.error('Không tải được danh sách bài test.', 'Lỗi');
             });
         };
 
@@ -532,6 +713,7 @@
                 blockUI.stop();
                 vm.ieltsReadingTest = ensureComprehensiveBuilder(ensureListeningBuilderParts(data));
                 vm.selectedTestTopics = (vm.ieltsReadingTest.questionTopics || []).map(function (link) { return link.topic; });
+                if (vm.isComprehensiveMode) { vm.restoreBuilderTopicContext(); }
                 vm.getOrdinalNumber(data);
                 isHavingQuestions(vm.ieltsReadingTest);
 
@@ -1696,6 +1878,7 @@
             service.getOne(id).then(function (data) {
                 vm.ieltsReadingTest = ensureComprehensiveBuilder(ensureListeningBuilderParts(data));
                 vm.selectedTestTopics = (vm.ieltsReadingTest.questionTopics || []).map(function (link) { return link.topic; });
+                if (vm.isComprehensiveMode) { vm.restoreBuilderTopicContext(); }
                 vm.getOrdinalNumber(vm.ieltsReadingTest);
 
                 isHavingQuestions(vm.ieltsReadingTest);

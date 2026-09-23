@@ -38,14 +38,54 @@
                 <span class="reading-test-catalog__count">{{vm.totalItems}} bài test</span>
             </div>
 
-            <div class="reading-test-search">
-                <i class="fa fa-search" aria-hidden="true"></i>
-                <input ng-model="vm.searchDto.textSearch"
-                       ng-keyup="vm.enterSearchCode($event)"
-                       type="search"
-                       placeholder="Tìm bài test theo tên..."
-                       aria-label="Tìm bài test theo tên">
-                <button type="button" ng-click="vm.search()">Tìm kiếm</button>
+            <div class="reading-library-filter-bar" ng-class="{'has-topic-filters': vm.isComprehensiveMode}">
+                <div class="reading-test-search">
+                    <i class="fa fa-search" aria-hidden="true"></i>
+                    <input ng-model="vm.searchDto.textSearch"
+                           ng-keyup="vm.enterSearchCode($event)"
+                           type="search"
+                           placeholder="Tìm bài test theo tên..."
+                           aria-label="Tìm bài test theo tên">
+                    <button type="button" ng-click="vm.search()">Tìm kiếm</button>
+                </div>
+                <div class="reading-library-topic-filters" ng-if="vm.isComprehensiveMode">
+                    <div>
+                        <label><i class="fa fa-database"></i> Nguồn</label>
+                        <ui-select theme="bootstrap" ng-model="vm.selectedTopicSource" ng-change="vm.loadTopicSource()">
+                            <ui-select-match placeholder="Chọn nguồn...">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="source in vm.topicSources | filter:$select.search">
+                                <div ng-bind-html="source.name | highlight:$select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+                    <div>
+                        <label><i class="fa fa-folder-open-o"></i> Category</label>
+                        <ui-select theme="bootstrap" ng-model="vm.selectedTopicCategory"
+                                   ng-change="vm.topicCategoryChanged()"
+                                   ng-disabled="vm.topicFiltersLoading || !vm.topicCategories.length">
+                            <ui-select-match allow-clear="true" placeholder="Tất cả category...">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="category in vm.topicCategories | filter:$select.search">
+                                <div ng-bind-html="category.name | highlight:$select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+                    <div>
+                        <label><i class="fa fa-tag"></i> Topic</label>
+                        <ui-select theme="bootstrap" ng-model="vm.selectedTopic"
+                                   ng-change="vm.applyTopicFilter()"
+                                   ng-disabled="vm.topicFiltersLoading || !vm.selectedTopicCategory || !vm.topics.length">
+                            <ui-select-match allow-clear="true" placeholder="Tất cả topic...">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="topic in vm.topics | filter:$select.search">
+                                <div ng-bind-html="topic.name | highlight:$select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="reading-library-filter-status" ng-if="vm.isComprehensiveMode && (vm.topicFiltersLoading || vm.topicFiltersError)">
+                <span ng-if="vm.topicFiltersLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải toàn bộ category và topic...</span>
+                <span class="is-error" ng-if="vm.topicFiltersError && !vm.topicFiltersLoading"><i class="fa fa-exclamation-triangle"></i> {{vm.topicFiltersError}}</span>
             </div>
 
             <div class="reading-test-grid" ng-if="vm.ieltsReadingTests.length">
@@ -106,7 +146,27 @@
 
 <style>
     .ielts-test-library-page.is-comprehensive-library { --library-accent: #169b8d; --library-accent-2: #357fce; }
+    .reading-library-filter-bar.has-topic-filters { display: grid; grid-template-columns: minmax(320px, 1.2fr) minmax(620px, 1.8fr); align-items: end; gap: 16px; margin-bottom: 34px; }
+    .reading-library-filter-bar.has-topic-filters .reading-test-search { width: 100%; max-width: none; margin-bottom: 0; }
+    .reading-library-topic-filters { display: grid; grid-template-columns: .9fr 1fr 1.15fr; gap: 10px; }
+    .reading-library-topic-filters label { display: block; margin-bottom: 6px; color: #435477; font-size: 11px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
+    .reading-library-topic-filters label i { margin-right: 4px; color: var(--library-accent); }
+    .reading-library-topic-filters .ui-select-container,
+    .reading-library-topic-filters .ui-select-toggle { width: 100% !important; }
+    .reading-library-topic-filters .ui-select-toggle { min-height: 42px; padding-top: 10px; border-color: #d9e3f4; border-radius: 10px !important; color: #354665; background: #f8fbff; }
+    .reading-library-filter-status { margin: -24px 0 26px; color: #35788c; font-size: 12px; font-weight: 700; }
+    .reading-library-filter-status .is-error { color: #b45309; }
     .reading-test-card__topics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
     .reading-test-card__topics span { padding: 5px 8px; border-radius: 999px; color: var(--library-accent); background: #eef8f7; font-size: 11px; font-weight: 700; }
     .global-dark-mode .reading-test-card__topics span { background: #263442; }
+    .global-dark-mode .reading-library-topic-filters label { color: #d9e2f4; }
+    .global-dark-mode .reading-library-topic-filters .ui-select-toggle { border-color: #414a61; color: #fff; background: #202634; }
+    @media (max-width: 1200px) {
+        .reading-library-filter-bar.has-topic-filters { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 767px) {
+        .reading-library-topic-filters { grid-template-columns: 1fr; }
+        .reading-library-filter-bar.has-topic-filters { margin-bottom: 26px; }
+        .reading-library-filter-status { margin-top: -16px; }
+    }
 </style>

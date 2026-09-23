@@ -95,6 +95,10 @@ public class TopicDto implements Serializable{
 		super();
 		this.id = item.getId();
 		this.name = item.getName();
+		if(item.getUser() != null) {
+			this.userId = item.getUser().getId();
+			this.username = item.getUser().getUsername();
+		}
 		if(item.getTopicCategory() != null) {
 			this.topicCategory = new TopicCategoryDto(item.getTopicCategory());
 		}
@@ -108,7 +112,11 @@ public class TopicDto implements Serializable{
 	
 	public TopicDto(Topic item, boolean showContent) {
 		this.id = item.getId();
-		this.name = item.getName();	
+		this.name = item.getName();
+		if(item.getUser() != null) {
+			this.userId = item.getUser().getId();
+			this.username = item.getUser().getUsername();
+		}
 		if(showContent) {
 			this.contentHtml = item.getContentHtml();
 			this.content = item.getContent();

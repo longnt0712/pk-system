@@ -503,7 +503,8 @@ public class QuestionServiceImpl implements QuestionService {
 				if(ids != null && ids.size() > 0) {
 					whereClause += " and (s.id in :ids) ";
 				} else {
-					return null;
+					return new PageImpl<QuestionForTestsDto>(
+							new ArrayList<QuestionForTestsDto>(), pageable, 0L);
 				}
 				
 			}

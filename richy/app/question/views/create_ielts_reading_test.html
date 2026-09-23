@@ -38,7 +38,33 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-8 reading-admin-toolbar__actions">
+                    <div class="col-md-6 reading-catalog-topic-filters" ng-if="vm.isComprehensiveMode">
+                        <ui-select theme="bootstrap" ng-model="vm.catalogTopicSource" ng-change="vm.loadCatalogTopicSource()">
+                            <ui-select-match placeholder="Chọn nguồn..."><i class="fa fa-database"></i> {{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="source in vm.topicSources | filter:$select.search">
+                                <div ng-bind-html="source.name | highlight:$select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <ui-select theme="bootstrap" ng-model="vm.catalogTopicCategory"
+                                   ng-change="vm.catalogTopicCategoryChanged()"
+                                   ng-disabled="vm.catalogTopicsLoading || !vm.catalogTopicCategories.length">
+                            <ui-select-match allow-clear="true" placeholder="Tất cả category...">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="category in vm.catalogTopicCategories | filter:$select.search">
+                                <div ng-bind-html="category.name | highlight:$select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <ui-select theme="bootstrap" ng-model="vm.catalogTopic"
+                                   ng-change="vm.applyCatalogTopicFilter()"
+                                   ng-disabled="vm.catalogTopicsLoading || !vm.catalogTopicCategory || !vm.catalogTopics.length">
+                            <ui-select-match allow-clear="true" placeholder="Tất cả topic...">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-choices repeat="topic in vm.catalogTopics | filter:$select.search">
+                                <div ng-bind-html="topic.name | highlight:$select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                        <span class="reading-catalog-topic-status" ng-if="vm.catalogTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải toàn bộ topic...</span>
+                        <span class="reading-catalog-topic-status is-error" ng-if="vm.catalogTopicsError && !vm.catalogTopicsLoading">{{vm.catalogTopicsError}}</span>
+                    </div>
+                    <div class="reading-admin-toolbar__actions" ng-class="vm.isComprehensiveMode ? 'col-md-2' : 'col-md-8'">
                         <button type="button" class="btn btn-default" ng-if="!vm.isComprehensiveMode" ng-click="vm.downloadReadingImportTemplate()">
                             <i class="fa fa-file-excel-o"></i> Tải mẫu {{vm.testModeName}}
                         </button>
@@ -124,14 +150,49 @@
                         <label>{{vm.isComprehensiveMode ? 'Tên bài tập' : 'Tên bài thi'}} <span class="font-red">*</span></label>
                         <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" style="height: 50px" data-ng-model="vm.ieltsReadingTest.title" type="text" class="form-control" placeholder="{{vm.isComprehensiveMode ? 'Ví dụ: Bài ôn tập tuần 1' : 'Ví dụ: IELTS Academic ' + vm.testModeName + ' Test 01'}}" />
                         <div ng-if="vm.isComprehensiveMode" class="margin-top-10">
-                            <label>Topic gán cho bài <span class="font-red">*</span></label>
-                            <ui-select multiple theme="bootstrap" ng-model="vm.selectedTestTopics" ng-change="vm.syncTestTopics()" close-on-select="false">
-                                <ui-select-match placeholder="Chọn một hoặc nhiều topic...">{{$item.name}}</ui-select-match>
-                                <ui-select-choices repeat="topic in vm.availableTopics | propsFilter:{name:$select.search}">
-                                    <div ng-bind-html="topic.name | highlight:$select.search"></div>
-                                </ui-select-choices>
-                            </ui-select>
-                            <small class="reading-audio-mode-help"><i class="fa fa-tag"></i> Topic sẽ đi cùng bài và kết quả của người làm.</small>
+                            <div class="comprehensive-topic-assignment">
+                                <div class="comprehensive-topic-assignment__heading">
+                                    <div><i class="fa fa-tags"></i><span><strong>Phân loại bài tập</strong><small>Chọn lần lượt Nguồn → Category → Topic</small></span></div>
+                                    <b ng-if="vm.builderTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải tất cả topic...</b>
+                                </div>
+                                <div class="comprehensive-topic-assignment__grid">
+                                    <div>
+                                        <label>1. Nguồn <span class="font-red">*</span></label>
+                                        <ui-select theme="bootstrap" ng-model="vm.builderTopicSource" ng-change="vm.builderTopicSourceChanged()">
+                                            <ui-select-match placeholder="Chọn nguồn...">{{$select.selected.name}}</ui-select-match>
+                                            <ui-select-choices repeat="source in vm.topicSources | filter:$select.search">
+                                                <div ng-bind-html="source.name | highlight:$select.search"></div>
+                                            </ui-select-choices>
+                                        </ui-select>
+                                    </div>
+                                    <div>
+                                        <label>2. Category <span class="font-red">*</span></label>
+                                        <ui-select theme="bootstrap" ng-model="vm.builderTopicCategory"
+                                                   ng-change="vm.builderTopicCategoryChanged()"
+                                                   ng-disabled="vm.builderTopicsLoading || !vm.builderTopicCategories.length">
+                                            <ui-select-match placeholder="Chọn category...">{{$select.selected.name}}</ui-select-match>
+                                            <ui-select-choices repeat="category in vm.builderTopicCategories | filter:$select.search">
+                                                <div ng-bind-html="category.name | highlight:$select.search"></div>
+                                            </ui-select-choices>
+                                        </ui-select>
+                                    </div>
+                                    <div>
+                                        <label>3. Topic gán cho bài <span class="font-red">*</span></label>
+                                        <ui-select multiple theme="bootstrap" ng-model="vm.selectedTestTopics"
+                                                   ng-change="vm.syncTestTopics()" close-on-select="false"
+                                                   ng-disabled="vm.builderTopicsLoading || !vm.builderTopicCategory || !vm.availableTopics.length">
+                                            <ui-select-match placeholder="Chọn một hoặc nhiều topic...">{{$item.name}}</ui-select-match>
+                                            <ui-select-choices repeat="topic in vm.availableTopics | filter:$select.search">
+                                                <div ng-bind-html="topic.name | highlight:$select.search"></div>
+                                            </ui-select-choices>
+                                        </ui-select>
+                                    </div>
+                                </div>
+                                <div class="comprehensive-topic-assignment__footer">
+                                    <small ng-if="!vm.builderTopicsError"><i class="fa fa-info-circle"></i> Đã tải {{vm.builderSourceTopics.length}} topic từ nguồn đã chọn. Topic sẽ đi cùng bài và kết quả của người làm.</small>
+                                    <small class="is-error" ng-if="vm.builderTopicsError"><i class="fa fa-exclamation-triangle"></i> {{vm.builderTopicsError}}</small>
+                                </div>
+                            </div>
                         </div>
                         <div ng-if="vm.isListeningMode">
                             <label class="margin-top-10">Link audio chính <span class="font-red">*</span></label>
@@ -1386,6 +1447,11 @@
         background: linear-gradient(135deg, #0d9e91 0%, #237fc4 52%, #6258d9 100%);
     }
 
+    .is-comprehensive-builder .ielts-builder-mode-hero {
+        background: linear-gradient(135deg, #0f766e 0%, #167db0 42%, #5967dc 72%, #8253d8 100%);
+        box-shadow: 0 15px 36px rgba(43, 88, 154, .28);
+    }
+
     .ielts-builder-mode-hero:after {
         content: '';
         position: absolute;
@@ -1523,6 +1589,125 @@
         color: #8a5a00;
     }
 
+    .reading-catalog-topic-filters {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .reading-catalog-topic-filters .ui-select-container,
+    .reading-catalog-topic-filters .ui-select-toggle {
+        width: 100% !important;
+    }
+
+    .reading-catalog-topic-filters .ui-select-toggle {
+        min-height: 34px;
+        border-color: #d6def5;
+        border-radius: 7px !important;
+        color: #33446f;
+        background: #f8faff;
+    }
+
+    .reading-catalog-topic-status {
+        position: absolute;
+        top: 39px;
+        left: 15px;
+        z-index: 2;
+        color: #35708d;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .reading-catalog-topic-status.is-error {
+        color: #b45309;
+    }
+
+    .comprehensive-topic-assignment {
+        margin-top: 8px;
+        padding: 16px;
+        border: 1px solid #bcd9f2;
+        border-radius: 13px;
+        background: linear-gradient(145deg, #effbf8 0%, #f2f7ff 52%, #f8f3ff 100%);
+        box-shadow: 0 8px 22px rgba(54, 95, 157, .1);
+    }
+
+    .comprehensive-topic-assignment__heading,
+    .comprehensive-topic-assignment__heading > div {
+        display: flex;
+        align-items: center;
+    }
+
+    .comprehensive-topic-assignment__heading {
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+        color: #24426c;
+    }
+
+    .comprehensive-topic-assignment__heading > div {
+        gap: 10px;
+    }
+
+    .comprehensive-topic-assignment__heading > div > i {
+        display: grid;
+        width: 38px;
+        height: 38px;
+        place-items: center;
+        border-radius: 10px;
+        color: #fff;
+        background: linear-gradient(135deg, #13a087, #4775db);
+        font-size: 17px;
+    }
+
+    .comprehensive-topic-assignment__heading strong,
+    .comprehensive-topic-assignment__heading small {
+        display: block;
+    }
+
+    .comprehensive-topic-assignment__heading small {
+        margin-top: 2px;
+        color: #71809a;
+        font-weight: 500;
+    }
+
+    .comprehensive-topic-assignment__heading > b {
+        color: #28748a;
+        font-size: 11px;
+    }
+
+    .comprehensive-topic-assignment__grid {
+        display: grid;
+        grid-template-columns: .9fr 1fr 1.35fr;
+        gap: 12px;
+    }
+
+    .comprehensive-topic-assignment__grid label {
+        display: block;
+        margin-bottom: 6px;
+        color: #34476d;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .comprehensive-topic-assignment__grid .ui-select-toggle,
+    .comprehensive-topic-assignment__grid .ui-select-multiple {
+        min-height: 40px;
+        border-color: #cbd7ee;
+        border-radius: 8px !important;
+        background: rgba(255, 255, 255, .94);
+    }
+
+    .comprehensive-topic-assignment__footer {
+        margin-top: 10px;
+        color: #347187;
+        font-weight: 600;
+    }
+
+    .comprehensive-topic-assignment__footer .is-error {
+        color: #b45309;
+    }
+
     .reading-hidden-notice {
         display: flex;
         align-items: center;
@@ -1578,6 +1763,20 @@
             justify-content: flex-start;
             flex-wrap: wrap;
             margin-top: 10px;
+        }
+
+        .reading-catalog-topic-filters {
+            grid-template-columns: 1fr;
+            margin-top: 10px;
+        }
+
+        .reading-catalog-topic-status {
+            position: static;
+            grid-column: 1 / -1;
+        }
+
+        .comprehensive-topic-assignment__grid {
+            grid-template-columns: 1fr;
         }
     }
 
