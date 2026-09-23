@@ -51,6 +51,7 @@ import com.globits.richy.dto.EnrolmentClassMoveStudentDto;
 import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
 import com.globits.richy.dto.EnrolmentClassTeamDto;
 import com.globits.richy.dto.TopicForListAllDto;
+import com.globits.richy.dto.TopicDto;
 import com.globits.richy.dto.StudentAssignedTaskDto;
 import com.globits.richy.dto.QuestionForTestsDto;
 import com.globits.richy.dto.QuestionForGamesDto;
@@ -1444,9 +1445,15 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 	@Override
 	public List<QuestionForTestsDto> getAssignableIeltsTests() {
-		List<QuestionForTestsDto> result = new ArrayList<QuestionForTestsDto>();
-		for (Question question : questionRepository.findPublishedIeltsTestDomains()) {
-			result.add(new QuestionForTestsDto(question));
+		List<QuestionForTestsDto> result = questionRepository.findPublishedIeltsTests();
+		Map<Long, QuestionForTestsDto> byId = new HashMap<Long, QuestionForTestsDto>();
+		for (QuestionForTestsDto test : result) { byId.put(test.getId(), test); }
+		for (Object[] link : questionTopicRepository.findPublishedTestTopicIds()) {
+			if (link == null || link.length < 2 || link[0] == null || link[1] == null) { continue; }
+			QuestionForTestsDto test = byId.get((Long) link[0]);
+			if (test == null) { continue; }
+			TopicDto topic = new TopicDto(); topic.setId((Long) link[1]);
+			test.getTopics().add(topic);
 		}
 		return result;
 	}

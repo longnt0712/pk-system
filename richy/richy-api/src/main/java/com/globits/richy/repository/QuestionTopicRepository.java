@@ -32,4 +32,8 @@ public interface QuestionTopicRepository extends JpaRepository<QuestionTopic, Lo
 	        Long questionId,
 	        Long topicId
 	);
+
+	@Query("select qt.question.id, qt.topic.id from QuestionTopic qt "
+	        + "where qt.question.questionType.id = 11 and qt.question.status = 7")
+	List<Object[]> findPublishedTestTopicIds();
 }
