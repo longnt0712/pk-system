@@ -73,5 +73,9 @@ public class QuestionForTestsDto implements Serializable  {
 	public QuestionForTestsDto(Long id, String title, String pronounce, int status) {
 		this.id = id; this.title = title; this.pronounce = pronounce; this.status = status;
 	}
+	public QuestionForTestsDto(Long id, String title, String pronounce, int status, String testFormat) {
+		this.id = id; this.title = title; this.pronounce = pronounce; this.status = status;
+		this.testFormat = testFormat;
+	}
 
 }

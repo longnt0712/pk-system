@@ -542,11 +542,13 @@
                 };
 
                 if (kind === 'IELTS') {
+                    draft.testMode = payload.testMode;
                     draft.isListening = payload.isListening === true || payload.testMode === 'LISTENING' || /listening/i.test(draft.title);
                     draft.testId = payload.testId;
                     draft.sessionMode = payload.sessionMode || (draft.assignmentTaskId ? 'STUDY' : 'SERIOUS');
                     draft.assignmentPart = draft.assignmentPart || payload.passageNumber || null;
-                    draft.typeLabel = draft.isListening ? 'IELTS Listening' : 'IELTS Reading';
+                    draft.typeLabel = payload.testMode === 'COMPREHENSIVE' ? 'Bài tập tổng hợp'
+                        : (draft.isListening ? 'IELTS Listening' : 'IELTS Reading');
                     draft.progressLabel = 'Đã trả lời';
                     draft.progressValue = (Number(payload.answeredCount) || 0) + '/' + (Number(payload.totalQuestions) || 40) + ' câu';
                 } else if (kind === 'DAILY_VOCAB') {
@@ -598,12 +600,12 @@
             };
 
             vm.taskTypeLabel = function (task) {
-                var labels = {DAILY_VOCAB: 'Daily Vocab', DAILY_LISTENING: 'Daily Listening', IELTS_READING: 'IELTS Reading', IELTS_LISTENING: 'IELTS Listening', OTHER: 'Bài được giao'};
+                var labels = {DAILY_VOCAB: 'Daily Vocab', DAILY_LISTENING: 'Daily Listening', IELTS_READING: 'IELTS Reading', IELTS_LISTENING: 'IELTS Listening', COMPREHENSIVE: 'Bài tập tổng hợp', OTHER: 'Bài được giao'};
                 return labels[(task || {}).activityType] || 'Bài được giao';
             };
 
             vm.taskIcon = function (task) {
-                var icons = {DAILY_VOCAB: 'fa-language', DAILY_LISTENING: 'fa-headphones', IELTS_READING: 'fa-file-text-o', IELTS_LISTENING: 'fa-volume-up', OTHER: 'fa-bookmark'};
+                var icons = {DAILY_VOCAB: 'fa-language', DAILY_LISTENING: 'fa-headphones', IELTS_READING: 'fa-file-text-o', IELTS_LISTENING: 'fa-volume-up', COMPREHENSIVE: 'fa-pencil-square-o', OTHER: 'fa-bookmark'};
                 return icons[(task || {}).activityType] || 'fa-bookmark';
             };
 
@@ -621,8 +623,10 @@
                     $state.go('application.daily_vocab', params);
                 } else if (task.activityType === 'DAILY_LISTENING') {
                     $state.go('application.view', params);
-                } else if (task.ieltsTestId && (task.activityType === 'IELTS_READING' || task.activityType === 'IELTS_LISTENING')) {
-                    $state.go(task.activityType === 'IELTS_LISTENING' ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test', {ieltsReadingTestId: task.ieltsTestId, assignmentTaskId: task.taskId, assignmentPart: task.ieltsPart, sessionMode: 'STUDY'});
+                } else if (task.ieltsTestId && (task.activityType === 'IELTS_READING' || task.activityType === 'IELTS_LISTENING' || task.activityType === 'COMPREHENSIVE')) {
+                    $state.go(task.activityType === 'COMPREHENSIVE' ? 'application.comprehensive_actual_test'
+                        : (task.activityType === 'IELTS_LISTENING' ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test'),
+                        {ieltsReadingTestId: task.ieltsTestId, assignmentTaskId: task.taskId, assignmentPart: task.ieltsPart, sessionMode: 'STUDY'});
                 } else {
                     $state.go('application.englishClass');
                 }
@@ -639,7 +643,9 @@
                     try { $window.sessionStorage.setItem('daily-listening-dashboard-resume:v1:' + user.id, '1'); } catch (ignoreListeningFlag) {}
                     $state.go('application.view', {listFlashCard: 0, assignmentTaskId: draft.assignmentTaskId, assignmentTopicId: draft.assignmentTopicId, assignmentCategoryId: draft.assignmentCategoryId, assignmentSourceQuestionId: draft.assignmentSourceQuestionId});
                 } else if (draft.testId) {
-                    $state.go(draft.isListening ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test', {ieltsReadingTestId: draft.testId, assignmentTaskId: draft.assignmentTaskId, assignmentPart: draft.assignmentPart, sessionMode: draft.sessionMode});
+                    $state.go(draft.testMode === 'COMPREHENSIVE' ? 'application.comprehensive_actual_test'
+                        : (draft.isListening ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test'),
+                        {ieltsReadingTestId: draft.testId, assignmentTaskId: draft.assignmentTaskId, assignmentPart: draft.assignmentPart, sessionMode: draft.sessionMode});
                 }
             };
 

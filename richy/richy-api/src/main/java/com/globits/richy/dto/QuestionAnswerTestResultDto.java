@@ -94,6 +94,15 @@ public class QuestionAnswerTestResultDto implements Serializable{
 		String submittedAnswer = normalize(domain.getClientAnswer());
 		boolean hasSubmittedAnswer = submittedAnswer.length() > 0;
 
+		// Writing Task 1/2 are evaluated by their minimum word requirement.
+		// The threshold is deliberately strict: Task 1 must be over 150 words
+		// and Task 2 must be over 250 words.
+		if(type == 16 || type == 17) {
+			int requiredWords = type == 17 ? 250 : 150;
+			this.isCorrectTestResultDetail = countWords(domain.getClientAnswer()) > requiredWords;
+			return;
+		}
+
 		// Single-option modes. Matching Information (12) and Complete List of
 		// Words (13) and Sentence Endings (14) use the same persisted
 		// QuestionAnswer contract as Matching
@@ -161,6 +170,11 @@ public class QuestionAnswerTestResultDto implements Serializable{
 
 	private String normalize(String value) {
 		return value == null ? "" : value.trim();
+	}
+
+	private int countWords(String value) {
+		String normalized = normalize(value);
+		return normalized.isEmpty() ? 0 : normalized.split("\\s+").length;
 	}
 	
 	public class sortByOrdinalNumberQuestionAnswerTestResult implements Comparator<QuestionAnswerTestResultDto> {

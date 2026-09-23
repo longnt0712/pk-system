@@ -52,9 +52,9 @@
                     <div>
                         <label><i class="fa fa-database"></i> Nguồn</label>
                         <ui-select theme="bootstrap" ng-model="vm.selectedTopicSource" ng-change="vm.loadTopicSource()">
-                            <ui-select-match placeholder="Chọn nguồn...">{{$select.selected.name}}</ui-select-match>
+                            <ui-select-match placeholder="Chọn nguồn..."><span ng-bind="vm.topicSourceLabel($select.selected)"></span></ui-select-match>
                             <ui-select-choices repeat="source in vm.topicSources | filter:$select.search">
-                                <div ng-bind-html="source.name | highlight:$select.search"></div>
+                                <div ng-bind-html="vm.topicSourceLabel(source) | highlight:$select.search"></div>
                             </ui-select-choices>
                         </ui-select>
                     </div>

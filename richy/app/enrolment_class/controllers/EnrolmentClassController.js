@@ -1852,17 +1852,22 @@
 			}
 		};
 		vm.isIeltsTask = function (task) {
-			return !!task && (task.activityType === 'IELTS_READING' || task.activityType === 'IELTS_LISTENING');
+			return !!task && (task.activityType === 'IELTS_READING' || task.activityType === 'IELTS_LISTENING'
+				|| task.activityType === 'COMPREHENSIVE');
 		};
 		vm.ieltsPartsForTask = function () {
+			if (vm.taskEditor && vm.taskEditor.activityType === 'COMPREHENSIVE') { return [1]; }
 			return vm.taskEditor && vm.taskEditor.activityType === 'IELTS_LISTENING'
 				? [1, 2, 3, 4] : [1, 2, 3];
 		};
 		vm.ieltsTestsForTask = function () {
 			if (!vm.taskEditor) { return []; }
+			var comprehensive = vm.taskEditor.activityType === 'COMPREHENSIVE';
 			var listening = vm.taskEditor.activityType === 'IELTS_LISTENING';
 			return vm.assignableIeltsTests.filter(function (test) {
-				return listening === !!(test.pronounce && String(test.pronounce).trim());
+				var isComprehensive = test.testFormat === 'COMPREHENSIVE';
+				return comprehensive ? isComprehensive
+					: (!isComprehensive && listening === !!(test.pronounce && String(test.pronounce).trim()));
 			});
 		};
 		vm.taskTopics = function () {
@@ -1909,10 +1914,13 @@
 					|| Number(task.requiredAttempts) > 100)) {
 				toastr.warning('Số lần phải làm cần từ 1 đến 100.'); return;
 			}
-			var maximumIeltsPart = task.activityType === 'IELTS_LISTENING' ? 4 : 3;
+			var maximumIeltsPart = task.activityType === 'COMPREHENSIVE' ? 1
+				: (task.activityType === 'IELTS_LISTENING' ? 4 : 3);
 			if (vm.isIeltsTask(task) && (!task.ieltsTestId || !/^\d+$/.test(String(task.ieltsPart))
 					|| Number(task.ieltsPart) < 1 || Number(task.ieltsPart) > maximumIeltsPart)) {
-				toastr.warning('Hãy chọn đề IELTS và Part từ 1 đến ' + maximumIeltsPart + '.'); return;
+				toastr.warning(task.activityType === 'COMPREHENSIVE'
+					? 'Hãy chọn bài tập tổng hợp.'
+					: 'Hãy chọn đề IELTS và Part từ 1 đến ' + maximumIeltsPart + '.'); return;
 			}
 			if (task.activityType === 'DAILY_LISTENING' && task.topicId && !task.sourceQuestionId) {
 				toastr.warning('Hãy chọn bài nghe/Track cụ thể trong Topic.'); return;
@@ -1950,7 +1958,7 @@
 			task.sourceQuestionTitle = listeningItem ? listeningItem.question : '';
 			var ieltsTest = null;
 			angular.forEach(vm.assignableIeltsTests, function (item) { if (String(item.id) === String(task.ieltsTestId)) { ieltsTest = item; } });
-			if (vm.isIeltsTask(task) && !ieltsTest) { toastr.warning('Đề IELTS không còn tồn tại. Hãy chọn lại.'); return; }
+			if (vm.isIeltsTask(task) && !ieltsTest) { toastr.warning('Đề bài tập không còn tồn tại. Hãy chọn lại.'); return; }
 			task.ieltsTestTitle = ieltsTest ? ieltsTest.title : '';
 			task.studentProgress = scheduleTaskPayload(task).studentProgress;
 			delete task.showProgress; delete task.dueDateValue; delete task.categoryKey; delete task._confirmDelete; delete task.legacyDateOnly;

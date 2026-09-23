@@ -511,6 +511,7 @@ public class TestResultServiceImpl implements TestResultService {
 		boolean newResult = false;
         boolean passedDailyVocab=true;
         boolean passedDailyListening=false;
+        boolean passedComprehensive=true;
 
         // Retry is scoped to the authenticated student, never a client-supplied user.
         TestResult previousAttempt=findRetryAttempt(dto,modifiedUser);
@@ -534,6 +535,50 @@ public class TestResultServiceImpl implements TestResultService {
 			}
 			passedDailyListening = percentage > 85D;
 		}
+		if (Integer.valueOf(6).equals(dto.getTestType())) {
+			boolean writingTaskFound = false;
+			int writingWordTotal = 0;
+			Set<Long> expectedWritingQuestionIds = new HashSet<Long>();
+			Set<Long> submittedWritingQuestionIds = new HashSet<Long>();
+			Question sourceTest = dto.getSourceQuestionId() == null ? null : questionRepository.findOne(dto.getSourceQuestionId());
+			if (sourceTest != null && sourceTest.getSubQuestions() != null) {
+				for (Question part : sourceTest.getSubQuestions()) {
+					if (part == null || part.getSubQuestions() == null) { continue; }
+					for (Question questionPackage : part.getSubQuestions()) {
+						if (questionPackage == null || (questionPackage.getType() != 16 && questionPackage.getType() != 17)
+								|| questionPackage.getSubQuestions() == null) { continue; }
+						writingTaskFound = true;
+						for (Question writingQuestion : questionPackage.getSubQuestions()) {
+							if (writingQuestion != null && writingQuestion.getId() != null) {
+								expectedWritingQuestionIds.add(writingQuestion.getId());
+							}
+						}
+					}
+				}
+			}
+			if (dto.getQuestionAnswerTestResult() != null) {
+				for (QuestionAnswerTestResultDto result : dto.getQuestionAnswerTestResult()) {
+					QuestionAnswer answer = result == null || result.getQuestionAnswer() == null
+							|| result.getQuestionAnswer().getId() == null ? null
+							: questionAnswerRepository.findOne(result.getQuestionAnswer().getId());
+					Integer packageType = answer == null || answer.getQuestion() == null
+							|| answer.getQuestion().getParent() == null ? null : answer.getQuestion().getParent().getType();
+					if (Integer.valueOf(16).equals(packageType) || Integer.valueOf(17).equals(packageType)) {
+						writingTaskFound = true;
+						if (answer.getQuestion().getId() != null) { submittedWritingQuestionIds.add(answer.getQuestion().getId()); }
+						String submitted = result.getClientAnswer() == null ? "" : result.getClientAnswer().trim();
+						int wordCount = submitted.isEmpty() ? 0 : submitted.split("\\s+").length;
+						writingWordTotal += wordCount;
+						int threshold = Integer.valueOf(17).equals(packageType) ? 250 : 150;
+						if (wordCount <= threshold) { passedComprehensive = false; }
+					}
+				}
+			}
+			if (writingTaskFound) {
+				if (!submittedWritingQuestionIds.containsAll(expectedWritingQuestionIds)) { passedComprehensive = false; }
+				dto.setNumberOfWords(writingWordTotal);
+			}
+		}
 		
 		
 		if(dto.getId() != null) {
@@ -556,14 +601,17 @@ public class TestResultServiceImpl implements TestResultService {
 		} else if (dto.getCompletedPart() != null || dto.getAssignmentTaskId() != null) {
 			EnrolmentClassScheduleTask assignedTask = dto.getAssignmentTaskId() == null ? null
 					: scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
-			boolean ieltsType = Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType());
+			boolean ieltsType = Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType())
+					|| Integer.valueOf(6).equals(dto.getTestType());
 			boolean matchingType = assignedTask != null && ((Integer.valueOf(2).equals(dto.getTestType())
 					&& "IELTS_LISTENING".equals(assignedTask.getActivityType()))
-					|| (Integer.valueOf(4).equals(dto.getTestType()) && "IELTS_READING".equals(assignedTask.getActivityType())));
-			int maximumPart = Integer.valueOf(2).equals(dto.getTestType()) ? 4 : 3;
+					|| (Integer.valueOf(4).equals(dto.getTestType()) && "IELTS_READING".equals(assignedTask.getActivityType()))
+					|| (Integer.valueOf(6).equals(dto.getTestType()) && "COMPREHENSIVE".equals(assignedTask.getActivityType())));
+			int maximumPart = Integer.valueOf(6).equals(dto.getTestType()) ? 1
+					: (Integer.valueOf(2).equals(dto.getTestType()) ? 4 : 3);
 			if (!ieltsType || assignedTask == null || assignedTask.getIeltsTest() == null
 					|| !assignedTask.getIeltsTest().getId().equals(dto.getSourceQuestionId())
-					|| !dto.getCompletedPart().equals(assignedTask.getIeltsPart()) || !matchingType
+					|| dto.getCompletedPart() == null || !dto.getCompletedPart().equals(assignedTask.getIeltsPart()) || !matchingType
 					|| dto.getCompletedPart() < 1 || dto.getCompletedPart() > maximumPart
 					|| dto.getQuestionAnswerTestResult() == null || dto.getQuestionAnswerTestResult().isEmpty()) {
 				throw new IllegalArgumentException("Kết quả không khớp với đề IELTS và Part được giao.");
@@ -641,6 +689,8 @@ public class TestResultServiceImpl implements TestResultService {
                 ? (passedDailyVocab ? "SUCCESS" : "FAILED")
                 : Integer.valueOf(3).equals(dto.getTestType())
                     ? (passedDailyListening ? "SUCCESS" : "FAILED")
+					: Integer.valueOf(6).equals(dto.getTestType())
+						? (passedComprehensive ? "SUCCESS" : "FAILED")
                     : ((Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType()))
                             && dto.getCompletedPart() != null ? "SUCCESS" : null));
 		domain.setNumberOfWords(dto.getNumberOfWords());

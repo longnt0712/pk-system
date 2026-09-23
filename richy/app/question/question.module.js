@@ -383,7 +383,7 @@
             })
 
             .state('application.comprehensive_actual_test', {
-                url: '/comprehensive_test/:ieltsReadingTestId?sessionMode&startFresh',
+                url: '/comprehensive_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&sessionMode&startFresh',
                 templateUrl: 'question/views/ielts_reading_actual_test_idp.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'Bài tập tổng hợp'},
                 controller: 'IELTSReadingActualTestController as vm',

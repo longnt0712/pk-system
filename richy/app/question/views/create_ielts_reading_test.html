@@ -40,9 +40,9 @@
                     </div>
                     <div class="col-md-6 reading-catalog-topic-filters" ng-if="vm.isComprehensiveMode">
                         <ui-select theme="bootstrap" ng-model="vm.catalogTopicSource" ng-change="vm.loadCatalogTopicSource()">
-                            <ui-select-match placeholder="Chọn nguồn..."><i class="fa fa-database"></i> {{$select.selected.name}}</ui-select-match>
+                            <ui-select-match placeholder="Chọn nguồn..."><i class="fa fa-database"></i> <span ng-bind="vm.topicSourceLabel($select.selected)"></span></ui-select-match>
                             <ui-select-choices repeat="source in vm.topicSources | filter:$select.search">
-                                <div ng-bind-html="source.name | highlight:$select.search"></div>
+                                <div ng-bind-html="vm.topicSourceLabel(source) | highlight:$select.search"></div>
                             </ui-select-choices>
                         </ui-select>
                         <ui-select theme="bootstrap" ng-model="vm.catalogTopicCategory"
@@ -159,9 +159,9 @@
                                     <div>
                                         <label>1. Nguồn <span class="font-red">*</span></label>
                                         <ui-select theme="bootstrap" ng-model="vm.builderTopicSource" ng-change="vm.builderTopicSourceChanged()">
-                                            <ui-select-match placeholder="Chọn nguồn...">{{$select.selected.name}}</ui-select-match>
+                                            <ui-select-match placeholder="Chọn nguồn..."><span ng-bind="vm.topicSourceLabel($select.selected)"></span></ui-select-match>
                                             <ui-select-choices repeat="source in vm.topicSources | filter:$select.search">
-                                                <div ng-bind-html="source.name | highlight:$select.search"></div>
+                                                <div ng-bind-html="vm.topicSourceLabel(source) | highlight:$select.search"></div>
                                             </ui-select-choices>
                                         </ui-select>
                                     </div>
@@ -242,7 +242,9 @@
                                 <span>{{vm.isComprehensivePassageVisible() ? 'Hiện khi làm bài' : 'Ẩn khi làm bài'}}</span>
                                 <button type="button" class="reading-visibility-switch"
                                         ng-class="{'is-on': vm.isComprehensivePassageVisible()}"
+                                        ng-disabled="vm.hasWritingTaskPackage()"
                                         ng-click="vm.setComprehensivePassageVisibility(!vm.isComprehensivePassageVisible())"
+                                        title="{{vm.hasWritingTaskPackage() ? 'Writing Task luôn hiển thị đề bài' : ''}}"
                                         aria-label="Bật hoặc tắt văn bản ở giao diện làm bài">
                                     <span></span>
                                 </button>
@@ -252,7 +254,7 @@
                             <div class="col-md-3" ng-if="!vm.isComprehensiveMode">
                                 <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest()" data-ng-model="vm.ieltsReadingTest.subQuestions[0].type" sortable="true" close-on-select="true" style="width: 100% !important;">
                                     <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
-                                    <ui-select-choices repeat="type.id as type in vm.passageTypes | propsFilter: {name: $select.search}">
+                                    <ui-select-choices repeat="type.id as type in vm.passageTypes | propsFilter: {name: $select.search}" ui-disable-choice="type.legacy === true">
                                         <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
                                         <small>{{type.notice}}</small>
                                     </ui-select-choices>
@@ -311,7 +313,7 @@
                                 <div class="col-md-6">
                                     <ui-select ng-change="vm.onReadingPackageTypeChange(item, 0, $index)" data-ng-model="item.type" sortable="true" close-on-select="true" style="width: 100% !important;">
                                         <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
-                                        <ui-select-choices repeat="type.id as type in vm.questionPackageTypes | propsFilter: {name: $select.search}">
+                                        <ui-select-choices repeat="type.id as type in vm.questionPackageTypes | propsFilter: {name: $select.search}" ui-disable-choice="type.legacy === true">
                                             <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
                                             <small>{{type.notice}}</small>
                                         </ui-select-choices>
@@ -319,7 +321,16 @@
                                 </div>
                             </div>
 
-                            <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+                            <textarea ng-if="item.type != 16 && item.type != 17" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+
+                            <div class="reading-writing-task-builder-note" ng-if="item.type == 16 || item.type == 17">
+                                <i class="fa fa-pencil-square-o"></i>
+                                <div>
+                                    <strong>{{item.type == 17 ? 'Writing Task 2' : 'Writing Task 1'}}</strong>
+                                    <span>Nhập toàn bộ đề bài và tài liệu tham khảo ở cột <b>Văn bản</b> bên trái. Phần cấu hình bên phải đã được tạo tự động.</span>
+                                    <small>Bài làm phải trên {{item.type == 17 ? 250 : 150}} từ để được tính là đạt.</small>
+                                </div>
+                            </div>
 
                             <div class="reading-matching-names-builder" ng-if="(item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15) && item.subQuestions.length">
                                 <div class="reading-matching-names-builder__header">
@@ -452,9 +463,9 @@
                                 </div>
                             </div>
 
-                            <hr>
+                            <hr ng-if="item.type != 16 && item.type != 17">
                             <div class="row">
-                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13 && (item.type != 5 || $first)" style="margin-top: 20px;">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13 && item.type != 16 && item.type != 17 && (item.type != 5 || $first)" style="margin-top: 20px;">
                                     <div class="col-md-12">
                                         <div class="row">
                                             <div class="col-md-2">
@@ -552,7 +563,7 @@
                             <div class="col-md-3">
                                 <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest()" data-ng-model="vm.ieltsReadingTest.subQuestions[1].type" sortable="true" close-on-select="true" style="width: 100% !important;">
                                     <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
-                                    <ui-select-choices repeat="type.id as type in vm.passageTypes | propsFilter: {name: $select.search}">
+                                    <ui-select-choices repeat="type.id as type in vm.passageTypes | propsFilter: {name: $select.search}" ui-disable-choice="type.legacy === true">
                                         <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
                                         <small>{{type.notice}}</small>
                                     </ui-select-choices>
@@ -597,7 +608,7 @@
                                 <div class="col-md-6">
                                     <ui-select ng-change="vm.onReadingPackageTypeChange(item, 1, $index)" data-ng-model="item.type" sortable="true" close-on-select="true" style="width: 100% !important;">
                                         <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
-                                        <ui-select-choices repeat="type.id as type in vm.questionPackageTypes | propsFilter: {name: $select.search}">
+                                        <ui-select-choices repeat="type.id as type in vm.questionPackageTypes | propsFilter: {name: $select.search}" ui-disable-choice="type.legacy === true">
                                             <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
                                             <small>{{type.notice}}</small>
                                         </ui-select-choices>
@@ -834,7 +845,7 @@
                             <div class="col-md-3">
                                 <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest()" data-ng-model="vm.ieltsReadingTest.subQuestions[2].type" sortable="true" close-on-select="true" style="width: 100% !important;">
                                     <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
-                                    <ui-select-choices repeat="type.id as type in vm.passageTypes | propsFilter: {name: $select.search}">
+                                    <ui-select-choices repeat="type.id as type in vm.passageTypes | propsFilter: {name: $select.search}" ui-disable-choice="type.legacy === true">
                                         <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
                                         <small>{{type.notice}}</small>
                                     </ui-select-choices>
@@ -874,7 +885,7 @@
                                 <div class="col-md-6">
                                     <ui-select ng-change="vm.onReadingPackageTypeChange(item, 2, $index)" data-ng-model="item.type" sortable="true" close-on-select="true" style="width: 100% !important;">
                                         <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
-                                        <ui-select-choices repeat="type.id as type in vm.questionPackageTypes | propsFilter: {name: $select.search}">
+                                        <ui-select-choices repeat="type.id as type in vm.questionPackageTypes | propsFilter: {name: $select.search}" ui-disable-choice="type.legacy === true">
                                             <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
                                             <small>{{type.notice}}</small>
                                         </ui-select-choices>
@@ -1094,7 +1105,7 @@
                             <div class="col-md-3" ng-if="!vm.isComprehensiveMode">
                                 <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest()" data-ng-model="vm.ieltsReadingTest.subQuestions[3].type" sortable="true" close-on-select="true" style="width: 100% !important;">
                                     <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
-                                    <ui-select-choices repeat="type.id as type in vm.passageTypes | propsFilter: {name: $select.search}">
+                                    <ui-select-choices repeat="type.id as type in vm.passageTypes | propsFilter: {name: $select.search}" ui-disable-choice="type.legacy === true">
                                         <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
                                         <small>{{type.notice}}</small>
                                     </ui-select-choices>
@@ -1134,7 +1145,7 @@
                                 <div class="col-md-6">
                                     <ui-select ng-change="vm.onReadingPackageTypeChange(item, 3, $index)" data-ng-model="item.type" sortable="true" close-on-select="true" style="width: 100% !important;">
                                         <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
-                                        <ui-select-choices repeat="type.id as type in vm.questionPackageTypes | propsFilter: {name: $select.search}">
+                                        <ui-select-choices repeat="type.id as type in vm.questionPackageTypes | propsFilter: {name: $select.search}" ui-disable-choice="type.legacy === true">
                                             <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>
                                             <small>{{type.notice}}</small>
                                         </ui-select-choices>
@@ -1177,7 +1188,7 @@
                                 </button>
                             </div>
 
-                            <div class="col-md-12" ng-show="item.isHaveChildren == false">
+                            <div class="col-md-12" ng-show="item.isHaveChildren == false && item.type != 16 && item.type != 17">
                                 <div class="col-md-12">
 
                                     <p style="font-size: 15px" class="bold">Configuring Answers for Questions</p>
@@ -2466,6 +2477,47 @@
         background: #eef2ff;
         color: #4857a7;
         font-weight: 600;
+    }
+
+    .reading-writing-task-builder-note {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        margin: 18px 0 8px;
+        padding: 18px;
+        border: 1px solid #a7d8cf;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #effcf8 0%, #f7f9ff 100%);
+        color: #173b4d;
+    }
+
+    .reading-writing-task-builder-note > i {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        background: #159f91;
+        color: #fff;
+        font-size: 20px;
+        line-height: 42px;
+        text-align: center;
+        flex: 0 0 auto;
+    }
+
+    .reading-writing-task-builder-note strong,
+    .reading-writing-task-builder-note span,
+    .reading-writing-task-builder-note small {
+        display: block;
+    }
+
+    .reading-writing-task-builder-note strong {
+        margin-bottom: 5px;
+        font-size: 17px;
+    }
+
+    .reading-writing-task-builder-note small {
+        margin-top: 8px;
+        color: #0c7d70;
+        font-weight: 700;
     }
 
     .reading-insert-gap-button {

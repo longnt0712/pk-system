@@ -233,13 +233,44 @@
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-style="vm.questionPaneStyle((vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6))" class="col-md-6 question-content idp-question-pane" ng-mousedown="closeNotes1()" id="passage-question-text-1">
+                            <div ng-style="vm.questionPaneStyle((vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll ng-mousedown="closeNotes1()" id="passage-question-text-1">
                                 <!--<span style="" my-draggable>Drag Me</span>-->
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-1 right_panel" class="row">
-                                        <p class="col-md-12 actual-test-font-global" id="question-have-image" compile="item.question" ng-if="item.type != 8 && item.type != 9">
+                                        <p class="col-md-12 actual-test-font-global" id="question-have-image" compile="item.question" ng-if="item.type != 8 && item.type != 9 && item.type != 16 && item.type != 17">
                                         </p>
+
+                                        <div class="writing-task-runtime actual-test-font-global" ng-if="item.type == 16 || item.type == 17">
+                                            <div class="writing-task-runtime__header">
+                                                <div>
+                                                    <strong>{{item.type == 17 ? 'Writing Task 2' : 'Writing Task 1'}}</strong>
+                                                    <span>Viết bài làm của bạn vào ô bên dưới.</span>
+                                                </div>
+                                                <span class="writing-task-runtime__requirement">Yêu cầu: trên {{vm.writingTaskWordTarget(item)}} từ</span>
+                                            </div>
+                                            <textarea class="writing-task-runtime__textarea"
+                                                      ng-model="item.subQuestions[0].questionAnswers[0].clientAnswer"
+                                                      ng-change="vm.updateWritingTaskResponse(item)"
+                                                      writing-task-clipboard="vm.onWritingTaskClipboardBlocked()"
+                                                      autocomplete="off"
+                                                      autocapitalize="sentences"
+                                                      spellcheck="true"
+                                                      placeholder="Bắt đầu viết bài tại đây..."></textarea>
+                                            <div class="writing-task-runtime__footer"
+                                                 ng-class="{'is-complete': vm.isWritingTaskWordTargetMet(item)}">
+                                                <span><strong>{{vm.countWritingTaskWords(item.subQuestions[0].questionAnswers[0].clientAnswer)}}</strong> từ</span>
+                                                <span ng-if="!vm.isWritingTaskWordTargetMet(item)">
+                                                    Chưa đạt · cần trên {{vm.writingTaskWordTarget(item)}} từ
+                                                </span>
+                                                <span ng-if="vm.isWritingTaskWordTargetMet(item)">
+                                                    <i class="fa fa-check-circle"></i> Đạt yêu cầu số từ
+                                                </span>
+                                            </div>
+                                            <small class="writing-task-runtime__clipboard-note">
+                                                <i class="fa fa-lock"></i> Không thể dán văn bản từ bên ngoài. Bạn vẫn có thể sao chép, cắt và dán nội dung trong chính ô bài làm.
+                                            </small>
+                                        </div>
                                         <div class="row" ng-if="item.type == 8">
                                             <table class="table">
                                                 <tbody>
@@ -410,7 +441,12 @@
 
                                     <div class="complete-list-runtime actual-test-font-global" ng-if="item.type == 13" ng-init="completeListPackage=item">
                                         <div class="complete-list-text" compile="item.completeListRenderedQuestion"></div>
-                                        <div class="complete-list-word-bank" aria-label="Answer choices to drag into the blanks">
+                                        <div class="complete-list-word-bank"
+                                             dnd-list="completeListPackage.completeListReturnList"
+                                             dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
+                                             touch-dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
+                                             aria-label="Answer choices to drag into the blanks">
+                                            <small class="complete-list-word-bank__hint">Kéo đáp án vào ô; kéo đáp án về đây hoặc bấm × để bỏ.</small>
                                             <span class="complete-list-word"
                                                   ng-repeat="word in item.completeListWordBank track by $index"
                                                   ng-if="!vm.isCompleteListWordUsed(item, word)"
@@ -654,7 +690,7 @@
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-style="vm.questionPaneStyle((vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[1].type === 6))" class="col-md-6 question-content idp-question-pane" id="passage-question-text-2">
+                            <div ng-style="vm.questionPaneStyle((vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[1].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll id="passage-question-text-2">
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[1].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-2" class="row" >
@@ -828,7 +864,12 @@
 
                                     <div class="complete-list-runtime actual-test-font-global" ng-if="item.type == 13" ng-init="completeListPackage=item">
                                         <div class="complete-list-text" compile="item.completeListRenderedQuestion"></div>
-                                        <div class="complete-list-word-bank" aria-label="Answer choices to drag into the blanks">
+                                        <div class="complete-list-word-bank"
+                                             dnd-list="completeListPackage.completeListReturnList"
+                                             dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
+                                             touch-dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
+                                             aria-label="Answer choices to drag into the blanks">
+                                            <small class="complete-list-word-bank__hint">Kéo đáp án vào ô; kéo đáp án về đây hoặc bấm × để bỏ.</small>
                                             <span class="complete-list-word"
                                                   ng-repeat="word in item.completeListWordBank track by $index"
                                                   ng-if="!vm.isCompleteListWordUsed(item, word)"
@@ -1051,7 +1092,7 @@
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-style="vm.questionPaneStyle((vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[2].type === 6))" class="col-md-6 question-content idp-question-pane" id="passage-question-text-3">
+                            <div ng-style="vm.questionPaneStyle((vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[2].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll id="passage-question-text-3">
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[2].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-3" class="row">
@@ -1223,7 +1264,12 @@
 
                                     <div class="complete-list-runtime actual-test-font-global" ng-if="item.type == 13" ng-init="completeListPackage=item">
                                         <div class="complete-list-text" compile="item.completeListRenderedQuestion"></div>
-                                        <div class="complete-list-word-bank" aria-label="Answer choices to drag into the blanks">
+                                        <div class="complete-list-word-bank"
+                                             dnd-list="completeListPackage.completeListReturnList"
+                                             dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
+                                             touch-dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
+                                             aria-label="Answer choices to drag into the blanks">
+                                            <small class="complete-list-word-bank__hint">Kéo đáp án vào ô; kéo đáp án về đây hoặc bấm × để bỏ.</small>
                                             <span class="complete-list-word"
                                                   ng-repeat="word in item.completeListWordBank track by $index"
                                                   ng-if="!vm.isCompleteListWordUsed(item, word)"
@@ -1931,6 +1977,111 @@
         line-height: 1.65;
     }
 
+    .writing-task-runtime {
+        display: flex;
+        min-height: calc(100vh - 235px);
+        flex-direction: column;
+        padding: 10px 12px 22px;
+        color: #202124;
+    }
+
+    .writing-task-runtime__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 15px;
+        margin-bottom: 13px;
+    }
+
+    .writing-task-runtime__header strong,
+    .writing-task-runtime__header span {
+        display: block;
+    }
+
+    .writing-task-runtime__header strong {
+        margin-bottom: 3px;
+        font-size: 19px;
+    }
+
+    .writing-task-runtime__header > div > span {
+        color: #5d6470;
+        font-size: 13px;
+    }
+
+    .writing-task-runtime__requirement {
+        flex: 0 0 auto;
+        padding: 7px 11px;
+        border-radius: 999px;
+        background: #eef3ff;
+        color: #3458a7;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .writing-task-runtime__textarea {
+        width: 100%;
+        min-height: 420px;
+        flex: 1 1 auto;
+        padding: 18px;
+        border: 2px solid #b9c2cf;
+        border-radius: 8px;
+        outline: none;
+        background: #fff;
+        color: #202124;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 16px;
+        line-height: 1.65;
+        resize: vertical;
+        transition: border-color .18s ease, box-shadow .18s ease;
+    }
+
+    .writing-task-runtime__textarea:focus {
+        border-color: #2f76c8;
+        box-shadow: 0 0 0 3px rgba(47, 118, 200, .14);
+    }
+
+    .writing-task-runtime__footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 10px;
+        padding: 10px 13px;
+        border-radius: 7px;
+        background: #fff4e5;
+        color: #8a5300;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .writing-task-runtime__footer strong {
+        font-size: 18px;
+    }
+
+    .writing-task-runtime__footer.is-complete {
+        background: #e9f8f1;
+        color: #08724f;
+    }
+
+    .writing-task-runtime__clipboard-note {
+        display: block;
+        margin-top: 8px;
+        color: #6b7280;
+        line-height: 1.45;
+    }
+
+    @media (max-width: 767px) {
+        .writing-task-runtime {
+            min-height: 580px;
+        }
+
+        .writing-task-runtime__header,
+        .writing-task-runtime__footer {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+    }
+
     .complete-list-drop-box {
         display: inline-flex;
         min-width: 132px;
@@ -1952,6 +2103,16 @@
         outline-offset: 2px;
     }
 
+    .complete-list-drop-box > .dndPlaceholder,
+    .complete-list-word-bank > .dndPlaceholder {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        list-style: none !important;
+    }
+
     .complete-list-drop-number {
         font-weight: 700;
     }
@@ -1964,6 +2125,49 @@
         padding: 18px;
         border: 1px solid currentColor;
         border-radius: 6px;
+    }
+
+    .complete-list-word-bank.dndDragover {
+        border-color: #1683d8;
+        box-shadow: 0 0 0 3px rgba(22, 131, 216, .18);
+    }
+
+    .complete-list-word-bank__hint {
+        flex: 0 0 100%;
+        color: #5f6368;
+        font-size: 12px;
+        line-height: 1.35;
+    }
+
+    .complete-list-slot-answer {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: grab;
+        user-select: none;
+    }
+
+    .complete-list-slot-answer:active {
+        cursor: grabbing;
+    }
+
+    .complete-list-slot-remove {
+        display: inline-flex;
+        width: 20px;
+        height: 20px;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, .08);
+        color: inherit;
+        font: 700 16px/1 Arial, sans-serif;
+        cursor: pointer;
+    }
+
+    .idp-question-pane.is-drag-autoscrolling {
+        box-shadow: inset 0 0 0 3px rgba(22, 131, 216, .22);
     }
 
     .complete-list-word {

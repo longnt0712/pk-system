@@ -23,9 +23,11 @@ public final class HomeworkTopicCompletion {
     public static boolean ieltsEnabled(EnrolmentClassScheduleTaskDto task) {
         return ("CLASS".equals(task.getSection()) || "HOMEWORK".equals(task.getSection()))
                 && task.getIeltsTestId() != null && task.getIeltsPart() != null
-                && ("IELTS_READING".equals(task.getActivityType()) || "IELTS_LISTENING".equals(task.getActivityType()));
+                && ("IELTS_READING".equals(task.getActivityType()) || "IELTS_LISTENING".equals(task.getActivityType())
+                || "COMPREHENSIVE".equals(task.getActivityType()));
     }
     public static int ieltsTestType(EnrolmentClassScheduleTaskDto task) {
+        if ("COMPREHENSIVE".equals(task.getActivityType())) { return 6; }
         return "IELTS_LISTENING".equals(task.getActivityType()) ? 2 : 4;
     }
     public static LocalDate windowEnd(String assigned, String due, Set<Integer> weekdays, String nextSaved) {

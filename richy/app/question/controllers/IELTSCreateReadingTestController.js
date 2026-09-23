@@ -86,8 +86,6 @@
         vm.type = {id: 1, name: "Multiple Choices", notice: "T/F/NG or Y/N/NG is also multiple choice question"};
         vm.types = [
             {id: 1, name: "Multiple Choices", notice: "T/F/NG or Y/N/NG is also multiple choice question"},
-            {id: 2, name: "Filling Gaps", notice: "Fill words in gaps"},
-            {id: 3, name: "Filling Gaps Enter", notice: "Fill A-G in gaps"},
             {id: 4, name: "Matching Heading", notice: "Drag and Drop"},
             {id: 5, name: "Multiple Choices - Multiple Answers", notice: "T/F/NG or Y/N/NG is also multiple choice question"},
             {id: 6, name: "Multiple Choices - Two column", notice: "Display two questions side by side; select this manually only when the original layout needs two columns"},
@@ -99,10 +97,16 @@
             {id: 12, name: "MATCHING INFORMATION", notice: "Same creation and test layout as Table and List"},
             {id: 13, name: "COMPLETE LIST OF WORDS", notice: "One editor with ordered correct words followed by distractors; students drag a shuffled word list into the gaps"},
             {id: 14, name: "Complete each sentence with the correct ending", notice: "Use one shared A–Z list of endings; students drag each ending into the blank after a sentence"},
-            {id: 15, name: "LISTENING - TWO-COLUMN DRAG & DROP", notice: "Left column contains the questions and drop zones; right column contains the shared answer bank"}
+            {id: 15, name: "LISTENING - TWO-COLUMN DRAG & DROP", notice: "Left column contains the questions and drop zones; right column contains the shared answer bank"},
+            {id: 16, name: "Writing Task 1", notice: "Nhập đề bài ở cột Văn bản; bài viết trên 150 từ được tính là đạt"},
+            {id: 17, name: "Writing Task 2", notice: "Nhập đề bài ở cột Văn bản; bài viết trên 250 từ được tính là đạt"},
+            {id: 2, name: "Filling Gaps — Legacy", notice: "Dữ liệu hệ thống cũ — không dùng cho bài test mới", legacy: true},
+            {id: 3, name: "Filling Gaps Enter — Legacy", notice: "Dữ liệu hệ thống cũ — không dùng cho bài test mới", legacy: true}
         ];
         vm.questionPackageTypes = vm.types.filter(function (type) {
-            return Number(type.id) !== 7 && (vm.isListeningMode || Number(type.id) !== 15);
+            return Number(type.id) !== 7 &&
+                (vm.isListeningMode || Number(type.id) !== 15) &&
+                (vm.isComprehensiveMode || (Number(type.id) !== 16 && Number(type.id) !== 17));
         });
         vm.passageTypes = vm.types.filter(function (type) {
             return Number(type.id) <= 9 && Number(type.id) !== 7;
@@ -288,12 +292,51 @@
                 test.subQuestions[0].type = 1;
             }
             test.subQuestions[0].question = test.subQuestions[0].question || '';
+            var containsWritingTask = false;
             angular.forEach(test.subQuestions, function (part) {
+                var nextQuestionNumber = 1;
                 angular.forEach((part && part.subQuestions) || [], function (questionPackage) {
+                    containsWritingTask = containsWritingTask || Number(questionPackage.type) === 16 || Number(questionPackage.type) === 17;
+                    ensureWritingTaskPackage(questionPackage, nextQuestionNumber);
                     ensureMultipleAnswerPackage(questionPackage, true);
+                    angular.forEach(questionPackage.subQuestions || [], function (question) {
+                        nextQuestionNumber = Math.max(nextQuestionNumber, (parseInt(question.ordinalNumber, 10) || 0) + 1);
+                    });
                 });
             });
+            if (containsWritingTask) { test.subQuestions[0].type = 1; }
             return test;
+        }
+
+        function ensureWritingTaskPackage(questionPackage, fallbackOrdinalNumber) {
+            var writingTaskType = questionPackage ? Number(questionPackage.type) : 0;
+            if (writingTaskType !== 16 && writingTaskType !== 17) {
+                return;
+            }
+
+            questionPackage.question = writingTaskType === 17 ? 'Writing Task 2' : 'Writing Task 1';
+            questionPackage.isHaveChildren = true;
+            questionPackage.subQuestions = questionPackage.subQuestions || [];
+
+            var question = questionPackage.subQuestions[0] || {};
+            question.question = questionPackage.question + ' response';
+            question.questionType = question.questionType || {
+                code: 'IELTSRTQ',
+                id: 19,
+                name: 'IELTS Reading Test Question'
+            };
+            question.ordinalNumber = parseInt(question.ordinalNumber, 10) || parseInt(fallbackOrdinalNumber, 10) || 1;
+            question.subQuestions = [];
+            question.questionAnswers = question.questionAnswers || [];
+
+            var answer = question.questionAnswers[0] || {};
+            answer.answer = answer.answer || {};
+            answer.answer.answer = writingTaskType === 17 ? 'WRITING_TASK_2_RESPONSE' : 'WRITING_TASK_1_RESPONSE';
+            answer.question = question.id ? {id: question.id} : (answer.question || {});
+            answer.ordinalNumberQuestionAnswer = 1;
+            answer.correct = true;
+            question.questionAnswers = [answer];
+            questionPackage.subQuestions = [question];
         }
 
         vm.isComprehensivePassageVisible = function () {
@@ -301,9 +344,21 @@
             return Number(passage.type) !== 6;
         };
 
+        vm.hasWritingTaskPackage = function () {
+            var passage = (((vm.ieltsReadingTest || {}).subQuestions || [])[0]) || {};
+            return (passage.subQuestions || []).some(function (questionPackage) {
+                return Number(questionPackage.type) === 16 || Number(questionPackage.type) === 17;
+            });
+        };
+
         vm.setComprehensivePassageVisibility = function (visible) {
             var passage = (((vm.ieltsReadingTest || {}).subQuestions || [])[0]);
             if (!passage) { return; }
+            if (!visible && vm.hasWritingTaskPackage()) {
+                toastr.warning('Writing Task cần hiển thị đề bài ở cột bên trái.', 'Không thể ẩn văn bản');
+                passage.type = 1;
+                return;
+            }
             passage.type = visible ? 1 : 6;
             vm.changeInTheProcessOfCreatingReadingTest();
             vm.refreshBuilderValidation();
@@ -338,11 +393,16 @@
             var currentUserId = vm.currentUser && vm.currentUser.id;
             if (currentUserId != null && String(currentUserId) !== String(DEFAULT_TOPIC_SOURCE_ID)) {
                 sources.push({id: currentUserId, name: 'TỪ CỦA TÔI'});
-            } else if (currentUserId != null) {
-                sources[0].name = 'EM YÊU INH LÍCH — TỪ CỦA TÔI';
             }
             return sources;
         }
+
+        vm.topicSourceLabel = function (source) {
+            if (source && String(source.id) === String(DEFAULT_TOPIC_SOURCE_ID)) {
+                return 'EM YÊU INH LỊCH';
+            }
+            return (source && source.name) || 'EM YÊU INH LỊCH';
+        };
 
         function topicCategoriesFromTopics(topics) {
             var categories = [];
@@ -712,9 +772,14 @@
 
         function prepareSharedChoicePackagesForSave() {
             angular.forEach((vm.ieltsReadingTest || {}).subQuestions || [], function (part) {
+                var nextQuestionNumber = 1;
                 angular.forEach(part.subQuestions || [], function (questionPackage) {
+                    ensureWritingTaskPackage(questionPackage, nextQuestionNumber);
                     ensureMultipleAnswerPackage(questionPackage, false);
                     ensureSharedChoicePackage(questionPackage);
+                    angular.forEach(questionPackage.subQuestions || [], function (question) {
+                        nextQuestionNumber = Math.max(nextQuestionNumber, (parseInt(question.ordinalNumber, 10) || 0) + 1);
+                    });
                 });
             });
         }
@@ -1217,6 +1282,15 @@
         };
 
         vm.onReadingPackageTypeChange = function (questionPackage, partIndex, packageIndex) {
+            var previousWritingQuestion = questionPackage && questionPackage.subQuestions && questionPackage.subQuestions[0];
+            var previousWritingAnswer = previousWritingQuestion && previousWritingQuestion.questionAnswers && previousWritingQuestion.questionAnswers[0];
+            var wasWritingPackage = previousWritingAnswer && previousWritingAnswer.answer &&
+                /^WRITING_TASK_[12]_RESPONSE$/.test(String(previousWritingAnswer.answer.answer || ''));
+            if (wasWritingPackage && Number(questionPackage.type) !== 16 && Number(questionPackage.type) !== 17) {
+                questionPackage.question = example;
+                questionPackage.subQuestions = [];
+                questionPackage.isHaveChildren = false;
+            }
             if (questionPackage && Number(questionPackage.type) === 7) {
                 questionPackage.type = 5;
             }
@@ -1236,6 +1310,22 @@
             }
             if (questionPackage && Number(questionPackage.type) === 13) {
                 ensureCompleteListPackage(questionPackage);
+            }
+            if (questionPackage && (Number(questionPackage.type) === 16 || Number(questionPackage.type) === 17)) {
+                var existingQuestion = questionPackage.subQuestions && questionPackage.subQuestions[0];
+                var writingQuestionNumber = existingQuestion && parseInt(existingQuestion.ordinalNumber, 10);
+                if (!writingQuestionNumber) {
+                    writingQuestionNumber = 1;
+                    angular.forEach(getPartQuestions(partIndex), function (entry) {
+                        if (entry.questionPackage !== questionPackage) {
+                            writingQuestionNumber = Math.max(writingQuestionNumber, (parseInt(entry.question.ordinalNumber, 10) || 0) + 1);
+                        }
+                    });
+                }
+                ensureWritingTaskPackage(questionPackage, writingQuestionNumber);
+                if (vm.ieltsReadingTest.subQuestions[partIndex]) {
+                    vm.ieltsReadingTest.subQuestions[partIndex].type = 1;
+                }
             }
             if (isSharedChoicePackage(questionPackage)) {
                 ensureSharedChoicePackage(questionPackage);

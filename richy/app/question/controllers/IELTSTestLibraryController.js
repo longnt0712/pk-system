@@ -67,11 +67,16 @@
             var currentUserId = vm.currentUser && vm.currentUser.id;
             if (currentUserId != null && String(currentUserId) !== String(DEFAULT_TOPIC_SOURCE_ID)) {
                 sources.push({id: currentUserId, name: 'TỪ CỦA TÔI'});
-            } else if (currentUserId != null) {
-                sources[0].name = 'EM YÊU INH LÍCH — TỪ CỦA TÔI';
             }
             return sources;
         }
+
+        vm.topicSourceLabel = function (source) {
+            if (source && String(source.id) === String(DEFAULT_TOPIC_SOURCE_ID)) {
+                return 'EM YÊU INH LỊCH';
+            }
+            return (source && source.name) || 'EM YÊU INH LỊCH';
+        };
 
         function topicCategoriesFromTopics(topics) {
             var categories = [];

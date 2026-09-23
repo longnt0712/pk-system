@@ -56,6 +56,66 @@
         }
     });
 
+    /* Writing answers may only receive text copied from the same answer box.
+       This blocks clipboard and drag/drop text brought in from other pages or
+       applications while preserving normal copy, cut and paste while editing. */
+    angular.module('Hrm.Question').directive('writingTaskClipboard', function () {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var node = element[0];
+                var internallyCopiedText = null;
+
+                function normalizeClipboardText(value) {
+                    return String(value == null ? '' : value).replace(/\r\n/g, '\n');
+                }
+
+                function rememberSelection() {
+                    var start = Number(node.selectionStart);
+                    var end = Number(node.selectionEnd);
+                    if (!isNaN(start) && !isNaN(end) && end > start) {
+                        internallyCopiedText = normalizeClipboardText(node.value.substring(start, end));
+                    }
+                }
+
+                function rejectExternalInsert(event) {
+                    if (event && event.preventDefault) {
+                        event.preventDefault();
+                    }
+                    scope.$evalAsync(function () {
+                        if (attrs.writingTaskClipboard) {
+                            scope.$eval(attrs.writingTaskClipboard);
+                        }
+                    });
+                }
+
+                function onPaste(event) {
+                    var clipboard = event.clipboardData || (event.originalEvent && event.originalEvent.clipboardData) || window.clipboardData;
+                    var pastedText = clipboard && clipboard.getData ? normalizeClipboardText(clipboard.getData('text/plain') || clipboard.getData('Text')) : '';
+                    if (!internallyCopiedText || pastedText !== internallyCopiedText) {
+                        rejectExternalInsert(event);
+                    }
+                }
+
+                function onDrop(event) {
+                    rejectExternalInsert(event);
+                }
+
+                node.addEventListener('copy', rememberSelection, false);
+                node.addEventListener('cut', rememberSelection, false);
+                node.addEventListener('paste', onPaste, false);
+                node.addEventListener('drop', onDrop, false);
+
+                scope.$on('$destroy', function () {
+                    node.removeEventListener('copy', rememberSelection, false);
+                    node.removeEventListener('cut', rememberSelection, false);
+                    node.removeEventListener('paste', onPaste, false);
+                    node.removeEventListener('drop', onDrop, false);
+                });
+            }
+        };
+    });
+
     angular.module('Hrm.Question').directive('draggable', function () {
         return {
             restrict: 'A',
@@ -75,6 +135,83 @@
             }
         }
     });
+
+    angular.module('Hrm.Question').directive('dragAutoScroll', ['$window', '$document', function ($window, $document) {
+        return {
+            restrict: 'A',
+            link: function (scope, element) {
+                var node = element[0];
+                var frame = null;
+                var lastClientY = null;
+                var lastDragOverAt = 0;
+                var requestFrame = $window.requestAnimationFrame || function (callback) {
+                    return $window.setTimeout(callback, 16);
+                };
+                var cancelFrame = $window.cancelAnimationFrame || $window.clearTimeout;
+
+                function stopAutoScroll() {
+                    if (frame !== null) {
+                        cancelFrame(frame);
+                        frame = null;
+                    }
+                    lastClientY = null;
+                    node.classList.remove('is-drag-autoscrolling');
+                }
+
+                function scrollFrame() {
+                    frame = null;
+                    if (lastClientY === null || Date.now() - lastDragOverAt > 500) {
+                        stopAutoScroll();
+                        return;
+                    }
+
+                    var rect = node.getBoundingClientRect();
+                    var edgeSize = Math.min(120, Math.max(70, rect.height * 0.18));
+                    var distanceFromTop = lastClientY - rect.top;
+                    var distanceFromBottom = rect.bottom - lastClientY;
+                    var direction = 0;
+                    var strength = 0;
+
+                    if (distanceFromTop >= 0 && distanceFromTop < edgeSize) {
+                        direction = -1;
+                        strength = (edgeSize - distanceFromTop) / edgeSize;
+                    } else if (distanceFromBottom >= 0 && distanceFromBottom < edgeSize) {
+                        direction = 1;
+                        strength = (edgeSize - distanceFromBottom) / edgeSize;
+                    }
+
+                    if (direction !== 0 && node.scrollHeight > node.clientHeight) {
+                        node.scrollTop += direction * Math.max(5, Math.round(24 * strength));
+                        node.classList.add('is-drag-autoscrolling');
+                    } else {
+                        node.classList.remove('is-drag-autoscrolling');
+                    }
+                    frame = requestFrame(scrollFrame);
+                }
+
+                function onDragOver(event) {
+                    lastClientY = event.clientY;
+                    lastDragOverAt = Date.now();
+                    if (frame === null) {
+                        frame = requestFrame(scrollFrame);
+                    }
+                }
+
+                // Capture before dnd-list stops bubbling so edge scrolling also
+                // works while the pointer is directly over a drop slot.
+                node.addEventListener('dragover', onDragOver, true);
+                $document[0].addEventListener('drop', stopAutoScroll, true);
+                $document[0].addEventListener('dragend', stopAutoScroll, true);
+
+                scope.$on('$destroy', function () {
+                    stopAutoScroll();
+                    node.removeEventListener('dragover', onDragOver, true);
+                    $document[0].removeEventListener('drop', stopAutoScroll, true);
+                    $document[0].removeEventListener('dragend', stopAutoScroll, true);
+                });
+            }
+        };
+    }]);
 
     angular.module('Hrm.Question').directive('touchDndDrop', function () {
         return {
@@ -643,6 +780,7 @@
         $rootScope.settings.layout.pageSidebarClosed = false;
 
         var vm = this;
+        var writingTaskDraftTimer = null;
         vm.isComprehensiveRoute = /\/comprehensive_test(?:\/|$)/i.test($location.path());
         vm.isListeningRoute = !vm.isComprehensiveRoute && /\/ielts_listening_actual_test(?:\/|$)/i.test($location.path());
         vm.assignmentTaskId = /^\d+$/.test(String($stateParams.assignmentTaskId || '')) ? Number($stateParams.assignmentTaskId) : null;
@@ -668,7 +806,7 @@
             if (!submittedAnswer) {
                 return '';
             }
-            if (type == 2 || type == 3 || type == 4 || type == 8 || type == 11) {
+            if (type == 2 || type == 3 || type == 4 || type == 8 || type == 11 || type == 16 || type == 17) {
                 return submittedAnswer;
             }
 
@@ -680,6 +818,10 @@
         vm.getResultCorrectAnswer = function (item) {
             var type = getResultQuestionType(item);
             var questionAnswer = item && item.questionAnswer;
+
+            if (type == 16 || type == 17) {
+                return type == 17 ? 'Trên 250 từ' : 'Trên 150 từ';
+            }
 
             if (type == 5 || type == 7) {
                 return String((item && item.correctAnswerForMultipleAnswer) || '')
@@ -696,6 +838,53 @@
 
             return questionAnswer && questionAnswer.correctAnswer != null ?
                 questionAnswer.correctAnswer : '';
+        };
+
+        vm.countWritingTaskWords = function (value) {
+            var text = String(value == null ? '' : value).trim();
+            return text ? text.split(/\s+/).length : 0;
+        };
+
+        function getWritingTaskPackage() {
+            var found = null;
+            angular.forEach((vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.subQuestions) || [], function (passage) {
+                angular.forEach((passage && passage.subQuestions) || [], function (questionPackage) {
+                    if (!found && (Number(questionPackage.type) === 16 || Number(questionPackage.type) === 17)) {
+                        found = questionPackage;
+                    }
+                });
+            });
+            return found;
+        }
+
+        vm.writingTaskWordTarget = function (questionPackage) {
+            return questionPackage && Number(questionPackage.type) === 17 ? 250 : 150;
+        };
+
+        vm.isWritingTaskWordTargetMet = function (questionPackage) {
+            var answer = questionPackage && questionPackage.subQuestions && questionPackage.subQuestions[0] &&
+                questionPackage.subQuestions[0].questionAnswers && questionPackage.subQuestions[0].questionAnswers[0];
+            return vm.countWritingTaskWords(answer && answer.clientAnswer) > vm.writingTaskWordTarget(questionPackage);
+        };
+
+        vm.onWritingTaskClipboardBlocked = function () {
+            toastr.warning('Chỉ được dán phần văn bản vừa sao chép hoặc cắt từ chính ô bài làm này.', 'Không thể dán nội dung bên ngoài');
+        };
+
+        vm.updateWritingTaskResponse = function (questionPackage) {
+            var question = questionPackage && questionPackage.subQuestions && questionPackage.subQuestions[0];
+            var questionAnswer = question && question.questionAnswers && question.questionAnswers[0];
+            if (!question || !questionAnswer) {
+                return;
+            }
+            vm.changeTextQuestionAnswer(questionAnswer,
+                questionAnswer.answer && questionAnswer.answer.answer,
+                question);
+            if (writingTaskDraftTimer) { $timeout.cancel(writingTaskDraftTimer); }
+            writingTaskDraftTimer = $timeout(function () {
+                saveReadingDraft();
+                writingTaskDraftTimer = null;
+            }, 450, false);
         };
 
         /* Keep the active exam inside one viewport and restore the normal site
@@ -724,6 +913,7 @@
 
         $scope.$on('$destroy', function () {
             stopReadingResize();
+            if (writingTaskDraftTimer) { $timeout.cancel(writingTaskDraftTimer); }
             unwatchExamLayout();
             $window.document.body.classList.remove(examBodyClass);
             setExamViewportZoom(false);
@@ -1188,6 +1378,28 @@
             });
         }
 
+        function serializeCompleteListStates() {
+            var states = [];
+            angular.forEach((vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.subQuestions) || [], function (passage) {
+                angular.forEach((passage && passage.subQuestions) || [], function (questionPackage) {
+                    if (Number(questionPackage.type) !== 13) { return; }
+                    angular.forEach(questionPackage.subQuestions || [], function (question, questionIndex) {
+                        var slot = (questionPackage.completeListSlots || [])[questionIndex];
+                        var word = slot && slot.items && slot.items.length ? slot.items[0] : null;
+                        if (!word) { return; }
+                        states.push({
+                            questionId: question.id,
+                            ordinalNumber: question.ordinalNumber,
+                            answerId: word.answerId,
+                            answerIndex: Number(word.answerIndex),
+                            clientAnswer: word.clientAnswer == null ? '' : String(word.clientAnswer)
+                        });
+                    });
+                });
+            });
+            return states;
+        }
+
         function saveReadingDraft() {
             var testId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
             if (vm.isPreviewMode || readingDraftSubmitted || !vm.currentUser.id || !testId || vm.isStartTest !== true || vm.passageNumber == 4) {
@@ -1205,7 +1417,7 @@
                 var activeDraftKey = readingDraftStorageKey(testId, vm.testSessionMode);
                 var previousDraft = readStoredDraft(activeDraftKey) || {};
                 var readingDraft = {
-                    version: 2,
+                    version: 3,
                     userId: vm.currentUser.id,
                     testId: testId,
                     title: vm.ieltsReadingActualTest.title || 'IELTS Reading Test',
@@ -1223,6 +1435,7 @@
                     totalQuestions: getReadingQuestionEntries().length,
                     results: results,
                     questionStates: serializeReadingQuestionStates(),
+                    completeListStates: serializeCompleteListStates(),
                     annotationNotes: angular.copy(vm.annotationNotes || []),
                     annotations: serializeReadingAnnotations(),
                     completed: previousDraft.completed === true,
@@ -1293,6 +1506,41 @@
             return questionAnswers.length ? questionAnswers[0] : null;
         }
 
+        function findCompleteListDraftState(draft, question) {
+            var states = (draft && draft.completeListStates) || [];
+            for (var index = 0; index < states.length; index++) {
+                if ((question.id != null && states[index].questionId == question.id) ||
+                        states[index].ordinalNumber == question.ordinalNumber) {
+                    return states[index];
+                }
+            }
+            return null;
+        }
+
+        function findCompleteListWord(questionPackage, savedState, savedResult) {
+            var words = (questionPackage && questionPackage.completeListWordBank) || [];
+            var expectedIndex = savedState && savedState.answerIndex !== null && savedState.answerIndex !== '' &&
+                isFinite(Number(savedState.answerIndex))
+                ? Number(savedState.answerIndex)
+                : (savedResult && savedResult.answerOrdinal !== null && savedResult.answerOrdinal !== '' &&
+                    isFinite(Number(savedResult.answerOrdinal))
+                    ? Number(savedResult.answerOrdinal) - 1 : null);
+            var expectedText = String((savedState && savedState.clientAnswer) ||
+                (savedResult && savedResult.clientAnswer) || '').trim().toLowerCase();
+            var matched = null;
+            angular.forEach(words, function (word) {
+                if (matched) { return; }
+                if (expectedIndex !== null && Number(word.answerIndex) === expectedIndex) {
+                    matched = word;
+                    return;
+                }
+                if (expectedText && String(word.clientAnswer || '').trim().toLowerCase() === expectedText) {
+                    matched = word;
+                }
+            });
+            return matched;
+        }
+
         function restoreMatchingHeadingDraft(draft, lists, bank) {
             angular.forEach(lists || [], function (list) {
                 var slot = list && list.items && list.items[0];
@@ -1348,18 +1596,19 @@
 
                 var savedResults = findDraftResults(draft, question);
                 var savedResult = savedResults.length ? savedResults[0] : null;
+                if (Number(entry.packageType) === 13 && entry.questionPackage.completeListWordBank) {
+                    var completeState = findCompleteListDraftState(draft, question);
+                    var completeWord = findCompleteListWord(entry.questionPackage, completeState, savedResult);
+                    if (completeWord) {
+                        vm.dropCompleteListWord(entry.questionPackage, entry.questionPackage.subQuestions.indexOf(question), completeWord);
+                    }
+                    return;
+                }
                 if (!savedResult || Number(entry.packageType) === 4) {
                     return;
                 }
                 var answer = findQuestionAnswer(question, savedResult);
                 if (!answer) {
-                    return;
-                }
-                if (Number(entry.packageType) === 13 && entry.questionPackage.completeListWordBank) {
-                    var completeWord = entry.questionPackage.completeListWordBank[Number(savedResult.answerOrdinal) - 1];
-                    if (completeWord) {
-                        vm.dropCompleteListWord(entry.questionPackage, entry.questionPackage.subQuestions.indexOf(question), completeWord);
-                    }
                     return;
                 }
                 if ((Number(entry.packageType) === 14 || Number(entry.packageType) === 15) && entry.questionPackage.sentenceEndingBank) {
@@ -2035,6 +2284,10 @@
 
         vm.saveTestResult = function () {
             synchronizeReadingResultsBeforeSubmit();
+            // Capture the last keystrokes before submission as well. This is
+            // especially important for a Writing task that does not yet meet
+            // its word target and therefore remains available for another try.
+            saveReadingDraft();
             syncTimerForPersistence();
             var activeDurationSeconds = getActiveDurationSeconds();
             vm.testResult.testTime = formatTimerClock(vm.testSessionMode === 'STUDY'
@@ -2054,6 +2307,12 @@
             // vm.testResult.testTakerPerformance = all;
 
             vm.testResult.testName = vm.ieltsReadingActualTest.title;
+			var writingTaskPackage = getWritingTaskPackage();
+			if (writingTaskPackage) {
+				var writingTaskAnswer = writingTaskPackage.subQuestions && writingTaskPackage.subQuestions[0] &&
+					writingTaskPackage.subQuestions[0].questionAnswers && writingTaskPackage.subQuestions[0].questionAnswers[0];
+				vm.testResult.numberOfWords = vm.countWritingTaskWords(writingTaskAnswer && writingTaskAnswer.clientAnswer);
+			}
 			vm.testResult.sourceQuestionId = Number($stateParams.ieltsReadingTestId);
 			if (vm.isPartAssignment) {
 				var allowedOrdinals = assignedPartQuestionOrdinals();
@@ -2086,7 +2345,9 @@
             service.saveTestResult(vm.testResult).then(function (data) {
                 blockUI.stop();
                 readingDraftSubmitted = true;
-                markStudyDraftCompleted(data && data.id);
+                if (!vm.isComprehensiveRoute || !data || data.resultStatus !== 'FAILED') {
+                    markStudyDraftCompleted(data && data.id);
+                }
                 if (vm.testSessionMode !== 'STUDY') {
                     clearReadingDraft();
                 }
@@ -2671,7 +2932,7 @@
                 var representativeAnswer = null;
                 var submittedAnswer = '';
 
-                if (type == 2 || type == 3 || type == 11) {
+                if (type == 2 || type == 3 || type == 11 || type == 16 || type == 17) {
                     representativeAnswer = questionAnswers.length ? questionAnswers[0] : null;
                     submittedAnswer = representativeAnswer && representativeAnswer.clientAnswer != null ?
                         String(representativeAnswer.clientAnswer).trim() : '';
@@ -2704,7 +2965,7 @@
                         if (!existingResult.questionAnswer || existingResult.questionAnswer.id == null) {
                             existingResult.questionAnswer = representativeAnswer;
                         }
-                        if (submittedAnswer && (type == 2 || type == 3 || type == 11 ||
+                        if (submittedAnswer && (type == 2 || type == 3 || type == 11 || type == 16 || type == 17 ||
                             !existingResult.clientAnswer)) {
                             existingResult.questionAnswer = representativeAnswer;
                             existingResult.clientAnswer = submittedAnswer;
@@ -2861,6 +3122,7 @@
             var content = questions.length ? String(questions[0].question || '') : '';
             var sourceAnswers = questions.length ? questions[0].questionAnswers : [];
             questionPackage.completeListSlots = [];
+            questionPackage.completeListReturnList = [];
             questionPackage.completeListWordBank = shuffleCompleteListWords(sourceAnswers.map(function (questionAnswer, answerIndex) {
                 return {
                     answerIndex: answerIndex,
@@ -2880,7 +3142,16 @@
                     'ng-click="$event.stopPropagation(); vm.clearCompleteListSlot(completeListPackage,' + questionIndex + ')">' +
                     '<span ng-if="!completeListPackage.completeListSlots[' + questionIndex + '].items.length" class="complete-list-drop-number">' + ordinalNumber + '</span>' +
                     '<span ng-if="completeListPackage.completeListSlots[' + questionIndex + '].items.length" ' +
-                    'ng-bind="completeListPackage.completeListSlots[' + questionIndex + '].items[0].clientAnswer"></span>' +
+                    'class="complete-list-slot-answer" ' +
+                    'dnd-draggable="completeListPackage.completeListSlots[' + questionIndex + '].items[0]" ' +
+                    'touch-dnd-source="completeListPackage.completeListSlots[' + questionIndex + '].items[0]" ' +
+                    'dnd-effect-allowed="copy" ' +
+                    'title="Kéo sang ô khác hoặc kéo về danh sách bên dưới">' +
+                    '<span ng-bind="completeListPackage.completeListSlots[' + questionIndex + '].items[0].clientAnswer"></span>' +
+                    '<button type="button" class="complete-list-slot-remove" ' +
+                    'ng-click="$event.stopPropagation(); vm.clearCompleteListSlot(completeListPackage,' + questionIndex + ')" ' +
+                    'aria-label="Bỏ đáp án">&times;</button>' +
+                    '</span>' +
                     '</span>';
                 content = content.replace(/\}\{SPACE\}\{/i, dropBox);
             });
@@ -2905,7 +3176,7 @@
             return used;
         };
 
-        vm.clearCompleteListSlot = function (questionPackage, slotIndex) {
+        vm.clearCompleteListSlot = function (questionPackage, slotIndex, skipDraftSave) {
             var slot = questionPackage && questionPackage.completeListSlots ? questionPackage.completeListSlots[slotIndex] : null;
             var question = questionPackage && questionPackage.subQuestions ? questionPackage.subQuestions[slotIndex] : null;
             if (!slot || !slot.items || !slot.items.length || !question) {
@@ -2917,6 +3188,9 @@
                 vm.checkBoxMultipleChoiceQuestions(questionAnswer, question, false);
             }
             slot.items = [];
+            if (!skipDraftSave) {
+                saveReadingDraft();
+            }
         };
 
         vm.dropCompleteListWord = function (questionPackage, slotIndex, droppedWord) {
@@ -2931,10 +3205,10 @@
                     (String(existingWord.answerIndex) === String(droppedWord.answerIndex))
                 );
                 if (existingIndex !== slotIndex && sameWord) {
-                    vm.clearCompleteListSlot(questionPackage, existingIndex);
+                    vm.clearCompleteListSlot(questionPackage, existingIndex, true);
                 }
             });
-            vm.clearCompleteListSlot(questionPackage, slotIndex);
+            vm.clearCompleteListSlot(questionPackage, slotIndex, true);
 
             var question = questionPackage.subQuestions[slotIndex];
             var questionAnswer = question && question.questionAnswers ? question.questionAnswers[droppedWord.answerIndex] : null;
@@ -2943,6 +3217,27 @@
                 vm.checkBoxMultipleChoiceQuestions(questionAnswer, question, true);
                 vm.clickShowChildren(question, questionPackage.subQuestions);
             }
+            saveReadingDraft();
+            $scope.$evalAsync();
+            return true;
+        };
+
+        vm.returnCompleteListWord = function (questionPackage, droppedWord) {
+            if (!questionPackage || !droppedWord || !questionPackage.completeListSlots) {
+                return true;
+            }
+            angular.forEach(questionPackage.completeListSlots, function (slot, slotIndex) {
+                var existingWord = slot.items && slot.items.length ? slot.items[0] : null;
+                var sameWord = existingWord && (
+                    (existingWord.answerId != null && droppedWord.answerId != null && String(existingWord.answerId) === String(droppedWord.answerId)) ||
+                    (String(existingWord.answerIndex) === String(droppedWord.answerIndex))
+                );
+                if (sameWord) {
+                    vm.clearCompleteListSlot(questionPackage, slotIndex, true);
+                }
+            });
+            questionPackage.completeListReturnList = [];
+            saveReadingDraft();
             $scope.$evalAsync();
             return true;
         };
