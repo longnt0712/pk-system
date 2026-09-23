@@ -5870,6 +5870,75 @@
         .idp-test-mode-option { min-height: 130px; padding: 17px; }
         .idp-test-mode-option strong { margin-top: 10px; }
     }
+
+    /* Writing Task is an application form, not scalable Reading question
+       content. Keep its Vietnamese UI typography isolated from the generic
+       19/24/29px accessibility rules applied to .actual-test-font-global. */
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global,
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global textarea,
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global small,
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global span,
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global strong {
+        font-family: var(--app-font-sans, "Segoe UI", Arial, Helvetica, sans-serif) !important;
+        letter-spacing: normal !important;
+    }
+
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global
+    .writing-task-runtime__header strong {
+        font-size: 19px !important;
+        line-height: 1.35 !important;
+    }
+
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global
+    .writing-task-runtime__header > div > span {
+        font-size: 13px !important;
+        line-height: 1.45 !important;
+    }
+
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global
+    .writing-task-runtime__requirement {
+        font-size: 12px !important;
+        line-height: 1.4 !important;
+    }
+
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global
+    .writing-task-runtime__textarea {
+        font-size: 16px !important;
+        line-height: 1.65 !important;
+    }
+
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global
+    .writing-task-runtime__footer,
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global
+    .writing-task-runtime__footer > span {
+        font-size: 13px !important;
+        line-height: 1.45 !important;
+    }
+
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global
+    .writing-task-runtime__footer strong {
+        font-size: 18px !important;
+        line-height: 1.2 !important;
+    }
+
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global
+    .writing-task-runtime__clipboard-note {
+        font-size: 11px !important;
+        line-height: 1.45 !important;
+    }
 </style>
 
 <!-- BEGIN MAIN JS -->

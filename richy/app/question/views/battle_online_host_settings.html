@@ -28,18 +28,14 @@
         </div>
 
 
-        <!-- NÚT MỞ / ĐÓNG -->
+        <!-- Form chọn topic được mở trong modal ở battle_quiz_online.html. -->
         <button type="button"
-                ng-click="vm.lobbyTopicEditorOpen
-                ? vm.closeLobbyTopicEditor()
-                : vm.openLobbyTopicEditor()"
+                ng-click="vm.openLobbyTopicEditor()"
                 ng-disabled="vm.savingLobbyTopics">
 
             <i class="fa fa-list-ul"></i>
 
-            {{vm.lobbyTopicEditorOpen
-            ? 'ĐÓNG CHỌN TOPIC'
-            : 'CHỌN / ĐỔI TOPIC'}}
+            CHỌN / ĐỔI TOPIC
 
         </button>
 
@@ -48,7 +44,7 @@
              FORM ĐỔI TOPIC INLINE
              ===================================================== -->
         <div class="battle-online-inline-topic-editor"
-                ng-if="vm.lobbyTopicEditorOpen">
+                ng-if="false">
 
             <div class="battle-online-create-form battle-online-lobby-topic-form">
 

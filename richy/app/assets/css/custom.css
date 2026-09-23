@@ -3920,3 +3920,45 @@ html.global-dark-mode .user-learning-level {
 /* =========================================================
    END READ-ONLY USER LEVEL BADGES
    ========================================================= */
+
+/* =========================================================
+   GLOBAL TYPOGRAPHY SAFETY
+
+   The application historically referenced Poppins, Quicksand and Open Sans
+   without loading every Vietnamese glyph/weight on every page. Use a local
+   system stack for UI chrome so accented text never switches font mid-word.
+   Content areas that intentionally declare Cambria/Georgia keep their font.
+   ========================================================= */
+:root {
+    --app-font-sans: "Segoe UI", Arial, Helvetica, sans-serif;
+}
+
+html,
+body,
+button,
+input,
+select,
+textarea,
+.btn,
+.form-control,
+.dropdown-menu,
+.modal-content,
+.popover,
+.tooltip {
+    font-family: var(--app-font-sans) !important;
+}
+
+.fa,
+[class^="fa-"],
+[class*=" fa-"] {
+    font-family: FontAwesome !important;
+}
+
+.glyphicon {
+    font-family: "Glyphicons Halflings" !important;
+}
+
+[class^="icon-"],
+[class*=" icon-"] {
+    font-family: "simple-line-icons" !important;
+}

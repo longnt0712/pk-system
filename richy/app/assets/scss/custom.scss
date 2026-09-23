@@ -277,12 +277,12 @@ ul.dropdown-menu {
   &.dropdown-menu-default,
   &.pull-left,
   &.pull-right {
-    font-family: Quicksand, "Open Sans", sans-serif !important;
+    font-family: var(--app-font-sans, "Segoe UI", Arial, Helvetica, sans-serif) !important;
   }
 }
 
 .dropdown-menu > li > a {
-  font-family: Quicksand, "Open Sans", sans-serif !important;
+  font-family: var(--app-font-sans, "Segoe UI", Arial, Helvetica, sans-serif) !important;
 }
 
 .langname {
@@ -1354,6 +1354,27 @@ input.capitalize {
 }
 
 /* modal */
+
+/* Stable Vietnamese UI typography. Keep this in the SCSS source so a future
+   custom.css rebuild does not restore references to unloaded web fonts. */
+:root {
+  --app-font-sans: "Segoe UI", Arial, Helvetica, sans-serif;
+}
+
+html,
+body,
+button,
+input,
+select,
+textarea,
+.btn,
+.form-control,
+.dropdown-menu,
+.modal-content,
+.popover,
+.tooltip {
+  font-family: var(--app-font-sans) !important;
+}
 
 
 

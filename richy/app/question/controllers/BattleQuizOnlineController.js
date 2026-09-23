@@ -192,6 +192,8 @@
             (vm.currentUser || {}).selectedLearningPet || 'MAM_HOC'
         ).toUpperCase();
         vm.savingBattlePet = false;
+        var battlePetOptionsLevel = null;
+        var battlePetOptions = [];
 
         vm.currentUserDisplayName =
             getFullName(
@@ -527,19 +529,31 @@
                         : (vm.currentUser || {}).vocabularyExperienceLevel
                 ) || 0
             );
-            var options = [{
+
+            /*
+             * ng-options theo dõi collection bằng $watchCollection. Nếu tạo
+             * object mới ở mỗi digest, Angular luôn cho rằng collection đã
+             * đổi và rơi vào lỗi $rootScope:infdig. Chỉ dựng lại options khi
+             * level thật sự thay đổi để giữ cùng reference giữa các digest.
+             */
+            if (battlePetOptionsLevel === level) {
+                return battlePetOptions;
+            }
+
+            battlePetOptionsLevel = level;
+            battlePetOptions = [{
                 key: 'MAM_HOC',
                 label: level < 2 ? 'Trứng Mầm Học' : 'Mầm Học'
             }];
             if (level >= 3) {
-                options.push({
+                battlePetOptions.push({
                     key: 'CAPYBARA_EGG',
                     label: level >= 5
                         ? 'Capybara'
                         : (level === 4 ? 'Trứng capybara đang nứt' : 'Trứng capybara')
                 });
             }
-            return options;
+            return battlePetOptions;
         }
 
 

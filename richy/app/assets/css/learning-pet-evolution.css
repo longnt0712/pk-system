@@ -120,7 +120,7 @@
 
 .learning-pet-shell {
     z-index: 1070;
-    font-family: "Poppins", "Open Sans", Arial, sans-serif !important;
+    font-family: var(--app-font-sans, "Segoe UI", Arial, Helvetica, sans-serif) !important;
 }
 
 /* IELTS test pages can apply their own serif font to headings and controls.
@@ -138,7 +138,21 @@
 .learning-pet-shell span,
 .learning-pet-shell strong,
 .learning-pet-shell small {
-    font-family: "Poppins", "Open Sans", Arial, sans-serif !important;
+    font-family: var(--app-font-sans, "Segoe UI", Arial, Helvetica, sans-serif) !important;
+    font-synthesis: none;
+}
+
+.learning-pet-kicker {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    line-height: 1.35 !important;
+    letter-spacing: .06em !important;
+}
+
+.learning-pet-panel h3,
+.learning-pet-choice-grid strong,
+.learning-pet-list-copy strong {
+    letter-spacing: normal !important;
 }
 
 .learning-pet-shell .fa {
