@@ -265,13 +265,18 @@
 
         <div class="battle-online-lesson-copy">
             <div class="battle-online-lesson-copy-head">
+
                 <span>📘 BÀI ĐÃ CHỌN</span>
+
                 <button type="button"
                         ng-if="vm.room.status === 'LOBBY' && vm.isHost()"
                         ng-click="vm.openLobbyTopicEditor()">
+
                     <i class="fa fa-exchange"></i>
                     ĐỔI BÀI
+
                 </button>
+
             </div>
 
             <strong>
@@ -321,124 +326,133 @@
         </div>
     </section>
 
-    <div class="battle-online-lobby-topic-backdrop"
-         ng-if="vm.room && vm.room.status === 'LOBBY' && vm.isHost() && vm.lobbyTopicEditorOpen"
-         ng-click="vm.closeLobbyTopicEditor()">
-    <section class="battle-online-card battle-online-lobby-topic-editor"
-             ng-click="$event.stopPropagation()">
-        <div class="battle-online-lobby-topic-editor-head">
-            <div>
-                <small>THAY BÀI TRONG LOBBY</small>
-                <h3>Chọn topic mới</h3>
-            </div>
-            <button type="button"
-                    title="Đóng"
-                    ng-disabled="vm.savingLobbyTopics"
-                    ng-click="vm.closeLobbyTopicEditor()">×</button>
-        </div>
+    <!--<div class="battle-online-lobby-topic-backdrop"-->
+         <!--ng-if="vm.room && vm.room.status === 'LOBBY' && vm.isHost() && vm.lobbyTopicEditorOpen"-->
+         <!--ng-click="vm.closeLobbyTopicEditor()">-->
+    <!--<section class="battle-online-card battle-online-lobby-topic-editor"-->
+             <!--ng-click="$event.stopPropagation()">-->
+        <!--<div class="battle-online-lobby-topic-editor-head">-->
+            <!--<div>-->
+                <!--<small>THAY BÀI TRONG LOBBY</small>-->
+                <!--<h3>Chọn topic mới</h3>-->
+            <!--</div>-->
+            <!--<button type="button"-->
+                    <!--title="Đóng"-->
+                    <!--ng-disabled="vm.savingLobbyTopics"-->
+                    <!--ng-click="vm.closeLobbyTopicEditor()">×</button>-->
+        <!--</div>-->
 
-        <div class="battle-online-create-form battle-online-lobby-topic-form">
-            <label>NGUỒN TỪ VỰNG</label>
-            <ui-select ng-model="vm.selectedTopicOwner"
-                       class="battle-online-lobby-ui-select"
-                       append-to-body="true"
-                       ng-change="vm.chooseTopicOwner()"
-                       ng-disabled="vm.savingLobbyTopics"
-                       theme="bootstrap">
-                <ui-select-match placeholder="Chọn nguồn từ vựng">
-                    {{$select.selected.name}}
-                </ui-select-match>
-                <ui-select-choices repeat="owner in vm.topicOwners | filter:$select.search">
-                    <div ng-bind-html="owner.name | highlight:$select.search"></div>
-                </ui-select-choices>
-            </ui-select>
+        <!--<div class="battle-online-create-form battle-online-lobby-topic-form">-->
+            <!--<label>NGUỒN TỪ VỰNG</label>-->
+            <!--<ui-select ng-model="vm.selectedTopicOwner"-->
+                       <!--class="battle-online-lobby-ui-select"-->
+                       <!--append-to-body="true"-->
+                       <!--ng-change="vm.chooseTopicOwner()"-->
+                       <!--ng-disabled="vm.savingLobbyTopics"-->
+                       <!--theme="bootstrap">-->
+                <!--<ui-select-match placeholder="Chọn nguồn từ vựng">-->
+                    <!--{{$select.selected.name}}-->
+                <!--</ui-select-match>-->
+                <!--<ui-select-choices-->
+                        <!--class="battle-online-lobby-dropdown"-->
+                        <!--repeat="owner in vm.topicOwners | filter:$select.search">-->
 
-            <label>GRADE / CATEGORY</label>
-            <ui-select ng-model="vm.searchTopicDto.topicCategory"
-                       class="battle-online-lobby-ui-select"
-                       append-to-body="true"
-                       ng-change="vm.getTopics()"
-                       ng-disabled="vm.loadingTopicCategories || vm.savingLobbyTopics"
-                       theme="bootstrap">
-                <ui-select-match placeholder="Chọn Grade / Category">
-                    {{$select.selected.name}}
-                </ui-select-match>
-                <ui-select-choices repeat="category in vm.topicCategories | filter:$select.search">
-                    <div ng-bind-html="category.name | highlight:$select.search"></div>
-                </ui-select-choices>
-            </ui-select>
+                    <!--<div ng-bind-html="owner.name | highlight:$select.search"></div>-->
+                <!--</ui-select-choices>-->
+            <!--</ui-select>-->
 
-            <label>BÀI TỪ VỰNG</label>
-            <div class="battle-online-topic-loading"
-                 ng-if="vm.loadingTopics || vm.loadingTopicCategories"
-                 role="status" aria-live="polite">
-                <span class="battle-online-topic-spinner" aria-hidden="true"></span>
-                {{vm.loadingTopicCategories ? 'Đang tải category...' : 'Đang tải bài từ vựng...'}}
-            </div>
-            <button type="button"
-                    class="battle-online-topic-load-error"
-                    ng-if="vm.topicLoadError && !vm.loadingTopics"
-                    ng-click="vm.getTopics()">
-                {{vm.topicLoadError}}
-            </button>
+            <!--<label>GRADE / CATEGORY</label>-->
+            <!--<ui-select ng-model="vm.searchTopicDto.topicCategory"-->
+                       <!--class="battle-online-lobby-ui-select"-->
+                       <!--append-to-body="true"-->
+                       <!--ng-change="vm.getTopics()"-->
+                       <!--ng-disabled="vm.loadingTopicCategories || vm.savingLobbyTopics"-->
+                       <!--theme="bootstrap">-->
+                <!--<ui-select-match placeholder="Chọn Grade / Category">-->
+                    <!--{{$select.selected.name}}-->
+                <!--</ui-select-match>-->
+                <!--<ui-select-choices-->
+                        <!--class="battle-online-lobby-dropdown"-->
+                        <!--repeat="category in vm.topicCategories | filter:$select.search">-->
 
-            <div class="battle-online-topic-picker-row">
-                <ui-select ng-model="vm.selectedTopicToCreate"
-                           class="battle-online-lobby-ui-select"
-                           append-to-body="true"
-                           ng-disabled="vm.loadingTopics || vm.loadingTopicCategories || vm.savingLobbyTopics || !vm.topics.length"
-                           theme="bootstrap">
-                    <ui-select-match placeholder="Chọn bài muốn thêm">
-                        {{$select.selected.name}}
-                    </ui-select-match>
-                    <ui-select-choices repeat="topic in vm.topics | filter:$select.search">
-                        <div ng-bind-html="topic.name | highlight:$select.search"></div>
-                    </ui-select-choices>
-                </ui-select>
+                    <!--<div ng-bind-html="category.name | highlight:$select.search"></div>-->
+                <!--</ui-select-choices>-->
+            <!--</ui-select>-->
 
-                <button type="button"
-                        class="battle-online-add-topic-btn"
-                        ng-disabled="vm.loadingTopics || vm.savingLobbyTopics || !vm.selectedTopicToCreate"
-                        ng-click="vm.addTopicToCreate()">
-                    <i class="fa fa-plus"></i>
-                    THÊM BÀI
-                </button>
-            </div>
+            <!--<label>BÀI TỪ VỰNG</label>-->
+            <!--<div class="battle-online-topic-loading"-->
+                 <!--ng-if="vm.loadingTopics || vm.loadingTopicCategories"-->
+                 <!--role="status" aria-live="polite">-->
+                <!--<span class="battle-online-topic-spinner" aria-hidden="true"></span>-->
+                <!--{{vm.loadingTopicCategories ? 'Đang tải category...' : 'Đang tải bài từ vựng...'}}-->
+            <!--</div>-->
+            <!--<button type="button"-->
+                    <!--class="battle-online-topic-load-error"-->
+                    <!--ng-if="vm.topicLoadError && !vm.loadingTopics"-->
+                    <!--ng-click="vm.getTopics()">-->
+                <!--{{vm.topicLoadError}}-->
+            <!--</button>-->
 
-            <div class="battle-online-selected-topics"
-                 ng-if="vm.selectedTopicsToCreate.length">
-                <div class="battle-online-selected-topic"
-                     ng-repeat="topic in vm.selectedTopicsToCreate track by topic.id">
-                    <span>
-                        <small>{{topic.ownerName}} • {{topic.categoryName}}</small>
-                        <strong>{{topic.name}}</strong>
-                    </span>
-                    <button type="button"
-                            title="Bỏ bài này"
-                            ng-disabled="vm.savingLobbyTopics"
-                            ng-click="vm.removeTopicToCreate(topic)">×</button>
-                </div>
-            </div>
+            <!--<div class="battle-online-topic-picker-row">-->
+                <!--<ui-select ng-model="vm.selectedTopicToCreate"-->
+                           <!--class="battle-online-lobby-ui-select"-->
+                           <!--append-to-body="true"-->
+                           <!--ng-disabled="vm.loadingTopics || vm.loadingTopicCategories || vm.savingLobbyTopics || !vm.topics.length"-->
+                           <!--theme="bootstrap">-->
+                    <!--<ui-select-match placeholder="Chọn bài muốn thêm">-->
+                        <!--{{$select.selected.name}}-->
+                    <!--</ui-select-match>-->
+                    <!--<ui-select-choices-->
+                            <!--class="battle-online-lobby-dropdown"-->
+                            <!--repeat="topic in vm.topics | filter:$select.search">-->
 
-            <div class="battle-online-lobby-topic-actions">
-                <button type="button"
-                        class="is-cancel"
-                        ng-disabled="vm.savingLobbyTopics"
-                        ng-click="vm.closeLobbyTopicEditor()">
-                    HỦY
-                </button>
-                <button type="button"
-                        class="is-save"
-                        ng-disabled="vm.savingLobbyTopics || !vm.selectedTopicsToCreate.length"
-                        ng-click="vm.saveLobbyTopics()">
-                    <i class="fa"
-                       ng-class="vm.savingLobbyTopics ? 'fa-circle-o-notch fa-spin' : 'fa-save'"></i>
-                    {{vm.savingLobbyTopics ? 'ĐANG ĐỔI BÀI...' : 'LƯU VÀ NẠP LẠI BÀI'}}
-                </button>
-            </div>
-        </div>
-    </section>
-    </div>
+                        <!--<div ng-bind-html="topic.name | highlight:$select.search"></div>-->
+                    <!--</ui-select-choices>-->
+                <!--</ui-select>-->
+
+                <!--<button type="button"-->
+                        <!--class="battle-online-add-topic-btn"-->
+                        <!--ng-disabled="vm.loadingTopics || vm.savingLobbyTopics || !vm.selectedTopicToCreate"-->
+                        <!--ng-click="vm.addTopicToCreate()">-->
+                    <!--<i class="fa fa-plus"></i>-->
+                    <!--THÊM BÀI-->
+                <!--</button>-->
+            <!--</div>-->
+
+            <!--<div class="battle-online-selected-topics"-->
+                 <!--ng-if="vm.selectedTopicsToCreate.length">-->
+                <!--<div class="battle-online-selected-topic"-->
+                     <!--ng-repeat="topic in vm.selectedTopicsToCreate track by topic.id">-->
+                    <!--<span>-->
+                        <!--<small>{{topic.ownerName}} • {{topic.categoryName}}</small>-->
+                        <!--<strong>{{topic.name}}</strong>-->
+                    <!--</span>-->
+                    <!--<button type="button"-->
+                            <!--title="Bỏ bài này"-->
+                            <!--ng-disabled="vm.savingLobbyTopics"-->
+                            <!--ng-click="vm.removeTopicToCreate(topic)">×</button>-->
+                <!--</div>-->
+            <!--</div>-->
+
+            <!--<div class="battle-online-lobby-topic-actions">-->
+                <!--<button type="button"-->
+                        <!--class="is-cancel"-->
+                        <!--ng-disabled="vm.savingLobbyTopics"-->
+                        <!--ng-click="vm.closeLobbyTopicEditor()">-->
+                    <!--HỦY-->
+                <!--</button>-->
+                <!--<button type="button"-->
+                        <!--class="is-save"-->
+                        <!--ng-disabled="vm.savingLobbyTopics || !vm.selectedTopicsToCreate.length"-->
+                        <!--ng-click="vm.saveLobbyTopics()">-->
+                    <!--<i class="fa"-->
+                       <!--ng-class="vm.savingLobbyTopics ? 'fa-circle-o-notch fa-spin' : 'fa-save'"></i>-->
+                    <!--{{vm.savingLobbyTopics ? 'ĐANG ĐỔI BÀI...' : 'LƯU VÀ NẠP LẠI BÀI'}}-->
+                <!--</button>-->
+            <!--</div>-->
+        <!--</div>-->
+    <!--</section>-->
+    <!--</div>-->
 
 
     <!-- =====================================================
@@ -2127,7 +2141,7 @@
          ng-click="vm.closeQrModal()">
 
         <section class="battle-online-qr-modal battle-online-display-qr-modal"
-                 ng-class="{'has-host-settings': vm.isHost()}"
+                ng-class="vm.isHost() ? 'has-host-settings' : 'qr-only'"
                  role="dialog"
                  aria-modal="true"
                  aria-label="Mã QR phòng"
@@ -2145,7 +2159,7 @@
             </div>
 
             <div class="battle-online-qr-setup-layout"
-                 ng-class="{'is-host': vm.isHost()}">
+                    ng-class="vm.isHost() ? 'is-host' : 'is-guest'">
                 <div class="battle-online-qr-fixed-pane">
                     <div class="battle-online-qr-modal-body">
                         <img ng-src="{{vm.qrImageUrl}}"
@@ -2155,8 +2169,8 @@
                             {{vm.room.code}}
                         </strong>
 
-                        <p>Quét mã để mở đúng link phòng trên domain hiện tại.</p>
-                        <small>{{vm.roomLink}}</small>
+                        <!--<p>Quét mã để mở đúng link phòng trên domain hiện tại.</p>-->
+                        <!--<small>{{vm.roomLink}}</small>-->
                     </div>
                 </div>
 
@@ -2900,7 +2914,7 @@
 
     .battle-online-lobby-topic-backdrop {
         position: fixed;
-        z-index: 10050;
+        z-index: 20000;
         inset: 0;
         display: flex;
         align-items: center;
@@ -2911,25 +2925,50 @@
         overflow-y: auto;
     }
 
-    /* ui-select moves an open menu under <body>. Keep that menu above the
-       lobby modal/backdrop; ui-select itself closes the previous menu when
-       another selector is activated. */
+    /* =========================================================
+   FIX UI-SELECT TRONG POPUP ĐỔI TOPIC
+
+   append-to-body="true" sẽ chuyển cả ui-select ra dưới <body>.
+   Vì vậy phải nâng chính container đó lên trên backdrop.
+   ========================================================= */
+
+
+    /* CẢ UI-SELECT được chuyển ra BODY */
     body > .battle-online-lobby-ui-select.ui-select-container,
     body > .battle-online-lobby-ui-select.ui-select-container.open,
-    body > .battle-online-lobby-ui-select.ui-select-container .ui-select-choices,
-    body > .battle-online-lobby-ui-select.ui-select-container .dropdown-menu {
-        z-index: 10080 !important;
+    body > .battle-online-lobby-ui-select.ui-select-bootstrap.open {
+        position: absolute !important;
+
+        z-index: 30000 !important;
     }
 
+
+    /* DANH SÁCH OPTION */
     body > .battle-online-lobby-ui-select.ui-select-container .ui-select-choices,
-    body > .battle-online-lobby-ui-select.ui-select-container .dropdown-menu {
+    body > .battle-online-lobby-ui-select.ui-select-container .dropdown-menu,
+    body > .battle-online-lobby-dropdown,
+    .battle-online-lobby-dropdown,
+    .battle-online-lobby-dropdown.dropdown-menu,
+    .battle-online-lobby-dropdown.ui-select-choices {
+        z-index: 30001 !important;
+
         max-height: min(320px, 52vh) !important;
+
+        overflow-x: hidden !important;
         overflow-y: auto !important;
-        border: 1px solid #c4b5fd;
-        box-shadow: 0 18px 38px rgba(30, 41, 59, .28);
+
+        background: #fff !important;
+
+        border: 1px solid #c4b5fd !important;
+
+        box-shadow:
+                0 18px 38px rgba(30, 41, 59, .28) !important;
     }
 
     .battle-online-lobby-topic-editor {
+        position: relative;
+        z-index: 20001;
+
         width: min(760px, 100%);
         max-height: calc(100dvh - 44px);
         margin: 0;
@@ -8053,51 +8092,51 @@
     }
 
     /* QR và thiết lập dùng hai vùng độc lập: QR đứng yên, setup cuộn riêng. */
-    .battle-online-display-qr-modal.has-host-settings {
-        display: flex;
-        flex-direction: column;
-        width: min(1180px, 96vw);
-        height: min(88vh, 900px);
-        max-width: none;
-        overflow: hidden;
-    }
+    /*.battle-online-display-qr-modal {*/
+        /*display: flex;*/
+        /*flex-direction: column;*/
+        /*width: min(1180px, 96vw);*/
+        /*height: min(88vh, 900px);*/
+        /*max-width: none;*/
+        /*overflow: hidden;*/
+    /*}*/
 
-    .battle-online-qr-setup-layout {
-        min-height: 0;
-        flex: 1;
-    }
+    /*.battle-online-qr-setup-layout {*/
+        /*min-height: 0;*/
+        /*flex: 1;*/
+    /*}*/
 
-    .battle-online-qr-setup-layout.is-host {
-        display: grid;
-        grid-template-columns: minmax(330px, 1fr) minmax(390px, 1fr);
-    }
+    /*.battle-online-qr-setup-layout {*/
+        /*display: grid;*/
+        /*grid-template-columns: minmax(330px, 1fr) minmax(390px, 1fr);*/
+    /*}*/
 
-    .battle-online-qr-fixed-pane {
-        display: grid;
-        place-items: center;
-        min-width: 0;
-        padding: 18px;
-        background: linear-gradient(145deg, #f7f8ff, #eefbf8);
-    }
+    /*.battle-online-qr-fixed-pane {*/
+        /*display: grid;*/
+        /*place-items: center;*/
+        /*min-width: 0;*/
+        /*padding: 18px;*/
+        /*background: linear-gradient(145deg, #f7f8ff, #eefbf8);*/
+    /*}*/
 
-    .battle-online-qr-fixed-pane .battle-online-qr-modal-body {
-        width: 100%;
-        padding: 0;
-        overflow: hidden;
-    }
+    /*.battle-online-qr-fixed-pane .battle-online-qr-modal-body {*/
+        /*width: 100%;*/
+        /*padding: 0;*/
+        /*overflow: hidden;*/
+    /*}*/
 
-    .battle-online-qr-settings-scroll {
-        min-width: 0;
-        min-height: 0;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        border-left: 1px solid #e7e9f5;
-        background: #fff;
-    }
+    /*.battle-online-qr-settings-scroll {*/
+        /*min-width: 0;*/
+        /*min-height: 0;*/
+        /*overflow-y: auto;*/
+        /*overscroll-behavior: contain;*/
+        /*border-left: 1px solid #e7e9f5;*/
+        /*background: #fff;*/
+    /*}*/
 
-    .battle-online-qr-settings-scroll .battle-online-host-settings-content {
-        padding: 20px;
-    }
+    /*.battle-online-qr-settings-scroll .battle-online-host-settings-content {*/
+        /*padding: 20px;*/
+    /*}*/
 
     .battle-online-pet-picker {
         display: flex;
@@ -8215,33 +8254,33 @@
     }
 
     @media (max-width: 820px) {
-        .battle-online-display-qr-modal.has-host-settings {
-            width: 96vw;
-            height: 92vh;
-        }
+        /*.battle-online-display-qr-modal {*/
+            /*width: 96vw;*/
+            /*height: 92vh;*/
+        /*}*/
 
-        .battle-online-qr-setup-layout.is-host {
-            grid-template-columns: 1fr;
-            grid-template-rows: auto minmax(0, 1fr);
-        }
+        /*.battle-online-qr-setup-layout {*/
+            /*grid-template-columns: 1fr;*/
+            /*grid-template-rows: auto minmax(0, 1fr);*/
+        /*}*/
 
-        .battle-online-qr-fixed-pane {
-            padding: 10px;
-        }
+        /*.battle-online-qr-fixed-pane {*/
+            /*padding: 10px;*/
+        /*}*/
 
-        .battle-online-qr-fixed-pane .battle-online-qr-modal-body > img {
-            width: min(210px, 44vw);
-        }
+        /*.battle-online-qr-fixed-pane .battle-online-qr-modal-body > img {*/
+            /*width: min(210px, 44vw);*/
+        /*}*/
 
-        .battle-online-qr-fixed-pane .battle-online-qr-modal-body p,
-        .battle-online-qr-fixed-pane .battle-online-qr-modal-body > small {
-            display: none;
-        }
+        /*.battle-online-qr-fixed-pane .battle-online-qr-modal-body p,*/
+        /*.battle-online-qr-fixed-pane .battle-online-qr-modal-body > small {*/
+            /*display: none;*/
+        /*}*/
 
-        .battle-online-qr-settings-scroll {
-            border-top: 1px solid #e7e9f5;
-            border-left: 0;
-        }
+        /*.battle-online-qr-settings-scroll {*/
+            /*border-top: 1px solid #e7e9f5;*/
+            /*border-left: 0;*/
+        /*}*/
 
         .battle-online-pet-picker {
             align-items: stretch;
@@ -8279,5 +8318,247 @@
         margin: 0 auto !important;
 
         transform: none !important;
+    }
+
+    /* =========================================================
+    QR MODAL
+    Desktop: QR trái | Setup phải
+    Setup scroll độc lập
+    ========================================================= */
+
+    .battle-online-display-qr-modal {
+        width: min(1100px, 96vw) !important;
+        height: min(86vh, 850px) !important;
+
+        max-width: none !important;
+        max-height: none !important;
+
+        display: flex;
+        flex-direction: column;
+
+        overflow: hidden;
+    }
+
+    .battle-online-display-qr-modal
+    .battle-online-qr-modal-header {
+        flex: 0 0 auto;
+    }
+
+
+    /* ===== BODY ===== */
+
+    .battle-online-qr-setup-layout {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .battle-online-qr-setup-layout {
+        min-width: 0;
+        min-height: 0;
+
+        display: grid !important;
+
+        grid-template-columns:
+                minmax(300px, 0.9fr)
+                minmax(420px, 1.1fr);
+
+        overflow: hidden;
+    }
+
+
+    /* ===== QR TRÁI ===== */
+
+    .battle-online-qr-fixed-pane {
+        min-width: 0;
+        min-height: 0;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        padding: 24px;
+
+        overflow: hidden;
+
+        border-right: 1px solid #e7e9f5;
+
+        background: linear-gradient(
+                145deg,
+                #f7f8ff,
+                #eefbf8
+        );
+    }
+
+    .battle-online-qr-fixed-pane
+    .battle-online-qr-modal-body {
+        width: 100%;
+        padding: 0;
+        overflow: hidden;
+        text-align: center;
+    }
+
+    .battle-online-qr-fixed-pane
+    .battle-online-qr-modal-body > img {
+        display: block;
+
+        width: min(360px, 90%) !important;
+        max-width: 100%;
+        height: auto;
+
+        margin: 0 auto 15px;
+    }
+
+
+    /* ===== SETUP PHẢI ===== */
+
+    .battle-online-qr-settings-scroll {
+        min-width: 0;
+        min-height: 0;
+
+        box-sizing: border-box;
+
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+
+        overscroll-behavior: contain;
+
+        padding: 18px;
+
+        background: #fff;
+
+        border-left: 0;
+    }
+
+
+    /* scrollbar */
+
+    .battle-online-qr-settings-scroll::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .battle-online-qr-settings-scroll::-webkit-scrollbar-track {
+        background: #f1f3f8;
+        border-radius: 999px;
+    }
+
+    .battle-online-qr-settings-scroll::-webkit-scrollbar-thumb {
+        background: #c9ccef;
+        border-radius: 999px;
+    }
+
+
+    /* =========================================================
+       MOBILE
+       Chỉ dưới 600px mới xếp QR trên / setup dưới
+       ========================================================= */
+
+    @media (max-width: 600px) {
+
+        .battle-online-display-qr-modal {
+            width: 96vw !important;
+            height: 92vh !important;
+        }
+
+        .battle-online-qr-setup-layout {
+            grid-template-columns: 1fr !important;
+            grid-template-rows: auto minmax(0, 1fr);
+        }
+
+        .battle-online-qr-fixed-pane {
+            padding: 10px;
+
+            border-right: 0;
+            border-bottom: 1px solid #e7e9f5;
+        }
+
+        .battle-online-qr-fixed-pane
+        .battle-online-qr-modal-body > img {
+            width: min(190px, 45vw) !important;
+        }
+
+        .battle-online-qr-fixed-pane
+        .battle-online-qr-modal-body p,
+        .battle-online-qr-fixed-pane
+        .battle-online-qr-modal-body > small {
+            display: none;
+        }
+
+        .battle-online-qr-settings-scroll {
+            padding: 12px;
+        }
+    }
+
+    .battle-online-qr-room-code {
+        font-size: 100px !important;
+        line-height: 1.1;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+    }
+
+    /* =========================================================
+   INLINE TOPIC EDITOR
+   nằm ngay dưới nút CHỌN / ĐỔI TOPIC
+   ========================================================= */
+
+    .battle-online-lobby-topic-shortcut
+    .battle-online-inline-topic-editor {
+
+        /* shortcut đang là grid 2 cột,
+           editor phải chiếm toàn bộ chiều ngang */
+        grid-column: 1 / -1;
+
+        width: 100%;
+        min-width: 0;
+
+        margin-top: 0;
+        padding: 16px;
+
+        border: 1px solid #c4b5fd;
+        border-radius: 16px;
+
+        background:
+                linear-gradient(
+                        145deg,
+                        #ffffff,
+                        #faf7ff
+                );
+    }
+
+
+    .battle-online-inline-topic-editor
+    .battle-online-lobby-topic-form {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+    }
+
+
+    /* ui-select full width */
+    .battle-online-inline-topic-editor
+    .ui-select-container {
+        width: 100% !important;
+    }
+
+
+    /* khoảng cách label */
+    .battle-online-inline-topic-editor
+    .battle-online-lobby-topic-form > label {
+        display: block;
+        margin-top: 13px;
+        margin-bottom: 6px;
+    }
+
+
+    /* label đầu tiên không cần cách phía trên */
+    .battle-online-inline-topic-editor
+    .battle-online-lobby-topic-form > label:first-child {
+        margin-top: 0;
+    }
+
+
+    /* HỦY + LƯU */
+    .battle-online-inline-topic-editor
+    .battle-online-lobby-topic-actions {
+        margin-top: 14px;
     }
 </style>
