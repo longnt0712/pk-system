@@ -1347,7 +1347,21 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 						|| (!comprehensiveActivity && ("IELTS_LISTENING".equals(activityType) != listeningTest))) {
 					throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Đề bài tập hoặc Part được chọn không hợp lệ.");
 				}
-				task.setIeltsTest(test); task.setIeltsPart(value.getIeltsPart()); task.setTopic(null); task.setSourceQuestion(null);
+				task.setIeltsTest(test); task.setIeltsPart(value.getIeltsPart()); task.setSourceQuestion(null);
+				if (comprehensiveActivity) {
+					Topic topic = value.getTopicId() == null ? null : topicRepository.findOne(value.getTopicId());
+					boolean unchangedLegacyTask = topic == null && oldTask != null && oldTask.getTopic() == null
+							&& oldTask.getIeltsTest() != null && oldTask.getIeltsTest().getId().equals(test.getId());
+					Long linkCount = topic == null ? Long.valueOf(0L)
+							: questionTopicRepository.countByQuestionIdAndTopicId(test.getId(), topic.getId());
+					if (!unchangedLegacyTask && (topic == null || linkCount == null || linkCount.longValue() < 1L)) {
+						throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST,
+								"Bài tập tổng hợp không thuộc Topic đã chọn.");
+					}
+					task.setTopic(topic);
+				} else {
+					task.setTopic(null);
+				}
 				task.setAutoCompleteFromTopic(false);
 			} else if (value.getTopicId() != null) {
 				Topic topic = topicRepository.findOne(value.getTopicId());
@@ -1430,7 +1444,11 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 	@Override
 	public List<QuestionForTestsDto> getAssignableIeltsTests() {
-		return questionRepository.findPublishedIeltsTests();
+		List<QuestionForTestsDto> result = new ArrayList<QuestionForTestsDto>();
+		for (Question question : questionRepository.findPublishedIeltsTestDomains()) {
+			result.add(new QuestionForTestsDto(question));
+		}
+		return result;
 	}
 
 	private Set<Topic> loadTopics(List<Long> topicIds) {

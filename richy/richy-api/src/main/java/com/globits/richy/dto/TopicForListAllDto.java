@@ -11,10 +11,16 @@ public class TopicForListAllDto implements Serializable{
 	private String name;
 	private Long categoryId;
 	private String categoryName;
+	private Long userId;
+	private String username;
 	public Long getCategoryId() { return categoryId; }
 	public void setCategoryId(Long value) { categoryId = value; }
 	public String getCategoryName() { return categoryName; }
 	public void setCategoryName(String value) { categoryName = value; }
+	public Long getUserId() { return userId; }
+	public void setUserId(Long value) { userId = value; }
+	public String getUsername() { return username; }
+	public void setUsername(String value) { username = value; }
 		
 	public Long getId() {
 		return id;
@@ -37,6 +43,10 @@ public class TopicForListAllDto implements Serializable{
 		if (item.getTopicCategory() != null) {
 			categoryId = item.getTopicCategory().getId();
 			categoryName = item.getTopicCategory().getName();
+		}
+		if (item.getUser() != null) {
+			userId = item.getUser().getId();
+			username = item.getUser().getUsername();
 		}
 	}
 	
