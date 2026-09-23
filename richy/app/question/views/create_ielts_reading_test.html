@@ -39,30 +39,30 @@
                         </div>
                     </div>
                     <div class="col-md-6 reading-catalog-topic-filters" ng-if="vm.isComprehensiveMode">
-                        <ui-select theme="bootstrap" ng-model="vm.catalogTopicSource" ng-change="vm.loadCatalogTopicSource()">
-                            <ui-select-match placeholder="Chọn nguồn..."><i class="fa fa-database"></i> <span ng-bind="vm.topicSourceLabel($select.selected)"></span></ui-select-match>
+                        <ui-select theme="bootstrap" ng-model="vm.builderTopicSource" ng-change="vm.builderTopicSourceChanged()">
+                            <ui-select-match placeholder="Chọn nguồn..."><span class="reading-topic-source-label"><i class="fa fa-database"></i> {{vm.topicSourceLabel(vm.builderTopicSource)}}</span></ui-select-match>
                             <ui-select-choices repeat="source in vm.topicSources | filter:$select.search">
                                 <div ng-bind-html="vm.topicSourceLabel(source) | highlight:$select.search"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <ui-select theme="bootstrap" ng-model="vm.catalogTopicCategory"
-                                   ng-change="vm.catalogTopicCategoryChanged()"
-                                   ng-disabled="vm.catalogTopicsLoading || !vm.catalogTopicCategories.length">
-                            <ui-select-match allow-clear="true" placeholder="Tất cả category...">{{$select.selected.name}}</ui-select-match>
-                            <ui-select-choices repeat="category in vm.catalogTopicCategories | filter:$select.search">
+                        <ui-select theme="bootstrap" ng-model="vm.builderTopicCategory"
+                                   ng-change="vm.builderTopicCategoryChanged()"
+                                   ng-disabled="vm.builderTopicsLoading || !vm.builderTopicCategories.length">
+                            <ui-select-match placeholder="Chọn category...">{{vm.builderTopicCategory.name}}</ui-select-match>
+                            <ui-select-choices repeat="category in vm.builderTopicCategories | filter:$select.search">
                                 <div ng-bind-html="category.name | highlight:$select.search"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <ui-select theme="bootstrap" ng-model="vm.catalogTopic"
-                                   ng-change="vm.applyCatalogTopicFilter()"
-                                   ng-disabled="vm.catalogTopicsLoading || !vm.catalogTopicCategory || !vm.catalogTopics.length">
-                            <ui-select-match allow-clear="true" placeholder="Tất cả topic...">{{$select.selected.name}}</ui-select-match>
-                            <ui-select-choices repeat="topic in vm.catalogTopics | filter:$select.search">
+                        <ui-select multiple theme="bootstrap" ng-model="vm.selectedTestTopics"
+                                   ng-change="vm.builderTopicsChanged()" close-on-select="false"
+                                   ng-disabled="vm.builderTopicsLoading || !vm.builderTopicCategory || !vm.availableTopics.length">
+                            <ui-select-match placeholder="Chọn một hoặc nhiều topic...">{{$item.name}}</ui-select-match>
+                            <ui-select-choices repeat="topic in vm.availableTopics | filter:$select.search">
                                 <div ng-bind-html="topic.name | highlight:$select.search"></div>
                             </ui-select-choices>
                         </ui-select>
-                        <span class="reading-catalog-topic-status" ng-if="vm.catalogTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải toàn bộ topic...</span>
-                        <span class="reading-catalog-topic-status is-error" ng-if="vm.catalogTopicsError && !vm.catalogTopicsLoading">{{vm.catalogTopicsError}}</span>
+                        <span class="reading-catalog-topic-status" ng-if="vm.builderTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải toàn bộ topic...</span>
+                        <span class="reading-catalog-topic-status is-error" ng-if="vm.builderTopicsError && !vm.builderTopicsLoading">{{vm.builderTopicsError}}</span>
                     </div>
                     <div class="reading-admin-toolbar__actions" ng-class="vm.isComprehensiveMode ? 'col-md-2' : 'col-md-8'">
                         <button type="button" class="btn btn-default" ng-if="!vm.isComprehensiveMode" ng-click="vm.downloadReadingImportTemplate()">
@@ -159,7 +159,7 @@
                                     <div>
                                         <label>1. Nguồn <span class="font-red">*</span></label>
                                         <ui-select theme="bootstrap" ng-model="vm.builderTopicSource" ng-change="vm.builderTopicSourceChanged()">
-                                            <ui-select-match placeholder="Chọn nguồn..."><span ng-bind="vm.topicSourceLabel($select.selected)"></span></ui-select-match>
+                                            <ui-select-match placeholder="Chọn nguồn..."><span class="reading-topic-source-label">{{vm.topicSourceLabel(vm.builderTopicSource)}}</span></ui-select-match>
                                             <ui-select-choices repeat="source in vm.topicSources | filter:$select.search">
                                                 <div ng-bind-html="vm.topicSourceLabel(source) | highlight:$select.search"></div>
                                             </ui-select-choices>
@@ -179,7 +179,7 @@
                                     <div>
                                         <label>3. Topic gán cho bài <span class="font-red">*</span></label>
                                         <ui-select multiple theme="bootstrap" ng-model="vm.selectedTestTopics"
-                                                   ng-change="vm.syncTestTopics()" close-on-select="false"
+                                                   ng-change="vm.builderTopicsChanged()" close-on-select="false"
                                                    ng-disabled="vm.builderTopicsLoading || !vm.builderTopicCategory || !vm.availableTopics.length">
                                             <ui-select-match placeholder="Chọn một hoặc nhiều topic...">{{$item.name}}</ui-select-match>
                                             <ui-select-choices repeat="topic in vm.availableTopics | filter:$select.search">
@@ -1612,12 +1612,34 @@
         width: 100% !important;
     }
 
+    .reading-catalog-topic-filters .ui-select-multiple {
+        width: 100% !important;
+        min-height: 34px;
+        border-color: #d6def5;
+        border-radius: 7px !important;
+        background: #f8faff;
+    }
+
     .reading-catalog-topic-filters .ui-select-toggle {
         min-height: 34px;
         border-color: #d6def5;
         border-radius: 7px !important;
         color: #33446f;
         background: #f8faff;
+    }
+
+    .reading-topic-source-label {
+        display: block;
+        width: 100%;
+        overflow: hidden;
+        color: #33446f;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .reading-topic-source-label .fa {
+        margin-right: 6px;
     }
 
     .reading-catalog-topic-status {

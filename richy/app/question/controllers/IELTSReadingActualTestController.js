@@ -1417,7 +1417,7 @@
                 var activeDraftKey = readingDraftStorageKey(testId, vm.testSessionMode);
                 var previousDraft = readStoredDraft(activeDraftKey) || {};
                 var readingDraft = {
-                    version: 3,
+                    version: 4,
                     userId: vm.currentUser.id,
                     testId: testId,
                     title: vm.ieltsReadingActualTest.title || 'IELTS Reading Test',
@@ -1600,7 +1600,8 @@
                     var completeState = findCompleteListDraftState(draft, question);
                     var completeWord = findCompleteListWord(entry.questionPackage, completeState, savedResult);
                     if (completeWord) {
-                        vm.dropCompleteListWord(entry.questionPackage, entry.questionPackage.subQuestions.indexOf(question), completeWord);
+                        vm.dropCompleteListWord(entry.questionPackage,
+                            entry.questionPackage.subQuestions.indexOf(question), completeWord, true);
                     }
                     return;
                 }
@@ -1679,10 +1680,12 @@
         }
 
         $window.addEventListener('beforeunload', handleReadingBeforeUnload);
+        $window.addEventListener('pagehide', saveReadingDraft);
         $scope.$on('$destroy', function () {
             saveReadingDraft();
             $timeout.cancel(readingDraftAutosaveTimer);
             $window.removeEventListener('beforeunload', handleReadingBeforeUnload);
+            $window.removeEventListener('pagehide', saveReadingDraft);
         });
 
         var currentPerson = vm.currentUser.person || {};
@@ -2205,7 +2208,15 @@
                                         draftWaitTimeout = null;
                                     }
                                     if (!startFreshSeriousTest) {
-                                        restoreReadingDraft();
+                                        try {
+                                            restoreReadingDraft();
+                                        } catch (draftRestoreError) {
+                                            // A malformed or old draft must never leave the candidate
+                                            // trapped on the loading screen. Keep the test usable and
+                                            // let the next autosave replace the incompatible snapshot.
+                                            console.error('Unable to restore IELTS draft.', draftRestoreError);
+                                            toastr.warning('Một phần bản nháp cũ không thể khôi phục, bài vẫn được mở để bạn tiếp tục.', 'Khôi phục bài làm');
+                                        }
                                     }
                                     if (vm.isPartAssignment) {
                                         vm.passageNumber = displayPassageForAssignedPart();
@@ -2639,14 +2650,14 @@
         };
 
         function syncTimerWhenVisible() {
-            if (vm.isStudyMode()) {
-                if ($window.document.hidden) {
+            if ($window.document.hidden) {
+                if (vm.isStudyMode()) {
                     pauseStudyTimer();
-                    saveReadingDraft();
-                } else {
-                    $scope.$evalAsync(resumeStudyTimer);
                 }
-            } else if (!$window.document.hidden) {
+                saveReadingDraft();
+            } else if (vm.isStudyMode()) {
+                $scope.$evalAsync(resumeStudyTimer);
+            } else {
                 $scope.$evalAsync(syncCountdownFromDeadline);
             }
         }
@@ -2711,23 +2722,15 @@
             vm.tempQuestion = question;
             // vm.tempBeforeQuestion = beforeQuestion;
             // vm.tempAfterQuestion = afterQuestion;
-            for(var i = 0; i < vm.ieltsReadingActualTest.subQuestions[0].subQuestions.length; i++){
-                for(var j = 0; j < vm.ieltsReadingActualTest.subQuestions[0].subQuestions[i].subQuestions.length; j++){
-                    vm.ieltsReadingActualTest.subQuestions[0].subQuestions[i].subQuestions[j].showChildren = false;
-                }
-            }
-            for(var i = 0; i < vm.ieltsReadingActualTest.subQuestions[1].subQuestions.length; i++){
-                for(var j = 0; j < vm.ieltsReadingActualTest.subQuestions[1].subQuestions[i].subQuestions.length; j++){
-                    vm.ieltsReadingActualTest.subQuestions[1].subQuestions[i].subQuestions[j].showChildren = false;
-                }
-            }
-            for(var i = 0; i < vm.ieltsReadingActualTest.subQuestions[2].subQuestions.length; i++){
-                for(var j = 0; j < vm.ieltsReadingActualTest.subQuestions[2].subQuestions[i].subQuestions.length; j++){
-                    vm.ieltsReadingActualTest.subQuestions[2].subQuestions[i].subQuestions[j].showChildren = false;
-                }
-            }
+            angular.forEach((vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.subQuestions) || [], function (passage) {
+                angular.forEach((passage && passage.subQuestions) || [], function (questionPackage) {
+                    angular.forEach((questionPackage && questionPackage.subQuestions) || [], function (childQuestion) {
+                        childQuestion.showChildren = false;
+                    });
+                });
+            });
 
-            if(question.parent.type == 5){
+            if(question.parent && question.parent.type == 5){
                 // console.log("type = 5 here");
                 // console.log(questions);
 
@@ -3148,10 +3151,12 @@
                     'dnd-effect-allowed="copy" ' +
                     'title="Kéo sang ô khác hoặc kéo về danh sách bên dưới">' +
                     '<span ng-bind="completeListPackage.completeListSlots[' + questionIndex + '].items[0].clientAnswer"></span>' +
-                    '<button type="button" class="complete-list-slot-remove" ' +
+                    '</span>' +
+                    '<button type="button" class="complete-list-slot-remove" draggable="false" ' +
+                    'ng-if="completeListPackage.completeListSlots[' + questionIndex + '].items.length" ' +
+                    'ng-mousedown="$event.stopPropagation()" ' +
                     'ng-click="$event.stopPropagation(); vm.clearCompleteListSlot(completeListPackage,' + questionIndex + ')" ' +
                     'aria-label="Bỏ đáp án">&times;</button>' +
-                    '</span>' +
                     '</span>';
                 content = content.replace(/\}\{SPACE\}\{/i, dropBox);
             });
@@ -3176,24 +3181,48 @@
             return used;
         };
 
+        function setCompleteListAnswer(question, questionAnswer, selected) {
+            if (!question) { return; }
+            angular.forEach(question.questionAnswers || [], function (answer) {
+                answer.selected = selected === true && answer === questionAnswer;
+            });
+            question.answered = selected === true;
+            vm.testResult.questionAnswerTestResult = (vm.testResult.questionAnswerTestResult || []).filter(function (result) {
+                var resultAnswer = result && result.questionAnswer;
+                var resultQuestion = resultAnswer && resultAnswer.question;
+                return !((question.id != null && resultQuestion && String(resultQuestion.id) === String(question.id)) ||
+                    Number(result && result.ordinalNumber) === Number(question.ordinalNumber));
+            });
+            if (selected === true && questionAnswer) {
+                vm.testResult.questionAnswerTestResult.push({
+                    questionAnswer: questionAnswer,
+                    ordinalNumber: question.ordinalNumber,
+                    clientAnswer: questionAnswer.answer && questionAnswer.answer.answer
+                        ? questionAnswer.answer.answer : ''
+                });
+            }
+        }
+
         vm.clearCompleteListSlot = function (questionPackage, slotIndex, skipDraftSave) {
             var slot = questionPackage && questionPackage.completeListSlots ? questionPackage.completeListSlots[slotIndex] : null;
             var question = questionPackage && questionPackage.subQuestions ? questionPackage.subQuestions[slotIndex] : null;
             if (!slot || !slot.items || !slot.items.length || !question) {
-                return;
+                return false;
             }
             var answerIndex = slot.items[0].answerIndex;
             var questionAnswer = (question.questionAnswers || [])[answerIndex];
-            if (questionAnswer) {
-                vm.checkBoxMultipleChoiceQuestions(questionAnswer, question, false);
-            }
-            slot.items = [];
+            // Keep the same array reference used by dnd-list. Replacing it can
+            // leave the drag directive attached to stale data and make × inert.
+            slot.items.splice(0, slot.items.length);
+            setCompleteListAnswer(question, questionAnswer, false);
             if (!skipDraftSave) {
                 saveReadingDraft();
             }
+            $scope.$evalAsync();
+            return true;
         };
 
-        vm.dropCompleteListWord = function (questionPackage, slotIndex, droppedWord) {
+        vm.dropCompleteListWord = function (questionPackage, slotIndex, droppedWord, skipDraftSave) {
             if (!questionPackage || !droppedWord || !questionPackage.subQuestions || !questionPackage.completeListSlots) {
                 return false;
             }
@@ -3213,12 +3242,15 @@
             var question = questionPackage.subQuestions[slotIndex];
             var questionAnswer = question && question.questionAnswers ? question.questionAnswers[droppedWord.answerIndex] : null;
             if (question && questionAnswer) {
-                questionPackage.completeListSlots[slotIndex].items = [angular.copy(droppedWord)];
-                vm.checkBoxMultipleChoiceQuestions(questionAnswer, question, true);
+                questionPackage.completeListSlots[slotIndex].items.push(angular.copy(droppedWord));
+                setCompleteListAnswer(question, questionAnswer, true);
                 vm.clickShowChildren(question, questionPackage.subQuestions);
             }
-            saveReadingDraft();
+            if (!skipDraftSave) {
+                saveReadingDraft();
+            }
             $scope.$evalAsync();
+            // Signal that the callback already updated dnd-list itself.
             return true;
         };
 
@@ -4315,12 +4347,13 @@
 
         function buildIeltsLearningState() {
             return {
-                version: 1,
+                version: 2,
                 sessionMode: vm.testSessionMode,
                 activeDurationSeconds: getActiveDurationSeconds(),
                 passageNumber: vm.passageNumber || 1,
                 results: serializeReadingDraftResults(),
                 questionStates: serializeReadingQuestionStates(),
+                completeListStates: serializeCompleteListStates(),
                 annotationNotes: angular.copy(vm.annotationNotes || []),
                 annotations: serializeReadingAnnotations()
             };

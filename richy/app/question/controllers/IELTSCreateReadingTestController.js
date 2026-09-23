@@ -461,7 +461,7 @@
             vm.availableTopics = topicsForCategory(vm.builderSourceTopics, vm.builderTopicCategory);
         }
 
-        vm.loadBuilderTopicSource = function (keepSelectedTopics, preferredCategoryId) {
+        vm.loadBuilderTopicSource = function (keepSelectedTopics, preferredCategoryId, refreshCatalog) {
             var requestId = ++builderTopicRequestId;
             vm.builderTopicsLoading = true;
             vm.builderTopicsError = '';
@@ -483,15 +483,17 @@
                 }
                 vm.builderTopicsLoading = false;
                 if (!topics.length) { vm.builderTopicsError = 'Nguồn này chưa có topic để chọn.'; }
+                if (refreshCatalog) { vm.applyCatalogTopicFilter(); }
             }, function (failedRequestId) {
                 if (failedRequestId !== builderTopicRequestId) { return; }
                 vm.builderTopicsLoading = false;
                 vm.builderTopicsError = 'Không tải được topic. Bấm đổi nguồn để thử lại.';
+                if (refreshCatalog) { vm.applyCatalogTopicFilter(); }
             });
         };
 
         vm.builderTopicSourceChanged = function () {
-            vm.loadBuilderTopicSource(false);
+            vm.loadBuilderTopicSource(false, null, true);
             vm.syncTestTopics();
         };
 
@@ -499,6 +501,12 @@
             vm.selectedTestTopics = [];
             vm.availableTopics = topicsForCategory(vm.builderSourceTopics, vm.builderTopicCategory);
             vm.syncTestTopics();
+            vm.applyCatalogTopicFilter();
+        };
+
+        vm.builderTopicsChanged = function () {
+            vm.syncTestTopics();
+            vm.applyCatalogTopicFilter();
         };
 
         vm.restoreBuilderTopicContext = function () {
@@ -508,10 +516,11 @@
             var categoryId = firstTopic.topicCategory && firstTopic.topicCategory.id;
             if (source && (!vm.builderTopicSource || String(source.id) !== String(vm.builderTopicSource.id))) {
                 vm.builderTopicSource = source;
-                vm.loadBuilderTopicSource(true, categoryId);
+                vm.loadBuilderTopicSource(true, categoryId, true);
                 return;
             }
             setBuilderCategory(categoryId);
+            vm.applyCatalogTopicFilter();
         };
 
         vm.loadCatalogTopicSource = function () {
@@ -549,10 +558,14 @@
 
         vm.applyCatalogTopicFilter = function () {
             if (!vm.isComprehensiveMode) { return; }
-            vm.searchDto.questionTopics = [];
-            vm.searchDto.topicOwnerUserId = vm.catalogTopicSource ? vm.catalogTopicSource.id : null;
-            vm.searchDto.topicCategoryId = vm.catalogTopicCategory ? vm.catalogTopicCategory.id : null;
-            vm.searchDto.topicId = vm.catalogTopic ? vm.catalogTopic.id : null;
+            // The catalogue filter and the builder intentionally share the same
+            // source/category/topics so both controls always show identical values.
+            vm.searchDto.questionTopics = (vm.selectedTestTopics || []).map(function (topic) {
+                return {topic: {id: topic.id}};
+            });
+            vm.searchDto.topicOwnerUserId = vm.builderTopicSource ? vm.builderTopicSource.id : null;
+            vm.searchDto.topicCategoryId = vm.builderTopicCategory ? vm.builderTopicCategory.id : null;
+            vm.searchDto.topicId = null;
             vm.searchDto.pageIndex = 1;
             vm.getPageCreateIELTSReadingTest();
         };
@@ -568,8 +581,7 @@
             vm.builderTopicSource = vm.topicSources[0] || null;
             vm.catalogTopicSource = vm.topicSources[0] || null;
             $timeout(function () {
-                vm.loadBuilderTopicSource(false);
-                vm.loadCatalogTopicSource();
+                vm.loadBuilderTopicSource(false, null, true);
             }, 0);
         }
 
