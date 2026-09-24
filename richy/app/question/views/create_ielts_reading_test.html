@@ -336,10 +336,11 @@
                                     <small>Bài làm phải trên {{item.type == 17 ? 250 : 150}} từ để được tính là đạt.</small>
                                 </div>
                             </div>
-                            <textarea ng-if="item.type == 16 || item.type == 17"
-                                      ng-change="vm.changeInTheProcessOfCreatingReadingTest()"
-                                      ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest"
-                                      ng-model="item.question"></textarea>
+                            <div class="writing-task-builder-editor" ng-if="item.type == 16 || item.type == 17">
+                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"
+                                          ui-tinymce="tinymceOptionsToCreateWritingTask"
+                                          ng-model="item.question"></textarea>
+                            </div>
 
                             <div class="reading-matching-names-builder" ng-if="(item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15) && item.subQuestions.length">
                                 <div class="reading-matching-names-builder__header">
@@ -2549,6 +2550,19 @@
         margin-top: 8px;
         color: #0c7d70;
         font-weight: 700;
+    }
+
+    .writing-task-builder-editor {
+        min-height: 620px;
+        margin-top: 10px;
+    }
+
+    .writing-task-builder-editor .mce-tinymce {
+        width: 100% !important;
+        border-color: #b9c9da;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(36, 55, 82, .08);
     }
 
     .reading-insert-gap-button {

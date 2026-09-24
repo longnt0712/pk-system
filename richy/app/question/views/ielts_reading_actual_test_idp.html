@@ -166,8 +166,13 @@
                             <div ng-show="!vm.isListeningRoute" class="col-md-12" style="margin-left: 20px;margin-bottom: 0 !important" >
                                 <h3 ng-if="vm.isComprehensiveRoute" class="bold">Danh sách câu hỏi</h3>
                                 <h4 ng-if="vm.isComprehensiveRoute">Làm lần lượt các câu hỏi bên dưới.</h4>
-                                <h3 ng-if="vm.isWritingRoute" class="bold">IELTS Writing</h3>
-                                <h4 ng-if="vm.isWritingRoute">Hoàn thành {{vm.isPartAssignment ? 'Writing Task ' + vm.assignedPart : 'các Task bên dưới'}}.</h4>
+                                <div ng-if="vm.isWritingRoute" class="idp-writing-part-instruction">
+                                    <h3 class="bold">Part {{vm.activeIeltsNavigationPart()}}</h3>
+                                    <h4>
+                                        You should spend about {{vm.activeIeltsNavigationPart() == 2 ? 40 : 20}} minutes on this task.
+                                        Write at least {{vm.activeIeltsNavigationPart() == 2 ? 250 : 150}} words.
+                                    </h4>
+                                </div>
                                 <h3 ng-show="!vm.isFlexibleRoute && vm.passageNumber == 1" class="bold">Part 1</h3>
                                 <h4 ng-show="!vm.isFlexibleRoute && vm.passageNumber == 1">Read the text and answer questions 1–13.</h4>
 
@@ -189,21 +194,46 @@
                             class="idp-question-step-button is-back"
                             ng-click="vm.navigateReadingQuestion(-1)"
                             ng-disabled="!vm.canNavigateReadingQuestion(-1)"
-                            aria-label="Previous question"
-                            title="Previous question">
+                            aria-label="{{vm.isWritingRoute ? 'Previous part' : 'Previous question'}}"
+                            title="{{vm.isWritingRoute ? 'Previous part' : 'Previous question'}}">
                         <i class="fa fa-arrow-left" aria-hidden="true"></i>
                     </button>
                     <button type="button"
                             class="idp-question-step-button is-next"
                             ng-click="vm.navigateReadingQuestion(1)"
                             ng-disabled="!vm.canNavigateReadingQuestion(1)"
-                            aria-label="Next question"
-                            title="Next question">
+                            aria-label="{{vm.isWritingRoute ? 'Next part' : 'Next question'}}"
+                            title="{{vm.isWritingRoute ? 'Next part' : 'Next question'}}">
                         <i class="fa fa-arrow-right" aria-hidden="true"></i>
                     </button>
                 </nav>
                     <div class="portlet-body">
                         <div ng-show="vm.passageNumber == 1" class="row idp-split-row" >
+
+                            <div class="idp-writing-workspace" ng-if="vm.isWritingRoute">
+                                <section class="idp-writing-task-screen"
+                                         id="writing-task-screen-{{item.type == 17 ? 2 : 1}}"
+                                         ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions"
+                                         ng-show="vm.activeIeltsNavigationPart() === (item.type == 17 ? 2 : 1)">
+                                    <article class="idp-writing-prompt-pane">
+                                        <div class="idp-writing-prompt-copy actual-test-font-global" compile="item.question"></div>
+                                    </article>
+                                    <article class="idp-writing-answer-pane">
+                                        <textarea class="writing-task-runtime__textarea"
+                                                  ng-model="item.subQuestions[0].questionAnswers[0].clientAnswer"
+                                                  ng-change="vm.updateWritingTaskResponse(item)"
+                                                  writing-task-clipboard="vm.onWritingTaskClipboardBlocked()"
+                                                  autocomplete="off"
+                                                  autocapitalize="sentences"
+                                                  spellcheck="true"
+                                                  placeholder="Bắt đầu viết bài tại đây..."></textarea>
+                                        <div class="writing-task-runtime__footer"
+                                             ng-class="{'is-complete': vm.isWritingTaskWordTargetMet(item)}">
+                                            <span>Words: <strong>{{vm.countWritingTaskWords(item.subQuestions[0].questionAnswers[0].clientAnswer)}}</strong></span>
+                                        </div>
+                                    </article>
+                                </section>
+                            </div>
 
                             <!--<div class="col-md-6 passage-text-for-media">-->
                             <!--ng-style="(x.selectedMedia == true  && {'color':'black'})"-->
@@ -235,7 +265,7 @@
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-style="vm.questionPaneStyle(vm.isWritingRoute || (vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll ng-mousedown="closeNotes1()" id="passage-question-text-1">
+                            <div ng-hide="vm.isWritingRoute" ng-style="vm.questionPaneStyle((vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll ng-mousedown="closeNotes1()" id="passage-question-text-1">
                                 <!--<span style="" my-draggable>Drag Me</span>-->
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
@@ -270,9 +300,6 @@
                                                     <i class="fa fa-check-circle"></i> Đạt yêu cầu số từ
                                                 </span>
                                             </div>
-                                            <small class="writing-task-runtime__clipboard-note">
-                                                <i class="fa fa-lock"></i> Không thể dán văn bản từ bên ngoài. Bạn vẫn có thể sao chép, cắt và dán nội dung trong chính ô bài làm.
-                                            </small>
                                         </div>
                                         <div class="row" ng-if="item.type == 8">
                                             <table class="table">
@@ -1486,13 +1513,13 @@
                                      ng-click="vm.openIeltsNavigationPart(part)">
                                 <button type="button"
                                         class="idp-part-tab actual-test-font-global">
-                                    <strong>{{vm.isComprehensiveRoute ? 'Câu hỏi' : (vm.isWritingRoute ? 'Task ' + part.number : 'Part ' + part.number)}}</strong>
-                                    <span class="idp-part-progress" ng-if="vm.activeIeltsNavigationPart() !== part.number">
+                                    <strong>{{vm.isComprehensiveRoute ? 'Câu hỏi' : 'Part ' + part.number}}</strong>
+                                    <span class="idp-part-progress" ng-if="!vm.isWritingRoute && vm.activeIeltsNavigationPart() !== part.number">
                                         {{vm.ieltsNavigationAnsweredCount(part)}} of {{part.questions.length}}
                                     </span>
                                 </button>
 
-                                <div class="idp-part-questions" ng-if="vm.activeIeltsNavigationPart() === part.number">
+                                <div class="idp-part-questions" ng-if="!vm.isWritingRoute && vm.activeIeltsNavigationPart() === part.number">
                                     <button type="button"
                                             class="idp-part-question-button"
                                             ng-repeat="entry in part.questions track by entry.question.id"
@@ -1988,6 +2015,118 @@
         color: #202124;
     }
 
+    .idp-writing-workspace {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        background: #eef1f5;
+        overscroll-behavior: contain;
+    }
+
+    .idp-writing-page .idp-instruction-bar .portlet-body {
+        padding: 10px 18px !important;
+    }
+
+    .idp-writing-page .idp-instruction-bar .row,
+    .idp-writing-page .idp-instruction-bar .col-md-12 {
+        margin: 0 !important;
+    }
+
+    .idp-writing-part-instruction h3 {
+        margin: 0 0 4px;
+        font-size: 17px;
+    }
+
+    .idp-writing-part-instruction h4 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 400;
+        line-height: 1.4;
+    }
+
+    .idp-writing-task-screen {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        width: 100%;
+        height: 100%;
+        min-height: 620px;
+        border-bottom: 10px solid #dfe4ea;
+        background: #ffffff;
+    }
+
+    .idp-writing-prompt-pane,
+    .idp-writing-answer-pane {
+        min-width: 0;
+        min-height: 0;
+    }
+
+    .idp-writing-prompt-pane {
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 24px 28px 34px;
+        border-right: 1px solid #cbd3dd;
+        background: #ffffff;
+        user-select: text;
+        -webkit-user-select: text;
+        overscroll-behavior: contain;
+    }
+
+    .idp-writing-prompt-pane > header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #202124;
+    }
+
+    .idp-writing-prompt-pane > header span {
+        color: #596273;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .08em;
+    }
+
+    .idp-writing-prompt-pane > header strong {
+        font-size: 18px;
+    }
+
+    .idp-writing-prompt-copy {
+        color: #202124;
+        font-size: 16px;
+        line-height: 1.65;
+        user-select: text;
+        -webkit-user-select: text;
+    }
+
+    .idp-writing-prompt-copy img,
+    .idp-writing-prompt-copy table {
+        max-width: 100% !important;
+    }
+
+    .idp-writing-prompt-copy img {
+        height: auto !important;
+        object-fit: contain;
+    }
+
+    .idp-writing-answer-pane {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding: 56px 28px 24px;
+        background: #ffffff;
+    }
+
+    .idp-writing-answer-pane .writing-task-runtime__textarea {
+        min-height: 0;
+        flex: 1 1 auto;
+        resize: none;
+        background: #ffffff;
+    }
+
     .writing-task-runtime__header {
         display: flex;
         align-items: flex-start;
@@ -2067,6 +2206,27 @@
         font-weight: 700;
     }
 
+    .idp-writing-answer-pane .writing-task-runtime__footer {
+        justify-content: flex-end;
+        margin-top: 6px;
+        padding: 2px 4px;
+        border-radius: 0;
+        background: transparent;
+        color: #202124;
+        font-size: 14px;
+        font-weight: 400;
+    }
+
+    .idp-writing-answer-pane .writing-task-runtime__footer strong {
+        font-size: 14px;
+        font-weight: 400;
+    }
+
+    .idp-writing-answer-pane .writing-task-runtime__footer.is-complete {
+        background: transparent;
+        color: #202124;
+    }
+
     .writing-task-runtime__footer strong {
         font-size: 18px;
     }
@@ -2100,6 +2260,27 @@
         .writing-task-runtime__footer {
             align-items: flex-start;
             flex-direction: column;
+        }
+
+        .idp-writing-task-screen {
+            grid-template-columns: 1fr;
+            grid-template-rows: minmax(230px, 42%) minmax(330px, 58%);
+            height: 100%;
+            min-height: 640px;
+        }
+
+        .idp-writing-prompt-pane {
+            padding: 16px 18px 22px;
+            border-right: 0;
+            border-bottom: 1px solid #cbd3dd;
+        }
+
+        .idp-writing-answer-pane {
+            padding: 16px 18px 12px;
+        }
+
+        .idp-writing-answer-pane .writing-task-runtime__textarea {
+            min-height: 220px;
         }
     }
 
@@ -4270,6 +4451,23 @@
         align-items: stretch;
         flex: 1 0 auto;
         min-width: 790px;
+    }
+
+    .idp-writing-page .idp-part-switcher {
+        min-width: 0;
+    }
+
+    .idp-writing-page .idp-part-group,
+    .idp-writing-page .idp-part-group.is-active {
+        justify-content: flex-start;
+        flex: 1 1 50%;
+        min-width: 120px;
+        padding: 8px 20px;
+    }
+
+    .idp-writing-page .idp-part-group.is-active {
+        background: #f1f1ef;
+        box-shadow: inset 0 3px 0 #2f82bf;
     }
 
     .idp-part-group {

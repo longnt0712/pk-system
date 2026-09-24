@@ -2872,6 +2872,7 @@
 
         function displayPassageForAssignedPart() {
             if (!vm.isPartAssignment) { return vm.passageNumber || 1; }
+            if (vm.isWritingRoute) { return 1; }
             return vm.isListeningRoute ? Math.min(vm.assignedPart, 3) : vm.assignedPart;
         }
 
@@ -2960,7 +2961,14 @@
 
         vm.activeIeltsNavigationPart = function () {
             if (vm.isWritingRoute) {
-                return vm.assignedPart || (vm.tempQuestion && vm.tempQuestion.parent && Number(vm.tempQuestion.parent.type) === 17 ? 2 : 1);
+                var requestedWritingPart = vm.assignedPart ||
+                    (vm.tempQuestion && vm.tempQuestion.parent && Number(vm.tempQuestion.parent.type) === 17 ? 2 : 1);
+                var writingParts = vm.getIeltsNavigationParts();
+                var writingPartExists = writingParts.some(function (part) {
+                    return Number(part.number) === Number(requestedWritingPart);
+                });
+                return writingPartExists ? Number(requestedWritingPart) :
+                    (writingParts.length ? Number(writingParts[0].number) : Number(requestedWritingPart));
             }
             if (vm.isListeningRoute) {
                 var currentPart = listeningPartNumberForOrdinal(vm.tempQuestion && vm.tempQuestion.ordinalNumber);
@@ -2981,6 +2989,12 @@
             if (part && part.questions && part.questions.length) {
                 var entry = part.questions[0];
                 vm.openReadingQuestion(entry.question, entry.packageQuestions, entry.passageQuestions);
+                if (vm.isWritingRoute) {
+                    $timeout(function () {
+                        var taskScreen = document.getElementById('writing-task-screen-' + part.number);
+                        if (taskScreen) { taskScreen.scrollIntoView({behavior: 'smooth', block: 'start'}); }
+                    }, 0);
+                }
             }
         };
 
@@ -3094,6 +3108,16 @@
         };
 
         vm.canNavigateReadingQuestion = function (step) {
+            if (vm.isWritingRoute) {
+                var writingParts = vm.getIeltsNavigationParts();
+                var activeWritingPart = Number(vm.activeIeltsNavigationPart());
+                var activeWritingIndex = -1;
+                angular.forEach(writingParts, function (part, index) {
+                    if (Number(part.number) === activeWritingPart) { activeWritingIndex = index; }
+                });
+                var targetWritingIndex = activeWritingIndex + Number(step || 0);
+                return activeWritingIndex >= 0 && targetWritingIndex >= 0 && targetWritingIndex < writingParts.length;
+            }
             var entries = getReadingQuestionEntries();
             var currentIndex = getCurrentReadingQuestionIndex(entries);
             var targetIndex = currentIndex + Number(step || 0);
@@ -3102,6 +3126,19 @@
         };
 
         vm.navigateReadingQuestion = function (step) {
+            if (vm.isWritingRoute) {
+                var writingParts = vm.getIeltsNavigationParts();
+                var activeWritingPart = Number(vm.activeIeltsNavigationPart());
+                var activeWritingIndex = -1;
+                angular.forEach(writingParts, function (part, index) {
+                    if (Number(part.number) === activeWritingPart) { activeWritingIndex = index; }
+                });
+                var targetWritingIndex = activeWritingIndex + Number(step || 0);
+                if (activeWritingIndex >= 0 && targetWritingIndex >= 0 && targetWritingIndex < writingParts.length) {
+                    vm.openIeltsNavigationPart(writingParts[targetWritingIndex]);
+                }
+                return;
+            }
             var entries = getReadingQuestionEntries();
             var currentIndex = getCurrentReadingQuestionIndex(entries);
             var targetIndex = currentIndex + Number(step || 0);

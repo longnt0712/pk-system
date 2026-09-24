@@ -2625,6 +2625,26 @@
             menubar: false
         };
 
+        // Writing prompts often contain a full chart, map or illustration.
+        // Give each task an editor close to the visible browser height so the
+        // teacher can inspect the whole prompt without working through a slit.
+        $scope.tinymceOptionsToCreateWritingTask = {
+            height: Math.max(620, ($window.innerHeight || 900) - 230),
+            min_height: 620,
+            resize: true,
+            theme: 'modern',
+            plugins: [
+                'image link table lists fullscreen preview'
+            ],
+            toolbar1: 'image link | bold italic underline | bullist numlist | alignleft aligncenter alignright alignjustify | removeformat | fullscreen preview',
+            content_css: [
+                '//fonts.googleapis.com/css?family=Poppins:300,400,500,600,700',
+                '/assets/css/tinymce_content.css'
+            ],
+            statusbar: true,
+            menubar: false
+        };
+
         $scope.tinymceOptionsToCreateQuestionForReadingTestPassage = {
             height: 1000,
             // placeholder: "Ask a question or post an update...",
