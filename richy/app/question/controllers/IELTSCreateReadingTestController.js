@@ -41,9 +41,11 @@
         var vm = this;
 
         vm.isComprehensiveMode = /\/create_comprehensive_test(?:\/|$)/i.test($location.path());
-        vm.isListeningMode = !vm.isComprehensiveMode && /\/create_ielts_listening_test(?:\/|$)/i.test($location.path());
-        vm.testModeName = vm.isComprehensiveMode ? 'Tổng hợp' : (vm.isListeningMode ? 'Listening' : 'Reading');
-        vm.testModeIcon = vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book');
+        vm.isWritingMode = /\/create_ielts_writing_test(?:\/|$)/i.test($location.path());
+        vm.isListeningMode = !vm.isComprehensiveMode && !vm.isWritingMode && /\/create_ielts_listening_test(?:\/|$)/i.test($location.path());
+        vm.isFlexibleMode = vm.isComprehensiveMode || vm.isWritingMode;
+        vm.testModeName = vm.isComprehensiveMode ? 'Tổng hợp' : (vm.isWritingMode ? 'Writing' : (vm.isListeningMode ? 'Listening' : 'Reading'));
+        vm.testModeIcon = vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isWritingMode ? 'fa-pencil-square-o' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book'));
 
         var userCookie = $cookies.get('education.user');
         var hasBuilderAccess = false;
@@ -62,7 +64,7 @@
 
         if (!hasBuilderAccess) {
             $location.path(vm.isComprehensiveMode ? '/comprehensive_tests' :
-                (vm.isListeningMode ? '/ielts_listening_tests' : '/ielts_reading_tests'));
+                (vm.isWritingMode ? '/ielts_writing_tests' : (vm.isListeningMode ? '/ielts_listening_tests' : '/ielts_reading_tests')));
             return;
         }
 
@@ -104,6 +106,7 @@
             {id: 3, name: "Filling Gaps Enter — Legacy", notice: "Dữ liệu hệ thống cũ — không dùng cho bài test mới", legacy: true}
         ];
         vm.questionPackageTypes = vm.types.filter(function (type) {
+            if (vm.isWritingMode) { return Number(type.id) === 16 || Number(type.id) === 17; }
             return Number(type.id) !== 7 &&
                 (vm.isListeningMode || Number(type.id) !== 15) &&
                 (vm.isComprehensiveMode || (Number(type.id) !== 16 && Number(type.id) !== 17));
@@ -163,6 +166,7 @@
                     }
                     var isListeningDraft = draft.isListening === true || draft.testMode === 'LISTENING';
                     if ((draft.testMode === 'COMPREHENSIVE') !== vm.isComprehensiveMode ||
+                        (draft.testMode === 'WRITING') !== vm.isWritingMode ||
                         isListeningDraft !== vm.isListeningMode) {
                         continue;
                     }
@@ -191,13 +195,13 @@
 
         vm.testCatalogUrl = function (item) {
             var route = vm.isComprehensiveMode ? 'comprehensive_test/' :
-                (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/');
+                (vm.isWritingMode ? 'ielts_writing_actual_test/' : (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'));
             return route + item.id + (vm.getLearningProgress(item.id) ? '?sessionMode=STUDY' : '');
         };
 
         vm.seriousTestCatalogUrl = function (item) {
             var route = vm.isComprehensiveMode ? 'comprehensive_test/' :
-                (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/');
+                (vm.isWritingMode ? 'ielts_writing_actual_test/' : (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'));
             return route + item.id + '?sessionMode=SERIOUS&startFresh=1';
         };
 
@@ -271,8 +275,8 @@
         }
 
         function ensureComprehensiveBuilder(test) {
-            if (!vm.isComprehensiveMode || !test) { return test; }
-            test.testFormat = 'COMPREHENSIVE';
+            if (!vm.isFlexibleMode || !test) { return test; }
+            test.testFormat = vm.isWritingMode ? 'WRITING' : 'COMPREHENSIVE';
             test.pronounce = null;
             test.subQuestions = test.subQuestions || [];
             var partTypes = [13, 14, 15];
@@ -314,7 +318,10 @@
                 return;
             }
 
-            questionPackage.question = writingTaskType === 17 ? 'Writing Task 2' : 'Writing Task 1';
+            if (!plainText(questionPackage.question) || /^Writing Task [12]$/i.test(plainText(questionPackage.question))
+                    || /Question\s*\?\s*to\s*\?/i.test(plainText(questionPackage.question))) {
+                questionPackage.question = '<h3>' + (writingTaskType === 17 ? 'Writing Task 2' : 'Writing Task 1') + '</h3><p>Nhập đề bài tại đây.</p>';
+            }
             questionPackage.isHaveChildren = true;
             questionPackage.subQuestions = questionPackage.subQuestions || [];
 
@@ -605,8 +612,8 @@
         vm.getPageCreateIELTSReadingTest = function () {
             var requestId = ++testCatalogRequestId;
             vm.searchDto.questionType = {id: 11};
-            vm.searchDto.listeningTest = vm.isComprehensiveMode ? null : vm.isListeningMode;
-            vm.searchDto.testFormat = vm.isComprehensiveMode ? 'COMPREHENSIVE' : null;
+            vm.searchDto.listeningTest = vm.isFlexibleMode ? null : vm.isListeningMode;
+            vm.searchDto.testFormat = vm.isWritingMode ? 'WRITING' : (vm.isComprehensiveMode ? 'COMPREHENSIVE' : null);
             blockUI.start();
             service.getPageForTests(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
                 if (requestId !== testCatalogRequestId) { return; }
@@ -706,7 +713,7 @@
             countWords : 0,
             ordinalNumber: 1,
             userId: vm.currentUser.id,
-            testFormat: vm.isComprehensiveMode ? 'COMPREHENSIVE' : null,
+            testFormat: vm.isWritingMode ? 'WRITING' : (vm.isComprehensiveMode ? 'COMPREHENSIVE' : null),
             subQuestions : [
                 {
                     question: '',
@@ -852,8 +859,8 @@
             });
         };
 
-        var readingPartRules = vm.isComprehensiveMode ? [
-            {name: 'Danh sách câu hỏi', start: 1, end: Number.MAX_SAFE_INTEGER || 9007199254740991}
+        var readingPartRules = vm.isFlexibleMode ? [
+            {name: vm.isWritingMode ? 'Writing Tasks' : 'Danh sách câu hỏi', start: 1, end: Number.MAX_SAFE_INTEGER || 9007199254740991}
         ] : vm.isListeningMode ? [
             {name: 'Part 1', start: 1, end: 10},
             {name: 'Part 2', start: 11, end: 20},
@@ -865,9 +872,9 @@
             {name: 'Part 3', start: 27, end: 40}
         ];
 
-        vm.builderSteps = vm.isComprehensiveMode ? [
-            {number: 1, title: 'Thông tin bài tập', target: 'reading-builder-info'},
-            {number: 2, title: 'Danh sách câu hỏi', target: 'reading-builder-part-1'},
+        vm.builderSteps = vm.isFlexibleMode ? [
+            {number: 1, title: vm.isWritingMode ? 'Thông tin bài Writing' : 'Thông tin bài tập', target: 'reading-builder-info'},
+            {number: 2, title: vm.isWritingMode ? 'Task 1 / Task 2' : 'Danh sách câu hỏi', target: 'reading-builder-part-1'},
             {number: 3, title: 'Kiểm tra & xuất bản', target: 'reading-builder-review'}
         ] : [
             {number: 1, title: 'Thông tin bài thi', target: 'reading-builder-info'},
@@ -879,7 +886,7 @@
         ];
 
         vm.visibleBuilderSteps = vm.builderSteps.filter(function (step) {
-            return vm.isComprehensiveMode || !step.listeningOnly || vm.isListeningMode;
+            return vm.isFlexibleMode || !step.listeningOnly || vm.isListeningMode;
         });
 
         function plainText(value) {
@@ -1411,11 +1418,11 @@
 
                 result.totalQuestions += questionEntries.length;
 
-                if ((!vm.isComprehensiveMode || Number(passage.type) !== 6) && !plainText(passage.question)) {
+                if (!vm.isWritingMode && (!vm.isComprehensiveMode || Number(passage.type) !== 6) && !plainText(passage.question)) {
                     addIssue(vm.isComprehensiveMode ? 'Đang bật hiển thị văn bản nhưng chưa nhập nội dung.' :
                         rule.name + ': chưa nhập nội dung bài đọc.', 'reading-builder-part-' + (partIndex + 1), partIndex);
                 }
-                if (!vm.isComprehensiveMode && !passage.type) {
+                if (!vm.isFlexibleMode && !passage.type) {
                     addIssue(rule.name + ': chưa chọn dạng hiển thị bài đọc.', 'reading-builder-part-' + (partIndex + 1), partIndex);
                 }
                 if (!packages.length) {
@@ -1426,6 +1433,9 @@
                     var packageTarget = 'reading-builder-part-' + (partIndex + 1);
                     if (!questionPackage.type) {
                         addIssue(rule.name + ', nhóm ' + (packageIndex + 1) + ': chưa chọn dạng câu hỏi.', packageTarget, partIndex);
+                    }
+                    if (vm.isWritingMode && Number(questionPackage.type) !== 16 && Number(questionPackage.type) !== 17) {
+                        addIssue('IELTS Writing chỉ được dùng Writing Task 1 hoặc Writing Task 2.', packageTarget, partIndex);
                     }
                     var instruction = plainText(questionPackage.question);
                     if (!instruction || /Question\s*\?\s*to\s*\?/i.test(instruction)) {
@@ -1463,7 +1473,21 @@
                     }
                 });
 
-                if (!vm.isComprehensiveMode && matchingHeadingQuestionCount > 0) {
+                if (vm.isWritingMode) {
+                    var writingTypeCounts = {};
+                    angular.forEach(packages, function (questionPackage) {
+                        var writingType = Number(questionPackage.type);
+                        writingTypeCounts[writingType] = (writingTypeCounts[writingType] || 0) + 1;
+                    });
+                    if ((writingTypeCounts[16] || 0) > 1) {
+                        addIssue('Chỉ được tạo tối đa một Writing Task 1 trong một bài.', 'reading-builder-part-1', partIndex);
+                    }
+                    if ((writingTypeCounts[17] || 0) > 1) {
+                        addIssue('Chỉ được tạo tối đa một Writing Task 2 trong một bài.', 'reading-builder-part-1', partIndex);
+                    }
+                }
+
+                if (!vm.isFlexibleMode && matchingHeadingQuestionCount > 0) {
                     var headingPlaceholderCount = countHeadingPlaceholders(passage.question);
                     if (headingPlaceholderCount !== matchingHeadingQuestionCount) {
                         addIssue(rule.name + ': Matching Heading có ' + headingPlaceholderCount +
@@ -1477,8 +1501,8 @@
                     var question = entry.question || {};
                     var number = parseInt(question.ordinalNumber, 10);
                     var questionTarget = 'reading-builder-part-' + (partIndex + 1);
-                    if (!number || number < rule.start || (!vm.isComprehensiveMode && number > rule.end)) {
-                        addIssue(vm.isComprehensiveMode ? 'Số thứ tự câu hỏi phải bắt đầu từ 1.' :
+                    if (!number || number < rule.start || (!vm.isFlexibleMode && number > rule.end)) {
+                        addIssue(vm.isFlexibleMode ? 'Số thứ tự câu hỏi phải bắt đầu từ 1.' :
                             rule.name + ': có số câu ngoài khoảng ' + rule.start + '–' + rule.end + '.', questionTarget, partIndex);
                     } else if (numberMap[number]) {
                         addIssue(rule.name + ': câu ' + number + ' bị trùng.', questionTarget, partIndex);
@@ -1519,7 +1543,7 @@
                     }
                 });
 
-                if (vm.isComprehensiveMode) {
+                if (vm.isFlexibleMode) {
                     for (var comprehensiveNumber = 1; comprehensiveNumber <= questionEntries.length; comprehensiveNumber++) {
                         if (!numberMap[comprehensiveNumber]) { missing.push(comprehensiveNumber); }
                     }
@@ -1537,15 +1561,15 @@
                 result.parts.push({
                     name: rule.name,
                     count: questionEntries.length,
-                    expected: vm.isComprehensiveMode ? questionEntries.length : rule.end - rule.start + 1,
+                    expected: vm.isFlexibleMode ? questionEntries.length : rule.end - rule.start + 1,
                     missing: missing,
                     issueCount: result.issues.length - partIssueStart
                 });
             });
 
-            result.valid = result.issues.length === 0 && (vm.isComprehensiveMode ? result.totalQuestions > 0 : result.totalQuestions === 40);
+            result.valid = result.issues.length === 0 && (vm.isFlexibleMode ? result.totalQuestions > 0 : result.totalQuestions === 40);
             var completedChecks = Math.max(0, 5 - Math.min(5, result.issues.length));
-            result.percent = vm.isComprehensiveMode ? (result.valid ? 100 : Math.min(95, result.totalQuestions ? 70 + completedChecks * 5 : completedChecks * 5)) :
+            result.percent = vm.isFlexibleMode ? (result.valid ? 100 : Math.min(95, result.totalQuestions ? 70 + completedChecks * 5 : completedChecks * 5)) :
                 Math.min(100, Math.round(((result.totalQuestions / 40) * 80) + ((completedChecks / 5) * 20)));
             return result;
         }
@@ -1642,7 +1666,7 @@
         }
 
         vm.previewReadingTest = function (partIndex) {
-            var maximumPreviewPart = vm.isComprehensiveMode ? 1 : (vm.isListeningMode ? 4 : 3);
+            var maximumPreviewPart = vm.isFlexibleMode ? 1 : (vm.isListeningMode ? 4 : 3);
             var targetPart = Math.max(1, Math.min(maximumPreviewPart, parseInt(partIndex, 10) || 1));
             var previewKey = 'ieltsReadingPreview-' + new Date().getTime();
             var previewStorage = 'local';
@@ -1663,7 +1687,7 @@
             var baseElement = document.getElementsByTagName('base')[0];
             var appBaseUrl = baseElement ? baseElement.href : ($window.location.protocol + '//' + $window.location.host + '/');
             var previewRoute = vm.isComprehensiveMode ? 'comprehensive_test/' :
-                (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/');
+                (vm.isWritingMode ? 'ielts_writing_actual_test/' : (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'));
             var previewUrl = appBaseUrl.replace(/\/?$/, '/') + previewRoute + 'preview-local' +
                 '?preview=1&previewPart=' + targetPart + '&previewKey=' + encodeURIComponent(previewKey) +
                 '&previewStorage=' + previewStorage;
@@ -1692,10 +1716,10 @@
                 used[parseInt(entry.question.ordinalNumber, 10)] = true;
             });
             var next = rule.start;
-            while ((vm.isComprehensiveMode || next <= rule.end) && used[next]) {
+            while ((vm.isFlexibleMode || next <= rule.end) && used[next]) {
                 next++;
             }
-            vm.fromQuestion = vm.isComprehensiveMode ? next : (next <= rule.end ? next : rule.end);
+            vm.fromQuestion = vm.isFlexibleMode ? next : (next <= rule.end ? next : rule.end);
             vm.toQuestion = vm.fromQuestion;
             vm.numberOfAnswers = vm.numberOfAnswers > 0 ? vm.numberOfAnswers : 4;
             vm.createPackage = true;
@@ -1710,7 +1734,7 @@
                 toastr.warning('Số câu bắt đầu phải nhỏ hơn hoặc bằng số câu kết thúc.', 'Kiểm tra khoảng câu');
                 return false;
             }
-            if (from < rule.start || (!vm.isComprehensiveMode && to > rule.end)) {
+            if (from < rule.start || (!vm.isFlexibleMode && to > rule.end)) {
                 toastr.warning(rule.name + ' chỉ được dùng câu ' + rule.start + '–' + rule.end + '.', 'Sai khoảng câu');
                 return false;
             }
@@ -1736,7 +1760,7 @@
             var passages = ieltsReadingTest.subQuestions;
 
             if(passages != null && passages.length){
-                vm.createPassageNumber = vm.isComprehensiveMode ? 1 : Math.min(passages.length, vm.isListeningMode ? 4 : 3);
+                vm.createPassageNumber = vm.isFlexibleMode ? 1 : Math.min(passages.length, vm.isListeningMode ? 4 : 3);
                 // var packagesForPassage2 = ieltsReadingTest.subQuestions[1].subQuestions;
                 for(var i = 0; i< passages.length; i++){
                     var packages = passages[i].subQuestions;
@@ -2701,7 +2725,7 @@
                 sidePagination: 'server',
                 columns: service.getTableDefinitionCreateIELTSReadingTest(
                     vm.isComprehensiveMode ? 'comprehensive_test/' :
-                        (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/')
+                        (vm.isWritingMode ? 'ielts_writing_actual_test/' : (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'))
                 ),
                 onCheck: function (row, $element) {
                     $scope.$apply(function () {

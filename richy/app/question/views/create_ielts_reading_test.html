@@ -1,7 +1,7 @@
 <!-- END PAGE HEADER-->
 <!-- BEGIN MAIN CONTENT -->
 <div class="row margin-top-10 ielts-reading-builder-page"
-     ng-class="vm.isComprehensiveMode ? 'is-comprehensive-builder' : (vm.isListeningMode ? 'is-listening-builder' : 'is-reading-builder')">
+     ng-class="vm.isComprehensiveMode ? 'is-comprehensive-builder' : (vm.isWritingMode ? 'is-writing-builder' : (vm.isListeningMode ? 'is-listening-builder' : 'is-reading-builder'))">
     <div class="col-md-12">
         <section class="ielts-builder-mode-hero">
             <div class="ielts-builder-mode-hero__icon"><i class="fa" ng-class="vm.testModeIcon"></i></div>
@@ -9,15 +9,19 @@
                 <span>{{vm.isComprehensiveMode ? 'FREE-FORM TEST BUILDER' : 'IELTS TEST BUILDER'}}</span>
                 <h1>{{vm.isComprehensiveMode ? 'Tạo bài tập tổng hợp' : 'Tạo đề IELTS ' + vm.testModeName}}</h1>
                 <p ng-if="vm.isComprehensiveMode">Tạo số lượng câu hỏi tùy ý trong một danh sách duy nhất và gán topic cho bài.</p>
-                <p ng-if="!vm.isComprehensiveMode && !vm.isListeningMode">Trang này chỉ hiển thị và tạo đề Reading. Đề Reading không sử dụng audio chính.</p>
+                <p ng-if="!vm.isComprehensiveMode && !vm.isListeningMode && !vm.isWritingMode">Trang này chỉ hiển thị và tạo đề Reading. Đề Reading không sử dụng audio chính.</p>
                 <p ng-if="!vm.isComprehensiveMode && vm.isListeningMode">Trang này chỉ hiển thị và tạo đề Listening. Audio chính là trường bắt buộc trước khi xuất bản.</p>
+                <p ng-if="vm.isWritingMode">Tạo riêng Task 1, Task 2 hoặc một bài gồm cả hai Task. Các đề Writing cũ vẫn được giữ nguyên.</p>
             </div>
             <nav class="ielts-builder-mode-switch" aria-label="Chọn loại đề IELTS">
-                <a href="create_ielts_reading_test" ng-class="{'is-active': !vm.isListeningMode && !vm.isComprehensiveMode}">
+                <a href="create_ielts_reading_test" ng-class="{'is-active': !vm.isListeningMode && !vm.isComprehensiveMode && !vm.isWritingMode}">
                     <i class="fa fa-book"></i> Reading
                 </a>
                 <a href="create_ielts_listening_test" ng-class="{'is-active': vm.isListeningMode}">
                     <i class="fa fa-headphones"></i> Listening
+                </a>
+                <a href="create_ielts_writing_test" ng-class="{'is-active': vm.isWritingMode}">
+                    <i class="fa fa-pencil-square-o"></i> Writing
                 </a>
                 <a href="create_comprehensive_test" ng-class="{'is-active': vm.isComprehensiveMode}">
                     <i class="fa fa-list-alt"></i> Tổng hợp
@@ -65,10 +69,10 @@
                         <span class="reading-catalog-topic-status is-error" ng-if="vm.builderTopicsError && !vm.builderTopicsLoading">{{vm.builderTopicsError}}</span>
                     </div>
                     <div class="reading-admin-toolbar__actions" ng-class="vm.isComprehensiveMode ? 'col-md-2' : 'col-md-8'">
-                        <button type="button" class="btn btn-default" ng-if="!vm.isComprehensiveMode" ng-click="vm.downloadReadingImportTemplate()">
+                        <button type="button" class="btn btn-default" ng-if="!vm.isFlexibleMode" ng-click="vm.downloadReadingImportTemplate()">
                             <i class="fa fa-file-excel-o"></i> Tải mẫu {{vm.testModeName}}
                         </button>
-                        <button type="button" class="btn btn-primary" ng-if="!vm.isComprehensiveMode"
+                        <button type="button" class="btn btn-primary" ng-if="!vm.isFlexibleMode"
                                 ngf-select="vm.importReadingTestFile($file, $invalidFiles)"
                                 accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                                 ngf-max-size="10MB"
@@ -109,11 +113,12 @@
                     <span class="reading-builder-eyebrow">{{vm.isComprehensiveMode ? 'BÀI TẬP TỔNG HỢP' : 'IELTS TEST BUILDER'}}</span>
                     <h2>{{vm.isComprehensiveMode ? 'Tạo một danh sách câu hỏi linh hoạt' : 'Tạo đề ' + vm.testModeName + ' nhanh, đủ và đúng thứ tự'}}</h2>
                     <p ng-if="vm.isComprehensiveMode">Không giới hạn số câu và không chia Passage/Part. Hệ thống kiểm tra nội dung và đáp án trước khi xuất bản.</p>
-                    <p ng-if="!vm.isComprehensiveMode">Hoàn thành lần lượt {{vm.isListeningMode ? '4' : '3'}} Part. Hệ thống tự kiểm tra câu 1–40, nội dung, đáp án và {{vm.isListeningMode ? 'audio chính/audio từng Part' : 'cấu trúc Reading'}} trước khi xuất bản.</p>
+                    <p ng-if="vm.isWritingMode">Chọn Writing Task 1, Writing Task 2 hoặc cả hai; nhập đề riêng cho từng Task rồi xuất bản.</p>
+                    <p ng-if="!vm.isFlexibleMode">Hoàn thành lần lượt {{vm.isListeningMode ? '4' : '3'}} Part. Hệ thống tự kiểm tra câu 1–40, nội dung, đáp án và {{vm.isListeningMode ? 'audio chính/audio từng Part' : 'cấu trúc Reading'}} trước khi xuất bản.</p>
                 </div>
                 <div class="reading-builder-progress-box">
                     <strong>{{vm.builderValidation.percent}}%</strong>
-                    <span>{{vm.builderValidation.totalQuestions}}{{vm.isComprehensiveMode ? '' : '/40'}} câu</span>
+                    <span>{{vm.builderValidation.totalQuestions}}{{vm.isFlexibleMode ? '' : '/40'}} {{vm.isWritingMode ? 'Task' : 'câu'}}</span>
                 </div>
             </div>
             <div class="reading-builder-progress"><span ng-style="{'width': vm.builderValidation.percent + '%'}"></span></div>
@@ -199,7 +204,7 @@
                             <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" style="height: 50px" data-ng-model="vm.ieltsReadingTest.pronounce" type="url" class="form-control" placeholder="https://.../ielts-listening-test-01.mp3" />
                             <small class="reading-audio-mode-help"><i class="fa fa-headphones"></i> Audio chính dùng cho bài đầy đủ và làm dự phòng nếu một Part chưa có audio riêng.</small>
                         </div>
-                        <div class="reading-mode-info" ng-if="!vm.isListeningMode && !vm.isComprehensiveMode">
+                        <div class="reading-mode-info" ng-if="!vm.isListeningMode && !vm.isFlexibleMode">
                             <i class="fa fa-book"></i>
                             <span><strong>Đề Reading</strong> không cần audio chính. Danh sách Reading chỉ chứa các đề không có audio.</span>
                         </div>
@@ -225,14 +230,14 @@
                 <div class="row">
                     <div class="col-md-12">
                         <div class="reading-builder-part-heading">
-                            <div><span class="reading-builder-part-number">2</span><strong>{{vm.isComprehensiveMode ? 'Danh sách câu hỏi' : 'Part 1'}}</strong><small>{{vm.isComprehensiveMode ? vm.builderValidation.totalQuestions + ' câu' : (vm.isListeningMode ? 'Câu 1–10' : 'Câu 1–13')}}</small></div>
+                            <div><span class="reading-builder-part-number">2</span><strong>{{vm.isWritingMode ? 'Writing Tasks' : (vm.isComprehensiveMode ? 'Danh sách câu hỏi' : 'Part 1')}}</strong><small>{{vm.isWritingMode ? 'Chọn Task 1, Task 2 hoặc cả hai' : (vm.isComprehensiveMode ? vm.builderValidation.totalQuestions + ' câu' : (vm.isListeningMode ? 'Câu 1–10' : 'Câu 1–13'))}}</small></div>
                             <div class="reading-builder-part-heading__actions">
-                                <span ng-class="{'is-complete': vm.builderValidation.parts[0].issueCount === 0}">{{vm.builderValidation.parts[0].count}}{{vm.isComprehensiveMode ? '' : '/' + (vm.isListeningMode ? 10 : 13)}} câu · {{vm.builderValidation.parts[0].issueCount}} lỗi</span>
+                                <span ng-class="{'is-complete': vm.builderValidation.parts[0].issueCount === 0}">{{vm.builderValidation.parts[0].count}}{{vm.isFlexibleMode ? '' : '/' + (vm.isListeningMode ? 10 : 13)}} {{vm.isWritingMode ? 'Task' : 'câu'}} · {{vm.builderValidation.parts[0].issueCount}} lỗi</span>
                                 <button type="button" class="btn btn-default btn-sm" ng-click="vm.previewReadingTest(1)"><i class="fa fa-eye"></i> {{vm.isComprehensiveMode ? 'Xem trước' : 'Preview Part 1'}}</button>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6 reading-builder-text-column">
+                    <div class="col-md-6 reading-builder-text-column" ng-if="!vm.isWritingMode">
                         <div class="reading-comprehensive-column-title" ng-if="vm.isComprehensiveMode">
                             <div>
                                 <i class="fa fa-file-text-o"></i>
@@ -285,14 +290,14 @@
 
                     <!-- add question -->
 
-                    <div class="col-md-6 reading-builder-question-column">
-                        <div class="reading-comprehensive-column-title" ng-if="vm.isComprehensiveMode">
+                    <div class="reading-builder-question-column" ng-class="vm.isWritingMode ? 'col-md-12' : 'col-md-6'">
+                        <div class="reading-comprehensive-column-title" ng-if="vm.isFlexibleMode">
                             <div>
                                 <i class="fa fa-list-ol"></i>
-                                <span><strong>Câu hỏi</strong><small>Cuộn liên tục từ câu 1 đến câu {{vm.builderValidation.totalQuestions || 'n'}}</small></span>
+                                <span><strong>{{vm.isWritingMode ? 'Đề Writing' : 'Câu hỏi'}}</strong><small>{{vm.isWritingMode ? 'Mỗi Task có đề bài và ô làm bài riêng' : 'Cuộn liên tục từ câu 1 đến câu ' + (vm.builderValidation.totalQuestions || 'n')}}</small></span>
                             </div>
                             <div>
-                                <button ng-show="vm.createPackage == false" class="btn btn-primary btn-sm" data-ng-click="vm.startCreateQuestionForPassage1()"><i class="fa fa-arrow-right"></i> Bắt đầu tạo</button>
+                                <button ng-show="vm.createPackage == false && !vm.isWritingMode" class="btn btn-primary btn-sm" data-ng-click="vm.startCreateQuestionForPassage1()"><i class="fa fa-arrow-right"></i> Bắt đầu tạo</button>
                                 <button class="btn btn-success btn-sm" ng-click="vm.saveReadingTest()"><i class="fa fa-save"></i> Lưu</button>
                             </div>
                         </div>
@@ -327,10 +332,14 @@
                                 <i class="fa fa-pencil-square-o"></i>
                                 <div>
                                     <strong>{{item.type == 17 ? 'Writing Task 2' : 'Writing Task 1'}}</strong>
-                                    <span>Nhập toàn bộ đề bài và tài liệu tham khảo ở cột <b>Văn bản</b> bên trái. Phần cấu hình bên phải đã được tạo tự động.</span>
+                                    <span>Nhập toàn bộ đề bài và tài liệu tham khảo riêng cho Task này ở ô bên dưới.</span>
                                     <small>Bài làm phải trên {{item.type == 17 ? 250 : 150}} từ để được tính là đạt.</small>
                                 </div>
                             </div>
+                            <textarea ng-if="item.type == 16 || item.type == 17"
+                                      ng-change="vm.changeInTheProcessOfCreatingReadingTest()"
+                                      ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest"
+                                      ng-model="item.question"></textarea>
 
                             <div class="reading-matching-names-builder" ng-if="(item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15) && item.subQuestions.length">
                                 <div class="reading-matching-names-builder__header">
@@ -530,7 +539,7 @@
                             <!--<div class="col-md-9" ng-show="vm.createPassageNumber == 2">-->
                             <!--</div>-->
                             <div class="col-md-12 text-right">
-                                <button type="button" class="btn btn-warning" data-ng-click="vm.startCreatePassage2()">Tiếp tục Part 2 <i class="fa fa-arrow-right"></i></button>
+                                <button type="button" class="btn btn-warning" ng-if="!vm.isWritingMode" data-ng-click="vm.startCreatePassage2()">Tiếp tục Part 2 <i class="fa fa-arrow-right"></i></button>
                                 <button class="btn btn-success " ng-click="vm.saveReadingTest()">SAVE</button>
                             </div>
                             <!--</div>-->
@@ -546,7 +555,7 @@
     </div>
 
     <!-- Passage 2 -->
-    <div id="reading-builder-part-2" class="col-md-12 reading-builder-part reading-builder-section" ng-show="vm.createPassageNumber >= 2" ng-if="settings.isAdmin == true && !vm.isComprehensiveMode">
+    <div id="reading-builder-part-2" class="col-md-12 reading-builder-part reading-builder-section" ng-show="vm.createPassageNumber >= 2" ng-if="settings.isAdmin == true && !vm.isFlexibleMode">
 
         <div class="portlet light bordered">
             <div class="portlet-body">
@@ -828,7 +837,7 @@
 
 
     <!-- Passage 3 -->
-    <div id="reading-builder-part-3" class="col-md-12 reading-builder-part reading-builder-section" ng-show="vm.createPassageNumber >= 3" ng-if="settings.isAdmin == true && !vm.isComprehensiveMode">
+    <div id="reading-builder-part-3" class="col-md-12 reading-builder-part reading-builder-section" ng-show="vm.createPassageNumber >= 3" ng-if="settings.isAdmin == true && !vm.isFlexibleMode">
 
         <div class="portlet light bordered">
             <div class="portlet-body">
@@ -1382,7 +1391,7 @@
 
     <div class="reading-builder-actionbar" ng-if="settings.isAdmin == true">
         <div>
-            <strong>{{vm.builderValidation.totalQuestions}}{{vm.isComprehensiveMode ? '' : '/40'}} câu</strong>
+            <strong>{{vm.builderValidation.totalQuestions}}{{vm.isFlexibleMode ? '' : '/40'}} {{vm.isWritingMode ? 'Task' : 'câu'}}</strong>
             <span ng-if="!vm.builderValidation.valid">· còn {{vm.builderValidation.issues.length}} mục cần sửa</span>
             <span class="is-ready" ng-if="vm.builderValidation.valid">· đã sẵn sàng</span>
         </div>

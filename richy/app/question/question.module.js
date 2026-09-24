@@ -188,8 +188,8 @@
                 }
             })
 
-            .state('application.ielts_writing_actual_test', {
-                url: '/ielts_writing_actual_test/:questionId',
+            .state('application.legacy_ielts_writing_actual_test', {
+                url: '/legacy_ielts_writing_actual_test/:questionId',
                 templateUrl: 'question/views/ielts_writing_actual_test.html',
                 data: {pageTitle: 'IELTS Writing Actual Test Mode'},
                 controller: 'IELTSWritingActualTestController as vm',
@@ -208,8 +208,8 @@
             })
 
 
-            .state('application.ielts_test', {
-                url: '/create_ielts_writing_test',
+            .state('application.legacy_ielts_test', {
+                url: '/legacy_create_ielts_writing_test',
                 templateUrl: 'question/views/create_ielts_writing_test.html',
                 data: {pageTitle: 'IELTS Create IELTS Writing Test'},
                 controller: 'IELTSCreateWritingTestController as vm',
@@ -250,6 +250,25 @@
                 url: '/ielts_listening_tests',
                 templateUrl: 'question/views/ielts_test_library.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'IELTS Listening Library'},
+                controller: 'IELTSTestLibraryController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({
+                            name: 'Hrm.Question',
+                            insertBefore: '#ng_load_plugins_before',
+                            files: [
+                                'question/controllers/IELTSTestLibraryController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
+                            ]
+                        });
+                    }]
+                }
+            })
+
+            .state('application.ielts_writing_tests', {
+                url: '/ielts_writing_tests',
+                templateUrl: 'question/views/ielts_test_library.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'IELTS Writing Library'},
                 controller: 'IELTSTestLibraryController as vm',
                 resolve: {
                     deps: ['$ocLazyLoad', function ($ocLazyLoad) {
@@ -324,6 +343,26 @@
                 }
             })
 
+            .state('application.create_ielts_writing_test', {
+                url: '/create_ielts_writing_test',
+                templateUrl: 'question/views/create_ielts_reading_test.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'Create IELTS Writing Test'},
+                controller: 'IELTSCreateReadingTestController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({
+                            name: 'Hrm.Question',
+                            insertBefore: '#ng_load_plugins_before',
+                            files: [
+                                'question/controllers/IELTSCreateReadingTestController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION,
+                                'topic/business/TopicService.js?v=' + window.APP_VERSION
+                            ]
+                        });
+                    }]
+                }
+            })
+
             .state('application.create_comprehensive_test', {
                 url: '/create_comprehensive_test',
                 templateUrl: 'question/views/create_ielts_reading_test.html?v=' + window.APP_VERSION,
@@ -367,6 +406,25 @@
                 url: '/ielts_listening_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&sessionMode&startFresh',
                 templateUrl: 'question/views/ielts_reading_actual_test_idp.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'IELTS Listening Actual Test'},
+                controller: 'IELTSReadingActualTestController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({
+                            name: 'Hrm.Question',
+                            insertBefore: '#ng_load_plugins_before',
+                            files: [
+                                'question/controllers/IELTSReadingActualTestController.js?v=' + window.APP_VERSION,
+                                'question/business/QuestionService.js?v=' + window.APP_VERSION
+                            ]
+                        });
+                    }]
+                }
+            })
+
+            .state('application.ielts_writing_actual_test', {
+                url: '/ielts_writing_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&sessionMode&startFresh',
+                templateUrl: 'question/views/ielts_reading_actual_test_idp.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'IELTS Writing Test'},
                 controller: 'IELTSReadingActualTestController as vm',
                 resolve: {
                     deps: ['$ocLazyLoad', function ($ocLazyLoad) {

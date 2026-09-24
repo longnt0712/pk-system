@@ -1963,24 +1963,27 @@
 		};
 		vm.isIeltsTask = function (task) {
 			return !!task && (task.activityType === 'IELTS_READING' || task.activityType === 'IELTS_LISTENING'
-				|| task.activityType === 'COMPREHENSIVE');
+				|| task.activityType === 'IELTS_WRITING' || task.activityType === 'COMPREHENSIVE');
 		};
 		vm.ieltsPartsForTask = function () {
 			if (vm.taskEditor && vm.taskEditor.activityType === 'COMPREHENSIVE') { return [1]; }
+			if (vm.taskEditor && vm.taskEditor.activityType === 'IELTS_WRITING') { return [1, 2]; }
 			return vm.taskEditor && vm.taskEditor.activityType === 'IELTS_LISTENING'
 				? [1, 2, 3, 4] : [1, 2, 3];
 		};
 		vm.ieltsTestsForTask = function () {
 			if (!vm.taskEditor) { return []; }
 			var comprehensive = vm.taskEditor.activityType === 'COMPREHENSIVE';
+			var writing = vm.taskEditor.activityType === 'IELTS_WRITING';
 			var listening = vm.taskEditor.activityType === 'IELTS_LISTENING';
 			return vm.assignableIeltsTests.filter(function (test) {
 				var isComprehensive = test.testFormat === 'COMPREHENSIVE';
+				var isWriting = test.testFormat === 'WRITING';
 				var belongsToTopic = !comprehensive || (vm.taskEditor.topicId != null && (test.topics || []).some(function (topic) {
 					return topic && String(topic.id) === String(vm.taskEditor.topicId);
 				}));
 				return comprehensive ? isComprehensive && belongsToTopic
-					: (!isComprehensive && listening === !!(test.pronounce && String(test.pronounce).trim()));
+					: (writing ? isWriting : (!isComprehensive && !isWriting && listening === !!(test.pronounce && String(test.pronounce).trim())));
 			});
 		};
 		vm.comprehensiveTaskTopics = function () {
@@ -2035,7 +2038,7 @@
 				toastr.warning('Số lần phải làm cần từ 1 đến 100.'); return;
 			}
 			var maximumIeltsPart = task.activityType === 'COMPREHENSIVE' ? 1
-				: (task.activityType === 'IELTS_LISTENING' ? 4 : 3);
+				: (task.activityType === 'IELTS_WRITING' ? 2 : (task.activityType === 'IELTS_LISTENING' ? 4 : 3));
 			if (task.activityType === 'COMPREHENSIVE' && (task.topicSourceId == null || !task.categoryKey || !task.topicId)) {
 				toastr.warning('Hãy chọn đầy đủ Nguồn, Category và Topic trước khi chọn bài tập tổng hợp.'); return;
 			}

@@ -83,6 +83,7 @@ public class TestResultServiceImpl implements TestResultService {
 		if ("VOCAB".equals(group)) { return " and s.testType = 1 "; }
 		if ("DAILY_LISTENING".equals(group)) { return " and s.testType = 3 "; }
 		if ("IELTS".equals(group)) { return " and s.testType in (2,4) "; }
+		if ("WRITING".equals(group)) { return " and s.testType = 7 "; }
 		if ("COMPREHENSIVE".equals(group)) { return " and s.testType = 6 "; }
 		if ("BATTLE".equals(group)) { return " and s.testType = 5 "; }
 		if (group == null || "ALL".equals(group)) { return ""; }
@@ -535,18 +536,23 @@ public class TestResultServiceImpl implements TestResultService {
 			}
 			passedDailyListening = percentage > 85D;
 		}
-		if (Integer.valueOf(6).equals(dto.getTestType())) {
+		if (Integer.valueOf(6).equals(dto.getTestType()) || Integer.valueOf(7).equals(dto.getTestType())) {
 			boolean writingTaskFound = false;
 			int writingWordTotal = 0;
 			Set<Long> expectedWritingQuestionIds = new HashSet<Long>();
 			Set<Long> submittedWritingQuestionIds = new HashSet<Long>();
 			Question sourceTest = dto.getSourceQuestionId() == null ? null : questionRepository.findOne(dto.getSourceQuestionId());
+			if (Integer.valueOf(7).equals(dto.getTestType()) && (sourceTest == null || !"WRITING".equals(sourceTest.getTestFormat()))) {
+				throw new IllegalArgumentException("Kết quả không thuộc một đề IELTS Writing hợp lệ.");
+			}
 			if (sourceTest != null && sourceTest.getSubQuestions() != null) {
 				for (Question part : sourceTest.getSubQuestions()) {
 					if (part == null || part.getSubQuestions() == null) { continue; }
 					for (Question questionPackage : part.getSubQuestions()) {
 						if (questionPackage == null || (questionPackage.getType() != 16 && questionPackage.getType() != 17)
 								|| questionPackage.getSubQuestions() == null) { continue; }
+						if (Integer.valueOf(7).equals(dto.getTestType()) && dto.getCompletedPart() != null
+								&& questionPackage.getType() != (dto.getCompletedPart().intValue() == 2 ? 17 : 16)) { continue; }
 						writingTaskFound = true;
 						for (Question writingQuestion : questionPackage.getSubQuestions()) {
 							if (writingQuestion != null && writingQuestion.getId() != null) {
@@ -598,17 +604,24 @@ public class TestResultServiceImpl implements TestResultService {
 							&& !assignedTask.getSourceQuestion().getId().equals(dto.getSourceQuestionId()))) {
 				throw new IllegalArgumentException("Kết quả không khớp với bài nghe/Track được giao.");
 			}
+		} else if (Integer.valueOf(7).equals(dto.getTestType()) && dto.getCompletedPart() != null
+				&& dto.getAssignmentTaskId() == null) {
+			if (dto.getCompletedPart() < 1 || dto.getCompletedPart() > 2
+					|| dto.getQuestionAnswerTestResult() == null || dto.getQuestionAnswerTestResult().isEmpty()) {
+				throw new IllegalArgumentException("Writing Task được nộp không hợp lệ.");
+			}
 		} else if (dto.getCompletedPart() != null || dto.getAssignmentTaskId() != null) {
 			EnrolmentClassScheduleTask assignedTask = dto.getAssignmentTaskId() == null ? null
 					: scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
 			boolean ieltsType = Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType())
-					|| Integer.valueOf(6).equals(dto.getTestType());
+					|| Integer.valueOf(6).equals(dto.getTestType()) || Integer.valueOf(7).equals(dto.getTestType());
 			boolean matchingType = assignedTask != null && ((Integer.valueOf(2).equals(dto.getTestType())
 					&& "IELTS_LISTENING".equals(assignedTask.getActivityType()))
 					|| (Integer.valueOf(4).equals(dto.getTestType()) && "IELTS_READING".equals(assignedTask.getActivityType()))
+					|| (Integer.valueOf(7).equals(dto.getTestType()) && "IELTS_WRITING".equals(assignedTask.getActivityType()))
 					|| (Integer.valueOf(6).equals(dto.getTestType()) && "COMPREHENSIVE".equals(assignedTask.getActivityType())));
 			int maximumPart = Integer.valueOf(6).equals(dto.getTestType()) ? 1
-					: (Integer.valueOf(2).equals(dto.getTestType()) ? 4 : 3);
+					: (Integer.valueOf(7).equals(dto.getTestType()) ? 2 : (Integer.valueOf(2).equals(dto.getTestType()) ? 4 : 3));
 			if (!ieltsType || assignedTask == null || assignedTask.getIeltsTest() == null
 					|| !assignedTask.getIeltsTest().getId().equals(dto.getSourceQuestionId())
 					|| dto.getCompletedPart() == null || !dto.getCompletedPart().equals(assignedTask.getIeltsPart()) || !matchingType
@@ -646,7 +659,7 @@ public class TestResultServiceImpl implements TestResultService {
 			domain.setCreatedBy(currentUserName);
 		}
 		User resultUser = null;
-		if(dto.getTestType() != null && (dto.getTestType() == 1 || dto.getTestType() == 3 || dto.getTestType() == 6 || dto.getCompletedPart() != null)
+		if(dto.getTestType() != null && (dto.getTestType() == 1 || dto.getTestType() == 3 || dto.getTestType() == 6 || dto.getTestType() == 7 || dto.getCompletedPart() != null)
 				&& modifiedUser != null && modifiedUser.getId() != null) {
 			// Daily Vocab / Listening chỉ được ghi nhận cho chính tài khoản đang đăng nhập.
 			resultUser = userRepository.findById(modifiedUser.getId());
@@ -671,7 +684,7 @@ public class TestResultServiceImpl implements TestResultService {
 		domain.setSourceQuestionId(dto.getSourceQuestionId());
 		domain.setCompletedPart(dto.getCompletedPart());
 		domain.setAssignmentTaskId(dto.getAssignmentTaskId());
-		if (Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType()) || Integer.valueOf(6).equals(dto.getTestType())) {
+		if (Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType()) || Integer.valueOf(6).equals(dto.getTestType()) || Integer.valueOf(7).equals(dto.getTestType())) {
 			String sessionMode = "STUDY".equalsIgnoreCase(dto.getIeltsSessionMode()) ? "STUDY" : "SERIOUS";
 			Integer activeSeconds = dto.getActiveDurationSeconds() == null ? 0 : dto.getActiveDurationSeconds();
 			if (activeSeconds < 0 || activeSeconds > 604800) {
@@ -689,7 +702,7 @@ public class TestResultServiceImpl implements TestResultService {
                 ? (passedDailyVocab ? "SUCCESS" : "FAILED")
                 : Integer.valueOf(3).equals(dto.getTestType())
                     ? (passedDailyListening ? "SUCCESS" : "FAILED")
-					: Integer.valueOf(6).equals(dto.getTestType())
+					: (Integer.valueOf(6).equals(dto.getTestType()) || Integer.valueOf(7).equals(dto.getTestType()))
 						? (passedComprehensive ? "SUCCESS" : "FAILED")
                     : ((Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType()))
                             && dto.getCompletedPart() != null ? "SUCCESS" : null));

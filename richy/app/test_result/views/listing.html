@@ -549,17 +549,17 @@
             <table class="table" data-ng-if="vm.testResult.questionAnswerTestResult && vm.testResult.questionAnswerTestResult.length">
                 <thead>
                 <tr>
-                    <th scope="col">Index</th>
-                    <th scope="col">Your answer</th>
-                    <th scope="col">Correct answer</th>
+                    <th scope="col">{{vm.testResult.testType === 7 ? 'Writing Task' : 'Index'}}</th>
+                    <th scope="col">{{vm.testResult.testType === 7 ? 'Bài làm của học sinh' : 'Your answer'}}</th>
+                    <th scope="col">{{vm.testResult.testType === 7 ? 'Yêu cầu' : 'Correct answer'}}</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr class="text-center bold" ng-style="(!item.isCorrectTestResultDetail) && {'background':'rgba(196, 77, 86,0.7)'} " ng-repeat="item in vm.testResult.questionAnswerTestResult">
 
-                    <td>{{item.ordinalNumber}}</td>
+                    <td>{{vm.getResultQuestionLabel(item)}}</td>
 
-                    <td>{{vm.getResultYourAnswer(item)}}</td>
+                    <td ng-class="{'writing-result-answer': vm.testResult.testType === 7}">{{vm.getResultYourAnswer(item)}}</td>
                     <td>{{vm.getResultCorrectAnswer(item)}}</td>
                 </tr>
 
@@ -624,6 +624,14 @@
         background: #fff;
     }
     .ielts-learning-notes p { margin: 4px 0 0; white-space: pre-wrap; }
+
+    .ielts-result-detail-modal .writing-result-answer {
+        min-width: 420px;
+        white-space: pre-wrap;
+        text-align: left;
+        font-weight: 400;
+        line-height: 1.65;
+    }
 
     .ielts-result-detail-modal .fa {
         font-family: FontAwesome !important;

@@ -7,7 +7,7 @@
     IELTSReadingActualTestController.js can be reused without modification.
 -->
 <div class="idp-reading-page"
-     ng-class="('idp-contrast-' + vm.displayContrast + ' idp-text-' + vm.readingTextSize) + (vm.isListeningRoute ? ' idp-listening-page' : '') + (vm.isComprehensiveRoute ? ' idp-comprehensive-page' : '')"
+     ng-class="('idp-contrast-' + vm.displayContrast + ' idp-text-' + vm.readingTextSize) + (vm.isListeningRoute ? ' idp-listening-page' : '') + (vm.isComprehensiveRoute ? ' idp-comprehensive-page' : '') + (vm.isWritingRoute ? ' idp-writing-page' : '')"
      reading-selection-tools="showSelectionTools($event)"
      ng-mouseup="showSelectionTools($event)"
      ng-click="handleReadingAnnotationClick($event)">
@@ -15,15 +15,15 @@
 <div class="row margin-top-10 wrap-test text-center idp-start-screen" ng-if="vm.isHasTestTakerName === true && vm.isStartTest !== true && vm.isStartingTest !== true">
     <h1 class="start-test-button" ng-show="vm.isHasTestTakerName === true" style="cursor: pointer" ng-click="vm.requestStartTest()">
         <span class="idp-start-icon"><i class="fa fa-play"></i></span>
-        {{vm.isComprehensiveRoute ? 'Bắt đầu bài tập' : 'Start ' + (vm.isListeningRoute ? 'Listening' : 'Reading') + ' ' + (vm.isPartAssignment ? 'Part ' + vm.assignedPart : 'test')}}
+        {{vm.isComprehensiveRoute ? 'Bắt đầu bài tập' : 'Start ' + (vm.isWritingRoute ? 'Writing' : (vm.isListeningRoute ? 'Listening' : 'Reading')) + ' ' + (vm.isPartAssignment ? (vm.isWritingRoute ? 'Task ' : 'Part ') + vm.assignedPart : 'test')}}
         <small ng-if="vm.isComprehensiveRoute">Các câu hỏi được hiển thị trong một danh sách duy nhất</small>
-        <small ng-if="!vm.isComprehensiveRoute">{{vm.isPartAssignment ? 'Assigned task · Part ' + vm.assignedPart + ' only' : '60 minutes · ' + (vm.isListeningRoute ? '4' : '3') + ' parts · 40 questions'}}</small>
+        <small ng-if="!vm.isComprehensiveRoute">{{vm.isPartAssignment ? 'Assigned task · ' + (vm.isWritingRoute ? 'Writing Task ' : 'Part ') + vm.assignedPart + ' only' : (vm.isWritingRoute ? 'Task 1: 20 minutes · Task 2: 40 minutes' : '60 minutes · ' + (vm.isListeningRoute ? '4' : '3') + ' parts · 40 questions')}}</small>
     </h1>
 </div>
 <div class="row margin-top-10 wrap-test text-center idp-start-screen" ng-if="vm.isStartingTest === true && vm.showTestModeDialog !== true">
     <h1 class="start-test-button" style="cursor: default">
         <span class="idp-start-icon"><i class="fa fa-spinner fa-spin"></i></span>
-        Loading {{vm.isComprehensiveRoute ? 'bài tập' : (vm.isListeningRoute ? 'Listening' : 'Reading') + ' test'}}...
+        Loading {{vm.isComprehensiveRoute ? 'bài tập' : (vm.isWritingRoute ? 'Writing' : (vm.isListeningRoute ? 'Listening' : 'Reading')) + ' test'}}...
         <small>Please wait while your saved progress is restored.</small>
     </h1>
 </div>
@@ -31,7 +31,7 @@
     <section class="idp-test-mode-dialog" role="dialog" aria-modal="true" aria-labelledby="idp-test-mode-title" ng-click="$event.stopPropagation()">
         <button type="button" class="idp-test-mode-close" aria-label="Close" ng-click="vm.closeTestSessionMode()"><i class="fa fa-times"></i></button>
         <span class="idp-test-mode-kicker">CHOOSE YOUR MODE</span>
-        <h2 id="idp-test-mode-title">{{vm.isComprehensiveRoute ? 'Bạn muốn làm bài tập này theo chế độ nào?' : 'How would you like to do this ' + (vm.isListeningRoute ? 'Listening' : 'Reading') + ' test?'}}</h2>
+        <h2 id="idp-test-mode-title">{{vm.isComprehensiveRoute ? 'Bạn muốn làm bài tập này theo chế độ nào?' : 'How would you like to do this ' + (vm.isWritingRoute ? 'Writing' : (vm.isListeningRoute ? 'Listening' : 'Reading')) + ' test?'}}</h2>
         <p class="idp-test-mode-intro">You can keep your answers, notes and highlights in either mode.</p>
         <div class="idp-test-mode-options">
             <button type="button" class="idp-test-mode-option" ng-disabled="vm.isStartingTest" ng-class="{'is-selected': vm.selectedTestSessionMode === 'SERIOUS'}" ng-click="vm.selectTestSessionMode('SERIOUS')">
@@ -57,11 +57,11 @@
 </div>
 <div class="row margin-top-10 wrap-test idp-reading-test-shell" ng-if="vm.isHasTestTakerName === true && vm.isStartTest === true" id="test-performance">
     <div class="idp-reading-preview-banner" ng-if="vm.isPreviewMode">
-        <i class="fa fa-eye"></i> PREVIEW MODE <span ng-if="!vm.isComprehensiveRoute">· Part {{vm.passageNumber}}</span>
+        <i class="fa fa-eye"></i> PREVIEW MODE <span ng-if="!vm.isFlexibleRoute">· Part {{vm.passageNumber}}</span>
         <span>This is the candidate view</span>
     </div>
     <div class="idp-exam-topbar" ng-show="vm.isStartTest && vm.passageNumber != 4">
-        <div class="idp-exam-logo">{{vm.isComprehensiveRoute ? 'BÀI TẬP' : 'IELTS'}} <small>{{vm.isComprehensiveRoute ? 'TỔNG HỢP' : (vm.isListeningRoute ? 'LISTENING' : 'READING')}}</small></div>
+        <div class="idp-exam-logo">{{vm.isComprehensiveRoute ? 'BÀI TẬP' : 'IELTS'}} <small>{{vm.isComprehensiveRoute ? 'TỔNG HỢP' : (vm.isWritingRoute ? 'WRITING' : (vm.isListeningRoute ? 'LISTENING' : 'READING'))}}</small></div>
         <div class="idp-exam-name">
             <strong>Test taker name</strong>
             <span>{{vm.testResult.testTakerName}}</span>
@@ -166,14 +166,16 @@
                             <div ng-show="!vm.isListeningRoute" class="col-md-12" style="margin-left: 20px;margin-bottom: 0 !important" >
                                 <h3 ng-if="vm.isComprehensiveRoute" class="bold">Danh sách câu hỏi</h3>
                                 <h4 ng-if="vm.isComprehensiveRoute">Làm lần lượt các câu hỏi bên dưới.</h4>
-                                <h3 ng-show="!vm.isComprehensiveRoute && vm.passageNumber == 1" class="bold">Part 1</h3>
-                                <h4 ng-show="!vm.isComprehensiveRoute && vm.passageNumber == 1">Read the text and answer questions 1–13.</h4>
+                                <h3 ng-if="vm.isWritingRoute" class="bold">IELTS Writing</h3>
+                                <h4 ng-if="vm.isWritingRoute">Hoàn thành {{vm.isPartAssignment ? 'Writing Task ' + vm.assignedPart : 'các Task bên dưới'}}.</h4>
+                                <h3 ng-show="!vm.isFlexibleRoute && vm.passageNumber == 1" class="bold">Part 1</h3>
+                                <h4 ng-show="!vm.isFlexibleRoute && vm.passageNumber == 1">Read the text and answer questions 1–13.</h4>
 
-                                <h3 ng-show="!vm.isComprehensiveRoute && vm.passageNumber == 2" class="bold">Part 2</h3>
-                                <h4 ng-show="!vm.isComprehensiveRoute && vm.passageNumber == 2">Read the text and answer questions 14–26.</h4>
+                                <h3 ng-show="!vm.isFlexibleRoute && vm.passageNumber == 2" class="bold">Part 2</h3>
+                                <h4 ng-show="!vm.isFlexibleRoute && vm.passageNumber == 2">Read the text and answer questions 14–26.</h4>
 
-                                <h3 ng-show="!vm.isComprehensiveRoute && vm.passageNumber == 3" class="bold">Part 3</h3>
-                                <h4 ng-show="!vm.isComprehensiveRoute && vm.passageNumber == 3">Read the text and answer questions 27–40.</h4>
+                                <h3 ng-show="!vm.isFlexibleRoute && vm.passageNumber == 3" class="bold">Part 3</h3>
+                                <h4 ng-show="!vm.isFlexibleRoute && vm.passageNumber == 3">Read the text and answer questions 27–40.</h4>
                             </div>
                         </div>
                     </div>
@@ -207,7 +209,7 @@
                             <!--ng-style="(x.selectedMedia == true  && {'color':'black'})"-->
                             <div class="col-md-6 idp-reading-pane"
                                  ng-style="vm.readingPaneStyle()"
-                                 ng-hide="(vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6)">
+                                 ng-hide="vm.isWritingRoute || (vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6)">
                                 <!--<h3>{{vm.ieltsReadingActualTest.subQuestions[0].type}}</h3>-->
                                 <div class="row">
                                     <div class="notes-highlight actual-test-font-global" id="passage-1-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes">
@@ -227,13 +229,13 @@
 
                             <div class="idp-split-divider"
                                  ng-style="vm.readingDividerStyle()"
-                                 ng-hide="(vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6)"
+                                 ng-hide="vm.isWritingRoute || (vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6)"
                                  reading-split-resize="vm.startReadingResize($event)"
                                  ng-dblclick="vm.resetReadingResize()"
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-style="vm.questionPaneStyle((vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll ng-mousedown="closeNotes1()" id="passage-question-text-1">
+                            <div ng-style="vm.questionPaneStyle(vm.isWritingRoute || (vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll ng-mousedown="closeNotes1()" id="passage-question-text-1">
                                 <!--<span style="" my-draggable>Drag Me</span>-->
                                 <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions">
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
@@ -242,6 +244,7 @@
                                         </p>
 
                                         <div class="writing-task-runtime actual-test-font-global" ng-if="item.type == 16 || item.type == 17">
+                                            <div class="writing-task-runtime__prompt" compile="item.question"></div>
                                             <div class="writing-task-runtime__header">
                                                 <div>
                                                     <strong>{{item.type == 17 ? 'Writing Task 2' : 'Writing Task 1'}}</strong>
@@ -1483,7 +1486,7 @@
                                      ng-click="vm.openIeltsNavigationPart(part)">
                                 <button type="button"
                                         class="idp-part-tab actual-test-font-global">
-                                    <strong>{{vm.isComprehensiveRoute ? 'Câu hỏi' : 'Part ' + part.number}}</strong>
+                                    <strong>{{vm.isComprehensiveRoute ? 'Câu hỏi' : (vm.isWritingRoute ? 'Task ' + part.number : 'Part ' + part.number)}}</strong>
                                     <span class="idp-part-progress" ng-if="vm.activeIeltsNavigationPart() !== part.number">
                                         {{vm.ieltsNavigationAnsweredCount(part)}} of {{part.questions.length}}
                                     </span>
@@ -1531,8 +1534,8 @@
                     <h1><i class="fa fa-clock"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testTime}}</h1>
                     <h1><i class="fa fa-calendar"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testDate | date: 'dd/MM/yyyy HH:mm:ss'}}</h1>
                     <h1><i class="fa fa-pencil"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.correctAnswer}}/{{vm.resultQuestionTotal}}</h1>
-                    <h1 class="bold text-red" ng-if="!vm.isPartAssignment && !vm.isComprehensiveRoute"><i class="fa fa-graduation-cap"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.bandScore}}</h1>
-                    <h1 class="bold text-green" ng-if="vm.isPartAssignment"><i class="fa fa-check-circle"></i> &nbsp;Part {{vm.assignedPart}} has been recorded</h1>
+                    <h1 class="bold text-red" ng-if="!vm.isPartAssignment && !vm.isFlexibleRoute"><i class="fa fa-graduation-cap"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.bandScore}}</h1>
+                    <h1 class="bold text-green" ng-if="vm.isPartAssignment"><i class="fa fa-check-circle"></i> &nbsp;{{vm.isWritingRoute ? 'Writing Task ' : 'Part '}}{{vm.assignedPart}} has been recorded</h1>
                     <h1 class="bold text-blue" style="cursor: pointer" ng-click="vm.showDetailTestAfterSubmit()"><i class="fa fa-info-circle" aria-hidden="true"></i> &nbsp;<i class="fa fa-caret-right"></i> CLICK TO SEE DETAILS</h1>
                 </div>
 
@@ -1549,9 +1552,9 @@
                         <tbody>
                         <tr class="text-center bold" ng-style="(!item.isCorrectTestResultDetail) && {'background':'rgba(196, 77, 86,0.7)'} " ng-repeat="item in vm.testResultAfterSubmitting.questionAnswerTestResult">
 
-                            <td>{{item.ordinalNumber}}</td>
+                            <td>{{vm.getResultQuestionLabel(item)}}</td>
 
-                            <td>{{vm.getResultYourAnswer(item)}}</td>
+                            <td ng-class="{'writing-result-answer': vm.isWritingRoute}">{{vm.getResultYourAnswer(item)}}</td>
                             <td>{{vm.getResultCorrectAnswer(item)}}</td>
                         </tr>
 
@@ -1993,6 +1996,16 @@
         margin-bottom: 13px;
     }
 
+    .writing-task-runtime__prompt {
+        margin-bottom: 18px;
+        padding: 18px 20px;
+        border: 1px solid #d9e1ee;
+        border-left: 4px solid #6d5dfc;
+        border-radius: 10px;
+        background: #f8f9ff;
+        line-height: 1.65;
+    }
+
     .writing-task-runtime__header strong,
     .writing-task-runtime__header span {
         display: block;
@@ -2068,6 +2081,14 @@
         margin-top: 8px;
         color: #6b7280;
         line-height: 1.45;
+    }
+
+    .writing-result-answer {
+        min-width: 420px;
+        white-space: pre-wrap;
+        text-align: left;
+        font-weight: 400;
+        line-height: 1.65;
     }
 
     @media (max-width: 767px) {

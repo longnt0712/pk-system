@@ -782,10 +782,12 @@
         var vm = this;
         var writingTaskDraftTimer = null;
         vm.isComprehensiveRoute = /\/comprehensive_test(?:\/|$)/i.test($location.path());
-        vm.isListeningRoute = !vm.isComprehensiveRoute && /\/ielts_listening_actual_test(?:\/|$)/i.test($location.path());
+        vm.isWritingRoute = /\/ielts_writing_actual_test(?:\/|$)/i.test($location.path());
+        vm.isListeningRoute = !vm.isComprehensiveRoute && !vm.isWritingRoute && /\/ielts_listening_actual_test(?:\/|$)/i.test($location.path());
+        vm.isFlexibleRoute = vm.isComprehensiveRoute || vm.isWritingRoute;
         vm.assignmentTaskId = /^\d+$/.test(String($stateParams.assignmentTaskId || '')) ? Number($stateParams.assignmentTaskId) : null;
         var requestedAssignedPart = /^\d+$/.test(String($stateParams.assignmentPart || '')) ? Number($stateParams.assignmentPart) : null;
-        var maximumAssignedPart = vm.isComprehensiveRoute ? 1 : (vm.isListeningRoute ? 4 : 3);
+        var maximumAssignedPart = vm.isComprehensiveRoute ? 1 : (vm.isWritingRoute ? 2 : (vm.isListeningRoute ? 4 : 3));
         vm.assignedPart = requestedAssignedPart >= 1 && requestedAssignedPart <= maximumAssignedPart ? requestedAssignedPart : null;
         // assignmentPart tự nó đã đủ để mở chế độ chỉ làm một Part.
         // Một số link do giáo viên mở trực tiếp không có assignmentTaskId.
@@ -840,6 +842,13 @@
                 questionAnswer.correctAnswer : '';
         };
 
+        vm.getResultQuestionLabel = function (item) {
+            var type = getResultQuestionType(item);
+            if (type == 16) { return 'Task 1'; }
+            if (type == 17) { return 'Task 2'; }
+            return item && item.ordinalNumber;
+        };
+
         vm.countWritingTaskWords = function (value) {
             var text = String(value == null ? '' : value).trim();
             return text ? text.split(/\s+/).length : 0;
@@ -852,6 +861,16 @@
                     if (!found && (Number(questionPackage.type) === 16 || Number(questionPackage.type) === 17)) {
                         found = questionPackage;
                     }
+                });
+            });
+            return found;
+        }
+
+        function getWritingTaskPackages() {
+            var found = [];
+            angular.forEach((vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.subQuestions) || [], function (passage) {
+                angular.forEach((passage && passage.subQuestions) || [], function (questionPackage) {
+                    if (Number(questionPackage.type) === 16 || Number(questionPackage.type) === 17) { found.push(questionPackage); }
                 });
             });
             return found;
@@ -1220,10 +1239,11 @@
         vm.testResult.user = vm.currentUser;
 
         var readingDraftBaseKey = 'ieltsReadingInProgress:' + (vm.currentUser.id || 'anonymous');
-        var readingDraftTaskSuffix = vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId : '';
+        var readingDraftTaskSuffix = vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId
+            : (vm.isWritingRoute && vm.assignedPart ? ':writing-task:' + vm.assignedPart : '');
         var legacyReadingDraftStorageKey = readingDraftBaseKey + readingDraftTaskSuffix;
         var legacyModeDraftStorageKey = readingDraftBaseKey
-            + (vm.isComprehensiveRoute ? ':comprehensive' : (vm.isListeningRoute ? ':listening' : ':reading')) + readingDraftTaskSuffix;
+            + (vm.isComprehensiveRoute ? ':comprehensive' : (vm.isWritingRoute ? ':writing' : (vm.isListeningRoute ? ':listening' : ':reading'))) + readingDraftTaskSuffix;
         var readingDraftAutosaveTimer = null;
         var readingDraftSubmitted = false;
         var readingLearningDraftsReady = null;
@@ -1233,7 +1253,7 @@
                 || $stateParams.ieltsReadingTestId;
             var normalizedMode = String(sessionMode || vm.testSessionMode || vm.selectedTestSessionMode || '').toUpperCase();
             var sessionSuffix = normalizedMode === 'SERIOUS' ? ':serious' : '';
-            return readingDraftBaseKey + (vm.isComprehensiveRoute ? ':comprehensive:test:' : (vm.isListeningRoute ? ':listening:test:' : ':reading:test:'))
+            return readingDraftBaseKey + (vm.isComprehensiveRoute ? ':comprehensive:test:' : (vm.isWritingRoute ? ':writing:test:' : (vm.isListeningRoute ? ':listening:test:' : ':reading:test:')))
                 + String(testId || 'unknown') + sessionSuffix + readingDraftTaskSuffix;
         }
 
@@ -1251,7 +1271,7 @@
                 draftKey: key,
                 draftType: 'IELTS',
                 title: draft.title || (draft.testMode === 'COMPREHENSIVE' ? 'Bài tập tổng hợp' :
-                    (draft.isListening ? 'IELTS Listening Test' : 'IELTS Reading Test')),
+                    (draft.testMode === 'WRITING' ? 'IELTS Writing Test' : (draft.isListening ? 'IELTS Listening Test' : 'IELTS Reading Test'))),
                 payload: JSON.stringify(draft),
                 savedAt: new Date(draft.savedAt || 0).getTime() || Date.now()
             }).catch(angular.noop);
@@ -1305,7 +1325,10 @@
                     if ((draft.testMode === 'COMPREHENSIVE') !== vm.isComprehensiveRoute) {
                         continue;
                     }
-                    if (!vm.isComprehensiveRoute && (draft.testMode === 'LISTENING' || draft.isListening === true) !== vm.isListeningRoute
+                    if ((draft.testMode === 'WRITING') !== vm.isWritingRoute) {
+                        continue;
+                    }
+                    if (!vm.isFlexibleRoute && (draft.testMode === 'LISTENING' || draft.isListening === true) !== vm.isListeningRoute
                             && (draft.testMode || angular.isDefined(draft.isListening))) {
                         continue;
                     }
@@ -1422,7 +1445,7 @@
                     testId: testId,
                     title: vm.ieltsReadingActualTest.title || 'IELTS Reading Test',
                     isListening: vm.isListeningRoute === true,
-                    testMode: vm.isComprehensiveRoute ? 'COMPREHENSIVE' : (vm.isListeningRoute ? 'LISTENING' : 'READING'),
+                    testMode: vm.isComprehensiveRoute ? 'COMPREHENSIVE' : (vm.isWritingRoute ? 'WRITING' : (vm.isListeningRoute ? 'LISTENING' : 'READING')),
                     sessionMode: vm.testSessionMode,
                     assignmentTaskId: vm.assignmentTaskId || null,
                     assignmentPart: vm.assignedPart || null,
@@ -2059,6 +2082,28 @@
             return data;
         }
 
+        function restrictWritingAssignmentToSelectedTask(data) {
+            if (!vm.isWritingRoute || !vm.isPartAssignment || !data || !angular.isArray(data.subQuestions)) {
+                return data;
+            }
+            var requestedType = Number(vm.assignedPart) === 2 ? 17 : 16;
+            var selectedPackages = [];
+            angular.forEach(data.subQuestions, function (passage) {
+                angular.forEach((passage && passage.subQuestions) || [], function (questionPackage) {
+                    if (Number(questionPackage.type) === requestedType) { selectedPackages.push(questionPackage); }
+                });
+            });
+            if (!data.subQuestions.length) { return data; }
+            angular.forEach(data.subQuestions, function (passage) {
+                if (passage) { passage.subQuestions = []; }
+            });
+            data.subQuestions[0].subQuestions = selectedPackages;
+            angular.forEach(selectedPackages, function (questionPackage, index) {
+                questionPackage.ordinalNumber = index + 1;
+            });
+            return data;
+        }
+
         vm.startTest = function () {
             if (vm.isStartTest || vm.isStartingTest) { return; }
             vm.isStartingTest = true;
@@ -2140,13 +2185,22 @@
                     vm.listeningPartAudioUrls = vm.isListeningRoute ? data.subQuestions.map(function (part) {
                         return String(part && part.pronounce || '').trim();
                     }) : [];
+                    data = restrictWritingAssignmentToSelectedTask(data);
                     data = restrictListeningAssignmentToSelectedPart(data);
                     data = normalizeListeningCandidateParts(data);
                     data = normalizeLegacyMultipleAnswerPackages(data);
                     cachedIeltsNavigationParts = null;
                     vm.ieltsReadingActualTest = data;
+                    if (vm.isWritingRoute) {
+                        var writingMinutes = 0;
+                        angular.forEach(getWritingTaskPackages(), function (writingPackage) {
+                            writingMinutes += Number(writingPackage.type) === 17 ? 40 : 20;
+                        });
+                        seriousTotalSeconds = Math.max(20, writingMinutes || 60) * 60;
+                        if (!timerRestoredFromDraft) { setCountdownSeconds(seriousTotalSeconds); }
+                    }
                     vm.getOrdinalNumber(data);
-                    if (vm.isComprehensiveRoute) {
+                    if (vm.isFlexibleRoute) {
                         vm.resultQuestionTotal = getAllReadingQuestionEntries().length || 1;
                     }
                     blockUI.stop();
@@ -2310,7 +2364,7 @@
             var passage2 = document.getElementById('passage-text-2').innerHTML;
             var passage3 = document.getElementById('passage-text-3').innerHTML;
 
-            vm.testResult.testTakerPerformance = vm.isComprehensiveRoute ? passage1 :
+            vm.testResult.testTakerPerformance = vm.isFlexibleRoute ? passage1 :
                 "<h2>Passage 1</h2>" + passage1
                 + "<br><br><h2>Passage 2</h2>" + passage2
                 + "<br><br><h2>Passage 3</h2>" + passage3;
@@ -2318,12 +2372,13 @@
             // vm.testResult.testTakerPerformance = all;
 
             vm.testResult.testName = vm.ieltsReadingActualTest.title;
-			var writingTaskPackage = getWritingTaskPackage();
-			if (writingTaskPackage) {
+			var writingWordTotal = 0;
+			angular.forEach(getWritingTaskPackages(), function (writingTaskPackage) {
 				var writingTaskAnswer = writingTaskPackage.subQuestions && writingTaskPackage.subQuestions[0] &&
 					writingTaskPackage.subQuestions[0].questionAnswers && writingTaskPackage.subQuestions[0].questionAnswers[0];
-				vm.testResult.numberOfWords = vm.countWritingTaskWords(writingTaskAnswer && writingTaskAnswer.clientAnswer);
-			}
+				writingWordTotal += vm.countWritingTaskWords(writingTaskAnswer && writingTaskAnswer.clientAnswer);
+			});
+			if (getWritingTaskPackages().length) { vm.testResult.numberOfWords = writingWordTotal; }
 			vm.testResult.sourceQuestionId = Number($stateParams.ieltsReadingTestId);
 			if (vm.isPartAssignment) {
 				var allowedOrdinals = assignedPartQuestionOrdinals();
@@ -2338,17 +2393,18 @@
 				});
 				vm.testResult.completedPart = vm.assignedPart;
 				vm.testResult.assignmentTaskId = vm.assignmentTaskId;
-				vm.testResult.testName += ' · Part ' + vm.assignedPart;
-				vm.testResult.testTakerPerformance = '<h2>Part ' + vm.assignedPart + '</h2>'
-					+ ([passage1, passage2, passage3][Math.min(vm.assignedPart, 3) - 1] || '');
+				var assignedLabel = vm.isWritingRoute ? 'Writing Task ' + vm.assignedPart : 'Part ' + vm.assignedPart;
+				vm.testResult.testName += ' · ' + assignedLabel;
+				vm.testResult.testTakerPerformance = '<h2>' + assignedLabel + '</h2>'
+					+ (vm.isWritingRoute ? passage1 : ([passage1, passage2, passage3][Math.min(vm.assignedPart, 3) - 1] || ''));
 				vm.resultQuestionTotal = allowedOrdinals.length || 1;
 			}
 
 
-            vm.testResult.testType = vm.isComprehensiveRoute ? 6 : 4;
-            if(!vm.isComprehensiveRoute && vm.ieltsReadingActualTest.pronounce != null && vm.ieltsReadingActualTest.pronounce.length > 0 && angular.isDefined(vm.ieltsReadingActualTest.pronounce)){
+            vm.testResult.testType = vm.isComprehensiveRoute ? 6 : (vm.isWritingRoute ? 7 : 4);
+            if(!vm.isFlexibleRoute && vm.ieltsReadingActualTest.pronounce != null && vm.ieltsReadingActualTest.pronounce.length > 0 && angular.isDefined(vm.ieltsReadingActualTest.pronounce)){
                 vm.testResult.testType = 2; //ielts lis
-            }else if (!vm.isComprehensiveRoute) {
+            }else if (!vm.isFlexibleRoute) {
                 vm.testResult.testType = 4; // ielts read
             }
 
@@ -2356,7 +2412,7 @@
             service.saveTestResult(vm.testResult).then(function (data) {
                 blockUI.stop();
                 readingDraftSubmitted = true;
-                if (!vm.isComprehensiveRoute || !data || data.resultStatus !== 'FAILED') {
+                if (!vm.isFlexibleRoute || !data || data.resultStatus !== 'FAILED') {
                     markStudyDraftCompleted(data && data.id);
                 }
                 if (vm.testSessionMode !== 'STUDY') {
@@ -2372,7 +2428,7 @@
                     console.log(vm.testResultAfterSubmitting);
 
                     vm.percentageAfterSubmit = (vm.testResultAfterSubmitting.correctAnswer / vm.resultQuestionTotal)*100;
-                    vm.textBandScore = vm.isComprehensiveRoute ?
+                    vm.textBandScore = vm.isFlexibleRoute ?
                         (vm.testResultAfterSubmitting.correctAnswer + '/' + vm.resultQuestionTotal) :
                         ('Band ' + vm.testResultAfterSubmitting.bandScore.toString());
 
@@ -2849,6 +2905,9 @@
             if (!vm.isPartAssignment) { return entries; }
 
             return entries.filter(function (entry) {
+                if (vm.isWritingRoute) {
+                    return Number(entry.packageType) === (Number(vm.assignedPart) === 2 ? 17 : 16);
+                }
                 return vm.isListeningRoute
                     ? listeningPartNumberForOrdinal(entry.question.ordinalNumber) === vm.assignedPart
                     : entry.passageNumber === vm.assignedPart;
@@ -2868,21 +2927,29 @@
             if (cachedIeltsNavigationParts) {
                 return cachedIeltsNavigationParts;
             }
-            var partCount = vm.isComprehensiveRoute ? 1 : vm.isListeningRoute ? 4
+            var partCount = vm.isComprehensiveRoute ? 1 : vm.isWritingRoute ? 2 : vm.isListeningRoute ? 4
                 : Math.min(3, ((vm.ieltsReadingActualTest || {}).subQuestions || []).length);
             var parts = [];
             var partByNumber = {};
 
+            var writingPartNumbers = [];
+            if (vm.isWritingRoute) {
+                angular.forEach(getReadingQuestionEntries(), function (entry) {
+                    var taskNumber = Number(entry.packageType) === 17 ? 2 : 1;
+                    if (writingPartNumbers.indexOf(taskNumber) < 0) { writingPartNumbers.push(taskNumber); }
+                });
+                writingPartNumbers.sort();
+            }
             for (var number = 1; number <= partCount; number++) {
+                if (vm.isWritingRoute && writingPartNumbers.indexOf(number) < 0) { continue; }
                 var part = {number: number, questions: []};
                 parts.push(part);
                 partByNumber[number] = part;
             }
 
             angular.forEach(getReadingQuestionEntries(), function (entry) {
-                var partNumber = vm.isListeningRoute
-                    ? listeningPartNumberForOrdinal(entry.question.ordinalNumber)
-                    : entry.passageNumber;
+                var partNumber = vm.isWritingRoute ? (Number(entry.packageType) === 17 ? 2 : 1)
+                    : (vm.isListeningRoute ? listeningPartNumberForOrdinal(entry.question.ordinalNumber) : entry.passageNumber);
                 if (partByNumber[partNumber]) {
                     partByNumber[partNumber].questions.push(entry);
                 }
@@ -2892,6 +2959,9 @@
         };
 
         vm.activeIeltsNavigationPart = function () {
+            if (vm.isWritingRoute) {
+                return vm.assignedPart || (vm.tempQuestion && vm.tempQuestion.parent && Number(vm.tempQuestion.parent.type) === 17 ? 2 : 1);
+            }
             if (vm.isListeningRoute) {
                 var currentPart = listeningPartNumberForOrdinal(vm.tempQuestion && vm.tempQuestion.ordinalNumber);
                 return currentPart || vm.assignedPart || Math.min(vm.passageNumber || 1, 4);

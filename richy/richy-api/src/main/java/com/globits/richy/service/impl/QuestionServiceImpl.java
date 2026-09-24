@@ -557,7 +557,7 @@ public class QuestionServiceImpl implements QuestionService {
 		if (searchDto.getTestFormat() != null && !searchDto.getTestFormat().trim().isEmpty()) {
 			whereClause += " and s.testFormat = :testFormat ";
 		} else if (searchDto.getListeningTest() != null) {
-			whereClause += " and (s.testFormat is null or s.testFormat <> 'COMPREHENSIVE') ";
+			whereClause += " and (s.testFormat is null or s.testFormat not in ('COMPREHENSIVE','WRITING')) ";
 			if (searchDto.getListeningTest()) {
 				whereClause += " and (s.pronounce is not null and length(trim(s.pronounce)) > 0) ";
 			} else {

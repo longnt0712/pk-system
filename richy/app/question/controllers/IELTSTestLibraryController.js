@@ -29,11 +29,13 @@
         }
 
         vm.isComprehensiveMode = /\/comprehensive_tests(?:\/|$)/i.test($location.path());
-        vm.isListeningMode = !vm.isComprehensiveMode && /\/ielts_listening_tests(?:\/|$)/i.test($location.path());
-        vm.testModeName = vm.isComprehensiveMode ? 'Tổng hợp' : (vm.isListeningMode ? 'Listening' : 'Reading');
-        vm.testModeIcon = vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book');
+        vm.isWritingMode = /\/ielts_writing_tests(?:\/|$)/i.test($location.path());
+        vm.isListeningMode = !vm.isComprehensiveMode && !vm.isWritingMode && /\/ielts_listening_tests(?:\/|$)/i.test($location.path());
+        vm.testModeName = vm.isComprehensiveMode ? 'Tổng hợp' : (vm.isWritingMode ? 'Writing' : (vm.isListeningMode ? 'Listening' : 'Reading'));
+        vm.testModeIcon = vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isWritingMode ? 'fa-pencil-square-o' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book'));
         vm.ieltsReadingTests = [];
         vm.learningProgressByTestId = {};
+        vm.learningProgressByTestTask = {};
         vm.totalItems = 0;
         vm.loading = false;
         vm.searchDto = {
@@ -44,8 +46,8 @@
             pageIndex: 1,
             status: 7,
             questionType: {id: 11},
-            listeningTest: vm.isComprehensiveMode ? null : vm.isListeningMode,
-            testFormat: vm.isComprehensiveMode ? 'COMPREHENSIVE' : null
+            listeningTest: vm.isComprehensiveMode || vm.isWritingMode ? null : vm.isListeningMode,
+            testFormat: vm.isWritingMode ? 'WRITING' : (vm.isComprehensiveMode ? 'COMPREHENSIVE' : null)
         };
         var DEFAULT_TOPIC_SOURCE_ID = 26;
         var DEFAULT_TOPIC_CATEGORY_NAME = 'GRADE 6';
@@ -158,24 +160,35 @@
             return new Date((draft || {}).savedAt || (draft || {}).updatedAt || serverSavedAt || 0).getTime() || 0;
         }
 
-        function collectIeltsDraft(progressByTestId, draft, serverSavedAt) {
+        function keepNewestProgress(progressMap, key, draft, savedAtValue) {
+            if (!progressMap[key] || savedAtValue >= progressMap[key].savedAtValue) {
+                var progress = angular.copy(draft);
+                progress.savedAtValue = savedAtValue;
+                progressMap[key] = progress;
+            }
+        }
+
+        function collectIeltsDraft(progressByTestId, progressByTestTask, draft, serverSavedAt) {
             if (!draft || !draft.testId || draft.sessionMode !== 'STUDY') { return; }
             if (vm.currentUser.id && draft.userId && String(draft.userId) !== String(vm.currentUser.id)) { return; }
 
             var isComprehensiveDraft = draft.testMode === 'COMPREHENSIVE';
             if (isComprehensiveDraft !== vm.isComprehensiveMode) { return; }
+            var isWritingDraft = draft.testMode === 'WRITING';
+            if (isWritingDraft !== vm.isWritingMode) { return; }
             var isListeningDraft = draft.isListening === true || draft.testMode === 'LISTENING';
             if (isListeningDraft !== vm.isListeningMode) { return; }
 
             var key = String(draft.testId);
             var savedAtValue = draftSavedAt(draft, serverSavedAt);
-            if (!progressByTestId[key] || savedAtValue >= progressByTestId[key].savedAtValue) {
-                draft.savedAtValue = savedAtValue;
-                progressByTestId[key] = draft;
+            keepNewestProgress(progressByTestId, key, draft, savedAtValue);
+            var writingTask = Number(draft.assignmentPart);
+            if (vm.isWritingMode && (writingTask === 1 || writingTask === 2)) {
+                keepNewestProgress(progressByTestTask, key + ':' + writingTask, draft, savedAtValue);
             }
         }
 
-        function readLocalLearningProgress(progressByTestId) {
+        function readLocalLearningProgress(progressByTestId, progressByTestTask) {
             var userId = String(vm.currentUser.id || '');
             var prefix = 'ieltsReadingInProgress:' + userId;
             if (!userId) { return; }
@@ -184,29 +197,39 @@
                 for (var index = 0; index < $window.localStorage.length; index++) {
                     var storageKey = $window.localStorage.key(index);
                     if (!storageKey || (storageKey !== prefix && storageKey.indexOf(prefix + ':') !== 0)) { continue; }
-                    collectIeltsDraft(progressByTestId, JSON.parse($window.localStorage.getItem(storageKey)));
+                    collectIeltsDraft(progressByTestId, progressByTestTask, JSON.parse($window.localStorage.getItem(storageKey)));
                 }
             } catch (ignoreLearningProgressStorageError) {}
         }
 
         vm.refreshLearningProgress = function () {
             var progressByTestId = {};
-            readLocalLearningProgress(progressByTestId);
+            var progressByTestTask = {};
+            readLocalLearningProgress(progressByTestId, progressByTestTask);
             vm.learningProgressByTestId = progressByTestId;
+            vm.learningProgressByTestTask = progressByTestTask;
 
             return service.getLearningDrafts().then(function (items) {
                 angular.forEach(items || [], function (item) {
                     if (!item || item.draftType !== 'IELTS' || !item.payload) { return; }
                     try {
-                        collectIeltsDraft(progressByTestId, JSON.parse(item.payload), item.savedAt);
+                        collectIeltsDraft(progressByTestId, progressByTestTask, JSON.parse(item.payload), item.savedAt);
                     } catch (ignoreInvalidDraftPayload) {}
                 });
                 vm.learningProgressByTestId = progressByTestId;
+                vm.learningProgressByTestTask = progressByTestTask;
             }, angular.noop);
         };
 
-        vm.getLearningProgress = function (testId) {
+        vm.getLearningProgress = function (testId, writingTask) {
+            if (vm.isWritingMode && (Number(writingTask) === 1 || Number(writingTask) === 2)) {
+                return vm.learningProgressByTestTask[String(testId) + ':' + Number(writingTask)] || null;
+            }
             return vm.learningProgressByTestId[String(testId)] || null;
+        };
+
+        vm.hasWritingLearningProgress = function (item) {
+            return !!(item && (vm.getLearningProgress(item.id, 1) || vm.getLearningProgress(item.id, 2)));
         };
 
         vm.formatLearningDuration = function (seconds) {
@@ -215,16 +238,19 @@
             return Math.floor(totalMinutes / 60) + ' giờ ' + (totalMinutes % 60) + ' phút';
         };
 
-        vm.testCatalogUrl = function (item) {
+        vm.testCatalogUrl = function (item, writingTask) {
             var route = vm.isComprehensiveMode ? 'comprehensive_test/' :
-                (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/');
-            return route + item.id + (vm.getLearningProgress(item.id) ? '?sessionMode=STUDY' : '');
+                (vm.isWritingMode ? 'ielts_writing_actual_test/' : (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'));
+            var params = [];
+            if (writingTask) { params.push('assignmentPart=' + writingTask); }
+            if (vm.getLearningProgress(item.id, writingTask)) { params.push('sessionMode=STUDY'); }
+            return route + item.id + (params.length ? '?' + params.join('&') : '');
         };
 
-        vm.seriousTestCatalogUrl = function (item) {
+        vm.seriousTestCatalogUrl = function (item, writingTask) {
             var route = vm.isComprehensiveMode ? 'comprehensive_test/' :
-                (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/');
-            return route + item.id + '?sessionMode=SERIOUS&startFresh=1';
+                (vm.isWritingMode ? 'ielts_writing_actual_test/' : (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'));
+            return route + item.id + '?sessionMode=SERIOUS&startFresh=1' + (writingTask ? '&assignmentPart=' + writingTask : '');
         };
 
         vm.loadTests = function () {

@@ -13,6 +13,8 @@ public class QuestionForTestsDto implements Serializable  {
 	private String title;
 	private String pronounce;
 	private String testFormat;
+	private boolean hasWritingTask1;
+	private boolean hasWritingTask2;
 	private List<TopicDto> topics = new ArrayList<TopicDto>();
 	private int status = 3;
 	
@@ -47,6 +49,10 @@ public class QuestionForTestsDto implements Serializable  {
 	public void setTestFormat(String testFormat) {
 		this.testFormat = testFormat;
 	}
+	public boolean isHasWritingTask1() { return hasWritingTask1; }
+	public void setHasWritingTask1(boolean value) { this.hasWritingTask1 = value; }
+	public boolean isHasWritingTask2() { return hasWritingTask2; }
+	public void setHasWritingTask2(boolean value) { this.hasWritingTask2 = value; }
 	public List<TopicDto> getTopics() {
 		return topics;
 	}
@@ -62,6 +68,16 @@ public class QuestionForTestsDto implements Serializable  {
 		this.pronounce = domain.getPronounce();
 		this.testFormat = domain.getTestFormat();
 		this.status = domain.getStatus();
+		if (domain.getSubQuestions() != null) {
+			for (Question part : domain.getSubQuestions()) {
+				if (part == null || part.getSubQuestions() == null) { continue; }
+				for (Question questionPackage : part.getSubQuestions()) {
+					if (questionPackage == null) { continue; }
+					if (questionPackage.getType() == 16) { this.hasWritingTask1 = true; }
+					if (questionPackage.getType() == 17) { this.hasWritingTask2 = true; }
+				}
+			}
+		}
 		if (domain.getQuestionTopics() != null) {
 			for (QuestionTopic link : domain.getQuestionTopics()) {
 				if (link != null && link.getTopic() != null) {

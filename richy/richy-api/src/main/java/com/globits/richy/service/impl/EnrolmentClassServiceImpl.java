@@ -105,7 +105,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	private static final Integer HIDDEN_SCHOOL_ID = Integer.valueOf(1);
 	private static final Integer EDUCATION_MANAGER_SCHOOL_ID = Integer.valueOf(2);
 	private static final List<String> ASSIGNMENT_ACTIVITY_TYPES = Arrays.asList(
-			"DAILY_VOCAB", "DAILY_LISTENING", "IELTS_READING", "IELTS_LISTENING", "COMPREHENSIVE", "OTHER");
+			"DAILY_VOCAB", "DAILY_LISTENING", "IELTS_READING", "IELTS_LISTENING", "IELTS_WRITING", "COMPREHENSIVE", "OTHER");
 
 	@Override
 	public Page<EnrolmentClassDto> getPageObject(EnrolmentClassDto searchDto, int pageIndex, int pageSize) {
@@ -1335,18 +1335,35 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			}
 			task.setRequiredAttempts(requiredAttempts);
 			boolean comprehensiveActivity = "COMPREHENSIVE".equals(activityType);
+			boolean writingActivity = "IELTS_WRITING".equals(activityType);
 			boolean ieltsActivity = "IELTS_READING".equals(activityType) || "IELTS_LISTENING".equals(activityType)
-					|| comprehensiveActivity;
+					|| writingActivity || comprehensiveActivity;
 			if (ieltsActivity) {
 				Question test = value.getIeltsTestId() == null ? null : questionRepository.findOne(value.getIeltsTestId());
 				boolean listeningTest = test != null && test.getPronounce() != null && !test.getPronounce().trim().isEmpty();
 				boolean comprehensiveTest = test != null && "COMPREHENSIVE".equals(test.getTestFormat());
-				int maximumPart = comprehensiveActivity ? 1 : ("IELTS_LISTENING".equals(activityType) ? 4 : 3);
+				boolean writingTest = test != null && "WRITING".equals(test.getTestFormat());
+				int maximumPart = comprehensiveActivity ? 1 : (writingActivity ? 2 : ("IELTS_LISTENING".equals(activityType) ? 4 : 3));
 				if (test == null || test.getQuestionType() == null || !Long.valueOf(11L).equals(test.getQuestionType().getId())
 						|| test.getStatus() != 7 || value.getIeltsPart() == null || value.getIeltsPart() < 1 || value.getIeltsPart() > maximumPart
 						|| (comprehensiveActivity != comprehensiveTest)
-						|| (!comprehensiveActivity && ("IELTS_LISTENING".equals(activityType) != listeningTest))) {
+						|| (writingActivity != writingTest)
+						|| (!comprehensiveActivity && !writingActivity && ("IELTS_LISTENING".equals(activityType) != listeningTest))) {
 					throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Đề bài tập hoặc Part được chọn không hợp lệ.");
+				}
+				if (writingActivity) {
+					int requiredPackageType = value.getIeltsPart().intValue() == 2 ? 17 : 16;
+					boolean taskExists = false;
+					if (test.getSubQuestions() != null) {
+						for (Question part : test.getSubQuestions()) {
+							if (part == null || part.getSubQuestions() == null) { continue; }
+							for (Question questionPackage : part.getSubQuestions()) {
+								if (questionPackage != null && questionPackage.getType() == requiredPackageType) { taskExists = true; break; }
+							}
+							if (taskExists) { break; }
+						}
+					}
+					if (!taskExists) { throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Writing Task được chọn không có trong đề."); }
 				}
 				task.setIeltsTest(test); task.setIeltsPart(value.getIeltsPart()); task.setSourceQuestion(null);
 				if (comprehensiveActivity) {

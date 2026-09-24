@@ -157,6 +157,7 @@
                 DAILY_LISTENING: 'Daily Listening',
                 IELTS_READING: 'IELTS Reading',
                 IELTS_LISTENING: 'IELTS Listening',
+                IELTS_WRITING: 'IELTS Writing',
                 COMPREHENSIVE: 'Bài tập tổng hợp',
                 OTHER: 'Bài được giao'
             };
@@ -169,6 +170,7 @@
                 DAILY_LISTENING: 'fa-headphones',
                 IELTS_READING: 'fa-file-text-o',
                 IELTS_LISTENING: 'fa-volume-up',
+                IELTS_WRITING: 'fa-pencil-square-o',
                 COMPREHENSIVE: 'fa-pencil-square-o',
                 OTHER: 'fa-bookmark'
             };
@@ -180,13 +182,14 @@
             if (task && task.activityType === 'DAILY_LISTENING') { return 'Làm Daily Listening'; }
 			if (task && task.activityType === 'IELTS_READING') { return 'Làm Reading Part ' + task.ieltsPart; }
 			if (task && task.activityType === 'IELTS_LISTENING') { return 'Làm Listening Part ' + task.ieltsPart; }
+			if (task && task.activityType === 'IELTS_WRITING') { return 'Làm Writing Task ' + task.ieltsPart; }
 			if (task && task.activityType === 'COMPREHENSIVE') { return 'Làm bài được giao'; }
             return 'Xem bài được giao';
         };
 
 		vm.isIeltsAssignment = function (task) {
 			return !!task && !!task.ieltsTestId && (task.activityType === 'IELTS_READING'
-				|| task.activityType === 'IELTS_LISTENING' || task.activityType === 'COMPREHENSIVE');
+				|| task.activityType === 'IELTS_LISTENING' || task.activityType === 'IELTS_WRITING' || task.activityType === 'COMPREHENSIVE');
 		};
 
         vm.openAssignedTask = function (task) {
@@ -204,7 +207,7 @@
                 $state.go('application.view', params);
 			} else if (vm.isIeltsAssignment(task)) {
 				$state.go(task.activityType === 'COMPREHENSIVE' ? 'application.comprehensive_actual_test'
-					: (task.activityType === 'IELTS_LISTENING' ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test'), {
+					: (task.activityType === 'IELTS_WRITING' ? 'application.ielts_writing_actual_test' : (task.activityType === 'IELTS_LISTENING' ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test')), {
 					ieltsReadingTestId: task.ieltsTestId,
 					assignmentTaskId: task.taskId,
 					assignmentPart: task.ieltsPart,
@@ -252,13 +255,14 @@
                 var taskMatch = /:task:(\d+)$/.exec(key);
                 var comprehensive = draft.testMode === 'COMPREHENSIVE'
                     || key.indexOf(ieltsPrefix + ':comprehensive') === 0;
+                var writing = draft.testMode === 'WRITING' || key.indexOf(ieltsPrefix + ':writing') === 0;
                 var listening = draft.isListening === true || draft.testMode === 'LISTENING'
                     || key.indexOf(ieltsPrefix + ':listening') === 0
                     || /listening/i.test(String(draft.title || ''));
                 pushResumeDraft({
-                    kind: comprehensive ? 'COMPREHENSIVE' : (listening ? 'IELTS_LISTENING' : 'IELTS_READING'),
+                    kind: comprehensive ? 'COMPREHENSIVE' : (writing ? 'IELTS_WRITING' : (listening ? 'IELTS_LISTENING' : 'IELTS_READING')),
                     storageKey: key,
-                    title: draft.title || (comprehensive ? 'Bài tập tổng hợp' : (listening ? 'IELTS Listening Test' : 'IELTS Reading Test')),
+                    title: draft.title || (comprehensive ? 'Bài tập tổng hợp' : (writing ? 'IELTS Writing Test' : (listening ? 'IELTS Listening Test' : 'IELTS Reading Test'))),
                     savedAt: isFinite(savedAt) ? savedAt : 0,
                     remainingSeconds: Number(draft.remainingSeconds) || 0,
                     elapsedSeconds: Number(draft.elapsedSeconds) || 0,
@@ -312,6 +316,7 @@
                     if (key === ieltsPrefix || key.indexOf(ieltsPrefix + ':task:') === 0
                             || key.indexOf(ieltsPrefix + ':reading') === 0
                             || key.indexOf(ieltsPrefix + ':listening') === 0
+                            || key.indexOf(ieltsPrefix + ':writing') === 0
                             || key.indexOf(ieltsPrefix + ':comprehensive') === 0) {
                         addIeltsDraft(key, readDraft(key));
                     }
@@ -373,7 +378,7 @@
             }
             if (!draft.testId) { return; }
             $state.go(draft.kind === 'COMPREHENSIVE' ? 'application.comprehensive_actual_test'
-                : (draft.kind === 'IELTS_LISTENING' ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test'), {
+                : (draft.kind === 'IELTS_WRITING' ? 'application.ielts_writing_actual_test' : (draft.kind === 'IELTS_LISTENING' ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test')), {
                 ieltsReadingTestId: draft.testId,
                 assignmentTaskId: draft.assignmentTaskId,
                 assignmentPart: draft.assignmentPart,

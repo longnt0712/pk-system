@@ -77,10 +77,10 @@
 
         <article class="reading-resume-card" ng-repeat="draft in vm.resumeDrafts track by draft.storageKey">
             <div class="reading-resume-icon">
-                <i class="fa" ng-class="draft.kind === 'DAILY_VOCAB' ? 'fa-language' : draft.kind === 'DAILY_LISTENING' || draft.kind === 'IELTS_LISTENING' ? 'fa-headphones' : draft.kind === 'COMPREHENSIVE' ? 'fa-pencil-square-o' : 'fa-file-text-o'"></i>
+                <i class="fa" ng-class="draft.kind === 'DAILY_VOCAB' ? 'fa-language' : draft.kind === 'DAILY_LISTENING' || draft.kind === 'IELTS_LISTENING' ? 'fa-headphones' : draft.kind === 'COMPREHENSIVE' || draft.kind === 'IELTS_WRITING' ? 'fa-pencil-square-o' : 'fa-file-text-o'"></i>
             </div>
             <div class="reading-resume-copy">
-                <span class="reading-resume-kicker">{{draft.kind === 'DAILY_VOCAB' ? 'DAILY VOCAB' : draft.kind === 'DAILY_LISTENING' ? 'DAILY LISTENING' : draft.kind === 'IELTS_LISTENING' ? 'IELTS LISTENING' : draft.kind === 'COMPREHENSIVE' ? 'BÀI TẬP TỔNG HỢP' : 'IELTS READING'}}</span>
+                <span class="reading-resume-kicker">{{draft.kind === 'DAILY_VOCAB' ? 'DAILY VOCAB' : draft.kind === 'DAILY_LISTENING' ? 'DAILY LISTENING' : draft.kind === 'IELTS_LISTENING' ? 'IELTS LISTENING' : draft.kind === 'IELTS_WRITING' ? 'IELTS WRITING' : draft.kind === 'COMPREHENSIVE' ? 'BÀI TẬP TỔNG HỢP' : 'IELTS READING'}}</span>
                 <h3>Bạn còn một bài đang làm dở</h3>
                 <p class="reading-resume-title">{{draft.title}}</p>
                 <div class="reading-resume-meta">
@@ -131,13 +131,13 @@
                     <div class="student-assignment-badges">
                         <span>{{vm.assignmentTypeLabel(task)}}</span>
                         <span class="is-free" ng-if="!task.topicId && !task.ieltsTestId">Nhiệm vụ lớp</span>
-                        <span ng-if="task.ieltsTestId && task.activityType !== 'COMPREHENSIVE'">Part {{task.ieltsPart}}</span>
+                        <span ng-if="task.ieltsTestId && task.activityType !== 'COMPREHENSIVE'">{{task.activityType === 'IELTS_WRITING' ? 'Task' : 'Part'}} {{task.ieltsPart}}</span>
                         <span class="is-overdue" ng-if="task.overdue">Quá hạn</span>
                     </div>
                     <h3>{{task.title}}</h3>
                     <p class="student-assignment-topic" ng-if="task.topicId">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
                     <p class="student-assignment-topic" ng-if="task.sourceQuestionId"><i class="fa fa-headphones"></i> {{task.sourceQuestionTitle}}</p>
-                    <p class="student-assignment-topic" ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}}<span ng-if="task.activityType !== 'COMPREHENSIVE'"> · Part {{task.ieltsPart}}</span></p>
+                    <p class="student-assignment-topic" ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}}<span ng-if="task.activityType !== 'COMPREHENSIVE'"> · {{task.activityType === 'IELTS_WRITING' ? 'Task' : 'Part'}} {{task.ieltsPart}}</span></p>
                     <p class="student-assignment-topic is-free" ng-if="!task.topicId && !task.ieltsTestId"><i class="fa fa-lightbulb-o"></i> Không yêu cầu topic</p>
                     <p class="student-assignment-class"><i class="fa fa-users"></i> {{task.className}}</p>
                     <p class="student-assignment-note" ng-if="task.notes">{{task.notes}}</p>
@@ -437,6 +437,19 @@
                 </span>
                 <span class="learning-tile-title">IELTS LISTENING</span>
                 <span class="learning-tile-desc">Nghe và luyện đề mỗi ngày</span>
+                <span class="learning-tile-go"><i class="fa fa-arrow-right"></i></span>
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
+        <!-- BÀI TẬP TỔNG HỢP -->
+        <div class="learning-tile-wrap"
+             ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin)">
+            <a href="ielts_writing_tests" class="learning-tile learning-tile-comprehensive">
+                <span class="learning-tile-icon"><i class="fa fa-pencil-square-o"></i></span>
+                <span class="learning-tile-title">IELTS WRITING</span>
+                <span class="learning-tile-desc">Task 1, Task 2 hoặc cả hai</span>
                 <span class="learning-tile-go"><i class="fa fa-arrow-right"></i></span>
                 <span class="learning-blob learning-blob-1"></span>
                 <span class="learning-blob learning-blob-2"></span>
