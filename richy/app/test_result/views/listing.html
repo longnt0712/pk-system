@@ -528,8 +528,7 @@
     <div modal-movable class="ielts-result-detail-modal">
         <div class="modal-header">
             <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
-            <h4 class="modal-title" data-ng-if="vm.questionType.isNew == true"><i class="icon-plus"></i>Thêm tôn giáo</h4>
-            <h4 class="modal-title" data-ng-if="vm.questionType.isNew == false"><i class="fa fa-pencil-square-o"></i>Cập nhật tôn giáo</h4>
+            <h4 class="modal-title"><i class="fa fa-file-text-o"></i> Chi tiết kết quả bài làm</h4>
         </div>
         <div class="modal-body">
             <section class="ielts-learning-state" data-ng-if="vm.testResult.ieltsSessionMode || (vm.ieltsLearningState.annotationNotes || []).length || (vm.ieltsLearningState.annotations || []).length">
@@ -544,6 +543,47 @@
                         <strong>{{note.header}}</strong>
                         <p>{{note.specificNote || '(Chưa nhập nội dung ghi chú)'}}</p>
                     </article>
+                </div>
+            </section>
+            <section class="writing-teacher-review" data-ng-if="vm.testResult.testType === 7">
+                <div class="writing-teacher-review__header">
+                    <div>
+                        <span class="writing-teacher-review__eyebrow">IELTS WRITING</span>
+                        <h4>Band điểm &amp; feedback của giáo viên</h4>
+                    </div>
+                    <span class="writing-band-pill" data-ng-if="!vm.testResult.canEditWritingFeedback">
+                        Band {{vm.displayWritingBand(vm.testResult)}}
+                    </span>
+                </div>
+
+                <div class="form-group" data-ng-if="vm.testResult.canEditWritingFeedback">
+                    <label for="writing-teacher-band">Band điểm</label>
+                    <input id="writing-teacher-band" type="text" maxlength="80" class="form-control writing-band-input"
+                           data-ng-model="vm.testResult.writingTeacherBand"
+                           placeholder="Ví dụ: 6.5, 5+, 6.5 ~ 7.0">
+                    <p class="help-block">Có thể nhập số hoặc nhận xét ngắn theo cách chấm của giáo viên.</p>
+                </div>
+
+                <div class="form-group" data-ng-if="vm.testResult.canEditWritingFeedback">
+                    <label>Feedback cho học sinh</label>
+                    <div class="writing-feedback-editor" writing-feedback-editor
+                         data-ng-model="vm.testResult.writingTeacherFeedback"></div>
+                </div>
+
+                <div class="writing-feedback-readonly" data-ng-if="!vm.testResult.canEditWritingFeedback">
+                    <div data-ng-if="vm.testResult.writingTeacherFeedback"
+                         data-ng-bind-html="vm.testResult.writingTeacherFeedback"></div>
+                    <p class="text-muted" data-ng-if="!vm.testResult.writingTeacherFeedback">
+                        Giáo viên chưa gửi feedback cho bài Writing này.
+                    </p>
+                </div>
+
+                <div class="writing-teacher-review__actions" data-ng-if="vm.testResult.canEditWritingFeedback">
+                    <button type="button" class="btn btn-primary" data-ng-click="vm.saveWritingFeedback()"
+                            data-ng-disabled="vm.isSavingWritingFeedback">
+                        <i class="fa" data-ng-class="vm.isSavingWritingFeedback ? 'fa-spinner fa-spin' : 'fa-save'"></i>
+                        {{vm.isSavingWritingFeedback ? 'Đang lưu...' : 'Lưu kết quả chấm'}}
+                    </button>
                 </div>
             </section>
             <table class="table" data-ng-if="vm.testResult.questionAnswerTestResult && vm.testResult.questionAnswerTestResult.length">
@@ -632,6 +672,63 @@
         background: #fff;
     }
     .ielts-learning-notes p { margin: 4px 0 0; white-space: pre-wrap; }
+
+    .writing-teacher-review {
+        margin-bottom: 20px;
+        padding: 20px;
+        border: 1px solid #d8def3;
+        border-radius: 14px;
+        background: linear-gradient(145deg, #fbfcff 0%, #f5f2ff 100%);
+        box-shadow: 0 10px 28px rgba(48, 56, 110, 0.08);
+    }
+    .ielts-result-detail-modal .modal-body { max-height: calc(100vh - 165px); overflow-y: auto; }
+    .writing-teacher-review__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+    .writing-teacher-review__header h4 { margin: 3px 0 0; color: #172443; font-weight: 700; }
+    .writing-teacher-review__eyebrow {
+        color: #6257e8;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 1.2px;
+    }
+    .writing-band-pill {
+        flex: 0 0 auto;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: #171717;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 700;
+    }
+    .writing-band-input { max-width: 360px; font-weight: 700; }
+    .writing-feedback-editor { background: #fff; }
+    .writing-teacher-review .ql-toolbar { border-radius: 8px 8px 0 0; background: #f8f9fd; }
+    .writing-feedback-editor.ql-container { min-height: 220px; border-radius: 0 0 8px 8px; font-size: 15px; }
+    .writing-feedback-editor .ql-editor { min-height: 220px; line-height: 1.65; }
+    .writing-feedback-readonly {
+        min-height: 90px;
+        padding: 16px 18px;
+        border: 1px solid #e0e4f1;
+        border-radius: 10px;
+        background: #fff;
+        color: #26324b;
+        font-size: 15px;
+        line-height: 1.65;
+    }
+    .writing-feedback-readonly p:last-child { margin-bottom: 0; }
+    .writing-teacher-review__actions { margin-top: 15px; text-align: right; }
+
+    @media (max-width: 767px) {
+        .writing-teacher-review { padding: 15px; }
+        .writing-teacher-review__header { align-items: flex-start; }
+        .writing-feedback-editor.ql-container,
+        .writing-feedback-editor .ql-editor { min-height: 180px; }
+    }
 
     .ielts-result-detail-modal .writing-result-answer {
         min-width: 420px;

@@ -1,5 +1,6 @@
 package com.globits.richy.service.impl;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -35,6 +36,7 @@ import com.globits.richy.domain.QuestionAnswerTestResult;
 import com.globits.richy.domain.TestResult;
 import com.globits.richy.domain.LearningDraft;
 import com.globits.richy.domain.EnrolmentClassScheduleTask;
+import com.globits.richy.domain.EnrolmentClass;
 import com.globits.richy.dto.QuestionAnswerDto;
 import com.globits.richy.dto.QuestionAnswerTestResultDto;
 import com.globits.richy.dto.TestResultDto;
@@ -48,10 +50,15 @@ import com.globits.richy.repository.QuestionRepository;
 import com.globits.richy.repository.TestResultRepository;
 import com.globits.richy.repository.LearningDraftRepository;
 import com.globits.richy.repository.EnrolmentClassScheduleTaskRepository;
+import com.globits.richy.repository.EnrolmentClassRepository;
 import com.globits.richy.service.TestResultService;
+import com.globits.security.domain.Role;
 import com.globits.security.domain.User;
 import com.globits.security.dto.UserDto;
 import com.globits.security.repository.UserRepository;
+import org.owasp.validator.html.AntiSamy;
+import org.owasp.validator.html.CleanResults;
+import org.owasp.validator.html.Policy;
 
 @Service
 public class TestResultServiceImpl implements TestResultService {
@@ -78,6 +85,8 @@ public class TestResultServiceImpl implements TestResultService {
 	TopicRepository topicRepository;
 	@Autowired
 	EnrolmentClassScheduleTaskRepository scheduleTaskRepository;
+	@Autowired
+	EnrolmentClassRepository enrolmentClassRepository;
 
 	private String resultGroupClause(String group) {
 		if ("VOCAB".equals(group)) { return " and s.testType = 1 "; }
@@ -490,8 +499,101 @@ public class TestResultServiceImpl implements TestResultService {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public TestResultDto getObjectById(Long id) {
-		return new TestResultDto(testResultRepository.getOne(id),true);
+		TestResult domain = id == null ? null : testResultRepository.findOne(id);
+		if (domain == null) { return null; }
+		TestResultDto dto = new TestResultDto(domain, true);
+		dto.setCanEditWritingFeedback(canEditWritingFeedback(getCurrentUser(), domain));
+		return dto;
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public TestResultDto saveWritingFeedback(Long id, TestResultDto dto) {
+		TestResult domain = id == null ? null : testResultRepository.findOne(id);
+		if (domain == null || !Integer.valueOf(7).equals(domain.getTestType())) {
+			throw new IllegalArgumentException("Không tìm thấy kết quả IELTS Writing hợp lệ.");
+		}
+		User currentUser = getCurrentUser();
+		if (!canEditWritingFeedback(currentUser, domain)) {
+			throw new AccessDeniedException("Bạn không có quyền chấm bài Writing này.");
+		}
+
+		String band = dto == null || dto.getWritingTeacherBand() == null
+				? null : dto.getWritingTeacherBand().trim();
+		if (band != null && band.length() > 80) {
+			throw new IllegalArgumentException("Band điểm không được dài quá 80 ký tự.");
+		}
+		if (band != null && band.length() == 0) { band = null; }
+
+		String feedback = dto == null ? null : dto.getWritingTeacherFeedback();
+		if (feedback != null && feedback.length() > 100000) {
+			throw new IllegalArgumentException("Feedback không được dài quá 100.000 ký tự.");
+		}
+		domain.setWritingTeacherBand(band);
+		domain.setWritingTeacherFeedback(sanitizeWritingFeedback(feedback));
+		domain.setModifiedBy(currentUser.getUsername());
+		domain.setModifyDate(LocalDateTime.now());
+		domain = testResultRepository.save(domain);
+
+		TestResultDto result = new TestResultDto(domain, true);
+		result.setCanEditWritingFeedback(true);
+		return result;
+	}
+
+	private String sanitizeWritingFeedback(String html) {
+		if (html == null || html.trim().length() == 0 || "<p><br></p>".equals(html.trim())) {
+			return null;
+		}
+		try (InputStream input = Thread.currentThread().getContextClassLoader()
+				.getResourceAsStream("antisamy.xml")) {
+			if (input == null) { throw new IllegalStateException("Không tìm thấy chính sách lọc HTML."); }
+			Policy policy = Policy.getInstance(input);
+			CleanResults cleanResults = new AntiSamy().scan(html, policy);
+			String clean = cleanResults.getCleanHTML();
+			return clean == null || clean.trim().length() == 0 ? null : clean;
+		} catch (Exception exception) {
+			throw new IllegalArgumentException("Nội dung feedback không hợp lệ.", exception);
+		}
+	}
+
+	private User getCurrentUser() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || authentication.getName() == null) { return null; }
+		return userRepository.findByUsername(authentication.getName());
+	}
+
+	private boolean canEditWritingFeedback(User currentUser, TestResult result) {
+		if (currentUser == null || currentUser.getId() == null || result == null
+				|| !Integer.valueOf(7).equals(result.getTestType())) { return false; }
+		if (hasRole(currentUser, "ROLE_ADMIN")) { return true; }
+		User student = result.getUser();
+		if (student == null) { return false; }
+
+		Set<Long> classIds = new LinkedHashSet<Long>();
+		if (student.getPerson() != null && student.getPerson().getEnrollmentClassId() != null) {
+			classIds.add(student.getPerson().getEnrollmentClassId().longValue());
+		}
+		if (student.getEnrollmentClassIds() != null) { classIds.addAll(student.getEnrollmentClassIds()); }
+		for (Long classId : classIds) {
+			EnrolmentClass enrolmentClass = enrolmentClassRepository.findOne(classId);
+			Set<Long> visited = new HashSet<Long>();
+			while (enrolmentClass != null && enrolmentClass.getId() != null
+					&& visited.add(enrolmentClass.getId())) {
+				if (currentUser.getId().equals(enrolmentClass.getPrimaryTeacherId())) { return true; }
+				enrolmentClass = enrolmentClass.getParent();
+			}
+		}
+		return false;
+	}
+
+	private boolean hasRole(User user, String roleName) {
+		if (user == null || user.getRoles() == null) { return false; }
+		for (Role role : user.getRoles()) {
+			if (role != null && roleName.equals(role.getName())) { return true; }
+		}
+		return false;
 	}
 
 	@Override

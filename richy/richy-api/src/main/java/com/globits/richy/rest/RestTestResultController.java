@@ -60,6 +60,12 @@ public class RestTestResultController {
 	public TestResultDto gradeWriting(@PathVariable Long id) {
 		return writingGradingService.grade(id);
 	}
+
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STAFF","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/writing-feedback/{id}", method = RequestMethod.POST)
+	public TestResultDto saveWritingFeedback(@PathVariable Long id, @RequestBody TestResultDto dto) {
+		return service.saveWritingFeedback(id, dto);
+	}
 	
 	@Secured({"ROLE_ADMIN"})
 	@RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)

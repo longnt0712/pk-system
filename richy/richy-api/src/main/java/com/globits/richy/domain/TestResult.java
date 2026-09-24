@@ -63,6 +63,11 @@ public class TestResult extends BaseObject{
     @Lob
     @Column(name="ai_grading_error")
     private String aiGradingError;
+    @Column(name="writing_teacher_band", length=80)
+    private String writingTeacherBand;
+    @Lob
+    @Column(name="writing_teacher_feedback")
+    private String writingTeacherFeedback;
     public Long getSourceQuestionId(){return sourceQuestionId;}
     public void setSourceQuestionId(Long value){sourceQuestionId=value;}
     public Integer getCompletedPart(){return completedPart;}
@@ -87,6 +92,10 @@ public class TestResult extends BaseObject{
     public void setAiGradingFeedback(String value){aiGradingFeedback=value;}
     public String getAiGradingError(){return aiGradingError;}
     public void setAiGradingError(String value){aiGradingError=value;}
+    public String getWritingTeacherBand(){return writingTeacherBand;}
+    public void setWritingTeacherBand(String value){writingTeacherBand=value;}
+    public String getWritingTeacherFeedback(){return writingTeacherFeedback;}
+    public void setWritingTeacherFeedback(String value){writingTeacherFeedback=value;}
 
 	@ManyToMany(fetch = FetchType.LAZY)
 	@JoinTable(name = "tbl_test_result_topic", joinColumns = @JoinColumn(name = "test_result_id"),

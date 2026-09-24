@@ -15,6 +15,7 @@ public interface TestResultService {
 	public List<TestResultDto> getListObject(TestResultDto searchDto, int pageIndex, int pageSize);
 	public TestResultDto getObjectById(Long id);
 	public TestResultDto saveObject(TestResultDto dto);
+	public TestResultDto saveWritingFeedback(Long id, TestResultDto dto);
 	public boolean deleteObject(Long id);
 	public List<LearningDraftDto> getLearningDrafts();
 	public LearningDraftDto saveLearningDraft(LearningDraftDto dto);

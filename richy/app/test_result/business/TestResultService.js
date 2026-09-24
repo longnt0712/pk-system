@@ -21,6 +21,7 @@
         self.getPage = getPage;
         self.saveObject = saveObject;
         self.getOne = getOne;
+        self.saveWritingFeedback = saveWritingFeedback;
         self.deleteObject = deleteObject;
         self.getTableDefinition = getTableDefinition;
         self.getUsers = getUsers;
@@ -106,6 +107,20 @@
                 url: baseUrl + restUrl + '/grade-writing/' + id,
                 timeout: 130000,
                 cache: false,
+                headers: {'Content-Type': 'application/json; charset=utf-8'}
+            }).then(function (response) {
+                return response.data;
+            });
+        }
+
+        function saveWritingFeedback(id, payload) {
+            if (!id) {
+                return $q.reject(new Error('Missing Writing test result ID.'));
+            }
+            return $http({
+                method: 'POST',
+                url: baseUrl + restUrl + '/writing-feedback/' + id,
+                data: payload,
                 headers: {'Content-Type': 'application/json; charset=utf-8'}
             }).then(function (response) {
                 return response.data;
@@ -252,7 +267,13 @@
                 , {
                     field: 'bandScore',
                     title: 'Band',
-                    formatter: function (value, row) { return Number(row.testType) === 2 || Number(row.testType) === 4 ? value : ''; },
+                    formatter: function (value, row) {
+                        if (Number(row.testType) === 7) {
+                            if (row.writingTeacherBand) { return escapeText(row.writingTeacherBand); }
+                            return row.aiOverallBand != null ? escapeText(row.aiOverallBand) : '<span class="text-muted">Chưa chấm</span>';
+                        }
+                        return Number(row.testType) === 2 || Number(row.testType) === 4 ? value : '';
+                    },
                     sortable: true,
                     switchable: false,
                     cellStyle: _cellNowrap
@@ -262,7 +283,7 @@
                 if (group === 'VOCAB') { return column.field !== 'bandScore' && column.field !== 'correctAnswer'; }
                 if (group === 'DAILY_LISTENING') { return column.field !== 'resultStatus' && column.field !== 'bandScore' && column.field !== 'numberOfWords'; }
                 if (group === 'IELTS') { return column.field !== 'resultStatus' && column.field !== 'numberOfWords'; }
-                if (group === 'WRITING') { return column.field !== 'bandScore'; }
+                if (group === 'WRITING') { return column.field !== 'correctAnswer'; }
                 if (group === 'COMPREHENSIVE') { return column.field !== 'resultStatus' && column.field !== 'bandScore' && column.field !== 'numberOfWords'; }
                 if (group === 'BATTLE') { return column.field !== 'bandScore' && column.field !== 'correctAnswer' && column.field !== 'numberOfWords'; }
                 return true;

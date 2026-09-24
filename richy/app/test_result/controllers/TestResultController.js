@@ -31,6 +31,54 @@
             )};
     }]);
 
+    angular.module('Hrm.TestResult').directive('writingFeedbackEditor', ['$timeout', function ($timeout) {
+        return {
+            restrict: 'A',
+            require: 'ngModel',
+            link: function (scope, element, attrs, ngModel) {
+                var quill;
+                var changeHandler;
+                var rendering = false;
+                $timeout(function () {
+                    if (!window.Quill) { return; }
+                    quill = new window.Quill(element[0], {
+                        theme: 'snow',
+                        placeholder: 'Nhập nhận xét chi tiết cho học sinh...',
+                        modules: {
+                            toolbar: [
+                                ['bold', 'italic', 'underline', 'strike'],
+                                [{color: []}, {background: []}],
+                                ['blockquote', 'link'],
+                                ['clean']
+                            ]
+                        }
+                    });
+                    ngModel.$render();
+                    changeHandler = function () {
+                        if (rendering) { return; }
+                        var html = quill.root.innerHTML;
+                        scope.$evalAsync(function () {
+                            ngModel.$setViewValue(html === '<p><br></p>' ? '' : html);
+                        });
+                    };
+                    quill.on('text-change', changeHandler);
+                });
+                ngModel.$render = function () {
+                    if (!quill) { return; }
+                    var html = ngModel.$viewValue || '';
+                    if (quill.root.innerHTML === html || (!html && quill.root.innerHTML === '<p><br></p>')) { return; }
+                    rendering = true;
+                    quill.clipboard.dangerouslyPasteHTML(html);
+                    rendering = false;
+                };
+                scope.$on('$destroy', function () {
+                    if (quill && changeHandler) { quill.off('text-change', changeHandler); }
+                    quill = null;
+                });
+            }
+        };
+    }]);
+
     angular.module('Hrm.TestResult').directive('myDatePicker', function () {
         return {
             restrict: 'A',
@@ -236,6 +284,7 @@
         vm.testResult = {};
         vm.ieltsLearningState = {};
         vm.isRetryingWritingGrade = false;
+        vm.isSavingWritingFeedback = false;
 
         function currentUserIsAdmin() {
             var roles = ($rootScope.currentUser && $rootScope.currentUser.roles) || [];
@@ -273,6 +322,32 @@
             }, function () {
                 vm.isRetryingWritingGrade = false;
                 toastr.error('Không thể gửi lại bài Writing để chấm.', 'Thông báo');
+            });
+        };
+
+        vm.displayWritingBand = function (testResult) {
+            if (!testResult) { return 'Chưa chấm'; }
+            return testResult.writingTeacherBand || (testResult.aiOverallBand != null
+                ? String(testResult.aiOverallBand) : 'Chưa chấm');
+        };
+
+        vm.saveWritingFeedback = function () {
+            if (vm.isSavingWritingFeedback || !vm.testResult || !vm.testResult.id
+                    || !vm.testResult.canEditWritingFeedback) { return; }
+            vm.isSavingWritingFeedback = true;
+            service.saveWritingFeedback(vm.testResult.id, {
+                writingTeacherBand: vm.testResult.writingTeacherBand,
+                writingTeacherFeedback: vm.testResult.writingTeacherFeedback
+            }).then(function (data) {
+                vm.testResult = addMissingResultRows(data);
+                vm.loadIeltsLearningState(vm.testResult);
+                vm.isSavingWritingFeedback = false;
+                vm.getPage();
+                toastr.success('Đã lưu Band và feedback cho học sinh.', 'Thông báo');
+            }, function (response) {
+                vm.isSavingWritingFeedback = false;
+                var message = response && response.data && (response.data.message || response.data.error);
+                toastr.error(message || 'Không thể lưu kết quả chấm Writing.', 'Lỗi');
             });
         };
 

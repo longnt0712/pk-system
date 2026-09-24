@@ -43,6 +43,9 @@ public class TestResultDto implements Serializable{
 	private Double aiOverallBand;
 	private String aiGradingFeedback;
 	private String aiGradingError;
+	private String writingTeacherBand;
+	private String writingTeacherFeedback;
+	private boolean canEditWritingFeedback;
 	private String resultGroup;
 	public List<Long> getTopicIds() { return topicIds; }
 	public void setTopicIds(List<Long> value) { topicIds = value; }
@@ -72,6 +75,12 @@ public class TestResultDto implements Serializable{
 	public void setAiGradingFeedback(String value) { aiGradingFeedback = value; }
 	public String getAiGradingError() { return aiGradingError; }
 	public void setAiGradingError(String value) { aiGradingError = value; }
+	public String getWritingTeacherBand() { return writingTeacherBand; }
+	public void setWritingTeacherBand(String value) { writingTeacherBand = value; }
+	public String getWritingTeacherFeedback() { return writingTeacherFeedback; }
+	public void setWritingTeacherFeedback(String value) { writingTeacherFeedback = value; }
+	public boolean isCanEditWritingFeedback() { return canEditWritingFeedback; }
+	public void setCanEditWritingFeedback(boolean value) { canEditWritingFeedback = value; }
 	public String getResultGroup() { return resultGroup; }
 	public void setResultGroup(String value) { resultGroup = value; }
 	private void copyTopics(TestResult domain) {
@@ -86,6 +95,7 @@ public class TestResultDto implements Serializable{
         aiGradingStatus=domain.getAiGradingStatus();
         aiGradingModel=domain.getAiGradingModel();
         aiOverallBand=domain.getAiOverallBand();
+        writingTeacherBand=domain.getWritingTeacherBand();
         if(Integer.valueOf(1).equals(domain.getTestType())&&resultStatus==null)resultStatus="SUCCESS";
         if("FAILED".equals(resultStatus))messageCode=1;
 		completedVocabularyTopicIds = new ArrayList<Long>();
@@ -421,6 +431,7 @@ public class TestResultDto implements Serializable{
 			this.ieltsLearningState = domain.getIeltsLearningState();
 			this.aiGradingFeedback = domain.getAiGradingFeedback();
 			this.aiGradingError = domain.getAiGradingError();
+			this.writingTeacherFeedback = domain.getWritingTeacherFeedback();
 		}
 		if(domain.getTestType() == null) {
 			this.testType = 1;

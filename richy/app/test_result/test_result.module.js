@@ -36,6 +36,8 @@
                             insertBefore: '#ng_load_plugins_before',
 
                             files: [
+                                'assets/css/external/quill.snow-2.0.3.css?v=' + version,
+                                'assets/scripts/external/quill-2.0.3.js?v=' + version,
                                 'test_result/controllers/TestResultController.js?v=' + version,
                                 'test_result/business/TestResultService.js?v=' + version
                             ]
