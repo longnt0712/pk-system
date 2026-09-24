@@ -493,13 +493,17 @@
                                              dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
                                              touch-dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
                                              aria-label="Answer choices to drag into the blanks">
-                                            <small class="complete-list-word-bank__hint">Kéo đáp án vào ô; kéo đáp án về đây hoặc bấm × để bỏ.</small>
+                                            <small class="complete-list-word-bank__hint">Chạm đáp án rồi chạm vào ô trống, hoặc kéo đáp án vào ô. Chạm đáp án trong ô để bỏ.</small>
                                             <span class="complete-list-word"
                                                   ng-repeat="word in item.completeListWordBank track by $index"
                                                   ng-if="!vm.isCompleteListWordUsed(item, word)"
+                                                  ng-class="{'is-selected': vm.isCompleteListWordSelected(item, word)}"
                                                   dnd-draggable="word"
                                                   touch-dnd-source="word"
                                                   dnd-effect-allowed="copy"
+                                                  ng-click="vm.selectCompleteListWord(item, word, $event)"
+                                                  role="button"
+                                                  tabindex="0"
                                                   ng-bind="word.clientAnswer"></span>
                                         </div>
                                     </div>
@@ -916,13 +920,17 @@
                                              dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
                                              touch-dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
                                              aria-label="Answer choices to drag into the blanks">
-                                            <small class="complete-list-word-bank__hint">Kéo đáp án vào ô; kéo đáp án về đây hoặc bấm × để bỏ.</small>
+                                            <small class="complete-list-word-bank__hint">Chạm đáp án rồi chạm vào ô trống, hoặc kéo đáp án vào ô. Chạm đáp án trong ô để bỏ.</small>
                                             <span class="complete-list-word"
                                                   ng-repeat="word in item.completeListWordBank track by $index"
                                                   ng-if="!vm.isCompleteListWordUsed(item, word)"
+                                                  ng-class="{'is-selected': vm.isCompleteListWordSelected(item, word)}"
                                                   dnd-draggable="word"
                                                   touch-dnd-source="word"
                                                   dnd-effect-allowed="copy"
+                                                  ng-click="vm.selectCompleteListWord(item, word, $event)"
+                                                  role="button"
+                                                  tabindex="0"
                                                   ng-bind="word.clientAnswer"></span>
                                         </div>
                                     </div>
@@ -1316,13 +1324,17 @@
                                              dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
                                              touch-dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
                                              aria-label="Answer choices to drag into the blanks">
-                                            <small class="complete-list-word-bank__hint">Kéo đáp án vào ô; kéo đáp án về đây hoặc bấm × để bỏ.</small>
+                                            <small class="complete-list-word-bank__hint">Chạm đáp án rồi chạm vào ô trống, hoặc kéo đáp án vào ô. Chạm đáp án trong ô để bỏ.</small>
                                             <span class="complete-list-word"
                                                   ng-repeat="word in item.completeListWordBank track by $index"
                                                   ng-if="!vm.isCompleteListWordUsed(item, word)"
+                                                  ng-class="{'is-selected': vm.isCompleteListWordSelected(item, word)}"
                                                   dnd-draggable="word"
                                                   touch-dnd-source="word"
                                                   dnd-effect-allowed="copy"
+                                                  ng-click="vm.selectCompleteListWord(item, word, $event)"
+                                                  role="button"
+                                                  tabindex="0"
                                                   ng-bind="word.clientAnswer"></span>
                                         </div>
                                     </div>
@@ -2356,6 +2368,11 @@
         outline-offset: 2px;
     }
 
+    .complete-list-drop-box.is-tap-target {
+        outline: 3px solid rgba(22, 131, 216, .38);
+        outline-offset: 2px;
+    }
+
     .complete-list-drop-box > .dndPlaceholder,
     .complete-list-word-bank > .dndPlaceholder {
         display: none !important;
@@ -2438,6 +2455,12 @@
 
     .complete-list-word:active {
         cursor: grabbing;
+    }
+
+    .complete-list-word.is-selected {
+        border-color: #1683d8;
+        background: #e7f4ff;
+        box-shadow: 0 0 0 3px rgba(22, 131, 216, .2);
     }
 
 

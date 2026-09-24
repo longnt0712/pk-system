@@ -252,17 +252,34 @@
         vm.selectedUsers = [];
 
 		vm.vocabularyLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+		vm.showVocabularyExperienceSection = [
+			'ieltsroom.com',
+			'www.ieltsroom.com',
+			'localhost',
+			'127.0.0.1',
+			'::1',
+			'[::1]'
+		].indexOf(String(window.location.hostname || '').toLowerCase()) !== -1;
+
+		function getVocabularyTotalWords(user) {
+			if (user && user.totalVocabularyWordsLearned != null) {
+				return Math.max(0, Number(user.totalVocabularyWordsLearned) || 0);
+			}
+
+			return Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0) * 1000 +
+				Math.max(0, Number((user || {}).vocabularyExperienceWords) || 0);
+		}
 
 		vm.getVocabularyExperienceLevel = function () {
-			return Math.max(0, Number((vm.user || {}).vocabularyExperienceLevel) || 0);
+			return Math.floor(getVocabularyTotalWords(vm.user) / 1000);
 		};
 
 		vm.getVocabularyExperienceWords = function () {
-			return Math.max(0, Number((vm.user || {}).vocabularyExperienceWords) || 0);
+			return getVocabularyTotalWords(vm.user) % 1000;
 		};
 
 		vm.getVocabularyExperienceThreshold = function () {
-			return 1000 * (vm.getVocabularyExperienceLevel() + 1);
+			return 1000;
 		};
 
 		vm.getVocabularyExperiencePercent = function () {

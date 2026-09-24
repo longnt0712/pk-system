@@ -48,27 +48,30 @@
 
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1" ng-if="settings.permissionsLoaded">
             <ul class="nav navbar-nav">
-                <li class="dropdown" ng-if="settings.ieltsRoom == true && (settings.isViewer || settings.isAdmin)">
+                <li class="dropdown vocabulary-nav"
+                    ng-class="{'is-route-active': $state.includes('application.daily_vocab') || $state.includes('application.question') || $state.includes('application.view') || $state.includes('application.topic') || $state.includes('application.topic_category')}"
+                    ng-if="settings.ieltsRoom == true && (settings.isViewer || settings.isAdmin)">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         Vocabulary <span class="caret"></span>
                     </a>
                     <ul class="dropdown-menu">
-                        <li>
+                        <li ng-class="{'active': $state.includes('application.daily_vocab')}">
                             <a ui-sref="application.daily_vocab({listFlashCard: 0})"
                                href="daily-vocab/0">
                                 <i class="fa fa-language"></i>
                                 DAILY VOCAB
                             </a>
                         </li>
-                        <li><a href="question/3"><i class="fa fa-clone"></i> YOUR FLASHCARDS</a></li>
-                        <li><a href="view/3"><i class="fa fa-gamepad"></i> GAME MODES</a></li>
-                        <li><a href="topics"><i class="fa fa-list-ul"></i> TOPIC</a></li>
-                        <li ng-if="settings.isAdmin"><a href="topic_categories"><i class="fa fa-folder-open"></i> TOPIC CATEGORIES</a></li>
+                        <li ng-class="{'active': $state.includes('application.question')}"><a href="question/3"><i class="fa fa-clone"></i> YOUR FLASHCARDS</a></li>
+                        <li ng-class="{'active': $state.includes('application.view')}"><a href="view/3"><i class="fa fa-gamepad"></i> GAME MODES</a></li>
+                        <li ng-class="{'active': $state.includes('application.topic')}"><a href="topics"><i class="fa fa-list-ul"></i> TOPIC</a></li>
+                        <li ng-class="{'active': $state.includes('application.topic_category')}" ng-if="settings.isAdmin"><a href="topic_categories"><i class="fa fa-folder-open"></i> TOPIC CATEGORIES</a></li>
                     </ul>
                 </li>
 
                 <!-- BATTLE MODES -->
                 <li class="dropdown battle-modes-nav"
+                    ng-class="{'is-route-active': $state.includes('application.quiz_battle_2') || $state.includes('application.battle_quiz_online') || $state.includes('application.battle_quiz_online_room')}"
                     ng-if="settings.ieltsRoom == true && (settings.isViewer || settings.isAdmin)">
 
                     <a href=""
@@ -82,14 +85,14 @@
                     </a>
 
                     <ul class="dropdown-menu battle-modes-dropdown">
-                        <li>
+                        <li ng-class="{'active': $state.includes('application.quiz_battle_2')}">
                             <a ui-sref="application.quiz_battle_2({listFlashCard: 3})"
                                href="quiz-battle-2/3">
                                 <i class="fa fa-bolt"></i>
                                 QUIZ BATTLE 2
                             </a>
                         </li>
-                        <li>
+                        <li ng-class="{'active': $state.includes('application.battle_quiz_online') || $state.includes('application.battle_quiz_online_room')}">
                             <a ui-sref="application.battle_quiz_online"
                                href="battle-quiz-online">
                                 <i class="fa fa-globe"></i>
@@ -100,45 +103,47 @@
                 </li>
 
 
-                <li class="dropdown" ng-if="settings.ieltsRoom == true && (settings.isViewer || settings.isAdmin)">
+                <li class="dropdown test-room-nav"
+                    ng-class="{'is-route-active': $state.includes('application.ielts_reading_tests') || $state.includes('application.ielts_listening_tests') || $state.includes('application.ielts_writing_tests') || $state.includes('application.comprehensive_tests') || $state.includes('application.create_ielts_reading_test') || $state.includes('application.create_ielts_listening_test') || $state.includes('application.create_ielts_writing_test') || $state.includes('application.create_comprehensive_test') || $state.includes('application.ielts_reading_actual_test') || $state.includes('application.ielts_listening_actual_test') || $state.includes('application.ielts_writing_actual_test') || $state.includes('application.comprehensive_actual_test') || $state.includes('application.test_results')}"
+                    ng-if="settings.ieltsRoom == true && (settings.isViewer || settings.isAdmin)">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         TEST ROOM <span class="caret"></span>
                     </a>
                     <ul class="dropdown-menu">
-                        <li>
+                        <li ng-class="{'active': $state.includes('application.ielts_reading_tests') || $state.includes('application.ielts_reading_actual_test')}">
                             <a href="ielts_reading_tests">
                                 <i class="fa fa-book"></i> IELTS Reading
                             </a>
                         </li>
-                        <li>
+                        <li ng-class="{'active': $state.includes('application.ielts_listening_tests') || $state.includes('application.ielts_listening_actual_test')}">
                             <a href="ielts_listening_tests">
                                 <i class="fa fa-headphones"></i> IELTS Listening
                             </a>
                         </li>
-                        <li>
+                        <li ng-class="{'active': $state.includes('application.ielts_writing_tests') || $state.includes('application.ielts_writing_actual_test')}">
                             <a href="ielts_writing_tests">
                                 <i class="fa fa-pencil"></i> IELTS Writing
                             </a>
                         </li>
-                        <li>
+                        <li ng-class="{'active': $state.includes('application.comprehensive_tests') || $state.includes('application.comprehensive_actual_test')}">
                             <a href="comprehensive_tests">
                                 <i class="fa fa-list-alt"></i> Bài tập tổng hợp
                             </a>
                         </li>
                         <li role="separator" class="divider" ng-if="settings.isAdmin == true"></li>
-                        <li ng-if="settings.isAdmin == true">
+                        <li ng-class="{'active': $state.includes('application.create_ielts_reading_test')}" ng-if="settings.isAdmin == true">
                             <a href="create_ielts_reading_test"><i class="fa fa-cog"></i> Tạo đề Reading</a>
                         </li>
-                        <li ng-if="settings.isAdmin == true">
+                        <li ng-class="{'active': $state.includes('application.create_ielts_listening_test')}" ng-if="settings.isAdmin == true">
                             <a href="create_ielts_listening_test"><i class="fa fa-cog"></i> Tạo đề Listening</a>
                         </li>
-                        <li ng-if="settings.isAdmin == true">
+                        <li ng-class="{'active': $state.includes('application.create_ielts_writing_test')}" ng-if="settings.isAdmin == true">
                             <a href="create_ielts_writing_test"><i class="fa fa-cog"></i> Tạo đề Writing</a>
                         </li>
-                        <li ng-if="settings.isAdmin == true">
+                        <li ng-class="{'active': $state.includes('application.create_comprehensive_test')}" ng-if="settings.isAdmin == true">
                             <a href="create_comprehensive_test"><i class="fa fa-cog"></i> Tạo bài tập tổng hợp</a>
                         </li>
-                        <li>
+                        <li ng-class="{'active': $state.includes('application.test_results')}">
                             <a href="test_results">
                                 <i class="fa fa-caret-right"></i> Test Results
                             </a>
@@ -754,15 +759,15 @@
         background: #edf0f7 !important;
     }
 
-    /* DAILY VOCAB item nổi bật nhẹ */
-    .learning-login-nav .navbar-nav > li:first-child .dropdown-menu > li:first-child > a {
+    /* Chỉ mục Vocabulary thuộc trang hiện tại mới nổi bật. */
+    .learning-login-nav .vocabulary-nav .dropdown-menu > li.active > a {
         color: #674fc9 !important;
 
         background:
             linear-gradient(135deg, #f1efff, #f8efff) !important;
     }
 
-    .learning-login-nav .navbar-nav > li:first-child .dropdown-menu > li:first-child > a i {
+    .learning-login-nav .vocabulary-nav .dropdown-menu > li.active > a i {
         color: #fff !important;
 
         background:
@@ -1714,11 +1719,11 @@
             ) !important;
     }
 
-    /* DAILY VOCAB item đầu tiên vẫn nổi bật nhưng dark */
+    /* Chỉ mục Vocabulary hiện tại nổi bật trong dark mode. */
     html.global-dark-mode
     .learning-login-nav
-    .navbar-nav > li:first-child
-    .dropdown-menu > li:first-child > a {
+    .vocabulary-nav
+    .dropdown-menu > li.active > a {
         color: #cfc9ff !important;
 
         background:
@@ -1731,8 +1736,8 @@
 
     html.global-dark-mode
     .learning-login-nav
-    .navbar-nav > li:first-child
-    .dropdown-menu > li:first-child > a > i {
+    .vocabulary-nav
+    .dropdown-menu > li.active > a > i {
         color: #ffffff !important;
 
         border-color: transparent !important;
@@ -1860,9 +1865,9 @@
         min-width: 230px !important;
     }
 
-    /* Quiz Battle 2 item */
+    /* Chỉ Battle thuộc trang hiện tại mới dùng màu active. */
     .learning-login-nav
-    .battle-modes-dropdown > li > a {
+    .battle-modes-dropdown > li.active > a {
         color: #5b4cc8 !important;
 
         background:
@@ -1874,7 +1879,7 @@
     }
 
     .learning-login-nav
-    .battle-modes-dropdown > li > a > i {
+    .battle-modes-dropdown > li.active > a > i {
         color: #fff !important;
 
         background:
@@ -1919,7 +1924,7 @@
     /* DARK MODE */
     html.global-dark-mode
     .learning-login-nav
-    .battle-modes-dropdown > li > a {
+    .battle-modes-dropdown > li.active > a {
         color: #d4cbff !important;
 
         border: 1px solid transparent !important;
@@ -1952,7 +1957,7 @@
 
     html.global-dark-mode
     .learning-login-nav
-    .battle-modes-dropdown > li > a > i {
+    .battle-modes-dropdown > li.active > a > i {
         color: #ffffff !important;
 
         border-color: transparent !important;
@@ -1984,7 +1989,7 @@
 
         html.global-dark-mode
         .learning-login-nav
-        .battle-modes-dropdown > li > a {
+        .battle-modes-dropdown > li.active > a {
             background:
                 linear-gradient(
                     135deg,
@@ -2049,5 +2054,52 @@
             margin-left: 0 !important;
             margin-right: -20px !important;
         }
+    }
+</style>
+
+<style>
+    /* Navigation state follows the current route. Opening a dropdown alone
+       must not make its button or every child look selected. */
+    .learning-login-nav .navbar-nav > li.is-route-active > a,
+    .learning-login-nav .navbar-nav > li.is-route-active.open > a,
+    .learning-login-nav .navbar-nav > li.is-route-active.open > a:hover,
+    .learning-login-nav .navbar-nav > li.is-route-active.open > a:focus {
+        color: #4d58cc !important;
+        background: linear-gradient(135deg, #eef1ff, #f5efff) !important;
+        box-shadow: none !important;
+    }
+
+    .learning-login-nav .dropdown-menu > li.active > a {
+        color: #4d58cc !important;
+        background: #f0f3ff !important;
+    }
+
+    html.global-dark-mode
+    .learning-login-nav .navbar-nav > li.open:not(.is-route-active) > a,
+    html.global-dark-mode
+    .learning-login-nav .navbar-nav > li.open:not(.is-route-active) > a:hover,
+    html.global-dark-mode
+    .learning-login-nav .navbar-nav > li.open:not(.is-route-active) > a:focus {
+        color: #c7d0e1 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    html.global-dark-mode
+    .learning-login-nav .navbar-nav > li.is-route-active > a,
+    html.global-dark-mode
+    .learning-login-nav .navbar-nav > li.is-route-active.open > a,
+    html.global-dark-mode
+    .learning-login-nav .navbar-nav > li.is-route-active.open > a:hover,
+    html.global-dark-mode
+    .learning-login-nav .navbar-nav > li.is-route-active.open > a:focus {
+        color: #ffffff !important;
+        background: linear-gradient(135deg, #263553, #30294c) !important;
+    }
+
+    html.global-dark-mode
+    .learning-login-nav .dropdown-menu > li.active > a {
+        color: #ffffff !important;
+        background: linear-gradient(135deg, #263451, #332c50) !important;
     }
 </style>

@@ -111,14 +111,21 @@
             return false;
         };
 
-        vm.getUserVocabularyProgressPercent = function (user) {
-            var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
-            var learnedWords = Math.max(0, Number((user || {}).vocabularyExperienceWords) || 0);
-            var threshold = 1000 * (level + 1);
+        function getVocabularyTotalWords(user) {
+            if (user && user.totalVocabularyWordsLearned != null) {
+                return Math.max(0, Number(user.totalVocabularyWordsLearned) || 0);
+            }
 
-            return threshold > 0
-                ? Math.min(100, learnedWords * 100 / threshold)
-                : 0;
+            return Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0) * 1000 +
+                Math.max(0, Number((user || {}).vocabularyExperienceWords) || 0);
+        }
+
+        vm.getUserVocabularyLevel = function (user) {
+            return Math.floor(getVocabularyTotalWords(user) / 1000);
+        };
+
+        vm.getUserVocabularyProgressPercent = function (user) {
+            return (getVocabularyTotalWords(user) % 1000) / 10;
         };
 
         vm.buildCurrentUser = function (rawUser) {

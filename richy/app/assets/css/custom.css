@@ -2644,17 +2644,17 @@ h6 {
 }
 
 /*
- * DAILY VOCAB luôn nổi bật ngay cả khi không hover.
+ * Chỉ DAILY VOCAB thuộc route hiện tại mới nổi bật.
  */
 .learning-login-nav
-.navbar-nav > li:first-child
-.dropdown-menu > li:first-child > a > i,
+.vocabulary-nav
+.dropdown-menu > li.active > a > i,
 .learning-login-nav
-.navbar-nav > li:first-child
-.dropdown-menu > li:first-child > a > [class^="fa-"],
+.vocabulary-nav
+.dropdown-menu > li.active > a > [class^="fa-"],
 .learning-login-nav
-.navbar-nav > li:first-child
-.dropdown-menu > li:first-child > a > [class*=" fa-"] {
+.vocabulary-nav
+.dropdown-menu > li.active > a > [class*=" fa-"] {
     color: #ffffff !important;
 
     background:

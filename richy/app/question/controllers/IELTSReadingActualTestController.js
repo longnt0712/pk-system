@@ -3374,6 +3374,7 @@
             var sourceAnswers = questions.length ? questions[0].questionAnswers : [];
             questionPackage.completeListSlots = [];
             questionPackage.completeListReturnList = [];
+            questionPackage.completeListSelectedWord = null;
             questionPackage.completeListWordBank = shuffleCompleteListWords(sourceAnswers.map(function (questionAnswer, answerIndex) {
                 return {
                     answerIndex: answerIndex,
@@ -3390,7 +3391,8 @@
                     'dnd-list="completeListPackage.completeListSlots[' + questionIndex + '].items" ' +
                     'dnd-drop="vm.dropCompleteListWord(completeListPackage,' + questionIndex + ',item)" ' +
                     'touch-dnd-drop="vm.dropCompleteListWord(completeListPackage,' + questionIndex + ',item)" ' +
-                    'ng-click="$event.stopPropagation(); vm.clearCompleteListSlot(completeListPackage,' + questionIndex + ')">' +
+                    'ng-click="vm.handleCompleteListSlotTap(completeListPackage,' + questionIndex + ',$event)" ' +
+                    'ng-class="{\'is-tap-target\': completeListPackage.completeListSelectedWord}">' +
                     '<span ng-if="!completeListPackage.completeListSlots[' + questionIndex + '].items.length" class="complete-list-drop-number">' + ordinalNumber + '</span>' +
                     '<span ng-if="completeListPackage.completeListSlots[' + questionIndex + '].items.length" ' +
                     'class="complete-list-slot-answer" ' +
@@ -3427,6 +3429,51 @@
                 }
             });
             return used;
+        };
+
+        function completeListWordIdentity(word) {
+            if (!word) { return null; }
+            return word.answerId != null
+                ? 'id:' + String(word.answerId)
+                : 'index:' + String(word.answerIndex);
+        }
+
+        vm.isCompleteListWordSelected = function (questionPackage, word) {
+            return completeListWordIdentity(questionPackage && questionPackage.completeListSelectedWord) ===
+                completeListWordIdentity(word);
+        };
+
+        vm.selectCompleteListWord = function (questionPackage, word, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (!questionPackage || !word) { return; }
+
+            if (vm.isCompleteListWordSelected(questionPackage, word)) {
+                questionPackage.completeListSelectedWord = null;
+                return;
+            }
+            questionPackage.completeListSelectedWord = angular.copy(word);
+        };
+
+        vm.handleCompleteListSlotTap = function (questionPackage, slotIndex, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (!questionPackage) { return; }
+
+            if (questionPackage.completeListSelectedWord) {
+                vm.dropCompleteListWord(
+                    questionPackage,
+                    slotIndex,
+                    questionPackage.completeListSelectedWord
+                );
+                questionPackage.completeListSelectedWord = null;
+                return;
+            }
+            vm.clearCompleteListSlot(questionPackage, slotIndex);
         };
 
         function setCompleteListAnswer(question, questionAnswer, selected) {
@@ -3494,6 +3541,7 @@
                 setCompleteListAnswer(question, questionAnswer, true);
                 vm.clickShowChildren(question, questionPackage.subQuestions);
             }
+            questionPackage.completeListSelectedWord = null;
             if (!skipDraftSave) {
                 saveReadingDraft();
             }

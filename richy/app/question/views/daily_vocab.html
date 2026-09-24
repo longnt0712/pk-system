@@ -43,7 +43,7 @@
             <div class="user-learning-progress-wrap">
                 <span class="user-learning-progress-label">
                     <i class="fa fa-star"></i>
-                    LEVEL {{currentUser.vocabularyExperienceLevel || 0}}
+                    LEVEL {{vm.getUserVocabularyLevel(currentUser)}}
                 </span>
                 <div class="user-learning-progress-track"
                      role="progressbar"

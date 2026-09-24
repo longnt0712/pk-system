@@ -7118,7 +7118,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         Query query =
                 entityManager.createQuery(
                     "select u.id, p.lastName, p.firstName, p.displayName, " +
-                    "u.vocabularyExperienceLevel, u.selectedLearningPet " +
+                    "u.totalVocabularyWordsLearned, u.selectedLearningPet " +
                     "from User u left join u.person p " +
                     "where u.username = :username"
                 );
@@ -7191,10 +7191,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             identity.displayName = "Người chơi";
         }
 
-        identity.vocabularyExperienceLevel =
+        long totalVocabularyWordsLearned =
                 row.length > 4 && row[4] instanceof Number
-                        ? Math.max(0, ((Number) row[4]).intValue())
-                        : 0;
+                        ? Math.max(0L, ((Number) row[4]).longValue())
+                        : 0L;
+        identity.vocabularyExperienceLevel =
+                User.calculateVocabularyExperienceLevel(
+                        totalVocabularyWordsLearned
+                );
         identity.selectedPetKey = normalizePetKey(
                 row.length > 5 && row[5] != null
                         ? String.valueOf(row[5])

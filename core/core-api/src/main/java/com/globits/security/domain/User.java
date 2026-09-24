@@ -18,6 +18,8 @@ import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.OneToOne;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
 import javax.persistence.Table;
 import javax.persistence.Transient;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -38,6 +40,7 @@ import com.globits.core.domain.Person;
 public class User extends BaseObject implements UserDetails {
 
 	private static final long serialVersionUID = 4572941405687566992L;
+	public static final long VOCABULARY_WORDS_PER_LEVEL = 1000L;
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -200,7 +203,7 @@ public class User extends BaseObject implements UserDetails {
 	}
 
 	public Integer getVocabularyExperienceLevel() {
-		return vocabularyExperienceLevel == null ? 0 : vocabularyExperienceLevel;
+		return calculateVocabularyExperienceLevel(getTotalVocabularyWordsLearned());
 	}
 
 	public void setVocabularyExperienceLevel(Integer vocabularyExperienceLevel) {
@@ -208,7 +211,7 @@ public class User extends BaseObject implements UserDetails {
 	}
 
 	public Long getVocabularyExperienceWords() {
-		return vocabularyExperienceWords == null ? 0L : vocabularyExperienceWords;
+		return calculateVocabularyExperienceWords(getTotalVocabularyWordsLearned());
 	}
 
 	public void setVocabularyExperienceWords(Long vocabularyExperienceWords) {
@@ -220,7 +223,29 @@ public class User extends BaseObject implements UserDetails {
 	}
 
 	public void setTotalVocabularyWordsLearned(Long totalVocabularyWordsLearned) {
-		this.totalVocabularyWordsLearned = totalVocabularyWordsLearned == null ? 0L : totalVocabularyWordsLearned;
+		this.totalVocabularyWordsLearned = totalVocabularyWordsLearned == null
+				? 0L : Math.max(0L, totalVocabularyWordsLearned);
+		synchronizeVocabularyExperience();
+	}
+
+	public static int calculateVocabularyExperienceLevel(long totalWordsLearned) {
+		long safeTotal = Math.max(0L, totalWordsLearned);
+		long level = safeTotal / VOCABULARY_WORDS_PER_LEVEL;
+		return level > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) level;
+	}
+
+	public static long calculateVocabularyExperienceWords(long totalWordsLearned) {
+		return Math.max(0L, totalWordsLearned) % VOCABULARY_WORDS_PER_LEVEL;
+	}
+
+	@PrePersist
+	@PreUpdate
+	private void synchronizeVocabularyExperience() {
+		long total = totalVocabularyWordsLearned == null
+				? 0L : Math.max(0L, totalVocabularyWordsLearned);
+		totalVocabularyWordsLearned = total;
+		vocabularyExperienceLevel = calculateVocabularyExperienceLevel(total);
+		vocabularyExperienceWords = calculateVocabularyExperienceWords(total);
 	}
 
 	public String getSelectedLearningPet() {
@@ -235,26 +260,14 @@ public class User extends BaseObject implements UserDetails {
 
 	/**
 	 * Cộng số từ của một lượt Daily Vocab đã hoàn thành.
-	 * Ngưỡng level kế tiếp = 1000 * (level hiện tại + 1).
+	 * Mỗi 1.000 từ tăng đúng một level; phần dư là tiến độ của level kế tiếp.
 	 */
 	public void addDailyVocabularyWords(long learnedWords) {
 		if (learnedWords <= 0) {
 			return;
 		}
 
-		long total = getTotalVocabularyWordsLearned() + learnedWords;
-		long progress = getVocabularyExperienceWords() + learnedWords;
-		int level = getVocabularyExperienceLevel();
-		long nextThreshold = 1000L * (level + 1L);
-
-		setTotalVocabularyWordsLearned(total);
-		if (progress >= nextThreshold) {
-			setVocabularyExperienceLevel(level + 1);
-			// Theo yêu cầu: khi lên level, thanh tiến độ bắt đầu lại từ 0.
-			setVocabularyExperienceWords(0L);
-		} else {
-			setVocabularyExperienceWords(progress);
-		}
+		setTotalVocabularyWordsLearned(getTotalVocabularyWordsLearned() + learnedWords);
 	}
 
 	public void setActive(Boolean active) {
