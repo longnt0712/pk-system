@@ -32,7 +32,7 @@
         vm.isWritingMode = /\/ielts_writing_tests(?:\/|$)/i.test($location.path());
         vm.isListeningMode = !vm.isComprehensiveMode && !vm.isWritingMode && /\/ielts_listening_tests(?:\/|$)/i.test($location.path());
         vm.testModeName = vm.isComprehensiveMode ? 'Tổng hợp' : (vm.isWritingMode ? 'Writing' : (vm.isListeningMode ? 'Listening' : 'Reading'));
-        vm.testModeIcon = vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isWritingMode ? 'fa-pencil-square-o' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book'));
+        vm.testModeIcon = vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isWritingMode ? 'fa-pencil' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book'));
         vm.ieltsReadingTests = [];
         vm.learningProgressByTestId = {};
         vm.learningProgressByTestTask = {};

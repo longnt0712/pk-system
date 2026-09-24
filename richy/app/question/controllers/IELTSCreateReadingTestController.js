@@ -45,7 +45,7 @@
         vm.isListeningMode = !vm.isComprehensiveMode && !vm.isWritingMode && /\/create_ielts_listening_test(?:\/|$)/i.test($location.path());
         vm.isFlexibleMode = vm.isComprehensiveMode || vm.isWritingMode;
         vm.testModeName = vm.isComprehensiveMode ? 'Tổng hợp' : (vm.isWritingMode ? 'Writing' : (vm.isListeningMode ? 'Listening' : 'Reading'));
-        vm.testModeIcon = vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isWritingMode ? 'fa-pencil-square-o' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book'));
+        vm.testModeIcon = vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isWritingMode ? 'fa-pencil' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book'));
 
         var userCookie = $cookies.get('education.user');
         var hasBuilderAccess = false;

@@ -21,7 +21,7 @@
                     <i class="fa fa-headphones"></i> Listening
                 </a>
                 <a href="create_ielts_writing_test" ng-class="{'is-active': vm.isWritingMode}">
-                    <i class="fa fa-pencil-square-o"></i> Writing
+                    <i class="fa fa-pencil"></i> Writing
                 </a>
                 <a href="create_comprehensive_test" ng-class="{'is-active': vm.isComprehensiveMode}">
                     <i class="fa fa-list-alt"></i> Tổng hợp
@@ -329,7 +329,7 @@
                             <textarea ng-if="item.type != 16 && item.type != 17" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
 
                             <div class="reading-writing-task-builder-note" ng-if="item.type == 16 || item.type == 17">
-                                <i class="fa fa-pencil-square-o"></i>
+                                <i class="fa fa-pencil"></i>
                                 <div>
                                     <strong>{{item.type == 17 ? 'Writing Task 2' : 'Writing Task 1'}}</strong>
                                     <span>Nhập toàn bộ đề bài và tài liệu tham khảo riêng cho Task này ở ô bên dưới.</span>
@@ -1466,6 +1466,11 @@
 
     .is-listening-builder .ielts-builder-mode-hero {
         background: linear-gradient(135deg, #0d9e91 0%, #237fc4 52%, #6258d9 100%);
+    }
+
+    .is-writing-builder .ielts-builder-mode-hero {
+        background: linear-gradient(135deg, #7c3aed 0%, #a83fd0 50%, #ec4899 100%);
+        box-shadow: 0 15px 36px rgba(124, 58, 237, .24);
     }
 
     .is-comprehensive-builder .ielts-builder-mode-hero {

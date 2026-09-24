@@ -117,7 +117,7 @@
                         </li>
                         <li>
                             <a href="ielts_writing_tests">
-                                <i class="fa fa-pencil-square-o"></i> IELTS Writing
+                                <i class="fa fa-pencil"></i> IELTS Writing
                             </a>
                         </li>
                         <li>
@@ -127,16 +127,16 @@
                         </li>
                         <li role="separator" class="divider" ng-if="settings.isAdmin == true"></li>
                         <li ng-if="settings.isAdmin == true">
-                            <a href="create_ielts_reading_test"><i class="fa fa-pencil-square-o"></i> Tạo đề Reading</a>
+                            <a href="create_ielts_reading_test"><i class="fa fa-cog"></i> Tạo đề Reading</a>
                         </li>
                         <li ng-if="settings.isAdmin == true">
-                            <a href="create_ielts_listening_test"><i class="fa fa-pencil-square-o"></i> Tạo đề Listening</a>
+                            <a href="create_ielts_listening_test"><i class="fa fa-cog"></i> Tạo đề Listening</a>
                         </li>
                         <li ng-if="settings.isAdmin == true">
-                            <a href="create_ielts_writing_test"><i class="fa fa-pencil-square-o"></i> Tạo đề Writing</a>
+                            <a href="create_ielts_writing_test"><i class="fa fa-cog"></i> Tạo đề Writing</a>
                         </li>
                         <li ng-if="settings.isAdmin == true">
-                            <a href="create_comprehensive_test"><i class="fa fa-pencil-square-o"></i> Tạo bài tập tổng hợp</a>
+                            <a href="create_comprehensive_test"><i class="fa fa-cog"></i> Tạo bài tập tổng hợp</a>
                         </li>
                         <li>
                             <a href="test_results">
@@ -655,8 +655,7 @@
             transform .16s ease !important;
     }
 
-    .learning-login-nav .navbar-nav > li > a:hover,
-    .learning-login-nav .navbar-nav > li > a:focus {
+    .learning-login-nav .navbar-nav > li > a:hover {
         color: #4d58cc !important;
 
         background: #eef1ff !important;
@@ -664,16 +663,14 @@
         transform: translateY(-1px);
     }
 
+    .learning-login-nav .navbar-nav > li > a:focus,
     .learning-login-nav .navbar-nav > .open > a,
     .learning-login-nav .navbar-nav > .open > a:hover,
     .learning-login-nav .navbar-nav > .open > a:focus {
-        color: #4d58cc !important;
-
-        background:
-            linear-gradient(135deg, #eef1ff, #f3edff) !important;
-
-        box-shadow:
-            inset 0 0 0 1px rgba(91,124,250,.10) !important;
+        color: #536079 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        transform: none !important;
     }
 
     .learning-login-nav .caret {
@@ -933,16 +930,19 @@
             font-size: 12px !important;
         }
 
-        .learning-login-nav .navbar-nav > li > a:hover,
+        .learning-login-nav .navbar-nav > li > a:hover {
+            color: #4d58cc !important;
+            background: #eef1ff !important;
+            transform: none !important;
+        }
+
         .learning-login-nav .navbar-nav > li > a:focus,
         .learning-login-nav .navbar-nav > .open > a,
         .learning-login-nav .navbar-nav > .open > a:hover,
         .learning-login-nav .navbar-nav > .open > a:focus {
-            color: #4d58cc !important;
-
-            background:
-                linear-gradient(135deg, #eef1ff, #f5efff) !important;
-
+            color: #4d5870 !important;
+            background: #fafbff !important;
+            box-shadow: none !important;
             transform: none !important;
         }
 
