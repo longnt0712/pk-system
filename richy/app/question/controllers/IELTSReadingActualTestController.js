@@ -116,6 +116,56 @@
         };
     });
 
+    /* Start Writing answers at 60% of their pane and grow with the content.
+       The pane itself owns scrolling, so the candidate never has to scroll
+       inside the answer box. */
+    angular.module('Hrm.Question').directive('writingTaskAutoGrow', function ($timeout, $window) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var node = element[0];
+                var resizeTimer = null;
+
+                function resizeToContent() {
+                    if (!node.parentElement || node.offsetParent === null) {
+                        return;
+                    }
+                    var baseHeight = Math.round(node.parentElement.clientHeight * 0.6);
+                    node.style.height = 'auto';
+                    node.style.height = Math.max(baseHeight, node.scrollHeight + 2) + 'px';
+                }
+
+                function scheduleResize() {
+                    if (resizeTimer) {
+                        $timeout.cancel(resizeTimer);
+                    }
+                    resizeTimer = $timeout(function () {
+                        resizeTimer = null;
+                        resizeToContent();
+                    }, 0, false);
+                }
+
+                node.addEventListener('input', scheduleResize, false);
+                $window.addEventListener('resize', scheduleResize, false);
+
+                var unwatchModel = scope.$watch(attrs.ngModel, scheduleResize);
+                var unwatchVisibility = scope.$watch(function () {
+                    return node.offsetParent !== null;
+                }, function (isVisible) {
+                    if (isVisible) { scheduleResize(); }
+                });
+
+                scope.$on('$destroy', function () {
+                    if (resizeTimer) { $timeout.cancel(resizeTimer); }
+                    node.removeEventListener('input', scheduleResize, false);
+                    $window.removeEventListener('resize', scheduleResize, false);
+                    unwatchModel();
+                    unwatchVisibility();
+                });
+            }
+        };
+    });
+
     angular.module('Hrm.Question').directive('draggable', function () {
         return {
             restrict: 'A',
