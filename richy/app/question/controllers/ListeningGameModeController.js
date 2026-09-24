@@ -259,6 +259,16 @@
 
         var vm = this;
 
+        function speakEnglish(text, options) {
+            if (window.EnglishSpeech) {
+                window.EnglishSpeech.speak(text, options || {lang: 'en-US'});
+            }
+        }
+
+        function stopEnglishSpeech() {
+            if (window.EnglishSpeech) { window.EnglishSpeech.cancel(); }
+        }
+
 
         window.addEventListener('beforeunload', function (e) {
             // Cancel the event
@@ -1694,7 +1704,7 @@
             if($scope.counter ===  0 || $scope.counter < 0) {
                 $scope.counter = 0;
                 audio.load();
-                window.speechSynthesis.speak(new SpeechSynthesisUtterance("Time's up"));
+                speakEnglish("Time's up", {lang: 'en-US', rate: 0.95});
                 $scope.$broadcast('timer-stopped', 0);
                 $timeout.cancel(mytimeout);
                 return;
@@ -1727,7 +1737,7 @@
             vm.blindMode = false;
             vm.streak = 0;
 
-            window.speechSynthesis.speak(new SpeechSynthesisUtterance(vm.currentCard.question));
+            speakEnglish(vm.currentCard.question, {lang: 'en-US', rate: 0.95});
 
         };
 
@@ -1764,7 +1774,7 @@
 
             if(correct == true){
                 if((vm.currentPosition + 1) >= vm.searchDto.pageSize){
-                    window.speechSynthesis.speak(new SpeechSynthesisUtterance("GAME OVER"));
+                    speakEnglish("GAME OVER", {lang: 'en-US', rate: 0.95});
                     if(vm.endGame == false){
                         vm.players[vm.indexPlayer].score = vm.players[vm.indexPlayer].score + ($scope.counter)/12;
                                             }
@@ -1800,7 +1810,7 @@
 
             }else{
                 if((vm.currentPosition + 1) >= vm.searchDto.pageSize){
-                    window.speechSynthesis.speak(new SpeechSynthesisUtterance("GAME OVER"));
+                    speakEnglish("GAME OVER", {lang: 'en-US', rate: 0.95});
 
                 }else {
                     if(vm.endGame == false) {
@@ -1878,7 +1888,7 @@
                 vm.isMuted = false;
                 if(!vm.isMuted){
                     if(vm.currentCard != null && angular.isDefined(vm.currentCard)){
-                        window.speechSynthesis.speak(new SpeechSynthesisUtterance(vm.currentCard.question));
+                        speakEnglish(vm.currentCard.question, {lang: 'en-US', rate: 0.95});
                     }
                                     }
             }
@@ -1890,7 +1900,7 @@
                 vm.isMuted = false;
                 if(!vm.isMuted){
                     if(vm.currentCard != null && angular.isDefined(vm.currentCard)){
-                        window.speechSynthesis.speak(new SpeechSynthesisUtterance(vm.currentCard.question));
+                        speakEnglish(vm.currentCard.question, {lang: 'en-US', rate: 0.95});
                     }
                 }
             }
@@ -1902,7 +1912,7 @@
                 vm.isMuted = false;
                 if(!vm.isMuted){
                     if(vm.currentCard != null && angular.isDefined(vm.currentCard)){
-                        window.speechSynthesis.speak(new SpeechSynthesisUtterance(vm.currentCard.question));
+                        speakEnglish(vm.currentCard.question, {lang: 'en-US', rate: 0.95});
                     }
                 }
             }
@@ -1949,31 +1959,14 @@
 
         vm.isMuted = false;
         // $scope.theText = "Welcome to the speech enabled world!";
-        const synth = window.speechSynthesis;
-        // const rate = document.querySelector("#rate");
-
         $scope.sayIt = function (text) {
-            console.log(text);
-            // console.log(vm.isMuted);
             if(!vm.isMuted){
-                if (synth.speaking) {
-                    synth.cancel();
-                }
-                const utterThis = new SpeechSynthesisUtterance();
-                // utterThis.lang = lang;
-                utterThis.text = text;
-                // utterThis.rate = rate.value;
-
-                synth.speak(utterThis);
-
-                // window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+                speakEnglish(text, {lang: 'en-US', rate: 0.95});
             }
         };
         
         $scope.shutUp = function () {
-            if (synth.speaking && vm.isMuted) {
-                synth.cancel();
-            }
+            if (vm.isMuted) { stopEnglishSpeech(); }
         };
 
 
@@ -2061,6 +2054,10 @@
             vm.getPageFlashCard();
             vm.getTopics();
         };
+
+        $scope.$on('$destroy', function () {
+            stopEnglishSpeech();
+        });
 
 
 

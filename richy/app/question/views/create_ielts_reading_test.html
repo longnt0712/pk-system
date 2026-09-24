@@ -157,7 +157,14 @@
                         <div ng-if="vm.isComprehensiveMode" class="margin-top-10">
                             <div class="comprehensive-topic-assignment">
                                 <div class="comprehensive-topic-assignment__heading">
-                                    <div><i class="fa fa-tags"></i><span><strong>Phân loại bài tập</strong><small>Chọn lần lượt Nguồn → Category → Topic</small></span></div>
+                                    <div>
+                                        <span class="comprehensive-topic-assignment__icon" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24" focusable="false">
+                                                <path d="M4 5.5h6.5M7.25 5.5v13M7.25 12h5.25M12.5 9.5h7v5h-7zM4.75 16h5v5h-5zM15 3h5v5h-5z"></path>
+                                            </svg>
+                                        </span>
+                                        <span><strong>Phân loại bài tập</strong><small>Chọn lần lượt Nguồn → Category → Topic</small></span>
+                                    </div>
                                     <b ng-if="vm.builderTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải tất cả topic...</b>
                                 </div>
                                 <div class="comprehensive-topic-assignment__grid">
@@ -1697,15 +1704,28 @@
         gap: 10px;
     }
 
-    .comprehensive-topic-assignment__heading > div > i {
-        display: grid;
+    .comprehensive-topic-assignment__icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         width: 38px;
         height: 38px;
-        place-items: center;
+        flex: 0 0 38px;
         border-radius: 10px;
         color: #fff;
         background: linear-gradient(135deg, #13a087, #4775db);
-        font-size: 17px;
+        overflow: hidden;
+    }
+
+    .comprehensive-topic-assignment__icon svg {
+        display: block;
+        width: 22px;
+        height: 22px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
     }
 
     .comprehensive-topic-assignment__heading strong,

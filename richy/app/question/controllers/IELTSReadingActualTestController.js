@@ -125,14 +125,61 @@
             link: function (scope, element, attrs) {
                 var node = element[0];
                 var resizeTimer = null;
+                var restoreFrame = null;
+
+                function rememberScrollPosition() {
+                    var positions = [];
+                    var parent = node.parentElement;
+                    while (parent) {
+                        positions.push({
+                            node: parent,
+                            top: parent.scrollTop,
+                            left: parent.scrollLeft
+                        });
+                        parent = parent.parentElement;
+                    }
+                    return {
+                        positions: positions,
+                        windowX: $window.pageXOffset || 0,
+                        windowY: $window.pageYOffset || 0
+                    };
+                }
+
+                function restoreScrollPosition(state) {
+                    if (!state) { return; }
+                    for (var i = 0; i < state.positions.length; i++) {
+                        state.positions[i].node.scrollTop = state.positions[i].top;
+                        state.positions[i].node.scrollLeft = state.positions[i].left;
+                    }
+                    $window.scrollTo(state.windowX, state.windowY);
+                }
 
                 function resizeToContent() {
                     if (!node.parentElement || node.offsetParent === null) {
                         return;
                     }
+                    var scrollState = rememberScrollPosition();
                     var baseHeight = Math.round(node.parentElement.clientHeight * 0.6);
-                    node.style.height = 'auto';
-                    node.style.height = Math.max(baseHeight, node.scrollHeight + 2) + 'px';
+                    var currentHeight = Math.round(node.getBoundingClientRect().height);
+                    var targetHeight = Math.max(baseHeight, node.scrollHeight + 2);
+
+                    /* Do not temporarily reset the textarea to auto/zero height.
+                       That layout collapse made the focused answer pane jump to
+                       the top whenever a new line increased scrollHeight. */
+                    if (targetHeight > currentHeight) {
+                        node.style.height = targetHeight + 'px';
+                    }
+
+                    restoreScrollPosition(scrollState);
+                    if (restoreFrame && $window.cancelAnimationFrame) {
+                        $window.cancelAnimationFrame(restoreFrame);
+                    }
+                    if ($window.requestAnimationFrame) {
+                        restoreFrame = $window.requestAnimationFrame(function () {
+                            restoreFrame = null;
+                            restoreScrollPosition(scrollState);
+                        });
+                    }
                 }
 
                 function scheduleResize() {
@@ -157,6 +204,9 @@
 
                 scope.$on('$destroy', function () {
                     if (resizeTimer) { $timeout.cancel(resizeTimer); }
+                    if (restoreFrame && $window.cancelAnimationFrame) {
+                        $window.cancelAnimationFrame(restoreFrame);
+                    }
                     node.removeEventListener('input', scheduleResize, false);
                     $window.removeEventListener('resize', scheduleResize, false);
                     unwatchModel();

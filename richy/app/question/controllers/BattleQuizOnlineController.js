@@ -3511,13 +3511,7 @@
                 return;
             }
 
-            try {
-                if ($window.speechSynthesis) {
-                    $window.speechSynthesis.resume();
-                }
-            } catch (e) {
-                // Trình duyệt không hỗ trợ resume vẫn được phép mở đáp án.
-            }
+            if ($window.EnglishSpeech) { $window.EnglishSpeech.resume(); }
 
             vm.revealingGuessAnswer = true;
             battleService.revealGuessAnswer(vm.room.code)
@@ -5288,8 +5282,7 @@
 
         function speakGuessText(word) {
             word = String(word || '').trim();
-            if (!word || !$window.speechSynthesis ||
-                    !$window.SpeechSynthesisUtterance) {
+            if (!word || !$window.EnglishSpeech) {
                 return;
             }
 
@@ -5298,13 +5291,12 @@
                 guessTickAudio.currentTime = 0;
             }
 
-            $window.speechSynthesis.cancel();
-            var utterance = new $window.SpeechSynthesisUtterance(word);
-            utterance.lang = 'en-US';
-            utterance.rate = 0.88;
-            utterance.pitch = 1;
-            utterance.volume = clampGuessVoiceVolume(vm.guessVoiceVolume) / 100;
-            $window.speechSynthesis.speak(utterance);
+            $window.EnglishSpeech.speak(word, {
+                lang: 'en-US',
+                rate: 0.88,
+                pitch: 1,
+                volume: clampGuessVoiceVolume(vm.guessVoiceVolume) / 100
+            });
         }
 
         function previewGuessVoice() {
@@ -5321,7 +5313,7 @@
             ].join(':');
 
             if (!word || revealKey === lastSpokenGuessRevealKey ||
-                !$window.speechSynthesis || !$window.SpeechSynthesisUtterance) {
+                !$window.EnglishSpeech) {
                 return;
             }
 
@@ -5340,32 +5332,16 @@
                 !vm.room.currentQuestion ||
                 !vm.room.currentQuestion
                     .question ||
-                !$window.speechSynthesis
+                !$window.EnglishSpeech
             ) {
                 return;
             }
 
             try {
-                $window.speechSynthesis
-                    .cancel();
-
-                var utterance =
-                    new SpeechSynthesisUtterance(
-                        vm.room
-                            .currentQuestion
-                            .question
-                    );
-
-                utterance.lang =
-                    'en-US';
-
-                utterance.rate =
-                    1;
-
-                $window.speechSynthesis
-                    .speak(
-                        utterance
-                    );
+                $window.EnglishSpeech.speak(
+                    vm.room.currentQuestion.question,
+                    {lang: 'en-US', rate: 0.95}
+                );
             } catch (e) {
                 // Speech không được ảnh hưởng game.
             }
@@ -6375,13 +6351,7 @@
                 );
 
                 try {
-                    if (
-                        $window.speechSynthesis
-                    ) {
-                        $window
-                            .speechSynthesis
-                            .cancel();
-                    }
+                    if ($window.EnglishSpeech) { $window.EnglishSpeech.cancel(); }
                 } catch (e) {
                     // Ignore cleanup.
                 }

@@ -225,8 +225,16 @@
                                                   writing-task-clipboard="vm.onWritingTaskClipboardBlocked()"
                                                   writing-task-auto-grow
                                                   autocomplete="off"
-                                                  autocapitalize="sentences"
-                                                  spellcheck="true"
+                                                  autocorrect="off"
+                                                  autocapitalize="off"
+                                                  spellcheck="false"
+                                                  writingsuggestions="false"
+                                                  data-gramm="false"
+                                                  data-gramm_editor="false"
+                                                  data-enable-grammarly="false"
+                                                  data-lt-active="false"
+                                                  data-languagetool-ignore="true"
+                                                  data-ms-editor="false"
                                                   placeholder="Bắt đầu viết bài tại đây..."></textarea>
                                         <div class="writing-task-runtime__footer"
                                              ng-class="{'is-complete': vm.isWritingTaskWordTargetMet(item)}">
@@ -288,8 +296,16 @@
                                                       ng-change="vm.updateWritingTaskResponse(item)"
                                                       writing-task-clipboard="vm.onWritingTaskClipboardBlocked()"
                                                       autocomplete="off"
-                                                      autocapitalize="sentences"
-                                                      spellcheck="true"
+                                                      autocorrect="off"
+                                                      autocapitalize="off"
+                                                      spellcheck="false"
+                                                      writingsuggestions="false"
+                                                      data-gramm="false"
+                                                      data-gramm_editor="false"
+                                                      data-enable-grammarly="false"
+                                                      data-lt-active="false"
+                                                      data-languagetool-ignore="true"
+                                                      data-ms-editor="false"
                                                       placeholder="Bắt đầu viết bài tại đây..."></textarea>
                                             <div class="writing-task-runtime__footer"
                                                  ng-class="{'is-complete': vm.isWritingTaskWordTargetMet(item)}">
@@ -2126,6 +2142,7 @@
         flex-direction: column;
         overflow-x: hidden;
         overflow-y: auto;
+        overflow-anchor: none;
         padding: 56px 28px 24px;
         background: #ffffff;
     }
@@ -2138,6 +2155,7 @@
         resize: none;
         box-sizing: border-box;
         background: #ffffff;
+        overflow-anchor: none;
     }
 
     .writing-task-runtime__header {
@@ -2205,6 +2223,24 @@
         box-shadow: 0 0 0 3px rgba(47, 118, 200, .14);
     }
 
+    /* Writing is an exam surface. Hide proofreading overlays injected by
+       common browser extensions in addition to opting the textarea out. */
+    .idp-reading-page grammarly-extension,
+    .idp-reading-page grammarly-desktop-integration,
+    .idp-reading-page [data-grammarly-part],
+    .idp-reading-page lt-toolbar,
+    .idp-reading-page lt-highlighter,
+    .idp-reading-page lt-dialog,
+    .idp-reading-page lt-extension,
+    .idp-reading-page languagetool-extension,
+    .idp-reading-page ms-editor-extension,
+    .idp-reading-page ms-editor-squiggler,
+    .idp-reading-page ms-editor-card {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+
     .writing-task-runtime__footer {
         display: flex;
         align-items: center;
@@ -2231,8 +2267,9 @@
     }
 
     .idp-writing-answer-pane .writing-task-runtime__footer strong {
-        font-size: 14px;
-        font-weight: 400;
+        font-size: inherit !important;
+        line-height: inherit !important;
+        font-weight: 600;
     }
 
     .idp-writing-answer-pane .writing-task-runtime__footer.is-complete {

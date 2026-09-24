@@ -1919,31 +1919,24 @@
         vm.isMuted = false;
 
         function shutUp() {
-            if (
-                window.speechSynthesis &&
-                window.speechSynthesis.cancel
-            ) {
-                window.speechSynthesis.cancel();
-            }
+            if (window.EnglishSpeech) { window.EnglishSpeech.cancel(); }
         }
 
         function sayIt(text) {
             if (
                 vm.isMuted ||
                 !text ||
-                !window.speechSynthesis ||
-                !window.SpeechSynthesisUtterance
+                !window.EnglishSpeech
             ) {
                 return;
             }
 
-            shutUp();
-
-            var utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.rate = 1;
-
-            window.speechSynthesis.speak(utterance);
+            window.EnglishSpeech.speak(text, {
+                lang: 'en-US',
+                rate: 0.95,
+                pitch: 1,
+                volume: 1
+            });
         }
 
         vm.sayPlayerQuestion = function (player) {
@@ -1957,15 +1950,16 @@
 
         function announce(text) {
             if (
-                !window.speechSynthesis ||
-                !window.SpeechSynthesisUtterance
+                !window.EnglishSpeech
             ) {
                 return;
             }
 
-            var utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            window.speechSynthesis.speak(utterance);
+            window.EnglishSpeech.speak(text, {
+                lang: 'en-US',
+                rate: 0.95,
+                interrupt: false
+            });
         }
 
         var battleTimer = null;

@@ -31,6 +31,16 @@
     ) {
         var vm = this;
 
+        function speakEnglish(text, options) {
+            if (window.EnglishSpeech) {
+                window.EnglishSpeech.speak(text, options || {lang: 'en-US'});
+            }
+        }
+
+        function stopEnglishSpeech() {
+            if (window.EnglishSpeech) { window.EnglishSpeech.cancel(); }
+        }
+
         $scope.$on('$viewContentLoaded', function () {
             if (window.App && App.initAjax) {
                 App.initAjax();
@@ -1676,15 +1686,7 @@
 
             runningManFinishWin();
 
-            try {
-                window.speechSynthesis.speak(
-                    new SpeechSynthesisUtterance(
-                        'Player one is OVER'
-                    )
-                );
-            } catch (e) {
-                // Không làm gì.
-            }
+            speakEnglish('Player one is OVER', {lang: 'en-US', rate: 0.95});
 
             if (vm.isSaveTestResult !== true) {
                 vm.dailySaveReady = true;
@@ -2806,65 +2808,21 @@
             if (
                 vm.voiceEnabled !== true ||
                 !text ||
-                !window.speechSynthesis
+                !window.EnglishSpeech
             ) {
                 return;
             }
 
-            try {
-                window.speechSynthesis.cancel();
-
-                var utterance =
-                    new SpeechSynthesisUtterance(
-                        String(text)
-                    );
-
-                utterance.lang = 'en-US';
-                utterance.rate = 1;
-                utterance.pitch = 1;
-                utterance.volume = 1;
-
-                var voices =
-                    window.speechSynthesis.getVoices() || [];
-
-                var selectedVoice = null;
-
-                angular.forEach(voices, function (voice) {
-                    if (
-                        !selectedVoice &&
-                        voice &&
-                        voice.lang &&
-                        (
-                            voice.lang === 'en-US' ||
-                            voice.lang.indexOf('en-') === 0
-                        )
-                    ) {
-                        selectedVoice = voice;
-                    }
-                });
-
-                if (selectedVoice) {
-                    utterance.voice = selectedVoice;
-                }
-
-                window.speechSynthesis.speak(
-                    utterance
-                );
-            } catch (e) {
-                // Speech lỗi không làm hỏng game.
-            }
+            speakEnglish(String(text), {
+                lang: 'en-US',
+                rate: 0.95,
+                pitch: 1,
+                volume: 1
+            });
         }
 
         function shutUp() {
-            if (!window.speechSynthesis) {
-                return;
-            }
-
-            try {
-                window.speechSynthesis.cancel();
-            } catch (e) {
-                // Không làm gì.
-            }
+            stopEnglishSpeech();
         }
 
         vm.sayCurrentWord = function () {
