@@ -2397,6 +2397,58 @@
             });
         };
 
+        function showSubmittedTestResult(resultId, completed) {
+            service.getOneTestResult(resultId).then(function (data1) {
+                vm.testResultAfterSubmitting = data1;
+
+                vm.passageNumber = 4;
+                console.log(vm.testResultAfterSubmitting);
+
+                vm.percentageAfterSubmit = (vm.testResultAfterSubmitting.correctAnswer / vm.resultQuestionTotal)*100;
+                vm.textBandScore = vm.isFlexibleRoute ?
+                    (vm.testResultAfterSubmitting.correctAnswer + '/' + vm.resultQuestionTotal) :
+                    ('Band ' + vm.testResultAfterSubmitting.bandScore.toString());
+
+                var x = document.getElementById('circlechart');
+                x.setAttribute("data-percentage", vm.percentageAfterSubmit.toString());
+                $('.circlechart').circlechart(vm.textBandScore);
+                blockUI.stop();
+                if (completed) { completed(data1); }
+            }, function failure() {
+                blockUI.stop();
+                if (completed) { completed(null); }
+                toastr.error('An error occurred while loading the test result.', 'Notification');
+            });
+        }
+
+        vm.isRetryingWritingGrade = false;
+        vm.canRetryWritingGrade = function (result) {
+            if (!vm.isWritingRoute || !result || !result.id) { return false; }
+            return ['FAILED', 'NOT_CONFIGURED', 'PENDING', 'PROCESSING']
+                .indexOf(result.aiGradingStatus) >= 0;
+        };
+
+        vm.retryWritingGrade = function () {
+            var result = vm.testResultAfterSubmitting;
+            if (vm.isRetryingWritingGrade || !vm.canRetryWritingGrade(result)) { return; }
+            vm.isRetryingWritingGrade = true;
+            service.gradeWritingTestResult(result.id).then(function () {
+                showSubmittedTestResult(result.id, function (reloadedResult) {
+                    vm.isRetryingWritingGrade = false;
+                    if (!reloadedResult) { return; }
+                    if (reloadedResult.aiGradingStatus === 'COMPLETED') {
+                        toastr.success('Bài Writing đã được chấm lại bằng GPT.', 'Thông báo');
+                    } else {
+                        toastr.warning((reloadedResult && reloadedResult.aiGradingError)
+                            || 'Chưa thể chấm lại bài Writing. Vui lòng thử lại sau.', 'Thông báo');
+                    }
+                });
+            }, function () {
+                vm.isRetryingWritingGrade = false;
+                toastr.error('Không thể gửi lại bài Writing để chấm.', 'Thông báo');
+            });
+        };
+
         vm.saveTestResult = function () {
             synchronizeReadingResultsBeforeSubmit();
             // Capture the last keystrokes before submission as well. This is
@@ -2460,7 +2512,6 @@
 
             blockUI.start();
             service.saveTestResult(vm.testResult).then(function (data) {
-                blockUI.stop();
                 readingDraftSubmitted = true;
                 if (!vm.isFlexibleRoute || !data || data.resultStatus !== 'FAILED') {
                     markStudyDraftCompleted(data && data.id);
@@ -2469,31 +2520,21 @@
                     clearReadingDraft();
                 }
                 $timeout.cancel(readingDraftAutosaveTimer);
-                // vm.testResultAfterSubmitting = data;
 
-                service.getOneTestResult(data.id).then(function (data1) {
-                    vm.testResultAfterSubmitting = data1;
-
-                    vm.passageNumber = 4;
-                    console.log(vm.testResultAfterSubmitting);
-
-                    vm.percentageAfterSubmit = (vm.testResultAfterSubmitting.correctAnswer / vm.resultQuestionTotal)*100;
-                    vm.textBandScore = vm.isFlexibleRoute ?
-                        (vm.testResultAfterSubmitting.correctAnswer + '/' + vm.resultQuestionTotal) :
-                        ('Band ' + vm.testResultAfterSubmitting.bandScore.toString());
-
-                    var x = document.getElementById('circlechart');
-                    x.setAttribute("data-percentage", vm.percentageAfterSubmit.toString());
-                    $('.circlechart').circlechart(vm.textBandScore);
-
-                }, function failure() {
-                    toastr.error('An error occurred while loading the test result.', 'Notification');
-                });
-
-            }, function success() {
-                toastr.info('The account was created successfully.', 'Notification');
+                if (vm.isWritingRoute) {
+                    service.gradeWritingTestResult(data.id).then(function (gradedResult) {
+                        showSubmittedTestResult((gradedResult && gradedResult.id) || data.id);
+                    }, function () {
+                        // The submission has already been saved. Loading it here keeps
+                        // Finish reliable even when the grading provider is unavailable.
+                        showSubmittedTestResult(data.id);
+                    });
+                } else {
+                    showSubmittedTestResult(data.id);
+                }
             }, function failure() {
-                toastr.error('An error occurred while creating the account.', 'Notification');
+                blockUI.stop();
+                toastr.error('An error occurred while saving the test result.', 'Notification');
             });
         };
 

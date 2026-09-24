@@ -49,6 +49,20 @@ public class TestResult extends BaseObject{
     @Lob
     @Column(name="ielts_learning_state")
     private String ieltsLearningState;
+    @Column(name="ai_grading_provider", length=30)
+    private String aiGradingProvider;
+    @Column(name="ai_grading_status", length=30)
+    private String aiGradingStatus;
+    @Column(name="ai_grading_model", length=100)
+    private String aiGradingModel;
+    @Column(name="ai_overall_band")
+    private Double aiOverallBand;
+    @Lob
+    @Column(name="ai_grading_feedback")
+    private String aiGradingFeedback;
+    @Lob
+    @Column(name="ai_grading_error")
+    private String aiGradingError;
     public Long getSourceQuestionId(){return sourceQuestionId;}
     public void setSourceQuestionId(Long value){sourceQuestionId=value;}
     public Integer getCompletedPart(){return completedPart;}
@@ -61,6 +75,18 @@ public class TestResult extends BaseObject{
     public void setActiveDurationSeconds(Integer value){activeDurationSeconds=value;}
     public String getIeltsLearningState(){return ieltsLearningState;}
     public void setIeltsLearningState(String value){ieltsLearningState=value;}
+    public String getAiGradingProvider(){return aiGradingProvider;}
+    public void setAiGradingProvider(String value){aiGradingProvider=value;}
+    public String getAiGradingStatus(){return aiGradingStatus;}
+    public void setAiGradingStatus(String value){aiGradingStatus=value;}
+    public String getAiGradingModel(){return aiGradingModel;}
+    public void setAiGradingModel(String value){aiGradingModel=value;}
+    public Double getAiOverallBand(){return aiOverallBand;}
+    public void setAiOverallBand(Double value){aiOverallBand=value;}
+    public String getAiGradingFeedback(){return aiGradingFeedback;}
+    public void setAiGradingFeedback(String value){aiGradingFeedback=value;}
+    public String getAiGradingError(){return aiGradingError;}
+    public void setAiGradingError(String value){aiGradingError=value;}
 
 	@ManyToMany(fetch = FetchType.LAZY)
 	@JoinTable(name = "tbl_test_result_topic", joinColumns = @JoinColumn(name = "test_result_id"),

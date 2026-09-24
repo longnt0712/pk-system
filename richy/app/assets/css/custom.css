@@ -3962,3 +3962,30 @@ textarea,
 [class*=" icon-"] {
     font-family: "simple-line-icons" !important;
 }
+.gpt-regrade-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 9px 18px;
+    border: 2px solid #111;
+    border-radius: 7px;
+    background: #fff;
+    color: #111;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background-color .18s ease, color .18s ease, opacity .18s ease;
+}
+
+.gpt-regrade-btn:hover:not(:disabled),
+.gpt-regrade-btn:focus:not(:disabled) {
+    background: #111;
+    color: #fff;
+}
+
+.gpt-regrade-btn:disabled {
+    opacity: .58;
+    cursor: wait;
+}

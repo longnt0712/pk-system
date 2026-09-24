@@ -235,6 +235,46 @@
 
         vm.testResult = {};
         vm.ieltsLearningState = {};
+        vm.isRetryingWritingGrade = false;
+
+        function currentUserIsAdmin() {
+            var roles = ($rootScope.currentUser && $rootScope.currentUser.roles) || [];
+            return roles.some(function (role) {
+                return role && role.name === 'ROLE_ADMIN';
+            });
+        }
+
+        vm.canRetryWritingGrade = function (testResult) {
+            if (!testResult || Number(testResult.testType) !== 7 || !testResult.id) { return false; }
+            if (['FAILED', 'NOT_CONFIGURED', 'PENDING', 'PROCESSING']
+                    .indexOf(testResult.aiGradingStatus) < 0) { return false; }
+            var currentUserId = $rootScope.currentUser && $rootScope.currentUser.id;
+            var ownerId = testResult.user && testResult.user.id;
+            return currentUserIsAdmin() || (currentUserId != null && ownerId != null
+                && Number(currentUserId) === Number(ownerId));
+        };
+
+        vm.retryWritingGrade = function () {
+            var resultId = vm.testResult && vm.testResult.id;
+            if (vm.isRetryingWritingGrade || !vm.canRetryWritingGrade(vm.testResult)) { return; }
+            vm.isRetryingWritingGrade = true;
+            service.gradeWritingTestResult(resultId).then(function () {
+                return service.getOne(resultId);
+            }).then(function (data) {
+                vm.testResult = addMissingResultRows(data);
+                vm.loadIeltsLearningState(vm.testResult);
+                vm.isRetryingWritingGrade = false;
+                if (vm.testResult.aiGradingStatus === 'COMPLETED') {
+                    toastr.success('Bài Writing đã được chấm lại bằng GPT.', 'Thông báo');
+                } else {
+                    toastr.warning(vm.testResult.aiGradingError
+                        || 'Chưa thể chấm lại bài Writing. Vui lòng thử lại sau.', 'Thông báo');
+                }
+            }, function () {
+                vm.isRetryingWritingGrade = false;
+                toastr.error('Không thể gửi lại bài Writing để chấm.', 'Thông báo');
+            });
+        };
 
         vm.loadIeltsLearningState = function (testResult) {
             vm.ieltsLearningState = {};

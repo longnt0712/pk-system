@@ -1564,6 +1564,14 @@
                     <h1><i class="fa fa-pencil"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.correctAnswer}}/{{vm.resultQuestionTotal}}</h1>
                     <h1 class="bold text-red" ng-if="!vm.isPartAssignment && !vm.isFlexibleRoute"><i class="fa fa-graduation-cap"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.bandScore}}</h1>
                     <h1 class="bold text-green" ng-if="vm.isPartAssignment"><i class="fa fa-check-circle"></i> &nbsp;{{vm.isWritingRoute ? 'Writing Task ' : 'Part '}}{{vm.assignedPart}} has been recorded</h1>
+                    <button type="button"
+                            class="gpt-regrade-btn"
+                            ng-if="vm.canRetryWritingGrade(vm.testResultAfterSubmitting)"
+                            ng-disabled="vm.isRetryingWritingGrade"
+                            ng-click="vm.retryWritingGrade()">
+                        <i class="fa" ng-class="vm.isRetryingWritingGrade ? 'fa-spinner fa-spin' : 'fa-refresh'"></i>
+                        {{vm.isRetryingWritingGrade ? 'Đang gửi chấm...' : 'Chấm lại bằng GPT'}}
+                    </button>
                     <h1 class="bold text-blue" style="cursor: pointer" ng-click="vm.showDetailTestAfterSubmit()"><i class="fa fa-info-circle" aria-hidden="true"></i> &nbsp;<i class="fa fa-caret-right"></i> CLICK TO SEE DETAILS</h1>
                 </div>
 

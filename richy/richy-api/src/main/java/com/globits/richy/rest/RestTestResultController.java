@@ -15,12 +15,15 @@ import com.globits.richy.dto.LearningDraftDto;
 import com.globits.richy.dto.TestResultDto;
 import com.globits.richy.dto.TestResultStudyCalendarItemDto;
 import com.globits.richy.service.TestResultService;
+import com.globits.richy.service.writing.WritingGradingService;
 
 @RestController
 @RequestMapping("/api/test_result")
 public class RestTestResultController {
 	@Autowired
 	TestResultService service;
+	@Autowired
+	WritingGradingService writingGradingService;
 	
 	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER"})
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
@@ -50,6 +53,12 @@ public class RestTestResultController {
 	@RequestMapping(value = "/save", method = RequestMethod.POST)
 	public TestResultDto saveOne(@RequestBody TestResultDto searchDto) {
 		return service.saveObject(searchDto);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STUDENT"})
+	@RequestMapping(value = "/grade-writing/{id}", method = RequestMethod.POST)
+	public TestResultDto gradeWriting(@PathVariable Long id) {
+		return writingGradingService.grade(id);
 	}
 	
 	@Secured({"ROLE_ADMIN"})

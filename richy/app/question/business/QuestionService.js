@@ -387,6 +387,7 @@
                 .then(function (response) { return response.data; });
         };
         self.getOneTestResult = getOneTestResult;
+        self.gradeWritingTestResult = gradeWritingTestResult;
 
         function saveTestResult(object, successCallback, errorCallback) {
             var url = baseUrl + 'test_result' + '/save';
@@ -403,6 +404,21 @@
 
             var url = baseUrl + 'test_result' +'/' + 'get_one/' + id;
             return utils.resolve(url, 'GET', angular.noop, angular.noop);
+        }
+
+        function gradeWritingTestResult(id) {
+            if (!id) {
+                return $q.reject(new Error('Missing Writing test result ID.'));
+            }
+            return $http({
+                method: 'POST',
+                url: baseUrl + 'test_result/grade-writing/' + id,
+                timeout: 130000,
+                cache: false,
+                headers: {'Content-Type': 'application/json; charset=utf-8'}
+            }).then(function (response) {
+                return response.data;
+            });
         }
 
         //---------------------------------- table ---------------------------------------//

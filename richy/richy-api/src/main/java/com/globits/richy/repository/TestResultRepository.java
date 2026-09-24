@@ -10,6 +10,15 @@ import org.springframework.data.repository.query.Param;
 import com.globits.richy.domain.TestResult;
 @Repository
 public interface TestResultRepository extends JpaRepository<TestResult, Long> {
+    @Query("select distinct r from TestResult r "
+            + "left join fetch r.user "
+            + "left join fetch r.questionAnswerTestResult ar "
+            + "left join fetch ar.questionAnswer qa "
+            + "left join fetch qa.question q "
+            + "left join fetch q.parent "
+            + "where r.id = :id")
+    TestResult findWritingResultForGrading(@Param("id") Long id);
+
     @Query("select r from TestResult r where r.user.id = :userId and r.clientAttemptKey = :attemptKey and r.testType = :testType")
     TestResult findAttempt(@Param("userId") Long userId, @Param("attemptKey") String attemptKey,
             @Param("testType") Integer testType);

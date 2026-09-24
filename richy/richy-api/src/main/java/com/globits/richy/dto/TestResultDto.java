@@ -37,6 +37,12 @@ public class TestResultDto implements Serializable{
 	private String ieltsSessionMode;
 	private Integer activeDurationSeconds;
 	private String ieltsLearningState;
+	private String aiGradingProvider;
+	private String aiGradingStatus;
+	private String aiGradingModel;
+	private Double aiOverallBand;
+	private String aiGradingFeedback;
+	private String aiGradingError;
 	private String resultGroup;
 	public List<Long> getTopicIds() { return topicIds; }
 	public void setTopicIds(List<Long> value) { topicIds = value; }
@@ -54,6 +60,18 @@ public class TestResultDto implements Serializable{
 	public void setActiveDurationSeconds(Integer value) { activeDurationSeconds = value; }
 	public String getIeltsLearningState() { return ieltsLearningState; }
 	public void setIeltsLearningState(String value) { ieltsLearningState = value; }
+	public String getAiGradingProvider() { return aiGradingProvider; }
+	public void setAiGradingProvider(String value) { aiGradingProvider = value; }
+	public String getAiGradingStatus() { return aiGradingStatus; }
+	public void setAiGradingStatus(String value) { aiGradingStatus = value; }
+	public String getAiGradingModel() { return aiGradingModel; }
+	public void setAiGradingModel(String value) { aiGradingModel = value; }
+	public Double getAiOverallBand() { return aiOverallBand; }
+	public void setAiOverallBand(Double value) { aiOverallBand = value; }
+	public String getAiGradingFeedback() { return aiGradingFeedback; }
+	public void setAiGradingFeedback(String value) { aiGradingFeedback = value; }
+	public String getAiGradingError() { return aiGradingError; }
+	public void setAiGradingError(String value) { aiGradingError = value; }
 	public String getResultGroup() { return resultGroup; }
 	public void setResultGroup(String value) { resultGroup = value; }
 	private void copyTopics(TestResult domain) {
@@ -64,6 +82,10 @@ public class TestResultDto implements Serializable{
         assignmentTaskId=domain.getAssignmentTaskId();
         ieltsSessionMode=domain.getIeltsSessionMode();
         activeDurationSeconds=domain.getActiveDurationSeconds();
+        aiGradingProvider=domain.getAiGradingProvider();
+        aiGradingStatus=domain.getAiGradingStatus();
+        aiGradingModel=domain.getAiGradingModel();
+        aiOverallBand=domain.getAiOverallBand();
         if(Integer.valueOf(1).equals(domain.getTestType())&&resultStatus==null)resultStatus="SUCCESS";
         if("FAILED".equals(resultStatus))messageCode=1;
 		completedVocabularyTopicIds = new ArrayList<Long>();
@@ -397,6 +419,8 @@ public class TestResultDto implements Serializable{
 		if(isGetOne == true) {
 			this.testTakerPerformance = domain.getTestTakerPerformance();
 			this.ieltsLearningState = domain.getIeltsLearningState();
+			this.aiGradingFeedback = domain.getAiGradingFeedback();
+			this.aiGradingError = domain.getAiGradingError();
 		}
 		if(domain.getTestType() == null) {
 			this.testType = 1;

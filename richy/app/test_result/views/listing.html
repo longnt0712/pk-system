@@ -570,6 +570,14 @@
             </div>
         </div>
         <div class="modal-footer">
+            <button type="button"
+                    class="gpt-regrade-btn"
+                    data-ng-if="vm.canRetryWritingGrade(vm.testResult)"
+                    data-ng-disabled="vm.isRetryingWritingGrade"
+                    data-ng-click="vm.retryWritingGrade()">
+                <i class="fa" data-ng-class="vm.isRetryingWritingGrade ? 'fa-spinner fa-spin' : 'fa-refresh'"></i>
+                {{vm.isRetryingWritingGrade ? 'Đang gửi chấm...' : 'Chấm lại bằng GPT'}}
+            </button>
             <!--<button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>-->
             <!--<button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>-->
         </div>

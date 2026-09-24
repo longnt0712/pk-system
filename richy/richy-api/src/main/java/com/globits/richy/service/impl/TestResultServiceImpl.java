@@ -681,6 +681,14 @@ public class TestResultServiceImpl implements TestResultService {
 		domain.setTestName(dto.getTestName());
 		domain.setTestTime(dto.getTestTime());
 		domain.setTestType(dto.getTestType());
+		if (Integer.valueOf(7).equals(dto.getTestType())) {
+			domain.setAiGradingStatus("PENDING");
+			domain.setAiGradingProvider(null);
+			domain.setAiGradingModel(null);
+			domain.setAiOverallBand(null);
+			domain.setAiGradingFeedback(null);
+			domain.setAiGradingError(null);
+		}
 		domain.setSourceQuestionId(dto.getSourceQuestionId());
 		domain.setCompletedPart(dto.getCompletedPart());
 		domain.setAssignmentTaskId(dto.getAssignmentTaskId());
