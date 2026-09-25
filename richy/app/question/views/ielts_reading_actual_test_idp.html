@@ -61,14 +61,26 @@
         <span>This is the candidate view</span>
     </div>
     <div class="idp-exam-topbar" ng-show="vm.isStartTest && vm.passageNumber != 4">
-        <div class="idp-exam-logo">{{vm.isComprehensiveRoute ? 'BÀI TẬP' : 'IELTS'}} <small>{{vm.isComprehensiveRoute ? 'TỔNG HỢP' : (vm.isWritingRoute ? 'WRITING' : (vm.isListeningRoute ? 'LISTENING' : 'READING'))}}</small></div>
+        <button type="button"
+                class="idp-home-logo-button"
+                ng-click="vm.confirmLeaveTest($event)"
+                title="Về trang chủ"
+                aria-label="Về trang chủ">
+            <span class="idp-exam-logo">{{vm.isComprehensiveRoute ? 'BÀI TẬP' : 'IELTS'}} <small>{{vm.isComprehensiveRoute ? 'TỔNG HỢP' : (vm.isWritingRoute ? 'WRITING' : (vm.isListeningRoute ? 'LISTENING' : 'READING'))}}</small></span>
+        </button>
         <div class="idp-exam-name">
             <strong>Test taker name</strong>
             <span>{{vm.testResult.testTakerName}}</span>
         </div>
-        <img class="idp-ieltsroom-logo"
-             src="assets/images/troop.jpg"
-             alt="IELTS Room logo">
+        <button type="button"
+                class="idp-home-logo-button"
+                ng-click="vm.confirmLeaveTest($event)"
+                title="Về trang chủ"
+                aria-label="Về trang chủ">
+            <img class="idp-ieltsroom-logo"
+                 src="assets/images/troop.jpg"
+                 alt="IELTS Room logo">
+        </button>
         <div class="idp-exam-tools">
             <span class="idp-top-timer"
                   ng-mouseenter="vm.displayTimer()"
@@ -2352,15 +2364,6 @@
         outline-offset: 2px;
     }
 
-    .complete-list-drop-box.is-filled {
-        min-width: 0;
-        min-height: 0;
-        padding: 0 3px;
-        border: 0;
-        border-radius: 0;
-        background: transparent;
-    }
-
     .complete-list-drop-box > .dndPlaceholder,
     .complete-list-word-bank > .dndPlaceholder {
         display: none !important;
@@ -3515,6 +3518,23 @@
         line-height: 1;
         font-weight: 900;
         letter-spacing: -2px;
+    }
+
+    .idp-home-logo-button {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        padding: 0;
+        border: 0;
+        color: inherit;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    .idp-home-logo-button:focus-visible {
+        outline: 2px solid #2458a6;
+        outline-offset: 3px;
+        border-radius: 4px;
     }
 
     .idp-exam-logo small {
@@ -5752,12 +5772,6 @@
     .idp-reading-page.idp-contrast-yellow-black .complete-list-word {
         border-color: currentColor !important;
         background: #181818 !important;
-    }
-
-    .idp-reading-page.idp-contrast-white-black .complete-list-drop-box.is-filled,
-    .idp-reading-page.idp-contrast-yellow-black .complete-list-drop-box.is-filled {
-        border: 0 !important;
-        background: transparent !important;
     }
 
     .idp-reading-page.idp-contrast-white-black .idp-radio-control,

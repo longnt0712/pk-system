@@ -1839,19 +1839,47 @@
             readingDraftAutosaveTimer = $timeout(autosave, 1000);
         }
 
+        var allowConfirmedTestNavigation = false;
+
+        function isActiveTestNavigationProtected() {
+            return vm.isStartTest === true && vm.passageNumber != 4;
+        }
+
+        function confirmLeavingActiveTest(message) {
+            if (!isActiveTestNavigationProtected() || allowConfirmedTestNavigation) {
+                return true;
+            }
+            if (!$window.confirm(message || 'Bạn có muốn rời bài đang làm và chuyển sang trang khác không?')) {
+                return false;
+            }
+
+            saveReadingDraft();
+            allowConfirmedTestNavigation = true;
+            return true;
+        }
+
+        function handleLocationChangeStart(event, newUrl, oldUrl) {
+            if (newUrl === oldUrl || confirmLeavingActiveTest()) {
+                return;
+            }
+            event.preventDefault();
+        }
+
         function handleReadingBeforeUnload(event) {
             saveReadingDraft();
-            if (vm.isStartTest === true && vm.passageNumber != 4) {
+            if (isActiveTestNavigationProtected() && !allowConfirmedTestNavigation) {
                 event.preventDefault();
                 event.returnValue = '';
             }
         }
 
+        var unregisterLocationChangeGuard = $scope.$on('$locationChangeStart', handleLocationChangeStart);
         $window.addEventListener('beforeunload', handleReadingBeforeUnload);
         $window.addEventListener('pagehide', saveReadingDraft);
         $scope.$on('$destroy', function () {
             saveReadingDraft();
             $timeout.cancel(readingDraftAutosaveTimer);
+            unregisterLocationChangeGuard();
             $window.removeEventListener('beforeunload', handleReadingBeforeUnload);
             $window.removeEventListener('pagehide', saveReadingDraft);
         });
@@ -2102,6 +2130,18 @@
                 return;
             }
             vm.showTestModeDialog = true;
+        };
+
+        vm.confirmLeaveTest = function ($event) {
+            if ($event) {
+                $event.preventDefault();
+                $event.stopPropagation();
+            }
+            if (!confirmLeavingActiveTest('Bạn có chắc muốn rời bài đang làm và quay về trang chủ không?')) {
+                return;
+            }
+
+            $location.url('/dashboard');
         };
 
         vm.selectTestSessionMode = function (mode) {
@@ -6051,10 +6091,21 @@
             console.log(vm.ieltsReadingActualTest.subQuestions[0].question);
         };
 
-        window.addEventListener("keydown",function (e) {
-            if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+        function handleBrowserFindShortcut(e) {
+            var key = String(e.key || '').toLowerCase();
+            var isFindShortcut = (e.ctrlKey || e.metaKey) && (key === 'f' || e.keyCode === 70);
+            var isFindNextShortcut = key === 'f3' || e.keyCode === 114;
+
+            // Study mode may use the browser's native page search. Serious mode
+            // keeps the existing shortcut restriction for the live exam.
+            if (!vm.isStudyMode() && (isFindShortcut || isFindNextShortcut)) {
                 e.preventDefault();
             }
+        }
+
+        $window.addEventListener('keydown', handleBrowserFindShortcut);
+        $scope.$on('$destroy', function () {
+            $window.removeEventListener('keydown', handleBrowserFindShortcut);
         });
 
 
