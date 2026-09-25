@@ -528,6 +528,15 @@
                 catch (ignorePayload) { return null; }
                 if (!payload || payload.completed === true) { return null; }
 
+                function isPartSpecificIeltsDraft() {
+                    if (payload.isPartAssignment === true) { return true; }
+                    if (payload.isPartAssignment === false) { return false; }
+                    var key = String(item.draftKey || '');
+                    if (/:(?:part|writing-task):\d+$/.test(key)) { return true; }
+                    return !!Number(payload.assignmentPart)
+                        && (!!payload.assignmentTaskId || /:task:\d+$/.test(key));
+                }
+
                 var kind = item.draftType;
                 var draft = {
                     kind: kind,
@@ -542,11 +551,15 @@
                 };
 
                 if (kind === 'IELTS') {
+                    var isPartAssignment = isPartSpecificIeltsDraft();
                     draft.testMode = payload.testMode;
                     draft.isListening = payload.isListening === true || payload.testMode === 'LISTENING' || /listening/i.test(draft.title);
                     draft.testId = payload.testId;
                     draft.sessionMode = payload.sessionMode || (draft.assignmentTaskId ? 'STUDY' : 'SERIOUS');
-                    draft.assignmentPart = draft.assignmentPart || payload.passageNumber || null;
+                    draft.isPartAssignment = isPartAssignment;
+                    draft.assignmentPart = isPartAssignment
+                        ? (Number(payload.assignmentPart || payload.passageNumber) || null)
+                        : null;
                     draft.typeLabel = payload.testMode === 'COMPREHENSIVE' ? 'Bài tập tổng hợp'
                         : (payload.testMode === 'WRITING' ? 'IELTS Writing' : (draft.isListening ? 'IELTS Listening' : 'IELTS Reading'));
                     draft.progressLabel = 'Đã trả lời';

@@ -1385,7 +1385,7 @@
 
         var readingDraftBaseKey = 'ieltsReadingInProgress:' + (vm.currentUser.id || 'anonymous');
         var readingDraftTaskSuffix = vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId
-            : (vm.isWritingRoute && vm.assignedPart ? ':writing-task:' + vm.assignedPart : '');
+            : (vm.assignedPart ? (vm.isWritingRoute ? ':writing-task:' : ':part:') + vm.assignedPart : '');
         var legacyReadingDraftStorageKey = readingDraftBaseKey + readingDraftTaskSuffix;
         var legacyModeDraftStorageKey = readingDraftBaseKey
             + (vm.isComprehensiveRoute ? ':comprehensive' : (vm.isWritingRoute ? ':writing' : (vm.isListeningRoute ? ':listening' : ':reading'))) + readingDraftTaskSuffix;
@@ -1568,6 +1568,24 @@
             return states;
         }
 
+        function getReadingDraftPartNumbers() {
+            var partNumbers = [];
+            angular.forEach(getReadingQuestionEntries(), function (entry) {
+                var partNumber = vm.isComprehensiveRoute ? 1
+                    : (vm.isWritingRoute ? (Number(entry.packageType) === 17 ? 2 : 1)
+                        : (vm.isListeningRoute ? listeningPartNumberForOrdinal(entry.question.ordinalNumber) : entry.passageNumber));
+                partNumber = Number(partNumber);
+                if (partNumber > 0 && partNumbers.indexOf(partNumber) < 0) {
+                    partNumbers.push(partNumber);
+                }
+            });
+            partNumbers.sort(function (a, b) { return a - b; });
+            if (!partNumbers.length) {
+                partNumbers.push(Number(vm.assignedPart || vm.passageNumber) || 1);
+            }
+            return partNumbers;
+        }
+
         function saveReadingDraft() {
             var testId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
             if (vm.isPreviewMode || readingDraftSubmitted || !vm.currentUser.id || !testId || vm.isStartTest !== true || vm.passageNumber == 4) {
@@ -1584,8 +1602,9 @@
                 });
                 var activeDraftKey = readingDraftStorageKey(testId, vm.testSessionMode);
                 var previousDraft = readStoredDraft(activeDraftKey) || {};
+                var partNumbers = getReadingDraftPartNumbers();
                 var readingDraft = {
-                    version: 4,
+                    version: 5,
                     userId: vm.currentUser.id,
                     testId: testId,
                     title: vm.ieltsReadingActualTest.title || 'IELTS Reading Test',
@@ -1593,7 +1612,10 @@
                     testMode: vm.isComprehensiveRoute ? 'COMPREHENSIVE' : (vm.isWritingRoute ? 'WRITING' : (vm.isListeningRoute ? 'LISTENING' : 'READING')),
                     sessionMode: vm.testSessionMode,
                     assignmentTaskId: vm.assignmentTaskId || null,
-                    assignmentPart: vm.assignedPart || null,
+                    isPartAssignment: vm.isPartAssignment === true,
+                    assignmentPart: vm.isPartAssignment ? (vm.assignedPart || null) : null,
+                    partNumbers: partNumbers,
+                    partCount: partNumbers.length,
                     savedAt: new Date().toISOString(),
                     passageNumber: vm.passageNumber || 1,
                     currentOrdinalNumber: Number(vm.tempOrdinalNumber) || null,

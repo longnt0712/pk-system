@@ -256,6 +256,17 @@
                 vm.resumeDrafts.sort(function (a, b) { return Number(b.savedAt) - Number(a.savedAt); });
             }
 
+            function ieltsDraftAssignmentPart(key, draft) {
+                if (!draft || draft.isPartAssignment === false) { return null; }
+                var draftKey = String(key || '');
+                var storedPart = Number(draft.assignmentPart) || null;
+                var isPartAssignment = draft.isPartAssignment === true
+                    || /:(?:part|writing-task):\d+$/.test(draftKey)
+                    || (!!storedPart && (!!draft.assignmentTaskId || /:task:\d+$/.test(draftKey)));
+                if (!isPartAssignment) { return null; }
+                return storedPart || Number(draft.passageNumber) || null;
+            }
+
             function addIeltsDraft(key, draft) {
                 if (!draft || !draft.testId || String(draft.userId) !== userId || draft.completed === true) { return; }
                 var savedAt = new Date(draft.savedAt || 0).getTime();
@@ -278,7 +289,7 @@
                     progressValue: (Number(draft.answeredCount) || 0) + '/' + (Number(draft.totalQuestions) || 40) + ' câu',
                     testId: draft.testId,
                     assignmentTaskId: draft.assignmentTaskId || (taskMatch ? Number(taskMatch[1]) : null),
-                    assignmentPart: draft.assignmentPart || (taskMatch ? draft.passageNumber : null)
+                    assignmentPart: ieltsDraftAssignmentPart(key, draft)
                 });
             }
 
