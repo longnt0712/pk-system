@@ -932,6 +932,7 @@
 			vm.scheduleDay.classNotes = vm.scheduleDay.classNotes || '';
 			vm.scheduleDay.homeworkNotes = vm.scheduleDay.homeworkNotes || '';
 			vm.scheduleDay.makeupMinutes = vm.scheduleDay.makeupMinutes == null ? 0 : Number(vm.scheduleDay.makeupMinutes);
+            vm.scheduleDaySaveState = 'idle';
             vm.scheduleMove = null; vm.scheduleSessionError = false; vm.scheduleSessionLoading = false;
             scheduleDaySnapshot = JSON.stringify(scheduleDayPayload());
 			vm.taskEditor = null;
@@ -979,6 +980,7 @@
                 vm.scheduleDay = angular.copy(info);
                 vm.scheduleDay.classNotes = vm.scheduleDay.classNotes || ''; vm.scheduleDay.homeworkNotes = vm.scheduleDay.homeworkNotes || '';
 				vm.scheduleDay.makeupMinutes = vm.scheduleDay.makeupMinutes == null ? 0 : Number(vm.scheduleDay.makeupMinutes);
+                vm.scheduleDaySaveState = 'idle';
                 scheduleDaySnapshot = JSON.stringify(scheduleDayPayload());
                 if (vm.scheduleDay.movedToDate) { vm.previousHomeworkDay = null; vm.previousHomeworkTasks = []; }
             }, function () {
@@ -1005,7 +1007,7 @@
             if (!vm.scheduleMove || vm.scheduleMoving || vm.scheduleDaySaving || vm.homeworkCellSaving
                 || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.homeworkHasDrafts() || vm.taskEditor) { return; }
             if (JSON.stringify(scheduleDayPayload()) !== scheduleDaySnapshot) {
-                toastr.warning('Có thay đổi kế hoạch chưa lưu. Hãy lưu kế hoạch rồi mở lại ngày này để dời buổi.'); return;
+				toastr.warning('Có thay đổi đang chờ tự động lưu. Hãy rời ô đang sửa và chờ báo “Đã tự động lưu” rồi dời buổi.'); return;
             }
             var move = vm.scheduleMove, date = move.dateValue && moment(move.dateValue).isValid() ? moment(move.dateValue).format('YYYY-MM-DD') : null;
             var start = formatScheduleTime(move.startTimeValue), end = formatScheduleTime(move.endTimeValue);
@@ -1702,25 +1704,43 @@
 			});
 		};
 
-		vm.saveScheduleDay = function () {
-            if (vm.homeworkCellSaving || vm.homeworkHasDrafts()) { toastr.warning('Hãy lưu hoặc bỏ sửa tiến độ buổi trước trước khi lưu kế hoạch.'); return; }
+		vm.markScheduleDayDirty = function () {
+            if (!vm.scheduleDaySaving) { vm.scheduleDaySaveState = 'dirty'; }
+        };
+
+        vm.autoSaveScheduleDay = function () {
+            vm.markScheduleDayDirty();
+            $scope.$evalAsync(function () {
+                vm.saveScheduleDay({silent: true});
+            });
+        };
+
+		vm.saveScheduleDay = function (options) {
+            options = options || {};
+            if (vm.homeworkCellSaving) { vm.scheduleDaySaveState = 'dirty'; return; }
 			if (vm.scheduleDaySaving || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError
                 || !vm.scheduleDay || vm.scheduleDay.movedToDate) { return; }
-			if (vm.taskEditor) { toastr.warning('Hãy bấm Thêm task/Cập nhật task hoặc Hủy sửa trước khi lưu kế hoạch.'); return; }
+			if (vm.taskEditor) { vm.scheduleDaySaveState = 'dirty'; return; }
 			var makeupMinutes = vm.scheduleDay.makeupMinutes == null || vm.scheduleDay.makeupMinutes === ''
 				? 0 : Number(vm.scheduleDay.makeupMinutes);
 			if (!isFinite(makeupMinutes) || makeupMinutes < 0 || makeupMinutes > 1440 || Math.floor(makeupMinutes) !== makeupMinutes) {
-				toastr.warning('Số phút học bù chung phải là số nguyên từ 0 đến 1440.'); return;
+				vm.scheduleDaySaveState = 'error';
+                toastr.warning('Số phút học bù chung phải là số nguyên từ 0 đến 1440.'); return;
 			}
 			vm.scheduleDay.makeupMinutes = makeupMinutes;
 			vm.scheduleDaySaving = true;
-			service.saveScheduleDay(vm.scheduleClass.id, scheduleDayPayload()).then(function (saved) {
+			vm.scheduleDaySaveState = 'saving';
+			return service.saveScheduleDay(vm.scheduleClass.id, scheduleDayPayload()).then(function (saved) {
 				vm.scheduleDaySaving = false;
 				if (!saved) {
+					vm.scheduleDaySaveState = 'error';
+					if (angular.isFunction(options.onError)) { options.onError(); }
 					toastr.error('Không lưu được kế hoạch ngày học.', 'Lỗi');
 					return;
 				}
 				if (!angular.isArray(saved.tasks) || saved.version == null) {
+					vm.scheduleDaySaveState = 'error';
+					if (angular.isFunction(options.onError)) { options.onError(); }
 					toastr.error('Backend chưa hỗ trợ Tasks. Chưa xác nhận lưu tasks; hãy cập nhật backend trước.', 'Cần cập nhật');
 					return;
 				}
@@ -1733,11 +1753,18 @@
 					}
 				}
 				if (!replaced) { vm.scheduleEntries.push(saved); }
+				vm.scheduleDay = angular.copy(saved);
+				vm.scheduleDay.classNotes = vm.scheduleDay.classNotes || '';
+				vm.scheduleDay.homeworkNotes = vm.scheduleDay.homeworkNotes || '';
+				vm.scheduleDay.makeupMinutes = vm.scheduleDay.makeupMinutes == null ? 0 : Number(vm.scheduleDay.makeupMinutes);
+				scheduleDaySnapshot = JSON.stringify(scheduleDayPayload());
+				vm.scheduleDaySaveState = 'saved';
 				vm.buildScheduleCalendar();
-				if (vm.scheduleDayModal) { vm.scheduleDayModal.close(); }
-				toastr.success('Đã lưu Class và Homework cho ngày ' + vm.scheduleDayLabel() + '.', 'Thông báo');
+				if (options.successMessage) { toastr.success(options.successMessage, 'Thông báo'); }
 			}, function (error) {
 				vm.scheduleDaySaving = false;
+				vm.scheduleDaySaveState = 'error';
+				if (angular.isFunction(options.onError)) { options.onError(); }
 				toastr.error(error && error.data && error.data.message ? error.data.message : 'Không lưu được kế hoạch ngày học.', 'Lỗi');
 			});
 		};
@@ -1876,7 +1903,7 @@
 		};
 
 		vm.openScheduleTask = function (section, task) {
-			if (vm.scheduleDaySaving || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor) { return; }
+			if (vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor) { return; }
 			if (!task && vm.scheduleDay.tasks.length >= 100) { toastr.warning('Tối đa 100 tasks cho một ngày.'); return; }
 			vm.taskEditorIndex = task ? vm.scheduleDay.tasks.indexOf(task) : -1;
 			vm.taskEditor = angular.copy(task || {section: section, title: '', notes: '', status: 'TODO', topicId: null,
@@ -2030,7 +2057,7 @@
 		}
 
 		vm.commitScheduleTask = function () {
-			if (!vm.taskEditor || vm.scheduleDaySaving) { return; }
+			if (!vm.taskEditor || vm.scheduleDaySaving || vm.homeworkCellSaving) { return; }
 			var task = angular.copy(vm.taskEditor); task.title = (task.title || '').trim();
 			if (!task.title || task.title.length > 200) { toastr.warning('Nhập tên task từ 1 đến 200 ký tự.'); return; }
 			if ((task.topicId || vm.isIeltsTask(task)) && (!/^\d+$/.test(String(task.requiredAttempts)) || Number(task.requiredAttempts) < 1
@@ -2092,16 +2119,24 @@
 			task.studentProgress = scheduleTaskPayload(task).studentProgress;
 			delete task.showProgress; delete task.dueDateValue; delete task.categoryKey; delete task.topicSourceId;
 			delete task._confirmDelete; delete task.legacyDateOnly;
-			if (vm.taskEditorIndex < 0) { vm.scheduleDay.tasks.push(task); }
+			var addingTask = vm.taskEditorIndex < 0;
+			if (addingTask) { vm.scheduleDay.tasks.push(task); }
 			else { vm.scheduleDay.tasks[vm.taskEditorIndex] = task; }
 			vm.cancelScheduleTask();
+			vm.saveScheduleDay({successMessage: addingTask ? 'Đã thêm và tự động lưu task.' : 'Đã cập nhật và tự động lưu task.'});
 		};
 
 		vm.removeScheduleTask = function (task) {
-			if (vm.scheduleDaySaving || vm.taskEditor) { return; }
+			if (vm.scheduleDaySaving || vm.homeworkCellSaving || vm.taskEditor) { return; }
 			if (!task._confirmDelete) { task._confirmDelete = true; return; }
 			var index = vm.scheduleDay.tasks.indexOf(task);
-			if (index >= 0) { vm.scheduleDay.tasks.splice(index, 1); }
+			if (index >= 0) {
+				var removedTask = vm.scheduleDay.tasks.splice(index, 1)[0];
+				vm.saveScheduleDay({
+					successMessage: 'Đã xóa và tự động lưu task.',
+					onError: function () { vm.scheduleDay.tasks.splice(Math.min(index, vm.scheduleDay.tasks.length), 0, removedTask); }
+				});
+			}
 		};
 
 		vm.taskStatusLabel = function (task) {

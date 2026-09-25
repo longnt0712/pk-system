@@ -947,8 +947,9 @@
                 <span data-ng-if="vm.scheduleDay.sessionStartTime">Giờ học: <strong>{{vm.scheduleDay.sessionStartTime}}–{{vm.scheduleDay.sessionEndTime}}</strong></span>
                 <span data-ng-if="vm.scheduleDay.defaultHomeworkDeadline">Hạn Homework mặc định: <strong>{{vm.scheduleDay.defaultHomeworkDeadline | date:'dd/MM/yyyy HH:mm'}}</strong></span>
                 <label class="class-session-makeup">Học bù chung
-                    <input type="number" class="form-control input-sm" min="0" max="1440" step="1" inputmode="numeric"
-                           data-ng-model="vm.scheduleDay.makeupMinutes" data-ng-disabled="vm.scheduleDaySaving || vm.scheduleMoving"
+                     <input type="number" class="form-control input-sm" min="0" max="1440" step="1" inputmode="numeric"
+                           data-ng-model="vm.scheduleDay.makeupMinutes" data-ng-change="vm.markScheduleDayDirty()"
+                           data-ng-blur="vm.autoSaveScheduleDay()" data-ng-disabled="vm.scheduleDaySaving || vm.scheduleMoving"
                            aria-label="Số phút học bù chung của buổi học" /> phút
                 </label>
                 <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.openScheduleMove()"
@@ -963,7 +964,7 @@
                     <div class="form-group"><label>Lý do / Ghi chú</label><input type="text" maxlength="1000" class="form-control" data-ng-model="vm.scheduleMove.reason" /></div>
                 </div>
                 <label><input type="checkbox" data-ng-model="vm.scheduleMove.shiftManualDeadlines" /> Dịch các hạn nhập tay của buổi này cùng số ngày (giữ giờ/phút)</label>
-                <p class="class-task-help">Tasks, topic, ghi chú và tiến độ nhập tay được giữ nguyên. Hạn tự động theo buổi kế tiếp thực tế; kết quả tự đối chiếu theo hạn mới. Ngày đích phải trống. Hãy lưu mọi thay đổi kế hoạch trước khi dời.</p>
+                <p class="class-task-help">Tasks, topic, ghi chú và tiến độ nhập tay được giữ nguyên. Hạn tự động theo buổi kế tiếp thực tế; kết quả tự đối chiếu theo hạn mới. Ngày đích phải trống. Hãy chờ hệ thống tự động lưu mọi thay đổi trước khi dời.</p>
                 <div class="class-task-buttons">
                     <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.scheduleMove = null">Hủy dời</button>
                     <button type="button" class="btn btn-primary btn-sm" data-ng-click="vm.moveScheduleDay()" data-ng-disabled="vm.scheduleDaySaving || vm.homeworkCellSaving || vm.homeworkHasDrafts()"><i class="fa fa-calendar"></i> Xác nhận dời</button>
@@ -975,13 +976,14 @@
                         <h4><i class="fa fa-book"></i> Class</h4>
                         <div class="class-day-plan-actions">
                         <button type="button" class="btn btn-primary" data-ng-click="vm.openScheduleTask('CLASS')"
-                                data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor"><i class="fa fa-plus"></i> Tasks</button>
+                                data-ng-disabled="vm.scheduleDaySaving || vm.homeworkCellSaving || vm.taskEditor"><i class="fa fa-plus"></i> Tasks</button>
                         </div>
                     </div>
                     <ui-select multiple theme="bootstrap" class="class-day-topic-select"
                                data-ng-if="vm.topicSelectionOpen.classTopicIds"
                                data-ng-disabled="vm.scheduleDaySaving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.scheduleMoving"
-                               data-ng-model="vm.scheduleDay.classTopicIds" close-on-select="false">
+                               data-ng-model="vm.scheduleDay.classTopicIds" close-on-select="false"
+                               on-select="vm.autoSaveScheduleDay()" on-remove="vm.autoSaveScheduleDay()">
                         <ui-select-match placeholder="Gõ tên topic để chọn...">{{$item.name}}</ui-select-match>
                         <ui-select-choices repeat="topic.id as topic in vm.scheduleTopics | propsFilter:{name:$select.search}">
                             <div data-ng-bind-html="topic.name | highlight:$select.search"></div>
@@ -1007,13 +1009,14 @@
                             {{vm.exportingHomeworkTasksImage ? 'Đang tạo ảnh...' : 'Xuất ảnh Homework'}}
                         </button>
                         <button type="button" class="btn btn-warning" data-ng-click="vm.openScheduleTask('HOMEWORK')"
-                                data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor"><i class="fa fa-plus"></i> Tasks</button>
+                                data-ng-disabled="vm.scheduleDaySaving || vm.homeworkCellSaving || vm.taskEditor"><i class="fa fa-plus"></i> Tasks</button>
                         </div>
                     </div>
                     <ui-select multiple theme="bootstrap" class="class-day-topic-select"
                                data-ng-if="vm.topicSelectionOpen.homeworkTopicIds"
                                data-ng-disabled="vm.scheduleDaySaving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.scheduleMoving"
-                               data-ng-model="vm.scheduleDay.homeworkTopicIds" close-on-select="false">
+                               data-ng-model="vm.scheduleDay.homeworkTopicIds" close-on-select="false"
+                               on-select="vm.autoSaveScheduleDay()" on-remove="vm.autoSaveScheduleDay()">
                         <ui-select-match placeholder="Gõ tên topic để chọn...">{{$item.name}}</ui-select-match>
                         <ui-select-choices repeat="topic.id as topic in vm.scheduleTopics | propsFilter:{name:$select.search}">
                             <div data-ng-bind-html="topic.name | highlight:$select.search"></div>
@@ -1171,12 +1174,18 @@
             </fieldset>
         </div>
         <div class="modal-footer class-day-plan-footer" role="group" aria-label="Thao tác kế hoạch">
-            <small style="flex:1 1 auto;text-align:left">Tiến độ trong bảng lưu riêng ngay khi sửa. Hủy chỉ hủy kế hoạch ngày đang mở.</small>
-            <button type="button" class="btn btn-default" data-ng-click="$dismiss()" data-ng-disabled="vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleMoving">Hủy</button>
-            <button type="button" class="btn btn-primary" data-ng-if="!vm.scheduleDay.movedToDate" data-ng-click="vm.saveScheduleDay()" data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor || vm.homeworkCellSaving || vm.homeworkHasDrafts() || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError">
-                <i class="fa" data-ng-class="vm.scheduleDaySaving ? 'fa-spinner fa-spin' : 'fa-save'"></i>
-                {{vm.scheduleDaySaving ? 'Đang lưu...' : 'Lưu kế hoạch'}}
-            </button>
+            <small style="flex:1 1 auto;text-align:left" data-ng-class="{'text-danger': vm.scheduleDaySaveState === 'error'}">
+                <span data-ng-if="vm.scheduleDaySaveState === 'saving'"><i class="fa fa-spinner fa-spin"></i> Đang tự động lưu...</span>
+                <span data-ng-if="vm.scheduleDaySaveState === 'saved'"><i class="fa fa-check-circle"></i> Đã tự động lưu.</span>
+                <span data-ng-if="vm.scheduleDaySaveState === 'dirty'"><i class="fa fa-pencil"></i> Có thay đổi chưa lưu; rời ô để lưu.</span>
+                <span data-ng-if="vm.scheduleDaySaveState === 'error'"><i class="fa fa-exclamation-circle"></i> Chưa lưu được thay đổi.</span>
+                <span data-ng-if="!vm.scheduleDaySaveState || vm.scheduleDaySaveState === 'idle'">Các thay đổi trong kế hoạch sẽ tự động lưu.</span>
+            </small>
+            <button type="button" class="btn btn-default" data-ng-if="vm.scheduleDaySaveState === 'error'"
+                    data-ng-click="vm.saveScheduleDay({successMessage: 'Đã lưu lại kế hoạch.'})"
+                    data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor || vm.homeworkCellSaving || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError">Thử lưu lại</button>
+            <button type="button" class="btn btn-primary" data-ng-click="$dismiss()"
+                    data-ng-disabled="vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleMoving">Đóng</button>
         </div>
     </div>
 </script>
@@ -1229,6 +1238,7 @@
             <label>Ghi chú {{taskSection === 'CLASS' ? 'trên lớp' : 'bài tập về nhà'}}</label>
             <textarea class="form-control class-task-note" rows="2" maxlength="4000"
                       data-ng-model="vm.scheduleDay[taskSection === 'CLASS' ? 'classNotes' : 'homeworkNotes']"
+                      data-ng-change="vm.markScheduleDayDirty()" data-ng-blur="vm.autoSaveScheduleDay()"
                       data-ng-disabled="vm.scheduleDaySaving" placeholder="Dặn dò, tài liệu cần chuẩn bị, lưu ý cho học sinh..."></textarea>
         </div>
         <strong>Tasks ({{vm.tasksForSection(taskSection).length}})</strong>
@@ -1251,9 +1261,9 @@
             <div class="class-task-notes" data-ng-if="task.notes">{{task.notes}}</div>
             <div class="class-task-buttons">
                 <button type="button" class="btn btn-default btn-xs" data-ng-click="vm.openScheduleTask(taskSection, task)"
-                        data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor"><i class="fa fa-pencil"></i> Sửa task</button>
+                        data-ng-disabled="vm.scheduleDaySaving || vm.homeworkCellSaving || vm.taskEditor"><i class="fa fa-pencil"></i> Sửa task</button>
                 <button type="button" class="btn btn-danger btn-xs" data-ng-click="vm.removeScheduleTask(task)"
-                        data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor">{{task._confirmDelete ? 'Xác nhận xóa' : 'Xóa'}}</button>
+                        data-ng-disabled="vm.scheduleDaySaving || vm.homeworkCellSaving || vm.taskEditor">{{task._confirmDelete ? 'Xác nhận xóa' : 'Xóa'}}</button>
                 <button type="button" class="btn btn-default btn-xs" data-ng-if="task._confirmDelete" data-ng-click="task._confirmDelete = false">Giữ lại</button>
             </div>
         </article>
@@ -1418,10 +1428,10 @@
                 </div>
             </div>
             <p class="class-task-help" data-ng-if="vm.taskEditor.section === 'HOMEWORK'">Trạng thái Homework được tổng hợp từ tiến độ từng học sinh, không chọn trạng thái chung ở đây.</p>
-            <p class="class-task-help">Nội dung task được lưu khi bấm “Lưu kế hoạch”. Tiến độ Homework buổi trước sửa trực tiếp trong bảng học sinh bên dưới.</p>
+            <p class="class-task-help">Nội dung task được tự động lưu ngay khi thêm hoặc cập nhật. Tiến độ Homework buổi trước sửa trực tiếp trong bảng học sinh bên dưới.</p>
             <div class="class-task-buttons">
                 <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.cancelScheduleTask()">Hủy sửa</button>
-                <button type="submit" class="btn btn-primary btn-sm" data-ng-disabled="taskForm.$invalid || vm.scheduleDaySaving || vm.scheduleListeningItemsLoading">{{vm.taskEditorIndex < 0 ? 'Thêm task' : 'Cập nhật task'}}</button>
+                <button type="submit" class="btn btn-primary btn-sm" data-ng-disabled="taskForm.$invalid || vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleListeningItemsLoading">{{vm.taskEditorIndex < 0 ? 'Thêm task' : 'Cập nhật task'}}</button>
             </div>
         </form>
     </div>
