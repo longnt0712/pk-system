@@ -534,14 +534,12 @@
                                                       touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
                                                       ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
                                                     <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Drag an answer here</span>
-                                                    <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length">
+                                                    <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
+                                                          double-tap="vm.clearSentenceEndingSlot(endingPackage,$index)"
+                                                          title="Nhấp hoặc chạm hai lần để trả đáp án về danh sách">
                                                         <strong>{{endingPackage.sentenceEndingSlots[$index].items[0].label}}</strong>
                                                         {{endingPackage.sentenceEndingSlots[$index].items[0].clientAnswer}}
                                                     </span>
-                                                    <button type="button"
-                                                            ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
-                                                            ng-click="$event.stopPropagation(); vm.clearSentenceEndingSlot(endingPackage,$index); vm.activateSentenceEndingSlot(endingPackage,$index)"
-                                                            aria-label="Remove answer">&times;</button>
                                                 </span>
                                             </div>
                                         </div>
@@ -552,8 +550,7 @@
                                                   ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
                                                   dnd-draggable="ending"
                                                   touch-dnd-source="ending"
-                                                  dnd-effect-allowed="copy"
-                                                  ng-click="vm.chooseSentenceEnding(endingPackage, ending)">
+                                                  dnd-effect-allowed="copy">
                                                 <b>{{ending.label}}</b>
                                                 <span>{{ending.clientAnswer}}</span>
                                             </span>
@@ -957,13 +954,12 @@
                                                       touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
                                                       ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
                                                     <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Drag an answer here</span>
-                                                    <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length">
+                                                    <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
+                                                          double-tap="vm.clearSentenceEndingSlot(endingPackage,$index)"
+                                                          title="Nhấp hoặc chạm hai lần để trả đáp án về danh sách">
                                                         <strong>{{endingPackage.sentenceEndingSlots[$index].items[0].label}}</strong>
                                                         {{endingPackage.sentenceEndingSlots[$index].items[0].clientAnswer}}
                                                     </span>
-                                                    <button type="button" ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
-                                                            ng-click="$event.stopPropagation(); vm.clearSentenceEndingSlot(endingPackage,$index); vm.activateSentenceEndingSlot(endingPackage,$index)"
-                                                            aria-label="Remove answer">&times;</button>
                                                 </span>
                                             </div>
                                         </div>
@@ -973,8 +969,7 @@
                                                   ng-repeat="ending in endingPackage.sentenceEndingBank track by ending.answerIndex"
                                                   ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
                                                   dnd-draggable="ending" dnd-effect-allowed="copy"
-                                                  touch-dnd-source="ending"
-                                                  ng-click="vm.chooseSentenceEnding(endingPackage, ending)">
+                                                  touch-dnd-source="ending">
                                                 <b>{{ending.label}}</b><span>{{ending.clientAnswer}}</span>
                                             </span>
                                         </div>
@@ -1359,13 +1354,12 @@
                                                       touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
                                                       ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
                                                     <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Drag an answer here</span>
-                                                    <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length">
+                                                    <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
+                                                          double-tap="vm.clearSentenceEndingSlot(endingPackage,$index)"
+                                                          title="Nhấp hoặc chạm hai lần để trả đáp án về danh sách">
                                                         <strong>{{endingPackage.sentenceEndingSlots[$index].items[0].label}}</strong>
                                                         {{endingPackage.sentenceEndingSlots[$index].items[0].clientAnswer}}
                                                     </span>
-                                                    <button type="button" ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
-                                                            ng-click="$event.stopPropagation(); vm.clearSentenceEndingSlot(endingPackage,$index); vm.activateSentenceEndingSlot(endingPackage,$index)"
-                                                            aria-label="Remove answer">&times;</button>
                                                 </span>
                                             </div>
                                         </div>
@@ -1375,8 +1369,7 @@
                                                   ng-repeat="ending in endingPackage.sentenceEndingBank track by ending.answerIndex"
                                                   ng-if="!vm.isSentenceEndingUsed(endingPackage, ending)"
                                                   dnd-draggable="ending" dnd-effect-allowed="copy"
-                                                  touch-dnd-source="ending"
-                                                  ng-click="vm.chooseSentenceEnding(endingPackage, ending)">
+                                                  touch-dnd-source="ending">
                                                 <b>{{ending.label}}</b><span>{{ending.clientAnswer}}</span>
                                             </span>
                                         </div>
@@ -1947,7 +1940,7 @@
         min-height: 46px;
         align-items: center;
         gap: 9px;
-        padding: 8px 42px 8px 13px;
+        padding: 8px 13px;
         border: 2px dashed #687386;
         border-radius: 6px;
         background: rgba(255, 255, 255, .92);
@@ -1960,21 +1953,6 @@
         border-color: #1683d8;
         outline: 2px solid rgba(22, 131, 216, .24);
         background: rgba(226, 243, 255, .96);
-    }
-
-    .sentence-ending-slot > button {
-        position: absolute;
-        top: 7px;
-        right: 8px;
-        width: 28px;
-        height: 28px;
-        padding: 0;
-        border: 0;
-        border-radius: 50%;
-        background: #e8edf5;
-        color: #26344d;
-        font-size: 20px;
-        line-height: 28px;
     }
 
     .sentence-ending-bank {

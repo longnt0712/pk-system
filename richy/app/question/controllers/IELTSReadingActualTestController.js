@@ -3738,14 +3738,6 @@
             return true;
         };
 
-        vm.chooseSentenceEnding = function (questionPackage, ending) {
-            if (!questionPackage || questionPackage.activeSentenceEndingSlot === null ||
-                    questionPackage.activeSentenceEndingSlot === undefined) {
-                return;
-            }
-            vm.dropSentenceEnding(questionPackage, questionPackage.activeSentenceEndingSlot, ending);
-        };
-
         function actualHeadingLabel(question, fallbackIndex) {
             var text = String((question && question.question) || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
             var match = text.match(/(?:section|paragraph|part)\s*([A-Z])/i);
