@@ -330,6 +330,51 @@
         };
     });
 
+    angular.module('Hrm.Question').directive('doubleTap', ['$timeout', function ($timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var lastTapAt = 0;
+                var resetTimer = null;
+
+                function resetTap() {
+                    lastTapAt = 0;
+                    resetTimer = null;
+                }
+
+                function onClick(event) {
+                    var now = Date.now();
+                    if (lastTapAt && now - lastTapAt <= 420) {
+                        if (resetTimer) {
+                            $timeout.cancel(resetTimer);
+                        }
+                        resetTap();
+                        event.preventDefault();
+                        event.stopPropagation();
+                        scope.$evalAsync(function () {
+                            scope.$eval(attrs.doubleTap, {$event: event});
+                        });
+                        return;
+                    }
+
+                    lastTapAt = now;
+                    if (resetTimer) {
+                        $timeout.cancel(resetTimer);
+                    }
+                    resetTimer = $timeout(resetTap, 420, false);
+                }
+
+                element[0].addEventListener('click', onClick, false);
+                scope.$on('$destroy', function () {
+                    if (resetTimer) {
+                        $timeout.cancel(resetTimer);
+                    }
+                    element[0].removeEventListener('click', onClick, false);
+                });
+            }
+        };
+    }]);
+
     /* AngularJS does not provide an ng-touchstart/ng-pointerdown directive. Keep
        the reading splitter on one native start event so touch does not also fire
        a second synthetic mouse drag on mobile browsers. */
@@ -3392,21 +3437,18 @@
                     'dnd-drop="vm.dropCompleteListWord(completeListPackage,' + questionIndex + ',item)" ' +
                     'touch-dnd-drop="vm.dropCompleteListWord(completeListPackage,' + questionIndex + ',item)" ' +
                     'ng-click="vm.handleCompleteListSlotTap(completeListPackage,' + questionIndex + ',$event)" ' +
-                    'ng-class="{\'is-tap-target\': completeListPackage.completeListSelectedWord}">' +
+                    'ng-class="{\'is-tap-target\': completeListPackage.completeListSelectedWord, ' +
+                    '\'is-filled\': completeListPackage.completeListSlots[' + questionIndex + '].items.length}">' +
                     '<span ng-if="!completeListPackage.completeListSlots[' + questionIndex + '].items.length" class="complete-list-drop-number">' + ordinalNumber + '</span>' +
                     '<span ng-if="completeListPackage.completeListSlots[' + questionIndex + '].items.length" ' +
                     'class="complete-list-slot-answer" ' +
                     'dnd-draggable="completeListPackage.completeListSlots[' + questionIndex + '].items[0]" ' +
                     'touch-dnd-source="completeListPackage.completeListSlots[' + questionIndex + '].items[0]" ' +
+                    'double-tap="vm.clearCompleteListSlot(completeListPackage,' + questionIndex + ')" ' +
                     'dnd-effect-allowed="copy" ' +
-                    'title="Kéo sang ô khác hoặc kéo về danh sách bên dưới">' +
+                    'title="Nhấp hoặc chạm hai lần để bỏ đáp án">' +
                     '<span ng-bind="completeListPackage.completeListSlots[' + questionIndex + '].items[0].clientAnswer"></span>' +
                     '</span>' +
-                    '<button type="button" class="complete-list-slot-remove" draggable="false" ' +
-                    'ng-if="completeListPackage.completeListSlots[' + questionIndex + '].items.length" ' +
-                    'ng-mousedown="$event.stopPropagation()" ' +
-                    'ng-click="$event.stopPropagation(); vm.clearCompleteListSlot(completeListPackage,' + questionIndex + ')" ' +
-                    'aria-label="Bỏ đáp án">&times;</button>' +
                     '</span>';
                 content = content.replace(/\}\{SPACE\}\{/i, dropBox);
             });
@@ -3473,7 +3515,6 @@
                 questionPackage.completeListSelectedWord = null;
                 return;
             }
-            vm.clearCompleteListSlot(questionPackage, slotIndex);
         };
 
         function setCompleteListAnswer(question, questionAnswer, selected) {

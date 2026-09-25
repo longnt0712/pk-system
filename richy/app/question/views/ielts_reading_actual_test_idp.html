@@ -493,7 +493,6 @@
                                              dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
                                              touch-dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
                                              aria-label="Answer choices to drag into the blanks">
-                                            <small class="complete-list-word-bank__hint">Chạm đáp án rồi chạm vào ô trống, hoặc kéo đáp án vào ô. Chạm đáp án trong ô để bỏ.</small>
                                             <span class="complete-list-word"
                                                   ng-repeat="word in item.completeListWordBank track by $index"
                                                   ng-if="!vm.isCompleteListWordUsed(item, word)"
@@ -546,7 +545,6 @@
                                                 <b>{{ending.label}}</b>
                                                 <span>{{ending.clientAnswer}}</span>
                                             </span>
-                                            <small>Drag an ending into the box after each sentence, or select a box and tap an ending.</small>
                                         </div>
                                     </div>
 
@@ -920,7 +918,6 @@
                                              dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
                                              touch-dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
                                              aria-label="Answer choices to drag into the blanks">
-                                            <small class="complete-list-word-bank__hint">Chạm đáp án rồi chạm vào ô trống, hoặc kéo đáp án vào ô. Chạm đáp án trong ô để bỏ.</small>
                                             <span class="complete-list-word"
                                                   ng-repeat="word in item.completeListWordBank track by $index"
                                                   ng-if="!vm.isCompleteListWordUsed(item, word)"
@@ -968,7 +965,6 @@
                                                   ng-click="vm.chooseSentenceEnding(endingPackage, ending)">
                                                 <b>{{ending.label}}</b><span>{{ending.clientAnswer}}</span>
                                             </span>
-                                            <small>Drag an ending into the box after each sentence, or select a box and tap an ending.</small>
                                         </div>
                                     </div>
 
@@ -1324,7 +1320,6 @@
                                              dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
                                              touch-dnd-drop="vm.returnCompleteListWord(completeListPackage,item)"
                                              aria-label="Answer choices to drag into the blanks">
-                                            <small class="complete-list-word-bank__hint">Chạm đáp án rồi chạm vào ô trống, hoặc kéo đáp án vào ô. Chạm đáp án trong ô để bỏ.</small>
                                             <span class="complete-list-word"
                                                   ng-repeat="word in item.completeListWordBank track by $index"
                                                   ng-if="!vm.isCompleteListWordUsed(item, word)"
@@ -1372,7 +1367,6 @@
                                                   ng-click="vm.chooseSentenceEnding(endingPackage, ending)">
                                                 <b>{{ending.label}}</b><span>{{ending.clientAnswer}}</span>
                                             </span>
-                                            <small>Drag an ending into the box after each sentence, or select a box and tap an ending.</small>
                                         </div>
                                     </div>
 
@@ -1901,21 +1895,16 @@
     }
 
     .sentence-ending-runtime.listening-two-column-dnd {
-        display: grid;
-        grid-template-columns: minmax(0, 1.12fr) minmax(280px, .88fr);
-        gap: 30px;
-        align-items: start;
+        display: block;
     }
 
     .listening-two-column-dnd .sentence-ending-bank {
-        position: sticky;
-        top: 12px;
-        margin-top: 0;
-        align-content: flex-start;
+        position: static;
+        margin-top: 22px;
     }
 
     .listening-two-column-dnd .sentence-ending-choice {
-        width: 100%;
+        width: auto;
     }
 
     .sentence-ending-questions {
@@ -1925,8 +1914,8 @@
 
     .sentence-ending-row {
         display: flex;
-        flex-wrap: wrap;
-        align-items: center;
+        flex-direction: column;
+        align-items: stretch;
         gap: 10px;
         padding: 12px 14px;
         border-bottom: 1px solid rgba(69, 82, 110, .25);
@@ -1934,13 +1923,15 @@
     }
 
     .sentence-ending-stem {
-        flex: 1 1 360px;
+        display: block;
+        width: 100%;
     }
 
     .sentence-ending-slot {
         position: relative;
-        display: inline-flex;
-        flex: 1 1 280px;
+        display: flex;
+        width: 100%;
+        box-sizing: border-box;
         min-height: 46px;
         align-items: center;
         gap: 9px;
@@ -1979,10 +1970,10 @@
         flex-wrap: wrap;
         gap: 10px;
         margin-top: 22px;
-        padding: 18px;
-        border: 1px solid currentColor;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, .5);
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
     }
 
     .sentence-ending-bank__title,
@@ -2018,23 +2009,11 @@
     }
 
     @media (max-width: 767px) {
-        .sentence-ending-runtime.listening-two-column-dnd {
-            grid-template-columns: 1fr;
-            gap: 16px;
-        }
-
-        .listening-two-column-dnd .sentence-ending-bank {
-            position: static;
-        }
-
         .sentence-ending-row {
             padding-right: 4px;
             padding-left: 4px;
         }
 
-        .sentence-ending-slot {
-            flex-basis: 100%;
-        }
     }
 
 
@@ -2373,6 +2352,15 @@
         outline-offset: 2px;
     }
 
+    .complete-list-drop-box.is-filled {
+        min-width: 0;
+        min-height: 0;
+        padding: 0 3px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+    }
+
     .complete-list-drop-box > .dndPlaceholder,
     .complete-list-word-bank > .dndPlaceholder {
         display: none !important;
@@ -2392,21 +2380,14 @@
         flex-wrap: wrap;
         gap: 10px;
         margin-top: 24px;
-        padding: 18px;
-        border: 1px solid currentColor;
-        border-radius: 6px;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
     }
 
     .complete-list-word-bank.dndDragover {
         border-color: #1683d8;
         box-shadow: 0 0 0 3px rgba(22, 131, 216, .18);
-    }
-
-    .complete-list-word-bank__hint {
-        flex: 0 0 100%;
-        color: #5f6368;
-        font-size: 12px;
-        line-height: 1.35;
     }
 
     .complete-list-slot-answer {
@@ -2419,21 +2400,6 @@
 
     .complete-list-slot-answer:active {
         cursor: grabbing;
-    }
-
-    .complete-list-slot-remove {
-        display: inline-flex;
-        width: 20px;
-        height: 20px;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        border: 0;
-        border-radius: 50%;
-        background: rgba(0, 0, 0, .08);
-        color: inherit;
-        font: 700 16px/1 Arial, sans-serif;
-        cursor: pointer;
     }
 
     .idp-question-pane.is-drag-autoscrolling {
@@ -5786,6 +5752,12 @@
     .idp-reading-page.idp-contrast-yellow-black .complete-list-word {
         border-color: currentColor !important;
         background: #181818 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .complete-list-drop-box.is-filled,
+    .idp-reading-page.idp-contrast-yellow-black .complete-list-drop-box.is-filled {
+        border: 0 !important;
+        background: transparent !important;
     }
 
     .idp-reading-page.idp-contrast-white-black .idp-radio-control,
