@@ -3675,7 +3675,6 @@
             angular.forEach(questions, function () {
                 questionPackage.sentenceEndingSlots.push({items: []});
             });
-            questionPackage.activeSentenceEndingSlot = questions.length ? 0 : null;
         }
 
         vm.isSentenceEndingUsed = function (questionPackage, ending) {
@@ -3701,13 +3700,6 @@
             slot.items = [];
         };
 
-        vm.activateSentenceEndingSlot = function (questionPackage, slotIndex) {
-            if (!questionPackage) {
-                return;
-            }
-            questionPackage.activeSentenceEndingSlot = slotIndex;
-        };
-
         vm.dropSentenceEnding = function (questionPackage, slotIndex, droppedEnding) {
             if (!questionPackage || !droppedEnding || !questionPackage.subQuestions || !questionPackage.sentenceEndingSlots) {
                 return false;
@@ -3725,14 +3717,6 @@
                 questionPackage.sentenceEndingSlots[slotIndex].items = [angular.copy(droppedEnding)];
                 vm.checkBoxMultipleChoiceQuestions(questionAnswer, question, true);
                 vm.clickShowChildren(question, questionPackage.subQuestions);
-                var nextSlot = null;
-                for (var slotNumber = slotIndex + 1; slotNumber < questionPackage.sentenceEndingSlots.length; slotNumber++) {
-                    if (!questionPackage.sentenceEndingSlots[slotNumber].items.length) {
-                        nextSlot = slotNumber;
-                        break;
-                    }
-                }
-                questionPackage.activeSentenceEndingSlot = nextSlot;
             }
             $scope.$evalAsync();
             return true;

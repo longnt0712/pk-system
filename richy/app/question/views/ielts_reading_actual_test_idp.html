@@ -528,11 +528,9 @@
                                                     <span compile="endingQuestion.question"></span>
                                                 </span>
                                                 <span class="sentence-ending-slot"
-                                                      ng-class="{'is-active': endingPackage.activeSentenceEndingSlot === $index}"
                                                       dnd-list="endingPackage.sentenceEndingSlots[$index].items"
                                                       dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
-                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
-                                                      ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
+                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)">
                                                     <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Drag an answer here</span>
                                                     <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
                                                           double-tap="vm.clearSentenceEndingSlot(endingPackage,$index)"
@@ -948,11 +946,10 @@
                                                     <strong>{{endingQuestion.ordinalNumber}}.</strong>
                                                     <span compile="endingQuestion.question"></span>
                                                 </span>
-                                                <span class="sentence-ending-slot" ng-class="{'is-active': endingPackage.activeSentenceEndingSlot === $index}"
+                                                <span class="sentence-ending-slot"
                                                       dnd-list="endingPackage.sentenceEndingSlots[$index].items"
                                                       dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
-                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
-                                                      ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
+                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)">
                                                     <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Drag an answer here</span>
                                                     <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
                                                           double-tap="vm.clearSentenceEndingSlot(endingPackage,$index)"
@@ -1348,11 +1345,10 @@
                                                     <strong>{{endingQuestion.ordinalNumber}}.</strong>
                                                     <span compile="endingQuestion.question"></span>
                                                 </span>
-                                                <span class="sentence-ending-slot" ng-class="{'is-active': endingPackage.activeSentenceEndingSlot === $index}"
+                                                <span class="sentence-ending-slot"
                                                       dnd-list="endingPackage.sentenceEndingSlots[$index].items"
                                                       dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
-                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)"
-                                                      ng-click="$event.stopPropagation(); vm.activateSentenceEndingSlot(endingPackage,$index)">
+                                                      touch-dnd-drop="vm.dropSentenceEnding(endingPackage,$index,item)">
                                                     <span ng-if="!endingPackage.sentenceEndingSlots[$index].items.length">Drag an answer here</span>
                                                     <span ng-if="endingPackage.sentenceEndingSlots[$index].items.length"
                                                           double-tap="vm.clearSentenceEndingSlot(endingPackage,$index)"
@@ -1945,10 +1941,9 @@
         border-radius: 6px;
         background: rgba(255, 255, 255, .92);
         color: #202124;
-        cursor: pointer;
+        cursor: default;
     }
 
-    .sentence-ending-slot.is-active,
     .sentence-ending-slot.dndDragover {
         border-color: #1683d8;
         outline: 2px solid rgba(22, 131, 216, .24);
