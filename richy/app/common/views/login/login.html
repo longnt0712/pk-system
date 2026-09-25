@@ -93,7 +93,10 @@
                                                 <div class="xu-gallery-item"
                                                      ng-repeat="img in vm.xuDoanImages track by $index">
                                                     <div class="xu-gallery-card"
-                                                         ng-click="selectedGalleryImage = img.src">
+                                                         role="button"
+                                                         tabindex="0"
+                                                         ng-click="vm.openGalleryImage(img.src)"
+                                                         ng-keydown="vm.openGalleryImageFromKeyboard($event, img.src)">
                                                         <img class="xu-gallery-img"
                                                              loading="lazy"
                                                              ng-src="{{img.src}}"
@@ -129,19 +132,19 @@
                                         <div ng-show="settings.ieltsRoom == true" class="col-md-8 text-center center-content">
                                             <div class="row ielts-score-gallery">
                                                 <div class="col-md-4 ielts-score-gallery__item">
-                                                    <img class="ielts-score-gallery__image" src="https://lh3.googleusercontent.com/pw/AP1GczPzO5cfV6vCefrhI-xoTrYwqXpPfXux_yRolsUOGmVdVsTeiWmtDIC-0A-KHngP257kix93jMp5CPVpJckymNLjA4YlFjhzdSfS3Eum3ANC-77rlleFEzW9cABBFUtiOjFYvezUao1n22Fkyl5ec3b_=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 1">
+                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" src="https://lh3.googleusercontent.com/pw/AP1GczPzO5cfV6vCefrhI-xoTrYwqXpPfXux_yRolsUOGmVdVsTeiWmtDIC-0A-KHngP257kix93jMp5CPVpJckymNLjA4YlFjhzdSfS3Eum3ANC-77rlleFEzW9cABBFUtiOjFYvezUao1n22Fkyl5ec3b_=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 1">
                                                 </div>
                                                 <div class="col-md-4 ielts-score-gallery__item">
-                                                    <img class="ielts-score-gallery__image" src="https://lh3.googleusercontent.com/pw/AP1GczNi25SwEpEnpaEtZAAQxL166VDB1v7Z6CqxUOelMwtD98YpZ21MVbEeWbCAkMYJCUFzDJxqC8ysf_z-SWIJagEik9ormlUOUyrn0h7pE2JaKuFPXKVxNF_pZNAsG22NIGtPMIeRpwCHTNSfAj3fCPxL=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 1">
+                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" src="https://lh3.googleusercontent.com/pw/AP1GczNi25SwEpEnpaEtZAAQxL166VDB1v7Z6CqxUOelMwtD98YpZ21MVbEeWbCAkMYJCUFzDJxqC8ysf_z-SWIJagEik9ormlUOUyrn0h7pE2JaKuFPXKVxNF_pZNAsG22NIGtPMIeRpwCHTNSfAj3fCPxL=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 2">
                                                 </div>
                                                 <div class="col-md-4 ielts-score-gallery__item">
-                                                    <img class="ielts-score-gallery__image" src="https://lh3.googleusercontent.com/pw/AP1GczO_YGH8KeQVQWl5zDNtZCX59ugP01H4p9n67AukgI_Rj0n7yogO33wASdLd1s11ramArHjBzK-pqdxdRQHcrOQU1MUF4J5k26984iSOmSW7t9mEs8_lXUCchHu62Fp3FLy1dqLPCCLq8CEUbyTlFHpx=w424-h918-s-no-gm?authuser=1" alt="Kết quả học viên 2">
+                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" src="https://lh3.googleusercontent.com/pw/AP1GczO_YGH8KeQVQWl5zDNtZCX59ugP01H4p9n67AukgI_Rj0n7yogO33wASdLd1s11ramArHjBzK-pqdxdRQHcrOQU1MUF4J5k26984iSOmSW7t9mEs8_lXUCchHu62Fp3FLy1dqLPCCLq8CEUbyTlFHpx=w424-h918-s-no-gm?authuser=1" alt="Kết quả học viên 3">
                                                 </div>
                                                 <div class="col-md-4 ielts-score-gallery__item">
-                                                    <img class="ielts-score-gallery__image" src="https://lh3.googleusercontent.com/pw/AP1GczPqguxJnwGuJ4o20PnyFOGmmCIg3-hwhnQ_erx-JS1W3jRxz6_AAbVSN_gwigo1-wy6c87KGiiZyz4zVydTOAJTEk0DHevMvr-BSMalE67cXlKxIKBz6lRCVFzM9HDjCFg_mB_t-e0-ok9DZ1dPjhru=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 3">
+                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" src="https://lh3.googleusercontent.com/pw/AP1GczPqguxJnwGuJ4o20PnyFOGmmCIg3-hwhnQ_erx-JS1W3jRxz6_AAbVSN_gwigo1-wy6c87KGiiZyz4zVydTOAJTEk0DHevMvr-BSMalE67cXlKxIKBz6lRCVFzM9HDjCFg_mB_t-e0-ok9DZ1dPjhru=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 4">
                                                 </div>
                                                 <div class="col-md-4 ielts-score-gallery__item">
-                                                    <img class="ielts-score-gallery__image" src="https://lh3.googleusercontent.com/pw/AP1GczPevNwHIgSE8Hi7ujpJvPxx5SX-Bt4zg6TU1MLVvA_Q4Li04Fz6ACGsdaM4nwKHMVW4XarcEqcvJXrQ9X4jV2CddCkWCeR6ac76emOgp-1TrPqhLpBj3MNNY397PmSvSCySfl2lpa5vemPhM5KEq3wp=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 1">
+                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" ng-click="vm.openGalleryImageFromEvent($event)" ng-keydown="vm.openGalleryImageFromKeyboard($event)" src="https://lh3.googleusercontent.com/pw/AP1GczPevNwHIgSE8Hi7ujpJvPxx5SX-Bt4zg6TU1MLVvA_Q4Li04Fz6ACGsdaM4nwKHMVW4XarcEqcvJXrQ9X4jV2CddCkWCeR6ac76emOgp-1TrPqhLpBj3MNNY397PmSvSCySfl2lpa5vemPhM5KEq3wp=w425-h919-s-no-gm?authuser=1" alt="Kết quả học viên 5">
                                                 </div>
                                             </div>
                                             <!--<img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczN-OfRmSWgKnrKZbBURvdnx7zf6-iV_6Q4B7ApquOBMYDLfxdWM_048KOaltJT4UU0OHx94spjiMigq3gpmzDPnOT9ol5MSkKEAYWpavpBEg9blF4V7zieMxqypQ-k8j9KX0Y-YzQnmkcf4mRhO1zRN=w1280-h720-s-no-gm?authuser=1">-->
@@ -149,59 +152,20 @@
                                                 <a href="https://www.facebook.com/saint.paul.academy.pk" target="_blank"><i class="fa fa-arrow-right"></i> FACEBOOK <i class="fa fa-arrow-left"></i></a>
                                             </h1>
                                             <!--<img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczNTP20dYzQXqABodlsnYR4EaMfi-PhhiFmgk5_-TTI-QF8yteJdOsRsHo6qQ8TaL5MfImDjb7P9o7XcXyKajiCYExhqQ06PJB_bofMnR06pzAFoxywOCUp3oGkTs7MWq5pFkQsryw0JW-fPGOzRr1WO=w1280-h720-s-no-gm?authuser=1">-->
-                                            <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczOjgxKslkrfmkG3USmEz6NEbVafgLS07BYDsl9jHuzCgXzqOPyc5keQ16qZLB3r3qXB4_zL956BI3X3aWi0-suNSgt6o53J48OSOEoCxEfQKmBzVY3jqsaDVb5gMyGC9hQvlcYMHZ5DY_egjZpeqptC=w960-h617-s-no-gm?authuser=1">
+                                            <img class="ielts-wide-image" loading="lazy" src="https://lh3.googleusercontent.com/pw/AP1GczOjgxKslkrfmkG3USmEz6NEbVafgLS07BYDsl9jHuzCgXzqOPyc5keQ16qZLB3r3qXB4_zL956BI3X3aWi0-suNSgt6o53J48OSOEoCxEfQKmBzVY3jqsaDVb5gMyGC9hQvlcYMHZ5DY_egjZpeqptC=w960-h617-s-no-gm?authuser=1" alt="Vinh danh học viên Saint Paul Academy">
                                             <!--<h1 class="col-md-12 text-center bold">-->
                                                 <!--PHỔ THÔNG CÁC CẤP-->
                                             <!--</h1>-->
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczP5K8zbdu5YhGUaQRID75ubwqbc_MOvn19RavUdCIEnskmhB-UJR_wFVLhBsLjk5kvzTUcKCq0Yi5aYJDSMcpSGFQrPddNxv6U5-VL227XGSnET2QsJVN8b2uc1_Mhthzw56VvFHunk6AQYMaNlYdfk=w424-h918-s-no-gm?authuser=1">
+                                            <div class="ielts-score-gallery ielts-score-gallery--more">
+                                                <div class="ielts-score-gallery__item" ng-repeat="image in vm.ieltsMoreScoreImages track by $index">
+                                                    <img class="ielts-score-gallery__image" role="button" tabindex="0" loading="lazy" ng-click="vm.openGalleryImage(image.src)" ng-keydown="vm.openGalleryImageFromKeyboard($event, image.src)" ng-src="{{image.src}}" alt="Kết quả học viên {{image.number}}">
                                                 </div>
-                                                <div class="col-md-6">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczO_YGH8KeQVQWl5zDNtZCX59ugP01H4p9n67AukgI_Rj0n7yogO33wASdLd1s11ramArHjBzK-pqdxdRQHcrOQU1MUF4J5k26984iSOmSW7t9mEs8_lXUCchHu62Fp3FLy1dqLPCCLq8CEUbyTlFHpx=w424-h918-s-no-gm?authuser=1">
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczOB1QhB1mafyMrdYK23-jXmozijk0YKMIea1d2W1MuEk2a6SJyBoCxgPoGEn5R3Fc_scbTRyHx2HdtUebZkJ-zTrmU5SwnImXB1_NV_yD8fi9tSda8H5T5lyKpJ2bnWlAoUUgsgTezRth7jnYWiCdM3=w521-h927-s-no-gm?authuser=1">
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczP7w3tywg7-6lS6MXZGS4bksnmOIpzcXbohek6kUfBrzPbP5XbLn4e8t-fx22IAH8cD4WibBf330A5adDWjKRTJmCVdUihhp5bfCQpD-qmKKndLQs-YT5n1IXDGJQOPaYLR-7OQdInr3li8PJJBcit_=w521-h927-s-no-gm?authuser=1">
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczO5ciH-queSJlz9SJIOUTdaCA6oGQyGIN2E0EZwS1-5qyutOXNigpQZI4JHENXZXI1L9enmhEplsJTkgklcOGHwyDUaDSP0hdRem4HejfpvEReqyKs0RnlIisKFEHqYq4OM_5WTSWTyjkF4atTsrL3c=w521-h927-s-no-gm?authuser=1">
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczNzV78OecOKdnLiGeQ7419RTi-zGJ2O5fd_IvZq6wuwCp4gG4mGptbAGrDSd4aON_sa2j3srydmlTAkih4mXG-W16GWMgNb_hSJGJjyDPCoeGOgB0J4dW8a_ey48KdF4BLQu6thI-k4DxOUIANsJozH=w521-h927-s-no-gm?authuser=1">
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/AP1GczM4zkoY2cPG7epNewSnsN471l-EYnwm0xK20pna-ph-E1n4dU4tuRcvDEhKCv1Xo5aPp2iyihpHWY48nreDu7CYb-v3Hm2B_29VkZdWr3yTup586R5isx23ub6w1trWEOyRe0ZyKZHrYt382qhW8Zud=w521-h927-s-no-gm?authuser=1">
-                                                </div>
+                                            </div>
 
-
-                                                <div class="col-md-4">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/ABLVV86BtTQxbYwi7bYMjGa6rfQ0MhFCdibX3MON3QJDoydz15BDCJ4wOb-DahsiIr5Hk_cnxXlZlpULKDN5v6U2mnAYx6O6Reu14UHpm54GGHQpFDUgqAPC1UbxV9gBeszuCDhmqFEmIyqqrAFPWxtLJ9E=w425-h919-s-no-gm?authuser=1">
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/ABLVV85XDMxpTMJggLPyRQepDLvbGzkJNiyCGQ6aexysPC118yybKZ4Y0gvZnyPrNKW-u78T_UkAOpIEKsvgDQZMr4gslGheYEnw_K0RnmpE929ydSt_i-OwA3gzv1t-Y5anHGRZ2Bi9YAkmPUI7xYdE7uY=w425-h919-s-no-gm?authuser=1">
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/ABLVV86uzKyCPb6ijU2j4zOwoU2Jz96noh-yAh0xMlskB_Wkts834tFq_-gDp-FlE9r4liqiUCH2s6sFJtBfhw7pl6zSdeFESKbWqw0N-j6hp3mUHdpYqP9tB1Psg4SEv1K22SD_9zqgVx-mM_W3mYeaPGU=w425-h919-s-no-gm?authuser=1">
-                                                </div>
-
-                                                <div class="col-md-4">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/ABLVV84RyEtYruOGP_o-oz0AJxSw_E82L-1qt2I86v29cT0lmMEtw35kbL4lObG87g9ToJtme9DBRztIWAgM65Hh2dOq0hpAXHDV5pl1HX0QP3Cnpf93gBaVrhyB63DeAfH3uMGzQSIOEVzmkl2tFb7NpXE=w425-h919-s-no-gm?authuser=1">
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/ABLVV87_hfNqG7LACqgt8Chh_IAj4JF6s6Z1mB5bozNK1FXpxONnvTHv9b5X3W8nzOgwGNSPCNlNN8NuGlB1ZWlAakgl0a2-HxyhRq9ITYESwvvGYg7Q0_dPp7iM18YVTqA05T8xapgLdQwIN6LAxZFrWhs=w425-h919-s-no-gm?authuser=1">
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/ABLVV86UVYy9ZSIWCJJZjc-PZmID_3tCtBcTrGt79uhnpxIsuPEOcMh7Krq-uEGHpW3pyqEf9HwwK3z2_LSE6iutolNi-2khIgREP3v5vFnXuEGa-7GT_84zPcauUr_xCZT7KHJJd6DbqsNfhYs--Po_6sU=w624-h600-s-no-gm?authuser=1">
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/ABLVV86FmPs6JkaXj5BQrOgVM_k9fxBDzI_JujPrJfu7ua30bYyyqY-3Hmq7ITCQS5dqOlTWGeZd1vsMWJwj6IQ7GfcoAzRmQZzBr1eUK30luDmo9ZEFjgEKPr21-GE2OKg7dbJn3Hvl9iTaSjGmnFoUPLs=w617-h636-s-no-gm?authuser=1">
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <img class="" style="width:100%;padding: 5px;" src="https://lh3.googleusercontent.com/pw/ABLVV85ojX-7_WdaBz1C7ztF1Scm9WgkU8eQZBxbQ0E8cUTzZCL_NThQUMbMAGEv3trbx_0--yZ_03qQ8lSUTnxFWUjdcFQxPy2ytYL4Dpu7mtG0JI-0yS5YCxcog6TcOdh8usYMP4EHKtWXkZO6Hqy0_Pc=w1242-h804-s-no-gm?authuser=1">
-                                                </div>
+                                            <div class="ielts-extra-gallery">
+                                                <img class="ielts-extra-gallery__image" loading="lazy" src="https://lh3.googleusercontent.com/pw/ABLVV86UVYy9ZSIWCJJZjc-PZmID_3tCtBcTrGt79uhnpxIsuPEOcMh7Krq-uEGHpW3pyqEf9HwwK3z2_LSE6iutolNi-2khIgREP3v5vFnXuEGa-7GT_84zPcauUr_xCZT7KHJJd6DbqsNfhYs--Po_6sU=w624-h600-s-no-gm?authuser=1" alt="Hoạt động Saint Paul Academy">
+                                                <img class="ielts-extra-gallery__image" loading="lazy" src="https://lh3.googleusercontent.com/pw/ABLVV86FmPs6JkaXj5BQrOgVM_k9fxBDzI_JujPrJfu7ua30bYyyqY-3Hmq7ITCQS5dqOlTWGeZd1vsMWJwj6IQ7GfcoAzRmQZzBr1eUK30luDmo9ZEFjgEKPr21-GE2OKg7dbJn3Hvl9iTaSjGmnFoUPLs=w617-h636-s-no-gm?authuser=1" alt="Hoạt động Saint Paul Academy">
+                                                <img class="ielts-extra-gallery__image" loading="lazy" src="https://lh3.googleusercontent.com/pw/ABLVV85ojX-7_WdaBz1C7ztF1Scm9WgkU8eQZBxbQ0E8cUTzZCL_NThQUMbMAGEv3trbx_0--yZ_03qQ8lSUTnxFWUjdcFQxPy2ytYL4Dpu7mtG0JI-0yS5YCxcog6TcOdh8usYMP4EHKtWXkZO6Hqy0_Pc=w1242-h804-s-no-gm?authuser=1" alt="Hoạt động Saint Paul Academy">
                                             </div>
 
 
@@ -255,20 +219,21 @@
     </div>
 </div>
 <div class="xu-lightbox-backdrop"
-     ng-if="selectedGalleryImage"
-     ng-click="selectedGalleryImage = null">
+     ng-if="vm.selectedGalleryImage"
+     ng-click="vm.closeGalleryImage()">
 
     <div class="xu-lightbox-content"
          ng-click="$event.stopPropagation()">
 
         <button type="button"
                 class="xu-lightbox-close"
-                ng-click="selectedGalleryImage = null">
+                aria-label="Đóng ảnh"
+                ng-click="vm.closeGalleryImage()">
             ×
         </button>
 
         <img class="xu-lightbox-img"
-             ng-src="{{selectedGalleryImage}}"
+             ng-src="{{vm.selectedGalleryImage}}"
              alt="preview">
     </div>
 </div>
@@ -365,7 +330,7 @@
         display: flex;
         align-items: flex-start;
         justify-content: center;
-        gap: 12px;
+        gap: 8px;
         margin-right: 0;
         margin-left: 0;
         padding: 10px 0 18px;
@@ -373,47 +338,59 @@
 
     .ielts-score-gallery__item {
         float: none;
-        flex: 0 1 16.666%;
-        width: 16.666%;
+        flex: 0 1 19%;
+        width: 19%;
         min-width: 0;
         padding: 0;
-        opacity: 1;
-        transition: flex-basis .55s cubic-bezier(.22, 1, .36, 1),
-                    width .55s cubic-bezier(.22, 1, .36, 1),
-                    opacity .42s ease,
-                    filter .42s ease;
     }
-
     .ielts-score-gallery__image {
         display: block;
         width: 100%;
         height: auto;
         border-radius: 18px;
         box-shadow: 0 8px 24px rgba(31, 45, 61, .16);
-        transform: translateZ(0);
-        transition: box-shadow .5s ease, transform .55s cubic-bezier(.22, 1, .36, 1);
+        cursor: zoom-in;
     }
 
-    @media (hover: hover) and (pointer: fine) {
-        .ielts-score-gallery:has(.ielts-score-gallery__item:hover) .ielts-score-gallery__item {
-            flex-basis: 15%;
-            width: 15%;
-            opacity: .76;
-            filter: saturate(.82) brightness(.96);
-        }
+    .ielts-score-gallery--more {
+        flex-wrap: wrap;
+        padding-top: 18px;
+    }
 
-        .ielts-score-gallery:has(.ielts-score-gallery__item:hover) .ielts-score-gallery__item:hover {
-            z-index: 2;
-            flex-basis: 20%;
-            width: 20%;
-            opacity: 1;
-            filter: none;
-        }
+    .ielts-wide-image {
+        display: block;
+        width: calc(100% - 10px);
+        height: auto;
+        margin: 5px;
+        border-radius: 18px;
+        box-shadow: 0 8px 24px rgba(31, 45, 61, .14);
+    }
 
-        .ielts-score-gallery__item:hover .ielts-score-gallery__image {
-            box-shadow: 0 18px 42px rgba(31, 45, 61, .28);
-            transform: translateY(-6px);
-        }
+    .ielts-extra-gallery {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        padding: 10px 5px 5px;
+    }
+
+    .ielts-extra-gallery__image {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 18px;
+        box-shadow: 0 8px 24px rgba(31, 45, 61, .14);
+    }
+
+    html.global-dark-mode .center-content {
+        background: #111a2a;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, .34),
+                    inset 0 0 0 1px #29364d;
+    }
+
+    html.global-dark-mode .ielts-score-gallery__image,
+    html.global-dark-mode .ielts-wide-image,
+    html.global-dark-mode .ielts-extra-gallery__image {
+        box-shadow: 0 10px 28px rgba(0, 0, 0, .34);
     }
 
     /* ===== Xứ đoàn gallery ===== */
@@ -624,6 +601,25 @@
 
         .xu-lightbox-backdrop {
             padding: 10px;
+        }
+
+        .ielts-score-gallery {
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .ielts-score-gallery__item {
+            flex-basis: calc(33.333% - 4px);
+            width: calc(33.333% - 4px);
+        }
+
+        .ielts-score-gallery--more .ielts-score-gallery__item {
+            flex-basis: calc(50% - 3px);
+            width: calc(50% - 3px);
+        }
+
+        .ielts-extra-gallery {
+            grid-template-columns: 1fr;
         }
 
         .xu-lightbox-img {
