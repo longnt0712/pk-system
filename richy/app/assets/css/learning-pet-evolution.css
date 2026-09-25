@@ -242,6 +242,12 @@
         transform: translateY(-10px) scale(.94);
     }
 
+    .learning-pet-shell.is-open .learning-pet-stage {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+    }
+
     .learning-pet-shell.is-open .learning-pet-panel {
         position: fixed;
         right: 10px;

@@ -3176,25 +3176,13 @@
             if (cachedIeltsNavigationParts) {
                 return cachedIeltsNavigationParts;
             }
-            var partCount = vm.isComprehensiveRoute ? 1 : vm.isWritingRoute ? 2 : vm.isListeningRoute ? 4
-                : Math.min(3, ((vm.ieltsReadingActualTest || {}).subQuestions || []).length);
             var parts = [];
             var partByNumber = {};
-
-            var writingPartNumbers = [];
-            if (vm.isWritingRoute) {
-                angular.forEach(getReadingQuestionEntries(), function (entry) {
-                    var taskNumber = Number(entry.packageType) === 17 ? 2 : 1;
-                    if (writingPartNumbers.indexOf(taskNumber) < 0) { writingPartNumbers.push(taskNumber); }
-                });
-                writingPartNumbers.sort();
-            }
-            for (var number = 1; number <= partCount; number++) {
-                if (vm.isWritingRoute && writingPartNumbers.indexOf(number) < 0) { continue; }
+            angular.forEach(getReadingDraftPartNumbers(), function (number) {
                 var part = {number: number, questions: []};
                 parts.push(part);
                 partByNumber[number] = part;
-            }
+            });
 
             angular.forEach(getReadingQuestionEntries(), function (entry) {
                 var partNumber = vm.isWritingRoute ? (Number(entry.packageType) === 17 ? 2 : 1)
