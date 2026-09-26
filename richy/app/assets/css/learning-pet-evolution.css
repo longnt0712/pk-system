@@ -17,7 +17,8 @@
     image-rendering: crisp-edges;
 }
 
-.learning-pet-egg.is-capybara-pet {
+.learning-pet-egg.is-capybara-pet,
+.learning-pet-egg.is-cute-dog-pet {
     width: 104px;
     height: 108px;
 }

@@ -88,7 +88,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private static final String PET_MAM_HOC = "MAM_HOC";
     private static final String PET_CAPYBARA_EGG = "CAPYBARA_EGG";
+    private static final String PET_CUTE_DOG = "CUTE_DOG";
     private static final int CAPYBARA_UNLOCK_LEVEL = 3;
+    private static final int CUTE_DOG_UNLOCK_LEVEL = 6;
 
     private static final String GUESS_ADVANCE_AUTO = "AUTO";
     private static final String GUESS_ADVANCE_HOST_CONTROL = "HOST_CONTROL";
@@ -265,6 +267,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     "Trứng capybara được mở khóa khi đạt level 3."
             );
         }
+        if (PET_CUTE_DOG.equals(selectedPet) && level < CUTE_DOG_UNLOCK_LEVEL) {
+            throw new BattleOnlineException(
+                    HttpStatus.BAD_REQUEST,
+                    "Trứng Cute Dog được mở khóa khi đạt level 6."
+            );
+        }
 
         user.setSelectedLearningPet(selectedPet);
         userRepository.save(user);
@@ -305,6 +313,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (level >= CAPYBARA_UNLOCK_LEVEL) {
             unlocked.add(PET_CAPYBARA_EGG);
         }
+        if (level >= CUTE_DOG_UNLOCK_LEVEL) {
+            unlocked.add(PET_CUTE_DOG);
+        }
         result.setUnlockedPetKeys(unlocked);
         return result;
     }
@@ -312,8 +323,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private String normalizePetKey(String petKey) {
         String normalized = clean(petKey).toUpperCase(Locale.ROOT);
-        return PET_CAPYBARA_EGG.equals(normalized)
-                ? PET_CAPYBARA_EGG : PET_MAM_HOC;
+        if (PET_CAPYBARA_EGG.equals(normalized)) {
+            return PET_CAPYBARA_EGG;
+        }
+        return PET_CUTE_DOG.equals(normalized)
+                ? PET_CUTE_DOG : PET_MAM_HOC;
     }
 
 
@@ -2268,9 +2282,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     preparePasswordGuessLocked(actor, target);
                     actor.pendingSkillTargetUsernames.clear();
                 } else if (SKILL_FREEZE.equals(skillType)) {
-                    target.frozenUntil =
-                            Math.max(now, target.frozenUntil) +
-                            FREEZE_DURATION_MS;
+                    target.frozenUntil = now + FREEZE_DURATION_MS;
                 } else if (SKILL_INVERT.equals(skillType)) {
                     target.invertedUntil =
                             Math.max(now, target.invertedUntil) +
@@ -7208,6 +7220,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (
             PET_CAPYBARA_EGG.equals(identity.selectedPetKey) &&
             identity.vocabularyExperienceLevel < CAPYBARA_UNLOCK_LEVEL
+        ) {
+            identity.selectedPetKey = PET_MAM_HOC;
+        }
+        if (
+            PET_CUTE_DOG.equals(identity.selectedPetKey) &&
+            identity.vocabularyExperienceLevel < CUTE_DOG_UNLOCK_LEVEL
         ) {
             identity.selectedPetKey = PET_MAM_HOC;
         }

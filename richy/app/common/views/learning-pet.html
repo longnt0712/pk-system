@@ -68,7 +68,10 @@
             <img class="learning-pet-hatched-fallback" ng-if="pet.petForm === 'hatched' && !pet.spriteReady"
                  ng-src="{{pet.hatchedFallbackImage}}" draggable="false" alt="" aria-hidden="true" />
             <img class="learning-pet-egg"
-                 ng-class="{'is-capybara-pet': pet.petForm === 'capybara-hatched'}"
+                 ng-class="{
+                    'is-capybara-pet': pet.petForm === 'capybara-hatched',
+                    'is-cute-dog-pet': pet.petForm === 'cute-dog-hatched'
+                 }"
                  ng-if="pet.petForm !== 'hatched'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
             <span class="learning-pet-badge" ng-if="pet.notificationCount > 0">{{pet.notificationCount > 99 ? '99+' : pet.notificationCount}}</span>
         </button>

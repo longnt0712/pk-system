@@ -45,6 +45,9 @@
             var capybaraEggUrl = 'assets/images/learning-pets/capybara/egg-level-3.png?v=' + version;
             var capybaraCrackedEggUrl = 'assets/images/learning-pets/capybara/egg-level-4.png?v=' + version;
             var capybaraPetUrl = 'assets/images/learning-pets/capybara/pet-level-5.png?v=' + version;
+            var cuteDogEggUrl = 'assets/images/learning-pets/cute-dog/egg-level-6.png?v=' + version;
+            var cuteDogCrackedEggUrl = 'assets/images/learning-pets/cute-dog/egg-level-7.png?v=' + version;
+            var cuteDogPetUrl = 'assets/images/learning-pets/cute-dog/pet-level-8.png?v=' + version;
             var animations = {
                 idle: {row: 0, durations: [280, 110, 110, 140, 140, 320], loopPause: 10000},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
@@ -81,6 +84,7 @@
             vm.availablePets = [];
             vm.selectingPet = false;
             vm.hasNewCapybaraEgg = false;
+            vm.hasNewCuteDogEgg = false;
 
             function readCurrentUser() {
                 if (liveUser && liveUser.id) { return liveUser; }
@@ -94,6 +98,9 @@
                 var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
                 var selectedPet = String((user || {}).selectedLearningPet || 'MAM_HOC').toUpperCase();
                 if (selectedPet === 'CAPYBARA_EGG' && level < 3) {
+                    selectedPet = 'MAM_HOC';
+                }
+                if (selectedPet === 'CUTE_DOG' && level < 6) {
                     selectedPet = 'MAM_HOC';
                 }
                 vm.selectedPetKey = selectedPet;
@@ -125,11 +132,36 @@
                     vm.hasNewCapybaraEgg = false;
                 }
 
+                if (level >= 6) {
+                    var cuteDogStageImage = level >= 8
+                            ? cuteDogPetUrl
+                            : (level === 7 ? cuteDogCrackedEggUrl : cuteDogEggUrl);
+                    vm.availablePets.push({
+                        key: 'CUTE_DOG',
+                        name: level >= 8 ? 'Cute Dog' : 'Trứng Cute Dog',
+                        description: level >= 8
+                                ? 'Đã nở hoàn chỉnh'
+                                : (level === 7 ? 'Trứng đang nứt' : 'Mở khóa ở level 6'),
+                        image: cuteDogStageImage,
+                        isNew: hasUnseenCuteDogEgg(user)
+                    });
+                    vm.hasNewCuteDogEgg = hasUnseenCuteDogEgg(user);
+                } else {
+                    vm.hasNewCuteDogEgg = false;
+                }
+
                 if (selectedPet === 'CAPYBARA_EGG') {
                     vm.petForm = level >= 5 ? 'capybara-hatched' : 'capybara-egg';
                     vm.petImage = level >= 5
                             ? capybaraPetUrl
                             : (level === 4 ? capybaraCrackedEggUrl : capybaraEggUrl);
+                    return;
+                }
+                if (selectedPet === 'CUTE_DOG') {
+                    vm.petForm = level >= 8 ? 'cute-dog-hatched' : 'cute-dog-egg';
+                    vm.petImage = level >= 8
+                            ? cuteDogPetUrl
+                            : (level === 7 ? cuteDogCrackedEggUrl : cuteDogEggUrl);
                     return;
                 }
                 if (hasAdminRole(user)) {
@@ -171,6 +203,28 @@
                 });
             }
 
+            function cuteDogSeenKey(user) {
+                return 'learning-pet:cute-dog-seen:v1:' + (user && user.id ? user.id : 'guest');
+            }
+
+            function hasUnseenCuteDogEgg(user) {
+                try {
+                    return $window.localStorage.getItem(cuteDogSeenKey(user)) !== '1';
+                } catch (ignoreStorage) {
+                    return true;
+                }
+            }
+
+            function markCuteDogEggSeen(user) {
+                try {
+                    $window.localStorage.setItem(cuteDogSeenKey(user), '1');
+                } catch (ignoreStorage) {}
+                vm.hasNewCuteDogEgg = false;
+                angular.forEach(vm.availablePets, function (item) {
+                    if (item.key === 'CUTE_DOG') { item.isNew = false; }
+                });
+            }
+
             vm.selectPet = function (petKey) {
                 if (vm.selectingPet || !petKey || petKey === vm.selectedPetKey) { return; }
                 vm.selectingPet = true;
@@ -183,6 +237,9 @@
                         try { $cookies.putObject('education.user', user); } catch (ignoreCookie) {}
                         if (user.selectedLearningPet === 'CAPYBARA_EGG') {
                             markCapybaraEggSeen(user);
+                        }
+                        if (user.selectedLearningPet === 'CUTE_DOG') {
+                            markCuteDogEggSeen(user);
                         }
                         updatePetForm(user);
                         updateMessage();
@@ -502,8 +559,12 @@
             }
 
             function updateMessage() {
-                vm.notificationCount = vm.pendingTaskCount + vm.drafts.length + (vm.hasNewCapybaraEgg ? 1 : 0);
-                if (vm.hasNewCapybaraEgg) {
+                vm.notificationCount = vm.pendingTaskCount + vm.drafts.length +
+                        (vm.hasNewCapybaraEgg ? 1 : 0) + (vm.hasNewCuteDogEgg ? 1 : 0);
+                if (vm.hasNewCuteDogEgg) {
+                    vm.summaryTitle = 'Bạn có một quả trứng Cute Dog mới!';
+                    vm.message = 'Level 6 đã mở khóa trứng Cute Dog. Level 7 trứng sẽ nứt và level 8 sẽ nở.';
+                } else if (vm.hasNewCapybaraEgg) {
                     vm.summaryTitle = 'Bạn có một quả trứng mới!';
                     vm.message = 'Level 3 đã mở khóa trứng capybara. Level 4 trứng sẽ nứt và level 5 sẽ nở.';
                 } else if (vm.overdueCount > 0) {

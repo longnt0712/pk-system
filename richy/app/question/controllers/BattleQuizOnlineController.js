@@ -499,6 +499,16 @@
                 player && player.selectedPetKey || 'MAM_HOC'
             ).toUpperCase();
 
+            if (petKey === 'CUTE_DOG' && level >= 6) {
+                if (level >= 8) {
+                    return 'assets/images/learning-pets/cute-dog/pet-level-8.png' + suffix;
+                }
+                if (level === 7) {
+                    return 'assets/images/learning-pets/cute-dog/egg-level-7.png' + suffix;
+                }
+                return 'assets/images/learning-pets/cute-dog/egg-level-6.png' + suffix;
+            }
+
             if (petKey === 'CAPYBARA_EGG' && level >= 3) {
                 if (level >= 5) {
                     return 'assets/images/learning-pets/capybara/pet-level-5.png' + suffix;
@@ -551,6 +561,14 @@
                     label: level >= 5
                         ? 'Capybara'
                         : (level === 4 ? 'Trứng capybara đang nứt' : 'Trứng capybara')
+                });
+            }
+            if (level >= 6) {
+                battlePetOptions.push({
+                    key: 'CUTE_DOG',
+                    label: level >= 8
+                        ? 'Cute Dog'
+                        : (level === 7 ? 'Trứng Cute Dog đang nứt' : 'Trứng Cute Dog')
                 });
             }
             return battlePetOptions;
