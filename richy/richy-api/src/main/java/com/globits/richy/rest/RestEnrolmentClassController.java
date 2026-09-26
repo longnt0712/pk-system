@@ -83,7 +83,7 @@ public class RestEnrolmentClassController {
 		return service.getTreeObjects(schoolId);
 	}
 
-	@Secured({"ROLE_USER","ROLE_VIEWER","ROLE_STUDENT"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STUDENT"})
 	@RequestMapping(value = "/schedule/my-assignments", method = RequestMethod.GET)
 	public List<StudentAssignedTaskDto> getMyAssignedTasks() {
 		return service.getMyAssignedTasks();

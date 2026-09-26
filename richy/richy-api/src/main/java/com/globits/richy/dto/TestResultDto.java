@@ -46,6 +46,7 @@ public class TestResultDto implements Serializable{
 	private String writingTeacherBand;
 	private String writingTeacherFeedback;
 	private boolean canEditWritingFeedback;
+	private boolean canDelete;
 	private String resultGroup;
 	public List<Long> getTopicIds() { return topicIds; }
 	public void setTopicIds(List<Long> value) { topicIds = value; }
@@ -81,6 +82,8 @@ public class TestResultDto implements Serializable{
 	public void setWritingTeacherFeedback(String value) { writingTeacherFeedback = value; }
 	public boolean isCanEditWritingFeedback() { return canEditWritingFeedback; }
 	public void setCanEditWritingFeedback(boolean value) { canEditWritingFeedback = value; }
+	public boolean isCanDelete() { return canDelete; }
+	public void setCanDelete(boolean value) { canDelete = value; }
 	public String getResultGroup() { return resultGroup; }
 	public void setResultGroup(String value) { resultGroup = value; }
 	private void copyTopics(TestResult domain) {

@@ -17,6 +17,7 @@ public interface TestResultService {
 	public TestResultDto saveObject(TestResultDto dto);
 	public TestResultDto saveWritingFeedback(Long id, TestResultDto dto);
 	public boolean deleteObject(Long id);
+	public int deleteObjects(List<Long> ids);
 	public List<LearningDraftDto> getLearningDrafts();
 	public LearningDraftDto saveLearningDraft(LearningDraftDto dto);
 	public boolean deleteLearningDraft(LearningDraftDto dto);

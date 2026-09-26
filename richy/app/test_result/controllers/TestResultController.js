@@ -293,6 +293,23 @@
             });
         }
 
+        vm.canUseResultDeletion = function () {
+            var roles = ($rootScope.currentUser && $rootScope.currentUser.roles) || [];
+            var roleNames = {};
+            angular.forEach(roles, function (role) {
+                if (role && role.name) { roleNames[role.name] = true; }
+            });
+            if (roleNames.ROLE_ADMIN) { return true; }
+            if (roleNames.ROLE_VIEWER || roleNames.ROLE_STUDENT) { return false; }
+            return !!(
+                roleNames.ROLE_USER ||
+                roleNames.ROLE_STAFF ||
+                roleNames.ROLE_STAFF_MANAGEMENT ||
+                roleNames.ROLE_EDUCATION_MANAGERMENT ||
+                roleNames.ROLE_STUDENT_MANAGERMENT
+            );
+        };
+
         vm.canRetryWritingGrade = function (testResult) {
             if (!testResult || Number(testResult.testType) !== 7 || !testResult.id) { return false; }
             if (['FAILED', 'NOT_CONFIGURED', 'PENDING', 'PROCESSING']
@@ -436,6 +453,7 @@
         vm.getPage = function () {
             var requestId = ++resultPageRequest;
             vm.testResults = [];
+            vm.selectedTestResults = [];
             if (vm.bsTableControl && vm.bsTableControl.options) {
                 vm.bsTableControl.options.data = [];
                 vm.bsTableControl.options.totalRows = 0;
@@ -445,7 +463,10 @@
                 blockUI.stop();
                 if (requestId !== resultPageRequest) { return; }
                 vm.testResults = data.content;
-                vm.bsTableControl.options.columns = service.getTableDefinition(vm.searchDto.resultGroup);
+                vm.bsTableControl.options.columns = service.getTableDefinition(
+                    vm.searchDto.resultGroup,
+                    vm.canUseResultDeletion()
+                );
                 vm.bsTableControl.options.data = vm.testResults;
                 vm.bsTableControl.options.totalRows = data.totalElements;
                 console.log(vm.bsTableControl);
@@ -807,6 +828,11 @@
         };
 
 
+        function updateSelection(callback) {
+            if ($scope.$$phase) { callback(); }
+            else { $scope.$apply(callback); }
+        }
+
         vm.bsTableControl = {
             options: {
                 data: vm.testResults,
@@ -822,27 +848,31 @@
                 pageList: [5, 10, 25, 50, 100],
                 locale: settings.locale,
                 sidePagination: 'server',
-                columns: service.getTableDefinition(),
+                columns: service.getTableDefinition(null, vm.canUseResultDeletion()),
                 onCheck: function (row, $element) {
-                    $scope.$apply(function () {
-                        vm.selectedTestResults.push(row);
+                    updateSelection(function () {
+                        if (utils.indexOf(row, vm.selectedTestResults) < 0) {
+                            vm.selectedTestResults.push(row);
+                        }
                     });
                 },
                 onCheckAll: function (rows) {
-                    $scope.$apply(function () {
-                        vm.selectedTestResults = rows;
+                    updateSelection(function () {
+                        vm.selectedTestResults = rows.filter(function (row) {
+                            return row && row.canDelete === true;
+                        });
                     });
                 },
                 onUncheck: function (row, $element) {
-                    var index = utils.indexOf(row, vm.selectedpositiontitles);
+                    var index = utils.indexOf(row, vm.selectedTestResults);
                     if (index >= 0) {
-                        $scope.$apply(function () {
+                        updateSelection(function () {
                             vm.selectedTestResults.splice(index, 1);
                         });
                     }
                 },
                 onUncheckAll: function (rows) {
-                    $scope.$apply(function () {
+                    updateSelection(function () {
                         vm.selectedTestResults = [];
                     });
                 },
@@ -919,6 +949,7 @@
          * Delete accounts
          */
         $scope.deleteObject = function (id) {
+            vm.deleteConfirmationCount = 1;
             var modalInstance = modal.open({
                 animation: true,
                 templateUrl: 'confirm_delete_modal.html',
@@ -937,6 +968,52 @@
                     });
                 }
             }, function () {
+            });
+        };
+
+        vm.hasDeletableResults = function () {
+            return vm.testResults.some(function (result) {
+                return result && result.canDelete === true;
+            });
+        };
+
+        vm.selectAllResults = function () {
+            if (!vm.canUseResultDeletion() || !vm.hasDeletableResults()) { return; }
+            angular.element(document.getElementById('bsTableControl')).bootstrapTable('checkAll');
+        };
+
+        vm.clearSelectedResults = function () {
+            angular.element(document.getElementById('bsTableControl')).bootstrapTable('uncheckAll');
+        };
+
+        vm.deleteSelectedResults = function () {
+            if (vm.isDeletingResults || !vm.selectedTestResults.length) { return; }
+            var ids = vm.selectedTestResults.map(function (result) { return result.id; })
+                .filter(function (id, index, values) {
+                    return id != null && values.indexOf(id) === index;
+                });
+            if (!ids.length) { return; }
+
+            vm.deleteConfirmationCount = ids.length;
+            var modalInstance = modal.open({
+                animation: true,
+                templateUrl: 'confirm_delete_modal.html',
+                scope: $scope,
+                size: 'lg'
+            });
+            modalInstance.result.then(function (confirm) {
+                if (confirm !== 'yes') { return; }
+                vm.isDeletingResults = true;
+                service.deleteObjects(ids).then(function (deletedCount) {
+                    vm.isDeletingResults = false;
+                    vm.selectedTestResults = [];
+                    toastr.success('Đã xóa ' + deletedCount + ' kết quả.', 'Thông báo');
+                    vm.getPage();
+                }, function (response) {
+                    vm.isDeletingResults = false;
+                    var message = response && response.data && (response.data.message || response.data.error);
+                    toastr.error(message || 'Không thể xóa các kết quả đã chọn.', 'Lỗi');
+                });
             });
         };
 

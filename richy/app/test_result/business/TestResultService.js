@@ -23,6 +23,7 @@
         self.getOne = getOne;
         self.saveWritingFeedback = saveWritingFeedback;
         self.deleteObject = deleteObject;
+        self.deleteObjects = deleteObjects;
         self.getTableDefinition = getTableDefinition;
         self.getUsers = getUsers;
         self.getRanking = getRanking;
@@ -137,7 +138,21 @@
             }, successCallback, errorCallback);
         }
 
-        function getTableDefinition(group) {
+        function deleteObjects(ids) {
+            if (!angular.isArray(ids) || !ids.length) {
+                return $q.when(0);
+            }
+            return $http({
+                method: 'POST',
+                url: baseUrl + restUrl + '/delete-many',
+                data: ids,
+                headers: {'Content-Type': 'application/json; charset=utf-8'}
+            }).then(function (response) {
+                return Number(response.data) || 0;
+            });
+        }
+
+        function getTableDefinition(group, allowDelete) {
             function escapeText(value) {
                 return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
                     return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character];
@@ -157,8 +172,11 @@
             }
 
             var _tableOperation = function (value, row, index) {
-                return '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.editObject(' + "'" + row.id + "'" + ')"><i class="fa fa-eye"></i></a>'
-                    +  '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.deleteObject(' + "'" + row.id + "'" + ')"><i class="fa fa-trash"></i></a>';;
+                var actions = '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.editObject(' + "'" + row.id + "'" + ')"><i class="fa fa-eye"></i></a>';
+                if (allowDelete && row.canDelete === true) {
+                    actions += '<a class="green-dark margin-right-20" href="#" data-ng-click="$parent.deleteObject(' + "'" + row.id + "'" + ')"><i class="fa fa-trash"></i></a>';
+                }
+                return actions;
             };
 
             var _cellNowrap = function (value, row, index, field) {
@@ -182,13 +200,7 @@
                 return value.displayName;
             };
 
-            var columns = [
-                // {
-                //     // field: 'state',
-                //     checkbox: false
-                // }
-                // ,
-                {
+            var columns = [{
                     field: '',
                     title: 'Thao tác',
                     switchable: true,
@@ -279,6 +291,15 @@
                     cellStyle: _cellNowrap
                 }
             ];
+            if (allowDelete) {
+                columns.unshift({
+                    field: 'state',
+                    checkbox: true,
+                    formatter: function (value, row) {
+                        return {disabled: row.canDelete !== true};
+                    }
+                });
+            }
             return columns.filter(function (column) {
                 if (group === 'VOCAB') { return column.field !== 'bandScore' && column.field !== 'correctAnswer'; }
                 if (group === 'DAILY_LISTENING') { return column.field !== 'resultStatus' && column.field !== 'bandScore' && column.field !== 'numberOfWords'; }

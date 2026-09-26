@@ -123,6 +123,7 @@ public class TestResultServiceImpl implements TestResultService {
 	}
 	
 	@Override
+	@Transactional(readOnly = true)
 	public Page<TestResultDto> getPageObject(TestResultDto searchDto, int pageIndex, int pageSize) {
 
 	    if (pageIndex > 0)
@@ -244,8 +245,16 @@ public class TestResultServiceImpl implements TestResultService {
 
 	    Long numberResult = (Long) qCount.getSingleResult();
 
+	    List<TestResultDto> results = q.getResultList();
+	    User currentUser = getCurrentUser();
+	    for (TestResultDto result : results) {
+	        TestResult domain = result == null || result.getId() == null
+	                ? null : testResultRepository.findOne(result.getId());
+	        result.setCanDelete(canDeleteTestResult(currentUser, domain));
+	    }
+
 	    return new PageImpl<TestResultDto>(
-	            q.getResultList(),
+	            results,
 	            pageable,
 	            numberResult
 	    );
@@ -568,9 +577,23 @@ public class TestResultServiceImpl implements TestResultService {
 		if (currentUser == null || currentUser.getId() == null || result == null
 				|| !Integer.valueOf(7).equals(result.getTestType())) { return false; }
 		if (hasRole(currentUser, "ROLE_ADMIN")) { return true; }
-		User student = result.getUser();
-		if (student == null) { return false; }
+		return isPrimaryTeacherOfStudent(currentUser, result.getUser());
+	}
 
+	private boolean canDeleteTestResult(User currentUser, TestResult result) {
+		if (currentUser == null || currentUser.getId() == null || result == null) { return false; }
+		if (hasRole(currentUser, "ROLE_ADMIN")) { return true; }
+		if (hasRole(currentUser, "ROLE_VIEWER") || hasRole(currentUser, "ROLE_STUDENT")) { return false; }
+		boolean teacherRole = hasRole(currentUser, "ROLE_USER")
+				|| hasRole(currentUser, "ROLE_STAFF")
+				|| hasRole(currentUser, "ROLE_STAFF_MANAGEMENT")
+				|| hasRole(currentUser, "ROLE_EDUCATION_MANAGERMENT")
+				|| hasRole(currentUser, "ROLE_STUDENT_MANAGERMENT");
+		return teacherRole && isPrimaryTeacherOfStudent(currentUser, result.getUser());
+	}
+
+	private boolean isPrimaryTeacherOfStudent(User currentUser, User student) {
+		if (currentUser == null || currentUser.getId() == null || student == null) { return false; }
 		Set<Long> classIds = new LinkedHashSet<Long>();
 		if (student.getPerson() != null && student.getPerson().getEnrollmentClassId() != null) {
 			classIds.add(student.getPerson().getEnrollmentClassId().longValue());
@@ -888,19 +911,47 @@ public class TestResultServiceImpl implements TestResultService {
         return testResultRepository.findAttempt(actor.getId(),dto.getClientAttemptKey(),dto.getTestType());
     }
 	@Override
+	@Transactional(rollbackFor = Exception.class)
 	public boolean deleteObject(Long id) {
-		if(id == null) {
-			return false;
+		if (id == null) { return false; }
+		TestResult domain = testResultRepository.findOne(id);
+		if (domain == null) { return false; }
+		if (!canDeleteTestResult(getCurrentUser(), domain)) {
+			throw new AccessDeniedException("Bạn không có quyền xóa kết quả này.");
 		}
-		TestResult domain = testResultRepository.getOne(id);
-		if(domain == null) {
-			return false;
-		}
-		domain.setUser(null);
-//		questionAnswerTestResultRepository.deleteByTestResultId(domain.getId());
-		
-		testResultRepository.delete(domain);
+		deleteTestResult(domain);
 		return true;
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public int deleteObjects(List<Long> ids) {
+		if (ids == null || ids.isEmpty()) { return 0; }
+		Set<Long> uniqueIds = new LinkedHashSet<Long>();
+		for (Long id : ids) {
+			if (id != null) { uniqueIds.add(id); }
+		}
+		if (uniqueIds.size() > 500) {
+			throw new IllegalArgumentException("Mỗi lần chỉ được xóa tối đa 500 kết quả.");
+		}
+
+		User currentUser = getCurrentUser();
+		List<TestResult> results = new ArrayList<TestResult>();
+		for (Long id : uniqueIds) {
+			TestResult domain = testResultRepository.findOne(id);
+			if (domain == null) { continue; }
+			if (!canDeleteTestResult(currentUser, domain)) {
+				throw new AccessDeniedException("Bạn không có quyền xóa một hoặc nhiều kết quả đã chọn.");
+			}
+			results.add(domain);
+		}
+		for (TestResult domain : results) { deleteTestResult(domain); }
+		return results.size();
+	}
+
+	private void deleteTestResult(TestResult domain) {
+		domain.setUser(null);
+		testResultRepository.delete(domain);
 	}
 
 	private User currentAuthenticatedUser() {

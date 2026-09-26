@@ -504,9 +504,31 @@
                                     </div>
                                 </div>
 
-                                <div class="test-result-listing-hint">
-                                    <i class="fa fa-arrows-h"></i>
-                                    <span>Vuốt ngang để xem thêm</span>
+                                <div class="test-result-listing-actions">
+                                    <button type="button" class="test-result-select-all-btn"
+                                            data-ng-if="vm.canUseResultDeletion()"
+                                            data-ng-disabled="!vm.hasDeletableResults() || vm.isDeletingResults"
+                                            data-ng-click="vm.selectAllResults()">
+                                        <i class="fa fa-check-square-o"></i>
+                                        Chọn tất cả
+                                    </button>
+                                    <button type="button" class="test-result-delete-selected-btn"
+                                            data-ng-if="vm.canUseResultDeletion()"
+                                            data-ng-disabled="!vm.selectedTestResults.length || vm.isDeletingResults"
+                                            data-ng-click="vm.deleteSelectedResults()">
+                                        <i class="fa fa-trash"></i>
+                                        {{vm.isDeletingResults ? 'Đang xóa...' : 'Xóa đã chọn (' + vm.selectedTestResults.length + ')'}}
+                                    </button>
+                                    <button type="button" class="test-result-clear-selection-btn"
+                                            data-ng-if="vm.canUseResultDeletion() && vm.selectedTestResults.length"
+                                            data-ng-disabled="vm.isDeletingResults"
+                                            data-ng-click="vm.clearSelectedResults()">
+                                        Bỏ chọn
+                                    </button>
+                                    <div class="test-result-listing-hint">
+                                        <i class="fa fa-arrows-h"></i>
+                                        <span>Vuốt ngang để xem thêm</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -631,7 +653,12 @@
             <h4 class="modal-title"><i class="icon-question"></i>Xóa</h4>
         </div>
         <div class="modal-body">
-            <p>Bạn có chắc chắn muốn xóa bản ghi đã chọn không?</p>
+            <p data-ng-if="vm.deleteConfirmationCount > 1">
+                Bạn có chắc chắn muốn xóa {{vm.deleteConfirmationCount}} kết quả đã chọn không?
+            </p>
+            <p data-ng-if="!vm.deleteConfirmationCount || vm.deleteConfirmationCount === 1">
+                Bạn có chắc chắn muốn xóa bản ghi đã chọn không?
+            </p>
         </div>
         <div class="modal-footer">
             <button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Không</button>
@@ -2215,6 +2242,54 @@
         margin-right: 5px;
     }
 
+    .test-result-listing-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-left: 12px;
+    }
+
+    .test-result-listing-actions button {
+        min-height: 34px;
+        padding: 7px 11px;
+        border: 1px solid #d8e0ef;
+        border-radius: 10px;
+        background: #fff;
+        color: #526079;
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .test-result-listing-actions button i {
+        margin-right: 5px;
+    }
+
+    .test-result-listing-actions button:hover:not(:disabled) {
+        border-color: #91a4df;
+        color: #405fc2;
+    }
+
+    .test-result-listing-actions button:disabled {
+        cursor: not-allowed;
+        opacity: .52;
+    }
+
+    .test-result-listing-actions .test-result-delete-selected-btn {
+        border-color: #f0b7bf;
+        background: #fff5f6;
+        color: #d83b4e;
+    }
+
+    .test-result-listing-actions .test-result-clear-selection-btn {
+        padding-right: 8px;
+        padding-left: 8px;
+        border-color: transparent;
+        background: transparent;
+    }
+
     .test-result-listing-wrap {
         width: 100%;
         padding: 0 !important;
@@ -2419,8 +2494,17 @@
         }
 
         .test-result-listing-heading {
+            align-items: flex-start;
+            flex-direction: column;
             min-height: 60px;
             padding: 10px 11px;
+        }
+
+        .test-result-listing-actions {
+            justify-content: flex-start;
+            width: 100%;
+            margin-top: 9px;
+            margin-left: 0;
         }
 
         .test-result-listing-icon {
@@ -3059,6 +3143,23 @@
 
     html.global-dark-mode .test-result-listing-subtitle {
         color: #98a5ba !important;
+    }
+
+    html.global-dark-mode .test-result-listing-actions button {
+        border-color: #3a4963 !important;
+        background: #1c2940 !important;
+        color: #d2dbeb !important;
+    }
+
+    html.global-dark-mode .test-result-listing-actions .test-result-delete-selected-btn {
+        border-color: #75414b !important;
+        background: #38232c !important;
+        color: #ff9daa !important;
+    }
+
+    html.global-dark-mode .test-result-listing-actions .test-result-clear-selection-btn {
+        border-color: transparent !important;
+        background: transparent !important;
     }
 
     html.global-dark-mode .test-result-listing-hint {

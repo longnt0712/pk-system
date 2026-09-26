@@ -67,10 +67,16 @@ public class RestTestResultController {
 		return service.saveWritingFeedback(id, dto);
 	}
 	
-	@Secured({"ROLE_ADMIN"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)
 	public boolean saveOne(@PathVariable Long id) {
 		return service.deleteObject(id);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_STAFF","ROLE_STAFF_MANAGEMENT","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/delete-many", method = RequestMethod.POST)
+	public int deleteMany(@RequestBody List<Long> ids) {
+		return service.deleteObjects(ids);
 	}
 	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STUDENT"})
 	@RequestMapping(value = "/drafts", method = RequestMethod.GET)
