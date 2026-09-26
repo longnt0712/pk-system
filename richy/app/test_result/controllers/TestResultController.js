@@ -286,35 +286,46 @@
         vm.isRetryingWritingGrade = false;
         vm.isSavingWritingFeedback = false;
 
-        function currentUserIsAdmin() {
-            var roles = ($rootScope.currentUser && $rootScope.currentUser.roles) || [];
-            return roles.some(function (role) {
-                return role && role.name === 'ROLE_ADMIN';
+        function getCurrentUser() {
+            if ($scope.currentUser && $scope.currentUser.id) { return $scope.currentUser; }
+            if ($rootScope.currentUser && $rootScope.currentUser.id) { return $rootScope.currentUser; }
+            return $scope.currentUser || $rootScope.currentUser || {};
+        }
+
+        function getCurrentRoleNames() {
+            var roleNames = {};
+            angular.forEach(getCurrentUser().roles || [], function (role) {
+                var roleName = role && (role.name || role.authority);
+                if (roleName) { roleNames[String(roleName).toUpperCase()] = true; }
             });
+            return roleNames;
+        }
+
+        function currentUserIsAdmin() {
+            return !!getCurrentRoleNames().ROLE_ADMIN;
         }
 
         vm.canUseResultDeletion = function () {
-            var roles = ($rootScope.currentUser && $rootScope.currentUser.roles) || [];
-            var roleNames = {};
-            angular.forEach(roles, function (role) {
-                if (role && role.name) { roleNames[role.name] = true; }
-            });
+            var roleNames = getCurrentRoleNames();
             if (roleNames.ROLE_ADMIN) { return true; }
             if (roleNames.ROLE_VIEWER || roleNames.ROLE_STUDENT) { return false; }
-            return !!(
+            if (
                 roleNames.ROLE_USER ||
                 roleNames.ROLE_STAFF ||
                 roleNames.ROLE_STAFF_MANAGEMENT ||
                 roleNames.ROLE_EDUCATION_MANAGERMENT ||
                 roleNames.ROLE_STUDENT_MANAGERMENT
-            );
+            ) { return true; }
+            return (vm.testResults || []).some(function (result) {
+                return result && result.canDelete === true;
+            });
         };
 
         vm.canRetryWritingGrade = function (testResult) {
             if (!testResult || Number(testResult.testType) !== 7 || !testResult.id) { return false; }
             if (['FAILED', 'NOT_CONFIGURED', 'PENDING', 'PROCESSING']
                     .indexOf(testResult.aiGradingStatus) < 0) { return false; }
-            var currentUserId = $rootScope.currentUser && $rootScope.currentUser.id;
+            var currentUserId = getCurrentUser().id;
             var ownerId = testResult.user && testResult.user.id;
             return currentUserIsAdmin() || (currentUserId != null && ownerId != null
                 && Number(currentUserId) === Number(ownerId));

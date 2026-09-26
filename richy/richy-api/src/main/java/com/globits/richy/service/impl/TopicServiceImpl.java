@@ -163,14 +163,7 @@ public class TopicServiceImpl implements TopicService {
 			whereClause += " and s.topicCategory.id = :topicCategoryId ";
 		}
 		
-		boolean isOwner = modifiedUser != null
-		        && modifiedUser.getId() != null
-		        && searchDto.getUserId() != null
-		        && modifiedUser.getId().equals(searchDto.getUserId());
-
-		if (!isOwner) {
-		    whereClause += " and (s.isShow = true or s.isShow is null) ";
-		}
+		whereClause += " and (s.isShow = true or s.isShow is null) ";
 //		if(searchDto.getWebsite() != null) {
 //			whereClause += " and (s.website = :website) ";
 //		}
@@ -237,7 +230,7 @@ public class TopicServiceImpl implements TopicService {
 		}
 
 		String sql = "select new com.globits.richy.dto.TopicForListAllDto(s) from Topic s where (1=1)";
-		String whereClause = "";
+		String whereClause = " and (s.isShow = true or s.isShow is null) ";
 		
 		if(modifiedUser!= null && modifiedUser.getId() != null) {
 			whereClause += " and s.user.id = :userId ";

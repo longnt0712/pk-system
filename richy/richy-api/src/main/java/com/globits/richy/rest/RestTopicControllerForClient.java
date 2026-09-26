@@ -21,7 +21,7 @@ public class RestTopicControllerForClient {
 //	@Secured({"ROLE_ADMIN","ROLE_USER"})
 	@RequestMapping(value = "/get_page/{pageIndex}/{pageSize}", method = RequestMethod.POST)
 	public Page<TopicDto> getPage(@RequestBody TopicDto searchDto, @PathVariable int pageIndex,@PathVariable int pageSize) {
-		return service.getPageObject(searchDto, pageIndex, pageSize);
+		return service.getPageObjectForGames(searchDto, pageIndex, pageSize);
 	}
 //	@Secured({"ROLE_ADMIN","ROLE_USER"})
 	@RequestMapping(value = "/get_one/{id}", method = RequestMethod.GET)

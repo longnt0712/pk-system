@@ -15,13 +15,14 @@ public interface TopicRepository extends JpaRepository<Topic, Long> {
 	@Query("select new com.globits.richy.dto.TopicDto(i) from Topic i where i.name = ?1")
 	TopicDto getByName(String name);
 	
-	@Query("select new com.globits.richy.dto.TopicDto(u) from Topic u")
+	@Query("select new com.globits.richy.dto.TopicDto(u) from Topic u where u.isShow = true or u.isShow is null")
 	List<TopicDto> getListObject();
 	
-	@Query("select new com.globits.richy.dto.TopicForListAllDto(u) from Topic u")
+	@Query("select new com.globits.richy.dto.TopicForListAllDto(u) from Topic u where u.isShow = true or u.isShow is null")
 	List<TopicForListAllDto> getAllTopics();
 
-	@Query("select new com.globits.richy.dto.TopicForListAllDto(u) from Topic u order by u.createDate desc, u.id desc")
+	@Query("select new com.globits.richy.dto.TopicForListAllDto(u) from Topic u "
+			+ "where u.isShow = true or u.isShow is null order by u.createDate desc, u.id desc")
 	List<TopicForListAllDto> getAllTopicsNewestFirst();
 	
 	@Query("select count(i.id) from Topic i where i.user.id = ?1")

@@ -112,7 +112,7 @@
         }
 
         function getTopics(searchdto, pageIndex, pageSize, successCallback, errorCallback) {
-            var url = baseUrl + 'topic' + '/get_page';
+            var url = baseUrl + 'topic' + '/get_page_for_games';
             url += '/'+pageIndex;
             url += '/'+ ((pageSize > 0) ? pageSize : 10000);
             // console.log(url);
