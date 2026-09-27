@@ -35,7 +35,8 @@ public class TopicCategoryVisibilityService {
      */
     public Set<Long> getAllowedCategoryIdsForCurrentStudent() {
         User student = getCurrentUser();
-        if (!hasRole(student, "ROLE_STUDENT")
+        boolean learner = hasRole(student, "ROLE_STUDENT") || hasRole(student, "ROLE_VIEWER");
+        if (!learner
                 || hasRole(student, "ROLE_ADMIN")
                 || hasRole(student, "ROLE_EDUCATION_MANAGERMENT")
                 || hasRole(student, "ROLE_STUDENT_MANAGERMENT")
