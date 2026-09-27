@@ -19,6 +19,7 @@ import com.globits.richy.dto.EnrolmentClassMoveStudentDto;
 import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
 import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
 import com.globits.richy.dto.TopicForListAllDto;
+import com.globits.richy.dto.TopicCategoryDto;
 import com.globits.richy.dto.PersonDateDto;
 import com.globits.richy.dto.StudentAssignedTaskDto;
 import com.globits.richy.dto.QuestionForTestsDto;
@@ -136,6 +137,19 @@ public class RestEnrolmentClassController {
 	public EnrolmentClassDto saveScheduleSettings(
 			@PathVariable Long classId, @RequestBody EnrolmentClassDto dto) {
 		return service.saveScheduleSettings(classId, dto);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/schedule/topic-categories", method = RequestMethod.GET)
+	public List<TopicCategoryDto> getScheduleTopicCategories() {
+		return service.getScheduleTopicCategories();
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/schedule/{classId}/topic-categories", method = RequestMethod.POST)
+	public EnrolmentClassDto saveTopicCategoryVisibility(
+			@PathVariable Long classId, @RequestBody EnrolmentClassDto dto) {
+		return service.saveTopicCategoryVisibility(classId, dto);
 	}
 
     @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})

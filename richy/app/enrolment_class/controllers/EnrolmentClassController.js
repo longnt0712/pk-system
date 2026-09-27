@@ -42,10 +42,10 @@
     });
 
     EnrolmentClassController.$inject = [
-        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService', '$state'
+        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService', '$state', '$stateParams'
     ];
 
-    function EnrolmentClassController($rootScope, $scope, toastr, modal, service, $state) {
+    function EnrolmentClassController($rootScope, $scope, toastr, modal, service, $state, $stateParams) {
         $scope.$on('$viewContentLoaded', function () {
             App.initAjax();
         });
@@ -57,6 +57,18 @@
         var vm = this;
         vm.schoolId = Number(($state.current.data || {}).enrolmentSchoolId) === 1 ? 1 : 2;
         vm.listTitle = vm.schoolId === 1 ? 'Lớp tiếng Anh' : 'Lớp nhà thờ';
+        vm.scheduleClassId = Number($stateParams.scheduleClassId) || null;
+        vm.schedulePageMode = vm.scheduleClassId !== null;
+        vm.schedulePageLoading = vm.schedulePageMode;
+        vm.schedulePageError = '';
+        vm.schedulePageLoaded = false;
+        vm.schedulePageUrl = function (item) {
+            if (!item || !item.id) { return ''; }
+            return $state.href($state.current.name, {scheduleClassId: item.id}, {absolute: true});
+        };
+        vm.classListUrl = function () {
+            return $state.href($state.current.name, {scheduleClassId: null}, {absolute: true});
+        };
         vm.canAccessList = function () {
             var s = $rootScope.settings || {};
             var manager = s.isAdmin || s.isEducationManagerment || s.isStudentManagerment || s.isStaff;
@@ -103,6 +115,12 @@
 		vm.scheduleSettingsLoading = false;
 		vm.scheduleSettingsError = false;
 		vm.scheduleTopicsLoading = false;
+		vm.scheduleTopicCategories = [];
+		vm.scheduleTopicCategoriesLoading = false;
+		vm.scheduleTopicCategoriesError = false;
+		vm.scheduleTopicCategoriesSaving = false;
+		vm.topicCategorySettingsLoaded = false;
+		vm.topicCategorySearch = '';
 		vm.scheduleSaving = false;
 		vm.scheduleDaySaving = false;
 		vm.scheduleModal = null;
@@ -194,10 +212,24 @@
                     }
                 });
                 vm.rebuildTree();
+                if (vm.schedulePageMode && !vm.schedulePageLoaded) {
+                    var scheduleItem = vm.findClass(vm.scheduleClassId);
+                    vm.schedulePageLoading = false;
+                    if (!scheduleItem || scheduleItem.parentId || scheduleItem.canEdit !== true) {
+                        vm.schedulePageError = 'Không tìm thấy lớp hoặc bạn không có quyền thiết lập lớp này.';
+                        return;
+                    }
+                    vm.schedulePageLoaded = true;
+                    vm.openClassSchedule(scheduleItem);
+                }
             }, function () {
                 if (request !== classLoadRequest) { return; }
                 vm.allClasses = [];
                 vm.rebuildTree();
+                if (vm.schedulePageMode) {
+                    vm.schedulePageLoading = false;
+                    vm.schedulePageError = 'Không tải được thông tin lớp. Vui lòng thử lại.';
+                }
                 toastr.error('Không tải được ' + vm.listTitle.toLowerCase() + '. Vui lòng thử lại.', 'Lỗi');
             });
         };
@@ -681,6 +713,8 @@
 				return;
 			}
 			vm.scheduleClass = angular.copy(item);
+			vm.scheduleClass.visibleTopicCategoryIds = [];
+			vm.scheduleClass.hiddenTopicCategoryIds = [];
 			vm.taskEditor = null;
 			vm.scheduleTaskCategories = [];
 			vm.scheduleTopicSources = [];
@@ -688,6 +722,12 @@
 			vm.loadScheduleStudents();
 			vm.scheduleClass.weeklySessions = [];
 			vm.scheduleTopics = [];
+			vm.scheduleTopicCategories = [];
+			vm.scheduleTopicCategoriesLoading = true;
+			vm.scheduleTopicCategoriesError = false;
+			vm.scheduleTopicCategoriesSaving = false;
+			vm.topicCategorySettingsLoaded = false;
+			vm.topicCategorySearch = '';
 			vm.scheduleListeningItems = [];
 			vm.scheduleListeningItemsLoading = false;
 			vm.assignableIeltsTests = [];
@@ -699,20 +739,26 @@
 			vm.scheduleTopicsLoading = true;
 			vm.assignableIeltsTestsLoading = true;
 			vm.scheduleLoading = true;
-			vm.scheduleModal = modal.open({
-				animation: true,
-				templateUrl: 'class_schedule_modal.html',
-				scope: $scope,
-				size: 'lg',
-				windowClass: 'class-management-modal-window class-schedule-modal-window',
-				backdrop: 'static'
-			});
+			if (!vm.schedulePageMode) {
+				vm.scheduleModal = modal.open({
+					animation: true,
+					templateUrl: 'class_schedule_modal.html',
+					scope: $scope,
+					size: 'lg',
+					windowClass: 'class-management-modal-window class-schedule-modal-window',
+					backdrop: 'static'
+				});
+			}
 
 			service.getOne(item.id).then(function (classData) {
 				if (!classData || classData.canEdit !== true) {
 					throw new Error('forbidden');
 				}
 				vm.scheduleClass = angular.extend(vm.scheduleClass, angular.copy(classData));
+				vm.scheduleClass.hiddenTopicCategoryIds = angular.isArray(classData.hiddenTopicCategoryIds)
+					? classData.hiddenTopicCategoryIds.slice() : [];
+				vm.topicCategorySettingsLoaded = true;
+				vm.initializeTopicCategoryVisibility();
 				vm.scheduleClass.weeklySessions = (classData.weeklySessions || []).map(function (session) {
 					return {
 						id: session.id,
@@ -741,6 +787,18 @@
 			}, function () {
 				vm.scheduleTopicsLoading = false;
 				toastr.error('Không tải được danh sách topic.', 'Lỗi');
+			});
+
+			service.getScheduleTopicCategories().then(function (categories) {
+				vm.scheduleTopicCategories = angular.isArray(categories) ? categories : [];
+				vm.scheduleTopicCategoriesLoading = false;
+				vm.scheduleTopicCategoriesError = false;
+				vm.initializeTopicCategoryVisibility();
+			}, function () {
+				vm.scheduleTopicCategories = [];
+				vm.scheduleTopicCategoriesLoading = false;
+				vm.scheduleTopicCategoriesError = true;
+				toastr.error('Không tải được danh sách category bài học.', 'Lỗi');
 			});
 
 			service.getAssignableIeltsTests().then(function (tests) {
@@ -897,6 +955,73 @@
 		vm.removeWeeklySession = function (index) {
 			if (vm.scheduleSaving || vm.scheduleSettingsLoading || vm.scheduleSettingsError) { return; }
 			vm.scheduleClass.weeklySessions.splice(index, 1);
+		};
+
+		vm.initializeTopicCategoryVisibility = function () {
+			if (!vm.scheduleClass || !vm.topicCategorySettingsLoaded || vm.scheduleTopicCategoriesLoading) { return; }
+			var hidden = {};
+			angular.forEach(vm.scheduleClass.hiddenTopicCategoryIds || [], function (id) { hidden[String(id)] = true; });
+			vm.scheduleClass.visibleTopicCategoryIds = vm.scheduleTopicCategories.filter(function (category) {
+				return hidden[String(category.id)] !== true;
+			}).map(function (category) {
+				return category.id;
+			});
+		};
+
+		vm.isVisibleTopicCategory = function (category) {
+			return !!category && (vm.scheduleClass.visibleTopicCategoryIds || []).some(function (id) {
+				return String(id) === String(category.id);
+			});
+		};
+
+		vm.toggleTopicCategory = function (category) {
+			if (!category || vm.scheduleTopicCategoriesSaving) { return; }
+			var ids = vm.scheduleClass.visibleTopicCategoryIds || [];
+			var foundIndex = -1;
+			angular.forEach(ids, function (id, index) {
+				if (String(id) === String(category.id)) { foundIndex = index; }
+			});
+			if (foundIndex >= 0) { ids.splice(foundIndex, 1); }
+			else { ids.push(category.id); }
+			vm.scheduleClass.visibleTopicCategoryIds = ids;
+		};
+
+		vm.selectAllTopicCategories = function (selected) {
+			if (vm.scheduleTopicCategoriesSaving) { return; }
+			vm.scheduleClass.visibleTopicCategoryIds = selected
+				? vm.scheduleTopicCategories.map(function (category) { return category.id; }) : [];
+		};
+
+		vm.saveTopicCategoryVisibility = function () {
+			if (!vm.scheduleClass || !vm.scheduleClass.id || vm.scheduleTopicCategoriesSaving
+					|| !vm.topicCategorySettingsLoaded || vm.scheduleSettingsError
+					|| vm.scheduleTopicCategoriesLoading || vm.scheduleTopicCategoriesError) { return; }
+			var visible = {};
+			angular.forEach(vm.scheduleClass.visibleTopicCategoryIds || [], function (id) {
+				visible[String(id)] = true;
+			});
+			var hiddenIds = vm.scheduleTopicCategories.filter(function (category) {
+				return visible[String(category.id)] !== true;
+			}).map(function (category) {
+				return category.id;
+			});
+			vm.scheduleTopicCategoriesSaving = true;
+			service.saveTopicCategoryVisibility(vm.scheduleClass.id, {
+				hiddenTopicCategoryIds: hiddenIds
+			}).then(function (saved) {
+				vm.scheduleTopicCategoriesSaving = false;
+				if (!saved) {
+					toastr.error('Không lưu được category bài học.', 'Lỗi');
+					return;
+				}
+				vm.scheduleClass.hiddenTopicCategoryIds = angular.isArray(saved.hiddenTopicCategoryIds)
+					? saved.hiddenTopicCategoryIds.slice() : [];
+				vm.initializeTopicCategoryVisibility();
+				toastr.success('Đã lưu category học sinh được phép xem.', 'Thông báo');
+			}, function () {
+				vm.scheduleTopicCategoriesSaving = false;
+				toastr.error('Không lưu được category bài học.', 'Lỗi');
+			});
 		};
 
 		function parseScheduleTime(value) {

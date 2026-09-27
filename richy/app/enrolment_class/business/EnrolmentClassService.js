@@ -73,6 +73,16 @@
             return utils.resolve(baseUrl + '/schedule/topics', 'GET', angular.noop, angular.noop);
         };
 
+        self.getScheduleTopicCategories = function () {
+            return utils.resolve(baseUrl + '/schedule/topic-categories', 'GET', angular.noop, angular.noop);
+        };
+
+        self.saveTopicCategoryVisibility = function (classId, object) {
+            return utils.resolveAlt(baseUrl + '/schedule/' + classId + '/topic-categories', 'POST', null, object, {
+                'Content-Type': 'application/json; charset=utf-8'
+            });
+        };
+
         self.getScheduleListeningItems = function (topicId) {
             if (!topicId) { return $q.when([]); }
             return utils.resolve(baseUrl + '/schedule/topics/' + topicId + '/listening-items',

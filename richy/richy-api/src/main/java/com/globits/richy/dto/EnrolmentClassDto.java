@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.globits.richy.domain.EnrolmentClass;
+import com.globits.richy.domain.TopicCategory;
 import com.globits.security.domain.User;
 import com.globits.security.dto.UserDto;
 
@@ -25,6 +26,7 @@ public class EnrolmentClassDto implements Serializable {
     private String startTime;
     private String endTime;
     private List<EnrolmentClassWeeklySessionDto> weeklySessions = new ArrayList<EnrolmentClassWeeklySessionDto>();
+    private Set<Long> hiddenTopicCategoryIds = new LinkedHashSet<Long>();
     // Null means a legacy client sent only teacherIds.
     private Set<Long> deputyTeacherIds;
 
@@ -42,6 +44,8 @@ public class EnrolmentClassDto implements Serializable {
     public void setEndTime(String endTime) { this.endTime = endTime; }
     public List<EnrolmentClassWeeklySessionDto> getWeeklySessions() { return weeklySessions; }
     public void setWeeklySessions(List<EnrolmentClassWeeklySessionDto> weeklySessions) { this.weeklySessions = weeklySessions; }
+    public Set<Long> getHiddenTopicCategoryIds() { return hiddenTopicCategoryIds; }
+    public void setHiddenTopicCategoryIds(Set<Long> hiddenTopicCategoryIds) { this.hiddenTopicCategoryIds = hiddenTopicCategoryIds; }
 
     public Set<Long> getDeputyTeacherIds() {
         return deputyTeacherIds;
@@ -170,6 +174,13 @@ public class EnrolmentClassDto implements Serializable {
         this.schoolId = domain.getSchoolId();
         this.startTime = domain.getStartTime();
         this.endTime = domain.getEndTime();
+        if (domain.getHiddenTopicCategories() != null) {
+            for (TopicCategory category : domain.getHiddenTopicCategories()) {
+                if (category != null && category.getId() != null) {
+                    this.hiddenTopicCategoryIds.add(category.getId());
+                }
+            }
+        }
         if (domain.getParent() != null) {
             this.parentId = domain.getParent().getId();
             this.parentName = domain.getParent().getName();

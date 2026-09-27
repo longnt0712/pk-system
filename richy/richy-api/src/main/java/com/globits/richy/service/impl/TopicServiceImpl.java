@@ -2,6 +2,7 @@ package com.globits.richy.service.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
@@ -37,6 +38,8 @@ public class TopicServiceImpl implements TopicService {
 	TopicCategoryRepository topicCategoryRepository;
 	@Autowired
 	UserRepository userRepository;
+	@Autowired
+	TopicCategoryVisibilityService topicCategoryVisibilityService;
 	
 	@Override
 	public Page<TopicDto> getPageObject(TopicDto searchDto, int pageIndex, int pageSize) {
@@ -58,6 +61,12 @@ public class TopicServiceImpl implements TopicService {
 		String sql = "select new com.globits.richy.dto.TopicDto(s) from Topic s where (1=1)";
 		String sqlCount = "select count(s.id) from Topic s where (1=1)";
 		String whereClause = "";
+		Set<Long> allowedCategoryIds = topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent();
+		if (allowedCategoryIds != null) {
+			whereClause += allowedCategoryIds.isEmpty()
+					? " and (1=0)"
+					: " and s.topicCategory.id in (:allowedCategoryIds)";
+		}
 		
 		if(modifiedUser!= null && modifiedUser.getId() != null) {
 			whereClause += " and s.user.id = :userId ";
@@ -85,6 +94,10 @@ public class TopicServiceImpl implements TopicService {
 
 		Query q = manager.createQuery(sql, TopicDto.class);
 		Query qCount = manager.createQuery(sqlCount);
+		if (allowedCategoryIds != null && !allowedCategoryIds.isEmpty()) {
+			q.setParameter("allowedCategoryIds", allowedCategoryIds);
+			qCount.setParameter("allowedCategoryIds", allowedCategoryIds);
+		}
 
 		if (textSearch != null && textSearch.length() > 0) {
 			q.setParameter("textSearch", '%' + textSearch + '%');
@@ -146,6 +159,12 @@ public class TopicServiceImpl implements TopicService {
 		String sql = "select new com.globits.richy.dto.TopicDto(s) from Topic s where (1=1)";
 		String sqlCount = "select count(s.id) from Topic s where (1=1)";
 		String whereClause = "";
+		Set<Long> allowedCategoryIds = topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent();
+		if (allowedCategoryIds != null) {
+			whereClause += allowedCategoryIds.isEmpty()
+					? " and (1=0)"
+					: " and s.topicCategory.id in (:allowedCategoryIds)";
+		}
 		
 		if(modifiedUser!= null && modifiedUser.getId() != null) {
 			whereClause += " and s.user.id = :userId ";
@@ -175,6 +194,10 @@ public class TopicServiceImpl implements TopicService {
 
 		Query q = manager.createQuery(sql, TopicDto.class);
 		Query qCount = manager.createQuery(sqlCount);
+		if (allowedCategoryIds != null && !allowedCategoryIds.isEmpty()) {
+			q.setParameter("allowedCategoryIds", allowedCategoryIds);
+			qCount.setParameter("allowedCategoryIds", allowedCategoryIds);
+		}
 
 		if (textSearch != null && textSearch.length() > 0) {
 			q.setParameter("textSearch", '%' + textSearch + '%');
@@ -231,6 +254,12 @@ public class TopicServiceImpl implements TopicService {
 
 		String sql = "select new com.globits.richy.dto.TopicForListAllDto(s) from Topic s where (1=1)";
 		String whereClause = " and (s.isShow = true or s.isShow is null) ";
+		Set<Long> allowedCategoryIds = topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent();
+		if (allowedCategoryIds != null) {
+			whereClause += allowedCategoryIds.isEmpty()
+					? " and (1=0)"
+					: " and s.topicCategory.id in (:allowedCategoryIds)";
+		}
 		
 		if(modifiedUser!= null && modifiedUser.getId() != null) {
 			whereClause += " and s.user.id = :userId ";
@@ -245,6 +274,9 @@ public class TopicServiceImpl implements TopicService {
 		sql += " order by s.createDate DESC ";
 
 		Query q = manager.createQuery(sql, TopicForListAllDto.class);
+		if (allowedCategoryIds != null && !allowedCategoryIds.isEmpty()) {
+			q.setParameter("allowedCategoryIds", allowedCategoryIds);
+		}
 		
 		if(modifiedUser!= null && modifiedUser.getId() != null) {
 			q.setParameter("userId",  modifiedUser.getId() );
@@ -263,7 +295,14 @@ public class TopicServiceImpl implements TopicService {
 
 	@Override
 	public TopicDto getObjectById(Long id) {
-		return new TopicDto(topicRepository.getOne(id),true);
+		Topic topic = topicRepository.findOne(id);
+		if (topic == null) { return null; }
+		Set<Long> allowedCategoryIds = topicCategoryVisibilityService.getAllowedCategoryIdsForCurrentStudent();
+		Long categoryId = topic.getTopicCategory() == null ? null : topic.getTopicCategory().getId();
+		if (allowedCategoryIds != null && (categoryId == null || !allowedCategoryIds.contains(categoryId))) {
+			return null;
+		}
+		return new TopicDto(topic,true);
 	}
 
 	@Override

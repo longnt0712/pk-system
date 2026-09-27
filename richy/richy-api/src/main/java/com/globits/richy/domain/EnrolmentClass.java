@@ -52,10 +52,18 @@ public class EnrolmentClass extends BaseObject{
 	@Column(name = "end_time", length = 5)
 	private String endTime;
 
+	@ManyToMany(fetch = FetchType.LAZY)
+	@JoinTable(name = "tbl_enrolment_class_hidden_topic_category",
+			joinColumns = @JoinColumn(name = "enrolment_class_id"),
+			inverseJoinColumns = @JoinColumn(name = "topic_category_id"))
+	private Set<TopicCategory> hiddenTopicCategories = new HashSet<TopicCategory>();
+
 	public String getStartTime() { return startTime; }
 	public void setStartTime(String startTime) { this.startTime = startTime; }
 	public String getEndTime() { return endTime; }
 	public void setEndTime(String endTime) { this.endTime = endTime; }
+	public Set<TopicCategory> getHiddenTopicCategories() { return hiddenTopicCategories; }
+	public void setHiddenTopicCategories(Set<TopicCategory> hiddenTopicCategories) { this.hiddenTopicCategories = hiddenTopicCategories; }
 
 	public Long getPrimaryTeacherId() {
 		return primaryTeacherId;

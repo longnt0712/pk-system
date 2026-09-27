@@ -16,7 +16,7 @@
 
         function classPage(url, schoolId, title) {
             return {
-                url: url,
+                url: url + '?scheduleClassId',
 				templateUrl: 'enrolment_class/views/listing.html?v=' + version,
                 data: {pageTitle: title, enrolmentSchoolId: schoolId},
                 controller: 'EnrolmentClassController as vm',

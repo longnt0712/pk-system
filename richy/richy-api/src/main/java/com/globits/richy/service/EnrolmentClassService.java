@@ -11,6 +11,7 @@ import com.globits.richy.dto.EnrolmentClassMoveStudentDto;
 import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
 import com.globits.richy.dto.EnrolmentClassScheduleDayDto;
 import com.globits.richy.dto.TopicForListAllDto;
+import com.globits.richy.dto.TopicCategoryDto;
 import com.globits.richy.dto.PersonDateDto;
 import com.globits.richy.dto.StudentAssignedTaskDto;
 import com.globits.richy.dto.QuestionForTestsDto;
@@ -34,6 +35,8 @@ public interface EnrolmentClassService {
 	public EnrolmentClassTeamBoardDto getTeamBoard(Long classId);
 	public EnrolmentClassTeamBoardDto moveStudentToTeam(Long classId, EnrolmentClassMoveStudentDto moveDto);
 	public EnrolmentClassDto saveScheduleSettings(Long classId, EnrolmentClassDto dto);
+	public List<TopicCategoryDto> getScheduleTopicCategories();
+	public EnrolmentClassDto saveTopicCategoryVisibility(Long classId, EnrolmentClassDto dto);
 	public List<EnrolmentClassScheduleDayDto> getScheduleDays(Long classId, String fromDate, String toDate);
 	public List<StudentAssignedTaskDto> getMyAssignedTasks();
 	public EnrolmentClassScheduleDayDto saveScheduleDay(Long classId, EnrolmentClassScheduleDayDto dto);

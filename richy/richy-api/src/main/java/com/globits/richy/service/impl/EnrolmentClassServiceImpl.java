@@ -35,6 +35,7 @@ import com.globits.richy.domain.EnrolmentClass;
 import com.globits.richy.domain.EnrolmentClassScheduleDay;
 import com.globits.richy.domain.EnrolmentClassWeeklySession;
 import com.globits.richy.domain.Topic;
+import com.globits.richy.domain.TopicCategory;
 import com.globits.richy.domain.Question;
 import com.globits.richy.domain.EnrolmentClassScheduleTask;
 import com.globits.richy.domain.EnrolmentClassTaskProgress;
@@ -52,6 +53,7 @@ import com.globits.richy.dto.EnrolmentClassTeamBoardDto;
 import com.globits.richy.dto.EnrolmentClassTeamDto;
 import com.globits.richy.dto.TopicForListAllDto;
 import com.globits.richy.dto.TopicDto;
+import com.globits.richy.dto.TopicCategoryDto;
 import com.globits.richy.dto.StudentAssignedTaskDto;
 import com.globits.richy.dto.QuestionForTestsDto;
 import com.globits.richy.dto.QuestionForGamesDto;
@@ -59,6 +61,7 @@ import com.globits.richy.repository.EnrolmentClassRepository;
 import com.globits.richy.repository.EnrolmentClassScheduleDayRepository;
 import com.globits.richy.repository.EnrolmentClassWeeklySessionRepository;
 import com.globits.richy.repository.TopicRepository;
+import com.globits.richy.repository.TopicCategoryRepository;
 import com.globits.richy.repository.TestResultRepository;
 import com.globits.richy.repository.QuestionRepository;
 import com.globits.richy.repository.QuestionTopicRepository;
@@ -84,6 +87,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	EnrolmentClassWeeklySessionRepository weeklySessionRepository;
 	@Autowired
 	TopicRepository topicRepository;
+	@Autowired
+	TopicCategoryRepository topicCategoryRepository;
 	@Autowired
 	QuestionRepository questionRepository;
 	@Autowired
@@ -1473,6 +1478,51 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			test.getTopics().add(topic);
 		}
 		return result;
+	}
+
+	@Override
+	public List<TopicCategoryDto> getScheduleTopicCategories() {
+		List<TopicCategory> categories = topicCategoryRepository.findAll();
+		Collections.sort(categories, new Comparator<TopicCategory>() {
+			@Override
+			public int compare(TopicCategory first, TopicCategory second) {
+				String firstName = first == null || first.getName() == null ? "" : first.getName();
+				String secondName = second == null || second.getName() == null ? "" : second.getName();
+				return firstName.compareToIgnoreCase(secondName);
+			}
+		});
+		List<TopicCategoryDto> result = new ArrayList<TopicCategoryDto>();
+		for (TopicCategory category : categories) {
+			result.add(new TopicCategoryDto(category));
+		}
+		return result;
+	}
+
+	@Override
+	public EnrolmentClassDto saveTopicCategoryVisibility(Long classId, EnrolmentClassDto dto) {
+		EnrolmentClass selectedClass = classId == null ? null : enrolmentClassRepository.findOne(classId);
+		if (selectedClass == null || dto == null || dto.getHiddenTopicCategoryIds() == null) {
+			return null;
+		}
+		User currentUser = getCurrentUser();
+		if (!canEditClass(currentUser, selectedClass)) {
+			throw new AccessDeniedException("Bạn không được thiết lập bài học cho lớp này.");
+		}
+
+		Set<TopicCategory> hiddenCategories = new LinkedHashSet<TopicCategory>();
+		for (Long categoryId : new LinkedHashSet<Long>(dto.getHiddenTopicCategoryIds())) {
+			TopicCategory category = categoryId == null ? null : topicCategoryRepository.findOne(categoryId);
+			if (category == null) {
+				throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Category bài học không hợp lệ.");
+			}
+			hiddenCategories.add(category);
+		}
+
+		selectedClass.setHiddenTopicCategories(hiddenCategories);
+		selectedClass.setModifiedBy(currentUser.getUsername());
+		selectedClass.setModifyDate(LocalDateTime.now());
+		selectedClass = enrolmentClassRepository.save(selectedClass);
+		return toDto(selectedClass, null, currentUser);
 	}
 
 	private Set<Topic> loadTopics(List<Long> topicIds) {
