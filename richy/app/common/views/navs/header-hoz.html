@@ -71,7 +71,7 @@
 
                 <!-- BATTLE MODES -->
                 <li class="dropdown battle-modes-nav"
-                    ng-class="{'is-route-active': $state.includes('application.quiz_battle_2') || $state.includes('application.battle_quiz_online') || $state.includes('application.battle_quiz_online_room')}"
+                    ng-class="{'is-route-active': $state.includes('application.quiz_battle_2') || $state.includes('application.battle_quiz_online') || $state.includes('application.battle_quiz_online_room') || $state.includes('application.battle_music_config')}"
                     ng-if="settings.ieltsRoom == true && (settings.isViewer || settings.isAdmin)">
 
                     <a href=""
@@ -97,6 +97,12 @@
                                href="battle-quiz-online">
                                 <i class="fa fa-globe"></i>
                                 BATTLE ONLINE 2
+                            </a>
+                        </li>
+                        <li data-ng-if="settings.isAdmin" ng-class="{'active': $state.includes('application.battle_music_config')}">
+                            <a ui-sref="application.battle_music_config" href="battle-music-config">
+                                <i class="fa fa-music"></i>
+                                BATTLE CONFIG
                             </a>
                         </li>
                     </ul>

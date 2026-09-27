@@ -26,6 +26,23 @@
         var roomSubscription = null;
         var currentRoomCode = null;
 
+        self.getActiveMusicTracks = function () {
+            return $http.get(apiUrl.replace(/battle-online$/, 'battle-music-config/active'))
+                .then(function (response) { return response.data; });
+        };
+
+        self.getBattleMusicConfig = function () {
+            return $http.get(apiUrl.replace(/battle-online$/, 'battle-music-config/admin'))
+                .then(function (response) { return response.data; });
+        };
+
+        self.saveBattleMusicConfig = function (config) {
+            return $http.put(
+                apiUrl.replace(/battle-online$/, 'battle-music-config/admin'),
+                config || {tracks: []}
+            ).then(function (response) { return response.data; });
+        };
+
         self.createRoom = function (createDto) {
             return $http.post(apiUrl + '/rooms', createDto || {})
                 .then(function (response) { return response.data; });

@@ -230,6 +230,7 @@
         var battleViewMusicQueue = [];
         var battleViewMusicLastTrackId = '';
         var battleViewMusicLoadFailures = 0;
+        var battleViewMusicConfigReady = false;
         var finishCelebrationAudio = null;
         var guessTickAudio = null;
         var lastGuessTickSecond = null;
@@ -4135,7 +4136,7 @@
 
 
         function ensureBattleViewMusicPlayer() {
-            if (destroyed || battleViewMusicPlayer) {
+            if (destroyed || !battleViewMusicConfigReady || battleViewMusicPlayer) {
                 return;
             }
 
@@ -4427,6 +4428,26 @@
             battleViewMusicPlayer = null;
             battleViewMusicPlayerReady = false;
             battleViewMusicQueue = [];
+        }
+
+
+        function loadBattleViewMusicConfig() {
+            battleService.getActiveMusicTracks().then(function (config) {
+                var trackIds = [];
+                angular.forEach((config && config.tracks) || [], function (track) {
+                    if (track && track.videoId && trackIds.indexOf(track.videoId) < 0) {
+                        trackIds.push(track.videoId);
+                    }
+                });
+                if (!trackIds.length) { return; }
+                battleViewMusicTrackIds = trackIds;
+                battleViewMusicQueue = [];
+                battleViewMusicLastTrackId = '';
+                battleViewMusicLoadFailures = 0;
+            }, angular.noop).finally(function () {
+                battleViewMusicConfigReady = true;
+                if (shouldPrepareBattleViewMusic()) { syncBattleViewMusic(); }
+            });
         }
 
 
@@ -6376,6 +6397,7 @@
             }
         );
 
+        loadBattleViewMusicConfig();
         getPageTopicCategory();
 
         if (routeRoomCode()) {
