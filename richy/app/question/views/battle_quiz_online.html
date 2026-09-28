@@ -4039,11 +4039,22 @@
     }
 
     .battle-online-player-grid {
-        display: grid;
-        grid-template-columns:
-            repeat(2,minmax(0,1fr));
-
+        display: flex;
+        flex-wrap: wrap;
+        align-items: stretch;
         gap: 8px;
+    }
+
+    .battle-online-player-grid > .battle-online-player-card {
+        flex: 0 1 auto;
+        width: fit-content;
+        max-width: 100%;
+    }
+
+    .battle-online-player-grid
+    > .battle-online-player-card
+    .battle-online-player-copy {
+        flex: 0 1 auto;
     }
 
     .battle-online-team-arrange-tip {
@@ -4295,20 +4306,20 @@
     }
 
     .battle-online-avatar {
-        flex: 0 0 38px;
+        flex: 0 0 54px;
 
-        width: 38px;
-        height: 38px;
+        width: 54px;
+        height: 54px;
 
         display: flex;
         align-items: center;
         justify-content: center;
 
-        border-radius: 12px;
+        border-radius: 16px;
 
         background: #edf1ff;
 
-        font-size: 19px;
+        font-size: 29px;
     }
 
     .battle-online-player-copy {
@@ -4388,6 +4399,7 @@
     }
 
     .battle-online-ready-badge {
+        flex: 0 0 auto;
         padding: 5px 7px;
 
         border-radius: 999px;
@@ -4398,6 +4410,7 @@
 
         font-size: 7px;
         font-weight: 900;
+        white-space: nowrap;
     }
 
     .battle-online-ready-badge.is-ready {
@@ -7072,7 +7085,7 @@
         }
 
         .battle-online-player-grid {
-            grid-template-columns: 1fr;
+            align-items: flex-start;
         }
 
         .battle-online-lobby-team-board {
@@ -8269,12 +8282,12 @@
     .battle-online-avatar.has-pet img {
         display: block !important;
         position: static !important;
-        width: 30px !important;
-        height: 30px !important;
+        width: 46px !important;
+        height: 46px !important;
         min-width: 0 !important;
         min-height: 0 !important;
-        max-width: 30px !important;
-        max-height: 30px !important;
+        max-width: 46px !important;
+        max-height: 46px !important;
         margin: 0 !important;
         object-fit: contain;
         transform: none !important;
@@ -8359,23 +8372,23 @@
         }
     }
 
-    /* FIX PET BỊ PHÓNG TO TRONG DANH SÁCH PLAYER */
+    /* Giữ avatar người chơi lớn, đồng đều giữa pet và biểu tượng HOST. */
     .battle-online-player-card .battle-online-avatar {
-        flex: 0 0 38px !important;
-        width: 38px !important;
-        height: 38px !important;
+        flex: 0 0 54px !important;
+        width: 54px !important;
+        height: 54px !important;
     }
 
     .battle-online-player-card .battle-online-avatar img {
         display: block !important;
 
-        width: 30px !important;
-        height: 30px !important;
+        width: 46px !important;
+        height: 46px !important;
 
-        min-width: 30px !important;
-        min-height: 30px !important;
-        max-width: 30px !important;
-        max-height: 30px !important;
+        min-width: 46px !important;
+        min-height: 46px !important;
+        max-width: 46px !important;
+        max-height: 46px !important;
 
         object-fit: contain !important;
 
