@@ -2643,10 +2643,17 @@
 
 
         function assignPlayerTeam(player, requestedTeamNumber) {
+            var isCurrentPlayer = !!(
+                player &&
+                vm.currentUser &&
+                String(player.username || '') ===
+                    String(vm.currentUser.username || '')
+            );
+
             if (
                 !vm.room ||
                 vm.room.status !== 'LOBBY' ||
-                !isHost() ||
+                (!isHost() && !isCurrentPlayer) ||
                 !player ||
                 player.spectator ||
                 vm.assigningTeamUsername
@@ -2676,6 +2683,12 @@
                 .then(
                     function (room) {
                         applyRoom(room, false);
+                        if (isCurrentPlayer && !isHost()) {
+                            toastr.success(
+                                'Bạn đã chuyển sang ĐỘI ' + teamNumber + '.',
+                                'BATTLE ONLINE'
+                            );
+                        }
                     },
                     function (error) {
                         showRequestError(error);

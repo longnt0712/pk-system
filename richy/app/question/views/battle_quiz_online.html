@@ -533,7 +533,7 @@
                     Giữ và kéo người chơi sang ô đội khác để xếp đội.
                 </strong>
                 <strong ng-if="!vm.isHost()">
-                    Danh sách thành viên theo đội.
+                    Chọn đội ngay trên thẻ của bạn để chuyển sang đội mong muốn.
                 </strong>
             </div>
 
@@ -591,9 +591,10 @@
                                 </small>
 
                                 <label class="battle-online-team-card-picker"
+                                       ng-class="{'is-player-choice': !vm.isHost()}"
                                        dnd-nodrag
-                                       ng-if="vm.isHost()">
-                                    <span>Chuyển:</span>
+                                       ng-if="vm.isHost() || player.username === vm.currentUser.username">
+                                    <span>{{vm.isHost() ? 'Chuyển:' : 'Chọn đội:'}}</span>
                                     <select ng-model="player.teamNumber"
                                             ng-options="team as ('Đội ' + team) for team in vm.getTeamNumbers()"
                                             ng-change="vm.assignPlayerTeam(player)"
@@ -1452,43 +1453,49 @@
                     <span ng-if="player.rank > 3">{{player.rank}}</span>
                 </span>
 
-                <div>
-                    <strong>
-                        {{vm.getPlayerDisplayName(player)}}
-                    </strong>
+                <div class="battle-online-ranking-player">
+                    <img class="battle-online-ranking-pet"
+                         ng-src="{{vm.getPlayerPetImage(player)}}"
+                         alt="Pet của {{vm.getPlayerDisplayName(player)}}">
 
-                    <small class="battle-online-rank-praise"
-                           ng-if="player.rank <= 3">
-                        {{vm.getPlayerRankPraise(player)}}
-                    </small>
+                    <div class="battle-online-ranking-copy">
+                        <strong>
+                            {{vm.getPlayerDisplayName(player)}}
+                        </strong>
 
-                    <span class="battle-online-team-badge"
-                          ng-if="vm.hasTeamMode()">
-                        ĐỘI {{player.teamNumber}}
-                    </span>
+                        <small class="battle-online-rank-praise"
+                               ng-if="player.rank <= 3">
+                            {{vm.getPlayerRankPraise(player)}}
+                        </small>
 
-                    <span class="battle-online-double-action-badge"
-                          ng-if="vm.isDoubleActionPlayer(player)">
-                        ⚡ GÁNH ĐỘI x2
-                    </span>
+                        <span class="battle-online-team-badge"
+                              ng-if="vm.hasTeamMode()">
+                            ĐỘI {{player.teamNumber}}
+                        </span>
 
-                    <span class="battle-online-burning-badge"
-                          ng-if="vm.isPlayerBurning(player)">
-                        🔥 {{vm.getFirePowerLabel(player)}}
-                    </span>
+                        <span class="battle-online-double-action-badge"
+                              ng-if="vm.isDoubleActionPlayer(player)">
+                            ⚡ GÁNH ĐỘI x2
+                        </span>
 
-                    <small ng-if="vm.room.settings.mode === 'CLASSIC'">
-                        🔥 {{player.streak}}
-                        • ✅ {{player.correctCount}}
-                        • ❌ {{player.wrongCount}}
-                    </small>
+                        <span class="battle-online-burning-badge"
+                              ng-if="vm.isPlayerBurning(player)">
+                            🔥 {{vm.getFirePowerLabel(player)}}
+                        </span>
 
-                    <small ng-if="vm.isCountdownMode()">
-                        🔥 {{player.streak}}
-                        • 📚 {{player.uniqueWordsSeen}}/{{player.totalLessonWords}}
-                        • ✅ {{player.correctCount}}
-                        • ❌ {{player.wrongCount}}
-                    </small>
+                        <small ng-if="vm.room.settings.mode === 'CLASSIC'">
+                            🔥 {{player.streak}}
+                            • ✅ {{player.correctCount}}
+                            • ❌ {{player.wrongCount}}
+                        </small>
+
+                        <small ng-if="vm.isCountdownMode()">
+                            🔥 {{player.streak}}
+                            • 📚 {{player.uniqueWordsSeen}}/{{player.totalLessonWords}}
+                            • ✅ {{player.correctCount}}
+                            • ❌ {{player.wrongCount}}
+                        </small>
+                    </div>
                 </div>
 
                 <b class="battle-online-score">
@@ -1606,41 +1613,47 @@
                     <span ng-if="player.rank > 3">{{player.rank}}</span>
                 </span>
 
-                <div>
-                    <strong>
-                        {{vm.getFinalPlayerDisplayName(player)}}
-                    </strong>
+                <div class="battle-online-ranking-player">
+                    <img class="battle-online-ranking-pet"
+                         ng-src="{{vm.getPlayerPetImage(player)}}"
+                         alt="Pet của {{vm.getFinalPlayerDisplayName(player)}}">
 
-                    <small class="battle-online-rank-praise"
-                           ng-if="player.rank <= 3">
-                        {{vm.getPlayerRankPraise(player)}}
-                    </small>
+                    <div class="battle-online-ranking-copy">
+                        <strong>
+                            {{vm.getFinalPlayerDisplayName(player)}}
+                        </strong>
 
-                    <span class="battle-online-team-badge"
-                          ng-if="vm.hasTeamMode()">
-                        ĐỘI {{player.teamNumber}}
-                    </span>
+                        <small class="battle-online-rank-praise"
+                               ng-if="player.rank <= 3">
+                            {{vm.getPlayerRankPraise(player)}}
+                        </small>
 
-                    <span class="battle-online-double-action-badge"
-                          ng-if="vm.isDoubleActionPlayer(player)">
-                        ⚡ GÁNH ĐỘI x2
-                    </span>
-
-                    <span class="battle-online-burning-badge"
-                          ng-if="vm.isPlayerBurning(player)">
-                        🔥 {{vm.getFirePowerLabel(player)}}
-                    </span>
-
-                    <small>
-                        🔥 {{player.streak}}
-                        •
-                        ✅ {{player.correctCount}}
-                        • ❌ {{player.wrongCount}}
-
-                        <span ng-if="vm.isCountdownMode()">
-                            • 📚 {{player.uniqueWordsSeen}}/{{player.totalLessonWords}}
+                        <span class="battle-online-team-badge"
+                              ng-if="vm.hasTeamMode()">
+                            ĐỘI {{player.teamNumber}}
                         </span>
-                    </small>
+
+                        <span class="battle-online-double-action-badge"
+                              ng-if="vm.isDoubleActionPlayer(player)">
+                            ⚡ GÁNH ĐỘI x2
+                        </span>
+
+                        <span class="battle-online-burning-badge"
+                              ng-if="vm.isPlayerBurning(player)">
+                            🔥 {{vm.getFirePowerLabel(player)}}
+                        </span>
+
+                        <small>
+                            🔥 {{player.streak}}
+                            •
+                            ✅ {{player.correctCount}}
+                            • ❌ {{player.wrongCount}}
+
+                            <span ng-if="vm.isCountdownMode()">
+                                • 📚 {{player.uniqueWordsSeen}}/{{player.totalLessonWords}}
+                            </span>
+                        </small>
+                    </div>
                 </div>
 
                 <b class="battle-online-score">
@@ -1962,41 +1975,47 @@
                         <span ng-if="player.rank > 3">{{player.rank}}</span>
                     </span>
 
-                    <div>
-                        <strong>{{vm.getPlayerDisplayName(player)}}</strong>
+                    <div class="battle-online-ranking-player">
+                        <img class="battle-online-ranking-pet"
+                             ng-src="{{vm.getPlayerPetImage(player)}}"
+                             alt="Pet của {{vm.getPlayerDisplayName(player)}}">
 
-                        <small class="battle-online-rank-praise"
-                               ng-if="player.rank <= 3">
-                            {{vm.getPlayerRankPraise(player)}}
-                        </small>
+                        <div class="battle-online-ranking-copy">
+                            <strong>{{vm.getPlayerDisplayName(player)}}</strong>
 
-                        <span class="battle-online-team-badge"
-                              ng-if="vm.hasTeamMode()">
-                            ĐỘI {{player.teamNumber}}
-                        </span>
+                            <small class="battle-online-rank-praise"
+                                   ng-if="player.rank <= 3">
+                                {{vm.getPlayerRankPraise(player)}}
+                            </small>
 
-                        <span class="battle-online-double-action-badge"
-                              ng-if="vm.isDoubleActionPlayer(player)">
-                            ⚡ GÁNH ĐỘI x2
-                        </span>
+                            <span class="battle-online-team-badge"
+                                  ng-if="vm.hasTeamMode()">
+                                ĐỘI {{player.teamNumber}}
+                            </span>
 
-                        <span class="battle-online-burning-badge"
-                              ng-if="vm.isPlayerBurning(player)">
-                            🔥 {{vm.getFirePowerLabel(player)}}
-                        </span>
+                            <span class="battle-online-double-action-badge"
+                                  ng-if="vm.isDoubleActionPlayer(player)">
+                                ⚡ GÁNH ĐỘI x2
+                            </span>
 
-                        <small ng-if="vm.room.settings.mode === 'CLASSIC'">
-                            🔥 {{player.streak}}
-                            • ✅ {{player.correctCount}}
-                            • ❌ {{player.wrongCount}}
-                        </small>
+                            <span class="battle-online-burning-badge"
+                                  ng-if="vm.isPlayerBurning(player)">
+                                🔥 {{vm.getFirePowerLabel(player)}}
+                            </span>
 
-                        <small ng-if="vm.isCountdownMode()">
-                            🔥 {{player.streak}}
-                            • 📚 {{player.uniqueWordsSeen}}/{{player.totalLessonWords}}
-                            • ✅ {{player.correctCount}}
-                            • ❌ {{player.wrongCount}}
-                        </small>
+                            <small ng-if="vm.room.settings.mode === 'CLASSIC'">
+                                🔥 {{player.streak}}
+                                • ✅ {{player.correctCount}}
+                                • ❌ {{player.wrongCount}}
+                            </small>
+
+                            <small ng-if="vm.isCountdownMode()">
+                                🔥 {{player.streak}}
+                                • 📚 {{player.uniqueWordsSeen}}/{{player.totalLessonWords}}
+                                • ✅ {{player.correctCount}}
+                                • ❌ {{player.wrongCount}}
+                            </small>
+                        </div>
                     </div>
 
                     <b class="battle-online-score">
@@ -4205,6 +4224,10 @@
         font-weight: 900;
     }
 
+    .battle-online-team-card-picker.is-player-choice {
+        display: flex;
+    }
+
     .battle-online-team-empty {
         min-height: 76px;
         display: flex;
@@ -5887,6 +5910,46 @@
         border-radius: 13px;
 
         background: var(--bo-soft);
+    }
+
+    .battle-online-ranking-player {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: 38px minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+    }
+
+    .battle-online-ranking-copy {
+        min-width: 0;
+    }
+
+    .battle-online-ranking-pet {
+        width: 38px;
+        height: 38px;
+        display: block;
+        object-fit: contain;
+        filter: drop-shadow(0 4px 5px rgba(29, 37, 66, .18));
+    }
+
+    .battle-online-ranking-row.is-rank-1 .battle-online-ranking-pet {
+        width: 48px;
+        height: 48px;
+    }
+
+    .battle-online-ranking-row.is-rank-1 .battle-online-ranking-player {
+        grid-template-columns: 48px minmax(0, 1fr);
+    }
+
+    .battle-online-ranking-row.is-rank-2 .battle-online-ranking-pet,
+    .battle-online-ranking-row.is-rank-3 .battle-online-ranking-pet {
+        width: 42px;
+        height: 42px;
+    }
+
+    .battle-online-ranking-row.is-rank-2 .battle-online-ranking-player,
+    .battle-online-ranking-row.is-rank-3 .battle-online-ranking-player {
+        grid-template-columns: 42px minmax(0, 1fr);
     }
 
     .battle-online-password-backdrop {

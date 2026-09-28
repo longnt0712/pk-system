@@ -846,7 +846,6 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         synchronized (room) {
             requireLobby(room);
-            requireHost(room, username);
 
             if (room.settings.teamCount < 2) {
                 throw new BattleOnlineException(
@@ -860,6 +859,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             ? teamDto.getTargetUsername()
                             : null
             );
+
+            boolean requesterIsHost = safe(room.hostUsername).equals(username);
+            if (!requesterIsHost && !username.equals(targetUsername)) {
+                throw new BattleOnlineException(
+                        HttpStatus.FORBIDDEN,
+                        "Bạn chỉ có thể tự chọn đội cho chính mình."
+                );
+            }
 
             int teamNumber = teamDto != null
                     ? teamDto.getTeamNumber()
