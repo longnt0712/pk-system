@@ -511,20 +511,24 @@
                 </div>
             </div>
 
-            <div class="battle-online-pet-picker" ng-if="vm.getBattlePetOptions().length">
-                <div class="battle-online-pet-picker-copy">
-                    <img ng-src="{{vm.getPlayerPetImage(vm.me())}}" alt="" aria-hidden="true">
+            <button type="button"
+                    class="battle-online-pet-picker"
+                    ng-if="vm.getBattlePetOptions().length"
+                    ng-click="vm.openPetPickerModal()"
+                    ng-disabled="vm.savingBattlePet"
+                    aria-haspopup="dialog">
+                <img ng-src="{{vm.getPlayerPetImage(vm.me())}}"
+                     alt="Pet đang sử dụng">
+                <span class="battle-online-pet-picker-copy">
                     <span>
-                        <strong>🐾 PET HIỂN THỊ TRONG PHÒNG</strong>
-                        <small>Capybara mở ở level 3–5. Cute Dog mở ở level 6, nứt ở level 7 và nở ở level 8.</small>
+                        <strong>🐾 CHỌN TRỨNG, PET</strong>
+                        <small>Đang sử dụng: {{vm.getSelectedBattlePetLabel()}}</small>
                     </span>
-                </div>
-                <select ng-model="vm.selectedBattlePetKey"
-                        ng-options="item.key as item.label for item in vm.getBattlePetOptions()"
-                        ng-change="vm.selectBattlePet()"
-                        ng-disabled="vm.savingBattlePet">
-                </select>
-            </div>
+                </span>
+                <i class="fa"
+                   ng-class="vm.savingBattlePet ? 'fa-circle-o-notch fa-spin' : 'fa-chevron-right'"
+                   aria-hidden="true"></i>
+            </button>
 
             <div class="battle-online-team-arrange-tip"
                  ng-if="vm.hasTeamMode()">
@@ -894,6 +898,54 @@
 
         </aside>
 
+    </div>
+
+
+    <div class="battle-online-ranking-modal-backdrop"
+         ng-if="vm.petPickerModalOpen && vm.room && vm.room.status === 'LOBBY'"
+         ng-click="vm.closePetPickerModal()">
+
+        <section class="battle-online-ranking-modal battle-online-pet-modal"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="Chọn trứng hoặc pet"
+                 ng-click="$event.stopPropagation()">
+
+            <div class="battle-online-ranking-modal-header">
+                <div>
+                    <span class="battle-online-small-title">🐾 BỘ SƯU TẬP CỦA BẠN</span>
+                    <h2>Chọn trứng hoặc pet</h2>
+                </div>
+
+                <button type="button"
+                        ng-disabled="vm.savingBattlePet"
+                        ng-click="vm.closePetPickerModal()"
+                        aria-label="Đóng chọn pet">×</button>
+            </div>
+
+            <div class="battle-online-pet-modal-body">
+                <p>Chỉ những trứng và pet bạn đã sở hữu mới xuất hiện tại đây.</p>
+
+                <div class="battle-online-pet-option-grid">
+                    <button type="button"
+                            class="battle-online-pet-option"
+                            ng-repeat="item in vm.getBattlePetOptions() track by item.key"
+                            ng-class="{'is-selected': item.key === vm.selectedBattlePetKey}"
+                            ng-disabled="vm.savingBattlePet"
+                            ng-click="vm.selectBattlePet(item.key)">
+                        <img ng-src="{{vm.getBattlePetOptionImage(item.key)}}"
+                             alt="{{item.label}}">
+                        <strong>{{item.label}}</strong>
+                        <small ng-if="item.key === vm.selectedBattlePetKey">
+                            <i class="fa fa-check-circle"></i> ĐANG SỬ DỤNG
+                        </small>
+                        <small ng-if="item.key !== vm.selectedBattlePetKey">
+                            NHẤN ĐỂ CHỌN
+                        </small>
+                    </button>
+                </div>
+            </div>
+        </section>
     </div>
 
 
@@ -6667,6 +6719,35 @@
     }
 
     html.global-dark-mode
+    .battle-online-pet-picker,
+    html.global-dark-mode
+    .battle-online-pet-option {
+        border-color: #394761;
+        color: #edf2fb;
+        background: #202b3e;
+    }
+
+    html.global-dark-mode
+    .battle-online-pet-picker-copy small,
+    html.global-dark-mode
+    .battle-online-pet-modal-body > p,
+    html.global-dark-mode
+    .battle-online-pet-option small {
+        color: #aeb9ce;
+    }
+
+    html.global-dark-mode
+    .battle-online-pet-option.is-selected {
+        border-color: #42d6aa;
+        background: linear-gradient(145deg, rgba(50, 197, 157, .20), rgba(124, 92, 238, .16));
+    }
+
+    html.global-dark-mode
+    .battle-online-pet-option.is-selected small {
+        color: #78e6c4;
+    }
+
+    html.global-dark-mode
     .battle-online-lobby-team-list.dndDragover {
         border-color: #8a95ff;
         background: rgba(109, 120, 239, .16);
@@ -8219,28 +8300,42 @@
     /*}*/
 
     .battle-online-pet-picker {
-        display: flex;
+        max-width: 100%;
+        display: inline-flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 16px;
+        gap: 12px;
         margin: 14px 0;
-        padding: 10px 12px;
+        padding: 10px 14px 10px 10px;
         border: 1px solid #dcdffa;
         border-radius: 15px;
+        color: var(--bo-text);
         background: linear-gradient(135deg, #fafaff, #fff9ec);
+        box-shadow: 0 7px 18px rgba(67, 76, 139, .08);
+        font-family: inherit;
+        text-align: left;
+        transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+    }
+
+    .battle-online-pet-picker:hover:not(:disabled) {
+        transform: translateY(-1px);
+        border-color: #9ea6f5;
+        box-shadow: 0 10px 23px rgba(91, 104, 237, .16);
+    }
+
+    .battle-online-pet-picker:disabled {
+        cursor: wait;
+        opacity: .72;
     }
 
     .battle-online-pet-picker-copy {
-        display: flex;
-        align-items: center;
-        gap: 10px;
         min-width: 0;
+        flex: 0 1 auto;
     }
 
-    .battle-online-pet-picker-copy img {
-        width: 52px;
-        height: 52px;
-        flex: 0 0 52px;
+    .battle-online-pet-picker > img {
+        width: 58px;
+        height: 58px;
+        flex: 0 0 58px;
         object-fit: contain;
         image-rendering: pixelated;
     }
@@ -8262,15 +8357,96 @@
         font-size: 10px;
     }
 
-    .battle-online-pet-picker select {
-        width: min(240px, 42%);
-        min-height: 42px;
-        padding: 0 10px;
-        border: 1px solid #cfd4ef;
-        border-radius: 11px;
-        background: #fff;
-        color: #2f3955;
-        font-weight: 750;
+    .battle-online-pet-picker > i {
+        flex: 0 0 auto;
+        margin-left: 10px;
+        color: #665ce6;
+        font-size: 14px;
+    }
+
+    .battle-online-pet-modal {
+        width: min(680px, 100%);
+    }
+
+    .battle-online-pet-modal-body {
+        min-height: 0;
+        overflow-y: auto;
+        padding: 16px;
+    }
+
+    .battle-online-pet-modal-body > p {
+        margin: 0 0 14px;
+        color: var(--bo-muted);
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .battle-online-pet-option-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+    }
+
+    .battle-online-pet-option {
+        min-width: 0;
+        min-height: 190px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 16px 12px;
+        border: 2px solid var(--bo-line);
+        border-radius: 18px;
+        color: var(--bo-text);
+        background: var(--bo-soft);
+        font-family: inherit;
+        text-align: center;
+        transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+    }
+
+    .battle-online-pet-option:hover:not(:disabled) {
+        transform: translateY(-3px);
+        border-color: #8b82ee;
+        box-shadow: 0 12px 26px rgba(91, 83, 210, .16);
+    }
+
+    .battle-online-pet-option.is-selected {
+        border-color: #32c59d;
+        background: linear-gradient(145deg, rgba(50, 197, 157, .13), rgba(124, 92, 238, .08));
+        box-shadow: 0 0 0 3px rgba(50, 197, 157, .10);
+    }
+
+    .battle-online-pet-option img {
+        width: 102px;
+        height: 102px;
+        display: block;
+        object-fit: contain;
+        image-rendering: pixelated;
+        filter: drop-shadow(0 8px 10px rgba(36, 43, 80, .18));
+    }
+
+    .battle-online-pet-option strong,
+    .battle-online-pet-option small {
+        display: block;
+        max-width: 100%;
+    }
+
+    .battle-online-pet-option strong {
+        overflow-wrap: anywhere;
+        font-size: 13px;
+        font-weight: 1000;
+    }
+
+    .battle-online-pet-option small {
+        color: var(--bo-muted);
+        font-size: 8px;
+        font-weight: 900;
+        letter-spacing: .04em;
+    }
+
+    .battle-online-pet-option.is-selected small {
+        color: #178263;
     }
 
     .battle-online-avatar.has-pet {
@@ -8363,12 +8539,20 @@
         /*}*/
 
         .battle-online-pet-picker {
-            align-items: stretch;
-            flex-direction: column;
+            width: 100%;
         }
 
-        .battle-online-pet-picker select {
-            width: 100%;
+        .battle-online-pet-option-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .battle-online-pet-option {
+            min-height: 168px;
+        }
+
+        .battle-online-pet-option img {
+            width: 82px;
+            height: 82px;
         }
     }
 

@@ -502,7 +502,7 @@
 
             .state('application.battle_quiz_online', {
                 url: '/battle-quiz-online',
-                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION + '&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1&lobbyTeamDrag=20260905_1&invertSkill=20260905_1&moneyHack=20260905_1&passwordPairsMusic=20260905_1&finishSoundRanksPasswords=20260905_1&lobbyExpiryHackRankMedals=20260905_1&guessWord=20260914_2&lobbyTopic=20260914_1&guessInput=20260914_2&guessLayout=20260914_1&lobbyTopicInRoom=20260914_1&guessAnswerGlow=20260914_1&guessAutoSubmit=20260914_1&playerTeamChoice=20260928_1&rankingPets=20260928_1&lobbyAutoCards=20260928_1&lobbyAvatarSize=20260928_1',
+                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION + '&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1&lobbyTeamDrag=20260905_1&invertSkill=20260905_1&moneyHack=20260905_1&passwordPairsMusic=20260905_1&finishSoundRanksPasswords=20260905_1&lobbyExpiryHackRankMedals=20260905_1&guessWord=20260914_2&lobbyTopic=20260914_1&guessInput=20260914_2&guessLayout=20260914_1&lobbyTopicInRoom=20260914_1&guessAnswerGlow=20260914_1&guessAutoSubmit=20260914_1&playerTeamChoice=20260928_1&rankingPets=20260928_1&lobbyAutoCards=20260928_1&lobbyAvatarSize=20260928_1&petPickerModal=20260928_1',
                 data: {pageTitle: 'BATTLE QUIZ ONLINE'},
                 controller: 'BattleQuizOnlineController as vm',
                 resolve: {
@@ -511,7 +511,7 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION + '&qrCameraFix=20260825_2&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1&lobbyTeamDrag=20260905_1&invertSkill=20260905_1&moneyHack=20260905_1&passwordPairsMusic=20260905_1&finishSoundRanksPasswords=20260905_1&lobbyExpiryHackRankMedals=20260905_1&guessWord=20260914_2&lobbyTopic=20260914_1&guessInput=20260914_2&guessAdvance=20260914_1&lobbyTopicInRoom=20260914_1&guessAutoSubmit=20260914_1&playerTeamChoice=20260928_1',
+                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION + '&qrCameraFix=20260825_2&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1&lobbyTeamDrag=20260905_1&invertSkill=20260905_1&moneyHack=20260905_1&passwordPairsMusic=20260905_1&finishSoundRanksPasswords=20260905_1&lobbyExpiryHackRankMedals=20260905_1&guessWord=20260914_2&lobbyTopic=20260914_1&guessInput=20260914_2&guessAdvance=20260914_1&lobbyTopicInRoom=20260914_1&guessAutoSubmit=20260914_1&playerTeamChoice=20260928_1&petPickerModal=20260928_1',
                                 'question/business/BattleQuizOnlineService.js?v=' + window.APP_VERSION + '&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&guessWord=20260914_2&lobbyTopic=20260914_1&guessAutoSubmit=20260914_1',
                                 'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]
@@ -522,7 +522,7 @@
 
             .state('application.battle_quiz_online_room', {
                 url: '/battle-quiz-online/:roomCode',
-                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION + '&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1&lobbyTeamDrag=20260905_1&invertSkill=20260905_1&moneyHack=20260905_1&passwordPairsMusic=20260905_1&finishSoundRanksPasswords=20260905_1&lobbyExpiryHackRankMedals=20260905_1&guessWord=20260914_2&lobbyTopic=20260914_1&guessInput=20260914_2&guessLayout=20260914_1&lobbyTopicInRoom=20260914_1&guessAnswerGlow=20260914_1&guessAutoSubmit=20260914_1&playerTeamChoice=20260928_1&rankingPets=20260928_1&lobbyAutoCards=20260928_1&lobbyAvatarSize=20260928_1',
+                templateUrl: 'question/views/battle_quiz_online.html?v=' + window.APP_VERSION + '&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1&lobbyTeamDrag=20260905_1&invertSkill=20260905_1&moneyHack=20260905_1&passwordPairsMusic=20260905_1&finishSoundRanksPasswords=20260905_1&lobbyExpiryHackRankMedals=20260905_1&guessWord=20260914_2&lobbyTopic=20260914_1&guessInput=20260914_2&guessLayout=20260914_1&lobbyTopicInRoom=20260914_1&guessAnswerGlow=20260914_1&guessAutoSubmit=20260914_1&playerTeamChoice=20260928_1&rankingPets=20260928_1&lobbyAutoCards=20260928_1&lobbyAvatarSize=20260928_1&petPickerModal=20260928_1',
                 data: {pageTitle: 'BATTLE QUIZ ONLINE'},
                 controller: 'BattleQuizOnlineController as vm',
                 resolve: {
@@ -531,7 +531,7 @@
                             name: 'Hrm.Question',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
-                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION + '&qrCameraFix=20260825_2&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1&lobbyTeamDrag=20260905_1&invertSkill=20260905_1&moneyHack=20260905_1&passwordPairsMusic=20260905_1&finishSoundRanksPasswords=20260905_1&lobbyExpiryHackRankMedals=20260905_1&guessWord=20260914_2&lobbyTopic=20260914_1&guessInput=20260914_2&guessAdvance=20260914_1&lobbyTopicInRoom=20260914_1&guessAutoSubmit=20260914_1&playerTeamChoice=20260928_1',
+                                'question/controllers/BattleQuizOnlineController.js?v=' + window.APP_VERSION + '&qrCameraFix=20260825_2&mobileHistory=20260827_1&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&dumberMode=20260904_1&escapeDumbDemon=20260904_2&doubleAction=20260904_1&lobbyTeamDrag=20260905_1&invertSkill=20260905_1&moneyHack=20260905_1&passwordPairsMusic=20260905_1&finishSoundRanksPasswords=20260905_1&lobbyExpiryHackRankMedals=20260905_1&guessWord=20260914_2&lobbyTopic=20260914_1&guessInput=20260914_2&guessAdvance=20260914_1&lobbyTopicInRoom=20260914_1&guessAutoSubmit=20260914_1&playerTeamChoice=20260928_1&petPickerModal=20260928_1',
                                 'question/business/BattleQuizOnlineService.js?v=' + window.APP_VERSION + '&moneyMode=20260828_5&wrongFreezeTeams=20260902_1&guessWord=20260914_2&lobbyTopic=20260914_1&guessAutoSubmit=20260914_1',
                                 'question/business/QuestionService.js?v=' + window.APP_VERSION
                             ]

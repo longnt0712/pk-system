@@ -93,6 +93,7 @@
         vm.skillHitEffect = null;
         vm.rankingModalOpen = false;
         vm.skillActivityModalOpen = false;
+        vm.petPickerModalOpen = false;
         vm.wrongQuestionsModalOpen = false;
         vm.wrongQuestions = [];
         vm.kickConfirmModalOpen = false;
@@ -368,6 +369,10 @@
         vm.getPlayerDisplayName = getPlayerDisplayName;
         vm.getPlayerPetImage = getPlayerPetImage;
         vm.getBattlePetOptions = getBattlePetOptions;
+        vm.getBattlePetOptionImage = getBattlePetOptionImage;
+        vm.getSelectedBattlePetLabel = getSelectedBattlePetLabel;
+        vm.openPetPickerModal = openPetPickerModal;
+        vm.closePetPickerModal = closePetPickerModal;
         vm.selectBattlePet = selectBattlePet;
         vm.getFinalPlayerDisplayName = getFinalPlayerDisplayName;
         vm.getPlayerRankPraise = getPlayerRankPraise;
@@ -576,8 +581,80 @@
         }
 
 
-        function selectBattlePet() {
-            if (vm.savingBattlePet || !vm.selectedBattlePetKey) { return; }
+        function getBattlePetOptionImage(petKey) {
+            var me = getMe() || {};
+            return getPlayerPetImage({
+                selectedPetKey: petKey,
+                vocabularyExperienceLevel:
+                    me.vocabularyExperienceLevel != null
+                        ? me.vocabularyExperienceLevel
+                        : (vm.currentUser || {}).vocabularyExperienceLevel
+            });
+        }
+
+
+        function getSelectedBattlePetLabel() {
+            var selectedKey = String(
+                vm.selectedBattlePetKey || 'MAM_HOC'
+            ).toUpperCase();
+            var options = getBattlePetOptions();
+
+            for (var index = 0; index < options.length; index += 1) {
+                if (options[index].key === selectedKey) {
+                    return options[index].label;
+                }
+            }
+
+            return 'Trứng Mầm Học';
+        }
+
+
+        function openPetPickerModal() {
+            if (
+                vm.room &&
+                vm.room.status === 'LOBBY' &&
+                getBattlePetOptions().length
+            ) {
+                vm.petPickerModalOpen = true;
+            }
+        }
+
+
+        function closePetPickerModal() {
+            if (!vm.savingBattlePet) {
+                vm.petPickerModalOpen = false;
+            }
+        }
+
+
+        function selectBattlePet(petKey) {
+            if (vm.savingBattlePet) { return; }
+
+            var me = getMe();
+            var previousPetKey = String(
+                me && me.selectedPetKey ||
+                (vm.currentUser || {}).selectedLearningPet ||
+                'MAM_HOC'
+            ).toUpperCase();
+            var requestedPetKey = String(
+                petKey || vm.selectedBattlePetKey || ''
+            ).toUpperCase();
+            var owned = false;
+
+            angular.forEach(getBattlePetOptions(), function (option) {
+                if (option.key === requestedPetKey) {
+                    owned = true;
+                }
+            });
+
+            if (!owned) { return; }
+
+            vm.selectedBattlePetKey = requestedPetKey;
+            if (requestedPetKey === previousPetKey) {
+                vm.petPickerModalOpen = false;
+                return;
+            }
+
             vm.savingBattlePet = true;
             battleService.selectPet(vm.selectedBattlePetKey).then(function (data) {
                 vm.selectedBattlePetKey = data.selectedPetKey || 'MAM_HOC';
@@ -594,8 +671,10 @@
                     'learningPetSelectionChanged',
                     vm.selectedBattlePetKey
                 );
+                vm.petPickerModalOpen = false;
                 toastr.success('Đã đổi pet hiển thị.', 'Battle Online');
             }, function (error) {
+                vm.selectedBattlePetKey = previousPetKey;
                 showRequestError(error);
             }).finally(function () {
                 vm.savingBattlePet = false;
@@ -1921,6 +2000,7 @@
 
             if (incoming.status !== 'LOBBY') {
                 vm.lobbyTopicEditorOpen = false;
+                vm.petPickerModalOpen = false;
                 vm.qrModalOpen = false;
             }
 
