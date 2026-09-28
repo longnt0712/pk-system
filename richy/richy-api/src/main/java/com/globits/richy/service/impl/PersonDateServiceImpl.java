@@ -556,8 +556,15 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 				|| (dto.getExtraClass() != null && !markExtraClass)) {
 			throw new IllegalArgumentException("Loại điểm danh QR không hợp lệ.");
 		}
-		if (markMass && LocalDateTime.now().getHourOfDay() >= 9) {
+		LocalDateTime qrScanTime = LocalDateTime.now();
+		if (markMass && qrScanTime.getHourOfDay() >= 9) {
 			throw new IllegalArgumentException("Đã quá 09:00 sáng, không thể điểm danh Lễ.");
+		}
+		boolean beforeClassAttendanceTime = qrScanTime.getHourOfDay() < 9
+				|| (qrScanTime.getHourOfDay() == 9 && qrScanTime.getMinuteOfHour() < 10);
+		if ((markClass || markExtraClass) && beforeClassAttendanceTime) {
+			throw new IllegalArgumentException(
+					"Chưa đến 09:10 sáng, không thể điểm danh Giáo lý hoặc Ngoại khóa.");
 		}
 
 		Integer targetSchoolId = normalizeAttendanceSchoolId(dto.getSchoolId());

@@ -837,28 +837,32 @@
             </label>
 
             <label class="qr-attendance-type-option"
-                   ng-class="{'is-selected': vm.pendingCheckType == 2}">
+                   ng-class="{'is-selected': vm.pendingCheckType == 2, 'is-disabled': !vm.isClassAttendanceAllowed()}">
                 <input type="radio"
                        name="pendingCheckType"
                        ng-model="vm.pendingCheckType"
-                       ng-value="2">
+                       ng-value="2"
+                       ng-disabled="!vm.isClassAttendanceAllowed()">
                 <span class="qr-attendance-type-icon is-class"><i class="fa fa-book"></i></span>
                 <span>
                     <strong>Điểm danh Giáo lý</strong>
-                    <small>Chỉ cập nhật trạng thái học Giáo lý.</small>
+                    <small ng-if="vm.isClassAttendanceAllowed()">Chỉ cập nhật trạng thái học Giáo lý.</small>
+                    <small class="text-danger" ng-if="!vm.isClassAttendanceAllowed()">Chỉ mở từ 09:10 sáng.</small>
                 </span>
             </label>
 
             <label class="qr-attendance-type-option"
-                   ng-class="{'is-selected': vm.pendingCheckType == 3}">
+                   ng-class="{'is-selected': vm.pendingCheckType == 3, 'is-disabled': !vm.isClassAttendanceAllowed()}">
                 <input type="radio"
                        name="pendingCheckType"
                        ng-model="vm.pendingCheckType"
-                       ng-value="3">
+                       ng-value="3"
+                       ng-disabled="!vm.isClassAttendanceAllowed()">
                 <span class="qr-attendance-type-icon is-extra"><i class="fa fa-bicycle"></i></span>
                 <span>
                     <strong>Điểm danh Ngoại khóa</strong>
-                    <small>Chỉ cập nhật trạng thái học Ngoại khóa.</small>
+                    <small ng-if="vm.isClassAttendanceAllowed()">Chỉ cập nhật trạng thái học Ngoại khóa.</small>
+                    <small class="text-danger" ng-if="!vm.isClassAttendanceAllowed()">Chỉ mở từ 09:10 sáng.</small>
                 </span>
             </label>
         </div>

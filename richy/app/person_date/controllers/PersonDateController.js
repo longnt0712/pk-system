@@ -1530,6 +1530,12 @@
             return new Date().getHours() < 9;
         };
 
+        vm.isClassAttendanceAllowed = function () {
+            var now = new Date();
+            return now.getHours() > 9 ||
+                (now.getHours() === 9 && now.getMinutes() >= 10);
+        };
+
         vm.openQrAttendanceTypeModal = function () {
             vm.pendingCheckType = null;
             vm.qrAttendanceTypeModalInstance = modal.open({
@@ -1555,6 +1561,11 @@
             if (selectedType === 1 && !vm.isMassAttendanceAllowed()) {
                 vm.pendingCheckType = null;
                 toastr.warning('Đã quá 09:00 sáng, không thể điểm danh Lễ.', 'Thông báo');
+                return;
+            }
+            if ((selectedType === 2 || selectedType === 3) && !vm.isClassAttendanceAllowed()) {
+                vm.pendingCheckType = null;
+                toastr.warning('Chưa đến 09:10 sáng, không thể điểm danh Giáo lý hoặc Ngoại khóa.', 'Thông báo');
                 return;
             }
 
@@ -1782,6 +1793,12 @@
                 toastr.warning(massClosedMessage, 'Thông báo');
                 if (vm.scanning) vm.stop();
                 return $q.reject({message: massClosedMessage});
+            }
+            if ((selectedType === 2 || selectedType === 3) && !vm.isClassAttendanceAllowed()) {
+                var classNotOpenMessage = 'Chưa đến 09:10 sáng, không thể điểm danh Giáo lý hoặc Ngoại khóa.';
+                toastr.warning(classNotOpenMessage, 'Thông báo');
+                if (vm.scanning) vm.stop();
+                return $q.reject({message: classNotOpenMessage});
             }
 
             var request = {
