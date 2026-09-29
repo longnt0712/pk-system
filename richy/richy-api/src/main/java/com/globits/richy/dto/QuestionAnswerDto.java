@@ -135,6 +135,7 @@ public class QuestionAnswerDto implements Serializable{
 	            QuestionDto qDto = new QuestionDto();
 	            qDto.setId(domain.getQuestion().getParent().getId());
 	            qDto.setType(domain.getQuestion().getParent().getType());
+	            qDto.setQuestion(domain.getQuestion().getParent().getQuestion());
 	            this.question.setParent(qDto);
 	        }
 

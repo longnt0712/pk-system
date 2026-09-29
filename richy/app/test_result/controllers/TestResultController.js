@@ -281,6 +281,20 @@
             return item && item.ordinalNumber;
         };
 
+        vm.getWritingTaskPrompt = function (item) {
+            var question = item && item.questionAnswer && item.questionAnswer.question;
+            if (!question) { return ''; }
+            return question.parent && question.parent.question ?
+                question.parent.question : (question.question || '');
+        };
+
+        vm.getWritingTaskWordCount = function (item) {
+            var answer = vm.getResultYourAnswer(item);
+            if (!answer || answer === 'Không có dữ liệu') { return 0; }
+            var normalized = String(answer).trim();
+            return normalized ? normalized.split(/\s+/).length : 0;
+        };
+
         vm.testResult = {};
         vm.ieltsLearningState = {};
         vm.isRetryingWritingGrade = false;
@@ -906,7 +920,8 @@
                 animation: true,
                 templateUrl: 'edit_object_modal.html',
                 scope: $scope,
-                size: 'lg'
+                size: 'lg',
+                windowClass: 'ielts-result-detail-window'
             });
 
             modalInstance.result.then(function (confirm) {
@@ -937,7 +952,8 @@
                     animation: true,
                     templateUrl: 'edit_object_modal.html',
                     scope: $scope,
-                    size: 'lg'
+                    size: 'lg',
+                    windowClass: 'ielts-result-detail-window'
                 });
 
                 modalInstance.result.then(function (confirm) {
