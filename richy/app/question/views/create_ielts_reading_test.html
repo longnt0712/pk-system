@@ -339,14 +339,25 @@
                                 <i class="fa fa-pencil"></i>
                                 <div>
                                     <strong>{{item.type == 17 ? 'Writing Task 2' : 'Writing Task 1'}}</strong>
-                                    <span>Nhập toàn bộ đề bài và tài liệu tham khảo riêng cho Task này ở ô bên dưới.</span>
+                                    <span>Nhập đề bài bên trái và Hint/Outline dành riêng cho chế độ Học tập bên phải.</span>
                                     <small>Bài làm phải trên {{item.type == 17 ? 250 : 150}} từ để được tính là đạt.</small>
                                 </div>
                             </div>
-                            <div class="writing-task-builder-editor" ng-if="item.type == 16 || item.type == 17">
-                                <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"
-                                          ui-tinymce="tinymceOptionsToCreateWritingTask"
-                                          ng-model="item.question"></textarea>
+                            <div class="writing-task-builder-editors" ng-if="item.type == 16 || item.type == 17">
+                                <section class="writing-task-builder-editor">
+                                    <label><i class="fa fa-file-text-o"></i> Đề bài</label>
+                                    <small>Luôn hiển thị ở cả chế độ Thi nghiêm túc và Học tập.</small>
+                                    <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"
+                                              ui-tinymce="tinymceOptionsToCreateWritingTask"
+                                              ng-model="item.question"></textarea>
+                                </section>
+                                <section class="writing-task-builder-editor writing-task-builder-editor--outline">
+                                    <label><i class="fa fa-lightbulb-o"></i> Hint / Outline</label>
+                                    <small>Chỉ học sinh chọn chế độ Học tập mới xem được nội dung này.</small>
+                                    <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"
+                                              ui-tinymce="tinymceOptionsToCreateWritingTask"
+                                              ng-model="item.description"></textarea>
+                                </section>
                             </div>
 
                             <div class="reading-matching-names-builder" ng-if="(item.type == 4 || item.type == 10 || item.type == 14 || item.type == 15) && item.subQuestions.length">
@@ -2577,9 +2588,43 @@
         font-weight: 700;
     }
 
-    .writing-task-builder-editor {
-        min-height: 620px;
+    .writing-task-builder-editors {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 16px;
         margin-top: 10px;
+    }
+
+    .writing-task-builder-editor {
+        min-width: 0;
+        min-height: 620px;
+        padding: 14px;
+        border: 1px solid #d9e2ec;
+        border-radius: 12px;
+        background: #fff;
+    }
+
+    .writing-task-builder-editor--outline {
+        background: #fffdf5;
+    }
+
+    .writing-task-builder-editor > label,
+    .writing-task-builder-editor > small {
+        display: block;
+    }
+
+    .writing-task-builder-editor > label {
+        margin-bottom: 4px;
+        color: #20324a;
+        font-size: 16px;
+        font-weight: 800;
+    }
+
+    .writing-task-builder-editor > small {
+        min-height: 36px;
+        margin-bottom: 8px;
+        color: #69778b;
+        line-height: 1.4;
     }
 
     .writing-task-builder-editor .mce-tinymce {
@@ -2588,6 +2633,12 @@
         border-radius: 8px;
         overflow: hidden;
         box-shadow: 0 8px 24px rgba(36, 55, 82, .08);
+    }
+
+    @media (max-width: 1100px) {
+        .writing-task-builder-editors {
+            grid-template-columns: 1fr;
+        }
     }
 
     .reading-insert-gap-button {

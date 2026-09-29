@@ -249,6 +249,13 @@
                                                   data-languagetool-ignore="true"
                                                   data-ms-editor="false"
                                                   placeholder="Bắt đầu viết bài tại đây..."></textarea>
+                                        <button type="button"
+                                                class="idp-writing-outline-toggle"
+                                                ng-if="vm.testSessionMode === 'STUDY' && vm.hasWritingOutline(item)"
+                                                ng-click="vm.toggleWritingOutline(item)">
+                                            <i class="fa" ng-class="vm.isWritingOutlineOpen(item) ? 'fa-eye-slash' : 'fa-lightbulb-o'"></i>
+                                            {{vm.isWritingOutlineOpen(item) ? 'Hide Outline' : 'Show Outline'}}
+                                        </button>
                                         <div class="writing-task-runtime__footer"
                                              ng-class="{'is-complete': vm.isWritingTaskWordTargetMet(item)}">
                                             <span>Words: <strong>{{vm.countWritingTaskWords(item.subQuestions[0].questionAnswers[0].clientAnswer)}}</strong></span>
@@ -321,6 +328,13 @@
                                                       data-languagetool-ignore="true"
                                                       data-ms-editor="false"
                                                       placeholder="Bắt đầu viết bài tại đây..."></textarea>
+                                            <button type="button"
+                                                    class="idp-writing-outline-toggle"
+                                                    ng-if="vm.testSessionMode === 'STUDY' && vm.hasWritingOutline(item)"
+                                                    ng-click="vm.toggleWritingOutline(item)">
+                                                <i class="fa" ng-class="vm.isWritingOutlineOpen(item) ? 'fa-eye-slash' : 'fa-lightbulb-o'"></i>
+                                                {{vm.isWritingOutlineOpen(item) ? 'Hide Outline' : 'Show Outline'}}
+                                            </button>
                                             <div class="writing-task-runtime__footer"
                                                  ng-class="{'is-complete': vm.isWritingTaskWordTargetMet(item)}">
                                                 <span><strong>{{vm.countWritingTaskWords(item.subQuestions[0].questionAnswers[0].clientAnswer)}}</strong> từ</span>
@@ -1687,6 +1701,24 @@
               aria-label="Note content"></textarea>
 </section>
 
+<aside class="idp-writing-outline-note"
+       writing-outline-note
+       ng-if="vm.isWritingRoute && vm.testSessionMode === 'STUDY' && vm.writingOutlineNote.visible"
+       ng-mousedown="$event.stopPropagation()"
+       ng-mouseup="$event.stopPropagation()"
+       ng-click="$event.stopPropagation()"
+       role="dialog"
+       aria-label="Writing Hint and Outline">
+    <header class="idp-writing-outline-note__header">
+        <strong><i class="fa fa-lightbulb-o"></i> {{vm.writingOutlineNote.title}}</strong>
+        <button type="button" ng-click="vm.closeWritingOutline()" aria-label="Close outline">
+            <i class="fa fa-times"></i>
+        </button>
+    </header>
+    <div class="idp-writing-outline-note__content" compile="vm.writingOutlineNote.content"></div>
+    <span class="idp-writing-outline-note__resize-hint"><i class="fa fa-arrows-alt"></i> Kéo tiêu đề để di chuyển · kéo góc để đổi kích thước</span>
+</aside>
+
 <div class="idp-display-settings-backdrop"
      ng-if="vm.showDisplaySettings"
      ng-click="vm.closeDisplaySettings()"
@@ -2253,6 +2285,121 @@
     .idp-writing-answer-pane .writing-task-runtime__footer.is-complete {
         background: transparent;
         color: #202124;
+    }
+
+    .idp-writing-outline-toggle {
+        align-self: flex-start;
+        margin-top: 10px;
+        padding: 8px 13px;
+        border: 1px solid #d7ad35;
+        border-radius: 7px;
+        color: #6d4b00;
+        background: #fff8d9;
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    .idp-writing-outline-toggle:hover,
+    .idp-writing-outline-toggle:focus {
+        border-color: #b98909;
+        outline: none;
+        background: #ffefad;
+    }
+
+    .idp-writing-outline-note {
+        position: fixed;
+        z-index: 10022;
+        top: 140px;
+        right: 24px;
+        display: flex;
+        width: min(420px, calc(100vw - 32px));
+        height: 360px;
+        min-width: 280px;
+        min-height: 180px;
+        max-width: calc(100vw - 12px);
+        max-height: calc(100vh - 12px);
+        flex-direction: column;
+        overflow: hidden;
+        resize: both;
+        border: 1px solid #d6b33b;
+        border-radius: 12px;
+        background: #fffdf3;
+        color: #273144;
+        box-shadow: 0 18px 48px rgba(31, 41, 55, .28);
+    }
+
+    .idp-writing-outline-note__header {
+        display: flex;
+        min-height: 46px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 9px 11px 9px 14px;
+        cursor: move;
+        user-select: none;
+        background: #ffe58f;
+        color: #533d00;
+    }
+
+    .idp-writing-outline-note__header button {
+        width: 29px;
+        height: 29px;
+        padding: 0;
+        border: 0;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, .58);
+        color: inherit;
+    }
+
+    .idp-writing-outline-note__content {
+        flex: 1 1 auto;
+        overflow: auto;
+        padding: 15px 17px;
+        font-size: 15px;
+        line-height: 1.6;
+        user-select: text;
+    }
+
+    .idp-writing-outline-note__content img,
+    .idp-writing-outline-note__content table {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+
+    .idp-writing-outline-note__resize-hint {
+        flex: 0 0 auto;
+        padding: 6px 10px;
+        border-top: 1px solid #eadb9d;
+        color: #77662f;
+        background: #fff9df;
+        font-size: 11px;
+        text-align: right;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-writing-outline-note,
+    .idp-reading-page.idp-contrast-yellow-black .idp-writing-outline-note {
+        border-color: #777;
+        background: #111 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-writing-outline-note *,
+    .idp-reading-page.idp-contrast-white-black .idp-writing-outline-toggle {
+        color: #fff !important;
+    }
+
+    .idp-reading-page.idp-contrast-yellow-black .idp-writing-outline-note *,
+    .idp-reading-page.idp-contrast-yellow-black .idp-writing-outline-toggle {
+        color: #ffe600 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-writing-outline-note__header,
+    .idp-reading-page.idp-contrast-white-black .idp-writing-outline-note__resize-hint,
+    .idp-reading-page.idp-contrast-white-black .idp-writing-outline-toggle,
+    .idp-reading-page.idp-contrast-yellow-black .idp-writing-outline-note__header,
+    .idp-reading-page.idp-contrast-yellow-black .idp-writing-outline-note__resize-hint,
+    .idp-reading-page.idp-contrast-yellow-black .idp-writing-outline-toggle {
+        border-color: #777 !important;
+        background: #242424 !important;
     }
 
     .writing-task-runtime__footer strong {
@@ -6192,6 +6339,33 @@
     .writing-task-runtime__clipboard-note {
         font-size: 11px !important;
         line-height: 1.45 !important;
+    }
+
+    /* Display settings must also resize the dedicated Writing workspace.
+       The generic rules above only target Reading passage/question panes. */
+    .idp-reading-page.idp-text-regular { --idp-test-content-font-size: 19px; }
+    .idp-reading-page.idp-text-large { --idp-test-content-font-size: 24px; }
+    .idp-reading-page.idp-text-extra-large { --idp-test-content-font-size: 29px; }
+
+    .idp-reading-page.idp-writing-page .idp-writing-prompt-copy,
+    .idp-reading-page.idp-writing-page .idp-writing-prompt-copy *,
+    .idp-reading-page.idp-writing-page .idp-writing-answer-pane .writing-task-runtime__textarea {
+        font-size: var(--idp-test-content-font-size) !important;
+        line-height: 1.55 !important;
+    }
+
+    /* Keep the legacy/comprehensive Writing renderer in sync as well. */
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global
+    .writing-task-runtime__prompt,
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global
+    .writing-task-runtime__prompt *,
+    .idp-reading-page .question-content
+    .writing-task-runtime.actual-test-font-global
+    .writing-task-runtime__textarea {
+        font-size: var(--idp-test-content-font-size) !important;
+        line-height: 1.55 !important;
     }
 </style>
 

@@ -260,6 +260,59 @@
         };
     });
 
+    /* Floating Study-mode outline. The browser provides corner resizing while
+       this directive keeps header dragging inside the visible viewport. */
+    angular.module('Hrm.Question').directive('writingOutlineNote', function ($window) {
+        return {
+            restrict: 'A',
+            link: function (scope, element) {
+                var node = element[0];
+                var handle = node.querySelector('.idp-writing-outline-note__header');
+                var dragging = false;
+                var startX = 0;
+                var startY = 0;
+                var startLeft = 0;
+                var startTop = 0;
+
+                function onMouseDown(event) {
+                    if (event.button !== 0 || event.target.closest('button')) { return; }
+                    var rect = node.getBoundingClientRect();
+                    dragging = true;
+                    startX = event.clientX;
+                    startY = event.clientY;
+                    startLeft = rect.left;
+                    startTop = rect.top;
+                    node.style.left = rect.left + 'px';
+                    node.style.top = rect.top + 'px';
+                    node.style.right = 'auto';
+                    event.preventDefault();
+                }
+
+                function onMouseMove(event) {
+                    if (!dragging) { return; }
+                    var maxLeft = Math.max(0, $window.innerWidth - node.offsetWidth);
+                    var maxTop = Math.max(0, $window.innerHeight - node.offsetHeight);
+                    node.style.left = Math.max(0, Math.min(maxLeft, startLeft + event.clientX - startX)) + 'px';
+                    node.style.top = Math.max(0, Math.min(maxTop, startTop + event.clientY - startY)) + 'px';
+                }
+
+                function stopDragging() {
+                    dragging = false;
+                }
+
+                if (handle) { handle.addEventListener('mousedown', onMouseDown, false); }
+                $window.document.addEventListener('mousemove', onMouseMove, false);
+                $window.document.addEventListener('mouseup', stopDragging, false);
+
+                scope.$on('$destroy', function () {
+                    if (handle) { handle.removeEventListener('mousedown', onMouseDown, false); }
+                    $window.document.removeEventListener('mousemove', onMouseMove, false);
+                    $window.document.removeEventListener('mouseup', stopDragging, false);
+                });
+            }
+        };
+    });
+
     angular.module('Hrm.Question').directive('draggable', function () {
         return {
             restrict: 'A',
@@ -1152,6 +1205,48 @@
 
         vm.writingTaskWordTarget = function (questionPackage) {
             return questionPackage && Number(questionPackage.type) === 17 ? 250 : 150;
+        };
+
+        vm.writingOutlineNote = {
+            visible: false,
+            packageKey: null,
+            title: '',
+            content: ''
+        };
+
+        function writingOutlinePackageKey(questionPackage) {
+            if (!questionPackage) { return ''; }
+            return String(questionPackage.id || ('type-' + questionPackage.type + '-order-' + questionPackage.ordinalNumber));
+        }
+
+        vm.hasWritingOutline = function (questionPackage) {
+            var content = String((questionPackage && questionPackage.description) || '');
+            if (!content.trim()) { return false; }
+            var probe = $window.document.createElement('div');
+            probe.innerHTML = content;
+            return !!String(probe.textContent || '').trim() || !!probe.querySelector('img, table, ul, ol');
+        };
+
+        vm.isWritingOutlineOpen = function (questionPackage) {
+            return vm.writingOutlineNote.visible === true
+                && vm.writingOutlineNote.packageKey === writingOutlinePackageKey(questionPackage);
+        };
+
+        vm.toggleWritingOutline = function (questionPackage) {
+            if (vm.testSessionMode !== 'STUDY' || !vm.hasWritingOutline(questionPackage)) { return; }
+            var packageKey = writingOutlinePackageKey(questionPackage);
+            if (vm.writingOutlineNote.visible && vm.writingOutlineNote.packageKey === packageKey) {
+                vm.writingOutlineNote.visible = false;
+                return;
+            }
+            vm.writingOutlineNote.packageKey = packageKey;
+            vm.writingOutlineNote.title = Number(questionPackage.type) === 17 ? 'Task 2 · Hint / Outline' : 'Task 1 · Hint / Outline';
+            vm.writingOutlineNote.content = questionPackage.description;
+            vm.writingOutlineNote.visible = true;
+        };
+
+        vm.closeWritingOutline = function () {
+            vm.writingOutlineNote.visible = false;
         };
 
         vm.isWritingTaskWordTargetMet = function (questionPackage) {
