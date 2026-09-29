@@ -550,7 +550,13 @@
     <div class="ielts-result-detail-modal">
         <div class="modal-header">
             <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
-            <h4 class="modal-title"><i class="fa fa-file-text-o"></i> Chi tiết kết quả bài làm</h4>
+            <h4 class="modal-title ielts-result-modal-title">
+                <span><i class="fa fa-file-text-o"></i> Chi tiết kết quả bài làm</span>
+                <span class="ielts-result-student-meta" data-ng-if="vm.getResultStudentName(vm.testResult)">
+                    {{vm.getResultStudentName(vm.testResult)}}
+                    <span data-ng-if="vm.testResult.enrollmentClassName"> - {{vm.testResult.enrollmentClassName}}</span>
+                </span>
+            </h4>
         </div>
         <div class="modal-body"
              data-ng-class="{'ielts-result-modal-body--writing': vm.testResult.testType === 7}">
@@ -776,6 +782,23 @@
         min-height: 58px;
         border-bottom: 1px solid #e4e7f1;
     }
+    .ielts-result-modal-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+    .ielts-result-student-meta {
+        min-width: 0;
+        padding-left: 12px;
+        overflow: hidden;
+        border-left: 1px solid #cfd5e5;
+        color: #5145c6;
+        font-size: 14px;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
     .ielts-result-detail-modal .modal-footer {
         display: flex;
         align-items: center;
@@ -810,7 +833,7 @@
         --writing-task-width: 66%;
         --writing-prompt-width: 42%;
         display: grid;
-        grid-template-columns: minmax(540px, var(--writing-task-width)) 12px minmax(320px, 1fr);
+        grid-template-columns: minmax(0, var(--writing-task-width)) 12px minmax(0, 1fr);
         flex: 1 1 0;
         align-items: stretch;
         min-width: 0;
@@ -871,7 +894,7 @@
     .writing-task-card__content {
         display: grid;
         flex: 1 1 0;
-        grid-template-columns: minmax(240px, var(--writing-prompt-width)) 12px minmax(300px, 1fr);
+        grid-template-columns: minmax(0, var(--writing-prompt-width)) 12px minmax(0, 1fr);
         align-items: stretch;
         min-height: 0;
         overflow: hidden;

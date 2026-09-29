@@ -513,6 +513,7 @@ public class TestResultServiceImpl implements TestResultService {
 		TestResult domain = id == null ? null : testResultRepository.findOne(id);
 		if (domain == null) { return null; }
 		TestResultDto dto = new TestResultDto(domain, true);
+		populateResultStudentClass(dto, domain);
 		dto.setCanEditWritingFeedback(canEditWritingFeedback(getCurrentUser(), domain));
 		return dto;
 	}
@@ -547,8 +548,36 @@ public class TestResultServiceImpl implements TestResultService {
 		domain = testResultRepository.save(domain);
 
 		TestResultDto result = new TestResultDto(domain, true);
+		populateResultStudentClass(result, domain);
 		result.setCanEditWritingFeedback(true);
 		return result;
+	}
+
+	private void populateResultStudentClass(TestResultDto dto, TestResult domain) {
+		if (dto == null || domain == null) { return; }
+		EnrolmentClass enrolmentClass = null;
+		if (domain.getAssignmentTaskId() != null) {
+			EnrolmentClassScheduleTask task = scheduleTaskRepository.findOne(domain.getAssignmentTaskId());
+			if (task != null && task.getScheduleDay() != null) {
+				enrolmentClass = task.getScheduleDay().getEnrolmentClass();
+			}
+		}
+		User student = domain.getUser();
+		if (enrolmentClass == null && student != null && student.getPerson() != null
+				&& student.getPerson().getEnrollmentClassId() != null) {
+			enrolmentClass = enrolmentClassRepository.findOne(
+					student.getPerson().getEnrollmentClassId().longValue());
+		}
+		if (enrolmentClass == null && student != null && student.getEnrollmentClassIds() != null) {
+			for (Long classId : student.getEnrollmentClassIds()) {
+				if (classId == null) { continue; }
+				enrolmentClass = enrolmentClassRepository.findOne(classId);
+				if (enrolmentClass != null) { break; }
+			}
+		}
+		if (enrolmentClass != null) {
+			dto.setEnrollmentClassName(enrolmentClass.getName());
+		}
 	}
 
 	private String sanitizeWritingFeedback(String html) {

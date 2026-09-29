@@ -235,27 +235,29 @@
                         var taskContent = handle.parentNode;
                         var taskRect = taskContent.getBoundingClientRect();
                         var taskHandleWidth = handle.offsetWidth || 12;
-                        var minimumPromptWidth = 240;
-                        var minimumAnswerWidth = 300;
+                        var minimumPromptWidth = taskRect.width * 0.05;
+                        var minimumAnswerWidth = taskRect.width * 0.05;
                         var maximumPromptWidth = taskRect.width - taskHandleWidth - minimumAnswerWidth;
                         if (maximumPromptWidth <= minimumPromptWidth) { return; }
                         var promptWidth = clamp(clientX - taskRect.left,
                             minimumPromptWidth, maximumPromptWidth);
-                        workspace.style.setProperty('--writing-prompt-width', promptWidth + 'px');
+                        workspace.style.setProperty('--writing-prompt-width',
+                            ((promptWidth / taskRect.width) * 100) + '%');
                         return;
                     }
 
                     var workspaceRect = workspace.getBoundingClientRect();
                     var workspaceHandleWidth = handle.offsetWidth || 12;
                     var totalGridGaps = 20;
-                    var minimumTaskWidth = 540;
-                    var minimumReviewWidth = 320;
+                    var minimumTaskWidth = workspaceRect.width * 0.05;
+                    var minimumReviewWidth = workspaceRect.width * 0.05;
                     var maximumTaskWidth = workspaceRect.width - workspaceHandleWidth
                         - totalGridGaps - minimumReviewWidth;
                     if (maximumTaskWidth <= minimumTaskWidth) { return; }
                     var taskWidth = clamp(clientX - workspaceRect.left,
                         minimumTaskWidth, maximumTaskWidth);
-                    workspace.style.setProperty('--writing-task-width', taskWidth + 'px');
+                    workspace.style.setProperty('--writing-task-width',
+                        ((taskWidth / workspaceRect.width) * 100) + '%');
                 }
 
                 function stopResize() {
@@ -518,6 +520,12 @@
             if (!answer || answer === 'Không có dữ liệu') { return 0; }
             var normalized = String(answer).trim();
             return normalized ? normalized.split(/\s+/).length : 0;
+        };
+
+        vm.getResultStudentName = function (testResult) {
+            if (!testResult) { return ''; }
+            return testResult.testTakerName || testResult.userDisplayName ||
+                (testResult.user && (testResult.user.displayName || testResult.user.username)) || '';
         };
 
         vm.testResult = {};

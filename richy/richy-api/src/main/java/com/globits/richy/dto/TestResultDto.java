@@ -127,6 +127,7 @@ public class TestResultDto implements Serializable{
 	private String testTime;
 	private String testTakerName;
 	private String userDisplayName;
+	private String enrollmentClassName;
 	private String testName;
 	private String testTakerPerformance;
 	private Integer testType = 0; //1: Daily Vocab, 2: IELTS Listening, 3: Daily Listening, 4: IELTS Reading, 5: Battle, 6: Comprehensive
@@ -146,6 +147,14 @@ public class TestResultDto implements Serializable{
 	private Integer messageCode = 0; // code 0: chúc mừng thành công; code 1: sai nhiều quá, không thành công
 	private Integer schoolId;
 	private Integer enrollmentClassId;
+
+	public String getEnrollmentClassName() {
+		return enrollmentClassName;
+	}
+
+	public void setEnrollmentClassName(String enrollmentClassName) {
+		this.enrollmentClassName = enrollmentClassName;
+	}
 
 	public Integer getEnrollmentClassId() {
 	    return enrollmentClassId;
