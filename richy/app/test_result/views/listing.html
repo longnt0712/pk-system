@@ -547,12 +547,13 @@
 <!-- END MAIN CONTENT -->
 <!-- BEGIN MAIN JS-->
 <script type="text/ng-template" id="edit_object_modal.html">
-    <div modal-movable class="ielts-result-detail-modal">
+    <div class="ielts-result-detail-modal">
         <div class="modal-header">
             <button type="button" class="close" ng-click="$dismiss()" aria-hidden="true"></button>
             <h4 class="modal-title"><i class="fa fa-file-text-o"></i> Chi tiết kết quả bài làm</h4>
         </div>
-        <div class="modal-body">
+        <div class="modal-body"
+             data-ng-class="{'ielts-result-modal-body--writing': vm.testResult.testType === 7}">
             <section class="ielts-learning-state" data-ng-if="vm.testResult.ieltsSessionMode || (vm.ieltsLearningState.annotationNotes || []).length || (vm.ieltsLearningState.annotations || []).length">
                 <div class="ielts-learning-state-summary">
                     <span><strong>Chế độ:</strong> {{vm.testResult.ieltsSessionMode === 'STUDY' ? 'Học tập' : 'Test nghiêm túc'}}</span>
@@ -569,14 +570,6 @@
             </section>
             <div class="writing-grading-workspace" data-ng-if="vm.testResult.testType === 7">
                 <section class="writing-task-list">
-                    <div class="writing-task-list__header">
-                        <div>
-                            <span class="writing-teacher-review__eyebrow">BÀI WRITING CỦA HỌC SINH</span>
-                            <h4>Đề bài và bài làm theo từng Task</h4>
-                        </div>
-                        <span>{{(vm.testResult.questionAnswerTestResult || []).length}} Task</span>
-                    </div>
-
                     <article class="writing-task-card"
                              data-ng-repeat="item in vm.testResult.questionAnswerTestResult track by $index">
                         <header class="writing-task-card__header">
@@ -596,6 +589,12 @@
                                     Chưa tìm thấy nội dung đề bài của Task này.
                                 </p>
                             </section>
+                            <div class="writing-pane-resizer"
+                                 writing-pane-resizer="task"
+                                 role="separator"
+                                 tabindex="0"
+                                 aria-label="Điều chỉnh độ rộng giữa đề bài và bài làm"
+                                 title="Kéo để thay đổi độ rộng; nhấp đúp để đặt lại"></div>
                             <section class="writing-task-pane writing-task-pane--answer">
                                 <h5><i class="fa fa-pencil-square-o"></i> Bài làm của học sinh</h5>
                                 <div class="writing-task-answer">{{vm.getResultYourAnswer(item) || '(Học sinh chưa nhập bài làm)'}}</div>
@@ -604,26 +603,22 @@
                     </article>
                 </section>
 
+                <div class="writing-pane-resizer writing-pane-resizer--workspace"
+                     writing-pane-resizer="workspace"
+                     role="separator"
+                     tabindex="0"
+                     aria-label="Điều chỉnh độ rộng giữa bài Writing và phần chấm"
+                     title="Kéo để thay đổi độ rộng; nhấp đúp để đặt lại"></div>
+
                 <section class="writing-teacher-review">
-                    <div class="writing-teacher-review__header">
-                        <div>
-                            <span class="writing-teacher-review__eyebrow">IELTS WRITING</span>
-                            <h4>Band điểm &amp; feedback của giáo viên</h4>
-                        </div>
-                        <span class="writing-band-pill" data-ng-if="!vm.testResult.canEditWritingFeedback">
-                            Band {{vm.displayWritingBand(vm.testResult)}}
-                        </span>
-                    </div>
-
-                    <div class="form-group" data-ng-if="vm.testResult.canEditWritingFeedback">
-                        <label for="writing-teacher-band">Band điểm</label>
-                        <input id="writing-teacher-band" type="text" maxlength="80" class="form-control writing-band-input"
+                    <div class="form-group writing-band-field" data-ng-if="vm.testResult.canEditWritingFeedback">
+                        <label for="writing-teacher-band">Band điểm:</label>
+                        <input id="writing-teacher-band" type="text" maxlength="12" class="form-control writing-band-input"
                                data-ng-model="vm.testResult.writingTeacherBand"
-                               placeholder="Ví dụ: 6.5, 5+, 6.5 ~ 7.0">
-                        <p class="help-block">Có thể nhập số hoặc nhận xét ngắn theo cách chấm của giáo viên.</p>
+                               placeholder="6.5-7.0">
                     </div>
 
-                    <div class="form-group" data-ng-if="vm.testResult.canEditWritingFeedback">
+                    <div class="form-group writing-feedback-field" data-ng-if="vm.testResult.canEditWritingFeedback">
                         <label>Feedback cho học sinh</label>
                         <div class="writing-feedback-editor" writing-feedback-editor
                              data-ng-model="vm.testResult.writingTeacherFeedback"></div>
@@ -637,13 +632,6 @@
                         </p>
                     </div>
 
-                    <div class="writing-teacher-review__actions" data-ng-if="vm.testResult.canEditWritingFeedback">
-                        <button type="button" class="btn btn-primary" data-ng-click="vm.saveWritingFeedback()"
-                                data-ng-disabled="vm.isSavingWritingFeedback">
-                            <i class="fa" data-ng-class="vm.isSavingWritingFeedback ? 'fa-spinner fa-spin' : 'fa-save'"></i>
-                            {{vm.isSavingWritingFeedback ? 'Đang lưu...' : 'Lưu kết quả chấm'}}
-                        </button>
-                    </div>
                 </section>
             </div>
             <table class="table" data-ng-if="vm.testResult.testType !== 7 && vm.testResult.questionAnswerTestResult && vm.testResult.questionAnswerTestResult.length">
@@ -665,21 +653,31 @@
 
                 </tbody>
             </table>
-            <div class="col-md-12 ielts-result-passage" compile="vm.testResult.testTakerPerformance">
+            <div class="col-md-12 ielts-result-passage"
+                 data-ng-if="vm.testResult.testType !== 7"
+                 compile="vm.testResult.testTakerPerformance">
 
             </div>
         </div>
         <div class="modal-footer">
             <button type="button"
                     class="gpt-regrade-btn"
-                    data-ng-if="vm.canRetryWritingGrade(vm.testResult)"
+                    data-ng-if="vm.showWritingGptGrading && vm.canRetryWritingGrade(vm.testResult)"
                     data-ng-disabled="vm.isRetryingWritingGrade"
                     data-ng-click="vm.retryWritingGrade()">
                 <i class="fa" data-ng-class="vm.isRetryingWritingGrade ? 'fa-spinner fa-spin' : 'fa-refresh'"></i>
                 {{vm.isRetryingWritingGrade ? 'Đang gửi chấm...' : 'Chấm lại bằng GPT'}}
             </button>
-            <!--<button type="button" ng-click="$dismiss()" class="btn btn-default" data-dismiss="modal">Hủy bỏ</button>-->
-            <!--<button type="button" ng-click="$close('yes');" class="btn btn-primary" data-dismiss="modal">Lưu</button>-->
+            <button type="button" ng-click="$dismiss()" class="btn btn-default">
+                <i class="fa fa-times"></i> Đóng
+            </button>
+            <button type="button" class="btn btn-primary"
+                    data-ng-if="vm.testResult.testType === 7 && vm.testResult.canEditWritingFeedback"
+                    data-ng-click="vm.saveWritingFeedback()"
+                    data-ng-disabled="vm.isSavingWritingFeedback">
+                <i class="fa" data-ng-class="vm.isSavingWritingFeedback ? 'fa-spinner fa-spin' : 'fa-save'"></i>
+                {{vm.isSavingWritingFeedback ? 'Đang lưu...' : 'Lưu kết quả chấm'}}
+            </button>
         </div>
     </div>
 </script>
@@ -749,54 +747,98 @@
     .ielts-result-detail-window .modal-dialog {
         width: calc(100vw - 36px);
         max-width: 1800px;
+        height: calc(100vh - 36px);
+        max-height: calc(100vh - 36px);
         margin: 18px auto;
     }
     .ielts-result-detail-window .modal-content {
-        height: calc(100vh - 36px);
+        height: 100%;
+        max-height: 100%;
+        min-height: 0;
         border-radius: 16px;
-        overflow: hidden;
+        overflow: hidden !important;
     }
     .ielts-result-detail-modal {
-        display: flex;
-        flex-direction: column;
+        display: grid !important;
+        grid-template-rows: auto minmax(0, 1fr) auto;
         height: 100%;
+        min-height: 0 !important;
+        overflow: hidden !important;
     }
     .ielts-result-detail-modal .modal-header,
-    .ielts-result-detail-modal .modal-footer { flex: 0 0 auto; }
-    .ielts-result-detail-modal .modal-body {
-        flex: 1 1 auto;
-        min-height: 0;
-        max-height: none;
-        overflow-y: auto;
-        padding: 20px;
+    .ielts-result-detail-modal .modal-footer {
+        position: relative;
+        z-index: 5;
+        flex: 0 0 auto;
+        background: #fff;
     }
-    .writing-grading-workspace {
-        display: grid;
-        grid-template-columns: minmax(0, 1.65fr) minmax(360px, 0.85fr);
-        align-items: start;
-        gap: 20px;
+    .ielts-result-detail-modal .modal-header {
+        min-height: 58px;
+        border-bottom: 1px solid #e4e7f1;
     }
-    .writing-task-list { min-width: 0; }
-    .writing-task-list__header {
+    .ielts-result-detail-modal .modal-footer {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 12px;
-        padding: 0 2px;
+        justify-content: flex-end;
+        gap: 10px;
+        min-height: 64px;
+        border-top: 1px solid #e4e7f1;
+        box-shadow: 0 -6px 18px rgba(35, 45, 80, 0.06);
     }
-    .writing-task-list__header h4 { margin: 3px 0 0; color: #172443; font-weight: 700; }
-    .writing-task-list__header > span {
+    .ielts-result-detail-modal > .modal-body {
+        min-width: 0;
+        min-height: 0 !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding: 20px;
+    }
+    .ielts-result-detail-modal > .ielts-result-modal-body--writing {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden !important;
+    }
+    .ielts-result-modal-body--writing > .ielts-learning-state {
         flex: 0 0 auto;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: #eef0ff;
-        color: #5549d9;
-        font-size: 12px;
-        font-weight: 700;
+        max-height: 28%;
+        overflow-y: auto;
+    }
+    .writing-grading-workspace {
+        --writing-task-width: 66%;
+        --writing-prompt-width: 42%;
+        display: grid;
+        grid-template-columns: minmax(540px, var(--writing-task-width)) 12px minmax(320px, 1fr);
+        flex: 1 1 0;
+        align-items: stretch;
+        min-width: 0;
+        min-height: 0;
+        height: 100%;
+        max-width: 100%;
+        overflow: hidden;
+        column-gap: 10px;
+    }
+    .writing-grading-workspace > * { min-width: 0; min-height: 0; max-width: 100%; }
+    .writing-task-list {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        min-height: 0;
+        height: 100%;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+        gap: 14px;
     }
     .writing-task-card {
-        margin-bottom: 16px;
+        display: flex;
+        flex: 0 0 100%;
+        flex-direction: column;
+        min-height: 0;
+        margin-bottom: 0;
         overflow: hidden;
         border: 1px solid #d9def0;
         border-radius: 14px;
@@ -828,10 +870,56 @@
     }
     .writing-task-card__content {
         display: grid;
-        grid-template-columns: minmax(280px, 0.85fr) minmax(360px, 1.15fr);
+        flex: 1 1 0;
+        grid-template-columns: minmax(240px, var(--writing-prompt-width)) 12px minmax(300px, 1fr);
+        align-items: stretch;
+        min-height: 0;
+        overflow: hidden;
     }
-    .writing-task-pane { min-width: 0; padding: 18px; }
-    .writing-task-pane + .writing-task-pane { border-left: 1px solid #e4e7f2; }
+    .writing-task-pane {
+        min-width: 0;
+        min-height: 0;
+        padding: 18px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
+    .writing-pane-resizer {
+        position: relative;
+        z-index: 3;
+        width: 12px;
+        min-width: 12px;
+        height: 100%;
+        border-radius: 8px;
+        cursor: col-resize;
+        touch-action: none;
+        outline: none;
+    }
+    .writing-pane-resizer::before {
+        position: absolute;
+        top: 10px;
+        bottom: 10px;
+        left: 50%;
+        width: 3px;
+        border-radius: 999px;
+        background: #d4d9eb;
+        content: '';
+        transform: translateX(-50%);
+        transition: width .15s ease, background .15s ease, box-shadow .15s ease;
+    }
+    .writing-pane-resizer:hover::before,
+    .writing-pane-resizer:focus::before,
+    body.writing-pane-resizing .writing-pane-resizer::before {
+        width: 5px;
+        background: #7166ef;
+        box-shadow: 0 0 0 3px rgba(113, 102, 239, .13);
+    }
+    body.writing-pane-resizing,
+    body.writing-pane-resizing * {
+        cursor: col-resize !important;
+        user-select: none !important;
+    }
     .writing-task-pane h5 {
         margin: 0 0 12px;
         color: #283552;
@@ -852,40 +940,55 @@
     .writing-task-answer { min-height: 180px; white-space: pre-wrap; }
     .writing-task-empty { margin: 0; color: #8a93a8; font-style: italic; }
     .writing-grading-workspace > .writing-teacher-review {
-        position: sticky;
-        top: 0;
-    }
-    .writing-teacher-review__header {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 18px;
+        flex-direction: column;
+        height: 100%;
+        max-height: 100%;
+        overflow: hidden;
     }
-    .writing-teacher-review__header h4 { margin: 3px 0 0; color: #172443; font-weight: 700; }
-    .writing-teacher-review__eyebrow {
-        color: #6257e8;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 1.2px;
-    }
-    .writing-band-pill {
+    .writing-band-field {
+        display: flex;
         flex: 0 0 auto;
-        padding: 8px 14px;
-        border-radius: 999px;
-        background: #171717;
-        color: #fff;
-        font-size: 14px;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+    .writing-band-field label { flex: 0 0 auto; margin: 0; }
+    .writing-band-input {
+        flex: 0 0 150px;
+        width: 150px;
+        max-width: 150px;
         font-weight: 700;
     }
-    .writing-band-input { max-width: 360px; font-weight: 700; }
+    .writing-feedback-field {
+        display: flex;
+        flex: 1 1 0;
+        flex-direction: column;
+        min-height: 0;
+        margin-bottom: 0;
+    }
     .writing-feedback-editor { background: #fff; }
     .writing-teacher-review .ql-toolbar { border-radius: 8px 8px 0 0; background: #f8f9fd; }
-    .writing-feedback-editor.ql-container { min-height: 220px; border-radius: 0 0 8px 8px; font-size: 15px; }
-    .writing-feedback-editor .ql-editor { min-height: 220px; line-height: 1.65; }
+    .writing-feedback-editor.ql-container {
+        flex: 1 1 0;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        border-radius: 0 0 8px 8px;
+        font-size: 15px;
+    }
+    .writing-feedback-editor .ql-editor {
+        height: 100%;
+        min-height: 0;
+        overflow-y: auto;
+        line-height: 1.65;
+    }
     .writing-feedback-readonly {
-        min-height: 90px;
+        flex: 1 1 0;
+        min-height: 0;
+        max-height: none;
         padding: 16px 18px;
+        overflow-y: auto;
         border: 1px solid #e0e4f1;
         border-radius: 10px;
         background: #fff;
@@ -894,31 +997,52 @@
         line-height: 1.65;
     }
     .writing-feedback-readonly p:last-child { margin-bottom: 0; }
-    .writing-teacher-review__actions { margin-top: 15px; text-align: right; }
-
     @media (max-width: 767px) {
         .ielts-result-detail-window .modal-dialog {
             width: calc(100vw - 12px);
+            height: calc(100vh - 12px);
+            max-height: calc(100vh - 12px);
             margin: 6px auto;
         }
-        .ielts-result-detail-window .modal-content { height: calc(100vh - 12px); border-radius: 10px; }
+        .ielts-result-detail-window .modal-content { border-radius: 10px; }
         .ielts-result-detail-modal .modal-body { padding: 12px; }
+        .ielts-result-detail-modal .modal-footer { min-height: 58px; padding: 10px 12px; }
         .writing-teacher-review { padding: 15px; }
-        .writing-teacher-review__header { align-items: flex-start; }
-        .writing-feedback-editor.ql-container,
-        .writing-feedback-editor .ql-editor { min-height: 180px; }
     }
 
     @media (max-width: 1199px) {
-        .writing-grading-workspace { grid-template-columns: 1fr; }
-        .writing-grading-workspace > .writing-teacher-review { position: static; }
+        .writing-pane-resizer--workspace { display: none; }
+        .writing-grading-workspace {
+            grid-template-columns: 1fr;
+            grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+            row-gap: 14px;
+        }
+        .writing-task-list {
+            height: 100%;
+        }
     }
 
     @media (max-width: 850px) {
-        .writing-task-card__content { grid-template-columns: 1fr; }
-        .writing-task-pane + .writing-task-pane {
+        .writing-task-card__content > .writing-pane-resizer { display: none; }
+        .writing-task-card__content {
+            grid-template-columns: 1fr;
+            grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+        }
+        .writing-task-pane--answer {
             border-top: 1px solid #e4e7f2;
-            border-left: 0;
+        }
+    }
+
+    @supports (height: 100dvh) {
+        .ielts-result-detail-window .modal-dialog {
+            height: calc(100dvh - 36px);
+            max-height: calc(100dvh - 36px);
+        }
+        @media (max-width: 767px) {
+            .ielts-result-detail-window .modal-dialog {
+                height: calc(100dvh - 12px);
+                max-height: calc(100dvh - 12px);
+            }
         }
     }
 

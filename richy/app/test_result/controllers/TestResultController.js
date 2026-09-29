@@ -79,6 +79,106 @@
         };
     }]);
 
+    angular.module('Hrm.TestResult').directive('writingPaneResizer', ['$document', function ($document) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var mode = attrs.writingPaneResizer;
+                var moveHandler;
+                var upHandler;
+
+                function findWorkspace(node) {
+                    while (node && node !== document.body) {
+                        if (node.classList && node.classList.contains('writing-grading-workspace')) {
+                            return node;
+                        }
+                        node = node.parentNode;
+                    }
+                    return null;
+                }
+
+                function clamp(value, minimum, maximum) {
+                    return Math.max(minimum, Math.min(maximum, value));
+                }
+
+                function resizeAt(clientX) {
+                    var handle = element[0];
+                    var workspace = findWorkspace(handle);
+                    if (!workspace) { return; }
+
+                    if (mode === 'task') {
+                        var taskContent = handle.parentNode;
+                        var taskRect = taskContent.getBoundingClientRect();
+                        var taskHandleWidth = handle.offsetWidth || 12;
+                        var minimumPromptWidth = 240;
+                        var minimumAnswerWidth = 300;
+                        var maximumPromptWidth = taskRect.width - taskHandleWidth - minimumAnswerWidth;
+                        if (maximumPromptWidth <= minimumPromptWidth) { return; }
+                        var promptWidth = clamp(clientX - taskRect.left,
+                            minimumPromptWidth, maximumPromptWidth);
+                        workspace.style.setProperty('--writing-prompt-width', promptWidth + 'px');
+                        return;
+                    }
+
+                    var workspaceRect = workspace.getBoundingClientRect();
+                    var workspaceHandleWidth = handle.offsetWidth || 12;
+                    var totalGridGaps = 20;
+                    var minimumTaskWidth = 540;
+                    var minimumReviewWidth = 320;
+                    var maximumTaskWidth = workspaceRect.width - workspaceHandleWidth
+                        - totalGridGaps - minimumReviewWidth;
+                    if (maximumTaskWidth <= minimumTaskWidth) { return; }
+                    var taskWidth = clamp(clientX - workspaceRect.left,
+                        minimumTaskWidth, maximumTaskWidth);
+                    workspace.style.setProperty('--writing-task-width', taskWidth + 'px');
+                }
+
+                function stopResize() {
+                    if (moveHandler) { $document.off('pointermove', moveHandler); }
+                    if (upHandler) {
+                        $document.off('pointerup', upHandler);
+                        $document.off('pointercancel', upHandler);
+                    }
+                    moveHandler = null;
+                    upHandler = null;
+                    document.body.classList.remove('writing-pane-resizing');
+                }
+
+                element.on('pointerdown', function (event) {
+                    if (event.button !== 0) { return; }
+                    event.preventDefault();
+                    stopResize();
+                    document.body.classList.add('writing-pane-resizing');
+                    moveHandler = function (moveEvent) {
+                        moveEvent.preventDefault();
+                        resizeAt(moveEvent.clientX);
+                    };
+                    upHandler = stopResize;
+                    $document.on('pointermove', moveHandler);
+                    $document.on('pointerup', upHandler);
+                    $document.on('pointercancel', upHandler);
+                });
+
+                element.on('keydown', function (event) {
+                    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') { return; }
+                    event.preventDefault();
+                    var rect = element[0].getBoundingClientRect();
+                    var direction = event.key === 'ArrowLeft' ? -1 : 1;
+                    resizeAt(rect.left + (rect.width / 2) + (direction * 24));
+                });
+
+                element.on('dblclick', function () {
+                    var workspace = findWorkspace(element[0]);
+                    if (!workspace) { return; }
+                    workspace.style.removeProperty(mode === 'task' ?
+                        '--writing-prompt-width' : '--writing-task-width');
+                });
+
+                scope.$on('$destroy', stopResize);
+            }
+        };
+    }]);
+
     angular.module('Hrm.TestResult').directive('myDatePicker', function () {
         return {
             restrict: 'A',
@@ -299,6 +399,8 @@
         vm.ieltsLearningState = {};
         vm.isRetryingWritingGrade = false;
         vm.isSavingWritingFeedback = false;
+        // Tạm ẩn tính năng chấm lại bằng GPT; đổi thành true khi cần bật lại.
+        vm.showWritingGptGrading = false;
 
         function getCurrentUser() {
             if ($scope.currentUser && $scope.currentUser.id) { return $scope.currentUser; }
