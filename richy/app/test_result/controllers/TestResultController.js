@@ -39,18 +39,109 @@
                 var quill;
                 var changeHandler;
                 var rendering = false;
+                var tableContextMenu;
+                var activeTableCell;
+                var contextMenuHandler;
+                var dismissContextMenuHandler;
+                var contextMenuKeyHandler;
+                var contextMenuScrollHandler;
+
+                function hideTableContextMenu() {
+                    if (tableContextMenu) { tableContextMenu.style.display = 'none'; }
+                    activeTableCell = null;
+                }
+
+                function selectTableCell(cell) {
+                    if (!quill || !cell || !window.Quill || !window.Quill.find) { return; }
+                    var blot = window.Quill.find(cell);
+                    if (!blot) { return; }
+                    var index = quill.getIndex(blot);
+                    quill.setSelection(index, 0, 'silent');
+                    quill.focus({preventScroll: true});
+                }
+
+                function createTableContextMenu() {
+                    if (tableContextMenu) { return tableContextMenu; }
+                    tableContextMenu = document.createElement('div');
+                    tableContextMenu.className = 'writing-table-context-menu';
+                    tableContextMenu.setAttribute('role', 'menu');
+                    var actions = [
+                        {action: 'insertRowAbove', label: 'Thêm hàng phía trên'},
+                        {action: 'insertRowBelow', label: 'Thêm hàng phía dưới'},
+                        {action: 'insertColumnLeft', label: 'Thêm cột bên trái'},
+                        {action: 'insertColumnRight', label: 'Thêm cột bên phải'},
+                        {separator: true},
+                        {action: 'deleteRow', label: 'Xóa hàng'},
+                        {action: 'deleteColumn', label: 'Xóa cột'},
+                        {action: 'deleteTable', label: 'Xóa bảng', danger: true}
+                    ];
+                    angular.forEach(actions, function (item) {
+                        if (item.separator) {
+                            var separator = document.createElement('div');
+                            separator.className = 'writing-table-context-menu__separator';
+                            tableContextMenu.appendChild(separator);
+                            return;
+                        }
+                        var button = document.createElement('button');
+                        button.type = 'button';
+                        button.setAttribute('role', 'menuitem');
+                        button.setAttribute('data-table-action', item.action);
+                        button.className = 'writing-table-context-menu__item'
+                            + (item.danger ? ' writing-table-context-menu__item--danger' : '');
+                        button.textContent = item.label;
+                        tableContextMenu.appendChild(button);
+                    });
+                    tableContextMenu.addEventListener('mousedown', function (event) {
+                        var button = event.target.closest('[data-table-action]');
+                        if (!button || !activeTableCell || !quill) { return; }
+                        event.preventDefault();
+                        event.stopPropagation();
+                        selectTableCell(activeTableCell);
+                        var tableModule = quill.getModule('table');
+                        var action = button.getAttribute('data-table-action');
+                        if (tableModule && typeof tableModule[action] === 'function') {
+                            tableModule[action]();
+                        }
+                        hideTableContextMenu();
+                    });
+                    document.body.appendChild(tableContextMenu);
+                    return tableContextMenu;
+                }
+
+                function showTableContextMenu(event, cell) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    activeTableCell = cell;
+                    selectTableCell(cell);
+                    var menu = createTableContextMenu();
+                    menu.style.display = 'block';
+                    var left = Math.min(event.clientX, window.innerWidth - menu.offsetWidth - 8);
+                    var top = Math.min(event.clientY, window.innerHeight - menu.offsetHeight - 8);
+                    menu.style.left = Math.max(8, left) + 'px';
+                    menu.style.top = Math.max(8, top) + 'px';
+                }
+
                 $timeout(function () {
                     if (!window.Quill) { return; }
                     quill = new window.Quill(element[0], {
                         theme: 'snow',
                         placeholder: 'Nhập nhận xét chi tiết cho học sinh...',
                         modules: {
-                            toolbar: [
-                                ['bold', 'italic', 'underline', 'strike'],
-                                [{color: []}, {background: []}],
-                                ['blockquote', 'link'],
-                                ['clean']
-                            ]
+                            table: true,
+                            toolbar: {
+                                container: [
+                                    ['bold', 'italic', 'underline', 'strike'],
+                                    [{color: []}, {background: []}],
+                                    ['blockquote', 'link'],
+                                    ['table', 'clean']
+                                ],
+                                handlers: {
+                                    table: function () {
+                                        var tableModule = this.quill.getModule('table');
+                                        if (tableModule) { tableModule.insertTable(2, 2); }
+                                    }
+                                }
+                            }
                         }
                     });
                     ngModel.$render();
@@ -62,6 +153,25 @@
                         });
                     };
                     quill.on('text-change', changeHandler);
+
+                    contextMenuHandler = function (event) {
+                        var cell = event.target.closest('td, th');
+                        if (!cell || !quill.root.contains(cell)) { return; }
+                        showTableContextMenu(event, cell);
+                    };
+                    dismissContextMenuHandler = function (event) {
+                        if (!tableContextMenu || tableContextMenu.contains(event.target)) { return; }
+                        hideTableContextMenu();
+                    };
+                    contextMenuKeyHandler = function (event) {
+                        if (event.key === 'Escape') { hideTableContextMenu(); }
+                    };
+                    contextMenuScrollHandler = hideTableContextMenu;
+                    quill.root.addEventListener('contextmenu', contextMenuHandler);
+                    quill.root.addEventListener('scroll', contextMenuScrollHandler);
+                    document.addEventListener('mousedown', dismissContextMenuHandler);
+                    document.addEventListener('keydown', contextMenuKeyHandler);
+                    window.addEventListener('resize', hideTableContextMenu);
                 });
                 ngModel.$render = function () {
                     if (!quill) { return; }
@@ -73,6 +183,21 @@
                 };
                 scope.$on('$destroy', function () {
                     if (quill && changeHandler) { quill.off('text-change', changeHandler); }
+                    if (quill && contextMenuHandler) {
+                        quill.root.removeEventListener('contextmenu', contextMenuHandler);
+                        quill.root.removeEventListener('scroll', contextMenuScrollHandler);
+                    }
+                    if (dismissContextMenuHandler) {
+                        document.removeEventListener('mousedown', dismissContextMenuHandler);
+                    }
+                    if (contextMenuKeyHandler) {
+                        document.removeEventListener('keydown', contextMenuKeyHandler);
+                    }
+                    window.removeEventListener('resize', hideTableContextMenu);
+                    if (tableContextMenu && tableContextMenu.parentNode) {
+                        tableContextMenu.parentNode.removeChild(tableContextMenu);
+                    }
+                    tableContextMenu = null;
                     quill = null;
                 });
             }

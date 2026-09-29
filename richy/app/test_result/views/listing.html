@@ -983,6 +983,29 @@
         overflow-y: auto;
         line-height: 1.65;
     }
+    .writing-feedback-editor .ql-editor table,
+    .writing-feedback-readonly table {
+        width: 100%;
+        margin: 10px 0;
+        border: 1px solid #cfd5e5;
+        border-collapse: collapse;
+        table-layout: auto;
+    }
+    .writing-feedback-editor .ql-editor td,
+    .writing-feedback-editor .ql-editor th,
+    .writing-feedback-readonly td,
+    .writing-feedback-readonly th {
+        min-width: 70px;
+        padding: 7px 9px;
+        border: 1px solid #cfd5e5;
+        vertical-align: top;
+        white-space: normal;
+    }
+    .writing-feedback-editor .ql-editor th,
+    .writing-feedback-readonly th {
+        background: #f2f4fb;
+        font-weight: 700;
+    }
     .writing-feedback-readonly {
         flex: 1 1 0;
         min-height: 0;
@@ -997,6 +1020,46 @@
         line-height: 1.65;
     }
     .writing-feedback-readonly p:last-child { margin-bottom: 0; }
+    .writing-table-context-menu {
+        position: fixed;
+        z-index: 20050;
+        display: none;
+        width: 210px;
+        padding: 6px;
+        border: 1px solid #d8deec;
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 14px 38px rgba(25, 35, 65, .24);
+    }
+    .writing-table-context-menu__item {
+        display: block;
+        width: 100%;
+        padding: 8px 10px;
+        border: 0;
+        border-radius: 6px;
+        color: #26324b;
+        background: transparent;
+        font-size: 13px;
+        line-height: 1.35;
+        text-align: left;
+    }
+    .writing-table-context-menu__item:hover,
+    .writing-table-context-menu__item:focus {
+        color: #3427b8;
+        background: #f0efff;
+        outline: none;
+    }
+    .writing-table-context-menu__item--danger { color: #c9364d; }
+    .writing-table-context-menu__item--danger:hover,
+    .writing-table-context-menu__item--danger:focus {
+        color: #aa2038;
+        background: #fff0f3;
+    }
+    .writing-table-context-menu__separator {
+        height: 1px;
+        margin: 5px 4px;
+        background: #e5e8f1;
+    }
     @media (max-width: 767px) {
         .ielts-result-detail-window .modal-dialog {
             width: calc(100vw - 12px);

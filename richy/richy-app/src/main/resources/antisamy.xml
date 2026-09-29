@@ -182,6 +182,30 @@
 		<tag name="dl" action="validate" />
 		<tag name="dt" action="validate" />
 		<tag name="dd" action="validate" />
+
+		<!-- Table tags used by the IELTS Writing teacher feedback editor. -->
+		<tag name="table" action="validate" />
+		<tag name="thead" action="validate" />
+		<tag name="tbody" action="validate" />
+		<tag name="tfoot" action="validate" />
+		<tag name="tr" action="validate" />
+		<tag name="caption" action="validate" />
+		<tag name="colgroup" action="validate" />
+		<tag name="col" action="validate">
+			<attribute name="span">
+				<regexp-list><regexp value="[1-9][0-9]{0,2}" /></regexp-list>
+			</attribute>
+		</tag>
+		<tag name="th" action="validate">
+			<attribute name="data-row"><regexp-list><regexp name="anything" /></regexp-list></attribute>
+			<attribute name="rowspan"><regexp-list><regexp value="[1-9][0-9]{0,2}" /></regexp-list></attribute>
+			<attribute name="colspan"><regexp-list><regexp value="[1-9][0-9]{0,2}" /></regexp-list></attribute>
+		</tag>
+		<tag name="td" action="validate">
+			<attribute name="data-row"><regexp-list><regexp name="anything" /></regexp-list></attribute>
+			<attribute name="rowspan"><regexp-list><regexp value="[1-9][0-9]{0,2}" /></regexp-list></attribute>
+			<attribute name="colspan"><regexp-list><regexp value="[1-9][0-9]{0,2}" /></regexp-list></attribute>
+		</tag>
 	</tag-rules>
 
 	<css-rules>
