@@ -302,12 +302,17 @@
 
                 if (handle) { handle.addEventListener('mousedown', onMouseDown, false); }
                 $window.document.addEventListener('mousemove', onMouseMove, false);
-                $window.document.addEventListener('mouseup', stopDragging, false);
+                // Capture mouseup before the floating note's Angular handler
+                // stops propagation, otherwise the note remains attached to
+                // the pointer after the button has already been released.
+                $window.document.addEventListener('mouseup', stopDragging, true);
+                $window.addEventListener('blur', stopDragging, false);
 
                 scope.$on('$destroy', function () {
                     if (handle) { handle.removeEventListener('mousedown', onMouseDown, false); }
                     $window.document.removeEventListener('mousemove', onMouseMove, false);
-                    $window.document.removeEventListener('mouseup', stopDragging, false);
+                    $window.document.removeEventListener('mouseup', stopDragging, true);
+                    $window.removeEventListener('blur', stopDragging, false);
                 });
             }
         };
