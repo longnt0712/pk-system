@@ -1856,6 +1856,10 @@ public class QuestionServiceImpl implements QuestionService {
 					subQuestion.setCreatedBy(currentUserName);
 				}
 				subQuestion.setQuestion(sDto.getQuestion());
+				if (!test.isLongEnoughString(sDto.getDescription())) {
+					throw new IllegalArgumentException("Your text is way too long");
+				}
+				subQuestion.setDescription(sDto.getDescription());
 				subQuestion.setTitle(sDto.getTitle());
 				subQuestion.setPronounce(sDto.getPronounce());
 				if(sDto.getQuestionType() != null && sDto.getQuestionType().getId() != null) {
