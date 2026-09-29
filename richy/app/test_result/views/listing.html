@@ -576,6 +576,16 @@
             </section>
             <div class="writing-grading-workspace" data-ng-if="vm.testResult.testType === 7">
                 <section class="writing-task-list">
+                    <div class="alert alert-warning writing-integrity-alert"
+                         data-ng-if="vm.testResult.writingIntegrityFlagged">
+                        <strong><i class="fa fa-exclamation-triangle"></i> Bài làm cần được kiểm tra</strong>
+                        <span data-ng-if="vm.testResult.writingWordsPerMinute">
+                            · {{vm.testResult.writingWordsPerMinute}} từ/phút
+                        </span>
+                        <ul>
+                            <li data-ng-repeat="reason in vm.testResult.writingIntegrityReasons track by $index">{{reason}}</li>
+                        </ul>
+                    </div>
                     <article class="writing-task-card"
                              data-ng-repeat="item in vm.testResult.questionAnswerTestResult track by $index">
                         <header class="writing-task-card__header">

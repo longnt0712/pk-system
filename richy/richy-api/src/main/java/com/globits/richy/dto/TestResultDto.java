@@ -10,6 +10,9 @@ import java.util.Set;
 
 import org.joda.time.LocalDateTime;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.globits.richy.domain.Answer;
 import com.globits.richy.domain.QuestionAnswer;
 import com.globits.richy.domain.QuestionAnswerTestResult;
@@ -19,6 +22,7 @@ import com.globits.security.domain.User;
 import com.globits.security.dto.UserDto;
 
 public class TestResultDto implements Serializable{
+	private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
     private String clientAttemptKey;
     public String getClientAttemptKey(){return clientAttemptKey;}
     public void setClientAttemptKey(String value){clientAttemptKey=value;}
@@ -48,6 +52,9 @@ public class TestResultDto implements Serializable{
 	private boolean canEditWritingFeedback;
 	private boolean canDelete;
 	private String resultGroup;
+	private boolean writingIntegrityFlagged;
+	private Double writingWordsPerMinute;
+	private List<String> writingIntegrityReasons = new ArrayList<String>();
 	public List<Long> getTopicIds() { return topicIds; }
 	public void setTopicIds(List<Long> value) { topicIds = value; }
 	public List<TestResultTopicDto> getTopics() { return topics; }
@@ -86,6 +93,74 @@ public class TestResultDto implements Serializable{
 	public void setCanDelete(boolean value) { canDelete = value; }
 	public String getResultGroup() { return resultGroup; }
 	public void setResultGroup(String value) { resultGroup = value; }
+	public boolean isWritingIntegrityFlagged() { return writingIntegrityFlagged; }
+	public void setWritingIntegrityFlagged(boolean value) { writingIntegrityFlagged = value; }
+	public Double getWritingWordsPerMinute() { return writingWordsPerMinute; }
+	public void setWritingWordsPerMinute(Double value) { writingWordsPerMinute = value; }
+	public List<String> getWritingIntegrityReasons() { return writingIntegrityReasons; }
+	public void setWritingIntegrityReasons(List<String> value) {
+		writingIntegrityReasons = value == null ? new ArrayList<String>() : value;
+	}
+
+	private int durationSeconds(TestResult domain) {
+		if (domain.getActiveDurationSeconds() != null && domain.getActiveDurationSeconds() > 0) {
+			return domain.getActiveDurationSeconds();
+		}
+		String value = domain.getTestTime();
+		if (value == null || !value.matches("\\d+:\\d{1,2}")) { return 0; }
+		String[] parts = value.split(":");
+		try {
+			return Math.max(0, Integer.parseInt(parts[0]) * 60 + Integer.parseInt(parts[1]));
+		} catch (NumberFormatException ignored) {
+			return 0;
+		}
+	}
+
+	private void populateWritingIntegrity(TestResult domain) {
+		writingIntegrityReasons = new ArrayList<String>();
+		if (domain == null || !Integer.valueOf(7).equals(domain.getTestType())) { return; }
+		int words = domain.getNumberOfWords() == null ? 0 : Math.max(0, domain.getNumberOfWords());
+		int seconds = durationSeconds(domain);
+		if (words > 0 && seconds > 0) {
+			double rawWordsPerMinute = words * 60D / seconds;
+			writingWordsPerMinute = Math.round(rawWordsPerMinute * 10D) / 10D;
+			if (words >= 100 && rawWordsPerMinute >= 100D) {
+				writingIntegrityReasons.add("Tốc độ trung bình " + writingWordsPerMinute + " từ/phút");
+			}
+		} else if (words > 0) {
+			writingIntegrityReasons.add("Có nội dung bài làm nhưng không có thời gian hoạt động hợp lệ");
+		}
+
+		String learningState = domain.getIeltsLearningState();
+		if (learningState != null && !learningState.trim().isEmpty()) {
+			try {
+				JsonNode audit = JSON_MAPPER.readTree(learningState).path("writingInputAudit");
+				int maxAtOnce = audit.path("maxCharactersAddedAtOnce").asInt(0);
+				int maxPerSecond = audit.path("maxCharactersPerSecond").asInt(0);
+				int blockedPaste = audit.path("blockedPasteCount").asInt(0);
+				int blockedDrop = audit.path("blockedDropCount").asInt(0);
+				int untrustedInputs = audit.path("untrustedInputCount").asInt(0);
+				if (maxAtOnce >= 40) {
+					writingIntegrityReasons.add("Nội dung tăng " + maxAtOnce + " ký tự trong một lần nhập");
+				}
+				if (maxPerSecond >= 35) {
+					writingIntegrityReasons.add("Tốc độ nhập đạt " + maxPerSecond + " ký tự/giây");
+				}
+				if (blockedPaste > 0) {
+					writingIntegrityReasons.add("Đã chặn " + blockedPaste + " lần dán nội dung bên ngoài");
+				}
+				if (blockedDrop > 0) {
+					writingIntegrityReasons.add("Đã chặn " + blockedDrop + " lần kéo thả nội dung bên ngoài");
+				}
+				if (untrustedInputs > 0) {
+					writingIntegrityReasons.add("Phát hiện " + untrustedInputs + " lần nhập không do trình duyệt xác thực");
+				}
+			} catch (Exception ignored) {
+				// Older results can have no audit payload and are still checked by words/minute.
+			}
+		}
+		writingIntegrityFlagged = !writingIntegrityReasons.isEmpty();
+	}
 	private void copyTopics(TestResult domain) {
         clientAttemptKey=domain.getClientAttemptKey();
         resultStatus=domain.getResultStatus();
@@ -428,6 +503,7 @@ public class TestResultDto implements Serializable{
 		if(dto.getBandScoreReading() != null) {
 			this.bandScore = dto.getBandScoreReading();
 		}
+		populateWritingIntegrity(domain);
 		
 	}
 	
@@ -516,6 +592,7 @@ public class TestResultDto implements Serializable{
 		if(dto.getBandScoreReading() != null) {
 			this.bandScore = dto.getBandScoreReading();
 		}
+		populateWritingIntegrity(domain);
 		
 	}
 	

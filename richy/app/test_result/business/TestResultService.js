@@ -267,6 +267,21 @@
                     sortable: true,
                     switchable: false,
                     cellStyle: _cellNowrap
+                }, {
+                    field: 'writingIntegrityFlagged',
+                    title: 'Kiểm tra',
+                    formatter: function (value, row) {
+                        if (Number(row.testType) !== 7) { return ''; }
+                        var reasons = (row.writingIntegrityReasons || []).join('; ');
+                        if (value === true) {
+                            return '<span class="label label-warning" title="' + escapeText(reasons)
+                                + '"><i class="fa fa-exclamation-triangle"></i> Cần kiểm tra</span>';
+                        }
+                        return '<span class="label label-success"><i class="fa fa-check"></i> Bình thường</span>';
+                    },
+                    sortable: false,
+                    switchable: false,
+                    cellStyle: _cellNowrap
                 }
                 , {
                     field: 'correctAnswer',
@@ -301,6 +316,7 @@
                 });
             }
             return columns.filter(function (column) {
+                if (column.field === 'writingIntegrityFlagged') { return group === 'WRITING'; }
                 if (group === 'VOCAB') { return column.field !== 'bandScore' && column.field !== 'correctAnswer'; }
                 if (group === 'DAILY_LISTENING') { return column.field !== 'resultStatus' && column.field !== 'bandScore' && column.field !== 'numberOfWords'; }
                 if (group === 'IELTS') { return column.field !== 'resultStatus' && column.field !== 'numberOfWords'; }

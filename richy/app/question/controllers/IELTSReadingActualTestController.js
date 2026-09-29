@@ -65,6 +65,16 @@
             link: function (scope, element, attrs) {
                 var node = element[0];
                 var internallyCopiedText = null;
+                var internalPastePending = false;
+                var lastValue = String(node.value || '');
+                var lastKeydownAt = 0;
+
+                function reportAudit(details) {
+                    if (!attrs.writingTaskAudit) { return; }
+                    scope.$evalAsync(function () {
+                        scope.$eval(attrs.writingTaskAudit, {$audit: details});
+                    });
+                }
 
                 function normalizeClipboardText(value) {
                     return String(value == null ? '' : value).replace(/\r\n/g, '\n');
@@ -78,10 +88,11 @@
                     }
                 }
 
-                function rejectExternalInsert(event) {
+                function rejectExternalInsert(event, source) {
                     if (event && event.preventDefault) {
                         event.preventDefault();
                     }
+                    reportAudit({type: source === 'drop' ? 'blocked-drop' : 'blocked-paste', at: Date.now()});
                     scope.$evalAsync(function () {
                         if (attrs.writingTaskClipboard) {
                             scope.$eval(attrs.writingTaskClipboard);
@@ -93,24 +104,57 @@
                     var clipboard = event.clipboardData || (event.originalEvent && event.originalEvent.clipboardData) || window.clipboardData;
                     var pastedText = clipboard && clipboard.getData ? normalizeClipboardText(clipboard.getData('text/plain') || clipboard.getData('Text')) : '';
                     if (!internallyCopiedText || pastedText !== internallyCopiedText) {
-                        rejectExternalInsert(event);
+                        rejectExternalInsert(event, 'paste');
+                    } else {
+                        internalPastePending = true;
                     }
                 }
 
                 function onDrop(event) {
-                    rejectExternalInsert(event);
+                    rejectExternalInsert(event, 'drop');
+                }
+
+                function onKeydown() {
+                    lastKeydownAt = Date.now();
+                }
+
+                function onFocus() {
+                    lastValue = String(node.value || '');
+                }
+
+                function onInput(event) {
+                    var currentValue = String(node.value || '');
+                    var addedCharacters = Math.max(0, currentValue.length - lastValue.length);
+                    reportAudit({
+                        type: 'input',
+                        at: Date.now(),
+                        addedCharacters: addedCharacters,
+                        currentLength: currentValue.length,
+                        inputType: String((event && event.inputType) || ''),
+                        trusted: !!(event && event.isTrusted),
+                        recentKeydown: Date.now() - lastKeydownAt < 1000,
+                        internalClipboard: internalPastePending === true
+                    });
+                    internalPastePending = false;
+                    lastValue = currentValue;
                 }
 
                 node.addEventListener('copy', rememberSelection, false);
                 node.addEventListener('cut', rememberSelection, false);
                 node.addEventListener('paste', onPaste, false);
                 node.addEventListener('drop', onDrop, false);
+                node.addEventListener('focus', onFocus, false);
+                node.addEventListener('keydown', onKeydown, false);
+                node.addEventListener('input', onInput, false);
 
                 scope.$on('$destroy', function () {
                     node.removeEventListener('copy', rememberSelection, false);
                     node.removeEventListener('cut', rememberSelection, false);
                     node.removeEventListener('paste', onPaste, false);
                     node.removeEventListener('drop', onDrop, false);
+                    node.removeEventListener('focus', onFocus, false);
+                    node.removeEventListener('keydown', onKeydown, false);
+                    node.removeEventListener('input', onInput, false);
                 });
             }
         };
@@ -1011,6 +1055,91 @@
             return found;
         }
 
+        var writingInputAudit = {
+            version: 1,
+            inputEvents: 0,
+            inputEventsWithKeydown: 0,
+            blockedPasteCount: 0,
+            blockedDropCount: 0,
+            untrustedInputCount: 0,
+            totalCharactersAdded: 0,
+            maxCharactersAddedAtOnce: 0,
+            maxCharactersPerSecond: 0,
+            draftRestoreCount: 0,
+            restoredCharacters: 0
+        };
+        var writingInputWindow = [];
+
+        function normalizedWritingInputAudit(value) {
+            var source = value || {};
+            var normalized = angular.extend({}, writingInputAudit);
+            angular.forEach(normalized, function (defaultValue, key) {
+                if (key === 'version') { return; }
+                normalized[key] = Math.max(0, Number(source[key]) || 0);
+            });
+            normalized.version = 1;
+            return normalized;
+        }
+
+        vm.recordWritingTaskAudit = function (event) {
+            event = event || {};
+            if (event.type === 'blocked-paste') {
+                writingInputAudit.blockedPasteCount += 1;
+                return;
+            }
+            if (event.type === 'blocked-drop') {
+                writingInputAudit.blockedDropCount += 1;
+                return;
+            }
+            if (event.type !== 'input') { return; }
+
+            var now = Number(event.at) || Date.now();
+            var added = Math.max(0, Number(event.addedCharacters) || 0);
+            writingInputAudit.inputEvents += 1;
+            writingInputAudit.totalCharactersAdded += added;
+            if (event.recentKeydown === true) { writingInputAudit.inputEventsWithKeydown += 1; }
+            if (event.trusted === false) { writingInputAudit.untrustedInputCount += 1; }
+
+            // Pasting text copied from the same answer box is an allowed editing action,
+            // so it must not create a false rapid-input warning.
+            if (event.internalClipboard === true) { return; }
+            writingInputAudit.maxCharactersAddedAtOnce = Math.max(writingInputAudit.maxCharactersAddedAtOnce, added);
+
+            writingInputWindow.push({at: now, added: added});
+            writingInputWindow = writingInputWindow.filter(function (sample) { return now - sample.at <= 1000; });
+            var charactersInLastSecond = writingInputWindow.reduce(function (total, sample) {
+                return total + sample.added;
+            }, 0);
+            writingInputAudit.maxCharactersPerSecond = Math.max(
+                writingInputAudit.maxCharactersPerSecond,
+                charactersInLastSecond
+            );
+        };
+
+        function writingInputAuditSummary() {
+            var summary = angular.copy(writingInputAudit);
+            var finalText = '';
+            angular.forEach(getWritingTaskPackages(), function (questionPackage) {
+                var answer = questionPackage.subQuestions && questionPackage.subQuestions[0]
+                    && questionPackage.subQuestions[0].questionAnswers
+                    && questionPackage.subQuestions[0].questionAnswers[0];
+                finalText += (finalText ? '\n' : '') + String((answer && answer.clientAnswer) || '');
+            });
+            summary.finalCharacters = finalText.length;
+            summary.finalWords = vm.countWritingTaskWords(finalText);
+            return summary;
+        }
+
+        function restoreWritingInputAudit(draft) {
+            var restoredText = ((draft && draft.results) || []).map(function (result) {
+                return String((result && result.clientAnswer) || '');
+            }).join('\n');
+            writingInputAudit = normalizedWritingInputAudit(draft && draft.writingInputAudit);
+            writingInputAudit.draftRestoreCount += 1;
+            writingInputAudit.restoredCharacters = Math.max(writingInputAudit.restoredCharacters, restoredText.length);
+            writingInputWindow = [];
+        }
+
         function getWritingTaskPackages() {
             var found = [];
             angular.forEach((vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.subQuestions) || [], function (passage) {
@@ -1626,6 +1755,7 @@
                     results: results,
                     questionStates: serializeReadingQuestionStates(),
                     completeListStates: serializeCompleteListStates(),
+                    writingInputAudit: vm.isWritingRoute ? writingInputAuditSummary() : null,
                     annotationNotes: angular.copy(vm.annotationNotes || []),
                     annotations: serializeReadingAnnotations(),
                     completed: previousDraft.completed === true,
@@ -1769,6 +1899,7 @@
                 return;
             }
 
+            if (vm.isWritingRoute) { restoreWritingInputAudit(draft); }
             vm.testResult.questionAnswerTestResult = [];
             angular.forEach(getReadingQuestionEntries(), function (entry) {
                 var question = entry.question;
@@ -4717,6 +4848,7 @@
                 results: serializeReadingDraftResults(),
                 questionStates: serializeReadingQuestionStates(),
                 completeListStates: serializeCompleteListStates(),
+                writingInputAudit: vm.isWritingRoute ? writingInputAuditSummary() : null,
                 annotationNotes: angular.copy(vm.annotationNotes || []),
                 annotations: serializeReadingAnnotations()
             };

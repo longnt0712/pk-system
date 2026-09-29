@@ -235,6 +235,7 @@
                                                   ng-model="item.subQuestions[0].questionAnswers[0].clientAnswer"
                                                   ng-change="vm.updateWritingTaskResponse(item)"
                                                   writing-task-clipboard="vm.onWritingTaskClipboardBlocked()"
+                                                  writing-task-audit="vm.recordWritingTaskAudit($audit)"
                                                   writing-task-auto-grow
                                                   autocomplete="off"
                                                   autocorrect="off"
@@ -307,6 +308,7 @@
                                                       ng-model="item.subQuestions[0].questionAnswers[0].clientAnswer"
                                                       ng-change="vm.updateWritingTaskResponse(item)"
                                                       writing-task-clipboard="vm.onWritingTaskClipboardBlocked()"
+                                                      writing-task-audit="vm.recordWritingTaskAudit($audit)"
                                                       autocomplete="off"
                                                       autocorrect="off"
                                                       autocapitalize="off"
