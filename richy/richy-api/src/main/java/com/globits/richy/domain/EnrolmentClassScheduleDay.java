@@ -37,6 +37,8 @@ public class EnrolmentClassScheduleDay extends BaseObject {
     private String sessionEndTime;
     @Column(name = "makeup_minutes")
     private Integer makeupMinutes;
+    @Column(name = "is_day_off")
+    private Boolean dayOff = Boolean.FALSE;
     @Column(name = "moved_from_date", length = 10)
     private String movedFromDate;
     /* Empty source-date marker. The live plan keeps its original id and children. */
@@ -52,6 +54,8 @@ public class EnrolmentClassScheduleDay extends BaseObject {
     public void setSessionEndTime(String value) { sessionEndTime = value; }
     public Integer getMakeupMinutes() { return makeupMinutes; }
     public void setMakeupMinutes(Integer value) { makeupMinutes = value; }
+    public Boolean getDayOff() { return dayOff; }
+    public void setDayOff(Boolean value) { dayOff = value; }
     public String getMovedFromDate() { return movedFromDate; }
     public void setMovedFromDate(String value) { movedFromDate = value; }
     public String getMovedToDate() { return movedToDate; }

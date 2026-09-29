@@ -9,7 +9,7 @@ import com.globits.richy.domain.EnrolmentClassScheduleDay;
 
 @Repository
 public interface EnrolmentClassScheduleDayRepository extends JpaRepository<EnrolmentClassScheduleDay, Long> {
-    @Query("select d.scheduleDate, d.sessionStartTime, d.sessionEndTime, d.movedToDate from EnrolmentClassScheduleDay d where d.enrolmentClass.id = :classId")
+    @Query("select d.scheduleDate, d.sessionStartTime, d.sessionEndTime, d.movedToDate, d.dayOff from EnrolmentClassScheduleDay d where d.enrolmentClass.id = :classId")
     List<Object[]> findScheduleTimeline(@Param("classId") Long classId);
     List<EnrolmentClassScheduleDay> findByEnrolmentClassIdAndMovedDayId(Long classId, Long movedDayId);
     EnrolmentClassScheduleDay findByEnrolmentClassIdAndScheduleDate(Long enrolmentClassId, String scheduleDate);

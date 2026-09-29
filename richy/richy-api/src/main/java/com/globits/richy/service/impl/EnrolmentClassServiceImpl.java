@@ -1056,6 +1056,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		domain.setClassTopics(classTopics);
 		domain.setHomeworkTopics(homeworkTopics);
 		domain.setMakeupMinutes(makeupMinutes == null || makeupMinutes.intValue() == 0 ? null : makeupMinutes);
+		domain.setDayOff(Boolean.valueOf(Boolean.TRUE.equals(dto.getDayOff())));
 		if (dto.getClassNotes() != null) { domain.setClassNotes(classNotes); }
 		if (dto.getHomeworkNotes() != null) { domain.setHomeworkNotes(homeworkNotes); }
 		if (preparedTasks != null) {

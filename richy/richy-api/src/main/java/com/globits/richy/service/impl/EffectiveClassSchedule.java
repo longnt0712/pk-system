@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-/** Date-level plans plus weekly recurrence, with moved source dates explicitly excluded. */
+/** Date-level plans plus weekly recurrence, with moved or cancelled sessions explicitly excluded. */
 final class EffectiveClassSchedule {
     static final class Slot {
         final String date, startTime, endTime;
@@ -18,7 +18,11 @@ final class EffectiveClassSchedule {
         this.weekly = weekly;
         for (Object[] row : timeline) { days.put((String) row[0], row); }
     }
-    boolean cancelled(String date) { return days.containsKey(date) && days.get(date)[3] != null; }
+    boolean cancelled(String date) {
+        if (!days.containsKey(date)) { return false; }
+        Object[] row = days.get(date);
+        return row[3] != null || (row.length > 4 && Boolean.TRUE.equals(row[4]));
+    }
     int weeklyCount(String date) {
         int count = 0, weekday = LocalDate.parse(date).getDayOfWeek().getValue();
         for (Object[] row : weekly) { if (((Number) row[0]).intValue() == weekday) { count++; } }

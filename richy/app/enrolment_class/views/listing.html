@@ -361,6 +361,10 @@
     .class-schedule-day.is-today { border:2px solid #6f5cf0; background:#f6f3ff; }
     .class-schedule-day.is-class-day { background:#f5f8ff; }
     .class-schedule-day.is-class-day:after { content:""; position:absolute; top:9px; right:9px; width:7px; height:7px; border-radius:50%; background:#6e5deb; box-shadow:0 0 0 3px rgba(110,93,235,.13); }
+    .class-schedule-day.is-day-off { border:2px solid #e14f62; background:repeating-linear-gradient(135deg, #fff4f5, #fff4f5 9px, #ffecef 9px, #ffecef 18px); }
+    .class-schedule-day.is-day-off:after { content:none; }
+    .class-schedule-day.is-day-off .class-schedule-day-number { color:#b9223a; }
+    .class-schedule-day-off-badge { display:inline-flex; align-items:center; gap:5px; margin-bottom:5px; padding:4px 7px; border-radius:6px; background:#d9364f; color:#fff; font-size:11px; font-weight:900; letter-spacing:.35px; }
     .class-schedule-day-number { display:block; margin-bottom:8px; font-size:16px; font-weight:800; }
     .class-schedule-topic-count { display:block; margin-top:4px; padding:3px 6px; overflow:hidden; border-radius:5px; font-size:11px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
     .class-schedule-topic-count.class-count { background:#e8f2ff; color:#2671c5; }
@@ -374,6 +378,9 @@
     .class-day-editable-content { border:0; margin:0; padding:0; min-width:0; }
     .class-session-info { display:flex; flex-wrap:wrap; align-items:center; gap:12px 20px; margin-bottom:16px; }
     .class-session-info .btn { margin-left:auto; }
+    .class-session-info .class-session-day-off-btn { margin-left:0; }
+    .class-session-day-off-alert { display:flex; align-items:center; gap:10px; border-color:#ef9ba7; background:#fff0f2; color:#9f1730; font-weight:700; }
+    .class-session-day-off-alert .fa { font-size:18px; }
     .class-session-makeup { display:flex; align-items:center; gap:7px; margin:0; padding:7px 10px; border:1px solid #d9e1f0; border-radius:9px; background:#fff; color:#52617c; font-size:12px; font-weight:800; }
     .class-session-makeup input { width:76px; height:31px !important; min-height:31px !important; padding:4px 8px !important; border-radius:7px !important; text-align:right; }
     .class-session-move { margin-bottom:18px; }
@@ -885,10 +892,11 @@
                     <button type="button" class="class-schedule-day"
                             data-ng-repeat="cell in vm.scheduleCalendarDays track by $index"
                             data-ng-disabled="cell.isBlank"
-                            data-ng-class="{'is-blank': cell.isBlank, 'is-today': cell.isToday, 'is-class-day': cell.isClassDay}"
+                            data-ng-class="{'is-blank': cell.isBlank, 'is-today': cell.isToday, 'is-class-day': cell.isClassDay, 'is-day-off': cell.isDayOff}"
                             data-ng-click="vm.openScheduleDay(cell)">
                         <span data-ng-if="!cell.isBlank">
                             <span class="class-schedule-day-number">{{cell.day}}</span>
+                            <span class="class-schedule-day-off-badge" data-ng-if="cell.isDayOff"><i class="fa fa-ban"></i> NGHỈ HỌC</span>
                             <span class="class-schedule-topic-count class-count" data-ng-if="cell.classCount">
                                 Class: {{cell.classCount}} topic
                             </span>
@@ -898,7 +906,7 @@
                             <span class="class-schedule-topic-count" data-ng-if="cell.taskCount">Tasks: {{cell.doneTaskCount}}/{{cell.taskCount}}</span>
                             <span class="class-schedule-topic-count" data-ng-if="cell.entry.movedToDate">Đã dời → {{cell.entry.movedToDate | date:'dd/MM/yyyy'}}</span>
                             <span class="class-schedule-topic-count" data-ng-if="cell.entry.movedFromDate">Dời từ {{cell.entry.movedFromDate | date:'dd/MM/yyyy'}} · {{cell.entry.sessionStartTime}}–{{cell.entry.sessionEndTime}}</span>
-                            <span class="class-schedule-empty-hint" data-ng-if="!cell.entry.movedToDate && !cell.classCount && !cell.homeworkCount && !cell.taskCount">
+                            <span class="class-schedule-empty-hint" data-ng-if="!cell.isDayOff && !cell.entry.movedToDate && !cell.classCount && !cell.homeworkCount && !cell.taskCount">
                                 {{cell.isClassDay ? 'Ngày học · + Thêm bài' : '+ Thêm bài'}}
                             </span>
                         </span>
@@ -1045,6 +1053,10 @@
                 Buổi này đã dời sang {{vm.scheduleDay.movedToDate | date:'dd/MM/yyyy'}}. {{vm.scheduleDay.moveReason}}
                 <button type="button" class="btn btn-primary btn-sm" data-ng-click="vm.openMovedScheduleDay()">Mở ngày mới</button>
             </div>
+            <div class="alert alert-danger class-session-day-off-alert" data-ng-if="vm.scheduleDay.dayOff && !vm.scheduleDay.movedToDate">
+                <i class="fa fa-ban"></i>
+                <span>Buổi này đã được đánh dấu <strong>NGHỈ HỌC</strong>. Nội dung đã nhập vẫn được giữ nguyên; lịch và hạn Homework tự động sẽ bỏ qua buổi này.</span>
+            </div>
             <fieldset class="class-day-editable-content" data-ng-if="!vm.scheduleDay.movedToDate" data-ng-disabled="vm.scheduleSessionLoading || vm.scheduleSessionError || vm.scheduleMoving">
             <div class="class-session-info">
                 <span data-ng-if="vm.scheduleDay.sessionStartTime">Giờ học: <strong>{{vm.scheduleDay.sessionStartTime}}–{{vm.scheduleDay.sessionEndTime}}</strong></span>
@@ -1055,8 +1067,15 @@
                            data-ng-blur="vm.autoSaveScheduleDay()" data-ng-disabled="vm.scheduleDaySaving || vm.scheduleMoving"
                            aria-label="Số phút học bù chung của buổi học" /> phút
                 </label>
+                <button type="button" class="btn btn-sm class-session-day-off-btn"
+                        data-ng-class="vm.scheduleDay.dayOff ? 'btn-success' : 'btn-danger'"
+                        data-ng-click="vm.toggleScheduleDayOff()"
+                        data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor || vm.homeworkCellSaving || vm.homeworkHasDrafts()">
+                    <i class="fa" data-ng-class="vm.scheduleDay.dayOff ? 'fa-undo' : 'fa-ban'"></i>
+                    {{vm.scheduleDay.dayOff ? 'Mở lại buổi học' : 'Đánh dấu nghỉ học'}}
+                </button>
                 <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.openScheduleMove()"
-                        data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor || vm.homeworkCellSaving || vm.homeworkHasDrafts()"><i class="fa fa-calendar"></i> Dời buổi học</button>
+                        data-ng-disabled="vm.scheduleDay.dayOff || vm.scheduleDaySaving || vm.taskEditor || vm.homeworkCellSaving || vm.homeworkHasDrafts()"><i class="fa fa-calendar"></i> Dời buổi học</button>
             </div>
             <div class="class-day-plan-card class-session-move" data-ng-if="vm.scheduleMove">
                 <strong>Dời riêng buổi này — không thay đổi lịch hằng tuần</strong>

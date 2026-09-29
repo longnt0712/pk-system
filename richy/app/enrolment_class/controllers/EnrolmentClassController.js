@@ -861,7 +861,8 @@
 					day: day,
 					dateKey: dateKey,
 					isToday: dateKey === todayKey,
-					isClassDay: !(entry && entry.movedToDate) && (weeklyDays[dayOfWeek] === true || !!entry),
+					isClassDay: !(entry && (entry.movedToDate || entry.dayOff)) && (weeklyDays[dayOfWeek] === true || !!entry),
+					isDayOff: !!(entry && entry.dayOff),
 					entry: entry,
 					classCount: entry && entry.classTopicIds ? entry.classTopicIds.length : 0,
 					homeworkCount: entry && entry.homeworkTopicIds ? entry.homeworkTopicIds.length : 0,
@@ -1089,6 +1090,7 @@
             return {id: day.id || null, scheduleDate: day.scheduleDate, version: day.version == null ? null : day.version,
                 classTopicIds: day.classTopicIds || [], homeworkTopicIds: day.homeworkTopicIds || [],
                 classNotes: day.classNotes || '', homeworkNotes: day.homeworkNotes || '',
+                dayOff: day.dayOff === true,
                 makeupMinutes: day.makeupMinutes == null || day.makeupMinutes === '' ? 0 : Number(day.makeupMinutes),
                 tasks: (day.tasks || []).map(scheduleTaskPayload)};
         }
@@ -1123,7 +1125,8 @@
         };
 
         vm.openScheduleMove = function () {
-            if (vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor) { return; }
+			if (vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor
+				|| vm.scheduleDay.dayOff) { return; }
             vm.scheduleMove = {dateValue: null, startTimeValue: parseScheduleTime(vm.scheduleDay.sessionStartTime),
                 endTimeValue: parseScheduleTime(vm.scheduleDay.sessionEndTime), reason: '', shiftManualDeadlines: false};
         };
@@ -1832,6 +1835,17 @@
 		vm.markScheduleDayDirty = function () {
             if (!vm.scheduleDaySaving) { vm.scheduleDaySaveState = 'dirty'; }
         };
+
+		vm.toggleScheduleDayOff = function () {
+			if (!vm.scheduleDay || vm.scheduleDay.movedToDate || vm.scheduleDaySaving || vm.scheduleMoving
+				|| vm.homeworkCellSaving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor) { return; }
+			var previous = vm.scheduleDay.dayOff === true;
+			vm.scheduleDay.dayOff = !previous;
+			vm.saveScheduleDay({
+				successMessage: vm.scheduleDay.dayOff ? 'Đã đánh dấu buổi nghỉ học.' : 'Đã mở lại buổi học.',
+				onError: function () { if (vm.scheduleDay) { vm.scheduleDay.dayOff = previous; } }
+			});
+		};
 
         vm.autoSaveScheduleDay = function () {
             vm.markScheduleDayDirty();
