@@ -5896,6 +5896,55 @@
         background: #181818 !important;
     }
 
+    /* Keep answer surfaces dark in the two black-background contrast modes. */
+    .idp-reading-page.idp-contrast-white-black .sentence-ending-slot,
+    .idp-reading-page.idp-contrast-white-black .sentence-ending-choice,
+    .idp-reading-page.idp-contrast-yellow-black .sentence-ending-slot,
+    .idp-reading-page.idp-contrast-yellow-black .sentence-ending-choice {
+        border-color: #8a8a8a !important;
+        background: #181818 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-single-choice-answer:hover,
+    .idp-reading-page.idp-contrast-white-black .idp-single-choice-answer:focus-within,
+    .idp-reading-page.idp-contrast-white-black .idp-multiple-answer-option.is-selected,
+    .idp-reading-page.idp-contrast-white-black .sentence-ending-choice:hover,
+    .idp-reading-page.idp-contrast-white-black .sentence-ending-choice:focus,
+    .idp-reading-page.idp-contrast-yellow-black .idp-single-choice-answer:hover,
+    .idp-reading-page.idp-contrast-yellow-black .idp-single-choice-answer:focus-within,
+    .idp-reading-page.idp-contrast-yellow-black .idp-multiple-answer-option.is-selected,
+    .idp-reading-page.idp-contrast-yellow-black .sentence-ending-choice:hover,
+    .idp-reading-page.idp-contrast-yellow-black .sentence-ending-choice:focus {
+        background: #2b2b2b !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-single-choice-label:hover,
+    .idp-reading-page.idp-contrast-white-black .idp-single-choice-label:focus,
+    .idp-reading-page.idp-contrast-yellow-black .idp-single-choice-label:hover,
+    .idp-reading-page.idp-contrast-yellow-black .idp-single-choice-label:focus {
+        color: inherit !important;
+        background: transparent !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .sentence-ending-slot.dndDragover,
+    .idp-reading-page.idp-contrast-yellow-black .sentence-ending-slot.dndDragover {
+        border-color: currentColor !important;
+        outline-color: currentColor !important;
+        background: #2b2b2b !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-single-choice-answer:hover,
+    .idp-reading-page.idp-contrast-white-black .idp-single-choice-answer:focus-within,
+    .idp-reading-page.idp-contrast-white-black .idp-multiple-answer-option.is-selected {
+        box-shadow: inset 3px 0 0 #ffffff;
+    }
+
+    .idp-reading-page.idp-contrast-yellow-black .idp-single-choice-answer:hover,
+    .idp-reading-page.idp-contrast-yellow-black .idp-single-choice-answer:focus-within,
+    .idp-reading-page.idp-contrast-yellow-black .idp-multiple-answer-option.is-selected {
+        box-shadow: inset 3px 0 0 #ffe600;
+    }
+
     .idp-reading-page.idp-contrast-white-black .idp-radio-control,
     .idp-reading-page.idp-contrast-yellow-black .idp-radio-control {
         border-color: currentColor !important;

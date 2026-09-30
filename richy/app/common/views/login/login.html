@@ -16,6 +16,12 @@
                 <!-- BEGIN PAGE CONTENT -->
                 <div class="page-content">
                     <div class="container">
+                        <div class="alert alert-danger" ng-if="vm.loginError" role="alert" aria-live="assertive">
+                            {{vm.loginError}}
+                        </div>
+                        <div class="alert alert-info" ng-if="vm.isLoggingIn" role="status" aria-live="polite">
+                            <i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang đăng nhập, vui lòng chờ…
+                        </div>
                         <!-- BEGIN ACTUAL CONTENT -->
                         <div ui-view class="fade-in-up">
                             <div class="portlet light bordered" >

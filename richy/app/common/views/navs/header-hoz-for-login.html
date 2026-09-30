@@ -98,7 +98,7 @@
             <ul class="nav navbar-nav for-media">
                 <li class="dropdown">
                     <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="ta hrefria-expanded="false">
-                        <button type="button" data-ng-click="vm.login()" class="btn green uppercase learning-login-submit"><i class="fa fa-sign-in"></i><span>Đăng nhập</span></button>
+                        <button type="button" data-ng-click="vm.login()" ng-disabled="vm.isLoggingIn" class="btn green uppercase learning-login-submit"><i class="fa" ng-class="vm.isLoggingIn ? 'fa-spinner fa-spin' : 'fa-sign-in'"></i><span>{{vm.isLoggingIn ? 'Đang đăng nhập…' : 'Đăng nhập'}}</span></button>
                     </a>
                 </li>
             </ul>
@@ -151,7 +151,7 @@
                                                data-ng-model="vm.user.password" />
                                     </div>
                                     <div class="form-actions">
-                                        <button type="button" data-ng-click="vm.login()" class="btn green uppercase learning-login-submit"><i class="fa fa-sign-in"></i><span>Đăng nhập</span></button>
+                                        <button type="button" data-ng-click="vm.login()" ng-disabled="vm.isLoggingIn" class="btn green uppercase learning-login-submit"><i class="fa" ng-class="vm.isLoggingIn ? 'fa-spinner fa-spin' : 'fa-sign-in'"></i><span>{{vm.isLoggingIn ? 'Đang đăng nhập…' : 'Đăng nhập'}}</span></button>
                                     </div>
                                 </form>
                             </a>

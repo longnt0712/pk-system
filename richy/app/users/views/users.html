@@ -188,6 +188,12 @@
                                         <i class="fa" ng-class="vm.getSortIcon('enrollmentClass')"></i>
                                     </th>
 
+                                    <th scope="col" ng-if="vm.isIeltsRoomDomain" class="sortable"
+                                        ng-click="vm.sortBy('vocabularyExperience')">
+                                        LEVEL
+                                        <i class="fa" ng-class="vm.getSortIcon('vocabularyExperience')"></i>
+                                    </th>
+
                                     <th scope="col" ng-if="!vm.isIeltsRoomDomain" class="sortable" ng-click="vm.sortBy('zaloStatus')">
                                         CÓ BỐ MẸ TRONG NHÓM ZALO?
                                         <i class="fa" ng-class="vm.getSortIcon('zaloStatus')"></i>
@@ -245,6 +251,23 @@
                                             <!--</ui-select-choices>-->
                                         <!--</ui-select>-->
 										{{ vm.getEnrollmentClassNames(user) }}
+                                    </td>
+                                    <td ng-if="vm.isIeltsRoomDomain" class="student-level-cell">
+                                        <div class="student-level-summary"
+                                             title="Tiến độ lên Level {{vm.getVocabularyExperienceLevel(user) + 1}}">
+                                            <div class="student-level-heading">
+                                                <strong>Level {{vm.getVocabularyExperienceLevel(user)}}</strong>
+                                                <small>{{vm.getVocabularyExperienceWords(user) | number:0}} / {{vm.getVocabularyExperienceThreshold() | number:0}} từ</small>
+                                            </div>
+                                            <div class="student-level-progress" role="progressbar"
+                                                 aria-label="Tiến độ kinh nghiệm của {{user.person.lastName}} {{user.person.firstName}}"
+                                                 aria-valuemin="0" aria-valuemax="100"
+                                                 aria-valuenow="{{vm.getVocabularyExperiencePercent(user)}}"
+                                                 aria-valuetext="Level {{vm.getVocabularyExperienceLevel(user)}}: {{vm.getVocabularyExperienceWords(user)}} / {{vm.getVocabularyExperienceThreshold()}} từ">
+                                                <span class="student-level-progress-fill"
+                                                      ng-style="{'width': vm.getVocabularyExperiencePercent(user) + '%'}"></span>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td ng-if="!vm.isIeltsRoomDomain" ng-class="vm.getZaloStatusClass(user.person.zaloStatus)">
                                         {{ vm.getZaloStatusName(user.person.zaloStatus) }}
@@ -1416,6 +1439,14 @@
 </style>
 
 <style>
+    .order-table .student-level-cell { vertical-align: middle; }
+    .student-level-summary { min-width: 180px; max-width: 240px; margin: 0 auto; text-align: left; }
+    .student-level-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
+    .student-level-heading strong { padding: 3px 9px; border-radius: 999px; background: #eee9ff; color: #5540a5; font-size: 12px; white-space: nowrap; }
+    .student-level-heading small { color: #52617a; font-size: 11px; white-space: nowrap; }
+    .student-level-progress { height: 10px; border: 1px solid #d3d9e8; border-radius: 999px; background: #e7ebf5; overflow: hidden; }
+    .student-level-progress-fill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6178ed, #8b5ade); transition: width .3s ease; }
+
     .vocabulary-profile-card {
         margin-top: 22px;
         padding: 18px;

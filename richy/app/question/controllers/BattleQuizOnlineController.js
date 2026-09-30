@@ -246,6 +246,20 @@
             '9vdmlmg1QiA',
             'RRpINBQCI48'
         ];
+        vm.musicMenuOpen = false;
+        vm.musicPlaying = false;
+        vm.musicPausedByUser = false;
+        vm.musicRepeatMode = 'ALL';
+        vm.musicVolume = 65;
+        try {
+            var savedMusicVolume = $window.localStorage.getItem('battleHostMusicVolume');
+            if (savedMusicVolume !== null && isFinite(Number(savedMusicVolume))) {
+                vm.musicVolume = Math.max(0, Math.min(100, Number(savedMusicVolume)));
+            }
+        } catch (ignoreMusicStorageError) { /* Storage may be disabled. */ }
+        vm.musicTracks = battleViewMusicTrackIds.map(function (videoId, index) {
+            return {videoId: videoId, name: 'Nhạc battle ' + (index + 1)};
+        });
         var qrScanner = null;
         var qrScannerRunning = false;
         var qrScanHandled = false;
@@ -268,6 +282,17 @@
            ===================================================== */
 
         vm.isHost = isHost;
+        vm.toggleMusicPlayback = toggleMusicPlayback;
+        vm.selectMusicTrack = selectMusicTrack;
+        vm.skipMusicTrack = skipMusicTrack;
+        vm.updateMusicVolume = updateMusicVolume;
+        vm.getMusicTrackName = getMusicTrackName;
+        vm.toggleMusicRepeat = function () {
+            vm.musicRepeatMode = vm.musicRepeatMode === 'ALL' ? 'ONE' : 'ALL';
+        };
+        vm.isCurrentMusicTrack = function (track) {
+            return track.videoId === battleViewMusicLastTrackId;
+        };
         vm.isCountdownMode = isCountdownMode;
         vm.isMoneyBegMode = isMoneyBegMode;
         vm.isEscapeDumbDemonMode = isEscapeDumbDemonMode;
@@ -1540,6 +1565,8 @@
                         stopRealtimeAndPolling();
 
                         vm.room = null;
+                        vm.qrModalOpen = false;
+                        vm.musicMenuOpen = false;
                         vm.battleDisplayName = '';
                         vm.battleDisplayNameDirty = false;
                         vm.battleDisplayNameInitialized = false;
@@ -1789,6 +1816,8 @@
             stopRealtimeAndPolling();
 
             vm.room = null;
+            vm.qrModalOpen = false;
+            vm.musicMenuOpen = false;
             syncMobilePlayingPageState();
             stopBattleViewMusic(true);
             vm.rankingModalOpen = false;
@@ -2019,7 +2048,11 @@
             if (incoming.status !== 'LOBBY') {
                 vm.lobbyTopicEditorOpen = false;
                 vm.petPickerModalOpen = false;
+            }
+            // Live room updates must not dismiss QR while the match is running.
+            if (incoming.status === 'FINISHED' || (previousRoom && previousRoom.code !== incoming.code)) {
                 vm.qrModalOpen = false;
+                vm.musicMenuOpen = false;
             }
 
             vm.availableSkillTargets = [];
@@ -4197,7 +4230,7 @@
         function shouldPrepareBattleViewMusic() {
             return !!(
                 vm.room &&
-                isSpectator() &&
+                (isSpectator() || isHost()) &&
                 (
                     vm.room.status === 'LOBBY' ||
                     vm.room.status === 'PLAYING'
@@ -4210,7 +4243,7 @@
             return !!(
                 vm.room &&
                 vm.room.status === 'PLAYING' &&
-                isSpectator()
+                (isSpectator() || isHost())
             );
         }
 
@@ -4330,7 +4363,7 @@
                     {
                         height: '200',
                         width: '200',
-                        videoId: nextBattleViewMusicTrackId(),
+                        videoId: battleViewMusicLastTrackId || nextBattleViewMusicTrackId(),
                         playerVars: {
                             autoplay: 0,
                             controls: 0,
@@ -4344,8 +4377,11 @@
                                 battleViewMusicPlayerReady = true;
 
                                 try {
-                                    event.target.setVolume(65);
+                                    event.target.setVolume(vm.musicVolume);
                                     event.target.unMute();
+                                    if (battleViewMusicLastTrackId && event.target.getVideoData().video_id !== battleViewMusicLastTrackId) {
+                                        event.target.cueVideoById(battleViewMusicLastTrackId);
+                                    }
                                 } catch (ignoreVolumeError) {
                                     // Trình duyệt sẽ dùng âm lượng hiện tại.
                                 }
@@ -4358,6 +4394,11 @@
                                 }
                             },
                             onStateChange: function (event) {
+                                if (!destroyed) {
+                                    $scope.$evalAsync(function () {
+                                        vm.musicPlaying = event.data === $window.YT.PlayerState.PLAYING;
+                                    });
+                                }
                                 if (
                                     $window.YT &&
                                     event.data === $window.YT.PlayerState.PLAYING
@@ -4368,12 +4409,17 @@
                                 if (
                                     $window.YT &&
                                     event.data === $window.YT.PlayerState.ENDED &&
+                                    !vm.musicPausedByUser &&
                                     (
                                         shouldPlayBattleViewMusic() ||
                                         battleViewMusicWaitingForMatch
                                     )
                                 ) {
-                                    loadNextBattleViewMusicTrack();
+                                    if (vm.musicRepeatMode === 'ONE' && battleViewMusicLastTrackId) {
+                                        selectMusicTrack({videoId: battleViewMusicLastTrackId});
+                                    } else {
+                                        loadNextBattleViewMusicTrack();
+                                    }
                                 }
                             },
                             onError: function () {
@@ -4382,6 +4428,7 @@
                                 if (
                                     battleViewMusicLoadFailures <
                                         battleViewMusicTrackIds.length &&
+                                    !vm.musicPausedByUser &&
                                     (
                                         shouldPlayBattleViewMusic() ||
                                         battleViewMusicWaitingForMatch
@@ -4419,6 +4466,7 @@
 
 
         function playBattleViewMusic() {
+            if (vm.musicPausedByUser) { return; }
             if (
                 !shouldPlayBattleViewMusic() &&
                 !battleViewMusicWaitingForMatch
@@ -4436,7 +4484,7 @@
             }
 
             try {
-                battleViewMusicPlayer.setVolume(65);
+                battleViewMusicPlayer.setVolume(vm.musicVolume);
                 battleViewMusicPlayer.unMute();
 
                 if (
@@ -4470,6 +4518,7 @@
 
         function stopBattleViewMusic(resetPlaylist) {
             battleViewMusicWaitingForMatch = false;
+            vm.musicPlaying = false;
 
             if (
                 battleViewMusicPlayer &&
@@ -4484,7 +4533,6 @@
 
             if (resetPlaylist === true) {
                 battleViewMusicQueue = [];
-                battleViewMusicLastTrackId = '';
                 battleViewMusicLoadFailures = 0;
             }
         }
@@ -4543,15 +4591,18 @@
 
 
         function loadBattleViewMusicConfig() {
-            battleService.getActiveMusicTracks().then(function (config) {
+            return battleService.getActiveMusicTracks().then(function (config) {
                 var trackIds = [];
+                var tracks = [];
                 angular.forEach((config && config.tracks) || [], function (track) {
                     if (track && track.videoId && trackIds.indexOf(track.videoId) < 0) {
                         trackIds.push(track.videoId);
+                        tracks.push({videoId: track.videoId, name: track.name || 'Nhạc battle ' + trackIds.length});
                     }
                 });
                 if (!trackIds.length) { return; }
                 battleViewMusicTrackIds = trackIds;
+                vm.musicTracks = tracks;
                 battleViewMusicQueue = [];
                 battleViewMusicLastTrackId = '';
                 battleViewMusicLoadFailures = 0;
@@ -4559,6 +4610,62 @@
                 battleViewMusicConfigReady = true;
                 if (shouldPrepareBattleViewMusic()) { syncBattleViewMusic(); }
             });
+        }
+
+
+        function getMusicTrackName() {
+            for (var index = 0; index < vm.musicTracks.length; index += 1) {
+                if (vm.musicTracks[index].videoId === battleViewMusicLastTrackId) {
+                    return vm.musicTracks[index].name;
+                }
+            }
+            return 'Chọn bài nhạc';
+        }
+
+        function toggleMusicPlayback() {
+            if (vm.musicPlaying) {
+                vm.musicPausedByUser = true;
+                vm.musicPlaying = false;
+                pauseBattleViewMusic();
+            } else {
+                vm.musicPausedByUser = false;
+                playBattleViewMusic();
+            }
+        }
+
+        function selectMusicTrack(track) {
+            if (!track || battleViewMusicTrackIds.indexOf(track.videoId) < 0) { return; }
+            battleViewMusicLastTrackId = track.videoId;
+            battleViewMusicQueue = [];
+            battleViewMusicLoadFailures = 0;
+            ensureBattleViewMusicPlayer();
+            if (!battleViewMusicPlayerReady || !battleViewMusicPlayer) { return; }
+            try {
+                if (vm.musicPausedByUser) {
+                    battleViewMusicPlayer.cueVideoById(track.videoId);
+                } else {
+                    battleViewMusicPlayer.loadVideoById(track.videoId);
+                    updateMusicVolume();
+                }
+            } catch (ignoreSelectMusicError) { /* Do not interrupt the match. */ }
+        }
+
+        function skipMusicTrack(direction) {
+            if (!vm.musicTracks.length) { return; }
+            var index = battleViewMusicTrackIds.indexOf(battleViewMusicLastTrackId);
+            index = (index + direction + vm.musicTracks.length) % vm.musicTracks.length;
+            selectMusicTrack(vm.musicTracks[index]);
+        }
+
+        function updateMusicVolume() {
+            vm.musicVolume = Math.max(0, Math.min(100, Number(vm.musicVolume) || 0));
+            try {
+                $window.localStorage.setItem('battleHostMusicVolume', String(vm.musicVolume));
+            } catch (ignoreMusicStorageError) { /* Storage may be disabled. */ }
+            if (battleViewMusicPlayer && battleViewMusicPlayerReady) {
+                try { battleViewMusicPlayer.setVolume(vm.musicVolume); }
+                catch (ignoreMusicVolumeError) { /* Player may be unavailable. */ }
+            }
         }
 
 

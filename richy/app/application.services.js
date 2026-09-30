@@ -46,7 +46,7 @@
                 refreshPromise = $injector.get('$http').post(
                     Hrm.API_SERVER_URL.replace(/\/$/, '') + '/oauth/token', body,
                     {headers: {'Content-Type': 'application/x-www-form-urlencoded'}, skipSessionAuth: true,
-                        sessionRefreshRequest: true}
+                        sessionRefreshRequest: true, timeout: 20000}
                 ).then(function (response) {
                     var current = token.getToken() || {};
                     if (sessionGeneration !== startedGeneration || current.refresh_token !== generation) {
@@ -210,32 +210,114 @@
         };
     }]);
 
-    /**
-     * No server response interceptor
-     */
+    // One non-blocking connection notice shared by all API requests.
+    Hrm.factory('NetworkStatus', ['$window', '$timeout', 'toastr',
+        function ($window, $timeout, toastr) {
+            var state = 'ready';
+            var notice = null;
+            var slowRequests = 0;
+            var serviceRoot = Hrm.API_SERVER_URL.replace(/\/$/, '') + '/';
+
+            function show(next, message, kind, persistent) {
+                if (state === next) { return; }
+                state = next;
+                if (notice) { toastr.clear(notice); }
+                notice = toastr[kind || 'warning'](message, 'Kết nối', {
+                    timeOut: persistent ? 0 : 5000,
+                    extendedTimeOut: persistent ? 0 : 1000,
+                    closeButton: true
+                });
+            }
+            function offline() {
+                show('offline', 'Mất kết nối Internet. Vui lòng kiểm tra Wi-Fi hoặc dữ liệu di động.', 'warning', true);
+            }
+            function online() {
+                if (state !== 'ready') {
+                    show('checking', 'Thiết bị đã có mạng trở lại. Đang kiểm tra kết nối đến máy chủ…', 'info', false);
+                }
+            }
+            function finish(config) {
+                var watch = config && config.networkWatch;
+                if (!watch || watch.finished) { return false; }
+                watch.finished = true;
+                $timeout.cancel(watch.timer);
+                if (watch.slow) { slowRequests--; }
+                return true;
+            }
+            function recovered() {
+                if ($window.navigator.onLine !== false && slowRequests === 0 && state !== 'ready') {
+                    show('ready', 'Kết nối đã ổn định trở lại.', 'success', false);
+                }
+            }
+            return {
+                start: function () {
+                    $window.addEventListener('offline', offline);
+                    $window.addEventListener('online', online);
+                    if ($window.navigator.onLine === false) { offline(); }
+                    return function () {
+                        $window.removeEventListener('offline', offline);
+                        $window.removeEventListener('online', online);
+                        if (notice) { toastr.clear(notice); }
+                    };
+                },
+                begin: function (config) {
+                    if (!config.url || config.url.indexOf(serviceRoot) !== 0 || config.skipNetworkNotice) { return; }
+                    var watch = config.networkWatch = {finished: false, slow: false};
+                    watch.timer = $timeout(function () {
+                        if (!watch.finished && !$window.document.hidden &&
+                            $window.navigator.onLine !== false && (state === 'ready' || state === 'slow')) {
+                            watch.slow = true;
+                            slowRequests++;
+                            show('slow', 'Yêu cầu đang mất nhiều thời gian hơn bình thường. Vui lòng chờ thêm…', 'info', true);
+                        }
+                    }, 8000);
+                },
+                success: function (response) {
+                    if (finish(response.config)) { recovered(); }
+                },
+                failure: function (error) {
+                    if (!finish(error.config)) { return; }
+                    if (error.sessionChanged || error.xhrStatus === 'abort') {
+                        if (state === 'slow' && slowRequests === 0) {
+                            if (notice) { toastr.clear(notice); notice = null; }
+                            state = 'ready';
+                        }
+                        return;
+                    }
+                    if ($window.navigator.onLine === false) { offline(); }
+                    else if (error.status <= 0 || error.status === 408 || error.status === 504) {
+                        show('unreachable', 'Chưa kết nối được với máy chủ hoặc yêu cầu đã quá thời gian chờ. Vui lòng thử lại.', 'warning', true);
+                    } else if (error.status >= 500 || error.status === 429) {
+                        show('server', 'Máy chủ đang bận hoặc tạm thời gián đoạn. Vui lòng thử lại sau ít phút.', 'warning', true);
+                    } else { recovered(); }
+                }
+            };
+        }
+    ]);
+
     Hrm.factory('ServerExceptionHandlerInterceptor', [
         '$q',
         'toastr',
-        '$cookies',
-        '$injector',
         'blockUI',
-        'constants',
-        function ($q, toastr, $cookies, $injector, blockUI, constants) {
+        'NetworkStatus',
+        function ($q, toastr, blockUI, networkStatus) {
             return {
+                request: function (config) {
+                    networkStatus.begin(config);
+                    return config;
+                },
+                response: function (response) {
+                    networkStatus.success(response);
+                    return response;
+                },
                 responseError: function (rejection) {
-                    if (rejection.status <= 0) {
-                        toastr.warning('Kết nối đang gián đoạn. Phiên đăng nhập vẫn được giữ; vui lòng thử lại khi có mạng.', 'Cảnh báo');
+                    var config = rejection.config || {};
+                    networkStatus.failure(rejection);
+                    // Login errors are displayed beside the login form.
+                    if (rejection.status == 400 && !config.loginRequest && !config.sessionRefreshRequest) {
+                        toastr.error('Dữ liệu gửi lên chưa hợp lệ. Vui lòng kiểm tra lại.', 'Thông báo');
                     }
-
-                    if (rejection.status == 400 && !(rejection.config && rejection.config.sessionRefreshRequest)) {
-                        toastr.error('Sai thông tin đăng nhập', 'Lỗi (400)');
-                    }
-
-                    if (rejection.status == 401) {
-                        // Force refresh token in application.run()
-                    }
-
-                    if (rejection.status == 403) {
+                    if (rejection.status == 403 && !config.loginRequest) {
                         toastr.error('Bạn không có quyền thực hiện thao tác này.', 'Lỗi (403)');
                     }
 					
@@ -243,11 +325,9 @@
                         toastr.error('Có lỗi xảy ra. Xin vui lòng thử lại sau.', 'Lỗi (409)');
                     }
 
-                    if (rejection.status == 500) {
-                        toastr.error('Đã có lỗi xảy ra với hệ thống. Xin vui lòng thử lại sau.', 'Lỗi (500)');
+                    if (!config.backgroundSessionCheck && !config.sessionRefreshRequest && !config.loginRequest) {
+                        blockUI.stop();
                     }
-
-                    blockUI.stop();
 
                     return $q.reject(rejection);
                 }

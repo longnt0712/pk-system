@@ -62,7 +62,7 @@ function setup(transport, protocol = 'https:') {
     deps.$http = http;
     const session = deps.AuthSession = invoke(factories.AuthSession, deps);
     token.setToken({access_token: 'old', refresh_token: 'refresh-1', expires_in: 86400, token_type: 'bearer'});
-    return {http, session, token, cookies, cookieOptions, events, configs, interceptor, deps, context, Hrm};
+    return {http, session, token, cookies, cookieOptions, events, configs, interceptor, deps, context, Hrm, factories};
 }
 const api = 'https://example.test/service/api/users/getCurrentUser';
 const invalid = {status: 401, data: {error: 'invalid_token'}};
@@ -225,6 +225,7 @@ test('retry preserves the body of POST/upload requests', async () => {
 
 function startApp(h) {
     const listeners = {}, windowListeners = {}, documentListeners = {}, timers = [], navigations = [];
+    const blockCalls = {start: 0, stop: 0};
     const root = h.deps.$rootScope;
     root.$on = (name, fn) => { listeners[name] = fn; };
     root.$broadcast = () => {};
@@ -250,8 +251,8 @@ function startApp(h) {
     h.context.angular.module = () => h.Hrm;
     h.context.angular.forEach = (items, fn) => items.forEach(fn);
     const http = {
-        get(url) {
-            const promise = h.http({url, method: 'GET'});
+        get(url, options) {
+            const promise = h.http({...options, url, method: 'GET'});
             // AngularJS legacy .success/.error return the original promise.
             promise.success = fn => { promise.then(response => fn(response.data), () => {}); return promise; };
             promise.error = fn => { promise.then(() => {}, error => fn(error.data, error.status)); return promise; };
@@ -264,8 +265,9 @@ function startApp(h) {
     invoke(runDefinition, {...h.deps, settings, $http: http, $state: {
         current: {name: 'application.dashboard'}, go(name) { navigations.push(name); }
     }, OAuth: {isAuthenticated: () => !!h.token.getToken()},
-    blockUI: {start() {}, stop() {}}, toastr: {info() {}}, $timeout: timeout});
-    return {listeners, windowListeners, documentListeners, timers, navigations, settings};
+    blockUI: {start() { blockCalls.start++; }, stop() { blockCalls.stop++; }},
+    toastr: {info() {}, warning() {}}, $timeout: timeout, NetworkStatus: {start: () => () => {}}});
+    return {listeners, windowListeners, documentListeners, timers, navigations, settings, blockCalls};
 }
 
 test('the real app preserves login on resume failure and retries when connectivity returns', async () => {
@@ -282,12 +284,13 @@ test('the real app preserves login on resume failure and retries when connectivi
     assert.equal(app.navigations.length, 0);
     assert.ok(app.timers.some(timer => timer.delay === 1500));
     offline = false;
-    app.windowListeners.online();
+    app.windowListeners.online({type: 'online'});
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(requests, 2);
     assert.equal(h.cookies['education.user'].id, 7);
     assert.equal(app.navigations.length, 0);
     assert.equal(app.timers.find(timer => timer.delay === 1500).cancelled, true);
+    assert.deepEqual(app.blockCalls, {start: 0, stop: 0});
 });
 
 test('hidden Safari tabs do not check the user until visible; resume events share the check', async () => {
@@ -307,7 +310,184 @@ test('hidden Safari tabs do not check the user until visible; resume events shar
     gate.resolve({data: {id: 7, roles: []}});
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(h.cookies['education.user'].id, 7);
+    assert.deepEqual(app.blockCalls, {start: 0, stop: 0});
     app.listeners.$destroy();
     assert.equal(Object.keys(app.windowListeners).length, 0);
     assert.equal(Object.keys(app.documentListeners).length, 0);
+});
+
+test('quick repeated tab switches use the recent session check without any overlay', async () => {
+    let requests = 0;
+    const h = setup(() => { requests++; return {data: {id: 7, roles: []}}; });
+    const app = startApp(h);
+    app.documentListeners.visibilitychange({type: 'visibilitychange'});
+    await new Promise(resolve => setImmediate(resolve));
+    for (let i = 0; i < 5; i++) {
+        app.documentListeners.visibilitychange({type: 'visibilitychange'});
+        app.windowListeners.pageshow({type: 'pageshow'});
+    }
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(requests, 1);
+    assert.deepEqual(app.blockCalls, {start: 0, stop: 0});
+    app.windowListeners.online({type: 'online'});
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(requests, 2);
+});
+
+function networkHarness() {
+    const h = setup(() => ({})), timers = [], notices = [], listeners = {};
+    const win = {
+        navigator: {onLine: true}, document: {hidden: false},
+        addEventListener(name, fn) { listeners[name] = fn; },
+        removeEventListener(name) { delete listeners[name]; }
+    };
+    const timeout = (fn, delay) => { const timer = {fn, delay}; timers.push(timer); return timer; };
+    timeout.cancel = timer => { if (timer) timer.cancelled = true; };
+    const toastr = {clear(notice) { notice.cleared = true; }};
+    for (const kind of ['warning', 'info', 'success']) {
+        toastr[kind] = (message, title, options) => {
+            const notice = {kind, message, title, options}; notices.push(notice); return notice;
+        };
+    }
+    const network = invoke(h.factories.NetworkStatus, {$window: win, $timeout: timeout, toastr});
+    return {network, win, timers, notices, listeners, stop: network.start(), h, toastr};
+}
+
+test('fast background checks stay silent; a slow request shows one non-blocking notice', () => {
+    const h = networkHarness();
+    const fast = {url: api};
+    h.network.begin(fast);
+    h.network.success({config: fast});
+    assert.equal(h.notices.length, 0);
+    assert.equal(h.timers[0].cancelled, true);
+    const slow = {url: api}, second = {url: api};
+    h.network.begin(slow); h.network.begin(second);
+    h.timers[1].fn(); h.timers[2].fn();
+    assert.equal(h.notices.length, 1);
+    assert.equal(h.notices[0].kind, 'info');
+    assert.equal(h.notices[0].options.timeOut, 0);
+    h.network.success({config: slow});
+    assert.equal(h.notices.length, 1);
+    h.network.success({config: second});
+    assert.equal(h.notices.length, 2);
+    assert.equal(h.notices[0].cleared, true);
+    assert.equal(h.notices[1].kind, 'success');
+});
+
+test('network failure notices are deduplicated; online is verified before reporting recovery', () => {
+    const h = networkHarness();
+    for (let i = 0; i < 5; i++) {
+        const config = {url: api};
+        h.network.begin(config);
+        h.network.failure({status: 0, config});
+    }
+    assert.equal(h.notices.length, 1);
+    h.listeners.online();
+    assert.equal(h.notices.at(-1).kind, 'info');
+    const config = {url: api};
+    h.network.begin(config);
+    h.network.success({config});
+    assert.equal(h.notices.at(-1).kind, 'success');
+    h.stop();
+    assert.equal(Object.keys(h.listeners).length, 0);
+});
+
+test('offline and server failures have different messages; unrelated assets are ignored', () => {
+    const h = networkHarness();
+    h.win.navigator.onLine = false;
+    h.listeners.offline();
+    assert.match(h.notices.at(-1).message, /Internet/);
+    h.win.navigator.onLine = true;
+    const config = {url: api};
+    h.network.begin(config);
+    h.network.failure({config, status: 503});
+    assert.match(h.notices.at(-1).message, /Máy chủ/);
+    const count = h.timers.length;
+    h.network.begin({url: 'assets/template.html'});
+    assert.equal(h.timers.length, count);
+});
+
+test('an intentional abort clears a slow notice without announcing a connection failure', () => {
+    const h = networkHarness();
+    const config = {url: api};
+    h.network.begin(config);
+    h.timers[0].fn();
+    h.network.failure({config, status: -1, xhrStatus: 'abort'});
+    assert.equal(h.notices.length, 1);
+    assert.equal(h.notices[0].cleared, true);
+});
+
+test('a background error never stops an unrelated foreground Block UI', async () => {
+    const h = networkHarness();
+    let stopped = 0;
+    const interceptor = invoke(h.h.factories.ServerExceptionHandlerInterceptor, {
+        $q: h.h.deps.$q, toastr: h.toastr, NetworkStatus: h.network, blockUI: {stop() { stopped++; }}
+    });
+    const config = interceptor.request({url: api, backgroundSessionCheck: true});
+    await assert.rejects(interceptor.responseError({config, status: 0}));
+    assert.equal(stopped, 0);
+    assert.equal(h.notices.length, 1);
+});
+
+function loginHarness(performLogin) {
+    const h = setup(() => ({data: {id: 7, roles: []}}));
+    let Controller;
+    h.context.angular.module = () => ({controller(name, fn) { Controller = fn; }});
+    h.context.angular.isFunction = value => typeof value === 'function';
+    h.context.angular.isObject = value => value !== null && typeof value === 'object';
+    h.context.angular.forEach = (items, fn) => items.forEach(fn);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'common/controllers/LoginController.js'), 'utf8'), h.context);
+    const notices = [], blocks = [], navigations = [];
+    const deps = {...h.deps,
+        $rootScope: {}, $scope: {$on() {}},
+        $state: {go(name) { navigations.push(name); }},
+        settings: {api: {baseUrl: h.Hrm.API_SERVER_URL}},
+        LoginService: {performLogin}, toastr: {error(message) { notices.push(message); }}, focus() {},
+        blockUI: {start() { blocks.push('start'); }, stop() { blocks.push('stop'); }},
+        $location: {protocol: () => 'https'}, $window: {navigator: {onLine: true}},
+        $document: {on() {}, off() {}}, $http: {get: () => Promise.resolve({data: {id: 7, roles: []}})}
+    };
+    const controller = {};
+    Controller.apply(controller, Controller.$inject.map(name => deps[name]));
+    controller.user = {username: 'test', password: 'wrong'};
+    return {controller, notices, blocks, navigations, deps};
+}
+
+test('wrong password has a visible Vietnamese error, including OAuth 400 and HTTP 401', async () => {
+    for (const error of [{status: 400, data: {error: 'invalid_grant'}}, {status: 401}]) {
+        const h = loginHarness(() => Promise.reject(error));
+        await h.controller.login();
+        assert.match(h.controller.loginError, /mật khẩu không đúng/);
+        assert.equal(h.controller.isLoggingIn, false);
+        assert.deepEqual(h.blocks, []);
+        assert.deepEqual(h.navigations, []);
+    }
+});
+
+test('login timeout and failed user lookup are handled and release the login button', async () => {
+    const timed = loginHarness(() => Promise.reject({status: -1, xhrStatus: 'timeout'}));
+    await timed.controller.login();
+    assert.match(timed.controller.loginError, /thời gian chờ/);
+    const lookup = loginHarness(() => Promise.resolve({data: {access_token: 'valid'}}));
+    lookup.deps.$http.get = () => Promise.reject({status: 0});
+    await lookup.controller.login();
+    assert.match(lookup.controller.loginError, /Đã xác thực/);
+    assert.equal(lookup.controller.isLoggingIn, false);
+    assert.deepEqual(lookup.blocks, []);
+});
+
+test('login has local busy feedback and ignores duplicate submissions', async () => {
+    const gate = deferred();
+    let requests = 0;
+    const h = loginHarness(() => { requests++; return gate.promise; });
+    const pending = h.controller.login();
+    h.controller.login();
+    assert.equal(h.controller.isLoggingIn, true);
+    assert.equal(requests, 1);
+    gate.resolve({data: {access_token: 'valid'}});
+    await pending;
+    assert.equal(h.controller.isLoggingIn, false);
+    assert.equal(h.controller.loginError, '');
+    assert.deepEqual(h.navigations, ['application.dashboard']);
+    assert.deepEqual(h.blocks, []);
 });

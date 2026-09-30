@@ -270,22 +270,22 @@
 				Math.max(0, Number((user || {}).vocabularyExperienceWords) || 0);
 		}
 
-		vm.getVocabularyExperienceLevel = function () {
-			return Math.floor(getVocabularyTotalWords(vm.user) / 1000);
+		vm.getVocabularyExperienceLevel = function (user) {
+			return Math.floor(getVocabularyTotalWords(user || vm.user) / 1000);
 		};
 
-		vm.getVocabularyExperienceWords = function () {
-			return getVocabularyTotalWords(vm.user) % 1000;
+		vm.getVocabularyExperienceWords = function (user) {
+			return getVocabularyTotalWords(user || vm.user) % 1000;
 		};
 
 		vm.getVocabularyExperienceThreshold = function () {
 			return 1000;
 		};
 
-		vm.getVocabularyExperiencePercent = function () {
+		vm.getVocabularyExperiencePercent = function (user) {
 			var threshold = vm.getVocabularyExperienceThreshold();
 			return threshold > 0
-				? Math.min(100, Math.round(vm.getVocabularyExperienceWords() * 100 / threshold))
+				? Math.min(100, Math.round(vm.getVocabularyExperienceWords(user) * 100 / threshold))
 				: 0;
 		};
 
@@ -2041,6 +2041,9 @@
 
                 case 'enrollmentClass':
 					return vm.getEnrollmentClassNames(user).toLowerCase();
+
+                case 'vocabularyExperience':
+                    return getVocabularyTotalWords(user);
 
                 case 'zaloStatus':
                     return vm.getZaloStatusName(person.zaloStatus).toLowerCase();

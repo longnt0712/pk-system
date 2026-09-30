@@ -2987,6 +2987,7 @@
             return {
                 question: part.passageHtml || part.passage || part.question || '',
                 pronounce: part.audioUrl || part.pronounce || '',
+                type: angular.isDefined(part.type) ? Number(part.type) : undefined,
                 questionType: readingQuestionType(
                     passageTypeIds[partIndex],
                     'IELTSRTP' + (partIndex + 1),
@@ -3069,7 +3070,7 @@
 
             var test;
             if (angular.isArray(source.parts)) {
-                var expectedPartCount = vm.isListeningMode ? 4 : 3;
+                var expectedPartCount = vm.isComprehensiveMode ? 1 : (vm.isListeningMode ? 4 : 3);
                 if (source.parts.length !== expectedPartCount) {
                     throw new Error('File import phải có đúng ' + expectedPartCount + ' parts.');
                 }
@@ -3091,7 +3092,7 @@
             if (!test.title || !String(test.title).trim()) {
                 throw new Error('File import chưa có title.');
             }
-            var expectedTestPartCount = vm.isListeningMode ? 4 : 3;
+            var expectedTestPartCount = vm.isComprehensiveMode ? 1 : (vm.isListeningMode ? 4 : 3);
             if (!angular.isArray(test.subQuestions) || test.subQuestions.length !== expectedTestPartCount) {
                 throw new Error('Bài test phải có đúng ' + expectedTestPartCount + ' parts.');
             }
@@ -3130,8 +3131,10 @@
                     group.isHaveChildren = group.subQuestions.length > 0;
                     angular.forEach(group.subQuestions, function (question) {
                         var questionNumber = parseInt(question.ordinalNumber, 10);
-                        if (!questionNumber || questionNumber < 1 || questionNumber > 40) {
-                            throw new Error('Số câu hỏi phải nằm trong khoảng 1–40.');
+                        if (!questionNumber || questionNumber < 1 || (!vm.isComprehensiveMode && questionNumber > 40)) {
+                            throw new Error(vm.isComprehensiveMode
+                                ? 'Số câu hỏi phải bắt đầu từ 1.'
+                                : 'Số câu hỏi phải nằm trong khoảng 1–40.');
                         }
                         if (seenNumbers[questionNumber]) {
                             throw new Error('Câu số ' + questionNumber + ' đang bị lặp trong file.');
@@ -3149,7 +3152,7 @@
                 throw new Error('File import chưa có câu hỏi nào.');
             }
             test.importedQuestionCount = questionCount;
-            return test;
+            return vm.isComprehensiveMode ? ensureComprehensiveBuilder(test) : test;
         }
 
         function normalizedExcelText(value) {
@@ -3357,17 +3360,23 @@
             var title = info['tieu de'] || info.title || '';
             var audioUrl = info['audio url'] || info.audio || '';
             var workbookMode = normalizedExcelText(info['loai bai'] || info['test type'] || '');
-            if (workbookMode && vm.isListeningMode && workbookMode.indexOf('listening') < 0) {
+            if (workbookMode && vm.isComprehensiveMode &&
+                    workbookMode.indexOf('tong hop') < 0 && workbookMode.indexOf('comprehensive') < 0) {
+                throw new Error('Đây không phải file mẫu Tổng hợp. Hãy tải mẫu Tổng hợp mới tại trang này.');
+            }
+            if (workbookMode && !vm.isComprehensiveMode && vm.isListeningMode && workbookMode.indexOf('listening') < 0) {
                 throw new Error('Đây là file mẫu Reading. Hãy import tại trang IELTS Reading hoặc tải mẫu Listening mới.');
             }
-            if (workbookMode && !vm.isListeningMode && workbookMode.indexOf('reading') < 0) {
+            if (workbookMode && !vm.isComprehensiveMode && !vm.isListeningMode && workbookMode.indexOf('reading') < 0) {
                 throw new Error('Đây là file mẫu Listening. Hãy import tại trang IELTS Listening.');
             }
 
             var source = {
                 title: title,
                 audioUrl: audioUrl,
-                parts: vm.isListeningMode ? [
+                parts: vm.isComprehensiveMode ? [
+                    {passageHtml: '', type: 6, groups: []}
+                ] : vm.isListeningMode ? [
                     {passageHtml: '', groups: []},
                     {passageHtml: '', groups: []},
                     {passageHtml: '', groups: []},
@@ -3386,10 +3395,12 @@
             var rows = XLSX.utils.sheet_to_json(contentSheet, {defval: '', raw: false});
             var currentPartNumber = null;
             var currentGroupByPart = {};
-            var groupsByPart = vm.isListeningMode ? [{}, {}, {}, {}] : [{}, {}, {}];
+            var groupsByPart = vm.isComprehensiveMode ? [{}] : (vm.isListeningMode ? [{}, {}, {}, {}] : [{}, {}, {}]);
             var logicalPartPassageSeen = {};
-            var maximumPartNumber = vm.isListeningMode ? 4 : 3;
-            var questionRanges = vm.isListeningMode ? [
+            var maximumPartNumber = vm.isComprehensiveMode ? 1 : (vm.isListeningMode ? 4 : 3);
+            var questionRanges = vm.isComprehensiveMode ? [
+                {start: 1, end: Number.MAX_SAFE_INTEGER || 9007199254740991}
+            ] : vm.isListeningMode ? [
                 {start: 1, end: 10},
                 {start: 11, end: 20},
                 {start: 21, end: 30},
@@ -3407,7 +3418,7 @@
                 }
                 if (!currentPartNumber || currentPartNumber < 1 || currentPartNumber > maximumPartNumber) {
                     throw new Error('Dòng ' + (rowIndex + 2) + ': Part phải là ' +
-                        (vm.isListeningMode ? '1, 2, 3 hoặc 4.' : '1, 2 hoặc 3.'));
+                        (vm.isComprehensiveMode ? '1.' : (vm.isListeningMode ? '1, 2, 3 hoặc 4.' : '1, 2 hoặc 3.')));
                 }
 
                 var storagePartIndex = currentPartNumber - 1;
@@ -3416,6 +3427,9 @@
                 if (String(passage).trim()) {
                     if (!logicalPartPassageSeen[currentPartNumber]) {
                         part.passageHtml = passage;
+                        if (vm.isComprehensiveMode) {
+                            part.type = 1;
+                        }
                     }
                     logicalPartPassageSeen[currentPartNumber] = true;
                 }
@@ -3559,8 +3573,10 @@
                         vm.saveReadingTest('draft').finally(function () {
                             vm.importingReadingTest = false;
                         });
-                        if (importedQuestionCount < 40) {
+                        if (!vm.isComprehensiveMode && importedQuestionCount < 40) {
                             toastr.warning('Đã nhập ' + importedQuestionCount + '/40 câu. Bạn có thể bổ sung trước khi xuất bản.', importTitle);
+                        } else if (vm.isComprehensiveMode) {
+                            toastr.success('Đã nhập ' + importedQuestionCount + ' câu vào bài tập tổng hợp.', importTitle);
                         }
                     } catch (error) {
                         vm.importingReadingTest = false;
@@ -3582,19 +3598,27 @@
             var modeUpper = String(modeName).toUpperCase();
             var audioInstruction = vm.isListeningMode
                 ? 'Bắt buộc nhập URL HTTPS công khai trỏ trực tiếp tới file audio (ví dụ .mp3 hoặc .m4a). Không dùng link trang nghe cần đăng nhập.'
-                : 'Phải để trống. Nếu có Audio URL, file thuộc Listening và phải import ở trang IELTS Listening.';
+                : 'Phải để trống. Bài Reading và bài Tổng hợp không sử dụng Audio URL chính.';
             var automaticReadingHeader = 'Riêng Reading: không nhập dòng “READING PASSAGE 1/2/3” vì giao diện bài làm đã bỏ dòng này. Không nhập câu “You should spend about 20 minutes on Questions ...” vì hệ thống tự hiện đúng khoảng câu. Passage HTML bắt đầu từ tiêu đề riêng của bài đọc.';
-            var passageHtmlInstruction = vm.isListeningMode
+            var passageHtmlInstruction = vm.isComprehensiveMode
+                ? 'Không bắt buộc. Nếu cần văn bản tham khảo, nhập một lần ở dòng đầu Part 1; nếu để trống, giao diện làm bài chỉ hiển thị danh sách câu hỏi.'
+                : vm.isListeningMode
                 ? 'Giữ đủ tiêu đề riêng, phụ đề, ký hiệu A/B/C…, xuống dòng và nội dung gốc. Không tóm tắt hoặc tự sửa câu chữ của đề.'
                 : 'Giữ đủ tiêu đề riêng của bài đọc, phụ đề, ký hiệu A/B/C…, xuống dòng và nội dung gốc. Không lặp tiêu đề READING PASSAGE và câu You should spend vì hệ thống tự hiện. Không tóm tắt hoặc tự sửa câu chữ của đề.';
-            var promptPartHeaderInstruction = vm.isListeningMode
+            var promptPartHeaderInstruction = vm.isComprehensiveMode
+                ? 'Với bài Tổng hợp, chỉ dùng Part 1. Passage HTML là văn bản tham khảo tùy chọn; không có văn bản thì để trống.'
+                : vm.isListeningMode
                 ? 'Với Listening, nhập nội dung/bối cảnh được in trong đề nếu có; không tự thêm nội dung không có trong đề gốc.'
                 : automaticReadingHeader;
-            var partStructureInstruction = vm.isListeningMode
+            var partStructureInstruction = vm.isComprehensiveMode
+                ? 'Chỉ dùng Part 1; số lượng câu linh hoạt và đánh số liên tục từ 1, không bắt buộc đủ 40 câu.'
+                : vm.isListeningMode
                 ? 'Tạo đúng 4 parts: Part 1 câu 1–10, Part 2 câu 11–20, Part 3 câu 21–30, Part 4 câu 31–40.'
                 : 'Tạo đúng 3 parts: Part 1 câu 1–13, Part 2 câu 14–26, Part 3 câu 27–40.';
-            var partCountText = vm.isListeningMode ? '4 parts' : '3 parts';
-            var part1PassageExample = vm.isListeningMode
+            var partCountText = vm.isComprehensiveMode ? '1 danh sách câu hỏi linh hoạt' : (vm.isListeningMode ? '4 parts' : '3 parts');
+            var part1PassageExample = vm.isComprehensiveMode
+                ? '<h2>Văn bản tham khảo (không bắt buộc)</h2><p>Để trống ô này nếu bài chỉ có câu hỏi.</p>'
+                : vm.isListeningMode
                 ? '<h2>Listening Part 1</h2><p>Nhập nội dung hoặc bối cảnh của Part 1 nếu đề gốc có.</p>'
                 : '<h2>Tiêu đề riêng của bài đọc</h2><p><em>Phụ đề nếu có</em></p><p>Dán nội dung bài tại đây; không nhập READING PASSAGE 1 và câu You should spend.</p>';
             var part2PassageExample = vm.isListeningMode
@@ -3610,22 +3634,24 @@
             }
             var workbook = XLSX.utils.book_new();
             workbook.Props = {
-                Title: 'Mẫu import IELTS ' + modeName + ' Test',
-                Subject: 'IELTS ' + modeName,
+                Title: 'Mẫu import ' + (vm.isComprehensiveMode ? 'bài tập ' : 'IELTS ') + modeName,
+                Subject: vm.isComprehensiveMode ? 'Bài tập Tổng hợp' : 'IELTS ' + modeName,
                 Author: 'IELTS Room'
             };
 
             var guideRows = [
-                ['HƯỚNG DẪN IMPORT IELTS ' + modeUpper + ' TEST', 'ĐỌC KỸ TRƯỚC KHI TẠO FILE'],
-                ['Mục tiêu', 'Tạo đúng một bài IELTS ' + modeName + ' gồm ' + partCountText + ' và tối đa 40 câu, sau đó import trực tiếp tại trang IELTS ' + modeName + '.'],
+                ['HƯỚNG DẪN IMPORT ' + (vm.isComprehensiveMode ? 'BÀI TẬP ' : 'IELTS ') + modeUpper, 'ĐỌC KỸ TRƯỚC KHI TẠO FILE'],
+                ['Mục tiêu', vm.isComprehensiveMode
+                    ? 'Tạo một bài tập Tổng hợp gồm ' + partCountText + ', sau đó import trực tiếp tại trang Tạo bài tập tổng hợp.'
+                    : 'Tạo đúng một bài IELTS ' + modeName + ' gồm ' + partCountText + ' và tối đa 40 câu, sau đó import trực tiếp tại trang IELTS ' + modeName + '.'],
                 ['Bước 1', 'Trong THONG_TIN, giữ Loại bài=' + modeUpper + ', nhập Tiêu đề và Audio URL theo quy tắc bên dưới.'],
                 ['Audio URL chính', audioInstruction],
-                ['Audio Part 1–4 (Listening)', vm.isListeningMode ? 'Nên nhập URL audio riêng cho từng Part trong THONG_TIN. Khi giao nhiệm vụ chỉ làm một Part, hệ thống chỉ phát audio của Part đó. Nếu ô Part để trống, hệ thống dùng Audio URL chính.' : 'Không áp dụng cho Reading; để trống.'],
+                ['Audio Part 1–4 (Listening)', vm.isListeningMode ? 'Nên nhập URL audio riêng cho từng Part trong THONG_TIN. Khi giao nhiệm vụ chỉ làm một Part, hệ thống chỉ phát audio của Part đó. Nếu ô Part để trống, hệ thống dùng Audio URL chính.' : 'Không áp dụng cho Reading/Tổng hợp; để trống.'],
                 ['Bước 2', 'Thay toàn bộ dòng ví dụ trong NOI_DUNG bằng dữ liệu của đề thật; giữ nguyên tên sheet và tiêu đề cột.'],
                 ['Bước 3', 'Mỗi dòng trong NOI_DUNG là một câu hỏi. Các dòng cùng Part + Nhóm tạo thành một question package.'],
                 ['Bước 4', partStructureInstruction + ' Không lặp số câu.'],
                 ['Bước 5', (vm.isListeningMode ? 'Part HTML' : 'Passage HTML') + ' chỉ cần nhập ở dòng đầu của mỗi Part. Nhóm, Loại câu hỏi, Hướng dẫn HTML và Danh sách dùng chung có thể bỏ trống ở dòng sau để kế thừa.'],
-                ['Reading: tiêu đề Part tự động', automaticReadingHeader],
+                [vm.isComprehensiveMode ? 'Tổng hợp: văn bản tham khảo' : 'Reading: tiêu đề Part tự động', vm.isComprehensiveMode ? passageHtmlInstruction : automaticReadingHeader],
                 ['Bước 6', 'Đáp án đúng có thể nhập số thứ tự 1,2… hoặc chữ A,B,C…; nhiều đáp án ngăn cách bằng dấu phẩy, ví dụ A,C.'],
                 ['HTML được phép', 'Dùng HTML đơn giản như <h2>, <h3>, <p>, <strong>, <em>, <br>, <ul>, <ol>, <li>. Không chèn script, iframe, CSS hoặc công thức Excel.'],
                 ['Passage HTML', passageHtmlInstruction],
@@ -3645,7 +3671,7 @@
                 ['COMPLETE LIST OF WORDS (mã 13)', 'Dùng một editor và đúng một }{SPACE}{ cho mỗi câu. Nếu nhóm có N câu, phải tạo đủ N dòng câu. Trên MỌI dòng của nhóm, lặp lại nguyên vẹn cùng danh sách ở Đáp án 1–12: N đáp án đúng đặt trước theo đúng thứ tự số câu, rồi mới tới từ nhiễu. Danh sách A–J phải điền đủ cả 10 cột, không được dừng ở đáp án đầu. Đáp án đúng của dòng thứ 1/2/3... lần lượt là A/B/C...; không được chỉ nhập đáp án cho dòng đầu.'],
                 ['MULTIPLE CHOICE - MỘT ĐÁP ÁN (mã 1)', 'Reading và Listening đều dùng mã 1, bố cục dọc một cột. Excel không dùng mã 6/Two column; nếu nhập mã 6, importer tự chuyển về mã 1.'],
                 ['MULTIPLE ANSWERS (mã 5)', 'Reading và Listening dùng chung mã 5. Với nhóm Questions 21–22 hoặc Questions 1–3, tạo đủ 2 hoặc 3 dòng số câu nhưng lặp cùng Nội dung câu hỏi và cùng danh sách Đáp án 1–12. Mỗi dòng có thể đánh dấu một đáp án đúng riêng; importer tự hợp nhất và giao diện chỉ hiện một khối checkbox với dải số câu. Không dùng mã 7.'],
-                ['Kiểm tra trước import', 'Đủ title; đúng ' + partCountText + '; đúng khoảng số câu; không trùng số; mỗi câu có đáp án; đáp án đúng khớp danh sách; không còn chữ mẫu.'],
+                ['Kiểm tra trước import', 'Đủ title; đúng ' + partCountText + '; ' + (vm.isComprehensiveMode ? 'số câu liên tục từ 1' : 'đúng khoảng số câu') + '; không trùng số; mỗi câu có đáp án; đáp án đúng khớp danh sách; không còn chữ mẫu.'],
                 ['Dùng với ChatGPT', 'Gửi đề gốc cùng file mẫu này và yêu cầu ChatGPT đọc sheet PROMPT_CHATGPT. ChatGPT phải trả về một file .xlsx theo đúng cấu trúc, không trả JSON/CSV.']
             ];
             var guideSheet = XLSX.utils.aoa_to_sheet(guideRows);
@@ -3654,7 +3680,7 @@
 
             var promptRows = [
                 ['PROMPT DÀNH CHO CHATGPT - PHẢI THỰC HIỆN ĐÚNG TOÀN BỘ'],
-                ['Bạn là chuyên gia số hóa đề IELTS ' + modeName + '. Tôi gửi kèm (1) đề IELTS ' + modeName + ' gốc và (2) file Excel mẫu này. Hãy phân tích toàn bộ đề và tạo một file Excel .xlsx hoàn chỉnh để tôi import trực tiếp vào hệ thống.'],
+                ['Bạn là chuyên gia số hóa ' + (vm.isComprehensiveMode ? 'bài tập tổng hợp' : 'đề IELTS ' + modeName) + '. Tôi gửi kèm (1) nội dung bài gốc và (2) file Excel mẫu này. Hãy phân tích toàn bộ nội dung và tạo một file Excel .xlsx hoàn chỉnh để tôi import trực tiếp vào hệ thống.'],
                 ['YÊU CẦU BẮT BUỘC'],
                 ['1. Giữ nguyên các sheet HUONG_DAN, PROMPT_CHATGPT, THONG_TIN, NOI_DUNG, LOAI_CAU_HOI và toàn bộ sheet VI_DU_*; không đổi tên cột trong NOI_DUNG.'],
                 ['2. Trong THONG_TIN, giữ nguyên Loại bài=' + modeUpper + ', điền Tiêu đề và xử lý Audio URL theo quy tắc: ' + audioInstruction + (vm.isListeningMode ? ' Nếu đề cung cấp audio riêng, điền đúng Audio Part 1, Audio Part 2, Audio Part 3 và Audio Part 4; không tự bịa URL. Nếu chỉ có audio toàn bài, để trống các ô Part.' : '')],
@@ -3670,7 +3696,7 @@
                 ['8A. Với mã 5 Multiple Answers, nhóm N số câu phải có đúng N dòng liên tiếp, cùng Part + Nhóm, cùng câu hỏi và cùng danh sách lựa chọn. Ví dụ Questions 21–22: dòng 21 và 22 lặp nguyên câu hỏi và 5 đáp án; nếu A và C đúng thì nhập A ở dòng 21, C ở dòng 22 (hoặc A,C trên cả hai dòng). Importer hợp nhất thành một khối Questions 21–22, tự tích A và C, người dùng chỉ thấy một câu hỏi và một danh sách checkbox.'],
                 ['9. Passage và hướng dẫn dùng HTML đơn giản. Giữ nguyên nội dung đề, chính tả, dấu câu, tên riêng, tiêu đề đoạn và ký hiệu A/B/C…; không tóm tắt.'],
                 ['10. Không tạo macro, công thức, link ngoài, sheet phụ hoặc cột phụ. Không để ô lỗi Excel. File phải mở được bằng Excel và SheetJS.'],
-                ['11. Tự kiểm tra từng dòng trước khi xuất file: đủ 40 câu nếu đề đủ 40; không trùng/thiếu số; đúng part; KHÔNG có dòng câu nào thiếu Đáp án 1 khi loại yêu cầu đáp án; Đáp án đúng khớp lựa chọn; mã 4 có số }{HEADING}{ bằng số câu; mã 11 và 13 có số }{SPACE}{ bằng số câu. Với mã 13, kiểm tra mọi dòng đều có cùng danh sách đầy đủ và số đáp án đúng không nhỏ hơn số câu. Nếu còn thiếu dù chỉ một đáp án thì phải sửa xong mới tạo file.'],
+                ['11. Tự kiểm tra từng dòng trước khi xuất file: ' + (vm.isComprehensiveMode ? 'số câu phải liên tục từ 1; chỉ dùng Part 1' : 'đủ 40 câu nếu đề đủ 40; đúng part') + '; không trùng/thiếu số; KHÔNG có dòng câu nào thiếu Đáp án 1 khi loại yêu cầu đáp án; Đáp án đúng khớp lựa chọn; mã 4 có số }{HEADING}{ bằng số câu; mã 11 và 13 có số }{SPACE}{ bằng số câu. Với mã 13, kiểm tra mọi dòng đều có cùng danh sách đầy đủ và số đáp án đúng không nhỏ hơn số câu. Nếu còn thiếu dù chỉ một đáp án thì phải sửa xong mới tạo file.'],
                 ['KẾT QUẢ ĐẦU RA'],
                 ['Chỉ gửi lại file .xlsx hoàn chỉnh. Không gửi JSON, CSV hoặc hướng dẫn thay thế cho file. Nếu đề gốc thiếu dữ liệu, ghi rõ phần thiếu trong một tin nhắn ngắn và không tự bịa đáp án.']
             ];
@@ -3681,7 +3707,7 @@
             var infoRows = [
                 ['Trường', 'Giá trị'],
                 ['Loại bài', modeUpper],
-                ['Tiêu đề', 'IELTS Academic ' + modeName + ' Test 01'],
+                ['Tiêu đề', vm.isComprehensiveMode ? 'Bài tập tổng hợp 01' : 'IELTS Academic ' + modeName + ' Test 01'],
                 ['Audio URL', vm.isListeningMode ? 'https://example.com/audio/ielts-listening-test-01.mp3' : '']
             ];
             if (vm.isListeningMode) {
@@ -3697,25 +3723,38 @@
             XLSX.utils.book_append_sheet(workbook, infoSheet, 'THONG_TIN');
 
             var contentHeader = ['Part', vm.isListeningMode ? 'Part HTML' : 'Passage HTML', 'Nhóm', 'Loại câu hỏi', 'Hướng dẫn HTML', 'Số câu', 'Nội dung câu hỏi', 'Đáp án 1', 'Đáp án 2', 'Đáp án 3', 'Đáp án 4', 'Đáp án 5', 'Đáp án 6', 'Đáp án 7', 'Đáp án 8', 'Đáp án 9', 'Đáp án 10', 'Đáp án 11', 'Đáp án 12', 'Danh sách dùng chung (A=... | B=...)', 'Đáp án đúng', 'Tiêu đề danh sách'];
-            var contentRows = vm.isListeningMode ? [
-                contentHeader,
-                [1, part1PassageExample, 1, 11, '<p><strong>Questions 1–2</strong></p><p>Write ONE WORD ONLY for each answer.</p>', 1, 'Name: }{SPACE}{. Preferred day: }{SPACE}{.', 'Harbour', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
-                ['', '', '', '', '', 2, '', 'Tuesday', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
-                [2, part2PassageExample, 1, 5, '<p><strong>Questions 11–12</strong></p><p>Choose TWO letters, A–E.</p>', 11, 'Which TWO features had the greatest impact?', 'the local examples', 'the broad focus', 'the practical suggestions', 'the policy implications', 'the visual material', '', '', '', '', '', '', '', 'A', ''],
-                ['', '', '', '', '', 12, 'Which TWO features had the greatest impact?', 'the local examples', 'the broad focus', 'the practical suggestions', 'the policy implications', 'the visual material', '', '', '', '', '', '', '', 'C', ''],
-                [3, part3PassageExample, 1, 15, '<p><strong>Questions 21–22</strong></p><p>Match each category with the correct feature and move it into the gap.</p>', 21, 'Impression fossils', '', '', '', '', '', '', '', '', '', '', '', '', 'A=They are very rare. | B=They are three-dimensional. | C=They contain plant-cell information.', 'A', 'Features'],
-                ['', '', '', '', '', 22, 'Cast fossils', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'B', 'Features'],
-                [4, part4PassageExample, 1, 1, '<p><strong>Questions 31–32</strong></p><p>Choose the correct answer.</p>', 31, 'Nội dung câu hỏi 31', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', '', '', '', '', '', '', '', '', '', '', 'B', ''],
-                ['', '', '', '', '', 32, 'Nội dung câu hỏi 32', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', '', '', '', '', '', '', '', '', '', '', 'C', '']
-            ] : [
-                contentHeader,
-                [1, part1PassageExample, 1, 1, '<p><strong>Questions 1–2</strong></p><p>Choose the correct answer.</p>', 1, 'Nội dung câu hỏi 1', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', 'Lựa chọn D', '', '', '', '', '', '', '', '', '', 'A', ''],
-                ['', '', '', '', '', 2, 'Nội dung câu hỏi 2', 'TRUE', 'FALSE', 'NOT GIVEN', '', '', '', '', '', '', '', '', '', '', 'A', ''],
-                [2, part2PassageExample, 1, 4, '<p><strong>Questions 14–15</strong></p><p>Choose the correct heading for each section.</p>', 14, 'Section A', '', '', '', '', '', '', '', '', '', '', '', '', 'i=Heading about section B | ii=Heading about section A | iii=Heading not used', 'B', ''],
-                ['', '', '', '', '', 15, 'Section B', '', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
-                [3, part3PassageExample, 1, 10, '<p><strong>Questions 27–28</strong></p><p>Match each statement with the correct option, A–F.</p>', 27, 'Our human ancestors did not originate in only one area.', '', '', '', '', '', '', '', '', '', '', '', '', 'A=Jim Bowler | B=Alan Thorne | C=Tim Flannery | D=Rainer Grün | E=Richard Roberts and Tim Flannery | F=Judith Field and Richard Fullager', 'A', 'List of Researchers'],
-                ['', '', '', '', '', 28, 'The extinction of the megafauna happened within a particular period.', '', '', '', '', '', '', '', '', '', '', '', '', '', 'C', 'List of Researchers']
-            ];
+            var contentRows;
+            if (vm.isComprehensiveMode) {
+                contentRows = [
+                    contentHeader,
+                    [1, '', 1, 1, '<p><strong>Questions 1–2</strong></p><p>Choose the correct answer.</p>', 1, 'Nội dung câu hỏi 1', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', 'Lựa chọn D', '', '', '', '', '', '', '', '', '', 'A', ''],
+                    ['', '', '', '', '', 2, 'Nội dung câu hỏi 2', 'TRUE', 'FALSE', 'NOT GIVEN', '', '', '', '', '', '', '', '', '', '', 'A', ''],
+                    ['', '', 2, 11, '<p><strong>Questions 3–4</strong></p><p>Write ONE WORD ONLY for each answer.</p>', 3, 'Name: }{SPACE}{. Preferred day: }{SPACE}{.', 'Harbour', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
+                    ['', '', '', '', '', 4, '', 'Tuesday', '', '', '', '', '', '', '', '', '', '', '', '', 'A', '']
+                ];
+            } else if (vm.isListeningMode) {
+                contentRows = [
+                    contentHeader,
+                    [1, part1PassageExample, 1, 11, '<p><strong>Questions 1–2</strong></p><p>Write ONE WORD ONLY for each answer.</p>', 1, 'Name: }{SPACE}{. Preferred day: }{SPACE}{.', 'Harbour', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
+                    ['', '', '', '', '', 2, '', 'Tuesday', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
+                    [2, part2PassageExample, 1, 5, '<p><strong>Questions 11–12</strong></p><p>Choose TWO letters, A–E.</p>', 11, 'Which TWO features had the greatest impact?', 'the local examples', 'the broad focus', 'the practical suggestions', 'the policy implications', 'the visual material', '', '', '', '', '', '', '', 'A', ''],
+                    ['', '', '', '', '', 12, 'Which TWO features had the greatest impact?', 'the local examples', 'the broad focus', 'the practical suggestions', 'the policy implications', 'the visual material', '', '', '', '', '', '', '', 'C', ''],
+                    [3, part3PassageExample, 1, 15, '<p><strong>Questions 21–22</strong></p><p>Match each category with the correct feature and move it into the gap.</p>', 21, 'Impression fossils', '', '', '', '', '', '', '', '', '', '', '', '', 'A=They are very rare. | B=They are three-dimensional. | C=They contain plant-cell information.', 'A', 'Features'],
+                    ['', '', '', '', '', 22, 'Cast fossils', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'B', 'Features'],
+                    [4, part4PassageExample, 1, 1, '<p><strong>Questions 31–32</strong></p><p>Choose the correct answer.</p>', 31, 'Nội dung câu hỏi 31', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', '', '', '', '', '', '', '', '', '', '', 'B', ''],
+                    ['', '', '', '', '', 32, 'Nội dung câu hỏi 32', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', '', '', '', '', '', '', '', '', '', '', 'C', '']
+                ];
+            } else {
+                contentRows = [
+                    contentHeader,
+                    [1, part1PassageExample, 1, 1, '<p><strong>Questions 1–2</strong></p><p>Choose the correct answer.</p>', 1, 'Nội dung câu hỏi 1', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', 'Lựa chọn D', '', '', '', '', '', '', '', '', '', 'A', ''],
+                    ['', '', '', '', '', 2, 'Nội dung câu hỏi 2', 'TRUE', 'FALSE', 'NOT GIVEN', '', '', '', '', '', '', '', '', '', '', 'A', ''],
+                    [2, part2PassageExample, 1, 4, '<p><strong>Questions 14–15</strong></p><p>Choose the correct heading for each section.</p>', 14, 'Section A', '', '', '', '', '', '', '', '', '', '', '', '', 'i=Heading about section B | ii=Heading about section A | iii=Heading not used', 'B', ''],
+                    ['', '', '', '', '', 15, 'Section B', '', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
+                    [3, part3PassageExample, 1, 10, '<p><strong>Questions 27–28</strong></p><p>Match each statement with the correct option, A–F.</p>', 27, 'Our human ancestors did not originate in only one area.', '', '', '', '', '', '', '', '', '', '', '', '', 'A=Jim Bowler | B=Alan Thorne | C=Tim Flannery | D=Rainer Grün | E=Richard Roberts and Tim Flannery | F=Judith Field and Richard Fullager', 'A', 'List of Researchers'],
+                    ['', '', '', '', '', 28, 'The extinction of the megafauna happened within a particular period.', '', '', '', '', '', '', '', '', '', '', '', '', '', 'C', 'List of Researchers']
+                ];
+            }
             var contentSheet = XLSX.utils.aoa_to_sheet(contentRows);
             contentSheet['!cols'] = [
                 {wch: 8}, {wch: 55}, {wch: 9}, {wch: 18}, {wch: 55}, {wch: 10}, {wch: 35},
@@ -3866,8 +3905,11 @@
             ];
             XLSX.utils.book_append_sheet(workbook, multipleAnswersExampleSheet, 'VI_DU_MULTIPLE_ANSWERS');
 
-            XLSX.writeFile(workbook, vm.isListeningMode ? 'mau_import_ielts_listening.xlsx' : 'mau_import_ielts_reading.xlsx');
-            toastr.success('Đã tải file Excel mẫu ' + modeName + '.', 'IELTS ' + modeName);
+            var templateFileName = vm.isComprehensiveMode
+                ? 'mau_import_bai_tap_tong_hop.xlsx'
+                : (vm.isListeningMode ? 'mau_import_ielts_listening.xlsx' : 'mau_import_ielts_reading.xlsx');
+            XLSX.writeFile(workbook, templateFileName);
+            toastr.success('Đã tải file Excel mẫu ' + modeName + '.', vm.isComprehensiveMode ? 'Bài tập Tổng hợp' : 'IELTS ' + modeName);
         };
 
         vm.status = {id: 3, name: "Tất cả (no listening)"};

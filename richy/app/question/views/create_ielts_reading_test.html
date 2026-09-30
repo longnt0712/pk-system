@@ -42,7 +42,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6 reading-catalog-topic-filters" ng-if="vm.isComprehensiveMode">
+                    <div class="col-md-8 reading-catalog-topic-filters" ng-if="vm.isComprehensiveMode">
                         <ui-select theme="bootstrap" ng-model="vm.builderTopicSource" ng-change="vm.builderTopicSourceChanged()">
                             <ui-select-match placeholder="Chọn nguồn..."><span class="reading-topic-source-label"><i class="fa fa-database"></i> {{vm.topicSourceLabel(vm.builderTopicSource)}}</span></ui-select-match>
                             <ui-select-choices repeat="source in vm.topicSources | filter:$select.search">
@@ -68,11 +68,11 @@
                         <span class="reading-catalog-topic-status" ng-if="vm.builderTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải toàn bộ topic...</span>
                         <span class="reading-catalog-topic-status is-error" ng-if="vm.builderTopicsError && !vm.builderTopicsLoading">{{vm.builderTopicsError}}</span>
                     </div>
-                    <div class="reading-admin-toolbar__actions" ng-class="vm.isComprehensiveMode ? 'col-md-2' : 'col-md-8'">
-                        <button type="button" class="btn btn-default" ng-if="!vm.isFlexibleMode" ng-click="vm.downloadReadingImportTemplate()">
+                    <div class="reading-admin-toolbar__actions" ng-class="vm.isComprehensiveMode ? 'col-md-12' : 'col-md-8'">
+                        <button type="button" class="btn btn-default" ng-if="!vm.isWritingMode" ng-click="vm.downloadReadingImportTemplate()">
                             <i class="fa fa-file-excel-o"></i> Tải mẫu {{vm.testModeName}}
                         </button>
-                        <button type="button" class="btn btn-primary" ng-if="!vm.isFlexibleMode"
+                        <button type="button" class="btn btn-primary" ng-if="!vm.isWritingMode"
                                 ngf-select="vm.importReadingTestFile($file, $invalidFiles)"
                                 accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                                 ngf-max-size="10MB"
@@ -87,6 +87,14 @@
                             {{vm.showHiddenTests ? 'Quay lại danh sách' : 'Bài test đã ẩn'}}
                             <span class="badge" ng-if="vm.showHiddenTests">{{vm.bsTableControlCreateIELTSReadingTest.options.totalRows || 0}}</span>
                         </button>
+                    </div>
+                </div>
+
+                <div class="comprehensive-import-guide" ng-if="settings.isAdmin == true && vm.isComprehensiveMode">
+                    <div class="comprehensive-import-guide__icon"><i class="fa fa-file-excel-o"></i></div>
+                    <div>
+                        <strong>Import nhanh bài tập tổng hợp bằng Excel</strong>
+                        <span>Tải file mẫu, đọc sheet <b>HUONG_DAN</b>, thay dữ liệu ví dụ trong <b>NOI_DUNG</b>, rồi chọn “Import Excel”. Bài tổng hợp chỉ dùng Part 1, được phép có số câu linh hoạt và phải đánh số liên tục từ 1.</span>
                     </div>
                 </div>
 
@@ -1610,8 +1618,48 @@
 
     .reading-admin-toolbar {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         margin-bottom: 20px;
+    }
+
+    .is-comprehensive-builder .reading-admin-toolbar__actions {
+        margin-top: 10px;
+    }
+
+    .comprehensive-import-guide {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin: -8px 0 18px;
+        padding: 12px 14px;
+        border: 1px solid #cfe7d9;
+        border-radius: 10px;
+        color: #315542;
+        background: #f2fbf6;
+    }
+
+    .comprehensive-import-guide__icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 36px;
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+        color: #ffffff;
+        background: #2da866;
+        font-size: 18px;
+    }
+
+    .comprehensive-import-guide strong,
+    .comprehensive-import-guide span {
+        display: block;
+    }
+
+    .comprehensive-import-guide span {
+        margin-top: 3px;
+        line-height: 1.55;
     }
 
     .reading-admin-toolbar__actions {

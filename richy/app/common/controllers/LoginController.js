@@ -27,6 +27,8 @@
     function LoginController($rootScope, $scope, $state, $cookies, $http, settings, constants, service, toastr, focus, blockUI,$location,$window,$document,authSession) {
         var vm = this;
         vm.user = {};
+        vm.isLoggingIn = false;
+        vm.loginError = '';
 
         vm.openGalleryImage = function (src) {
             vm.selectedGalleryImage = src;
@@ -114,65 +116,64 @@
         // });
 
         vm.login = function () {
-
-            blockUI.start();
+            if (vm.isLoggingIn) { return; }
+            vm.loginError = '';
 
             // Username?
             if (!vm.user.username || vm.user.username.trim() == '') {
-                blockUI.stop();
-
-                toastr.error('Please enter your username.', 'Error');
+                vm.loginError = 'Vui lòng nhập tên đăng nhập.';
                 focus('username');
                 return;
             }
 
             // Password?
             if (!vm.user.password || vm.user.password.trim() == '') {
-                blockUI.stop();
-
-                toastr.error('Please enter your password.', 'Error');
+                vm.loginError = 'Vui lòng nhập mật khẩu.';
                 focus('password');
                 return;
             }
 
-            service.performLogin(vm.user).then(function(response) {
-                if (response && angular.isObject(response.data)) {
-
-                    $http.get(settings.api.baseUrl + 'api/users/getCurrentUser').success(function (response, status, headers, config) {
-                        authSession.saveUser(response);
-
-                        // if($rootScope.currentUser.id == 1){
-                            if($rootScope.currentUser.roles != null){
-                                angular.forEach($rootScope.currentUser.roles, function(value, key) {
-                                    if(value.name == "ROLE_ADMIN"){
-                                        settings.isAdmin = true;
-                                        console.log("ADMIN");
-                                    }
-                                });
-                            }
-
-                            
-                        // }
-
-                        blockUI.stop();
-
-                        if (
-                            angular.isFunction(
-                                $rootScope.navigateAfterLogin
-                            )
-                        ) {
-                            $rootScope.navigateAfterLogin();
-                        } else {
-                            $state.go('application.dashboard');
-                        }
-                        // $state.go('church');
-                    });
-                } else {
-                    blockUI.stop();
-                    toastr.error('Something wrong happened. Please try again later.', 'Error');
+            if ($window.navigator.onLine === false) {
+                vm.loginError = 'Bạn đang mất kết nối Internet. Kiểm tra mạng rồi thử đăng nhập lại.';
+                return;
+            }
+            vm.isLoggingIn = true;
+            var credentialsAccepted = false;
+            return service.performLogin(vm.user).then(function(response) {
+                if (!response || !angular.isObject(response.data)) {
+                    throw {status: 502};
                 }
-            }).catch(function () {
-                blockUI.stop();
+                credentialsAccepted = true;
+                return $http.get(settings.api.baseUrl + 'api/users/getCurrentUser',
+                    {loginRequest: true, timeout: 20000}).then(function (result) {
+                    authSession.saveUser(result.data);
+                    settings.isAdmin = false;
+                    angular.forEach(result.data.roles || [], function (role) {
+                        if (role.name === 'ROLE_ADMIN') { settings.isAdmin = true; }
+                    });
+                    if (angular.isFunction($rootScope.navigateAfterLogin)) {
+                        $rootScope.navigateAfterLogin();
+                    } else {
+                        $state.go('application.dashboard');
+                    }
+                });
+            }).catch(function (error) {
+                var status = error && error.status;
+                var code = error && error.data && error.data.error;
+                if (!credentialsAccepted && (code === 'invalid_grant' || status === 401)) {
+                    vm.loginError = 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.';
+                    focus('password');
+                } else if (status <= 0 || status === 408 || status === 504) {
+                    vm.loginError = credentialsAccepted
+                        ? 'Đã xác thực tài khoản nhưng chưa tải được thông tin người dùng. Kiểm tra kết nối rồi thử lại.'
+                        : 'Chưa kết nối được với máy chủ hoặc yêu cầu đã quá thời gian chờ. Vui lòng thử lại.';
+                } else if (status === 403) {
+                    vm.loginError = 'Tài khoản chưa được phép truy cập. Vui lòng liên hệ quản trị viên.';
+                } else {
+                    vm.loginError = 'Chưa thể đăng nhập lúc này. Vui lòng thử lại sau ít phút.';
+                }
+            }).finally(function () {
+                vm.isLoggingIn = false;
             });
         };
 

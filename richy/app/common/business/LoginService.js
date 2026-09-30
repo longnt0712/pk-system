@@ -19,7 +19,7 @@
          * @param user
          */
         function performLogin(user) {
-            return OAuth.getAccessToken(user, null);
+            return OAuth.getAccessToken(user, {loginRequest: true, timeout: 20000});
         }
     }
 

@@ -952,9 +952,62 @@
     <!-- =====================================================
          PLAYING
          ===================================================== -->
+    <script type="text/ng-template" id="battle-host-music-controls.html">
+            <section id="battle-host-music-menu" class="battle-online-music-ipod"
+                     ng-if="vm.musicMenuOpen || vm.isSpectator()"
+                     ng-class="{'is-docked': vm.isSpectator()}" aria-label="Điều khiển nhạc battle">
+                <div class="battle-online-music-screen">
+                    <div><small>BATTLE MUSIC</small><button type="button" ng-if="!vm.isSpectator()" ng-click="vm.musicMenuOpen = false" aria-label="Đóng menu nhạc">×</button></div>
+                    <strong>{{vm.getMusicTrackName()}}</strong>
+                    <small>{{vm.musicPlaying ? 'Đang phát' : (vm.musicPausedByUser ? 'Đã tạm dừng' : 'Nhấn phát để bật nhạc')}} · {{vm.musicTracks.length}} bài</small>
+                </div>
+                <div class="battle-online-music-wheel">
+                    <span>MENU</span>
+                    <button type="button" ng-click="vm.skipMusicTrack(-1)" aria-label="Bài trước"><i class="fa fa-backward"></i></button>
+                    <button type="button" class="battle-online-music-play" ng-click="vm.toggleMusicPlayback()"
+                            ng-attr-aria-label="{{vm.musicPlaying ? 'Tạm dừng nhạc' : 'Phát nhạc'}}">
+                        <i class="fa" ng-class="vm.musicPlaying ? 'fa-pause' : 'fa-play'"></i>
+                    </button>
+                    <button type="button" ng-click="vm.skipMusicTrack(1)" aria-label="Bài tiếp theo"><i class="fa fa-forward"></i></button>
+                    <small>PLAY / PAUSE</small>
+                </div>
+                <label class="battle-online-music-volume" for="battle-host-music-volume">
+                    <i class="fa fa-volume-up"></i>
+                    <input id="battle-host-music-volume" type="range" min="0" max="100" step="1"
+                           ng-model="vm.musicVolume" ng-change="vm.updateMusicVolume()" aria-label="Âm lượng nhạc battle">
+                    <small>{{vm.musicVolume}}%</small>
+                </label>
+                <button type="button" class="battle-online-music-repeat" ng-click="vm.toggleMusicRepeat()"
+                        ng-class="{'is-repeat-one': vm.musicRepeatMode === 'ONE'}"
+                        ng-attr-aria-pressed="{{vm.musicRepeatMode === 'ONE'}}"
+                        ng-attr-aria-label="{{vm.musicRepeatMode === 'ONE' ? 'Đang lặp một bài. Chuyển sang lặp tất cả' : 'Đang lặp tất cả. Chuyển sang lặp một bài'}}">
+                    <i class="fa fa-repeat"></i> {{vm.musicRepeatMode === 'ONE' ? 'Lặp 1 bài' : 'Lặp tất cả'}}
+                    <b ng-if="vm.musicRepeatMode === 'ONE'">1</b>
+                </button>
+                <div class="battle-online-music-playlist" aria-label="Danh sách nhạc">
+                    <button type="button" ng-repeat="track in vm.musicTracks track by track.videoId"
+                            ng-class="{'is-current': vm.isCurrentMusicTrack(track)}" ng-click="vm.selectMusicTrack(track)"
+                            ng-attr-aria-pressed="{{vm.isCurrentMusicTrack(track)}}">
+                        <i class="fa" ng-class="vm.isCurrentMusicTrack(track) ? 'fa-music' : 'fa-play-circle-o'"></i>
+                        <span>{{track.name}}</span>
+                    </button>
+                </div>
+                <small class="battle-online-music-note">Nhạc phát trên thiết bị host. Danh sách lấy từ Config Battle.</small>
+            </section>
+    </script>
+    <div class="battle-online-host-tools" ng-if="vm.room && vm.room.status === 'PLAYING' && vm.isHost() && !vm.isSpectator()">
+        <div class="battle-online-music-menu">
+            <button type="button" class="battle-online-copy-btn"
+                    ng-click="vm.musicMenuOpen = !vm.musicMenuOpen"
+                    ng-attr-aria-expanded="{{vm.musicMenuOpen}}" aria-controls="battle-host-music-menu">
+                <i class="fa fa-music"></i> NHẠC BATTLE
+            </button>
+            <div ng-include="'battle-host-music-controls.html'"></div>
+        </div>
+    </div>
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING'"
-         ng-class="{'is-guess-word-layout': vm.isGuessWordMode()}">
+         ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode()}">
 
         <main class="battle-online-card battle-online-question-card"
               ng-if="!vm.isSpectator() || vm.isGuessWordMode()"
@@ -1019,6 +1072,10 @@
             <div class="battle-online-guess-timer" ng-if="vm.isGuessWordMode()">
                 <span ng-style="{'width': vm.getQuestionTimePercent() + '%'}"></span>
             </div>
+
+            <div class="battle-online-music-dock"
+                 ng-if="vm.isHost() && vm.isSpectator() && vm.isGuessWordMode()"
+                 ng-include="'battle-host-music-controls.html'"></div>
 
             <!-- CLASSIC TOP -->
             <div class="battle-online-game-topline"
@@ -1438,6 +1495,9 @@
                 <span>Mỗi người chơi đang nhận câu hỏi riêng.</span>
             </div>
 
+            <div class="battle-online-music-dock" ng-if="vm.isHost()"
+                 ng-include="'battle-host-music-controls.html'"></div>
+
             <section class="battle-online-dumb-meter is-spectator"
                      ng-if="vm.isEscapeDumbDemonMode()">
                 <div class="battle-online-dumb-watch-title">👁️ THEO DÕI QUỶ NGU</div>
@@ -1815,7 +1875,7 @@
          ng-class="{'is-result-awaiting-dismiss': vm.passwordGuessStage === 'result'}"
          ng-click="vm.passwordGuessStage === 'result' && vm.dismissPasswordGuessResult()">
 
-        <section class="battle-online-skill-modal battle-online-password-modal"
+        <section class="battle-online-skill-modal battle-online-password-modal battle-online-password-guess-modal"
                  role="dialog"
                  aria-modal="true"
                  aria-label="Đoán mật khẩu đối thủ">
@@ -2213,7 +2273,7 @@
          ng-click="vm.closeQrModal()">
 
         <section class="battle-online-qr-modal battle-online-display-qr-modal"
-                ng-class="vm.isHost() ? 'has-host-settings' : 'qr-only'"
+                ng-class="vm.isHost() && vm.room.status === 'LOBBY' ? 'has-host-settings' : 'qr-only'"
                  role="dialog"
                  aria-modal="true"
                  aria-label="Mã QR phòng"
@@ -2222,7 +2282,7 @@
             <div class="battle-online-qr-modal-header">
                 <div>
                     <span class="battle-online-small-title">📱 JOIN ROOM</span>
-                    <h2>{{vm.isHost() ? 'Mã QR & thiết lập phòng ' : 'Mã QR phòng '}}{{vm.room.code}}</h2>
+                    <h2>{{vm.isHost() && vm.room.status === 'LOBBY' ? 'Mã QR & thiết lập phòng ' : 'Mã QR phòng '}}{{vm.room.code}}</h2>
                 </div>
 
                 <button type="button"
@@ -2231,7 +2291,7 @@
             </div>
 
             <div class="battle-online-qr-setup-layout"
-                    ng-class="vm.isHost() ? 'is-host' : 'is-guest'">
+                    ng-class="vm.isHost() && vm.room.status === 'LOBBY' ? 'is-host' : 'is-guest'">
                 <div class="battle-online-qr-fixed-pane">
                     <div class="battle-online-qr-modal-body">
                         <img ng-src="{{vm.qrImageUrl}}"
@@ -2246,7 +2306,7 @@
                     </div>
                 </div>
 
-                <div class="battle-online-side-card battle-online-qr-settings-scroll" ng-if="vm.isHost()">
+                <div class="battle-online-side-card battle-online-qr-settings-scroll" ng-if="vm.isHost() && vm.room.status === 'LOBBY'">
                     <ng-include src="'question/views/battle_online_host_settings.html'"></ng-include>
                 </div>
             </div>
@@ -6036,6 +6096,10 @@
             0 0 42px rgba(16, 185, 129, .24);
     }
 
+    .battle-online-password-modal.battle-online-password-guess-modal {
+        width: 100%;
+    }
+
     .battle-online-password-option-list {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -6073,6 +6137,7 @@
     }
 
     .battle-online-password-guess-group .battle-online-password-option {
+        width: 100%;
         min-height: 92px;
         padding: 9px 6px;
     }
@@ -6141,6 +6206,10 @@
     .battle-online-password-option.is-guess {
         border-color: rgba(245, 158, 11, .44);
         background: linear-gradient(145deg, rgba(245, 158, 11, .14), rgba(236, 72, 153, .08));
+    }
+
+    .battle-online-password-option.is-guess strong {
+        font-size: 22px;
     }
 
     .battle-online-password-hacking,
@@ -7303,7 +7372,7 @@
         }
 
         .battle-online-password-guess-group > div {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: minmax(0, 1fr);
             gap: 6px;
         }
 
@@ -7317,8 +7386,8 @@
 
         .battle-online-password-guess-group
         .battle-online-password-option strong {
-            font-size: 11px;
-            line-height: 1.2;
+            font-size: 16px;
+            line-height: 1.35;
             text-align: center;
         }
 
@@ -8824,5 +8893,123 @@
     .battle-online-inline-topic-editor
     .battle-online-lobby-topic-actions {
         margin-top: 14px;
+    }
+    /* Host view: compact clock on the left, ranking as the main stage. */
+    .battle-online-game-layout.is-host-spectator-layout {
+        grid-template-columns: minmax(250px, .55fr) minmax(0, 1.7fr);
+        align-items: start;
+    }
+    .is-host-spectator-layout .battle-online-spectator-panel {
+        min-height: 0;
+        padding: 18px;
+        gap: 8px;
+    }
+    .is-host-spectator-layout .battle-online-spectator-icon { width: 40px; height: 40px; font-size: 22px; }
+    .is-host-spectator-layout .battle-online-spectator-panel h2 { font-size: 18px; margin: 0; }
+    .is-host-spectator-layout .battle-online-spectator-panel > p { display: none; }
+    .is-host-spectator-layout .battle-online-spectator-question { padding: 12px; margin-top: 0; }
+    .is-host-spectator-layout .battle-online-spectator-question strong { font-size: 22px; }
+    .is-host-spectator-layout .battle-online-ranking-card { padding: 22px; }
+    .is-host-spectator-layout .battle-online-ranking-row { padding: 13px; gap: 14px; }
+    .is-host-spectator-layout .battle-online-ranking-copy strong { font-size: 17px; }
+    .is-host-spectator-layout .battle-online-score { font-size: 23px; }
+
+    .battle-online-host-tools {
+        position: relative;
+        z-index: 30;
+        max-width: 1280px;
+        margin: 0 auto 12px;
+        display: flex;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .battle-online-music-menu { position: relative; }
+    .battle-online-music-ipod {
+        position: absolute;
+        top: calc(100% + 10px);
+        right: 0;
+        width: 300px;
+        max-width: calc(100vw - 24px);
+        max-height: calc(100dvh - 100px);
+        overflow-y: auto;
+        padding: 16px;
+        border: 1px solid #d6daea;
+        border-radius: 26px;
+        background: linear-gradient(145deg, #f9fafc, #dde3ef);
+        color: #263451;
+        box-shadow: 0 16px 48px rgba(20, 30, 65, .25);
+    }
+    .battle-online-music-dock {
+        width: 100%;
+        max-width: 300px;
+        margin: 8px auto 0;
+    }
+    .battle-online-music-ipod.is-docked {
+        position: static;
+        width: 100%;
+        max-width: 100%;
+        max-height: none;
+        box-sizing: border-box;
+        overflow: visible;
+        text-align: left;
+        box-shadow: 0 8px 24px rgba(20, 30, 65, .12);
+    }
+    .battle-online-music-screen {
+        padding: 12px;
+        border: 2px solid #b8c9d4;
+        border-radius: 12px;
+        background: linear-gradient(145deg, #eaf8ee, #d8ecec);
+        color: #253e41;
+    }
+    .battle-online-music-screen > div { display: flex; justify-content: space-between; align-items: center; }
+    .battle-online-music-screen strong { display: block; margin: 8px 0; font-size: 16px; overflow-wrap: anywhere; }
+    .battle-online-music-screen small { font-size: 11px; }
+    .battle-online-music-screen button { border: 0; background: transparent; color: #253e41; font-size: 22px; line-height: 1; }
+    .battle-online-music-wheel {
+        width: 158px;
+        height: 158px;
+        margin: 14px auto;
+        padding: 14px 8px;
+        border-radius: 50%;
+        background: #fdfdff;
+        box-shadow: inset 0 0 0 1px #cbd2e0, 0 3px 8px rgba(30, 45, 65, .08);
+        display: grid;
+        grid-template-columns: 1fr 54px 1fr;
+        grid-template-rows: 24px 54px 24px;
+        gap: 6px;
+        align-items: center;
+        justify-items: center;
+    }
+    .battle-online-music-wheel > span, .battle-online-music-wheel > small { grid-column: 1 / -1; font-size: 10px; font-weight: 800; color: #61708b; }
+    .battle-online-music-wheel button { border: 0; background: transparent; color: #485675; padding: 8px; font-size: 16px; }
+    .battle-online-music-wheel button:hover { color: #5a45d6; }
+    .battle-online-music-wheel .battle-online-music-play { width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(145deg, #6878ff, #8855ea); color: white; box-shadow: 0 3px 8px #c3b9ef; }
+    .battle-online-music-volume { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .battle-online-music-volume input { width: 100%; min-width: 0; accent-color: #735ce8; }
+    .battle-online-music-volume small { min-width: 35px; font-size: 11px; text-align: right; }
+    .battle-online-music-repeat { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-bottom: 12px; padding: 8px; border: 1px solid #cbd2e0; border-radius: 9px; background: #f8f9fc; color: #485675; font-size: 12px; }
+    .battle-online-music-repeat:hover, .battle-online-music-repeat.is-repeat-one { border-color: #b9a9fc; background: #ede8ff; color: #5140a8; }
+    .battle-online-music-repeat b { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #735ce8; color: white; font-size: 10px; }
+    .battle-online-music-playlist { max-height: 160px; overflow-y: auto; display: grid; gap: 4px; }
+    .battle-online-music-playlist button { display: flex; gap: 9px; align-items: center; width: 100%; padding: 9px; border: 1px solid transparent; border-radius: 8px; background: #f8f9fc; color: #334362; text-align: left; }
+    .battle-online-music-playlist button span { font-size: 12px; overflow-wrap: anywhere; }
+    .battle-online-music-playlist button:hover, .battle-online-music-playlist button.is-current { border-color: #c0b3ff; background: #ede8ff; color: #5140a8; }
+    .battle-online-music-note { display: block; margin-top: 10px; color: #61708b; font-size: 10px; line-height: 1.5; }
+    .battle-online-music-ipod button:focus-visible { outline: 2px solid #735ce8; outline-offset: 2px; }
+
+    /* During PLAYING the QR is read-only, with no editable lobby settings. */
+    .battle-online-display-qr-modal.qr-only { width: min(560px, 96vw) !important; height: auto !important; max-height: 92vh !important; overflow-y: auto; }
+    .battle-online-display-qr-modal.qr-only .battle-online-qr-setup-layout { display: block !important; flex: 0 0 auto; }
+    .battle-online-display-qr-modal.qr-only .battle-online-qr-fixed-pane { border: 0; }
+    .battle-online-display-qr-modal.qr-only .battle-online-qr-room-code { font-size: clamp(40px, 9vw, 72px) !important; }
+
+    @media (max-width: 820px) {
+        .battle-online-game-layout.is-host-spectator-layout { grid-template-columns: 1fr; }
+        .is-host-spectator-layout #battle-online-ranking-card { display: block; }
+        .is-host-spectator-layout .battle-online-ranking-card { padding: 14px; }
+        .is-host-spectator-layout .battle-online-ranking-row { padding: 10px; gap: 8px; }
+        .is-host-spectator-layout .battle-online-ranking-copy strong { font-size: 14px; }
+        .battle-online-host-tools { margin-top: 8px; }
     }
 </style>

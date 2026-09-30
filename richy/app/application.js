@@ -98,7 +98,8 @@
         'Keepalive',
         '$timeout',
         'AuthSession',
-        function ($rootScope, settings, $http, $cookies, $state, $injector, constants, OAuth, blockUI, toastr, Idle, Keepalive, $timeout, authSession) {
+        'NetworkStatus',
+        function ($rootScope, settings, $http, $cookies, $state, $injector, constants, OAuth, blockUI, toastr, Idle, Keepalive, $timeout, authSession, networkStatus) {
             $rootScope.$state = $state;
             settings.api.apiV1Url = Hrm.API_PREFIX;
             $rootScope.$settings = settings;
@@ -374,8 +375,10 @@
             // OAuth errors
             // =========================
             authSession.restore();
+            var stopNetworkStatus = networkStatus.start();
             $rootScope.$on('session:expired', function () {
                 blockUI.stop();
+                toastr.warning('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.', 'Đăng nhập');
                 resetPermissionSettings();
                 $rootScope.$emit('$unauthorized', function () {});
                 prepareBattleRoomLoginRedirect();
@@ -387,9 +390,10 @@
             // =========================
             var userCheckInFlight = false;
             var userCheckRetry = null;
-            function checkCurrentUser(attempt) {
+            var lastUserCheckAt = 0;
+            var lastUserCheckSession = null;
+            function checkCurrentUser(attempt, force) {
                 if (userCheckInFlight) { return; }
-                $timeout.cancel(userCheckRetry);
 
                 if (!OAuth.isAuthenticated()) {
                     prepareBattleRoomLoginRedirect();
@@ -397,14 +401,22 @@
                     $state.go('login');
                     return;
                 }
+                if (window.navigator.onLine === false) { return; }
 
-                blockUI.start();
-                userCheckInFlight = true;
                 var checkedToken = $cookies.getObject(constants.oauth2_token);
+                var sessionKey = checkedToken && (checkedToken.refresh_token || checkedToken.access_token);
+                // Brief tab switches share the most recent check. API 401s
+                // still refresh immediately through SessionAuthInterceptor.
+                if (!force && !attempt && sessionKey === lastUserCheckSession &&
+                    Date.now() - lastUserCheckAt < 120000) { return; }
+                $timeout.cancel(userCheckRetry);
+                lastUserCheckAt = Date.now();
+                lastUserCheckSession = sessionKey;
+                userCheckInFlight = true;
 
-                $http.get(settings.api.baseUrl + 'api/users/getCurrentUser')
+                $http.get(settings.api.baseUrl + 'api/users/getCurrentUser',
+                    {backgroundSessionCheck: true, timeout: 15000})
                     .success(function (response) {
-                        blockUI.stop();
 
                         var currentToken = $cookies.getObject(constants.oauth2_token);
                         if (!currentToken || !checkedToken ||
@@ -426,7 +438,9 @@
                         }
                     })
                     .error(function (data, status) {
-                        blockUI.stop();
+                        // A failed/hidden check is retried on the next resume;
+                        // the two-minute throttle applies to successful checks.
+                        lastUserCheckAt = 0;
                         // A suspended Safari tab may resume before networking is
                         // ready. Keep credentials and retry transient failures.
                         if ((status <= 0 || status === 408 || status === 429 || status >= 500) &&
@@ -443,15 +457,16 @@
             }
 
             $rootScope.$on('$locationChangeSuccess', function () { checkCurrentUser(0); });
-            function resumeSession() {
+            function resumeSession(event) {
                 if (window.document.hidden || window.navigator.onLine === false ||
                     !OAuth.isAuthenticated()) { return; }
-                $rootScope.$evalAsync(function () { checkCurrentUser(0); });
+                $rootScope.$evalAsync(function () { checkCurrentUser(0, event && event.type === 'online'); });
             }
             window.addEventListener('pageshow', resumeSession);
             window.addEventListener('online', resumeSession);
             window.document.addEventListener('visibilitychange', resumeSession);
             $rootScope.$on('$destroy', function () {
+                stopNetworkStatus();
                 $timeout.cancel(userCheckRetry);
                 window.removeEventListener('pageshow', resumeSession);
                 window.removeEventListener('online', resumeSession);
