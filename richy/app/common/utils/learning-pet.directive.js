@@ -48,6 +48,9 @@
             var cuteDogEggUrl = 'assets/images/learning-pets/cute-dog/egg-level-6.png?v=' + version;
             var cuteDogCrackedEggUrl = 'assets/images/learning-pets/cute-dog/egg-level-7.png?v=' + version;
             var cuteDogPetUrl = 'assets/images/learning-pets/cute-dog/pet-level-8.png?v=' + version;
+            var cuteTomCatEggUrl = 'assets/images/learning-pets/cute-tom-cat/egg-level-9.png?v=' + version;
+            var cuteTomCatCrackedEggUrl = 'assets/images/learning-pets/cute-tom-cat/egg-level-10.png?v=' + version;
+            var cuteTomCatPetUrl = 'assets/images/learning-pets/cute-tom-cat/pet-level-11.png?v=' + version;
             var animations = {
                 idle: {row: 0, durations: [280, 110, 110, 140, 140, 320], loopPause: 10000},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
@@ -85,6 +88,7 @@
             vm.selectingPet = false;
             vm.hasNewCapybaraEgg = false;
             vm.hasNewCuteDogEgg = false;
+            vm.hasNewCuteTomCatEgg = false;
 
             function readCurrentUser() {
                 if (liveUser && liveUser.id) { return liveUser; }
@@ -101,6 +105,9 @@
                     selectedPet = 'MAM_HOC';
                 }
                 if (selectedPet === 'CUTE_DOG' && level < 6) {
+                    selectedPet = 'MAM_HOC';
+                }
+                if (selectedPet === 'CUTE_TOM_CAT' && level < 9) {
                     selectedPet = 'MAM_HOC';
                 }
                 vm.selectedPetKey = selectedPet;
@@ -150,6 +157,24 @@
                     vm.hasNewCuteDogEgg = false;
                 }
 
+                if (level >= 9) {
+                    var cuteTomCatStageImage = level >= 11
+                            ? cuteTomCatPetUrl
+                            : (level === 10 ? cuteTomCatCrackedEggUrl : cuteTomCatEggUrl);
+                    vm.availablePets.push({
+                        key: 'CUTE_TOM_CAT',
+                        name: level >= 11 ? 'Mèo Tom Cute' : 'Trứng Mèo Tom Cute',
+                        description: level >= 11
+                                ? 'Đã nở hoàn chỉnh'
+                                : (level === 10 ? 'Trứng đang nứt' : 'Mở khóa ở level 9'),
+                        image: cuteTomCatStageImage,
+                        isNew: hasUnseenCuteTomCatEgg(user)
+                    });
+                    vm.hasNewCuteTomCatEgg = hasUnseenCuteTomCatEgg(user);
+                } else {
+                    vm.hasNewCuteTomCatEgg = false;
+                }
+
                 if (selectedPet === 'CAPYBARA_EGG') {
                     vm.petForm = level >= 5 ? 'capybara-hatched' : 'capybara-egg';
                     vm.petImage = level >= 5
@@ -162,6 +187,13 @@
                     vm.petImage = level >= 8
                             ? cuteDogPetUrl
                             : (level === 7 ? cuteDogCrackedEggUrl : cuteDogEggUrl);
+                    return;
+                }
+                if (selectedPet === 'CUTE_TOM_CAT') {
+                    vm.petForm = level >= 11 ? 'cute-tom-cat-hatched' : 'cute-tom-cat-egg';
+                    vm.petImage = level >= 11
+                            ? cuteTomCatPetUrl
+                            : (level === 10 ? cuteTomCatCrackedEggUrl : cuteTomCatEggUrl);
                     return;
                 }
                 if (hasAdminRole(user)) {
@@ -225,6 +257,28 @@
                 });
             }
 
+            function cuteTomCatSeenKey(user) {
+                return 'learning-pet:cute-tom-cat-seen:v1:' + (user && user.id ? user.id : 'guest');
+            }
+
+            function hasUnseenCuteTomCatEgg(user) {
+                try {
+                    return $window.localStorage.getItem(cuteTomCatSeenKey(user)) !== '1';
+                } catch (ignoreStorage) {
+                    return true;
+                }
+            }
+
+            function markCuteTomCatEggSeen(user) {
+                try {
+                    $window.localStorage.setItem(cuteTomCatSeenKey(user), '1');
+                } catch (ignoreStorage) {}
+                vm.hasNewCuteTomCatEgg = false;
+                angular.forEach(vm.availablePets, function (item) {
+                    if (item.key === 'CUTE_TOM_CAT') { item.isNew = false; }
+                });
+            }
+
             vm.selectPet = function (petKey) {
                 if (vm.selectingPet || !petKey || petKey === vm.selectedPetKey) { return; }
                 vm.selectingPet = true;
@@ -240,6 +294,9 @@
                         }
                         if (user.selectedLearningPet === 'CUTE_DOG') {
                             markCuteDogEggSeen(user);
+                        }
+                        if (user.selectedLearningPet === 'CUTE_TOM_CAT') {
+                            markCuteTomCatEggSeen(user);
                         }
                         updatePetForm(user);
                         updateMessage();
@@ -560,8 +617,13 @@
 
             function updateMessage() {
                 vm.notificationCount = vm.pendingTaskCount + vm.drafts.length +
-                        (vm.hasNewCapybaraEgg ? 1 : 0) + (vm.hasNewCuteDogEgg ? 1 : 0);
-                if (vm.hasNewCuteDogEgg) {
+                        (vm.hasNewCapybaraEgg ? 1 : 0) +
+                        (vm.hasNewCuteDogEgg ? 1 : 0) +
+                        (vm.hasNewCuteTomCatEgg ? 1 : 0);
+                if (vm.hasNewCuteTomCatEgg) {
+                    vm.summaryTitle = 'Bạn có một quả trứng Mèo Tom Cute mới!';
+                    vm.message = 'Level 9 đã mở khóa trứng Mèo Tom Cute. Level 10 trứng sẽ nứt và level 11 sẽ nở.';
+                } else if (vm.hasNewCuteDogEgg) {
                     vm.summaryTitle = 'Bạn có một quả trứng Cute Dog mới!';
                     vm.message = 'Level 6 đã mở khóa trứng Cute Dog. Level 7 trứng sẽ nứt và level 8 sẽ nở.';
                 } else if (vm.hasNewCapybaraEgg) {
@@ -734,8 +796,14 @@
                 vm.minimized = false;
                 if (vm.hasNewCapybaraEgg) {
                     markCapybaraEggSeen(readCurrentUser());
-                    updateMessage();
                 }
+                if (vm.hasNewCuteDogEgg) {
+                    markCuteDogEggSeen(readCurrentUser());
+                }
+                if (vm.hasNewCuteTomCatEgg) {
+                    markCuteTomCatEggSeen(readCurrentUser());
+                }
+                updateMessage();
                 vm.activeSection = vm.drafts.length ? 'drafts' : 'tasks';
                 refreshPanelPlacement();
                 playAnimation(vm.activeSection === 'drafts' ? 'review' : derivedAnimation(), true);

@@ -20,10 +20,11 @@
         'blockUI',
         '$location',
         '$window',
-        '$document'
+        '$document',
+        'AuthSession'
     ];
 
-    function LoginController($rootScope, $scope, $state, $cookies, $http, settings, constants, service, toastr, focus, blockUI,$location,$window,$document) {
+    function LoginController($rootScope, $scope, $state, $cookies, $http, settings, constants, service, toastr, focus, blockUI,$location,$window,$document,authSession) {
         var vm = this;
         vm.user = {};
 
@@ -138,8 +139,7 @@
                 if (response && angular.isObject(response.data)) {
 
                     $http.get(settings.api.baseUrl + 'api/users/getCurrentUser').success(function (response, status, headers, config) {
-                        $rootScope.currentUser = response;
-                        $cookies.putObject(constants.cookies_user, $rootScope.currentUser);
+                        authSession.saveUser(response);
 
                         // if($rootScope.currentUser.id == 1){
                             if($rootScope.currentUser.roles != null){

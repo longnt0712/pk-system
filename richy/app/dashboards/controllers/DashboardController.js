@@ -268,7 +268,8 @@
             }
 
             function addIeltsDraft(key, draft) {
-                if (!draft || !draft.testId || String(draft.userId) !== userId || draft.completed === true) { return; }
+                if (!draft || !draft.testId || String(draft.userId) !== userId
+                        || draft.completed === true || draft.hiddenFromDashboard === true) { return; }
                 var savedAt = new Date(draft.savedAt || 0).getTime();
                 var taskMatch = /:task:(\d+)$/.exec(key);
                 var comprehensive = draft.testMode === 'COMPREHENSIVE'
@@ -413,6 +414,43 @@
             $http.post(deleteUrl, {draftKey: draft.storageKey}).finally(function () {
                 vm.loadResumeDrafts();
             });
+        };
+
+        vm.isReadingOrListeningDraft = function (draft) {
+            return !!draft && (draft.kind === 'IELTS_READING' || draft.kind === 'IELTS_LISTENING');
+        };
+
+        vm.hideDraft = function (draft) {
+            if (!vm.isReadingOrListeningDraft(draft) || !draft.storageKey) { return; }
+
+            var storedDraft;
+            try {
+                storedDraft = JSON.parse($window.localStorage.getItem(draft.storageKey));
+            } catch (ignoreHiddenDraftReadError) {
+                storedDraft = null;
+            }
+            if (!storedDraft) { return; }
+
+            storedDraft.hiddenFromDashboard = true;
+            storedDraft.savedAt = new Date().toISOString();
+            try {
+                $window.localStorage.setItem(draft.storageKey, JSON.stringify(storedDraft));
+            } catch (ignoreHiddenDraftWriteError) {
+                return;
+            }
+
+            vm.resumeDrafts = vm.resumeDrafts.filter(function (item) {
+                return item.storageKey !== draft.storageKey;
+            });
+
+            var saveUrl = settings.api.baseUrl + settings.api.apiV1Url + 'test_result/draft/save';
+            $http.post(saveUrl, {
+                draftKey: draft.storageKey,
+                draftType: 'IELTS',
+                title: draft.title,
+                payload: JSON.stringify(storedDraft),
+                savedAt: new Date(storedDraft.savedAt).getTime()
+            }).catch(angular.noop);
         };
 
         vm.loadCurrentUserFromCookie = function () {

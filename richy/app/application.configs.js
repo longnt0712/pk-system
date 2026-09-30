@@ -16,9 +16,36 @@
         OAuthTokenProvider.configure({
             name: constants.oauth2_token,
             options: {
-                secure: false
+                path: '/',
+                secure: window.location.protocol === 'https:'
             }
         });
+    }]);
+
+    // Persist the session across browser restarts. Keep the original refresh
+    // expiry when Spring reuses the same refresh token (it does not rotate it).
+    Hrm.config(['$provide', function ($provide) {
+        $provide.decorator('OAuthToken', ['$delegate', '$cookies', 'constants',
+            function (token, $cookies, constants) {
+                var options = {path: '/', secure: window.location.protocol === 'https:'};
+                token.setToken = function (value) {
+                    var previous = token.getToken() || {};
+                    var next = angular.copy(value);
+                    var now = Date.now();
+                    next.access_expires_at = now + Number(next.expires_in || 86400) * 1000;
+                    next.session_expires_at = next.session_expires_at ||
+                        (next.refresh_token && next.refresh_token === previous.refresh_token &&
+                            previous.session_expires_at) ||
+                        (next.refresh_token ? now + 30 * 24 * 60 * 60 * 1000 : next.access_expires_at);
+                    $cookies.putObject(constants.oauth2_token, next,
+                        angular.extend({}, options, {expires: new Date(next.session_expires_at)}));
+                };
+                token.removeToken = function () {
+                    $cookies.remove(constants.oauth2_token, options);
+                };
+                return token;
+            }
+        ]);
     }]);
 
     Hrm.config(['$compileProvider', function ($compileProvider) {
@@ -61,6 +88,12 @@
         // $httpProvider.defaults.useXDomain = true;
         //
         // $httpProvider.interceptors.push('XSRFInterceptor');
+        // The bundled interceptor emits an error before refresh completes and
+        // does not retry the failed request. Replace it with our session flow.
+        $httpProvider.interceptors = $httpProvider.interceptors.filter(function (name) {
+            return name !== 'oauthInterceptor';
+        });
+        $httpProvider.interceptors.push('SessionAuthInterceptor');
         $httpProvider.interceptors.push('ServerExceptionHandlerInterceptor');
     }]);
 

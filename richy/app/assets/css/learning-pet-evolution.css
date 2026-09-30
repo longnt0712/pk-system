@@ -18,7 +18,8 @@
 }
 
 .learning-pet-egg.is-capybara-pet,
-.learning-pet-egg.is-cute-dog-pet {
+.learning-pet-egg.is-cute-dog-pet,
+.learning-pet-egg.is-cute-tom-cat-pet {
     width: 104px;
     height: 108px;
 }

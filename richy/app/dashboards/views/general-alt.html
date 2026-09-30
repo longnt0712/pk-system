@@ -70,7 +70,7 @@
             <div>
                 <span class="student-assignment-kicker"><i class="fa fa-history"></i> BÀI ĐANG LÀM DỞ</span>
                 <h2>Bạn có muốn làm tiếp không?</h2>
-                <p>Tiến độ được tự động lưu trên trình duyệt này.</p>
+                <p>Tiến độ được tự động lưu và vẫn được giữ lại khi bạn ẩn lời nhắc.</p>
             </div>
             <span class="student-assignment-count">{{vm.resumeDrafts.length}} bài</span>
         </div>
@@ -94,7 +94,10 @@
                 <button type="button" class="is-continue" ng-click="vm.resumeDraft(draft)">
                     <i class="fa fa-play"></i> Có, làm tiếp
                 </button>
-                <button type="button" class="is-cancel" ng-click="vm.cancelDraft(draft)">
+                <button type="button" class="is-cancel" ng-if="vm.isReadingOrListeningDraft(draft)" ng-click="vm.hideDraft(draft)" title="Chỉ ẩn khỏi trang chủ, không xóa tiến trình">
+                    <i class="fa fa-eye-slash"></i> Ẩn bài
+                </button>
+                <button type="button" class="is-cancel" ng-if="!vm.isReadingOrListeningDraft(draft)" ng-click="vm.cancelDraft(draft)">
                     Không, hủy bài
                 </button>
             </div>

@@ -70,7 +70,8 @@
             <img class="learning-pet-egg"
                  ng-class="{
                     'is-capybara-pet': pet.petForm === 'capybara-hatched',
-                    'is-cute-dog-pet': pet.petForm === 'cute-dog-hatched'
+                    'is-cute-dog-pet': pet.petForm === 'cute-dog-hatched',
+                    'is-cute-tom-cat-pet': pet.petForm === 'cute-tom-cat-hatched'
                  }"
                  ng-if="pet.petForm !== 'hatched'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
             <span class="learning-pet-badge" ng-if="pet.notificationCount > 0">{{pet.notificationCount > 99 ? '99+' : pet.notificationCount}}</span>

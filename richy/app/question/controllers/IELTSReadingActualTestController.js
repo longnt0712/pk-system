@@ -1858,6 +1858,7 @@
                     writingInputAudit: vm.isWritingRoute ? writingInputAuditSummary() : null,
                     annotationNotes: angular.copy(vm.annotationNotes || []),
                     annotations: serializeReadingAnnotations(),
+                    hiddenFromDashboard: previousDraft.hiddenFromDashboard === true,
                     completed: previousDraft.completed === true,
                     resultId: previousDraft.resultId || null
                 };
@@ -1881,12 +1882,12 @@
                 var testId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
                 var key = readingDraftStorageKey(testId, 'STUDY');
                 var draft = readStoredDraft(key);
-                deleteReadingLearningDraft(key);
                 if (!draft) { return; }
                 draft.completed = true;
                 draft.resultId = resultId || null;
                 draft.savedAt = new Date().toISOString();
                 $window.localStorage.setItem(key, JSON.stringify(draft));
+                saveReadingLearningDraft(key, draft);
             } catch (ignoreStudyDraftCompletionError) {
                 // The submitted server result is still available when storage is blocked.
             }

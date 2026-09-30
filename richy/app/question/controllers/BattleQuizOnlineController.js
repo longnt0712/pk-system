@@ -505,6 +505,16 @@
                 player && player.selectedPetKey || 'MAM_HOC'
             ).toUpperCase();
 
+            if (petKey === 'CUTE_TOM_CAT' && level >= 9) {
+                if (level >= 11) {
+                    return 'assets/images/learning-pets/cute-tom-cat/pet-level-11.png' + suffix;
+                }
+                if (level === 10) {
+                    return 'assets/images/learning-pets/cute-tom-cat/egg-level-10.png' + suffix;
+                }
+                return 'assets/images/learning-pets/cute-tom-cat/egg-level-9.png' + suffix;
+            }
+
             if (petKey === 'CUTE_DOG' && level >= 6) {
                 if (level >= 8) {
                     return 'assets/images/learning-pets/cute-dog/pet-level-8.png' + suffix;
@@ -575,6 +585,14 @@
                     label: level >= 8
                         ? 'Cute Dog'
                         : (level === 7 ? 'Trứng Cute Dog đang nứt' : 'Trứng Cute Dog')
+                });
+            }
+            if (level >= 9) {
+                battlePetOptions.push({
+                    key: 'CUTE_TOM_CAT',
+                    label: level >= 11
+                        ? 'Mèo Tom Cute'
+                        : (level === 10 ? 'Trứng Mèo Tom Cute đang nứt' : 'Trứng Mèo Tom Cute')
                 });
             }
             return battlePetOptions;

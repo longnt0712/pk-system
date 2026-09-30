@@ -3,8 +3,8 @@
     'use strict';
 
     /* Setup App Main Controller */
-    Hrm.controller('AppController', ['$rootScope', '$scope', '$cookies', '$state', '$timeout', 'constants', 'settings', '$uibModal', 'toastr', 'Upload', 'focus', 'UserService', 'OAuth',
-        function ($rootScope, $scope, $cookies, $state, $timeout, constants, settings, modal, toastr, Upload, focus, userService, OAuth) {
+    Hrm.controller('AppController', ['$rootScope', '$scope', '$cookies', '$state', '$timeout', 'constants', 'settings', '$uibModal', 'toastr', 'Upload', 'focus', 'UserService', 'OAuth', 'AuthSession',
+        function ($rootScope, $scope, $cookies, $state, $timeout, constants, settings, modal, toastr, Upload, focus, userService, OAuth, authSession) {
             // Used by ng-include URLs so Angular's template cache is refreshed
             // together with the JavaScript/CSS release version in index.html.
             $scope.appVersion = window.APP_VERSION || new Date().getTime();
@@ -316,8 +316,12 @@
              * Logout...
              */
             $scope.logout = function () {
-                OAuth.revokeToken();
-                $cookies.remove(constants.oauth2_token);
+                authSession.logout();
+                settings.isAdmin = false;
+                settings.isViewer = false;
+                settings.isStaff = false;
+                settings.isStudentManagerment = false;
+                settings.isEducationManagerment = false;
                 $rootScope.islogOut = true;
                 $state.go('login');
             };

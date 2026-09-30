@@ -97,7 +97,8 @@
         'Idle',
         'Keepalive',
         '$timeout',
-        function ($rootScope, settings, $http, $cookies, $state, $injector, constants, OAuth, blockUI, toastr, Idle, Keepalive, $timeout) {
+        'AuthSession',
+        function ($rootScope, settings, $http, $cookies, $state, $injector, constants, OAuth, blockUI, toastr, Idle, Keepalive, $timeout, authSession) {
             $rootScope.$state = $state;
             settings.api.apiV1Url = Hrm.API_PREFIX;
             $rootScope.$settings = settings;
@@ -372,20 +373,10 @@
             // =========================
             // OAuth errors
             // =========================
-            $rootScope.$on('oauth:error', function (event, rejection) {
+            authSession.restore();
+            $rootScope.$on('session:expired', function () {
                 blockUI.stop();
-
-                if (angular.isDefined(rejection.data) && rejection.data.error === 'invalid_grant') {
-                    prepareBattleRoomLoginRedirect();
-                    $cookies.remove(constants.oauth2_token);
-                    $state.go('login');
-                    return;
-                }
-
-                if (angular.isDefined(rejection.data) && rejection.data.error === 'invalid_token') {
-                    return OAuth.getRefreshToken();
-                }
-
+                resetPermissionSettings();
                 $rootScope.$emit('$unauthorized', function () {});
                 prepareBattleRoomLoginRedirect();
                 $state.go('login');
@@ -394,7 +385,11 @@
             // =========================
             // Route change / auth check
             // =========================
-            $rootScope.$on('$locationChangeSuccess', function () {
+            var userCheckInFlight = false;
+            var userCheckRetry = null;
+            function checkCurrentUser(attempt) {
+                if (userCheckInFlight) { return; }
+                $timeout.cancel(userCheckRetry);
 
                 if (!OAuth.isAuthenticated()) {
                     prepareBattleRoomLoginRedirect();
@@ -404,12 +399,20 @@
                 }
 
                 blockUI.start();
+                userCheckInFlight = true;
+                var checkedToken = $cookies.getObject(constants.oauth2_token);
 
                 $http.get(settings.api.baseUrl + 'api/users/getCurrentUser')
                     .success(function (response) {
                         blockUI.stop();
 
+                        var currentToken = $cookies.getObject(constants.oauth2_token);
+                        if (!currentToken || !checkedToken ||
+                            currentToken.refresh_token !== checkedToken.refresh_token ||
+                            (!checkedToken.refresh_token && currentToken.access_token !== checkedToken.access_token)) { return; }
+
                         if (response) {
+                            authSession.saveUser(response);
                             $rootScope.$emit('$onCurrentUserData', response);
 
                             // Ưu tiên update settings role theo response backend cho chắc ăn hơn cookie
@@ -422,12 +425,37 @@
                             }
                         }
                     })
-                    .error(function () {
+                    .error(function (data, status) {
                         blockUI.stop();
-                        prepareBattleRoomLoginRedirect();
-                        $cookies.remove(constants.oauth2_token);
-                        $state.go('login');
+                        // A suspended Safari tab may resume before networking is
+                        // ready. Keep credentials and retry transient failures.
+                        if ((status <= 0 || status === 408 || status === 429 || status >= 500) &&
+                            OAuth.isAuthenticated() && (attempt || 0) < 2) {
+                            userCheckRetry = $timeout(function () {
+                                if (!window.document.hidden && window.navigator.onLine !== false) {
+                                    checkCurrentUser((attempt || 0) + 1);
+                                }
+                            }, 1500 * ((attempt || 0) + 1));
+                        }
+                    }).finally(function () {
+                        userCheckInFlight = false;
                     });
+            }
+
+            $rootScope.$on('$locationChangeSuccess', function () { checkCurrentUser(0); });
+            function resumeSession() {
+                if (window.document.hidden || window.navigator.onLine === false ||
+                    !OAuth.isAuthenticated()) { return; }
+                $rootScope.$evalAsync(function () { checkCurrentUser(0); });
+            }
+            window.addEventListener('pageshow', resumeSession);
+            window.addEventListener('online', resumeSession);
+            window.document.addEventListener('visibilitychange', resumeSession);
+            $rootScope.$on('$destroy', function () {
+                $timeout.cancel(userCheckRetry);
+                window.removeEventListener('pageshow', resumeSession);
+                window.removeEventListener('online', resumeSession);
+                window.document.removeEventListener('visibilitychange', resumeSession);
             });
         }
     ]);
