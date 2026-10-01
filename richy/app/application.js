@@ -377,7 +377,7 @@
             // OAuth errors
             // =========================
             function isPublicCampaignPage() {
-                return settings.campaignsEnabled && (/^\/campaigns(?:\/[1-9][0-9]*)?\/?$/.test(window.location.pathname || '') || /^\/hoa-thieng\/?$/.test(window.location.pathname || ''));
+                return settings.campaignsEnabled && (/^\/campaigns(?:\/(?:[1-9][0-9]*|c\/[a-f0-9]{32}))?\/?$/.test(window.location.pathname || '') || /^\/hoa-thieng(?:\/(?:[1-9][0-9]*|c\/[a-f0-9]{32}))?\/?$/.test(window.location.pathname || ''));
             }
             $rootScope.$on('$stateChangeStart', function (event, nextState) {
                 if (nextState.data && nextState.data.publicCampaign && !settings.campaignsEnabled) {

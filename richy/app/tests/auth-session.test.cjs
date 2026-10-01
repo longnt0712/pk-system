@@ -649,13 +649,13 @@ test('campaigns and flower routes only open on the TNTT domain and its www alias
         const allowed = /^(www\.)?tnttphungkhoang\.com$/i.test(hostname);
         assert.equal(app.settings.campaignsEnabled, allowed, hostname);
         const redirects=[]; app.state.go=(...args)=>redirects.push(args);
-        for (const name of ['campaigns','campaign_detail','campaign_student']) {
+        for (const name of ['campaigns','campaign_detail','campaign_student','campaign_student_campaign','campaign_detail_shared','campaign_student_shared']) {
             let prevented=false;
             app.listeners.$stateChangeStart({preventDefault(){prevented=true;}}, {name,data:{publicCampaign:true}});
             assert.equal(prevented, !allowed, hostname+': '+name);
         }
         if (!allowed) {
-            assert.equal(redirects.length,3);
+            assert.equal(redirects.length,6);
             assert.deepEqual(structuredClone(redirects[0]), ['login',{showHome:true},{location:'replace'}]);
         } else {assert.equal(redirects.length,0);}
         let prevented=false;

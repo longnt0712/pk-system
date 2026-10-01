@@ -188,6 +188,33 @@ public class CampaignTest {
         mvc.perform(delete("/public/campaigns/5")).andExpect(status().isMethodNotAllowed());
         verify(repository, never()).saveAndFlush(any(Campaign.class)); verify(repository, never()).delete(any(Campaign.class));
     }
+    @Test public void backgroundsPersistTheirOpacityAndRejectOutOfRangeValues() {
+        identity("ROLE_EDUCATION_MANAGERMENT");
+        CampaignDto value = dto(); value.setMobileImageUrl("https://example.org/background.jpg");
+        assertEquals(Integer.valueOf(20), controller.create(value).getFlowerBackgroundOpacity());
+        for (int opacity : new int[]{0, 45, 100}) {
+            value.setFlowerBackgroundOpacity(opacity);
+            assertEquals(Integer.valueOf(opacity), controller.create(value).getFlowerBackgroundOpacity());
+        }
+        reset(repository);
+        for (int opacity : new int[]{-1, 101}) {
+            value.setFlowerBackgroundOpacity(opacity);
+            try { controller.create(value); fail("Invalid opacity"); } catch (CampaignService.InvalidCampaignException expected) { }
+        }
+        verify(repository, never()).saveAndFlush(any(Campaign.class));
+    }
+    @Test public void newestCreatedCampaignsComeFirstInListingsAndSearch() {
+        when(repository.findAll(any(Pageable.class))).thenReturn(new PageImpl<Campaign>(Collections.emptyList()));
+        when(repository.search(anyString(), any(Pageable.class))).thenReturn(new PageImpl<Campaign>(Collections.emptyList()));
+        service.list("", 1, 12); service.list("Mân Côi", 2, 12);
+        org.mockito.ArgumentCaptor<Pageable> pages = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+        verify(repository).findAll(pages.capture()); verify(repository).search(anyString(), pages.capture());
+        for (Pageable page : pages.getAllValues()) {
+            assertEquals(Sort.Direction.DESC, page.getSort().getOrderFor("createDate").getDirection());
+            assertEquals(Sort.Direction.DESC, page.getSort().getOrderFor("id").getDirection());
+            assertNull(page.getSort().getOrderFor("startDate"));
+        }
+    }
     @Test public void boundedPaginationAndSearch() {
         when(repository.search(anyString(), any(Pageable.class))).thenReturn(new PageImpl<Campaign>(Collections.emptyList()));
         service.list("  MÙA CHAY  ", 2, 12);
@@ -196,4 +223,60 @@ public class CampaignTest {
             try { service.list("", 1, size); fail("Invalid page size"); } catch (CampaignService.InvalidCampaignException expected) { }
         }
     }
+    @Test public void opaqueShareCodesAreStableAndResolveOnlyTheirOwnCampaign() throws Exception {
+        identity("ROLE_ADMIN");
+        CampaignDto first = controller.create(dto());
+        CampaignDto second = controller.create(dto());
+        assertTrue(first.getShareCode().matches("[a-f0-9]{32}"));
+        assertNotEquals(first.getShareCode(), second.getShareCode());
+        org.mockito.ArgumentCaptor<Campaign> values = org.mockito.ArgumentCaptor.forClass(Campaign.class);
+        verify(repository, times(2)).saveAndFlush(values.capture());
+        Campaign saved = values.getAllValues().get(0);
+        assertEquals(first.getShareCode(), new CampaignDto(saved, true).getShareCode());
+        when(repository.findByUuidKey(saved.getUuidKey())).thenReturn(saved);
+        SecurityContextHolder.clearContext();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(publicController).build();
+        JsonNode json = new ObjectMapper().readTree(mvc.perform(get("/public/campaigns/by-code/" + first.getShareCode()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
+        assertEquals(first.getShareCode(), json.get("shareCode").asText());
+        for (String invalid : Arrays.asList("1", "abc", "ffffffffffffffffffffffffffffffff", first.getShareCode().toUpperCase(Locale.ROOT))) {
+            mvc.perform(get("/public/campaigns/by-code/" + invalid)).andExpect(status().isNotFound());
+        }
+        identity("ROLE_ADMIN");
+        ReflectionTestUtils.setField(saved, "version", 0L); when(repository.findOne(5L)).thenReturn(saved);
+        CampaignDto update = dto(); update.setVersion(0L); update.setName("Đổi tên chiến dịch");
+        assertEquals(first.getShareCode(), controller.update(5L, update).getShareCode());
+    }
+    @Test public void legacyCampaignsReceiveShareKeysOnlyOnceAtStartup() {
+        Campaign legacy = new Campaign(); legacy.setUuidKey(null); legacy.setId(7L);
+        when(repository.missingShareKeys()).thenReturn(Collections.singletonList(legacy));
+        service.initializeShareKeys(); assertNotNull(legacy.getUuidKey());
+        UUID stable = legacy.getUuidKey(); verify(repository).saveAndFlush(legacy);
+        when(repository.missingShareKeys()).thenReturn(Collections.emptyList());
+        service.initializeShareKeys(); assertEquals(stable, legacy.getUuidKey());
+        verify(repository, times(1)).saveAndFlush(legacy);
+    }
+
+    @Test public void cropSettingsPersistForAllImagesAndLegacyCampaignsDefaultToUncropped() {
+        identity("ROLE_EDUCATION_MANAGERMENT");
+        assertTrue(new CampaignDto(new Campaign(), false).getImageCrops().isEmpty());
+        CampaignDto value = dto(); Map<String, CampaignDto.ImageCropDto> crops = new LinkedHashMap<>();
+        for (String field : Arrays.asList("desktopLeftImageUrl", "desktopRightImageUrl", "mobileImageUrl")) {
+            CampaignDto.ImageCropDto crop = new CampaignDto.ImageCropDto(); crop.setZoom(175); crop.setX(-15); crop.setY(25); crops.put(field,crop);
+        }
+        value.setImageCrops(crops);CampaignDto saved = controller.create(value);
+        assertEquals(3,saved.getImageCrops().size());assertEquals(Integer.valueOf(175),saved.getImageCrops().get("mobileImageUrl").getZoom());
+        assertEquals(Integer.valueOf(-15),saved.getImageCrops().get("desktopLeftImageUrl").getX());assertEquals(Integer.valueOf(25),saved.getImageCrops().get("desktopRightImageUrl").getY());
+    }
+    @Test public void invalidCropSettingsNeverPersist() {
+        identity("ROLE_ADMIN"); CampaignDto value = dto();
+        CampaignDto.ImageCropDto crop = new CampaignDto.ImageCropDto(); value.setImageCrops(Collections.singletonMap("mobileImageUrl",crop));
+        for (int zoom : new int[]{49,301}) {crop.setZoom(zoom);try{controller.create(value);fail("Invalid zoom");}catch(CampaignService.InvalidCampaignException expected){}}
+        crop.setZoom(100);for(int x : new int[]{-101,101,Integer.MIN_VALUE}){crop.setX(x);try{controller.create(value);fail("Invalid position");}catch(CampaignService.InvalidCampaignException expected){}}
+        crop.setX(0);crop.setY(101);try{controller.create(value);fail("Invalid vertical position");}catch(CampaignService.InvalidCampaignException expected){}
+        crop.setY(0);value.setImageCrops(Collections.singletonMap("unknownField",crop));try{controller.create(value);fail("Unknown image");}catch(CampaignService.InvalidCampaignException expected){}
+        value.setImageCrops(Collections.singletonMap("mobileImageUrl",null));try{controller.create(value);fail("Missing crop settings");}catch(CampaignService.InvalidCampaignException expected){}
+        verify(repository,never()).saveAndFlush(any(Campaign.class));
+    }
+
 }

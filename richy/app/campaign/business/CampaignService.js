@@ -7,6 +7,7 @@
             return $http.get(publicUrl, {params: {q: query || '', page: page || 1, size: 12}, skipSessionAuth: true});
         };
         this.get = function (id) { return $http.get(publicUrl + '/' + id, {skipSessionAuth: true}); };
+        this.getByShareCode = function (code) { return $http.get(publicUrl + '/by-code/' + encodeURIComponent(code), {skipSessionAuth: true}); };
         this.save = function (campaign) {
             return campaign.id ? $http.put(privateUrl + '/' + campaign.id, campaign) : $http.post(privateUrl, campaign);
         };

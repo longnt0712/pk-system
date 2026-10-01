@@ -34,13 +34,22 @@ public class Campaign extends BaseObject {
     private String desktopLeftImageUrl;
     @Column(name = "desktop_right_image_url", length = 2048)
     private String desktopRightImageUrl;
+    // Existing mobile image links are now the background of the A4 flower sheet.
     @Column(name = "mobile_image_url", length = 2048)
     private String mobileImageUrl;
+    @Column(name = "flower_background_opacity")
+    private Integer flowerBackgroundOpacity;
+    @Lob
+    @Nationalized
+    @Column(name = "image_crop_settings")
+    private String imageCropSettings;
     @ElementCollection
     @CollectionTable(name = "tbl_campaign_flower_item", joinColumns = @JoinColumn(name = "campaign_id"))
     @OrderColumn(name = "item_order")
     private List<SpiritualFlowerItem> flowerItems = new ArrayList<>();
 
+    public String getImageCropSettings() { return imageCropSettings; }
+    public void setImageCropSettings(String value) { imageCropSettings = value; }
     public Long getVersion() { return version; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -58,6 +67,8 @@ public class Campaign extends BaseObject {
     public void setDesktopLeftImageUrl(String desktopLeftImageUrl) { this.desktopLeftImageUrl = desktopLeftImageUrl; }
     public String getDesktopRightImageUrl() { return desktopRightImageUrl; }
     public void setDesktopRightImageUrl(String desktopRightImageUrl) { this.desktopRightImageUrl = desktopRightImageUrl; }
+    public Integer getFlowerBackgroundOpacity() { return flowerBackgroundOpacity == null ? 20 : flowerBackgroundOpacity; }
+    public void setFlowerBackgroundOpacity(Integer value) { this.flowerBackgroundOpacity = value; }
     public String getMobileImageUrl() { return mobileImageUrl; }
     public void setMobileImageUrl(String mobileImageUrl) { this.mobileImageUrl = mobileImageUrl; }
     public List<SpiritualFlowerItem> getFlowerItems() { return flowerItems; }

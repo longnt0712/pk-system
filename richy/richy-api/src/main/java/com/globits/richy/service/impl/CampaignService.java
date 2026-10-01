@@ -7,6 +7,11 @@ import java.time.format.DateTimeParseException;
 import java.util.Locale;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Map;
+import java.util.Collections;
+import java.util.Arrays;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.joda.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +40,7 @@ public class CampaignService {
             throw new InvalidCampaignException("Trang không hợp lệ; số chiến dịch mỗi trang từ 1 đến 50.");
         }
         String search = text(keyword, 200, "Từ khóa").toLowerCase(Locale.ROOT);
-        Pageable pageable = new PageRequest(page - 1, size, new Sort(Sort.Direction.DESC, "startDate", "id"));
+        Pageable pageable = new PageRequest(page - 1, size, new Sort(Sort.Direction.DESC, "createDate", "id"));
         Page<Campaign> result = search.isEmpty() ? repository.findAll(pageable) : repository.search("%" + search + "%", pageable);
         return result.map(campaign -> new CampaignDto(campaign, false));
     }
@@ -43,10 +48,28 @@ public class CampaignService {
     @Transactional(readOnly = true)
     public CampaignDto get(Long id) { return new CampaignDto(find(id), true); }
 
+    @Transactional(readOnly = true)
+    public CampaignDto getByShareCode(String code) {
+        if (code == null || !code.matches("[a-f0-9]{32}")) { throw new CampaignNotFoundException(); }
+        String uuid = code.substring(0, 8) + "-" + code.substring(8, 12) + "-" + code.substring(12, 16)
+                + "-" + code.substring(16, 20) + "-" + code.substring(20);
+        Campaign campaign = repository.findByUuidKey(UUID.fromString(uuid));
+        if (campaign == null) { throw new CampaignNotFoundException(); }
+        return new CampaignDto(campaign, true);
+    }
+
+    public void initializeShareKeys() {
+        for (Campaign campaign : repository.missingShareKeys()) {
+            campaign.setUuidKey(UUID.randomUUID());
+            repository.saveAndFlush(campaign);
+        }
+    }
+
     @Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGERMENT"})
     public CampaignDto create(CampaignDto dto) {
         validate(dto);
         Campaign campaign = new Campaign();
+        campaign.setUuidKey(UUID.randomUUID());
         campaign.setCreatedBy(SecurityContextHolder.getContext().getAuthentication().getName());
         campaign.setCreateDate(LocalDateTime.now());
         copy(dto, campaign);
@@ -87,6 +110,9 @@ public class CampaignService {
         campaign.setDesktopLeftImageUrl(imageUrl(dto.getDesktopLeftImageUrl()));
         campaign.setDesktopRightImageUrl(imageUrl(dto.getDesktopRightImageUrl()));
         campaign.setMobileImageUrl(imageUrl(dto.getMobileImageUrl()));
+        campaign.setFlowerBackgroundOpacity(dto.getFlowerBackgroundOpacity());
+        try { campaign.setImageCropSettings(new ObjectMapper().writeValueAsString(dto.getImageCrops() == null ? Collections.emptyMap() : dto.getImageCrops())); }
+        catch (JsonProcessingException error) { throw new InvalidCampaignException("Không lưu được vị trí ảnh."); }
         Set<String> existingKeys = new HashSet<>(), usedKeys = new HashSet<>();
         for (int i = 0; i < campaign.getFlowerItems().size(); i++) {
             existingKeys.add(CampaignDto.itemKey(campaign, campaign.getFlowerItems().get(i), i));
@@ -115,6 +141,19 @@ public class CampaignService {
         text(dto.getTheme(), 300, "Chủ đề"); text(dto.getDescription(), 20000, "Nội dung");
         text(dto.getFlowerInstructions(), 10000, "Hướng dẫn hoa thiêng");
         imageUrl(dto.getDesktopLeftImageUrl()); imageUrl(dto.getDesktopRightImageUrl()); imageUrl(dto.getMobileImageUrl());
+        if (dto.getFlowerBackgroundOpacity() < 0 || dto.getFlowerBackgroundOpacity() > 100) {
+            throw new InvalidCampaignException("Độ hiển thị ảnh nền phải từ 0 đến 100%.");
+        }
+        if (dto.getImageCrops() != null) {
+            if (dto.getImageCrops().size() > 3) { throw new InvalidCampaignException("Chỉ chỉnh được ba ảnh của chiến dịch."); }
+            for (Map.Entry<String, CampaignDto.ImageCropDto> entry : dto.getImageCrops().entrySet()) {
+                CampaignDto.ImageCropDto crop = entry.getValue();
+                if (!Arrays.asList("desktopLeftImageUrl", "desktopRightImageUrl", "mobileImageUrl").contains(entry.getKey()) || crop == null
+                        || crop.getZoom() < 50 || crop.getZoom() > 300 || Math.abs((long) crop.getX()) > 100 || Math.abs((long) crop.getY()) > 100) {
+                    throw new InvalidCampaignException("Vị trí ảnh không hợp lệ; zoom từ 50 đến 300%, dịch chuyển từ -100 đến 100%.");
+                }
+            }
+        }
         for (CampaignDto.FlowerItemDto item : dto.getFlowerItems()) {
             if (item == null || text(item.getName(), 200, "Tên việc làm").isEmpty()) {
                 throw new InvalidCampaignException("Vui lòng nhập tên cho từng việc hoa thiêng.");

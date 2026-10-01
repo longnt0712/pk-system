@@ -18,6 +18,8 @@ public class RestPublicCampaignController {
             @RequestParam(value = "size", defaultValue = "12") int size) {
         return service.list(keyword, page, size);
     }
+    @RequestMapping(value = "/by-code/{code}", method = RequestMethod.GET)
+    public CampaignDto getByShareCode(@PathVariable("code") String code) { return service.getByShareCode(code); }
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public CampaignDto get(@PathVariable("id") Long id) { return service.get(id); }
 }

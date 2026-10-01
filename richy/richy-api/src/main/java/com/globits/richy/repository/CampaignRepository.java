@@ -7,9 +7,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import com.globits.richy.domain.Campaign;
 import java.util.List;
+import java.util.UUID;
 
 public interface CampaignRepository extends JpaRepository<Campaign, Long> {
-    @Query("select c from Campaign c where c.startDate <= :today and c.endDate >= :today order by c.startDate desc, c.id desc")
+    Campaign findByUuidKey(UUID uuidKey);
+    @Query("select c from Campaign c where c.uuidKey is null")
+    List<Campaign> missingShareKeys();
+    @Query("select c from Campaign c where c.startDate <= :today and c.endDate >= :today order by c.createDate desc, c.id desc")
     List<Campaign> activeCampaigns(@Param("today") String today);
     @Query("select c from Campaign c where lower(c.name) like :keyword or lower(c.theme) like :keyword")
     Page<Campaign> search(@Param("keyword") String keyword, Pageable pageable);
