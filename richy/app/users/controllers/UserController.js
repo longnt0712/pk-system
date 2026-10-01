@@ -2559,7 +2559,7 @@
         // ===== Public: open modal =====
         vm.zoomPerson = {};
         vm.showStudentQr = function (user) {
-            if (!user || !user.username || vm.studentQrLoading) { return; }
+            if (!settings.campaignsEnabled || !user || !user.username || vm.studentQrLoading) { return; }
             vm.studentQrLoading = true;
             return service.getStudentQr(user.username).then(function (response) {
                 var link = window.location.origin + '/hoa-thieng#' + response.data.token;

@@ -368,6 +368,7 @@
                 || /\.tnttphungkhoang\.com$/.test(hostname);
 
             // Hai co luon doi nghich de khong bao gio hien dong thoi hai thuong hieu.
+            settings.campaignsEnabled = /^(www\.)?tnttphungkhoang\.com$/i.test(window.location.hostname || '');
             settings.chapter = isChapterDomain;
             settings.ieltsRoom = !isChapterDomain;
             settings.englishClassesDomain = window.location.hostname.toLowerCase() === 'ieltsroom.com';
@@ -376,8 +377,14 @@
             // OAuth errors
             // =========================
             function isPublicCampaignPage() {
-                return /^\/campaigns(?:\/[1-9][0-9]*)?\/?$/.test(window.location.pathname || '') || /^\/hoa-thieng\/?$/.test(window.location.pathname || '');
+                return settings.campaignsEnabled && (/^\/campaigns(?:\/[1-9][0-9]*)?\/?$/.test(window.location.pathname || '') || /^\/hoa-thieng\/?$/.test(window.location.pathname || ''));
             }
+            $rootScope.$on('$stateChangeStart', function (event, nextState) {
+                if (nextState.data && nextState.data.publicCampaign && !settings.campaignsEnabled) {
+                    event.preventDefault();
+                    $state.go('login', {showHome: true}, {location: 'replace'});
+                }
+            });
             authSession.restore();
             var stopNetworkStatus = networkStatus.start();
             $rootScope.$on('session:expired', function () {

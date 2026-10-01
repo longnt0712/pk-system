@@ -48,7 +48,7 @@
 
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1" ng-if="settings.permissionsLoaded">
             <ul class="nav navbar-nav">
-                <li ng-class="{'is-route-active': $state.includes('campaigns') || $state.includes('campaign_detail')}">
+                <li ng-if="settings.campaignsEnabled" ng-class="{'is-route-active': $state.includes('campaigns') || $state.includes('campaign_detail')}">
                     <a ui-sref="campaigns" href="campaigns"><i class="fa fa-leaf" aria-hidden="true"></i> CHIẾN DỊCH</a>
                 </li>
                 <li class="dropdown vocabulary-nav"

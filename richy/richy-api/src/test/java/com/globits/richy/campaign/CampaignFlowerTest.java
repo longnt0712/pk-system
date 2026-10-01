@@ -174,15 +174,32 @@ public class CampaignFlowerTest {
         assertEquals(tokenA, service.scan("hs0007").token);
         verify(access, never()).saveAndFlush(any(CampaignFlowerAccess.class));
     }
-    @Test public void firstScanCreatesAccessAndUnknownOrNonStudentCardsAreRejected() {
+    @Test public void firstScanCreatesAccessAndUnknownOrInactiveCardsAreRejected() {
         when(users.findByUsernameAndPerson("hs0009")).thenReturn(studentB);
         assertTrue(StudentMarkShareSupport.validToken(service.scan("hs0009").token));
         for (String code : Arrays.asList("", "unknown", "https://example.org/card", String.join("", Collections.nCopies(101, "a")), "hs\n0009")) {
             try { service.scan(code); fail("Invalid card accepted"); } catch (CampaignFlowerService.InvalidStudentQrException expected) { }
         }
         studentB.getRoles().clear();
-        try { service.scan("hs0009"); fail("Non-student card accepted"); } catch (CampaignFlowerService.InvalidStudentQrException expected) { }
+        assertTrue(StudentMarkShareSupport.validToken(service.scan("hs0009").token));
         studentA.setActive(false); when(users.findByUsernameAndPerson("hs0007")).thenReturn(studentA);
         try { service.scan("hs0007"); fail("Inactive student accepted"); } catch (CampaignFlowerService.InvalidStudentQrException expected) { }
+    }
+    @Test public void directoryCodesAllowManagersAndOtherRolesToCompleteOnlyTheirOwnFlower() {
+        when(users.findByUsernameAndPerson("hs0007")).thenReturn(studentA);
+        CampaignFlowerAccess existing = new CampaignFlowerAccess(); existing.setStudent(studentA); existing.setToken(tokenA);
+        when(access.findByStudentId(7L)).thenReturn(existing);
+        for (String roleName : Arrays.asList("ROLE_ADMIN", "ROLE_EDUCATION_MANAGERMENT", "ROLE_STUDENT_MANAGERMENT", "ROLE_STAFF", "ROLE_VIEWER", "ROLE_USER", "")) {
+            studentA.getRoles().clear();
+            if (!roleName.isEmpty()) { Role role = new Role(); role.setName(roleName); studentA.getRoles().add(role); }
+            assertEquals(tokenA, service.scan("hs0007").token);
+            assertEquals("hs0007", service.landing(tokenA).student.studentCode);
+            service.check(tokenA, 5L, today, key, true);
+            assertTrue(service.sheet(tokenA, 5L, 0).entries.get(0).completed);
+            assertEquals(7L, saved.values().iterator().next().getStudentId().longValue());
+            assertTrue(service.sheet(tokenB, 5L, 0).entries.isEmpty());
+            try { service.check(tokenA, 5L, LocalDate.parse(today).minusDays(1).toString(), key, false); fail("Manager edited yesterday"); }
+            catch (CampaignService.InvalidCampaignException expected) { }
+        }
     }
 }

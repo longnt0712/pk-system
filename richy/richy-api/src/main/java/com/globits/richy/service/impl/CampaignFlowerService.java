@@ -43,7 +43,7 @@ public class CampaignFlowerService {
         String code = studentCode == null ? "" : studentCode.trim();
         if (code.isEmpty() || code.length() > 100 || code.chars().anyMatch(Character::isISOControl) || code.contains("://")) { throw new InvalidStudentQrException(); }
         User student = users.findByUsernameAndPerson(code);
-        requireStudent(student); return student;
+        requireParticipant(student); return student;
     }
 
     private CampaignFlowerDto.Access issueAccess(User student) {
@@ -120,11 +120,12 @@ public class CampaignFlowerService {
         String hash = StudentMarkShareSupport.hashToken(token);
         CampaignFlowerAccess access = write ? accessRepository.lockByTokenHash(hash) : accessRepository.findByTokenHash(hash);
         if (access == null) { throw new InvalidStudentQrException(); }
-        requireStudent(access.getStudent()); return access;
+        requireParticipant(access.getStudent()); return access;
     }
-    private static void requireStudent(User student) {
-        if (student == null || !student.isEnabled() || !student.isAccountNonLocked() || !student.isAccountNonExpired() ||
-                student.getRoles().stream().noneMatch(role -> "ROLE_STUDENT".equals(role.getName()))) { throw new InvalidStudentQrException(); }
+    // Participation follows the code in the student directory, independent of account roles.
+    private static void requireParticipant(User student) {
+        if (student == null || student.getUsername() == null || student.getUsername().trim().isEmpty() ||
+                !student.isEnabled() || !student.isAccountNonLocked() || !student.isAccountNonExpired()) { throw new InvalidStudentQrException(); }
     }
     private Campaign campaign(Long id) {
         Campaign value = id == null || id < 1 ? null : campaigns.findOne(id);

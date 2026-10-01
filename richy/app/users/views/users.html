@@ -222,7 +222,7 @@
                                     <td ng-if="!vm.isIeltsRoomDomain">{{user.person.birthDate | date:'dd/MM/yyyy' }}</td>
                                     <td>
                                         {{user.username}}<br>
-                                        <button type="button" ng-if="!vm.isIeltsRoomDomain && (vm.isRoleAdmin || vm.isRoleEducationManagerment || vm.isRoleStudentManagerment)" class="btn btn-xs btn-default" ng-click="vm.showStudentQr(user)" ng-disabled="vm.studentQrLoading" title="Mã QR học sinh mở phiếu hoa thiêng"><i class="fa fa-qrcode" aria-hidden="true"></i> QR học sinh</button>
+                                        <button type="button" ng-if="$settings.campaignsEnabled && (vm.isRoleAdmin || vm.isRoleEducationManagerment || vm.isRoleStudentManagerment)" class="btn btn-xs btn-default" ng-click="vm.showStudentQr(user)" ng-disabled="vm.studentQrLoading" title="Mã QR học sinh mở phiếu hoa thiêng"><i class="fa fa-qrcode" aria-hidden="true"></i> QR học sinh</button>
                                         <!--<img ng-if="user.qrcodeByUsername"-->
                                              <!--ng-src="{{user.qrcodeByUsername}}"-->
                                              <!--ng-click="vm.openQr(user.qrcodeByUsername,user.person)"-->

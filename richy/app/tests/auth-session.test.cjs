@@ -226,7 +226,7 @@ test('retry preserves the body of POST/upload requests', async () => {
     assert.equal(attempts, 2);
 });
 
-function startApp(h) {
+function startApp(h, hostname = 'example.test') {
     const listeners = {}, windowListeners = {}, documentListeners = {}, timers = [], navigations = [];
     const notices = [];
     const blockCalls = {start: 0, stop: 0};
@@ -238,7 +238,7 @@ function startApp(h) {
     const timeout = (fn, delay) => { const timer = {fn, delay}; timers.push(timer); return timer; };
     timeout.cancel = timer => { if (timer) timer.cancelled = true; };
     h.deps.$cookies.get = name => h.cookies[name] ? JSON.stringify(h.cookies[name]) : undefined;
-    h.context.window.location = {protocol: 'https:', hostname: 'example.test', origin: 'https://example.test', pathname: '/dashboard'};
+    h.context.window.location = {protocol: 'https:', hostname, origin: 'https://' + hostname, pathname: '/dashboard'};
     h.context.window.navigator = {onLine: true};
     h.context.window.sessionStorage = {getItem: () => null, setItem() {}, removeItem() {}};
     h.context.window.addEventListener = (name, fn) => { windowListeners[name] = fn; };
@@ -641,4 +641,25 @@ test('login has local busy feedback and ignores duplicate submissions', async ()
     assert.equal(h.controller.loginError, '');
     assert.deepEqual(h.navigations, ['application.dashboard']);
     assert.deepEqual(h.blocks, []);
+});
+
+test('campaigns and flower routes only open on the TNTT domain and its www alias', () => {
+    for (const hostname of ['tnttphungkhoang.com', 'www.tnttphungkhoang.com', 'TNTTPHUNGKHOANG.COM', 'ieltsroom.com', 'www.ieltsroom.com', 'localhost', 'other.example', 'tnttphungkhoang.com.evil.example', 'stage.tnttphungkhoang.com']) {
+        const h = setup(() => ({data:{id:7,roles:[]}})); const app = startApp(h, hostname);
+        const allowed = /^(www\.)?tnttphungkhoang\.com$/i.test(hostname);
+        assert.equal(app.settings.campaignsEnabled, allowed, hostname);
+        const redirects=[]; app.state.go=(...args)=>redirects.push(args);
+        for (const name of ['campaigns','campaign_detail','campaign_student']) {
+            let prevented=false;
+            app.listeners.$stateChangeStart({preventDefault(){prevented=true;}}, {name,data:{publicCampaign:true}});
+            assert.equal(prevented, !allowed, hostname+': '+name);
+        }
+        if (!allowed) {
+            assert.equal(redirects.length,3);
+            assert.deepEqual(structuredClone(redirects[0]), ['login',{showHome:true},{location:'replace'}]);
+        } else {assert.equal(redirects.length,0);}
+        let prevented=false;
+        app.listeners.$stateChangeStart({preventDefault(){prevented=true;}}, {name:'application.dashboard'});
+        assert.equal(prevented,false);
+    }
 });

@@ -160,10 +160,12 @@ test('delete requires a selected confirmation and manager role', async () => {
 });
 test('public route exemption is limited to campaign listing and numeric detail URLs', () => {
     const app = fs.readFileSync(path.join(__dirname, '../application.js'), 'utf8');
-    const fn = app.slice(app.indexOf('function isPublicCampaignPage()'), app.indexOf('authSession.restore();', app.indexOf('function isPublicCampaignPage()')));
+    const fn = app.slice(app.indexOf('function isPublicCampaignPage()'), app.indexOf("$rootScope.$on('$stateChangeStart'", app.indexOf('function isPublicCampaignPage()')));
     for (const [pathname, allowed] of [['/campaigns', true], ['/campaigns/5', true], ['/campaigns/5/', true], ['/hoa-thieng', true], ['/hoa-thieng/', true], ['/hoa-thieng/admin', false], ['/campaigns/admin', false], ['/dashboard', false], ['/campaigns/0', false], ['/campaigns/5/edit', false]]) {
-        const context = nodeVm.createContext({window: {location: {pathname}}}); nodeVm.runInContext(fn, context);
+        const context = nodeVm.createContext({settings: {campaignsEnabled: true}, window: {location: {pathname}}}); nodeVm.runInContext(fn, context);
         assert.equal(context.isPublicCampaignPage(), allowed, pathname);
+        context.settings.campaignsEnabled = false;
+        assert.equal(context.isPublicCampaignPage(), false, "Domain blocked: " + pathname);
     }
 });
 
