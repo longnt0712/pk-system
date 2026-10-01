@@ -32,7 +32,7 @@
     <div class="campaign-alert campaign-no-print" role="alert" ng-if="vm.error">{{vm.error}} <button class="btn btn-default" ng-click="vm.retry()">Tải lại</button></div>
     <p class="campaign-loading campaign-no-print" role="status" ng-if="vm.loading"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải chiến dịch…</p>
 
-    <section class="campaign-editor campaign-no-print" ng-if="vm.editor && vm.canManage()">
+    <section class="campaign-editor campaign-no-print" ng-if="vm.editor && vm.canManage()" campaign-editor>
         <h2>{{vm.editor.id ? 'Sửa chiến dịch' : 'Tạo chiến dịch có hoa thiêng'}}</h2>
         <p>Mọi người đều có thể xem nội dung sau khi lưu.</p>
         <form name="campaignForm" ng-submit="vm.save(campaignForm)" novalidate>
@@ -58,7 +58,7 @@
                     <div class="campaign-actions"><button type="button" class="btn btn-default" ng-click="vm.cropField = 'desktopLeftImageUrl'" aria-pressed="{{vm.cropField === 'desktopLeftImageUrl'}}">Ảnh trái</button><button type="button" class="btn btn-default" ng-click="vm.cropField = 'desktopRightImageUrl'" aria-pressed="{{vm.cropField === 'desktopRightImageUrl'}}">Ảnh phải</button><button type="button" class="btn btn-default" ng-click="vm.cropField = 'mobileImageUrl'" aria-pressed="{{vm.cropField === 'mobileImageUrl'}}">Ảnh nền A4</button></div>
                     <p class="campaign-muted">Kéo ảnh trong khung để chọn vùng hiển thị. Dùng thanh chỉnh để thu phóng hoặc dịch chuyển ảnh.</p>
                     <div ng-if="vm.imageUrl(vm.editor[vm.cropField])" class="campaign-crop-workspace">
-                        <div class="campaign-crop-frame" ng-class="{'campaign-crop-portrait': vm.cropField !== 'mobileImageUrl'}" campaign-image-crop aria-label="Khung cắt ảnh"><img ng-src="{{vm.imageUrl(vm.editor[vm.cropField])}}" ng-style="vm.imageStyle(vm.cropField, vm.editor)" ng-class="{'campaign-crop-contain': vm.cropField === 'mobileImageUrl'}" draggable="false" alt="Ảnh đang chỉnh vùng hiển thị"></div>
+                        <div class="campaign-crop-frame" ng-style="vm.cropFrameStyle()" ng-class="{'campaign-crop-portrait': vm.cropField !== 'mobileImageUrl'}" campaign-image-crop aria-label="Khung cắt ảnh"><img ng-src="{{vm.imageUrl(vm.editor[vm.cropField])}}" ng-style="vm.imageStyle(vm.cropField, vm.editor)" ng-class="{'campaign-crop-contain': vm.cropField === 'mobileImageUrl'}" draggable="false" alt="Ảnh đang chỉnh vùng hiển thị"></div>
                         <div class="campaign-crop-controls">
                             <label>Zoom ảnh: {{vm.editor.imageCrops[vm.cropField].zoom}}%<input type="range" min="50" max="300" step="1" ng-model="vm.editor.imageCrops[vm.cropField].zoom"></label>
                             <div class="campaign-actions"><button type="button" class="btn btn-default" ng-click="vm.changeImageZoom(-10)" ng-disabled="vm.editor.imageCrops[vm.cropField].zoom <= 50" aria-label="Thu nhỏ ảnh">−</button><button type="button" class="btn btn-default" ng-click="vm.changeImageZoom(10)" ng-disabled="vm.editor.imageCrops[vm.cropField].zoom >= 300" aria-label="Phóng to ảnh">+</button><button type="button" class="btn btn-default" ng-click="vm.resetImageCrop(vm.cropField)">Đặt lại ảnh</button></div>
@@ -69,12 +69,12 @@
                     <p ng-if="!vm.imageUrl(vm.editor[vm.cropField])" class="campaign-muted">Dán link ảnh tương ứng ở trên để bắt đầu chỉnh.</p>
                 </section>
                 <div class="campaign-image-preview" aria-label="Xem trước ảnh chiến dịch">
-                    <div ng-if="vm.imageUrl(vm.editor.desktopLeftImageUrl)" class="campaign-preview-side"><img ng-src="{{vm.imageUrl(vm.editor.desktopLeftImageUrl)}}" class="campaign-framed-image" ng-style="vm.imageStyle('desktopLeftImageUrl', vm.editor)" alt="Xem trước ảnh bên trái"></div>
+                    <div ng-if="vm.imageUrl(vm.editor.desktopLeftImageUrl)" class="campaign-preview-side" ng-style="vm.previewSideStyle('desktopLeftImageUrl')"><img ng-src="{{vm.imageUrl(vm.editor.desktopLeftImageUrl)}}" class="campaign-framed-image" ng-style="vm.imageStyle('desktopLeftImageUrl', vm.editor)" alt="Xem trước ảnh bên trái"></div>
                     <section class="campaign-preview-paper campaign-flower">
                         <img ng-if="vm.imageUrl(vm.editor.mobileImageUrl)" ng-src="{{vm.imageUrl(vm.editor.mobileImageUrl)}}" class="campaign-flower-background" ng-style="vm.backgroundStyle(vm.editor)" alt="" aria-hidden="true">
                         <div class="campaign-flower-content"><span class="campaign-eyebrow">XEM TRƯỚC PHIẾU A4 NGANG</span><h3>Hoa thiêng · {{vm.editor.name || 'Tên chiến dịch'}}</h3><p class="campaign-muted">Tên: … - Lớp: …</p><table class="campaign-preview-table"><thead><tr><th>Việc hoa thiêng</th><th>T2</th><th>T3</th><th>T4</th><th>T5</th><th>T6</th><th>T7</th><th>CN</th></tr></thead><tbody><tr ng-repeat="item in vm.editor.flowerItems track by $index"><th>{{item.name || 'Việc làm'}}</th><td>□</td><td>□</td><td>□</td><td>□</td><td>□</td><td>□</td><td>□</td></tr></tbody></table></div>
                     </section>
-                    <div ng-if="vm.imageUrl(vm.editor.desktopRightImageUrl)" class="campaign-preview-side"><img ng-src="{{vm.imageUrl(vm.editor.desktopRightImageUrl)}}" class="campaign-framed-image" ng-style="vm.imageStyle('desktopRightImageUrl', vm.editor)" alt="Xem trước ảnh bên phải"></div>
+                    <div ng-if="vm.imageUrl(vm.editor.desktopRightImageUrl)" class="campaign-preview-side" ng-style="vm.previewSideStyle('desktopRightImageUrl')"><img ng-src="{{vm.imageUrl(vm.editor.desktopRightImageUrl)}}" class="campaign-framed-image" ng-style="vm.imageStyle('desktopRightImageUrl', vm.editor)" alt="Xem trước ảnh bên phải"></div>
                 </div>
                 <label>Hướng dẫn thực hiện hoa thiêng<textarea class="form-control" ng-model="vm.editor.flowerInstructions" maxlength="10000" rows="3"></textarea></label>
                 <h3>Các việc hoa thiêng hằng ngày</h3>

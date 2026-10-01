@@ -142,7 +142,7 @@
             (function (window, document) {
                 'use strict';
 
-        window.APP_VERSION = '20261001-182';
+        window.APP_VERSION = '20261001-183';
 
                 function versionedUrl(url) {
                     var separator = url.indexOf('?') >= 0 ? '&' : '?';
@@ -182,8 +182,8 @@
         <meta property="og:type"          content="website" />
         <meta property="og:title"         content="IELTS ROOM" />
         <meta property="og:description"   content="LEARN STUDY PLAY WITH IELTS" />
-        <meta ng-if="settings.ieltsRoom == true" property="og:image" content="https://ieltsroom.com/assets/images/troop.jpg">
-        <meta ng-if="settings.chapter == true" property="og:image" content="https://ieltsroom.com/assets/images/troop-1.jpg">
+        <!-- IIS rewrites these static Open Graph values for the TNTT domain before sending HTML. -->
+        <meta property="og:image" content="https://ieltsroom.com/assets/images/troop.jpg">
 
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
         <meta http-equiv="Pragma" content="no-cache">

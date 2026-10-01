@@ -376,3 +376,35 @@ test('disabled campaign domains redirect before requesting data, registering lis
         }
     }
 });
+
+test('crop frames and side previews use the actual visible side image proportions', () => {
+    const h = setup({manager: true}); h.vm.create(); h.vm.imageFrameRatios = {desktopLeftImageUrl: 348/868, desktopRightImageUrl: 90/374};
+    h.vm.cropField = 'desktopLeftImageUrl'; assert.equal(h.vm.cropFrameStyle().aspectRatio, 348/868); assert.equal(h.vm.previewSideStyle(h.vm.cropField).aspectRatio, 348/868);
+    h.vm.cropField = 'desktopRightImageUrl'; assert.equal(h.vm.cropFrameStyle().aspectRatio, 90/374); assert.equal(h.vm.previewSideStyle(h.vm.cropField).aspectRatio, 90/374);
+    h.vm.cropField = 'mobileImageUrl'; assert.deepEqual(structuredClone(h.vm.cropFrameStyle()), {});
+});
+
+function editorLayout(mobile) {
+    let factory, destroy, watch, stopped = false;
+    const events = {}, queue = new Map(), scrolls = [], vm = {}; let next = 0;
+    const side = {clientWidth: 348, clientHeight: 868};
+    const viewport = {querySelector: () => side};
+    const page = {scrollTo: options => scrolls.push(['page', options])};
+    const editor = {offsetTop: 235, closest: selector => selector === '.campaign-viewport' ? viewport : page, scrollIntoView: options => scrolls.push(['document', options])};
+    const timeout = fn => {const id = ++next; queue.set(id, fn); return id;}; timeout.cancel = id => queue.delete(id);
+    nodeVm.runInNewContext(source, {angular: {module: () => ({controller() {}, directive(name, registration) {if(name === 'campaignEditor') factory = registration.at(-1);}})}});
+    factory({getComputedStyle: () => ({overflowY: mobile ? 'auto' : 'visible'}), addEventListener: (e, fn) => events[e] = fn, removeEventListener: e => delete events[e]}, timeout).link({vm, $watchGroup: (names, fn) => {watch = fn; return () => {stopped = true;};}, $on: (e, fn) => destroy = fn}, [editor]);
+    return {vm, side, events, scrolls, watch: () => watch(), pending: () => queue.size, stopped: () => stopped, flush() {const current=[...queue.values()]; queue.clear();current.forEach(fn=>fn());}, destroy: () => destroy()};
+}
+
+test('opening an editor scrolls to its start on desktop and in the rotated mobile scroller', () => {
+    for (const mobile of [false, true]) {
+        const h = editorLayout(mobile); h.flush();
+        assert.equal(h.scrolls[0][0], mobile ? 'page' : 'document');
+        if (mobile) assert.equal(h.scrolls[0][1].top, 220); else assert.equal(h.scrolls[0][1].block, 'start');
+        assert.equal(h.vm.imageFrameRatios.desktopLeftImageUrl, 348/868);
+        h.side.clientWidth = 90; h.side.clientHeight = 374; h.events.resize(); h.flush();
+        assert.equal(h.vm.imageFrameRatios.desktopLeftImageUrl, 90/374); assert.equal(h.scrolls.length, 1);
+        h.watch(); assert.equal(h.pending(), 1); h.destroy(); assert.equal(h.pending(), 0); assert.equal(h.stopped(), true); assert.deepEqual(Object.keys(h.events), []);
+    }
+});

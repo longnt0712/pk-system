@@ -41,6 +41,15 @@
             var crop = vm.imageCrop(campaign, field);
             return {transform: 'translate(' + crop.x + '%, ' + crop.y + '%) scale(' + crop.zoom / 100 + ')'};
         };
+        vm.cropFrameStyle = function () {
+            if (vm.cropField === 'mobileImageUrl') { return {}; }
+            var ratio = vm.imageFrameRatios && vm.imageFrameRatios[vm.cropField] || 9 / 16;
+            return {aspectRatio: ratio, width: 'min(32%, ' + (360 * ratio) + 'px)'};
+        };
+        vm.previewSideStyle = function (field) {
+            var ratio = vm.imageFrameRatios && vm.imageFrameRatios[field] || 9 / 16;
+            return {aspectRatio: ratio, flex: ratio + ' 1 0px'};
+        };
         vm.backgroundStyle = function (campaign) { var style = vm.imageStyle('mobileImageUrl', campaign); style.opacity = vm.backgroundOpacity(campaign); return style; };
         function initializeCrops() {
             vm.editor.imageCrops = vm.editor.imageCrops || {};
@@ -361,6 +370,35 @@
         else if ($stateParams.id || $stateParams.campaignCode) { loadDetail(); } else { vm.load(1); }
         if ($scope.$on) { $scope.$on('$destroy', function () { ++studentRequest; if (dayTimer) { $window.clearTimeout(dayTimer); } if ($window.removeEventListener) { $window.removeEventListener('beforeunload', beforeUnload); } }); }
     }
+    angular.module('Hrm.Campaign').directive('campaignEditor', ['$window', '$timeout', function ($window, $timeout) {
+        return {restrict: 'A', link: function (scope, element) {
+            var editor = element[0], viewport = editor.closest('.campaign-viewport'), page = editor.closest('.campaign-page'), pending;
+            function refreshFrames() {
+                var ratios = {}, fields = {desktopLeftImageUrl: '.campaign-side-left', desktopRightImageUrl: '.campaign-side-right'};
+                Object.keys(fields).forEach(function (field) {
+                    var frame = viewport.querySelector(fields[field]);
+                    if (frame && frame.clientWidth > 0 && frame.clientHeight > 0) { ratios[field] = frame.clientWidth / frame.clientHeight; }
+                });
+                scope.vm.imageFrameRatios = ratios;
+            }
+            function scheduleRefresh() {
+                if (pending) { $timeout.cancel(pending); }
+                pending = $timeout(function () { pending = null; refreshFrames(); }, 0);
+            }
+            var stopWatching = scope.$watchGroup(['vm.editor.desktopLeftImageUrl', 'vm.editor.desktopRightImageUrl'], scheduleRefresh);
+            var initial = $timeout(function () {
+                refreshFrames();
+                if (page && /auto|scroll/.test($window.getComputedStyle(page).overflowY)) {
+                    page.scrollTo({top: Math.max(0, editor.offsetTop - 15), behavior: 'auto'});
+                } else { editor.scrollIntoView({block: 'start', behavior: 'auto'}); }
+            }, 0);
+            $window.addEventListener('resize', scheduleRefresh);
+            scope.$on('$destroy', function () {
+                $timeout.cancel(initial); if (pending) { $timeout.cancel(pending); }
+                stopWatching(); $window.removeEventListener('resize', scheduleRefresh);
+            });
+        }};
+    }]);
     angular.module('Hrm.Campaign').directive('campaignImageCrop', ['$window', function ($window) {
         return {restrict: 'A', link: function (scope, element) {
             var frame = element[0], drag;
