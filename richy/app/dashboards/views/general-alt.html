@@ -720,6 +720,18 @@
             </a>
         </div>
 
+        <!-- HOA THIÊNG -->
+        <div class="learning-tile-wrap" ng-if="settings.campaignsEnabled === true">
+            <a ui-sref="campaigns" href="campaigns" class="learning-tile learning-tile-flower">
+                <span class="learning-tile-icon"><i class="fa fa-leaf" aria-hidden="true"></i></span>
+                <span class="learning-tile-title">HOA THIÊNG</span>
+                <span class="learning-tile-desc">Chiến dịch và thực hành mỗi ngày</span>
+                <span class="learning-tile-go"><i class="fa fa-arrow-right" aria-hidden="true"></i></span>
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
     </section>
 
 
@@ -1391,6 +1403,8 @@
                         #db8d2c 100%
                 );
     }
+
+    .learning-tile-flower { background:linear-gradient(135deg,#247b5d,#389884); }
 
     .learning-tile-shop {
         background:

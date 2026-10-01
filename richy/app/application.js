@@ -105,6 +105,7 @@
             settings.api.apiV1Url = Hrm.API_PREFIX;
             $rootScope.$settings = settings;
 
+            $rootScope.appVersion = window.APP_VERSION || new Date().getTime();
             $rootScope.islogOut = false;
 
             /*
