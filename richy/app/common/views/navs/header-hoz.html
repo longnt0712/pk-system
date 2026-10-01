@@ -49,7 +49,7 @@
         <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1" ng-if="settings.permissionsLoaded">
             <ul class="nav navbar-nav">
                 <li ng-if="settings.campaignsEnabled === true" ng-class="{'is-route-active': $state.includes('campaigns') || $state.includes('campaign_detail')}">
-                    <a ui-sref="campaigns" href="campaigns"><i class="fa fa-leaf" aria-hidden="true"></i> CHIẾN DỊCH</a>
+                    <a ui-sref="campaigns" href="campaigns">CHIẾN DỊCH</a>
                 </li>
                 <li class="dropdown vocabulary-nav"
                     ng-class="{'is-route-active': $state.includes('application.daily_vocab') || $state.includes('application.question') || $state.includes('application.view') || $state.includes('application.topic') || $state.includes('application.topic_category')}"
