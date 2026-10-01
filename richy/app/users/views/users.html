@@ -222,6 +222,7 @@
                                     <td ng-if="!vm.isIeltsRoomDomain">{{user.person.birthDate | date:'dd/MM/yyyy' }}</td>
                                     <td>
                                         {{user.username}}<br>
+                                        <button type="button" ng-if="!vm.isIeltsRoomDomain && (vm.isRoleAdmin || vm.isRoleEducationManagerment || vm.isRoleStudentManagerment)" class="btn btn-xs btn-default" ng-click="vm.showStudentQr(user)" ng-disabled="vm.studentQrLoading" title="Mã QR học sinh mở phiếu hoa thiêng"><i class="fa fa-qrcode" aria-hidden="true"></i> QR học sinh</button>
                                         <!--<img ng-if="user.qrcodeByUsername"-->
                                              <!--ng-src="{{user.qrcodeByUsername}}"-->
                                              <!--ng-click="vm.openQr(user.qrcodeByUsername,user.person)"-->
@@ -353,6 +354,7 @@
 
             <div class="modal-body text-center">
                 <img ng-src="{{vm.qrPreview}}" style="max-width:100%;height:auto" alt="QR Preview">
+                <div ng-if="vm.currentQrLink"><p>Quét bằng camera điện thoại hoặc Zalo để mở phiếu hoa thiêng của học sinh.</p><a ng-href="{{vm.currentQrLink}}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Mở phiếu hoa thiêng</a><label style="display:block;margin-top:12px">Link cá nhân<input type="text" class="form-control" ng-value="vm.currentQrLink" readonly></label></div>
             </div>
         </div>
     </div>

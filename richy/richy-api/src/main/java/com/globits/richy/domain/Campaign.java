@@ -30,6 +30,12 @@ public class Campaign extends BaseObject {
     @Column(name = "flower_instructions")
     @Nationalized
     private String flowerInstructions;
+    @Column(name = "desktop_left_image_url", length = 2048)
+    private String desktopLeftImageUrl;
+    @Column(name = "desktop_right_image_url", length = 2048)
+    private String desktopRightImageUrl;
+    @Column(name = "mobile_image_url", length = 2048)
+    private String mobileImageUrl;
     @ElementCollection
     @CollectionTable(name = "tbl_campaign_flower_item", joinColumns = @JoinColumn(name = "campaign_id"))
     @OrderColumn(name = "item_order")
@@ -48,5 +54,11 @@ public class Campaign extends BaseObject {
     public void setEndDate(String endDate) { this.endDate = endDate; }
     public String getFlowerInstructions() { return flowerInstructions; }
     public void setFlowerInstructions(String flowerInstructions) { this.flowerInstructions = flowerInstructions; }
+    public String getDesktopLeftImageUrl() { return desktopLeftImageUrl; }
+    public void setDesktopLeftImageUrl(String desktopLeftImageUrl) { this.desktopLeftImageUrl = desktopLeftImageUrl; }
+    public String getDesktopRightImageUrl() { return desktopRightImageUrl; }
+    public void setDesktopRightImageUrl(String desktopRightImageUrl) { this.desktopRightImageUrl = desktopRightImageUrl; }
+    public String getMobileImageUrl() { return mobileImageUrl; }
+    public void setMobileImageUrl(String mobileImageUrl) { this.mobileImageUrl = mobileImageUrl; }
     public List<SpiritualFlowerItem> getFlowerItems() { return flowerItems; }
 }

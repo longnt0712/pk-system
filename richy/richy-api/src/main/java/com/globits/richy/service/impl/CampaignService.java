@@ -1,8 +1,13 @@
 package com.globits.richy.service.impl;
 
 import java.time.LocalDate;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.format.DateTimeParseException;
 import java.util.Locale;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 import org.joda.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
@@ -16,11 +21,13 @@ import com.globits.richy.domain.Campaign;
 import com.globits.richy.domain.SpiritualFlowerItem;
 import com.globits.richy.dto.CampaignDto;
 import com.globits.richy.repository.CampaignRepository;
+import com.globits.richy.repository.CampaignFlowerEntryRepository;
 
 @Service
 @Transactional
 public class CampaignService {
     @Autowired private CampaignRepository repository;
+    @Autowired private CampaignFlowerEntryRepository entryRepository;
 
     @Transactional(readOnly = true)
     public Page<CampaignDto> list(String keyword, int page, int size) {
@@ -60,7 +67,11 @@ public class CampaignService {
     }
 
     @Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGERMENT"})
-    public void delete(Long id) { repository.delete(find(id)); }
+    public void delete(Long id) {
+        Campaign campaign = find(id);
+        entryRepository.deleteCampaignEntries(id);
+        repository.delete(campaign);
+    }
 
     private Campaign find(Long id) {
         Campaign campaign = id == null || id < 1 ? null : repository.findOne(id);
@@ -73,9 +84,19 @@ public class CampaignService {
         campaign.setDescription(text(dto.getDescription(), 20000, "Nội dung"));
         campaign.setStartDate(dto.getStartDate()); campaign.setEndDate(dto.getEndDate());
         campaign.setFlowerInstructions(text(dto.getFlowerInstructions(), 10000, "Hướng dẫn hoa thiêng"));
+        campaign.setDesktopLeftImageUrl(imageUrl(dto.getDesktopLeftImageUrl()));
+        campaign.setDesktopRightImageUrl(imageUrl(dto.getDesktopRightImageUrl()));
+        campaign.setMobileImageUrl(imageUrl(dto.getMobileImageUrl()));
+        Set<String> existingKeys = new HashSet<>(), usedKeys = new HashSet<>();
+        for (int i = 0; i < campaign.getFlowerItems().size(); i++) {
+            existingKeys.add(CampaignDto.itemKey(campaign, campaign.getFlowerItems().get(i), i));
+        }
         campaign.getFlowerItems().clear();
         for (CampaignDto.FlowerItemDto item : dto.getFlowerItems()) {
             SpiritualFlowerItem practice = new SpiritualFlowerItem();
+            String key = existingKeys.contains(item.getItemKey()) ? item.getItemKey() : UUID.randomUUID().toString();
+            if (!usedKeys.add(key)) { throw new InvalidCampaignException("Các việc hoa thiêng không được trùng mã."); }
+            practice.setItemKey(key);
             practice.setName(item.getName().trim());
             practice.setInstructions(text(item.getInstructions(), 2000, "Hướng dẫn việc làm"));
             campaign.getFlowerItems().add(practice);
@@ -93,12 +114,24 @@ public class CampaignService {
         }
         text(dto.getTheme(), 300, "Chủ đề"); text(dto.getDescription(), 20000, "Nội dung");
         text(dto.getFlowerInstructions(), 10000, "Hướng dẫn hoa thiêng");
+        imageUrl(dto.getDesktopLeftImageUrl()); imageUrl(dto.getDesktopRightImageUrl()); imageUrl(dto.getMobileImageUrl());
         for (CampaignDto.FlowerItemDto item : dto.getFlowerItems()) {
             if (item == null || text(item.getName(), 200, "Tên việc làm").isEmpty()) {
                 throw new InvalidCampaignException("Vui lòng nhập tên cho từng việc hoa thiêng.");
             }
             text(item.getInstructions(), 2000, "Hướng dẫn việc làm");
         }
+    }
+
+    private static String imageUrl(String value) {
+        String result = text(value, 2048, "Link ảnh");
+        if (result.isEmpty()) { return null; }
+        try {
+            URI uri = new URI(result);
+            if (("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))
+                    && uri.getHost() != null && uri.getUserInfo() == null) { return result; }
+        } catch (URISyntaxException ignored) { }
+        throw new InvalidCampaignException("Link ảnh cần là địa chỉ http:// hoặc https:// hợp lệ.");
     }
 
     private static LocalDate date(String value) {

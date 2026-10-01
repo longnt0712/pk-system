@@ -1775,6 +1775,21 @@
 
         vm.saveByScanQr = function (username) {
             var normalizedUsername = String(username || '').trim();
+            if (/^https?:\/\//i.test(normalizedUsername)) {
+                var qrUrl;
+                try { qrUrl = new window.URL(normalizedUsername); } catch (error) { }
+                var allowedHost = qrUrl && (qrUrl.hostname === window.location.hostname || qrUrl.hostname === 'tnttphungkhoang.com' || /\.tnttphungkhoang\.com$/.test(qrUrl.hostname));
+                if (!allowedHost || qrUrl.pathname !== '/hoa-thieng' || !/^#[A-Za-z0-9_-]{43}$/.test(qrUrl.hash)) {
+                    toastr.error('Link QR học sinh không hợp lệ.', 'Điểm danh QR thất bại');
+                    return $q.reject({message: 'Link QR học sinh không hợp lệ.'});
+                }
+                return service.resolveStudentQr(qrUrl.hash.slice(1)).then(function (data) {
+                    return vm.saveByScanQr(data.studentCode);
+                }, function (error) {
+                    toastr.error('Không nhận diện được mã QR học sinh.', 'Điểm danh QR thất bại');
+                    return $q.reject(error);
+                });
+            }
             var selectedDate = parseDateOnly(vm.qrAttendanceDate);
             var selectedType = Number(vm.checkType);
 

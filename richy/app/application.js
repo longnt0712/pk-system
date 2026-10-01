@@ -376,7 +376,7 @@
             // OAuth errors
             // =========================
             function isPublicCampaignPage() {
-                return /^\/campaigns(?:\/[1-9][0-9]*)?\/?$/.test(window.location.pathname || '');
+                return /^\/campaigns(?:\/[1-9][0-9]*)?\/?$/.test(window.location.pathname || '') || /^\/hoa-thieng\/?$/.test(window.location.pathname || '');
             }
             authSession.restore();
             var stopNetworkStatus = networkStatus.start();
@@ -447,7 +447,7 @@
                             settings.permissionsLoaded = true;
                             $rootScope.$broadcast('permissionsLoaded');
 
-                            if ($state.current.name === 'login') {
+                            if ($state.current.name === 'login' && !($state.params && $state.params.showHome === true)) {
                                 $rootScope.navigateAfterLogin();
                             }
                         }

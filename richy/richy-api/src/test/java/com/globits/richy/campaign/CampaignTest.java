@@ -20,8 +20,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.globits.richy.domain.Campaign;
 import com.globits.richy.dto.CampaignDto;
 import com.globits.richy.repository.CampaignRepository;
+import com.globits.richy.repository.CampaignFlowerEntryRepository;
 import com.globits.richy.rest.*;
 import com.globits.richy.service.impl.CampaignService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /** Exercises the actual method-security proxies, validation and public HTTP mappings. */
 public class CampaignTest {
@@ -35,6 +38,7 @@ public class CampaignTest {
     @EnableGlobalMethodSecurity(securedEnabled = true, proxyTargetClass = true)
     static class Config {
         @Bean public CampaignRepository repository() { return mock(CampaignRepository.class); }
+        @Bean public CampaignFlowerEntryRepository entryRepository() { return mock(CampaignFlowerEntryRepository.class); }
         @Bean public CampaignService service() { return new CampaignService(); }
         @Bean public RestCampaignController controller() { return new RestCampaignController(); }
         @Bean public RestPublicCampaignController publicController() { return new RestPublicCampaignController(); }
@@ -101,6 +105,42 @@ public class CampaignTest {
         assertEquals("Đã sửa", controller.update(5L, update).getName());
         controller.delete(5L); verify(repository).delete(saved);
     }
+    @Test public void imageLinksPersistAndCanBeCleared() {
+        identity("ROLE_ADMIN");
+        CampaignDto value = dto();
+        value.setDesktopLeftImageUrl(" https://example.org/left.jpg ");
+        value.setDesktopRightImageUrl("https://example.org/right.jpg?size=large");
+        value.setMobileImageUrl("https://example.org/banner.jpg");
+        CampaignDto created = controller.create(value);
+        assertEquals("https://example.org/left.jpg", created.getDesktopLeftImageUrl());
+        assertEquals(value.getDesktopRightImageUrl(), created.getDesktopRightImageUrl());
+        assertEquals(value.getMobileImageUrl(), created.getMobileImageUrl());
+        Campaign saved = new Campaign(); saved.setId(5L); ReflectionTestUtils.setField(saved, "version", 0L);
+        saved.setDesktopLeftImageUrl(created.getDesktopLeftImageUrl());
+        saved.setDesktopRightImageUrl(created.getDesktopRightImageUrl()); saved.setMobileImageUrl(created.getMobileImageUrl());
+        when(repository.findOne(5L)).thenReturn(saved);
+        value.setVersion(0L); value.setDesktopLeftImageUrl(null); value.setDesktopRightImageUrl("   ");
+        value.setMobileImageUrl("https://example.org/new-banner.jpg");
+        CampaignDto updated = controller.update(5L, value);
+        assertNull(updated.getDesktopLeftImageUrl()); assertNull(updated.getDesktopRightImageUrl());
+        assertEquals("https://example.org/new-banner.jpg", updated.getMobileImageUrl());
+    }
+    @Test public void invalidImageLinksNeverPersist() {
+        identity("ROLE_EDUCATION_MANAGERMENT");
+        List<String> invalid = Arrays.asList("javascript:alert(1)", "data:image/svg+xml,test", "//example.org/image.jpg",
+                "ftp://example.org/image.jpg", "https://user:password@example.org/image.jpg", "bad link",
+                "https://example.org/" + String.join("", Collections.nCopies(2048, "a")));
+        for (String link : invalid) {
+            for (int field = 0; field < 3; field++) {
+                CampaignDto value = dto();
+                if (field == 0) { value.setDesktopLeftImageUrl(link); }
+                if (field == 1) { value.setDesktopRightImageUrl(link); }
+                if (field == 2) { value.setMobileImageUrl(link); }
+                try { service.create(value); fail("Invalid image URL"); } catch (CampaignService.InvalidCampaignException expected) { }
+            }
+        }
+        verify(repository, never()).saveAndFlush(any(Campaign.class));
+    }
     @Test public void invalidDatesAndMissingFlowerItemsNeverPersist() {
         identity("ROLE_EDUCATION_MANAGERMENT");
         for (String end : Arrays.asList("2026-12-27", "2027-02-30", "bad", "2027-2-01", "0000-01-01")) {
@@ -131,11 +171,17 @@ public class CampaignTest {
         SecurityContextHolder.clearContext();
         Campaign value = new Campaign(); value.setId(5L); value.setName("Chiến dịch công khai");
         value.setStartDate("2026-12-28"); value.setEndDate("2027-01-03");
+        value.setDesktopLeftImageUrl("https://example.org/left.jpg");
+        value.setDesktopRightImageUrl("https://example.org/right.jpg"); value.setMobileImageUrl("https://example.org/banner.jpg");
         when(repository.findOne(5L)).thenReturn(value);
         when(repository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(Collections.singletonList(value)));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(publicController).build();
         mvc.perform(get("/public/campaigns")).andExpect(status().isOk());
-        mvc.perform(get("/public/campaigns/5")).andExpect(status().isOk());
+        byte[] response = mvc.perform(get("/public/campaigns/5")).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+        JsonNode json = new ObjectMapper().readTree(response);
+        assertEquals("https://example.org/left.jpg", json.get("desktopLeftImageUrl").asText());
+        assertEquals("https://example.org/right.jpg", json.get("desktopRightImageUrl").asText());
+        assertEquals("https://example.org/banner.jpg", json.get("mobileImageUrl").asText());
         mvc.perform(get("/public/campaigns/999")).andExpect(status().isNotFound());
         mvc.perform(post("/public/campaigns").contentType("application/json").content("{}")).andExpect(status().isMethodNotAllowed());
         mvc.perform(put("/public/campaigns/5").contentType("application/json").content("{}")).andExpect(status().isMethodNotAllowed());

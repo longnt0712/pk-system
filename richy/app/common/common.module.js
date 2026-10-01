@@ -18,6 +18,7 @@
             // Login page
             .state('login', {
                 url: '/login',
+                params: {showHome: false},
                 templateUrl: 'common/views/login/login.html?v=' + version,
                 data: {pageTitle: 'Đăng nhập hệ thống'},
                 controller: 'LoginController as vm',

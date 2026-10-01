@@ -2558,7 +2558,19 @@
 
         // ===== Public: open modal =====
         vm.zoomPerson = {};
-        vm.openQr = function (dataUrl,person) {
+        vm.showStudentQr = function (user) {
+            if (!user || !user.username || vm.studentQrLoading) { return; }
+            vm.studentQrLoading = true;
+            return service.getStudentQr(user.username).then(function (response) {
+                var link = window.location.origin + '/hoa-thieng#' + response.data.token;
+                return $q.when(window.QRCode.toDataURL(link, {width: 360, margin: 3, errorCorrectionLevel: 'M'}))
+                    .then(function (image) { vm.openQr(image, user.person, link); });
+            }).catch(function (error) {
+                toastr.error(error.data && error.data.message || 'Không tạo được QR học sinh. Vui lòng thử lại.');
+            }).finally(function () { vm.studentQrLoading = false; });
+        };
+        vm.openQr = function (dataUrl,person,link) {
+            vm.currentQrLink = link || '';
             vm.zoomPerson = person;
             vm.qrPreview = dataUrl;
             $('#qrModal').modal('show'); // Bootstrap 3/4

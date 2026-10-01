@@ -35,6 +35,9 @@
         self.searchUsers = searchUsers;
         self.findUserByUserName = findUserByUserName;
         self.deleteUser = deleteUser;
+        self.getStudentQr = function (studentCode) {
+            return $http.post(baseUrl + 'campaign-flower/access', {studentCode: studentCode});
+        };
 
         self.getEducationPrograms = getEducationPrograms;
         function getEducationPrograms(searchDto, pageIndex, pageSize, successCallback, errorCallback) {

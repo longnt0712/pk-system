@@ -6,6 +6,8 @@
         function route(url) {
             return {
                 url: url,
+                reloadOnSearch: url !== '/hoa-thieng',
+                params: {studentMode: url === '/hoa-thieng'},
                 templateUrl: 'campaign/views/campaign.html?v=' + version,
                 data: {pageTitle: 'Chiến dịch · Hoa thiêng', publicCampaign: true},
                 controller: 'CampaignController as vm',
@@ -14,6 +16,7 @@
                         return $ocLazyLoad.load({name: 'Hrm.Campaign', files: [
                             'campaign/campaign.css?v=' + version,
                             'campaign/business/CampaignService.js?v=' + version,
+                            'campaign/controllers/CampaignQrScanner.js?v=' + version,
                             'campaign/controllers/CampaignController.js?v=' + version
                         ]});
                     }]
@@ -21,6 +24,7 @@
             };
         }
         $stateProvider.state('campaigns', route('/campaigns'))
-            .state('campaign_detail', route('/campaigns/{id:int}'));
+            .state('campaign_detail', route('/campaigns/{id:int}'))
+            .state('campaign_student', route('/hoa-thieng'));
     }]);
 })();

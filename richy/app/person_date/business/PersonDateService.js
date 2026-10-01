@@ -25,6 +25,11 @@
         self.getTableDefinition = getTableDefinition;
         self.getUsers = getUsers;
         self.saveByQr = saveByQr;
+        self.resolveStudentQr = function (token) {
+            return utils.resolveAlt(settings.api.baseUrl + 'api/campaign-flower/resolve', 'POST', null, {token: token}, {
+                'Content-Type': 'application/json; charset=utf-8'
+            }, angular.noop, angular.noop);
+        };
         self.saveListByEnrollmentClass = saveListByEnrollmentClass;
         self.getAttendanceClassStatuses = getAttendanceClassStatuses;
         self.saveListByEnrollmentClasses = saveListByEnrollmentClasses;

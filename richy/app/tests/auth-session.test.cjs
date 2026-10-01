@@ -266,14 +266,25 @@ function startApp(h) {
         }
     };
     const settings = {api: {baseUrl: h.Hrm.API_SERVER_URL}, layout: {}};
+    const state = {current: {name: 'application.dashboard'}, params: {}, go(name) { navigations.push(name); }};
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'application.js'), 'utf8'), h.context);
-    invoke(runDefinition, {...h.deps, settings, $http: http, $state: {
-        current: {name: 'application.dashboard'}, go(name) { navigations.push(name); }
-    }, OAuth: {isAuthenticated: () => !!h.token.getToken()},
+    invoke(runDefinition, {...h.deps, settings, $http: http, $state: state, OAuth: {isAuthenticated: () => !!h.token.getToken()},
     blockUI: {start() { blockCalls.start++; }, stop() { blockCalls.stop++; }},
     toastr: {info() {}, warning(message) { notices.push(message); }}, $timeout: timeout, NetworkStatus: {start: () => () => {}}});
-    return {listeners, windowListeners, documentListeners, timers, navigations, settings, blockCalls, notices};
+    return {listeners, windowListeners, documentListeners, timers, navigations, settings, blockCalls, notices, state};
 }
+
+test('returning to the login homepage keeps signed-in users there; normal login still redirects', async () => {
+    for (const showHome of [true, false]) {
+        const h = setup(() => ({data: {id: 7, roles: []}}));
+        const app = startApp(h);
+        app.state.current.name = 'login'; app.state.params.showHome = showHome;
+        app.listeners.$locationChangeSuccess();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.deepEqual(app.navigations, showHome ? [] : ['application.dashboard']);
+        assert.equal(h.cookies['education.user'].id, 7);
+    }
+});
 
 test('headerless 401 clears stale dashboard data and gives one visible login notice', async () => {
     const h = setup(() => { throw invalid; });

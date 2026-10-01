@@ -1,15 +1,31 @@
-<main class="campaign-page">
+<div class="campaign-viewport" campaign-viewport ng-class="{'campaign-scan-view': vm.studentMode && vm.needsScan}">
+<div class="campaign-layout" tabindex="0" aria-label="Nội dung chiến dịch" ng-class="{'campaign-has-side-images': !vm.loading && (vm.imageUrl(vm.campaign.desktopLeftImageUrl) || vm.imageUrl(vm.campaign.desktopRightImageUrl))}">
+    <img ng-if="!vm.loading && vm.imageUrl(vm.campaign.desktopLeftImageUrl)" ng-src="{{vm.imageUrl(vm.campaign.desktopLeftImageUrl)}}" class="campaign-side-image campaign-side-left campaign-no-print" alt="" aria-hidden="true">
+    <img ng-if="!vm.loading && vm.imageUrl(vm.campaign.desktopRightImageUrl)" ng-src="{{vm.imageUrl(vm.campaign.desktopRightImageUrl)}}" class="campaign-side-image campaign-side-right campaign-no-print" alt="" aria-hidden="true">
+<main class="campaign-page" ng-style="vm.viewStyle">
     <nav class="campaign-nav campaign-no-print" aria-label="Điều hướng chiến dịch">
         <a class="campaign-brand" ui-sref="campaigns"><i class="fa fa-leaf" aria-hidden="true"></i> CHIẾN DỊCH · HOA THIÊNG</a>
-        <div><a ng-if="vm.hasSession()" ui-sref="application.dashboard">Về phần mềm</a><a ng-if="!vm.hasSession()" ui-sref="login">Đăng nhập</a></div>
+        <div class="campaign-nav-actions"><span class="campaign-mobile-control campaign-zoom-controls" aria-label="Thu phóng trang"><button type="button" class="btn btn-default" ng-click="vm.changeZoom(-0.25)" ng-disabled="vm.viewZoom <= 0.5" aria-label="Thu nhỏ">−</button><output aria-live="polite">{{vm.viewZoom * 100 | number:0}}%</output><button type="button" class="btn btn-default" ng-click="vm.changeZoom(0.25)" ng-disabled="vm.viewZoom >= 3" aria-label="Phóng to">+</button></span><button type="button" class="btn btn-default campaign-mobile-control" ng-if="vm.fullscreenSupported" ng-click="vm.toggleFullscreen()" aria-pressed="{{vm.fullscreen}}">{{vm.fullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'}}</button><a ui-sref="login({showHome: true})">Về trang chủ</a></div>
     </nav>
+    <p class="campaign-alert campaign-no-print" role="alert" ng-if="vm.viewError">{{vm.viewError}}</p>
 
-    <section class="campaign-hero campaign-no-print" ng-if="!vm.campaign">
+    <section class="campaign-hero campaign-no-print" ng-if="!vm.campaign && !vm.studentMode">
         <span class="campaign-eyebrow">THIẾU NHI THÁNH THỂ</span>
         <h1>Những việc nhỏ, một hành trình lớn</h1>
         <p>Cùng sống chiến dịch và thực hành hoa thiêng mỗi ngày.</p>
         <button ng-if="vm.canManage()" class="btn campaign-primary" ng-click="vm.create()" ng-disabled="vm.editor || vm.loading"><i class="fa fa-plus" aria-hidden="true"></i> Tạo chiến dịch</button>
     </section>
+    <section ng-if="vm.studentMode && vm.needsScan" class="campaign-scan-card campaign-no-print" campaign-qr-scanner>
+        <span class="campaign-eyebrow">PHIẾU HOA THIÊNG CÁ NHÂN</span><h1>Quét thẻ học sinh của em</h1>
+        <p>Bấm mở camera rồi đưa mã QR trên thẻ học sinh vào khung hình. Em dùng được thẻ đã được phát.</p>
+        <div id="campaign-qr-reader" class="campaign-qr-reader" ng-show="scanner.visible"></div>
+        <p ng-if="scanner.error || vm.scanError" class="campaign-alert" role="alert">{{scanner.error || vm.scanError}}</p>
+        <p ng-if="vm.scanBusy" role="status">Đang mở phiếu hoa thiêng của em…</p>
+        <div class="campaign-actions"><button type="button" class="btn campaign-primary" ng-click="scanner.start()" ng-disabled="scanner.starting || vm.scanBusy" ng-if="!scanner.visible">{{scanner.starting ? 'Đang mở camera…' : 'Mở camera quét thẻ'}}</button><button type="button" class="btn btn-default" ng-click="scanner.stop()" ng-if="scanner.visible">Tắt camera</button><label class="btn btn-default campaign-qr-upload">Chọn ảnh QR<input type="file" accept="image/*" aria-label="Chọn ảnh mã QR học sinh" ng-disabled="vm.scanBusy || scanner.starting"></label></div>
+        <p class="campaign-muted">Cho phép truy cập camera khi trình duyệt yêu cầu. Nếu camera không mở được, em có thể chọn ảnh chụp mã QR trên thẻ.</p>
+    </section>
+    <p ng-if="vm.studentMode && vm.student && !vm.needsScan" class="campaign-no-print"><button type="button" class="btn btn-default" ng-click="vm.scanAnotherStudent()">Quét thẻ học sinh khác</button></p>
+    <section ng-if="vm.studentMode && vm.student && !vm.campaign" class="campaign-student-summary campaign-no-print"><h1>Phiếu hoa thiêng của em</h1><p><strong>{{vm.student.saintName}} {{vm.student.fullName}}</strong> · Mã học sinh: {{vm.student.studentCode}}</p><p>Lớp/ngành: {{vm.student.classes.join(', ') || 'Chưa xếp lớp'}}</p><p ng-if="vm.campaigns.length">Chọn chiến dịch để ghi lại những việc em đã làm.</p></section>
 
     <div class="campaign-alert campaign-no-print" role="alert" ng-if="vm.error">{{vm.error}} <button class="btn btn-default" ng-click="vm.retry()">Tải lại</button></div>
     <p class="campaign-loading campaign-no-print" role="status" ng-if="vm.loading"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải chiến dịch…</p>
@@ -26,6 +42,13 @@
                     <label>Ngày kết thúc *<input type="date" class="form-control" ng-model="vm.editor.endDate" required></label>
                 </div>
                 <label>Nội dung chiến dịch<textarea class="form-control" ng-model="vm.editor.description" maxlength="20000" rows="4" placeholder="Mục đích, đối tượng tham gia và các hoạt động của chiến dịch"></textarea></label>
+                <h3>Ảnh trang chiến dịch</h3>
+                <p class="campaign-muted">Dùng link trực tiếp tới ảnh. Bỏ trống để ẩn ảnh tương ứng. Ảnh dọc hiển thị hai bên trên máy tính; ảnh ngang hiển thị phía trên hoa thiêng trên mobile.</p>
+                <div class="campaign-form-grid">
+                    <label>Link ảnh dọc bên trái<input type="url" class="form-control" ng-model="vm.editor.desktopLeftImageUrl" maxlength="2048" placeholder="https://…/anh-trai.jpg"></label>
+                    <label>Link ảnh dọc bên phải<input type="url" class="form-control" ng-model="vm.editor.desktopRightImageUrl" maxlength="2048" placeholder="https://…/anh-phai.jpg"></label>
+                    <label>Link ảnh ngang trên mobile<input type="url" class="form-control" ng-model="vm.editor.mobileImageUrl" maxlength="2048" placeholder="https://…/anh-mobile.jpg"></label>
+                </div>
                 <label>Hướng dẫn thực hiện hoa thiêng<textarea class="form-control" ng-model="vm.editor.flowerInstructions" maxlength="10000" rows="3"></textarea></label>
                 <h3>Các việc hoa thiêng hằng ngày</h3>
                 <div class="campaign-practice-editor" ng-repeat="item in vm.editor.flowerItems track by $index">
@@ -48,36 +71,42 @@
         <button class="btn btn-default" ng-click="vm.deleteTarget = null" ng-disabled="vm.deleting">Hủy</button>
     </section>
 
-    <section ng-if="!vm.campaign && !vm.loading && !vm.error" class="campaign-no-print">
-        <form class="campaign-search" ng-submit="vm.load(1)"><label class="sr-only" for="campaign-search">Tìm chiến dịch</label><input id="campaign-search" class="form-control" ng-model="vm.query" maxlength="200" placeholder="Tìm theo tên hoặc chủ đề…"><button class="btn campaign-primary" type="submit">Tìm kiếm</button></form>
+    <section ng-if="!vm.campaign && !vm.loading && !vm.error && !vm.needsScan" class="campaign-no-print">
+        <form ng-if="!vm.studentMode" class="campaign-search" ng-submit="vm.load(1)"><label class="sr-only" for="campaign-search">Tìm chiến dịch</label><input id="campaign-search" class="form-control" ng-model="vm.query" maxlength="200" placeholder="Tìm theo tên hoặc chủ đề…"><button class="btn campaign-primary" type="submit">Tìm kiếm</button></form>
         <p class="campaign-muted">{{vm.total || 0}} chiến dịch</p>
-        <div class="campaign-empty" ng-if="!vm.campaigns.length"><i class="fa fa-leaf" aria-hidden="true"></i><h2>Chưa có chiến dịch phù hợp</h2><p ng-if="vm.canManage()">Chọn “Tạo chiến dịch” để bắt đầu một hành trình hoa thiêng.</p><p ng-if="!vm.canManage()">Các chiến dịch sẽ xuất hiện tại đây khi được đăng.</p></div>
+        <div class="campaign-empty" ng-if="!vm.campaigns.length"><i class="fa fa-leaf" aria-hidden="true"></i><h2>{{vm.studentMode ? 'Chưa có chiến dịch đang diễn ra' : 'Chưa có chiến dịch phù hợp'}}</h2><p ng-if="vm.canManage()">Chọn “Tạo chiến dịch” để bắt đầu một hành trình hoa thiêng.</p><p ng-if="!vm.canManage()">Các chiến dịch sẽ xuất hiện tại đây khi được đăng.</p></div>
         <div class="campaign-grid">
             <article class="campaign-card" ng-repeat="campaign in vm.campaigns track by campaign.id">
                 <span class="campaign-badge">{{vm.status(campaign)}}</span>
-                <h2><a ui-sref="campaign_detail({id: campaign.id})">{{campaign.name}}</a></h2>
+                <h2><a ng-if="!vm.studentMode" ui-sref="campaign_detail({id: campaign.id})">{{campaign.name}}</a><a ng-if="vm.studentMode" href="" ng-click="vm.selectCampaign(campaign.id)">{{campaign.name}}</a></h2>
                 <p class="campaign-card-theme">{{campaign.theme}}</p>
                 <p class="campaign-muted"><i class="fa fa-calendar" aria-hidden="true"></i> {{vm.formatDate(campaign.startDate)}} – {{vm.formatDate(campaign.endDate)}}</p>
-                <div class="campaign-actions"><a class="btn campaign-primary" ui-sref="campaign_detail({id: campaign.id})">Xem chiến dịch</a><button class="btn btn-default" ng-if="vm.canManage()" ng-click="vm.edit(campaign)" ng-disabled="vm.editLoading">Sửa</button><button class="btn btn-default" ng-if="vm.canManage()" ng-click="vm.askDelete(campaign)">Xóa</button></div>
+                <div class="campaign-actions"><a ng-if="!vm.studentMode" class="btn campaign-primary" ui-sref="campaign_detail({id: campaign.id})">Xem chiến dịch</a><button ng-if="vm.studentMode" class="btn campaign-primary" ng-click="vm.selectCampaign(campaign.id)" ng-disabled="vm.sheetLoading">Mở phiếu hoa thiêng</button><button class="btn btn-default" ng-if="vm.canManage()" ng-click="vm.edit(campaign)" ng-disabled="vm.editLoading">Sửa</button><button class="btn btn-default" ng-if="vm.canManage()" ng-click="vm.askDelete(campaign)">Xóa</button></div>
             </article>
         </div>
         <nav class="campaign-pagination" ng-if="vm.totalPages > 1" aria-label="Phân trang"><button class="btn btn-default" ng-click="vm.load(vm.page - 1)" ng-disabled="vm.page <= 1">Trang trước</button><span>Trang {{vm.page}} / {{vm.totalPages}}</span><button class="btn btn-default" ng-click="vm.load(vm.page + 1)" ng-disabled="vm.page >= vm.totalPages">Trang sau</button></nav>
     </section>
 
     <article ng-if="vm.campaign && !vm.loading" class="campaign-detail">
-        <div class="campaign-no-print"><a ui-sref="campaigns">← Tất cả chiến dịch</a></div>
+        <div class="campaign-no-print"><a ng-if="!vm.studentMode" ui-sref="campaigns">← Tất cả chiến dịch</a><button ng-if="vm.studentMode" class="btn btn-default" ng-click="vm.chooseCampaign()">← Chọn chiến dịch</button></div>
         <header class="campaign-detail-header"><span class="campaign-badge campaign-no-print">{{vm.status(vm.campaign)}}</span><h1>{{vm.campaign.name}}</h1><p class="campaign-detail-theme">{{vm.campaign.theme}}</p><p>{{vm.formatDate(vm.campaign.startDate)}} – {{vm.formatDate(vm.campaign.endDate)}}</p>
             <div class="campaign-actions campaign-no-print" ng-if="vm.canManage()"><button class="btn btn-default" ng-click="vm.edit(vm.campaign)" ng-disabled="vm.editLoading">Sửa chiến dịch</button><button class="btn btn-default" ng-click="vm.askDelete(vm.campaign)">Xóa chiến dịch</button></div>
         </header>
         <section class="campaign-content campaign-no-print" ng-if="vm.campaign.description"><h2>Nội dung chiến dịch</h2><p class="campaign-preline">{{vm.campaign.description}}</p></section>
+        <div ng-if="vm.imageUrl(vm.campaign.mobileImageUrl)" class="campaign-mobile-banner campaign-no-print"><img ng-src="{{vm.imageUrl(vm.campaign.mobileImageUrl)}}" alt="Ảnh chiến dịch"></div>
         <section class="campaign-flower">
             <div class="campaign-flower-heading"><div><span class="campaign-eyebrow">THỰC HÀNH MỖI NGÀY</span><h2>Hoa thiêng</h2></div><button class="btn campaign-primary campaign-no-print" ng-click="vm.print()"><i class="fa fa-print" aria-hidden="true"></i> In phiếu tuần này</button></div>
             <p class="campaign-preline" ng-if="vm.campaign.flowerInstructions">{{vm.campaign.flowerInstructions}}</p>
             <ul class="campaign-practice-notes campaign-no-print"><li ng-repeat="item in vm.campaign.flowerItems track by $index" ng-if="item.instructions"><strong>{{item.name}}:</strong> <span class="campaign-preline">{{item.instructions}}</span></li></ul>
             <div class="campaign-week-nav"><button class="btn btn-default campaign-no-print" ng-click="vm.setWeek(vm.weekIndex - 1)" ng-disabled="vm.weekIndex === 0">← Tuần trước</button><strong>Tuần {{vm.weekIndex + 1}} / {{vm.weekCount}}</strong><button class="btn btn-default campaign-no-print" ng-click="vm.setWeek(vm.weekIndex + 1)" ng-disabled="vm.weekIndex + 1 >= vm.weekCount">Tuần sau →</button></div>
-            <p class="campaign-sheet-identity">Tên thánh và họ tên: ...................................................... &nbsp; Lớp/ngành: ............................</p>
-            <div class="campaign-sheet-scroll"><table class="campaign-sheet"><caption class="sr-only">Phiếu hoa thiêng tuần {{vm.weekIndex + 1}}</caption><thead><tr><th scope="col">Việc hoa thiêng</th><th scope="col" ng-repeat="day in vm.weekDays">{{day.label}}<br>{{vm.formatDate(day.date)}}</th></tr></thead><tbody><tr ng-repeat="item in vm.campaign.flowerItems track by $index"><th scope="row">{{item.name}}</th><td ng-repeat="day in vm.weekDays"><span class="campaign-sheet-box" aria-label="Ô ghi nhận trên phiếu in">□</span></td></tr></tbody></table></div>
-            <p class="campaign-muted campaign-no-print">Đây là mẫu phiếu để xem và in, dùng ghi nhận các việc đã thực hiện theo hướng dẫn của xứ đoàn.</p>
+            <p ng-if="!vm.studentMode" class="campaign-sheet-identity">Tên thánh và họ tên: ...................................................... &nbsp; Lớp/ngành: ............................</p>
+            <p ng-if="vm.studentMode" class="campaign-sheet-identity">Tên thánh và họ tên: <strong>{{vm.student.saintName}} {{vm.student.fullName}}</strong> &nbsp; Lớp/ngành: <strong>{{vm.student.classes.join(', ') || 'Chưa xếp lớp'}}</strong> &nbsp; Mã học sinh: {{vm.student.studentCode}}</p>
+            <p ng-if="vm.studentMode" class="campaign-muted campaign-no-print">Em chỉ tích hoặc bỏ tích cho ngày hôm nay. Các ngày đã qua sẽ được khóa và giữ kết quả đã lưu.</p>
+            <p ng-if="vm.checkError" class="campaign-alert campaign-no-print" role="alert">{{vm.checkError}}</p><p ng-if="vm.saveNotice" class="campaign-muted campaign-no-print" role="status">{{vm.saveNotice}}</p>
+            <div class="campaign-sheet-scroll"><table class="campaign-sheet"><caption class="sr-only">Phiếu hoa thiêng tuần {{vm.weekIndex + 1}}</caption><thead><tr><th scope="col">Việc hoa thiêng</th><th scope="col" ng-repeat="day in vm.weekDays">{{day.label}}<br>{{vm.formatDate(day.date)}}</th></tr></thead><tbody><tr ng-repeat="item in vm.campaign.flowerItems track by $index"><th scope="row">{{item.name}}</th><td ng-repeat="day in vm.weekDays"><span ng-if="!vm.studentMode" class="campaign-sheet-box" aria-label="Ô ghi nhận trên phiếu in">□</span><input ng-if="vm.studentMode" class="campaign-flower-checkbox campaign-no-print" type="checkbox" ng-model="vm.checks[item.itemKey + ':' + day.date]" ng-change="vm.toggleFlower(item, day)" ng-disabled="vm.sheetLoading || vm.isDayLocked(day) || vm.pendingChecks[vm.campaign.id + ':' + item.itemKey + ':' + day.date]" aria-label="{{item.name}} ngày {{vm.formatDate(day.date)}}"><span ng-if="vm.studentMode" class="campaign-sheet-box campaign-print-only">{{vm.checks[item.itemKey + ':' + day.date] ? '✓' : '□'}}</span></td></tr></tbody></table></div>
+            <p ng-if="!vm.studentMode" class="campaign-muted campaign-no-print">Đây là mẫu phiếu để xem và in, dùng ghi nhận các việc đã thực hiện theo hướng dẫn của xứ đoàn.</p>
         </section>
     </article>
 </main>
+</div>
+</div>
