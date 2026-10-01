@@ -64,11 +64,11 @@ public class CampaignTest {
         dto.setFlowerItems(Collections.singletonList(item)); return dto;
     }
     private static void denied(Runnable write) {
-        try { write.run(); fail("Write should require Education Management"); }
+        try { write.run(); fail("Write should require Admin or Education Management"); }
         catch (AccessDeniedException | AuthenticationCredentialsNotFoundException expected) { }
     }
-    @Test public void otherRolesIncludingAdminCannotWrite() {
-        for (String role : Arrays.asList("ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER", "ROLE_STUDENT", "ROLE_STAFF", "ROLE_STUDENT_MANAGERMENT")) {
+    @Test public void otherRolesCannotWrite() {
+        for (String role : Arrays.asList("ROLE_USER", "ROLE_VIEWER", "ROLE_STUDENT", "ROLE_STAFF", "ROLE_STUDENT_MANAGERMENT")) {
             identity(role);
             denied(() -> controller.create(dto()));
             denied(() -> controller.update(5L, dto()));
@@ -86,6 +86,13 @@ public class CampaignTest {
     }
     @Test public void educationManagerCanCreateUpdateAndDelete() {
         identity("ROLE_EDUCATION_MANAGERMENT");
+        assertCanCreateUpdateAndDelete();
+    }
+    @Test public void adminAloneCanCreateUpdateAndDelete() {
+        identity("ROLE_ADMIN");
+        assertCanCreateUpdateAndDelete();
+    }
+    private void assertCanCreateUpdateAndDelete() {
         CampaignDto created = controller.create(dto());
         assertEquals("Đọc kinh mỗi ngày", created.getFlowerItems().get(0).getInstructions());
         Campaign saved = new Campaign(); saved.setId(5L); ReflectionTestUtils.setField(saved, "version", 0L);

@@ -11,7 +11,7 @@ import com.globits.richy.service.impl.CampaignService;
 
 @RestController
 @RequestMapping("/api/campaigns")
-@Secured("ROLE_EDUCATION_MANAGERMENT")
+@Secured({"ROLE_ADMIN", "ROLE_EDUCATION_MANAGERMENT"})
 public class RestCampaignController {
     @Autowired private CampaignService service;
 

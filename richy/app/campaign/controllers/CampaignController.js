@@ -11,7 +11,7 @@
         vm.campaigns = [];
         vm.weekIndex = 0;
         vm.canManage = function () {
-            return settings.permissionsLoaded === true && settings.isEducationManagerment === true;
+            return settings.permissionsLoaded === true && (settings.isAdmin === true || settings.isEducationManagerment === true);
         };
         vm.hasSession = function () { return !!$scope.$root.currentUser; };
         vm.formatDate = function (value) {
@@ -34,10 +34,10 @@
             return today > campaign.endDate ? 'Đã kết thúc' : 'Đang diễn ra';
         };
         function errorMessage(error) {
-            if (error.status === 403) { return 'Chỉ Education Management có quyền tạo, sửa, xóa chiến dịch.'; }
+            if (error.status === 403) { return 'Chỉ Admin hoặc Education Management có quyền tạo, sửa, xóa chiến dịch.'; }
             if (error.status === 404) { return 'Chiến dịch không còn tồn tại.'; }
             if (error.status === 409) { return 'Chiến dịch đã được thay đổi. Hãy tải lại trang trước khi sửa.'; }
-            if (error.status === 401) { return 'Vui lòng đăng nhập bằng tài khoản Education Management.'; }
+            if (error.status === 401) { return 'Vui lòng đăng nhập bằng tài khoản Admin hoặc Education Management.'; }
             return error.data && error.data.message || 'Không thể kết nối. Vui lòng thử lại.';
         }
         vm.load = function (page) {

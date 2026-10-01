@@ -4,9 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const nodeVm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../campaign/controllers/CampaignController.js'), 'utf8');
-function setup({manager = false, id = null, campaign = null} = {}) {
+function setup({manager = false, admin = false, id = null, campaign = null} = {}) {
     let Controller;
-    const settings = {permissionsLoaded: true, isEducationManagerment: manager};
+    const settings = {permissionsLoaded: true, isEducationManagerment: manager, isAdmin: admin};
     const calls = [], watches = [];
     const service = {
         list: async (q, page) => ({data: {content: [], totalPages: 0, totalElements: 0}}),
@@ -21,14 +21,26 @@ function setup({manager = false, id = null, campaign = null} = {}) {
     return {vm, settings, calls, service, watches};
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
-test('only Education Management can edit even if another permission is set', async () => {
-    const h = setup(); h.settings.isAdmin = true; h.settings.isStudentManagerment = true;
+test('other roles cannot edit and permissions must finish loading', async () => {
+    const h = setup(); h.settings.isStudentManagerment = true;
     assert.equal(h.vm.canManage(), false);
     h.vm.create(); assert.equal(h.vm.editor, undefined);
     await h.vm.edit({id: 5}); h.vm.askDelete({id: 5}); await h.vm.deleteCampaign();
     assert.equal(h.calls.length, 0);
     h.settings.isEducationManagerment = true; h.settings.permissionsLoaded = false;
     assert.equal(h.vm.canManage(), false);
+});
+test('Admin alone can create, edit and delete campaigns', async () => {
+    const h = setup({admin: true, campaign: {id: 5, version: 0, name: 'Chiến dịch', startDate: '2026-02-22', endDate: '2026-04-12', flowerItems: [{name: 'Cầu nguyện'}]}});
+    assert.equal(h.vm.canManage(), true);
+    h.vm.create(); assert.ok(h.vm.editor);
+    h.vm.cancelEdit();
+    await h.vm.edit({id: 5}); assert.equal(h.vm.editor.id, 5);
+    h.vm.editor.name = 'Admin đã sửa';
+    await h.vm.save({$invalid: false});
+    assert.equal(h.calls[0][0], 'save'); assert.equal(h.calls[0][1].name, 'Admin đã sửa');
+    h.vm.askDelete({id: 5}); await h.vm.deleteCampaign();
+    assert.ok(h.calls.some(call => call[0] === 'delete' && call[1] === 5));
 });
 test('creating a campaign saves configured daily practices and calendar dates', async () => {
     const h = setup({manager: true}); h.vm.create();
