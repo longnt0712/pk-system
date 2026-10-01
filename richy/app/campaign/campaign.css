@@ -41,8 +41,8 @@
 @media(max-width:600px) { .campaign-page { padding:15px; }.campaign-page h1 { font-size:28px; }.campaign-hero { padding:25px; }.campaign-grid,.campaign-form-grid { grid-template-columns:1fr; }.campaign-nav { align-items:flex-start; }.campaign-practice-editor { grid-template-columns:24px 1fr auto; }.campaign-practice-editor label:nth-of-type(2) { grid-column:2; }.campaign-practice-editor>button { grid-column:3; grid-row:1 / 3; }.campaign-editor,.campaign-flower { padding:18px; }.campaign-flower-heading { align-items:flex-start; flex-direction:column; }.campaign-week-nav .btn { padding:8px!important; font-size:12px; } }
 /* Rotate only the campaign viewport. Its own scroller follows the visual layout. */
 @media screen and (max-width:900px) and (orientation:portrait), screen and (hover:none) and (pointer:coarse) and (orientation:portrait) {
-    .campaign-viewport:not(.campaign-scan-view) { position:fixed; inset:0; overflow:hidden; z-index:2; }
-    .campaign-viewport:not(.campaign-scan-view) .campaign-layout { position:absolute; top:100%; left:0; width:100vh; width:100dvh; height:100vw; height:100dvw; transform:rotate(-90deg); transform-origin:top left; overflow:hidden; }
+    .campaign-viewport { position:fixed; inset:0; overflow:hidden; z-index:2; }
+    .campaign-viewport .campaign-layout { position:absolute; top:100%; left:0; width:100vh; width:100dvh; height:100vw; height:100dvw; transform:rotate(-90deg); transform-origin:top left; overflow:hidden; }
     .campaign-page { max-width:none; padding:15px; height:100%; overflow:auto; overscroll-behavior:contain; }
     .campaign-has-side-images .campaign-page { max-width:74%; }
     .campaign-side-image { height:calc(100vw - 16px); height:calc(100dvw - 16px); }

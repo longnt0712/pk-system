@@ -1,4 +1,5 @@
-<div class="campaign-viewport" campaign-viewport ng-class="{'campaign-scan-view': vm.studentMode && vm.needsScan}">
+<div ng-if="vm.settings.campaignsEnabled === true">
+<div class="campaign-viewport" campaign-viewport>
 <div class="campaign-layout" tabindex="0" aria-label="Nội dung chiến dịch" ng-class="{'campaign-has-side-images': !vm.loading && (vm.imageUrl(vm.imageOptions().desktopLeftImageUrl) || vm.imageUrl(vm.imageOptions().desktopRightImageUrl))}">
     <div ng-if="!vm.loading && vm.imageUrl(vm.imageOptions().desktopLeftImageUrl)" class="campaign-side-image campaign-side-left campaign-no-print" aria-hidden="true"><img ng-src="{{vm.imageUrl(vm.imageOptions().desktopLeftImageUrl)}}" class="campaign-framed-image" ng-style="vm.imageStyle('desktopLeftImageUrl', vm.imageOptions())" alt=""></div>
     <div ng-if="!vm.loading && vm.imageUrl(vm.imageOptions().desktopRightImageUrl)" class="campaign-side-image campaign-side-right campaign-no-print" aria-hidden="true"><img ng-src="{{vm.imageUrl(vm.imageOptions().desktopRightImageUrl)}}" class="campaign-framed-image" ng-style="vm.imageStyle('desktopRightImageUrl', vm.imageOptions())" alt=""></div>
@@ -145,4 +146,6 @@
     </article>
 </main>
 </div>
+</div>
+
 </div>

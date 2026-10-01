@@ -4,9 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const nodeVm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../campaign/controllers/CampaignController.js'), 'utf8');
-function setup({manager = false, admin = false, id = null, campaign = null, studentMode = false, token = 'a'.repeat(43), entries = [], clock = null, serverTime = Date.UTC(2026,9,1,5), windowExtras = {}, campaignId = null, campaignCode = null, activeCampaigns = null, getError = null} = {}) {
+function setup({campaignsEnabled = true, manager = false, admin = false, id = null, campaign = null, studentMode = false, token = 'a'.repeat(43), entries = [], clock = null, serverTime = Date.UTC(2026,9,1,5), windowExtras = {}, campaignId = null, campaignCode = null, activeCampaigns = null, getError = null} = {}) {
     let Controller;
-    const settings = {permissionsLoaded: true, isEducationManagerment: manager, isAdmin: admin};
+    const settings = {campaignsEnabled, permissionsLoaded: true, isEducationManagerment: manager, isAdmin: admin};
     const calls = [], watches = [], events = {};
     let dayCallback, dayDelay, destroyed, digests = 0;
     const service = {
@@ -20,12 +20,14 @@ function setup({manager = false, admin = false, id = null, campaign = null, stud
     service.studentLanding = async () => ({data: {serverTime, student: {studentCode: 'hs001', saintName: 'Đa Minh', fullName: 'Nguyễn Văn An', classes: ['Thiếu Nhi 1']}, campaigns: activeCampaigns || (campaign ? [campaign] : [])}});
     service.studentSheet = async (token, id, week) => {calls.push(['sheet', token, id, week]); return {data: {student: {studentCode: 'hs001', saintName: 'Đa Minh', fullName: 'Nguyễn Văn An', classes: ['Thiếu Nhi 1']}, campaign, entries, serverTime}};};
     service.checkFlower = async (...args) => {calls.push(['check', ...args]); return {data: {completed: args[4]}};};
+    const apiCalls = [];
+    Object.keys(service).forEach(name => { const original = service[name]; service[name] = (...args) => { apiCalls.push(name); return original(...args); }; });
     const state = {current: {name: studentMode ? 'campaign_student' : 'campaigns'}, go: async (...args) => calls.push(['go', ...args])};
     const ClockDate = clock ? class extends Date { static now() { return clock.now; } } : Date;
     const sandbox = nodeVm.createContext({Date: ClockDate, angular: {module: () => ({controller: (name, fn) => { Controller = fn; }, directive() {}}), copy: structuredClone}});
     nodeVm.runInContext(source, sandbox);
     const vm = new Controller({$root: {}, $watch: (...args) => watches.push(args), $evalAsync: fn => {digests++;if(fn)fn();}, $on: (event, fn) => {events[event]=fn;if(event==='$destroy')destroyed = fn;}}, state, {id, studentMode, campaignId, campaignCode}, {URL, location: {hash: '#' + token}, print() {calls.push(['print']);}, confirm:()=>true, ...windowExtras, ...(clock ? {setTimeout(fn, delay) {dayCallback=fn; dayDelay=delay; return 1;}, clearTimeout() {dayCallback=null;}} : {})}, settings, service, {success() {}, error() {}}, {hash(value) {if(windowExtras.history){windowExtras.history.replaceState(null,'','/hoa-thieng'+(campaignCode?'/c/'+campaignCode:campaignId?'/'+campaignId:'')+(value?'#'+value:''));}return this;}, replace() {return this;}});
-    return {vm, settings, calls, service, watches, events, getDayDelay: () => dayDelay, midnight: () => dayCallback(), getDigests: () => digests, destroy: () => destroyed(), hasDayTimer: () => !!dayCallback};
+    return {vm, settings, calls, apiCalls, service, watches, events, getDayDelay: () => dayDelay, midnight: () => dayCallback(), getDigests: () => digests, destroy: () => destroyed(), hasDayTimer: () => !!dayCallback};
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
@@ -356,4 +358,21 @@ test('image dragging follows normal and rotated mobile coordinates, survives rel
  const mobile=cropDrag(true);mobile.events.pointerdown({button:0,pointerId:1,clientX:100,clientY:100,preventDefault(){}});mobile.events.pointermove({pointerId:1,clientX:130,clientY:20});mobile.flush();assert.equal(mobile.crop.x,20);assert.equal(mobile.crop.y,10);
  mobile.events.pointermove({pointerId:1,clientX:9999,clientY:-9999});mobile.flush();assert.equal(mobile.crop.x,100);assert.equal(mobile.crop.y,100);
  mobile.events.pointercancel();mobile.events.pointermove({pointerId:1,clientX:0,clientY:0});mobile.flush();assert.equal(mobile.crop.x,100);
+});
+
+test('disabled campaign domains redirect before requesting data, registering listeners or starting timers', async () => {
+    for (const campaignsEnabled of [false, null]) {
+        for (const params of [{}, {campaignCode: 'c'.repeat(32)}, {studentMode: true, token: '', campaignCode: 'c'.repeat(32)}, {studentMode: true}]) {
+            const listeners = [];
+            const h = setup({...params, campaignsEnabled, admin: true, clock: {now: Date.UTC(2026,9,1)}, windowExtras: {addEventListener: name => listeners.push(name)}});
+            await tick();
+            assert.deepEqual(h.apiCalls, []);
+            assert.deepEqual(structuredClone(h.calls), [['go', 'login', {showHome: true}, {location: 'replace'}]]);
+            assert.equal(h.hasDayTimer(), false);
+            assert.deepEqual(h.watches, []);
+            assert.deepEqual(Object.keys(h.events), []);
+            assert.deepEqual(listeners, []);
+            assert.equal(h.vm.campaign, undefined);
+        }
+    }
 });

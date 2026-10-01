@@ -4,6 +4,11 @@
     CampaignController.$inject = ['$scope', '$state', '$stateParams', '$window', 'settings', 'CampaignService', 'toastr', '$location'];
     function CampaignController($scope, $state, $stateParams, $window, settings, service, toastr, $location) {
         var vm = this;
+        vm.settings = settings;
+        if (settings.campaignsEnabled !== true) {
+            $state.go('login', {showHome: true}, {location: 'replace'});
+            return;
+        }
         var requestNumber = 0;
         var studentRequest = 0;
         var serverClockOffset = 0, dayTimer;
@@ -14,7 +19,6 @@
         var studentToken = vm.studentMode ? String($window.location.hash || '').slice(1) : '';
         vm.needsScan = vm.studentMode && !/^[A-Za-z0-9_-]{43}$/.test(studentToken);
         vm.checks = {}; vm.savedChecks = {}; vm.pendingChecks = {};
-        vm.settings = settings;
         vm.page = 1;
         vm.query = '';
         vm.campaigns = [];
