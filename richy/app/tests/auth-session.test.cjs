@@ -41,9 +41,12 @@ function setup(transport, protocol = 'https:') {
         getToken() { return deps.$cookies.getObject('token'); },
         getAccessToken() { return (this.getToken() || {}).access_token; },
         getRefreshToken() { return (this.getToken() || {}).refresh_token; },
-        getAuthorizationHeader() { const v = this.getAccessToken(); return v ? 'Bearer ' + v : undefined; }
+        getAuthorizationHeader() {
+            const value = this.getToken() || {}, type = value.token_type;
+            return type && value.access_token ? type.charAt(0).toUpperCase() + type.slice(1) + ' ' + value.access_token : undefined;
+        }
     };
-    const context = vm.createContext({Hrm, window: {location: {protocol}}, angular: {copy, extend: Object.assign}, Date});
+    const context = vm.createContext({Hrm, window: {URL, location: {protocol, href: 'https://example.test/'}}, angular: {copy, extend: Object.assign}, Date});
     for (const name of ['application.services.js', 'application.configs.js']) {
         vm.runInContext(fs.readFileSync(path.join(__dirname, '..', name), 'utf8'), context);
     }
@@ -225,9 +228,11 @@ test('retry preserves the body of POST/upload requests', async () => {
 
 function startApp(h) {
     const listeners = {}, windowListeners = {}, documentListeners = {}, timers = [], navigations = [];
+    const notices = [];
     const blockCalls = {start: 0, stop: 0};
     const root = h.deps.$rootScope;
     root.$on = (name, fn) => { listeners[name] = fn; };
+    root.$emit = (name, ...args) => { h.events.push(name); if (listeners[name]) listeners[name]({}, ...args); };
     root.$broadcast = () => {};
     root.$evalAsync = fn => fn();
     const timeout = (fn, delay) => { const timer = {fn, delay}; timers.push(timer); return timer; };
@@ -266,9 +271,144 @@ function startApp(h) {
         current: {name: 'application.dashboard'}, go(name) { navigations.push(name); }
     }, OAuth: {isAuthenticated: () => !!h.token.getToken()},
     blockUI: {start() { blockCalls.start++; }, stop() { blockCalls.stop++; }},
-    toastr: {info() {}, warning() {}}, $timeout: timeout, NetworkStatus: {start: () => () => {}}});
-    return {listeners, windowListeners, documentListeners, timers, navigations, settings, blockCalls};
+    toastr: {info() {}, warning(message) { notices.push(message); }}, $timeout: timeout, NetworkStatus: {start: () => () => {}}});
+    return {listeners, windowListeners, documentListeners, timers, navigations, settings, blockCalls, notices};
 }
+
+test('headerless 401 clears stale dashboard data and gives one visible login notice', async () => {
+    const h = setup(() => { throw invalid; });
+    h.session.saveUser({id: 7, roles: []});
+    h.token.removeToken();
+    const app = startApp(h);
+    await Promise.allSettled([h.http({url: api}), h.http({url: api + '?second=1'})]);
+    assert.equal(h.cookies['education.user'], undefined);
+    assert.equal(h.deps.$rootScope.currentUser, null);
+    assert.deepEqual(app.navigations, ['login']);
+    assert.equal(app.notices.length, 1);
+    assert.match(h.deps.$rootScope.sessionNotice, /đăng nhập lại/);
+    assert.match(fs.readFileSync(path.join(__dirname, '../common/views/login/login.html'), 'utf8'), /ng-if="sessionNotice"/);
+});
+
+test('a token missing its type can recover through its refresh token after a headerless 401', async () => {
+    let refreshes = 0;
+    const h = setup(config => {
+        if (config.url.endsWith('/oauth/token')) { refreshes++; return fresh; }
+        if (!config.headers.Authorization) throw invalid;
+        return {data: {id: 7}};
+    });
+    h.token.setToken({access_token: 'old', refresh_token: 'refresh-1'});
+    const response = await h.http({url: api});
+    assert.equal(response.data.id, 7);
+    assert.equal(refreshes, 1);
+    assert.equal(h.events.length, 0);
+});
+
+test('a refresh-only token can recover; rejected refresh 401 shows a notice and returns to login', async () => {
+    for (const rejected of [false, true]) {
+        const h = setup(config => {
+            if (config.url.endsWith('/oauth/token')) {
+                if (rejected) throw {status: 401, data: {error: 'invalid_client'}};
+                return fresh;
+            }
+            if (!config.headers.Authorization) throw invalid;
+            return {data: {id: 7}};
+        });
+        h.token.setToken({refresh_token: 'refresh-1'});
+        const app = startApp(h);
+        if (rejected) {
+            await assert.rejects(h.http({url: api}));
+            assert.deepEqual(app.navigations, ['login']);
+            assert.equal(app.notices.length, 1);
+        } else {
+            await h.http({url: api});
+            assert.equal(h.token.getAccessToken(), 'fresh');
+            assert.equal(app.navigations.length, 0);
+        }
+    }
+});
+
+test('root-relative API URLs and explicit current bearer headers still refresh', async () => {
+    for (const config of [
+        {url: '/service/api/users/getCurrentUser'},
+        {url: api, headers: {Authorization: 'Bearer old'}},
+        {url: api, headers: {authorization: 'Bearer old'}}
+    ]) {
+        const h = setup(request => {
+            if (request.url.endsWith('/oauth/token')) return fresh;
+            if ((request.headers.Authorization || request.headers.authorization) !== 'Bearer fresh') throw invalid;
+            return {data: {id: 7}};
+        });
+        await h.http(config);
+        assert.equal(h.token.getAccessToken(), 'fresh');
+    }
+});
+
+test('tab resume detects a vanished token or empty token cookie without waiting for a REST call', () => {
+    for (const malformed of [false, true]) {
+        const h = setup(() => { throw new Error('No request should be needed'); });
+        h.session.saveUser({id: 7});
+        const app = startApp(h);
+        h.token.removeToken();
+        if (malformed) h.cookies.token = {};
+        app.documentListeners.visibilitychange();
+        app.windowListeners.pageshow();
+        assert.deepEqual(app.navigations, ['login']);
+        assert.equal(app.notices.length, 1);
+        assert.equal(h.cookies['education.user'], undefined);
+    }
+});
+
+test('a late headerless 401 cannot clear a newer login', async () => {
+    const gate = deferred();
+    const h = setup(() => gate.promise);
+    h.token.removeToken();
+    const pending = h.http({url: api});
+    await new Promise(resolve => setImmediate(resolve));
+    h.token.setToken(fresh.data);
+    gate.reject(invalid);
+    await assert.rejects(pending);
+    assert.equal(h.token.getAccessToken(), 'fresh');
+    assert.equal(h.events.length, 0);
+});
+
+test('a late current-user 401 after intentional logout does not claim the session expired', async () => {
+    const gate = deferred();
+    const h = setup(config => config.url.endsWith('/oauth/logout') ? {} : gate.promise);
+    h.session.saveUser({id: 7});
+    const app = startApp(h);
+    app.listeners.$locationChangeSuccess();
+    await new Promise(resolve => setImmediate(resolve));
+    await h.session.logout();
+    gate.reject(invalid);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(app.notices.length, 0);
+    assert.equal(h.cookies.token, undefined);
+});
+
+test('an unusable successful refresh response cannot leave a silent broken session', async () => {
+    const h = setup(config => {
+        if (config.url.endsWith('/oauth/token')) return {data: {}};
+        throw invalid;
+    });
+    const app = startApp(h);
+    await assert.rejects(h.http({url: api}));
+    assert.equal(h.cookies.token, undefined);
+    assert.equal(app.notices.length, 1);
+    assert.deepEqual(app.navigations, ['login']);
+});
+
+test('the expiration latch resets for a new login and the persistent notice clears after success', async () => {
+    const h = setup(() => { throw invalid; });
+    h.token.removeToken();
+    const app = startApp(h);
+    await assert.rejects(h.http({url: api}));
+    h.token.setToken(fresh.data);
+    h.session.saveUser({id: 8});
+    assert.equal(h.deps.$rootScope.sessionNotice, '');
+    h.token.removeToken();
+    await assert.rejects(h.http({url: api}));
+    assert.equal(app.notices.length, 2);
+});
 
 test('the real app preserves login on resume failure and retries when connectivity returns', async () => {
     let requests = 0, offline = true;

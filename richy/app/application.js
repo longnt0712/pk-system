@@ -41,6 +41,7 @@
             'Hrm.Products',
             'Hrm.PersonDate',
             'Hrm.EducationProgram',
+            'Hrm.Campaign',
             'Hrm.Mark',
             'Hrm.StudentMark',
             'Hrm.TopicCategory',
@@ -374,12 +375,18 @@
             // =========================
             // OAuth errors
             // =========================
+            function isPublicCampaignPage() {
+                return /^\/campaigns(?:\/[1-9][0-9]*)?\/?$/.test(window.location.pathname || '');
+            }
             authSession.restore();
             var stopNetworkStatus = networkStatus.start();
             $rootScope.$on('session:expired', function () {
                 blockUI.stop();
-                toastr.warning('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.', 'Đăng nhập');
+                $rootScope.sessionNotice = 'Phiên đăng nhập đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại để tiếp tục.';
+                toastr.warning($rootScope.sessionNotice, 'Đăng nhập', {timeOut: 10000, closeButton: true});
                 resetPermissionSettings();
+                settings.permissionsLoaded = false;
+                if (isPublicCampaignPage()) { return; }
                 $rootScope.$emit('$unauthorized', function () {});
                 prepareBattleRoomLoginRedirect();
                 $state.go('login');
@@ -395,7 +402,15 @@
             function checkCurrentUser(attempt, force) {
                 if (userCheckInFlight) { return; }
 
-                if (!OAuth.isAuthenticated()) {
+                if (!authSession.hasCredentials()) {
+                    // A stale user cookie must not keep an unauthenticated
+                    // dashboard visible after Safari discards the token.
+                    if ($rootScope.currentUser || $cookies.getObject(constants.cookies_user) ||
+                        $cookies.getObject(constants.oauth2_token)) {
+                        authSession.expire();
+                        return;
+                    }
+                    if (isPublicCampaignPage()) { return; }
                     prepareBattleRoomLoginRedirect();
                     $rootScope.$emit('$unauthorized', function () {});
                     $state.go('login');
@@ -441,6 +456,16 @@
                         // A failed/hidden check is retried on the next resume;
                         // the two-minute throttle applies to successful checks.
                         lastUserCheckAt = 0;
+                        if (status === 401) {
+                            var current = $cookies.getObject(constants.oauth2_token);
+                            if ((!current && ($rootScope.currentUser || $cookies.getObject(constants.cookies_user))) ||
+                                (current && checkedToken &&
+                                current.refresh_token === checkedToken.refresh_token &&
+                                current.access_token === checkedToken.access_token)) {
+                                authSession.expire();
+                            }
+                            return;
+                        }
                         // A suspended Safari tab may resume before networking is
                         // ready. Keep credentials and retry transient failures.
                         if ((status <= 0 || status === 408 || status === 429 || status >= 500) &&
@@ -459,7 +484,8 @@
             $rootScope.$on('$locationChangeSuccess', function () { checkCurrentUser(0); });
             function resumeSession(event) {
                 if (window.document.hidden || window.navigator.onLine === false ||
-                    !OAuth.isAuthenticated()) { return; }
+                    (!authSession.hasCredentials() && !$rootScope.currentUser &&
+                        !$cookies.getObject(constants.cookies_user) && !$cookies.getObject(constants.oauth2_token))) { return; }
                 $rootScope.$evalAsync(function () { checkCurrentUser(0, event && event.type === 'online'); });
             }
             window.addEventListener('pageshow', resumeSession);

@@ -12,6 +12,7 @@
         function ($q, $injector, $rootScope, $cookies, token, constants) {
             var refreshPromise = null;
             var sessionGeneration = 0;
+            var expirationNotified = false;
             var options = {path: '/', secure: window.location.protocol === 'https:'};
 
             function clear() {
@@ -24,7 +25,11 @@
             function expire(expectedHeader) {
                 // Ignore responses belonging to an earlier login/logout.
                 if (expectedHeader && token.getAuthorizationHeader() !== expectedHeader) { return; }
+                // Several dashboard requests can fail at once after the cookie
+                // disappears. Notify/navigate once, not once per request.
+                if (expirationNotified && !token.getToken()) { return; }
                 clear();
+                expirationNotified = true;
                 $rootScope.$emit('session:expired');
             }
 
@@ -52,12 +57,18 @@
                     if (sessionGeneration !== startedGeneration || current.refresh_token !== generation) {
                         return $q.reject({status: -1, sessionChanged: true});
                     }
+                    if (!response.data || !response.data.access_token || !response.data.token_type) {
+                        expire();
+                        return $q.reject({status: 401, data: {error: 'invalid_token'}});
+                    }
                     token.setToken(response.data);
+                    expirationNotified = false;
                     return response;
                 }, function (error) {
                     var current = token.getToken() || {};
-                    if (sessionGeneration === startedGeneration && current.refresh_token === generation && error.status === 400 &&
-                        error.data && error.data.error === 'invalid_grant') {
+                    if (sessionGeneration === startedGeneration && current.refresh_token === generation &&
+                        (error.status === 401 || (error.status === 400 && error.data &&
+                            (error.data.error === 'invalid_grant' || error.data.error === 'invalid_token')))) {
                         expire();
                     }
                     // Network/server failures leave the token available for another attempt.
@@ -69,6 +80,9 @@
             return {
                 refresh: refresh,
                 expire: expire,
+                hasCredentials: function () {
+                    return !!(token.getAuthorizationHeader() || token.getRefreshToken());
+                },
                 restore: function () {
                     var value = token.getToken();
                     if (value && !value.session_expires_at) { token.setToken(value); }
@@ -76,6 +90,8 @@
                 saveUser: function (user) {
                     var value = token.getToken();
                     if (!value) { return; }
+                    expirationNotified = false;
+                    $rootScope.sessionNotice = '';
                     $rootScope.currentUser = user;
                     $cookies.putObject(constants.cookies_user, user, angular.extend({}, options,
                         {expires: new Date(value.session_expires_at)}));
@@ -99,7 +115,15 @@
         function ($q, $injector, token) {
             var apiRoot = Hrm.API_SERVER_URL.replace(/\/$/, '') + '/api/';
             function isApi(config) {
-                return config && !config.skipSessionAuth && config.url.indexOf(apiRoot) === 0;
+                if (!config || config.skipSessionAuth || typeof config.url !== 'string') { return false; }
+                // Also recognize root-relative URLs without sending credentials
+                // to a different origin. Resolve just as the browser does.
+                try {
+                    var base = (window.document && window.document.baseURI) || window.location.href || Hrm.API_SERVER_URL;
+                    return new window.URL(config.url, base).href.indexOf(apiRoot) === 0;
+                } catch (ignore) {
+                    return config.url.indexOf(apiRoot) === 0;
+                }
             }
             function retry(config) {
                 if (!token.getAccessToken()) {
@@ -109,28 +133,39 @@
                 // the browser's native data. Only the headers need a new object.
                 var next = angular.extend({}, config, {headers: angular.extend({}, config.headers)});
                 next.sessionAuthRetried = true;
-                delete next.headers.Authorization;
+                Object.keys(next.headers).forEach(function (name) {
+                    if (name.toLowerCase() === 'authorization') { delete next.headers[name]; }
+                });
                 return $injector.get('$http')(next);
             }
             return {
                 request: function (config) {
                     config.headers = config.headers || {};
-                    if (isApi(config) && !config.headers.hasOwnProperty('Authorization')) {
+                    if (isApi(config)) {
                         var header = token.getAuthorizationHeader();
-                        if (header) {
+                        var explicitHeader;
+                        Object.keys(config.headers).forEach(function (name) {
+                            if (name.toLowerCase() === 'authorization') { explicitHeader = config.headers[name]; }
+                        });
+                        // Respect requests intentionally using a different identity.
+                        if (explicitHeader && explicitHeader !== header) { return config; }
+                        config.sessionAuthManaged = true;
+                        config.sessionAuthHeader = header;
+                        config.sessionAuthAccess = token.getAccessToken();
+                        config.sessionAuthRefresh = token.getRefreshToken();
+                        if (header && !explicitHeader) {
                             config.headers.Authorization = header;
-                            config.sessionAuthHeader = header;
-                            config.sessionAuthRefresh = token.getRefreshToken();
                         }
                     }
                     return config;
                 },
                 responseError: function (error) {
                     var config = error.config;
-                    if (!isApi(config) || error.status !== 401 || !config.sessionAuthHeader) {
+                    if (!isApi(config) || error.status !== 401 || !config.sessionAuthManaged) {
                         return $q.reject(error);
                     }
-                    if (token.getRefreshToken() !== config.sessionAuthRefresh || !token.getAccessToken()) {
+                    if (token.getRefreshToken() !== config.sessionAuthRefresh ||
+                        (!config.sessionAuthRefresh && token.getAccessToken() !== config.sessionAuthAccess)) {
                         return $q.reject(error);
                     }
                     var session = $injector.get('AuthSession');

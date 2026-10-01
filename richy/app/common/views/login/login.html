@@ -16,6 +16,9 @@
                 <!-- BEGIN PAGE CONTENT -->
                 <div class="page-content">
                     <div class="container">
+                        <div class="alert alert-warning" ng-if="sessionNotice" role="alert" aria-live="assertive">
+                            {{sessionNotice}}
+                        </div>
                         <div class="alert alert-danger" ng-if="vm.loginError" role="alert" aria-live="assertive">
                             {{vm.loginError}}
                         </div>
