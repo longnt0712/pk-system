@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const nodeVm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../campaign/controllers/CampaignController.js'), 'utf8');
-function setup({campaignsEnabled = true, manager = false, admin = false, id = null, campaign = null, studentMode = false, token = 'a'.repeat(43), entries = [], clock = null, serverTime = Date.UTC(2026,9,1,5), windowExtras = {}, campaignId = null, campaignCode = null, activeCampaigns = null, getError = null} = {}) {
+function setup({campaignsEnabled = true, manager = false, admin = false, id = null, campaign = null, studentMode = false, token = 'a'.repeat(43), entries = [], clock = null, serverTime = Date.UTC(2026,9,1,5), windowExtras = {}, campaignId = null, campaignCode = null, activeCampaigns = null, getError = null, classes = ['Thiếu Nhi 1']} = {}) {
     let Controller;
     const settings = {campaignsEnabled, permissionsLoaded: true, isEducationManagerment: manager, isAdmin: admin};
     const calls = [], watches = [], events = {};
@@ -17,8 +17,8 @@ function setup({campaignsEnabled = true, manager = false, admin = false, id = nu
         remove: async value => { calls.push(['delete', value]); }
     };
     service.scanStudentQr = async code => {calls.push(['scan', code]); return {data: {token: 'b'.repeat(43)}};};
-    service.studentLanding = async () => ({data: {serverTime, student: {studentCode: 'hs001', saintName: 'Đa Minh', fullName: 'Nguyễn Văn An', classes: ['Thiếu Nhi 1']}, campaigns: activeCampaigns || (campaign ? [campaign] : [])}});
-    service.studentSheet = async (token, id, week) => {calls.push(['sheet', token, id, week]); return {data: {student: {studentCode: 'hs001', saintName: 'Đa Minh', fullName: 'Nguyễn Văn An', classes: ['Thiếu Nhi 1']}, campaign, entries, serverTime}};};
+    service.studentLanding = async () => ({data: {serverTime, student: {studentCode: 'hs001', saintName: 'Đa Minh', fullName: 'Nguyễn Văn An', classes}, campaigns: activeCampaigns || (campaign ? [campaign] : [])}});
+    service.studentSheet = async (token, id, week) => {calls.push(['sheet', token, id, week]); return {data: {student: {studentCode: 'hs001', saintName: 'Đa Minh', fullName: 'Nguyễn Văn An', classes}, campaign, entries, serverTime}};};
     service.checkFlower = async (...args) => {calls.push(['check', ...args]); return {data: {completed: args[4]}};};
     const apiCalls = [];
     Object.keys(service).forEach(name => { const original = service[name]; service[name] = (...args) => { apiCalls.push(name); return original(...args); }; });
@@ -42,7 +42,7 @@ function setupViewport({supported = true} = {}) {
         exitFullscreen: async () => {calls.push('exit'); document.fullscreenElement = null; events.get('fullscreenchange')();}};
     const layout = {clientWidth: 844};
     const target = {querySelector: () => layout, requestFullscreen: async options => {calls.push(['enter', options]); document.fullscreenElement = target; events.get('fullscreenchange')();}};
-    const scope = {vm: {}, $evalAsync() {}, $on: (event, fn) => {destroy = fn;}};
+    const scope = {vm: {}, $watch() {}, $evalAsync() {}, $on: (event, fn) => {destroy = fn;}};
     nodeVm.runInNewContext(source, {angular: {module: () => ({controller() {}, directive: (name, registration) => {factory = registration[registration.length - 1];}})}});
     factory({document, addEventListener: (event, fn) => events.set(event, fn), removeEventListener: event => events.delete(event)}).link(scope, [target]);
     return {vm: scope.vm, calls, target, layout, events, getMeta: () => content, initialMeta, destroy: () => destroy()};
@@ -377,10 +377,10 @@ test('disabled campaign domains redirect before requesting data, registering lis
     }
 });
 
-test('crop frames and side previews use the actual visible side image proportions', () => {
+test('crop frames and side previews retain 9:16 regardless of available side space', () => {
     const h = setup({manager: true}); h.vm.create(); h.vm.imageFrameRatios = {desktopLeftImageUrl: 348/868, desktopRightImageUrl: 90/374};
-    h.vm.cropField = 'desktopLeftImageUrl'; assert.equal(h.vm.cropFrameStyle().aspectRatio, 348/868); assert.equal(h.vm.previewSideStyle(h.vm.cropField).aspectRatio, 348/868);
-    h.vm.cropField = 'desktopRightImageUrl'; assert.equal(h.vm.cropFrameStyle().aspectRatio, 90/374); assert.equal(h.vm.previewSideStyle(h.vm.cropField).aspectRatio, 90/374);
+    h.vm.cropField = 'desktopLeftImageUrl'; assert.equal(h.vm.cropFrameStyle().aspectRatio, 9/16); assert.equal(h.vm.previewSideStyle(h.vm.cropField).aspectRatio, 9/16);
+    h.vm.cropField = 'desktopRightImageUrl'; assert.equal(h.vm.cropFrameStyle().aspectRatio, 9/16); assert.equal(h.vm.previewSideStyle(h.vm.cropField).aspectRatio, 9/16);
     h.vm.cropField = 'mobileImageUrl'; assert.deepEqual(structuredClone(h.vm.cropFrameStyle()), {});
 });
 
@@ -402,9 +402,87 @@ test('opening an editor scrolls to its start on desktop and in the rotated mobil
         const h = editorLayout(mobile); h.flush();
         assert.equal(h.scrolls[0][0], mobile ? 'page' : 'document');
         if (mobile) assert.equal(h.scrolls[0][1].top, 220); else assert.equal(h.scrolls[0][1].block, 'start');
-        assert.equal(h.vm.imageFrameRatios.desktopLeftImageUrl, 348/868);
-        h.side.clientWidth = 90; h.side.clientHeight = 374; h.events.resize(); h.flush();
-        assert.equal(h.vm.imageFrameRatios.desktopLeftImageUrl, 90/374); assert.equal(h.scrolls.length, 1);
-        h.watch(); assert.equal(h.pending(), 1); h.destroy(); assert.equal(h.pending(), 0); assert.equal(h.stopped(), true); assert.deepEqual(Object.keys(h.events), []);
+        assert.equal(h.scrolls.length, 1); h.destroy(); assert.equal(h.pending(), 0);
+        const pending = editorLayout(mobile); assert.equal(pending.pending(), 1);
+        pending.destroy(); pending.flush(); assert.equal(pending.scrolls.length, 0);
     }
+});
+
+
+test('invalid numeric crop edits cannot save after switching to another image tab', async () => {
+    const h=setup({manager:true});h.vm.create();h.vm.editor.startDate=new Date(2026,9,1);h.vm.editor.endDate=new Date(2026,9,31);
+    for (const [key,value] of [['zoom',301],['zoom',49],['zoom',undefined],['x',101],['y',-101],['x',1.5],['y',undefined]]) {
+        h.vm.editor.imageCrops.mobileImageUrl={zoom:100,x:0,y:0};
+        h.vm.editor.imageCrops.mobileImageUrl[key]=value;h.vm.cropField='desktopLeftImageUrl';
+        await h.vm.save({$invalid:false});
+        assert.equal(h.calls.length,0);assert.match(h.vm.editError,/Zoom ảnh phải/);assert.ok(h.vm.editor);
+    }
+});
+
+
+test('reordering daily practices saves their order while retaining keys and instructions', async () => {
+    const items=[{itemKey:'pray',name:'Cầu nguyện',instructions:'Kinh sáng'},{itemKey:'mass',name:'Thánh lễ',instructions:'Chủ nhật'},{itemKey:'good',name:'Việc tốt',instructions:'Giúp gia đình'}];
+    const h=setup({manager:true,campaign:{id:5,name:'Chiến dịch',startDate:'2026-10-01',endDate:'2026-10-31',flowerItems:items}});
+    await h.vm.edit({id:5});h.vm.moveItem(1,-1);
+    assert.deepEqual(structuredClone(h.vm.editor.flowerItems.map(i=>i.itemKey)),['mass','pray','good']);
+    h.vm.moveItem(0,-1);h.vm.moveItem(2,1);h.vm.moveItem(1,0);
+    assert.deepEqual(structuredClone(h.vm.editor.flowerItems.map(i=>i.itemKey)),['mass','pray','good']);
+    h.vm.moveItem(1,1);h.vm.saving=true;h.vm.moveItem(0,1);h.vm.saving=false;
+    await h.vm.save({$invalid:false});
+    assert.deepEqual(structuredClone(h.calls.find(c=>c[0]==='save')[1].flowerItems),[items[1],items[2],items[0]]);
+    assert.deepEqual(items.map(i=>i.itemKey),['pray','mass','good']);
+});
+
+test('daily practice order cannot be changed without management permission', () => {
+    const h=setup({manager:true});h.vm.create();h.vm.addItem();
+    const original=h.vm.editor.flowerItems[0];h.settings.isEducationManagerment=false;
+    h.vm.moveItem(0,1);assert.equal(h.vm.editor.flowerItems[0],original);
+});
+
+const rosary2026 = require('../campaign/rosary2026/RosaryCampaign2026.js');
+const rosaryCampaign = {id: 7, name: 'Cùng Mẹ, em yêu mến Chúa', startDate: '2026-10-01', endDate: '2026-10-31', flowerItems: [{itemKey:'rosary',name:'Lần hạt một chục'}]};
+function rosarySetup(options = {}) {
+    const clock = options.clock || {now: Date.UTC(2026, 9, 2, 5)};
+    return setup({studentMode: true, campaign: rosaryCampaign, clock, serverTime: clock.now, windowExtras:{RosaryCampaign2026: rosary2026}, ...options});
+}
+test('QR success opens the class guide before the sheet, without recording a practice', async () => {
+    const h = rosarySetup({token:'', campaignId:7}); await tick();
+    assert.equal(h.vm.needsScan,true); assert.equal(h.vm.rosaryGuide,null);
+    await h.vm.useScannedQr('hs001'); await tick();
+    assert.equal(h.vm.needsScan,false); assert.equal(h.vm.rosaryGuideOpen,true);
+    assert.equal(h.vm.rosaryGuide.group,'sang'); assert.equal(h.vm.rosaryGuide.number,1);
+    assert.equal(h.apiCalls.filter(name => name === 'checkFlower').length,0);
+    h.vm.closeRosaryGuide(); await h.vm.setWeek(1);
+    assert.equal(h.vm.rosaryGuideOpen,false); assert.equal(h.vm.rosaryGuide.number,1);
+    h.vm.openRosaryGuide(); assert.equal(h.vm.rosaryGuideOpen,true);
+    h.vm.refreshRosaryGuide(); assert.equal(h.vm.rosaryGuide.number,1);
+    h.vm.scanAnotherStudent(); assert.equal(h.vm.rosaryGuide,null); assert.equal(h.vm.rosaryGuideOpen,false);
+});
+test('unassigned class refresh changes mystery and week reload retains it', async () => {
+    const h = rosarySetup({classes:['HT']}); await tick();
+    const initial = h.vm.rosaryGuide.imageUrl; assert.equal(h.vm.rosaryGuide.randomizable,true);
+    h.vm.refreshRosaryGuide(); const changed = h.vm.rosaryGuide.imageUrl; assert.notEqual(changed,initial);
+    h.vm.closeRosaryGuide(); await h.vm.setWeek(2);
+    assert.equal(h.vm.rosaryGuide.imageUrl,changed); assert.equal(h.vm.rosaryGuideOpen,false);
+});
+test('Vietnam midnight advances guide, reopening it, and campaign expiry clears it', async () => {
+    const clock = {now: Date.UTC(2026,9,2,16,59,50)}, h=rosarySetup({clock}); await tick();
+    h.vm.closeRosaryGuide(); clock.now += 11000; h.midnight();
+    assert.equal(h.vm.rosaryGuide.number,2); assert.equal(h.vm.rosaryGuide.date,'2026-10-03'); assert.equal(h.vm.rosaryGuideOpen,true);
+    clock.now = Date.UTC(2026,9,31,17); h.midnight();
+    assert.equal(h.vm.rosaryGuide,null); assert.equal(h.vm.rosaryGuideOpen,false);
+});
+test('other campaign names, managers and disabled domains never receive a Rosary guide', async () => {
+    for (const options of [{campaign:{...rosaryCampaign,name:'Chiến dịch khác'}},{studentMode:false,id:7},{campaignsEnabled:false}]) {
+        const h=rosarySetup(options); await tick(); assert.ok(!h.vm.rosaryGuide); assert.ok(!h.vm.rosaryGuideOpen);
+    }
+});
+
+test('opening the guide exits sheet fullscreen and returning opens the current week', async () => {
+    const h = rosarySetup({clock:{now:Date.UTC(2026,9,8,5)}}); await tick();
+    assert.equal(h.vm.weekIndex,1); h.vm.closeRosaryGuide(); await h.vm.setWeek(0);
+    let exits=0; h.vm.fullscreen=true; h.vm.toggleFullscreen=()=>{exits++;h.vm.fullscreen=false;};
+    h.vm.openRosaryGuide(); assert.equal(exits,1); assert.equal(h.vm.rosaryGuideOpen,true);
+    await h.vm.closeRosaryGuide(); assert.equal(h.vm.weekIndex,1); assert.equal(h.vm.rosaryGuideOpen,false);
+    assert.ok(h.vm.weekDays.some(day=>day.date==='2026-10-08'));
 });

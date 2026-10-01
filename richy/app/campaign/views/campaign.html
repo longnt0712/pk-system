@@ -1,5 +1,5 @@
 <div ng-if="vm.settings.campaignsEnabled === true">
-<div class="campaign-viewport" campaign-viewport>
+<div class="campaign-viewport" campaign-viewport ng-show="!vm.rosaryGuideOpen" ng-class="{'campaign-scan-view': vm.studentMode && (vm.needsScan || vm.rosaryGuideOpen)}">
 <div class="campaign-layout" tabindex="0" aria-label="Nội dung chiến dịch" ng-class="{'campaign-has-side-images': !vm.loading && (vm.imageUrl(vm.imageOptions().desktopLeftImageUrl) || vm.imageUrl(vm.imageOptions().desktopRightImageUrl))}">
     <div ng-if="!vm.loading && vm.imageUrl(vm.imageOptions().desktopLeftImageUrl)" class="campaign-side-image campaign-side-left campaign-no-print" aria-hidden="true"><img ng-src="{{vm.imageUrl(vm.imageOptions().desktopLeftImageUrl)}}" class="campaign-framed-image" ng-style="vm.imageStyle('desktopLeftImageUrl', vm.imageOptions())" alt=""></div>
     <div ng-if="!vm.loading && vm.imageUrl(vm.imageOptions().desktopRightImageUrl)" class="campaign-side-image campaign-side-right campaign-no-print" aria-hidden="true"><img ng-src="{{vm.imageUrl(vm.imageOptions().desktopRightImageUrl)}}" class="campaign-framed-image" ng-style="vm.imageStyle('desktopRightImageUrl', vm.imageOptions())" alt=""></div>
@@ -50,20 +50,21 @@
                     <label>Link ảnh dọc bên trái<input type="url" class="form-control" ng-model="vm.editor.desktopLeftImageUrl" maxlength="2048" placeholder="https://…/anh-trai.jpg"></label>
                     <label>Link ảnh dọc bên phải<input type="url" class="form-control" ng-model="vm.editor.desktopRightImageUrl" maxlength="2048" placeholder="https://…/anh-phai.jpg"></label>
                     <label>Link ảnh nền phiếu Hoa thiêng A4<input type="url" class="form-control" ng-model="vm.editor.mobileImageUrl" maxlength="2048" placeholder="https://…/anh-nen.jpg"></label>
-                    <label>Độ hiển thị ảnh nền: {{vm.editor.flowerBackgroundOpacity}}%<input type="range" ng-model="vm.editor.flowerBackgroundOpacity" min="0" max="100" step="1"><span class="campaign-muted">0%: trong suốt · 100%: rõ hoàn toàn</span></label>
                 </div>
                 <p ng-if="vm.hasUnsavedImages()" class="campaign-unsaved" role="status">Bạn chưa lưu link ảnh, độ mờ hoặc vùng cắt ảnh. Bấm “Lưu chiến dịch” để áp dụng.</p>
                 <section class="campaign-crop-editor" aria-label="Chỉnh vùng ảnh">
                     <h3>Cắt khung và thu phóng ảnh</h3>
                     <div class="campaign-actions"><button type="button" class="btn btn-default" ng-click="vm.cropField = 'desktopLeftImageUrl'" aria-pressed="{{vm.cropField === 'desktopLeftImageUrl'}}">Ảnh trái</button><button type="button" class="btn btn-default" ng-click="vm.cropField = 'desktopRightImageUrl'" aria-pressed="{{vm.cropField === 'desktopRightImageUrl'}}">Ảnh phải</button><button type="button" class="btn btn-default" ng-click="vm.cropField = 'mobileImageUrl'" aria-pressed="{{vm.cropField === 'mobileImageUrl'}}">Ảnh nền A4</button></div>
-                    <p class="campaign-muted">Kéo ảnh trong khung để chọn vùng hiển thị. Dùng thanh chỉnh để thu phóng hoặc dịch chuyển ảnh.</p>
+                    <p class="campaign-muted">Kéo ảnh trong khung để chọn vùng hiển thị. Dùng thanh chỉnh hoặc gõ số vào ô bên cạnh để thu phóng, dịch chuyển và chỉnh độ hiển thị ảnh nền.</p>
                     <div ng-if="vm.imageUrl(vm.editor[vm.cropField])" class="campaign-crop-workspace">
                         <div class="campaign-crop-frame" ng-style="vm.cropFrameStyle()" ng-class="{'campaign-crop-portrait': vm.cropField !== 'mobileImageUrl'}" campaign-image-crop aria-label="Khung cắt ảnh"><img ng-src="{{vm.imageUrl(vm.editor[vm.cropField])}}" ng-style="vm.imageStyle(vm.cropField, vm.editor)" ng-class="{'campaign-crop-contain': vm.cropField === 'mobileImageUrl'}" draggable="false" alt="Ảnh đang chỉnh vùng hiển thị"></div>
                         <div class="campaign-crop-controls">
-                            <label>Zoom ảnh: {{vm.editor.imageCrops[vm.cropField].zoom}}%<input type="range" min="50" max="300" step="1" ng-model="vm.editor.imageCrops[vm.cropField].zoom"></label>
+                            <div class="campaign-image-adjustment"><label for="campaign-image-zoom">Zoom ảnh</label><div class="campaign-adjustment-row"><input type="range" campaign-number-range aria-label="Thanh zoom ảnh" min="50" max="300" step="1" ng-model="vm.editor.imageCrops[vm.cropField].zoom"><div class="campaign-adjustment-number"><input id="campaign-image-zoom" type="number" class="form-control" aria-label="Zoom ảnh (%)" inputmode="numeric" min="50" max="300" step="1" ng-model="vm.editor.imageCrops[vm.cropField].zoom" ng-model-options="{allowInvalid: true}" required><span aria-hidden="true">%</span></div></div></div>
                             <div class="campaign-actions"><button type="button" class="btn btn-default" ng-click="vm.changeImageZoom(-10)" ng-disabled="vm.editor.imageCrops[vm.cropField].zoom <= 50" aria-label="Thu nhỏ ảnh">−</button><button type="button" class="btn btn-default" ng-click="vm.changeImageZoom(10)" ng-disabled="vm.editor.imageCrops[vm.cropField].zoom >= 300" aria-label="Phóng to ảnh">+</button><button type="button" class="btn btn-default" ng-click="vm.resetImageCrop(vm.cropField)">Đặt lại ảnh</button></div>
-                            <label>Dịch trái/phải: {{vm.editor.imageCrops[vm.cropField].x}}%<input type="range" min="-100" max="100" step="1" ng-model="vm.editor.imageCrops[vm.cropField].x"></label>
-                            <label>Dịch lên/xuống: {{vm.editor.imageCrops[vm.cropField].y}}%<input type="range" min="-100" max="100" step="1" ng-model="vm.editor.imageCrops[vm.cropField].y"></label>
+                            <div class="campaign-image-adjustment"><label for="campaign-image-x">Dịch trái/phải</label><div class="campaign-adjustment-row"><input type="range" campaign-number-range aria-label="Thanh dịch trái/phải" min="-100" max="100" step="1" ng-model="vm.editor.imageCrops[vm.cropField].x"><div class="campaign-adjustment-number"><input id="campaign-image-x" type="number" class="form-control" aria-label="Dịch trái/phải (%)" inputmode="numeric" min="-100" max="100" step="1" ng-model="vm.editor.imageCrops[vm.cropField].x" ng-model-options="{allowInvalid: true}" required><span aria-hidden="true">%</span></div></div></div>
+                            <div class="campaign-image-adjustment"><label for="campaign-image-y">Dịch lên/xuống</label><div class="campaign-adjustment-row"><input type="range" campaign-number-range aria-label="Thanh dịch lên/xuống" min="-100" max="100" step="1" ng-model="vm.editor.imageCrops[vm.cropField].y"><div class="campaign-adjustment-number"><input id="campaign-image-y" type="number" class="form-control" aria-label="Dịch lên/xuống (%)" inputmode="numeric" min="-100" max="100" step="1" ng-model="vm.editor.imageCrops[vm.cropField].y" ng-model-options="{allowInvalid: true}" required><span aria-hidden="true">%</span></div></div></div>
+                            <div class="campaign-image-adjustment" ng-if="vm.cropField === 'mobileImageUrl'"><label for="campaign-image-opacity">Độ hiển thị ảnh nền</label><div class="campaign-adjustment-row"><input type="range" campaign-number-range aria-label="Thanh độ hiển thị ảnh nền" min="0" max="100" step="1" ng-model="vm.editor.flowerBackgroundOpacity"><div class="campaign-adjustment-number"><input id="campaign-image-opacity" type="number" class="form-control" aria-label="Độ hiển thị ảnh nền (%)" inputmode="numeric" min="0" max="100" step="1" ng-model="vm.editor.flowerBackgroundOpacity" ng-model-options="{allowInvalid: true}" required><span aria-hidden="true">%</span></div></div></div>
+                            <p ng-if="vm.cropField === 'mobileImageUrl'" class="campaign-muted campaign-opacity-hint">0%: trong suốt · 100%: rõ hoàn toàn</p>
                         </div>
                     </div>
                     <p ng-if="!vm.imageUrl(vm.editor[vm.cropField])" class="campaign-muted">Dán link ảnh tương ứng ở trên để bắt đầu chỉnh.</p>
@@ -82,7 +83,11 @@
                     <span class="campaign-practice-number">{{$index + 1}}</span>
                     <label>Tên việc làm *<input class="form-control" ng-model="item.name" required maxlength="200" placeholder="Ví dụ: Cầu nguyện"></label>
                     <label>Hướng dẫn<textarea class="form-control" ng-model="item.instructions" maxlength="2000" rows="2" placeholder="Cách thực hiện phù hợp với thiếu nhi"></textarea></label>
-                    <button type="button" class="btn btn-default" ng-click="vm.removeItem($index)" ng-disabled="vm.editor.flowerItems.length === 1" aria-label="Xóa việc hoa thiêng {{$index + 1}}"><i class="fa fa-trash" aria-hidden="true"></i></button>
+                    <div class="campaign-practice-actions" role="group" aria-label="Thứ tự việc hoa thiêng {{$index + 1}}">
+                        <button type="button" class="btn btn-default" ng-click="vm.moveItem($index, -1)" ng-disabled="$first" aria-label="Đưa việc hoa thiêng {{$index + 1}} lên" title="Đưa lên"><span aria-hidden="true">↑</span></button>
+                        <button type="button" class="btn btn-default" ng-click="vm.moveItem($index, 1)" ng-disabled="$last" aria-label="Đưa việc hoa thiêng {{$index + 1}} xuống" title="Đưa xuống"><span aria-hidden="true">↓</span></button>
+                        <button type="button" class="btn btn-default" ng-click="vm.removeItem($index)" ng-disabled="vm.editor.flowerItems.length === 1" aria-label="Xóa việc hoa thiêng {{$index + 1}}"><i class="fa fa-trash" aria-hidden="true"></i></button>
+                    </div>
                 </div>
                 <button type="button" class="btn btn-default" ng-click="vm.addItem()" ng-disabled="vm.editor.flowerItems.length >= 30"><i class="fa fa-plus" aria-hidden="true"></i> Thêm việc hoa thiêng</button>
                 <p class="campaign-alert" role="alert" ng-if="vm.editError">{{vm.editError}}</p>
@@ -132,6 +137,7 @@
         <section class="campaign-flower" ng-class="{'campaign-with-background': vm.imageUrl(vm.imageOptions().mobileImageUrl)}">
             <img ng-if="vm.imageUrl(vm.imageOptions().mobileImageUrl)" ng-src="{{vm.imageUrl(vm.imageOptions().mobileImageUrl)}}" class="campaign-flower-background" ng-style="vm.backgroundStyle(vm.imageOptions())" alt="" aria-hidden="true">
             <div class="campaign-flower-content">
+            <button type="button" class="btn btn-default campaign-no-print" data-rosary-reopen ng-if="vm.rosaryGuide" ng-click="vm.openRosaryGuide()">Xem hướng dẫn lần hạt</button>
             <div class="campaign-flower-heading"><div><span class="campaign-eyebrow">THỰC HÀNH MỖI NGÀY</span><h2>Hoa thiêng</h2></div><button class="btn campaign-primary campaign-no-print" ng-if="vm.canPrint() && !vm.isExpired(vm.campaign)" ng-click="vm.print()"><i class="fa fa-print" aria-hidden="true"></i> In phiếu tuần này</button></div>
             <p class="campaign-preline" ng-if="vm.flowerInstructions(vm.campaign)">{{vm.flowerInstructions(vm.campaign)}}</p>
             <ul class="campaign-practice-notes campaign-no-print"><li ng-repeat="item in vm.campaign.flowerItems track by $index" ng-if="item.instructions"><strong>{{item.name}}:</strong> <span class="campaign-preline">{{item.instructions}}</span></li></ul>
@@ -148,4 +154,18 @@
 </div>
 </div>
 
+<section ng-if="vm.rosaryGuideOpen && vm.rosaryGuide" class="campaign-rosary-overlay campaign-no-print" campaign-rosary-guide role="dialog" aria-modal="true" aria-labelledby="campaign-rosary-heading">
+    <div class="campaign-rosary-card">
+        <header class="campaign-rosary-header">
+            <span class="campaign-rosary-eyebrow">{{vm.rosaryGuide.campaignName}} · {{vm.formatDate(vm.rosaryGuide.date)}}</span>
+            <h1 id="campaign-rosary-heading" tabindex="-1">Các em hãy cùng Mẹ Maria lần chuỗi mân côi nhé</h1>
+        </header>
+        <div class="campaign-rosary-group"><h2>{{vm.rosaryGuide.title}}</h2><button type="button" class="btn btn-default" ng-if="vm.rosaryGuide.randomizable" ng-click="vm.refreshRosaryGuide()"><i class="fa fa-refresh" aria-hidden="true"></i> Đổi ngắm</button></div>
+        <figure class="campaign-rosary-figure" aria-live="polite">
+            <img ng-src="{{vm.rosaryGuide.imageUrl}}" alt="{{vm.rosaryGuide.imageAlt}}">
+            <figcaption><p class="campaign-rosary-contemplation">{{vm.rosaryGuide.contemplation}}</p><p>{{vm.rosaryGuide.prayer}}</p></figcaption>
+        </figure>
+        <footer class="campaign-rosary-footer"><p>Các em sau khi lần hạt hãy tích vào ô “Lần hạt một chục” nhé.</p><button type="button" class="btn campaign-primary" ng-click="vm.closeRosaryGuide()">Mở phiếu hoa thiêng →</button></footer>
+    </div>
+</section>
 </div>

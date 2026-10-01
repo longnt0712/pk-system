@@ -12,6 +12,35 @@
         var requestNumber = 0;
         var studentRequest = 0;
         var serverClockOffset = 0, dayTimer;
+        var rosaryConfig = $window.RosaryCampaign2026, rosaryContext = '';
+        vm.rosaryGuide = null; vm.rosaryGuideOpen = false;
+        function updateRosaryGuide(refresh) {
+            var today = studentToday();
+            if (!vm.studentMode || !vm.student || !rosaryConfig || !rosaryConfig.appliesTo(vm.campaign, today)) {
+                vm.rosaryGuide = null; vm.rosaryGuideOpen = false; rosaryContext = ''; return;
+            }
+            var context = [vm.campaign.id, vm.student.studentCode, (vm.student.classes || []).join('|'), today].join(':');
+            if (context !== rosaryContext) {
+                rosaryContext = context;
+                vm.rosaryGuide = rosaryConfig.select(vm.student, today);
+                vm.rosaryGuideOpen = !!vm.rosaryGuide;
+                if (vm.rosaryGuideOpen && vm.fullscreen && vm.toggleFullscreen) { vm.toggleFullscreen(); }
+            } else if (refresh && vm.rosaryGuide && vm.rosaryGuide.randomizable) {
+                vm.rosaryGuide = rosaryConfig.select(vm.student, today, null, vm.rosaryGuide);
+            }
+        }
+        vm.refreshRosaryGuide = function () { updateRosaryGuide(true); };
+        vm.openRosaryGuide = function () {
+            updateRosaryGuide(); vm.rosaryGuideOpen = !!vm.rosaryGuide;
+            if (vm.rosaryGuideOpen && vm.fullscreen && vm.toggleFullscreen) { vm.toggleFullscreen(); }
+        };
+        vm.closeRosaryGuide = function () {
+            vm.rosaryGuideOpen = false;
+            if (vm.rosaryGuide && vm.campaign) {
+                var week = Math.floor((Date.parse(studentToday() + 'T00:00:00Z') - Date.parse(vm.campaign.startDate + 'T00:00:00Z')) / (7 * 86400000));
+                if (week !== vm.weekIndex) { return vm.setWeek(week); }
+            }
+        };
         vm.studentMode = $stateParams.studentMode === true;
         var targetId = vm.studentMode ? Number($stateParams.campaignId) || null : null;
         var targetCode = vm.studentMode ? $stateParams.campaignCode : null;
@@ -43,11 +72,11 @@
         };
         vm.cropFrameStyle = function () {
             if (vm.cropField === 'mobileImageUrl') { return {}; }
-            var ratio = vm.imageFrameRatios && vm.imageFrameRatios[vm.cropField] || 9 / 16;
+            var ratio = 9 / 16;
             return {aspectRatio: ratio, width: 'min(32%, ' + (360 * ratio) + 'px)'};
         };
         vm.previewSideStyle = function (field) {
-            var ratio = vm.imageFrameRatios && vm.imageFrameRatios[field] || 9 / 16;
+            var ratio = 9 / 16;
             return {aspectRatio: ratio, flex: ratio + ' 1 0px'};
         };
         vm.backgroundStyle = function (campaign) { var style = vm.imageStyle('mobileImageUrl', campaign); style.opacity = vm.backgroundOpacity(campaign); return style; };
@@ -187,6 +216,7 @@
                 vm.checks = {}; vm.savedChecks = {};
                 (response.data.entries || []).forEach(function (entry) { vm.checks[entry.itemKey + ':' + entry.date] = vm.savedChecks[entry.itemKey + ':' + entry.date] = entry.completed === true; });
                 prepareCampaign(week);
+                updateRosaryGuide();
             }, function (error) { if (request === studentRequest) { vm.error = errorMessage(error); } })
                 .finally(function () { if (request === studentRequest) { vm.sheetLoading = false; } });
         }
@@ -216,6 +246,7 @@
         };
         vm.scanAnotherStudent = function () {
             ++studentRequest; vm.student = null; vm.campaign = null; vm.campaigns = []; studentToken = '';
+            vm.rosaryGuide = null; vm.rosaryGuideOpen = false; rosaryContext = '';
             vm.needsScan = true; vm.error = ''; vm.scanError = ''; vm.checkError = ''; vm.saveNotice = '';
             vm.checks = {}; vm.savedChecks = {}; vm.pendingChecks = {};
             if (dayTimer) { $window.clearTimeout(dayTimer); dayTimer = null; }
@@ -267,7 +298,7 @@
             if (!$window.setTimeout) { return; }
             if (dayTimer) { $window.clearTimeout(dayTimer); }
             var now = Date.now() + serverClockOffset + 7 * 3600000;
-            dayTimer = $window.setTimeout(function () { $scope.$evalAsync(); scheduleNewDay(); }, 86400000 - (now % 86400000) + 50);
+            dayTimer = $window.setTimeout(function () { $scope.$evalAsync(function () { updateRosaryGuide(); }); scheduleNewDay(); }, 86400000 - (now % 86400000) + 50);
         }
         vm.isDayLocked = function (day) { return day.date !== studentToday(); };
         vm.toggleFlower = function (item, day) {
@@ -319,6 +350,13 @@
                 vm.editor.flowerItems.push({name: '', instructions: ''});
             }
         };
+        vm.moveItem = function (index, direction) {
+            if (!vm.canManage() || !vm.editor || vm.saving || !Number.isInteger(index) || (direction !== -1 && direction !== 1)) { return; }
+            var items = vm.editor.flowerItems, target = index + direction;
+            if (index < 0 || index >= items.length || target < 0 || target >= items.length) { return; }
+            var item = items.splice(index, 1)[0];
+            items.splice(target, 0, item);
+        };
         vm.removeItem = function (index) {
             if (vm.canManage() && vm.editor && vm.editor.flowerItems.length > 1) { vm.editor.flowerItems.splice(index, 1); }
         };
@@ -331,6 +369,16 @@
                 }
             }
             if (!Number.isInteger(Number(vm.editor.flowerBackgroundOpacity)) || vm.editor.flowerBackgroundOpacity < 0 || vm.editor.flowerBackgroundOpacity > 100) { vm.editError = 'Độ hiển thị ảnh nền phải từ 0 đến 100%.'; return; }
+            for (var j = 0; j < imageFields.length; j++) {
+                var crop = vm.editor.imageCrops[imageFields[j]];
+                if (!crop || !Number.isInteger(Number(crop.zoom)) || crop.zoom < 50 || crop.zoom > 300 ||
+                    !Number.isInteger(Number(crop.x)) || crop.x < -100 || crop.x > 100 ||
+                    !Number.isInteger(Number(crop.y)) || crop.y < -100 || crop.y > 100 ||
+                    crop.zoom == null || crop.x == null || crop.y == null) {
+                    vm.editError = 'Zoom ảnh phải từ 50 đến 300%; vị trí ảnh phải từ -100 đến 100%. Vui lòng nhập số nguyên.';
+                    return;
+                }
+            }
             if (form.$invalid) { vm.editError = 'Vui lòng kiểm tra tên chiến dịch, ngày, các việc hoa thiêng và link ảnh.'; return; }
             if (vm.editor.endDate < vm.editor.startDate) { vm.editError = 'Ngày kết thúc phải từ ngày bắt đầu trở đi.'; return; }
             vm.saving = true; vm.editError = '';
@@ -372,31 +420,13 @@
     }
     angular.module('Hrm.Campaign').directive('campaignEditor', ['$window', '$timeout', function ($window, $timeout) {
         return {restrict: 'A', link: function (scope, element) {
-            var editor = element[0], viewport = editor.closest('.campaign-viewport'), page = editor.closest('.campaign-page'), pending;
-            function refreshFrames() {
-                var ratios = {}, fields = {desktopLeftImageUrl: '.campaign-side-left', desktopRightImageUrl: '.campaign-side-right'};
-                Object.keys(fields).forEach(function (field) {
-                    var frame = viewport.querySelector(fields[field]);
-                    if (frame && frame.clientWidth > 0 && frame.clientHeight > 0) { ratios[field] = frame.clientWidth / frame.clientHeight; }
-                });
-                scope.vm.imageFrameRatios = ratios;
-            }
-            function scheduleRefresh() {
-                if (pending) { $timeout.cancel(pending); }
-                pending = $timeout(function () { pending = null; refreshFrames(); }, 0);
-            }
-            var stopWatching = scope.$watchGroup(['vm.editor.desktopLeftImageUrl', 'vm.editor.desktopRightImageUrl'], scheduleRefresh);
+            var editor = element[0], page = editor.closest('.campaign-page');
             var initial = $timeout(function () {
-                refreshFrames();
                 if (page && /auto|scroll/.test($window.getComputedStyle(page).overflowY)) {
                     page.scrollTo({top: Math.max(0, editor.offsetTop - 15), behavior: 'auto'});
                 } else { editor.scrollIntoView({block: 'start', behavior: 'auto'}); }
             }, 0);
-            $window.addEventListener('resize', scheduleRefresh);
-            scope.$on('$destroy', function () {
-                $timeout.cancel(initial); if (pending) { $timeout.cancel(pending); }
-                stopWatching(); $window.removeEventListener('resize', scheduleRefresh);
-            });
+            scope.$on('$destroy', function () { $timeout.cancel(initial); });
         }};
     }]);
     angular.module('Hrm.Campaign').directive('campaignImageCrop', ['$window', function ($window) {
@@ -422,6 +452,32 @@
             scope.$on('$destroy', function () { drag = null; frame.removeEventListener('pointerdown', down); frame.removeEventListener('pointermove', move); frame.removeEventListener('pointerup', end); frame.removeEventListener('pointercancel', end); frame.removeEventListener('lostpointercapture', end); });
         }};
     }]);
+    // AngularJS 1.5 treats range inputs as strings; number inputs require numeric models.
+    angular.module('Hrm.Campaign').directive('campaignNumberRange', function () {
+        return {restrict: 'A', require: 'ngModel', link: function (scope, element, attrs, model) {
+            model.$parsers.push(function (value) { return Number(value); });
+        }};
+    });
+    angular.module('Hrm.Campaign').directive('campaignRosaryGuide', ['$timeout', function ($timeout) {
+        return {restrict: 'A', link: function (scope, element) {
+            var heading = element[0].querySelector('h1');
+            document.documentElement.classList.add('campaign-rosary-open');
+            document.body.classList.add('campaign-rosary-open');
+            var focusTimer = $timeout(function () { if (heading) { heading.focus(); } }, 0, false);
+            function keyboard(event) {
+                if (event.key !== 'Tab') { return; }
+                var buttons = element[0].querySelectorAll('button'), first = buttons[0], last = buttons[buttons.length - 1];
+                if (event.shiftKey && (document.activeElement === first || document.activeElement === heading)) { event.preventDefault(); last.focus(); }
+                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+            }
+            element.on('keydown', keyboard);
+            scope.$on('$destroy', function () {
+                $timeout.cancel(focusTimer); element.off('keydown', keyboard);
+                document.documentElement.classList.remove('campaign-rosary-open');
+                document.body.classList.remove('campaign-rosary-open');
+            });
+        }};
+    }]);
     angular.module('Hrm.Campaign').directive('campaignViewport', ['$window', function ($window) {
         return {
             restrict: 'A',
@@ -441,6 +497,16 @@
                     scope.vm.viewZoom = Math.max(0.5, Math.min(3, scope.vm.viewZoom + delta));
                     applyZoom();
                 };
+                scope.$watch('vm.rosaryGuideOpen', function (open, previous) {
+                    if (!open && previous) {
+                        $window.setTimeout(function () {
+                            var sheet = target.querySelector('.campaign-detail .campaign-flower');
+                            var button = target.querySelector('[data-rosary-reopen]');
+                            if (sheet) { sheet.scrollIntoView({block: 'start'}); }
+                            if (button) { button.focus({preventScroll: true}); }
+                        }, 0);
+                    }
+                });
                 $window.addEventListener('resize', applyZoom);
                 scope.vm.fullscreenSupported = !!((document.fullscreenEnabled && target.requestFullscreen) ||
                     (document.webkitFullscreenEnabled && target.webkitRequestFullscreen));
