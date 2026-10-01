@@ -452,11 +452,19 @@ test('QR success opens the class guide before the sheet, without recording a pra
     assert.equal(h.vm.needsScan,false); assert.equal(h.vm.rosaryGuideOpen,true);
     assert.equal(h.vm.rosaryGuide.group,'sang'); assert.equal(h.vm.rosaryGuide.number,1);
     assert.equal(h.apiCalls.filter(name => name === 'checkFlower').length,0);
-    h.vm.closeRosaryGuide(); await h.vm.setWeek(1);
+    const guide=h.vm.rosaryGuide, apiCount=h.apiCalls.length;
+    h.vm.openRosaryInstructions(); assert.equal(h.vm.rosaryInstructionsOpen,true);
+    assert.equal(h.vm.rosaryGuide,guide); assert.equal(h.apiCalls.length,apiCount);
+    h.vm.closeRosaryInstructions(); assert.equal(h.vm.rosaryInstructionsOpen,false);
+    assert.equal(h.vm.rosaryGuide,guide);
+    h.vm.openRosaryInstructions(); h.vm.closeRosaryGuide();
+    assert.equal(h.vm.rosaryInstructionsOpen,false);
+    h.vm.openRosaryInstructions(); assert.equal(h.vm.rosaryInstructionsOpen,false);
+    await h.vm.setWeek(1);
     assert.equal(h.vm.rosaryGuideOpen,false); assert.equal(h.vm.rosaryGuide.number,1);
     h.vm.openRosaryGuide(); assert.equal(h.vm.rosaryGuideOpen,true);
     h.vm.refreshRosaryGuide(); assert.equal(h.vm.rosaryGuide.number,1);
-    h.vm.scanAnotherStudent(); assert.equal(h.vm.rosaryGuide,null); assert.equal(h.vm.rosaryGuideOpen,false);
+    h.vm.openRosaryInstructions(); h.vm.scanAnotherStudent(); assert.equal(h.vm.rosaryGuide,null); assert.equal(h.vm.rosaryGuideOpen,false); assert.equal(h.vm.rosaryInstructionsOpen,false);
 });
 test('unassigned class refresh changes mystery and week reload retains it', async () => {
     const h = rosarySetup({classes:['HT']}); await tick();

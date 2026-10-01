@@ -158,14 +158,18 @@
     <div class="campaign-rosary-card">
         <header class="campaign-rosary-header">
             <span class="campaign-rosary-eyebrow">{{vm.rosaryGuide.campaignName}} · {{vm.formatDate(vm.rosaryGuide.date)}}</span>
-            <h1 id="campaign-rosary-heading" tabindex="-1">Các em hãy cùng Mẹ Maria lần chuỗi mân côi nhé</h1>
+            <h1 id="campaign-rosary-heading" tabindex="-1">{{vm.rosaryInstructionsOpen ? 'Hướng dẫn lần hạt một chục' : 'Các em hãy cùng Mẹ Maria lần chuỗi mân côi nhé'}}</h1>
         </header>
-        <div class="campaign-rosary-group"><h2>{{vm.rosaryGuide.title}}</h2><button type="button" class="btn btn-default" ng-if="vm.rosaryGuide.randomizable" ng-click="vm.refreshRosaryGuide()"><i class="fa fa-refresh" aria-hidden="true"></i> Đổi ngắm</button></div>
-        <figure class="campaign-rosary-figure" aria-live="polite">
+        <div class="campaign-rosary-group" ng-if="!vm.rosaryInstructionsOpen"><h2>{{vm.rosaryGuide.title}}</h2></div>
+        <figure class="campaign-rosary-figure" ng-if="!vm.rosaryInstructionsOpen" aria-live="polite">
             <img ng-src="{{vm.rosaryGuide.imageUrl}}" alt="{{vm.rosaryGuide.imageAlt}}">
-            <figcaption><p class="campaign-rosary-contemplation">{{vm.rosaryGuide.contemplation}}</p><p>{{vm.rosaryGuide.prayer}}</p></figcaption>
+            <figcaption><p class="campaign-rosary-contemplation">{{vm.rosaryGuide.contemplation}}</p><p>{{vm.rosaryGuide.prayer}}</p><div class="campaign-rosary-actions"><button type="button" class="btn campaign-rosary-instructions-button" ng-click="vm.openRosaryInstructions()">Hướng dẫn ngắm</button><button type="button" class="btn btn-default" ng-if="vm.rosaryGuide.randomizable" ng-click="vm.refreshRosaryGuide()"><i class="fa fa-refresh" aria-hidden="true"></i> Đổi ngắm</button></div></figcaption>
         </figure>
-        <footer class="campaign-rosary-footer"><p>Các em sau khi lần hạt hãy tích vào ô “Lần hạt một chục” nhé.</p><button type="button" class="btn campaign-primary" ng-click="vm.closeRosaryGuide()">Mở phiếu hoa thiêng →</button></footer>
+        <figure class="campaign-rosary-figure campaign-rosary-instructions" ng-if="vm.rosaryInstructionsOpen">
+            <img src="assets/images/rosary-2026/huong-dan-lan-hat-mot-chuc-v2.png" alt="Hướng dẫn lần hạt một chục: làm dấu Thánh giá, đọc ngắm, một kinh Lạy Cha, mười kinh Kính Mừng, một kinh Sáng Danh, lời nguyện và làm dấu kết thúc.">
+        </figure>
+        <footer class="campaign-rosary-footer" ng-if="vm.rosaryInstructionsOpen"><button type="button" class="btn campaign-primary" ng-click="vm.closeRosaryInstructions()">← Về ngắm hôm nay</button></footer>
+        <footer class="campaign-rosary-footer" ng-if="!vm.rosaryInstructionsOpen"><p>Các em sau khi lần hạt hãy tích vào ô “Lần hạt một chục” nhé.</p><button type="button" class="btn campaign-primary" ng-click="vm.closeRosaryGuide()">Mở phiếu hoa thiêng →</button></footer>
     </div>
 </section>
 </div>
