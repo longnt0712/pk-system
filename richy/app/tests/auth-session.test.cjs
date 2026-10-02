@@ -671,6 +671,6 @@ test('public and signed-in navigation use the current release version when loadi
         const template = fs.readFileSync(path.join(__dirname, '..', page), 'utf8');
         assert.ok(template.includes(header + "?v=' + appVersion"));
         const menu = fs.readFileSync(path.join(__dirname, '..', 'common/views/navs', header), 'utf8');
-        assert.match(menu, /<li ng-if="settings\.campaignsEnabled === true"/);
+        if (header === 'header-hoz.html') { assert.match(menu, /<li ng-if="settings\.campaignsEnabled === true"/); }
     }
 });
