@@ -6,6 +6,8 @@ import java.util.*;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Query;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.junit.*;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -25,6 +27,7 @@ import com.globits.richy.dto.*;
 import com.globits.richy.repository.*;
 import com.globits.richy.rest.*;
 import com.globits.richy.service.impl.*;
+import com.globits.security.domain.Role;
 
 /** In-memory fixtures only. No application bootstrap, datasource or production credentials. */
 public class CampaignFieldTest {
@@ -33,6 +36,8 @@ public class CampaignFieldTest {
     private CampaignRepository campaigns;
     private CampaignFlowerEntryRepository entries;
     private Connection db;
+    private SessionFactory nativeFactory;
+    private Session nativeSession;
     private Campaign campaign;
     private final List<CampaignFlowerEntry> colors=new ArrayList<>();
     private final List<String> sqlQueries=new ArrayList<>();
@@ -52,10 +57,22 @@ public class CampaignFieldTest {
     }
     @Before public void setup() throws Exception {
         Class.forName("org.h2.Driver");
-        db=DriverManager.getConnection("jdbc:h2:mem:field"+UUID.randomUUID()+";MODE=MSSQLServer","sa","");
+        String databaseUrl="jdbc:h2:mem:field"+UUID.randomUUID()+";MODE=MSSQLServer";
+        db=DriverManager.getConnection(databaseUrl,"sa","");
+        // Exercise Hibernate's native result discovery, including duplicate alias validation.
+        Properties properties=new Properties();
+        properties.setProperty("hibernate.connection.driver_class","org.h2.Driver");
+        properties.setProperty("hibernate.connection.url",databaseUrl);
+        properties.setProperty("hibernate.connection.username","sa");
+        properties.setProperty("hibernate.connection.password","");
+        properties.setProperty("hibernate.dialect","org.hibernate.dialect.H2Dialect");
+        nativeFactory=new org.hibernate.cfg.Configuration().setProperties(properties).buildSessionFactory();
+        nativeSession=nativeFactory.openSession();
         execute("create table tbl_user(id bigint primary key,active int,account_non_locked int,account_non_expired int)");
         execute("create table tbl_person(user_id bigint,patron varchar(100),last_name varchar(100),first_name varchar(100),display_name varchar(100),class_id bigint)");
-        execute("create table tbl_role(id bigint,name varchar(80))");
+        // Use the application's actual column mapping, not the Java property name.
+        String roleNameColumn=Role.class.getDeclaredField("name").getAnnotation(javax.persistence.Column.class).name();
+        execute("create table tbl_role(id bigint,"+roleNameColumn+" varchar(150))");
         execute("create table tbl_user_role(user_id bigint,role_id bigint)");
         execute("create table tbl_enrolment_class(id bigint,name varchar(100),school_id int)");
         execute("create table tbl_user_enrolment_class(user_id bigint,enrolment_class_id bigint)");
@@ -84,7 +101,7 @@ public class CampaignFieldTest {
         });
         SecurityContextHolder.clearContext();
     }
-    @After public void cleanup() throws Exception {SecurityContextHolder.clearContext();if(context!=null){context.close();}if(db!=null){db.close();}colors.clear();sqlQueries.clear();}
+    @After public void cleanup() throws Exception {SecurityContextHolder.clearContext();if(context!=null){context.close();}if(nativeSession!=null){nativeSession.close();}if(nativeFactory!=null){nativeFactory.close();}if(db!=null){db.close();}colors.clear();sqlQueries.clear();}
     private void execute(String sql) throws Exception {try(Statement s=db.createStatement()){s.execute(sql);}}
     private void participant(int id,int role,Integer classId,int active) throws Exception {
         execute("insert into tbl_user values("+id+","+active+",1,1)");
@@ -95,18 +112,10 @@ public class CampaignFieldTest {
         execute("insert into tbl_campaign_flower_entry values(5,"+id+",'"+date+"','"+item+"',"+(completed?1:0)+")");
         CampaignFlowerEntry entry=new CampaignFlowerEntry();entry.setStudentId((long)id);entry.setCampaignId(5L);entry.setDate(date);entry.setItemKey(item);entry.setCompleted(completed);colors.add(entry);
     }
-    private Query nativeQuery(String sql) throws Exception {
-        sqlQueries.add(sql);Query q=mock(Query.class);Map<String,Object> parameters=new HashMap<>();
-        when(q.setParameter(anyString(),any())).thenAnswer(call->{parameters.put((String)call.getArguments()[0],call.getArguments()[1]);return q;});
-        when(q.getResultList()).thenAnswer(call->{
-            List<Object> bindings=new ArrayList<>();java.util.regex.Matcher m=java.util.regex.Pattern.compile(":([A-Za-z][A-Za-z0-9]*)").matcher(sql);StringBuffer prepared=new StringBuffer();
-            while(m.find()){bindings.add(parameters.get(m.group(1)));m.appendReplacement(prepared,"?");}m.appendTail(prepared);
-            // H2 has no SQL Server collation syntax. Binding/escaping is asserted separately.
-            String portable=prepared.toString().replace(" collate Latin1_General_CI_AI","");
-            try(PreparedStatement s=db.prepareStatement(portable)){for(int i=0;i<bindings.size();i++){s.setObject(i+1,bindings.get(i));}
-                try(ResultSet r=s.executeQuery()){List<Object[]> rows=new ArrayList<>();int n=r.getMetaData().getColumnCount();while(r.next()){Object[] row=new Object[n];for(int i=0;i<n;i++){row[i]=r.getObject(i+1);}rows.add(row);}return rows;}
-            }
-        });return q;
+    private Query nativeQuery(String sql) {
+        sqlQueries.add(sql);
+        // H2 has no SQL Server collation syntax. All binding and result discovery use real Hibernate.
+        return nativeSession.createNativeQuery(sql.replace(" collate Latin1_General_CI_AI",""));
     }
     private void login(String role){SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("reviewer","",Collections.singletonList(new SimpleGrantedAuthority(role))));}
     private List<Long> ids(CampaignFieldDto dto){List<Long> result=new ArrayList<>();for(CampaignFieldDto.Garden g:dto.gardens){result.add(g.id);}return result;}
