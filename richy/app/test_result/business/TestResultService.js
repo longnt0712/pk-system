@@ -221,10 +221,14 @@
                 }, {
                     field: 'assignmentTaskId',
                     title: 'Nguồn làm bài',
-                    formatter: function (value) {
+                    formatter: function (value, row) {
                         if (value != null) {
                             return '<span class="label label-primary" title="Task #' + escapeText(value)
                                 + '"><i class="fa fa-tasks"></i> Bài tập</span>';
+                        }
+                        if (Number(row.testType) === 1 || Number(row.testType) === 3) {
+                            return '<span class="label label-info" title="Dữ liệu cũ không lưu Task ID; homework vẫn đối chiếu theo topic và thời hạn">'
+                                + '<i class="fa fa-link"></i> Theo topic</span>';
                         }
                         return '<span class="label label-default"><i class="fa fa-pencil"></i> Tự luyện</span>';
                     },

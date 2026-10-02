@@ -3371,7 +3371,8 @@
             vm.testResult = {
                 user: vm.currentUser,
                 testTakerPerformance: '',
-                totalWord: vm.totalCard
+                totalWord: vm.totalCard,
+                assignmentTaskId: vm.assignmentLaunch.taskId || null
             };
 
             vm.isSaveTestResult = false;

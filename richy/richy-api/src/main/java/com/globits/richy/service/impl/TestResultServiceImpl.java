@@ -750,7 +750,16 @@ public class TestResultServiceImpl implements TestResultService {
 			// A passed vocabulary completion is immutable: no later ID/topic/time forgery.
 			if (Integer.valueOf(1).equals(domain.getTestType())) { return new TestResultDto(domain); }
 		}
-		if (dto.getAssignmentTaskId() != null && Integer.valueOf(3).equals(dto.getTestType())) {
+		if (dto.getAssignmentTaskId() != null && Integer.valueOf(1).equals(dto.getTestType())) {
+			EnrolmentClassScheduleTask assignedTask = scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
+			Long assignedTopicId = assignedTask == null || assignedTask.getTopic() == null
+					? null : assignedTask.getTopic().getId();
+			if (assignedTask == null || !"DAILY_VOCAB".equals(assignedTask.getActivityType())
+					|| assignedTopicId == null || dto.getTopicIds() == null
+					|| !dto.getTopicIds().contains(assignedTopicId)) {
+				throw new IllegalArgumentException("Kết quả không khớp với topic Daily Vocab được giao.");
+			}
+		} else if (dto.getAssignmentTaskId() != null && Integer.valueOf(3).equals(dto.getTestType())) {
 			EnrolmentClassScheduleTask assignedTask = scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
 			if (assignedTask == null || !"DAILY_LISTENING".equals(assignedTask.getActivityType())
 					|| assignedTask.getTopic() == null || dto.getSourceQuestionId() == null
