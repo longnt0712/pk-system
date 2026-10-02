@@ -445,7 +445,7 @@ function rosarySetup(options = {}) {
     const clock = options.clock || {now: Date.UTC(2026, 9, 2, 5)};
     return setup({studentMode: true, campaign: rosaryCampaign, clock, serverTime: clock.now, windowExtras:{RosaryCampaign2026: rosary2026}, ...options});
 }
-test('QR success opens the class guide before the sheet, without recording a practice', async () => {
+test('QR success opens participation first, then today guide, without recording a practice', async () => {
     const h = rosarySetup({token:'', campaignId:7}); await tick();
     assert.equal(h.vm.needsScan,true); assert.equal(h.vm.rosaryGuide,null);
     await h.vm.useScannedQr('hs001'); await tick();
@@ -453,6 +453,11 @@ test('QR success opens the class guide before the sheet, without recording a pra
     assert.equal(h.vm.rosaryGuide.group,'sang'); assert.equal(h.vm.rosaryGuide.number,1);
     assert.equal(h.apiCalls.filter(name => name === 'checkFlower').length,0);
     const guide=h.vm.rosaryGuide, apiCount=h.apiCalls.length;
+    assert.equal(h.vm.rosaryParticipationOpen,true);
+    h.vm.openRosaryInstructions(); assert.equal(h.vm.rosaryInstructionsOpen,false);
+    h.vm.openRosaryGuide(); assert.equal(h.vm.rosaryParticipationOpen,false);
+    assert.equal(h.vm.rosaryGuideOpen,true); assert.equal(h.vm.rosaryGuide,guide);
+    assert.equal(h.apiCalls.length,apiCount);
     h.vm.openRosaryInstructions(); assert.equal(h.vm.rosaryInstructionsOpen,true);
     assert.equal(h.vm.rosaryGuide,guide); assert.equal(h.apiCalls.length,apiCount);
     h.vm.closeRosaryInstructions(); assert.equal(h.vm.rosaryInstructionsOpen,false);
@@ -464,7 +469,29 @@ test('QR success opens the class guide before the sheet, without recording a pra
     assert.equal(h.vm.rosaryGuideOpen,false); assert.equal(h.vm.rosaryGuide.number,1);
     h.vm.openRosaryGuide(); assert.equal(h.vm.rosaryGuideOpen,true);
     h.vm.refreshRosaryGuide(); assert.equal(h.vm.rosaryGuide.number,1);
-    h.vm.openRosaryInstructions(); h.vm.scanAnotherStudent(); assert.equal(h.vm.rosaryGuide,null); assert.equal(h.vm.rosaryGuideOpen,false); assert.equal(h.vm.rosaryInstructionsOpen,false);
+    h.vm.openRosaryInstructions(); h.vm.scanAnotherStudent(); assert.equal(h.vm.rosaryParticipationOpen,false); assert.equal(h.vm.rosaryGuide,null); assert.equal(h.vm.rosaryGuideOpen,false); assert.equal(h.vm.rosaryInstructionsOpen,false);
+});
+test('participation can open the sheet directly and reopening shows today without resetting checks', async () => {
+    const h = rosarySetup({entries:[{itemKey:'rosary',date:'2026-10-02',completed:true}]}); await tick();
+    assert.equal(h.vm.rosaryParticipationOpen,true);
+    const guide=h.vm.rosaryGuide, apiCount=h.apiCalls.length;
+    await h.vm.closeRosaryGuide();
+    assert.equal(h.vm.rosaryParticipationOpen,false); assert.equal(h.vm.rosaryGuideOpen,false);
+    assert.equal(h.vm.checks['rosary:2026-10-02'],true);
+    h.vm.openRosaryGuide();
+    assert.equal(h.vm.rosaryParticipationOpen,false); assert.equal(h.vm.rosaryGuideOpen,true);
+    assert.equal(h.vm.rosaryGuide,guide); assert.equal(h.apiCalls.length,apiCount);
+    assert.equal(h.vm.checks['rosary:2026-10-02'],true);
+    h.vm.openRosaryInstructions(); assert.equal(h.vm.rosaryInstructionsOpen,true);
+    h.vm.openRosaryParticipation();
+    assert.equal(h.vm.rosaryParticipationOpen,true); assert.equal(h.vm.rosaryInstructionsOpen,false);
+    assert.equal(h.vm.rosaryGuide,guide); assert.equal(h.apiCalls.length,apiCount);
+    assert.equal(h.vm.checks['rosary:2026-10-02'],true);
+    h.vm.openRosaryGuide();
+    assert.equal(h.vm.rosaryParticipationOpen,false); assert.equal(h.vm.rosaryGuide,guide);
+    assert.equal(h.vm.checks['rosary:2026-10-02'],true);
+    h.vm.scanAnotherStudent(); await h.vm.useScannedQr('hs002'); await tick();
+    assert.equal(h.vm.rosaryParticipationOpen,true); assert.equal(h.vm.rosaryGuideOpen,true);
 });
 test('unassigned class refresh changes mystery and week reload retains it', async () => {
     const h = rosarySetup({classes:['HT']}); await tick();

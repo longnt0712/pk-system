@@ -12,15 +12,19 @@
         var requestNumber = 0;
         var studentRequest = 0;
         var serverClockOffset = 0, dayTimer;
-        var rosaryConfig = $window.RosaryCampaign2026, rosaryContext = '';
-        vm.rosaryGuide = null; vm.rosaryGuideOpen = false; vm.rosaryInstructionsOpen = false;
+        var rosaryConfig = $window.RosaryCampaign2026, rosaryContext = '', rosaryStudentContext = '';
+        vm.rosaryGuide = null; vm.rosaryGuideOpen = false; vm.rosaryInstructionsOpen = false; vm.rosaryParticipationOpen = false;
         function updateRosaryGuide(refresh) {
             var today = studentToday();
             if (!vm.studentMode || !vm.student || !rosaryConfig || !rosaryConfig.appliesTo(vm.campaign, today)) {
-                vm.rosaryGuide = null; vm.rosaryGuideOpen = false; vm.rosaryInstructionsOpen = false; rosaryContext = ''; return;
+                vm.rosaryGuide = null; vm.rosaryGuideOpen = false; vm.rosaryInstructionsOpen = false; vm.rosaryParticipationOpen = false; rosaryContext = ''; rosaryStudentContext = ''; return;
             }
-            var context = [vm.campaign.id, vm.student.studentCode, (vm.student.classes || []).join('|'), today].join(':');
+            var studentContext = [vm.campaign.id, vm.student.studentCode, (vm.student.classes || []).join('|')].join(':');
+            var context = studentContext + ':' + today;
             if (context !== rosaryContext) {
+                // Show the participation guide first for each student/campaign, including a saved QR link.
+                vm.rosaryParticipationOpen = vm.rosaryParticipationOpen || studentContext !== rosaryStudentContext;
+                rosaryStudentContext = studentContext;
                 rosaryContext = context; vm.rosaryInstructionsOpen = false;
                 vm.rosaryGuide = rosaryConfig.select(vm.student, today);
                 vm.rosaryGuideOpen = !!vm.rosaryGuide;
@@ -32,15 +36,19 @@
         vm.refreshRosaryGuide = function () { updateRosaryGuide(true); };
         vm.openRosaryGuide = function () {
             vm.rosaryInstructionsOpen = false;
-            updateRosaryGuide(); vm.rosaryGuideOpen = !!vm.rosaryGuide;
+            updateRosaryGuide(); vm.rosaryParticipationOpen = false; vm.rosaryGuideOpen = !!vm.rosaryGuide;
             if (vm.rosaryGuideOpen && vm.fullscreen && vm.toggleFullscreen) { vm.toggleFullscreen(); }
         };
+        vm.openRosaryParticipation = function () {
+            vm.openRosaryGuide();
+            vm.rosaryParticipationOpen = !!vm.rosaryGuide;
+        };
         vm.openRosaryInstructions = function () {
-            if (vm.rosaryGuideOpen && vm.rosaryGuide) { vm.rosaryInstructionsOpen = true; }
+            if (vm.rosaryGuideOpen && vm.rosaryGuide && !vm.rosaryParticipationOpen) { vm.rosaryInstructionsOpen = true; }
         };
         vm.closeRosaryInstructions = function () { vm.rosaryInstructionsOpen = false; };
         vm.closeRosaryGuide = function () {
-            vm.rosaryGuideOpen = false; vm.rosaryInstructionsOpen = false;
+            vm.rosaryGuideOpen = false; vm.rosaryInstructionsOpen = false; vm.rosaryParticipationOpen = false;
             if (vm.rosaryGuide && vm.campaign) {
                 var week = Math.floor((Date.parse(studentToday() + 'T00:00:00Z') - Date.parse(vm.campaign.startDate + 'T00:00:00Z')) / (7 * 86400000));
                 if (week !== vm.weekIndex) { return vm.setWeek(week); }
@@ -251,7 +259,7 @@
         };
         vm.scanAnotherStudent = function () {
             ++studentRequest; vm.student = null; vm.campaign = null; vm.campaigns = []; studentToken = '';
-            vm.rosaryGuide = null; vm.rosaryGuideOpen = false; vm.rosaryInstructionsOpen = false; rosaryContext = '';
+            vm.rosaryGuide = null; vm.rosaryGuideOpen = false; vm.rosaryInstructionsOpen = false; vm.rosaryParticipationOpen = false; rosaryContext = ''; rosaryStudentContext = '';
             vm.needsScan = true; vm.error = ''; vm.scanError = ''; vm.checkError = ''; vm.saveNotice = '';
             vm.checks = {}; vm.savedChecks = {}; vm.pendingChecks = {};
             if (dayTimer) { $window.clearTimeout(dayTimer); dayTimer = null; }
@@ -469,7 +477,7 @@
             document.documentElement.classList.add('campaign-rosary-open');
             document.body.classList.add('campaign-rosary-open');
             var focusTimer;
-            var stopWatching = scope.$watch('vm.rosaryInstructionsOpen', function () {
+            var stopWatching = scope.$watch('vm.rosaryParticipationOpen + ":" + vm.rosaryInstructionsOpen', function () {
                 if (focusTimer) { $timeout.cancel(focusTimer); }
                 focusTimer = $timeout(function () {
                     element[0].scrollTop = 0;
