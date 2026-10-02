@@ -664,6 +664,7 @@ public class TestResultServiceImpl implements TestResultService {
 		}
 		TestResult domain = null;
 		boolean newResult = false;
+		EnrolmentClassScheduleTask dailyVocabAssignedTask = null;
         boolean passedDailyVocab=true;
         boolean passedDailyListening=false;
         boolean passedComprehensive=true;
@@ -751,12 +752,9 @@ public class TestResultServiceImpl implements TestResultService {
 			if (Integer.valueOf(1).equals(domain.getTestType())) { return new TestResultDto(domain); }
 		}
 		if (dto.getAssignmentTaskId() != null && Integer.valueOf(1).equals(dto.getTestType())) {
-			EnrolmentClassScheduleTask assignedTask = scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
-			Long assignedTopicId = assignedTask == null || assignedTask.getTopic() == null
-					? null : assignedTask.getTopic().getId();
-			if (assignedTask == null || !"DAILY_VOCAB".equals(assignedTask.getActivityType())
-					|| assignedTopicId == null || dto.getTopicIds() == null
-					|| !dto.getTopicIds().contains(assignedTopicId)) {
+			dailyVocabAssignedTask = scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
+			if (dailyVocabAssignedTask == null || !"DAILY_VOCAB".equals(dailyVocabAssignedTask.getActivityType())
+					|| dailyVocabAssignedTask.getTopic() == null) {
 				throw new IllegalArgumentException("Kết quả không khớp với topic Daily Vocab được giao.");
 			}
 		} else if (dto.getAssignmentTaskId() != null && Integer.valueOf(3).equals(dto.getTestType())) {
@@ -802,6 +800,13 @@ public class TestResultServiceImpl implements TestResultService {
 				if (topic == null) { throw new IllegalArgumentException("Topic không còn tồn tại."); }
 				resultTopics.add(topic);
 			}
+		}
+		// The exercise may emit the topics of the played questions while a homework task
+		// points at its containing topic. Persist the server-owned assignment topic as
+		// evidence as well, so valid completions and pending retries are not rejected.
+		if (dailyVocabAssignedTask != null) {
+			if (resultTopics == null) { resultTopics = new LinkedHashSet<Topic>(); }
+			resultTopics.add(dailyVocabAssignedTask.getTopic());
 		}
 		if (dto.getSourceQuestionId() != null && !Integer.valueOf(1).equals(dto.getTestType())) {
 			if (resultTopics == null) { resultTopics = new LinkedHashSet<Topic>(); }

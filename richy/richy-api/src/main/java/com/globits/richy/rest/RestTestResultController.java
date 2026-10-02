@@ -49,7 +49,7 @@ public class RestTestResultController {
 		return service.getObjectById(id);
 	}
 	
-	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER"})
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STUDENT"})
 	@RequestMapping(value = "/save", method = RequestMethod.POST)
 	public TestResultDto saveOne(@RequestBody TestResultDto searchDto) {
 		return service.saveObject(searchDto);
