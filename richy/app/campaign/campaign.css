@@ -165,6 +165,7 @@ html.campaign-rosary-open, body.campaign-rosary-open { overflow: hidden!importan
 html.campaign-garden-open, body.campaign-garden-open { overflow:hidden!important; }
 .campaign-garden-button { background:#32764B; border:1px solid #32764B; color:#fff; border-radius:10px; padding:10px 16px; min-height:44px; font-weight:700; }
 .campaign-garden-button:hover,.campaign-garden-button:focus { color:#fff; background:#265E3B; }
+.campaign-page a.campaign-garden-button { color:#fff; }
 .campaign-garden-overlay { position:fixed; inset:0; z-index:10030; overflow:auto; overscroll-behavior:contain; scrollbar-width:none; background:#EFF4EA; color:#304235; padding:16px 10px; }
 .campaign-garden-overlay::-webkit-scrollbar,.campaign-garden-picker::-webkit-scrollbar { display:none; }
 .campaign-garden-card { width:min(600px,100%); margin:0 auto; padding:16px; background:#fffdfa; border-radius:20px; box-shadow:0 8px 32px #25442B18; }

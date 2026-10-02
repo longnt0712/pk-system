@@ -12,6 +12,14 @@
             return campaign.id ? $http.put(privateUrl + '/' + campaign.id, campaign) : $http.post(privateUrl, campaign);
         };
         this.remove = function (id) { return $http.delete(privateUrl + '/' + id); };
+        this.field = function (id, filters, managed) {
+            return $http.get((managed ? privateUrl : publicUrl) + '/' + id + '/field', {
+                params: filters, skipSessionAuth: !managed, timeout: 20000
+            });
+        };
+        this.fieldClasses = function (id) {
+            return $http.get(publicUrl + '/' + id + '/field/classes', {skipSessionAuth: true, timeout: 20000});
+        };
         var flowerUrl = settings.api.baseUrl + 'public/campaign-flower/';
         this.scanStudentQr = function (studentCode) { return $http.post(flowerUrl + 'scan', {studentCode: studentCode}, {skipSessionAuth: true}); };
         this.studentLanding = function (token) { return $http.get(flowerUrl + encodeURIComponent(token), {skipSessionAuth: true}); };

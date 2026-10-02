@@ -668,7 +668,7 @@
 
         vm.searchDto.user = {};
         vm.searchDto.user.person = {};
-        vm.searchDto.user.person.enrollmentClassId = 1;
+        vm.searchDto.user.person.enrollmentClassId = null;
 
         vm.resetSum = function () {
             vm.totalStudent = 0;
@@ -919,9 +919,27 @@
 
         vm.getPage = function () {
             var selectedDate = parseDateOnly(vm.attendanceDate);
+            var selectedClassId = vm.searchDto.user && vm.searchDto.user.person
+                ? normalizeId(vm.searchDto.user.person.enrollmentClassId)
+                : null;
+            var searchKeyword = String(vm.searchTextClient || '')
+                .replace(/\s+/g, ' ')
+                .trim();
 
             if (!selectedDate) {
                 toastr.warning('Ngày không hợp lệ. Vui lòng nhập theo định dạng dd/MM/yyyy.', 'Thông báo');
+                return;
+            }
+
+            /*
+             * Không chọn lớp và không nhập tên thì giữ bảng trống. Danh sách chỉ
+             * được tải theo một lớp cụ thể hoặc theo từ khóa trong phạm vi schoolId.
+             */
+            if (selectedClassId === null && searchKeyword === '') {
+                vm.personDates = [];
+                vm.searchDto.textSearch = null;
+                vm.searchDto.attendanceClassId = null;
+                refreshAttendanceSummary();
                 return;
             }
 
@@ -930,8 +948,9 @@
             // Danh sách phía trên chỉ lấy đúng 1 ngày
             vm.searchDto.startDate = selectedDate.getTime();
             vm.searchDto.endDate = selectedDate.getTime();
-            vm.searchDto.attendanceClassId = vm.searchDto.user && vm.searchDto.user.person
-                ? (vm.searchDto.user.person.enrollmentClassId || null) : null;
+            vm.searchDto.user.person.enrollmentClassId = selectedClassId;
+            vm.searchDto.attendanceClassId = selectedClassId;
+            vm.searchDto.textSearch = searchKeyword || null;
 
             vm.resetSum();
             blockUI.start();
@@ -972,17 +991,8 @@
                 vm.enrollmentClassMap[cls.id] = cls.name;
             });
 
-            var firstDirectoryClass = null;
-            angular.forEach(vm.enrollmentClasses, function (cls) {
-                if (!firstDirectoryClass &&
-                    Number(cls.schoolId) === vm.directorySchoolId) {
-                    firstDirectoryClass = cls;
-                }
-            });
-
-            vm.searchDto.user.person.enrollmentClassId = firstDirectoryClass
-                ? firstDirectoryClass.id
-                : null;
+            // Mặc định không chọn lớp và không tự tải toàn bộ bảng điểm danh.
+            vm.searchDto.user.person.enrollmentClassId = null;
         });
 
         // =====================================================

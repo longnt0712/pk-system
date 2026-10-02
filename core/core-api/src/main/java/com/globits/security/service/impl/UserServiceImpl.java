@@ -485,6 +485,36 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	    }
 
 	    /*
+	     * DOMAIN/SCHOOL SCOPE
+	     *
+	     * schoolId được xác định từ lớp chính hoặc một trong các lớp phụ của tài khoản.
+	     * IELTS Room còn hiển thị quản trị viên; TNTT Phùng Khoang còn hiển thị tài
+	     * khoản có ít nhất một role khác ROLE_VIEWER.
+	     */
+	    Integer schoolId = filter == null ? null : filter.getSchoolId();
+	    if (schoolId != null && schoolId.intValue() > 0) {
+	        String belongsToSchool = "(cast(p.enrollmentClassId as long) in "
+	                + "(select directoryClass.id from EnrolmentClass directoryClass "
+	                + "where directoryClass.schoolId = :schoolId) "
+	                + "or exists (select 1 from u.enrollmentClassIds directoryClassId "
+	                + "where directoryClassId in "
+	                + "(select directoryExtraClass.id from EnrolmentClass directoryExtraClass "
+	                + "where directoryExtraClass.schoolId = :schoolId)))";
+
+	        if (Integer.valueOf(1).equals(schoolId)) {
+	            clause += " and (" + belongsToSchool
+	                    + " or exists (select 1 from u.roles directoryRole "
+	                    + "where directoryRole.name = 'ROLE_ADMIN')) ";
+	        } else if (Integer.valueOf(2).equals(schoolId)) {
+	            clause += " and (" + belongsToSchool
+	                    + " or exists (select 1 from u.roles directoryRole "
+	                    + "where directoryRole.name <> 'ROLE_VIEWER')) ";
+	        } else {
+	            clause += " and " + belongsToSchool + " ";
+	        }
+	    }
+
+	    /*
 	     * ENROLLMENT CLASS
 	     * Frontend gửi ID lớp, ví dụ 13.
 	     * Vì Person.enrollmentClass là object EnrolmentClass nên query phải so sánh theo .id.
@@ -577,6 +607,11 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	    if (filter != null && filter.getActive() != null) {
 	        q.setParameter("active", filter.getActive());
 	        qCount.setParameter("active", filter.getActive());
+	    }
+
+	    if (schoolId != null && schoolId.intValue() > 0) {
+	        q.setParameter("schoolId", schoolId);
+	        qCount.setParameter("schoolId", schoolId);
 	    }
 
 	    if (createdFrom != null) {

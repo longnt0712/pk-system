@@ -30,6 +30,20 @@
             .state('campaign_detail_shared', route('/campaigns/c/{campaignCode}'))
             .state('campaign_student', route('/hoa-thieng'))
             .state('campaign_student_campaign', route('/hoa-thieng/{campaignId:int}'))
-            .state('campaign_student_shared', route('/hoa-thieng/c/{campaignCode}'));
+            .state('campaign_student_shared', route('/hoa-thieng/c/{campaignCode}'))
+            .state('campaign_field', {
+                url: '/campaigns/c/{campaignCode}/canh-dong-hoa',
+                templateUrl: 'campaign/views/field.html?v=' + version,
+                data: {pageTitle: 'Cánh đồng hoa Mân Côi', publicCampaign: true},
+                controller: 'CampaignFieldController as vm',
+                resolve: {deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                    return $ocLazyLoad.load({name: 'Hrm.Campaign', files: [
+                        'campaign/field.css?v=' + version,
+                        'campaign/business/CampaignService.js?v=' + version,
+                        'campaign/rosary2026/FlowerGarden2026.js?v=' + version,
+                        'campaign/controllers/CampaignFieldController.js?v=' + version
+                    ]});
+                }]}
+            });
     }]);
 })();

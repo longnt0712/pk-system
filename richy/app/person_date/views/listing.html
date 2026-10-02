@@ -164,6 +164,7 @@
                             <input type="text"
                                     class="form-control"
                                     ng-model="vm.searchTextClient"
+                                    dl-enter-key="vm.getPage()"
                                     placeholder="Gõ tên vào đây để tìm...">
                         </div>
 
@@ -171,7 +172,7 @@
                             <button type="button"
                                     class="btn btn-primary attendance-reload-under-search"
                                     ng-click="vm.getPage()">
-                                <i class="fa fa-refresh"></i> Tải lại danh sách
+                                <i class="fa fa-search"></i> Tìm kiếm
                             </button>
                         </div>
                         </div>
@@ -194,7 +195,7 @@
                                 </thead>
 
                                 <tbody>
-                                <tr ng-repeat="personDate in vm.personDates | filter:vm.searchClient">
+                                <tr ng-repeat="personDate in vm.personDates">
 
 
                                     <td class="attendance-name-cell">

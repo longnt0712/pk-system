@@ -14,6 +14,9 @@ public class UserFilterDto {
 
 	private Long[] enrollmentClassIds;
 
+	/* Phạm vi trường của danh sách tài khoản, được suy ra từ domain hiện tại. */
+	private Integer schoolId;
+
 	/* Khoảng ngày tạo tài khoản (ngày nhập học). */
 	private Long startDate;
 
@@ -49,6 +52,14 @@ public class UserFilterDto {
 
 	public void setEnrollmentClassIds(Long[] enrollmentClassIds) {
 		this.enrollmentClassIds = enrollmentClassIds;
+	}
+
+	public Integer getSchoolId() {
+		return schoolId;
+	}
+
+	public void setSchoolId(Integer schoolId) {
+		this.schoolId = schoolId;
 	}
 
 	public String getKeyword() {

@@ -203,8 +203,12 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 	                " and (" +
 	                "lower(u.username) like :textSearch " +
 	                "or lower(u.person.displayName) like :textSearch " +
+	                "or lower(coalesce(u.person.patron,'')) like :textSearch " +
 	                "or lower(u.person.firstName) like :textSearch " +
-	                "or lower(u.person.lastName) like :textSearch" +
+	                "or lower(u.person.lastName) like :textSearch " +
+	                "or lower(concat(coalesce(u.person.patron,''), ' ', " +
+	                "coalesce(u.person.lastName,''), ' ', " +
+	                "coalesce(u.person.firstName,''))) like :textSearch" +
 	                ")";
 	    }
 

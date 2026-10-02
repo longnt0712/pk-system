@@ -25,3 +25,15 @@ Phần hướng dẫn frontend dành riêng cho chiến dịch **Cùng Mẹ, em 
 - Nền minh họa được tạo từ bản phác thảo đã duyệt, tham khảo ảnh nhà thờ Phùng Khoang: https://commons.wikimedia.org/wiki/File:Phùng_Khoang_church_building.jpg. Các ảnh ngắm và ảnh hướng dẫn hiện có được giữ nguyên.
 
 Kiểm tra: 31 test Java của chiến dịch/phiếu, 108 test frontend thành công (2 test không liên quan được bỏ qua); kiểm tra thao tác trên trình duyệt với dữ liệu giả ở kích thước điện thoại và máy tính. Chưa chạy migration hay ghi thử trên database thật.
+
+## Cánh đồng hoa công khai
+
+- Nút “Cánh đồng hoa” trên thẻ và trang chi tiết mở `/campaigns/c/{shareCode}/canh-dong-hoa`. Chỉ dành cho chiến dịch Mân Côi đã cấu hình ở trên; sau tháng 10 vẫn xem được.
+- Khách và người đăng nhập thường chỉ thấy tài khoản học sinh đang hoạt động. Tài khoản có bất kỳ vai trò Admin/Education Management/Student Management nào (kể cả đồng thời là học sinh) chỉ có trong API riêng được bảo vệ, và chỉ người xem đăng nhập với một trong ba vai trò đó mới gọi được API này.
+- Phạm vi TNTT gồm người có lớp `school_id=2`, hoặc chưa có lớp ở trường 1 và không có vai trò Viewer. Người chỉ có lớp IELTS và tài khoản không thuộc các vai trò trên bị loại. Tài khoản chưa xếp lớp, chưa có QR hay chưa tích vẫn có vườn trắng ở cuối.
+- Tên thánh, họ tên đầy đủ và các lớp TNTT được trưng bày. Không trả username, QR token, email, số điện thoại hoặc User entity. Chỉ trả tổng lượt tích và màu đã lưu, giới hạn theo lượt tích của mỗi ngày và các mục hiện tại.
+- GET `/public/campaigns/{id}/field` trả học sinh; GET `/api/campaigns/{id}/field` được `@Secured` và trả thêm quản lý. GET `/public/campaigns/{id}/field/classes` trả bộ lọc lớp TNTT. Cả ba chỉ đọc, không cấp QR và không ghi bảng hoa thiêng.
+- Mỗi đợt mặc định 6 vườn, tối đa 12; backend dùng `TOP`, cursor tổng tích giảm dần + ID tăng dần để không lấy cả danh sách hoặc đếm tổng mỗi lần. Chỉ tính ô `completed=1`, thuộc chiến dịch, mục còn hiệu lực và ngày đã đến theo giờ Việt Nam. Bằng lượt tích thì ID giữ thứ tự ổn định. Khi dữ liệu đang thay đổi, dùng tìm kiếm/lọc lại để làm mới thứ tự.
+- Lọc `classId` kiểm tra phạm vi lớp ở backend. Tìm `q` bằng tên thánh/họ tên, tối đa 100 ký tự; SQL Server dùng `Latin1_General_CI_AI` để bỏ qua hoa thường/dấu. Tham số được bind, ký tự LIKE được escape. Cursor được kiểm tra định dạng và giới hạn. Một truy vấn lớp và một truy vấn màu cho cả nhóm vườn, không gọi theo từng học sinh.
+- Frontend tìm sau 400 ms, bỏ phản hồi cũ, tự tải gần cuối trang và có nút “Xem thêm”. Tranh SVG chỉ dựng một lần mỗi vườn, ảnh nền dùng chung và lazy load. Không thay đổi luồng tích/tô cá nhân. Khi mất quyền/đăng xuất, xóa vườn đã tải và hộp xem lớn rồi tải danh sách học sinh; phản hồi riêng cũ bị bỏ qua. Response `no-store` tránh lưu vườn quản lý vào cache.
+- Triển khai cần cập nhật **frontend và backend cùng nhau**. Không có migration mới cho cánh đồng hoa; vẫn cần `paint_color` của chức năng vườn hoa đã có. Chưa chạy trên SQL Server thật; kiểm thử truy vấn dùng H2 giả ở chế độ MSSQLServer, thay collation khi chạy H2. Cần xác minh collation/tìm không dấu và tải thực tế trên môi trường staging trước khi triển khai.

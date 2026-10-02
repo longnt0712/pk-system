@@ -1,0 +1,41 @@
+<main class="campaign-field-page" ng-if="vm.settings.campaignsEnabled === true" ng-class="{'field-dialog-open': vm.selected}">
+    <div class="field-shell" ng-attr-inert="{{vm.selected ? '' : undefined}}" ng-attr-aria-hidden="{{vm.selected ? 'true' : undefined}}">
+        <header class="field-header">
+            <nav><a ui-sref="campaigns">← Chiến dịch Hoa thiêng</a><span>THIẾU NHI THÁNH THỂ · PHÙNG KHOANG</span></nav>
+            <div class="field-heading"><span class="field-symbol" aria-hidden="true">✿</span><div><p class="field-eyebrow">THÁNG MÂN CÔI 2026</p><h1>Cánh đồng hoa Mân Côi</h1><p class="field-subtitle">Cùng Đức Mẹ yêu mến Chúa Giê-su</p></div></div>
+            <p class="field-intro">Mỗi việc tốt là một đóa hoa dâng Mẹ. Cùng ngắm những vườn hoa các em chăm sóc mỗi ngày.</p>
+        </header>
+        <form class="field-filters" ng-if="vm.campaign" ng-submit="vm.reload()">
+            <label for="field-class">Chọn lớp<select id="field-class" ng-model="vm.classId" ng-options="item.id as item.name for item in vm.classes" ng-change="vm.reload()"><option value="">Tất cả lớp</option></select></label>
+            <label for="field-search">Tìm vườn hoa theo tên<input id="field-search" type="search" ng-model="vm.query" ng-change="vm.searchChanged()" maxlength="100" placeholder="Nhập tên thánh hoặc họ tên…" autocomplete="off"></label>
+            <button type="submit" class="field-button">Tìm vườn hoa</button>
+        </form>
+        <p ng-if="vm.classesError" role="status">{{vm.classesError}} <button type="button" class="field-link-button" ng-click="vm.start()">Thử lại</button></p>
+        <p ng-if="vm.starting" class="field-status" role="status">Đang mở cánh đồng hoa…</p>
+        <div ng-if="vm.startError" class="field-error" role="alert">{{vm.startError}} <button type="button" class="field-button" ng-click="vm.start()">Thử lại</button></div>
+        <div ng-if="vm.campaign" class="field-results-heading"><p>Những vườn có nhiều lượt tích được đặt trước</p><span>{{vm.gardens.length}} vườn đã mở</span></div>
+        <section class="field-grid" aria-label="Vườn hoa của các em" ng-attr-aria-busy="{{vm.loading}}">
+            <article class="field-garden-card" ng-repeat="garden in vm.gardens track by garden.id">
+                <header><span class="field-count"><span aria-hidden="true">✿</span> {{::garden.completedCount}} lượt tích</span><h2>{{::garden.saintName}} {{::garden.fullName}}</h2><p>{{::garden.classes.join(', ') || 'Chưa xếp lớp'}}</p></header>
+                <button type="button" class="field-art-button" ng-click="vm.openGarden(garden)" aria-label="Xem lớn vườn hoa của {{::garden.fullName}}">
+                    <div class="field-art" campaign-field-art campaign="vm.campaign" colors="garden.colors"><img src="assets/images/rosary-2026/vuon-hoa-phung-khoang-background.png" alt="" width="940" height="1672" loading="lazy"></div>
+                    <span class="field-art-caption">Ngắm vườn hoa <span aria-hidden="true">↗</span></span>
+                </button>
+                <p class="field-first-flower" ng-if="!garden.completedCount">Vườn đang chờ những đóa hoa đầu tiên.</p>
+            </article>
+        </section>
+        <p ng-if="!vm.starting && vm.campaign && !vm.loading && !vm.error && !vm.gardens.length && !vm.hasMore" class="field-empty">Chưa tìm thấy vườn hoa phù hợp. Hãy thử tên khác hoặc chọn tất cả lớp.</p>
+        <div class="field-more" campaign-field-more>
+            <p ng-if="vm.loading" role="status">Đang mở thêm những vườn hoa…</p>
+            <p ng-if="vm.error" class="field-error" role="alert">{{vm.error}}</p>
+            <button type="button" class="field-button" ng-if="vm.hasMore" ng-click="vm.loadMore()" ng-disabled="vm.loading">{{vm.error ? 'Thử tải lại' : 'Xem thêm vườn hoa'}}</button>
+            <p ng-if="vm.gardens.length && !vm.hasMore && !vm.loading">Đã ngắm hết các vườn hoa trong lựa chọn này.</p>
+        </div>
+        <footer class="field-footer">Cùng Mẹ, em yêu mến Chúa · Hoa Mân Côi 01–31/10/2026</footer>
+    </div>
+    <section class="field-dialog" ng-if="vm.selected" role="dialog" aria-modal="true" aria-labelledby="field-dialog-title" campaign-field-dialog>
+        <div class="field-dialog-card"><header><div><h2 id="field-dialog-title">{{vm.selected.saintName}} {{vm.selected.fullName}}</h2><p>{{vm.selected.classes.join(', ') || 'Chưa xếp lớp'}} · {{vm.selected.completedCount}} lượt tích</p></div><button type="button" class="field-button" ng-click="vm.closeGarden()">Đóng</button></header>
+            <div class="field-art" campaign-field-art campaign="vm.campaign" colors="vm.selected.colors"><img src="assets/images/rosary-2026/vuon-hoa-phung-khoang-background.png" alt="Vườn hoa Mân Côi của {{vm.selected.fullName}}" width="940" height="1672"></div>
+        </div>
+    </section>
+</main>

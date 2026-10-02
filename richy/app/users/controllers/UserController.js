@@ -555,13 +555,9 @@
             return role ? [role] : [];
         }
 
-        function getDirectorySearchRoles(classIds, keyword) {
-            var hasSelectedClass = classIds && classIds.length > 0;
-            var hasKeyword = keyword != null && String(keyword).trim() !== '';
-
-            // Tìm theo tên phải áp dụng cho mọi role thuộc trường/domain hiện tại.
-            // schoolId vẫn được gửi kèm để backend giữ đúng phạm vi tài khoản được phép hiển thị.
-            return hasSelectedClass || hasKeyword ? [] : getStudentDirectoryRole();
+        function getDirectorySearchRoles() {
+            // Backend áp dụng phạm vi school/role theo domain cho cả danh sách và tìm kiếm.
+            return [];
         }
 
         function isEducationManagedRole(role) {
@@ -668,10 +664,7 @@
 				? vm.advancedSearchApplied.classIds.slice()
 				: vm.getClassAndDescendantIds(requestFilter.enrollmentClass);
             // Explicit classes include their members regardless of account role (e.g. HT).
-            requestFilter.roles = getDirectorySearchRoles(
-                requestFilter.enrollmentClassIds,
-                requestFilter.keyword
-            );
+            requestFilter.roles = getDirectorySearchRoles();
 			requestFilter.startDate = vm.appliedCreatedDateFrom
 				? toCalendarDate(vm.appliedCreatedDateFrom).getTime()
 				: null;

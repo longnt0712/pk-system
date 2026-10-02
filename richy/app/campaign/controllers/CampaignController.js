@@ -64,6 +64,7 @@
         vm.gardenOpen = false; vm.gardenPalette = gardenConfig ? gardenConfig.palette : [];
         vm.gardenColor = '#F48FB1'; vm.gardenBusy = false; vm.gardenDay = null;
         vm.gardenEnabled = function () { return !!(vm.studentMode && vm.student && gardenConfig && gardenConfig.enabled(vm.campaign)); };
+        vm.fieldEnabled = function (campaign) { return !!(gardenConfig && gardenConfig.enabled(campaign) && /^[a-f0-9]{32}$/.test(campaign.shareCode || '')); };
         function renderGarden() {
             if (!vm.gardenEnabled()) { return; }
             var date = vm.gardenDay && vm.gardenDay.date;
