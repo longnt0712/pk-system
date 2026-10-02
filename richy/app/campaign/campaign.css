@@ -160,3 +160,44 @@ html.campaign-rosary-open, body.campaign-rosary-open { overflow: hidden!importan
     .campaign-rosary-card { height: auto; min-height: 95vh; }
     .campaign-rosary-figure img { flex: none; height: 65vh; }
 }
+
+/* Portrait garden never inherits the landscape A4 sheet rotation. */
+html.campaign-garden-open, body.campaign-garden-open { overflow:hidden!important; }
+.campaign-garden-button { background:#32764B; border:1px solid #32764B; color:#fff; border-radius:10px; padding:10px 16px; min-height:44px; font-weight:700; }
+.campaign-garden-button:hover,.campaign-garden-button:focus { color:#fff; background:#265E3B; }
+.campaign-garden-overlay { position:fixed; inset:0; z-index:10030; overflow:auto; overscroll-behavior:contain; scrollbar-width:none; background:#EFF4EA; color:#304235; padding:16px 10px; }
+.campaign-garden-overlay::-webkit-scrollbar,.campaign-garden-picker::-webkit-scrollbar { display:none; }
+.campaign-garden-card { width:min(600px,100%); margin:0 auto; padding:16px; background:#fffdfa; border-radius:20px; box-shadow:0 8px 32px #25442B18; }
+.campaign-garden-header { display:flex; gap:12px; justify-content:space-between; align-items:center; }
+.campaign-garden-header span { color:#7C6A43; font-weight:700; font-size:10px; letter-spacing:.8px; }
+.campaign-garden-header h1 { font-size:19px; font-weight:700; margin:4px 0; line-height:1.35; }
+.campaign-garden-header .btn { flex:none; min-height:44px; font-size:12px; border-radius:10px; }
+.campaign-garden-help { font-size:13px; line-height:1.5; margin:12px 0; }
+.campaign-garden-progress { display:flex; justify-content:space-between; gap:8px; font-size:13px; padding:10px 12px; border-radius:10px; background:#EEF5E8; margin-bottom:12px; }
+.campaign-garden-art { position:relative; aspect-ratio:940/1672; overflow:hidden; border-radius:14px; background:#C4E3A6; }
+.campaign-garden-art>img { display:block; width:100%; height:100%; }
+.campaign-garden-flower { position:absolute; width:15.5%; min-height:44px; border:0; background:transparent; padding:0; transform:translate(-50%,-39%); cursor:pointer; touch-action:manipulation; }
+.campaign-garden-flower svg { display:block; width:100%; height:auto; overflow:visible; filter:drop-shadow(0 2px 1px #47663320); }
+.campaign-garden-flower:focus-visible { outline:3px solid #286BAF; outline-offset:2px; border-radius:12px; }
+.campaign-garden-flower:disabled { cursor:wait; }
+.campaign-garden-footer { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:14px; }
+.campaign-garden-footer .btn { min-height:44px; border-radius:10px; white-space:normal; }
+.campaign-garden-picker { position:fixed; inset:0; z-index:1; display:flex; align-items:center; justify-content:center; padding:12px; background:#16281ECC; overflow:auto; scrollbar-width:none; }
+.campaign-garden-picker-card { width:min(420px,100%); max-height:95vh; max-height:95dvh; overflow:auto; overscroll-behavior:contain; scrollbar-width:none; background:#fffdfa; border-radius:22px; padding:20px; text-align:center; box-shadow:0 16px 50px #10231940; }
+.campaign-garden-picker-card::-webkit-scrollbar { display:none; }
+.campaign-garden-picker-card header { display:flex; gap:10px; justify-content:space-between; align-items:center; }
+.campaign-garden-picker-card h2 { font-size:19px; font-weight:700; margin:0; line-height:1.4; }
+.campaign-garden-picker-card header .btn { min-height:44px; border-radius:10px; }
+.campaign-garden-picker-card p { font-size:14px; line-height:1.5; margin:12px 0; }
+.campaign-garden-large-flower { display:block; width:min(270px,80vw); height:auto; margin:12px auto; }
+.campaign-garden-large-flower path { cursor:pointer; touch-action:manipulation; }
+.campaign-garden-large-flower path:focus-visible { stroke:#286BAF; stroke-width:3px; outline:none; }
+.campaign-garden-large-flower path[aria-disabled=true] { cursor:default; }
+.campaign-garden-palette { display:flex; flex-wrap:wrap; justify-content:center; gap:7px; }
+.campaign-garden-swatch { width:44px; height:44px; flex:none; border:2px solid #74654C; border-radius:50%; color:#283D30; font-weight:700; font-size:22px; touch-action:manipulation; }
+.campaign-garden-swatch[aria-pressed=true] { outline:3px solid #32764B; outline-offset:2px; }
+.campaign-garden-swatch:focus-visible { outline:3px solid #286BAF; outline-offset:3px; }
+.campaign-garden-notice { color:#32643F; font-size:13px; }
+.campaign-garden-confirm { padding:26px 20px; }
+@media(min-width:601px) { .campaign-garden-art { width:min(100%,max(300px,calc((100dvh - 275px) * .5622))); margin:0 auto; } }
+@media(max-width:600px) { .campaign-garden-overlay { padding:8px 4px; }.campaign-garden-card { padding:12px 8px; border-radius:16px; }.campaign-garden-picker { align-items:flex-end; padding:8px; }.campaign-garden-picker-card { padding:16px; }.campaign-garden-header h1 { font-size:16px; }.campaign-garden-help { padding:0 4px; } }

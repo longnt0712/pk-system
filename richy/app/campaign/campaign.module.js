@@ -18,6 +18,7 @@
                             'campaign/business/CampaignService.js?v=' + version,
                             'campaign/controllers/CampaignQrScanner.js?v=' + version,
                             'campaign/rosary2026/RosaryCampaign2026.js?v=' + version,
+                            'campaign/rosary2026/FlowerGarden2026.js?v=' + version,
                             'campaign/controllers/CampaignController.js?v=' + version
                         ]});
                     }]

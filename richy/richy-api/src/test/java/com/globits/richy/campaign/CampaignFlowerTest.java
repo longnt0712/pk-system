@@ -81,13 +81,77 @@ public class CampaignFlowerTest {
             saved.get(entryKey((Long)call.getArguments()[1], (String)call.getArguments()[2], (String)call.getArguments()[3])));
         when(entries.findByCampaignIdAndStudentIdAndDateBetween(anyLong(), anyLong(), anyString(), anyString())).thenAnswer(call -> {
             List<CampaignFlowerEntry> result = new ArrayList<>(); Long owner = (Long)call.getArguments()[1];
-            for (CampaignFlowerEntry value : saved.values()) { if (owner.equals(value.getStudentId())) { result.add(value); } } return result;
+            String first = (String)call.getArguments()[2], last = (String)call.getArguments()[3];
+            for (CampaignFlowerEntry value : saved.values()) {
+                if (owner.equals(value.getStudentId()) && value.getDate().compareTo(first) >= 0 && value.getDate().compareTo(last) <= 0) { result.add(value); }
+            } return result;
         });
         when(access.saveAndFlush(any(CampaignFlowerAccess.class))).thenAnswer(call -> call.getArguments()[0]);
         SecurityContextHolder.clearContext();
     }
     @After public void cleanup() { SecurityContextHolder.clearContext(); if (context != null) { context.close(); } saved.clear(); }
     private static String entryKey(Long student, String date, String item) { return student + ":" + date + ":" + item; }
+    private String addPractice() {
+        String next = UUID.randomUUID().toString(); SpiritualFlowerItem item = new SpiritualFlowerItem(); item.setItemKey(next); item.setName("Tham dự Thánh lễ"); campaign.getFlowerItems().add(item); return next;
+    }
+    @Test public void coloringSpendsOnlyEarnedDailyCreditsAndAllowsChoosingAnyPetal() {
+        String other = addPractice();
+        try { service.paint(tokenA, 5L, today, other, "#F48FB1"); fail("No credit"); } catch (CampaignService.InvalidCampaignException expected) { }
+        service.check(tokenA, 5L, today, key, true);
+        CampaignFlowerDto.Garden garden = service.paint(tokenA, 5L, today, other, "#F48FB1");
+        assertEquals(1, garden.entries.stream().filter(e -> e.paintColor != null).count());
+        assertFalse(saved.get(entryKey(7L, today, other)).isCompleted());
+        service.paint(tokenA, 5L, today, other, "#81D4FA");
+        assertEquals("#81D4FA", saved.get(entryKey(7L, today, other)).getPaintColor());
+        try { service.paint(tokenA, 5L, today, key, "#EF5350"); fail("Overspend"); } catch (CampaignService.InvalidCampaignException expected) { }
+        try { service.paint(tokenB, 5L, today, other, "#EF5350"); fail("Other participant's credit"); } catch (CampaignService.InvalidCampaignException expected) { }
+        assertEquals(2, service.garden(tokenA, 5L).entries.size()); assertTrue(service.garden(tokenB, 5L).entries.isEmpty());
+        verify(access, atLeastOnce()).lockByTokenHash(StudentMarkShareSupport.hashToken(tokenA));
+    }
+    @Test public void removingCompletionRemovesExcessPaintAndResetRestoresCreditsWithoutErasingChecks() {
+        String other = addPractice(); service.check(tokenA, 5L, today, key, true); service.paint(tokenA, 5L, today, other, "#EF5350");
+        service.check(tokenA, 5L, today, key, false); assertNull(saved.get(entryKey(7L, today, other)).getPaintColor());
+        service.check(tokenA, 5L, today, key, true); service.paint(tokenA, 5L, today, other, "#B39DDB");
+        service.check(tokenB, 5L, today, key, true); service.paint(tokenB, 5L, today, key, "#80CBC4");
+        CampaignFlowerDto.Garden reset = service.resetPaint(tokenA, 5L);
+        assertEquals(1, reset.entries.stream().filter(e -> e.completed).count());
+        assertEquals(0, reset.entries.stream().filter(e -> e.paintColor != null).count());
+        assertEquals("#80CBC4", saved.get(entryKey(9L, today, key)).getPaintColor());
+        service.paint(tokenA, 5L, today, key, "#FFE082");
+        assertEquals("#FFE082", saved.get(entryKey(7L, today, key)).getPaintColor());
+    }
+    @Test public void addingAndReorderingPracticesPreservesColorByStableKey() {
+        service.check(tokenA, 5L, today, key, true); service.paint(tokenA, 5L, today, key, "#FFB74D");
+        addPractice(); Collections.reverse(campaign.getFlowerItems());
+        assertEquals("#FFB74D", service.garden(tokenA, 5L).entries.get(0).paintColor);
+        campaign.getFlowerItems().removeIf(item -> key.equals(item.getItemKey()));
+        assertTrue(service.garden(tokenA, 5L).entries.isEmpty());
+        try { service.paint(tokenA, 5L, today, key, "#FFB74D"); fail("Retired item"); } catch (CampaignService.InvalidCampaignException expected) { }
+    }
+    @Test public void previousDaysCanSpendExistingCreditButFutureInvalidDatesAndUnapprovedColorsCannot() {
+        String yesterday = LocalDate.parse(today).minusDays(1).toString();
+        CampaignFlowerEntry previous = new CampaignFlowerEntry(); previous.setCampaignId(5L); previous.setStudentId(7L); previous.setDate(yesterday); previous.setItemKey(key); previous.setCompleted(true);
+        saved.put(entryKey(7L, yesterday, key), previous);
+        service.paint(tokenA, 5L, yesterday, key, "#EF5350");
+        assertEquals("#EF5350", service.garden(tokenA, 5L).entries.get(0).paintColor);
+        for (String invalidDate : Arrays.asList("bad", "2026-02-30", LocalDate.parse(today).plusDays(1).toString())) {
+            try { service.paint(tokenA, 5L, invalidDate, key, "#EF5350"); fail("Invalid date"); } catch (CampaignService.InvalidCampaignException expected) { }
+        }
+        for (String color : Arrays.asList(null, "red", "#000000", "url(javascript:alert(1))")) {
+            try { service.paint(tokenA, 5L, yesterday, key, color); fail("Invalid palette"); } catch (CampaignService.InvalidCampaignException expected) { }
+        }
+        try { service.resetPaint("bad", 5L); fail("Invalid QR reset"); } catch (CampaignFlowerService.InvalidStudentQrException expected) { }
+    }
+    @Test public void gardenHttpDoesNotTrustStudentOrCreditFieldsInTheRequest() throws Exception {
+        service.check(tokenA, 5L, today, key, true);
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(context.getBean(RestPublicCampaignFlowerController.class)).build();
+        String base = "/public/campaign-flower/" + tokenA + "/campaigns/5/garden";
+        mvc.perform(put(base + "/" + today + "/" + key).contentType("application/json").content("{\"color\":\"#EF5350\",\"studentId\":9,\"credits\":100}"))
+            .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store, max-age=0"));
+        assertEquals("#EF5350", saved.get(entryKey(7L, today, key)).getPaintColor()); assertEquals(1, saved.size());
+        mvc.perform(post(base + "/reset")).andExpect(status().isOk()); assertTrue(saved.get(entryKey(7L, today, key)).isCompleted());
+        mvc.perform(get(base)).andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store, max-age=0"));
+    }
     private static User student(Long id, String code) {
         User user = new User(); user.setId(id); user.setUsername(code);
         Role role = new Role(); role.setName("ROLE_STUDENT"); user.getRoles().add(role);

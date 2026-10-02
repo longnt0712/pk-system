@@ -27,7 +27,7 @@
                 rosaryStudentContext = studentContext;
                 rosaryContext = context; vm.rosaryInstructionsOpen = false;
                 vm.rosaryGuide = rosaryConfig.select(vm.student, today);
-                vm.rosaryGuideOpen = !!vm.rosaryGuide;
+                vm.rosaryGuideOpen = !!vm.rosaryGuide && !vm.gardenOpen;
                 if (vm.rosaryGuideOpen && vm.fullscreen && vm.toggleFullscreen) { vm.toggleFullscreen(); }
             } else if (refresh && vm.rosaryGuide && vm.rosaryGuide.randomizable) {
                 vm.rosaryGuide = rosaryConfig.select(vm.student, today, null, vm.rosaryGuide);
@@ -35,6 +35,7 @@
         }
         vm.refreshRosaryGuide = function () { updateRosaryGuide(true); };
         vm.openRosaryGuide = function () {
+            vm.gardenOpen = false;
             vm.rosaryInstructionsOpen = false;
             updateRosaryGuide(); vm.rosaryParticipationOpen = false; vm.rosaryGuideOpen = !!vm.rosaryGuide;
             if (vm.rosaryGuideOpen && vm.fullscreen && vm.toggleFullscreen) { vm.toggleFullscreen(); }
@@ -59,6 +60,62 @@
         var targetCode = vm.studentMode ? $stateParams.campaignCode : null;
         var hasTarget = !!(targetId || targetCode);
         var studentToken = vm.studentMode ? String($window.location.hash || '').slice(1) : '';
+        var gardenConfig = $window.FlowerGarden2026, gardenRequest = 0, gardenEntries = [];
+        vm.gardenOpen = false; vm.gardenPalette = gardenConfig ? gardenConfig.palette : [];
+        vm.gardenColor = '#F48FB1'; vm.gardenBusy = false; vm.gardenDay = null;
+        vm.gardenEnabled = function () { return !!(vm.studentMode && vm.student && gardenConfig && gardenConfig.enabled(vm.campaign)); };
+        function renderGarden() {
+            if (!vm.gardenEnabled()) { return; }
+            var date = vm.gardenDay && vm.gardenDay.date;
+            vm.garden = gardenConfig.build(vm.campaign, gardenEntries, studentToday());
+            vm.gardenDay = date ? vm.garden.flowers.filter(function (flower) { return flower.date === date; })[0] : null;
+        }
+        function receiveGarden(data) {
+            vm.campaign = data.campaign; gardenEntries = data.entries || [];
+            if (data.serverTime) { serverClockOffset = data.serverTime - Date.now(); }
+            // Refresh both views from the same server snapshot after checks changed on another device.
+            vm.checks = {}; vm.savedChecks = {};
+            gardenEntries.forEach(function (entry) { vm.checks[entry.itemKey + ':' + entry.date] = vm.savedChecks[entry.itemKey + ':' + entry.date] = entry.completed === true; });
+            prepareCampaign(vm.weekIndex); renderGarden();
+        }
+        vm.loadGarden = function () {
+            if (!vm.gardenEnabled() || vm.gardenBusy) { return; }
+            var request = ++gardenRequest, id = vm.campaign.id, token = studentToken;
+            vm.gardenLoading = true; vm.gardenError = ''; vm.gardenNotice = '';
+            return service.studentGarden(token, id).then(function (response) {
+                if (request === gardenRequest && token === studentToken && vm.campaign && vm.campaign.id === id) { receiveGarden(response.data); }
+            }, function (error) { if (request === gardenRequest) { vm.gardenError = errorMessage(error); } })
+                .finally(function () { if (request === gardenRequest) { vm.gardenLoading = false; } });
+        };
+        vm.openGarden = function () {
+            if (!vm.gardenEnabled() || Object.keys(vm.pendingChecks || {}).length) { return; }
+            vm.rosaryGuideOpen = false; vm.rosaryParticipationOpen = false; vm.rosaryInstructionsOpen = false;
+            if (vm.fullscreen && vm.toggleFullscreen) { vm.toggleFullscreen(); }
+            vm.gardenOpen = true; vm.gardenDay = null; vm.gardenResetConfirm = false;
+            return vm.loadGarden();
+        };
+        vm.closeGarden = function () { if (!vm.gardenBusy) { vm.gardenOpen = false; vm.gardenDay = null; vm.gardenResetConfirm = false; } };
+        vm.selectGardenDay = function (flower) { if (!vm.gardenBusy && !vm.gardenLoading) { vm.gardenDay = flower; vm.gardenNotice = ''; } };
+        vm.paintGardenPetal = function (petal) {
+            if (vm.gardenBusy || vm.gardenLoading || !vm.gardenDay || vm.gardenDay.future) { return; }
+            if (petal.color === '#FFFFFF' && !vm.gardenDay.available) { vm.gardenNotice = 'Ngày này đã hết lượt tô. Em hãy tích những việc đã thực hiện để nhận thêm lượt nhé.'; return; }
+            var token = studentToken, id = vm.campaign.id, date = vm.gardenDay.date, request = ++gardenRequest;
+            vm.gardenBusy = true; vm.gardenError = ''; vm.gardenNotice = 'Đang lưu màu…';
+            return service.paintFlower(token, id, date, petal.key, vm.gardenColor).then(function (response) {
+                if (request === gardenRequest && token === studentToken) { receiveGarden(response.data); vm.gardenNotice = 'Đã lưu màu của em.'; }
+            }, function (error) {
+                if (request === gardenRequest) { vm.gardenError = errorMessage(error); vm.gardenNotice = ''; }
+            }).finally(function () { if (request === gardenRequest) { vm.gardenBusy = false; } });
+        };
+        vm.resetGardenPaint = function () {
+            if (!vm.gardenResetConfirm || vm.gardenBusy || vm.gardenLoading) { return; }
+            var token = studentToken, id = vm.campaign.id, request = ++gardenRequest;
+            vm.gardenBusy = true; vm.gardenError = ''; vm.gardenNotice = '';
+            return service.resetFlowerPaint(token, id).then(function (response) {
+                if (request === gardenRequest && token === studentToken) { receiveGarden(response.data); vm.gardenResetConfirm = false; vm.gardenNotice = 'Đã xóa màu và hoàn lại lượt tô. Các việc đã tích vẫn được giữ nguyên.'; }
+            }, function (error) { if (request === gardenRequest) { vm.gardenError = errorMessage(error); } })
+                .finally(function () { if (request === gardenRequest) { vm.gardenBusy = false; } });
+        };
         vm.needsScan = vm.studentMode && !/^[A-Za-z0-9_-]{43}$/.test(studentToken);
         vm.checks = {}; vm.savedChecks = {}; vm.pendingChecks = {};
         vm.page = 1;
@@ -258,6 +315,7 @@
                 .finally(function () { vm.scanBusy = false; });
         };
         vm.scanAnotherStudent = function () {
+            ++gardenRequest; gardenEntries = []; vm.gardenOpen = false; vm.garden = null; vm.gardenDay = null; vm.gardenBusy = false; vm.gardenLoading = false; vm.gardenResetConfirm = false;
             ++studentRequest; vm.student = null; vm.campaign = null; vm.campaigns = []; studentToken = '';
             vm.rosaryGuide = null; vm.rosaryGuideOpen = false; vm.rosaryInstructionsOpen = false; vm.rosaryParticipationOpen = false; rosaryContext = ''; rosaryStudentContext = '';
             vm.needsScan = true; vm.error = ''; vm.scanError = ''; vm.checkError = ''; vm.saveNotice = '';
@@ -311,7 +369,7 @@
             if (!$window.setTimeout) { return; }
             if (dayTimer) { $window.clearTimeout(dayTimer); }
             var now = Date.now() + serverClockOffset + 7 * 3600000;
-            dayTimer = $window.setTimeout(function () { $scope.$evalAsync(function () { updateRosaryGuide(); }); scheduleNewDay(); }, 86400000 - (now % 86400000) + 50);
+            dayTimer = $window.setTimeout(function () { $scope.$evalAsync(function () { updateRosaryGuide(); renderGarden(); }); scheduleNewDay(); }, 86400000 - (now % 86400000) + 50);
         }
         vm.isDayLocked = function (day) { return day.date !== studentToday(); };
         vm.toggleFlower = function (item, day) {
@@ -429,7 +487,7 @@
         if (hasTarget) { loadTargetCampaign(); }
         else if (vm.studentMode) { loadStudentLanding(); }
         else if ($stateParams.id || $stateParams.campaignCode) { loadDetail(); } else { vm.load(1); }
-        if ($scope.$on) { $scope.$on('$destroy', function () { ++studentRequest; if (dayTimer) { $window.clearTimeout(dayTimer); } if ($window.removeEventListener) { $window.removeEventListener('beforeunload', beforeUnload); } }); }
+        if ($scope.$on) { $scope.$on('$destroy', function () { ++studentRequest; ++gardenRequest; if (dayTimer) { $window.clearTimeout(dayTimer); } if ($window.removeEventListener) { $window.removeEventListener('beforeunload', beforeUnload); } }); }
     }
     angular.module('Hrm.Campaign').directive('campaignEditor', ['$window', '$timeout', function ($window, $timeout) {
         return {restrict: 'A', link: function (scope, element) {
@@ -495,6 +553,42 @@
                 $timeout.cancel(focusTimer); stopWatching(); element.off('keydown', keyboard);
                 document.documentElement.classList.remove('campaign-rosary-open');
                 document.body.classList.remove('campaign-rosary-open');
+            });
+        }};
+    }]);
+    angular.module('Hrm.Campaign').directive('campaignGardenFocus', ['$timeout', function ($timeout) {
+        return {restrict: 'A', link: function (scope, element) {
+            document.documentElement.classList.add('campaign-garden-open'); document.body.classList.add('campaign-garden-open');
+            var timer, returnFocus;
+            var unwatch = scope.$watch(function () { return (scope.vm.gardenDay && scope.vm.gardenDay.date || '') + ':' + scope.vm.gardenResetConfirm; }, function () {
+                $timeout.cancel(timer);
+                timer = $timeout(function () {
+                    var panel = element[0].querySelector('.campaign-garden-picker'), heading = (panel || element[0]).querySelector('h2, h1');
+                    if (heading) { heading.focus({preventScroll: true}); }
+                }, 0, false);
+            });
+            function keyboard(event) {
+                var panel = element[0].querySelector('.campaign-garden-picker') || element[0];
+                if (event.key === 'Escape' && !scope.vm.gardenBusy) {
+                    event.preventDefault(); scope.$evalAsync(function () {
+                        if (scope.vm.gardenResetConfirm) { scope.vm.gardenResetConfirm = false; }
+                        else if (scope.vm.gardenDay) { scope.vm.gardenDay = null; }
+                        else { scope.vm.closeGarden(); }
+                    }); return;
+                }
+                if (event.key !== 'Tab') { return; }
+                var nodes = Array.prototype.filter.call(panel.querySelectorAll('button:not(:disabled), [tabindex="0"]'), function (node) { return node.getClientRects().length > 0; });
+                var first = nodes[0], last = nodes[nodes.length - 1], active = document.activeElement;
+                if (!first) { event.preventDefault(); return; }
+                if (event.shiftKey && (active === first || nodes.indexOf(active) < 0)) { event.preventDefault(); last.focus(); }
+                else if (!event.shiftKey && (active === last || !panel.contains(active))) { event.preventDefault(); first.focus(); }
+            }
+            element.on('keydown', keyboard);
+            scope.$on('$destroy', function () {
+                unwatch(); $timeout.cancel(timer); element.off('keydown', keyboard);
+                document.documentElement.classList.remove('campaign-garden-open'); document.body.classList.remove('campaign-garden-open');
+                returnFocus = document.querySelector('[data-rosary-reopen]');
+                if (returnFocus) { $timeout(function () { returnFocus.focus({preventScroll: true}); }, 0, false); }
             });
         }};
     }]);

@@ -21,5 +21,14 @@
         this.checkFlower = function (token, id, date, key, completed) {
             return $http.put(flowerUrl + encodeURIComponent(token) + '/campaigns/' + id + '/entries/' + encodeURIComponent(date) + '/' + encodeURIComponent(key), {completed: completed}, {skipSessionAuth: true});
         };
+        this.studentGarden = function (token, id) {
+            return $http.get(flowerUrl + encodeURIComponent(token) + '/campaigns/' + id + '/garden', {skipSessionAuth: true});
+        };
+        this.paintFlower = function (token, id, date, key, color) {
+            return $http.put(flowerUrl + encodeURIComponent(token) + '/campaigns/' + id + '/garden/' + encodeURIComponent(date) + '/' + encodeURIComponent(key), {color: color}, {skipSessionAuth: true});
+        };
+        this.resetFlowerPaint = function (token, id) {
+            return $http.post(flowerUrl + encodeURIComponent(token) + '/campaigns/' + id + '/garden/reset', {}, {skipSessionAuth: true});
+        };
     }]);
 })();

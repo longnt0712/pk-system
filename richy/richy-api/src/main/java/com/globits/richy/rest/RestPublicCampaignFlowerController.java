@@ -31,4 +31,17 @@ public class RestPublicCampaignFlowerController {
     @ExceptionHandler(CampaignService.InvalidCampaignException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, String> invalid(CampaignService.InvalidCampaignException error) { return Collections.singletonMap("message", error.getMessage()); }
+    @RequestMapping(value = "/{token}/campaigns/{id}/garden", method = RequestMethod.GET)
+    public ResponseEntity<CampaignFlowerDto.Garden> garden(@PathVariable("token") String token, @PathVariable("id") Long id) {
+        return response(service.garden(token, id));
+    }
+    @RequestMapping(value = "/{token}/campaigns/{id}/garden/{date}/{itemKey}", method = RequestMethod.PUT)
+    public ResponseEntity<CampaignFlowerDto.Garden> paint(@PathVariable("token") String token, @PathVariable("id") Long id,
+            @PathVariable("date") String date, @PathVariable("itemKey") String itemKey, @RequestBody CampaignFlowerDto.PaintRequest request) {
+        return response(service.paint(token, id, date, itemKey, request.color));
+    }
+    @RequestMapping(value = "/{token}/campaigns/{id}/garden/reset", method = RequestMethod.POST)
+    public ResponseEntity<CampaignFlowerDto.Garden> resetPaint(@PathVariable("token") String token, @PathVariable("id") Long id) {
+        return response(service.resetPaint(token, id));
+    }
 }

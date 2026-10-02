@@ -22,6 +22,7 @@ public class CampaignFlowerDto {
         public String date;
         public String itemKey;
         public Boolean completed;
+        public String paintColor;
     }
     public static class Sheet {
         public long serverTime;
@@ -30,6 +31,13 @@ public class CampaignFlowerDto {
         public List<Entry> entries = new ArrayList<>();
     }
     public static class AccessRequest { public String studentCode; }
+    public static class Garden {
+        public long serverTime;
+        public CampaignDto campaign;
+        public List<Entry> entries = new ArrayList<>();
+    }
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+    public static class PaintRequest { public String color; }
     @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
     public static class CheckRequest { public Boolean completed; }
 }

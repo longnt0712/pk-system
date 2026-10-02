@@ -12,6 +12,9 @@ public class CampaignFlowerEntry extends BaseObject {
     @Column(name = "entry_date", length = 10, nullable = false) private String date;
     @Column(name = "item_key", length = 36, nullable = false) private String itemKey;
     @Column(name = "completed", nullable = false) private boolean completed;
+    @Column(name = "paint_color", length = 7) private String paintColor;
+    public String getPaintColor() { return paintColor; }
+    public void setPaintColor(String paintColor) { this.paintColor = paintColor; }
     public Long getCampaignId() { return campaignId; }
     public void setCampaignId(Long campaignId) { this.campaignId = campaignId; }
     public Long getStudentId() { return studentId; }

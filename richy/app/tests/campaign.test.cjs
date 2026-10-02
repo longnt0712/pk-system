@@ -20,6 +20,15 @@ function setup({campaignsEnabled = true, manager = false, admin = false, id = nu
     service.studentLanding = async () => ({data: {serverTime, student: {studentCode: 'hs001', saintName: 'Đa Minh', fullName: 'Nguyễn Văn An', classes}, campaigns: activeCampaigns || (campaign ? [campaign] : [])}});
     service.studentSheet = async (token, id, week) => {calls.push(['sheet', token, id, week]); return {data: {student: {studentCode: 'hs001', saintName: 'Đa Minh', fullName: 'Nguyễn Văn An', classes}, campaign, entries, serverTime}};};
     service.checkFlower = async (...args) => {calls.push(['check', ...args]); return {data: {completed: args[4]}};};
+    let gardenEntries = structuredClone(entries);
+    service.studentGarden = async () => ({data: {campaign, entries: structuredClone(gardenEntries), serverTime}});
+    service.paintFlower = async (token, id, date, itemKey, color) => {
+        calls.push(['paint', token, id, date, itemKey, color]);
+        let entry = gardenEntries.find(x=>x.date===date && x.itemKey===itemKey);
+        if (!entry) { entry = {date,itemKey,completed:false};gardenEntries.push(entry); }
+        entry.paintColor=color;return {data:{campaign,entries:structuredClone(gardenEntries),serverTime}};
+    };
+    service.resetFlowerPaint = async () => {calls.push(['resetPaint']); gardenEntries.forEach(x=>x.paintColor=null);return {data:{campaign,entries:structuredClone(gardenEntries),serverTime}};};
     const apiCalls = [];
     Object.keys(service).forEach(name => { const original = service[name]; service[name] = (...args) => { apiCalls.push(name); return original(...args); }; });
     const state = {current: {name: studentMode ? 'campaign_student' : 'campaigns'}, go: async (...args) => calls.push(['go', ...args])};
@@ -520,4 +529,26 @@ test('opening the guide exits sheet fullscreen and returning opens the current w
     h.vm.openRosaryGuide(); assert.equal(exits,1); assert.equal(h.vm.rosaryGuideOpen,true);
     await h.vm.closeRosaryGuide(); assert.equal(h.vm.weekIndex,1); assert.equal(h.vm.rosaryGuideOpen,false);
     assert.ok(h.vm.weekDays.some(day=>day.date==='2026-10-08'));
+});
+
+test('garden paint, confirmation reset and failed save preserve confirmed checks', async () => {
+    const campaign={...rosaryCampaign,flowerItems:[{itemKey:'a',name:'Lần hạt'},{itemKey:'b',name:'Thánh lễ'},{itemKey:'c',name:'Cầu nguyện'},{itemKey:'d',name:'Hy sinh'}]};
+    const h=setup({studentMode:true,campaign,serverTime:Date.UTC(2026,9,2,5),entries:[{date:'2026-10-02',itemKey:'a',completed:true}],windowExtras:{FlowerGarden2026:require('../campaign/rosary2026/FlowerGarden2026.js')}});
+    await tick();await tick();assert.equal(h.vm.gardenEnabled(),true);
+    await h.vm.openGarden();h.vm.selectGardenDay(h.vm.garden.flowers[1]);assert.equal(h.vm.gardenDay.available,1);
+    await h.vm.paintGardenPetal(h.vm.gardenDay.petals[1]);
+    assert.equal(h.vm.gardenDay.used,1);assert.equal(h.vm.gardenDay.available,0);assert.equal(h.vm.checks['a:2026-10-02'],true);assert.equal(h.vm.checks['b:2026-10-02'],false);
+    await h.vm.paintGardenPetal(h.vm.gardenDay.petals[2]);assert.equal(h.calls.filter(x=>x[0]==='paint').length,1);
+    await h.vm.resetGardenPaint();assert.equal(h.calls.filter(x=>x[0]==='resetPaint').length,0);
+    h.vm.gardenResetConfirm=true;await h.vm.resetGardenPaint();assert.equal(h.vm.gardenDay.used,0);assert.equal(h.vm.gardenDay.available,1);assert.equal(h.vm.checks['a:2026-10-02'],true);
+    h.service.paintFlower=async()=>{throw {status:500};};
+    await h.vm.paintGardenPetal(h.vm.gardenDay.petals[0]);assert.equal(h.vm.gardenDay.available,1);assert.equal(h.vm.gardenBusy,false);assert.ok(h.vm.gardenError);
+});
+test('garden ignores an outstanding response after switching student QR', async () => {
+    const h=setup({studentMode:true,campaign:rosaryCampaign,serverTime:Date.UTC(2026,9,2,5),windowExtras:{FlowerGarden2026:require('../campaign/rosary2026/FlowerGarden2026.js')}});
+    await tick();await tick();let resolve;
+    h.service.studentGarden=()=>new Promise(r=>resolve=r);
+    const loading=h.vm.openGarden();h.vm.scanAnotherStudent();
+    resolve({data:{campaign:rosaryCampaign,entries:[{date:'2026-10-02',itemKey:'rosary',completed:true}],serverTime:Date.UTC(2026,9,2,5)}});await loading;
+    assert.equal(h.vm.gardenOpen,false);assert.equal(h.vm.garden,null);assert.equal(h.vm.student,null);assert.equal(h.vm.campaign,null);assert.equal(h.vm.gardenLoading,false);
 });
