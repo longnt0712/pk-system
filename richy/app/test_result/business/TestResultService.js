@@ -219,6 +219,19 @@
                 , {
                     field: 'testType', title: 'Loại bài', formatter: typeFormatter, switchable: true
                 }, {
+                    field: 'assignmentTaskId',
+                    title: 'Nguồn làm bài',
+                    formatter: function (value) {
+                        if (value != null) {
+                            return '<span class="label label-primary" title="Task #' + escapeText(value)
+                                + '"><i class="fa fa-tasks"></i> Bài tập</span>';
+                        }
+                        return '<span class="label label-default"><i class="fa fa-pencil"></i> Tự luyện</span>';
+                    },
+                    sortable: false,
+                    switchable: true,
+                    cellStyle: _cellNowrap
+                }, {
                     field: 'resultStatus', title: 'Kết quả', switchable: true,
                     formatter: function (value, row) {
                         if (Number(row.testType) === 5 || value === 'BATTLE') {
