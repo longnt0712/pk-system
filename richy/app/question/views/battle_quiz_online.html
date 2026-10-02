@@ -244,6 +244,14 @@
         </div>
 
         <div class="battle-online-room-actions">
+            <button type="button"
+                    class="battle-online-copy-btn battle-online-music-trigger"
+                    ng-if="vm.room.status === 'PLAYING' && vm.isHost()"
+                    ng-click="vm.openMusicModal($event)"
+                    aria-haspopup="dialog" aria-controls="battle-host-music-menu"
+                    ng-attr-aria-expanded="{{vm.musicMenuOpen}}">
+                <i class="fa fa-music" aria-hidden="true"></i> CHỈNH NHẠC
+            </button>
             <span class="battle-online-account">
                 👤 {{vm.currentUserDisplayName}}
             </span>
@@ -952,12 +960,19 @@
     <!-- =====================================================
          PLAYING
          ===================================================== -->
-    <script type="text/ng-template" id="battle-host-music-controls.html">
+    <div class="battle-online-ranking-modal-backdrop battle-online-music-backdrop"
+         ng-if="vm.room && vm.room.status === 'PLAYING' && vm.isHost() && vm.musicMenuOpen"
+         ng-click="vm.closeMusicModal()">
             <section id="battle-host-music-menu" class="battle-online-music-ipod"
-                     ng-if="vm.musicMenuOpen || vm.isSpectator()"
-                     ng-class="{'is-docked': vm.isSpectator()}" aria-label="Điều khiển nhạc battle">
+                     role="dialog" aria-modal="true" aria-labelledby="battle-online-music-title"
+                     ng-click="$event.stopPropagation()">
+                <div class="battle-online-music-heading">
+                    <h2 id="battle-online-music-title"><i class="fa fa-music" aria-hidden="true"></i> Chỉnh nhạc</h2>
+                    <button id="battle-online-music-close" type="button" ng-click="vm.closeMusicModal()"
+                            aria-label="Đóng chỉnh nhạc">×</button>
+                </div>
                 <div class="battle-online-music-screen">
-                    <div><small>BATTLE MUSIC</small><button type="button" ng-if="!vm.isSpectator()" ng-click="vm.musicMenuOpen = false" aria-label="Đóng menu nhạc">×</button></div>
+                    <small>BATTLE MUSIC</small>
                     <strong>{{vm.getMusicTrackName()}}</strong>
                     <small>{{vm.musicPlaying ? 'Đang phát' : (vm.musicPausedByUser ? 'Đã tạm dừng' : 'Nhấn phát để bật nhạc')}} · {{vm.musicTracks.length}} bài</small>
                 </div>
@@ -994,16 +1009,6 @@
                 </div>
                 <small class="battle-online-music-note">Nhạc phát trên thiết bị host. Danh sách lấy từ Config Battle.</small>
             </section>
-    </script>
-    <div class="battle-online-host-tools" ng-if="vm.room && vm.room.status === 'PLAYING' && vm.isHost() && !vm.isSpectator()">
-        <div class="battle-online-music-menu">
-            <button type="button" class="battle-online-copy-btn"
-                    ng-click="vm.musicMenuOpen = !vm.musicMenuOpen"
-                    ng-attr-aria-expanded="{{vm.musicMenuOpen}}" aria-controls="battle-host-music-menu">
-                <i class="fa fa-music"></i> NHẠC BATTLE
-            </button>
-            <div ng-include="'battle-host-music-controls.html'"></div>
-        </div>
     </div>
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING'"
@@ -1072,10 +1077,6 @@
             <div class="battle-online-guess-timer" ng-if="vm.isGuessWordMode()">
                 <span ng-style="{'width': vm.getQuestionTimePercent() + '%'}"></span>
             </div>
-
-            <div class="battle-online-music-dock"
-                 ng-if="vm.isHost() && vm.isSpectator() && vm.isGuessWordMode()"
-                 ng-include="'battle-host-music-controls.html'"></div>
 
             <!-- CLASSIC TOP -->
             <div class="battle-online-game-topline"
@@ -1495,9 +1496,6 @@
                 <span>Mỗi người chơi đang nhận câu hỏi riêng.</span>
             </div>
 
-            <div class="battle-online-music-dock" ng-if="vm.isHost()"
-                 ng-include="'battle-host-music-controls.html'"></div>
-
             <section class="battle-online-dumb-meter is-spectator"
                      ng-if="vm.isEscapeDumbDemonMode()">
                 <div class="battle-online-dumb-watch-title">👁️ THEO DÕI QUỶ NGU</div>
@@ -1796,6 +1794,15 @@
 
     <div class="battle-online-mobile-tools"
          ng-if="vm.room && vm.room.status === 'PLAYING'">
+        <button type="button"
+                class="battle-online-mobile-tool is-music"
+                ng-if="vm.isHost()"
+                ng-click="vm.openMusicModal($event)"
+                aria-label="Chỉnh nhạc" aria-haspopup="dialog" aria-controls="battle-host-music-menu"
+                ng-attr-aria-expanded="{{vm.musicMenuOpen}}">
+            <span>🎵</span>
+            <small>NHẠC</small>
+        </button>
         <button type="button"
                 class="battle-online-mobile-tool is-ranking"
                 ng-click="vm.openRankingModal()"
@@ -8914,25 +8921,21 @@
     .is-host-spectator-layout .battle-online-ranking-copy strong { font-size: 17px; }
     .is-host-spectator-layout .battle-online-score { font-size: 23px; }
 
-    .battle-online-host-tools {
-        position: relative;
-        z-index: 30;
-        max-width: 1280px;
-        margin: 0 auto 12px;
-        display: flex;
-        justify-content: flex-end;
-        flex-wrap: wrap;
-        gap: 8px;
+    .battle-online-music-trigger {
+        color: #5b42bd;
+        background: #eee8ff;
+        font-size: 11px;
+        white-space: nowrap;
     }
-    .battle-online-music-menu { position: relative; }
+    .battle-online-music-trigger:hover { background: #e2d8ff; }
+    .battle-online-music-backdrop { z-index: 1140; }
     .battle-online-music-ipod {
-        position: absolute;
-        top: calc(100% + 10px);
-        right: 0;
-        width: 300px;
-        max-width: calc(100vw - 24px);
-        max-height: calc(100dvh - 100px);
+        width: 340px;
+        max-width: 100%;
+        max-height: calc(100vh - 32px);
+        max-height: calc(100dvh - 32px);
         overflow-y: auto;
+        overscroll-behavior: contain;
         padding: 16px;
         border: 1px solid #d6daea;
         border-radius: 26px;
@@ -8940,20 +8943,11 @@
         color: #263451;
         box-shadow: 0 16px 48px rgba(20, 30, 65, .25);
     }
-    .battle-online-music-dock {
-        width: 100%;
-        max-width: 300px;
-        margin: 8px auto 0;
-    }
-    .battle-online-music-ipod.is-docked {
-        position: static;
-        width: 100%;
-        max-width: 100%;
-        max-height: none;
-        box-sizing: border-box;
-        overflow: visible;
-        text-align: left;
-        box-shadow: 0 8px 24px rgba(20, 30, 65, .12);
+    .battle-online-music-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .battle-online-music-heading h2 { margin: 0; font-size: 20px; font-weight: 800; }
+    .battle-online-music-heading button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: #e7e9f2; color: #485675; font-size: 24px; }
+    @media (max-width: 820px) {
+        .battle-online-mobile-tool.is-music { background: linear-gradient(135deg, #8a62e8, #5b42bd); }
     }
     .battle-online-music-screen {
         padding: 12px;
@@ -8962,10 +8956,8 @@
         background: linear-gradient(145deg, #eaf8ee, #d8ecec);
         color: #253e41;
     }
-    .battle-online-music-screen > div { display: flex; justify-content: space-between; align-items: center; }
     .battle-online-music-screen strong { display: block; margin: 8px 0; font-size: 16px; overflow-wrap: anywhere; }
     .battle-online-music-screen small { font-size: 11px; }
-    .battle-online-music-screen button { border: 0; background: transparent; color: #253e41; font-size: 22px; line-height: 1; }
     .battle-online-music-wheel {
         width: 158px;
         height: 158px;
@@ -9010,6 +9002,5 @@
         .is-host-spectator-layout .battle-online-ranking-card { padding: 14px; }
         .is-host-spectator-layout .battle-online-ranking-row { padding: 10px; gap: 8px; }
         .is-host-spectator-layout .battle-online-ranking-copy strong { font-size: 14px; }
-        .battle-online-host-tools { margin-top: 8px; }
     }
 </style>

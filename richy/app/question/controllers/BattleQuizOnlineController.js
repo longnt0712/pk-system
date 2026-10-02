@@ -247,6 +247,7 @@
             'RRpINBQCI48'
         ];
         vm.musicMenuOpen = false;
+        var musicModalTrigger = null;
         vm.musicPlaying = false;
         vm.musicPausedByUser = false;
         vm.musicRepeatMode = 'ALL';
@@ -282,6 +283,8 @@
            ===================================================== */
 
         vm.isHost = isHost;
+        vm.openMusicModal = openMusicModal;
+        vm.closeMusicModal = closeMusicModal;
         vm.toggleMusicPlayback = toggleMusicPlayback;
         vm.selectMusicTrack = selectMusicTrack;
         vm.skipMusicTrack = skipMusicTrack;
@@ -4622,6 +4625,22 @@
             return 'Chọn bài nhạc';
         }
 
+        function openMusicModal(event) {
+            if (!vm.room || vm.room.status !== 'PLAYING' || !isHost()) { return; }
+            musicModalTrigger = event && event.currentTarget;
+            vm.musicMenuOpen = true;
+            $timeout(function () {
+                var closeButton = $window.document.getElementById('battle-online-music-close');
+                if (vm.musicMenuOpen && closeButton && closeButton.focus) { closeButton.focus(); }
+            }, 0);
+        }
+
+        function closeMusicModal() {
+            vm.musicMenuOpen = false;
+            if (musicModalTrigger && musicModalTrigger.focus) { musicModalTrigger.focus(); }
+            musicModalTrigger = null;
+        }
+
         function toggleMusicPlayback() {
             if (vm.musicPlaying) {
                 vm.musicPausedByUser = true;
@@ -6457,6 +6476,29 @@
            ===================================================== */
 
         function keydownHandler(event) {
+            // Keep keyboard navigation inside music controls, without answering the quiz.
+            if (vm.musicMenuOpen) {
+                if (event.key === 'Escape' || event.keyCode === 27) {
+                    event.preventDefault();
+                    $scope.$evalAsync(closeMusicModal);
+                } else if (event.key === 'Tab' || event.keyCode === 9) {
+                    var modal = $window.document.getElementById('battle-host-music-menu');
+                    var controls = modal && modal.querySelectorAll('button:not([disabled]), input:not([disabled])');
+                    if (controls && controls.length) {
+                        var first = controls[0];
+                        var last = controls[controls.length - 1];
+                        var focused = $window.document.activeElement;
+                        if (event.shiftKey && (focused === first || !modal.contains(focused))) {
+                            event.preventDefault();
+                            last.focus();
+                        } else if (!event.shiftKey && (focused === last || !modal.contains(focused))) {
+                            event.preventDefault();
+                            first.focus();
+                        }
+                    }
+                }
+                return;
+            }
             if (
                 !vm.room ||
                 vm.room.status !==

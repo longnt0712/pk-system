@@ -63,7 +63,7 @@ function setup({spectator = true, ready = true, storedVolume = null} = {}) {
     }
     instance.room = room();
     return {
-        instance, hooks, calls, storage, room, gestures,
+        instance, hooks, calls, storage, room, gestures, document: $window.document,
         async prepare() { await hooks.loadConfig(); if (ready) this.markReady(); },
         markReady() { options.events.onReady({target: player}); },
         end() { options.events.onStateChange({data: 0}); },
@@ -149,6 +149,66 @@ test('host who participates can still play music', async () => {
     const h = setup({spectator: false});
     await h.prepare();
     assert.equal(h.instance.musicPlaying, true);
+});
+
+test('music modal works for spectator and participating hosts in every mode and survives live updates', () => {
+    for (const spectator of [true, false]) {
+        for (const mode of ['CLASSIC', 'COUNTDOWN', 'MONEY_BEG', 'ESCAPE_DUMB_DEMON', 'GUESS_WORD']) {
+            const h = setup({spectator});
+            const room = h.room();
+            room.settings.mode = mode;
+            room.currentQuestion = {id: 1, answers: []};
+            h.instance.room = room;
+            h.instance.openMusicModal();
+            assert.equal(h.instance.musicMenuOpen, true, `${mode}, spectator=${spectator}`);
+            h.hooks.applyRoom(room, true);
+            assert.equal(h.instance.musicMenuOpen, true);
+            h.hooks.applyRoom({...room, status: 'FINISHED'}, true);
+            assert.equal(h.instance.musicMenuOpen, false);
+        }
+    }
+    const h = setup();
+    h.instance.room.status = 'LOBBY';
+    h.instance.openMusicModal();
+    assert.equal(h.instance.musicMenuOpen, false);
+    h.instance.room.status = 'PLAYING';
+    h.instance.room.hostUsername = 'someone-else';
+    h.instance.openMusicModal();
+    assert.equal(h.instance.musicMenuOpen, false);
+});
+
+test('closing music modal with Escape restores trigger focus and keeps the music playing', async () => {
+    const h = setup();
+    await h.prepare();
+    let restoredFocus = false;
+    h.instance.openMusicModal({currentTarget: {focus() { restoredFocus = true; }}});
+    const length = h.calls.length;
+    let prevented = false;
+    h.gestures.keydown({key: 'Escape', preventDefault() { prevented = true; }});
+    assert.equal(h.instance.musicMenuOpen, false);
+    assert.equal(prevented, true);
+    assert.equal(restoredFocus, true);
+    assert.equal(h.instance.musicPlaying, true);
+    assert.equal(h.calls.length, length);
+});
+
+test('music modal traps Tab focus and blocks quiz answer shortcuts for a participating host', () => {
+    const h = setup({spectator: false});
+    let focused;
+    const first = {focus() { focused = first; }};
+    const last = {focus() { focused = last; }};
+    h.document.getElementById = () => ({querySelectorAll: () => [first, last], contains: () => true});
+    h.instance.openMusicModal();
+    h.instance.room.currentQuestion = {answers: [{id: 1}]};
+    h.gestures.keydown({key: '1', preventDefault() { assert.fail('Quiz shortcut must be ignored'); }});
+    h.document.activeElement = last;
+    let prevented = 0;
+    h.gestures.keydown({key: 'Tab', preventDefault() { prevented++; }});
+    assert.equal(focused, first);
+    h.document.activeElement = first;
+    h.gestures.keydown({key: 'Tab', shiftKey: true, preventDefault() { prevented++; }});
+    assert.equal(focused, last);
+    assert.equal(prevented, 2);
 });
 
 test('repeat all is the default and cycles through all configured tracks', async () => {
