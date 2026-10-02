@@ -59,7 +59,7 @@ public interface TestResultRepository extends JpaRepository<TestResult, Long> {
 
     @Query("select r.user.id, r.sourceQuestionId, r.completedPart, r.createDate, r.id, r.testType, r.assignmentTaskId "
             + "from TestResult r where r.user.id in :students and r.sourceQuestionId in :tests "
-            + "and r.completedPart is not null and r.testType in (2, 4, 6) "
+            + "and r.completedPart is not null and r.testType in (2, 4, 6, 7) "
             + "and (r.testType <> 6 or r.resultStatus = 'SUCCESS') "
             + "and r.createDate >= :fromDate and r.createDate <= :toDate order by r.createDate asc, r.id asc")
     List<Object[]> findIeltsPartCompletions(@Param("students") List<Long> students, @Param("tests") List<Long> tests,
