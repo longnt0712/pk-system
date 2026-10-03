@@ -63,8 +63,15 @@
         var gardenConfig = $window.FlowerGarden2026, gardenRequest = 0, gardenEntries = [];
         vm.gardenOpen = false; vm.gardenPalette = gardenConfig ? gardenConfig.palette : [];
         vm.gardenColor = '#F48FB1'; vm.gardenBusy = false; vm.gardenDay = null;
+        var gardenExportRequest = 0;
+        vm.gardenEraseMode = false;
         vm.gardenEnabled = function () { return !!(vm.studentMode && vm.student && gardenConfig && gardenConfig.enabled(vm.campaign)); };
         vm.fieldEnabled = function (campaign) { return !!(gardenConfig && gardenConfig.enabled(campaign) && /^[a-f0-9]{32}$/.test(campaign.shareCode || '')); };
+        vm.openField = function (campaign) {
+            if (!vm.fieldEnabled(campaign) || vm.gardenBusy || vm.sheetLoading || vm.scanBusy || Object.keys(vm.pendingChecks || {}).length) { return; }
+            if (vm.fullscreen && vm.toggleFullscreen) { vm.toggleFullscreen(); }
+            return $state.go('campaign_field', {campaignCode: campaign.shareCode}, {inherit: false});
+        };
         function renderGarden() {
             if (!vm.gardenEnabled()) { return; }
             var date = vm.gardenDay && vm.gardenDay.date;
@@ -92,30 +99,61 @@
             if (!vm.gardenEnabled() || Object.keys(vm.pendingChecks || {}).length) { return; }
             vm.rosaryGuideOpen = false; vm.rosaryParticipationOpen = false; vm.rosaryInstructionsOpen = false;
             if (vm.fullscreen && vm.toggleFullscreen) { vm.toggleFullscreen(); }
-            vm.gardenOpen = true; vm.gardenDay = null; vm.gardenResetConfirm = false;
+            vm.gardenOpen = true; vm.gardenDay = null; vm.gardenResetConfirm = false; vm.gardenEraseMode = false;
             return vm.loadGarden();
         };
         vm.closeGarden = function () { if (!vm.gardenBusy) { vm.gardenOpen = false; vm.gardenDay = null; vm.gardenResetConfirm = false; } };
-        vm.selectGardenDay = function (flower) { if (!vm.gardenBusy && !vm.gardenLoading) { vm.gardenDay = flower; vm.gardenNotice = ''; } };
+        vm.selectGardenDay = function (flower) { if (!vm.gardenBusy && !vm.gardenLoading) { vm.gardenDay = flower; vm.gardenEraseMode = false; vm.gardenNotice = ''; } };
+        vm.selectGardenColor = function (color) { vm.gardenColor = color; vm.gardenEraseMode = false; vm.gardenNotice = ''; };
+        vm.selectGardenEraser = function () {
+            if (vm.gardenBusy || vm.gardenLoading || !vm.gardenDay || vm.gardenDay.future) { return; }
+            vm.gardenEraseMode = !vm.gardenEraseMode;
+            vm.gardenNotice = vm.gardenEraseMode ? 'Chạm vào cánh đã tô để xóa màu và nhận lại một lượt tô.' : '';
+        };
         vm.paintGardenPetal = function (petal) {
             if (vm.gardenBusy || vm.gardenLoading || !vm.gardenDay || vm.gardenDay.future) { return; }
-            if (petal.color === '#FFFFFF' && !vm.gardenDay.available) { vm.gardenNotice = 'Ngày này đã hết lượt tô. Em hãy tích những việc đã thực hiện để nhận thêm lượt nhé.'; return; }
+            var erase = vm.gardenEraseMode;
+            if (erase && petal.color === '#FFFFFF') { return; }
+            if (!erase && petal.color === '#FFFFFF' && !vm.gardenDay.available) { vm.gardenNotice = 'Ngày này đã hết lượt tô. Em hãy tích những việc đã thực hiện để nhận thêm lượt nhé.'; return; }
             var token = studentToken, id = vm.campaign.id, date = vm.gardenDay.date, request = ++gardenRequest;
-            vm.gardenBusy = true; vm.gardenError = ''; vm.gardenNotice = 'Đang lưu màu…';
-            return service.paintFlower(token, id, date, petal.key, vm.gardenColor).then(function (response) {
-                if (request === gardenRequest && token === studentToken) { receiveGarden(response.data); vm.gardenNotice = 'Đã lưu màu của em.'; }
+            vm.gardenBusy = true; vm.gardenError = ''; vm.gardenNotice = erase ? 'Đang xóa màu cánh hoa…' : 'Đang lưu màu…';
+            var change = erase ? service.eraseFlowerPetal(token, id, date, petal.key) : service.paintFlower(token, id, date, petal.key, vm.gardenColor);
+            return change.then(function (response) {
+                if (request === gardenRequest && token === studentToken) { receiveGarden(response.data); vm.gardenNotice = erase ? 'Đã xóa màu cánh này và hoàn một lượt tô. Các ô tích vẫn được giữ nguyên.' : 'Đã lưu màu của em.'; }
             }, function (error) {
                 if (request === gardenRequest) { vm.gardenError = errorMessage(error); vm.gardenNotice = ''; }
             }).finally(function () { if (request === gardenRequest) { vm.gardenBusy = false; } });
+        };
+        vm.askResetGardenPaint = function () {
+            if (!vm.gardenEnabled() || vm.gardenBusy || vm.gardenLoading) { return; }
+            vm.gardenResetConfirm = true; vm.gardenError = '';
         };
         vm.resetGardenPaint = function () {
             if (!vm.gardenResetConfirm || vm.gardenBusy || vm.gardenLoading) { return; }
             var token = studentToken, id = vm.campaign.id, request = ++gardenRequest;
             vm.gardenBusy = true; vm.gardenError = ''; vm.gardenNotice = '';
             return service.resetFlowerPaint(token, id).then(function (response) {
-                if (request === gardenRequest && token === studentToken) { receiveGarden(response.data); vm.gardenResetConfirm = false; vm.gardenNotice = 'Đã xóa màu và hoàn lại lượt tô. Các việc đã tích vẫn được giữ nguyên.'; }
+                if (request === gardenRequest && token === studentToken) {
+                    receiveGarden(response.data); vm.gardenResetConfirm = false;
+                    vm.gardenNotice = 'Đã xóa màu và hoàn lại lượt tô. Các việc đã tích vẫn được giữ nguyên.';
+                }
             }, function (error) { if (request === gardenRequest) { vm.gardenError = errorMessage(error); } })
                 .finally(function () { if (request === gardenRequest) { vm.gardenBusy = false; } });
+        };
+        vm.exportGardenImage = function () {
+            if (!vm.gardenEnabled() || vm.gardenExportBusy || vm.gardenBusy || vm.gardenLoading || Object.keys(vm.pendingChecks || {}).length) { return; }
+            var token = studentToken, id = vm.campaign.id, request = ++gardenExportRequest;
+            var student = angular.copy(vm.student), exporter = $window.GardenImageExport;
+            function current() { return request === gardenExportRequest && token === studentToken && vm.campaign && vm.campaign.id === id; }
+            vm.gardenExportBusy = true; vm.gardenExportError = '';
+            // Read a fresh snapshot, including checks/colors saved from another device.
+            return service.studentGarden(token, id).then(function (response) {
+                if (!current()) { return; }
+                var snapshot = response.data, garden = gardenConfig.build(snapshot.campaign, snapshot.entries || [], '2026-10-31');
+                var card = {saintName: student.saintName, fullName: student.fullName, classes: student.classes, completedCount: garden.earned, colors: snapshot.entries || []};
+                return exporter.create(snapshot.campaign, card).then(function (blob) { if (current()) { exporter.download(blob, exporter.fileName(card)); } });
+            }).catch(function (error) { if (current()) { vm.gardenExportError = error.message || errorMessage(error); } })
+                .finally(function () { if (current()) { vm.gardenExportBusy = false; $scope.$evalAsync(); } });
         };
         vm.needsScan = vm.studentMode && !/^[A-Za-z0-9_-]{43}$/.test(studentToken);
         vm.checks = {}; vm.savedChecks = {}; vm.pendingChecks = {};
@@ -316,6 +354,7 @@
                 .finally(function () { vm.scanBusy = false; });
         };
         vm.scanAnotherStudent = function () {
+            ++gardenExportRequest; vm.gardenExportBusy = false; vm.gardenExportError = ''; vm.gardenEraseMode = false;
             ++gardenRequest; gardenEntries = []; vm.gardenOpen = false; vm.garden = null; vm.gardenDay = null; vm.gardenBusy = false; vm.gardenLoading = false; vm.gardenResetConfirm = false;
             ++studentRequest; vm.student = null; vm.campaign = null; vm.campaigns = []; studentToken = '';
             vm.rosaryGuide = null; vm.rosaryGuideOpen = false; vm.rosaryInstructionsOpen = false; vm.rosaryParticipationOpen = false; rosaryContext = ''; rosaryStudentContext = '';
@@ -349,6 +388,7 @@
         }
         vm.selectCampaign = function (id) {
             if (!vm.studentMode) { return; }
+            if (vm.campaign && vm.campaign.id !== id) { ++gardenExportRequest; vm.gardenExportBusy = false; vm.gardenExportError = ''; }
             var campaign = targetId === id ? vm.targetCampaign : vm.campaigns.filter(function (value) { return value.id === id; })[0];
             var week = 0;
             if (campaign) {
@@ -488,7 +528,7 @@
         if (hasTarget) { loadTargetCampaign(); }
         else if (vm.studentMode) { loadStudentLanding(); }
         else if ($stateParams.id || $stateParams.campaignCode) { loadDetail(); } else { vm.load(1); }
-        if ($scope.$on) { $scope.$on('$destroy', function () { ++studentRequest; ++gardenRequest; if (dayTimer) { $window.clearTimeout(dayTimer); } if ($window.removeEventListener) { $window.removeEventListener('beforeunload', beforeUnload); } }); }
+        if ($scope.$on) { $scope.$on('$destroy', function () { ++studentRequest; ++gardenRequest; ++gardenExportRequest; if (dayTimer) { $window.clearTimeout(dayTimer); } if ($window.removeEventListener) { $window.removeEventListener('beforeunload', beforeUnload); } }); }
     }
     angular.module('Hrm.Campaign').directive('campaignEditor', ['$window', '$timeout', function ($window, $timeout) {
         return {restrict: 'A', link: function (scope, element) {
@@ -590,6 +630,45 @@
                 document.documentElement.classList.remove('campaign-garden-open'); document.body.classList.remove('campaign-garden-open');
                 returnFocus = document.querySelector('[data-rosary-reopen]');
                 if (returnFocus) { $timeout(function () { returnFocus.focus({preventScroll: true}); }, 0, false); }
+            });
+        }};
+    }]);
+    angular.module('Hrm.Campaign').directive('campaignGardenHints', ['$timeout', '$window', function ($timeout, $window) {
+        return {restrict: 'A', link: function (scope, element) {
+            var document = $window.document, timer, lastDate = '', destroyed = false;
+            function readyFlowers() {
+                return (scope.vm.garden && scope.vm.garden.flowers || []).filter(function (flower) { return flower.available > 0 && !flower.future; });
+            }
+            function paused() { return destroyed || document.hidden || scope.vm.gardenLoading || scope.vm.gardenBusy || scope.vm.gardenDay || scope.vm.gardenResetConfirm; }
+            function stop() { $timeout.cancel(timer); timer = null; scope.vm.gardenHintDate = null; }
+            function show() {
+                if (paused() || !readyFlowers().length) { stop(); return; }
+                var bounds = element[0].getBoundingClientRect();
+                var visible = Array.prototype.filter.call(element[0].querySelectorAll('.campaign-garden-flower-ready'), function (node) {
+                    var box = node.getBoundingClientRect();
+                    return box.width > 0 && box.top >= bounds.top + 75 && box.bottom <= Math.min(bounds.bottom, $window.innerHeight) - 8;
+                });
+                if (!visible.length) { timer = $timeout(show, 12000); return; }
+                var next = visible.filter(function (node) { return node.getAttribute('data-flower-date') > lastDate; })[0] || visible[0];
+                scope.vm.gardenHintDate = lastDate = next.getAttribute('data-flower-date');
+                timer = $timeout(function () {
+                    scope.vm.gardenHintDate = null;
+                    timer = $timeout(show, 12000);
+                }, 7000);
+            }
+            function restart() {
+                if (destroyed) { return; }
+                stop(); scope.vm.gardenHintsPaused = document.hidden;
+                if (!paused() && readyFlowers().length) { timer = $timeout(show, 1800); }
+            }
+            var unwatch = scope.$watch(function () {
+                return [scope.vm.gardenLoading, scope.vm.gardenBusy, !!scope.vm.gardenDay, scope.vm.gardenResetConfirm].join(':') + ':' +
+                    readyFlowers().map(function (flower) { return flower.date + ':' + flower.available; }).join('|');
+            }, restart);
+            function visibilityChanged() { scope.$evalAsync(restart); }
+            document.addEventListener('visibilitychange', visibilityChanged);
+            scope.$on('$destroy', function () {
+                destroyed = true; unwatch(); stop(); document.removeEventListener('visibilitychange', visibilityChanged); scope.vm.gardenHintsPaused = false;
             });
         }};
     }]);

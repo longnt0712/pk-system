@@ -37,11 +37,21 @@
             var row = Math.floor((day - 1) / 5), col = (day - 1) % 5;
             if (day >= 26) { row = 5; col = day - 26; }
             var columns = row === 5 ? 6 : 5, x = 82 + col * (776 / (columns - 1)), y = 775 + row * 148;
-            flowers.push({date: date, day: day, petals: petals, earned: earned, used: used, available: Math.max(0, earned - used),
+            flowers.push({date: date, day: day, column: col, columns: columns, petals: petals, earned: earned, used: used, available: Math.max(0, earned - used),
                 future: date > today, left: (x / 940 * 100) + '%', top: (y / 1672 * 100) + '%'});
             earnedTotal += earned; usedTotal += used;
         }
         return {flowers: flowers, earned: earnedTotal, used: usedTotal, available: Math.max(0, earnedTotal - usedTotal)};
     }
-    return {enabled: enabled, palette: palette, build: build, petalPath: petalPath};
+    function svgMarkup(campaign, entries) {
+        return build(campaign, entries, '2026-10-31').flowers.map(function (flower) {
+            return '<g transform="translate(' + parseFloat(flower.left) * 9.4 + ' ' + parseFloat(flower.top) * 16.72 + ') scale(.91)">' +
+                '<path d="M 0 35 L 0 115" fill="none" stroke="#33713B" stroke-width="7"/>' +
+                '<path d="M 0 95 Q -55 82 -51 49 Q -9 53 0 95 M 0 103 Q 55 91 50 59 Q 9 65 0 103" fill="#73B950" stroke="#305630" stroke-width="3"/>' +
+                flower.petals.map(function (petal) { return '<path d="' + petal.path + '" fill="' + petal.color + '" stroke="#513E32" stroke-width="2.5"/>'; }).join('') +
+                '<circle r="19" fill="#F6C654" stroke="#9D6B24" stroke-width="2.5"/>' +
+                '<text y="6" text-anchor="middle" fill="#5A3B1F" font-family="Arial,sans-serif" font-size="19" font-weight="700">' + flower.day + '</text></g>';
+        }).join('');
+    }
+    return {enabled: enabled, palette: palette, build: build, petalPath: petalPath, svgMarkup: svgMarkup};
 }));

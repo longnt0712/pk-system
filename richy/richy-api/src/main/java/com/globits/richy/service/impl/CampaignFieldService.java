@@ -21,11 +21,16 @@ public class CampaignFieldService {
     private static final Set<String> PALETTE=new HashSet<>(Arrays.asList("#F48FB1","#EF5350","#FFB74D","#FFE082","#B39DDB","#81D4FA","#80CBC4"));
 
     public CampaignFieldDto students(Long id, Long classId, String search, String cursor, int size) {
-        return read(id,classId,search,cursor,size,false);
+        return read(id,classId,search,cursor,size,false,false,false);
     }
     @Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
     public CampaignFieldDto managed(Long id, Long classId, String search, String cursor, int size) {
-        return read(id,classId,search,cursor,size,true);
+        return read(id,classId,search,cursor,size,true,false,false);
+    }
+    @Secured({"ROLE_ADMIN"})
+    public CampaignFieldDto exportGardens(Long id, Long classId, String cursor, int size) {
+        if (classId == null || classId < 0) { throw invalid(); }
+        return read(id,classId == 0 ? null : classId,"",cursor,size,true,classId == 0,true);
     }
     public List<CampaignFieldDto.ClassOption> classes(Long id) {
         campaign(id);
@@ -44,7 +49,7 @@ public class CampaignFieldService {
         }
         return value;
     }
-    private CampaignFieldDto read(Long id,Long classId,String search,String cursor,int size,boolean managers) {
+    private CampaignFieldDto read(Long id,Long classId,String search,String cursor,int size,boolean managers,boolean unassigned,boolean byId) {
         Campaign campaign=campaign(id); String text=search==null ? "" : search.trim();
         if(size<1 || size>12 || text.length()>100 || (classId!=null && classId<1)) { throw invalid(); }
         if(classId!=null && classes(id).stream().noneMatch(c->c.id.equals(classId))) { throw invalid(); }
@@ -59,7 +64,7 @@ public class CampaignFieldService {
         if(keys.isEmpty()){return dto;}
         String end=LocalDate.now(clock).toString();
         if(end.compareTo(campaign.getEndDate())>0){end=campaign.getEndDate();}
-        List<Object[]> rows=field.page(id,keys,campaign.getStartDate(),end,classId,text,afterCount,afterId,size+1,managers);
+        List<Object[]> rows=field.page(id,keys,campaign.getStartDate(),end,classId,text,afterCount,afterId,size+1,managers,unassigned,byId);
         dto.hasMore=rows.size()>size;
         Map<Long,CampaignFieldDto.Garden> owners=new LinkedHashMap<>();
         for(Object[] row:rows.subList(0,Math.min(size,rows.size()))) {

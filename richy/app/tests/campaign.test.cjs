@@ -29,6 +29,7 @@ function setup({campaignsEnabled = true, manager = false, admin = false, id = nu
         entry.paintColor=color;return {data:{campaign,entries:structuredClone(gardenEntries),serverTime}};
     };
     service.resetFlowerPaint = async () => {calls.push(['resetPaint']); gardenEntries.forEach(x=>x.paintColor=null);return {data:{campaign,entries:structuredClone(gardenEntries),serverTime}};};
+    service.eraseFlowerPetal = async (token, id, date, key) => {calls.push(['erasePetal',token,id,date,key]);gardenEntries.filter(x=>x.date===date && x.itemKey===key).forEach(x=>x.paintColor=null);return {data:{campaign,entries:structuredClone(gardenEntries),serverTime}};};
     const apiCalls = [];
     Object.keys(service).forEach(name => { const original = service[name]; service[name] = (...args) => { apiCalls.push(name); return original(...args); }; });
     const state = {current: {name: studentMode ? 'campaign_student' : 'campaigns'}, go: async (...args) => calls.push(['go', ...args])};
@@ -551,4 +552,41 @@ test('garden ignores an outstanding response after switching student QR', async 
     const loading=h.vm.openGarden();h.vm.scanAnotherStudent();
     resolve({data:{campaign:rosaryCampaign,entries:[{date:'2026-10-02',itemKey:'rosary',completed:true}],serverTime:Date.UTC(2026,9,2,5)}});await loading;
     assert.equal(h.vm.gardenOpen,false);assert.equal(h.vm.garden,null);assert.equal(h.vm.student,null);assert.equal(h.vm.campaign,null);assert.equal(h.vm.gardenLoading,false);
+});
+
+test('petal eraser works without confirmation, restores one credit and preserves other colors on failure', async () => {
+    const campaign={...rosaryCampaign,flowerItems:[{itemKey:'a',name:'Lần hạt'},{itemKey:'b',name:'Thánh lễ'}]};
+    const entries=[{date:'2026-10-01',itemKey:'a',completed:true,paintColor:'#F48FB1'},
+        {date:'2026-10-02',itemKey:'a',completed:true,paintColor:'#EF5350'},
+        {date:'2026-10-02',itemKey:'b',completed:true,paintColor:'#81D4FA'}];
+    const h=setup({studentMode:true,campaign,serverTime:Date.UTC(2026,9,2,5),entries,windowExtras:{FlowerGarden2026:require('../campaign/rosary2026/FlowerGarden2026.js')}});
+    await tick();await h.vm.openGarden();h.vm.selectGardenDay(h.vm.garden.flowers[1]);
+    h.vm.selectGardenEraser();assert.equal(h.vm.gardenEraseMode,true);assert.equal(h.vm.gardenResetConfirm,false);
+    const erase=h.service.eraseFlowerPetal;h.service.eraseFlowerPetal=async()=>{throw {status:500};};
+    await h.vm.paintGardenPetal(h.vm.gardenDay.petals[0]);assert.equal(h.vm.gardenDay.used,2);assert.equal(h.vm.gardenResetConfirm,false);assert.equal(h.vm.gardenBusy,false);assert.ok(h.vm.gardenError);
+    h.service.eraseFlowerPetal=erase;await h.vm.paintGardenPetal(h.vm.gardenDay.petals[0]);
+    assert.equal(h.vm.gardenDay.used,1);assert.equal(h.vm.gardenDay.available,1);assert.equal(h.vm.gardenDay.petals[1].color,'#81D4FA');assert.equal(h.vm.garden.flowers[0].used,1);
+    assert.equal(h.vm.checks['a:2026-10-02'],true);assert.equal(h.vm.checks['b:2026-10-02'],true);
+    assert.equal(h.calls.filter(x=>x[0]==='resetPaint').length,0);assert.equal(h.calls.filter(x=>x[0]==='erasePetal').length,1);
+    await h.vm.paintGardenPetal(h.vm.gardenDay.petals[0]);assert.equal(h.calls.filter(x=>x[0]==='erasePetal').length,1);
+    h.vm.selectGardenColor('#FFE082');assert.equal(h.vm.gardenEraseMode,false);await h.vm.paintGardenPetal(h.vm.gardenDay.petals[0]);assert.equal(h.vm.gardenDay.used,2);
+});
+
+test('petal erase cannot duplicate an in-flight write or populate a different student', async () => {
+    const campaign={...rosaryCampaign};
+    const h=setup({studentMode:true,campaign,serverTime:Date.UTC(2026,9,2,5),entries:[{date:'2026-10-02',itemKey:'rosary',completed:true,paintColor:'#EF5350'}],windowExtras:{FlowerGarden2026:require('../campaign/rosary2026/FlowerGarden2026.js')}});
+    await tick();await h.vm.openGarden();h.vm.selectGardenDay(h.vm.garden.flowers[1]);h.vm.selectGardenEraser();
+    let resolve,calls=0;h.service.eraseFlowerPetal=()=>{calls++;return new Promise(r=>resolve=r);};
+    const pending=h.vm.paintGardenPetal(h.vm.gardenDay.petals[0]);await h.vm.paintGardenPetal(h.vm.gardenDay.petals[0]);assert.equal(calls,1);
+    h.vm.scanAnotherStudent();resolve({data:{campaign,entries:[],serverTime:Date.UTC(2026,9,2,5)}});await pending;
+    assert.equal(h.vm.garden,null);assert.equal(h.vm.student,null);assert.equal(h.vm.gardenDay,null);assert.equal(h.vm.gardenEraseMode,false);
+});
+test('personal PNG uses fresh checks and human identity, and never downloads after changing QR',async()=>{
+    for(const changed of [false,true]){
+        const downloads=[],cards=[];let finish;
+        const exporter={create:(c,g)=>{cards.push(g);return new Promise(r=>finish=r);},fileName:g=>g.fullName+'.png',download:(...args)=>downloads.push(args)};
+        const h=setup({studentMode:true,campaign:rosaryCampaign,serverTime:Date.UTC(2026,9,2,5),entries:[{date:'2026-10-02',itemKey:'rosary',completed:true,paintColor:'#EF5350'}],windowExtras:{FlowerGarden2026:require('../campaign/rosary2026/FlowerGarden2026.js'),GardenImageExport:exporter}});
+        await tick();await h.vm.openGarden();const exporting=h.vm.exportGardenImage();await tick();assert.equal(cards.length,1);assert.equal(cards[0].completedCount,1);assert.equal(cards[0].saintName,'Đa Minh');assert.equal(cards[0].fullName,'Nguyễn Văn An');assert.equal(cards[0].colors[0].paintColor,'#EF5350');assert.equal(JSON.stringify(cards).includes('hs001'),false);
+        if(changed)h.vm.scanAnotherStudent();finish(new Blob(['PNG']));await exporting;assert.equal(downloads.length,changed?0:1);assert.equal(h.vm.gardenExportBusy,false);
+    }
 });

@@ -1,5 +1,5 @@
-<main class="campaign-field-page" ng-if="vm.settings.campaignsEnabled === true" ng-class="{'field-dialog-open': vm.selected}">
-    <div class="field-shell" ng-attr-inert="{{vm.selected ? '' : undefined}}" ng-attr-aria-hidden="{{vm.selected ? 'true' : undefined}}">
+<main class="campaign-field-page" ng-if="vm.settings.campaignsEnabled === true" ng-class="{'field-dialog-open': vm.selected || vm.exportDialog}">
+    <div class="field-shell" ng-attr-inert="{{vm.selected || vm.exportDialog ? '' : undefined}}" ng-attr-aria-hidden="{{vm.selected || vm.exportDialog ? 'true' : undefined}}">
         <header class="field-header">
             <nav><a ui-sref="campaigns">← Chiến dịch Hoa thiêng</a><span>THIẾU NHI THÁNH THỂ · PHÙNG KHOANG</span></nav>
             <div class="field-heading"><span class="field-symbol" aria-hidden="true">✿</span><div><p class="field-eyebrow">THÁNG MÂN CÔI 2026</p><h1>Cánh đồng hoa Mân Côi</h1><p class="field-subtitle">Cùng Đức Mẹ yêu mến Chúa Giê-su</p></div></div>
@@ -9,6 +9,7 @@
             <label for="field-class">Chọn lớp<select id="field-class" ng-model="vm.classId" ng-options="item.id as item.name for item in vm.classes" ng-change="vm.reload()"><option value="">Tất cả lớp</option></select></label>
             <label for="field-search">Tìm vườn hoa theo tên<input id="field-search" type="search" ng-model="vm.query" ng-change="vm.searchChanged()" maxlength="100" placeholder="Nhập tên thánh hoặc họ tên…" autocomplete="off"></label>
             <button type="submit" class="field-button">Tìm vườn hoa</button>
+            <button type="button" class="field-button field-export-button" ng-if="vm.canExport()" ng-click="vm.openExport()" ng-disabled="!vm.classesLoaded || vm.exportingId != null">Xuất ảnh tất cả</button>
         </form>
         <p ng-if="vm.classesError" role="status">{{vm.classesError}} <button type="button" class="field-link-button" ng-click="vm.start()">Thử lại</button></p>
         <p ng-if="vm.starting" class="field-status" role="status">Đang mở cánh đồng hoa…</p>
@@ -18,12 +19,14 @@
             <article class="field-garden-card" ng-repeat="garden in vm.gardens track by garden.id">
                 <header><span class="field-count"><span aria-hidden="true">✿</span> {{::garden.completedCount}} lượt tích</span><h2>{{::garden.saintName}} {{::garden.fullName}}</h2><p>{{::garden.classes.join(', ') || 'Chưa xếp lớp'}}</p></header>
                 <button type="button" class="field-art-button" ng-click="vm.openGarden(garden)" aria-label="Xem lớn vườn hoa của {{::garden.fullName}}">
-                    <div class="field-art" campaign-field-art campaign="vm.campaign" colors="garden.colors"><img src="assets/images/rosary-2026/vuon-hoa-phung-khoang-background.png" alt="" width="940" height="1672" loading="lazy"></div>
+                    <div class="field-art" campaign-field-art campaign="vm.campaign" colors="garden.colors"><img src="assets/images/rosary-2026/vuon-hoa-phung-khoang-background.png" alt="" width="940" height="1672" loading="lazy"><img class="field-art-logo" src="assets/images/logo-xu-doan.png" alt="" width="1001" height="1001" loading="lazy"></div>
                     <span class="field-art-caption">Ngắm vườn hoa <span aria-hidden="true">↗</span></span>
                 </button>
                 <p class="field-first-flower" ng-if="!garden.completedCount">Vườn đang chờ những đóa hoa đầu tiên.</p>
+                <button type="button" class="field-button field-card-export" ng-if="vm.canExport()" ng-click="vm.exportImage(garden)" ng-disabled="vm.exportBusy || vm.exportingId != null">{{vm.exportingId === garden.id ? 'Đang tạo ảnh…' : 'Xuất ảnh'}}</button>
             </article>
         </section>
+        <p class="field-error" role="alert" ng-if="vm.exportError && !vm.exportDialog">{{vm.exportError}}</p>
         <p ng-if="!vm.starting && vm.campaign && !vm.loading && !vm.error && !vm.gardens.length && !vm.hasMore" class="field-empty">Chưa tìm thấy vườn hoa phù hợp. Hãy thử tên khác hoặc chọn tất cả lớp.</p>
         <div class="field-more" campaign-field-more>
             <p ng-if="vm.loading" role="status">Đang mở thêm những vườn hoa…</p>
@@ -35,7 +38,18 @@
     </div>
     <section class="field-dialog" ng-if="vm.selected" role="dialog" aria-modal="true" aria-labelledby="field-dialog-title" campaign-field-dialog>
         <div class="field-dialog-card"><header><div><h2 id="field-dialog-title">{{vm.selected.saintName}} {{vm.selected.fullName}}</h2><p>{{vm.selected.classes.join(', ') || 'Chưa xếp lớp'}} · {{vm.selected.completedCount}} lượt tích</p></div><button type="button" class="field-button" ng-click="vm.closeGarden()">Đóng</button></header>
-            <div class="field-art" campaign-field-art campaign="vm.campaign" colors="vm.selected.colors"><img src="assets/images/rosary-2026/vuon-hoa-phung-khoang-background.png" alt="Vườn hoa Mân Côi của {{vm.selected.fullName}}" width="940" height="1672"></div>
+            <div class="field-art" campaign-field-art campaign="vm.campaign" colors="vm.selected.colors"><img src="assets/images/rosary-2026/vuon-hoa-phung-khoang-background.png" alt="Vườn hoa Mân Côi của {{vm.selected.fullName}}" width="940" height="1672"><img class="field-art-logo" src="assets/images/logo-xu-doan.png" alt="" width="1001" height="1001"></div>
+        </div>
+    </section>
+    <section class="field-dialog" ng-if="vm.exportDialog && vm.canExport()" role="dialog" aria-modal="true" aria-labelledby="field-export-title" campaign-field-dialog>
+        <div class="field-dialog-card field-export-dialog">
+            <header><div><h2 id="field-export-title">Xuất ảnh theo lớp</h2><p>Chọn các lớp muốn tải. Mỗi vườn là một ảnh PNG trong file ZIP, gồm cả học sinh, quản lý và Admin.</p></div><button type="button" class="field-button" ng-click="vm.closeExport()">{{vm.exportBusy ? 'Hủy và đóng' : 'Đóng'}}</button></header>
+            <label class="field-export-choice field-export-all"><input type="checkbox" ng-model="vm.exportAll" ng-change="vm.toggleExportAll()" ng-disabled="vm.exportBusy"> Chọn tất cả</label>
+            <div class="field-export-classes"><label class="field-export-choice" ng-repeat="item in vm.exportOptions track by item.id"><input type="checkbox" ng-model="item.selected" ng-change="vm.exportSelectionChanged()" ng-disabled="vm.exportBusy"> {{item.name}}</label></div>
+            <p class="field-export-note">Ảnh được xếp vào thư mục theo lớp. Người thuộc nhiều lớp sẽ có ảnh trong từng lớp đã chọn.</p>
+            <p class="field-export-progress" role="status" aria-live="polite" ng-if="vm.exportStatus">{{vm.exportStatus}}<span ng-if="vm.exportBusy"> · Đã tạo {{vm.exportCount}} ảnh. Hãy giữ trang mở.</span></p>
+            <p class="field-error" role="alert" ng-if="vm.exportError">{{vm.exportError}}</p>
+            <footer class="field-export-actions"><button type="button" class="field-button" ng-click="vm.exportClasses()" ng-disabled="vm.exportBusy || !vm.hasExportSelection()">{{vm.exportBusy ? 'Đang tạo ZIP…' : 'Tải file ZIP'}}</button><button type="button" class="field-link-button" ng-if="vm.exportBusy" ng-click="vm.cancelExport()">Hủy xuất ảnh</button></footer>
         </div>
     </section>
 </main>

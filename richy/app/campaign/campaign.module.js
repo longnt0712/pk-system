@@ -19,6 +19,7 @@
                             'campaign/controllers/CampaignQrScanner.js?v=' + version,
                             'campaign/rosary2026/RosaryCampaign2026.js?v=' + version,
                             'campaign/rosary2026/FlowerGarden2026.js?v=' + version,
+                            'campaign/rosary2026/GardenImageExport.js?v=' + version,
                             'campaign/controllers/CampaignController.js?v=' + version
                         ]});
                     }]
@@ -41,6 +42,7 @@
                         'campaign/field.css?v=' + version,
                         'campaign/business/CampaignService.js?v=' + version,
                         'campaign/rosary2026/FlowerGarden2026.js?v=' + version,
+                        'campaign/rosary2026/GardenImageExport.js?v=' + version,
                         'campaign/controllers/CampaignFieldController.js?v=' + version
                     ]});
                 }]}

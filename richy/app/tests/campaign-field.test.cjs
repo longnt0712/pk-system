@@ -6,20 +6,21 @@ const nodeVm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../campaign/controllers/CampaignFieldController.js'),'utf8');
 const campaign={id:5,shareCode:'c'.repeat(32),name:'Cùng Mẹ, em yêu mến Chúa',startDate:'2026-10-01',endDate:'2026-10-31',flowerItems:[{itemKey:'p',name:'Lần hạt'}]};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-function setup({enabled=true,role='student',credentials=false,field}={}){
-    let registration,watch;
+function setup({enabled=true,role='student',credentials=false,field,fieldExport,exporter}={}){
+    let registration;const watches=[];
     const events={},calls=[],timers=new Map();let nextTimer=0;
     const settings={campaignsEnabled:enabled,permissionsLoaded:true,isAdmin:role==='admin',isEducationManagerment:role==='education',isStudentManagerment:role==='manager'};
     const auth={hasCredentials:()=>credentials};
     const service={getByShareCode:async()=>({data:campaign}),fieldClasses:async()=>({data:[{id:12,name:'Thiếu 1'}]}),
+        fieldExport:fieldExport||(async()=>({data:{gardens:[],hasMore:false}})),
         field:async(...args)=>{calls.push(args);return field?field(...args):{data:{gardens:[{id:1,fullName:'An',saintName:'Đa Minh',classes:[],completedCount:0,colors:[]}],hasMore:false}};}};
     const timeout=(fn,delay)=>{const id=++nextTimer;timers.set(id,{fn,delay});return id;};timeout.cancel=id=>timers.delete(id);
-    const scope={$watch:(fn,listener)=>{watch={fn,listener,value:fn()};return()=>{};},$on:(name,fn)=>{events[name]=fn;return()=>{};}};
+    const scope={$evalAsync:fn=>{if(fn)fn();},$watch:(fn,listener)=>{watches.push({fn,listener,value:fn()});return()=>{};},$on:(name,fn)=>{events[name]=fn;return()=>{};}};
     const redirects=[];
     nodeVm.runInNewContext(source,{angular:{module:()=>({controller:(name,r)=>registration=r,directive(){}})}});
     const Controller=registration[registration.length-1];
-    const vm=new Controller(scope,{go:(...args)=>redirects.push(args)},{campaignCode:campaign.shareCode},{FlowerGarden2026:require('../campaign/rosary2026/FlowerGarden2026.js')},timeout,settings,service,auth);
-    return{vm,calls,events,settings,redirects,service,setCredentials:v=>{credentials=v;},digest:()=>{const v=watch.fn();if(v!==watch.value){const old=watch.value;watch.value=v;watch.listener(v,old);}},flush:()=>{const pending=[...timers.values()];timers.clear();pending.forEach(t=>t.fn());},timers};
+    const vm=new Controller(scope,{go:(...args)=>redirects.push(args)},{campaignCode:campaign.shareCode},{FlowerGarden2026:require('../campaign/rosary2026/FlowerGarden2026.js'),GardenImageExport:exporter},timeout,settings,service,auth);
+    return{vm,calls,events,settings,redirects,service,setCredentials:v=>{credentials=v;},digest:()=>{watches.forEach(watch=>{const v=watch.fn();if(v!==watch.value){const old=watch.value;watch.value=v;watch.listener(v,old);}});},flush:()=>{const pending=[...timers.values()];timers.clear();pending.forEach(t=>t.fn());},timers};
 }
 test('anonymous viewers and logged-in students use the public endpoint, including empty gardens',async()=>{
     for(const credentials of [false,true]){const h=setup({credentials});await tick();assert.equal(h.calls[0][2],false);assert.equal(h.vm.gardens[0].completedCount,0);assert.equal(h.vm.gardens[0].fullName,'An');assert.equal(h.calls[0][1].size,6);}
@@ -55,8 +56,35 @@ test('field service keeps public reads separate from authenticated Management re
     let Service;const calls=[];
     nodeVm.runInNewContext(fs.readFileSync(path.join(__dirname,'../campaign/business/CampaignService.js'),'utf8'),{angular:{module:()=>({service:(name,r)=>Service=r[r.length-1]})}});
     const service=new Service({get:(url,config)=>calls.push({url,config})},{api:{baseUrl:'https://tnttphungkhoang.com/service/'}});
-    service.field(5,{size:6},false);service.field(5,{size:6},true);service.fieldClasses(5);
+    service.field(5,{size:6},false);service.field(5,{size:6},true);service.fieldClasses(5);service.fieldExport(5,{classId:12,size:12});
     assert.equal(calls[0].url,'https://tnttphungkhoang.com/service/public/campaigns/5/field');assert.equal(calls[0].config.skipSessionAuth,true);
     assert.equal(calls[1].url,'https://tnttphungkhoang.com/service/api/campaigns/5/field');assert.equal(calls[1].config.skipSessionAuth,false);
     assert.equal(calls[2].config.skipSessionAuth,true);
+    assert.equal(calls[3].url,'https://tnttphungkhoang.com/service/api/campaigns/5/field/export');assert.notEqual(calls[3].config.skipSessionAuth,true);assert.equal(calls[3].config.timeout,20000);
+});
+function fakeExporter(){const images=[],downloads=[],files=[];return{images,downloads,files,create:async(c,g)=>{images.push(g.id);return new Blob(['PNG'+g.id]);},download:(...args)=>downloads.push(args),fileName:g=>g.id+'.png',safeName:x=>String(x),archive:()=>({add:async(path,blob)=>files.push(path),finish:()=>new Blob(['ZIP'])})};}
+test('only authenticated Admin can export, including after a role downgrade that keeps manager access',async()=>{
+    for(const role of ['student','education','manager','admin']){for(const credentials of [false,true]){const exporter=fakeExporter(),h=setup({role,credentials,exporter});await tick();assert.equal(h.vm.canExport(),role==='admin'&&credentials);await h.vm.exportImage({id:7});assert.equal(exporter.downloads.length,role==='admin'&&credentials?1:0);}}
+    const h=setup({role:'admin',credentials:true,exporter:fakeExporter()});await tick();h.vm.openExport();h.settings.isAdmin=false;h.settings.isEducationManagerment=true;h.digest();assert.equal(h.vm.canSeeManagers(),true);assert.equal(h.vm.exportDialog,false);
+});
+test('class ZIP reads bounded pages sequentially, includes zero gardens and places multi-class people in each folder',async()=>{
+    const exporter=fakeExporter(),reads=[];
+    const h=setup({role:'admin',credentials:true,exporter,fieldExport:async(id,f)=>{reads.push({...f});assert.equal(f.size,12);if(f.classId===0)return{data:{gardens:[{id:20,completedCount:0}],hasMore:false}};return{data:f.cursor?{gardens:[{id:3}],hasMore:false}:{gardens:[{id:1},{id:2}],hasMore:true,nextCursor:'0:2'}};}});
+    await tick();h.vm.classes.push({id:13,name:'Ấu 1'});h.vm.openExport();await h.vm.exportClasses();
+    assert.deepEqual(reads.map(x=>[x.classId,x.cursor]),[[12,''],[12,'0:2'],[13,''],[13,'0:2'],[0,'']]);
+    assert.deepEqual(exporter.images,[1,2,3,1,2,3,20]);assert.equal(exporter.downloads.length,1);assert.match(exporter.downloads[0][1],/\.zip$/);assert.equal(h.vm.exportCount,7);assert.equal(h.vm.exportBusy,false);assert.equal(exporter.files[0],'Thiếu 1-12/1.png');
+});
+test('bulk export cancel, logout and destroy discard pending images before download or next page',async()=>{
+    for(const cancel of ['cancel','logout','destroy']){
+        const exporter=fakeExporter();let finish;exporter.create=()=>new Promise(r=>finish=r);
+        const h=setup({role:'admin',credentials:true,exporter,fieldExport:async()=>({data:{gardens:[{id:1},{id:2}],hasMore:true,nextCursor:'0:2'}})});await tick();h.vm.openExport();const pending=h.vm.exportClasses();await tick();
+        if(cancel==='cancel')h.vm.cancelExport();else if(cancel==='logout')h.events['session:expired']();else h.events.$destroy();
+        finish(new Blob(['PNG']));await pending;assert.equal(exporter.downloads.length,0);assert.equal(exporter.files.length,0);assert.equal(h.vm.exportBusy,false);
+    }
+});
+test('export failure and repeated cursor never download an incomplete ZIP',async()=>{
+    for(const mode of ['error','cursor','empty']){const exporter=fakeExporter();let reads=0;
+        const h=setup({role:'admin',credentials:true,exporter,fieldExport:async()=>{if(mode==='error')throw{status:500};return{data:{gardens:mode==='empty'?[]:[{id:++reads}],hasMore:mode==='cursor',nextCursor:'0:1'}};}});
+        await tick();h.vm.openExport();await h.vm.exportClasses();assert.equal(exporter.downloads.length,0);assert.ok(h.vm.exportError);assert.equal(h.vm.exportBusy,false);
+    }
 });

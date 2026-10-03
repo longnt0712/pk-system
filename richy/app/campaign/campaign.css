@@ -177,10 +177,19 @@ html.campaign-garden-open, body.campaign-garden-open { overflow:hidden!important
 .campaign-garden-progress { display:flex; justify-content:space-between; gap:8px; font-size:13px; padding:10px 12px; border-radius:10px; background:#EEF5E8; margin-bottom:12px; }
 .campaign-garden-art { position:relative; aspect-ratio:940/1672; overflow:hidden; border-radius:14px; background:#C4E3A6; }
 .campaign-garden-art>img { display:block; width:100%; height:100%; }
+.campaign-garden-art>img.campaign-garden-logo { position:absolute; top:1.125%; right:2%; width:11%; height:auto; border-radius:50%; opacity:.88; pointer-events:none; z-index:1; }
 .campaign-garden-flower { position:absolute; width:15.5%; min-height:44px; border:0; background:transparent; padding:0; transform:translate(-50%,-39%); cursor:pointer; touch-action:manipulation; }
 .campaign-garden-flower svg { display:block; width:100%; height:auto; overflow:visible; filter:drop-shadow(0 2px 1px #47663320); }
 .campaign-garden-flower:focus-visible { outline:3px solid #286BAF; outline-offset:2px; border-radius:12px; }
 .campaign-garden-flower:disabled { cursor:wait; }
+.campaign-garden-flower-ready svg { animation:campaign-flower-bounce 2.8s ease-in-out infinite; transform-origin:50% 85%; }
+.campaign-garden-flower-hinting { z-index:2; }
+@keyframes campaign-flower-bounce { 0%,40%,100% { transform:translateY(0) rotate(0); } 14% { transform:translateY(-5px) rotate(-3deg); } 25% { transform:translateY(-2px) rotate(3deg); } }
+.campaign-garden-hint { position:absolute; bottom:calc(100% - 10px); left:50%; transform:translateX(-50%); width:160px; padding:9px 10px; border:2px solid #C39B52; border-radius:14px; background:#FFF9E9; color:#4E4930; font-size:12px; font-weight:400; line-height:1.4; white-space:normal; box-shadow:0 4px 12px #39492F25; }
+.campaign-garden-hint::after { content:''; position:absolute; top:100%; left:50%; width:12px; height:12px; transform:translate(-50%,-5px) rotate(45deg); background:#FFF9E9; border-right:2px solid #C39B52; border-bottom:2px solid #C39B52; }
+.campaign-garden-hint-left { left:0; transform:none; }.campaign-garden-hint-left::after { left:18%; }
+.campaign-garden-hint-right { left:auto; right:0; transform:none; }.campaign-garden-hint-right::after { left:82%; }
+@media(prefers-reduced-motion:reduce) { .campaign-garden-flower-ready svg { animation:none; } }
 .campaign-garden-footer { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:14px; }
 .campaign-garden-footer .btn { min-height:44px; border-radius:10px; white-space:normal; }
 .campaign-garden-picker { position:fixed; inset:0; z-index:1; display:flex; align-items:center; justify-content:center; padding:12px; background:#16281ECC; overflow:auto; scrollbar-width:none; }
@@ -198,6 +207,10 @@ html.campaign-garden-open, body.campaign-garden-open { overflow:hidden!important
 .campaign-garden-swatch { width:44px; height:44px; flex:none; border:2px solid #74654C; border-radius:50%; color:#283D30; font-weight:700; font-size:22px; touch-action:manipulation; }
 .campaign-garden-swatch[aria-pressed=true] { outline:3px solid #32764B; outline-offset:2px; }
 .campaign-garden-swatch:focus-visible { outline:3px solid #286BAF; outline-offset:3px; }
+.campaign-garden-erase { display:inline-flex; align-items:center; justify-content:center; padding:7px; background:#fffdfa; color:#715343; }
+.campaign-garden-erase svg { width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:2; }
+.campaign-garden-erase:disabled { opacity:.4; cursor:default; }
+.campaign-garden-picker-card .campaign-garden-erase-help { font-size:12px; color:#74654C; }
 .campaign-garden-notice { color:#32643F; font-size:13px; }
 .campaign-garden-confirm { padding:26px 20px; }
 @media(min-width:601px) { .campaign-garden-art { width:min(100%,max(300px,calc((100dvh - 275px) * .5622))); margin:0 auto; } }

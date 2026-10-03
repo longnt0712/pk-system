@@ -25,6 +25,7 @@
         <p ng-if="vm.scanBusy" role="status">Đang mở phiếu hoa thiêng của em…</p>
         <div class="campaign-actions"><button type="button" class="btn campaign-primary" ng-click="scanner.start()" ng-disabled="scanner.starting || vm.scanBusy" ng-if="!scanner.visible">{{scanner.starting ? 'Đang mở camera…' : 'Mở camera quét thẻ'}}</button><button type="button" class="btn btn-default" ng-click="scanner.stop()" ng-if="scanner.visible">Tắt camera</button><label class="btn btn-default campaign-qr-upload">Chọn ảnh QR<input type="file" accept="image/*" aria-label="Chọn ảnh mã QR học sinh" ng-disabled="vm.scanBusy || scanner.starting"></label></div>
         <p class="campaign-muted">Cho phép truy cập camera khi trình duyệt yêu cầu. Nếu camera không mở được, em có thể chọn ảnh chụp mã QR trên thẻ.</p>
+        <div class="campaign-actions" ng-if="vm.fieldEnabled(vm.targetCampaign)"><button type="button" class="btn campaign-garden-button" ng-click="vm.openField(vm.targetCampaign)" ng-disabled="vm.scanBusy">Cánh đồng hoa ✿</button></div>
     </section>
     <p ng-if="vm.studentMode && vm.student && !vm.needsScan" class="campaign-no-print"><button type="button" class="btn btn-default" ng-click="vm.scanAnotherStudent()">Quét thẻ học sinh khác</button></p>
     <section ng-if="vm.studentMode && vm.student && !vm.campaign" class="campaign-student-summary campaign-no-print"><h1>Phiếu hoa thiêng của em</h1><p>Tên: <strong>{{vm.student.saintName}} {{vm.student.fullName}}</strong> - Lớp: <strong>{{vm.student.classes.join(', ') || 'Chưa xếp lớp'}}</strong></p><p ng-if="vm.campaigns.length">Chọn chiến dịch để ghi lại những việc em đã làm.</p></section>
@@ -148,10 +149,11 @@
             <p ng-if="vm.studentMode" class="campaign-muted campaign-no-print">Em chỉ tích hoặc bỏ tích cho ngày hôm nay. Các ngày đã qua sẽ được khóa và giữ kết quả đã lưu.</p>
             <p ng-if="vm.checkError" class="campaign-alert campaign-no-print" role="alert">{{vm.checkError}}</p><p ng-if="vm.saveNotice" class="campaign-muted campaign-no-print" role="status">{{vm.saveNotice}}</p>
             <div class="campaign-sheet-scroll"><table class="campaign-sheet"><caption class="sr-only">Phiếu hoa thiêng tuần {{vm.weekIndex + 1}}</caption><thead><tr><th scope="col">Việc hoa thiêng</th><th scope="col" ng-repeat="day in vm.weekDays">{{day.label}}<br>{{vm.formatDate(day.date)}}</th></tr></thead><tbody><tr ng-repeat="item in vm.campaign.flowerItems track by $index"><th scope="row">{{item.name}}</th><td ng-repeat="day in vm.weekDays"><span ng-if="!vm.studentMode" class="campaign-sheet-box" aria-label="Ô ghi nhận trên phiếu in">□</span><input ng-if="vm.studentMode" class="campaign-flower-checkbox campaign-no-print" type="checkbox" ng-model="vm.checks[item.itemKey + ':' + day.date]" ng-change="vm.toggleFlower(item, day)" ng-disabled="vm.sheetLoading || vm.isDayLocked(day) || vm.pendingChecks[vm.campaign.id + ':' + item.itemKey + ':' + day.date]" aria-label="{{item.name}} ngày {{vm.formatDate(day.date)}}"><span ng-if="vm.studentMode" class="campaign-sheet-box campaign-print-only">{{vm.checks[item.itemKey + ':' + day.date] ? '✓' : '□'}}</span></td></tr></tbody></table></div>
-            <nav class="campaign-rosary-navigation campaign-sheet-navigation campaign-no-print" ng-if="vm.rosaryGuide || vm.gardenEnabled()" aria-label="Hướng dẫn, ngắm và vườn hoa">
+            <nav class="campaign-rosary-navigation campaign-sheet-navigation campaign-no-print" ng-if="vm.rosaryGuide || vm.gardenEnabled() || vm.fieldEnabled(vm.campaign)" aria-label="Hướng dẫn, ngắm, vườn hoa và cánh đồng hoa">
                 <button type="button" class="btn campaign-primary" ng-if="vm.rosaryGuide" data-rosary-reopen ng-click="vm.openRosaryParticipation()">Xem hướng dẫn</button>
                 <button type="button" class="btn campaign-rosary-today-button" ng-if="vm.rosaryGuide" ng-click="vm.openRosaryGuide()">Xem ngắm</button>
                 <button type="button" class="btn campaign-garden-button" ng-if="vm.gardenEnabled()" ng-click="vm.openGarden()" ng-disabled="vm.sheetLoading || vm.saveNotice === 'Đang lưu…'">Tô vườn hoa 🌼</button>
+                <button type="button" class="btn campaign-garden-button" ng-if="vm.fieldEnabled(vm.campaign)" ng-click="vm.openField(vm.campaign)" ng-disabled="vm.sheetLoading || vm.saveNotice === 'Đang lưu…'">Cánh đồng hoa ✿</button>
             </nav>
             </div>
         </section>
@@ -174,6 +176,7 @@
                 <button type="button" class="btn campaign-primary" ng-click="vm.closeRosaryGuide()">Đi đến Hoa thiêng</button>
                 <button type="button" class="btn campaign-rosary-today-button" ng-click="vm.openRosaryGuide()">Xem ngắm của ngày hôm nay</button>
                 <button type="button" class="btn campaign-garden-button" ng-if="vm.gardenEnabled()" ng-click="vm.openGarden()">Tô vườn hoa 🌼</button>
+                <button type="button" class="btn campaign-garden-button" ng-if="vm.fieldEnabled(vm.campaign)" ng-click="vm.openField(vm.campaign)" ng-disabled="vm.sheetLoading || vm.saveNotice === 'Đang lưu…'">Cánh đồng hoa ✿</button>
             </div>
         </footer>
         <div class="campaign-rosary-group" ng-if="!vm.rosaryParticipationOpen && !vm.rosaryInstructionsOpen"><h2>{{vm.rosaryGuide.title}}</h2></div>
@@ -188,7 +191,7 @@
         <footer class="campaign-rosary-footer" ng-if="!vm.rosaryParticipationOpen && !vm.rosaryInstructionsOpen"><p>Các em sau khi lần hạt hãy tích vào ô “Lần hạt một chục” nhé.</p><button type="button" class="btn campaign-primary" ng-click="vm.closeRosaryGuide()">Đi đến Hoa thiêng</button></footer>
     </div>
 </section>
-<section ng-if="vm.gardenOpen" class="campaign-garden-overlay campaign-no-print" campaign-garden-focus role="dialog" aria-modal="true" aria-labelledby="campaign-garden-heading">
+<section ng-if="vm.gardenOpen" class="campaign-garden-overlay campaign-no-print" campaign-garden-focus campaign-garden-hints role="dialog" aria-modal="true" aria-labelledby="campaign-garden-heading">
     <main class="campaign-garden-card">
         <header class="campaign-garden-header">
             <div><span>CHIẾN DỊCH MÂN CÔI 2026</span><h1 id="campaign-garden-heading" tabindex="-1">Vườn hoa của {{vm.student.fullName}}</h1></div>
@@ -201,7 +204,8 @@
             <div class="campaign-garden-progress"><strong>Đã tô {{vm.garden.used}} cánh</strong><span>Còn {{vm.garden.available}} lượt tô</span></div>
             <div class="campaign-garden-art" aria-label="Vườn hoa tháng 10 trước nhà thờ Phùng Khoang">
                 <img src="assets/images/rosary-2026/vuon-hoa-phung-khoang-background.png" alt="Nhà thờ Phùng Khoang và khu vườn đã có màu sẵn" width="940" height="1672">
-                <button type="button" class="campaign-garden-flower" ng-repeat="flower in vm.garden.flowers track by flower.date" ng-style="{left: flower.left, top: flower.top}" ng-click="vm.selectGardenDay(flower)" ng-disabled="vm.gardenBusy" aria-label="Ngày {{flower.day}} tháng 10: đã tô {{flower.used}} cánh, còn {{flower.available}} lượt">
+                <img class="campaign-garden-logo" src="assets/images/logo-xu-doan.png" alt="" width="1001" height="1001">
+                <button type="button" class="campaign-garden-flower" ng-repeat="flower in vm.garden.flowers track by flower.date" ng-attr-data-flower-date="{{flower.date}}" ng-style="{left: flower.left, top: flower.top}" ng-class="{'campaign-garden-flower-ready': flower.available > 0 && !flower.future && !vm.gardenBusy && !vm.gardenDay && !vm.gardenResetConfirm && !vm.gardenHintsPaused, 'campaign-garden-flower-hinting': vm.gardenHintDate === flower.date}" ng-click="vm.selectGardenDay(flower)" ng-disabled="vm.gardenBusy" aria-label="Ngày {{flower.day}} tháng 10: đã tô {{flower.used}} cánh, còn {{flower.available}} lượt">
                     <svg viewBox="-80 -80 160 205" aria-hidden="true" focusable="false">
                         <path d="M 0 35 L 0 115" fill="none" stroke="#33713B" stroke-width="7"/>
                         <path d="M 0 95 Q -55 82 -51 49 Q -9 53 0 95 M 0 103 Q 55 91 50 59 Q 9 65 0 103" fill="#73B950" stroke="#305630" stroke-width="3"/>
@@ -209,9 +213,11 @@
                         <circle r="19" fill="#F6C654" stroke="#9D6B24" stroke-width="2.5"/>
                         <text y="6" text-anchor="middle" fill="#5A3B1F" font-size="19" font-weight="700">{{flower.day}}</text>
                     </svg>
+                    <span ng-if="vm.gardenHintDate === flower.date" class="campaign-garden-hint" ng-class="{'campaign-garden-hint-left': flower.column === 0, 'campaign-garden-hint-right': flower.column === flower.columns - 1}" aria-hidden="true">Bạn ơi, tớ còn <strong>{{flower.available}} lượt tô</strong>. Vào tô tớ đi!</span>
                 </button>
             </div>
-            <footer class="campaign-garden-footer"><button class="btn btn-default" ng-click="vm.gardenResetConfirm = true" ng-disabled="vm.gardenBusy || !vm.garden.used">Xóa màu và tô lại</button><button class="btn campaign-garden-button" ng-click="vm.closeGarden()" ng-disabled="vm.gardenBusy">Đi đến Hoa thiêng</button></footer>
+            <footer class="campaign-garden-footer"><button class="btn btn-default" ng-click="vm.askResetGardenPaint()" ng-disabled="vm.gardenBusy || !vm.garden.used">Xóa màu và tô lại</button><button type="button" class="btn campaign-garden-button" ng-click="vm.exportGardenImage()" ng-disabled="vm.gardenExportBusy || vm.gardenBusy || vm.gardenLoading || vm.saveNotice === 'Đang lưu…'">{{vm.gardenExportBusy ? 'Đang tạo ảnh…' : 'Xuất ảnh'}}</button><button class="btn campaign-garden-button" ng-click="vm.closeGarden()" ng-disabled="vm.gardenBusy">Đi đến Hoa thiêng</button><button type="button" class="btn campaign-garden-button" ng-if="vm.fieldEnabled(vm.campaign)" ng-click="vm.openField(vm.campaign)" ng-disabled="vm.gardenBusy || vm.sheetLoading || vm.saveNotice === 'Đang lưu…'">Cánh đồng hoa ✿</button></footer>
+            <p class="campaign-alert" role="alert" ng-if="vm.gardenExportError">{{vm.gardenExportError}}</p>
             <p class="campaign-garden-notice" role="status" ng-if="vm.gardenNotice && !vm.gardenDay">{{vm.gardenNotice}}</p>
         </div>
     </main>
@@ -221,13 +227,15 @@
             <p ng-if="!vm.gardenDay.future">Đã tích {{vm.gardenDay.earned}} việc · Còn <strong>{{vm.gardenDay.available}} lượt tô</strong>. Em có thể đổi màu cánh đã tô.</p>
             <p ng-if="vm.gardenDay.future">Bông hoa này dành cho ngày sắp tới. Em hãy quay lại vào ngày đó nhé!</p>
             <svg class="campaign-garden-large-flower" viewBox="-85 -85 170 170" role="group" aria-label="Chọn cánh hoa muốn tô">
-                <path ng-repeat="petal in vm.gardenDay.petals track by petal.key" ng-attr-d="{{petal.path}}" ng-attr-fill="{{petal.color}}" stroke="#513E32" stroke-width="1.5" role="button" tabindex="0" aria-label="Tô cánh {{petal.number}}" ng-attr-aria-disabled="{{vm.gardenBusy || vm.gardenDay.future}}" ng-click="vm.paintGardenPetal(petal)" ng-keydown="($event.key === 'Enter' || $event.key === ' ') && vm.paintGardenPetal(petal); $event.key === ' ' && $event.preventDefault()"><title>Cánh {{petal.number}}</title></path>
+                <path ng-repeat="petal in vm.gardenDay.petals track by petal.key" ng-attr-d="{{petal.path}}" ng-attr-fill="{{petal.color}}" stroke="#513E32" stroke-width="1.5" role="button" tabindex="0" aria-label="{{vm.gardenEraseMode ? 'Xóa màu cánh ' : 'Tô cánh '}}{{petal.number}}" ng-attr-aria-disabled="{{vm.gardenBusy || vm.gardenDay.future}}" ng-click="vm.paintGardenPetal(petal)" ng-keydown="($event.key === 'Enter' || $event.key === ' ') && vm.paintGardenPetal(petal); $event.key === ' ' && $event.preventDefault()"><title>Cánh {{petal.number}}</title></path>
                 <circle r="18" fill="#F6C654" stroke="#9D6B24" stroke-width="1.5"/>
                 <text y="5" text-anchor="middle" fill="#5A3B1F" font-size="17" font-weight="700" aria-hidden="true">{{vm.gardenDay.day}}</text>
             </svg>
             <div class="campaign-garden-palette" role="group" aria-label="Chọn màu tô">
-                <button type="button" ng-repeat="paint in vm.gardenPalette" class="campaign-garden-swatch" ng-style="{backgroundColor: paint.color}" ng-click="vm.gardenColor = paint.color" ng-attr-aria-pressed="{{vm.gardenColor === paint.color}}" aria-label="Màu {{paint.name}}" title="{{paint.name}}" ng-disabled="vm.gardenBusy || vm.gardenDay.future"><span ng-if="vm.gardenColor === paint.color" aria-hidden="true">✓</span></button>
+                <button type="button" ng-repeat="paint in vm.gardenPalette" class="campaign-garden-swatch" ng-style="{backgroundColor: paint.color}" ng-click="vm.selectGardenColor(paint.color)" ng-attr-aria-pressed="{{!vm.gardenEraseMode && vm.gardenColor === paint.color}}" aria-label="Màu {{paint.name}}" title="{{paint.name}}" ng-disabled="vm.gardenBusy || vm.gardenDay.future"><span ng-if="!vm.gardenEraseMode && vm.gardenColor === paint.color" aria-hidden="true">✓</span></button>
+                <button type="button" class="campaign-garden-swatch campaign-garden-erase" ng-click="vm.selectGardenEraser()" ng-attr-aria-pressed="{{vm.gardenEraseMode}}" ng-disabled="vm.gardenBusy || vm.gardenLoading || vm.gardenDay.future" aria-label="Xóa màu từng cánh hoa" title="Chọn rồi chạm vào cánh muốn xóa"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M 5.6 18.4 L 18.4 5.6"/></svg></button>
             </div>
+            <p class="campaign-garden-erase-help">Chọn ⊘ rồi chạm vào cánh muốn xóa. Mỗi cánh xóa hoàn một lượt tô, giữ nguyên các ô tích.</p>
             <p class="campaign-garden-notice" role="status">{{vm.gardenNotice || 'Chọn màu ở trên, rồi chạm vào cánh em muốn tô.'}}</p>
             <p ng-if="vm.gardenError" class="campaign-alert" role="alert">{{vm.gardenError}}</p>
             <button type="button" class="btn campaign-garden-button" ng-click="vm.closeGarden()" ng-disabled="vm.gardenBusy">Đi đến Hoa thiêng để tích việc</button>
@@ -235,7 +243,7 @@
     </section>
     <section ng-if="vm.gardenResetConfirm" class="campaign-garden-picker" role="alertdialog" aria-modal="true" aria-labelledby="campaign-garden-reset-heading">
         <div class="campaign-garden-picker-card campaign-garden-confirm">
-            <h2 id="campaign-garden-reset-heading" tabindex="-1">Xóa màu và tô lại?</h2><p>Em muốn xóa toàn bộ màu đã tô để tô lại từ đầu không? Các việc Hoa thiêng đã tích vẫn được giữ nguyên. Em sẽ nhận lại tất cả lượt tô đã dùng.</p>
+            <h2 id="campaign-garden-reset-heading" tabindex="-1">Xóa màu và tô lại?</h2><p>Em muốn xóa toàn bộ màu đã tô để tô lại từ đầu không? Các việc Hoa thiêng đã tích vẫn được giữ nguyên. Em sẽ nhận lại các lượt tô đã dùng.</p>
             <p ng-if="vm.gardenError" class="campaign-alert" role="alert">{{vm.gardenError}}</p>
             <div class="campaign-garden-footer"><button type="button" class="btn btn-default" ng-click="vm.gardenResetConfirm = false" ng-disabled="vm.gardenBusy">Giữ màu hiện tại</button><button type="button" class="btn campaign-garden-button" ng-click="vm.resetGardenPaint()" ng-disabled="vm.gardenBusy">{{vm.gardenBusy ? 'Đang xóa màu…' : 'Xóa màu và hoàn lượt tô'}}</button></div>
         </div>

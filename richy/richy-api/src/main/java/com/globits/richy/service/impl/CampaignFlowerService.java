@@ -167,6 +167,22 @@ public class CampaignFlowerService {
         return gardenDto(campaign, student);
     }
 
+    public CampaignFlowerDto.Garden erasePetal(String token, Long campaignId, String date, String itemKey) {
+        User student = access(token, true).getStudent(); Campaign campaign = campaign(campaignId);
+        LocalDate day;
+        try { day = LocalDate.parse(date); }
+        catch (RuntimeException error) { throw new CampaignService.InvalidCampaignException("Ngày xóa màu hoa không hợp lệ."); }
+        if (!day.toString().equals(date) || day.isAfter(today()) || date.compareTo(campaign.getStartDate()) < 0 || date.compareTo(campaign.getEndDate()) > 0) {
+            throw new CampaignService.InvalidCampaignException("Em chỉ xóa màu bông hoa của ngày đã đến trong chiến dịch.");
+        }
+        if (!itemKeys(campaign).contains(itemKey)) { throw new CampaignService.InvalidCampaignException("Cánh hoa đã thay đổi. Vui lòng mở lại vườn hoa."); }
+        CampaignFlowerEntry value = entries.findByCampaignIdAndStudentIdAndDateAndItemKey(campaignId, student.getId(), date, itemKey);
+        if (value != null && value.getPaintColor() != null) {
+            value.setPaintColor(null); value.setModifiedBy(student.getUsername()); value.setModifyDate(LocalDateTime.now()); entries.saveAndFlush(value);
+        }
+        return gardenDto(campaign, student);
+    }
+
     private Set<String> itemKeys(Campaign campaign) {
         Set<String> keys = new HashSet<>();
         for (int i = 0; i < campaign.getFlowerItems().size(); i++) { keys.add(CampaignDto.itemKey(campaign, campaign.getFlowerItems().get(i), i)); }

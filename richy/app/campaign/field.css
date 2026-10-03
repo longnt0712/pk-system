@@ -11,7 +11,7 @@
 .field-heading h1 { color:#275882; font-size:36px; line-height:1.2; font-weight:700; margin:0 0 10px; }
 .field-subtitle { color:#6b2c3d; font-size:18px; margin:0; }
 .field-intro { text-align:center; color:#5d7168; margin:22px auto 28px; line-height:1.6; max-width:620px; }
-.field-filters { position:sticky; top:0; z-index:2; display:flex; align-items:flex-end; gap:16px; padding:18px 20px; background:#fffdf8; border:1px solid #dfd9c8; border-radius:16px; box-shadow:0 6px 24px #365e3910; }
+.field-filters { display:flex; align-items:flex-end; flex-wrap:wrap; gap:16px; padding:18px 20px; background:#fffdf8; border:1px solid #dfd9c8; border-radius:16px; box-shadow:0 6px 24px #365e3910; }
 .field-filters label { display:block; margin:0; font-size:12px; font-weight:700; color:#3f594d; flex:1; min-width:0; }
 .field-filters label:first-child { flex:.7; }
 .field-filters input,.field-filters select { display:block; margin-top:7px; width:100%; height:46px; border:1px solid #cdd9ce; border-radius:9px; color:#294439; background:#fff; padding:10px 12px; font-size:15px; font-weight:400; }
@@ -27,6 +27,12 @@
 .field-art-button { display:block; width:100%; padding:0; background:none; border:0; color:#32764b; cursor:pointer; border-radius:12px; }
 .field-art { position:relative; aspect-ratio:940/1672; overflow:hidden; border-radius:12px; background:#c4e3a6; }
 .field-art>img { display:block; width:100%; height:auto; }.field-art>svg { position:absolute; inset:0; display:block; width:100%; height:100%; pointer-events:none; }
+.field-art>img.field-art-logo { position:absolute; top:1.125%; right:2%; width:11%; height:auto; border-radius:50%; opacity:.88; pointer-events:none; z-index:1; }
+.field-card-export { margin-top:14px; width:100%; }.field-export-button { background:#275882; border-color:#275882; }
+.field-export-classes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px 12px; max-height:40vh; overflow:auto; margin:10px 0 14px; }
+.field-export-choice { display:flex; align-items:center; gap:10px; min-height:44px; padding:8px; margin:0; font-weight:400; font-size:14px; border:1px solid #dfd9c8; border-radius:8px; overflow-wrap:anywhere; }
+.field-export-choice input { width:18px; height:18px; flex:none; margin:0; accent-color:#32764b; }.field-export-all { font-weight:700; }
+.field-export-dialog p { line-height:1.6; }.field-export-dialog .field-export-note { color:#718074; margin:12px 0; }.field-export-dialog .field-export-progress { margin:16px 0; color:#32764b; }.field-export-actions { display:flex; gap:12px; align-items:center; margin-top:18px; }
 .field-art-caption { display:flex; justify-content:space-between; padding:12px 2px 0; font-size:13px; font-weight:700; }
 .field-first-flower { color:#788575; font-size:12px; margin:12px 0 0; }.field-empty,.field-status { text-align:center; padding:35px 15px; color:#627566; }.field-error { color:#983b43; background:#fff0ed; padding:14px; border-radius:10px; }
 .field-more { min-height:100px; padding:30px 0; text-align:center; color:#627566; font-size:14px; }.field-footer { padding:25px 0; text-align:center; border-top:1px solid #d4decd; color:#6e7d66; font-size:12px; }

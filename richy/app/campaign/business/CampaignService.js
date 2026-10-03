@@ -20,6 +20,9 @@
         this.fieldClasses = function (id) {
             return $http.get(publicUrl + '/' + id + '/field/classes', {skipSessionAuth: true, timeout: 20000});
         };
+        this.fieldExport = function (id, filters) {
+            return $http.get(privateUrl + '/' + id + '/field/export', {params: filters, timeout: 20000});
+        };
         var flowerUrl = settings.api.baseUrl + 'public/campaign-flower/';
         this.scanStudentQr = function (studentCode) { return $http.post(flowerUrl + 'scan', {studentCode: studentCode}, {skipSessionAuth: true}); };
         this.studentLanding = function (token) { return $http.get(flowerUrl + encodeURIComponent(token), {skipSessionAuth: true}); };
@@ -37,6 +40,9 @@
         };
         this.resetFlowerPaint = function (token, id) {
             return $http.post(flowerUrl + encodeURIComponent(token) + '/campaigns/' + id + '/garden/reset', {}, {skipSessionAuth: true});
+        };
+        this.eraseFlowerPetal = function (token, id, date, key) {
+            return $http.delete(flowerUrl + encodeURIComponent(token) + '/campaigns/' + id + '/garden/' + encodeURIComponent(date) + '/' + encodeURIComponent(key), {skipSessionAuth: true});
         };
     }]);
 })();

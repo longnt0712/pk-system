@@ -26,7 +26,7 @@ public class CampaignFieldRepository {
 
     @SuppressWarnings("unchecked")
     public List<Object[]> page(Long campaignId, List<String> keys, String start, String end, Long classId,
-            String search, Long afterCount, Long afterId, int limit, boolean managers) {
+            String search, Long afterCount, Long afterId, int limit, boolean managers, boolean unassigned, boolean byId) {
         StringBuilder keyParams = new StringBuilder();
         for (int i=0; i<keys.size(); i++) { if (i>0) { keyParams.append(','); } keyParams.append(":key").append(i); }
         String sql = "select top " + limit + " u.id as participant_id, p.patron as saint_name, p.last_name as last_name,"
@@ -36,6 +36,7 @@ public class CampaignFieldRepository {
                 + " where campaign_id=:campaign and entry_date between :start and :end and completed=1"
                 + " and item_key in (" + keyParams + ") group by student_id) scores on scores.student_id=u.id"
                 + " where " + scope(managers);
+        if (unassigned) { sql += " and not " + membership("2"); }
         if (classId != null) {
             sql += " and (p.class_id=:classId or exists (select 1 from tbl_user_enrolment_class uc where uc.user_id=u.id and uc.enrolment_class_id=:classId))";
         }
@@ -44,15 +45,15 @@ public class CampaignFieldRepository {
                     + " collate Latin1_General_CI_AI like :search escape '\\'";
         }
         if (afterId != null) {
-            sql += " and (coalesce(scores.earned,0)<:afterCount or (coalesce(scores.earned,0)=:afterCount and u.id>:afterId))";
+            sql += byId ? " and u.id>:afterId" : " and (coalesce(scores.earned,0)<:afterCount or (coalesce(scores.earned,0)=:afterCount and u.id>:afterId))";
         }
-        sql += " order by coalesce(scores.earned,0) desc,u.id asc";
+        sql += byId ? " order by u.id asc" : " order by coalesce(scores.earned,0) desc,u.id asc";
         Query query = entityManager.createNativeQuery(sql);
         query.setParameter("campaign",campaignId).setParameter("start",start).setParameter("end",end);
         for (int i=0; i<keys.size(); i++) { query.setParameter("key"+i,keys.get(i)); }
         if (classId != null) { query.setParameter("classId",classId); }
         if (!search.isEmpty()) { query.setParameter("search","%" + search.replace("\\","\\\\").replace("%","\\%").replace("_","\\_").replace("[","\\[") + "%"); }
-        if (afterId != null) { query.setParameter("afterCount",afterCount).setParameter("afterId",afterId); }
+        if (afterId != null) { if (!byId) { query.setParameter("afterCount",afterCount); } query.setParameter("afterId",afterId); }
         return query.getResultList();
     }
 

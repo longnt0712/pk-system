@@ -128,6 +128,58 @@ public class CampaignFlowerTest {
         assertTrue(service.garden(tokenA, 5L).entries.isEmpty());
         try { service.paint(tokenA, 5L, today, key, "#FFB74D"); fail("Retired item"); } catch (CampaignService.InvalidCampaignException expected) { }
     }
+    @Test public void erasingOnePetalPreservesOtherPetalsDaysOwnersAndAllChecks() {
+        String other = addPractice();
+        service.check(tokenA, 5L, today, key, true); service.check(tokenA, 5L, today, other, true);
+        service.paint(tokenA, 5L, today, key, "#EF5350"); service.paint(tokenA, 5L, today, other, "#81D4FA");
+        service.check(tokenB, 5L, today, key, true); service.paint(tokenB, 5L, today, key, "#80CBC4");
+        String yesterday = LocalDate.parse(today).minusDays(1).toString();
+        CampaignFlowerEntry earlier = new CampaignFlowerEntry(); earlier.setCampaignId(5L); earlier.setStudentId(7L);
+        earlier.setDate(yesterday); earlier.setItemKey(key); earlier.setCompleted(true); earlier.setPaintColor("#F48FB1");
+        saved.put(entryKey(7L, yesterday, key), earlier);
+        CampaignFlowerDto.Garden reset = service.erasePetal(tokenA, 5L, today, key);
+        assertEquals(3, reset.entries.stream().filter(e -> e.completed).count());
+        assertEquals(1, reset.entries.stream().filter(e -> today.equals(e.date) && e.paintColor != null).count());
+        assertNull(saved.get(entryKey(7L, today, key)).getPaintColor());
+        assertEquals("#81D4FA", saved.get(entryKey(7L, today, other)).getPaintColor());
+        assertEquals("#F48FB1", earlier.getPaintColor());
+        assertEquals("#80CBC4", saved.get(entryKey(9L, today, key)).getPaintColor());
+        int size = saved.size(); service.erasePetal(tokenA, 5L, today, key); service.erasePetal(tokenA, 5L, yesterday, other);
+        assertEquals(size, saved.size());
+        service.paint(tokenA, 5L, today, key, "#FFE082");
+        assertEquals("#FFE082", saved.get(entryKey(7L, today, key)).getPaintColor());
+        assertTrue(saved.get(entryKey(7L, today, other)).isCompleted()); assertEquals("#F48FB1", earlier.getPaintColor());
+        verify(access, atLeastOnce()).lockByTokenHash(StudentMarkShareSupport.hashToken(tokenA));
+    }
+    @Test public void erasingPetalRejectsInvalidDatesKeysQrAndInactiveOwnersBeforeWrites() {
+        for (String date : Arrays.asList(null, "", "bad", "2026-02-30", LocalDate.parse(today).minusDays(3).toString(),
+                LocalDate.parse(today).plusDays(1).toString(), LocalDate.parse(today).plusDays(11).toString())) {
+            try { service.erasePetal(tokenA, 5L, date, key); fail("Invalid reset date accepted"); }
+            catch (CampaignService.InvalidCampaignException expected) { }
+        }
+        for (String invalidKey : Arrays.asList(null, "", "retired")) {
+            try { service.erasePetal(tokenA, 5L, today, invalidKey); fail("Invalid key accepted"); }
+            catch (CampaignService.InvalidCampaignException expected) { }
+        }
+        try { service.erasePetal("bad", 5L, today, key); fail("Invalid QR accepted"); }
+        catch (CampaignFlowerService.InvalidStudentQrException expected) { }
+        studentA.setActive(false);
+        try { service.erasePetal(tokenA, 5L, today, key); fail("Inactive owner accepted"); }
+        catch (CampaignFlowerService.InvalidStudentQrException expected) { }
+        verify(entries, never()).saveAndFlush(any(CampaignFlowerEntry.class)); verify(entries, never()).flush();
+    }
+    @Test public void erasingPetalHttpUsesQrOwnershipDateAndKeyInPath() throws Exception {
+        service.check(tokenA, 5L, today, key, true); service.paint(tokenA, 5L, today, key, "#EF5350");
+        service.check(tokenB, 5L, today, key, true); service.paint(tokenB, 5L, today, key, "#80CBC4");
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(context.getBean(RestPublicCampaignFlowerController.class)).build();
+        String path = "/public/campaign-flower/" + tokenA + "/campaigns/5/garden/" + today + "/" + key;
+        mvc.perform(delete(path).contentType("application/json").content("{\"studentId\":9,\"date\":\"1900-01-01\"}"))
+            .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store, max-age=0"));
+        assertNull(saved.get(entryKey(7L, today, key)).getPaintColor());
+        assertTrue(saved.get(entryKey(7L, today, key)).isCompleted());
+        assertEquals("#80CBC4", saved.get(entryKey(9L, today, key)).getPaintColor());
+        mvc.perform(get(path)).andExpect(status().isMethodNotAllowed());
+    }
     @Test public void previousDaysCanSpendExistingCreditButFutureInvalidDatesAndUnapprovedColorsCannot() {
         String yesterday = LocalDate.parse(today).minusDays(1).toString();
         CampaignFlowerEntry previous = new CampaignFlowerEntry(); previous.setCampaignId(5L); previous.setStudentId(7L); previous.setDate(yesterday); previous.setItemKey(key); previous.setCompleted(true);

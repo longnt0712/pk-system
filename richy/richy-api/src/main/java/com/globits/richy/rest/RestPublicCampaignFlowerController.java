@@ -44,4 +44,9 @@ public class RestPublicCampaignFlowerController {
     public ResponseEntity<CampaignFlowerDto.Garden> resetPaint(@PathVariable("token") String token, @PathVariable("id") Long id) {
         return response(service.resetPaint(token, id));
     }
+    @RequestMapping(value = "/{token}/campaigns/{id}/garden/{date}/{itemKey}", method = RequestMethod.DELETE)
+    public ResponseEntity<CampaignFlowerDto.Garden> erasePetal(@PathVariable("token") String token, @PathVariable("id") Long id,
+            @PathVariable("date") String date, @PathVariable("itemKey") String itemKey) {
+        return response(service.erasePetal(token, id, date, itemKey));
+    }
 }

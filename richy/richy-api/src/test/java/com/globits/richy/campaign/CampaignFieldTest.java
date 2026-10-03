@@ -165,4 +165,33 @@ public class CampaignFieldTest {
         String json=response.getResponse().getContentAsString();assertFalse(json.contains("\"id\":3,"));assertFalse(json.contains("token"));assertFalse(json.contains("username"));assertFalse(json.contains("email"));
         mvc.perform(post("/public/campaigns/5/field")).andExpect(status().isMethodNotAllowed());
     }
+    @Test public void classExportRequiresAdminAndIncludesManagersAndZeroGardens() {
+        for(String role:Arrays.asList("ROLE_STUDENT","ROLE_STAFF","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT")){
+            login(role);try{service.exportGardens(5L,12L,"",12);fail("Export must require Admin");}catch(AccessDeniedException expected){}
+        }
+        SecurityContextHolder.clearContext();try{service.exportGardens(5L,12L,"",12);fail();}catch(org.springframework.security.core.AuthenticationException expected){}catch(AccessDeniedException expected){}
+        login("ROLE_ADMIN");assertEquals(Arrays.asList(1L,3L,4L,5L,11L),ids(service.exportGardens(5L,12L,"",12)));
+        assertEquals(Arrays.asList(1L,2L),ids(service.exportGardens(5L,13L,"",12)));
+        assertEquals(Arrays.asList(10L),ids(service.exportGardens(5L,0L,"",12)));
+        for(Long classId:Arrays.asList(null,-1L,99L)) {try{service.exportGardens(5L,classId,"",12);fail();}catch(CampaignService.InvalidCampaignException expected){}}
+        try{service.exportGardens(5L,12L,"",13);fail();}catch(CampaignService.InvalidCampaignException expected){}
+        verify(entries,never()).saveAndFlush(any(CampaignFlowerEntry.class));
+    }
+    @Test public void exportCursorRemainsStableWhenChecksChangeBetweenPages() throws Exception {
+        login("ROLE_ADMIN");CampaignFieldDto first=service.exportGardens(5L,12L,"",1);assertEquals(Arrays.asList(1L),ids(first));
+        // A person becoming first in the normal leaderboard must not be skipped by an export.
+        check(3,"2026-10-02",key,true);check(3,"2026-10-02",key,true);check(3,"2026-10-02",key,true);
+        CampaignFieldDto second=service.exportGardens(5L,12L,first.nextCursor,1);assertEquals(Arrays.asList(3L),ids(second));
+        CampaignFieldDto third=service.exportGardens(5L,12L,second.nextCursor,12);assertEquals(Arrays.asList(4L,5L,11L),ids(third));assertFalse(third.hasMore);
+        assertTrue(sqlQueries.stream().anyMatch(sql->sql.contains("u.id>:afterId") && sql.endsWith("order by u.id asc")));
+    }
+    @Test public void adminExportHttpIsBoundedAndNeverExposesCredentials() throws Exception {
+        login("ROLE_ADMIN");MockMvc mvc=MockMvcBuilders.standaloneSetup(context.getBean(RestCampaignFieldController.class)).build();
+        MvcResult response=mvc.perform(get("/api/campaigns/5/field/export").param("classId","12").param("size","12")).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store, max-age=0")).andReturn();
+        String json=response.getResponse().getContentAsString();assertTrue(json.contains("\"id\":3,"));assertFalse(json.contains("token"));assertFalse(json.contains("username"));
+        mvc.perform(get("/api/campaigns/5/field/export")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/campaigns/5/field/export").param("classId","99")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/campaigns/5/field/export").param("classId","12").param("size","100")).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/campaigns/5/field/export").param("classId","12")).andExpect(status().isMethodNotAllowed());
+    }
 }

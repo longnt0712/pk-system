@@ -29,6 +29,12 @@ public class RestCampaignFieldController {
     }
     @RequestMapping(value="/public/campaigns/{id}/field/classes",method=RequestMethod.GET)
     public ResponseEntity<List<CampaignFieldDto.ClassOption>> classes(@PathVariable("id") Long id) {return response(service.classes(id));}
+    @RequestMapping(value="/api/campaigns/{id}/field/export",method=RequestMethod.GET)
+    public ResponseEntity<CampaignFieldDto> exportGardens(@PathVariable("id") Long id,
+            @RequestParam("classId") Long classId,@RequestParam(value="cursor",defaultValue="") String cursor,
+            @RequestParam(value="size",defaultValue="12") int size) {
+        return response(service.exportGardens(id,classId,cursor,size));
+    }
     @ExceptionHandler(CampaignService.InvalidCampaignException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String,String> invalid(CampaignService.InvalidCampaignException error){return Collections.singletonMap("message",error.getMessage());}
