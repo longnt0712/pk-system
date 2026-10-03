@@ -14,10 +14,11 @@ Phần hướng dẫn frontend dành riêng cho chiến dịch **Cùng Mẹ, em 
 ## Lời nguyện sau khi tích phiếu
 
 - Phiếu cá nhân hiển thị modal “Cùng Mẹ dâng một lời nguyện” sau khi API xác nhận một ô mới được tích thành công. Chọn ngẫu nhiên trong 7 ý: ông bà/cha mẹ, người đau ốm, các bạn nhỏ khó khăn, người buồn/cô đơn, gia đình, giáo xứ/xứ đoàn và chính em; không lặp ý liên tiếp trong lần mở trang.
+- Mỗi ý có tranh riêng trong `assets/images/flower-prayers-2026`, đặt cạnh lời nguyện theo bố cục ngang. Modal chỉ tải JPEG của ý đang chọn (960 × 720, khoảng 145–185 KiB mỗi ảnh), không tải trước toàn bộ 7 tranh. Hiển thị trọn tranh và dòng nhỏ `Thanks ♥ GIÁO LÝ SKETCHING` ở góc trái dưới. Giữ PNG gốc trong cùng thư mục; ảnh chưa tải/lỗi tải vẫn đọc được lời nguyện và bấm Amen bình thường.
 - Nút “Amen, em tiếp tục” hoặc Escape chỉ đóng modal, không gọi API hoặc thay đổi ô tích. Không có đếm ngược, tự tích, lưu lời nguyện, hoặc yêu cầu xác nhận trước khi lưu. Bỏ tích, lưu lỗi, ô đã tích và phản hồi thuộc phiếu/QR cũ không mở modal. Lỗi lưu trả checkbox về trạng thái đã xác nhận trước đó.
 - Nếu nhiều phản hồi thành công tới trong lúc modal đang mở, giữ một hộp duy nhất và vẫn cập nhật đầy đủ các ô đã lưu. Phản hồi cũ không được xóa khóa đang lưu của học sinh mới. Đổi tuần, đổi học sinh hoặc rời trang sẽ đóng/bỏ lời nguyện đang chờ; không chèn modal khi đang mở vườn hay hướng dẫn ngắm.
 - Modal có vùng cuộn riêng trong viewport fullscreen. Khi phiếu xoay -90° trên màn hình dọc, modal cũng xoay cùng chiều; màn hình ngang/máy tính hiển thị bình thường. Hỗ trợ focus/bàn phím, điện thoại dọc/ngang, giao diện tối và không in vào phiếu. Đóng modal trả focus về ô vừa tích nếu ô còn tồn tại và có thể thao tác.
-- Thay đổi này chỉ thuộc frontend: cập nhật `campaign/controllers/CampaignController.js`, `campaign/views/campaign.html`, `campaign/campaign.css` và `index.html` (`APP_VERSION=20261003-207`). Không cần build backend; không thay đổi API/payload hay database. Riêng chỉnh xoay ngang modal từ bản 206 chỉ đổi CSS và phiên bản cache. Đã kiểm tra thao tác lưu, lỗi và modal trên Edge bằng dữ liệu giả.
+- Thay đổi này chỉ thuộc frontend: cập nhật `campaign/controllers/CampaignController.js`, `campaign/views/campaign.html`, `campaign/campaign.css`, `index.html` (`APP_VERSION=20261003-208`) và 7 JPEG trong `assets/images/flower-prayers-2026`. Không cần build backend; không thay đổi API/payload hay database. Đã kiểm tra thao tác lưu, lỗi, ảnh và modal trên Edge bằng dữ liệu giả.
 
 ## Vườn hoa Hoa thiêng
 

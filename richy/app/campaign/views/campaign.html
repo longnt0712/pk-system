@@ -162,11 +162,15 @@
 </div>
 <section ng-if="vm.flowerPrayer" class="campaign-prayer-overlay campaign-no-print" campaign-prayer-dialog role="dialog" aria-modal="true" aria-labelledby="campaign-prayer-heading" aria-describedby="campaign-prayer-invitation campaign-prayer-text">
     <div class="campaign-prayer-card">
-        <span class="campaign-prayer-symbol" aria-hidden="true">✿</span>
-        <h2 id="campaign-prayer-heading" tabindex="-1">Cùng Mẹ dâng một lời nguyện</h2>
-        <p id="campaign-prayer-invitation">Em hãy dừng lại một vài giây, cùng Đức Mẹ cầu nguyện cho <strong>{{vm.flowerPrayer.intention}}</strong>.</p>
-        <p id="campaign-prayer-text" class="campaign-prayer-text">{{vm.flowerPrayer.prayer}}</p>
-        <button type="button" class="btn campaign-garden-button" ng-click="vm.closeFlowerPrayer()">Amen, em tiếp tục</button>
+        <figure class="campaign-prayer-figure">
+            <img class="campaign-prayer-image" ng-src="{{vm.flowerPrayer.image}}" alt="Minh họa cầu nguyện cho {{vm.flowerPrayer.intention}}" width="960" height="720" decoding="async">
+        </figure>
+        <div class="campaign-prayer-content">
+            <h2 id="campaign-prayer-heading" tabindex="-1">Cùng Mẹ dâng một lời nguyện</h2>
+            <p id="campaign-prayer-invitation">Em hãy dừng lại một vài giây, cùng Đức Mẹ cầu nguyện cho <strong>{{vm.flowerPrayer.intention}}</strong>.</p>
+            <p id="campaign-prayer-text" class="campaign-prayer-text">{{vm.flowerPrayer.prayer}}</p>
+            <button type="button" class="btn campaign-garden-button" ng-click="vm.closeFlowerPrayer()">Amen, em tiếp tục</button>
+        </div>
     </div>
 </section>
 </div>

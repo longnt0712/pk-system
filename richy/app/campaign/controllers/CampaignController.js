@@ -12,13 +12,13 @@
         var requestNumber = 0;
         var studentRequest = 0;
         var prayerIntentions = [
-            {intention: 'ông bà, cha mẹ', prayer: 'Xin Chúa ban cho ông bà, cha mẹ sức khỏe và bình an.'},
-            {intention: 'những người đang đau ốm', prayer: 'Xin Chúa nâng đỡ và ban cho họ sức mạnh, niềm hy vọng và bình an.'},
-            {intention: 'các bạn nhỏ gặp khó khăn', prayer: 'Xin Chúa giúp các bạn được chăm sóc, yêu thương và đến trường.'},
-            {intention: 'những người đang buồn hoặc cô đơn', prayer: 'Xin Chúa an ủi và giúp họ gặp được những người biết quan tâm, chia sẻ.'},
-            {intention: 'gia đình của em', prayer: 'Xin Chúa giúp mọi người trong gia đình luôn biết yêu thương và tha thứ cho nhau.'},
-            {intention: 'giáo xứ và xứ đoàn', prayer: 'Xin Chúa giúp chúng con luôn hiệp nhất và cùng giúp nhau yêu mến Chúa.'},
-            {intention: 'chính em', prayer: 'Xin Chúa giúp em biết làm việc tốt với lòng yêu thương.'}
+            {intention: 'ông bà, cha mẹ', prayer: 'Xin Chúa ban cho ông bà, cha mẹ sức khỏe và bình an.', image: 'assets/images/flower-prayers-2026/01-grandparents-parents.jpg'},
+            {intention: 'những người đang đau ốm', prayer: 'Xin Chúa nâng đỡ và ban cho họ sức mạnh, niềm hy vọng và bình an.', image: 'assets/images/flower-prayers-2026/02-sick.jpg'},
+            {intention: 'các bạn nhỏ gặp khó khăn', prayer: 'Xin Chúa giúp các bạn được chăm sóc, yêu thương và đến trường.', image: 'assets/images/flower-prayers-2026/03-children-in-need.jpg'},
+            {intention: 'những người đang buồn hoặc cô đơn', prayer: 'Xin Chúa an ủi và giúp họ gặp được những người biết quan tâm, chia sẻ.', image: 'assets/images/flower-prayers-2026/04-lonely.jpg'},
+            {intention: 'gia đình của em', prayer: 'Xin Chúa giúp mọi người trong gia đình luôn biết yêu thương và tha thứ cho nhau.', image: 'assets/images/flower-prayers-2026/05-family.jpg'},
+            {intention: 'giáo xứ và xứ đoàn', prayer: 'Xin Chúa giúp chúng con luôn hiệp nhất và cùng giúp nhau yêu mến Chúa.', image: 'assets/images/flower-prayers-2026/06-parish.jpg'},
+            {intention: 'chính em', prayer: 'Xin Chúa giúp em biết làm việc tốt với lòng yêu thương.', image: 'assets/images/flower-prayers-2026/07-self.jpg'}
         ];
         var lastPrayerIndex = -1;
         vm.flowerPrayer = null;
@@ -702,7 +702,15 @@
     angular.module('Hrm.Campaign').directive('campaignPrayerDialog', ['$window', '$timeout', function ($window, $timeout) {
         return {restrict: 'A', link: function (scope, element) {
             var document = $window.document, previous = scope.vm.flowerPrayerTrigger || document.activeElement;
-            var timer = $timeout(function () { var heading = element[0].querySelector('h2'); if (heading) { heading.focus({preventScroll: true}); } }, 0, false);
+            var image = element[0].querySelector('.campaign-prayer-image'), card = element[0].querySelector('.campaign-prayer-card');
+            // Image loading must never prevent reading the prayer or continuing with the saved sheet.
+            function imageLoaded() { card.classList.remove('campaign-prayer-image-unavailable'); }
+            function imageFailed() { card.classList.add('campaign-prayer-image-unavailable'); }
+            if (image) { image.addEventListener('load', imageLoaded); image.addEventListener('error', imageFailed); }
+            var timer = $timeout(function () {
+                var heading = element[0].querySelector('h2'); if (heading) { heading.focus({preventScroll: true}); }
+                if (image && image.getAttribute('src') && image.complete && !image.naturalWidth) { imageFailed(); }
+            }, 0, false);
             function keyboard(event) {
                 if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); scope.$evalAsync(scope.vm.closeFlowerPrayer); }
                 if (event.key === 'Tab') {
@@ -713,6 +721,7 @@
             element.on('keydown', keyboard);
             scope.$on('$destroy', function () {
                 $timeout.cancel(timer); element.off('keydown', keyboard);
+                if (image) { image.removeEventListener('load', imageLoaded); image.removeEventListener('error', imageFailed); }
                 if (previous && previous.isConnected && !previous.disabled) { previous.focus({preventScroll: true}); }
             });
         }};

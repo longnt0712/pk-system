@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const nodeVm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../campaign/controllers/CampaignController.js'), 'utf8');
-function setup({campaignsEnabled = true, manager = false, admin = false, id = null, campaign = null, studentMode = false, token = 'a'.repeat(43), entries = [], clock = null, serverTime = Date.UTC(2026,9,1,5), windowExtras = {}, campaignId = null, campaignCode = null, activeCampaigns = null, getError = null, classes = ['Thiếu Nhi 1']} = {}) {
+function setup({campaignsEnabled = true, manager = false, admin = false, id = null, campaign = null, studentMode = false, token = 'a'.repeat(43), entries = [], clock = null, serverTime = Date.UTC(2026,9,1,5), windowExtras = {}, campaignId = null, campaignCode = null, activeCampaigns = null, getError = null, classes = ['Thiếu Nhi 1'], prayerRandom = Math.random} = {}) {
     let Controller;
     const settings = {campaignsEnabled, permissionsLoaded: true, isEducationManagerment: manager, isAdmin: admin};
     const calls = [], watches = [], events = {};
@@ -34,7 +34,7 @@ function setup({campaignsEnabled = true, manager = false, admin = false, id = nu
     Object.keys(service).forEach(name => { const original = service[name]; service[name] = (...args) => { apiCalls.push(name); return original(...args); }; });
     const state = {current: {name: studentMode ? 'campaign_student' : 'campaigns'}, go: async (...args) => calls.push(['go', ...args])};
     const ClockDate = clock ? class extends Date { static now() { return clock.now; } } : Date;
-    const sandbox = nodeVm.createContext({Date: ClockDate, angular: {module: () => ({controller: (name, fn) => { Controller = fn; }, directive() {}}), copy: structuredClone}});
+    const sandbox = nodeVm.createContext({Date: ClockDate, Math: Object.assign(Object.create(Math), {random: prayerRandom}), angular: {module: () => ({controller: (name, fn) => { Controller = fn; }, directive() {}}), copy: structuredClone}});
     nodeVm.runInContext(source, sandbox);
     const vm = new Controller({$root: {}, $watch: (...args) => watches.push(args), $evalAsync: fn => {digests++;if(fn)fn();}, $on: (event, fn) => {events[event]=fn;if(event==='$destroy')destroyed = fn;}}, state, {id, studentMode, campaignId, campaignCode}, {URL, location: {hash: '#' + token}, print() {calls.push(['print']);}, confirm:()=>true, ...windowExtras, ...(clock ? {setTimeout(fn, delay) {dayCallback=fn; dayDelay=delay; return 1;}, clearTimeout() {dayCallback=null;}} : {})}, settings, service, {success() {}, error() {}}, {hash(value) {if(windowExtras.history){windowExtras.history.replaceState(null,'','/hoa-thieng'+(campaignCode?'/c/'+campaignCode:campaignId?'/'+campaignId:'')+(value?'#'+value:''));}return this;}, replace() {return this;}});
     return {vm, settings, calls, apiCalls, service, watches, events, getDayDelay: () => dayDelay, midnight: () => dayCallback(), getDigests: () => digests, destroy: () => destroyed(), hasDayTimer: () => !!dayCallback};
@@ -223,6 +223,18 @@ test('prayer choices never repeat consecutively and Amen or unchecking never iss
         h.vm.checks[key]=false;await h.vm.toggleFlower(item,day);assert.equal(h.vm.flowerPrayer,null);assert.equal(h.vm.savedChecks[key],false);
     }
     assert.equal(h.calls.filter(c=>c[0]==='check').length,50);
+});
+test('each of the seven confirmed prayer intentions uses its matching deployed illustration',async()=>{
+    const images=JSON.parse(fs.readFileSync(path.join(__dirname,'../assets/images/flower-prayers-2026/prompts.json'),'utf8')).images;
+    assert.equal(images.length,7);const seen=new Set();
+    for(let index=0;index<images.length;index++){
+        const expected=images[index],h=setup({studentMode:true,campaign:studentCampaign,prayerRandom:()=>index/images.length});await tick();
+        h.vm.checks['practice-1:2026-10-01']=true;await h.vm.toggleFlower(studentCampaign.flowerItems[0],{date:'2026-10-01'});
+        assert.equal(h.vm.flowerPrayer.intention,expected.intention);assert.equal(h.vm.flowerPrayer.prayer,expected.prayer);
+        const image='assets/images/flower-prayers-2026/'+expected.file.replace(/\.png$/,'.jpg');assert.equal(h.vm.flowerPrayer.image,image);
+        assert.ok(fs.statSync(path.join(__dirname,'..',image)).size>0);seen.add(image);
+    }
+    assert.equal(seen.size,7);
 });
 test('overlapping saves keep a single prayer and preserve all confirmed checkboxes',async()=>{
     const campaign={...studentCampaign,flowerItems:[{itemKey:'a',name:'Cầu nguyện'},{itemKey:'b',name:'Thánh lễ'}]},h=setup({studentMode:true,campaign});await tick();const replies=[];
