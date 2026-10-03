@@ -11,6 +11,14 @@ Phần hướng dẫn frontend dành riêng cho chiến dịch **Cùng Mẹ, em 
 - Ảnh nằm trong assets/images/rosary-2026. Các giá trị cố định, tên chiến dịch, ngày và lời ngắm được tập trung trong RosaryCampaign2026.js để mở rộng sau này.
 - Không tự tích hoặc ghi nhận việc lần hạt. Học sinh tự tích trên phiếu và vẫn dùng API hoa thiêng hiện tại.
 
+## Lời nguyện sau khi tích phiếu
+
+- Phiếu cá nhân hiển thị modal “Cùng Mẹ dâng một lời nguyện” sau khi API xác nhận một ô mới được tích thành công. Chọn ngẫu nhiên trong 7 ý: ông bà/cha mẹ, người đau ốm, các bạn nhỏ khó khăn, người buồn/cô đơn, gia đình, giáo xứ/xứ đoàn và chính em; không lặp ý liên tiếp trong lần mở trang.
+- Nút “Amen, em tiếp tục” hoặc Escape chỉ đóng modal, không gọi API hoặc thay đổi ô tích. Không có đếm ngược, tự tích, lưu lời nguyện, hoặc yêu cầu xác nhận trước khi lưu. Bỏ tích, lưu lỗi, ô đã tích và phản hồi thuộc phiếu/QR cũ không mở modal. Lỗi lưu trả checkbox về trạng thái đã xác nhận trước đó.
+- Nếu nhiều phản hồi thành công tới trong lúc modal đang mở, giữ một hộp duy nhất và vẫn cập nhật đầy đủ các ô đã lưu. Phản hồi cũ không được xóa khóa đang lưu của học sinh mới. Đổi tuần, đổi học sinh hoặc rời trang sẽ đóng/bỏ lời nguyện đang chờ; không chèn modal khi đang mở vườn hay hướng dẫn ngắm.
+- Modal có vùng cuộn riêng trong viewport fullscreen. Khi phiếu xoay -90° trên màn hình dọc, modal cũng xoay cùng chiều; màn hình ngang/máy tính hiển thị bình thường. Hỗ trợ focus/bàn phím, điện thoại dọc/ngang, giao diện tối và không in vào phiếu. Đóng modal trả focus về ô vừa tích nếu ô còn tồn tại và có thể thao tác.
+- Thay đổi này chỉ thuộc frontend: cập nhật `campaign/controllers/CampaignController.js`, `campaign/views/campaign.html`, `campaign/campaign.css` và `index.html` (`APP_VERSION=20261003-207`). Không cần build backend; không thay đổi API/payload hay database. Riêng chỉnh xoay ngang modal từ bản 206 chỉ đổi CSS và phiên bản cache. Đã kiểm tra thao tác lưu, lỗi và modal trên Edge bằng dữ liệu giả.
+
 ## Vườn hoa Hoa thiêng
 
 - Môi trường triển khai: SQL Server 2008 / 2008 R2, Windows Server 2012, Java 8. Script ở `richy/database/campaign-flower-paint-color.sql` dùng `RAISERROR`, không dùng `THROW`.

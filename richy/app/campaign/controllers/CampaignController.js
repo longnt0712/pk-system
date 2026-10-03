@@ -11,6 +11,25 @@
         }
         var requestNumber = 0;
         var studentRequest = 0;
+        var prayerIntentions = [
+            {intention: 'ông bà, cha mẹ', prayer: 'Xin Chúa ban cho ông bà, cha mẹ sức khỏe và bình an.'},
+            {intention: 'những người đang đau ốm', prayer: 'Xin Chúa nâng đỡ và ban cho họ sức mạnh, niềm hy vọng và bình an.'},
+            {intention: 'các bạn nhỏ gặp khó khăn', prayer: 'Xin Chúa giúp các bạn được chăm sóc, yêu thương và đến trường.'},
+            {intention: 'những người đang buồn hoặc cô đơn', prayer: 'Xin Chúa an ủi và giúp họ gặp được những người biết quan tâm, chia sẻ.'},
+            {intention: 'gia đình của em', prayer: 'Xin Chúa giúp mọi người trong gia đình luôn biết yêu thương và tha thứ cho nhau.'},
+            {intention: 'giáo xứ và xứ đoàn', prayer: 'Xin Chúa giúp chúng con luôn hiệp nhất và cùng giúp nhau yêu mến Chúa.'},
+            {intention: 'chính em', prayer: 'Xin Chúa giúp em biết làm việc tốt với lòng yêu thương.'}
+        ];
+        var lastPrayerIndex = -1;
+        vm.flowerPrayer = null;
+        vm.closeFlowerPrayer = function () { vm.flowerPrayer = null; vm.flowerPrayerTrigger = null; };
+        function showFlowerPrayer(returnFocus) {
+            // One reminder for overlapping successful saves; never interrupt another campaign view.
+            if (vm.flowerPrayer || vm.sheetLoading || vm.rosaryGuideOpen || vm.gardenOpen || !vm.student) { return; }
+            var choices = prayerIntentions.filter(function (value, index) { return index !== lastPrayerIndex; });
+            var selected = choices[Math.floor(Math.random() * choices.length)];
+            lastPrayerIndex = prayerIntentions.indexOf(selected); vm.flowerPrayerTrigger = returnFocus; vm.flowerPrayer = selected;
+        }
         var serverClockOffset = 0, dayTimer;
         var rosaryConfig = $window.RosaryCampaign2026, rosaryContext = '', rosaryStudentContext = '';
         vm.rosaryGuide = null; vm.rosaryGuideOpen = false; vm.rosaryInstructionsOpen = false; vm.rosaryParticipationOpen = false;
@@ -315,6 +334,7 @@
             }
         }
         function loadStudentSheet(id, week) {
+            vm.closeFlowerPrayer();
             var request = ++studentRequest;
             vm.sheetLoading = true; vm.error = ''; vm.checkError = ''; vm.saveNotice = '';
             return service.studentSheet(studentToken, id, week).then(function (response) {
@@ -354,6 +374,7 @@
                 .finally(function () { vm.scanBusy = false; });
         };
         vm.scanAnotherStudent = function () {
+            vm.closeFlowerPrayer();
             ++gardenExportRequest; vm.gardenExportBusy = false; vm.gardenExportError = ''; vm.gardenEraseMode = false;
             ++gardenRequest; gardenEntries = []; vm.gardenOpen = false; vm.garden = null; vm.gardenDay = null; vm.gardenBusy = false; vm.gardenLoading = false; vm.gardenResetConfirm = false;
             ++studentRequest; vm.student = null; vm.campaign = null; vm.campaigns = []; studentToken = '';
@@ -416,18 +437,24 @@
         vm.toggleFlower = function (item, day) {
             var key = item.itemKey + ':' + day.date, campaignId = vm.campaign.id;
             if (!vm.studentMode || vm.sheetLoading || vm.isDayLocked(day)) { vm.checks[key] = vm.savedChecks[key] === true; return; }
-            var pendingKey = campaignId + ':' + key, checks = vm.checks;
-            if (vm.pendingChecks[pendingKey]) { return; }
-            var completed = checks[key] === true;
-            vm.pendingChecks[pendingKey] = true; vm.checkError = ''; vm.saveNotice = 'Đang lưu…';
-            return service.checkFlower(studentToken, campaignId, day.date, item.itemKey, completed).then(function (response) {
+            var pendingKey = campaignId + ':' + key, checks = vm.checks, pending = vm.pendingChecks;
+            if (pending[pendingKey]) { return; }
+            var completed = checks[key] === true, previouslySaved = vm.savedChecks[key] === true;
+            var token = studentToken, request = studentRequest;
+            // Capture before the pending checkbox is disabled and the browser moves focus away.
+            var returnFocus = $window.document && $window.document.activeElement;
+            function current() { return request === studentRequest && token === studentToken && vm.checks === checks && vm.campaign && vm.campaign.id === campaignId; }
+            pending[pendingKey] = true; vm.checkError = ''; vm.saveNotice = 'Đang lưu…';
+            return service.checkFlower(token, campaignId, day.date, item.itemKey, completed).then(function (response) {
                 checks[key] = response.data.completed === true;
-                if (vm.checks === checks) { vm.savedChecks[key] = checks[key]; }
-                if (vm.checks === checks) { vm.saveNotice = 'Đã lưu hoa thiêng.'; }
+                if (current()) {
+                    vm.savedChecks[key] = checks[key]; vm.saveNotice = 'Đã lưu hoa thiêng.';
+                    if (completed && checks[key] && !previouslySaved) { showFlowerPrayer(returnFocus); }
+                }
             }, function (error) {
-                checks[key] = !completed;
-                if (vm.checks === checks) { vm.checkError = errorMessage(error); vm.saveNotice = ''; }
-            }).finally(function () { delete vm.pendingChecks[pendingKey]; });
+                checks[key] = previouslySaved;
+                if (current()) { vm.checkError = errorMessage(error); vm.saveNotice = ''; }
+            }).finally(function () { delete pending[pendingKey]; });
         };
         vm.create = function () {
             if (!vm.canManage()) { return; }
@@ -528,7 +555,7 @@
         if (hasTarget) { loadTargetCampaign(); }
         else if (vm.studentMode) { loadStudentLanding(); }
         else if ($stateParams.id || $stateParams.campaignCode) { loadDetail(); } else { vm.load(1); }
-        if ($scope.$on) { $scope.$on('$destroy', function () { ++studentRequest; ++gardenRequest; ++gardenExportRequest; if (dayTimer) { $window.clearTimeout(dayTimer); } if ($window.removeEventListener) { $window.removeEventListener('beforeunload', beforeUnload); } }); }
+        if ($scope.$on) { $scope.$on('$destroy', function () { vm.closeFlowerPrayer(); ++studentRequest; ++gardenRequest; ++gardenExportRequest; if (dayTimer) { $window.clearTimeout(dayTimer); } if ($window.removeEventListener) { $window.removeEventListener('beforeunload', beforeUnload); } }); }
     }
     angular.module('Hrm.Campaign').directive('campaignEditor', ['$window', '$timeout', function ($window, $timeout) {
         return {restrict: 'A', link: function (scope, element) {
@@ -669,6 +696,24 @@
             document.addEventListener('visibilitychange', visibilityChanged);
             scope.$on('$destroy', function () {
                 destroyed = true; unwatch(); stop(); document.removeEventListener('visibilitychange', visibilityChanged); scope.vm.gardenHintsPaused = false;
+            });
+        }};
+    }]);
+    angular.module('Hrm.Campaign').directive('campaignPrayerDialog', ['$window', '$timeout', function ($window, $timeout) {
+        return {restrict: 'A', link: function (scope, element) {
+            var document = $window.document, previous = scope.vm.flowerPrayerTrigger || document.activeElement;
+            var timer = $timeout(function () { var heading = element[0].querySelector('h2'); if (heading) { heading.focus({preventScroll: true}); } }, 0, false);
+            function keyboard(event) {
+                if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); scope.$evalAsync(scope.vm.closeFlowerPrayer); }
+                if (event.key === 'Tab') {
+                    var button = element[0].querySelector('button');
+                    if (button) { event.preventDefault(); button.focus(); }
+                }
+            }
+            element.on('keydown', keyboard);
+            scope.$on('$destroy', function () {
+                $timeout.cancel(timer); element.off('keydown', keyboard);
+                if (previous && previous.isConnected && !previous.disabled) { previous.focus({preventScroll: true}); }
             });
         }};
     }]);

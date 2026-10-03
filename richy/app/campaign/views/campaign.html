@@ -1,6 +1,6 @@
 <div ng-if="vm.settings.campaignsEnabled === true">
 <div class="campaign-viewport" campaign-viewport ng-show="!vm.rosaryGuideOpen && !vm.gardenOpen" ng-class="{'campaign-scan-view': vm.studentMode && (vm.needsScan || vm.rosaryGuideOpen)}">
-<div class="campaign-layout" tabindex="0" aria-label="Nội dung chiến dịch" ng-class="{'campaign-has-side-images': !vm.loading && (vm.imageUrl(vm.imageOptions().desktopLeftImageUrl) || vm.imageUrl(vm.imageOptions().desktopRightImageUrl))}">
+<div class="campaign-layout" tabindex="0" aria-label="Nội dung chiến dịch" ng-attr-inert="{{vm.flowerPrayer ? '' : undefined}}" ng-attr-aria-hidden="{{vm.flowerPrayer ? 'true' : undefined}}" ng-class="{'campaign-has-side-images': !vm.loading && (vm.imageUrl(vm.imageOptions().desktopLeftImageUrl) || vm.imageUrl(vm.imageOptions().desktopRightImageUrl))}">
     <div ng-if="!vm.loading && vm.imageUrl(vm.imageOptions().desktopLeftImageUrl)" class="campaign-side-image campaign-side-left campaign-no-print" aria-hidden="true"><img ng-src="{{vm.imageUrl(vm.imageOptions().desktopLeftImageUrl)}}" class="campaign-framed-image" ng-style="vm.imageStyle('desktopLeftImageUrl', vm.imageOptions())" alt=""></div>
     <div ng-if="!vm.loading && vm.imageUrl(vm.imageOptions().desktopRightImageUrl)" class="campaign-side-image campaign-side-right campaign-no-print" aria-hidden="true"><img ng-src="{{vm.imageUrl(vm.imageOptions().desktopRightImageUrl)}}" class="campaign-framed-image" ng-style="vm.imageStyle('desktopRightImageUrl', vm.imageOptions())" alt=""></div>
 <main class="campaign-page" ng-style="vm.viewStyle">
@@ -160,6 +160,15 @@
     </article>
 </main>
 </div>
+<section ng-if="vm.flowerPrayer" class="campaign-prayer-overlay campaign-no-print" campaign-prayer-dialog role="dialog" aria-modal="true" aria-labelledby="campaign-prayer-heading" aria-describedby="campaign-prayer-invitation campaign-prayer-text">
+    <div class="campaign-prayer-card">
+        <span class="campaign-prayer-symbol" aria-hidden="true">✿</span>
+        <h2 id="campaign-prayer-heading" tabindex="-1">Cùng Mẹ dâng một lời nguyện</h2>
+        <p id="campaign-prayer-invitation">Em hãy dừng lại một vài giây, cùng Đức Mẹ cầu nguyện cho <strong>{{vm.flowerPrayer.intention}}</strong>.</p>
+        <p id="campaign-prayer-text" class="campaign-prayer-text">{{vm.flowerPrayer.prayer}}</p>
+        <button type="button" class="btn campaign-garden-button" ng-click="vm.closeFlowerPrayer()">Amen, em tiếp tục</button>
+    </div>
+</section>
 </div>
 
 <section ng-if="vm.rosaryGuideOpen && vm.rosaryGuide" class="campaign-rosary-overlay campaign-no-print" campaign-rosary-guide role="dialog" aria-modal="true" aria-labelledby="campaign-rosary-heading">

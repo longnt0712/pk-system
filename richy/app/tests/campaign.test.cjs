@@ -204,6 +204,55 @@ test('failed student saves revert the checkbox and retain a visible error', asyn
     await h.vm.toggleFlower(studentCampaign.flowerItems[0], {date:'2026-10-01'});
     assert.equal(h.vm.checks['practice-1:2026-10-01'], false); assert.ok(h.vm.checkError); assert.equal(Object.keys(h.vm.pendingChecks).length, 0);
 });
+test('prayer appears only after a new check is confirmed; failure, unchecked response and repeated true never show it',async()=>{
+    const key='practice-1:2026-10-01',day={date:'2026-10-01'},item=studentCampaign.flowerItems[0];
+    for(const outcome of ['success','failure','unchecked','already-checked']){
+        const h=setup({studentMode:true,campaign:studentCampaign,entries:outcome==='already-checked'?[{date:day.date,itemKey:item.itemKey,completed:true}]:[]});await tick();
+        let resolve,reject;h.service.checkFlower=()=>new Promise((yes,no)=>{resolve=yes;reject=no;});h.vm.checks[key]=true;
+        const saving=h.vm.toggleFlower(item,day);assert.equal(h.vm.flowerPrayer,null);assert.equal(h.vm.pendingChecks['5:'+key],true);
+        if(outcome==='failure')reject({status:500});else resolve({data:{completed:outcome!=='unchecked'}});await saving;
+        assert.equal(!!h.vm.flowerPrayer,outcome==='success');assert.equal(h.vm.savedChecks[key]===true,outcome==='success'||outcome==='already-checked');
+        assert.equal(Object.keys(h.vm.pendingChecks).length,0);
+    }
+});
+test('prayer choices never repeat consecutively and Amen or unchecking never issues an extra write',async()=>{
+    const h=setup({studentMode:true,campaign:studentCampaign});await tick();const key='practice-1:2026-10-01',day={date:'2026-10-01'},item=studentCampaign.flowerItems[0];let previous;
+    for(let i=0;i<25;i++){
+        h.vm.checks[key]=true;await h.vm.toggleFlower(item,day);assert.ok(h.vm.flowerPrayer);assert.notEqual(h.vm.flowerPrayer.intention,previous);previous=h.vm.flowerPrayer.intention;
+        const count=h.calls.length;h.vm.closeFlowerPrayer();assert.equal(h.calls.length,count);assert.equal(h.vm.checks[key],true);assert.equal(h.vm.savedChecks[key],true);
+        h.vm.checks[key]=false;await h.vm.toggleFlower(item,day);assert.equal(h.vm.flowerPrayer,null);assert.equal(h.vm.savedChecks[key],false);
+    }
+    assert.equal(h.calls.filter(c=>c[0]==='check').length,50);
+});
+test('overlapping saves keep a single prayer and preserve all confirmed checkboxes',async()=>{
+    const campaign={...studentCampaign,flowerItems:[{itemKey:'a',name:'Cầu nguyện'},{itemKey:'b',name:'Thánh lễ'}]},h=setup({studentMode:true,campaign});await tick();const replies=[];
+    h.service.checkFlower=()=>new Promise(resolve=>replies.push(resolve));const writes=campaign.flowerItems.map(item=>{h.vm.checks[item.itemKey+':2026-10-01']=true;return h.vm.toggleFlower(item,{date:'2026-10-01'});});
+    replies[1]({data:{completed:true}});await writes[1];const prayer=h.vm.flowerPrayer;assert.ok(prayer);
+    replies[0]({data:{completed:true}});await writes[0];assert.equal(h.vm.flowerPrayer,prayer);assert.equal(h.vm.savedChecks['a:2026-10-01'],true);assert.equal(h.vm.savedChecks['b:2026-10-01'],true);assert.equal(Object.keys(h.vm.pendingChecks).length,0);
+});
+test('old saves cannot open a prayer after changing QR, week or destroying the controller',async()=>{
+    for(const action of ['qr','week','destroy']){
+        const h=setup({studentMode:true,campaign:studentCampaign});await tick();let finish;h.service.checkFlower=()=>new Promise(resolve=>finish=resolve);
+        h.vm.checks['practice-1:2026-10-01']=true;const writing=h.vm.toggleFlower(studentCampaign.flowerItems[0],{date:'2026-10-01'});
+        if(action==='qr')h.vm.scanAnotherStudent();else if(action==='week')await h.vm.setWeek(1);else h.destroy();
+        finish({data:{completed:true}});await writing;assert.equal(h.vm.flowerPrayer,null);
+    }
+});
+test('an old QR response never clears the pending lock for the next student saving the same cell',async()=>{
+    const h=setup({studentMode:true,campaign:studentCampaign});await tick();const replies=[];
+    h.service.checkFlower=(...args)=>new Promise(resolve=>replies.push({args,resolve}));const key='practice-1:2026-10-01',pendingKey='5:'+key,day={date:'2026-10-01'},item=studentCampaign.flowerItems[0];
+    h.vm.checks[key]=true;const oldSave=h.vm.toggleFlower(item,day);h.vm.scanAnotherStudent();await h.vm.useScannedQr('hs002');await tick();
+    h.vm.checks[key]=true;const newSave=h.vm.toggleFlower(item,day);assert.equal(replies[0].args[0],'a'.repeat(43));assert.equal(replies[1].args[0],'b'.repeat(43));
+    replies[0].resolve({data:{completed:true}});await oldSave;assert.equal(h.vm.pendingChecks[pendingKey],true);assert.equal(h.vm.flowerPrayer,null);assert.notEqual(h.vm.savedChecks[key],true);
+    replies[1].resolve({data:{completed:true}});await newSave;assert.ok(h.vm.flowerPrayer);assert.equal(h.vm.savedChecks[key],true);assert.equal(h.vm.pendingChecks[pendingKey],undefined);
+});
+test('prayer never interrupts the garden or Rosary guide opened while a save is pending',async()=>{
+    for(const view of ['gardenOpen','rosaryGuideOpen']){
+        const h=setup({studentMode:true,campaign:studentCampaign});await tick();let finish;h.service.checkFlower=()=>new Promise(resolve=>finish=resolve);h.vm.checks['practice-1:2026-10-01']=true;
+        const saving=h.vm.toggleFlower(studentCampaign.flowerItems[0],{date:'2026-10-01'});h.vm[view]=true;finish({data:{completed:true}});await saving;
+        assert.equal(h.vm.flowerPrayer,null);assert.equal(h.vm.savedChecks['practice-1:2026-10-01'],true);
+    }
+});
 test('malformed student QR never calls the API', async () => {
     const h = setup({studentMode:true,token:'hs0001',campaign:studentCampaign}); await tick();
     assert.match(h.vm.error, /Mã QR/); assert.equal(h.calls.length, 0); assert.equal(h.vm.campaign, undefined);
