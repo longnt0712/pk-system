@@ -299,6 +299,35 @@
         vm.isCountdownMode = isCountdownMode;
         vm.isMoneyBegMode = isMoneyBegMode;
         vm.isEscapeDumbDemonMode = isEscapeDumbDemonMode;
+        vm.isDemonDefenseMode = isDemonDefenseMode;
+        vm.demonArena = null;
+        vm.demonClock = 0;
+        vm.demonWarning = '';
+        vm.unfreezeModalOpen = false;
+        vm.getDemonTeamPlayers = getDemonTeamPlayers;
+        vm.getDemonShotStyle = getDemonShotStyle;
+        vm.getDemonPosition = getDemonPosition;
+        vm.getDemonGunX = getDemonGunX;
+        vm.getDemonPlayerName = getDemonPlayerName;
+        vm.getDemonBullets = getDemonBullets;
+        vm.getDemonResultLabel = function (team) {
+            if (vm.demonArena && vm.demonArena.finished && team.rank === 1) {
+                return vm.demonArena.teams.filter(function (candidate) { return candidate.rank === 1; }).length > 1
+                    ? 'ĐỒNG HẠNG 1' : 'CHIẾN THẮNG!';
+            }
+            return team.eliminatedAt ? 'ĐÃ BỊ LOẠI' : 'HẾT GIỜ';
+        };
+        vm.getTeamCountOptions = function () {
+            return vm.hostSettings.mode === 'DEMON_DEFENSE'
+                ? vm.teamCountOptions.filter(function (option) { return option.value >= 2; }) : vm.teamCountOptions;
+        };
+        vm.getUnfreezeTargets = getUnfreezeTargets;
+        vm.openUnfreezeModal = function () { vm.unfreezeModalOpen = true; };
+        vm.closeUnfreezeModal = function () { vm.unfreezeModalOpen = false; };
+        vm.useUnfreeze = function (player) { useSkill(player, 'UNFREEZE'); };
+        vm.isDemonPlayerEliminated = function () { return isDemonDefenseMode() && !!(getMe() && getMe().demonEliminated); };
+        vm.demonWarningSound = true;
+        vm.toggleDemonWarningSound = toggleDemonWarningSound;
         vm.isGuessWordMode = isGuessWordMode;
         vm.getBattleModeLabel = getBattleModeLabel;
         vm.getDumbBallPercent = getDumbBallPercent;
@@ -968,6 +997,7 @@
                 .trim();
 
             return mode === 'COUNTDOWN' ||
+                mode === 'DEMON_DEFENSE' ||
                 mode === 'MONEY_BEG' ||
                 mode === 'ESCAPE_DUMB_DEMON' ||
                 mode === 'WHO_IS_DUMBER';
@@ -977,6 +1007,7 @@
         function isCountdownLikeValue(mode) {
             mode = String(mode || '').toUpperCase().trim();
             return mode === 'COUNTDOWN' ||
+                mode === 'DEMON_DEFENSE' ||
                 mode === 'MONEY_BEG' ||
                 mode === 'ESCAPE_DUMB_DEMON' ||
                 mode === 'WHO_IS_DUMBER';
@@ -1004,6 +1035,103 @@
         }
 
 
+        function isDemonDefenseMode() {
+            var mode = vm.room && vm.room.settings ? vm.room.settings.mode : vm.hostSettings.mode;
+            return mode === 'DEMON_DEFENSE';
+        }
+
+        function getDemonBullets(player) { return Math.max(1, Math.floor(Number((player || {}).streak || 0) / 10)); }
+        function getDemonTeamPlayers(number) {
+            return ((vm.room && vm.room.players) || []).filter(function (player) {
+                return !player.spectator && Number(player.teamNumber) === Number(number);
+            }).sort(function (a, b) {
+                return String(a.username).localeCompare(String(b.username));
+            });
+        }
+        function getDemonPlayerName(username) {
+            var player = ((vm.room && vm.room.players) || []).filter(function (candidate) { return candidate.username === username; })[0];
+            return player ? getPlayerDisplayName(player) : username;
+        }
+        function getDemonGunX(team, username) {
+            var players = getDemonTeamPlayers(team.number), index = 0;
+            for (var i = 0; i < players.length; i++) { if (players[i].username === username) { index = i; break; } }
+            return 100 * (index + 0.5) / Math.max(1, players.length);
+        }
+        function getDemonPosition(demon, team) {
+            var arena = vm.demonArena;
+            var elapsed = arena && !arena.finished && !team.eliminatedAt
+                ? Math.max(0, Math.min(1200, vm.demonClock - arena.snapshotAt)) : 0;
+            return 7 + Math.min(1, demon.progress + elapsed * demon.speed) * 73;
+        }
+        function getDemonShotStyle(shot) { return {opacity: vm.demonClock - shot.at < 700 ? 1 : 0}; }
+        function getUnfreezeTargets() {
+            var me = getMe();
+            return ((vm.room && vm.room.players) || []).filter(function (player) {
+                return me && player.username !== me.username && !player.spectator && player.connected &&
+                    !player.demonEliminated && player.teamNumber === me.teamNumber && Number(player.frozenUntil) > serverNow();
+            });
+        }
+
+        var demonAudioContext = null, lastDemonSoundAt = 0;
+        function toggleDemonWarningSound() {
+            vm.demonWarningSound = !vm.demonWarningSound;
+            if (vm.demonWarningSound) { prepareDemonAudio(); }
+        }
+        function prepareDemonAudio() {
+            if (!isHost() || (!isDemonDefenseMode() && vm.hostSettings.mode !== 'DEMON_DEFENSE') || !vm.demonWarningSound) { return; }
+            try {
+                var AudioContext = $window.AudioContext || $window.webkitAudioContext;
+                if (!demonAudioContext && AudioContext) { demonAudioContext = new AudioContext(); }
+                if (demonAudioContext && demonAudioContext.state === 'suspended') {
+                    var resumed = demonAudioContext.resume();
+                    if (resumed && resumed.catch) { resumed.catch(angular.noop); }
+                }
+            } catch (ignoreDemonAudio) { /* Match remains playable without audio. */ }
+        }
+        function playDemonWarningSound() {
+            if (!vm.demonWarningSound || !demonAudioContext || demonAudioContext.state !== 'running' ||
+                    vm.demonClock - lastDemonSoundAt < 900) { return; }
+            lastDemonSoundAt = vm.demonClock;
+            try {
+                for (var pulse = 0; pulse < 2; pulse++) {
+                    var oscillator = demonAudioContext.createOscillator(), gain = demonAudioContext.createGain();
+                    var at = demonAudioContext.currentTime + pulse * 0.2;
+                    oscillator.frequency.setValueAtTime(210 - pulse * 45, at);
+                    gain.gain.setValueAtTime(0.0001, at);
+                    gain.gain.exponentialRampToValueAtTime(0.08, at + 0.015);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.15);
+                    oscillator.connect(gain); gain.connect(demonAudioContext.destination);
+                    oscillator.start(at); oscillator.stop(at + 0.16);
+                    oscillator.onended = (function (o, g) { return function () { o.disconnect(); g.disconnect(); }; })(oscillator, gain);
+                }
+            } catch (ignoreDemonPulse) { /* No effect on questions. */ }
+        }
+        function applyDemonArena(arena) {
+            if (!isHost() || !isDemonDefenseMode() || !arena) { return; }
+            if (vm.demonArena && (arena.startedAt < vm.demonArena.startedAt ||
+                    (arena.startedAt === vm.demonArena.startedAt && arena.snapshotAt < vm.demonArena.snapshotAt))) { return; }
+            vm.demonArena = arena;
+            vm.demonClock = serverNow();
+        }
+        function updateDemonDefenseView() {
+            vm.demonWarning = '';
+            if (!isDemonDefenseMode() || !vm.room || vm.room.status !== 'PLAYING') { return; }
+            var state = vm.room.demonDefense, me = getMe();
+            vm.demonClock = serverNow();
+            if (!state) { return; }
+            if (!isHost()) {
+                var team = state.teams.filter(function (candidate) { return me && candidate.number === me.teamNumber; })[0];
+                if (team && !team.eliminatedAt) {
+                    if (team.danger) { vm.demonWarning = '🚨 ĐỘI MÌNH ĐANG NGUY HIỂM! Trả lời đúng để cứu đội!'; }
+                    else if (state.phase === 'WARNING') { vm.demonWarning = '⚠️ Bầy quỷ đang tới!'; }
+                    else if (state.phase === 'HORDE') { vm.demonWarning = '👹 Bầy quỷ đã tới!'; }
+                }
+            } else if (vm.demonArena && vm.demonArena.teams.some(function (team) { return team.danger; })) {
+                playDemonWarningSound();
+            }
+            if (vm.isDemonPlayerEliminated()) { vm.unfreezeModalOpen = false; }
+        }
+
         function isGuessWordMode() {
             var mode = vm.room && vm.room.settings
                 ? vm.room.settings.mode
@@ -1014,6 +1142,7 @@
 
 
         function getBattleModeLabel() {
+            if (isDemonDefenseMode()) { return '👹 DIỆT QUỶ NGU'; }
             if (isEscapeDumbDemonMode()) {
                 return '👹 THOÁT KHỎI QUỶ NGU';
             }
@@ -1671,7 +1800,8 @@
 
                             startPolling();
                         }
-                    }
+                    },
+                    isHost() ? applyDemonArena : null
                 )
                 .then(
                     function (connected) {
@@ -2071,6 +2201,23 @@
             }
 
             vm.room = incoming;
+            if (previousRoom && previousRoom.code === incoming.code &&
+                    previousRoom.hostUsername !== incoming.hostUsername && isDemonDefenseMode()) {
+                connectRealtime(incoming.code);
+            }
+            if (vm.isDemonPlayerEliminated()) {
+                incoming.currentQuestion = null;
+                incoming.pendingSkillType = null;
+                incoming.pendingSkillTargetUsernames = [];
+                incoming.wrongAnswerPenaltyUntil = 0;
+                vm.unfreezeModalOpen = false;
+                clearSkillHitEffect();
+            }
+            if (!isDemonDefenseMode() || incoming.status === 'LOBBY') {
+                vm.demonArena = null; vm.unfreezeModalOpen = false;
+            } else if (isHost() && fromGenericSocket !== true && incoming.demonDefense) {
+                applyDemonArena(incoming.demonDefense);
+            }
             var currentPetPlayer = getMe();
             if (currentPetPlayer && !vm.savingBattlePet) {
                 vm.selectedBattlePetKey = String(
@@ -2338,7 +2485,7 @@
                 !incoming.pendingSkillType &&
                 !incoming.passwordSelectionRequired &&
                 !incoming.pendingPasswordGuessTargetUsername &&
-                !isSpectator()
+                !isSpectator() && !vm.isDemonPlayerEliminated()
             ) {
                 refreshPrivateRoomState();
             }
@@ -2392,6 +2539,7 @@
 
             vm.hostSettings.mode =
                 mode === 'COUNTDOWN' ||
+                mode === 'DEMON_DEFENSE' ||
                 mode === 'MONEY_BEG' ||
                 mode === 'ESCAPE_DUMB_DEMON' ||
                 mode === 'GUESS_WORD'
@@ -2400,6 +2548,11 @@
 
             if (vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON') {
                 vm.hostSettings.teamCount = 2;
+                vm.hostTeamCountDirty = true;
+            }
+            if (vm.hostSettings.mode === 'DEMON_DEFENSE') {
+                vm.hostSettings.teamCount = Math.max(2, Number(vm.hostSettings.teamCount) || 2);
+                vm.hostSettings.doubleActionUsername = '';
                 vm.hostTeamCountDirty = true;
             }
 
@@ -2530,6 +2683,7 @@
             return {
                 mode:
                     vm.hostSettings.mode === 'COUNTDOWN' ||
+                    vm.hostSettings.mode === 'DEMON_DEFENSE' ||
                     vm.hostSettings.mode === 'MONEY_BEG' ||
                     vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' ||
                     vm.hostSettings.mode === 'GUESS_WORD'
@@ -2585,6 +2739,8 @@
                 teamCount:
                     vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'
                         ? 2
+                        : vm.hostSettings.mode === 'DEMON_DEFENSE'
+                            ? clampInteger(vm.hostSettings.teamCount, 2, 10, 2)
                         : clampInteger(
                             vm.hostSettings.teamCount,
                             0,
@@ -2593,7 +2749,7 @@
                         ),
 
                 doubleActionUsername:
-                    (
+                    vm.hostSettings.mode !== 'DEMON_DEFENSE' && (
                         vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' ||
                         Number(vm.hostSettings.teamCount || 0) >= 2
                     )
@@ -2774,6 +2930,7 @@
 
         function toggleSpectator() {
             var me = getMe();
+            if (isDemonDefenseMode()) { return; }
 
             if (
                 !vm.room ||
@@ -3011,6 +3168,15 @@
         function getTeamSummaries() {
             if (!hasTeamMode()) {
                 return [];
+            }
+            if (isDemonDefenseMode() && vm.room.demonDefense) {
+                return vm.room.demonDefense.teams.map(function (team) {
+                    var players = getDemonTeamPlayers(team.number);
+                    return {number: team.number, rank: team.rank, score: team.kills, memberCount: team.memberCount,
+                        survivedMs: team.survivedMs, rescues: team.rescues,
+                        correctCount: players.reduce(function (sum, player) { return sum + Number(player.correctCount || 0); }, 0),
+                        wrongCount: players.reduce(function (sum, player) { return sum + Number(player.wrongCount || 0); }, 0)};
+                });
             }
 
             var count = Number(vm.room.settings.teamCount || 0);
@@ -3273,6 +3439,7 @@
 
 
         function startMatch() {
+            prepareDemonAudio();
             if (
                 !vm.room ||
                 !isHost() ||
@@ -3418,6 +3585,8 @@
                 vm.room.passwordSelectionRequired ||
                 vm.room.pendingPasswordGuessTargetUsername ||
                 isSpectator() ||
+                vm.isDemonPlayerEliminated() ||
+                vm.unfreezeModalOpen ||
                 isMeFrozen() ||
                 isWrongAnswerPenaltyActive()
             ) {
@@ -3519,10 +3688,10 @@
         }
 
 
-        function useSkill(player) {
+        function useSkill(player, skillType) {
             if (
                 !vm.room ||
-                !vm.room.pendingSkillType ||
+                (!vm.room.pendingSkillType && skillType !== 'UNFREEZE') ||
                 vm.usingSkill ||
                 !player ||
                 !player.username
@@ -3535,11 +3704,13 @@
             battleService
                 .useSkill(
                     vm.room.code,
-                    player && player.username
+                    player && player.username,
+                    skillType
                 )
                 .then(
                     function (room) {
                         applyRoom(room, false);
+                        if (skillType === 'UNFREEZE') { vm.unfreezeModalOpen = false; }
 
                         if (isCountdownMode()) {
                             vm.answerLocked = false;
@@ -4761,8 +4932,9 @@
             }
 
             if (type === 'BREAK_STREAK') {
-                return 'PHÁ STREAK';
+                return isDemonDefenseMode() ? 'PHÁ STREAK: TRỪ 10' : 'PHÁ STREAK';
             }
+            if (type === 'UNFREEZE') { return 'GIẢI BĂNG ĐỒNG ĐỘI'; }
 
             if (type === 'STEAL_SCORE') {
                 return 'CƯỚP 5% ĐIỂM';
@@ -4789,6 +4961,7 @@
 
 
         function getSkillIcon(type) {
+            if (type === 'UNFREEZE') { return '🧊'; }
             if (type === 'FREEZE') {
                 return '❄️';
             }
@@ -4924,7 +5097,8 @@
                         message: buildPersonalSkillMessage(event)
                     };
 
-                    showSkillHitEffect(event);
+                    if (event.type === 'UNFREEZE') { clearSkillHitEffect(); }
+                    else { showSkillHitEffect(event); }
                 }
             }
 
@@ -4949,8 +5123,9 @@
             }
 
             if (event.type === 'BREAK_STREAK') {
-                return actor + ' vừa phá streak của bạn.';
+                return actor + (isDemonDefenseMode() ? ' vừa trừ ' + Number(event.amount || 0) + ' streak của bạn.' : ' vừa phá streak của bạn.');
             }
+            if (event.type === 'UNFREEZE') { return actor + ' vừa giải băng cho bạn.'; }
 
             if (event.type === 'MONEY_BEG') {
                 return actor + ' vừa đoán đúng mật khẩu và xin được ' +
@@ -5004,8 +5179,9 @@
             }
 
             if (event.type === 'BREAK_STREAK') {
-                return actor + ' vừa phá streak của ' + target + '.';
+                return actor + (isDemonDefenseMode() ? ' vừa trừ ' + Number(event.amount || 0) + ' streak của ' : ' vừa phá streak của ') + target + '.';
             }
+            if (event.type === 'UNFREEZE') { return actor + ' vừa giải băng cho ' + target + '.'; }
 
             if (event.type === 'STEAL_SCORE') {
                 return actor + ' vừa cướp ' +
@@ -5094,7 +5270,7 @@
             }
 
             if (type === 'BREAK_STREAK') {
-                return 'STREAK BỊ PHÁ';
+                return isDemonDefenseMode() ? 'BỊ TRỪ ' + Number(vm.skillHitEffect && vm.skillHitEffect.amount || 0) + ' STREAK' : 'STREAK BỊ PHÁ';
             }
 
             if (type === 'STEAL_SCORE') {
@@ -5414,6 +5590,7 @@
         }
 
         function updateCountdown() {
+            updateDemonDefenseView();
             vm.finishedRoomRemainingLabel = '';
             if (vm.room && vm.room.status === 'FINISHED' && vm.room.finishedExpiresAt) {
                 var remaining = Math.max(0, Math.ceil(
@@ -6513,6 +6690,12 @@
            ===================================================== */
 
         function keydownHandler(event) {
+            if (vm.unfreezeModalOpen) {
+                if (event.key === 'Escape' || event.keyCode === 27) {
+                    event.preventDefault(); $scope.$evalAsync(vm.closeUnfreezeModal);
+                }
+                return;
+            }
             // Keep keyboard navigation inside music controls, without answering the quiz.
             if (vm.musicMenuOpen) {
                 if (event.key === 'Escape' || event.keyCode === 27) {
@@ -6644,6 +6827,11 @@
             '$destroy',
             function () {
                 destroyed = true;
+                if (demonAudioContext) {
+                    var closingAudio = demonAudioContext.close();
+                    if (closingAudio && closingAudio.catch) { closingAudio.catch(angular.noop); }
+                    demonAudioContext = null;
+                }
                 syncMobilePlayingPageState(true);
 
                 stopRealtimeAndPolling();

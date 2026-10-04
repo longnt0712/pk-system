@@ -3,6 +3,7 @@ package com.globits.richy.dto;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import com.globits.richy.battle.DemonDefenseGame;
 
 public class BattleOnlineRoomDto implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -46,6 +47,10 @@ public class BattleOnlineRoomDto implements Serializable {
      */
     private int dumbBallPosition;
     private int dumbBallMaxDistance;
+    private DemonDefenseGame.Snapshot demonDefense;
+
+    public DemonDefenseGame.Snapshot getDemonDefense() { return demonDefense; }
+    public void setDemonDefense(DemonDefenseGame.Snapshot demonDefense) { this.demonDefense = demonDefense; }
 
     /*
      * Server-side lazy preload của bài đã chọn.

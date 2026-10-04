@@ -1,0 +1,62 @@
+<section class="demon-host-board" ng-if="vm.isHost() && vm.isDemonDefenseMode() && vm.demonArena">
+    <header class="demon-board-header">
+        <div><small>BATTLE ONLINE • SINH TỒN THEO ĐỘI</small><h2>👹 DIỆT QUỶ NGU</h2></div>
+        <div class="demon-board-meta">
+            <span>ĐỢT <b>{{vm.demonArena.wave}}</b></span>
+            <span ng-if="vm.room.status === 'PLAYING'">⏱ {{vm.formatTime(vm.countdown)}}</span>
+            <button type="button" ng-click="vm.toggleDemonWarningSound()"
+                    ng-attr-aria-pressed="{{vm.demonWarningSound}}">{{vm.demonWarningSound ? '🔊' : '🔇'}} Âm cảnh báo</button>
+        </div>
+    </header>
+    <div class="demon-wave-banner" role="status" ng-class="{'is-alert': vm.demonArena.phase === 'WARNING' || vm.demonArena.phase === 'HORDE'}">
+        <span ng-if="vm.demonArena.finished">🏆 TRẬN ĐẤU KẾT THÚC • Sống lâu nhất thắng; hết giờ xét quỷ diệt / thành viên.</span>
+        <span ng-if="!vm.demonArena.finished && vm.demonArena.phase === 'WARNING'">⚠️ BẦY QUỶ ĐANG TỚI! {{vm.demonArena.warningSeconds}} GIÂY</span>
+        <span ng-if="!vm.demonArena.finished && vm.demonArena.phase === 'HORDE'">🔥 BẦY QUỶ TRÀN XUỐNG — CÙNG BẢO VỆ ĐỘI!</span>
+        <span ng-if="!vm.demonArena.finished && vm.demonArena.phase === 'REST'">🌿 QUỶ ĐANG THƯA — LẤY LẠI NHỊP!</span>
+        <span ng-if="!vm.demonArena.finished && vm.demonArena.phase === 'NORMAL'">Đúng một câu, súng của bạn bắn! • Streak 20: 2 viên • 30: 3 viên • 40: 4 viên…</span>
+    </div>
+    <div class="demon-arena-grid">
+        <article class="demon-team-card" ng-repeat="team in vm.demonArena.teams | orderBy:'number' track by team.number"
+                 ng-class="{'is-danger': team.danger, 'is-eliminated': team.eliminatedAt, 'is-winner': vm.demonArena.finished && team.rank === 1}">
+            <header><strong>ĐỘI {{team.number}}</strong><span>{{team.memberCount}} súng • 👹 {{team.kills}} diệt</span></header>
+            <div class="demon-arena-stage">
+                <div class="demon-spawn-label">QUỶ XUỐNG ↓</div>
+                <div class="demon-danger-zone"><span>VẠCH PHÒNG THỦ</span></div>
+                <span class="demon-enemy" ng-repeat="demon in team.demons track by demon.id"
+                      ng-class="{'is-fast': demon.fast}"
+                      ng-style="{'top': vm.getDemonPosition(demon, team) + '%', 'left': (50 + (demon.id % 3 - 1) * 7) + '%'}">
+                    <span aria-hidden="true">{{demon.fast ? '👺' : '👹'}}</span><small ng-if="demon.fast">NHANH</small>
+                </span>
+                <svg class="demon-shot-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                    <g ng-repeat="shot in team.shots track by shot.id" ng-style="vm.getDemonShotStyle(shot)">
+                        <line ng-attr-x1="{{vm.getDemonGunX(team, shot.username)}}" y1="88" x2="50" ng-attr-y2="{{7 + shot.progress * 73}}" />
+                        <circle cx="50" ng-attr-cy="{{7 + shot.progress * 73}}" r="2" ng-if="shot.hit" />
+                    </g>
+                </svg>
+                <div class="demon-gun-row">
+                    <div class="demon-player-gun" ng-repeat="player in vm.getDemonTeamPlayers(team.number) track by player.username"
+                         ng-attr-title="{{vm.getPlayerDisplayName(player)}}"
+                         ng-class="{'is-frozen': player.frozenUntil > vm.demonClock, 'is-offline': !player.connected}">
+                        <span class="demon-gun-barrels" aria-hidden="true"><i></i><i ng-if="vm.getDemonBullets(player) >= 2"></i><i ng-if="vm.getDemonBullets(player) >= 3"></i></span>
+                        <b>{{vm.getPlayerDisplayName(player)}}</b><small>🔥 {{player.streak}} • {{vm.getDemonBullets(player)}} viên</small>
+                        <em ng-if="player.frozenUntil > vm.demonClock">❄️ {{((player.frozenUntil - vm.demonClock) / 1000) | number:0}}s</em>
+                        <em ng-if="player.unfreezeCharges">🧊 Giải băng</em>
+                    </div>
+                </div>
+                <div class="demon-team-alert" ng-if="team.danger && !vm.demonArena.finished">🚨 SẮP BỊ CHẠM!</div>
+                <div class="demon-rescue-callout" role="status" ng-if="team.rescueAt && vm.demonClock - team.rescueAt < 2200 && !vm.demonArena.finished">
+                    ✨ CỨU ĐỘI!<strong>{{vm.getDemonPlayerName(team.rescueUsername)}}</strong>
+                </div>
+                <div class="demon-elimination" ng-if="team.eliminatedAt || vm.demonArena.finished">
+                    <span>{{vm.demonArena.finished && team.rank === 1 ? '🏆' : '💀'}}</span>
+                    <strong>{{vm.getDemonResultLabel(team)}}</strong>
+                    <small>Sống {{vm.formatTime(team.survivedMs / 1000)}} • {{team.kills}} quỷ • {{team.rescues}} cứu nguy</small>
+                    <b ng-if="vm.demonArena.finished">HẠNG {{team.rank}}</b>
+                </div>
+            </div>
+        </article>
+    </div>
+    <div class="demon-host-events" aria-label="Hoạt động skill">
+        <span ng-repeat="event in vm.room.recentEvents | limitTo:4 track by event.id">{{vm.getSkillIcon(event.type)}} {{vm.getSkillEventMessage(event)}}</span>
+    </div>
+</section>

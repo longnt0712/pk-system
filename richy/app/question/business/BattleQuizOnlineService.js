@@ -24,6 +24,7 @@
 
         var socketClient = null;
         var roomSubscription = null;
+        var arenaSubscription = null;
         var currentRoomCode = null;
 
         self.getActiveMusicTracks = function () {
@@ -152,11 +153,12 @@
             ).then(function (response) { return response.data; });
         };
 
-        self.useSkill = function (roomCode, targetUsername) {
+        self.useSkill = function (roomCode, targetUsername, skillType) {
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/skill',
                 {
-                    targetUsername: targetUsername
+                    targetUsername: targetUsername,
+                    skillType: skillType || null
                 }
             ).then(function (response) { return response.data; });
         };
@@ -305,7 +307,7 @@
             return deferred.promise;
         }
 
-        function connectRealtime(roomCode, onRoomUpdate, onConnectionChanged) {
+        function connectRealtime(roomCode, onRoomUpdate, onConnectionChanged, onArenaUpdate) {
             var deferred = $q.defer();
 
             roomCode = normalizeRoomCode(roomCode);
@@ -358,6 +360,16 @@
                                 }
                             );
 
+                            if (angular.isFunction(onArenaUpdate)) {
+                                arenaSubscription = socketClient.subscribe(
+                                    '/topic/battle-online/room/' + roomCode + '/arena',
+                                    function (message) {
+                                        var arena;
+                                        try { arena = angular.fromJson(message.body); } catch (ignoreArenaJson) { return; }
+                                        $rootScope.$evalAsync(function () { onArenaUpdate(arena); });
+                                    }
+                                );
+                            }
                             fireConnection(onConnectionChanged, true);
                             deferred.resolve(true);
                         },
@@ -390,6 +402,10 @@
         }
 
         function disconnectRealtime() {
+            if (arenaSubscription) {
+                try { arenaSubscription.unsubscribe(); } catch (ignoreArenaDisconnect) {}
+                arenaSubscription = null;
+            }
             if (roomSubscription) {
                 try {
                     roomSubscription.unsubscribe();

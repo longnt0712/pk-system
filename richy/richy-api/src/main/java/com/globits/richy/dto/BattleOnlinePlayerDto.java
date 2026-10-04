@@ -17,6 +17,16 @@ public class BattleOnlinePlayerDto implements Serializable {
 
     private double score;
     private int streak;
+    private int unfreezeCharges;
+    private boolean demonEliminated;
+    private int demonRescues;
+
+    public int getUnfreezeCharges() { return unfreezeCharges; }
+    public void setUnfreezeCharges(int value) { unfreezeCharges = value; }
+    public boolean isDemonEliminated() { return demonEliminated; }
+    public void setDemonEliminated(boolean value) { demonEliminated = value; }
+    public int getDemonRescues() { return demonRescues; }
+    public void setDemonRescues(int value) { demonRescues = value; }
     private int correctCount;
     private int wrongCount;
     private int rank;

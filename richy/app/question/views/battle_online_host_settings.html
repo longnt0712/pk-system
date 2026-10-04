@@ -241,7 +241,7 @@
                     class="battle-online-spectator-toggle"
                     ng-class="{'is-active': vm.isSpectator()}"
                     ng-click="vm.toggleSpectator()"
-                    ng-disabled="vm.changingSpectator">
+                    ng-disabled="vm.changingSpectator || vm.hostSettings.mode === 'DEMON_DEFENSE'">
                 <span>{{vm.isSpectator() ? '👁️' : '🎮'}}</span>
                 <strong>
                     {{vm.isSpectator() ? 'ĐANG LÀ KHÁN GIẢ' : 'THAM GIA CHƠI'}}
@@ -327,6 +327,12 @@
                     </small>
                 </button>
 
+                <button type="button" class="battle-online-mode-card"
+                        ng-class="{'is-active is-demon-defense': vm.hostSettings.mode === 'DEMON_DEFENSE'}"
+                        ng-click="vm.selectMode('DEMON_DEFENSE')">
+                    <span class="battle-online-mode-icon">🔫</span><strong>DIỆT QUỶ NGU</strong>
+                    <small>Cả đội trả lời để bắn quỷ. Host xem trận đấu; học sinh nhận câu riêng.</small>
+                </button>
                 <button type="button"
                         class="battle-online-mode-card"
                         ng-class="{'is-active is-guess-word': vm.hostSettings.mode === 'GUESS_WORD'}"
@@ -369,10 +375,10 @@
 
             <!-- COUNTDOWN -->
             <div class="battle-online-mode-settings is-countdown"
-                 ng-if="vm.hostSettings.mode === 'COUNTDOWN' || vm.hostSettings.mode === 'MONEY_BEG' || vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'">
+                 ng-if="vm.hostSettings.mode === 'COUNTDOWN' || vm.hostSettings.mode === 'MONEY_BEG' || vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' || vm.hostSettings.mode === 'DEMON_DEFENSE'">
 
                 <div class="battle-online-mode-badge">
-                    {{vm.hostSettings.mode === 'MONEY_BEG'
+                    {{vm.hostSettings.mode === 'DEMON_DEFENSE' ? '👹 DIỆT QUỶ NGU' : vm.hostSettings.mode === 'MONEY_BEG'
                         ? '🤑 XIN TÍ TIỀN MODE'
                         : (vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'
                             ? '👹 THOÁT KHỎI QUỶ NGU'
@@ -405,6 +411,15 @@
 
                 <p ng-if="vm.hostSettings.mode === 'COUNTDOWN'">
                     Mỗi account nhận thứ tự từ ngẫu nhiên riêng. Trả lời xong là có câu tiếp ngay, không chờ người khác. Hết số phút là kết thúc.
+                </p>
+                <p ng-if="vm.hostSettings.mode === 'DEMON_DEFENSE'">
+                    Mỗi học sinh có một súng, cả đội bảo vệ chung một hàng quỷ.
+                    Đúng: bắn 1 viên; streak 20/30/40: bắn 2/3/4 viên. Mỗi viên diệt 1 quỷ gần nhất.
+                    Sai: streak về 0. PHÁ STREAK trừ 10; ĐÓNG BĂNG khóa một đối thủ 3 giây.
+                    GIẢI BĂNG hiếm được giữ tối đa 1 lượt để cứu đồng đội.
+                    Quỷ tăng theo thời gian và quy mô đội. Chạm vạch phòng thủ là đội bị loại.
+                    Đội sống cuối cùng thắng; hết giờ xét quỷ diệt / thành viên, bằng nhau đồng hạng.
+                    Host điều hành ở chế độ khán giả. Học sinh nhận cảnh báo chữ và màu, không rung.
                 </p>
 
                 <p ng-if="vm.hostSettings.mode === 'MONEY_BEG'">
@@ -506,14 +521,14 @@
 
                 <select class="form-control"
                         ng-model="vm.hostSettings.teamCount"
-                        ng-options="option.value as option.label for option in vm.teamCountOptions"
+                        ng-options="option.value as option.label for option in vm.getTeamCountOptions()"
                         ng-disabled="vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'"
                         ng-change="vm.markTeamCountTouched()">
                 </select>
 
                 <p ng-if="vm.hostSettings.mode !== 'ESCAPE_DUMB_DEMON'">
                     Khi lưu, server chia cân bằng ban đầu. Người chơi có thể tự chọn đội;
-                    HOST vẫn có thể đổi đội của từng học sinh trong lobby. Skill chỉ dùng lên đội đối phương.
+                    HOST vẫn có thể đổi đội của từng học sinh trong lobby. Skill tấn công chỉ dùng lên đội đối phương.
                 </p>
 
                 <p ng-if="vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'">
@@ -522,7 +537,7 @@
                 </p>
 
                 <div class="battle-online-double-action-setting"
-                     ng-if="vm.hasTeamMode()">
+                     ng-if="vm.hasTeamMode() && vm.hostSettings.mode !== 'DEMON_DEFENSE'">
                     <div class="battle-online-double-action-title">
                         ⚡ NGƯỜI GÁNH ĐỘI x2
                     </div>

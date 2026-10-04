@@ -15,7 +15,7 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     private Long questionOwnerUserId;
 
     /*
-     * CLASSIC | COUNTDOWN | MONEY_BEG | ESCAPE_DUMB_DEMON | GUESS_WORD
+     * CLASSIC | COUNTDOWN | MONEY_BEG | ESCAPE_DUMB_DEMON | DEMON_DEFENSE | GUESS_WORD
      */
     private String mode = "CLASSIC";
 

@@ -1,4 +1,4 @@
-<div class="battle-online-page">
+<div class="battle-online-page" ng-class="{'is-demon-defense': vm.isDemonDefenseMode(), 'is-demon-host': vm.isDemonDefenseMode() && vm.isHost() && vm.room.status === 'PLAYING', 'is-demon-student': vm.isDemonDefenseMode() && !vm.isHost() && vm.room.status === 'PLAYING'}">
 
     <div class="battle-online-view-music" aria-hidden="true">
         <div id="battle-online-view-music-player"></div>
@@ -825,6 +825,7 @@
                 <strong ng-if="vm.room.settings.mode === 'ESCAPE_DUMB_DEMON'">
                     👹 THOÁT KHỎI QUỶ NGU
                 </strong>
+                <strong ng-if="vm.room.settings.mode === 'DEMON_DEFENSE'">👹 DIỆT QUỶ NGU</strong>
                 <strong ng-if="vm.room.settings.mode === 'GUESS_WORD'">
                     🔤 GUESS THE WORD
                 </strong>
@@ -848,7 +849,7 @@
 
 
             <div class="battle-online-info-row"
-                 ng-if="vm.room.settings.mode === 'COUNTDOWN' || vm.room.settings.mode === 'MONEY_BEG' || vm.room.settings.mode === 'ESCAPE_DUMB_DEMON'">
+                 ng-if="vm.isCountdownMode()">
 
                 <span>Tổng thời gian</span>
                 <strong>{{vm.room.settings.countdownMinutes}} phút</strong>
@@ -856,7 +857,7 @@
 
 
             <div class="battle-online-info-row"
-                 ng-if="vm.room.settings.mode === 'COUNTDOWN' || vm.room.settings.mode === 'MONEY_BEG' || vm.room.settings.mode === 'ESCAPE_DUMB_DEMON'">
+                 ng-if="vm.isCountdownMode()">
 
                 <span>Sai bị khóa</span>
                 <strong>{{vm.room.settings.wrongAnswerFreezeSeconds}} giây</strong>
@@ -886,7 +887,7 @@
 
 
             <div class="battle-online-countdown-explain"
-                 ng-if="vm.room.settings.mode === 'COUNTDOWN' || vm.room.settings.mode === 'MONEY_BEG' || vm.room.settings.mode === 'ESCAPE_DUMB_DEMON'">
+                 ng-if="vm.isCountdownMode()">
 
                 <span ng-if="vm.room.settings.mode === 'COUNTDOWN'">
                     Mỗi người chơi có thứ tự câu riêng, không cần chờ nhau.
@@ -901,6 +902,11 @@
                     sai kéo quỷ về đội mình. HOST có thể chọn một thành viên để nhân đôi điểm và tác động
                     lên QUỶ NGU. Mode này không có skill CƯỚP ĐIỂM và PHÁ STREAK;
                     skill ĐẢO LỘN sẽ lật ngược màn hình trả lời trong 7 giây.
+                </span>
+                <span ng-if="vm.room.settings.mode === 'DEMON_DEFENSE'">
+                    Trả lời đúng để súng của mình bắn quỷ; streak 20/30/40 bắn 2/3/4 viên.
+                    Phá streak trừ 10, sai về 0. Dùng Giải băng để cứu một đồng đội.
+                    Theo dõi trận đấu trên màn hình host; thiết bị của bạn chỉ hiện câu hỏi và cảnh báo.
                 </span>
             </div>
 
@@ -1012,7 +1018,7 @@
     </div>
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING'"
-         ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode()}">
+         ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode()}">
 
         <main class="battle-online-card battle-online-question-card"
               ng-if="!vm.isSpectator() || vm.isGuessWordMode()"
@@ -1022,8 +1028,21 @@
                   'is-player-burning': vm.isMeBurning()
               }">
 
+            <div class="demon-student-status" ng-if="vm.isDemonDefenseMode()">
+                <span>ĐỘI {{vm.me().teamNumber}} • 🔥 {{vm.me().streak}} • {{vm.getDemonBullets(vm.me())}} viên / câu đúng</span>
+                <button type="button" ng-if="vm.me().unfreezeCharges"
+                        ng-disabled="vm.isMeFrozen() || vm.isDemonPlayerEliminated() || vm.usingSkill"
+                        ng-click="vm.openUnfreezeModal()">🧊 Giải băng ({{vm.me().unfreezeCharges}})</button>
+            </div>
+            <div class="demon-student-warning" role="status" ng-if="vm.isDemonDefenseMode()" ng-class="{'is-alert': vm.demonWarning}">
+                {{vm.demonWarning || 'Trả lời đúng để bảo vệ đội mình!'}}
+            </div>
+            <div class="demon-student-eliminated" role="status" ng-if="vm.isDemonPlayerEliminated()">
+                <strong>ĐỘI BẠN ĐÃ BỊ LOẠI</strong><p>Theo dõi các đội còn lại trên màn hình host.</p>
+            </div>
+
             <div class="battle-online-skill-hit-overlay is-wrong-answer"
-                 ng-if="vm.isWrongAnswerPenaltyActive()">
+                 ng-if="!vm.isDemonPlayerEliminated() && vm.isWrongAnswerPenaltyActive()">
                 <div class="battle-online-skill-hit-crystals"
                      aria-hidden="true">◆ ❄ ◆</div>
 
@@ -1050,7 +1069,7 @@
             </div>
 
             <div class="battle-online-skill-hit-overlay"
-                 ng-if="!vm.isWrongAnswerPenaltyActive() && (vm.isMeFrozen() || vm.skillHitEffect)"
+                 ng-if="!vm.isDemonPlayerEliminated() && !vm.isWrongAnswerPenaltyActive() && (vm.isMeFrozen() || vm.skillHitEffect)"
                  ng-class="'is-' + vm.getActiveSkillEffectType().toLowerCase()">
                 <div class="battle-online-skill-hit-crystals"
                      aria-hidden="true">◆ ❄ ◆</div>
@@ -1303,7 +1322,7 @@
                 <button type="button"
                         ng-repeat="option in vm.room.currentQuestion.answers track by option.key"
                         class="battle-online-answer-btn answer-{{$index}}"
-                        ng-disabled="vm.answerLocked || vm.countdown <= 0 || vm.isMeFrozen() || vm.isWrongAnswerPenaltyActive() || vm.room.pendingSkillType || vm.room.passwordSelectionRequired || vm.room.pendingPasswordGuessTargetUsername"
+                        ng-disabled="vm.answerLocked || vm.countdown <= 0 || vm.isMeFrozen() || vm.isWrongAnswerPenaltyActive() || vm.room.pendingSkillType || vm.room.passwordSelectionRequired || vm.room.pendingPasswordGuessTargetUsername || vm.isDemonPlayerEliminated()"
                         ng-click="vm.answer(option)">
 
                     <span class="battle-online-answer-key">
@@ -1472,7 +1491,7 @@
         </main>
 
         <main class="battle-online-card battle-online-spectator-panel"
-              ng-if="vm.isSpectator() && !vm.isGuessWordMode()">
+              ng-if="vm.isSpectator() && !vm.isGuessWordMode() && !vm.isDemonDefenseMode()">
             <div class="battle-online-spectator-icon">👁️</div>
             <span class="battle-online-small-title">CHẾ ĐỘ KHÁN GIẢ</span>
             <h2>Bạn đang xem trận đấu</h2>
@@ -1516,7 +1535,7 @@
 
         <!-- RANKING -->
         <aside id="battle-online-ranking-card"
-               class="battle-online-card battle-online-ranking-card">
+               class="battle-online-card battle-online-ranking-card" ng-if="!vm.isDemonDefenseMode()">
 
             <div class="battle-online-title-row">
                 <div>
@@ -1636,6 +1655,9 @@
     <!-- =====================================================
          FINISHED
          ===================================================== -->
+    <ng-include ng-if="vm.isHost() && vm.isDemonDefenseMode() && (vm.room.status === 'PLAYING' || vm.room.status === 'FINISHED')"
+                src="'question/views/battle_online_demon_arena.html'"></ng-include>
+
     <section class="battle-online-card battle-online-finished"
              ng-if="vm.room && vm.room.status === 'FINISHED'">
 
@@ -1691,6 +1713,7 @@
         <div class="battle-online-team-ranking is-final"
              ng-if="vm.hasTeamMode() && !vm.isEscapeDumbDemonMode()">
             <div class="battle-online-team-ranking-title">👥 KẾT QUẢ THEO ĐỘI</div>
+            <p ng-if="vm.isDemonDefenseMode()">Đội sống lâu nhất thắng. Hết giờ xét số quỷ diệt / thành viên.</p>
 
             <div class="battle-online-team-ranking-row"
                  ng-class="{'is-rank-1': team.rank === 1, 'is-rank-2': team.rank === 2, 'is-rank-3': team.rank === 3}"
@@ -1703,9 +1726,10 @@
                 </span>
                 <div>
                     <strong>ĐỘI {{team.number}}</strong>
-                    <small>{{team.memberCount}} thành viên • ✅ {{team.correctCount}} • ❌ {{team.wrongCount}}</small>
+                    <small ng-if="!vm.isDemonDefenseMode()">{{team.memberCount}} thành viên • ✅ {{team.correctCount}} • ❌ {{team.wrongCount}}</small>
+                    <small ng-if="vm.isDemonDefenseMode()">Sống {{vm.formatTime(team.survivedMs / 1000)}} • {{team.memberCount}} thành viên • {{team.rescues}} cứu nguy</small>
                 </div>
-                <b>{{vm.formatScore(team.score)}}</b>
+                <b>{{vm.formatScore(team.score)}}<span ng-if="vm.isDemonDefenseMode()"> quỷ</span></b>
             </div>
         </div>
 
@@ -2019,6 +2043,7 @@
                             <small>
                                 🔥 {{player.streak}}
                                 • {{vm.formatScore(player.score)}} điểm
+                                <span ng-if="vm.isDemonDefenseMode()">• 🔫 {{vm.getDemonBullets(player)}} viên / câu đúng</span>
                             </small>
                         </span>
 
@@ -2033,6 +2058,28 @@
                     ⏳ Đang lấy danh sách mục tiêu...
                 </div>
 
+            </div>
+        </section>
+    </div>
+
+    <div class="battle-online-skill-modal-backdrop" ng-if="vm.unfreezeModalOpen && vm.room.status === 'PLAYING'">
+        <section class="battle-online-skill-modal" role="dialog" aria-modal="true" aria-label="Giải băng đồng đội">
+            <div class="battle-online-skill-modal-header">
+                <span>🧊</span><div><small>CỨU ĐỒNG ĐỘI</small><h2>GIẢI BĂNG</h2></div>
+                <button type="button" ng-click="vm.closeUnfreezeModal()" aria-label="Đóng">×</button>
+            </div>
+            <div class="battle-online-skill-modal-body">
+                <p>Chọn một đồng đội đang bị đóng băng. Quỷ vẫn đang tiến xuống!</p>
+                <div class="battle-online-skill-target-list">
+                    <button type="button" class="battle-online-skill-target-card"
+                            ng-repeat="player in vm.getUnfreezeTargets() track by player.username"
+                            ng-disabled="vm.usingSkill || vm.isMeFrozen()" ng-click="vm.useUnfreeze(player)">
+                        <span class="battle-online-skill-target-info"><strong>{{vm.getPlayerDisplayName(player)}}</strong>
+                            <small>🔥 {{player.streak}} • {{vm.getDemonBullets(player)}} viên / câu đúng</small></span>
+                        <span class="battle-online-skill-target-shoot">GIẢI BĂNG</span>
+                    </button>
+                </div>
+                <p ng-if="!vm.getUnfreezeTargets().length">Chưa có đồng đội đang bị đóng băng. Bạn có thể giữ skill để dùng sau.</p>
             </div>
         </section>
     </div>
@@ -2401,6 +2448,73 @@
 
 
 <style>
+    .is-demon-student *, .is-demon-student *::before, .is-demon-student *::after {
+        animation: none !important; transition: none !important;
+        backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+    }
+    .is-demon-student .battle-online-hero, .is-demon-student .battle-online-game-topline,
+    .is-demon-student .battle-online-mobile-tools, .is-demon-student .battle-online-room-header,
+    .is-demon-student .battle-online-lesson-bar, .is-demon-host .battle-online-hero,
+    .is-demon-host .battle-online-lesson-bar { display: none !important; }
+    .battle-online-game-layout.is-demon-layout { grid-template-columns: 1fr !important; }
+    .demon-student-status { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-weight: 700; font-size: 14px; margin-bottom: 10px; }
+    .demon-student-status button { border: 1px solid #85bfdb; border-radius: 10px; background: #e8f6ff; color: #174864; padding: 9px 12px; }
+    .demon-student-warning { height: 60px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 8px 12px; border-radius: 12px; border: 1px solid #c6e5d7; background: #edf8f1; color: #256444; font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+    .demon-student-warning.is-alert { background: #fff0e8; color: #a52712; border-color: #e9b09a; }
+    .demon-student-eliminated { padding: 20px; border-radius: 12px; color: #783333; background: #ffefef; text-align: center; }
+    .demon-host-board { max-width: 1440px; margin: 20px auto; padding: 24px; color: #f0f6ff; background: #101e31; border: 1px solid #28415c; border-radius: 24px; box-shadow: 0 14px 40px rgba(12,25,45,.14); }
+    .demon-board-header { display: flex; gap: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .demon-board-header small { color: #95b5ce; font-weight: 700; font-size: 11px; letter-spacing: 1px; }
+    .demon-board-header h2 { margin: 8px 0 12px; font-size: 26px; color: #fff; font-weight: 900; }
+    .demon-board-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; font-size: 17px; }
+    .demon-board-meta button { color: #dcefff; background: #213952; border: 1px solid #43647c; border-radius: 10px; padding: 9px 12px; font-size: 13px; }
+    .demon-wave-banner { padding: 12px 16px; min-height: 48px; border-radius: 12px; background: #193347; color: #aceada; margin: 10px 0 20px; text-align: center; font-weight: 700; }
+    .demon-wave-banner.is-alert { background: #592d22; color: #ffd29b; }
+    .demon-arena-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(250px,1fr)); gap: 16px; }
+    .demon-team-card { overflow: hidden; border: 2px solid #365673; border-radius: 18px; background: #14283d; }
+    .demon-team-card > header { display: flex; gap: 6px; justify-content: space-between; align-items: center; flex-wrap: wrap; padding: 14px; border-bottom: 1px solid #365673; }
+    .demon-team-card > header strong { color: #8fe0ff; font-size: 18px; }
+    .demon-team-card > header span { font-size: 12px; color: #c2d1df; }
+    .demon-team-card.is-danger { border-color: #ff6c53; }
+    .demon-team-card.is-winner { border-color: #ffd666; }
+    .demon-arena-stage { height: 420px; position: relative; overflow: hidden; background: repeating-linear-gradient(0deg,transparent 0,transparent 49px,rgba(133,194,233,.055) 50px),linear-gradient(180deg,#142238,#162e44); }
+    .demon-spawn-label { position: absolute; top: 10px; left: 0; width: 100%; text-align: center; color: #6f8da5; font-size: 10px; letter-spacing: 2px; }
+    .demon-danger-zone { position: absolute; top: 62%; bottom: 18%; width: 100%; background: rgba(238,95,62,.075); border-bottom: 2px dashed #e57f60; }
+    .demon-danger-zone span { position: absolute; bottom: 3px; right: 8px; color: #ca8c78; font-size: 9px; }
+    .is-danger .demon-danger-zone { background: rgba(238,72,62,.18); }
+    .demon-enemy { position: absolute; display: flex; flex-direction: column; align-items: center; transform: translate(-50%,-50%); font-size: 35px; line-height: 1; z-index: 2; transition: top .25s linear; }
+    .demon-enemy.is-fast { font-size: 39px; }
+    .demon-enemy small { font-size: 8px; font-weight: 900; color: #ffd69f; background: #863e20; padding: 3px; border-radius: 3px; }
+    .demon-shot-layer { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
+    .demon-shot-layer line { stroke: #ffe08a; stroke-width: .6; stroke-linecap: round; }
+    .demon-shot-layer circle { fill: #ffe5a5; }
+    .demon-shot-layer g { animation: demon-shot-flash .7s ease-out both; }
+    @keyframes demon-shot-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+    .demon-gun-row { position: absolute; top: 83%; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-start; z-index: 4; background: #122338; }
+    .demon-player-gun { flex: 1 1 0; min-width: 0; text-align: center; padding: 2px 3px; font-size: 11px; line-height: 1.1; }
+    .demon-player-gun b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 5px; }
+    .demon-player-gun small { display: block; color: #c8b98a; font-size: 10px; }
+    .demon-player-gun em { font-style: normal; display: inline-block; margin: 0 2px; color: #9adeff; font-size: 10px; }
+    .demon-gun-barrels { display: inline-flex; justify-content: center; align-items: center; gap: 3px; width: 34px; height: 24px; background: #487f86; border-radius: 5px 5px 9px 9px; border-bottom: 4px solid #b8e8d9; }
+    .demon-gun-barrels i { width: 5px; height: 22px; display: block; margin-top: -15px; border-radius: 3px; background: #c4ede2; border: 1px solid #5ca89d; }
+    .demon-player-gun.is-frozen .demon-gun-barrels { background: #91d3ff; box-shadow: 0 0 12px #73c8ff; }
+    .demon-player-gun.is-offline { opacity: .45; }
+    .demon-team-alert { position: absolute; top: 6%; left: 5%; width: 90%; border-radius: 8px; padding: 7px; text-align: center; font-size: 13px; font-weight: 900; color: #ffe1c8; background: #963c2c; z-index: 5; }
+    .demon-rescue-callout { position: absolute; top: 35%; width: 100%; text-align: center; font-size: 23px; color: #ffdc6f; font-weight: 900; z-index: 6; text-shadow: 0 2px 5px #000; }
+    .demon-rescue-callout strong { display: block; font-size: 15px; color: #fff; }
+    .demon-elimination { position: absolute; inset: 0; background: rgba(10,20,35,.92); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; padding: 16px; text-align: center; z-index: 7; }
+    .demon-elimination > span { font-size: 50px; }
+    .demon-elimination strong { font-size: 24px; color: #f4d393; }
+    .demon-elimination small { color: #bfcbda; }
+    .demon-host-events { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    .demon-host-events > span { background: #20354c; padding: 8px 12px; border-radius: 8px; color: #c3d9ea; font-size: 12px; }
+    @media (max-width: 600px) {
+        .demon-host-board { padding: 12px; border-radius: 16px; }
+        .demon-arena-grid { grid-template-columns: 1fr; }
+        .demon-board-header h2 { font-size: 21px; }
+        .demon-student-status { font-size: 12px; }
+        .is-demon-student .battle-online-word h2 > span { padding: 2px 4px; }
+    }
     .battle-online-page,
     .battle-online-page * {
         box-sizing: border-box;
