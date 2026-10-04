@@ -182,6 +182,7 @@
          * - Checkbox đã tích: active = null để backend trả về cả active=true và active=false.
          */
         vm.showInactiveUsers = false;
+        vm.showUnassignedStudents = false;
 
         vm.filter = {
             keyword: '',
@@ -222,6 +223,22 @@
                 ? null
                 : true;
 
+            vm.search();
+        };
+
+        vm.changeUnassignedStudentsVisibility = function () {
+            if (vm.isIeltsRoomDomain && vm.showUnassignedStudents === true) {
+                vm.filter.enrollmentClass = null;
+                vm.advancedSearchApplied = {
+                    active: false,
+                    schoolId: vm.directorySchoolId,
+                    startDate: null,
+                    endDate: null,
+                    classIds: []
+                };
+                vm.appliedCreatedDateFrom = null;
+                vm.appliedCreatedDateTo = null;
+            }
             vm.search();
         };
 
@@ -660,9 +677,14 @@
 
 			var requestFilter = angular.copy(vm.filter);
 			requestFilter.schoolId = vm.directorySchoolId;
+			requestFilter.withoutEnrollmentClass = vm.isIeltsRoomDomain && vm.showUnassignedStudents === true;
 			requestFilter.enrollmentClassIds = vm.advancedSearchApplied.active
 				? vm.advancedSearchApplied.classIds.slice()
 				: vm.getClassAndDescendantIds(requestFilter.enrollmentClass);
+            if (requestFilter.withoutEnrollmentClass) {
+                requestFilter.enrollmentClass = null;
+                requestFilter.enrollmentClassIds = [];
+            }
             // Explicit classes include their members regardless of account role (e.g. HT).
             requestFilter.roles = getDirectorySearchRoles();
 			requestFilter.startDate = vm.appliedCreatedDateFrom
@@ -2192,7 +2214,8 @@
              * tìm kiếm do người dùng nhập. Vì vậy không dùng active để đổi
              * pageSize từ 25 lên 1000 hoặc bật khung thông báo bộ lọc.
              */
-            return hasKeyword || hasGroups || hasRoles || hasEnrollmentClass || hasCreatedDate || hasAdvancedSearch;
+            var hasUnassignedStudents = vm.isIeltsRoomDomain && vm.showUnassignedStudents === true;
+            return hasKeyword || hasGroups || hasRoles || hasEnrollmentClass || hasCreatedDate || hasAdvancedSearch || hasUnassignedStudents;
         };
 
         vm.applyPageSizeByFilter = function () {

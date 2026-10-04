@@ -492,7 +492,16 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	     * khoản có ít nhất một role khác ROLE_VIEWER.
 	     */
 	    Integer schoolId = filter == null ? null : filter.getSchoolId();
-	    if (schoolId != null && schoolId.intValue() > 0) {
+	    boolean withoutEnrollmentClass = Integer.valueOf(1).equals(schoolId)
+	            && Boolean.TRUE.equals(filter.getWithoutEnrollmentClass());
+	    if (withoutEnrollmentClass) {
+	        // Chưa có lớp nên xác định học sinh IELTS bằng ROLE_VIEWER.
+	        clause += " and exists (select 1 from u.roles studentRole "
+	                + "where studentRole.name = 'ROLE_VIEWER') "
+	                + "and (p.enrollmentClassId is null or p.enrollmentClassId <= 0) "
+	                + "and not exists (select 1 from u.enrollmentClassIds assignedClassId "
+	                + "where assignedClassId > 0) ";
+	    } else if (schoolId != null && schoolId.intValue() > 0) {
 	        String belongsToSchool = "(cast(p.enrollmentClassId as long) in "
 	                + "(select directoryClass.id from EnrolmentClass directoryClass "
 	                + "where directoryClass.schoolId = :schoolId) "
@@ -521,7 +530,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	     */
 	    List<Long> enrollmentClassIds = new ArrayList<Long>();
 
-	    if (filter != null && filter.getEnrollmentClassIds() != null) {
+	    if (!withoutEnrollmentClass && filter != null && filter.getEnrollmentClassIds() != null) {
 	        for (Long classId : filter.getEnrollmentClassIds()) {
 	            if (classId != null && classId.longValue() > 0 && !enrollmentClassIds.contains(classId)) {
 	                enrollmentClassIds.add(classId);
@@ -529,7 +538,8 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	        }
 	    }
 
-	    if (enrollmentClassIds.isEmpty() && filter != null && filter.getEnrollmentClass() != null) {
+	    if (!withoutEnrollmentClass && enrollmentClassIds.isEmpty()
+	            && filter != null && filter.getEnrollmentClass() != null) {
 	        enrollmentClassIds.add(filter.getEnrollmentClass().longValue());
 	    }
 
@@ -609,7 +619,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 	        qCount.setParameter("active", filter.getActive());
 	    }
 
-	    if (schoolId != null && schoolId.intValue() > 0) {
+	    if (!withoutEnrollmentClass && schoolId != null && schoolId.intValue() > 0) {
 	        q.setParameter("schoolId", schoolId);
 	        qCount.setParameter("schoolId", schoolId);
 	    }

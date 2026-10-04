@@ -17,6 +17,9 @@ public class UserFilterDto {
 	/* Phạm vi trường của danh sách tài khoản, được suy ra từ domain hiện tại. */
 	private Integer schoolId;
 
+	/* Chỉ tìm học sinh IELTS Room chưa được gán lớp chính hoặc lớp phụ. */
+	private Boolean withoutEnrollmentClass;
+
 	/* Khoảng ngày tạo tài khoản (ngày nhập học). */
 	private Long startDate;
 
@@ -60,6 +63,14 @@ public class UserFilterDto {
 
 	public void setSchoolId(Integer schoolId) {
 		this.schoolId = schoolId;
+	}
+
+	public Boolean getWithoutEnrollmentClass() {
+		return withoutEnrollmentClass;
+	}
+
+	public void setWithoutEnrollmentClass(Boolean withoutEnrollmentClass) {
+		this.withoutEnrollmentClass = withoutEnrollmentClass;
 	}
 
 	public String getKeyword() {
