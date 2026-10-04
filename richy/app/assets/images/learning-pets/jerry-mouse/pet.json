@@ -1,0 +1,25 @@
+{
+  "id": "jerry-mouse",
+  "name": "Chuột Jerry",
+  "selectionKey": "CUTE_JERRY_MOUSE",
+  "unlockVocabularyExperienceLevel": 12,
+  "evolution": [
+    {
+      "minimumVocabularyExperienceLevel": 12,
+      "maximumVocabularyExperienceLevel": 12,
+      "form": "egg-intact",
+      "file": "egg-level-12.png"
+    },
+    {
+      "minimumVocabularyExperienceLevel": 13,
+      "maximumVocabularyExperienceLevel": 13,
+      "form": "egg-cracked",
+      "file": "egg-level-13.png"
+    },
+    {
+      "minimumVocabularyExperienceLevel": 14,
+      "form": "hatched",
+      "file": "pet-level-14.png"
+    }
+  ]
+}

@@ -51,6 +51,9 @@
             var cuteTomCatEggUrl = 'assets/images/learning-pets/cute-tom-cat/egg-level-9.png?v=' + version;
             var cuteTomCatCrackedEggUrl = 'assets/images/learning-pets/cute-tom-cat/egg-level-10.png?v=' + version;
             var cuteTomCatPetUrl = 'assets/images/learning-pets/cute-tom-cat/pet-level-11.png?v=' + version;
+            var jerryMouseEggUrl = 'assets/images/learning-pets/jerry-mouse/egg-level-12.png?v=' + version;
+            var jerryMouseCrackedEggUrl = 'assets/images/learning-pets/jerry-mouse/egg-level-13.png?v=' + version;
+            var jerryMousePetUrl = 'assets/images/learning-pets/jerry-mouse/pet-level-14.png?v=' + version;
             var animations = {
                 idle: {row: 0, durations: [280, 110, 110, 140, 140, 320], loopPause: 10000},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
@@ -89,6 +92,7 @@
             vm.hasNewCapybaraEgg = false;
             vm.hasNewCuteDogEgg = false;
             vm.hasNewCuteTomCatEgg = false;
+            vm.hasNewJerryMouseEgg = false;
 
             function readCurrentUser() {
                 if (liveUser && liveUser.id) { return liveUser; }
@@ -100,6 +104,9 @@
 
             function updatePetForm(user) {
                 var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
+                var admin = hasAdminRole(user);
+                // Unlock all evolved forms for admins without changing their experience.
+                if (admin) { level = Math.max(level, 14); }
                 var selectedPet = String((user || {}).selectedLearningPet || 'MAM_HOC').toUpperCase();
                 if (selectedPet === 'CAPYBARA_EGG' && level < 3) {
                     selectedPet = 'MAM_HOC';
@@ -108,6 +115,9 @@
                     selectedPet = 'MAM_HOC';
                 }
                 if (selectedPet === 'CUTE_TOM_CAT' && level < 9) {
+                    selectedPet = 'MAM_HOC';
+                }
+                if (selectedPet === 'CUTE_JERRY_MOUSE' && level < 12) {
                     selectedPet = 'MAM_HOC';
                 }
                 vm.selectedPetKey = selectedPet;
@@ -132,9 +142,9 @@
                                 ? 'Đã nở hoàn chỉnh'
                                 : (level === 4 ? 'Trứng đang nứt' : 'Mở khóa ở level 3'),
                         image: capybaraStageImage,
-                        isNew: hasUnseenCapybaraEgg(user)
+                        isNew: !admin && hasUnseenCapybaraEgg(user)
                     });
-                    vm.hasNewCapybaraEgg = hasUnseenCapybaraEgg(user);
+                    vm.hasNewCapybaraEgg = !admin && hasUnseenCapybaraEgg(user);
                 } else {
                     vm.hasNewCapybaraEgg = false;
                 }
@@ -150,9 +160,9 @@
                                 ? 'Đã nở hoàn chỉnh'
                                 : (level === 7 ? 'Trứng đang nứt' : 'Mở khóa ở level 6'),
                         image: cuteDogStageImage,
-                        isNew: hasUnseenCuteDogEgg(user)
+                        isNew: !admin && hasUnseenCuteDogEgg(user)
                     });
-                    vm.hasNewCuteDogEgg = hasUnseenCuteDogEgg(user);
+                    vm.hasNewCuteDogEgg = !admin && hasUnseenCuteDogEgg(user);
                 } else {
                     vm.hasNewCuteDogEgg = false;
                 }
@@ -163,16 +173,34 @@
                             : (level === 10 ? cuteTomCatCrackedEggUrl : cuteTomCatEggUrl);
                     vm.availablePets.push({
                         key: 'CUTE_TOM_CAT',
-                        name: level >= 11 ? 'Mèo Tom Cute' : 'Trứng Mèo Tom Cute',
+                        name: level >= 11 ? 'Mèo Tom' : 'Trứng Mèo Tom',
                         description: level >= 11
                                 ? 'Đã nở hoàn chỉnh'
                                 : (level === 10 ? 'Trứng đang nứt' : 'Mở khóa ở level 9'),
                         image: cuteTomCatStageImage,
-                        isNew: hasUnseenCuteTomCatEgg(user)
+                        isNew: !admin && hasUnseenCuteTomCatEgg(user)
                     });
-                    vm.hasNewCuteTomCatEgg = hasUnseenCuteTomCatEgg(user);
+                    vm.hasNewCuteTomCatEgg = !admin && hasUnseenCuteTomCatEgg(user);
                 } else {
                     vm.hasNewCuteTomCatEgg = false;
+                }
+
+                if (level >= 12) {
+                    var jerryMouseStageImage = level >= 14
+                            ? jerryMousePetUrl
+                            : (level === 13 ? jerryMouseCrackedEggUrl : jerryMouseEggUrl);
+                    vm.availablePets.push({
+                        key: 'CUTE_JERRY_MOUSE',
+                        name: level >= 14 ? 'Chuột Jerry' : 'Trứng Chuột Jerry',
+                        description: level >= 14
+                                ? 'Đã nở hoàn chỉnh'
+                                : (level === 13 ? 'Trứng đang nứt' : 'Mở khóa ở level 12'),
+                        image: jerryMouseStageImage,
+                        isNew: !admin && hasUnseenJerryMouseEgg(user)
+                    });
+                    vm.hasNewJerryMouseEgg = !admin && hasUnseenJerryMouseEgg(user);
+                } else {
+                    vm.hasNewJerryMouseEgg = false;
                 }
 
                 if (selectedPet === 'CAPYBARA_EGG') {
@@ -194,6 +222,13 @@
                     vm.petImage = level >= 11
                             ? cuteTomCatPetUrl
                             : (level === 10 ? cuteTomCatCrackedEggUrl : cuteTomCatEggUrl);
+                    return;
+                }
+                if (selectedPet === 'CUTE_JERRY_MOUSE') {
+                    vm.petForm = level >= 14 ? 'jerry-mouse-hatched' : 'jerry-mouse-egg';
+                    vm.petImage = level >= 14
+                            ? jerryMousePetUrl
+                            : (level === 13 ? jerryMouseCrackedEggUrl : jerryMouseEggUrl);
                     return;
                 }
                 if (hasAdminRole(user)) {
@@ -279,6 +314,28 @@
                 });
             }
 
+            function jerryMouseSeenKey(user) {
+                return 'learning-pet:jerry-mouse-seen:v1:' + (user && user.id ? user.id : 'guest');
+            }
+
+            function hasUnseenJerryMouseEgg(user) {
+                try {
+                    return $window.localStorage.getItem(jerryMouseSeenKey(user)) !== '1';
+                } catch (ignoreStorage) {
+                    return true;
+                }
+            }
+
+            function markJerryMouseEggSeen(user) {
+                try {
+                    $window.localStorage.setItem(jerryMouseSeenKey(user), '1');
+                } catch (ignoreStorage) {}
+                vm.hasNewJerryMouseEgg = false;
+                angular.forEach(vm.availablePets, function (item) {
+                    if (item.key === 'CUTE_JERRY_MOUSE') { item.isNew = false; }
+                });
+            }
+
             vm.selectPet = function (petKey) {
                 if (vm.selectingPet || !petKey || petKey === vm.selectedPetKey) { return; }
                 vm.selectingPet = true;
@@ -297,6 +354,9 @@
                         }
                         if (user.selectedLearningPet === 'CUTE_TOM_CAT') {
                             markCuteTomCatEggSeen(user);
+                        }
+                        if (user.selectedLearningPet === 'CUTE_JERRY_MOUSE') {
+                            markJerryMouseEggSeen(user);
                         }
                         updatePetForm(user);
                         updateMessage();
@@ -619,10 +679,14 @@
                 vm.notificationCount = vm.pendingTaskCount + vm.drafts.length +
                         (vm.hasNewCapybaraEgg ? 1 : 0) +
                         (vm.hasNewCuteDogEgg ? 1 : 0) +
-                        (vm.hasNewCuteTomCatEgg ? 1 : 0);
-                if (vm.hasNewCuteTomCatEgg) {
-                    vm.summaryTitle = 'Bạn có một quả trứng Mèo Tom Cute mới!';
-                    vm.message = 'Level 9 đã mở khóa trứng Mèo Tom Cute. Level 10 trứng sẽ nứt và level 11 sẽ nở.';
+                        (vm.hasNewCuteTomCatEgg ? 1 : 0) +
+                        (vm.hasNewJerryMouseEgg ? 1 : 0);
+                if (vm.hasNewJerryMouseEgg) {
+                    vm.summaryTitle = 'Bạn có một quả trứng Chuột Jerry mới!';
+                    vm.message = 'Level 12 đã mở khóa trứng Chuột Jerry. Level 13 trứng sẽ nứt và level 14 sẽ nở.';
+                } else if (vm.hasNewCuteTomCatEgg) {
+                    vm.summaryTitle = 'Bạn có một quả trứng Mèo Tom mới!';
+                    vm.message = 'Level 9 đã mở khóa trứng Mèo Tom. Level 10 trứng sẽ nứt và level 11 sẽ nở.';
                 } else if (vm.hasNewCuteDogEgg) {
                     vm.summaryTitle = 'Bạn có một quả trứng Cute Dog mới!';
                     vm.message = 'Level 6 đã mở khóa trứng Cute Dog. Level 7 trứng sẽ nứt và level 8 sẽ nở.';
@@ -802,6 +866,9 @@
                 }
                 if (vm.hasNewCuteTomCatEgg) {
                     markCuteTomCatEggSeen(readCurrentUser());
+                }
+                if (vm.hasNewJerryMouseEgg) {
+                    markJerryMouseEggSeen(readCurrentUser());
                 }
                 updateMessage();
                 vm.activeSection = vm.drafts.length ? 'drafts' : 'tasks';

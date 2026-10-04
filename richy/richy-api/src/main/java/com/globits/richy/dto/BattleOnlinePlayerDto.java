@@ -22,6 +22,7 @@ public class BattleOnlinePlayerDto implements Serializable {
     private int rank;
     private int teamNumber;
     private int vocabularyExperienceLevel;
+    private boolean allPetsUnlocked;
     private String selectedPetKey;
 
     /*
@@ -170,6 +171,14 @@ public class BattleOnlinePlayerDto implements Serializable {
 
     public void setVocabularyExperienceLevel(int vocabularyExperienceLevel) {
         this.vocabularyExperienceLevel = vocabularyExperienceLevel;
+    }
+
+    public boolean isAllPetsUnlocked() {
+        return allPetsUnlocked;
+    }
+
+    public void setAllPetsUnlocked(boolean allPetsUnlocked) {
+        this.allPetsUnlocked = allPetsUnlocked;
     }
 
     public String getSelectedPetKey() {

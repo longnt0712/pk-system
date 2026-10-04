@@ -26,7 +26,7 @@
                             ng-click="pet.selectPet(item.key)"
                             ng-disabled="pet.selectingPet">
                         <span class="learning-pet-choice-image">
-                            <img ng-src="{{item.image}}" alt="" aria-hidden="true">
+                            <img ng-src="{{item.image}}" ng-class="{'is-cartoon-pet': item.key === 'CUTE_TOM_CAT' || item.key === 'CUTE_JERRY_MOUSE'}" alt="" aria-hidden="true">
                             <b ng-if="item.isNew">MỚI</b>
                         </span>
                         <span><strong>{{item.name}}</strong><small>{{item.description}}</small></span>
@@ -71,7 +71,9 @@
                  ng-class="{
                     'is-capybara-pet': pet.petForm === 'capybara-hatched',
                     'is-cute-dog-pet': pet.petForm === 'cute-dog-hatched',
-                    'is-cute-tom-cat-pet': pet.petForm === 'cute-tom-cat-hatched'
+                    'is-cute-tom-cat-pet': pet.petForm === 'cute-tom-cat-hatched',
+                    'is-jerry-mouse-pet': pet.petForm === 'jerry-mouse-hatched',
+                    'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE'
                  }"
                  ng-if="pet.petForm !== 'hatched'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
             <span class="learning-pet-badge" ng-if="pet.notificationCount > 0">{{pet.notificationCount > 99 ? '99+' : pet.notificationCount}}</span>

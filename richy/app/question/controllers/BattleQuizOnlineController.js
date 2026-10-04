@@ -522,6 +522,15 @@
         }
 
 
+        function hasAdminPetAccess() {
+            var roles = (vm.currentUser || {}).roles || [];
+            for (var index = 0; index < roles.length; index += 1) {
+                if (roles[index] && roles[index].name === 'ROLE_ADMIN') { return true; }
+            }
+            return false;
+        }
+
+
         function getPlayerPetImage(player) {
             var version = $window.APP_VERSION || '';
             var suffix = version ? '?v=' + encodeURIComponent(version) : '';
@@ -532,6 +541,21 @@
             var petKey = String(
                 player && player.selectedPetKey || 'MAM_HOC'
             ).toUpperCase();
+            var ownAdminPet = player && player.username &&
+                player.username === (vm.currentUser || {}).username && hasAdminPetAccess();
+            if ((player && player.allPetsUnlocked === true) || ownAdminPet) {
+                level = Math.max(level, 14);
+            }
+
+            if (petKey === 'CUTE_JERRY_MOUSE' && level >= 12) {
+                if (level >= 14) {
+                    return 'assets/images/learning-pets/jerry-mouse/pet-level-14.png' + suffix;
+                }
+                if (level === 13) {
+                    return 'assets/images/learning-pets/jerry-mouse/egg-level-13.png' + suffix;
+                }
+                return 'assets/images/learning-pets/jerry-mouse/egg-level-12.png' + suffix;
+            }
 
             if (petKey === 'CUTE_TOM_CAT' && level >= 9) {
                 if (level >= 11) {
@@ -583,6 +607,9 @@
                         : (vm.currentUser || {}).vocabularyExperienceLevel
                 ) || 0
             );
+            if ((me && me.allPetsUnlocked === true) || hasAdminPetAccess()) {
+                level = Math.max(level, 14);
+            }
 
             /*
              * ng-options theo dõi collection bằng $watchCollection. Nếu tạo
@@ -619,8 +646,16 @@
                 battlePetOptions.push({
                     key: 'CUTE_TOM_CAT',
                     label: level >= 11
-                        ? 'Mèo Tom Cute'
-                        : (level === 10 ? 'Trứng Mèo Tom Cute đang nứt' : 'Trứng Mèo Tom Cute')
+                        ? 'Mèo Tom'
+                        : (level === 10 ? 'Trứng Mèo Tom đang nứt' : 'Trứng Mèo Tom')
+                });
+            }
+            if (level >= 12) {
+                battlePetOptions.push({
+                    key: 'CUTE_JERRY_MOUSE',
+                    label: level >= 14
+                        ? 'Chuột Jerry'
+                        : (level === 13 ? 'Trứng Chuột Jerry đang nứt' : 'Trứng Chuột Jerry')
                 });
             }
             return battlePetOptions;
@@ -631,6 +666,7 @@
             var me = getMe() || {};
             return getPlayerPetImage({
                 selectedPetKey: petKey,
+                allPetsUnlocked: me.allPetsUnlocked === true || hasAdminPetAccess(),
                 vocabularyExperienceLevel:
                     me.vocabularyExperienceLevel != null
                         ? me.vocabularyExperienceLevel
@@ -712,6 +748,7 @@
                 if (me) {
                     me.selectedPetKey = vm.selectedBattlePetKey;
                     me.vocabularyExperienceLevel = data.vocabularyExperienceLevel;
+                    me.allPetsUnlocked = data.allPetsUnlocked === true;
                 }
                 $rootScope.$broadcast(
                     'learningPetSelectionChanged',

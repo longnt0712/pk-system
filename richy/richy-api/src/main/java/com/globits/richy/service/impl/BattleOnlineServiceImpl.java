@@ -66,6 +66,7 @@ import com.globits.richy.service.BattleOnlineException;
 import com.globits.richy.service.BattleOnlineService;
 import com.globits.richy.service.QuestionService;
 import com.globits.security.domain.User;
+import com.globits.security.domain.Role;
 import com.globits.security.repository.UserRepository;
 
 @Service
@@ -90,9 +91,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String PET_CAPYBARA_EGG = "CAPYBARA_EGG";
     private static final String PET_CUTE_DOG = "CUTE_DOG";
     private static final String PET_CUTE_TOM_CAT = "CUTE_TOM_CAT";
+    private static final String PET_CUTE_JERRY_MOUSE = "CUTE_JERRY_MOUSE";
     private static final int CAPYBARA_UNLOCK_LEVEL = 3;
     private static final int CUTE_DOG_UNLOCK_LEVEL = 6;
     private static final int CUTE_TOM_CAT_UNLOCK_LEVEL = 9;
+    private static final int CUTE_JERRY_MOUSE_UNLOCK_LEVEL = 12;
 
     private static final String GUESS_ADVANCE_AUTO = "AUTO";
     private static final String GUESS_ADVANCE_HOST_CONTROL = "HOST_CONTROL";
@@ -259,29 +262,39 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         int level = Math.max(0, user.getVocabularyExperienceLevel());
+        boolean allPetsUnlocked = hasAdminRole(user);
         String selectedPet = normalizePetKey(
                 selectionDto != null ? selectionDto.getPetKey() : null
         );
 
-        if (PET_CAPYBARA_EGG.equals(selectedPet) && level < CAPYBARA_UNLOCK_LEVEL) {
+        if (!allPetsUnlocked && PET_CAPYBARA_EGG.equals(selectedPet) && level < CAPYBARA_UNLOCK_LEVEL) {
             throw new BattleOnlineException(
                     HttpStatus.BAD_REQUEST,
                     "Trứng capybara được mở khóa khi đạt level 3."
             );
         }
-        if (PET_CUTE_DOG.equals(selectedPet) && level < CUTE_DOG_UNLOCK_LEVEL) {
+        if (!allPetsUnlocked && PET_CUTE_DOG.equals(selectedPet) && level < CUTE_DOG_UNLOCK_LEVEL) {
             throw new BattleOnlineException(
                     HttpStatus.BAD_REQUEST,
                     "Trứng Cute Dog được mở khóa khi đạt level 6."
             );
         }
         if (
-            PET_CUTE_TOM_CAT.equals(selectedPet) &&
+            !allPetsUnlocked && PET_CUTE_TOM_CAT.equals(selectedPet) &&
             level < CUTE_TOM_CAT_UNLOCK_LEVEL
         ) {
             throw new BattleOnlineException(
                     HttpStatus.BAD_REQUEST,
-                    "Trứng Mèo Tom Cute được mở khóa khi đạt level 9."
+                    "Trứng Mèo Tom được mở khóa khi đạt level 9."
+            );
+        }
+        if (
+            !allPetsUnlocked && PET_CUTE_JERRY_MOUSE.equals(selectedPet) &&
+            level < CUTE_JERRY_MOUSE_UNLOCK_LEVEL
+        ) {
+            throw new BattleOnlineException(
+                    HttpStatus.BAD_REQUEST,
+                    "Trứng Chuột Jerry được mở khóa khi đạt level 12."
             );
         }
 
@@ -295,6 +308,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 PlayerState player = room.players.get(username);
                 if (player != null) {
                     player.vocabularyExperienceLevel = level;
+                    player.allPetsUnlocked = allPetsUnlocked;
                     player.selectedPetKey = selectedPet;
                     changed = true;
                 }
@@ -308,30 +322,44 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             broadcastGeneric(room);
         }
 
-        return buildPetSelectionDto(selectedPet, level);
+        return buildPetSelectionDto(selectedPet, level, allPetsUnlocked);
     }
 
 
     private BattleOnlinePetSelectionDto buildPetSelectionDto(
             String selectedPet,
-            int level) {
+            int level,
+            boolean allPetsUnlocked) {
 
         BattleOnlinePetSelectionDto result = new BattleOnlinePetSelectionDto();
         result.setSelectedPetKey(normalizePetKey(selectedPet));
         result.setVocabularyExperienceLevel(Math.max(0, level));
+        result.setAllPetsUnlocked(allPetsUnlocked);
         List<String> unlocked = new ArrayList<String>();
         unlocked.add(PET_MAM_HOC);
-        if (level >= CAPYBARA_UNLOCK_LEVEL) {
+        if (allPetsUnlocked || level >= CAPYBARA_UNLOCK_LEVEL) {
             unlocked.add(PET_CAPYBARA_EGG);
         }
-        if (level >= CUTE_DOG_UNLOCK_LEVEL) {
+        if (allPetsUnlocked || level >= CUTE_DOG_UNLOCK_LEVEL) {
             unlocked.add(PET_CUTE_DOG);
         }
-        if (level >= CUTE_TOM_CAT_UNLOCK_LEVEL) {
+        if (allPetsUnlocked || level >= CUTE_TOM_CAT_UNLOCK_LEVEL) {
             unlocked.add(PET_CUTE_TOM_CAT);
+        }
+        if (allPetsUnlocked || level >= CUTE_JERRY_MOUSE_UNLOCK_LEVEL) {
+            unlocked.add(PET_CUTE_JERRY_MOUSE);
         }
         result.setUnlockedPetKeys(unlocked);
         return result;
+    }
+
+
+    private boolean hasAdminRole(User user) {
+        if (user == null || user.getRoles() == null) { return false; }
+        for (Role role : user.getRoles()) {
+            if (role != null && "ROLE_ADMIN".equals(role.getName())) { return true; }
+        }
+        return false;
     }
 
 
@@ -343,8 +371,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (PET_CUTE_DOG.equals(normalized)) {
             return PET_CUTE_DOG;
         }
-        return PET_CUTE_TOM_CAT.equals(normalized)
-                ? PET_CUTE_TOM_CAT : PET_MAM_HOC;
+        if (PET_CUTE_TOM_CAT.equals(normalized)) {
+            return PET_CUTE_TOM_CAT;
+        }
+        return PET_CUTE_JERRY_MOUSE.equals(normalized)
+                ? PET_CUTE_JERRY_MOUSE : PET_MAM_HOC;
     }
 
 
@@ -420,6 +451,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         host.realName = identity.displayName;
         host.displayName = identity.displayName;
         host.vocabularyExperienceLevel = identity.vocabularyExperienceLevel;
+        host.allPetsUnlocked = identity.allPetsUnlocked;
         host.selectedPetKey = identity.selectedPetKey;
         host.host = true;
         host.ready = true;
@@ -508,6 +540,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 existing.connected = true;
                 existing.realName = identity.displayName;
                 existing.vocabularyExperienceLevel = identity.vocabularyExperienceLevel;
+                existing.allPetsUnlocked = identity.allPetsUnlocked;
                 existing.selectedPetKey = identity.selectedPetKey;
 
                 if (
@@ -580,6 +613,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 player.realName = identity.displayName;
                 player.displayName = identity.displayName;
                 player.vocabularyExperienceLevel = identity.vocabularyExperienceLevel;
+                player.allPetsUnlocked = identity.allPetsUnlocked;
                 player.selectedPetKey = identity.selectedPetKey;
                 player.connected = true;
                 player.ready = PLAYING.equals(room.status);
@@ -6272,6 +6306,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.setSelectedPetKey(
                     normalizePetKey(state.selectedPetKey)
             );
+            player.setAllPetsUnlocked(state.allPetsUnlocked);
 
             player.setUniqueWordsSeen(
                     state.uniqueWordIds.size()
@@ -7241,21 +7276,36 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         : PET_MAM_HOC
         );
 
+        Query adminRoleQuery = entityManager.createQuery(
+                "select r.id from User u join u.roles r " +
+                "where u.id = :userId and r.name = :roleName"
+        );
+        adminRoleQuery.setParameter("userId", identity.userId);
+        adminRoleQuery.setParameter("roleName", "ROLE_ADMIN");
+        adminRoleQuery.setMaxResults(1);
+        identity.allPetsUnlocked = !adminRoleQuery.getResultList().isEmpty();
+
         if (
-            PET_CAPYBARA_EGG.equals(identity.selectedPetKey) &&
+            !identity.allPetsUnlocked && PET_CAPYBARA_EGG.equals(identity.selectedPetKey) &&
             identity.vocabularyExperienceLevel < CAPYBARA_UNLOCK_LEVEL
         ) {
             identity.selectedPetKey = PET_MAM_HOC;
         }
         if (
-            PET_CUTE_DOG.equals(identity.selectedPetKey) &&
+            !identity.allPetsUnlocked && PET_CUTE_DOG.equals(identity.selectedPetKey) &&
             identity.vocabularyExperienceLevel < CUTE_DOG_UNLOCK_LEVEL
         ) {
             identity.selectedPetKey = PET_MAM_HOC;
         }
         if (
-            PET_CUTE_TOM_CAT.equals(identity.selectedPetKey) &&
+            !identity.allPetsUnlocked && PET_CUTE_TOM_CAT.equals(identity.selectedPetKey) &&
             identity.vocabularyExperienceLevel < CUTE_TOM_CAT_UNLOCK_LEVEL
+        ) {
+            identity.selectedPetKey = PET_MAM_HOC;
+        }
+        if (
+            !identity.allPetsUnlocked && PET_CUTE_JERRY_MOUSE.equals(identity.selectedPetKey) &&
+            identity.vocabularyExperienceLevel < CUTE_JERRY_MOUSE_UNLOCK_LEVEL
         ) {
             identity.selectedPetKey = PET_MAM_HOC;
         }
@@ -7749,6 +7799,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         Long userId;
         String displayName;
         int vocabularyExperienceLevel;
+        boolean allPetsUnlocked;
         String selectedPetKey = PET_MAM_HOC;
     }
 
@@ -7877,6 +7928,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         String realName;
         String displayName;
         int vocabularyExperienceLevel;
+        boolean allPetsUnlocked;
         String selectedPetKey = PET_MAM_HOC;
 
         boolean host;

@@ -19,7 +19,8 @@
 
 .learning-pet-egg.is-capybara-pet,
 .learning-pet-egg.is-cute-dog-pet,
-.learning-pet-egg.is-cute-tom-cat-pet {
+.learning-pet-egg.is-cute-tom-cat-pet,
+.learning-pet-egg.is-jerry-mouse-pet {
     width: 104px;
     height: 108px;
 }
@@ -91,6 +92,17 @@
     height: 44px;
     object-fit: contain;
     image-rendering: pixelated;
+}
+
+.learning-pet-egg.is-cartoon-pet,
+.learning-pet-choice-image img.is-cartoon-pet {
+    image-rendering: auto;
+}
+
+/* The battle view uses pixelated rendering for older pet artwork. */
+img[src*="assets/images/learning-pets/cute-tom-cat/"],
+img[src*="assets/images/learning-pets/jerry-mouse/"] {
+    image-rendering: auto !important;
 }
 
 .learning-pet-choice-image b {

@@ -10,6 +10,7 @@ public class BattleOnlinePetSelectionDto implements Serializable {
     private String petKey;
     private String selectedPetKey;
     private int vocabularyExperienceLevel;
+    private boolean allPetsUnlocked;
     private List<String> unlockedPetKeys = new ArrayList<String>();
 
     public String getPetKey() {
@@ -18,6 +19,14 @@ public class BattleOnlinePetSelectionDto implements Serializable {
 
     public void setPetKey(String petKey) {
         this.petKey = petKey;
+    }
+
+    public boolean isAllPetsUnlocked() {
+        return allPetsUnlocked;
+    }
+
+    public void setAllPetsUnlocked(boolean allPetsUnlocked) {
+        this.allPetsUnlocked = allPetsUnlocked;
     }
 
     public String getSelectedPetKey() {

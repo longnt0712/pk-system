@@ -1,0 +1,25 @@
+{
+  "id": "cute-tom-cat",
+  "name": "Mèo Tom",
+  "selectionKey": "CUTE_TOM_CAT",
+  "unlockVocabularyExperienceLevel": 9,
+  "evolution": [
+    {
+      "minimumVocabularyExperienceLevel": 9,
+      "maximumVocabularyExperienceLevel": 9,
+      "form": "egg-intact",
+      "file": "egg-level-9.png"
+    },
+    {
+      "minimumVocabularyExperienceLevel": 10,
+      "maximumVocabularyExperienceLevel": 10,
+      "form": "egg-cracked",
+      "file": "egg-level-10.png"
+    },
+    {
+      "minimumVocabularyExperienceLevel": 11,
+      "form": "hatched",
+      "file": "pet-level-11.png"
+    }
+  ]
+}
