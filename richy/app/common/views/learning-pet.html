@@ -15,24 +15,18 @@
         <div class="learning-pet-error" ng-if="!pet.loading && pet.error"><strong>Chưa tải được thông tin.</strong><button type="button" ng-click="pet.refresh()">Thử lại</button></div>
         <div ng-if="!pet.loading && !pet.error">
             <section class="learning-pet-collection" ng-if="pet.availablePets.length">
-                <div class="learning-pet-collection-head">
-                    <strong>TRỨNG &amp; PET CỦA BẠN</strong>
-                    <small>Chọn nhân vật muốn hiển thị</small>
-                </div>
-                <div class="learning-pet-choice-grid">
-                    <button type="button"
-                            ng-repeat="item in pet.availablePets track by item.key"
-                            ng-class="{'is-selected': pet.selectedPetKey === item.key}"
-                            ng-click="pet.selectPet(item.key)"
-                            ng-disabled="pet.selectingPet">
-                        <span class="learning-pet-choice-image">
-                            <img ng-src="{{item.image}}" ng-class="{'is-cartoon-pet': item.key === 'CUTE_TOM_CAT' || item.key === 'CUTE_JERRY_MOUSE'}" alt="" aria-hidden="true">
-                            <b ng-if="item.isNew">MỚI</b>
-                        </span>
-                        <span><strong>{{item.name}}</strong><small>{{item.description}}</small></span>
-                        <i class="fa" ng-class="pet.selectedPetKey === item.key ? 'fa-check-circle' : 'fa-circle-o'"></i>
-                    </button>
-                </div>
+                <button type="button" class="learning-pet-picker-button"
+                        ng-click="pet.openPetPicker($event)" aria-haspopup="dialog">
+                    <span class="learning-pet-choice-image">
+                        <img ng-src="{{pet.selectedPet().image}}" alt="" aria-hidden="true"
+                             ng-class="{'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE'}">
+                    </span>
+                    <span class="learning-pet-picker-copy">
+                        <strong>Chọn pet</strong>
+                        <small>Đang dùng: {{pet.selectedPet().name}}</small>
+                    </span>
+                    <i class="fa fa-chevron-right" aria-hidden="true"></i>
+                </button>
             </section>
             <div class="learning-pet-stats">
                 <button type="button" ng-click="pet.selectSection('tasks')" ng-class="{'is-active': pet.activeSection === 'tasks'}"><strong>{{pet.pendingTaskCount}}</strong><span>Bài cần làm</span></button>

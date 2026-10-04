@@ -1,0 +1,34 @@
+<header class="learning-pet-picker-header">
+    <div>
+        <span class="learning-pet-picker-kicker">BỘ SƯU TẬP CỦA BẠN</span>
+        <h3 id="learning-pet-picker-title">Chọn pet</h3>
+        <p id="learning-pet-picker-description">Chọn nhân vật bạn muốn hiển thị.</p>
+    </div>
+    <button type="button" class="learning-pet-picker-close" ng-click="pet.closePetPicker()" aria-label="Đóng chọn pet">
+        <i class="fa fa-times" aria-hidden="true"></i>
+    </button>
+</header>
+<div class="learning-pet-picker-body">
+    <div class="learning-pet-picker-error" ng-if="pet.petSelectionError" role="alert">{{pet.petSelectionError}}</div>
+    <p class="learning-pet-picker-saving" ng-if="pet.selectingPet" role="status">
+        <i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang đổi pet...
+    </p>
+    <div class="learning-pet-picker-grid">
+        <button type="button" class="learning-pet-picker-card"
+                ng-repeat="item in pet.availablePets track by item.key"
+                ng-class="{'is-selected': pet.selectedPetKey === item.key}"
+                ng-attr-aria-pressed="{{pet.selectedPetKey === item.key}}"
+                ng-click="pet.selectPet(item.key)" ng-disabled="pet.selectingPet">
+            <span class="learning-pet-picker-art">
+                <img ng-src="{{item.image}}" alt="" aria-hidden="true">
+                <b ng-if="item.isNew">MỚI</b>
+            </span>
+            <strong>{{item.name}}</strong>
+            <small>{{item.description}}</small>
+            <span class="learning-pet-picker-selection">
+                <i class="fa" ng-class="pet.selectedPetKey === item.key ? 'fa-check-circle' : 'fa-paw'" aria-hidden="true"></i>
+                {{pet.selectedPetKey === item.key ? 'Đang dùng' : 'Chọn pet này'}}
+            </span>
+        </button>
+    </div>
+</div>

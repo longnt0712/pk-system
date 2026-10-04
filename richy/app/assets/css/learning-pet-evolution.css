@@ -29,52 +29,50 @@
     padding: 12px 14px 4px;
 }
 
-.learning-pet-collection-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 8px;
-    color: #52607c;
-}
-
-.learning-pet-collection-head strong {
-    font-size: 10px;
-    letter-spacing: .08em;
-}
-
-.learning-pet-collection-head small {
-    color: #8992aa;
-    font-size: 9px;
-}
-
-.learning-pet-choice-grid {
+.learning-pet-picker-button {
     display: grid;
-    gap: 7px;
-}
-
-.learning-pet-choice-grid > button {
-    display: grid;
-    grid-template-columns: 48px minmax(0, 1fr) 18px;
+    grid-template-columns: 48px minmax(0, 1fr) 14px;
     align-items: center;
-    gap: 9px;
+    gap: 10px;
     width: 100%;
-    min-height: 58px;
-    padding: 5px 10px 5px 5px;
-    border: 1px solid #e6e8f5;
-    border-radius: 13px;
-    background: #fafbff;
-    color: #58637e;
+    padding: 8px 10px;
+    border: 1px solid #e2e4f6;
+    border-radius: 14px;
+    background: #fafaff;
+    color: #655cff;
     text-align: left;
 }
 
-.learning-pet-choice-grid > button:hover,
-.learning-pet-choice-grid > button:focus,
-.learning-pet-choice-grid > button.is-selected {
-    border-color: #8e88ff;
-    background: #f1f0ff;
-    color: #5148df;
-    outline: 0;
+.learning-pet-picker-button:hover {
+    border-color: #a29bff;
+    background: #f4f2ff;
+}
+
+.learning-pet-picker-button:focus-visible,
+.learning-pet-picker-card:focus-visible,
+.learning-pet-picker-close:focus-visible {
+    outline: 3px solid #a9a2ff;
+    outline-offset: 3px;
+}
+
+.learning-pet-picker-copy {
+    min-width: 0;
+}
+
+.learning-pet-picker-copy strong,
+.learning-pet-picker-copy small {
+    display: block;
+}
+
+.learning-pet-picker-copy strong {
+    color: #303b57;
+    font-size: 13px;
+}
+
+.learning-pet-picker-copy small {
+    margin-top: 3px;
+    color: #7d86a0;
+    font-size: 10px;
 }
 
 .learning-pet-choice-image {
@@ -116,22 +114,6 @@ img[src*="assets/images/learning-pets/jerry-mouse/"] {
     font-size: 7px;
 }
 
-.learning-pet-choice-grid > button > span:nth-child(2) strong,
-.learning-pet-choice-grid > button > span:nth-child(2) small {
-    display: block;
-}
-
-.learning-pet-choice-grid > button > span:nth-child(2) strong {
-    color: #2f3955;
-    font-size: 12px;
-}
-
-.learning-pet-choice-grid > button > span:nth-child(2) small {
-    margin-top: 2px;
-    color: #848da3;
-    font-size: 9px;
-}
-
 .learning-pet-shell {
     z-index: 1070;
     font-family: var(--app-font-sans, "Segoe UI", Arial, Helvetica, sans-serif) !important;
@@ -164,7 +146,7 @@ img[src*="assets/images/learning-pets/jerry-mouse/"] {
 }
 
 .learning-pet-panel h3,
-.learning-pet-choice-grid strong,
+.learning-pet-picker-card strong,
 .learning-pet-list-copy strong {
     letter-spacing: normal !important;
 }
@@ -283,5 +265,223 @@ img[src*="assets/images/learning-pets/jerry-mouse/"] {
     .student-scroll-top {
         right: auto !important;
         left: 9px !important;
+    }
+}
+
+/* Appended to body by UI Bootstrap, separate from the draggable pet shell. */
+.learning-pet-picker-modal {
+    z-index: 1090 !important;
+    color: #303b57;
+    font-family: var(--app-font-sans, "Segoe UI", Arial, sans-serif) !important;
+}
+
+.learning-pet-picker-backdrop {
+    z-index: 1080 !important;
+    background: #202844;
+}
+
+.learning-pet-picker-modal .modal-dialog {
+    width: min(620px, calc(100vw - 32px));
+    margin: 24px auto !important;
+}
+
+.learning-pet-picker-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 48px);
+    max-height: calc(100dvh - 48px);
+    overflow: hidden;
+    border: 1px solid #e7e8f7;
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: 0 24px 70px rgba(28, 34, 73, .28);
+}
+
+.learning-pet-picker-modal button,
+.learning-pet-picker-modal h3,
+.learning-pet-picker-modal p,
+.learning-pet-picker-modal strong,
+.learning-pet-picker-modal small,
+.learning-pet-picker-modal span {
+    font-family: var(--app-font-sans, "Segoe UI", Arial, sans-serif) !important;
+}
+
+.learning-pet-picker-header {
+    display: flex;
+    flex-shrink: 0;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 22px 24px 18px;
+    background: linear-gradient(135deg, #f4f3ff, #fff9ed);
+}
+
+.learning-pet-picker-kicker {
+    color: #766fa0;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .06em;
+}
+
+.learning-pet-picker-header h3 {
+    margin: 6px 0 0;
+    color: #303b57;
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.learning-pet-picker-header p {
+    margin: 6px 0 0;
+    color: #7d86a0;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.learning-pet-picker-close {
+    display: grid;
+    flex: 0 0 32px;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid #e1e3f1;
+    border-radius: 50%;
+    background: #fff;
+    color: #6b7490;
+}
+
+.learning-pet-picker-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 20px;
+}
+
+.learning-pet-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.learning-pet-picker-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    padding: 15px 8px 12px;
+    border: 1px solid #e4e6f5;
+    border-radius: 18px;
+    background: #fafbff;
+    color: #303b57;
+    text-align: center;
+}
+
+.learning-pet-picker-card:hover:not(:disabled) {
+    border-color: #a49dff;
+    background: #f5f3ff;
+}
+
+.learning-pet-picker-card.is-selected {
+    border-color: #9187ff;
+    background: #f1efff;
+    box-shadow: inset 0 0 0 1px #9187ff;
+}
+
+.learning-pet-picker-card:disabled {
+    cursor: wait;
+    opacity: .65;
+}
+
+.learning-pet-picker-art {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 88px;
+    height: 88px;
+    margin-bottom: 3px;
+}
+
+.learning-pet-picker-art img {
+    width: 88px;
+    height: 88px;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.learning-pet-picker-art b {
+    position: absolute;
+    top: 0;
+    right: -5px;
+    padding: 3px 5px;
+    border-radius: 8px;
+    background: #ff5364;
+    color: #fff;
+    font-size: 8px;
+}
+
+.learning-pet-picker-card strong {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.learning-pet-picker-card small {
+    color: #8690a9;
+    font-size: 10px;
+    line-height: 1.4;
+}
+
+.learning-pet-picker-selection {
+    margin-top: auto;
+    padding-top: 5px;
+    color: #8790a8;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.learning-pet-picker-selection .fa {
+    margin-right: 3px;
+}
+
+.learning-pet-picker-card.is-selected .learning-pet-picker-selection {
+    color: #6554ee;
+}
+
+.learning-pet-picker-error {
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #fff0f1;
+    color: #bd394d;
+    font-size: 12px;
+}
+
+.learning-pet-picker-saving {
+    margin: 0 0 14px;
+    color: #766ce0;
+    font-size: 12px;
+}
+
+@media (max-width: 480px) {
+    .learning-pet-picker-modal .modal-dialog {
+        width: calc(100vw - 24px);
+        margin: 12px auto !important;
+    }
+    .learning-pet-picker-modal .modal-content {
+        max-height: calc(100vh - 24px);
+        max-height: calc(100dvh - 24px);
+        border-radius: 20px;
+    }
+    .learning-pet-picker-header {
+        padding: 18px;
+    }
+    .learning-pet-picker-body {
+        padding: 14px;
+    }
+    .learning-pet-picker-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
     }
 }

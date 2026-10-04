@@ -3,9 +3,9 @@
 
     angular.module('Hrm').directive('learningPet', learningPet);
 
-    learningPet.$inject = ['$http', '$q', '$state', '$timeout', '$interval', '$window', '$cookies', '$rootScope', 'settings'];
+    learningPet.$inject = ['$http', '$q', '$state', '$timeout', '$interval', '$window', '$cookies', '$rootScope', 'settings', '$uibModal'];
 
-    function learningPet($http, $q, $state, $timeout, $interval, $window, $cookies, $rootScope, settings) {
+    function learningPet($http, $q, $state, $timeout, $interval, $window, $cookies, $rootScope, settings, $uibModal) {
         var version = window.APP_VERSION || new Date().getTime();
 
         return {
@@ -28,6 +28,7 @@
             var frameIndex = 0;
             var currentAnimation = '';
             var liveUser = null;
+            var petPickerModal = null;
             var dragHost = null;
             var dragHandle = null;
             var dragFrame = null;
@@ -89,6 +90,7 @@
             vm.selectedPetKey = 'MAM_HOC';
             vm.availablePets = [];
             vm.selectingPet = false;
+            vm.petSelectionError = '';
             vm.hasNewCapybaraEgg = false;
             vm.hasNewCuteDogEgg = false;
             vm.hasNewCuteTomCatEgg = false;
@@ -336,8 +338,42 @@
                 });
             }
 
+            vm.selectedPet = function () {
+                for (var i = 0; i < vm.availablePets.length; i++) {
+                    if (vm.availablePets[i].key === vm.selectedPetKey) { return vm.availablePets[i]; }
+                }
+                return vm.availablePets[0] || null;
+            };
+
+            vm.openPetPicker = function (event) {
+                if (event) { event.stopPropagation(); }
+                if (petPickerModal || !vm.availablePets.length) { return; }
+                vm.petSelectionError = '';
+                var modal = $uibModal.open({
+                    scope: $scope,
+                    templateUrl: 'common/views/learning-pet-picker.html?v=' + version,
+                    windowTemplateUrl: 'common/views/learning-pet-picker-window.html?v=' + version,
+                    windowClass: 'learning-pet-picker-modal',
+                    backdropClass: 'learning-pet-picker-backdrop'
+                });
+                petPickerModal = modal;
+                function clearModal() {
+                    if (petPickerModal === modal) { petPickerModal = null; }
+                }
+                modal.result.then(clearModal, clearModal);
+            };
+
+            vm.closePetPicker = function () {
+                if (petPickerModal) { petPickerModal.dismiss('cancel'); }
+            };
+
             vm.selectPet = function (petKey) {
-                if (vm.selectingPet || !petKey || petKey === vm.selectedPetKey) { return; }
+                if (vm.selectingPet || !petKey) { return; }
+                if (petKey === vm.selectedPetKey) {
+                    vm.closePetPicker();
+                    return;
+                }
+                vm.petSelectionError = '';
                 vm.selectingPet = true;
                 var apiRoot = settings.api.baseUrl + settings.api.apiV1Url;
                 $http.post(apiRoot + 'battle-online/pet-selection', {petKey: petKey})
@@ -362,9 +398,9 @@
                         updateMessage();
                         if (vm.petForm === 'hatched') { preloadSprite(); }
                         $rootScope.$broadcast('learningPetSelectionChanged', user.selectedLearningPet);
+                        if (petPickerModal) { petPickerModal.close(user.selectedLearningPet); }
                     }, function (error) {
-                        vm.error = true;
-                        vm.message = error && error.data && error.data.message
+                        vm.petSelectionError = error && error.data && error.data.message
                                 ? error.data.message : 'Chưa đổi được pet. Bạn thử lại nhé!';
                     }).finally(function () {
                         vm.selectingPet = false;
@@ -900,6 +936,7 @@
             };
 
             vm.muteForSession = function () {
+                vm.closePetPicker();
                 try { $window.sessionStorage.setItem(sessionKey('muted'), '1'); } catch (ignoreMuteStorage) {}
                 vm.visible = false;
             };
@@ -948,6 +985,7 @@
             $timeout(initialize, 350);
 
             $scope.$on('$destroy', function () {
+                vm.closePetPicker();
                 stopSpriteTimer();
                 if (refreshTimer) { $interval.cancel(refreshTimer); }
                 if (greetingTimer) { $timeout.cancel(greetingTimer); }
