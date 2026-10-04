@@ -11,6 +11,7 @@ import java.util.Map;
 public final class DemonDefenseGame {
     public static final long WAVE_MS = 30000L;
     public static final double DANGER_PROGRESS = 0.75D;
+    public static final int BREAK_STREAK_DEDUCTION = 5;
     private final long startedAt;
     private long stoppedAt;
     private long nextShotId;
@@ -26,7 +27,7 @@ public final class DemonDefenseGame {
     }
 
     public static int bulletsForStreak(int streak) { return Math.max(1, streak / 10); }
-    public static int breakStreak(int streak) { return Math.max(0, streak - 10); }
+    public static int breakStreak(int streak) { return Math.max(0, streak - BREAK_STREAK_DEDUCTION); }
     public boolean containsTeam(int number) { return teams.containsKey(number); }
     public boolean isEliminated(int number) {
         TeamState team = teams.get(number);
@@ -44,17 +45,19 @@ public final class DemonDefenseGame {
                 long offset = Math.max(0L, at - startedAt);
                 int wave = (int) (offset / WAVE_MS) + 1;
                 long phase = offset % WAVE_MS;
-                // Same schedule/fast-demon proportion for all teams; density scales with roster.
+                // Same variant schedule for all teams; density scales with roster.
                 long interval = Math.max(900L, 6500L - (wave - 1) * 450L) / team.memberCount;
                 if (phase >= 23000L && phase < 27000L) { interval = Math.max(180L, interval / 2L); }
                 if (phase >= 27000L) {
                     team.nextSpawnAt = startedAt + (offset / WAVE_MS + 1L) * WAVE_MS;
                     continue;
                 }
-                boolean fast = (++team.nextDemonId % 7L) == 0L;
+                long id = ++team.nextDemonId;
+                boolean tough = id % 11L == 0L;
+                boolean fast = !tough && id % 7L == 0L;
                 long travelMs = Math.max(8500L, 26000L - (wave - 1) * 1300L);
                 if (fast) { travelMs = travelMs * 2L / 3L; }
-                team.demons.add(new Enemy(team.nextDemonId, at, at + travelMs, fast));
+                team.demons.add(new Enemy(id, at, at + travelMs, fast, tough));
                 team.nextSpawnAt = at + Math.max(180L, interval);
                 if (phase < 23000L) {
                     team.nextSpawnAt = Math.min(team.nextSpawnAt,
@@ -83,10 +86,10 @@ public final class DemonDefenseGame {
     public ShotResult shoot(int number, String username, int streak, long now) {
         advance(now);
         TeamState team = teams.get(number);
-        int bullets = bulletsForStreak(streak), kills = 0;
+        int bullets = bulletsForStreak(streak), hits = 0, kills = 0;
         boolean rescued = false;
         if (team == null || team.eliminatedAt > 0L || stoppedAt > 0L) {
-            return new ShotResult(0, 0, false);
+            return new ShotResult(0, 0, 0, false);
         }
         for (int index = 0; index < bullets; index++) {
             Enemy nearest = null;
@@ -99,9 +102,12 @@ public final class DemonDefenseGame {
             double progress = nearest == null ? 0D : nearest.progress(now);
             team.shots.add(new Shot(++nextShotId, username, progress, now, nearest != null));
             if (nearest != null) {
-                rescued |= progress >= DANGER_PROGRESS;
-                team.demons.remove(nearest);
-                kills++;
+                hits++;
+                if (--nearest.health == 0) {
+                    rescued |= progress >= DANGER_PROGRESS;
+                    team.demons.remove(nearest);
+                    kills++;
+                }
             }
         }
         team.kills += kills;
@@ -110,7 +116,7 @@ public final class DemonDefenseGame {
             team.rescueUsername = username;
             team.rescueAt = now;
         }
-        return new ShotResult(bullets, kills, rescued);
+        return new ShotResult(bullets, hits, kills, rescued);
     }
 
     public int livingTeams() {
@@ -166,9 +172,11 @@ public final class DemonDefenseGame {
     }
     private static final class Enemy {
         final long id, spawnedAt, arrivesAt;
-        final boolean fast;
-        Enemy(long id, long spawnedAt, long arrivesAt, boolean fast) {
+        final boolean fast, tough;
+        int health;
+        Enemy(long id, long spawnedAt, long arrivesAt, boolean fast, boolean tough) {
             this.id = id; this.spawnedAt = spawnedAt; this.arrivesAt = arrivesAt; this.fast = fast;
+            this.tough = tough; this.health = tough ? 2 : 1;
         }
         double progress(long now) { return Math.max(0D, Math.min(1D, (double) (now - spawnedAt) / (arrivesAt - spawnedAt))); }
     }
@@ -209,9 +217,10 @@ public final class DemonDefenseGame {
     public static final class Demon {
         public final long id;
         public final double progress, speed;
-        public final boolean fast;
+        public final boolean fast, tough;
+        public final int health;
         Demon(Enemy enemy, long at) {
-            id = enemy.id; progress = enemy.progress(at); fast = enemy.fast;
+            id = enemy.id; progress = enemy.progress(at); fast = enemy.fast; tough = enemy.tough; health = enemy.health;
             speed = 1D / (enemy.arrivesAt - enemy.spawnedAt);
         }
     }
@@ -225,8 +234,10 @@ public final class DemonDefenseGame {
         }
     }
     public static final class ShotResult {
-        public final int bullets, kills;
+        public final int bullets, hits, kills;
         public final boolean rescued;
-        ShotResult(int bullets, int kills, boolean rescued) { this.bullets = bullets; this.kills = kills; this.rescued = rescued; }
+        ShotResult(int bullets, int hits, int kills, boolean rescued) {
+            this.bullets = bullets; this.hits = hits; this.kills = kills; this.rescued = rescued;
+        }
     }
 }

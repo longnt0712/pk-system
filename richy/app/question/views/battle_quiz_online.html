@@ -905,7 +905,7 @@
                 </span>
                 <span ng-if="vm.room.settings.mode === 'DEMON_DEFENSE'">
                     Trả lời đúng để súng của mình bắn quỷ; streak 20/30/40 bắn 2/3/4 viên.
-                    Phá streak trừ 10, sai về 0. Dùng Giải băng để cứu một đồng đội.
+                    Phá streak trừ 5, sai về 0. Quỷ NGU KHỦNG KHIẾP cần 2 phát. Dùng Giải băng để cứu một đồng đội.
                     Theo dõi trận đấu trên màn hình host; thiết bị của bạn chỉ hiện câu hỏi và cảnh báo.
                 </span>
             </div>
@@ -1033,6 +1033,16 @@
                 <button type="button" ng-if="vm.me().unfreezeCharges"
                         ng-disabled="vm.isMeFrozen() || vm.isDemonPlayerEliminated() || vm.usingSkill"
                         ng-click="vm.openUnfreezeModal()">🧊 Giải băng ({{vm.me().unfreezeCharges}})</button>
+            </div>
+            <div class="demon-student-tools" ng-if="vm.isDemonDefenseMode()">
+                <button type="button" class="is-wrong" ng-click="vm.openWrongQuestionsModal()"
+                        aria-haspopup="dialog" ng-attr-aria-expanded="{{vm.wrongQuestionsModalOpen}}">
+                    <span>❌ Câu sai</span><b>{{vm.wrongQuestions.length}}</b>
+                </button>
+                <button type="button" class="is-skills" ng-click="vm.openSkillActivityModal()"
+                        aria-haspopup="dialog" ng-attr-aria-expanded="{{vm.skillActivityModalOpen}}">
+                    <span>⚡ Ai skill ai</span><b>{{vm.room.recentEvents.length || 0}}</b>
+                </button>
             </div>
             <div class="demon-student-warning" role="status" ng-if="vm.isDemonDefenseMode()" ng-class="{'is-alert': vm.demonWarning}">
                 {{vm.demonWarning || 'Trả lời đúng để bảo vệ đội mình!'}}
@@ -2459,6 +2469,10 @@
     .battle-online-game-layout.is-demon-layout { grid-template-columns: 1fr !important; }
     .demon-student-status { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-weight: 700; font-size: 14px; margin-bottom: 10px; }
     .demon-student-status button { border: 1px solid #85bfdb; border-radius: 10px; background: #e8f6ff; color: #174864; padding: 9px 12px; }
+    .demon-student-tools { display: flex; gap: 8px; margin-bottom: 12px; }
+    .demon-student-tools button { display: flex; align-items: center; justify-content: center; gap: 10px; flex: 1; min-height: 40px; padding: 8px 12px; border: 1px solid #ddd3ee; border-radius: 10px; background: #f5f0ff; color: #51378b; font-size: 13px; font-weight: 700; }
+    .demon-student-tools .is-wrong { border-color: #efd0cf; background: #fff3f1; color: #92362f; }
+    .demon-student-tools b { min-width: 20px; padding: 3px 5px; border-radius: 6px; background: #fff; }
     .demon-student-warning { height: 60px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 8px 12px; border-radius: 12px; border: 1px solid #c6e5d7; background: #edf8f1; color: #256444; font-size: 15px; font-weight: 700; margin-bottom: 14px; }
     .demon-student-warning.is-alert { background: #fff0e8; color: #a52712; border-color: #e9b09a; }
     .demon-student-eliminated { padding: 20px; border-radius: 12px; color: #783333; background: #ffefef; text-align: center; }
@@ -2469,6 +2483,7 @@
     .demon-board-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; font-size: 17px; }
     .demon-board-meta button { color: #dcefff; background: #213952; border: 1px solid #43647c; border-radius: 10px; padding: 9px 12px; font-size: 13px; }
     .demon-wave-banner { padding: 12px 16px; min-height: 48px; border-radius: 12px; background: #193347; color: #aceada; margin: 10px 0 20px; text-align: center; font-weight: 700; }
+    .demon-enemy-legend { margin: -8px 0 16px; text-align: center; font-size: 12px; color: #dcc795; }
     .demon-wave-banner.is-alert { background: #592d22; color: #ffd29b; }
     .demon-arena-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(250px,1fr)); gap: 16px; }
     .demon-team-card { overflow: hidden; border: 2px solid #365673; border-radius: 18px; background: #14283d; }
@@ -2482,9 +2497,13 @@
     .demon-danger-zone { position: absolute; top: 62%; bottom: 18%; width: 100%; background: rgba(238,95,62,.075); border-bottom: 2px dashed #e57f60; }
     .demon-danger-zone span { position: absolute; bottom: 3px; right: 8px; color: #ca8c78; font-size: 9px; }
     .is-danger .demon-danger-zone { background: rgba(238,72,62,.18); }
-    .demon-enemy { position: absolute; display: flex; flex-direction: column; align-items: center; transform: translate(-50%,-50%); font-size: 35px; line-height: 1; z-index: 2; transition: top .25s linear; }
-    .demon-enemy.is-fast { font-size: 39px; }
-    .demon-enemy small { font-size: 8px; font-weight: 900; color: #ffd69f; background: #863e20; padding: 3px; border-radius: 3px; }
+    .demon-enemy { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 2px; transform: translate(-50%,-50%); line-height: 1; z-index: 2; transition: top .25s linear; }
+    .demon-enemy-sprite { display: block; width: 40px; height: 40px; }
+    .demon-enemy.is-fast .demon-enemy-sprite { width: 46px; height: 42px; }
+    .demon-enemy.is-tough .demon-enemy-sprite { width: 54px; height: 50px; }
+    .demon-enemy small { font-size: 8px; font-weight: 900; color: #ffd69f; background: #863e20; padding: 3px 5px; border-radius: 4px; white-space: nowrap; }
+    .demon-enemy.is-tough small { background: #65431b; color: #ffe48f; }
+    .demon-enemy-health { color: #ff8075; font-size: 13px; letter-spacing: 2px; text-shadow: 0 1px 3px #101e31; }
     .demon-shot-layer { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
     .demon-shot-layer line { stroke: #ffe08a; stroke-width: .6; stroke-linecap: round; }
     .demon-shot-layer circle { fill: #ffe5a5; }

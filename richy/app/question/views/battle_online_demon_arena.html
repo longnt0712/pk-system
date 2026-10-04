@@ -15,6 +15,7 @@
         <span ng-if="!vm.demonArena.finished && vm.demonArena.phase === 'REST'">🌿 QUỶ ĐANG THƯA — LẤY LẠI NHỊP!</span>
         <span ng-if="!vm.demonArena.finished && vm.demonArena.phase === 'NORMAL'">Đúng một câu, súng của bạn bắn! • Streak 20: 2 viên • 30: 3 viên • 40: 4 viên…</span>
     </div>
+    <div class="demon-enemy-legend">NGU / RẤT NGU: 1 phát • NGU KHỦNG KHIẾP: 2 phát (♥♥ → ♥)</div>
     <div class="demon-arena-grid">
         <article class="demon-team-card" ng-repeat="team in vm.demonArena.teams | orderBy:'number' track by team.number"
                  ng-class="{'is-danger': team.danger, 'is-eliminated': team.eliminatedAt, 'is-winner': vm.demonArena.finished && team.rank === 1}">
@@ -23,9 +24,13 @@
                 <div class="demon-spawn-label">QUỶ XUỐNG ↓</div>
                 <div class="demon-danger-zone"><span>VẠCH PHÒNG THỦ</span></div>
                 <span class="demon-enemy" ng-repeat="demon in team.demons track by demon.id"
-                      ng-class="{'is-fast': demon.fast}"
+                      ng-class="{'is-fast': demon.fast, 'is-tough': demon.tough}"
                       ng-style="{'top': vm.getDemonPosition(demon, team) + '%', 'left': (50 + (demon.id % 3 - 1) * 7) + '%'}">
-                    <span aria-hidden="true">{{demon.fast ? '👺' : '👹'}}</span><small ng-if="demon.fast">NHANH</small>
+                    <img class="demon-enemy-sprite"
+                         ng-src="{{demon.tough ? 'assets/images/battle-demons/terribly-dumb-demon.svg' : demon.fast ? 'assets/images/battle-demons/very-dumb-demon.svg' : 'assets/images/battle-demons/dumb-demon.svg'}}"
+                         ng-attr-alt="{{demon.tough ? 'Quỷ ngu khủng khiếp' : demon.fast ? 'Quỷ rất ngu' : 'Quỷ ngu'}}" draggable="false">
+                    <small>{{demon.tough ? 'NGU KHỦNG KHIẾP' : demon.fast ? 'RẤT NGU' : 'NGU'}}</small>
+                    <span class="demon-enemy-health" ng-if="demon.tough" ng-attr-aria-label="Còn {{demon.health}} máu">{{demon.health > 1 ? '♥♥' : '♥'}}</span>
                 </span>
                 <svg class="demon-shot-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                     <g ng-repeat="shot in team.shots track by shot.id" ng-style="vm.getDemonShotStyle(shot)">

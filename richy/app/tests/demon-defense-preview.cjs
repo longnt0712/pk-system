@@ -29,7 +29,7 @@ angular.module('demonPreview',['Hrm.Question'])
     var room=angular.copy(fixtureVm.room), me=room.players.filter(function(p){return p.username===username;})[0];
     var opponent=room.players.filter(function(p){return p.username===target;})[0];
     if(type==='UNFREEZE'){opponent.frozenUntil=0;me.unfreezeCharges=0;}
-    else if(room.pendingSkillType==='BREAK_STREAK'){opponent.streak=Math.max(0,opponent.streak-10);}
+    else if(room.pendingSkillType==='BREAK_STREAK'){opponent.streak=Math.max(0,opponent.streak-5);}
     else{opponent.frozenUntil=Date.now()+3000;}
     room.pendingSkillType=null;room.pendingSkillTargetUsernames=[];
     room.currentQuestion=question();return $q.when(room);
@@ -55,9 +55,9 @@ window.setupDemonFixture=function(vm,applyRoom,applyArena){
  currentQuestion:role==='student'?question():null,
  demonDefense:{startedAt:now-45000,snapshotAt:now,wave:2,phase:params.get('phase')||'NORMAL',warningSeconds:3,finished:false,teams:[
  {number:1,rank:1,memberCount:2,kills:45,rescues:2,survivedMs:45000,danger:true,eliminatedAt:0,
- demons:[{id:1,progress:.79,speed:0,fast:false},{id:2,progress:.52,speed:0,fast:true},{id:3,progress:.22,speed:0,fast:false}],shots:[]},
+ demons:[{id:1,progress:.79,speed:0,fast:false},{id:2,progress:.52,speed:0,fast:true},{id:11,progress:.22,speed:0,fast:false,tough:true,health:2}],shots:[]},
  {number:2,rank:2,memberCount:2,kills:32,rescues:1,survivedMs:45000,danger:false,eliminatedAt:0,
- demons:[{id:1,progress:.56,speed:0,fast:false},{id:2,progress:.28,speed:0,fast:true}],shots:[]}]}};
+ demons:[{id:1,progress:.56,speed:0,fast:false,tough:true,health:1},{id:2,progress:.28,speed:0,fast:true}],shots:[]}]}};
  if(params.get('phase')){room.demonDefense.teams[0].danger=false;}
  if(params.get('skill')){room.pendingSkillType=params.get('skill');room.pendingSkillTargetUsernames=['carol','david'];room.currentQuestion=null;}
  applyRoom(room,false);if(role==='host'){applyArena(room.demonDefense);}vm.demonWarningSound=false;

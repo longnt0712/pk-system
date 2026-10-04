@@ -103,8 +103,8 @@ test('unfreeze clears the freeze overlay immediately and break-streak shows the 
     h.hooks.processSkillEvents([{id: 2, type: 'UNFREEZE', actorUsername: 'bob', actorDisplayName: 'Bình', targetUsername: 'alice'}]);
     assert.equal(h.vm.skillHitEffect, null, 'a rescued student can see the question immediately');
     assert.match(h.vm.personalSkillNotice.message, /giải băng cho bạn/);
-    h.hooks.processSkillEvents([{id: 3, type: 'BREAK_STREAK', amount: 10, actorUsername: 'carol', targetUsername: 'alice'}]);
-    assert.equal(h.vm.getActiveSkillEffectTitle(), 'BỊ TRỪ 10 STREAK');
+    h.hooks.processSkillEvents([{id: 3, type: 'BREAK_STREAK', amount: 5, actorUsername: 'carol', targetUsername: 'alice'}]);
+    assert.equal(h.vm.getActiveSkillEffectTitle(), 'BỊ TRỪ 5 STREAK');
 });
 
 test('unfreeze selects only online frozen teammates, excluding self, rivals and eliminated teammates', () => {

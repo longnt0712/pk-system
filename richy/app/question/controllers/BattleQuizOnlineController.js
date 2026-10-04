@@ -6690,6 +6690,15 @@
            ===================================================== */
 
         function keydownHandler(event) {
+            if (vm.skillActivityModalOpen || vm.wrongQuestionsModalOpen) {
+                if (event.key === 'Escape' || event.keyCode === 27) {
+                    event.preventDefault();
+                    $scope.$evalAsync(function () {
+                        closeSkillActivityModal(); closeWrongQuestionsModal();
+                    });
+                }
+                return;
+            }
             if (vm.unfreezeModalOpen) {
                 if (event.key === 'Escape' || event.keyCode === 27) {
                     event.preventDefault(); $scope.$evalAsync(vm.closeUnfreezeModal);

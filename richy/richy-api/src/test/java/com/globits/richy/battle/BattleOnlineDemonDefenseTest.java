@@ -104,13 +104,16 @@ public class BattleOnlineDemonDefenseTest {
         assertTrue((Boolean) get(alice, "spectator"));
     }
 
-    @Test @SuppressWarnings("unchecked") public void breakSubtractsTenFromOneRivalAndClassicStillResetsToZero() {
+    @Test @SuppressWarnings("unchecked") public void breakSubtractsFiveFromOneRivalAndClassicStillResetsToZero() {
         set(carol, "streak", 35); set(bob, "streak", 22);
         set(alice, "pendingSkillType", "BREAK_STREAK");
         ((List<String>) get(alice, "pendingSkillTargetUsernames")).add("carol");
         BattleOnlineUseSkillDto skill = new BattleOnlineUseSkillDto(); skill.setTargetUsername("carol");
         service.useSkill("DEMON1", "alice", skill);
-        assertEquals(25, get(carol, "streak")); assertEquals(22, get(bob, "streak"));
+        assertEquals(30, get(carol, "streak")); assertEquals(22, get(bob, "streak"));
+        BattleOnlineRoomDto snapshot = ReflectionTestUtils.invokeMethod(service, "snapshotLocked", room, "alice");
+        assertEquals(5D, snapshot.getRecentEvents().get(0).getAmount(), 0D);
+        assertTrue(snapshot.getRecentEvents().get(0).getMessage().contains("trừ 5 streak"));
         assertNull(get(alice, "pendingSkillType"));
         set(get(room, "settings"), "mode", "COUNTDOWN");
         set(alice, "pendingSkillType", "BREAK_STREAK");
@@ -166,6 +169,32 @@ public class BattleOnlineDemonDefenseTest {
         assertFalse(result.isCorrect()); assertEquals(0, result.getStreak()); assertEquals(0D, result.getScore(), 0D);
         assertTrue(result.getRoom().getDemonDefense().teams.get(0).shots.isEmpty());
         assertTrue(result.getRoom().getDemonDefense().teams.get(0).demons.isEmpty());
+    }
+
+    @Test public void correctAnswersFromTwoTeammatesShareDamageAndOnlyFinishingHitScores() throws Exception {
+        long now = System.currentTimeMillis();
+        Map<Integer, Integer> members = new LinkedHashMap<Integer, Integer>();
+        members.put(1, 3); members.put(2, 3);
+        DemonDefenseGame game = new DemonDefenseGame(now - 24000L, members);
+        assertEquals(10, game.shoot(1, "warmup", 100, now).kills);
+        set(room, "demonDefense", game);
+        Object question = state("QuestionState");
+        set(question, "id", 7L); set(question, "question", "hello");
+        set(question, "correctText", "xin chào"); set(question, "correctKey", "A");
+        set(alice, "currentQuestion", question); set(alice, "currentQuestionSequence", 1L);
+        set(bob, "currentQuestion", question); set(bob, "currentQuestionSequence", 1L);
+        BattleOnlineAnswerDto request = new BattleOnlineAnswerDto();
+        request.setQuestionId(7L); request.setQuestionSequence(1L); request.setAnswerKey("A");
+        BattleOnlineAnswerResultDto first = service.answer("DEMON1", "alice", request);
+        assertTrue(first.isCorrect()); assertEquals(1, first.getStreak()); assertEquals(0D, first.getScore(), 0D);
+        assertTrue(first.getMessage().contains("trúng 1 phát, diệt 0 quỷ"));
+        BattleOnlineRoomDto host = ReflectionTestUtils.invokeMethod(service, "snapshotLocked", room, "host");
+        assertEquals(1, host.getDemonDefense().teams.get(0).demons.get(0).health);
+        BattleOnlineAnswerResultDto second = service.answer("DEMON1", "bob", request);
+        assertTrue(second.isCorrect()); assertEquals(1D, second.getScore(), 0D);
+        assertTrue(second.getMessage().contains("trúng 1 phát, diệt 1 quỷ"));
+        assertEquals(11, second.getRoom().getDemonDefense().teams.get(0).kills);
+        assertEquals(0D, (Double) get(alice, "score"), 0D);
     }
 
     @Test public void hostRestSnapshotHasArenaAndStudentSnapshotDoesNotExposeAnimationOrHostQuestion() {

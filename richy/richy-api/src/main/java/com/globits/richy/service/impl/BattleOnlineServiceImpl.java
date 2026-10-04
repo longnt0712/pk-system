@@ -2200,7 +2200,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             if (MODE_DEMON_DEFENSE.equals(room.settings.mode)) {
                 result.setMessage(correct
-                        ? "CHÍNH XÁC! Bắn " + demonShot.bullets + " viên, diệt " + demonShot.kills + " quỷ." +
+                        ? "CHÍNH XÁC! Bắn " + demonShot.bullets + " viên, trúng " + demonShot.hits + " phát, diệt " + demonShot.kills + " quỷ." +
                             (demonShot.rescued ? " CỨU ĐỘI!" : "")
                         : "SAI RỒI! Streak về 0, không có đạn.");
             }
@@ -2420,7 +2420,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         /*
                          * Luôn cho phép phá, kể cả streak hiện đang bằng 0.
                          */
-                        amount = MODE_DEMON_DEFENSE.equals(room.settings.mode) ? Math.min(10, target.streak) : target.streak;
+                        amount = MODE_DEMON_DEFENSE.equals(room.settings.mode)
+                                ? Math.min(DemonDefenseGame.BREAK_STREAK_DEDUCTION, target.streak) : target.streak;
                         target.streak = MODE_DEMON_DEFENSE.equals(room.settings.mode)
                                 ? DemonDefenseGame.breakStreak(target.streak) : 0;
                     } else if (SKILL_STEAL_SCORE.equals(skillType)) {
