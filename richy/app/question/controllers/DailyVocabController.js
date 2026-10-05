@@ -3391,6 +3391,30 @@
             vm.setUpTestResult();
         };
 
+        function appendAssignmentTopicEvidence(result, assignmentTopicId) {
+            if (!result || !result.assignmentTaskId || !/^\d+$/.test(String(assignmentTopicId || ''))) return;
+            var topicId = Number(assignmentTopicId);
+            result.topicIds = result.topicIds || [];
+            var alreadyIncluded = result.topicIds.some(function (id) {
+                return Number(id) === topicId;
+            });
+            if (!alreadyIncluded) result.topicIds.push(topicId);
+        }
+
+        function dailySaveFailureMessage(error) {
+            var status = error && Number(error.status);
+            if (status === 401 || status === 403) {
+                return 'Phiên đăng nhập đã hết hạn hoặc không có quyền lưu (HTTP ' + status + '). Đăng nhập lại đúng tài khoản rồi bấm Lưu kết quả.';
+            }
+            if (!status || status === -1) {
+                return 'Không kết nối được tới server hoặc yêu cầu đã quá thời gian. Kết nối lại rồi bấm Lưu kết quả. Không cần làm lại bài.';
+            }
+            var detail = error && error.data && typeof error.data.message === 'string'
+                ? error.data.message.replace(/\s+/g, ' ').trim().substring(0, 180) : '';
+            return 'Server chưa nhận kết quả (HTTP ' + status + '). ' +
+                (detail ? detail + ' ' : '') + 'Bấm Lưu kết quả để thử lại; không cần làm lại bài.';
+        }
+
         vm.prepareResultTopicEvidence = function () {
             var played = {}, totals = {}, completed = {};
             angular.forEach(vm.rawQuestions || [], function (question) {
@@ -3404,6 +3428,10 @@
             vm.testResult.topicIds = (vm.resultTopicIds || []).filter(function (id, index, ids) {
                 return played[String(id)] && ids.indexOf(id) === index;
             });
+            // Questions may carry child topics while the assigned homework points at
+            // their containing topic. Include that server-issued topic for both old
+            // and new backends; do not mark it as fully learned below.
+            appendAssignmentTopicEvidence(vm.testResult, vm.assignmentLaunch.topicId);
             vm.testResult.completedVocabularyTopicIds = vm.testResult.topicIds.filter(function (id) {
                 return vm.allQuestionsLoaded === true && totals[String(id)] > 0 && completed[String(id)] === totals[String(id)];
             });
@@ -3458,9 +3486,14 @@
                 payload.user = {id: vm.currentUser.id};
                 delete payload.id; delete payload.testDate; delete payload.startDate; delete payload.endDate;
                 payload.clientAttemptKey = key;
-                vm.dailyVocabPendingResult = {version:1, ownerId:vm.currentUser.id, createdAt:Date.now(), payload:payload};
+                vm.dailyVocabPendingResult = {version:1, ownerId:vm.currentUser.id, createdAt:Date.now(),
+                    assignmentTopicId:vm.assignmentLaunch.topicId || null, payload:payload};
             }
             var pending = vm.dailyVocabPendingResult;
+            // Repair drafts created before assignment topics were included in the
+            // payload. The current assignment URL still contains the authoritative ID.
+            appendAssignmentTopicEvidence(pending.payload,
+                pending.assignmentTopicId || vm.assignmentLaunch.topicId);
             var signedIn = getCurrentUser();
             if (!pending.ownerId || signedIn.id !== pending.ownerId) {
                 vm.dailySaveStatus = 'pending'; vm.dailySaveMessage = 'Hãy đăng nhập lại đúng tài khoản đã làm lượt này rồi bấm Lưu kết quả.';
@@ -3527,9 +3560,7 @@
             ).catch(function (error) {
                     if (dailySaveDestroyed) return;
                     vm.isSaveTestResult = false; vm.dailySaveStatus = 'pending';
-                    vm.dailySaveMessage = error && (error.status === 401 || error.status === 403)
-                        ? 'Phiên đăng nhập đã hết hạn hoặc không có quyền lưu. Đăng nhập lại đúng tài khoản rồi bấm Lưu kết quả.'
-                        : 'Chưa nhận được xác nhận lưu (mất mạng hoặc server gián đoạn). Kết nối lại rồi bấm Lưu kết quả. Không cần làm lại bài.';
+                    vm.dailySaveMessage = dailySaveFailureMessage(error);
                     persistDailyDraft();
                     toastr.error(
                         vm.dailySaveMessage,

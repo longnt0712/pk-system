@@ -3,6 +3,7 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const nodeVm = require('node:vm');
 
 const service = fs.readFileSync(path.join(__dirname,
     '../../richy-api/src/main/java/com/globits/richy/service/impl/TestResultServiceImpl.java'), 'utf8');
@@ -33,4 +34,25 @@ test('student accounts can save and pending results keep the assignment id for r
     assert.match(saveEndpoint, /value = "\/save"/);
     assert.match(dailyVocab, /assignmentTaskId:\s*vm\.assignmentLaunch\.taskId \|\| null/);
     assert.match(dailyVocab, /vm\.dailyVocabPendingResult = \{version:1,[\s\S]*?payload:payload\}/);
+});
+
+test('browser sends the assigned parent topic while completion remains on played child topics', () => {
+    const start = dailyVocab.indexOf('function appendAssignmentTopicEvidence');
+    const end = dailyVocab.indexOf('vm.saveTestResult = function ()', start);
+    const context = nodeVm.createContext({
+        vm: {
+            assignmentLaunch: {taskId: '55', topicId: '100'},
+            testResult: {assignmentTaskId: '55'},
+            resultTopicIds: [101],
+            rawQuestions: [{id: 1, topicIds: [101]}],
+            attemptedDailyQuestionIds: {'1': true},
+            completedDailyQuestionIds: {'1': true},
+            allQuestionsLoaded: true
+        },
+        angular: {forEach(items, callback) { (items || []).forEach(callback); }}
+    });
+    nodeVm.runInContext(dailyVocab.slice(start, end), context);
+    context.vm.prepareResultTopicEvidence();
+    assert.deepEqual(Array.from(context.vm.testResult.topicIds), [101, 100]);
+    assert.deepEqual(Array.from(context.vm.testResult.completedVocabularyTopicIds), [101]);
 });
