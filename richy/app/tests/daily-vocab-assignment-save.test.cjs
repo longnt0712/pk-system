@@ -12,19 +12,23 @@ const controller = fs.readFileSync(path.join(__dirname,
 const dailyVocab = fs.readFileSync(path.join(__dirname,
     '../question/controllers/DailyVocabController.js'), 'utf8');
 
-test('assigned Daily Vocab accepts played child topics and records the server assignment topic', () => {
+test('assigned Daily Vocab accepts optional topics and stale pending assignment ids', () => {
     const validationStart = service.indexOf('if (dto.getAssignmentTaskId() != null && Integer.valueOf(1).equals(dto.getTestType()))');
     const listeningStart = service.indexOf('} else if (dto.getAssignmentTaskId() != null && Integer.valueOf(3).equals(dto.getTestType()))', validationStart);
     const validation = service.slice(validationStart, listeningStart);
     assert.ok(validationStart >= 0 && listeningStart > validationStart);
     assert.match(validation, /scheduleTaskRepository\.findOne\(dto\.getAssignmentTaskId\(\)\)/);
     assert.match(validation, /"DAILY_VOCAB"\.equals\(dailyVocabAssignedTask\.getActivityType\(\)\)/);
+    assert.match(validation, /dto\.setAssignmentTaskId\(null\)/);
+    assert.doesNotMatch(validation, /dailyVocabAssignedTask\.getTopic\(\) == null/);
+    assert.doesNotMatch(validation, /throw new IllegalArgumentException/);
     assert.doesNotMatch(validation, /dto\.getTopicIds\(\)\.contains/);
 
-    const attachTopic = service.indexOf('resultTopics.add(dailyVocabAssignedTask.getTopic())');
+    const optionalTopicGuard = service.indexOf('dailyVocabAssignedTask != null && dailyVocabAssignedTask.getTopic() != null');
+    const attachTopic = service.indexOf('resultTopics.add(dailyVocabAssignedTask.getTopic())', optionalTopicGuard);
     const calculateCompletion = service.indexOf('completedTopics(dto, resultTopics)');
-    assert.ok(attachTopic >= 0 && attachTopic < calculateCompletion,
-        'the authoritative assignment topic must be attached before completion is calculated');
+    assert.ok(optionalTopicGuard >= 0 && attachTopic > optionalTopicGuard && attachTopic < calculateCompletion,
+        'an available assignment topic must be attached before completion is calculated');
 });
 
 test('student accounts can save and pending results keep the assignment id for retry', () => {

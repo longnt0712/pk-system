@@ -753,9 +753,12 @@ public class TestResultServiceImpl implements TestResultService {
 		}
 		if (dto.getAssignmentTaskId() != null && Integer.valueOf(1).equals(dto.getTestType())) {
 			dailyVocabAssignedTask = scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
-			if (dailyVocabAssignedTask == null || !"DAILY_VOCAB".equals(dailyVocabAssignedTask.getActivityType())
-					|| dailyVocabAssignedTask.getTopic() == null) {
-				throw new IllegalArgumentException("Kết quả không khớp với topic Daily Vocab được giao.");
+			if (dailyVocabAssignedTask == null || !"DAILY_VOCAB".equals(dailyVocabAssignedTask.getActivityType())) {
+				// A completed attempt must never be lost because an old homework task was
+				// deleted or changed while the browser was keeping a pending retry. Save it
+				// as self-practice, without trusting the stale assignment reference.
+				dto.setAssignmentTaskId(null);
+				dailyVocabAssignedTask = null;
 			}
 		} else if (dto.getAssignmentTaskId() != null && Integer.valueOf(3).equals(dto.getTestType())) {
 			EnrolmentClassScheduleTask assignedTask = scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
@@ -804,7 +807,7 @@ public class TestResultServiceImpl implements TestResultService {
 		// The exercise may emit the topics of the played questions while a homework task
 		// points at its containing topic. Persist the server-owned assignment topic as
 		// evidence as well, so valid completions and pending retries are not rejected.
-		if (dailyVocabAssignedTask != null) {
+		if (dailyVocabAssignedTask != null && dailyVocabAssignedTask.getTopic() != null) {
 			if (resultTopics == null) { resultTopics = new LinkedHashSet<Topic>(); }
 			resultTopics.add(dailyVocabAssignedTask.getTopic());
 		}
