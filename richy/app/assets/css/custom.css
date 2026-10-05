@@ -3985,6 +3985,23 @@ textarea,
     color: #fff;
 }
 
+.ielts-test-content [compile] table,
+.ielts-test-content [ng-bind-html] table,
+.ielts-test-content .dx-htmleditor-content table {
+    border-collapse: collapse !important;
+    border: 1px solid currentColor !important;
+}
+
+.ielts-test-content [compile] table th,
+.ielts-test-content [compile] table td,
+.ielts-test-content [ng-bind-html] table th,
+.ielts-test-content [ng-bind-html] table td,
+.ielts-test-content .dx-htmleditor-content table th,
+.ielts-test-content .dx-htmleditor-content table td {
+    border: 1px solid currentColor !important;
+    padding: 8px !important;
+}
+
 .gpt-regrade-btn:disabled {
     opacity: .58;
     cursor: wait;
