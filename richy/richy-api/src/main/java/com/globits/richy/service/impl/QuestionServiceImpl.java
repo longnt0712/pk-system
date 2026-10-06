@@ -490,7 +490,7 @@ public class QuestionServiceImpl implements QuestionService {
 		}
 		List<Long> ids = new ArrayList<Long>();
 		
-		if(searchDto.getQuestionTopics() != null && searchDto.getQuestionTopics().size() > 0) {
+		if(!searchDto.isWithoutTopics() && searchDto.getQuestionTopics() != null && searchDto.getQuestionTopics().size() > 0) {
 			List<Long> topicIds = new ArrayList<Long>();
 			for (QuestionTopicDto dto : searchDto.getQuestionTopics()) {
 				if(dto != null && dto.getTopic() != null && dto.getTopic().getId() != null) {
@@ -511,9 +511,12 @@ public class QuestionServiceImpl implements QuestionService {
 			
 		}
 
-		boolean hasTopicRelationFilter = searchDto.getTopicOwnerUserId() != null
+		boolean hasTopicRelationFilter = !searchDto.isWithoutTopics() && (searchDto.getTopicOwnerUserId() != null
 				|| searchDto.getTopicCategoryId() != null
-				|| searchDto.getTopicId() != null;
+				|| searchDto.getTopicId() != null);
+		if (searchDto.isWithoutTopics()) {
+			whereClause += " and not exists (select qt.id from QuestionTopic qt where qt.question.id = s.id and qt.topic is not null) ";
+		}
 		if (hasTopicRelationFilter) {
 			whereClause += " and exists (select qt.id from QuestionTopic qt where qt.question.id = s.id ";
 			if (searchDto.getTopicOwnerUserId() != null) {
@@ -582,20 +585,20 @@ public class QuestionServiceImpl implements QuestionService {
 		sql += whereClause;
 		sqlCount += whereClause;
 		
-		sql += " order by s.ordinalNumber, s.createDate DESC ";
+		sql += " order by s.ordinalNumber, s.createDate DESC, s.id DESC ";
 		
 		Query q = manager.createQuery(sql, QuestionForTestsDto.class);
 		Query qCount = manager.createQuery(sqlCount);
 
-		if (searchDto.getTopicOwnerUserId() != null) {
+		if (hasTopicRelationFilter && searchDto.getTopicOwnerUserId() != null) {
 			q.setParameter("topicOwnerUserId", searchDto.getTopicOwnerUserId());
 			qCount.setParameter("topicOwnerUserId", searchDto.getTopicOwnerUserId());
 		}
-		if (searchDto.getTopicCategoryId() != null) {
+		if (hasTopicRelationFilter && searchDto.getTopicCategoryId() != null) {
 			q.setParameter("topicCategoryId", searchDto.getTopicCategoryId());
 			qCount.setParameter("topicCategoryId", searchDto.getTopicCategoryId());
 		}
-		if (searchDto.getTopicId() != null) {
+		if (hasTopicRelationFilter && searchDto.getTopicId() != null) {
 			q.setParameter("filterTopicId", searchDto.getTopicId());
 			qCount.setParameter("filterTopicId", searchDto.getTopicId());
 		}

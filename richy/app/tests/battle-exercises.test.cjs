@@ -10,7 +10,8 @@ function setup(username='alice') {
  const timer=()=>1;timer.cancel=()=>{};
  const window={location:{origin:'http://localhost'},navigator:{},document:{body:{classList:{add(){},remove(){}}},getElementById(){return null;}},localStorage:{getItem(){return null;},setItem(){}}};
  const service={answer(...args){calls.push(args);return new Promise(resolve=>{resolveAnswer=resolve;});}};
- const questions={getPageForTests(...args){calls.push(args);return Promise.resolve({content:[{id:100,title:'Đề tổng hợp'}],totalElements:25});}};
+ const questions={getPageForTests(...args){calls.push(args);return Promise.resolve({content:[{id:100,title:'Đề tổng hợp'}],totalElements:25});},
+  getTopicsForGames(){return Promise.resolve({content:[{id:8,name:'Animals',topicCategory:{id:6,name:'Grade 6'}},{id:9,name:'Food',topicCategory:{id:7,name:'Grade 7'}}]});}};
  const vm=new Controller({},{$on(){},$evalAsync(fn){fn();}},{go(){}},{},timer,timer,{get(){return JSON.stringify({id:1,username});}},window,{warning(text){warnings.push(text);},error(){}},{},questions,service);
  function room(mode='CLASSIC',seq=1) {
   const now=Date.now();return {code:'GAME1',hostUsername:'host',status:'PLAYING',serverTime:now,questionEndsAt:now+60000,matchEndsAt:now+60000,
@@ -23,10 +24,22 @@ function setup(username='alice') {
 test('selects only comprehensive tests and sends their IDs independently of vocabulary',async()=>{
  const h=setup();h.vm.questionSource='COMPREHENSIVE';await h.vm.loadExerciseTests(2);
  assert.equal(h.calls[0][0].testFormat,'COMPREHENSIVE');assert.equal(h.calls[0][1],2);assert.equal(h.vm.exerciseTotalPages,3);
+ assert.equal(h.calls[0][0].lower,0);assert.equal(h.calls[0][0].upper,100);
+ assert.equal(h.calls[0][0].topicOwnerUserId,null);assert.equal(h.calls[0][0].withoutTopics,false);
  h.vm.addExerciseTest(h.vm.exerciseTests[0]);h.vm.addExerciseTest(h.vm.exerciseTests[0]);
  assert.deepEqual(plain(h.hooks.buildSettingsDto().exerciseTestIds),[100]);
  assert.equal(h.hooks.buildSettingsDto().questionSource,'COMPREHENSIVE');
  h.vm.removeExerciseTest(h.vm.selectedExerciseTests[0]);assert.equal(h.vm.selectedExerciseTests.length,0);
+});
+test('Battle filters by source, category and topic, while all/unassigned remove stale topic constraints',async()=>{
+ const h=setup();h.vm.exerciseTopicOwnerId=26;h.vm.exerciseFilterMode='TOPIC';await h.vm.changeExerciseFilter();
+ assert.equal(h.vm.exerciseTopicCategories.length,2);assert.equal(h.vm.exerciseTopics.length,2);
+ h.vm.exerciseTopicCategoryId=6;await h.vm.changeExerciseTopicCategory();assert.equal(h.vm.exerciseTopics.length,1);
+ h.vm.exerciseTopicId=8;h.vm.exerciseSearch='test title';await h.vm.loadExerciseTests(1);
+ let dto=h.calls.at(-1)[0];assert.equal(dto.topicOwnerUserId,26);assert.equal(dto.topicCategoryId,6);assert.equal(dto.topicId,8);
+ h.vm.exerciseFilterMode='UNASSIGNED';await h.vm.changeExerciseFilter();dto=h.calls.at(-1)[0];
+ assert.equal(dto.withoutTopics,true);assert.equal(dto.topicOwnerUserId,null);assert.equal(dto.topicCategoryId,null);assert.equal(dto.topicId,null);assert.equal(dto.textSearch,'test title');
+ h.vm.exerciseFilterMode='ALL';await h.vm.changeExerciseFilter();assert.equal(h.calls.at(-1)[0].withoutTopics,false);
 });
 test('all six modes submit every original answer once and require complete manual answers',()=>{
  for(const mode of ['CLASSIC','COUNTDOWN','MONEY_BEG','ESCAPE_DUMB_DEMON','DEMON_DEFENSE','GUESS_WORD']) {

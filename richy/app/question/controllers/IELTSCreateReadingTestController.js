@@ -394,6 +394,7 @@
         vm.catalogTopics = [];
         vm.catalogTopicsLoading = false;
         vm.catalogTopicsError = '';
+        vm.catalogTopicFilterMode = 'ALL';
 
         function buildTopicSources() {
             var sources = [{id: DEFAULT_TOPIC_SOURCE_ID, name: 'EM YÊU INH LÍCH'}];
@@ -567,11 +568,13 @@
             if (!vm.isComprehensiveMode) { return; }
             // The catalogue filter and the builder intentionally share the same
             // source/category/topics so both controls always show identical values.
-            vm.searchDto.questionTopics = (vm.selectedTestTopics || []).map(function (topic) {
+            var filterByTopics = vm.catalogTopicFilterMode === 'TOPIC';
+            vm.searchDto.withoutTopics = vm.catalogTopicFilterMode === 'UNASSIGNED';
+            vm.searchDto.questionTopics = (filterByTopics ? vm.selectedTestTopics || [] : []).map(function (topic) {
                 return {topic: {id: topic.id}};
             });
-            vm.searchDto.topicOwnerUserId = vm.builderTopicSource ? vm.builderTopicSource.id : null;
-            vm.searchDto.topicCategoryId = vm.builderTopicCategory ? vm.builderTopicCategory.id : null;
+            vm.searchDto.topicOwnerUserId = filterByTopics && vm.builderTopicSource ? vm.builderTopicSource.id : null;
+            vm.searchDto.topicCategoryId = filterByTopics && vm.builderTopicCategory ? vm.builderTopicCategory.id : null;
             vm.searchDto.topicId = null;
             vm.searchDto.pageIndex = 1;
             vm.getPageCreateIELTSReadingTest();

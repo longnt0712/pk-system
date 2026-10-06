@@ -65,7 +65,7 @@
                 <select class="form-control" ng-model="vm.questionSource" ng-change="vm.changeQuestionSource()" ng-disabled="vm.creatingRoom || vm.savingLobbyTopics">
                     <option value="VOCABULARY">Bài từ vựng</option><option value="COMPREHENSIVE">Đề tổng hợp</option>
                 </select>
-                <div ng-if="vm.questionSource === 'COMPREHENSIVE'" ng-include="'question/views/battle_online_exercise_picker.html'"></div>
+                <div ng-if="vm.questionSource === 'COMPREHENSIVE'" ng-include="'question/views/battle_online_exercise_picker.html?topicSearch=20261006_1'"></div>
             <div class="battle-online-create-form" ng-if="vm.questionSource === 'VOCABULARY'">
 
                 <label>NGUỒN TỪ VỰNG</label>
@@ -364,7 +364,7 @@
                 <select class="form-control" ng-model="vm.questionSource" ng-change="vm.changeQuestionSource()" ng-disabled="vm.creatingRoom || vm.savingLobbyTopics">
                     <option value="VOCABULARY">Bài từ vựng</option><option value="COMPREHENSIVE">Đề tổng hợp</option>
                 </select>
-                <div ng-if="vm.questionSource === 'COMPREHENSIVE'" ng-include="'question/views/battle_online_exercise_picker.html'"></div>
+                <div ng-if="vm.questionSource === 'COMPREHENSIVE'" ng-include="'question/views/battle_online_exercise_picker.html?topicSearch=20261006_1'"></div>
             <div class="battle-online-lobby-topic-actions" ng-if="vm.questionSource === 'COMPREHENSIVE'">
                 <button type="button" class="is-save" ng-click="vm.saveLobbyTopics()" ng-disabled="vm.savingLobbyTopics || !vm.selectedExerciseTests.length">LƯU VÀ NẠP ĐỀ</button>
             </div>
@@ -2521,6 +2521,10 @@
     .demon-team-card.is-danger { border-color: #ff6c53; }
     .demon-team-card.is-winner { border-color: #ffd666; }
     .battle-exercise-search { display:flex; align-items:center; gap:8px; margin:12px 0; }
+    .battle-exercise-filters { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:12px 0; text-align:left; }
+    .battle-exercise-filters label { margin:0; min-width:0; }
+    .battle-exercise-filters .form-control, .battle-exercise-filters .ui-select-container { width:100%; margin-top:4px; }
+    @media (max-width:600px) { .battle-exercise-filters { grid-template-columns:1fr; } }
     .battle-exercise-catalog { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
     .battle-exercise-catalog .btn { white-space:normal; text-align:left; }
     .battle-exercise-form { text-align:left; font-size:16px; line-height:1.65; overflow-wrap:anywhere; }

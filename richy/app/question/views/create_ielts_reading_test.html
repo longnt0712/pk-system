@@ -43,7 +43,13 @@
                         </div>
                     </div>
                     <div class="col-md-8 reading-catalog-topic-filters" ng-if="vm.isComprehensiveMode">
-                        <ui-select theme="bootstrap" ng-model="vm.builderTopicSource" ng-change="vm.builderTopicSourceChanged()">
+                        <select class="form-control" ng-model="vm.catalogTopicFilterMode" ng-change="vm.applyCatalogTopicFilter()" aria-label="Lọc bài theo topic">
+                            <option value="ALL">Tất cả bài</option>
+                            <option value="TOPIC">Theo topic</option>
+                            <option value="UNASSIGNED">Chưa gắn topic</option>
+                        </select>
+                        <ui-select theme="bootstrap" ng-model="vm.builderTopicSource" ng-change="vm.builderTopicSourceChanged()"
+                                   ng-disabled="vm.catalogTopicFilterMode !== 'TOPIC'">
                             <ui-select-match placeholder="Chọn nguồn..."><span class="reading-topic-source-label"><i class="fa fa-database"></i> {{vm.topicSourceLabel(vm.builderTopicSource)}}</span></ui-select-match>
                             <ui-select-choices repeat="source in vm.topicSources | filter:$select.search">
                                 <div ng-bind-html="vm.topicSourceLabel(source) | highlight:$select.search"></div>
@@ -51,7 +57,7 @@
                         </ui-select>
                         <ui-select theme="bootstrap" ng-model="vm.builderTopicCategory"
                                    ng-change="vm.builderTopicCategoryChanged()"
-                                   ng-disabled="vm.builderTopicsLoading || !vm.builderTopicCategories.length">
+                                   ng-disabled="vm.catalogTopicFilterMode !== 'TOPIC' || vm.builderTopicsLoading || !vm.builderTopicCategories.length">
                             <ui-select-match placeholder="Chọn category...">{{vm.builderTopicCategory.name}}</ui-select-match>
                             <ui-select-choices repeat="category in vm.builderTopicCategories | filter:$select.search">
                                 <div ng-bind-html="category.name | highlight:$select.search"></div>
@@ -59,7 +65,7 @@
                         </ui-select>
                         <ui-select multiple theme="bootstrap" ng-model="vm.selectedTestTopics"
                                    ng-change="vm.builderTopicsChanged()" close-on-select="false"
-                                   ng-disabled="vm.builderTopicsLoading || !vm.builderTopicCategory || !vm.availableTopics.length">
+                                   ng-disabled="vm.catalogTopicFilterMode !== 'TOPIC' || vm.builderTopicsLoading || !vm.builderTopicCategory || !vm.availableTopics.length">
                             <ui-select-match placeholder="Chọn một hoặc nhiều topic...">{{$item.name}}</ui-select-match>
                             <ui-select-choices repeat="topic in vm.availableTopics | filter:$select.search">
                                 <div ng-bind-html="topic.name | highlight:$select.search"></div>
@@ -1684,7 +1690,7 @@
     .reading-catalog-topic-filters {
         position: relative;
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 8px;
     }
 

@@ -71,6 +71,7 @@ public class QuestionDto implements Serializable  {
 	private Long topicOwnerUserId;
 	private Long topicCategoryId;
 	private Long topicId;
+	private boolean withoutTopics;
 	
 	private List<QuestionDto> questions = new ArrayList<QuestionDto>(); 
 	private int numberOfAnswers = 4;
@@ -160,6 +161,8 @@ public class QuestionDto implements Serializable  {
 	public void setTopicId(Long topicId) {
 		this.topicId = topicId;
 	}
+	public boolean isWithoutTopics() { return withoutTopics; }
+	public void setWithoutTopics(boolean withoutTopics) { this.withoutTopics = withoutTopics; }
 	public UserDto getUser() {
 		return user;
 	}

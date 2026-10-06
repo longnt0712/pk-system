@@ -141,15 +141,68 @@
         vm.exerciseSearch = '';
         vm.exercisePage = 1;
         vm.exerciseTotalPages = 1;
+        vm.exerciseFilterMode = 'ALL';
+        vm.exerciseTopicOwnerId = null;
+        vm.exerciseTopicCategoryId = null;
+        vm.exerciseTopicId = null;
+        vm.exerciseTopicCategories = [];
+        vm.exerciseSourceTopics = [];
+        vm.exerciseTopics = [];
+        var exerciseRequestId = 0, exerciseTopicRequestId = 0, exerciseTopicsOwnerId = null;
+        vm.loadExerciseTopicSource = function () {
+            var requestId = ++exerciseTopicRequestId;
+            vm.exerciseTopicCategoryId = null; vm.exerciseTopicId = null;
+            vm.exerciseTopicCategories = []; vm.exerciseSourceTopics = []; vm.exerciseTopics = [];
+            vm.loadingExerciseTopics = true; vm.exerciseTopicError = '';
+            return questionService.getTopicsForGames({userId: vm.exerciseTopicOwnerId}, 1, 10000000).then(function (data) {
+                if (requestId !== exerciseTopicRequestId) { return; }
+                exerciseTopicsOwnerId = vm.exerciseTopicOwnerId;
+                vm.exerciseSourceTopics = (data && data.content) || [];
+                vm.exerciseTopics = vm.exerciseSourceTopics;
+                var seen = {};
+                vm.exerciseSourceTopics.forEach(function (topic) {
+                    var category = topic.topicCategory;
+                    if (category && category.id != null && !seen[category.id]) {
+                        seen[category.id] = true; vm.exerciseTopicCategories.push(category);
+                    }
+                });
+                vm.exerciseTopicCategories.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
+                vm.loadingExerciseTopics = false;
+            }, function () {
+                if (requestId !== exerciseTopicRequestId) { return; }
+                vm.loadingExerciseTopics = false; vm.exerciseTopicError = 'Không tải được topic. Bấm để thử lại.';
+            });
+        };
+        vm.changeExerciseFilter = function () {
+            if (vm.exerciseFilterMode === 'TOPIC' && exerciseTopicsOwnerId !== vm.exerciseTopicOwnerId) { vm.loadExerciseTopicSource(); }
+            return vm.loadExerciseTests(1);
+        };
+        vm.changeExerciseTopicSource = function () { vm.loadExerciseTopicSource(); return vm.loadExerciseTests(1); };
+        vm.changeExerciseTopicCategory = function () {
+            vm.exerciseTopicId = null;
+            vm.exerciseTopics = vm.exerciseSourceTopics.filter(function (topic) {
+                return vm.exerciseTopicCategoryId == null || (topic.topicCategory && topic.topicCategory.id === vm.exerciseTopicCategoryId);
+            });
+            return vm.loadExerciseTests(1);
+        };
         vm.loadExerciseTests = function (page) {
+            var requestId = ++exerciseRequestId, filterByTopics = vm.exerciseFilterMode === 'TOPIC';
             vm.loadingExercises = true; vm.exerciseLoadError = '';
             vm.exercisePage = page || 1;
-            questionService.getPageForTests({questionType: {id: 11}, type: 100, status: 7,
+            return questionService.getPageForTests({questionType: {id: 11}, type: 100, status: 7, lower: 0, upper: 100,
+                withoutTopics: vm.exerciseFilterMode === 'UNASSIGNED',
+                topicOwnerUserId: filterByTopics ? vm.exerciseTopicOwnerId : null,
+                topicCategoryId: filterByTopics ? vm.exerciseTopicCategoryId : null,
+                topicId: filterByTopics ? vm.exerciseTopicId : null,
                 testFormat: 'COMPREHENSIVE', textSearch: vm.exerciseSearch, findExactWord: false}, vm.exercisePage, 12).then(function (data) {
+                if (requestId !== exerciseRequestId) { return; }
                 vm.exerciseTests = (data && data.content) || [];
                 vm.exerciseTotalPages = Math.max(1, Math.ceil(Number(data && data.totalElements || 0) / 12));
                 vm.loadingExercises = false;
-            }, function () { vm.loadingExercises = false; vm.exerciseLoadError = 'Không tải được danh sách đề.'; });
+            }, function () {
+                if (requestId !== exerciseRequestId) { return; }
+                vm.loadingExercises = false; vm.exerciseTests = []; vm.exerciseLoadError = 'Không tải được danh sách đề.';
+            });
         };
         vm.changeQuestionSource = function () {
             if (vm.questionSource === 'COMPREHENSIVE') { vm.loadExerciseTests(1); }
@@ -258,6 +311,7 @@
         vm.savingBattleDisplayName = false;
 
         vm.topicOwners = buildTopicOwners();
+        vm.exerciseTopicOwnerId = vm.topicOwners.length ? vm.topicOwners[0].id : null;
         vm.selectedTopicOwner = vm.topicOwners.length
             ? vm.topicOwners[0]
             : null;

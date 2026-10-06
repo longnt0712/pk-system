@@ -55,8 +55,17 @@
                 </div>
                 <div class="reading-library-topic-filters" ng-if="vm.isComprehensiveMode">
                     <div>
+                        <label>Lọc bài</label>
+                        <select class="form-control" ng-model="vm.topicFilterMode" ng-change="vm.applyTopicFilter()" aria-label="Lọc bài theo topic">
+                            <option value="ALL">Tất cả bài</option>
+                            <option value="TOPIC">Theo topic</option>
+                            <option value="UNASSIGNED">Chưa gắn topic</option>
+                        </select>
+                    </div>
+                    <div>
                         <label><i class="fa fa-database"></i> Nguồn</label>
-                        <ui-select theme="bootstrap" ng-model="vm.selectedTopicSource" ng-change="vm.loadTopicSource()">
+                        <ui-select theme="bootstrap" ng-model="vm.selectedTopicSource" ng-change="vm.loadTopicSource()"
+                                   ng-disabled="vm.topicFilterMode !== 'TOPIC'">
                             <ui-select-match placeholder="Chọn nguồn..."><span ng-bind="vm.topicSourceLabel($select.selected)"></span></ui-select-match>
                             <ui-select-choices repeat="source in vm.topicSources | filter:$select.search">
                                 <div ng-bind-html="vm.topicSourceLabel(source) | highlight:$select.search"></div>
@@ -67,7 +76,7 @@
                         <label><i class="fa fa-folder-open-o"></i> Category</label>
                         <ui-select theme="bootstrap" ng-model="vm.selectedTopicCategory"
                                    ng-change="vm.topicCategoryChanged()"
-                                   ng-disabled="vm.topicFiltersLoading || !vm.topicCategories.length">
+                                   ng-disabled="vm.topicFilterMode !== 'TOPIC' || vm.topicFiltersLoading || !vm.topicCategories.length">
                             <ui-select-match allow-clear="true" placeholder="Tất cả category...">{{$select.selected.name}}</ui-select-match>
                             <ui-select-choices repeat="category in vm.topicCategories | filter:$select.search">
                                 <div ng-bind-html="category.name | highlight:$select.search"></div>
@@ -78,7 +87,7 @@
                         <label><i class="fa fa-tag"></i> Topic</label>
                         <ui-select theme="bootstrap" ng-model="vm.selectedTopic"
                                    ng-change="vm.applyTopicFilter()"
-                                   ng-disabled="vm.topicFiltersLoading || !vm.selectedTopicCategory || !vm.topics.length">
+                                   ng-disabled="vm.topicFilterMode !== 'TOPIC' || vm.topicFiltersLoading || !vm.selectedTopicCategory || !vm.topics.length">
                             <ui-select-match allow-clear="true" placeholder="Tất cả topic...">{{$select.selected.name}}</ui-select-match>
                             <ui-select-choices repeat="topic in vm.topics | filter:$select.search">
                                 <div ng-bind-html="topic.name | highlight:$select.search"></div>
@@ -186,7 +195,7 @@
     .writing-task-card-actions .reading-test-card__action { min-width: 0; flex: 1 1 30%; }
     .reading-library-filter-bar.has-topic-filters { display: grid; grid-template-columns: minmax(320px, 1.2fr) minmax(620px, 1.8fr); align-items: end; gap: 16px; margin-bottom: 34px; }
     .reading-library-filter-bar.has-topic-filters .reading-test-search { width: 100%; max-width: none; margin-bottom: 0; }
-    .reading-library-topic-filters { display: grid; grid-template-columns: .9fr 1fr 1.15fr; gap: 10px; }
+    .reading-library-topic-filters { display: grid; grid-template-columns: .9fr .9fr 1fr 1.15fr; gap: 10px; }
     .reading-library-topic-filters label { display: block; margin-bottom: 6px; color: #435477; font-size: 11px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
     .reading-library-topic-filters label i { margin-right: 4px; color: var(--library-accent); }
     .reading-library-topic-filters .ui-select-container,

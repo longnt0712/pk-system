@@ -63,6 +63,7 @@
         vm.topics = [];
         vm.topicFiltersLoading = false;
         vm.topicFiltersError = '';
+        vm.topicFilterMode = 'ALL';
 
         function buildTopicSources() {
             var sources = [{id: DEFAULT_TOPIC_SOURCE_ID, name: 'EM YÊU INH LÍCH'}];
@@ -148,10 +149,12 @@
 
         vm.applyTopicFilter = function () {
             if (!vm.isComprehensiveMode) { return; }
+            var filterByTopics = vm.topicFilterMode === 'TOPIC';
+            vm.searchDto.withoutTopics = vm.topicFilterMode === 'UNASSIGNED';
             vm.searchDto.questionTopics = [];
-            vm.searchDto.topicOwnerUserId = vm.selectedTopicSource ? vm.selectedTopicSource.id : null;
-            vm.searchDto.topicCategoryId = vm.selectedTopicCategory ? vm.selectedTopicCategory.id : null;
-            vm.searchDto.topicId = vm.selectedTopic ? vm.selectedTopic.id : null;
+            vm.searchDto.topicOwnerUserId = filterByTopics && vm.selectedTopicSource ? vm.selectedTopicSource.id : null;
+            vm.searchDto.topicCategoryId = filterByTopics && vm.selectedTopicCategory ? vm.selectedTopicCategory.id : null;
+            vm.searchDto.topicId = filterByTopics && vm.selectedTopic ? vm.selectedTopic.id : null;
             vm.searchDto.pageIndex = 1;
             vm.loadTests();
         };
