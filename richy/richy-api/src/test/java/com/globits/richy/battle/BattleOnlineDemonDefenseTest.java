@@ -357,7 +357,7 @@ public class BattleOnlineDemonDefenseTest {
                 set(settings,"disabledSkillTypes",java.util.Collections.singletonList(type));
                 ReflectionTestUtils.invokeMethod(service,"buildCountdownSkillPlanLocked",room);
                 assertFalse(mode + ": " + type, plan.containsValue(type));
-                assertFalse(mode, plan.isEmpty());
+                assertEquals(mode, "LUM_NGAY".equals(mode), plan.isEmpty());
             }
             set(settings,"disabledSkillTypes",types);
             ReflectionTestUtils.invokeMethod(service,"buildCountdownSkillPlanLocked",room); assertTrue(mode,plan.isEmpty());

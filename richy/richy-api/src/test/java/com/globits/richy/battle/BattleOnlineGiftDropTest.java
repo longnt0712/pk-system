@@ -32,7 +32,7 @@ public class BattleOnlineGiftDropTest {
         set(get(room,"settings"),"mode","LUM_NGAY"); set(get(room,"settings"),"skillsEnabled",false);
         alice=player("alice"); bob=player("bob"); host=player("host"); set(host,"host",true); set(host,"spectator",true);
         Map<String,Object> players=(Map<String,Object>)get(room,"players"); players.put("alice",alice); players.put("bob",bob); players.put("host",host);
-        pool=new GiftDropGame(System.currentTimeMillis()-3000,3000,10,new Random() { public int nextInt(int bound) { return bound == 3 ? 0 : 10000; } }); set(room,"giftDrop",pool);
+        pool=new GiftDropGame(10,new Random() { public int nextInt(int bound) { return bound == 3 ? 0 : 10000; } }); set(room,"giftDrop",pool);
         ((Map<String,Object>)get(service,"rooms")).put("GIFTS1",room);
         service.getRoom("GIFTS1","alice");
     }
@@ -47,6 +47,43 @@ public class BattleOnlineGiftDropTest {
         BattleOnlineAnswerDto d=new BattleOnlineAnswerDto(); d.setQuestionId(7L); d.setQuestionSequence(1L); d.setAnswerKey("A"); return d;
     }
 
+    @Test public void answersEarnCreditsAndUpdateStreakButNeverChangeScoreOrGrantQuestionSkills() throws Exception {
+        set(get(room,"settings"),"skillsEnabled",true); set(get(room,"settings"),"teamCount",2);
+        set(get(room,"settings"),"doubleActionUsername","alice"); set(alice,"teamNumber",1);
+        set(alice,"score",7.5D); set(alice,"streak",9); set(alice,"currentSkillType","FREEZE");
+        BattleOnlineAnswerResultDto right = service.answer("GIFTS1","alice",answerRequest());
+        assertTrue(right.isCorrect()); assertEquals(7.5D,(Double)get(alice,"score"),0D); assertEquals(10,get(alice,"streak"));
+        assertEquals(1,get(alice,"giftCredits")); assertNull(get(alice,"pendingSkillType"));
+        assertTrue(right.getMessage().contains("lượt bóc trứng"));
+        BattleOnlineAnswerDto wrong=answerRequest(); wrong.setAnswerKey("B");
+        service.answer("GIFTS1","alice",wrong);
+        assertEquals(7.5D,(Double)get(alice,"score"),0D); assertEquals(0,get(alice,"streak")); assertEquals(1,get(alice,"giftCredits"));
+    }
+
+    @Test public void eachSkillEggGrantsItsSkillAndUsingItPreservesTheUnansweredQuestion() throws Exception {
+        set(get(room,"settings"),"skillsEnabled",true);
+        for (final String type : GiftDropGame.SKILL_TYPES) {
+            pool=new GiftDropGame(10,new Random() { public int nextInt(int bound) { return 0; } },Collections.singletonList(type));
+            set(room,"giftDrop",pool); service.getRoom("GIFTS1","alice"); answerRequest();
+            Object question=get(alice,"currentQuestion"); set(alice,"giftCredits",2); set(alice,"score",0D); set(bob,"score",100D);
+            String id=pool.snapshot("alice").gifts.get(0).id;
+            BattleOnlineGiftClaimResultDto result=service.claimGift("GIFTS1","alice",request(id));
+            assertEquals(type,result.getSkillType()); assertEquals(type,result.getRoom().getPendingSkillType());
+            assertEquals(0D,result.getPoints(),0D); assertEquals(0D,(Double)get(alice,"score"),0D);
+            assertTrue(result.getRoom().getPendingSkillTargetUsernames().contains("bob"));
+            assertEquals(type,result.getRoom().getGiftDrop().claims.get(0).skillType);
+            assertEquals("alice",result.getRoom().getGiftDrop().claims.get(0).username);
+            rejected("alice",id); assertEquals(1,get(alice,"giftCredits"));
+            BattleOnlineUseSkillDto skill=new BattleOnlineUseSkillDto(); skill.setTargetUsername("bob");
+            BattleOnlineRoomDto used=service.useSkill("GIFTS1","alice",skill);
+            assertNull(used.getPendingSkillType()); assertSame(question,get(alice,"currentQuestion")); assertEquals(1L,get(alice,"currentQuestionSequence"));
+            assertEquals(type,used.getRecentEvents().get(0).getType());
+            if ("FREEZE".equals(type)) { assertTrue((Long)get(bob,"frozenUntil")>System.currentTimeMillis()); }
+            if ("INVERT".equals(type)) { assertTrue((Long)get(bob,"invertedUntil")>System.currentTimeMillis()); }
+            if ("STEAL_SCORE".equals(type)) { assertEquals(5D,(Double)get(alice,"score"),0D); assertEquals(95D,(Double)get(bob,"score"),0D); }
+        }
+    }
+
     @Test public void eachCorrectAnswerEarnsOneCreditAndDuplicateOrWrongAnswersEarnNone() throws Exception {
         BattleOnlineAnswerDto request=answerRequest();
         BattleOnlineAnswerResultDto result=service.answer("GIFTS1","alice",request);
@@ -58,18 +95,20 @@ public class BattleOnlineGiftDropTest {
     }
 
     @Test public void aClaimConsumesOneCreditAndAddsOnlyServerSelectedPoints() {
-        String id=pool.snapshot().gifts.get(0).id; set(alice,"giftCredits",2); set(alice,"score",5D);
+        String id=pool.snapshot("alice").gifts.get(0).id; set(alice,"giftCredits",2); set(alice,"score",5D);
         BattleOnlineGiftClaimResultDto result=service.claimGift("GIFTS1","alice",request(id));
         assertEquals(10D*(result.getRewardLevel()+1),result.getPoints(),0D);
         assertEquals(5D+result.getPoints(),(Double)get(alice,"score"),0D); assertEquals(Integer.valueOf(1),result.getRoom().getGiftCredits());
+        assertEquals(1,result.getRoom().getGiftDrop().claims.size());
+        assertEquals(result.getPoints(),result.getRoom().getGiftDrop().claims.get(0).points,0D);
         rejected("alice",id); assertEquals(1,get(alice,"giftCredits"));
         assertEquals(5D+result.getPoints(),(Double)get(alice,"score"),0D);
         BattleOnlineRoomDto publicRoom=ReflectionTestUtils.invokeMethod(service,"snapshotLocked",room,(String)null);
-        assertNull(publicRoom.getGiftCredits()); assertNull(publicRoom.getGiftCreditVersion()); assertEquals(7,publicRoom.getGiftDrop().capacity);
+        assertNull(publicRoom.getGiftCredits()); assertNull(publicRoom.getGiftCreditVersion()); assertEquals(3,publicRoom.getGiftDrop().capacity); assertNull(publicRoom.getGiftDrop().gifts);
     }
 
     @Test public void noCreditSpectatorFreezeWrongPenaltyAndOtherModesCannotClaim() {
-        String id=pool.snapshot().gifts.get(0).id;
+        String id=pool.snapshot("alice").gifts.get(0).id;
         rejected("alice",id); set(host,"giftCredits",1); rejected("host",id); set(alice,"giftCredits",1);
         set(alice,"frozenUntil",System.currentTimeMillis()+5000); rejected("alice",id); set(alice,"frozenUntil",0L);
         set(alice,"wrongAnswerPenaltyUntil",System.currentTimeMillis()+5000); rejected("alice",id); set(alice,"wrongAnswerPenaltyUntil",0L);
@@ -78,18 +117,31 @@ public class BattleOnlineGiftDropTest {
         assertNotNull(service.claimGift("GIFTS1","alice",request(id)));
     }
 
+    @Test public void eachAccountOwnsThreeEggsAndCannotClaimFromAnotherPlayersPool() {
+        BattleOnlineRoomDto a=service.getRoom("GIFTS1","alice"), b=service.getRoom("GIFTS1","bob");
+        assertEquals(3,a.getGiftDrop().gifts.size()); assertEquals(3,b.getGiftDrop().gifts.size());
+        String aliceEgg=a.getGiftDrop().gifts.get(0).id, bobEgg=b.getGiftDrop().gifts.get(0).id;
+        set(alice,"giftCredits",1); set(bob,"giftCredits",1);
+        rejected("bob",aliceEgg); assertEquals(1,get(bob,"giftCredits"));
+        service.claimGift("GIFTS1","alice",request(aliceEgg));
+        assertEquals(bobEgg,service.getRoom("GIFTS1","bob").getGiftDrop().gifts.get(0).id);
+        assertEquals(3,service.getRoom("GIFTS1","alice").getGiftDrop().gifts.size());
+        service.claimGift("GIFTS1","bob",request(bobEgg));
+        assertEquals(2,pool.snapshot().claims.size());
+    }
+
     @Test public void selectedTeamCarrierAlsoReceivesDoubleGiftPoints() {
         set(get(room,"settings"),"teamCount",2); set(get(room,"settings"),"doubleActionUsername","alice"); set(alice,"teamNumber",1); set(alice,"giftCredits",1);
-        BattleOnlineGiftClaimResultDto result=service.claimGift("GIFTS1","alice",request(pool.snapshot().gifts.get(0).id));
+        BattleOnlineGiftClaimResultDto result=service.claimGift("GIFTS1","alice",request(pool.snapshot("alice").gifts.get(0).id));
         assertEquals(20D*(result.getRewardLevel()+1),result.getPoints(),0D); assertEquals(result.getPoints(),(Double)get(alice,"score"),0D);
     }
 
     @Test public void rottenEggScoresExactlyHalfAPointEvenForTheDoubleCarrierAndCannotBeReused() {
-        pool=new GiftDropGame(System.currentTimeMillis()-3000,3000,10000,new Random() { public int nextInt(int bound) { return 0; } });
+        pool=new GiftDropGame(10000,new Random() { public int nextInt(int bound) { return 0; } });
         set(room,"giftDrop",pool); service.getRoom("GIFTS1","alice");
         set(get(room,"settings"),"teamCount",2); set(get(room,"settings"),"doubleActionUsername","alice"); set(alice,"teamNumber",1);
         set(alice,"giftCredits",2); set(alice,"score",3.5D);
-        String id=pool.snapshot().gifts.get(0).id;
+        String id=pool.snapshot("alice").gifts.get(0).id;
         BattleOnlineGiftClaimResultDto result=service.claimGift("GIFTS1","alice",request(id));
         assertEquals(GiftDropGame.ROTTEN_EGG_LEVEL,result.getRewardLevel()); assertEquals(0.5D,result.getPoints(),0D); assertEquals(4D,(Double)get(alice,"score"),0D);
         String json;
@@ -99,21 +151,22 @@ public class BattleOnlineGiftDropTest {
     }
 
     @Test public void twoSimultaneousClaimsOfTheSameGiftHaveExactlyOneWinner() throws Exception {
-        final String id=pool.snapshot().gifts.get(0).id; set(alice,"giftCredits",1); set(bob,"giftCredits",1);
+        final String id=pool.snapshot("alice").gifts.get(0).id; set(alice,"giftCredits",1); set(bob,"giftCredits",1);
         final CountDownLatch go=new CountDownLatch(1); ExecutorService workers=Executors.newFixedThreadPool(2);
         List<Future<BattleOnlineGiftClaimResultDto>> results=new ArrayList<Future<BattleOnlineGiftClaimResultDto>>();
         try {
-            for(final String name:Arrays.asList("alice","bob")) results.add(workers.submit(new Callable<BattleOnlineGiftClaimResultDto>() {
+            for(final String name:Arrays.asList("alice","alice")) results.add(workers.submit(new Callable<BattleOnlineGiftClaimResultDto>() {
                 public BattleOnlineGiftClaimResultDto call() throws Exception { go.await(); try { return service.claimGift("GIFTS1",name,request(id)); } catch(BattleOnlineException lost) { return null; } }
             }));
             go.countDown(); int winners=0; double points=0D;
             for(Future<BattleOnlineGiftClaimResultDto> result:results) { BattleOnlineGiftClaimResultDto reward=result.get(5,TimeUnit.SECONDS); if(reward!=null) { winners++; points=reward.getPoints(); } }
             assertEquals(1,winners); assertEquals(1,(Integer)get(alice,"giftCredits")+(Integer)get(bob,"giftCredits"));
             assertEquals(points,(Double)get(alice,"score")+(Double)get(bob,"score"),0D);
+            assertEquals(1,pool.snapshot().claims.size());
         } finally { workers.shutdownNow(); }
     }
 
-    @Test @SuppressWarnings("unchecked") public void settingsStartFinishAndRestartResetPoolAndTimers() throws Exception {
+    @Test @SuppressWarnings("unchecked") public void settingsStartFinishAndRestartResetPoolAndApplySkillChoices() throws Exception {
         set(room,"status","LOBBY"); set(room,"giftDrop",null);
         BattleOnlineRoomSettingsDto config=new BattleOnlineRoomSettingsDto(); config.setMode("LUM_NGAY"); config.setGiftSpawnSeconds(0); config.setGiftBasePoints(20000); config.setSkillsEnabled(false);
         BattleOnlineRoomDto saved=service.updateSettings("GIFTS1","host",config);
@@ -128,9 +181,13 @@ public class BattleOnlineGiftDropTest {
         set(room,"allQuestionsLoaded",true); set(alice,"giftCredits",5);
         service.startMatch("GIFTS1","host"); BattleOnlineRoomDto playing=service.getRoom("GIFTS1","alice");
         assertNotNull(playing.getGiftDrop()); assertNotNull(playing.getCurrentQuestion()); assertEquals(Integer.valueOf(0),playing.getGiftCredits());
-        assertEquals(7,playing.getGiftDrop().capacity); assertTrue(((Map<?,?>)get(service,"giftTimers")).containsKey("GIFTS1"));
+        assertEquals(3,playing.getGiftDrop().capacity); assertEquals(3,playing.getGiftDrop().gifts.size()); assertTrue(playing.getGiftDrop().claims.isEmpty());
+        assertTrue(((List<?>)get(get(room,"giftDrop"),"skillTypes")).isEmpty());
         ReflectionTestUtils.invokeMethod(service,"finishMatchLocked",room);
-        assertTrue(((Map<?,?>)get(service,"giftTimers")).isEmpty());
         assertNull(service.restartMatch("GIFTS1","host").getGiftDrop()); assertEquals(0,get(alice,"giftCredits"));
+        config.setSkillsEnabled(true); config.setDisabledSkillTypes(Arrays.asList("FREEZE","STEAL_SCORE"));
+        service.updateSettings("GIFTS1","host",config); set(alice,"ready",true); set(bob,"ready",true); service.startMatch("GIFTS1","host");
+        assertEquals(Collections.singletonList("INVERT"),get(get(room,"giftDrop"),"skillTypes"));
+        assertTrue(((Map<?,?>)get(room,"countdownSkillPlan")).isEmpty());
     }
 }

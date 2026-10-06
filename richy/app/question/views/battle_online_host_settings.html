@@ -361,7 +361,7 @@
                 <p>Mặc định bật tất cả. Bấm vào skill để gạch chéo và tắt; bấm lại để bật. Mỗi mode dùng các skill phù hợp với mode đó.</p>
                 <div class="battle-online-skill-options" ng-class="{'is-muted': vm.hostSettings.skillsEnabled === false}">
                     <button type="button" class="battle-online-skill-option"
-                            ng-repeat="skill in vm.skillOptions track by skill.type"
+                            ng-repeat="skill in vm.getHostSkillOptions() track by skill.type"
                             ng-class="{'is-excluded': !vm.isHostSkillSelected(skill.type)}"
                             ng-click="vm.toggleHostSkill(skill.type)"
                             ng-disabled="vm.savingSettings || vm.hostSettings.skillsEnabled === false"
@@ -372,6 +372,7 @@
                         <small>{{vm.isHostSkillSelected(skill.type) ? 'BẬT' : 'TẮT'}}</small>
                     </button>
                 </div>
+                <p ng-if="vm.hostSettings.mode === 'LUM_NGAY'">Lụm ngay chỉ cấp Đóng băng, Cướp điểm và Đảo lộn khi bóc trúng trứng skill. Dùng skill đang có trước khi bóc tiếp.</p>
             </div>
 
             <!-- CLASSIC -->
@@ -474,15 +475,11 @@
                 <div class="battle-online-mode-badge">🎁 BOX QUÀ</div>
                 <div class="battle-online-setting-grid">
                     <div>
-                        <label ng-attr-for="battle-gift-spawn-seconds-{{$id}}">MỌC QUÀ SAU MỖI (GIÂY)</label>
-                        <input ng-attr-id="battle-gift-spawn-seconds-{{$id}}" class="form-control" type="number" min="1" max="60" ng-disabled="vm.savingSettings" ng-model="vm.hostSettings.giftSpawnSeconds" ng-change="vm.hostSkillsDirty = true">
-                    </div>
-                    <div>
                         <label ng-attr-for="battle-gift-base-points-{{$id}}">ĐIỂM TRỨNG LEVEL 0</label>
                         <input ng-attr-id="battle-gift-base-points-{{$id}}" class="form-control" type="number" min="1" max="10000" ng-disabled="vm.savingSettings" ng-model="vm.hostSettings.giftBasePoints" ng-change="vm.hostSkillsDirty = true">
                     </div>
                 </div>
-                <p>Mỗi đợt mọc 1–3 món; tối đa bằng số người chơi + 5. Mỗi câu đúng nhận 1 lượt bóc. Trứng thối luôn cho 0,5 điểm. Các quà còn lại = điểm cơ bản × (level + 1); level càng cao càng hiếm.</p>
+                <p>Mỗi người có pool riêng với 3 trứng sẵn có, bóc xong bổ sung ngay. Trả lời đúng chỉ nhận 1 lượt bóc; bóc trứng mới có điểm hoặc skill. Trứng thối luôn cho 0,5 điểm. Quà thường = điểm cơ bản × (level + 1); level càng cao càng hiếm.</p>
             </div>
 
             <div class="battle-online-mode-settings is-guess-word"

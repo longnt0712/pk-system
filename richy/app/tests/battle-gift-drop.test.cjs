@@ -15,12 +15,12 @@ function setup(username='alice') {
  function room(credits=1,version=1,gameId='match1') {
   const now=Date.now(); return {code:'GIFTS1',hostUsername:'host',status:'PLAYING',serverTime:now,matchEndsAt:now+60000,questionEndsAt:now+60000,
    settings:{mode:'LUM_NGAY',teamCount:0,skillsEnabled:false,giftSpawnSeconds:3,giftBasePoints:10},players:[{username:'host',spectator:true},{username:'alice',connected:true,spectator:false}],recentEvents:[],
-   currentQuestion:{id:7,sequence:1,question:'hello',answers:[{key:'A',text:'xin chào'}]},giftDrop:{gameId,version,capacity:6,gifts:[{id:'gift1'},{id:'gift2'}]},giftCredits:credits,giftCreditVersion:version};
+   currentQuestion:{id:7,sequence:1,question:'hello',answers:[{key:'A',text:'xin chào'}]},giftDrop:{gameId,version,poolVersion:version,capacity:3,gifts:[{id:'gift1'},{id:'gift2'},{id:'gift3'}]},giftCredits:credits,giftCreditVersion:version};
  }
  hooks.applyRoom(room(),false);
  return {vm,hooks,calls,answerCalls,events,bodyClasses,room,resolve(result){resolveClaim(result);},reject(error){rejectClaim(error);},resolveAnswer(result){resolveAnswer(result);},destroy(){cleanup();}};
 }
-test('Lụm ngay can be selected and its spawn/score settings are clamped',()=>{
+test('Lụm ngay can be selected and its score settings are clamped',()=>{
  const h=setup('host'); h.vm.hostSettings.mode='LUM_NGAY';h.vm.hostSettings.giftSpawnSeconds=0;h.vm.hostSettings.giftBasePoints=25000;
  const dto=h.hooks.buildSettingsDto(); assert.equal(dto.mode,'LUM_NGAY');assert.equal(dto.giftSpawnSeconds,1);assert.equal(dto.giftBasePoints,10000);
  assert.equal(h.vm.isCountdownMode(),true);
@@ -34,13 +34,14 @@ test('each level uses an existing distinct egg/cracked egg/pet artwork',()=>{
  assert.equal(seen.size,15);
 });
 test('zero credit, spectator, freeze and requests in progress cannot pick gifts',()=>{
- for(const state of ['no-credit','spectator','freeze','wrong','answering','claiming','finished']) {
+ for(const state of ['no-credit','spectator','freeze','wrong','answering','claiming','finished','pending-skill']) {
   const h=setup(),room=h.room();
   if(state==='no-credit')room.giftCredits=0;
   if(state==='spectator')room.players[1].spectator=true;
   if(state==='freeze')room.players[1].frozenUntil=Date.now()+5000;
   if(state==='wrong')room.wrongAnswerPenaltyUntil=Date.now()+5000;
   if(state==='finished')room.status='FINISHED';
+  if(state==='pending-skill')room.pendingSkillType='FREEZE';
   h.hooks.applyRoom(room,false);
   if(state==='answering')h.vm.answerLocked=true;
   if(state==='claiming')h.vm.claimingGift=true;
@@ -48,11 +49,34 @@ test('zero credit, spectator, freeze and requests in progress cannot pick gifts'
   h.vm.claimGift({id:'gift1'});assert.equal(h.calls.length,0,state);
  }
 });
+test('egg mode offers only three skills and a claimed skill appears without adding prize points',async()=>{
+ const h=setup('host');h.vm.hostSettings.mode='LUM_NGAY';
+ assert.deepEqual(plain(h.vm.getHostSkillOptions().map(skill=>skill.type)),['FREEZE','STEAL_SCORE','INVERT']);
+ const player=setup();const enabled=player.room();enabled.settings.skillsEnabled=true;player.hooks.applyRoom(enabled,false);
+ assert.equal(player.vm.isGameSkillEnabled('FIRE_UP'),false);assert.equal(player.vm.isGameSkillEnabled('INVERT'),true);
+ player.vm.openGiftModal();const pending=player.vm.claimGift({id:'gift1'});
+ const next=player.room(1,2);next.settings.skillsEnabled=true;next.pendingSkillType='INVERT';next.pendingSkillTargetUsernames=[];
+ player.resolve({rewardLevel:-2,skillType:'INVERT',points:0,room:next});await pending;
+ assert.equal(player.vm.lastGiftReward.skillType,'INVERT');assert.equal(player.vm.lastGiftReward.points,0);
+ assert.match(player.vm.getGiftRewardLabel(-2,'INVERT'),/^Trứng ĐẢO LỘN/);
+ assert.equal(player.vm.getGiftRewardImage(-2,'INVERT'),player.vm.getGiftRewardImage(0));
+ assert.equal(player.vm.skillTargetModalOpen,true);player.vm.dismissGiftReward();
+ assert.equal(player.vm.giftClaimDisabled(),true);player.vm.openGiftModal();assert.equal(player.vm.giftModalOpen,false);
+});
+test('host egg dashboard has four columns, keeps live claim history and is host-only',()=>{
+ const main=fs.readFileSync(path.join(__dirname,'../question/views/battle_quiz_online.html'),'utf8');
+ const view=fs.readFileSync(path.join(__dirname,'../question/views/battle_online_egg_host.html'),'utf8');
+ assert.match(main,/ng-if="[^"]*vm\.isLumNgayMode\(\) && vm\.isHost\(\)"\s+src="'question\/views\/battle_online_egg_host/);
+ assert.equal((view.match(/<section class="egg-host-column/g)||[]).length,4);
+ const h=setup('host'),latest=h.room(1,5);latest.giftDrop.claims=[{id:'gift1',username:'alice',rewardLevel:0,points:10}];h.hooks.applyRoom(latest,true);
+ const stale=h.room(1,4);stale.giftDrop.claims=[];h.hooks.applyRoom(stale,true);
+ assert.equal(h.vm.room.giftDrop.claims.length,1);assert.equal(h.vm.room.giftDrop.claims[0].username,'alice');
+});
 test('one successful claim reveals an image, updates the pool and consumes a credit once',async()=>{
  const h=setup();h.vm.openGiftModal();const pending=h.vm.claimGift({id:'gift1'});h.vm.claimGift({id:'gift1'});assert.equal(h.calls.length,1);
  assert.equal(h.vm.exerciseInputDisabled(),true);
- const result=h.room(0,2);result.giftDrop.gifts=[{id:'gift2'}];h.resolve({room:result,rewardLevel:14,points:150});await pending;
- assert.deepEqual(plain(h.vm.lastGiftReward),{level:14,points:150});assert.equal(h.vm.room.giftCredits,0);assert.equal(h.vm.room.giftDrop.gifts.length,1);
+ const result=h.room(0,2);result.giftDrop.gifts=[{id:'gift2'},{id:'gift3'},{id:'gift4'}];h.resolve({room:result,rewardLevel:14,points:150});await pending;
+ assert.deepEqual(plain(h.vm.lastGiftReward),{level:14,points:150});assert.equal(h.vm.room.giftCredits,0);assert.equal(h.vm.room.giftDrop.gifts.length,3);
  assert.equal(h.vm.giftClaimDisabled(),true);assert.equal(h.vm.claimingGift,false);
  assert.equal(h.vm.giftModalOpen,true);h.vm.dismissGiftReward();assert.equal(h.vm.giftModalOpen,false);
 });
@@ -93,10 +117,26 @@ test('one modal permits only one egg even when the player has several saved cred
  h.vm.claimGift({id:'gift2'});assert.equal(h.calls.length,1);h.vm.dismissGiftReward();
  h.vm.openGiftModal();assert.equal(h.vm.lastGiftReward,null);assert.equal(h.vm.giftModalOpen,true);assert.equal(h.vm.room.giftCredits,2);
 });
-test('an empty egg pool waits in the modal and live spawns populate it without closing it',()=>{
+test('a modal awaiting a private snapshot stays open until its three eggs are loaded',()=>{
  const h=setup(),empty=h.room();empty.giftDrop.gifts=[];h.hooks.applyRoom(empty,false);h.vm.openGiftModal();
  assert.equal(h.vm.giftModalOpen,true);assert.equal(h.vm.room.giftDrop.gifts.length,0);
- h.hooks.applyRoom(h.room(1,2),true);assert.equal(h.vm.giftModalOpen,true);assert.equal(h.vm.room.giftDrop.gifts.length,2);
+ h.hooks.applyRoom(h.room(1,2),false);assert.equal(h.vm.giftModalOpen,true);assert.equal(h.vm.room.giftDrop.gifts.length,3);
+});
+test('public updates carry history without erasing or replacing a players private eggs',()=>{
+ const h=setup();h.vm.openGiftModal();const generic=h.room(1,2);generic.giftDrop.gifts=null;
+ generic.giftDrop.claims=[{id:'bobEgg',username:'bob',rewardLevel:0,points:10}];delete generic.giftCredits;delete generic.giftCreditVersion;
+ h.hooks.applyRoom(generic,true);assert.equal(h.vm.giftModalOpen,true);assert.equal(h.vm.room.giftDrop.gifts.length,3);
+ assert.equal(h.vm.room.giftDrop.gifts[0].id,'gift1');assert.equal(h.vm.room.giftDrop.claims[0].username,'bob');
+});
+test('an earlier private claim result still updates its pool after a newer public event from another player',async()=>{
+ const h=setup();h.vm.openGiftModal();const pending=h.vm.claimGift({id:'gift1'});
+ const generic=h.room(1,7);generic.giftDrop.gifts=null;generic.giftDrop.poolVersion=null;generic.giftDrop.claims=[{id:'bobEgg',username:'bob'}];
+ delete generic.giftCredits;delete generic.giftCreditVersion;h.hooks.applyRoom(generic,true);
+ const claimed=h.room(0,5);claimed.giftDrop.poolVersion=2;claimed.giftDrop.gifts=[{id:'gift2'},{id:'gift3'},{id:'gift4'}];
+ h.resolve({rewardLevel:0,points:10,room:claimed});await pending;
+ assert.equal(h.vm.room.giftDrop.version,7);assert.equal(h.vm.room.giftDrop.poolVersion,2);
+ assert.equal(h.vm.room.giftDrop.claims[0].username,'bob');assert.equal(h.vm.room.giftDrop.gifts.some(egg=>egg.id==='gift1'),false);
+ assert.equal(h.vm.room.giftCredits,0);
 });
 test('a lost claim preserves the selection modal and credit so another egg can be picked',async()=>{
  const h=setup();h.vm.openGiftModal();const pending=h.vm.claimGift({id:'gift1'});

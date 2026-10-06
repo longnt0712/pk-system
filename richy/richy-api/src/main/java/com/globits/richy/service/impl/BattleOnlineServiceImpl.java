@@ -220,7 +220,6 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             new ConcurrentHashMap<String, ScheduledFuture<?>>();
     private final Map<String, ScheduledFuture<?>> demonTimers =
             new ConcurrentHashMap<String, ScheduledFuture<?>>();
-    private final Map<String, ScheduledFuture<?>> giftTimers = new ConcurrentHashMap<String, ScheduledFuture<?>>();
 
     private final Map<String, ScheduledFuture<?>> preloadTimers =
             new ConcurrentHashMap<String, ScheduledFuture<?>>();
@@ -1604,8 +1603,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         room.matchEndsAt = matchStartsAt + matchDurationMs;
         if (MODE_LUM_NGAY.equals(room.settings.mode)) {
-            room.giftDrop = new GiftDropGame(matchStartsAt, room.settings.giftSpawnSeconds * 1000L, room.settings.giftBasePoints, random);
-            advanceGiftPoolLocked(room, matchStartsAt);
+            List<String> eggSkills = new ArrayList<String>();
+            for (String type : GiftDropGame.SKILL_TYPES) { if (isSkillEnabledLocked(room, type)) { eggSkills.add(type); } }
+            room.giftDrop = new GiftDropGame(room.settings.giftBasePoints, random, eggSkills);
         }
         room.passwordResetAvailableAt =
                 matchStartsAt + (matchDurationMs / 2L);
@@ -1657,7 +1657,6 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 room.matchEndsAt
             );
         if (room.demonDefense != null) { scheduleDemonTick(room); }
-        if (room.giftDrop != null) { scheduleGiftTick(room); }
     }
 
 
@@ -2203,7 +2202,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             );
 
             String earnedSkill =
-                    correct && isSkillEnabledLocked(room, player.currentSkillType)
+                    correct && !MODE_LUM_NGAY.equals(room.settings.mode) && isSkillEnabledLocked(room, player.currentSkillType)
                             ? player.currentSkillType
                             : null;
 
@@ -2224,12 +2223,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     fireBoostApplied
             );
 
-            double scoreDelta = applyScore(
-                    player,
-                    correct,
-                    !MODE_DEMON_DEFENSE.equals(room.settings.mode),
-                    now
-            );
+            double scoreDelta;
+            if (MODE_LUM_NGAY.equals(room.settings.mode)) {
+                player.streak = correct ? player.streak + 1 : 0;
+                if (correct) { player.correctCount++; } else { player.wrongCount++; }
+                scoreDelta = 0D;
+            } else {
+                scoreDelta = applyScore(player, correct, !MODE_DEMON_DEFENSE.equals(room.settings.mode), now);
+            }
 
             DemonDefenseGame.ShotResult demonShot = null;
             if (MODE_DEMON_DEFENSE.equals(room.settings.mode)) {
@@ -2241,7 +2242,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 if (demonShot != null && demonShot.rescued) { player.demonRescues++; }
             }
 
-            int scoreMultiplier = correct && !MODE_DEMON_DEFENSE.equals(room.settings.mode)
+            int scoreMultiplier = correct && !MODE_DEMON_DEFENSE.equals(room.settings.mode) && !MODE_LUM_NGAY.equals(room.settings.mode)
                     ? scoreMultiplierForCurrentQuestion(room, player)
                     : 1;
             scoreDelta = applyScoreMultiplierLocked(
@@ -2288,6 +2289,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     fireActivated
             );
             result.setScoreMultiplier(scoreMultiplier);
+            if (MODE_LUM_NGAY.equals(room.settings.mode)) {
+                result.setMessage(correct ? "CHÍNH XÁC! Bạn nhận 1 lượt bóc trứng." : "SAI RỒI! Trả lời đúng để nhận lượt bóc trứng.");
+            }
 
             if (MODE_DEMON_DEFENSE.equals(room.settings.mode)) {
                 result.setMessage(correct
@@ -2421,8 +2425,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             advanceDemonDefenseLocked(room, System.currentTimeMillis());
             requirePlaying(room);
             requireLivingDemonPlayerLocked(room, actor);
-            if (MODE_DEMON_DEFENSE.equals(room.settings.mode) && actor.frozenUntil > System.currentTimeMillis()) {
+            if ((MODE_DEMON_DEFENSE.equals(room.settings.mode) || MODE_LUM_NGAY.equals(room.settings.mode)) && actor.frozenUntil > System.currentTimeMillis()) {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Bạn đang bị đóng băng.");
+            }
+            if (MODE_LUM_NGAY.equals(room.settings.mode) && actor.wrongAnswerPenaltyUntil > System.currentTimeMillis()) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Chờ hết thời gian khóa để dùng skill.");
             }
 
             boolean rescueRequest = MODE_DEMON_DEFENSE.equals(room.settings.mode) &&
@@ -2549,10 +2556,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         actor.pendingSkillType = null;
                         actor.pendingSkillTargetUsernames.clear();
 
-                        assignNextCountdownQuestionLocked(
-                                room,
-                                actor
-                        );
+                        if (!MODE_LUM_NGAY.equals(room.settings.mode) || actor.currentQuestion == null) {
+                            assignNextCountdownQuestionLocked(room, actor);
+                        }
                     }
                 }
 
@@ -2582,45 +2588,29 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
             PlayerState player = requirePlayer(room, username);
             requireActivePlayer(player);
+            if (player.pendingSkillType != null) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Dùng skill đang có trước khi bóc trứng tiếp.");
+            }
             if (player.frozenUntil > now || player.wrongAnswerPenaltyUntil > now || player.giftCredits <= 0) {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Trả lời đúng để nhận lượt lụm quà.");
             }
-            advanceGiftPoolLocked(room, now);
-            GiftDropGame.Gift gift = room.giftDrop.claim(request != null ? request.getGiftId() : null);
-            if (gift == null) { throw new BattleOnlineException(HttpStatus.CONFLICT, "Món quà đã được người khác lụm. Chọn món khác nhé!"); }
+            GiftDropGame.Gift gift = room.giftDrop.claim(username, request != null ? request.getGiftId() : null);
+            if (gift == null) { throw new BattleOnlineException(HttpStatus.CONFLICT, "Trứng không còn trong pool của bạn. Chọn trứng khác nhé!"); }
             player.giftCredits--;
             player.giftCreditVersion++;
+            if (gift.skillType != null) {
+                player.pendingSkillType = gift.skillType;
+                preparePendingSkillTargetsLocked(room, player);
+            }
             player.score = roundScoreToOneDecimal(player.score + gift.points);
             double awardedPoints = gift.rewardLevel == GiftDropGame.ROTTEN_EGG_LEVEL
                     ? gift.points : applyDoubleActionScoreLocked(room, player, gift.points);
+            room.giftDrop.recordClaim(gift, player.username, displayName(player), awardedPoints, now);
+            result.setSkillType(gift.skillType);
             result.setRewardLevel(gift.rewardLevel); result.setPoints(awardedPoints); result.setRoom(snapshotLocked(room, username));
         }
         broadcastGeneric(room);
         return result;
-    }
-
-    private boolean advanceGiftPoolLocked(RoomState room, long now) {
-        if (room.giftDrop == null || !PLAYING.equals(room.status) || now >= room.matchEndsAt) { return false; }
-        int players = 0;
-        for (PlayerState player : room.players.values()) { if (!player.spectator) { players++; } }
-        return room.giftDrop.advance(now, players);
-    }
-
-    private void scheduleGiftTick(final RoomState room) {
-        final GiftDropGame game = room.giftDrop;
-        ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(new Runnable() {
-            public void run() {
-                try {
-                    boolean changed;
-                    synchronized (room) {
-                        if (room.giftDrop != game || rooms.get(room.code) != room) { return; }
-                        changed = advanceGiftPoolLocked(room, System.currentTimeMillis());
-                    }
-                    if (changed) { broadcastGeneric(room); }
-                } catch (Exception error) { LOG.error("Gift tick failed for {}", room.code, error); }
-            }
-        }, 250L, 250L, TimeUnit.MILLISECONDS);
-        giftTimers.put(room.code, future);
     }
 
 
@@ -4053,12 +4043,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private boolean isSkillEnabledLocked(RoomState room, String type) {
         return room.settings.skillsEnabled && type != null &&
+                (!MODE_LUM_NGAY.equals(room.settings.mode) || GiftDropGame.SKILL_TYPES.contains(type)) &&
                 !room.settings.disabledSkillTypes.contains(type);
     }
 
     private void buildCountdownSkillPlanLocked(RoomState room) {
         room.countdownSkillPlan.clear();
-        if (!room.settings.skillsEnabled) { return; }
+        if (!room.settings.skillsEnabled || MODE_LUM_NGAY.equals(room.settings.mode)) { return; }
 
         int total = displayTotal(room);
 
@@ -4434,10 +4425,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         actor.pendingSkillType = null;
         actor.pendingSkillTargetUsernames.clear();
 
-        assignNextCountdownQuestionLocked(
-                room,
-                actor
-        );
+        if (!MODE_LUM_NGAY.equals(room.settings.mode) || actor.currentQuestion == null) {
+            assignNextCountdownQuestionLocked(room, actor);
+        }
 
         return true;
     }
@@ -5146,7 +5136,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.passwordResetSkillIssued = true;
         } else {
             String plannedSkill = room.countdownSkillPlan.get(skillPosition);
-            player.currentSkillType = isSkillEnabledLocked(room, plannedSkill) ? plannedSkill : null;
+            player.currentSkillType = !MODE_LUM_NGAY.equals(room.settings.mode) && isSkillEnabledLocked(room, plannedSkill) ? plannedSkill : null;
         }
 
         player.uniqueWordIds.add(
@@ -6380,9 +6370,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         roomSettingsDto.setQuestionOwnerUserId(room.ownerUserId);
         dto.setSettings(roomSettingsDto);
         if (room.giftDrop != null) {
-            advanceGiftPoolLocked(room, System.currentTimeMillis());
-            dto.setGiftDrop(room.giftDrop.snapshot());
             PlayerState viewer = room.players.get(viewerUsername);
+            dto.setGiftDrop(viewer != null && !viewer.spectator ? room.giftDrop.snapshot(viewerUsername) : room.giftDrop.snapshot());
             if (viewer != null && !viewer.spectator) { dto.setGiftCredits(viewer.giftCredits); dto.setGiftCreditVersion(viewer.giftCreditVersion); }
         }
 
@@ -7552,8 +7541,6 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         ScheduledFuture<?> demonTimer = demonTimers.remove(normalizeRoomCode(roomCode));
         if (demonTimer != null) { demonTimer.cancel(false); }
-        ScheduledFuture<?> giftTimer = giftTimers.remove(normalizeRoomCode(roomCode));
-        if (giftTimer != null) { giftTimer.cancel(false); }
 
         ScheduledFuture<?> future =
                 matchTimers.remove(

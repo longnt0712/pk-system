@@ -802,7 +802,7 @@
              ================================================= -->
         <aside class="battle-online-card battle-online-side-card"
                ng-if="vm.isHost()">
-            <ng-include src="'question/views/battle_online_host_settings.html?lumNgay=20261006_2'"></ng-include>
+            <ng-include src="'question/views/battle_online_host_settings.html?lumNgay=20261006_3'"></ng-include>
         </aside>
 
         <!-- NON HOST -->
@@ -907,8 +907,8 @@
                     Mỗi người chơi có thứ tự câu riêng, không cần chờ nhau.
                 </span>
                 <span ng-if="vm.isLumNgayMode()">
-                    Mỗi câu đúng nhận 1 lượt bóc quà. Quà mọc mỗi {{vm.room.settings.giftSpawnSeconds}} giây;
-                    tối đa số người chơi + 5 món. Trứng, trứng vỡ và pet level cao hiếm hơn và cho nhiều điểm hơn.
+                    Trả lời đúng chỉ nhận 1 lượt bóc; bóc trứng mới nhận điểm hoặc skill.
+                    Mỗi người có sẵn 3 trứng trong pool riêng. Quà level cao hiếm hơn và cho nhiều điểm hơn.
                 </span>
                 <span ng-if="vm.room.settings.mode === 'MONEY_BEG'">
                     Mỗi người chọn mật khẩu riêng. Skill HACK chiếm khoảng 7% số lượt skill;
@@ -1034,8 +1034,10 @@
                 <small class="battle-online-music-note">Nhạc phát trên thiết bị host. Danh sách lấy từ Config Battle.</small>
             </section>
     </div>
+    <ng-include ng-if="vm.room && vm.room.status === 'PLAYING' && vm.isLumNgayMode() && vm.isHost()"
+                src="'question/views/battle_online_egg_host.html?eggHost=20261006_1'"></ng-include>
     <div class="battle-online-game-layout"
-         ng-if="vm.room && vm.room.status === 'PLAYING'"
+         ng-if="vm.room && vm.room.status === 'PLAYING' && !(vm.isLumNgayMode() && vm.isHost() && vm.isSpectator())"
          ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode()}">
 
         <main class="battle-online-card battle-online-question-card"
@@ -1391,7 +1393,7 @@
                     <p>Trả lời đúng để mở modal chọn trứng. Trứng thối cho 0,5 điểm; level cao hiếm hơn và cho nhiều điểm hơn!</p>
                     <b class="battle-online-gift-credits">Lượt bóc của bạn: {{vm.room.giftCredits || 0}}</b>
                     <button type="button" class="battle-online-gift-open" ng-if="vm.room.giftCredits > 0"
-                            ng-click="vm.openGiftModal()" ng-disabled="vm.claimingGift || vm.answerLocked || vm.giftModalOpen">🥚 CHỌN TRỨNG</button>
+                            ng-click="vm.openGiftModal()" ng-disabled="vm.giftClaimDisabled() || vm.giftModalOpen">🥚 CHỌN TRỨNG</button>
                 </section>
             </div>
 
@@ -1589,7 +1591,7 @@
 
         <!-- RANKING -->
         <aside id="battle-online-ranking-card"
-               class="battle-online-card battle-online-ranking-card" ng-if="!vm.isDemonDefenseMode()">
+               class="battle-online-card battle-online-ranking-card" ng-if="!vm.isDemonDefenseMode() && !(vm.isLumNgayMode() && vm.isHost())">
 
             <div class="battle-online-title-row">
                 <div>
@@ -1921,7 +1923,7 @@
                         ng-click="$event.stopPropagation(); vm.closeGiftModal()" ng-disabled="vm.claimingGift">×</button>
             </header>
             <div class="battle-online-gift-modal-stage" ng-if="!vm.lastGiftReward">
-                <p class="battle-online-gift-modal-hint">Chọn một quả trứng để nhận điểm. Ai chọn trước nhận trước!</p>
+                <p class="battle-online-gift-modal-hint">Pool riêng của bạn gồm 3 trứng. Chọn một trứng để nhận điểm hoặc skill!</p>
                 <div class="battle-online-gift-modal-meta"><span>{{vm.room.giftDrop.gifts.length || 0}} / {{vm.room.giftDrop.capacity || 0}} trứng</span><b>{{vm.room.giftCredits || 0}} lượt bóc</b></div>
                 <div class="battle-online-gift-grid" ng-if="vm.room.giftDrop.gifts.length">
                     <button type="button" ng-repeat="gift in vm.room.giftDrop.gifts track by gift.id"
@@ -1930,17 +1932,21 @@
                         <img ng-src="{{vm.getGiftRewardImage(0)}}" alt=""><span>TRỨNG {{$index + 1}}</span>
                     </button>
                 </div>
-                <p class="battle-online-gift-waiting" ng-if="!vm.room.giftDrop.gifts.length">🥚 Đang chờ trứng mọc... Lượt bóc của bạn vẫn được giữ.</p>
+                <p class="battle-online-gift-waiting" ng-if="!vm.room.giftDrop.gifts.length">🥚 Đang tải pool trứng của bạn...</p>
                 <p class="battle-online-gift-modal-hint" ng-if="vm.claimingGift">Đang bóc trứng...</p>
                 <p class="battle-online-gift-modal-hint" ng-if="vm.isMeFrozen() || vm.isWrongAnswerPenaltyActive()">Đang bị khóa. Bạn có thể chọn trứng khi hết thời gian khóa.</p>
             </div>
             <div class="battle-online-gift-reveal" ng-if="vm.lastGiftReward" aria-live="polite">
-                <img ng-src="{{vm.getGiftRewardImage(vm.lastGiftReward.level)}}" alt="{{vm.getGiftRewardLabel(vm.lastGiftReward.level)}}">
-                <strong>{{vm.getGiftRewardLabel(vm.lastGiftReward.level)}}</strong>
+                <div class="battle-online-gift-art" ng-class="{'is-skill-egg': vm.lastGiftReward.skillType}">
+                    <img ng-src="{{vm.getGiftRewardImage(vm.lastGiftReward.level, vm.lastGiftReward.skillType)}}" alt="{{vm.getGiftRewardLabel(vm.lastGiftReward.level, vm.lastGiftReward.skillType)}}">
+                    <b ng-if="vm.lastGiftReward.skillType" class="battle-online-gift-skill-icon">{{vm.getSkillIcon(vm.lastGiftReward.skillType)}}</b>
+                </div>
+                <strong>{{vm.getGiftRewardLabel(vm.lastGiftReward.level, vm.lastGiftReward.skillType)}}</strong>
                 <span ng-if="vm.lastGiftReward.level >= 0">Level {{vm.lastGiftReward.level}}</span>
-                <b class="battle-online-gift-points">+{{vm.lastGiftReward.points}} ĐIỂM</b>
-                <p>Điểm đã được cộng cho bạn. Bấm vào modal để đóng.</p>
-                <button type="button" class="battle-online-gift-continue" ng-click="$event.stopPropagation(); vm.closeGiftModal()">TIẾP TỤC TRẢ LỜI →</button>
+                <b class="battle-online-gift-points" ng-if="!vm.lastGiftReward.skillType">+{{vm.lastGiftReward.points}} ĐIỂM</b>
+                <b class="battle-online-gift-skill-label" ng-if="vm.lastGiftReward.skillType">NHẬN SKILL {{vm.getSkillIcon(vm.lastGiftReward.skillType)}}</b>
+                <p>{{vm.lastGiftReward.skillType ? 'Đóng modal để chọn đối thủ dùng skill.' : 'Điểm đã được cộng cho bạn. Bấm vào modal để đóng.'}}</p>
+                <button type="button" class="battle-online-gift-continue" ng-click="$event.stopPropagation(); vm.closeGiftModal()">{{vm.lastGiftReward.skillType ? 'CHỌN ĐỐI THỦ →' : 'TIẾP TỤC TRẢ LỜI →'}}</button>
             </div>
         </section>
     </div>
@@ -2082,7 +2088,7 @@
     </div>
 
     <div class="battle-online-skill-modal-backdrop"
-         ng-if="vm.skillTargetModalOpen && vm.room && vm.room.settings.skillsEnabled !== false && vm.room.pendingSkillType">
+         ng-if="vm.skillTargetModalOpen && !vm.giftModalOpen && vm.room && vm.room.settings.skillsEnabled !== false && vm.room.pendingSkillType">
 
         <section class="battle-online-skill-modal"
                  role="dialog"
@@ -2450,7 +2456,7 @@
                 </div>
 
                 <div class="battle-online-side-card battle-online-qr-settings-scroll" ng-if="vm.isHost() && vm.room.status === 'LOBBY'">
-                    <ng-include src="'question/views/battle_online_host_settings.html?lumNgay=20261006_2'"></ng-include>
+                    <ng-include src="'question/views/battle_online_host_settings.html?lumNgay=20261006_3'"></ng-include>
                 </div>
             </div>
         </section>
@@ -2599,13 +2605,42 @@
     .battle-online-gift-waiting { margin:15vh 0; font-size:18px; font-weight:800; color:#7952d6; }
     .battle-online-gift-reveal { flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; gap:8px; padding:16px 0; overflow-y:auto; overscroll-behavior:contain; text-align:center; cursor:pointer; animation:gift-reveal .3s ease-out; }
     .battle-online-gift-reveal > * { flex-shrink:0; max-width:100%; }
-    .battle-online-gift-reveal img { margin-top:auto; }
+    .battle-online-gift-art { position:relative; margin-top:auto; }
+    .battle-online-gift-skill-icon { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font-size:clamp(42px,9vw,82px); filter:drop-shadow(0 2px 5px #fff); }
+    .battle-online-gift-skill-label { font-size:clamp(24px,4vw,44px); color:#6b42c7; }
     .battle-online-gift-continue { margin-bottom:auto; }
     .battle-online-gift-reveal img { width:min(50vw,340px); height:min(32vh,300px); flex-shrink:0; object-fit:contain; }
     .battle-online-gift-reveal strong { font-size:clamp(20px,2.4vw,30px); }
     .battle-online-gift-reveal span { color:#ae6910; font-weight:800; }
     .battle-online-gift-points { font-size:clamp(34px,6vw,72px); line-height:1.15; color:#d37d07; }
     .battle-online-gift-reveal p { font-size:13px; color:#716781; }
+    .egg-host-board { display:grid; grid-template-columns:minmax(155px,.65fr) minmax(250px,1.2fr) minmax(240px,1fr) minmax(280px,1.35fr); gap:16px; margin:20px 0; align-items:stretch; }
+    .egg-host-column { min-width:0; height:min(72vh,800px); display:flex; flex-direction:column; padding:20px; border:1px solid #dbd2f8; border-radius:22px; background:#fff; box-shadow:0 8px 30px #4f398015; }
+    .egg-host-column h2 { margin:0 0 18px; font-size:18px; font-weight:900; color:#554080; }
+    .egg-host-scroll { min-height:0; overflow-y:auto; overflow-x:hidden; flex:1; }
+    .egg-host-time { text-align:center; background:linear-gradient(160deg,#6a48df,#934ce8); color:#fff; }
+    .egg-host-time h2 { color:#fff; }
+    .egg-host-clock { display:block; margin:20px 0; font-size:clamp(34px,4vw,64px); font-weight:900; font-variant-numeric:tabular-nums; }
+    .egg-host-time p { padding:14px 0; border-bottom:1px solid #ffffff30; }
+    .egg-host-rank-row { display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid #ece7f7; }
+    .egg-host-rank-row img { width:44px; height:44px; object-fit:contain; }
+    .egg-host-rank-row .egg-host-player { flex:1; min-width:0; overflow-wrap:anywhere; }
+    .egg-host-rank-row small { display:block; color:#81768f; }
+    .egg-host-rank-row > b { color:#7547ce; }
+    .egg-host-skill-chips { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:16px; }
+    .egg-host-skill-chips span { padding:6px 9px; border-radius:9px; background:#eee6fc; color:#63459b; font-weight:800; font-size:12px; }
+    .egg-host-event,.egg-host-claim { display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid #ece7f7; }
+    .egg-host-event > span { font-size:26px; }
+    .egg-host-event p,.egg-host-claim p { margin:0; overflow-wrap:anywhere; }
+    .egg-host-empty { color:#81768f; padding:20px 0; }
+    .egg-host-claim-art { position:relative; flex:0 0 58px; }
+    .egg-host-claim-art img { width:58px; height:58px; object-fit:contain; }
+    .egg-host-claim-art b { position:absolute; top:12px; left:18px; font-size:26px; }
+    .egg-host-claim strong,.egg-host-claim small,.egg-host-claim em { display:block; }
+    .egg-host-claim small { color:#78698f; }
+    .egg-host-claim em { margin-top:3px; font-style:normal; font-weight:900; color:#8650ce; }
+    @media (max-width:1199px) { .egg-host-board { grid-template-columns:repeat(2,minmax(0,1fr)); } .egg-host-column { height:480px; } }
+    @media (max-width:599px) { .egg-host-board { grid-template-columns:minmax(0,1fr); } .egg-host-column { height:auto; max-height:460px; } .egg-host-time { min-height:260px; } }
     @keyframes gift-reveal { from { opacity:0; transform:scale(.9); } to { opacity:1; transform:scale(1); } }
     @media (max-width:767px) {
         .battle-online-gift-slot { margin-bottom:90px; }

@@ -298,6 +298,13 @@
             {type: 'RESET_PASSWORD', name: 'Đặt lại mật khẩu', icon: '🔐'},
             {type: 'UNFREEZE', name: 'Giải băng đồng đội', icon: '🧊'}
         ];
+        var eggSkillTypes = ['FREEZE', 'STEAL_SCORE', 'INVERT'];
+        vm.eggSkillOptions = eggSkillTypes.map(function (type) {
+            return vm.skillOptions.filter(function (skill) { return skill.type === type; })[0];
+        });
+        vm.getHostSkillOptions = function () {
+            return vm.hostSettings.mode === 'LUM_NGAY' ? vm.eggSkillOptions : vm.skillOptions;
+        };
         function normalizeDisabledSkills(types) {
             return (Array.isArray(types) ? types : []).filter(function (type, index, all) {
                 return all.indexOf(type) === index && vm.skillOptions.some(function (skill) { return skill.type === type; });
@@ -316,6 +323,7 @@
         };
         vm.isGameSkillEnabled = function (type) {
             return !!vm.room && vm.room.settings.skillsEnabled !== false &&
+                (vm.room.settings.mode !== 'LUM_NGAY' || eggSkillTypes.indexOf(type) >= 0) &&
                 (vm.room.settings.disabledSkillTypes || []).indexOf(type) < 0;
         };
         vm.claimingGift = false;
@@ -325,10 +333,11 @@
         vm.isLumNgayMode = function () { return !!vm.room && vm.room.settings.mode === 'LUM_NGAY'; };
         vm.giftClaimDisabled = function () {
             return !vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() ||
-                vm.claimingGift || vm.answerLocked || vm.usingSkill || vm.room.giftCredits <= 0 ||
+                vm.claimingGift || vm.answerLocked || vm.usingSkill || !!vm.room.pendingSkillType || vm.room.giftCredits <= 0 ||
                 vm.room.giftCredits == null || vm.countdown <= 0 || isMeFrozen() || isWrongAnswerPenaltyActive();
         };
-        vm.getGiftRewardImage = function (level) {
+        vm.getGiftRewardImage = function (level, skillType) {
+            if (skillType) { level = 0; }
             if (level === -1) {
                 var version = $window.APP_VERSION || '';
                 return 'assets/images/learning-pets/lum-ngay/rotten-egg.png' + (version ? '?v=' + encodeURIComponent(version) : '');
@@ -336,7 +345,8 @@
             var pets = ['MAM_HOC','CAPYBARA_EGG','CUTE_DOG','CUTE_TOM_CAT','CUTE_JERRY_MOUSE'];
             return getPlayerPetImage({selectedPetKey: pets[Math.floor(level / 3)], vocabularyExperienceLevel: level});
         };
-        vm.getGiftRewardLabel = function (level) {
+        vm.getGiftRewardLabel = function (level, skillType) {
+            if (skillType) { return 'Trứng ' + getSkillLabel(skillType); }
             if (level === -1) { return 'Trứng thối'; }
             var names = ['Mầm Học','Capybara','Cute Dog','Mèo Tom','Chuột Jerry'];
             return (level % 3 === 0 ? 'Trứng ' : level % 3 === 1 ? 'Trứng vỡ ' : '') + names[Math.floor(level / 3)];
@@ -352,7 +362,7 @@
         }
         vm.openGiftModal = function () {
             if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() ||
-                    !(vm.room.giftCredits > 0) || vm.claimingGift || vm.giftModalOpen) { return; }
+                    !(vm.room.giftCredits > 0) || vm.room.pendingSkillType || vm.claimingGift || vm.giftModalOpen) { return; }
             giftModalReturnFocus = $window.document.activeElement;
             vm.lastGiftReward = null;
             vm.giftModalOpen = true;
@@ -366,7 +376,12 @@
             $window.document.body.classList.remove('battle-gift-modal-open');
             var trigger = giftModalReturnFocus;
             giftModalReturnFocus = null;
-            if (force !== true && trigger && trigger.focus) {
+            if (force !== true && vm.skillTargetModalOpen) {
+                $timeout(function () {
+                    var target = $window.document.querySelector && $window.document.querySelector('.battle-online-skill-target-card:not([disabled])');
+                    if (!vm.giftModalOpen && !destroyed && target && target.focus) { target.focus(); }
+                }, 0);
+            } else if (force !== true && trigger && trigger.focus) {
                 $timeout(function () { if (!vm.giftModalOpen && !destroyed) { trigger.focus(); } }, 0);
             }
         };
@@ -382,6 +397,7 @@
                         !vm.room.giftDrop || vm.room.giftDrop.gameId !== gameId) { return; }
                 applyRoom(result.room, false);
                 vm.lastGiftReward = {level: result.rewardLevel, points: result.points};
+                if (result.skillType) { vm.lastGiftReward.skillType = result.skillType; }
                 focusGiftModal('.battle-online-gift-continue');
             }, function (error) { showRequestError(error); refreshPrivateRoomState(); })
             .finally(function () { vm.claimingGift = false; });
@@ -2256,9 +2272,15 @@
                 vm.room;
             if (previousRoom && previousRoom.code === incoming.code && previousRoom.giftDrop && incoming.giftDrop &&
                     previousRoom.giftDrop.gameId === incoming.giftDrop.gameId && incoming.status === 'PLAYING') {
+                // Room history and a player's own pool advance independently.
                 if (incoming.giftDrop.version < previousRoom.giftDrop.version) {
-                    incoming.giftDrop = previousRoom.giftDrop;
+                    incoming.giftDrop.claims = previousRoom.giftDrop.claims;
+                    incoming.giftDrop.version = previousRoom.giftDrop.version;
                     incoming.players = previousRoom.players;
+                }
+                if ((incoming.giftDrop.gifts == null || incoming.giftDrop.poolVersion < previousRoom.giftDrop.poolVersion) && !isSpectator()) {
+                    incoming.giftDrop.gifts = previousRoom.giftDrop.gifts;
+                    incoming.giftDrop.poolVersion = previousRoom.giftDrop.poolVersion;
                 }
                 if (incoming.giftCreditVersion == null || incoming.giftCreditVersion < previousRoom.giftCreditVersion) {
                     incoming.giftCredits = previousRoom.giftCredits; incoming.giftCreditVersion = previousRoom.giftCreditVersion;
@@ -3990,6 +4012,7 @@
                 !vm.isGameSkillEnabled(skillType || vm.room.pendingSkillType) ||
                 (!vm.room.pendingSkillType && skillType !== 'UNFREEZE') ||
                 vm.usingSkill ||
+                (vm.isLumNgayMode() && (vm.giftModalOpen || isMeFrozen() || isWrongAnswerPenaltyActive())) ||
                 !player ||
                 !player.username
             ) {
