@@ -1,9 +1,15 @@
 package com.globits.richy.dto;
 
 import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
 
 public class BattleOnlineAnswerDto implements Serializable {
     private static final long serialVersionUID = 1L;
+
+    private Map<String, List<String>> exerciseAnswers;
+    public Map<String, List<String>> getExerciseAnswers() { return exerciseAnswers; }
+    public void setExerciseAnswers(Map<String, List<String>> exerciseAnswers) { this.exerciseAnswers = exerciseAnswers; }
 
     private Long questionId;
     private String answerKey;

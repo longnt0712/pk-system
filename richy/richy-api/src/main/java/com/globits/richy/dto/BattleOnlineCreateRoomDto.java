@@ -7,6 +7,9 @@ import java.util.List;
 public class BattleOnlineCreateRoomDto implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    private String questionSource;
+    private List<Long> exerciseTestIds = new ArrayList<Long>();
+
     private List<Long> topicIds = new ArrayList<Long>();
     private List<String> topicNames = new ArrayList<String>();
 
@@ -18,6 +21,11 @@ public class BattleOnlineCreateRoomDto implements Serializable {
 
     public BattleOnlineCreateRoomDto() {
     }
+
+    public String getQuestionSource() { return questionSource; }
+    public void setQuestionSource(String questionSource) { this.questionSource = questionSource; }
+    public List<Long> getExerciseTestIds() { return exerciseTestIds; }
+    public void setExerciseTestIds(List<Long> exerciseTestIds) { this.exerciseTestIds = exerciseTestIds; }
 
     public List<Long> getTopicIds() {
         return topicIds;

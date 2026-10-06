@@ -58,10 +58,15 @@
             <h2>TẠO PHÒNG</h2>
 
             <p class="battle-online-create-hint">
-                Chọn từ của bạn hoặc EM YÊU INH LÍCH, sau đó thêm nhiều bài từ nhiều Grade/Category khác nhau.
+                Chọn bài từ vựng hoặc đề tổng hợp để dùng trong các mode Battle Online.
             </p>
 
-            <div class="battle-online-create-form">
+            <label>NGUỒN NỘI DUNG GAME</label>
+                <select class="form-control" ng-model="vm.questionSource" ng-change="vm.changeQuestionSource()" ng-disabled="vm.creatingRoom || vm.savingLobbyTopics">
+                    <option value="VOCABULARY">Bài từ vựng</option><option value="COMPREHENSIVE">Đề tổng hợp</option>
+                </select>
+                <div ng-if="vm.questionSource === 'COMPREHENSIVE'" ng-include="'question/views/battle_online_exercise_picker.html'"></div>
+            <div class="battle-online-create-form" ng-if="vm.questionSource === 'VOCABULARY'">
 
                 <label>NGUỒN TỪ VỰNG</label>
 
@@ -160,11 +165,11 @@
             <button type="button"
                     class="battle-online-btn battle-online-btn-primary"
                     ng-click="vm.createRoom()"
-                    ng-disabled="vm.creatingRoom || !vm.selectedTopicsToCreate.length">
+                    ng-disabled="vm.creatingRoom || (vm.questionSource === 'COMPREHENSIVE' ? !vm.selectedExerciseTests.length : !vm.selectedTopicsToCreate.length)">
 
                 <i class="fa fa-plus-circle"></i>
 
-                TẠO PHÒNG VỚI {{vm.selectedTopicsToCreate.length || 0}} BÀI
+                TẠO PHÒNG VỚI {{vm.questionSource === 'COMPREHENSIVE' ? vm.selectedExerciseTests.length : (vm.selectedTopicsToCreate.length || 0)}} {{vm.questionSource === 'COMPREHENSIVE' ? 'ĐỀ' : 'BÀI'}}
             </button>
         </div>
 
@@ -355,7 +360,15 @@
                         ng-click="vm.closeLobbyTopicEditor()">×</button>
             </div>
 
-            <div class="battle-online-create-form battle-online-lobby-topic-form">
+            <label>NGUỒN NỘI DUNG GAME</label>
+                <select class="form-control" ng-model="vm.questionSource" ng-change="vm.changeQuestionSource()" ng-disabled="vm.creatingRoom || vm.savingLobbyTopics">
+                    <option value="VOCABULARY">Bài từ vựng</option><option value="COMPREHENSIVE">Đề tổng hợp</option>
+                </select>
+                <div ng-if="vm.questionSource === 'COMPREHENSIVE'" ng-include="'question/views/battle_online_exercise_picker.html'"></div>
+            <div class="battle-online-lobby-topic-actions" ng-if="vm.questionSource === 'COMPREHENSIVE'">
+                <button type="button" class="is-save" ng-click="vm.saveLobbyTopics()" ng-disabled="vm.savingLobbyTopics || !vm.selectedExerciseTests.length">LƯU VÀ NẠP ĐỀ</button>
+            </div>
+            <div class="battle-online-create-form battle-online-lobby-topic-form" ng-if="vm.questionSource === 'VOCABULARY'">
                 <label>NGUỒN TỪ VỰNG</label>
                 <ui-select ng-model="vm.selectedTopicOwner"
                            class="battle-online-lobby-ui-select"
@@ -789,7 +802,7 @@
              ================================================= -->
         <aside class="battle-online-card battle-online-side-card"
                ng-if="vm.isHost()">
-            <ng-include src="'question/views/battle_online_host_settings.html'"></ng-include>
+            <ng-include src="'question/views/battle_online_host_settings.html?comprehensiveBattle=20261006_1'"></ng-include>
         </aside>
 
         <!-- NON HOST -->
@@ -1135,7 +1148,7 @@
 
                 <span>
                     {{vm.getBattleModeLabel()}}
-                    • TỪ ĐÃ GẶP
+                    • {{vm.questionSource === 'COMPREHENSIVE' ? 'NHÓM CÂU ĐÃ GẶP' : 'TỪ ĐÃ GẶP'}}
                     <b>{{vm.me().uniqueWordsSeen || 0}}</b>
                     /
                     {{vm.room.totalLessonWords || vm.room.totalQuestions}}
@@ -1157,7 +1170,7 @@
             </div>
 
             <div class="battle-online-word"
-                 ng-if="vm.room.currentQuestion && !vm.isGuessWordMode()">
+                 ng-if="vm.room.currentQuestion && !vm.room.currentQuestion.exercise && !vm.isGuessWordMode()">
 
                 <div class="battle-online-burning-indicator"
                      ng-if="vm.isMeBurning()"
@@ -1207,7 +1220,7 @@
 
 
             <section class="battle-online-guess-stage"
-                     ng-if="vm.isGuessWordMode() && vm.room.currentQuestion">
+                     ng-if="vm.isGuessWordMode() && vm.room.currentQuestion && !vm.room.currentQuestion.exercise">
                 <small>NGHĨA TIẾNG VIỆT • {{vm.room.currentQuestion.level}}</small>
                 <h2>{{vm.room.currentQuestion.meaning || vm.room.currentQuestion.question}}</h2>
                 <div class="battle-online-guess-letters">
@@ -1317,6 +1330,21 @@
             </section>
 
 
+            <section class="battle-online-exercise" ng-if="vm.room.currentQuestion.exercise">
+                <div ng-if="vm.room.currentQuestion.skillType && vm.room.settings.skillsEnabled !== false">⚡ {{vm.getSkillLabel(vm.room.currentQuestion.skillType)}}</div>
+                <div ng-if="vm.room.currentQuestion.scoreMultiplier > 1">✨ LƯỢT MAY MẮN ×{{vm.room.currentQuestion.scoreMultiplier}} ĐIỂM</div>
+                <battle-exercise-form exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers" disabled="vm.exerciseInputDisabled()"></battle-exercise-form>
+                <button type="button" class="btn btn-primary" ng-click="vm.submitExercise(false)" ng-disabled="vm.exerciseInputDisabled()">{{vm.answerLocked ? 'ĐÃ NỘP' : 'NỘP ĐÁP ÁN'}}</button>
+                <div class="battle-online-guess-host-actions"
+                     ng-if="vm.isGuessWordMode() && vm.isHost() && vm.room.settings.guessAdvanceMode === 'HOST_CONTROL' && vm.room.guessPhase === 'WAITING_HOST'">
+                    <button type="button" class="is-reveal" ng-if="!vm.room.guessAnswerRevealed" ng-disabled="vm.revealingGuessAnswer" ng-click="vm.revealGuessAnswer()">💡 HIỆN ĐÁP ÁN ĐÚNG</button>
+                    <button type="button" class="is-next" ng-disabled="vm.advancingGuessQuestion" ng-click="vm.nextGuessQuestion()">{{vm.room.currentQuestionIndex >= vm.room.totalQuestions ? 'KẾT THÚC TRẬN' : 'CÂU TIẾP THEO'}}</button>
+                </div>
+                <div class="battle-online-guess-answer-card" ng-if="vm.isGuessWordMode() && vm.isHost() && vm.room.guessAnswerRevealed">
+                    <small>ĐÁP ÁN ĐÚNG</small><strong>{{vm.room.lastGuessWord}}</strong>
+                </div>
+            </section>
+
             <div class="battle-online-private-loading"
                  ng-if="!vm.room.currentQuestion && !vm.room.pendingSkillType && !vm.room.passwordSelectionRequired && !vm.room.pendingPasswordGuessTargetUsername">
 
@@ -1327,7 +1355,7 @@
 
 
             <div class="battle-online-answer-grid"
-                 ng-if="vm.room.currentQuestion && !vm.isGuessWordMode()">
+                 ng-if="vm.room.currentQuestion && !vm.room.currentQuestion.exercise && !vm.isGuessWordMode()">
 
                 <button type="button"
                         ng-repeat="option in vm.room.currentQuestion.answers track by option.key"
@@ -1361,14 +1389,14 @@
             </div>
 
             <div class="battle-online-feedback is-correct"
-                 ng-if="!vm.isGuessWordMode() && vm.lastAnswerCorrect === true">
+                 ng-if="(!vm.isGuessWordMode() || vm.room.currentQuestion.exercise) && vm.lastAnswerCorrect === true">
 
                 ✅ {{vm.lastAnswerMessage}}
             </div>
 
 
             <div class="battle-online-feedback is-wrong"
-                 ng-if="!vm.isGuessWordMode() && vm.lastAnswerCorrect === false">
+                 ng-if="(!vm.isGuessWordMode() || vm.room.currentQuestion.exercise) && vm.lastAnswerCorrect === false">
 
                 ❌ {{vm.lastAnswerMessage}}
             </div>
@@ -1432,7 +1460,7 @@
 
                 <span>
                     {{vm.getBattleModeLabel()}}
-                    • TỪ ĐÃ GẶP
+                    • {{vm.questionSource === 'COMPREHENSIVE' ? 'NHÓM CÂU ĐÃ GẶP' : 'TỪ ĐÃ GẶP'}}
                     <b>{{vm.me().uniqueWordsSeen || 0}}</b>
                     /
                     {{vm.room.totalLessonWords || vm.room.totalQuestions}}
@@ -2371,7 +2399,7 @@
                 </div>
 
                 <div class="battle-online-side-card battle-online-qr-settings-scroll" ng-if="vm.isHost() && vm.room.status === 'LOBBY'">
-                    <ng-include src="'question/views/battle_online_host_settings.html'"></ng-include>
+                    <ng-include src="'question/views/battle_online_host_settings.html?comprehensiveBattle=20261006_1'"></ng-include>
                 </div>
             </div>
         </section>
@@ -2492,6 +2520,25 @@
     .demon-team-card > header span { font-size: 12px; color: #c2d1df; }
     .demon-team-card.is-danger { border-color: #ff6c53; }
     .demon-team-card.is-winner { border-color: #ffd666; }
+    .battle-exercise-search { display:flex; align-items:center; gap:8px; margin:12px 0; }
+    .battle-exercise-catalog { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+    .battle-exercise-catalog .btn { white-space:normal; text-align:left; }
+    .battle-exercise-form { text-align:left; font-size:16px; line-height:1.65; overflow-wrap:anywhere; }
+    .battle-exercise-form label { display:block; margin:10px 0; }
+    .battle-exercise-form img { max-width:100%; height:auto; }
+    .battle-exercise-form table { max-width:100%; display:block; overflow:auto; }
+    .battle-exercise-passage { padding:14px; border:1px solid #dce4ed; border-radius:10px; margin-bottom:14px; max-height:420px; overflow:auto; }
+    .battle-exercise-passage summary { cursor:pointer; font-weight:700; }
+    .battle-exercise-gap { display:inline-block; max-width:100%; width:180px; padding:4px 8px; margin:3px; border:1px solid #8ba4c0; border-radius:5px; color:#23344c; background:#fff; }
+    .battle-exercise-bank { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+    .battle-exercise-bank small { width:100%; }
+    .battle-exercise-bank span { padding:5px 9px; border:1px solid #98abc0; border-radius:6px; cursor:grab; }
+    .battle-exercise-item { margin:14px 0; padding:10px 0; border-bottom:1px solid #dce4ed; }
+    .battle-exercise-choice { display:flex !important; align-items:flex-start; gap:8px; cursor:pointer; }
+    .battle-exercise-choice input { margin-top:7px; }
+    .battle-exercise-form .is-two-column { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .global-dark-mode .battle-exercise-gap { background:#263447; color:#eee; }
+    @media (max-width:600px) { .battle-exercise-form .is-two-column { grid-template-columns:1fr; } }
     .demon-arena-stage { height: 640px; position: relative; overflow: hidden; background: repeating-linear-gradient(0deg,transparent 0,transparent 49px,rgba(133,194,233,.055) 50px),linear-gradient(180deg,#142238,#162e44); }
     .demon-spawn-label { position: absolute; top: 10px; left: 0; width: 100%; text-align: center; color: #6f8da5; font-size: 10px; letter-spacing: 2px; }
     .demon-danger-zone { position: absolute; top: 62%; bottom: 18%; width: 100%; background: rgba(238,95,62,.075); border-bottom: 2px dashed #e57f60; }

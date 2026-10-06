@@ -55,6 +55,7 @@ import com.globits.richy.dto.BattleOnlineTeamAssignmentDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
 import com.globits.richy.battle.DemonDefenseGame;
 import com.globits.richy.dto.QuestionDto;
+import com.globits.richy.battle.BattleExerciseQuestions;
 import com.globits.richy.dto.QuestionForGamesDto;
 import com.globits.richy.dto.QuestionTopicDto;
 import com.globits.richy.dto.QuestionTypeDto;
@@ -397,19 +398,19 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         if (
             createDto == null ||
-            createDto.getTopicIds() == null ||
-            createDto.getTopicIds().isEmpty()
+            (cleanTopicIds(createDto.getTopicIds()).isEmpty() && cleanTopicIds(createDto.getExerciseTestIds()).isEmpty())
         ) {
             throw new BattleOnlineException(
                     HttpStatus.BAD_REQUEST,
-                    "Hãy chọn bài từ vựng trước khi tạo phòng."
+                    "Hãy chọn bài từ vựng hoặc đề tổng hợp trước khi tạo phòng."
             );
         }
 
         List<Long> topicIds =
                 cleanTopicIds(createDto.getTopicIds());
 
-        if (topicIds.isEmpty()) {
+        boolean comprehensive = !cleanTopicIds(createDto.getExerciseTestIds()).isEmpty();
+        if (topicIds.isEmpty() && !comprehensive) {
             throw new BattleOnlineException(
                     HttpStatus.BAD_REQUEST,
                     "Bài từ vựng không hợp lệ."
@@ -422,8 +423,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         Long questionOwnerUserId =
                 resolveQuestionOwnerUserId(
                         identity.userId,
-                        createDto.getQuestionOwnerUserId()
+                        comprehensive ? identity.userId : createDto.getQuestionOwnerUserId()
                 );
+
+        List<BattleExerciseQuestions.Turn> exerciseTurns = comprehensive
+                ? loadExerciseTurns(createDto.getExerciseTestIds(), identity.userId) : null;
 
         detachFromOldRooms(username);
 
@@ -449,6 +453,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 DEFAULT_WRONG_ANSWER_FREEZE_SECONDS;
         room.settings.teamCount = 0;
         room.settings.doubleActionUsername = null;
+        if (comprehensive) { setExerciseSourceLocked(room, createDto.getExerciseTestIds(), exerciseTurns); }
 
         PlayerState host = new PlayerState();
         host.userId = identity.userId;
@@ -481,11 +486,65 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
-    /**
-     * HOST chỉ được tạo phòng bằng bộ từ của chính mình hoặc bộ từ dùng
-     * chung của tài khoản EM YÊU INH LÍCH (ID 26). Nếu frontend cũ chưa gửi
-     * questionOwnerUserId thì giữ nguyên hành vi cũ: dùng từ của HOST.
-     */
+    private List<BattleExerciseQuestions.Turn> loadExerciseTurns(List<Long> requestedIds, Long hostId) {
+        List<Long> ids = cleanTopicIds(requestedIds);
+        if (ids.isEmpty() || ids.size() > 10) { throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Chọn từ 1 đến 10 đề tổng hợp."); }
+        List<BattleExerciseQuestions.Turn> result = new ArrayList<BattleExerciseQuestions.Turn>();
+        for (Long id : ids) {
+            QuestionDto test = questionService.getObjectById(id);
+            Long owner = test == null || test.getUser() == null ? null : test.getUser().getId();
+            if (test == null || test.getStatus() == 8 ||
+                    (!hostId.equals(owner) && test.getStatus() != 7)) {
+                throw new BattleOnlineException(HttpStatus.FORBIDDEN, "Bạn không có quyền dùng đề này trong Battle.");
+            }
+            result.addAll(BattleExerciseQuestions.fromTest(test));
+        }
+        if (result.size() > 5000) { throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Tối đa 5000 nhóm câu trong một phòng."); }
+        return result;
+    }
+
+    private void setExerciseSourceLocked(RoomState room, List<Long> ids, List<BattleExerciseQuestions.Turn> turns) {
+        room.settings.questionSource = "COMPREHENSIVE";
+        room.settings.exerciseTestIds = cleanTopicIds(ids);
+        room.settings.topicIds.clear(); room.settings.topicNames.clear();
+        Map<Long, String> titles = new LinkedHashMap<Long, String>();
+        for (BattleExerciseQuestions.Turn turn : turns) { titles.put(turn.sourceTestId, turn.sourceTestTitle); }
+        for (Long id : room.settings.exerciseTestIds) {
+            String title = titles.get(id);
+            room.settings.topicNames.add(isBlank(title) ? "Đề tổng hợp " + id : title);
+        }
+        for (BattleExerciseQuestions.Turn turn : turns) {
+            QuestionState question = new QuestionState();
+            question.id = turn.id; question.question = turn.prompt; question.meaning = turn.prompt;
+            question.correctText = turn.correctSummary(); question.exercise = turn;
+            room.preparedQuestions.put(turn.id, question);
+        }
+        room.totalLessonWords = room.preparedQuestions.size();
+        room.allQuestionsLoaded = true; room.loadingQuestions = false; room.preloadError = false;
+    }
+
+    private String exerciseSubmissionSummary(QuestionState question, BattleOnlineAnswerDto dto) {
+        if (dto.getExerciseAnswers() == null) { return ""; }
+        List<String> answers = new ArrayList<String>();
+        for (com.globits.richy.dto.BattleOnlineExerciseDto.Item item : question.exercise.content.items) {
+            List<String> values = dto.getExerciseAnswers().get(item.id);
+            List<String> texts = new ArrayList<String>();
+            if (values != null) {
+                for (String value : values) {
+                    String text = value;
+                    for (BattleOnlineAnswerOptionDto option : item.options) {
+                        if (option.getKey().equals(value)) { text = option.getText(); break; }
+                    }
+                    texts.add(text == null ? "" : text);
+                }
+            }
+            answers.add((item.number == null ? "" : item.number + ": ") +
+                    (texts.isEmpty() ? "Chưa trả lời" : String.join(", ", texts)));
+        }
+        return String.join("; ", answers);
+    }
+
+    /** Vocabulary rooms use the host's words or the shared vocabulary account. */
     private Long resolveQuestionOwnerUserId(
             Long hostUserId,
             Long requestedOwnerUserId) {
@@ -1056,7 +1115,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             List<Long> requestedTopicIds =
                     cleanTopicIds(settings.getTopicIds());
 
-            if (!requestedTopicIds.isEmpty()) {
+            if ("COMPREHENSIVE".equals(settings.getQuestionSource())) {
+                List<Long> ids = cleanTopicIds(settings.getExerciseTestIds());
+                if (!ids.equals(room.settings.exerciseTestIds) || !"COMPREHENSIVE".equals(room.settings.questionSource)) {
+                    List<BattleExerciseQuestions.Turn> turns = loadExerciseTurns(ids, room.hostUserId);
+                    resetTopicPreloadLocked(room);
+                    setExerciseSourceLocked(room, ids, turns);
+                }
+            } else if (!requestedTopicIds.isEmpty()) {
                 Long requestedOwnerUserId =
                         settings.getQuestionOwnerUserId() != null
                                 ? settings.getQuestionOwnerUserId()
@@ -1073,8 +1139,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
                 boolean topicsChanged =
                         !requestedTopicIds.equals(room.settings.topicIds) ||
-                        !resolvedOwnerUserId.equals(room.ownerUserId);
+                        !resolvedOwnerUserId.equals(room.ownerUserId) ||
+                        "COMPREHENSIVE".equals(room.settings.questionSource);
 
+                room.settings.questionSource = "VOCABULARY";
+                room.settings.exerciseTestIds.clear();
                 room.settings.topicIds = requestedTopicIds;
                 room.settings.topicNames = requestedTopicNames;
                 room.ownerUserId = resolvedOwnerUserId;
@@ -1183,7 +1252,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             if (
                 !MODE_GUESS_WORD.equals(room.settings.mode) &&
-                eligiblePreparedQuestionsLocked(room).size() < 4
+                eligiblePreparedQuestionsLocked(room).size() < minimumSourceQuestions(room)
             ) {
                 throw new BattleOnlineException(
                         HttpStatus.CONFLICT,
@@ -1407,7 +1476,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
+    private int minimumSourceQuestions(RoomState room) { return "COMPREHENSIVE".equals(room.settings.questionSource) ? 1 : 4; }
+
     private List<QuestionState> eligibleGuessQuestionsLocked(RoomState room) {
+        if ("COMPREHENSIVE".equals(room.settings.questionSource)) { return eligiblePreparedQuestionsLocked(room); }
         List<QuestionState> result = new ArrayList<QuestionState>();
         Set<String> levels = new LinkedHashSet<String>(room.settings.guessLevels);
 
@@ -1453,7 +1525,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private List<QuestionState> eligiblePreparedQuestionsLocked(RoomState room) {
         List<QuestionState> result = new ArrayList<QuestionState>();
         for (QuestionState question : room.preparedQuestions.values()) {
-            if (question != null && isSelectedLevelLocked(room, question.level)) {
+            if (question != null && (question.exercise != null || isSelectedLevelLocked(room, question.level))) {
                 result.add(question);
             }
         }
@@ -1462,6 +1534,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
 
     private int availableLevelWordCountLocked(RoomState room) {
+        if ("COMPREHENSIVE".equals(room.settings.questionSource)) { return room.preparedQuestions.size(); }
         int count = 0;
         for (QuestionForGamesDto question : room.rawQuestions.values()) {
             if (question != null && isSelectedLevelLocked(room, question.getLevel())) {
@@ -1651,16 +1724,16 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             String submitted = clean(answerDto.getAnswerText());
-            if (submitted.length() == 0) {
+            if (question.exercise != null) { submitted = exerciseSubmissionSummary(question, answerDto); }
+            if (submitted.length() == 0 && question.exercise == null) {
                 throw new BattleOnlineException(
                         HttpStatus.BAD_REQUEST,
                         "Hãy nhập đầy đủ từ tiếng Anh."
                 );
             }
 
-            boolean correct = normalizeGuessAnswer(submitted).equals(
-                    normalizeGuessAnswer(question.correctText)
-            );
+            boolean correct = question.exercise != null ? question.exercise.grade(answerDto.getExerciseAnswers())
+                    : normalizeGuessAnswer(submitted).equals(normalizeGuessAnswer(question.correctText));
             player.connected = true;
             player.answeredClassicIndex = room.classicQuestionIndex;
 
@@ -1755,7 +1828,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             QuestionState question = currentClassicQuestionLocked(room);
             int index = revealDto != null ? revealDto.getIndex() : -1;
-            if (question == null || index < 0 || index >= question.correctText.length() ||
+            if (question == null || question.exercise != null || index < 0 || index >= question.correctText.length() ||
                 !Character.isLetterOrDigit(question.correctText.charAt(index))) {
                 throw new BattleOnlineException(
                         HttpStatus.BAD_REQUEST,
@@ -1889,12 +1962,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
-            boolean correct =
-                    normalizeAnswerKey(
-                        answerDto.getAnswerKey()
-                    ).equals(
-                        question.correctKey
-                    );
+            boolean correct = question.exercise != null
+                    ? question.exercise.grade(answerDto.getExerciseAnswers())
+                    : normalizeAnswerKey(answerDto.getAnswerKey()).equals(question.correctKey);
 
             player.connected = true;
 
@@ -1938,7 +2008,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 recordWrongWordLocked(
                         player,
                         question,
-                        findAnswerText(question, answerDto.getAnswerKey())
+                        (question.exercise == null ? findAnswerText(question, answerDto.getAnswerKey()) : exerciseSubmissionSummary(question, answerDto))
                 );
                 scoreDelta = applyScore(
                         player,
@@ -2090,24 +2160,21 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     player.currentQuestionSequence
             );
 
-            boolean correct =
-                    normalizeAnswerKey(
-                        answerDto.getAnswerKey()
-                    ).equals(
-                        question.correctKey
-                    );
+            boolean correct = question.exercise != null
+                    ? question.exercise.grade(answerDto.getExerciseAnswers())
+                    : normalizeAnswerKey(answerDto.getAnswerKey()).equals(question.correctKey);
 
             if (!correct) {
                 recordWrongWordLocked(
                         player,
                         question,
-                        findAnswerText(question, answerDto.getAnswerKey())
+                        (question.exercise == null ? findAnswerText(question, answerDto.getAnswerKey()) : exerciseSubmissionSummary(question, answerDto))
                 );
                 applyWrongAnswerPenaltyLocked(
                         room,
                         player,
                         question,
-                        answerDto.getAnswerKey(),
+                        question.exercise == null ? answerDto.getAnswerKey() : exerciseSubmissionSummary(question, answerDto),
                         now
                 );
             }
@@ -3300,7 +3367,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         if (
-            normalizeAnswerKey(
+            question.exercise == null && normalizeAnswerKey(
                 answerDto.getAnswerKey()
             ) == null
         ) {
@@ -3329,7 +3396,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         player.wrongAnswerCorrectAnswer =
                 findAnswerText(question, question.correctKey);
         player.wrongAnswerSelectedAnswer =
-                findAnswerText(question, selectedKey);
+                question.exercise == null ? findAnswerText(question, selectedKey) : selectedKey;
     }
 
 
@@ -3355,6 +3422,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             QuestionState question,
             String answerKey) {
 
+        if (question != null && question.exercise != null) { return question.exercise.correctSummary(); }
         String normalizedKey = normalizeAnswerKey(answerKey);
 
         if (question == null || normalizedKey == null) {
@@ -3388,7 +3456,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.wrongWords.put(question.id, wrong);
         }
 
-        boolean guessWord = !isBlank(question.correctText) && question.options.isEmpty();
+        boolean guessWord = question.exercise == null && !isBlank(question.correctText) && question.options.isEmpty();
         wrong.word = guessWord ? clean(question.correctText) : clean(question.question);
         wrong.meaning = guessWord
                 ? clean(question.meaning)
@@ -5924,6 +5992,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         QuestionState result =
                 new QuestionState();
 
+        result.exercise = source.exercise;
         result.id = source.id;
         result.question = source.question;
         result.pronounce = source.pronounce;
@@ -6249,7 +6318,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         );
 
         dto.setLoadedQuestionCount(
-                room.rawQuestions.size()
+                "COMPREHENSIVE".equals(room.settings.questionSource) ? room.preparedQuestions.size() : room.rawQuestions.size()
         );
 
         dto.setTotalLessonWords(
@@ -6263,7 +6332,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         dto.setQuestionsReady(
                 MODE_GUESS_WORD.equals(room.settings.mode)
                         ? !eligibleGuessQuestionsLocked(room).isEmpty()
-                        : eligiblePreparedQuestionsLocked(room).size() >= 4
+                        : eligiblePreparedQuestionsLocked(room).size() >= minimumSourceQuestions(room)
         );
 
         dto.setLastGuessWord(room.lastGuessWord);
@@ -6293,7 +6362,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     );
 
             if (question != null) {
-                if (MODE_GUESS_WORD.equals(room.settings.mode)) {
+                if (MODE_GUESS_WORD.equals(room.settings.mode) && question.exercise == null) {
                     question.maskedWord = maskedGuessWord(
                             question.correctText,
                             room.revealedGuessIndices
@@ -6582,6 +6651,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         BattleOnlineQuestionDto dto =
                 new BattleOnlineQuestionDto();
 
+        dto.setExercise(state.exercise == null ? null : state.exercise.content);
         dto.setId(state.id);
         dto.setQuestion(
                 state.question
@@ -7606,6 +7676,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 new ArrayList<String>(source.guessLevels)
         );
 
+        dto.setQuestionSource(source.questionSource);
+        dto.setExerciseTestIds(new ArrayList<Long>(source.exerciseTestIds));
         dto.setGuessAdvanceMode(source.guessAdvanceMode);
         dto.setSkillsEnabled(source.skillsEnabled);
 
@@ -8128,6 +8200,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         List<String> topicNames =
                 new ArrayList<String>();
 
+        String questionSource = "VOCABULARY";
+        List<Long> exerciseTestIds = new ArrayList<Long>();
         String mode = MODE_CLASSIC;
         boolean skillsEnabled = true;
 
@@ -8241,6 +8315,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
 
     private static class QuestionState {
+        BattleExerciseQuestions.Turn exercise;
         Long id;
         String question;
         String pronounce;

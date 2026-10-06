@@ -141,13 +141,17 @@
             roomCode,
             questionId,
             answerKey,
-            questionSequence
+            questionSequence,
+            exerciseAnswers,
+            autoSubmitted
         ) {
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/answer',
                 {
                     questionId: questionId,
                     answerKey: answerKey,
+                    exerciseAnswers: exerciseAnswers,
+                    autoSubmitted: autoSubmitted === true,
                     questionSequence: questionSequence
                 }
             ).then(function (response) { return response.data; });

@@ -1,0 +1,25 @@
+<div class="battle-exercise-picker">
+    <label>ĐỀ BÀI TẬP TỔNG HỢP</label>
+    <form ng-submit="vm.loadExerciseTests(1)" class="battle-exercise-search">
+        <input class="form-control" type="search" ng-model="vm.exerciseSearch" placeholder="Tìm theo tên đề..." />
+        <button class="btn btn-default" type="submit" ng-disabled="vm.loadingExercises">Tìm đề</button>
+    </form>
+    <p ng-if="vm.loadingExercises">Đang tải đề...</p>
+    <p class="text-danger" ng-if="vm.exerciseLoadError">{{vm.exerciseLoadError}}</p>
+    <div class="battle-exercise-catalog" ng-if="!vm.loadingExercises">
+        <button type="button" class="btn btn-default" ng-repeat="test in vm.exerciseTests track by test.id"
+                ng-click="vm.addExerciseTest(test)">＋ {{test.title || ('Đề ' + test.id)}}</button>
+        <p ng-if="!vm.exerciseTests.length && !vm.exerciseLoadError">Không có đề phù hợp.</p>
+    </div>
+    <div class="battle-exercise-search">
+        <button type="button" class="btn btn-default" ng-disabled="vm.exercisePage <= 1 || vm.loadingExercises" ng-click="vm.loadExerciseTests(vm.exercisePage - 1)">Trang trước</button>
+        <span>{{vm.exercisePage}} / {{vm.exerciseTotalPages}}</span>
+        <button type="button" class="btn btn-default" ng-disabled="vm.exercisePage >= vm.exerciseTotalPages || vm.loadingExercises" ng-click="vm.loadExerciseTests(vm.exercisePage + 1)">Trang sau</button>
+    </div>
+    <div class="battle-online-selected-topics">
+        <div class="battle-online-selected-topic" ng-repeat="test in vm.selectedExerciseTests track by test.id">
+            <strong>{{test.title}}</strong><button type="button" ng-click="vm.removeExerciseTest(test)" aria-label="Bỏ đề">×</button>
+        </div>
+    </div>
+    <p>Giữ nguyên câu hỏi và đáp án của đề. Mỗi lượt chơi là một nhóm câu; chấm đúng khi cả nhóm đúng.</p>
+</div>

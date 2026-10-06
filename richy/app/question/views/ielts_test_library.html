@@ -144,6 +144,7 @@
                             <span>Làm bài test</span><i class="fa fa-clock-o"></i>
                         </a>
                     </div>
+                    <a ng-if="vm.isComprehensiveMode" class="reading-test-card__action" ng-href="battle-quiz-online?exerciseId={{item.id}}">🎮 Chơi Battle Online với đề này</a>
                     <div class="reading-test-card__footer writing-task-card-actions" ng-if="vm.isWritingMode">
                         <a ng-if="item.hasWritingTask1" class="reading-test-card__action is-study" target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item, 1)}}">
                             <span>{{vm.getLearningProgress(item.id, 1) ? (vm.getLearningProgress(item.id, 1).completed ? 'Xem lại Task 1' : 'Tiếp tục Task 1') : 'Bắt đầu Task 1'}}</span>

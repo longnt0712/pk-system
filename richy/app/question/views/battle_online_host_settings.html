@@ -16,14 +16,14 @@
         </div>
 
         <div class="battle-online-lobby-topic-shortcut-copy">
-            <small>TOPIC CỦA PHÒNG</small>
+            <small>{{vm.questionSource === 'COMPREHENSIVE' ? 'ĐỀ CỦA PHÒNG' : 'TOPIC CỦA PHÒNG'}}</small>
 
             <strong>
                 {{vm.formatTopicNames(vm.room.settings.topicNames)}}
             </strong>
 
         <span>
-            Có thể đổi topic ngay tại lobby này.
+            Có thể đổi bài từ vựng hoặc đề tổng hợp ngay tại lobby này.
         </span>
         </div>
 
@@ -35,7 +35,7 @@
 
             <i class="fa fa-list-ul"></i>
 
-            CHỌN / ĐỔI TOPIC
+            CHỌN / ĐỔI NỘI DUNG
 
         </button>
 
@@ -366,7 +366,7 @@
 
                 <div class="battle-online-setting-grid">
                     <div>
-                        <label>GIÂY / CÂU</label>
+                        <label>{{vm.questionSource === 'COMPREHENSIVE' ? 'GIÂY / NHÓM CÂU' : 'GIÂY / CÂU'}}</label>
 
                         <input type="number"
                                min="3"
@@ -456,7 +456,7 @@
                 <div class="battle-online-mode-badge">🔤 GUESS THE WORD</div>
                 <div class="battle-online-setting-grid">
                     <div>
-                        <label>GIÂY / CÂU</label>
+                        <label>{{vm.questionSource === 'COMPREHENSIVE' ? 'GIÂY / NHÓM CÂU' : 'GIÂY / CÂU'}}</label>
                         <input type="number" min="3" max="120"
                                class="form-control"
                                ng-change="vm.markSecondsPerQuestionTouched()"
@@ -495,23 +495,23 @@
             </div>
 
             <div class="battle-online-mode-settings battle-online-vocab-settings">
-                <div class="battle-online-mode-badge">📚 BỘ TỪ SẼ CHƠI — ÁP DỤNG CHO MỌI MODE</div>
+                <div class="battle-online-mode-badge">📚 {{vm.questionSource === 'COMPREHENSIVE' ? 'NHÓM CÂU SẼ CHƠI' : 'BỘ TỪ SẼ CHƠI'}} — ÁP DỤNG CHO MỌI MODE</div>
                 <div class="battle-online-setting-grid">
                     <div>
-                        <label>SỐ TỪ MUỐN CHƠI</label>
+                        <label>{{vm.questionSource === 'COMPREHENSIVE' ? 'SỐ NHÓM CÂU MUỐN CHƠI' : 'SỐ TỪ MUỐN CHƠI'}}</label>
                         <input type="number" min="1" max="5000"
                                class="form-control"
                                ng-change="vm.markClassicQuestionCountTouched()"
                                ng-model="vm.hostSettings.questionCount">
                     </div>
                     <div class="battle-online-word-count-summary">
-                        <label>SỐ TỪ SẼ CHƠI / TỔNG PHÙ HỢP</label>
+                        <label>{{vm.questionSource === 'COMPREHENSIVE' ? 'SỐ NHÓM SẼ CHƠI / TỔNG SỐ NHÓM' : 'SỐ TỪ SẼ CHƠI / TỔNG PHÙ HỢP'}}</label>
                         <strong>{{vm.getPlayableQuestionCount()}} / {{vm.room.availableQuestionCount || 0}}</strong>
-                        <small ng-if="vm.getPlayableQuestionCount() < (vm.room.availableQuestionCount || 0)">Hệ thống lấy ngẫu nhiên trong tổng số từ phù hợp.</small>
+                        <small ng-if="vm.getPlayableQuestionCount() < (vm.room.availableQuestionCount || 0)">Hệ thống lấy ngẫu nhiên trong nội dung đã chọn.</small>
                     </div>
                 </div>
-                <label>MỨC TỪ VỰNG</label>
-                <div class="battle-online-level-picker">
+                <label ng-if="vm.questionSource !== 'COMPREHENSIVE'">MỨC TỪ VỰNG</label>
+                <div class="battle-online-level-picker" ng-if="vm.questionSource !== 'COMPREHENSIVE'">
                     <button type="button"
                             ng-repeat="level in vm.guessLevelOptions track by level"
                             ng-class="{
@@ -520,7 +520,7 @@
                             }"
                             ng-click="vm.toggleGuessLevel(level)">{{level}}</button>
                 </div>
-                <p>Bỏ hoặc thêm mức sẽ cập nhật tổng số từ phù hợp. Nếu số muốn chơi nhỏ hơn tổng, mỗi trận sẽ chọn một bộ từ ngẫu nhiên.</p>
+                <p ng-if="vm.questionSource !== 'COMPREHENSIVE'">Bỏ hoặc thêm mức sẽ cập nhật tổng số từ phù hợp. Nếu số muốn chơi nhỏ hơn tổng, mỗi trận sẽ chọn một bộ từ ngẫu nhiên.</p>
             </div>
 
 
@@ -604,11 +604,11 @@
 
             <div class="battle-online-host-note"
                  ng-if="!vm.lobbyTopicEditorOpen && !vm.room.questionsReady">
-                Server cần READY tối thiểu 4 từ để START.
+                {{vm.questionSource === 'COMPREHENSIVE' ? 'Đề cần ít nhất một nhóm câu hợp lệ để START.' : 'Server cần READY tối thiểu 4 từ để START.'}}
             </div>
 
             <div class="battle-online-host-note"
                  ng-if="!vm.lobbyTopicEditorOpen && vm.room.questionsReady">
-                Có thể START. Preload vẫn tiếp tục chạy ẩn nếu bài chưa load hết.
+                {{vm.questionSource === 'COMPREHENSIVE' ? 'Đề đã sẵn sàng. Có thể START.' : 'Có thể START. Preload vẫn tiếp tục chạy ẩn nếu bài chưa load hết.'}}
             </div>
 </div>

@@ -7,6 +7,10 @@ import java.util.List;
 public class BattleOnlineQuestionDto implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    private BattleOnlineExerciseDto exercise;
+    public BattleOnlineExerciseDto getExercise() { return exercise; }
+    public void setExercise(BattleOnlineExerciseDto exercise) { this.exercise = exercise; }
+
     private Long id;
     private String question;
     private String pronounce;

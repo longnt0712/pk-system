@@ -134,6 +134,55 @@
          */
         vm.selectedTopicToCreate = null;
         vm.selectedTopicsToCreate = [];
+        vm.questionSource = 'VOCABULARY';
+        vm.exerciseTests = [];
+        vm.selectedExerciseTests = [];
+        vm.exerciseAnswers = {};
+        vm.exerciseSearch = '';
+        vm.exercisePage = 1;
+        vm.exerciseTotalPages = 1;
+        vm.loadExerciseTests = function (page) {
+            vm.loadingExercises = true; vm.exerciseLoadError = '';
+            vm.exercisePage = page || 1;
+            questionService.getPageForTests({questionType: {id: 11}, type: 100, status: 7,
+                testFormat: 'COMPREHENSIVE', textSearch: vm.exerciseSearch, findExactWord: false}, vm.exercisePage, 12).then(function (data) {
+                vm.exerciseTests = (data && data.content) || [];
+                vm.exerciseTotalPages = Math.max(1, Math.ceil(Number(data && data.totalElements || 0) / 12));
+                vm.loadingExercises = false;
+            }, function () { vm.loadingExercises = false; vm.exerciseLoadError = 'Không tải được danh sách đề.'; });
+        };
+        vm.changeQuestionSource = function () {
+            if (vm.questionSource === 'COMPREHENSIVE') { vm.loadExerciseTests(1); }
+        };
+        vm.addExerciseTest = function (test) {
+            if (!test || vm.selectedExerciseTests.some(function (item) { return item.id === test.id; })) { return; }
+            if (vm.selectedExerciseTests.length >= 10) { toastr.warning('Chọn tối đa 10 đề.'); return; }
+            vm.selectedExerciseTests.push({id: test.id, title: test.title || 'Đề tổng hợp ' + test.id});
+        };
+        vm.removeExerciseTest = function (test) {
+            vm.selectedExerciseTests = vm.selectedExerciseTests.filter(function (item) { return item.id !== test.id; });
+        };
+        vm.exerciseInputDisabled = function () {
+            return !vm.room || vm.room.status !== 'PLAYING' || isSpectator() || vm.answerLocked ||
+                vm.countdown <= 0 || isMeFrozen() || isWrongAnswerPenaltyActive() || vm.isDemonPlayerEliminated() ||
+                vm.room.pendingSkillType || vm.room.passwordSelectionRequired || vm.room.pendingPasswordGuessTargetUsername ||
+                (isGuessWordMode() && vm.room.guessPhase && vm.room.guessPhase !== 'QUESTION');
+        };
+        vm.submitExercise = function (automatic) {
+            if (!vm.room || !vm.room.currentQuestion || !vm.room.currentQuestion.exercise ||
+                    (!automatic && vm.exerciseInputDisabled()) || vm.answerLocked || isSpectator()) { return; }
+            var exercise = vm.room.currentQuestion.exercise;
+            if (!automatic && exercise.items.some(function (item) {
+                var values = vm.exerciseAnswers[item.id] || [];
+                return !values.length || values.some(function (value) { return !String(value || '').trim(); });
+            })) { toastr.warning('Điền đủ các đáp án trước khi nộp.'); return; }
+            if (automatic && isGuessWordMode()) {
+                var key = String(vm.room.currentQuestion.id) + ':' + String(vm.room.currentQuestion.sequence);
+                if (autoSubmittedGuessQuestionKey === key) { return; }
+                autoSubmittedGuessQuestionKey = key;
+            }
+            answer({key: 'EXERCISE', exerciseAnswers: angular.copy(vm.exerciseAnswers), autoSubmitted: automatic === true});
+        };
 
         vm.searchTopicDto = {};
         vm.searchTopicCategory = {};
@@ -1497,7 +1546,7 @@
             });
 
             vm.lobbyTopicEditorOpen = true;
-            getTopics();
+            if (vm.questionSource === 'COMPREHENSIVE') { vm.loadExerciseTests(1); } else { getTopics(); }
         }
 
 
@@ -1507,10 +1556,21 @@
             }
 
             vm.lobbyTopicEditorOpen = false;
+            if (vm.room) { applyRoom(vm.room, false); }
         }
 
 
         function saveLobbyTopics() {
+            if (!vm.room || vm.room.status !== 'LOBBY' || !isHost() ||
+                    vm.savingLobbyTopics || vm.savingSettings) { return; }
+            if (vm.questionSource === 'COMPREHENSIVE') {
+                if (!vm.selectedExerciseTests.length) { toastr.warning('Chọn ít nhất một đề tổng hợp.'); return; }
+                vm.savingLobbyTopics = true;
+                battleService.updateSettings(vm.room.code, buildSettingsDto()).then(function (room) {
+                    vm.lobbyTopicEditorOpen = false; applyRoom(room, false);
+                }, showRequestError).finally(function () { vm.savingLobbyTopics = false; });
+                return;
+            }
             if (!vm.room || vm.room.status !== 'LOBBY' || !isHost() ||
                 vm.savingLobbyTopics || vm.savingSettings) {
                 return;
@@ -1580,11 +1640,11 @@
             }
 
             if (
-                !vm.selectedTopicsToCreate ||
-                vm.selectedTopicsToCreate.length === 0
+                vm.questionSource === 'COMPREHENSIVE' ? !vm.selectedExerciseTests.length :
+                (!vm.selectedTopicsToCreate || vm.selectedTopicsToCreate.length === 0)
             ) {
                 toastr.warning(
-                    'Thêm ít nhất một bài từ vựng trước khi tạo phòng.',
+                    vm.questionSource === 'COMPREHENSIVE' ? 'Chọn ít nhất một đề tổng hợp trước khi tạo phòng.' : 'Thêm ít nhất một bài từ vựng trước khi tạo phòng.',
                     'BATTLE ONLINE'
                 );
                 return;
@@ -1594,6 +1654,8 @@
             blockUI.start();
 
             var createDto = {
+                questionSource: vm.questionSource,
+                exerciseTestIds: vm.questionSource === 'COMPREHENSIVE' ? vm.selectedExerciseTests.map(function (test) { return test.id; }) : [],
                 topicIds: [],
                 topicNames: [],
                 questionOwnerUserId:
@@ -1618,6 +1680,7 @@
                 }
             );
 
+            if (vm.questionSource === 'COMPREHENSIVE') { createDto.topicIds = []; createDto.topicNames = []; }
             battleService
                 .createRoom(
                     createDto
@@ -1627,7 +1690,7 @@
                         toastr.success(
                             'Đã tạo phòng ' +
                             room.code +
-                            '. Server đang nạp bài ở background.',
+                            (vm.questionSource === 'COMPREHENSIVE' ? '. Đề đã sẵn sàng.' : '. Server đang nạp bài ở background.'),
                             'BATTLE ONLINE'
                         );
 
@@ -2299,6 +2362,12 @@
             }
 
             if (incoming.settings) {
+                if (!vm.lobbyTopicEditorOpen) {
+                    vm.questionSource = incoming.settings.questionSource || 'VOCABULARY';
+                    vm.selectedExerciseTests = (incoming.settings.exerciseTestIds || []).map(function (id, index) {
+                        return {id: id, title: (incoming.settings.topicNames || [])[index] || 'Đề tổng hợp ' + id};
+                    });
+                }
                 /*
                  * HOST có thể đang vừa click COUNTDOWN nhưng server
                  * chưa nhận save. Preload background vẫn broadcast room
@@ -2444,6 +2513,7 @@
                 );
 
             if (questionChanged) {
+                vm.exerciseAnswers = {};
                 vm.answerLocked = false;
                 vm.guessSubmitting = false;
                 vm.lastAnswerCorrect = null;
@@ -2691,6 +2761,8 @@
 
         function buildSettingsDto() {
             return {
+                questionSource: vm.questionSource,
+                exerciseTestIds: vm.questionSource === 'COMPREHENSIVE' ? vm.selectedExerciseTests.map(function (test) { return test.id; }) : [],
                 mode:
                     vm.hostSettings.mode === 'COUNTDOWN' ||
                     vm.hostSettings.mode === 'DEMON_DEFENSE' ||
@@ -3177,18 +3249,27 @@
         }
 
 
+        var teamSummarySignature = '', cachedTeamSummaries = [];
+        function stableTeamSummaries(summaries) {
+            var signature = JSON.stringify(summaries);
+            if (signature !== teamSummarySignature) {
+                teamSummarySignature = signature; cachedTeamSummaries = summaries;
+            }
+            return cachedTeamSummaries;
+        }
+
         function getTeamSummaries() {
             if (!hasTeamMode()) {
-                return [];
+                return stableTeamSummaries([]);
             }
             if (isDemonDefenseMode() && vm.room.demonDefense) {
-                return vm.room.demonDefense.teams.map(function (team) {
+                return stableTeamSummaries(vm.room.demonDefense.teams.map(function (team) {
                     var players = getDemonTeamPlayers(team.number);
                     return {number: team.number, rank: team.rank, score: team.kills, memberCount: team.memberCount,
                         survivedMs: team.survivedMs, rescues: team.rescues,
                         correctCount: players.reduce(function (sum, player) { return sum + Number(player.correctCount || 0); }, 0),
                         wrongCount: players.reduce(function (sum, player) { return sum + Number(player.wrongCount || 0); }, 0)};
-                });
+                }));
             }
 
             var count = Number(vm.room.settings.teamCount || 0);
@@ -3248,7 +3329,7 @@
                 }
             );
 
-            return summaries;
+            return stableTeamSummaries(summaries);
         }
 
 
@@ -3620,15 +3701,26 @@
             var question =
                 vm.room.currentQuestion;
 
+            var exerciseGuessRequest = isGuessWordMode() && !!question.exercise;
+            var submittedRoomCode = vm.room.code;
+            function isCurrentExerciseRequest() {
+                var current = vm.room && vm.room.currentQuestion;
+                return !exerciseGuessRequest || (vm.room && vm.room.code === submittedRoomCode &&
+                    vm.room.status === 'PLAYING' && current && current.id === question.id && current.sequence === question.sequence);
+            }
+
             battleService
                 .answer(
                     vm.room.code,
                     question.id,
                     option.key,
-                    question.sequence
+                    question.sequence,
+                    option.exerciseAnswers,
+                    option.autoSubmitted
                 )
                 .then(
                     function (result) {
+                        if (!isCurrentExerciseRequest()) { return; }
                         if (
                             isCountdownMode() &&
                             result.correct !== true
@@ -3686,6 +3778,7 @@
                         }
                     },
                     function (error) {
+                        if (!isCurrentExerciseRequest()) { return; }
                         vm.answerLocked = false;
 
                         showRequestError(
@@ -3876,6 +3969,10 @@
 
 
         function autoSubmitGuessWordAtTimeout() {
+            if (vm.room && vm.room.currentQuestion && vm.room.currentQuestion.exercise &&
+                    vm.room.status === 'PLAYING' && vm.room.guessPhase === 'QUESTION') {
+                vm.submitExercise(true); return;
+            }
             if (!isGuessWordMode() || !vm.room ||
                 vm.room.status !== 'PLAYING' ||
                 vm.room.guessPhase !== 'QUESTION' ||
@@ -6940,6 +7037,13 @@
             }
         );
 
+        if ($stateParams.exerciseId && questionService.getOne) {
+            questionService.getOne($stateParams.exerciseId).then(function (test) {
+                if (test && test.testFormat === 'COMPREHENSIVE') {
+                    vm.questionSource = 'COMPREHENSIVE'; vm.addExerciseTest(test); vm.loadExerciseTests(1);
+                }
+            }, showRequestError);
+        }
         loadBattleViewMusicConfig();
         getPageTopicCategory();
 

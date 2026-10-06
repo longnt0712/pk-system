@@ -28,7 +28,7 @@ public class BattleMusicConfigServiceTest {
         when(repository.findAll()).thenAnswer(call -> new ArrayList<BattleMusicTrack>(stored));
         doAnswer(call -> { stored.clear(); return null; }).when(repository).deleteAll();
         doAnswer(call -> {
-            for (BattleMusicTrack track : (Iterable<BattleMusicTrack>) call.getArgument(0)) { stored.add(track); }
+            for (BattleMusicTrack track : (Iterable<BattleMusicTrack>) call.getArguments()[0]) { stored.add(track); }
             return new ArrayList<BattleMusicTrack>(stored);
         }).when(repository).save(anyList());
     }
