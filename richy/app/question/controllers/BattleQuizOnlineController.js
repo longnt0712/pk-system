@@ -216,7 +216,7 @@
             vm.selectedExerciseTests = vm.selectedExerciseTests.filter(function (item) { return item.id !== test.id; });
         };
         vm.exerciseInputDisabled = function () {
-            return !vm.room || vm.room.status !== 'PLAYING' || isSpectator() || vm.answerLocked ||
+            return !vm.room || vm.room.status !== 'PLAYING' || isSpectator() || vm.answerLocked || vm.claimingGift || vm.giftModalOpen ||
                 vm.countdown <= 0 || isMeFrozen() || isWrongAnswerPenaltyActive() || vm.isDemonPlayerEliminated() ||
                 vm.room.pendingSkillType || vm.room.passwordSelectionRequired || vm.room.pendingPasswordGuessTargetUsername ||
                 (isGuessWordMode() && vm.room.guessPhase && vm.room.guessPhase !== 'QUESTION');
@@ -252,6 +252,8 @@
             wrongAnswerFreezeSeconds: 3,
             skillsEnabled: true,
             disabledSkillTypes: [],
+            giftSpawnSeconds: 3,
+            giftBasePoints: 10,
             teamCount: 0,
             doubleActionUsername: '',
             guessLevels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
@@ -315,6 +317,74 @@
         vm.isGameSkillEnabled = function (type) {
             return !!vm.room && vm.room.settings.skillsEnabled !== false &&
                 (vm.room.settings.disabledSkillTypes || []).indexOf(type) < 0;
+        };
+        vm.claimingGift = false;
+        vm.lastGiftReward = null;
+        vm.giftModalOpen = false;
+        var giftModalReturnFocus = null;
+        vm.isLumNgayMode = function () { return !!vm.room && vm.room.settings.mode === 'LUM_NGAY'; };
+        vm.giftClaimDisabled = function () {
+            return !vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() ||
+                vm.claimingGift || vm.answerLocked || vm.usingSkill || vm.room.giftCredits <= 0 ||
+                vm.room.giftCredits == null || vm.countdown <= 0 || isMeFrozen() || isWrongAnswerPenaltyActive();
+        };
+        vm.getGiftRewardImage = function (level) {
+            if (level === -1) {
+                var version = $window.APP_VERSION || '';
+                return 'assets/images/learning-pets/lum-ngay/rotten-egg.png' + (version ? '?v=' + encodeURIComponent(version) : '');
+            }
+            var pets = ['MAM_HOC','CAPYBARA_EGG','CUTE_DOG','CUTE_TOM_CAT','CUTE_JERRY_MOUSE'];
+            return getPlayerPetImage({selectedPetKey: pets[Math.floor(level / 3)], vocabularyExperienceLevel: level});
+        };
+        vm.getGiftRewardLabel = function (level) {
+            if (level === -1) { return 'Trứng thối'; }
+            var names = ['Mầm Học','Capybara','Cute Dog','Mèo Tom','Chuột Jerry'];
+            return (level % 3 === 0 ? 'Trứng ' : level % 3 === 1 ? 'Trứng vỡ ' : '') + names[Math.floor(level / 3)];
+        };
+        function focusGiftModal(selector) {
+            $timeout(function () {
+                if (!vm.giftModalOpen) { return; }
+                var modal = $window.document.getElementById('battle-gift-modal');
+                var control = modal && modal.querySelector && modal.querySelector(selector);
+                if (control && control.focus) { control.focus(); }
+                else if (modal && modal.focus) { modal.focus(); }
+            }, 0);
+        }
+        vm.openGiftModal = function () {
+            if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() ||
+                    !(vm.room.giftCredits > 0) || vm.claimingGift || vm.giftModalOpen) { return; }
+            giftModalReturnFocus = $window.document.activeElement;
+            vm.lastGiftReward = null;
+            vm.giftModalOpen = true;
+            $window.document.body.classList.add('battle-gift-modal-open');
+            focusGiftModal('.battle-online-gift-grid button:not([disabled])');
+        };
+        vm.closeGiftModal = function (force) {
+            if (vm.claimingGift && force !== true) { return; }
+            vm.giftModalOpen = false;
+            vm.lastGiftReward = null;
+            $window.document.body.classList.remove('battle-gift-modal-open');
+            var trigger = giftModalReturnFocus;
+            giftModalReturnFocus = null;
+            if (force !== true && trigger && trigger.focus) {
+                $timeout(function () { if (!vm.giftModalOpen && !destroyed) { trigger.focus(); } }, 0);
+            }
+        };
+        vm.dismissGiftReward = function () {
+            if (vm.lastGiftReward) { vm.closeGiftModal(); }
+        };
+        vm.claimGift = function (gift) {
+            if (!gift || !vm.giftModalOpen || vm.lastGiftReward || vm.giftClaimDisabled()) { return; }
+            var code = vm.room.code, gameId = vm.room.giftDrop && vm.room.giftDrop.gameId;
+            vm.claimingGift = true;
+            return battleService.claimGift(code, gift.id).then(function (result) {
+                if (!vm.room || vm.room.code !== code || vm.room.status !== 'PLAYING' ||
+                        !vm.room.giftDrop || vm.room.giftDrop.gameId !== gameId) { return; }
+                applyRoom(result.room, false);
+                vm.lastGiftReward = {level: result.rewardLevel, points: result.points};
+                focusGiftModal('.battle-online-gift-continue');
+            }, function (error) { showRequestError(error); refreshPrivateRoomState(); })
+            .finally(function () { vm.claimingGift = false; });
         };
         vm.hostTeamCountDirty = false;
         vm.hostDoubleActionDirty = false;
@@ -1135,6 +1205,7 @@
                 .trim();
 
             return mode === 'COUNTDOWN' ||
+                mode === 'LUM_NGAY' ||
                 mode === 'DEMON_DEFENSE' ||
                 mode === 'MONEY_BEG' ||
                 mode === 'ESCAPE_DUMB_DEMON' ||
@@ -1145,6 +1216,7 @@
         function isCountdownLikeValue(mode) {
             mode = String(mode || '').toUpperCase().trim();
             return mode === 'COUNTDOWN' ||
+                mode === 'LUM_NGAY' ||
                 mode === 'DEMON_DEFENSE' ||
                 mode === 'MONEY_BEG' ||
                 mode === 'ESCAPE_DUMB_DEMON' ||
@@ -1281,6 +1353,7 @@
 
 
         function getBattleModeLabel() {
+            if (vm.isLumNgayMode()) { return '🎁 LỤM NGAY'; }
             if (isDemonDefenseMode()) { return '👹 DIỆT QUỶ NGU'; }
             if (isEscapeDumbDemonMode()) {
                 return '👹 THOÁT KHỎI QUỶ NGU';
@@ -1887,6 +1960,7 @@
                     function () {
                         stopRealtimeAndPolling();
 
+                        vm.closeGiftModal(true);
                         vm.room = null;
                         vm.qrModalOpen = false;
                         vm.musicMenuOpen = false;
@@ -2139,6 +2213,7 @@
 
             stopRealtimeAndPolling();
 
+            vm.closeGiftModal(true);
             vm.room = null;
             vm.qrModalOpen = false;
             vm.musicMenuOpen = false;
@@ -2179,6 +2254,16 @@
 
             var previousRoom =
                 vm.room;
+            if (previousRoom && previousRoom.code === incoming.code && previousRoom.giftDrop && incoming.giftDrop &&
+                    previousRoom.giftDrop.gameId === incoming.giftDrop.gameId && incoming.status === 'PLAYING') {
+                if (incoming.giftDrop.version < previousRoom.giftDrop.version) {
+                    incoming.giftDrop = previousRoom.giftDrop;
+                    incoming.players = previousRoom.players;
+                }
+                if (incoming.giftCreditVersion == null || incoming.giftCreditVersion < previousRoom.giftCreditVersion) {
+                    incoming.giftCredits = previousRoom.giftCredits; incoming.giftCreditVersion = previousRoom.giftCreditVersion;
+                }
+            } else { vm.closeGiftModal(true); }
 
             if (
                 previousRoom &&
@@ -2380,6 +2465,7 @@
             }
             syncBattleDisplayName(incoming);
             syncMobilePlayingPageState();
+            if (isSpectator()) { vm.closeGiftModal(true); }
             syncBattleViewMusic();
 
             if (shouldSpeakGuessReveal) {
@@ -2526,6 +2612,8 @@
                 if (!isHost() || incoming.status !== 'LOBBY' || !vm.hostSkillsDirty) {
                     vm.hostSettings.skillsEnabled = incoming.settings.skillsEnabled !== false;
                     vm.hostSettings.disabledSkillTypes = normalizeDisabledSkills(incoming.settings.disabledSkillTypes);
+                    vm.hostSettings.giftSpawnSeconds = incoming.settings.giftSpawnSeconds || 3;
+                    vm.hostSettings.giftBasePoints = incoming.settings.giftBasePoints || 10;
                 }
 
                 if (
@@ -2705,6 +2793,7 @@
 
             vm.hostSettings.mode =
                 mode === 'COUNTDOWN' ||
+                mode === 'LUM_NGAY' ||
                 mode === 'DEMON_DEFENSE' ||
                 mode === 'MONEY_BEG' ||
                 mode === 'ESCAPE_DUMB_DEMON' ||
@@ -2851,6 +2940,7 @@
                 exerciseTestIds: vm.questionSource === 'COMPREHENSIVE' ? vm.selectedExerciseTests.map(function (test) { return test.id; }) : [],
                 mode:
                     vm.hostSettings.mode === 'COUNTDOWN' ||
+                    vm.hostSettings.mode === 'LUM_NGAY' ||
                     vm.hostSettings.mode === 'DEMON_DEFENSE' ||
                     vm.hostSettings.mode === 'MONEY_BEG' ||
                     vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' ||
@@ -2890,6 +2980,8 @@
                     ),
 
                 skillsEnabled: vm.hostSettings.skillsEnabled !== false,
+                giftSpawnSeconds: clampInteger(vm.hostSettings.giftSpawnSeconds, 1, 60, 3),
+                giftBasePoints: clampInteger(vm.hostSettings.giftBasePoints, 1, 10000, 10),
                 disabledSkillTypes: normalizeDisabledSkills(vm.hostSettings.disabledSkillTypes),
                 guessLevels: vm.hostSettings.guessLevels.slice(0),
 
@@ -3763,6 +3855,8 @@
                 !vm.room.currentQuestion ||
                 !option ||
                 vm.answerLocked ||
+                vm.claimingGift ||
+                vm.giftModalOpen ||
                 vm.room.pendingSkillType ||
                 vm.room.passwordSelectionRequired ||
                 vm.room.pendingPasswordGuessTargetUsername ||
@@ -3790,8 +3884,11 @@
 
             var exerciseGuessRequest = isGuessWordMode() && !!question.exercise;
             var submittedRoomCode = vm.room.code;
-            function isCurrentExerciseRequest() {
+            var submittedGiftGameId = vm.isLumNgayMode() && vm.room.giftDrop && vm.room.giftDrop.gameId;
+            function isCurrentAnswerRequest() {
                 var current = vm.room && vm.room.currentQuestion;
+                if (submittedGiftGameId && (!vm.room || vm.room.code !== submittedRoomCode ||
+                        vm.room.status !== 'PLAYING' || !vm.room.giftDrop || vm.room.giftDrop.gameId !== submittedGiftGameId)) { return false; }
                 return !exerciseGuessRequest || (vm.room && vm.room.code === submittedRoomCode &&
                     vm.room.status === 'PLAYING' && current && current.id === question.id && current.sequence === question.sequence);
             }
@@ -3807,7 +3904,7 @@
                 )
                 .then(
                     function (result) {
-                        if (!isCurrentExerciseRequest()) { return; }
+                        if (!isCurrentAnswerRequest()) { return; }
                         if (
                             isCountdownMode() &&
                             result.correct !== true
@@ -3852,6 +3949,11 @@
                              * response; pending skill/penalty đã có guard riêng.
                              */
                             vm.answerLocked = false;
+                            if (result.correct === true && vm.room && vm.room.code === submittedRoomCode &&
+                                    result.room && result.room.giftDrop && vm.room.giftDrop &&
+                                    result.room.giftDrop.gameId === vm.room.giftDrop.gameId) {
+                                vm.openGiftModal();
+                            }
 
                             if (
                                 vm.room &&
@@ -3865,7 +3967,7 @@
                         }
                     },
                     function (error) {
-                        if (!isCurrentExerciseRequest()) { return; }
+                        if (!isCurrentAnswerRequest()) { return; }
                         vm.answerLocked = false;
 
                         showRequestError(
@@ -6923,6 +7025,27 @@
            ===================================================== */
 
         function keydownHandler(event) {
+            if (vm.giftModalOpen) {
+                if (event.key === 'Escape' || event.keyCode === 27) {
+                    event.preventDefault(); $scope.$evalAsync(function () { vm.closeGiftModal(); });
+                } else if (event.key === 'Tab' || event.keyCode === 9) {
+                    var giftModal = $window.document.getElementById('battle-gift-modal');
+                    var giftControls = giftModal && giftModal.querySelectorAll && giftModal.querySelectorAll('button:not([disabled])');
+                    if (giftControls && giftControls.length) {
+                        var firstGiftControl = giftControls[0], lastGiftControl = giftControls[giftControls.length - 1];
+                        var activeGiftControl = $window.document.activeElement;
+                        if (event.shiftKey && (activeGiftControl === firstGiftControl || !giftModal.contains(activeGiftControl))) {
+                            event.preventDefault(); lastGiftControl.focus();
+                        } else if (!event.shiftKey && (activeGiftControl === lastGiftControl || !giftModal.contains(activeGiftControl))) {
+                            event.preventDefault(); firstGiftControl.focus();
+                        }
+                    } else {
+                        event.preventDefault();
+                        if (giftModal && giftModal.focus) { giftModal.focus(); }
+                    }
+                }
+                return;
+            }
             if (vm.skillActivityModalOpen || vm.wrongQuestionsModalOpen) {
                 if (event.key === 'Escape' || event.keyCode === 27) {
                     event.preventDefault();
@@ -7069,6 +7192,7 @@
             '$destroy',
             function () {
                 destroyed = true;
+                vm.closeGiftModal(true);
                 if (demonAudioContext) {
                     var closingAudio = demonAudioContext.close();
                     if (closingAudio && closingAudio.catch) { closingAudio.catch(angular.noop); }

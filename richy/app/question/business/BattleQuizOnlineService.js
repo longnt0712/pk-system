@@ -123,6 +123,11 @@
             ).then(function (response) { return response.data; });
         };
 
+        self.claimGift = function (roomCode, giftId) {
+            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/gift', {giftId: giftId})
+                .then(function (response) { return response.data; });
+        };
+
         self.startMatch = function (roomCode) {
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/start',

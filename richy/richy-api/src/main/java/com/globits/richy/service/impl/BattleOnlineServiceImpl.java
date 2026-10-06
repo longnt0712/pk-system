@@ -54,6 +54,9 @@ import com.globits.richy.dto.BattleOnlineRevealLetterDto;
 import com.globits.richy.dto.BattleOnlineTeamAssignmentDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
 import com.globits.richy.battle.DemonDefenseGame;
+import com.globits.richy.battle.GiftDropGame;
+import com.globits.richy.dto.BattleOnlineGiftClaimDto;
+import com.globits.richy.dto.BattleOnlineGiftClaimResultDto;
 import com.globits.richy.dto.QuestionDto;
 import com.globits.richy.battle.BattleExerciseQuestions;
 import com.globits.richy.dto.QuestionForGamesDto;
@@ -89,6 +92,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String MODE_ESCAPE_DUMB_DEMON = "ESCAPE_DUMB_DEMON";
     private static final String MODE_DEMON_DEFENSE = "DEMON_DEFENSE";
     private static final String MODE_GUESS_WORD = "GUESS_WORD";
+    private static final String MODE_LUM_NGAY = "LUM_NGAY";
 
     private static final String PET_MAM_HOC = "MAM_HOC";
     private static final String PET_CAPYBARA_EGG = "CAPYBARA_EGG";
@@ -216,6 +220,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             new ConcurrentHashMap<String, ScheduledFuture<?>>();
     private final Map<String, ScheduledFuture<?>> demonTimers =
             new ConcurrentHashMap<String, ScheduledFuture<?>>();
+    private final Map<String, ScheduledFuture<?>> giftTimers = new ConcurrentHashMap<String, ScheduledFuture<?>>();
 
     private final Map<String, ScheduledFuture<?>> preloadTimers =
             new ConcurrentHashMap<String, ScheduledFuture<?>>();
@@ -1161,6 +1166,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     normalizeMode(settings.getMode());
             room.settings.skillsEnabled = settings.isSkillsEnabled();
             room.settings.disabledSkillTypes = normalizeDisabledSkillTypes(settings.getDisabledSkillTypes());
+            room.settings.giftSpawnSeconds = clamp(settings.getGiftSpawnSeconds(), 1, 60);
+            room.settings.giftBasePoints = clamp(settings.getGiftBasePoints(), 1, 10000);
 
             room.settings.questionCount =
                     clamp(
@@ -1318,6 +1325,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             room.status = LOBBY;
             room.demonDefense = null;
+            room.giftDrop = null;
             room.lastDemonSummaryAt = 0L;
             room.lastDemonWarningKey = "";
             ensureDemonHostSpectatorLocked(room);
@@ -1595,6 +1603,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
 
         room.matchEndsAt = matchStartsAt + matchDurationMs;
+        if (MODE_LUM_NGAY.equals(room.settings.mode)) {
+            room.giftDrop = new GiftDropGame(matchStartsAt, room.settings.giftSpawnSeconds * 1000L, room.settings.giftBasePoints, random);
+            advanceGiftPoolLocked(room, matchStartsAt);
+        }
         room.passwordResetAvailableAt =
                 matchStartsAt + (matchDurationMs / 2L);
 
@@ -1645,6 +1657,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 room.matchEndsAt
             );
         if (room.demonDefense != null) { scheduleDemonTick(room); }
+        if (room.giftDrop != null) { scheduleGiftTick(room); }
     }
 
 
@@ -2194,6 +2207,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                             ? player.currentSkillType
                             : null;
 
+            if (correct && MODE_LUM_NGAY.equals(room.settings.mode)) {
+                player.giftCredits++;
+                player.giftCreditVersion++;
+                if (room.giftDrop != null) { room.giftDrop.creditChanged(); }
+            }
+
             boolean fireBoostApplied =
                     correct &&
                     now < player.burningUntil;
@@ -2544,6 +2563,64 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         broadcastGeneric(room);
 
         return dto;
+    }
+
+    @Override
+    public BattleOnlineGiftClaimResultDto claimGift(String roomCode, String username, BattleOnlineGiftClaimDto request) {
+        username = requireUsername(username);
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineGiftClaimResultDto result = new BattleOnlineGiftClaimResultDto();
+        synchronized (room) {
+            requirePlaying(room);
+            if (!MODE_LUM_NGAY.equals(room.settings.mode) || room.giftDrop == null) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Phòng này không có box quà LỤM NGAY.");
+            }
+            long now = System.currentTimeMillis();
+            if (now >= room.matchEndsAt) {
+                finishMatchLocked(room);
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Hết thời gian trận.");
+            }
+            PlayerState player = requirePlayer(room, username);
+            requireActivePlayer(player);
+            if (player.frozenUntil > now || player.wrongAnswerPenaltyUntil > now || player.giftCredits <= 0) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Trả lời đúng để nhận lượt lụm quà.");
+            }
+            advanceGiftPoolLocked(room, now);
+            GiftDropGame.Gift gift = room.giftDrop.claim(request != null ? request.getGiftId() : null);
+            if (gift == null) { throw new BattleOnlineException(HttpStatus.CONFLICT, "Món quà đã được người khác lụm. Chọn món khác nhé!"); }
+            player.giftCredits--;
+            player.giftCreditVersion++;
+            player.score = roundScoreToOneDecimal(player.score + gift.points);
+            double awardedPoints = gift.rewardLevel == GiftDropGame.ROTTEN_EGG_LEVEL
+                    ? gift.points : applyDoubleActionScoreLocked(room, player, gift.points);
+            result.setRewardLevel(gift.rewardLevel); result.setPoints(awardedPoints); result.setRoom(snapshotLocked(room, username));
+        }
+        broadcastGeneric(room);
+        return result;
+    }
+
+    private boolean advanceGiftPoolLocked(RoomState room, long now) {
+        if (room.giftDrop == null || !PLAYING.equals(room.status) || now >= room.matchEndsAt) { return false; }
+        int players = 0;
+        for (PlayerState player : room.players.values()) { if (!player.spectator) { players++; } }
+        return room.giftDrop.advance(now, players);
+    }
+
+    private void scheduleGiftTick(final RoomState room) {
+        final GiftDropGame game = room.giftDrop;
+        ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(new Runnable() {
+            public void run() {
+                try {
+                    boolean changed;
+                    synchronized (room) {
+                        if (room.giftDrop != game || rooms.get(room.code) != room) { return; }
+                        changed = advanceGiftPoolLocked(room, System.currentTimeMillis());
+                    }
+                    if (changed) { broadcastGeneric(room); }
+                } catch (Exception error) { LOG.error("Gift tick failed for {}", room.code, error); }
+            }
+        }, 250L, 250L, TimeUnit.MILLISECONDS);
+        giftTimers.put(room.code, future);
     }
 
 
@@ -6302,6 +6379,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 copySettings(room.settings);
         roomSettingsDto.setQuestionOwnerUserId(room.ownerUserId);
         dto.setSettings(roomSettingsDto);
+        if (room.giftDrop != null) {
+            advanceGiftPoolLocked(room, System.currentTimeMillis());
+            dto.setGiftDrop(room.giftDrop.snapshot());
+            PlayerState viewer = room.players.get(viewerUsername);
+            if (viewer != null && !viewer.spectator) { dto.setGiftCredits(viewer.giftCredits); dto.setGiftCreditVersion(viewer.giftCreditVersion); }
+        }
 
         dto.setServerTime(
                 System.currentTimeMillis()
@@ -7032,6 +7115,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private void resetScoresLocked(
             RoomState room) {
 
+        room.giftDrop = null;
         room.dumbBallPosition = 0;
         room.demonDefense = null;
         room.lastDemonSummaryAt = 0L;
@@ -7052,6 +7136,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         player.score = 0;
         player.streak = 0;
         player.unfreezeCharges = 0;
+        player.giftCredits = 0;
+        player.giftCreditVersion = 0;
         player.demonRescues = 0;
         player.correctCount = 0;
         player.wrongCount = 0;
@@ -7466,6 +7552,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         ScheduledFuture<?> demonTimer = demonTimers.remove(normalizeRoomCode(roomCode));
         if (demonTimer != null) { demonTimer.cancel(false); }
+        ScheduledFuture<?> giftTimer = giftTimers.remove(normalizeRoomCode(roomCode));
+        if (giftTimer != null) { giftTimer.cancel(false); }
 
         ScheduledFuture<?> future =
                 matchTimers.remove(
@@ -7708,6 +7796,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         dto.setGuessAdvanceMode(source.guessAdvanceMode);
         dto.setSkillsEnabled(source.skillsEnabled);
         dto.setDisabledSkillTypes(new ArrayList<String>(source.disabledSkillTypes));
+        dto.setGiftSpawnSeconds(source.giftSpawnSeconds);
+        dto.setGiftBasePoints(source.giftBasePoints);
 
         dto.setCountdownMinutes(
                 source.countdownMinutes
@@ -7882,6 +7972,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (MODE_COUNTDOWN.equals(mode)) {
             return MODE_COUNTDOWN;
         }
+        if (MODE_LUM_NGAY.equals(mode)) { return MODE_LUM_NGAY; }
         if (MODE_DEMON_DEFENSE.equals(mode) || "DIET_QUY_NGU".equals(mode)) { return MODE_DEMON_DEFENSE; }
 
         if (
@@ -7913,6 +8004,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private boolean isCountdownLikeMode(String mode) {
         return MODE_COUNTDOWN.equals(mode) ||
+                MODE_LUM_NGAY.equals(mode) ||
                 MODE_MONEY_BEG.equals(mode) ||
                 MODE_ESCAPE_DUMB_DEMON.equals(mode) || MODE_DEMON_DEFENSE.equals(mode);
     }
@@ -8200,6 +8292,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
          */
         long matchEndsAt = 0L;
         DemonDefenseGame demonDefense;
+        GiftDropGame giftDrop;
         long lastDemonSummaryAt;
         String lastDemonWarningKey = "";
 
@@ -8232,6 +8325,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         List<Long> exerciseTestIds = new ArrayList<Long>();
         String mode = MODE_CLASSIC;
         boolean skillsEnabled = true;
+        int giftSpawnSeconds = 3;
+        int giftBasePoints = 10;
         List<String> disabledSkillTypes = new ArrayList<String>();
 
         int questionCount = 20;
@@ -8267,6 +8362,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         double score;
         int streak;
+        int giftCredits;
+        long giftCreditVersion;
         int unfreezeCharges;
         int demonRescues;
         int correctCount;

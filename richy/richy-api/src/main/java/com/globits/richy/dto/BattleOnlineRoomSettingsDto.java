@@ -18,11 +18,17 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     private Long questionOwnerUserId;
 
     /*
-     * CLASSIC | COUNTDOWN | MONEY_BEG | ESCAPE_DUMB_DEMON | DEMON_DEFENSE | GUESS_WORD
+     * CLASSIC | COUNTDOWN | MONEY_BEG | ESCAPE_DUMB_DEMON | DEMON_DEFENSE | GUESS_WORD | LUM_NGAY
      */
     private String mode = "CLASSIC";
 
     private boolean skillsEnabled = true;
+    private int giftSpawnSeconds = 3;
+    private int giftBasePoints = 10;
+    public int getGiftSpawnSeconds() { return giftSpawnSeconds; }
+    public void setGiftSpawnSeconds(int giftSpawnSeconds) { this.giftSpawnSeconds = giftSpawnSeconds; }
+    public int getGiftBasePoints() { return giftBasePoints; }
+    public void setGiftBasePoints(int giftBasePoints) { this.giftBasePoints = giftBasePoints; }
     /* Empty (including requests from older clients) allows every mode's skills. */
     private List<String> disabledSkillTypes = new ArrayList<String>();
 

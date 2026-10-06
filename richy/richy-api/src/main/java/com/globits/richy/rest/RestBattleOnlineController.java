@@ -19,6 +19,8 @@ import com.globits.richy.dto.BattleOnlineAnswerDto;
 import com.globits.richy.dto.BattleOnlineAnswerResultDto;
 import com.globits.richy.dto.BattleOnlineCreateRoomDto;
 import com.globits.richy.dto.BattleOnlineDisplayNameDto;
+import com.globits.richy.dto.BattleOnlineGiftClaimDto;
+import com.globits.richy.dto.BattleOnlineGiftClaimResultDto;
 import com.globits.richy.dto.BattleOnlinePasswordChoiceDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessResultDto;
@@ -214,6 +216,12 @@ public class RestBattleOnlineController {
                 roomCode,
                 currentUsername()
         );
+    }
+
+    @RequestMapping(value = "/rooms/{roomCode}/gift", method = RequestMethod.POST)
+    public BattleOnlineGiftClaimResultDto claimGift(@PathVariable String roomCode,
+            @RequestBody BattleOnlineGiftClaimDto dto) {
+        return battleOnlineService.claimGift(roomCode, currentUsername(), dto);
     }
 
     @RequestMapping(value = "/rooms/{roomCode}/skill", method = RequestMethod.POST)

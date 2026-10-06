@@ -41,8 +41,8 @@ test('Battle filters by source, category and topic, while all/unassigned remove 
  assert.equal(dto.withoutTopics,true);assert.equal(dto.topicOwnerUserId,null);assert.equal(dto.topicCategoryId,null);assert.equal(dto.topicId,null);assert.equal(dto.textSearch,'test title');
  h.vm.exerciseFilterMode='ALL';await h.vm.changeExerciseFilter();assert.equal(h.calls.at(-1)[0].withoutTopics,false);
 });
-test('all six modes submit every original answer once and require complete manual answers',()=>{
- for(const mode of ['CLASSIC','COUNTDOWN','MONEY_BEG','ESCAPE_DUMB_DEMON','DEMON_DEFENSE','GUESS_WORD']) {
+test('all seven modes submit every original answer once and require complete manual answers',()=>{
+ for(const mode of ['CLASSIC','COUNTDOWN','MONEY_BEG','ESCAPE_DUMB_DEMON','DEMON_DEFENSE','GUESS_WORD','LUM_NGAY']) {
   const h=setup();h.hooks.applyRoom(h.room(mode),false);h.vm.exerciseAnswers={'103':['first']};h.vm.submitExercise(false);
   assert.equal(h.calls.length,0,mode);assert.equal(h.warnings.length,1);
   h.vm.exerciseAnswers['104']=['second'];h.vm.submitExercise(false);h.vm.submitExercise(false);

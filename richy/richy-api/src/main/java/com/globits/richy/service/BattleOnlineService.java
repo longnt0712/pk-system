@@ -3,6 +3,8 @@ package com.globits.richy.service;
 import com.globits.richy.dto.BattleOnlineAnswerDto;
 import com.globits.richy.dto.BattleOnlineAnswerResultDto;
 import com.globits.richy.dto.BattleOnlineCreateRoomDto;
+import com.globits.richy.dto.BattleOnlineGiftClaimDto;
+import com.globits.richy.dto.BattleOnlineGiftClaimResultDto;
 import com.globits.richy.dto.BattleOnlinePasswordChoiceDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessDto;
 import com.globits.richy.dto.BattleOnlinePasswordGuessResultDto;
@@ -14,6 +16,7 @@ import com.globits.richy.dto.BattleOnlineTeamAssignmentDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
 
 public interface BattleOnlineService {
+    BattleOnlineGiftClaimResultDto claimGift(String roomCode, String username, BattleOnlineGiftClaimDto request);
 
     BattleOnlinePetSelectionDto selectPet(
             String username,

@@ -211,7 +211,7 @@ public class BattleOnlineDemonDefenseTest {
     @Test @SuppressWarnings("unchecked") public void disabledSkillsClearThePlanInEveryModeAndRoundTripSettings() {
         Object settings = get(room, "settings");
         assertTrue(new BattleOnlineRoomSettingsDto().isSkillsEnabled());
-        for (String mode : new String[] {"CLASSIC", "COUNTDOWN", "MONEY_BEG", "ESCAPE_DUMB_DEMON", "DEMON_DEFENSE", "GUESS_WORD"}) {
+        for (String mode : new String[] {"CLASSIC", "COUNTDOWN", "MONEY_BEG", "ESCAPE_DUMB_DEMON", "DEMON_DEFENSE", "GUESS_WORD", "LUM_NGAY"}) {
             set(settings, "mode", mode); set(settings, "skillsEnabled", false);
             Map<Integer, String> plan = (Map<Integer, String>) get(room, "countdownSkillPlan");
             plan.put(0, "FREEZE");
@@ -261,7 +261,7 @@ public class BattleOnlineDemonDefenseTest {
 
     @Test public void comprehensiveSourceStartsAndGradesInEveryOnlineMode() throws Exception {
         for (int type : new int[] {1, 11, 5, 16}) {
-        for (String mode : new String[] {"CLASSIC", "COUNTDOWN", "MONEY_BEG", "ESCAPE_DUMB_DEMON", "DEMON_DEFENSE", "GUESS_WORD"}) {
+        for (String mode : new String[] {"CLASSIC", "COUNTDOWN", "MONEY_BEG", "ESCAPE_DUMB_DEMON", "DEMON_DEFENSE", "GUESS_WORD", "LUM_NGAY"}) {
             cleanup(); setup(); set(room, "status", "LOBBY");
             set(room, "hostUserId", 1L);
             com.globits.richy.service.QuestionService questions = mock(com.globits.richy.service.QuestionService.class);
@@ -334,7 +334,7 @@ public class BattleOnlineDemonDefenseTest {
     @Test public void individualSkillChoicesRoundTripInEveryModeAndOldClientsAllowAll() {
         set(room, "status", "LOBBY");
         assertTrue(new BattleOnlineRoomSettingsDto().getDisabledSkillTypes().isEmpty());
-        for (String mode : new String[] {"CLASSIC","COUNTDOWN","MONEY_BEG","ESCAPE_DUMB_DEMON","DEMON_DEFENSE","GUESS_WORD"}) {
+        for (String mode : new String[] {"CLASSIC","COUNTDOWN","MONEY_BEG","ESCAPE_DUMB_DEMON","DEMON_DEFENSE","GUESS_WORD","LUM_NGAY"}) {
             BattleOnlineRoomSettingsDto requested = new BattleOnlineRoomSettingsDto(); requested.setMode(mode);
             requested.setDisabledSkillTypes(java.util.Arrays.asList(" freeze ", "UNFREEZE", "FREEZE", "invalid", null));
             BattleOnlineRoomDto saved = service.updateSettings("DEMON1", "host", requested);
@@ -351,7 +351,7 @@ public class BattleOnlineDemonDefenseTest {
         Object settings = get(room,"settings"); set(room,"totalLessonWords",160);
         List<String> types = java.util.Arrays.asList("FREEZE","INVERT","BREAK_STREAK","UNFREEZE","STEAL_SCORE","FIRE_UP","MONEY_BEG","RESET_PASSWORD");
         Map<Integer,String> plan = (Map<Integer,String>) get(room,"countdownSkillPlan");
-        for (String mode : new String[] {"COUNTDOWN","MONEY_BEG","ESCAPE_DUMB_DEMON","DEMON_DEFENSE"}) {
+        for (String mode : new String[] {"COUNTDOWN","MONEY_BEG","ESCAPE_DUMB_DEMON","DEMON_DEFENSE","LUM_NGAY"}) {
             set(settings,"mode",mode);
             for (String type : types) {
                 set(settings,"disabledSkillTypes",java.util.Collections.singletonList(type));

@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import com.globits.richy.battle.DemonDefenseGame;
+import com.globits.richy.battle.GiftDropGame;
 
 public class BattleOnlineRoomDto implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -48,6 +49,15 @@ public class BattleOnlineRoomDto implements Serializable {
     private int dumbBallPosition;
     private int dumbBallMaxDistance;
     private DemonDefenseGame.Snapshot demonDefense;
+    private GiftDropGame.Snapshot giftDrop;
+    private Integer giftCredits;
+    private Long giftCreditVersion;
+    public Long getGiftCreditVersion() { return giftCreditVersion; }
+    public void setGiftCreditVersion(Long giftCreditVersion) { this.giftCreditVersion = giftCreditVersion; }
+    public GiftDropGame.Snapshot getGiftDrop() { return giftDrop; }
+    public void setGiftDrop(GiftDropGame.Snapshot giftDrop) { this.giftDrop = giftDrop; }
+    public Integer getGiftCredits() { return giftCredits; }
+    public void setGiftCredits(Integer giftCredits) { this.giftCredits = giftCredits; }
 
     public DemonDefenseGame.Snapshot getDemonDefense() { return demonDefense; }
     public void setDemonDefense(DemonDefenseGame.Snapshot demonDefense) { this.demonDefense = demonDefense; }
