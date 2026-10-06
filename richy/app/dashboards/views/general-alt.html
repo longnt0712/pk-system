@@ -206,7 +206,7 @@
         <!-- QUẢN LÝ LỚP HỌC - ĐẶT GIỮA DAILY VOCAB VÀ BATTLE MODES -->
         <div
                 class="learning-tile-wrap"
-                ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin || vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleStaff)">
+                ng-if="settings.ieltsRoom == true && !vm.isRoleView && !vm.hasRole('ROLE_STUDENT') && (vm.isRoleUser || vm.isRoleAdmin || vm.isEducationManagerment || vm.isRoleStudentManagerment || vm.isRoleStaff)">
 
             <a
                     ui-sref="application.englishClass"
