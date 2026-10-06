@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const nodeVm = require('node:vm');
 
-function setup({spectator = true, ready = true, storedVolume = null} = {}) {
+function setup({spectator = true, ready = true, storedVolume = null, dangerTracks = []} = {}) {
     const source = fs.readFileSync(path.join(__dirname, '../question/controllers/BattleQuizOnlineController.js'), 'utf8');
     let Controller, options, player, hooks;
     const calls = [], gestures = {}, storage = new Map();
@@ -56,7 +56,7 @@ function setup({spectator = true, ready = true, storedVolume = null} = {}) {
             {videoId: 'secondTrack', name: 'Second song'},
             {videoId: 'thirdTrack3', name: 'Third song'},
             {videoId: 'fourthTrack', name: 'Fourth song'}
-        ]}); }});
+        ].concat(dangerTracks)}); }});
     function room(status = 'PLAYING') {
         return {code: 'ABC123', hostUsername: 'teacher', status, settings: {mode: 'COUNTDOWN'},
             players: [{username: 'teacher', spectator}], recentEvents: []};
@@ -254,4 +254,57 @@ test('password guessing uses a full-width modal and single-column mobile choices
     assert.match(groupRules.at(-1)[1], /grid-template-columns: minmax\(0, 1fr\);/);
     assert.match(template, /\.battle-online-password-option\.is-guess strong\s*\{\s*font-size: 22px;/);
     assert.match(template, /\.battle-online-password-guess-group\s+\.battle-online-password-option strong\s*\{\s*font-size: 16px;/);
+});
+
+
+test('demon danger switches once, repeats danger music, and restores regular music when safe', async () => {
+    const h = setup({dangerTracks: [{videoId: 'MR-ZRkhZK0M', purpose: 'DEMON_DANGER'}]});
+    await h.prepare();
+    h.instance.room.settings.mode = 'DEMON_DEFENSE';
+    h.instance.demonArena = {teams: [{danger: true}, {danger: false}]};
+    h.hooks.syncMusic();
+    assert.deepEqual(h.calls.filter(c => c[0] === 'load').at(-1), ['load', 'MR-ZRkhZK0M']);
+    const count = h.calls.filter(c => c[0] === 'load').length;
+    h.hooks.syncMusic();
+    assert.equal(h.calls.filter(c => c[0] === 'load').length, count);
+    h.end();
+    assert.deepEqual(h.calls.filter(c => c[0] === 'load').at(-1), ['load', 'MR-ZRkhZK0M']);
+    h.instance.demonArena.teams[0].eliminatedAt = 123;
+    h.hooks.syncMusic();
+    assert.notEqual(h.calls.filter(c => c[0] === 'load').at(-1)[1], 'MR-ZRkhZK0M');
+    h.instance.room.settings.mode = 'COUNTDOWN';
+    h.instance.demonArena.teams[0].eliminatedAt = null;
+    h.hooks.syncMusic();
+    assert.notEqual(h.instance.getMusicTrackName(), 'Nhạc Diệt Quỷ Ngu lúc nguy hiểm');
+});
+
+test('danger music respects manual pause and disabled danger tracks', async () => {
+    const h = setup({dangerTracks: [{videoId: 'MR-ZRkhZK0M', purpose: 'DEMON_DANGER'}]});
+    await h.prepare();
+    h.instance.toggleMusicPlayback();
+    h.instance.room.settings.mode = 'DEMON_DEFENSE';
+    h.instance.demonArena = {teams: [{danger: true}]};
+    const loads = h.calls.filter(c => c[0] === 'load').length;
+    h.hooks.syncMusic();
+    assert.equal(h.calls.filter(c => c[0] === 'load').length, loads);
+    assert.deepEqual(h.calls.filter(c => c[0] === 'cue').at(-1), ['cue', 'MR-ZRkhZK0M']);
+    assert.equal(h.instance.musicPlaying, false);
+    const disabled = setup();
+    await disabled.prepare();
+    disabled.instance.room.settings.mode = 'DEMON_DEFENSE';
+    disabled.instance.demonArena = {teams: [{danger: true}]};
+    disabled.hooks.syncMusic();
+    assert.equal(disabled.calls.some(c => c[1] === 'MR-ZRkhZK0M'), false);
+});
+
+
+test('a failed danger song is not repeatedly reloaded using the regular playlist retry count', async () => {
+    const h = setup({dangerTracks: [{videoId: 'MR-ZRkhZK0M', purpose: 'DEMON_DANGER'}]});
+    await h.prepare();
+    h.instance.room.settings.mode = 'DEMON_DEFENSE';
+    h.instance.demonArena = {teams: [{danger: true}]};
+    h.hooks.syncMusic();
+    const loads = h.calls.filter(c => c[0] === 'load').length;
+    h.error();
+    assert.equal(h.calls.filter(c => c[0] === 'load').length, loads);
 });

@@ -148,6 +148,7 @@
 
             countdownMinutes: 5,
             wrongAnswerFreezeSeconds: 3,
+            skillsEnabled: true,
             teamCount: 0,
             doubleActionUsername: '',
             guessLevels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
@@ -181,6 +182,7 @@
         vm.hostSecondsPerQuestionDirty = false;
         vm.hostCountdownMinutesDirty = false;
         vm.hostWrongFreezeDirty = false;
+        vm.hostSkillsDirty = false;
         vm.hostTeamCountDirty = false;
         vm.hostDoubleActionDirty = false;
         vm.hostGuessLevelsDirty = false;
@@ -232,6 +234,8 @@
         var battleViewMusicLastTrackId = '';
         var battleViewMusicLoadFailures = 0;
         var battleViewMusicConfigReady = false;
+        var demonDangerMusicTrackIds = ['MR-ZRkhZK0M'];
+        var demonDangerMusicActive = false;
         var finishCelebrationAudio = null;
         var guessTickAudio = null;
         var lastGuessTickSecond = null;
@@ -1112,6 +1116,7 @@
                     (arena.startedAt === vm.demonArena.startedAt && arena.snapshotAt < vm.demonArena.snapshotAt))) { return; }
             vm.demonArena = arena;
             vm.demonClock = serverNow();
+            syncBattleViewMusic();
         }
         function updateDemonDefenseView() {
             vm.demonWarning = '';
@@ -1545,6 +1550,7 @@
                     vm.hostModeDirty = false;
                     vm.hostCountdownMinutesDirty = false;
                     vm.hostWrongFreezeDirty = false;
+                    vm.hostSkillsDirty = false;
                     vm.hostTeamCountDirty = false;
                     vm.hostDoubleActionDirty = false;
                     vm.hostGuessLevelsDirty = false;
@@ -2363,6 +2369,10 @@
                             .countdownMinutes;
                 }
 
+                if (!isHost() || incoming.status !== 'LOBBY' || !vm.hostSkillsDirty) {
+                    vm.hostSettings.skillsEnabled = incoming.settings.skillsEnabled !== false;
+                }
+
                 if (
                     !isHost() ||
                     incoming.status !== 'LOBBY' ||
@@ -2721,6 +2731,7 @@
                         5
                     ),
 
+                skillsEnabled: vm.hostSettings.skillsEnabled !== false,
                 guessLevels: vm.hostSettings.guessLevels.slice(0),
 
                 guessAdvanceMode:
@@ -2793,6 +2804,7 @@
                         vm.hostSecondsPerQuestionDirty = false;
                         vm.hostCountdownMinutesDirty = false;
                         vm.hostWrongFreezeDirty = false;
+                        vm.hostSkillsDirty = false;
                         vm.hostTeamCountDirty = false;
                         vm.hostDoubleActionDirty = false;
                         var levelsChangedWhileSaving = vm.hostSettings.guessLevels.slice(0).sort().join(',') !== guessLevelsSent;
@@ -3542,6 +3554,8 @@
                         vm.hostWrongFreezeDirty =
                             false;
 
+                        vm.hostSkillsDirty = false;
+
                         vm.hostTeamCountDirty =
                             false;
 
@@ -3691,6 +3705,7 @@
         function useSkill(player, skillType) {
             if (
                 !vm.room ||
+                vm.room.settings.skillsEnabled === false ||
                 (!vm.room.pendingSkillType && skillType !== 'UNFREEZE') ||
                 vm.usingSkill ||
                 !player ||
@@ -4459,9 +4474,19 @@
         }
 
 
+        function hasDemonMusicDanger() {
+            var arena = vm.demonArena || (vm.room && vm.room.demonDefense);
+            return !!(shouldPlayBattleViewMusic() && isDemonDefenseMode() && arena && !arena.finished &&
+                arena.teams && arena.teams.some(function (team) { return team.danger && !team.eliminatedAt; }));
+        }
+
+        function currentBattleMusicTrackIds() {
+            return demonDangerMusicActive ? demonDangerMusicTrackIds : battleViewMusicTrackIds;
+        }
+
         function nextBattleViewMusicTrackId() {
             if (!battleViewMusicQueue.length) {
-                battleViewMusicQueue = battleViewMusicTrackIds.slice(0);
+                battleViewMusicQueue = currentBattleMusicTrackIds().slice(0);
 
                 for (
                     var index = battleViewMusicQueue.length - 1;
@@ -4638,7 +4663,7 @@
 
                                 if (
                                     battleViewMusicLoadFailures <
-                                        battleViewMusicTrackIds.length &&
+                                        currentBattleMusicTrackIds().length &&
                                     !vm.musicPausedByUser &&
                                     (
                                         shouldPlayBattleViewMusic() ||
@@ -4750,6 +4775,22 @@
 
 
         function syncBattleViewMusic() {
+            var danger = hasDemonMusicDanger() && demonDangerMusicTrackIds.length > 0;
+            if (danger !== demonDangerMusicActive) {
+                demonDangerMusicActive = danger;
+                battleViewMusicQueue = [];
+                battleViewMusicLoadFailures = 0;
+                battleViewMusicLastTrackId = nextBattleViewMusicTrackId();
+                if (battleViewMusicPlayer && battleViewMusicPlayerReady) {
+                    try {
+                        if (vm.musicPausedByUser || !shouldPlayBattleViewMusic()) {
+                            battleViewMusicPlayer.cueVideoById(battleViewMusicLastTrackId);
+                        } else {
+                            battleViewMusicPlayer.loadVideoById(battleViewMusicLastTrackId);
+                        }
+                    } catch (ignoreDangerMusicError) { /* Keep the match running. */ }
+                }
+            }
             if (!shouldPrepareBattleViewMusic()) {
                 stopBattleViewMusic(true);
                 return;
@@ -4804,13 +4845,19 @@
         function loadBattleViewMusicConfig() {
             return battleService.getActiveMusicTracks().then(function (config) {
                 var trackIds = [];
+                var dangerTrackIds = [];
                 var tracks = [];
                 angular.forEach((config && config.tracks) || [], function (track) {
+                    if (track && track.purpose === 'DEMON_DANGER') {
+                        if (track.videoId && dangerTrackIds.indexOf(track.videoId) < 0) { dangerTrackIds.push(track.videoId); }
+                        return;
+                    }
                     if (track && track.videoId && trackIds.indexOf(track.videoId) < 0) {
                         trackIds.push(track.videoId);
                         tracks.push({videoId: track.videoId, name: track.name || 'Nhạc battle ' + trackIds.length});
                     }
                 });
+                demonDangerMusicTrackIds = dangerTrackIds;
                 if (!trackIds.length) { return; }
                 battleViewMusicTrackIds = trackIds;
                 vm.musicTracks = tracks;
@@ -4825,6 +4872,7 @@
 
 
         function getMusicTrackName() {
+            if (demonDangerMusicActive) { return 'Nhạc Diệt Quỷ Ngu lúc nguy hiểm'; }
             for (var index = 0; index < vm.musicTracks.length; index += 1) {
                 if (vm.musicTracks[index].videoId === battleViewMusicLastTrackId) {
                     return vm.musicTracks[index].name;
@@ -4861,7 +4909,7 @@
         }
 
         function selectMusicTrack(track) {
-            if (!track || battleViewMusicTrackIds.indexOf(track.videoId) < 0) { return; }
+            if (!track || currentBattleMusicTrackIds().indexOf(track.videoId) < 0) { return; }
             battleViewMusicLastTrackId = track.videoId;
             battleViewMusicQueue = [];
             battleViewMusicLoadFailures = 0;
@@ -4878,10 +4926,11 @@
         }
 
         function skipMusicTrack(direction) {
-            if (!vm.musicTracks.length) { return; }
-            var index = battleViewMusicTrackIds.indexOf(battleViewMusicLastTrackId);
-            index = (index + direction + vm.musicTracks.length) % vm.musicTracks.length;
-            selectMusicTrack(vm.musicTracks[index]);
+            var ids = currentBattleMusicTrackIds();
+            if (!ids.length) { return; }
+            var index = ids.indexOf(battleViewMusicLastTrackId);
+            index = (index + direction + ids.length) % ids.length;
+            selectMusicTrack({videoId: ids[index]});
         }
 
         function updateMusicVolume() {

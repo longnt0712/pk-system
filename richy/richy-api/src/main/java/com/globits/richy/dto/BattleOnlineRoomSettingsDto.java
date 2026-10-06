@@ -19,6 +19,8 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
      */
     private String mode = "CLASSIC";
 
+    private boolean skillsEnabled = true;
+
     /*
      * CLASSIC:
      * mặc định frontend sẽ đặt bằng tổng số từ của bài khi preload biết total.
@@ -80,6 +82,9 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     public void setQuestionOwnerUserId(Long questionOwnerUserId) {
         this.questionOwnerUserId = questionOwnerUserId;
     }
+
+    public boolean isSkillsEnabled() { return skillsEnabled; }
+    public void setSkillsEnabled(boolean skillsEnabled) { this.skillsEnabled = skillsEnabled; }
 
     public String getMode() {
         return mode;

@@ -1087,6 +1087,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             room.settings.mode =
                     normalizeMode(settings.getMode());
+            room.settings.skillsEnabled = settings.isSkillsEnabled();
 
             room.settings.questionCount =
                     clamp(
@@ -2304,6 +2305,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         synchronized (room) {
             requirePlaying(room);
+            if (!room.settings.skillsEnabled) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Host đã tắt skill trong trận này.");
+            }
 
             if (!isCountdownLikeMode(room.settings.mode)) {
                 throw new BattleOnlineException(
@@ -2590,6 +2594,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         synchronized (room) {
             requirePlaying(room);
+            if (!room.settings.skillsEnabled) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Host đã tắt skill trong trận này.");
+            }
 
             if (!MODE_MONEY_BEG.equals(room.settings.mode)) {
                 throw new BattleOnlineException(
@@ -3879,6 +3886,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private void buildCountdownSkillPlanLocked(RoomState room) {
         room.countdownSkillPlan.clear();
+        if (!room.settings.skillsEnabled) { return; }
 
         int total = displayTotal(room);
 
@@ -4949,6 +4957,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
 
         if (
+            room.settings.skillsEnabled &&
             MODE_MONEY_BEG.equals(room.settings.mode) &&
             !player.passwordResetSkillIssued &&
             System.currentTimeMillis() >= room.passwordResetAvailableAt
@@ -4963,9 +4972,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.passwordResetSkillIssued = true;
         } else {
             player.currentSkillType =
-                    room.countdownSkillPlan.get(
+                    room.settings.skillsEnabled ? room.countdownSkillPlan.get(
                             skillPosition
-                    );
+                    ) : null;
         }
 
         player.uniqueWordIds.add(
@@ -7598,6 +7607,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         );
 
         dto.setGuessAdvanceMode(source.guessAdvanceMode);
+        dto.setSkillsEnabled(source.skillsEnabled);
 
         dto.setCountdownMinutes(
                 source.countdownMinutes
@@ -8119,6 +8129,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 new ArrayList<String>();
 
         String mode = MODE_CLASSIC;
+        boolean skillsEnabled = true;
 
         int questionCount = 20;
         int secondsPerQuestion = 10;

@@ -20,7 +20,8 @@
             vm.tracks.push({
                 name: 'Battle music ' + (vm.tracks.length + 1),
                 url: '',
-                enabled: true
+                enabled: true,
+                purpose: 'BATTLE'
             });
         };
 
@@ -51,6 +52,7 @@
                     name: String(track.name || '').trim(),
                     url: String(track.url || '').trim(),
                     enabled: track.enabled !== false,
+                    purpose: track.purpose || 'BATTLE',
                     displayOrder: index
                 };
             });
@@ -58,8 +60,8 @@
                 toastr.warning('Vui lòng nhập đầy đủ link YouTube.', 'Battle Config');
                 return;
             }
-            if (!tracks.some(function (track) { return track.enabled; })) {
-                toastr.warning('Cần bật ít nhất một bài nhạc.', 'Battle Config');
+            if (!tracks.some(function (track) { return track.enabled && track.purpose === 'BATTLE'; })) {
+                toastr.warning('Cần bật ít nhất một bài nhạc battle thường.', 'Battle Config');
                 return;
             }
 

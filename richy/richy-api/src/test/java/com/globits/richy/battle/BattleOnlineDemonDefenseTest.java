@@ -208,4 +208,55 @@ public class BattleOnlineDemonDefenseTest {
         assertTrue(student.getDemonDefense().teams.get(0).demons.isEmpty());
         assertNull(host.getCurrentQuestion());
     }
+    @Test @SuppressWarnings("unchecked") public void disabledSkillsClearThePlanInEveryModeAndRoundTripSettings() {
+        Object settings = get(room, "settings");
+        assertTrue(new BattleOnlineRoomSettingsDto().isSkillsEnabled());
+        for (String mode : new String[] {"CLASSIC", "COUNTDOWN", "MONEY_BEG", "ESCAPE_DUMB_DEMON", "DEMON_DEFENSE", "GUESS_WORD"}) {
+            set(settings, "mode", mode); set(settings, "skillsEnabled", false);
+            Map<Integer, String> plan = (Map<Integer, String>) get(room, "countdownSkillPlan");
+            plan.put(0, "FREEZE");
+            ReflectionTestUtils.invokeMethod(service, "buildCountdownSkillPlanLocked", room);
+            assertTrue(plan.isEmpty());
+            BattleOnlineRoomSettingsDto dto = ReflectionTestUtils.invokeMethod(service, "copySettings", settings);
+            assertFalse(dto.isSkillsEnabled());
+        }
+    }
+
+    @Test @SuppressWarnings("unchecked") public void disabledSkillsStillAssignQuestionsWithoutRewardsOrPasswordReset() throws Exception {
+        Object settings = get(room, "settings");
+        Object question = state("QuestionState");
+        set(question, "id", 7L); set(question, "question", "hello");
+        set(question, "correctText", "xin chào"); set(question, "correctKey", "A");
+        Map<Integer, String> plan = (Map<Integer, String>) get(room, "countdownSkillPlan");
+        plan.put(0, "FREEZE");
+        set(settings, "skillsEnabled", false);
+        set(alice, "currentQuestionSequence", 0L);
+        ReflectionTestUtils.invokeMethod(service, "setCurrentCountdownQuestionLocked", room, alice, question);
+        assertNotNull(get(alice, "currentQuestion"));
+        assertNull(get(alice, "currentSkillType"));
+
+        set(settings, "mode", "MONEY_BEG");
+        set(room, "passwordResetAvailableAt", System.currentTimeMillis() - 1000L);
+        ReflectionTestUtils.invokeMethod(service, "setCurrentCountdownQuestionLocked", room, alice, question);
+        assertNull(get(alice, "currentSkillType"));
+        assertEquals(false, get(alice, "passwordResetSkillIssued"));
+
+        set(settings, "skillsEnabled", true);
+        ReflectionTestUtils.invokeMethod(service, "setCurrentCountdownQuestionLocked", room, alice, question);
+        assertEquals("RESET_PASSWORD", get(alice, "currentSkillType"));
+    }
+
+    @Test public void disabledSkillsRejectDirectRequestsIncludingUnfreeze() {
+        set(get(room, "settings"), "skillsEnabled", false);
+        set(alice, "unfreezeCharges", 1);
+        BattleOnlineUseSkillDto request = new BattleOnlineUseSkillDto();
+        request.setSkillType("UNFREEZE"); request.setTargetUsername("bob");
+        try {
+            service.useSkill("DEMON1", "alice", request);
+            fail("Disabled skill must be rejected");
+        } catch (BattleOnlineException expected) {
+            assertEquals(1, get(alice, "unfreezeCharges"));
+        }
+    }
+
 }

@@ -345,6 +345,17 @@
             </div>
 
 
+            <div class="battle-online-mode-settings">
+                <button type="button" class="btn"
+                        ng-class="vm.hostSettings.skillsEnabled !== false ? 'btn-success' : 'btn-default'"
+                        ng-click="vm.hostSettings.skillsEnabled = vm.hostSettings.skillsEnabled === false; vm.hostSkillsDirty = true"
+                        ng-disabled="vm.savingSettings"
+                        ng-attr-aria-pressed="{{vm.hostSettings.skillsEnabled !== false}}">
+                    ⚡ Cho phép skill trong game: {{vm.hostSettings.skillsEnabled !== false ? 'BẬT' : 'TẮT'}}
+                </button>
+                <p>Bật để skill của mode được xuất hiện trong trận. Tắt để chơi không có skill.</p>
+            </div>
+
             <!-- CLASSIC -->
             <div class="battle-online-mode-settings"
                  ng-if="vm.hostSettings.mode === 'CLASSIC'">

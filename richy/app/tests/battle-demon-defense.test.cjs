@@ -147,3 +147,29 @@ test('generic updates keep live questions and skills, but elimination clears bot
     assert.equal(h.vm.room.pendingSkillType, null);
     assert.equal(h.vm.skillTargetModalOpen, false);
 });
+
+
+test('skill setting defaults on and is sent for every mode without being overwritten by lobby updates', () => {
+    const h = setup('host');
+    assert.equal(h.vm.hostSettings.skillsEnabled, true);
+    for (const mode of ['CLASSIC', 'COUNTDOWN', 'MONEY_BEG', 'ESCAPE_DUMB_DEMON', 'DEMON_DEFENSE', 'GUESS_WORD']) {
+        h.vm.hostSettings.mode = mode;
+        h.vm.hostSettings.skillsEnabled = false;
+        assert.equal(h.hooks.buildSettingsDto().skillsEnabled, false);
+        h.vm.hostSettings.skillsEnabled = true;
+        assert.equal(h.hooks.buildSettingsDto().skillsEnabled, true);
+    }
+    const room = h.room();
+    room.status = 'LOBBY'; room.settings.skillsEnabled = true;
+    h.vm.hostSettings.skillsEnabled = false; h.vm.hostSkillsDirty = true;
+    h.hooks.applyRoom(room, false);
+    assert.equal(h.vm.hostSettings.skillsEnabled, false);
+    h.vm.hostSkillsDirty = false;
+    room.settings.skillsEnabled = false;
+    h.hooks.applyRoom(room, false);
+    assert.equal(h.vm.hostSettings.skillsEnabled, false);
+    // A disabled room cannot send a skill request even if a stale charge exists.
+    h.vm.room = room;
+    h.vm.useUnfreeze({username: 'bob'});
+    assert.equal(h.vm.usingSkill, false);
+});

@@ -1030,7 +1030,7 @@
 
             <div class="demon-student-status" ng-if="vm.isDemonDefenseMode()">
                 <span>ĐỘI {{vm.me().teamNumber}} • 🔥 {{vm.me().streak}} • {{vm.getDemonBullets(vm.me())}} viên / câu đúng</span>
-                <button type="button" ng-if="vm.me().unfreezeCharges"
+                <button type="button" ng-if="vm.room.settings.skillsEnabled !== false && vm.me().unfreezeCharges"
                         ng-disabled="vm.isMeFrozen() || vm.isDemonPlayerEliminated() || vm.usingSkill"
                         ng-click="vm.openUnfreezeModal()">🧊 Giải băng ({{vm.me().unfreezeCharges}})</button>
             </div>
@@ -1039,7 +1039,7 @@
                         aria-haspopup="dialog" ng-attr-aria-expanded="{{vm.wrongQuestionsModalOpen}}">
                     <span>❌ Câu sai</span><b>{{vm.wrongQuestions.length}}</b>
                 </button>
-                <button type="button" class="is-skills" ng-click="vm.openSkillActivityModal()"
+                <button type="button" class="is-skills" ng-if="vm.room.settings.skillsEnabled !== false" ng-click="vm.openSkillActivityModal()"
                         aria-haspopup="dialog" ng-attr-aria-expanded="{{vm.skillActivityModalOpen}}">
                     <span>⚡ Ai skill ai</span><b>{{vm.room.recentEvents.length || 0}}</b>
                 </button>
@@ -1167,13 +1167,13 @@
                 </div>
 
                 <div class="battle-online-fire-question-icon"
-                     ng-if="vm.room.currentQuestion.skillType === 'FIRE_UP'"
+                     ng-if="vm.room.settings.skillsEnabled !== false && vm.room.currentQuestion.skillType === 'FIRE_UP'"
                      aria-label="Trả lời đúng để nhận Cháy lên">
                     🔥
                 </div>
 
                 <div class="battle-online-question-skill"
-                     ng-if="vm.room.currentQuestion.skillType && vm.room.currentQuestion.skillType !== 'FIRE_UP'"
+                     ng-if="vm.room.settings.skillsEnabled !== false && vm.room.currentQuestion.skillType && vm.room.currentQuestion.skillType !== 'FIRE_UP'"
                      ng-class="'is-' + vm.room.currentQuestion.skillType.toLowerCase()">
                     <span>
                         {{vm.getSkillIcon(vm.room.currentQuestion.skillType)}}
@@ -2003,7 +2003,7 @@
     </div>
 
     <div class="battle-online-skill-modal-backdrop"
-         ng-if="vm.skillTargetModalOpen && vm.room && vm.room.pendingSkillType">
+         ng-if="vm.skillTargetModalOpen && vm.room && vm.room.settings.skillsEnabled !== false && vm.room.pendingSkillType">
 
         <section class="battle-online-skill-modal"
                  role="dialog"
@@ -2492,7 +2492,7 @@
     .demon-team-card > header span { font-size: 12px; color: #c2d1df; }
     .demon-team-card.is-danger { border-color: #ff6c53; }
     .demon-team-card.is-winner { border-color: #ffd666; }
-    .demon-arena-stage { height: 420px; position: relative; overflow: hidden; background: repeating-linear-gradient(0deg,transparent 0,transparent 49px,rgba(133,194,233,.055) 50px),linear-gradient(180deg,#142238,#162e44); }
+    .demon-arena-stage { height: 640px; position: relative; overflow: hidden; background: repeating-linear-gradient(0deg,transparent 0,transparent 49px,rgba(133,194,233,.055) 50px),linear-gradient(180deg,#142238,#162e44); }
     .demon-spawn-label { position: absolute; top: 10px; left: 0; width: 100%; text-align: center; color: #6f8da5; font-size: 10px; letter-spacing: 2px; }
     .demon-danger-zone { position: absolute; top: 62%; bottom: 18%; width: 100%; background: rgba(238,95,62,.075); border-bottom: 2px dashed #e57f60; }
     .demon-danger-zone span { position: absolute; bottom: 3px; right: 8px; color: #ca8c78; font-size: 9px; }

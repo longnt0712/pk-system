@@ -13,6 +13,7 @@ public class BattleMusicTrackDto implements Serializable {
     private String videoId;
     private Boolean enabled = Boolean.TRUE;
     private Integer displayOrder;
+    private String purpose = "BATTLE";
 
     public BattleMusicTrackDto() {}
 
@@ -20,6 +21,7 @@ public class BattleMusicTrackDto implements Serializable {
         if (domain == null) { return; }
         this.id = domain.getId();
         this.name = domain.getName();
+        this.purpose = domain.getPurpose() == null ? "BATTLE" : domain.getPurpose();
         this.url = domain.getUrl();
         this.videoId = domain.getVideoId();
         this.enabled = domain.getEnabled();
@@ -28,6 +30,9 @@ public class BattleMusicTrackDto implements Serializable {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public String getPurpose() { return purpose; }
+    public void setPurpose(String purpose) { this.purpose = purpose; }
+
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getUrl() { return url; }

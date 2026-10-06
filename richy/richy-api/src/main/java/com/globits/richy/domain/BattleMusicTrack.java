@@ -25,6 +25,11 @@ public class BattleMusicTrack extends BaseObject {
 
     @Column(name = "display_order")
     private Integer displayOrder;
+    @Column(name = "music_purpose", length = 30)
+    private String purpose = "BATTLE";
+
+    public String getPurpose() { return purpose; }
+    public void setPurpose(String purpose) { this.purpose = purpose; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

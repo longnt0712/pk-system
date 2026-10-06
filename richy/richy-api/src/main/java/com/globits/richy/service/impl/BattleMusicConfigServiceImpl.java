@@ -77,13 +77,18 @@ public class BattleMusicConfigServiceImpl implements BattleMusicConfigService {
 
         for (BattleMusicTrackDto item : dto.getTracks()) {
             if (item == null) { continue; }
+            String purpose = trim(item.getPurpose());
+            if (purpose.isEmpty()) { purpose = "BATTLE"; }
+            if (!"BATTLE".equals(purpose) && !"DEMON_DANGER".equals(purpose)) {
+                throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Loại nhạc không hợp lệ.");
+            }
             String inputUrl = trim(item.getUrl());
             String videoId = extractVideoId(inputUrl);
             if (videoId == null) {
                 throw new BattleOnlineException(HttpStatus.BAD_REQUEST,
                         "Link nhạc số " + (order + 1) + " không phải link YouTube hợp lệ.");
             }
-            if (!seenVideoIds.add(videoId)) {
+            if (!seenVideoIds.add(purpose + ":" + videoId)) {
                 throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Danh sách có link YouTube bị trùng.");
             }
 
@@ -96,12 +101,13 @@ public class BattleMusicConfigServiceImpl implements BattleMusicConfigService {
             track.setName(name.isEmpty() ? "Battle music " + (order + 1) : name);
             track.setUrl("https://www.youtube.com/watch?v=" + videoId);
             track.setVideoId(videoId);
+            track.setPurpose(purpose);
             track.setEnabled(Boolean.valueOf(enabled));
             track.setDisplayOrder(Integer.valueOf(order));
             track.setCreatedBy(username);
             track.setCreateDate(now);
             validated.add(track);
-            hasEnabledTrack = hasEnabledTrack || enabled;
+            hasEnabledTrack = hasEnabledTrack || (enabled && "BATTLE".equals(purpose));
             order += 1;
         }
 
@@ -143,11 +149,27 @@ public class BattleMusicConfigServiceImpl implements BattleMusicConfigService {
                 item.setDisplayOrder(Integer.valueOf(index));
                 result.getTracks().add(item);
             }
+            addDefaultDangerTrack(result);
             return result;
         }
 
         for (BattleMusicTrack track : tracks) { result.getTracks().add(new BattleMusicTrackDto(track)); }
+        boolean hasDangerTrack = false;
+        for (BattleMusicTrackDto track : result.getTracks()) {
+            hasDangerTrack = hasDangerTrack || "DEMON_DANGER".equals(track.getPurpose());
+        }
+        if (!hasDangerTrack) { addDefaultDangerTrack(result); }
         return result;
+    }
+
+    private void addDefaultDangerTrack(BattleMusicConfigDto config) {
+        BattleMusicTrackDto track = new BattleMusicTrackDto();
+        track.setName("Nhạc Diệt Quỷ Ngu lúc nguy hiểm");
+        track.setPurpose("DEMON_DANGER");
+        track.setVideoId("MR-ZRkhZK0M");
+        track.setUrl("https://www.youtube.com/watch?v=MR-ZRkhZK0M");
+        track.setDisplayOrder(config.getTracks().size());
+        config.getTracks().add(track);
     }
 
     private String extractVideoId(String value) {

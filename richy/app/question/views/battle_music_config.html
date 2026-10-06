@@ -13,7 +13,7 @@
 
         <div class="alert alert-info battle-music-config-note">
             Có thể nhập link <strong>youtube.com/watch?v=...</strong>, <strong>youtu.be/...</strong>
-            hoặc YouTube video ID. Danh sách sẽ phát ngẫu nhiên và tự chuyển bài khi kết thúc.
+            hoặc YouTube video ID. Nhạc battle thường phát ngẫu nhiên. Nhạc Diệt Quỷ Ngu lúc nguy hiểm phát khi có đội còn sống gặp nguy hiểm, và trở về nhạc thường khi an toàn.
         </div>
 
         <div class="battle-music-config-loading" data-ng-if="vm.loading">
@@ -39,6 +39,13 @@
                                placeholder="https://www.youtube.com/watch?v=..." />
                     </label>
                 </div>
+                <label>
+                    <span>Phát khi</span>
+                    <select class="form-control" data-ng-model="track.purpose" data-ng-init="track.purpose = track.purpose || 'BATTLE'">
+                        <option value="BATTLE">Battle thường</option>
+                        <option value="DEMON_DANGER">Diệt Quỷ Ngu — lúc nguy hiểm</option>
+                    </select>
+                </label>
                 <label class="battle-music-enabled">
                     <input type="checkbox" data-ng-model="track.enabled" />
                     <span>Bật</span>
