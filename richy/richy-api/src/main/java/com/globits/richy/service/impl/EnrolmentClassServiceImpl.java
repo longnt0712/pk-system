@@ -1497,6 +1497,12 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 		List<QuestionForTestsDto> result = questionRepository.findPublishedIeltsTests();
 		Map<Long, QuestionForTestsDto> byId = new HashMap<Long, QuestionForTestsDto>();
 		for (QuestionForTestsDto test : result) { byId.put(test.getId(), test); }
+		for (Object[] row : questionRepository.findPublishedWritingTaskTypes()) {
+			QuestionForTestsDto test = byId.get((Long) row[0]);
+			if (test == null) { continue; }
+			if (Integer.valueOf(16).equals(row[1])) { test.setHasWritingTask1(true); }
+			if (Integer.valueOf(17).equals(row[1])) { test.setHasWritingTask2(true); }
+		}
 		for (Object[] link : questionTopicRepository.findPublishedTestTopicIds()) {
 			if (link == null || link.length < 2 || link[0] == null || link[1] == null) { continue; }
 			QuestionForTestsDto test = byId.get((Long) link[0]);

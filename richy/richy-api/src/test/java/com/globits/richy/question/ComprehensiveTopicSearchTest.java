@@ -3,6 +3,9 @@ package com.globits.richy.question;
 import com.globits.richy.domain.*;
 import com.globits.richy.dto.*;
 import com.globits.richy.service.impl.QuestionServiceImpl;
+import com.globits.richy.service.impl.EnrolmentClassServiceImpl;
+import com.globits.richy.repository.QuestionRepository;
+import com.globits.richy.repository.QuestionTopicRepository;
 import com.globits.security.domain.User;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -74,6 +77,51 @@ public class ComprehensiveTopicSearchTest {
         Page<QuestionForTestsDto> page = service.getPageObjectForTests(dto, 1, 100);
         assertEquals(new HashSet<String>(Arrays.asList(titles)), page.getContent().stream().map(QuestionForTestsDto::getTitle).collect(Collectors.toSet()));
         assertEquals(titles.length, page.getTotalElements());
+    }
+    private Question writingTest(String title, int status, QuestionType kind, int... tasks) {
+        Question root = question(title, status, "WRITING"); root.setQuestionType(kind);
+        Question part = question(title + " passage", 7, null); part.setParent(root);
+        for (int task : tasks) {
+            Question pack = question(title + " task " + task, 7, null);
+            pack.setParent(part); pack.setType(task == 1 ? 16 : 17);
+        }
+        return root;
+    }
+    @Test public void scheduleCatalogDetectsAvailableWritingTasksUsingTheRealQueries() throws Exception {
+        QuestionType kind = manager.find(QuestionType.class, 11L);
+        if (kind == null) {
+            manager.createNativeQuery("insert into tbl_question_type (id, name, create_date, created_by) "
+                + "values (11, 'Published tests', CURRENT_TIMESTAMP, 'test')").executeUpdate();
+            kind = manager.find(QuestionType.class, 11L);
+        }
+        Question task1 = writingTest("Task 1 only", 7, kind, 1, 1);
+        writingTest("Task 2 only", 7, kind, 2); writingTest("Both tasks", 7, kind, 1, 2);
+        writingTest("Draft writing", 6, kind, 1); writingTest("Hidden writing", 8, kind, 2);
+        link(task1, topic); manager.flush(); manager.clear();
+
+        String catalogQuery = QuestionRepository.class.getMethod("findPublishedIeltsTests")
+            .getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+        String partsQuery = QuestionRepository.class.getMethod("findPublishedWritingTaskTypes")
+            .getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+        String topicsQuery = QuestionTopicRepository.class.getMethod("findPublishedTestTopicIds")
+            .getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+        List<Object[]> parts = manager.createQuery(partsQuery, Object[].class).getResultList();
+        assertEquals(4, parts.size()); // Duplicate packages do not duplicate task choices.
+        QuestionRepository questions = mock(QuestionRepository.class);
+        QuestionTopicRepository topics = mock(QuestionTopicRepository.class);
+        when(questions.findPublishedIeltsTests()).thenReturn(manager.createQuery(catalogQuery, QuestionForTestsDto.class).getResultList());
+        when(questions.findPublishedWritingTaskTypes()).thenReturn(parts);
+        when(topics.findPublishedTestTopicIds()).thenReturn(manager.createQuery(topicsQuery, Object[].class).getResultList());
+        EnrolmentClassServiceImpl schedules = new EnrolmentClassServiceImpl();
+        ReflectionTestUtils.setField(schedules, "questionRepository", questions);
+        ReflectionTestUtils.setField(schedules, "questionTopicRepository", topics);
+        Map<String, QuestionForTestsDto> catalog = schedules.getAssignableIeltsTests().stream()
+            .collect(Collectors.toMap(QuestionForTestsDto::getTitle, item -> item));
+        assertEquals(3, catalog.size());
+        assertTrue(catalog.get("Task 1 only").isHasWritingTask1()); assertFalse(catalog.get("Task 1 only").isHasWritingTask2());
+        assertFalse(catalog.get("Task 2 only").isHasWritingTask1()); assertTrue(catalog.get("Task 2 only").isHasWritingTask2());
+        assertTrue(catalog.get("Both tasks").isHasWritingTask1()); assertTrue(catalog.get("Both tasks").isHasWritingTask2());
+        assertEquals(topic.getId(), catalog.get("Task 1 only").getTopics().get(0).getId());
     }
     @Test public void allPublishedTestsIncludeTaggedAndStandaloneTests() { expect(filter(7), "Tagged", "Standalone"); }
     @Test public void unassignedSearchKeepsDraftAndHiddenVisibilityRules() {

@@ -3,6 +3,7 @@ package com.globits.richy.schedule;
 import com.globits.richy.domain.*;
 import com.globits.richy.dto.*;
 import com.globits.richy.repository.QuestionRepository;
+import com.globits.richy.repository.QuestionTopicRepository;
 import com.globits.richy.service.impl.EnrolmentClassServiceImpl;
 import com.globits.richy.service.impl.HomeworkTopicCompletion;
 import com.globits.richy.service.EnrolmentClassScheduleException;
@@ -107,8 +108,33 @@ public class IeltsTaskPartsTest {
     }
     @Test public void writingDefaultsOnlyToTasksPresentInTheTest() {
         EnrolmentClassScheduleTaskDto task = assignment(); task.setActivityType("IELTS_WRITING"); task.setIeltsParts(null);
+        assertEquals(Arrays.asList(1), prepare(task, test("WRITING", 1)).getIeltsParts());
         assertEquals(Arrays.asList(2), prepare(task, test("WRITING", 2)).getIeltsParts());
         assertEquals(Arrays.asList(1, 2), prepare(task, test("WRITING", 1, 2)).getIeltsParts());
+    }
+    @Test public void assignmentCatalogPopulatesWritingTasksOnScalarProjections() {
+        EnrolmentClassServiceImpl service = new EnrolmentClassServiceImpl();
+        QuestionRepository repository = mock(QuestionRepository.class);
+        QuestionTopicRepository topics = mock(QuestionTopicRepository.class);
+        ReflectionTestUtils.setField(service, "questionRepository", repository);
+        ReflectionTestUtils.setField(service, "questionTopicRepository", topics);
+        // The catalog query uses this scalar constructor, which does not load the task tree.
+        List<QuestionForTestsDto> catalog = Arrays.asList(
+            new QuestionForTestsDto(20L, "Task 1 only", null, 7, "WRITING"),
+            new QuestionForTestsDto(21L, "Task 2 only", null, 7, "WRITING"),
+            new QuestionForTestsDto(22L, "Both tasks", null, 7, "WRITING"),
+            new QuestionForTestsDto(23L, "Reading", null, 7, null));
+        when(repository.findPublishedIeltsTests()).thenReturn(catalog);
+        when(repository.findPublishedWritingTaskTypes()).thenReturn(Arrays.asList(
+            new Object[] {20L, 16}, new Object[] {21L, 17},
+            new Object[] {22L, 16}, new Object[] {22L, 17}, new Object[] {99L, 16}));
+        when(topics.findPublishedTestTopicIds()).thenReturn(Collections.singletonList(new Object[] {20L, 50L}));
+        List<QuestionForTestsDto> result = service.getAssignableIeltsTests();
+        assertTrue(result.get(0).isHasWritingTask1()); assertFalse(result.get(0).isHasWritingTask2());
+        assertFalse(result.get(1).isHasWritingTask1()); assertTrue(result.get(1).isHasWritingTask2());
+        assertTrue(result.get(2).isHasWritingTask1()); assertTrue(result.get(2).isHasWritingTask2());
+        assertFalse(result.get(3).isHasWritingTask1()); assertFalse(result.get(3).isHasWritingTask2());
+        assertEquals(Long.valueOf(50L), result.get(0).getTopics().get(0).getId());
     }
     @Test(expected = EnrolmentClassScheduleException.class) public void emptySelectionIsRejected() {
         prepare(assignment(), test(null));

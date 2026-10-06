@@ -30,6 +30,9 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 	@Query("select new com.globits.richy.dto.QuestionForTestsDto(q.id, q.title, q.pronounce, q.status, q.testFormat) from Question q "
 	        + "where q.questionType.id = 11 and q.status = 7 order by lower(q.title), q.id")
 	List<QuestionForTestsDto> findPublishedIeltsTests();
+	@Query("select distinct test.id, task.type from Question task join task.parent part join part.parent test "
+	        + "where test.questionType.id = 11 and test.status = 7 and test.testFormat = 'WRITING' and task.type in (16, 17)")
+	List<Object[]> findPublishedWritingTaskTypes();
 
 //	@Query("select u from Question u where u.question = ?1 and u.user.id = ?2")
 //	List<Question> findByQuestion(String question, Long userId);

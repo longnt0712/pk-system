@@ -11,7 +11,9 @@ function editor() {
         vm: {
             taskEditor: {activityType: 'IELTS_READING', title: 'Practice', section: 'HOMEWORK', requiredAttempts: 1},
             taskEditorIndex: -1,
-            assignableIeltsTests: [{id: 20, title: 'Reading'}, {id: 21, title: 'Writing', hasWritingTask1: false, hasWritingTask2: true}],
+            assignableIeltsTests: [{id: 20, title: 'Reading'},
+                {id: 21, title: 'Writing Task 2', hasWritingTask1: false, hasWritingTask2: true},
+                {id: 22, title: 'Writing Task 1', hasWritingTask1: true, hasWritingTask2: false}],
             scheduleDay: {tasks: [], scheduleDate: '2026-10-06'}, scheduleTopics: [], scheduleListeningItems: [],
             taskDeadlineChanged() {}, loadTaskListeningItems() {}, initializeComprehensiveAssignment() {},
             saveScheduleDay() { this.saved = context.scheduleTaskPayload(this.scheduleDay.tasks[0]); }
@@ -45,6 +47,16 @@ test('editing retains the saved subset and legacy single part', () => {
     vm.taskEditor = null;
     vm.openScheduleTask('HOMEWORK', {activityType: 'IELTS_READING', ieltsPart: 2});
     assert.deepEqual(array(vm.taskEditor.ieltsParts), [2]);
+});
+
+test('a Writing test with only Task 1 automatically selects it and can be saved', () => {
+    const {vm} = editor();
+    vm.taskEditor.activityType = 'IELTS_WRITING'; vm.taskActivityTypeChanged();
+    vm.taskEditor.ieltsTestId = 22; vm.selectAllTaskParts();
+    assert.deepEqual(array(vm.ieltsPartsForTask()), [1]);
+    assert.deepEqual(array(vm.taskEditor.ieltsParts), [1]);
+    vm.commitScheduleTask();
+    assert.deepEqual(array(vm.saved.ieltsParts), [1]);
 });
 
 test('a deselected part stays omitted when committing and serializing the task', () => {
