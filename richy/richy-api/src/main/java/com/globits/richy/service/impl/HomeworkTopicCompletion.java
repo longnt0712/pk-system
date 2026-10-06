@@ -22,7 +22,7 @@ public final class HomeworkTopicCompletion {
     }
     public static boolean ieltsEnabled(EnrolmentClassScheduleTaskDto task) {
         return ("CLASS".equals(task.getSection()) || "HOMEWORK".equals(task.getSection()))
-                && task.getIeltsTestId() != null && task.getIeltsPart() != null
+                && task.getIeltsTestId() != null && task.getIeltsParts() != null && !task.getIeltsParts().isEmpty()
                 && ("IELTS_READING".equals(task.getActivityType()) || "IELTS_LISTENING".equals(task.getActivityType())
                 || "IELTS_WRITING".equals(task.getActivityType()) || "COMPREHENSIVE".equals(task.getActivityType()));
     }
@@ -30,6 +30,26 @@ public final class HomeworkTopicCompletion {
         if ("COMPREHENSIVE".equals(task.getActivityType())) { return 6; }
         if ("IELTS_WRITING".equals(task.getActivityType())) { return 7; }
         return "IELTS_LISTENING".equals(task.getActivityType()) ? 2 : 4;
+    }
+    public static int requiredIeltsAttempts(EnrolmentClassScheduleTaskDto task) {
+        return task.getRequiredAttempts() * task.getIeltsParts().size();
+    }
+    public static int completedIeltsAttempts(EnrolmentClassScheduleTaskDto task, Map<Integer, Integer> counts) {
+        int completed = 0;
+        for (Integer part : task.getIeltsParts()) {
+            completed += Math.min(task.getRequiredAttempts(), counts.containsKey(part) ? counts.get(part) : 0);
+        }
+        return completed;
+    }
+    /** Open the least completed selected part, so repeated assignments advance through every part. */
+    public static Integer nextIeltsPart(EnrolmentClassScheduleTaskDto task, Map<Integer, Integer> counts) {
+        Integer next = null;
+        int lowest = task.getRequiredAttempts();
+        for (Integer part : task.getIeltsParts()) {
+            int count = counts.containsKey(part) ? counts.get(part) : 0;
+            if (count < lowest) { next = part; lowest = count; }
+        }
+        return next;
     }
     public static LocalDate windowEnd(String assigned, String due, Set<Integer> weekdays, String nextSaved) {
         LocalDate start = LocalDate.parse(assigned);
@@ -111,18 +131,20 @@ public final class HomeworkTopicCompletion {
     public static void applyIelts(EnrolmentClassScheduleTaskDto task, List<Object[]> completions,
             LocalDateTime start, LocalDateTime end) {
         if (!ieltsEnabled(task)) { return; }
-        int required = task.getRequiredAttempts();
-        Map<Long, Integer> counts = new LinkedHashMap<Long, Integer>();
+        int required = requiredIeltsAttempts(task);
+        Map<Long, Map<Integer, Integer>> counts = new LinkedHashMap<Long, Map<Integer, Integer>>();
         for (Object[] row : completions) {
             Long studentId = (Long) row[0], testId = (Long) row[1];
             Integer part = (Integer) row[2], resultTestType = (Integer) row[5];
             LocalDateTime completed = (LocalDateTime) row[3];
-            if (!task.getIeltsTestId().equals(testId) || !task.getIeltsPart().equals(part)
+            if (!task.getIeltsTestId().equals(testId) || !task.getIeltsParts().contains(part)
                     || task.getId() == null || !task.getId().equals((Long) row[6])
                     || resultTestType.intValue() != ieltsTestType(task)
                     || completed.isBefore(start) || !completed.isBefore(end)) { continue; }
-            int count = counts.containsKey(studentId) ? counts.get(studentId) + 1 : 1;
-            counts.put(studentId, count);
+            Map<Integer, Integer> partCounts = counts.get(studentId);
+            if (partCounts == null) { partCounts = new LinkedHashMap<Integer, Integer>(); counts.put(studentId, partCounts); }
+            partCounts.put(part, partCounts.containsKey(part) ? partCounts.get(part) + 1 : 1);
+            int count = completedIeltsAttempts(task, partCounts);
             EnrolmentClassTaskProgressDto existing = null;
             for (EnrolmentClassTaskProgressDto progress : task.getStudentProgress()) {
                 if (studentId.equals(progress.getStudentUserId())) { existing = progress; break; }

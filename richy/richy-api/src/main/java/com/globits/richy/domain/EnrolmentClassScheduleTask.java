@@ -54,6 +54,8 @@ public class EnrolmentClassScheduleTask extends BaseObject {
     private Question ieltsTest;
     @Column(name = "ielts_part")
     private Integer ieltsPart;
+    @Column(name = "ielts_parts", length = 20)
+    private String ieltsPartsValue;
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "tbl_enrolment_class_task_progress", joinColumns = @JoinColumn(name = "task_id"))
     private List<EnrolmentClassTaskProgress> studentProgress = new ArrayList<EnrolmentClassTaskProgress>();
@@ -79,6 +81,22 @@ public class EnrolmentClassScheduleTask extends BaseObject {
     public void setIeltsTest(Question value) { ieltsTest = value; }
     public Integer getIeltsPart() { return ieltsPart; }
     public void setIeltsPart(Integer value) { ieltsPart = value; }
+    public List<Integer> getIeltsParts() {
+        List<Integer> parts = new ArrayList<Integer>();
+        if (ieltsPartsValue != null && !ieltsPartsValue.isEmpty()) {
+            for (String part : ieltsPartsValue.split(",")) { parts.add(Integer.valueOf(part)); }
+        } else if (ieltsPart != null) { parts.add(ieltsPart); }
+        return parts;
+    }
+    public void setIeltsParts(List<Integer> parts) {
+        if (parts == null || parts.isEmpty()) { ieltsPartsValue = null; return; }
+        StringBuilder value = new StringBuilder();
+        for (Integer part : parts) {
+            if (value.length() > 0) { value.append(','); }
+            value.append(part);
+        }
+        ieltsPartsValue = value.toString();
+    }
     public List<EnrolmentClassTaskProgress> getStudentProgress() { return studentProgress; }
     public void setStudentProgress(List<EnrolmentClassTaskProgress> value) { studentProgress = value; }
 }

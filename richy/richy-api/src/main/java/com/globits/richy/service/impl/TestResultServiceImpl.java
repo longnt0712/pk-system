@@ -788,7 +788,7 @@ public class TestResultServiceImpl implements TestResultService {
 					: (Integer.valueOf(7).equals(dto.getTestType()) ? 2 : (Integer.valueOf(2).equals(dto.getTestType()) ? 4 : 3));
 			if (!ieltsType || assignedTask == null || assignedTask.getIeltsTest() == null
 					|| !assignedTask.getIeltsTest().getId().equals(dto.getSourceQuestionId())
-					|| dto.getCompletedPart() == null || !dto.getCompletedPart().equals(assignedTask.getIeltsPart()) || !matchingType
+					|| dto.getCompletedPart() == null || !assignedTask.getIeltsParts().contains(dto.getCompletedPart()) || !matchingType
 					|| dto.getCompletedPart() < 1 || dto.getCompletedPart() > maximumPart
 					|| dto.getQuestionAnswerTestResult() == null || dto.getQuestionAnswerTestResult().isEmpty()) {
 				throw new IllegalArgumentException("Kết quả không khớp với đề IELTS và Part được giao.");

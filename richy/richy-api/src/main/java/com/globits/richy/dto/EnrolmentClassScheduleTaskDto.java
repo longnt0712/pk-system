@@ -51,6 +51,7 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
     private Long ieltsTestId;
     private String ieltsTestTitle;
     private Integer ieltsPart;
+    private List<Integer> ieltsParts;
     private List<EnrolmentClassTaskProgressDto> studentProgress = new ArrayList<EnrolmentClassTaskProgressDto>();
     public EnrolmentClassScheduleTaskDto() { }
     public EnrolmentClassScheduleTaskDto(EnrolmentClassScheduleTask task) {
@@ -76,6 +77,7 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
             ieltsTestTitle = task.getIeltsTest().getTitle();
         }
         ieltsPart = task.getIeltsPart();
+        ieltsParts = task.getIeltsParts();
         for (EnrolmentClassTaskProgress progress : task.getStudentProgress()) {
             studentProgress.add(new EnrolmentClassTaskProgressDto(progress));
         }
@@ -110,6 +112,11 @@ public class EnrolmentClassScheduleTaskDto implements Serializable {
     public void setIeltsTestTitle(String value) { ieltsTestTitle = value; }
     public Integer getIeltsPart() { return ieltsPart; }
     public void setIeltsPart(Integer value) { ieltsPart = value; }
+    public List<Integer> getIeltsParts() {
+        if (ieltsParts != null) { return ieltsParts; }
+        return ieltsPart == null ? null : java.util.Collections.singletonList(ieltsPart);
+    }
+    public void setIeltsParts(List<Integer> value) { ieltsParts = value; }
     public List<EnrolmentClassTaskProgressDto> getStudentProgress() { return studentProgress; }
     public void setStudentProgress(List<EnrolmentClassTaskProgressDto> value) { studentProgress = value; }
 }

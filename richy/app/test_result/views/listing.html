@@ -671,9 +671,23 @@
             </table>
             <div class="col-md-12 ielts-result-passage"
                  data-ng-if="vm.testResult.testType !== 7"
+                 ielts-result-annotations="vm.ieltsLearningState"
+                 ielts-result-note="vm.openResultAnnotationNote(note, anchor)"
                  compile="vm.testResult.testTakerPerformance">
 
             </div>
+            <aside class="ielts-result-annotation-note"
+                   data-ng-if="vm.activeResultAnnotationNote"
+                   data-ng-style="vm.resultAnnotationNoteStyle"
+                   data-ng-keydown="$event.key === 'Escape' && vm.closeResultAnnotationNote()"
+                   aria-label="Ghi chú của học sinh">
+                <header>
+                    <strong>Ghi chú của học sinh</strong>
+                    <button type="button" data-ng-click="vm.closeResultAnnotationNote()" aria-label="Đóng ghi chú">×</button>
+                </header>
+                <strong class="ielts-result-annotation-quote">{{vm.activeResultAnnotationNote.header}}</strong>
+                <p>{{vm.activeResultAnnotationNote.specificNote || '(Chưa nhập nội dung ghi chú)'}}</p>
+            </aside>
         </div>
         <div class="modal-footer">
             <button type="button"
@@ -751,6 +765,60 @@
         background: #fff;
     }
     .ielts-learning-notes p { margin: 4px 0 0; white-space: pre-wrap; }
+
+    .ielts-result-passage .ielts-annotation {
+        border-radius: 1px;
+        -webkit-box-decoration-break: clone;
+        box-decoration-break: clone;
+    }
+    .ielts-result-passage .ielts-annotation.is-highlighted {
+        color: #fff !important;
+        background: #8b4338 !important;
+    }
+    .ielts-result-passage .ielts-annotation.has-note {
+        color: #fff !important;
+        background: #1769c2 !important;
+        cursor: pointer;
+    }
+    .ielts-result-passage .ielts-annotation.is-highlighted.has-note {
+        background: #8b4338 !important;
+        box-shadow: inset 0 -3px 0 #2f8ee5;
+    }
+    .ielts-result-passage .ielts-annotation.is-highlighted *,
+    .ielts-result-passage .ielts-annotation.has-note * { color: inherit !important; }
+    .ielts-result-passage .ielts-annotation.has-note:focus {
+        outline: 2px solid #6959ef;
+        outline-offset: 2px;
+    }
+    .ielts-result-annotation-note {
+        position: fixed;
+        z-index: 1060;
+        overflow: auto;
+        padding: 14px;
+        border: 1px solid #b9c9e9;
+        border-radius: 12px;
+        background: #fff;
+        color: #26344f;
+        box-shadow: 0 10px 30px rgba(36, 49, 83, .22);
+        overflow-wrap: anywhere;
+    }
+    .ielts-result-annotation-note header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .ielts-result-annotation-note header button {
+        flex: 0 0 auto;
+        border: 0;
+        background: transparent;
+        color: #52617a;
+        font-size: 24px;
+        line-height: 1;
+    }
+    .ielts-result-annotation-quote { display: block; }
+    .ielts-result-annotation-note p { margin: 8px 0 0; white-space: pre-wrap; }
 
     .writing-teacher-review {
         margin-bottom: 0;

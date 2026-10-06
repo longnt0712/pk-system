@@ -727,6 +727,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 
 					int required = task.getRequiredAttempts();
 					int completed = 0;
+					Integer nextIeltsPart = task.getIeltsPart();
 					if (task.getTopicId() != null && ("DAILY_VOCAB".equals(task.getActivityType())
 							|| "DAILY_LISTENING".equals(task.getActivityType()))) {
 						long completedCount = "DAILY_LISTENING".equals(task.getActivityType()) && task.getSourceQuestionId() != null
@@ -737,9 +738,15 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 						completed = (int) Math.min(Integer.MAX_VALUE, completedCount);
 					}
 					if (HomeworkTopicCompletion.ieltsEnabled(task)) {
-						completed = (int) Math.min(Integer.MAX_VALUE, testResultRepository.countIeltsPartAssignmentAttempts(
-								student.getId(), task.getId(), task.getIeltsTestId(), task.getIeltsPart(),
-								Integer.valueOf(HomeworkTopicCompletion.ieltsTestType(task)), start, deadline));
+						Map<Integer, Integer> partCounts = new LinkedHashMap<Integer, Integer>();
+						for (Integer part : task.getIeltsParts()) {
+							partCounts.put(part, (int) Math.min(Integer.MAX_VALUE, testResultRepository.countIeltsPartAssignmentAttempts(
+									student.getId(), task.getId(), task.getIeltsTestId(), part,
+									Integer.valueOf(HomeworkTopicCompletion.ieltsTestType(task)), start, deadline)));
+						}
+						required = HomeworkTopicCompletion.requiredIeltsAttempts(task);
+						completed = HomeworkTopicCompletion.completedIeltsAttempts(task, partCounts);
+						nextIeltsPart = HomeworkTopicCompletion.nextIeltsPart(task, partCounts);
 					}
 					for (EnrolmentClassTaskProgressDto progress : task.getStudentProgress()) {
 						if (student.getId().equals(progress.getStudentUserId()) && "DONE".equals(progress.getStatus())) {
@@ -757,7 +764,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					item.setCategoryId(task.getCategoryId()); item.setCategoryName(task.getCategoryName());
 					item.setSourceQuestionId(task.getSourceQuestionId()); item.setSourceQuestionTitle(task.getSourceQuestionTitle());
 					item.setIeltsTestId(task.getIeltsTestId()); item.setIeltsTestTitle(task.getIeltsTestTitle());
-					item.setIeltsPart(task.getIeltsPart());
+					item.setIeltsPart(nextIeltsPart); item.setIeltsParts(task.getIeltsParts());
 					item.setAssignedDate(day.getScheduleDate()); item.setDueDate(task.getResolvedDueDate());
 					item.setDueTime(task.getResolvedDueTime()); item.setRequiredAttempts(required);
 					item.setCompletedAttempts(Math.min(required, completed)); item.setRemainingAttempts(remaining);
@@ -1077,6 +1084,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 				task.setAutoCompleteFromTopic(prepared.getAutoCompleteFromTopic());
 				task.setActivityType(prepared.getActivityType()); task.setRequiredAttempts(prepared.getRequiredAttempts());
 				task.setIeltsTest(prepared.getIeltsTest()); task.setIeltsPart(prepared.getIeltsPart());
+				task.setIeltsParts(prepared.getIeltsParts());
 				task.setSourceQuestion(prepared.getSourceQuestion());
 				if (task != prepared) {
 					task.getStudentProgress().clear(); task.getStudentProgress().addAll(prepared.getStudentProgress());
@@ -1349,29 +1357,47 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 				boolean listeningTest = test != null && test.getPronounce() != null && !test.getPronounce().trim().isEmpty();
 				boolean comprehensiveTest = test != null && "COMPREHENSIVE".equals(test.getTestFormat());
 				boolean writingTest = test != null && "WRITING".equals(test.getTestFormat());
+				QuestionForTestsDto writingParts = writingActivity && test != null ? new QuestionForTestsDto(test) : null;
 				int maximumPart = comprehensiveActivity ? 1 : (writingActivity ? 2 : ("IELTS_LISTENING".equals(activityType) ? 4 : 3));
+				List<Integer> selectedParts = value.getIeltsParts();
+				if (selectedParts == null) {
+					selectedParts = new ArrayList<Integer>();
+					if (oldTask != null && activityType.equals(oldTask.getActivityType()) && oldTask.getIeltsTest() != null
+							&& oldTask.getIeltsTest().getId().equals(value.getIeltsTestId())) {
+						selectedParts.addAll(oldTask.getIeltsParts());
+					} else {
+						for (int part = 1; part <= maximumPart; part++) {
+							if (!writingActivity || writingParts == null || (part == 1 ? writingParts.isHasWritingTask1() : writingParts.isHasWritingTask2())) {
+								selectedParts.add(part);
+							}
+						}
+					}
+				}
+				if (selectedParts.isEmpty() || selectedParts.size() > maximumPart) {
+					throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Hãy chọn ít nhất một Part cần làm.");
+				}
+				for (Integer part : selectedParts) {
+					if (part == null || part < 1 || part > maximumPart) {
+						throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Part được chọn không hợp lệ.");
+					}
+				}
+				selectedParts = new ArrayList<Integer>(new LinkedHashSet<Integer>(selectedParts));
+				Collections.sort(selectedParts);
 				if (test == null || test.getQuestionType() == null || !Long.valueOf(11L).equals(test.getQuestionType().getId())
-						|| test.getStatus() != 7 || value.getIeltsPart() == null || value.getIeltsPart() < 1 || value.getIeltsPart() > maximumPart
+						|| test.getStatus() != 7
 						|| (comprehensiveActivity != comprehensiveTest)
 						|| (writingActivity != writingTest)
 						|| (!comprehensiveActivity && !writingActivity && ("IELTS_LISTENING".equals(activityType) != listeningTest))) {
 					throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Đề bài tập hoặc Part được chọn không hợp lệ.");
 				}
 				if (writingActivity) {
-					int requiredPackageType = value.getIeltsPart().intValue() == 2 ? 17 : 16;
-					boolean taskExists = false;
-					if (test.getSubQuestions() != null) {
-						for (Question part : test.getSubQuestions()) {
-							if (part == null || part.getSubQuestions() == null) { continue; }
-							for (Question questionPackage : part.getSubQuestions()) {
-								if (questionPackage != null && questionPackage.getType() == requiredPackageType) { taskExists = true; break; }
-							}
-							if (taskExists) { break; }
+					for (Integer selectedPart : selectedParts) {
+						if (!(selectedPart == 1 ? writingParts.isHasWritingTask1() : writingParts.isHasWritingTask2())) {
+							throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Writing Task được chọn không có trong đề.");
 						}
 					}
-					if (!taskExists) { throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Writing Task được chọn không có trong đề."); }
 				}
-				task.setIeltsTest(test); task.setIeltsPart(value.getIeltsPart()); task.setSourceQuestion(null);
+				task.setIeltsTest(test); task.setIeltsPart(selectedParts.get(0)); task.setIeltsParts(selectedParts); task.setSourceQuestion(null);
 				if (comprehensiveActivity) {
 					Topic topic = value.getTopicId() == null ? null : topicRepository.findOne(value.getTopicId());
 					boolean unchangedLegacyTask = topic == null && oldTask != null && oldTask.getTopic() == null

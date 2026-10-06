@@ -551,6 +551,16 @@
     .class-task-editor .form-control { max-width:100%; }
     .class-task-editor-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .class-task-editor-grid > .form-group { min-width:0; }
+    .class-task-parts-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px; }
+    .class-task-parts-heading label { margin:0; }
+    .class-task-select-all { padding:0; border:0; background:transparent; color:#6750c4; font-size:12px; font-weight:600; }
+    .class-task-select-all:hover { text-decoration:underline; }
+    .class-task-parts-select.ui-select-multiple { width:100%; min-height:40px; height:auto; padding:5px 8px; border-radius:10px; border:1px solid #dce4f2; background:#fff; }
+    .class-task-parts-select .ui-select-match-item { margin:2px 4px 2px 0; border:1px solid #d8d0fb; border-radius:6px; background:#f0ebff; color:#53408e; }
+    .class-task-parts-select .ui-select-match-close { margin-left:7px; opacity:.65; }
+    .global-dark-mode .class-task-select-all { color:#c1b2ff; }
+    .global-dark-mode .class-task-parts-select.ui-select-multiple { background:#1d2330; color:#eef2ff; border-color:#465069; }
+    .global-dark-mode .class-task-parts-select .ui-select-match-item { background:#393250; color:#eee8ff; border-color:#7969be; }
     .class-task-wrapping-select.ui-select-bootstrap { width:100%; min-width:0; }
     .class-task-wrapping-select.ui-select-bootstrap > .ui-select-match > .btn,
     .class-task-wrapping-select.ui-select-bootstrap .ui-select-toggle {
@@ -1372,14 +1382,14 @@
                 <span>{{vm.taskStatusLabel(task)}}</span>
                 <span data-ng-if="task.topicId || task.ieltsTestId">{{task.activityType === 'DAILY_LISTENING' ? 'Daily Listening' : task.activityType === 'IELTS_READING' ? 'IELTS Reading' : task.activityType === 'IELTS_LISTENING' ? 'IELTS Listening' : task.activityType === 'IELTS_WRITING' ? 'IELTS Writing' : task.activityType === 'COMPREHENSIVE' ? 'Bài tập tổng hợp' : task.activityType === 'OTHER' ? 'Bài khác' : 'Daily Vocab'}}</span>
                 <span data-ng-if="task.topicId || task.ieltsTestId">Bắt đầu: {{vm.taskStartLabel(task)}}</span>
-                <span data-ng-if="task.topicId || task.ieltsTestId">Yêu cầu: {{task.requiredAttempts || 1}} lần đạt</span>
+                <span data-ng-if="task.topicId || task.ieltsTestId">Yêu cầu: {{task.requiredAttempts || 1}} lần{{task.ieltsParts.length > 1 ? ' mỗi phần' : ' đạt'}}</span>
                 <span data-ng-if="task.resolvedDueDate || task.dueDate">Hạn: {{vm.taskDueLabel(task)}}{{task.deadlineAutomatic ? ' · tự động' : ''}}</span>
                 <span class="task-overdue" data-ng-if="vm.taskOverdue(task)">Quá hạn</span>
                 <span>{{vm.taskCompletion(task)}}</span>
             </div>
             <p class="class-task-help" data-ng-if="task.topicName">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
             <p class="class-task-help" data-ng-if="task.sourceQuestionId"><i class="fa fa-headphones"></i> {{task.sourceQuestionTitle}}</p>
-            <p class="class-task-help" data-ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}}<span data-ng-if="task.activityType !== 'COMPREHENSIVE'"> · {{task.activityType === 'IELTS_WRITING' ? 'Task' : 'Part'}} {{task.ieltsPart}}</span></p>
+            <p class="class-task-help" data-ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}}<span data-ng-if="task.activityType !== 'COMPREHENSIVE'"> · {{vm.taskIeltsPartsLabel(task)}}</span></p>
             <div class="class-task-notes" data-ng-if="task.notes">{{task.notes}}</div>
             <div class="class-task-buttons">
                 <button type="button" class="btn btn-default btn-xs" data-ng-click="vm.openScheduleTask(taskSection, task)"
@@ -1413,13 +1423,13 @@
                 <div class="form-group" data-ng-if="vm.taskEditor.topicId || vm.isIeltsTask(vm.taskEditor)">
                     <label>Số lần học sinh phải hoàn thành</label>
                     <input type="number" min="1" max="100" step="1" required class="form-control" data-ng-model="vm.taskEditor.requiredAttempts" />
-                    <small>{{vm.taskEditor.activityType === 'COMPREHENSIVE' ? 'Mỗi lần nộp đúng bài đích và đạt yêu cầu được tính là một lượt.' : 'Mỗi lần nộp đúng Part được tính là một lượt hoàn thành.'}}</small>
+                    <small>{{vm.taskEditor.activityType === 'COMPREHENSIVE' ? 'Mỗi lần nộp đúng bài đích và đạt yêu cầu được tính là một lượt.' : (vm.isIeltsTask(vm.taskEditor) ? 'Mỗi phần đã chọn cần được nộp đủ số lần này để hoàn thành task.' : 'Mỗi lần đạt yêu cầu được tính là một lượt hoàn thành.')}}</small>
                 </div>
             </div>
             <div class="class-task-editor-grid" data-ng-if="vm.isIeltsTask(vm.taskEditor) && vm.taskEditor.activityType !== 'COMPREHENSIVE'">
                 <div class="form-group">
                     <label>{{'Đề ' + (vm.taskEditor.activityType === 'IELTS_LISTENING' ? 'Listening' : (vm.taskEditor.activityType === 'IELTS_WRITING' ? 'Writing' : 'Reading'))}} <span class="font-red">*</span></label>
-                    <ui-select class="class-task-wrapping-select" theme="bootstrap" data-ng-model="vm.taskEditor.ieltsTestId" data-ng-disabled="vm.assignableIeltsTestsLoading" required>
+                    <ui-select class="class-task-wrapping-select" theme="bootstrap" data-ng-model="vm.taskEditor.ieltsTestId" data-ng-change="vm.selectAllTaskParts()" data-ng-disabled="vm.assignableIeltsTestsLoading" required>
                         <ui-select-match placeholder="Chọn đề bài tập...">{{$select.selected.title}}</ui-select-match>
                         <ui-select-choices repeat="test.id as test in vm.ieltsTestsForTask() | propsFilter:{title:$select.search}">
                             <div data-ng-bind-html="test.title | highlight:$select.search"></div>
@@ -1427,9 +1437,17 @@
                     </ui-select>
                 </div>
                 <div class="form-group">
-                    <label>{{vm.taskEditor.activityType === 'IELTS_WRITING' ? 'Writing Task' : 'Part cần làm'}} <span class="font-red">*</span></label>
-                    <select class="form-control" data-ng-model="vm.taskEditor.ieltsPart" data-ng-options="part as ((vm.taskEditor.activityType === 'IELTS_WRITING' ? 'Task ' : 'Part ') + part) for part in vm.ieltsPartsForTask()" required></select>
-                    <small>Học sinh chỉ làm {{vm.taskEditor.activityType === 'IELTS_WRITING' ? 'Task' : 'Part'}} đã chọn; nộp mục này là được tính làm bài.</small>
+                    <div class="class-task-parts-heading">
+                        <label>{{vm.taskEditor.activityType === 'IELTS_WRITING' ? 'Writing Task cần làm' : 'Part cần làm'}} <span class="font-red">*</span></label>
+                        <button type="button" class="class-task-select-all" data-ng-click="vm.selectAllTaskParts()">Chọn tất cả</button>
+                    </div>
+                    <ui-select multiple class="class-task-parts-select" theme="bootstrap" name="ieltsParts" data-ng-model="vm.taskEditor.ieltsParts" close-on-select="false" required>
+                        <ui-select-match placeholder="Chọn ít nhất một phần...">{{(vm.taskEditor.activityType === 'IELTS_WRITING' ? 'Task ' : 'Part ') + $item}}</ui-select-match>
+                        <ui-select-choices repeat="part as part in vm.ieltsPartsForTask() | filter:$select.search">
+                            {{(vm.taskEditor.activityType === 'IELTS_WRITING' ? 'Task ' : 'Part ') + part}}
+                        </ui-select-choices>
+                    </ui-select>
+                    <small>Mặc định làm tất cả. Bấm × để bỏ phần không cần; có thể chọn lại trong danh sách.</small>
                 </div>
             </div>
             <div data-ng-if="vm.taskEditor.activityType === 'COMPREHENSIVE'">

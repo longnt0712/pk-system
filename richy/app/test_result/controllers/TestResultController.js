@@ -31,6 +31,97 @@
             )};
     }]);
 
+    angular.module('Hrm.TestResult').directive('ieltsResultAnnotations', ['$parse', '$timeout', function ($parse, $timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var root = element[0];
+                var openNote = $parse(attrs.ieltsResultNote);
+                var decorateTimer;
+                var scrollContainer;
+
+                function noteForMarker(marker) {
+                    var state = scope.$eval(attrs.ieltsResultAnnotations) || {};
+                    var noteId = marker.getAttribute('data-note-id');
+                    var notes = angular.isArray(state.annotationNotes) ? state.annotationNotes : [];
+                    for (var i = 0; i < notes.length; i++) {
+                        if (notes[i] && String(notes[i].id) === noteId) { return notes[i]; }
+                    }
+                    return null;
+                }
+
+                function showNote(note, marker) {
+                    var anchor = null;
+                    if (marker) {
+                        var rect = marker.getBoundingClientRect();
+                        var body = scrollContainer || root.closest('.modal-body');
+                        var bounds = body && body.getBoundingClientRect();
+                        // Pass plain coordinates through Angular's expression parser.
+                        anchor = {left: rect.left, top: rect.top, bottom: rect.bottom, bounds: bounds ? {
+                            left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom
+                        } : null};
+                    }
+                    scope.$evalAsync(function () {
+                        openNote(scope, {note: note, anchor: anchor});
+                    });
+                }
+
+                function handleAnnotation(event) {
+                    if (event.type === 'keydown' && event.key === 'Escape') {
+                        showNote(null, null);
+                        return;
+                    }
+                    var marker = event.target.closest && event.target.closest('.ielts-annotation.has-note');
+                    if (!marker || !root.contains(marker)) {
+                        if (event.type === 'click') { showNote(null, null); }
+                        return;
+                    }
+                    if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') { return; }
+                    var note = noteForMarker(marker);
+                    if (!note) { return; }
+                    event.preventDefault();
+                    showNote(note, marker);
+                }
+
+                var unwatch = scope.$watchGroup([attrs.compile, attrs.ieltsResultAnnotations], function () {
+                    $timeout.cancel(decorateTimer);
+                    // The compile directive renders the saved passage in the same digest.
+                    decorateTimer = $timeout(function () {
+                        if (!scrollContainer) {
+                            scrollContainer = root.closest('.modal-body');
+                            if (scrollContainer) {
+                                // Automatic scrolling to a clicked marker must not dismiss its note.
+                                scrollContainer.addEventListener('wheel', closeNote, {passive: true});
+                                scrollContainer.addEventListener('touchmove', closeNote, {passive: true});
+                            }
+                        }
+                        angular.forEach(root.querySelectorAll('.ielts-annotation'), function (marker) {
+                            marker.removeAttribute('title');
+                            if (marker.classList.contains('has-note') && noteForMarker(marker)) {
+                                marker.setAttribute('role', 'button');
+                                marker.setAttribute('tabindex', '0');
+                                marker.setAttribute('title', 'Xem ghi chú của học sinh');
+                                marker.setAttribute('aria-label', 'Xem ghi chú của học sinh: ' + marker.textContent);
+                            }
+                        });
+                    }, 0, false);
+                });
+
+                function closeNote() { showNote(null, null); }
+                element.on('click keydown', handleAnnotation);
+                scope.$on('$destroy', function () {
+                    unwatch();
+                    $timeout.cancel(decorateTimer);
+                    element.off('click keydown', handleAnnotation);
+                    if (scrollContainer) {
+                        scrollContainer.removeEventListener('wheel', closeNote);
+                        scrollContainer.removeEventListener('touchmove', closeNote);
+                    }
+                });
+            }
+        };
+    }]);
+
     angular.module('Hrm.TestResult').directive('writingFeedbackEditor', ['$timeout', function ($timeout) {
         return {
             restrict: 'A',
@@ -629,6 +720,7 @@
         };
 
         vm.loadIeltsLearningState = function (testResult) {
+            vm.closeResultAnnotationNote();
             vm.ieltsLearningState = {};
             if (!testResult || !testResult.ieltsLearningState) { return; }
             try {
@@ -636,6 +728,37 @@
             } catch (ignoreInvalidIeltsLearningState) {
                 vm.ieltsLearningState = {};
             }
+        };
+
+        vm.closeResultAnnotationNote = function () {
+            vm.activeResultAnnotationNote = null;
+        };
+
+        vm.openResultAnnotationNote = function (note, anchor) {
+            if (!note || !anchor) {
+                vm.closeResultAnnotationNote();
+                return;
+            }
+            var bounds = anchor.bounds || {
+                left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight
+            };
+            var left = Math.max(8, bounds.left + 8);
+            var right = Math.min(window.innerWidth - 8, bounds.right - 8);
+            var top = Math.max(8, bounds.top + 8);
+            var bottom = Math.min(window.innerHeight - 8, bounds.bottom - 8);
+            var width = Math.max(0, Math.min(340, right - left));
+            var below = Math.max(0, bottom - anchor.bottom - 8);
+            var above = Math.max(0, anchor.top - 8 - top);
+            var openAbove = below < 160 && above > below;
+            var height = Math.min(240, openAbove ? above : below);
+            vm.resultAnnotationNoteStyle = {
+                left: Math.max(left, Math.min(anchor.left, right - width)) + 'px',
+                top: (openAbove ? anchor.top - 8 : Math.max(top, anchor.bottom + 8)) + 'px',
+                width: width + 'px',
+                'max-height': height + 'px',
+                transform: openAbove ? 'translateY(-100%)' : 'none'
+            };
+            vm.activeResultAnnotationNote = note;
         };
 
         vm.formatIeltsActiveDuration = function (seconds) {

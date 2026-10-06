@@ -198,6 +198,10 @@
 			return !!task && !!task.ieltsTestId && (task.activityType === 'IELTS_READING'
 				|| task.activityType === 'IELTS_LISTENING' || task.activityType === 'IELTS_WRITING' || task.activityType === 'COMPREHENSIVE');
 		};
+		vm.assignmentPartsLabel = function (task) {
+			var parts = angular.isArray(task.ieltsParts) ? task.ieltsParts : [task.ieltsPart];
+			return (task.activityType === 'IELTS_WRITING' ? 'Task ' : 'Part ') + parts.join(', ');
+		};
 
         vm.openAssignedTask = function (task) {
             if (!task) { return; }

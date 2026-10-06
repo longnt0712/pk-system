@@ -134,19 +134,19 @@
                     <div class="student-assignment-badges">
                         <span>{{vm.assignmentTypeLabel(task)}}</span>
                         <span class="is-free" ng-if="!task.topicId && !task.ieltsTestId">Nhiệm vụ lớp</span>
-                        <span ng-if="task.ieltsTestId && task.activityType !== 'COMPREHENSIVE'">{{task.activityType === 'IELTS_WRITING' ? 'Task' : 'Part'}} {{task.ieltsPart}}</span>
+                        <span ng-if="task.ieltsTestId && task.activityType !== 'COMPREHENSIVE'">{{vm.assignmentPartsLabel(task)}}</span>
                         <span class="is-overdue" ng-if="task.overdue">Quá hạn</span>
                     </div>
                     <h3>{{task.title}}</h3>
                     <p class="student-assignment-topic" ng-if="task.topicId">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
                     <p class="student-assignment-topic" ng-if="task.sourceQuestionId"><i class="fa fa-headphones"></i> {{task.sourceQuestionTitle}}</p>
-                    <p class="student-assignment-topic" ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}}<span ng-if="task.activityType !== 'COMPREHENSIVE'"> · {{task.activityType === 'IELTS_WRITING' ? 'Task' : 'Part'}} {{task.ieltsPart}}</span></p>
+                    <p class="student-assignment-topic" ng-if="task.ieltsTestId"><i class="fa fa-file-text-o"></i> {{task.ieltsTestTitle}}<span ng-if="task.activityType !== 'COMPREHENSIVE'"> · {{vm.assignmentPartsLabel(task)}}</span></p>
                     <p class="student-assignment-topic is-free" ng-if="!task.topicId && !task.ieltsTestId"><i class="fa fa-lightbulb-o"></i> Không yêu cầu topic</p>
                     <p class="student-assignment-class"><i class="fa fa-users"></i> {{task.className}}</p>
                     <p class="student-assignment-note" ng-if="task.notes">{{task.notes}}</p>
                     <div class="student-assignment-progress">
-						<span>{{task.activityType === 'COMPREHENSIVE' ? 'Đã đạt' : (vm.isIeltsAssignment(task) ? 'Đã làm' : 'Đã đạt')}} <strong>{{task.completedAttempts}}/{{task.requiredAttempts}}</strong> lần</span>
-                        <b>Còn {{task.remainingAttempts}} lần</b>
+						<span>{{task.activityType === 'COMPREHENSIVE' ? 'Đã đạt' : (vm.isIeltsAssignment(task) ? 'Đã làm' : 'Đã đạt')}} <strong>{{task.completedAttempts}}/{{task.requiredAttempts}}</strong> {{task.ieltsParts.length > 1 ? 'lượt nộp' : 'lần'}}</span>
+                        <b>Còn {{task.remainingAttempts}} {{task.ieltsParts.length > 1 ? 'lượt nộp' : 'lần'}}</b>
                     </div>
                     <div class="student-assignment-bar"><span ng-style="{'width': (task.completedAttempts * 100 / task.requiredAttempts) + '%'}"></span></div>
                     <div class="student-assignment-footer">
