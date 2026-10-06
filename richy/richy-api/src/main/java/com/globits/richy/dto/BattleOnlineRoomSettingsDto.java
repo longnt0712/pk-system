@@ -23,6 +23,8 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     private String mode = "CLASSIC";
 
     private boolean skillsEnabled = true;
+    /* Empty (including requests from older clients) allows every mode's skills. */
+    private List<String> disabledSkillTypes = new ArrayList<String>();
 
     /*
      * CLASSIC:
@@ -93,6 +95,8 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
 
     public boolean isSkillsEnabled() { return skillsEnabled; }
     public void setSkillsEnabled(boolean skillsEnabled) { this.skillsEnabled = skillsEnabled; }
+    public List<String> getDisabledSkillTypes() { return disabledSkillTypes; }
+    public void setDisabledSkillTypes(List<String> disabledSkillTypes) { this.disabledSkillTypes = disabledSkillTypes; }
 
     public String getMode() {
         return mode;

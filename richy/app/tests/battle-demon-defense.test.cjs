@@ -173,3 +173,46 @@ test('skill setting defaults on and is sent for every mode without being overwri
     h.vm.useUnfreeze({username: 'bob'});
     assert.equal(h.vm.usingSkill, false);
 });
+
+test('all skills start selected; host can exclude and restore them independently in every mode', () => {
+    const h = setup('host'); h.vm.room = h.room(); h.vm.room.status = 'LOBBY';
+    assert.equal(h.vm.skillOptions.length, 8);
+    assert.equal(h.vm.skillOptions.every(skill => h.vm.isHostSkillSelected(skill.type)), true);
+    h.vm.toggleHostSkill('FREEZE'); h.vm.toggleHostSkill('UNFREEZE');
+    assert.equal(h.vm.isHostSkillSelected('FREEZE'), false);
+    assert.equal(h.vm.isHostSkillSelected('FIRE_UP'), true);
+    for (const mode of ['CLASSIC','COUNTDOWN','MONEY_BEG','ESCAPE_DUMB_DEMON','DEMON_DEFENSE','GUESS_WORD']) {
+        h.vm.hostSettings.mode = mode;
+        assert.deepEqual(Array.from(h.hooks.buildSettingsDto().disabledSkillTypes), ['FREEZE','UNFREEZE']);
+    }
+    const incoming = h.room(); incoming.status = 'LOBBY'; incoming.settings.disabledSkillTypes = [];
+    h.hooks.applyRoom(incoming, false);
+    assert.equal(h.vm.isHostSkillSelected('FREEZE'), false, 'live updates preserve unsaved selections');
+    h.vm.toggleHostSkill('FREEZE');
+    assert.deepEqual(Array.from(h.hooks.buildSettingsDto().disabledSkillTypes), ['UNFREEZE']);
+    h.vm.hostSkillsDirty = false; incoming.settings.disabledSkillTypes = ['STEAL_SCORE'];
+    h.hooks.applyRoom(incoming, false);
+    assert.equal(h.vm.isHostSkillSelected('STEAL_SCORE'), false);
+    delete incoming.settings.disabledSkillTypes; h.hooks.applyRoom(incoming, false);
+    assert.equal(h.vm.skillOptions.every(skill => h.vm.isHostSkillSelected(skill.type)), true);
+});
+
+test('only the host can change skill choices and master off preserves the individual choices', () => {
+    const h = setup('host'); h.vm.room = h.room();
+    h.vm.toggleHostSkill('FREEZE'); h.vm.hostSettings.skillsEnabled = false;
+    h.vm.toggleHostSkill('FIRE_UP'); h.vm.toggleHostSkill('FREEZE');
+    assert.deepEqual(Array.from(h.hooks.buildSettingsDto().disabledSkillTypes), ['FREEZE']);
+    h.vm.hostSettings.skillsEnabled = true; h.vm.savingSettings = true; h.vm.toggleHostSkill('FIRE_UP');
+    assert.equal(h.vm.isHostSkillSelected('FIRE_UP'), true);
+    const student = setup(); student.vm.room = student.room(); student.vm.toggleHostSkill('FREEZE');
+    assert.equal(student.vm.hostSkillsDirty, false); assert.equal(student.vm.isHostSkillSelected('FREEZE'), true);
+});
+
+test('individual exclusions reject stale rescue and pending skill requests in the browser', () => {
+    const h = setup(); h.vm.room = h.room();
+    h.vm.room.settings.disabledSkillTypes = ['UNFREEZE','FREEZE'];
+    h.vm.useUnfreeze({username:'bob'}); assert.equal(h.vm.usingSkill, false);
+    h.vm.room.pendingSkillType = 'FREEZE'; h.vm.useSkill({username:'carol'});
+    assert.equal(h.vm.usingSkill, false);
+    assert.equal(h.vm.isGameSkillEnabled('FIRE_UP'), true);
+});

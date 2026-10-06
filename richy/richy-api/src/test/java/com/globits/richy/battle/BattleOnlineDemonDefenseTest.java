@@ -331,4 +331,86 @@ public class BattleOnlineDemonDefenseTest {
         assertEquals("VOCABULARY", get(get(room, "settings"), "questionSource"));
     }
 
+    @Test public void individualSkillChoicesRoundTripInEveryModeAndOldClientsAllowAll() {
+        set(room, "status", "LOBBY");
+        assertTrue(new BattleOnlineRoomSettingsDto().getDisabledSkillTypes().isEmpty());
+        for (String mode : new String[] {"CLASSIC","COUNTDOWN","MONEY_BEG","ESCAPE_DUMB_DEMON","DEMON_DEFENSE","GUESS_WORD"}) {
+            BattleOnlineRoomSettingsDto requested = new BattleOnlineRoomSettingsDto(); requested.setMode(mode);
+            requested.setDisabledSkillTypes(java.util.Arrays.asList(" freeze ", "UNFREEZE", "FREEZE", "invalid", null));
+            BattleOnlineRoomDto saved = service.updateSettings("DEMON1", "host", requested);
+            assertTrue(saved.getSettings().isSkillsEnabled());
+            assertEquals(java.util.Arrays.asList("FREEZE","UNFREEZE"), saved.getSettings().getDisabledSkillTypes());
+            saved.getSettings().getDisabledSkillTypes().clear();
+            assertEquals(2, ((List<?>) get(get(room,"settings"),"disabledSkillTypes")).size());
+            requested.setDisabledSkillTypes(null);
+            assertTrue(service.updateSettings("DEMON1", "host", requested).getSettings().getDisabledSkillTypes().isEmpty());
+        }
+    }
+
+    @Test @SuppressWarnings("unchecked") public void plansNeverIncludeAnExcludedSkillAndAllCanBeExcluded() {
+        Object settings = get(room,"settings"); set(room,"totalLessonWords",160);
+        List<String> types = java.util.Arrays.asList("FREEZE","INVERT","BREAK_STREAK","UNFREEZE","STEAL_SCORE","FIRE_UP","MONEY_BEG","RESET_PASSWORD");
+        Map<Integer,String> plan = (Map<Integer,String>) get(room,"countdownSkillPlan");
+        for (String mode : new String[] {"COUNTDOWN","MONEY_BEG","ESCAPE_DUMB_DEMON","DEMON_DEFENSE"}) {
+            set(settings,"mode",mode);
+            for (String type : types) {
+                set(settings,"disabledSkillTypes",java.util.Collections.singletonList(type));
+                ReflectionTestUtils.invokeMethod(service,"buildCountdownSkillPlanLocked",room);
+                assertFalse(mode + ": " + type, plan.containsValue(type));
+                assertFalse(mode, plan.isEmpty());
+            }
+            set(settings,"disabledSkillTypes",types);
+            ReflectionTestUtils.invokeMethod(service,"buildCountdownSkillPlanLocked",room); assertTrue(mode,plan.isEmpty());
+        }
+    }
+
+    @Test @SuppressWarnings("unchecked") public void excludedPasswordResetFallsBackToAnAllowedRegularSkill() throws Exception {
+        Object settings = get(room,"settings"), question = state("QuestionState"); set(question,"id",7L);
+        set(settings,"mode","MONEY_BEG"); set(settings,"disabledSkillTypes",java.util.Collections.singletonList("RESET_PASSWORD"));
+        set(room,"passwordResetAvailableAt",System.currentTimeMillis()-1000L);
+        ((Map<Integer,String>) get(room,"countdownSkillPlan")).put(0,"FREEZE");
+        ReflectionTestUtils.invokeMethod(service,"setCurrentCountdownQuestionLocked",room,alice,question);
+        assertEquals("FREEZE",get(alice,"currentSkillType")); assertEquals(false,get(alice,"passwordResetSkillIssued"));
+        set(alice,"currentQuestionSequence",0L); set(settings,"disabledSkillTypes",java.util.Arrays.asList("RESET_PASSWORD","FREEZE"));
+        ReflectionTestUtils.invokeMethod(service,"setCurrentCountdownQuestionLocked",room,alice,question);
+        assertNull(get(alice,"currentSkillType")); assertNotNull(get(alice,"currentQuestion"));
+        set(settings,"disabledSkillTypes",java.util.Collections.emptyList());
+        ReflectionTestUtils.invokeMethod(service,"setCurrentCountdownQuestionLocked",room,alice,question);
+        assertEquals("RESET_PASSWORD",get(alice,"currentSkillType"));
+    }
+
+    @Test public void excludedSkillsRejectDirectRequestsIncludingStoredRescueCharges() {
+        Object settings = get(room,"settings"); set(alice,"unfreezeCharges",1);
+        for (String type : new String[] {"FREEZE","INVERT","BREAK_STREAK","UNFREEZE","STEAL_SCORE","FIRE_UP","MONEY_BEG","RESET_PASSWORD"}) {
+            set(settings,"disabledSkillTypes",java.util.Collections.singletonList(type)); set(alice,"pendingSkillType",type);
+            BattleOnlineUseSkillDto request = new BattleOnlineUseSkillDto(); request.setSkillType(type); request.setTargetUsername("bob");
+            try { service.useSkill("DEMON1","alice",request); fail(type + " must be rejected"); }
+            catch (BattleOnlineException expected) { assertEquals(type,get(alice,"pendingSkillType")); assertEquals(1,get(alice,"unfreezeCharges")); }
+        }
+        set(settings,"mode","MONEY_BEG"); set(settings,"disabledSkillTypes",java.util.Collections.singletonList("MONEY_BEG"));
+        try { service.guessPassword("DEMON1","alice",new com.globits.richy.dto.BattleOnlinePasswordGuessDto()); fail("Money skill must be rejected"); }
+        catch (BattleOnlineException expected) { assertTrue(expected.getMessage().contains("Host đã tắt")); }
+    }
+
+    @Test @SuppressWarnings("unchecked") public void excludedResetRejectsSkillButInitialPasswordSelectionStillWorks() {
+        set(get(room,"settings"),"mode","MONEY_BEG");
+        set(get(room,"settings"),"disabledSkillTypes",java.util.Collections.singletonList("RESET_PASSWORD"));
+        set(alice,"pendingSkillType","RESET_PASSWORD"); set(alice,"passwordSelectionRequired",true);
+        ((Map<String,String>) get(alice,"passwordOptions")).put("A","new password");
+        com.globits.richy.dto.BattleOnlinePasswordChoiceDto request = new com.globits.richy.dto.BattleOnlinePasswordChoiceDto(); request.setOptionKey("A");
+        try { service.choosePassword("DEMON1","alice",request); fail("Reset skill must be rejected"); }
+        catch (BattleOnlineException expected) { assertEquals(true,get(alice,"passwordSelectionRequired")); }
+        set(alice,"pendingSkillType",null);
+        service.choosePassword("DEMON1","alice",request);
+        assertEquals("new password",get(alice,"currentPassword")); assertEquals(false,get(alice,"passwordSelectionRequired"));
+    }
+
+    @Test public void correctAnswerCannotActivateAnExcludedFireSkillFromAStaleQuestion() throws Exception {
+        Object question = state("QuestionState"); set(question,"id",7L); set(question,"correctKey","A");
+        set(alice,"currentQuestion",question); set(alice,"currentQuestionSequence",1L); set(alice,"currentSkillType","FIRE_UP");
+        set(get(room,"settings"),"disabledSkillTypes",java.util.Collections.singletonList("FIRE_UP"));
+        BattleOnlineAnswerDto request = new BattleOnlineAnswerDto(); request.setQuestionId(7L); request.setQuestionSequence(1L); request.setAnswerKey("A");
+        assertTrue(service.answer("DEMON1","alice",request).isCorrect()); assertEquals(0L,get(alice,"burningUntil"));
+    }
+
 }

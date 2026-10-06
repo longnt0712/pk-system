@@ -116,6 +116,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String SKILL_FIRE_UP = "FIRE_UP";
     private static final String SKILL_MONEY_BEG = "MONEY_BEG";
     private static final String SKILL_RESET_PASSWORD = "RESET_PASSWORD";
+    private static final List<String> SKILL_TYPES = java.util.Arrays.asList(
+            SKILL_FREEZE, SKILL_INVERT, SKILL_BREAK_STREAK, SKILL_UNFREEZE,
+            SKILL_STEAL_SCORE, SKILL_FIRE_UP, SKILL_MONEY_BEG, SKILL_RESET_PASSWORD);
 
     private static final long FREEZE_DURATION_MS = 3000L;
     private static final long INVERT_DURATION_MS = 7000L;
@@ -1157,6 +1160,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             room.settings.mode =
                     normalizeMode(settings.getMode());
             room.settings.skillsEnabled = settings.isSkillsEnabled();
+            room.settings.disabledSkillTypes = normalizeDisabledSkillTypes(settings.getDisabledSkillTypes());
 
             room.settings.questionCount =
                     clamp(
@@ -2186,7 +2190,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             );
 
             String earnedSkill =
-                    correct
+                    correct && isSkillEnabledLocked(room, player.currentSkillType)
                             ? player.currentSkillType
                             : null;
 
@@ -2404,6 +2408,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             boolean rescueRequest = MODE_DEMON_DEFENSE.equals(room.settings.mode) &&
                     skillDto != null && SKILL_UNFREEZE.equals(skillDto.getSkillType());
+            String requestedSkill = rescueRequest ? SKILL_UNFREEZE : actor.pendingSkillType;
+            if (requestedSkill != null && !isSkillEnabledLocked(room, requestedSkill)) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Skill này đã bị host tắt.");
+            }
             if (rescueRequest) {
                 useUnfreezeLocked(room, actor, clean(skillDto.getTargetUsername()));
                 dto = snapshotLocked(room, username);
@@ -2609,6 +2617,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             boolean resetSkill =
                     SKILL_RESET_PASSWORD.equals(player.pendingSkillType);
+            if (resetSkill && !isSkillEnabledLocked(room, SKILL_RESET_PASSWORD)) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Host đã tắt skill ĐẶT LẠI MẬT KHẨU.");
+            }
 
             if (
                 resetSkill &&
@@ -2661,8 +2672,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         synchronized (room) {
             requirePlaying(room);
-            if (!room.settings.skillsEnabled) {
-                throw new BattleOnlineException(HttpStatus.CONFLICT, "Host đã tắt skill trong trận này.");
+            if (!isSkillEnabledLocked(room, SKILL_MONEY_BEG)) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Host đã tắt skill XIN TÍ TIỀN.");
             }
 
             if (!MODE_MONEY_BEG.equals(room.settings.mode)) {
@@ -3952,6 +3963,22 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         return multiplied;
     }
 
+    private List<String> normalizeDisabledSkillTypes(List<String> requested) {
+        Set<String> disabled = new LinkedHashSet<String>();
+        if (requested != null) {
+            for (String value : requested) {
+                String type = clean(value).toUpperCase(Locale.ROOT);
+                if (SKILL_TYPES.contains(type)) { disabled.add(type); }
+            }
+        }
+        return new ArrayList<String>(disabled);
+    }
+
+    private boolean isSkillEnabledLocked(RoomState room, String type) {
+        return room.settings.skillsEnabled && type != null &&
+                !room.settings.disabledSkillTypes.contains(type);
+    }
+
     private void buildCountdownSkillPlanLocked(RoomState room) {
         room.countdownSkillPlan.clear();
         if (!room.settings.skillsEnabled) { return; }
@@ -3967,6 +3994,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             String[] types = {SKILL_FREEZE, SKILL_BREAK_STREAK, SKILL_UNFREEZE};
             double[] rates = {0.07D, 0.05D, 0.025D};
             for (int index = 0; index < types.length; index++) {
+                if (!isSkillEnabledLocked(room, types[index])) { continue; }
                 List<Integer> positions = buildBalancedSkillPositions(total,
                         Math.max(1, (int) Math.round(total * rates[index])), blocked);
                 for (Integer position : positions) {
@@ -4097,6 +4125,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         for (Integer position : moneyBegPositions) {
             room.countdownSkillPlan.put(position, SKILL_MONEY_BEG);
         }
+        room.countdownSkillPlan.values().removeAll(room.settings.disabledSkillTypes);
     }
 
 
@@ -5025,7 +5054,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
 
         if (
-            room.settings.skillsEnabled &&
+            isSkillEnabledLocked(room, SKILL_RESET_PASSWORD) &&
             MODE_MONEY_BEG.equals(room.settings.mode) &&
             !player.passwordResetSkillIssued &&
             System.currentTimeMillis() >= room.passwordResetAvailableAt
@@ -5039,10 +5068,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             player.currentSkillType = SKILL_RESET_PASSWORD;
             player.passwordResetSkillIssued = true;
         } else {
-            player.currentSkillType =
-                    room.settings.skillsEnabled ? room.countdownSkillPlan.get(
-                            skillPosition
-                    ) : null;
+            String plannedSkill = room.countdownSkillPlan.get(skillPosition);
+            player.currentSkillType = isSkillEnabledLocked(room, plannedSkill) ? plannedSkill : null;
         }
 
         player.uniqueWordIds.add(
@@ -7680,6 +7707,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         dto.setExerciseTestIds(new ArrayList<Long>(source.exerciseTestIds));
         dto.setGuessAdvanceMode(source.guessAdvanceMode);
         dto.setSkillsEnabled(source.skillsEnabled);
+        dto.setDisabledSkillTypes(new ArrayList<String>(source.disabledSkillTypes));
 
         dto.setCountdownMinutes(
                 source.countdownMinutes
@@ -8204,6 +8232,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         List<Long> exerciseTestIds = new ArrayList<Long>();
         String mode = MODE_CLASSIC;
         boolean skillsEnabled = true;
+        List<String> disabledSkillTypes = new ArrayList<String>();
 
         int questionCount = 20;
         int secondsPerQuestion = 10;

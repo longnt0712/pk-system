@@ -802,7 +802,7 @@
              ================================================= -->
         <aside class="battle-online-card battle-online-side-card"
                ng-if="vm.isHost()">
-            <ng-include src="'question/views/battle_online_host_settings.html?comprehensiveBattle=20261006_1'"></ng-include>
+            <ng-include src="'question/views/battle_online_host_settings.html?skillSelection=20261006_1'"></ng-include>
         </aside>
 
         <!-- NON HOST -->
@@ -1043,7 +1043,7 @@
 
             <div class="demon-student-status" ng-if="vm.isDemonDefenseMode()">
                 <span>ĐỘI {{vm.me().teamNumber}} • 🔥 {{vm.me().streak}} • {{vm.getDemonBullets(vm.me())}} viên / câu đúng</span>
-                <button type="button" ng-if="vm.room.settings.skillsEnabled !== false && vm.me().unfreezeCharges"
+                <button type="button" ng-if="vm.isGameSkillEnabled('UNFREEZE') && vm.me().unfreezeCharges"
                         ng-disabled="vm.isMeFrozen() || vm.isDemonPlayerEliminated() || vm.usingSkill"
                         ng-click="vm.openUnfreezeModal()">🧊 Giải băng ({{vm.me().unfreezeCharges}})</button>
             </div>
@@ -2399,7 +2399,7 @@
                 </div>
 
                 <div class="battle-online-side-card battle-online-qr-settings-scroll" ng-if="vm.isHost() && vm.room.status === 'LOBBY'">
-                    <ng-include src="'question/views/battle_online_host_settings.html?comprehensiveBattle=20261006_1'"></ng-include>
+                    <ng-include src="'question/views/battle_online_host_settings.html?skillSelection=20261006_1'"></ng-include>
                 </div>
             </div>
         </section>
@@ -2521,6 +2521,19 @@
     .demon-team-card.is-danger { border-color: #ff6c53; }
     .demon-team-card.is-winner { border-color: #ffd666; }
     .battle-exercise-search { display:flex; align-items:center; gap:8px; margin:12px 0; }
+    .battle-online-skill-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:12px; }
+    .battle-online-skill-option { display:flex; align-items:center; gap:8px; min-width:0; padding:10px; border:1px solid #bcded3; border-radius:12px; background:#effbf5; color:#244a3b; text-align:left; }
+    .battle-online-skill-option strong { flex:1; font-size:12px; overflow-wrap:anywhere; }
+    .battle-online-skill-option small { font-size:10px; font-weight:800; color:#16855a; }
+    .battle-online-skill-option-icon { position:relative; display:grid; place-items:center; flex:0 0 30px; height:34px; font-size:25px; }
+    .battle-online-skill-option.is-excluded { border-color:#e0cdd1; background:#f4f1f3; color:#7d7380; }
+    .battle-online-skill-option.is-excluded strong { text-decoration:line-through; }
+    .battle-online-skill-option.is-excluded small { color:#cf4160; }
+    .battle-online-skill-option.is-excluded .battle-online-skill-option-icon::after { content:''; position:absolute; width:38px; height:3px; border-radius:3px; background:#e43f60; transform:rotate(-55deg); box-shadow:0 0 0 1px #fff; }
+    .battle-online-skill-option:focus-visible { outline:3px solid #7560ff; outline-offset:2px; }
+    .battle-online-skill-options.is-muted { opacity:.55; }
+    .battle-online-skill-option:disabled { cursor:default; }
+    @media (max-width:420px) { .battle-online-skill-options { grid-template-columns:1fr; } }
     .battle-exercise-filters { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:12px 0; text-align:left; }
     .battle-exercise-filters label { margin:0; min-width:0; }
     .battle-exercise-filters .form-control, .battle-exercise-filters .ui-select-container { width:100%; margin-top:4px; }

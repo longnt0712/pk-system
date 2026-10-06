@@ -353,7 +353,20 @@
                         ng-attr-aria-pressed="{{vm.hostSettings.skillsEnabled !== false}}">
                     ⚡ Cho phép skill trong game: {{vm.hostSettings.skillsEnabled !== false ? 'BẬT' : 'TẮT'}}
                 </button>
-                <p>Bật để skill của mode được xuất hiện trong trận. Tắt để chơi không có skill.</p>
+                <p>Mặc định bật tất cả. Bấm vào skill để gạch chéo và tắt; bấm lại để bật. Mỗi mode dùng các skill phù hợp với mode đó.</p>
+                <div class="battle-online-skill-options" ng-class="{'is-muted': vm.hostSettings.skillsEnabled === false}">
+                    <button type="button" class="battle-online-skill-option"
+                            ng-repeat="skill in vm.skillOptions track by skill.type"
+                            ng-class="{'is-excluded': !vm.isHostSkillSelected(skill.type)}"
+                            ng-click="vm.toggleHostSkill(skill.type)"
+                            ng-disabled="vm.savingSettings || vm.hostSettings.skillsEnabled === false"
+                            ng-attr-aria-pressed="{{vm.isHostSkillSelected(skill.type)}}"
+                            ng-attr-aria-label="{{skill.name + (vm.isHostSkillSelected(skill.type) ? ': bật, bấm để tắt' : ': tắt, bấm để bật')}}">
+                        <span class="battle-online-skill-option-icon" aria-hidden="true">{{skill.icon}}</span>
+                        <strong>{{skill.name}}</strong>
+                        <small>{{vm.isHostSkillSelected(skill.type) ? 'BẬT' : 'TẮT'}}</small>
+                    </button>
+                </div>
             </div>
 
             <!-- CLASSIC -->

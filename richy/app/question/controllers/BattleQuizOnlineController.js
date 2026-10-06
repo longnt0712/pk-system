@@ -251,6 +251,7 @@
             countdownMinutes: 5,
             wrongAnswerFreezeSeconds: 3,
             skillsEnabled: true,
+            disabledSkillTypes: [],
             teamCount: 0,
             doubleActionUsername: '',
             guessLevels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
@@ -285,6 +286,36 @@
         vm.hostCountdownMinutesDirty = false;
         vm.hostWrongFreezeDirty = false;
         vm.hostSkillsDirty = false;
+        vm.skillOptions = [
+            {type: 'FREEZE', name: 'Đóng băng', icon: '❄️'},
+            {type: 'INVERT', name: 'Đảo lộn', icon: '🙃'},
+            {type: 'BREAK_STREAK', name: 'Phá streak', icon: '💥'},
+            {type: 'STEAL_SCORE', name: 'Cướp điểm', icon: '💰'},
+            {type: 'FIRE_UP', name: 'Cháy lên', icon: '🔥'},
+            {type: 'MONEY_BEG', name: 'Xin tí tiền', icon: '🤑'},
+            {type: 'RESET_PASSWORD', name: 'Đặt lại mật khẩu', icon: '🔐'},
+            {type: 'UNFREEZE', name: 'Giải băng đồng đội', icon: '🧊'}
+        ];
+        function normalizeDisabledSkills(types) {
+            return (Array.isArray(types) ? types : []).filter(function (type, index, all) {
+                return all.indexOf(type) === index && vm.skillOptions.some(function (skill) { return skill.type === type; });
+            });
+        }
+        vm.isHostSkillSelected = function (type) {
+            return (vm.hostSettings.disabledSkillTypes || []).indexOf(type) < 0;
+        };
+        vm.toggleHostSkill = function (type) {
+            if (!isHost() || vm.savingSettings || vm.hostSettings.skillsEnabled === false ||
+                    !vm.skillOptions.some(function (skill) { return skill.type === type; })) { return; }
+            var disabled = normalizeDisabledSkills(vm.hostSettings.disabledSkillTypes), index = disabled.indexOf(type);
+            if (index < 0) { disabled.push(type); } else { disabled.splice(index, 1); }
+            vm.hostSettings.disabledSkillTypes = disabled;
+            vm.hostSkillsDirty = true;
+        };
+        vm.isGameSkillEnabled = function (type) {
+            return !!vm.room && vm.room.settings.skillsEnabled !== false &&
+                (vm.room.settings.disabledSkillTypes || []).indexOf(type) < 0;
+        };
         vm.hostTeamCountDirty = false;
         vm.hostDoubleActionDirty = false;
         vm.hostGuessLevelsDirty = false;
@@ -2494,6 +2525,7 @@
 
                 if (!isHost() || incoming.status !== 'LOBBY' || !vm.hostSkillsDirty) {
                     vm.hostSettings.skillsEnabled = incoming.settings.skillsEnabled !== false;
+                    vm.hostSettings.disabledSkillTypes = normalizeDisabledSkills(incoming.settings.disabledSkillTypes);
                 }
 
                 if (
@@ -2858,6 +2890,7 @@
                     ),
 
                 skillsEnabled: vm.hostSettings.skillsEnabled !== false,
+                disabledSkillTypes: normalizeDisabledSkills(vm.hostSettings.disabledSkillTypes),
                 guessLevels: vm.hostSettings.guessLevels.slice(0),
 
                 guessAdvanceMode:
@@ -3852,7 +3885,7 @@
         function useSkill(player, skillType) {
             if (
                 !vm.room ||
-                vm.room.settings.skillsEnabled === false ||
+                !vm.isGameSkillEnabled(skillType || vm.room.pendingSkillType) ||
                 (!vm.room.pendingSkillType && skillType !== 'UNFREEZE') ||
                 vm.usingSkill ||
                 !player ||
