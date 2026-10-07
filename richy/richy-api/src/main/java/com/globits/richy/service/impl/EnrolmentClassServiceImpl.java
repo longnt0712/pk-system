@@ -922,6 +922,50 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
     }
 
     @Override
+    public boolean deleteExtraScheduleDay(Long classId, Long dayId, Long version) {
+        User currentUser = getCurrentUser();
+        EnrolmentClass selectedClass = classId == null ? null : enrolmentClassRepository.findOne(classId);
+        if (selectedClass == null || !canEditClass(currentUser, selectedClass)) {
+            throw new AccessDeniedException("Bạn không được xóa ngày của lớp này.");
+        }
+        EnrolmentClassScheduleDay day = dayId == null ? null : scheduleDayRepository.findOne(dayId);
+        if (day == null || day.getEnrolmentClass() == null || day.getEnrolmentClass().getId() == null
+                || !classId.equals(day.getEnrolmentClass().getId())) {
+            throw new EnrolmentClassScheduleException(HttpStatus.NOT_FOUND, "Ngày thêm riêng không còn tồn tại. Hãy tải lại lịch.");
+        }
+        if (version == null || version.longValue() != day.getScheduleVersion()) {
+            throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT, "Kế hoạch vừa được cập nhật. Hãy tải lại trước khi xóa.");
+        }
+        if (day.getMovedFromDate() != null || day.getMovedToDate() != null || day.getMovedDayId() != null
+                || !scheduleDayRepository.findByEnrolmentClassIdAndMovedDayId(classId, dayId).isEmpty()) {
+            throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST,
+                    "Ngày này thuộc một lần dời nên không thể xóa như ngày thêm riêng.");
+        }
+        if (isWeeklyScheduleDate(classId, day.getScheduleDate())) {
+            throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST,
+                    "Đây là ngày học trong lịch hằng tuần. Hãy sửa lịch tuần hoặc đánh dấu nghỉ học.");
+        }
+        try {
+            scheduleDayRepository.delete(day);
+            scheduleDayRepository.flush();
+        } catch (org.springframework.dao.OptimisticLockingFailureException error) {
+            throw new EnrolmentClassScheduleException(HttpStatus.CONFLICT,
+                    "Kế hoạch vừa được cập nhật. Hãy tải lại trước khi xóa.");
+        }
+        return true;
+    }
+
+    private boolean isWeeklyScheduleDate(Long classId, String date) {
+        if (!isValidDate(date)) { return false; }
+        int dayOfWeek = java.time.LocalDate.parse(date).getDayOfWeek().getValue();
+        for (EnrolmentClassWeeklySession session : weeklySessionRepository
+                .findByEnrolmentClassIdOrderByDisplayOrderAscDayOfWeekAscStartTimeAsc(classId)) {
+            if (session.getDayOfWeek() != null && session.getDayOfWeek().intValue() == dayOfWeek) { return true; }
+        }
+        return false;
+    }
+
+    @Override
     public EnrolmentClassScheduleDayDto moveScheduleDay(Long classId, com.globits.richy.dto.EnrolmentClassScheduleMoveDto dto) {
         User teacher = getCurrentUser();
         EnrolmentClass selected = classId == null ? null : enrolmentClassRepository.findOne(classId);

@@ -186,6 +186,13 @@ public class RestEnrolmentClassController {
 	}
 
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/schedule/{classId}/day/{dayId}", method = RequestMethod.DELETE)
+	public boolean deleteExtraScheduleDay(
+			@PathVariable Long classId, @PathVariable Long dayId, @RequestParam Long version) {
+		return service.deleteExtraScheduleDay(classId, dayId, version);
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/schedule/topics", method = RequestMethod.GET)
 	public List<TopicForListAllDto> getScheduleTopics() {
 		return service.getScheduleTopics();

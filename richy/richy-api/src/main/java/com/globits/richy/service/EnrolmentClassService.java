@@ -40,6 +40,7 @@ public interface EnrolmentClassService {
 	public List<EnrolmentClassScheduleDayDto> getScheduleDays(Long classId, String fromDate, String toDate);
 	public List<StudentAssignedTaskDto> getMyAssignedTasks();
 	public EnrolmentClassScheduleDayDto saveScheduleDay(Long classId, EnrolmentClassScheduleDayDto dto);
+    public boolean deleteExtraScheduleDay(Long classId, Long dayId, Long version);
     public EnrolmentClassScheduleDayDto getScheduleSession(Long classId, String date);
     public EnrolmentClassScheduleDayDto moveScheduleDay(Long classId, com.globits.richy.dto.EnrolmentClassScheduleMoveDto dto);
 	public List<TopicForListAllDto> getScheduleTopics();

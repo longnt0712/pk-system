@@ -4,6 +4,7 @@ import com.globits.richy.domain.*;
 import com.globits.richy.dto.*;
 import com.globits.richy.repository.QuestionRepository;
 import com.globits.richy.repository.QuestionTopicRepository;
+import com.globits.richy.repository.EnrolmentClassWeeklySessionRepository;
 import com.globits.richy.service.impl.EnrolmentClassServiceImpl;
 import com.globits.richy.service.impl.HomeworkTopicCompletion;
 import com.globits.richy.service.EnrolmentClassScheduleException;
@@ -72,6 +73,16 @@ public class IeltsTaskPartsTest {
         assertTrue(HomeworkTopicCompletion.studentAssignmentCompletionEnd(start, null, now).isAfter(now));
         assertFalse(HomeworkTopicCompletion.studentAssignmentOverdue(null, now));
         assertNull(HomeworkTopicCompletion.studentAssignmentCompletionEnd(start, start, now));
+    }
+    @Test public void extraScheduleDateDetectionUsesTheWeeklyClassDays() {
+        EnrolmentClassServiceImpl service = new EnrolmentClassServiceImpl();
+        EnrolmentClassWeeklySessionRepository repository = mock(EnrolmentClassWeeklySessionRepository.class);
+        EnrolmentClassWeeklySession saturday = new EnrolmentClassWeeklySession(); saturday.setDayOfWeek(6);
+        when(repository.findByEnrolmentClassIdOrderByDisplayOrderAscDayOfWeekAscStartTimeAsc(1L))
+            .thenReturn(Collections.singletonList(saturday));
+        ReflectionTestUtils.setField(service, "weeklySessionRepository", repository);
+        assertTrue((Boolean) ReflectionTestUtils.invokeMethod(service, "isWeeklyScheduleDate", 1L, "2026-10-03"));
+        assertFalse((Boolean) ReflectionTestUtils.invokeMethod(service, "isWeeklyScheduleDate", 1L, "2026-10-04"));
     }
     @Test public void teacherFeedbackStillTakesPriority() {
         EnrolmentClassScheduleTaskDto task = assignment(1, 3);

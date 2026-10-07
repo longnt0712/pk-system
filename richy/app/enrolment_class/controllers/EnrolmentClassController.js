@@ -123,6 +123,8 @@
 		vm.topicCategorySearch = '';
 		vm.scheduleSaving = false;
 		vm.scheduleDaySaving = false;
+		vm.scheduleDayDeleting = false;
+		vm.scheduleDayIsExtraDate = false;
 		vm.scheduleModal = null;
 		vm.scheduleDayModal = null;
 		vm.scheduleDay = null;
@@ -1042,8 +1044,20 @@
 			return (hours < 10 ? '0' : '') + hours + ':' + (minutes < 10 ? '0' : '') + minutes;
 		}
 
+		function isExtraScheduleDate(day) {
+			if (!day || !day.id || !isFinite(Number(day.id)) || !day.scheduleDate
+					|| day.movedFromDate || day.movedToDate || day.movedDayId) { return false; }
+			var date = moment(day.scheduleDate, 'YYYY-MM-DD', true);
+			if (!date.isValid()) { return false; }
+			var isoDay = date.isoWeekday(), weekly = false;
+			angular.forEach((vm.scheduleClass && vm.scheduleClass.weeklySessions) || [], function (session) {
+				if (Number(session.dayOfWeek) === isoDay) { weekly = true; }
+			});
+			return !weekly;
+		}
+
 		vm.openScheduleDay = function (cell) {
-			if (!cell || cell.isBlank || vm.scheduleLoading || vm.scheduleMoving) { return; }
+			if (!cell || cell.isBlank || vm.scheduleLoading || vm.scheduleMoving || vm.scheduleDayDeleting) { return; }
             homeworkCellSaveRequest++; homeworkCellDrafts = {}; vm.homeworkCellSaving = false;
 			scheduleAttendanceRequest++;
 			vm.scheduleAttendanceByStudent = {};
@@ -1063,6 +1077,8 @@
 			vm.scheduleDay.homeworkNotes = vm.scheduleDay.homeworkNotes || '';
 			vm.scheduleDay.makeupMinutes = vm.scheduleDay.makeupMinutes == null ? 0 : Number(vm.scheduleDay.makeupMinutes);
             vm.scheduleDaySaveState = 'idle';
+            vm.scheduleDayDeleting = false;
+            vm.scheduleDayIsExtraDate = isExtraScheduleDate(vm.scheduleDay);
             vm.scheduleMove = null; vm.scheduleSessionError = false; vm.scheduleSessionLoading = false;
             scheduleDaySnapshot = JSON.stringify(scheduleDayPayload());
 			vm.taskEditor = null;
@@ -1112,6 +1128,7 @@
                 vm.scheduleDay.classNotes = vm.scheduleDay.classNotes || ''; vm.scheduleDay.homeworkNotes = vm.scheduleDay.homeworkNotes || '';
 				vm.scheduleDay.makeupMinutes = vm.scheduleDay.makeupMinutes == null ? 0 : Number(vm.scheduleDay.makeupMinutes);
                 vm.scheduleDaySaveState = 'idle';
+                vm.scheduleDayIsExtraDate = isExtraScheduleDate(vm.scheduleDay);
                 scheduleDaySnapshot = JSON.stringify(scheduleDayPayload());
                 if (vm.scheduleDay.movedToDate) { vm.previousHomeworkDay = null; vm.previousHomeworkTasks = []; }
             }, function () {
@@ -1128,8 +1145,39 @@
             vm.openScheduleDay({dateKey: date});
         };
 
+		vm.deleteExtraScheduleDay = function () {
+			if (!vm.scheduleDayIsExtraDate || !vm.scheduleDay || !vm.scheduleDay.id || vm.scheduleDayDeleting
+					|| vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleMoving || vm.scheduleSessionLoading
+					|| vm.scheduleSessionError || vm.taskEditor || vm.homeworkHasDrafts()) { return; }
+			if (JSON.stringify(scheduleDayPayload()) !== scheduleDaySnapshot) {
+				toastr.warning('Có thay đổi đang chờ tự động lưu. Hãy chờ lưu xong rồi xóa ngày thêm riêng.');
+				return;
+			}
+			var tasks = (vm.scheduleDay.tasks || []).length;
+			var topics = (vm.scheduleDay.classTopicIds || []).length + (vm.scheduleDay.homeworkTopicIds || []).length;
+			var detail = tasks || topics
+				? ' Thao tác này cũng xóa ' + tasks + ' task và ' + topics + ' topic đã gắn với ngày này.' : '';
+			if (!window.confirm('Xóa ngày thêm riêng ' + vm.scheduleDayLabel() + '?' + detail + ' Không thể hoàn tác.')) { return; }
+			var classId = vm.scheduleClass.id, dayId = vm.scheduleDay.id, version = vm.scheduleDay.version;
+			vm.scheduleDayDeleting = true;
+			service.deleteExtraScheduleDay(classId, dayId, version).then(function (deleted) {
+				vm.scheduleDayDeleting = false;
+				if (deleted !== true) {
+					toastr.error('Server chưa xác nhận xóa ngày thêm riêng.', 'Lỗi'); return;
+				}
+				scheduleSessionRequest++; homeworkReviewRequest++;
+				if (vm.scheduleDayModal) { vm.scheduleDayModal.close(); }
+				vm.loadScheduleMonth();
+				toastr.success('Đã xóa ngày thêm riêng cùng nội dung của ngày đó.', 'Thông báo');
+			}, function (error) {
+				vm.scheduleDayDeleting = false;
+				toastr.error(error && error.data && error.data.message ? error.data.message
+					: 'Không xóa được ngày thêm riêng. Hãy tải lại lịch.', 'Lỗi');
+			});
+		};
+
         vm.openScheduleMove = function () {
-			if (vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor
+			if (vm.scheduleDaySaving || vm.scheduleDayDeleting || vm.homeworkCellSaving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor
 				|| vm.scheduleDay.dayOff) { return; }
             vm.scheduleMove = {dateValue: null, startTimeValue: parseScheduleTime(vm.scheduleDay.sessionStartTime),
                 endTimeValue: parseScheduleTime(vm.scheduleDay.sessionEndTime), reason: '', shiftManualDeadlines: false};
@@ -1839,11 +1887,11 @@
 		};
 
 		vm.markScheduleDayDirty = function () {
-            if (!vm.scheduleDaySaving) { vm.scheduleDaySaveState = 'dirty'; }
+            if (!vm.scheduleDaySaving && !vm.scheduleDayDeleting) { vm.scheduleDaySaveState = 'dirty'; }
         };
 
 		vm.toggleScheduleDayOff = function () {
-			if (!vm.scheduleDay || vm.scheduleDay.movedToDate || vm.scheduleDaySaving || vm.scheduleMoving
+			if (!vm.scheduleDay || vm.scheduleDay.movedToDate || vm.scheduleDaySaving || vm.scheduleDayDeleting || vm.scheduleMoving
 				|| vm.homeworkCellSaving || vm.scheduleSessionLoading || vm.scheduleSessionError || vm.taskEditor) { return; }
 			var previous = vm.scheduleDay.dayOff === true;
 			vm.scheduleDay.dayOff = !previous;
@@ -1863,7 +1911,7 @@
 		vm.saveScheduleDay = function (options) {
             options = options || {};
             if (vm.homeworkCellSaving) { vm.scheduleDaySaveState = 'dirty'; return; }
-			if (vm.scheduleDaySaving || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError
+			if (vm.scheduleDaySaving || vm.scheduleDayDeleting || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError
                 || !vm.scheduleDay || vm.scheduleDay.movedToDate) { return; }
 			if (vm.taskEditor) { vm.scheduleDaySaveState = 'dirty'; return; }
 			var makeupMinutes = vm.scheduleDay.makeupMinutes == null || vm.scheduleDay.makeupMinutes === ''
@@ -1902,6 +1950,7 @@
 				vm.scheduleDay.classNotes = vm.scheduleDay.classNotes || '';
 				vm.scheduleDay.homeworkNotes = vm.scheduleDay.homeworkNotes || '';
 				vm.scheduleDay.makeupMinutes = vm.scheduleDay.makeupMinutes == null ? 0 : Number(vm.scheduleDay.makeupMinutes);
+				vm.scheduleDayIsExtraDate = isExtraScheduleDate(vm.scheduleDay);
 				scheduleDaySnapshot = JSON.stringify(scheduleDayPayload());
 				vm.scheduleDaySaveState = 'saved';
 				vm.buildScheduleCalendar();

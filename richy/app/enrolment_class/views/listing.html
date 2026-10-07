@@ -1067,7 +1067,7 @@
 <script type="text/ng-template" id="class_schedule_day_modal.html">
     <div class="class-management-modal class-day-plan-modal">
         <div class="modal-header">
-            <button type="button" class="close" data-ng-click="$dismiss()" data-ng-disabled="vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleMoving" aria-label="Đóng kế hoạch"></button>
+            <button type="button" class="close" data-ng-click="$dismiss()" data-ng-disabled="vm.scheduleDaySaving || vm.scheduleDayDeleting || vm.homeworkCellSaving || vm.scheduleMoving" aria-label="Đóng kế hoạch"></button>
             <h4 class="modal-title"><i class="fa fa-calendar-check-o"></i> Kế hoạch ngày {{vm.scheduleDayLabel()}}</h4>
         </div>
         <div class="modal-body class-day-plan-body" tabindex="0" aria-label="Nội dung kế hoạch, cuộn để xem thêm">
@@ -1083,11 +1083,23 @@
                 Toàn bộ topic, task, ghi chú và tiến độ của buổi cũ đã được chuyển sang ngày này.
                 <span data-ng-if="vm.scheduleDay.moveReason"><br />Lý do: {{vm.scheduleDay.moveReason}}</span>
             </div>
+            <div class="alert alert-warning" data-ng-if="vm.scheduleDayIsExtraDate">
+                <i class="fa fa-calendar-plus-o"></i>
+                <strong>Đây là ngày thêm riêng</strong>, không thuộc lịch học hằng tuần của lớp.
+                Nếu tạo nhầm, bạn có thể xóa cả ngày cùng topic, task, ghi chú và tiến độ gắn với ngày này.
+                <button type="button" class="btn btn-danger btn-sm pull-right"
+                        data-ng-click="vm.deleteExtraScheduleDay()"
+                        data-ng-disabled="vm.scheduleDayDeleting || vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleMoving || vm.taskEditor || vm.homeworkHasDrafts()">
+                    <i class="fa" data-ng-class="vm.scheduleDayDeleting ? 'fa-spinner fa-spin' : 'fa-trash'"></i>
+                    {{vm.scheduleDayDeleting ? 'Đang xóa...' : 'Xóa ngày thêm riêng'}}
+                </button>
+                <div class="clearfix"></div>
+            </div>
             <div class="alert alert-danger class-session-day-off-alert" data-ng-if="vm.scheduleDay.dayOff && !vm.scheduleDay.movedToDate">
                 <i class="fa fa-ban"></i>
                 <span>Buổi này đã được đánh dấu <strong>NGHỈ HỌC</strong>. Nội dung đã nhập vẫn được giữ nguyên; lịch và hạn Homework tự động sẽ bỏ qua buổi này.</span>
             </div>
-            <fieldset class="class-day-editable-content" data-ng-if="!vm.scheduleDay.movedToDate" data-ng-disabled="vm.scheduleSessionLoading || vm.scheduleSessionError || vm.scheduleMoving">
+            <fieldset class="class-day-editable-content" data-ng-if="!vm.scheduleDay.movedToDate" data-ng-disabled="vm.scheduleSessionLoading || vm.scheduleSessionError || vm.scheduleMoving || vm.scheduleDayDeleting">
             <div class="class-session-info">
                 <span data-ng-if="vm.scheduleDay.sessionStartTime">Giờ học: <strong>{{vm.scheduleDay.sessionStartTime}}–{{vm.scheduleDay.sessionEndTime}}</strong></span>
                 <span data-ng-if="vm.scheduleDay.defaultHomeworkDeadline">Hạn Homework mặc định: <strong>{{vm.scheduleDay.defaultHomeworkDeadline | date:'dd/MM/yyyy HH:mm'}}</strong></span>
@@ -1335,9 +1347,9 @@
             </small>
             <button type="button" class="btn btn-default" data-ng-if="vm.scheduleDaySaveState === 'error'"
                     data-ng-click="vm.saveScheduleDay({successMessage: 'Đã lưu lại kế hoạch.'})"
-                    data-ng-disabled="vm.scheduleDaySaving || vm.taskEditor || vm.homeworkCellSaving || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError">Thử lưu lại</button>
+                    data-ng-disabled="vm.scheduleDaySaving || vm.scheduleDayDeleting || vm.taskEditor || vm.homeworkCellSaving || vm.scheduleMoving || vm.scheduleSessionLoading || vm.scheduleSessionError">Thử lưu lại</button>
             <button type="button" class="btn btn-primary" data-ng-click="$dismiss()"
-                    data-ng-disabled="vm.scheduleDaySaving || vm.homeworkCellSaving || vm.scheduleMoving">Đóng</button>
+                    data-ng-disabled="vm.scheduleDaySaving || vm.scheduleDayDeleting || vm.homeworkCellSaving || vm.scheduleMoving">Đóng</button>
         </div>
     </div>
 </script>

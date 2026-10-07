@@ -104,6 +104,14 @@
             });
         };
 
+        self.deleteExtraScheduleDay = function (classId, dayId, version) {
+            if (!classId || !dayId || version == null) { return $q.when(false); }
+            return utils.resolveAlt(baseUrl + '/schedule/' + classId + '/day/' + dayId
+                + '?version=' + encodeURIComponent(version), 'DELETE', null, null, {
+                'Content-Type': 'application/json; charset=utf-8'
+            });
+        };
+
         self.getScheduleStudents = function (classId) {
             return utils.resolve(baseUrl + '/schedule/' + classId + '/students', 'GET', angular.noop, angular.noop);
         };
