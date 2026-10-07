@@ -61,6 +61,18 @@ public class IeltsTaskPartsTest {
         HomeworkTopicCompletion.applyIelts(task, Arrays.asList(wrongTask, wrongTest, wrongType, early, late), start, end);
         assertTrue(task.getStudentProgress().isEmpty());
     }
+    @Test public void unfinishedStudentAssignmentsRemainVisibleAfterTheirDeadline() {
+        LocalDateTime deadline = start.plusDays(1);
+        LocalDateTime now = deadline.plusHours(2);
+        assertEquals(deadline, HomeworkTopicCompletion.studentAssignmentCompletionEnd(start, deadline, now));
+        assertTrue(HomeworkTopicCompletion.studentAssignmentOverdue(deadline, now));
+    }
+    @Test public void studentAssignmentsWithoutADeadlineStayOpen() {
+        LocalDateTime now = start.plusDays(2);
+        assertTrue(HomeworkTopicCompletion.studentAssignmentCompletionEnd(start, null, now).isAfter(now));
+        assertFalse(HomeworkTopicCompletion.studentAssignmentOverdue(null, now));
+        assertNull(HomeworkTopicCompletion.studentAssignmentCompletionEnd(start, start, now));
+    }
     @Test public void teacherFeedbackStillTakesPriority() {
         EnrolmentClassScheduleTaskDto task = assignment(1, 3);
         EnrolmentClassTaskProgressDto feedback = new EnrolmentClassTaskProgressDto();

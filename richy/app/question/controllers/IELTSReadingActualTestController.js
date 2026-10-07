@@ -6815,15 +6815,23 @@
                 vm.startTest();
             }, 0);
         } else {
-            var pendingReadingDraft = startFreshSeriousTest ? null
-                : readReadingDraft($stateParams.ieltsReadingTestId, requestedSessionMode);
-            if (pendingReadingDraft && String(pendingReadingDraft.testId) === String($stateParams.ieltsReadingTestId)) {
+            function startPendingReadingDraft() {
+                if (readingDraftDestroyed || startFreshSeriousTest || vm.isStartTest || vm.isStartingTest) { return; }
+                var pendingReadingDraft = readReadingDraft($stateParams.ieltsReadingTestId, requestedSessionMode);
+                if (!pendingReadingDraft || String(pendingReadingDraft.testId) !== String($stateParams.ieltsReadingTestId)) { return; }
                 vm.testSessionMode = pendingReadingDraft.sessionMode === 'STUDY' ? 'STUDY' : 'SERIOUS';
                 vm.selectedTestSessionMode = vm.testSessionMode;
                 vm.isLearningReview = pendingReadingDraft.completed === true;
                 $timeout(function () {
                     vm.startTest();
                 }, 0);
+            }
+            if (readingLearningDraftsReady) {
+                readingLearningDraftsReady.then(function (success) {
+                    if (success) { startPendingReadingDraft(); }
+                }, angular.noop);
+            } else {
+                startPendingReadingDraft();
             }
         }
 

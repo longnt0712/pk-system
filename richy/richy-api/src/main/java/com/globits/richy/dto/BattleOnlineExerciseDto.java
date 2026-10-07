@@ -21,6 +21,7 @@ public class BattleOnlineExerciseDto implements Serializable {
         public String id;
         public Integer number;
         public Integer numberEnd;
+        public Integer gapIndex;
         public String promptHtml;
         public List<Option> options = new ArrayList<Option>();
     }

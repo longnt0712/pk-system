@@ -119,7 +119,7 @@
             <i class="fa fa-spinner fa-spin"></i> Đang lấy bài được giao...
         </div>
         <div class="student-assignment-empty" ng-if="!vm.assignedTasksLoading && !vm.assignedTasksError && !vm.assignedTasks.length">
-            <span>🎉</span><strong>Hiện tại bạn không còn bài nào phải làm.</strong>
+            <span>🎉</span><strong>Hiện tại không có bài lớp giao nào đang chờ hoàn thành.</strong>
         </div>
         <div class="student-assignment-empty is-error" ng-if="!vm.assignedTasksLoading && vm.assignedTasksError">
             <span>☁️</span><strong>Chưa tải được bài. Bạn có thể tải lại trang để thử lại.</strong>
@@ -150,7 +150,8 @@
                     </div>
                     <div class="student-assignment-bar"><span ng-style="{'width': (task.completedAttempts * 100 / task.requiredAttempts) + '%'}"></span></div>
                     <div class="student-assignment-footer">
-                        <small><i class="fa fa-clock-o"></i> Hạn {{task.dueDate | date:'dd/MM/yyyy'}}{{task.dueTime ? ' ' + task.dueTime : ''}}</small>
+                        <small ng-if="task.dueDate"><i class="fa fa-clock-o"></i> Hạn {{task.dueDate | date:'dd/MM/yyyy'}}{{task.dueTime ? ' ' + task.dueTime : ''}}</small>
+                        <small ng-if="!task.dueDate"><i class="fa fa-clock-o"></i> Không đặt hạn</small>
                         <button type="button" ng-if="task.topicId || task.ieltsTestId" ng-click="vm.openAssignedTask(task)">
                             {{vm.assignmentActionLabel(task)}} <i class="fa fa-arrow-right"></i>
                         </button>

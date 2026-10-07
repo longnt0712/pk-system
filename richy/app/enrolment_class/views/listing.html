@@ -365,6 +365,17 @@
     .class-schedule-day.is-day-off:after { content:none; }
     .class-schedule-day.is-day-off .class-schedule-day-number { color:#b9223a; }
     .class-schedule-day-off-badge { display:inline-flex; align-items:center; gap:5px; margin-bottom:5px; padding:4px 7px; border-radius:6px; background:#d9364f; color:#fff; font-size:11px; font-weight:900; letter-spacing:.35px; }
+    .class-schedule-day.is-moved-source { border-color:#f1b35b; background:#fff9ed; }
+    .class-schedule-day.is-moved-source:after { content:none; }
+    .class-schedule-day.is-moved-target { border:2px solid #35a579; background:#effbf6; }
+    .class-schedule-day.is-moved-target:after { background:#28a774; box-shadow:0 0 0 3px rgba(40,167,116,.14); }
+    .class-schedule-day.is-extra-date { border-color:#dc9c3f; background:#fff9ed; }
+    .class-schedule-day.is-extra-date:after { background:#dc8c1b; box-shadow:0 0 0 3px rgba(220,140,27,.14); }
+    .class-schedule-move-badge { display:inline-flex; align-items:center; gap:5px; margin-bottom:5px; padding:4px 7px; border-radius:6px; color:#fff; font-size:10px; font-weight:900; letter-spacing:.3px; }
+    .class-schedule-move-badge.is-source { background:#db8715; }
+    .class-schedule-move-badge.is-target { background:#229b6a; }
+    .class-schedule-move-badge.is-extra { background:#c97b11; }
+    .class-schedule-move-detail { display:block; margin-top:3px; color:#53627a; font-size:10px; font-weight:700; line-height:1.35; }
     .class-schedule-day-number { display:block; margin-bottom:8px; font-size:16px; font-weight:800; }
     .class-schedule-topic-count { display:block; margin-top:4px; padding:3px 6px; overflow:hidden; border-radius:5px; font-size:11px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
     .class-schedule-topic-count.class-count { background:#e8f2ff; color:#2671c5; }
@@ -902,11 +913,16 @@
                     <button type="button" class="class-schedule-day"
                             data-ng-repeat="cell in vm.scheduleCalendarDays track by $index"
                             data-ng-disabled="cell.isBlank"
-                            data-ng-class="{'is-blank': cell.isBlank, 'is-today': cell.isToday, 'is-class-day': cell.isClassDay, 'is-day-off': cell.isDayOff}"
+                            data-ng-class="{'is-blank': cell.isBlank, 'is-today': cell.isToday, 'is-class-day': cell.isClassDay, 'is-day-off': cell.isDayOff, 'is-moved-source': cell.isMovedSource, 'is-moved-target': cell.isMovedTarget, 'is-extra-date': cell.isExtraDate}"
                             data-ng-click="vm.openScheduleDay(cell)">
                         <span data-ng-if="!cell.isBlank">
                             <span class="class-schedule-day-number">{{cell.day}}</span>
                             <span class="class-schedule-day-off-badge" data-ng-if="cell.isDayOff"><i class="fa fa-ban"></i> NGHỈ HỌC</span>
+                            <span class="class-schedule-move-badge is-source" data-ng-if="cell.isMovedSource"><i class="fa fa-calendar-times-o"></i> ĐÃ DỜI</span>
+                            <span class="class-schedule-move-detail" data-ng-if="cell.isMovedSource">Sang {{cell.entry.movedToDate | date:'dd/MM/yyyy'}}</span>
+                            <span class="class-schedule-move-badge is-target" data-ng-if="cell.isMovedTarget"><i class="fa fa-calendar-check-o"></i> BUỔI ĐƯỢC DỜI</span>
+                            <span class="class-schedule-move-detail" data-ng-if="cell.isMovedTarget">Từ {{cell.entry.movedFromDate | date:'dd/MM/yyyy'}} · {{cell.entry.sessionStartTime}}–{{cell.entry.sessionEndTime}}</span>
+                            <span class="class-schedule-move-badge is-extra" data-ng-if="cell.isExtraDate"><i class="fa fa-calendar-plus-o"></i> NGÀY THÊM RIÊNG</span>
                             <span class="class-schedule-topic-count class-count" data-ng-if="cell.classCount">
                                 Class: {{cell.classCount}} topic
                             </span>
@@ -914,10 +930,8 @@
                                 Homework: {{cell.homeworkCount}} topic
                             </span>
                             <span class="class-schedule-topic-count" data-ng-if="cell.taskCount">Tasks: {{cell.doneTaskCount}}/{{cell.taskCount}}</span>
-                            <span class="class-schedule-topic-count" data-ng-if="cell.entry.movedToDate">Đã dời → {{cell.entry.movedToDate | date:'dd/MM/yyyy'}}</span>
-                            <span class="class-schedule-topic-count" data-ng-if="cell.entry.movedFromDate">Dời từ {{cell.entry.movedFromDate | date:'dd/MM/yyyy'}} · {{cell.entry.sessionStartTime}}–{{cell.entry.sessionEndTime}}</span>
                             <span class="class-schedule-empty-hint" data-ng-if="!cell.isDayOff && !cell.entry.movedToDate && !cell.classCount && !cell.homeworkCount && !cell.taskCount">
-                                {{cell.isClassDay ? 'Ngày học · + Thêm bài' : '+ Thêm bài'}}
+                                {{cell.isMovedTarget ? 'Buổi được dời · + Thêm bài' : (cell.isExtraDate ? 'Ngoài lịch tuần · + Thêm bài' : (cell.isClassDay ? 'Ngày học · + Thêm bài' : '+ Thêm bài'))}}
                             </span>
                         </span>
                     </button>
@@ -1062,6 +1076,12 @@
             <div class="alert alert-info" data-ng-if="vm.scheduleDay.movedToDate">
                 Buổi này đã dời sang {{vm.scheduleDay.movedToDate | date:'dd/MM/yyyy'}}. {{vm.scheduleDay.moveReason}}
                 <button type="button" class="btn btn-primary btn-sm" data-ng-click="vm.openMovedScheduleDay()">Mở ngày mới</button>
+            </div>
+            <div class="alert alert-success" data-ng-if="vm.scheduleDay.movedFromDate && !vm.scheduleDay.movedToDate">
+                <i class="fa fa-calendar-check-o"></i>
+                Đây là buổi được dời từ <strong>{{vm.scheduleDay.movedFromDate | date:'dd/MM/yyyy'}}</strong>.
+                Toàn bộ topic, task, ghi chú và tiến độ của buổi cũ đã được chuyển sang ngày này.
+                <span data-ng-if="vm.scheduleDay.moveReason"><br />Lý do: {{vm.scheduleDay.moveReason}}</span>
             </div>
             <div class="alert alert-danger class-session-day-off-alert" data-ng-if="vm.scheduleDay.dayOff && !vm.scheduleDay.movedToDate">
                 <i class="fa fa-ban"></i>

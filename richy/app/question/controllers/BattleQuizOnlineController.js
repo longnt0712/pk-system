@@ -244,6 +244,7 @@
 
         vm.hostSettings = {
             mode: 'CLASSIC',
+            shuffleExerciseQuestions: false,
 
             questionCount: 20,
             secondsPerQuestion: 10,
@@ -284,6 +285,7 @@
          * Flag sẽ được clear sau khi saveSettings thành công.
          */
         vm.hostModeDirty = false;
+        vm.hostExerciseShuffleDirty = false;
         vm.hostSecondsPerQuestionDirty = false;
         vm.hostCountdownMinutesDirty = false;
         vm.hostWrongFreezeDirty = false;
@@ -1838,6 +1840,7 @@
                 .then(function (room) {
                     vm.classicQuestionCountTouched = false;
                     vm.hostModeDirty = false;
+                    vm.hostExerciseShuffleDirty = false;
                     vm.hostCountdownMinutesDirty = false;
                     vm.hostWrongFreezeDirty = false;
                     vm.hostSkillsDirty = false;
@@ -2611,6 +2614,9 @@
             }
 
             if (incoming.settings) {
+                if (!isHost() || incoming.status !== 'LOBBY' || !vm.hostExerciseShuffleDirty) {
+                    vm.hostSettings.shuffleExerciseQuestions = incoming.settings.shuffleExerciseQuestions === true;
+                }
                 if (!vm.lobbyTopicEditorOpen) {
                     vm.questionSource = incoming.settings.questionSource || 'VOCABULARY';
                     vm.selectedExerciseTests = (incoming.settings.exerciseTestIds || []).map(function (id, index) {
@@ -3015,6 +3021,7 @@
         function buildSettingsDto() {
             return {
                 questionSource: vm.questionSource,
+                shuffleExerciseQuestions: vm.questionSource === 'COMPREHENSIVE' && vm.hostSettings.shuffleExerciseQuestions === true,
                 exerciseTestIds: vm.questionSource === 'COMPREHENSIVE' ? vm.selectedExerciseTests.map(function (test) { return test.id; }) : [],
                 mode:
                     vm.hostSettings.mode === 'COUNTDOWN' ||
@@ -3130,6 +3137,7 @@
                          * room.settings.mode trở lại bình thường.
                          */
                         vm.hostModeDirty = false;
+                        vm.hostExerciseShuffleDirty = false;
                         vm.hostSecondsPerQuestionDirty = false;
                         vm.hostCountdownMinutesDirty = false;
                         vm.hostWrongFreezeDirty = false;
@@ -7201,6 +7209,21 @@
                 String(
                     event.key || ''
                 ).toUpperCase();
+
+            var exercise = vm.room.currentQuestion.exercise;
+            if (exercise) {
+                if (exercise.answerMode !== 'SINGLE' || vm.exerciseInputDisabled()) { return; }
+                var choiceIndex = /^[A-Z]$/.test(key) ? key.charCodeAt(0) - 65 : /^[1-9]$/.test(key) ? Number(key) - 1 : -1;
+                var item = exercise.items[0];
+                var choice = item && item.options[choiceIndex];
+                if (!choice) { return; }
+                event.preventDefault();
+                $scope.$evalAsync(function () {
+                    vm.exerciseAnswers[item.id] = [choice.key];
+                    vm.submitExercise(false);
+                });
+                return;
+            }
 
             var map = {
                 '1': 0,

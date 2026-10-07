@@ -524,7 +524,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
             result.addAll(BattleExerciseQuestions.fromTest(test));
         }
-        if (result.size() > 5000) { throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Tối đa 5000 nhóm câu trong một phòng."); }
+        if (result.size() > 5000) { throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Tối đa 5000 câu hỏi trong một phòng."); }
         return result;
     }
 
@@ -1181,6 +1181,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             room.settings.mode =
                     normalizeMode(settings.getMode());
+            room.settings.shuffleExerciseQuestions = "COMPREHENSIVE".equals(room.settings.questionSource)
+                    && settings.isShuffleExerciseQuestions();
             room.settings.skillsEnabled = settings.isSkillsEnabled();
             room.settings.disabledSkillTypes = normalizeDisabledSkillTypes(settings.getDisabledSkillTypes());
             room.settings.giftSpawnSeconds = clamp(settings.getGiftSpawnSeconds(), 1, 60);
@@ -1423,10 +1425,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     prepared.size()
                 );
 
-        Collections.shuffle(
-                prepared,
-                random
-        );
+        if (!isExerciseQuestionOrderFixed(room)) { Collections.shuffle(prepared, random); }
 
         room.classicQuestions.clear();
 
@@ -1476,7 +1475,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             );
         }
 
-        Collections.shuffle(eligible, random);
+        if (!isExerciseQuestionOrderFixed(room)) { Collections.shuffle(eligible, random); }
         room.classicQuestions.clear();
 
         int target = Math.min(requested, eligible.size());
@@ -1506,6 +1505,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
 
     private int minimumSourceQuestions(RoomState room) { return "COMPREHENSIVE".equals(room.settings.questionSource) ? 1 : 4; }
+
+    private boolean isExerciseQuestionOrderFixed(RoomState room) {
+        return "COMPREHENSIVE".equals(room.settings.questionSource) && !room.settings.shuffleExerciseQuestions;
+    }
 
     private List<QuestionState> eligibleGuessQuestionsLocked(RoomState room) {
         if ("COMPREHENSIVE".equals(room.settings.questionSource)) { return eligiblePreparedQuestionsLocked(room); }
@@ -1591,7 +1594,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             );
         }
 
-        Collections.shuffle(eligible, random);
+        if (!isExerciseQuestionOrderFixed(room)) { Collections.shuffle(eligible, random); }
         room.countdownQuestionIds.clear();
         int target = Math.min(requested, eligible.size());
         for (int index = 0; index < target; index++) {
@@ -4995,7 +4998,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             if (
-                isCurrentQuestionUsedByOtherPlayerLocked(
+                !isExerciseQuestionOrderFixed(room) && isCurrentQuestionUsedByOtherPlayerLocked(
                     room,
                     player,
                     wordId
@@ -5075,18 +5078,18 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
         }
 
-        Collections.shuffle(candidates, random);
+        if (!isExerciseQuestionOrderFixed(room)) { Collections.shuffle(candidates, random); }
 
         QuestionState selected = null;
 
         for (QuestionState candidate : candidates) {
             if (
                 candidate != null &&
-                !isCurrentQuestionUsedByOtherPlayerLocked(
+                (isExerciseQuestionOrderFixed(room) || !isCurrentQuestionUsedByOtherPlayerLocked(
                     room,
                     player,
                     candidate.id
-                )
+                ))
             ) {
                 selected = candidate;
                 break;
@@ -5323,10 +5326,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
         }
 
-        Collections.shuffle(
-                unseen,
-                random
-        );
+        if (isExerciseQuestionOrderFixed(room)) {
+            // Pending questions are consumed from the end of the list.
+            Collections.reverse(unseen);
+        } else {
+            Collections.shuffle(unseen, random);
+        }
 
         player.pendingWordIds.clear();
         player.pendingWordIds.addAll(
@@ -7804,6 +7809,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         dto.setQuestionSource(source.questionSource);
         dto.setExerciseTestIds(new ArrayList<Long>(source.exerciseTestIds));
+        dto.setShuffleExerciseQuestions(source.shuffleExerciseQuestions);
         dto.setGuessAdvanceMode(source.guessAdvanceMode);
         dto.setSkillsEnabled(source.skillsEnabled);
         dto.setDisabledSkillTypes(new ArrayList<String>(source.disabledSkillTypes));
@@ -8334,6 +8340,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         String questionSource = "VOCABULARY";
         List<Long> exerciseTestIds = new ArrayList<Long>();
+        boolean shuffleExerciseQuestions;
         String mode = MODE_CLASSIC;
         boolean skillsEnabled = true;
         int giftSpawnSeconds = 3;

@@ -13,6 +13,7 @@ function setupLearningPet(level, selected = 'CUTE_JERRY_MOUSE', storage = new Ma
     let factory, hooks;
     let user = {id: 7, vocabularyExperienceLevel: level, selectedLearningPet: selected, roles};
     const requests = [], broadcasts = [];
+    const state = {current: {name: 'application.dashboard'}};
     const angular = {
         module() { return {directive(name, fn) { factory = fn; }}; },
         noop() {}, fromJson: JSON.parse,
@@ -21,25 +22,26 @@ function setupLearningPet(level, selected = 'CUTE_JERRY_MOUSE', storage = new Ma
     const source = fs.readFileSync(path.join(__dirname, '../common/utils/learning-pet.directive.js'), 'utf8');
     const context = nodeVm.createContext({angular, window: {APP_VERSION: 'pet-test'}, expose(value) { hooks = value; }});
     nodeVm.runInContext(source.replace('var permissionsListener =',
-        'expose({form: updatePetForm, message: updateMessage}); var permissionsListener ='), context);
+        'expose({form: updatePetForm, message: updateMessage, parseDraft: parseDraft, shouldDisplay: shouldDisplay}); var permissionsListener ='), context);
     const $http = {post(url, body) {
         requests.push({url, body});
         return Promise.resolve({data: {selectedPetKey: body.petKey}});
     }};
     const $window = {
         localStorage: {getItem(key) { return storage.get(key) ?? null; }, setItem(key, value) { storage.set(key, value); }},
+        sessionStorage: {getItem() { return null; }, setItem() {}},
         addEventListener() {}, removeEventListener() {}
     };
     const cookies = {get() { return JSON.stringify(user); }, putObject(key, value) { user = value; }};
     const rootScope = {$on() { return () => {}; }, $broadcast(name, value) { broadcasts.push([name, value]); }};
     const scope = {$on() { return () => {}; }};
-    const definition = factory($http, {}, {}, timer, timer, $window, cookies, rootScope,
-        {api: {baseUrl: '/api/', apiV1Url: 'v1/'}});
+    const definition = factory($http, {}, state, timer, timer, $window, cookies, rootScope,
+        {ieltsRoom: true, api: {baseUrl: '/api/', apiV1Url: 'v1/'}});
     const pet = {};
     definition.controller.call(pet, scope);
     hooks.form(user);
     hooks.message();
-    return {pet, hooks, storage, requests, broadcasts, user: () => user};
+    return {pet, hooks, storage, requests, broadcasts, state, user: () => user};
 }
 
 function setupBattle(level, roles = []) {
@@ -230,4 +232,32 @@ test('selecting Tuffy persists the choice and acknowledges the new egg per user'
     assert.equal(setupLearningPet(15, 'CUTE_TUFFY_MOUSE', h.storage).pet.hasNewTuffyMouseEgg, false);
     h.hooks.form({id: 8, vocabularyExperienceLevel: 15, selectedLearningPet: 'CUTE_TUFFY_MOUSE'});
     assert.equal(h.pet.hasNewTuffyMouseEgg, true);
+});
+
+test('pet caches cloud drafts, hides dismissed drafts and labels their source', () => {
+    const h = setupLearningPet(3, 'MAM_HOC', new Map(), [{name: 'ROLE_STUDENT'}]);
+    const cloud = {userId: 7, testId: 70233, testMode: 'COMPREHENSIVE', answeredCount: 15,
+        totalQuestions: 50, savedAt: '2026-10-07T10:00:00Z'};
+    const item = {draftKey: 'ieltsReadingInProgress:7:comprehensive:test:70233:serious',
+        draftType: 'IELTS', title: 'Verb Patterns - 50 câu', savedAt: Date.parse(cloud.savedAt), payload: JSON.stringify(cloud)};
+    const draft = h.hooks.parseDraft(item);
+    assert.equal(JSON.parse(h.storage.get(item.draftKey)).testId, 70233);
+    assert.equal(draft.progressValue, '15/50 câu');
+    assert.equal(draft.sourceLabel, 'Tự luyện');
+
+    item.payload = JSON.stringify({...cloud, assignmentTaskId: 99});
+    item.savedAt += 1;
+    assert.equal(h.hooks.parseDraft(item).sourceLabel, 'Bài lớp giao');
+    item.payload = JSON.stringify({...cloud, hiddenFromDashboard: true});
+    item.savedAt += 1;
+    assert.equal(h.hooks.parseDraft(item), null);
+});
+
+test('pet stays hidden while a student is taking an IELTS or comprehensive test', () => {
+    const h = setupLearningPet(3, 'MAM_HOC', new Map(), [{name: 'ROLE_STUDENT'}]);
+    assert.equal(h.hooks.shouldDisplay(), true);
+    h.state.current.name = 'application.comprehensive_actual_test';
+    assert.equal(h.hooks.shouldDisplay(), false);
+    h.state.current.name = 'application.ielts_reading_actual_test';
+    assert.equal(h.hooks.shouldDisplay(), false);
 });

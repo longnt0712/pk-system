@@ -235,6 +235,37 @@ test('leaving during startup cannot save before server restoration has completed
     assert.equal(calls.length, 0);
 });
 
+test('opening a cloud draft URL waits for synchronization before auto-starting the test', async () => {
+    let resolveDrafts;
+    let draft = null;
+    let starts = 0;
+    const timers = [];
+    function timeout(callback) { timers.push(callback); return callback; }
+    const context = vmModule.createContext({
+        vm: {isPreviewMode: false, isStartTest: false, isStartingTest: false, startTest() { starts++; }},
+        readingDraftDestroyed: false,
+        startFreshSeriousTest: false,
+        requestedSessionMode: 'SERIOUS',
+        readingLearningDraftsReady: new Promise(resolve => { resolveDrafts = resolve; }),
+        readReadingDraft() { return draft; },
+        $stateParams: {ieltsReadingTestId: 70233},
+        $timeout: timeout,
+        angular: {noop() {}},
+        String
+    });
+    const start = source.lastIndexOf('        if (vm.isPreviewMode) {');
+    const end = source.indexOf('        //--------------------- End Reading Actual test', start);
+    vmModule.runInContext(source.slice(start, end), context);
+    draft = {testId: 70233, sessionMode: 'SERIOUS'};
+    resolveDrafts(true);
+    await new Promise(setImmediate);
+    assert.equal(starts, 0);
+    assert.equal(timers.length, 1);
+    timers.shift()();
+    assert.equal(starts, 1);
+    assert.equal(context.vm.testSessionMode, 'SERIOUS');
+});
+
 test('serious completion clears its server draft even when local storage is blocked, preserving Study', async () => {
     const {context: c, calls} = setup(true);
     c.vm.ieltsReadingActualTest = {id: 42}; c.vm.testSessionMode = 'SERIOUS';

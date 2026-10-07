@@ -43,11 +43,11 @@
             <div class="learning-pet-list" ng-if="pet.activeSection === 'drafts' && pet.drafts.length">
                 <button type="button" class="learning-pet-list-item" ng-repeat="draft in pet.drafts | limitTo:5 track by draft.storageKey" ng-click="pet.resumeDraft(draft)">
                     <span class="learning-pet-list-icon"><i class="fa" ng-class="pet.draftIcon(draft)"></i></span>
-                    <span class="learning-pet-list-copy"><strong>{{draft.title}}</strong><small>{{draft.typeLabel}}<span ng-if="draft.assignmentPart"> · Part {{draft.assignmentPart}}</span></small><small ng-if="draft.progressValue">{{draft.progressLabel}} {{draft.progressValue}}</small></span>
+                    <span class="learning-pet-list-copy"><strong>{{draft.title}}</strong><small>{{draft.typeLabel}}<span ng-if="draft.assignmentPart"> · Part {{draft.assignmentPart}}</span><span ng-if="draft.sourceLabel"> · {{draft.sourceLabel}}</span></small><small ng-if="draft.progressValue">{{draft.progressLabel}} {{draft.progressValue}}</small></span>
                     <i class="fa fa-play"></i>
                 </button>
             </div>
-            <div class="learning-pet-empty" ng-if="pet.activeSection === 'tasks' && !pet.tasks.length"><i class="fa fa-check-circle"></i><strong>Bạn không còn bài nào cần hoàn thành.</strong></div>
+            <div class="learning-pet-empty" ng-if="pet.activeSection === 'tasks' && !pet.tasks.length"><i class="fa fa-check-circle"></i><strong>Không có bài lớp giao nào đang chờ hoàn thành.</strong></div>
             <div class="learning-pet-empty" ng-if="pet.activeSection === 'drafts' && !pet.drafts.length"><i class="fa fa-bookmark-o"></i><strong>Không có bài nào đang làm dở.</strong></div>
         </div>
         <footer class="learning-pet-panel-footer">

@@ -65,7 +65,7 @@
                 <select class="form-control" ng-model="vm.questionSource" ng-change="vm.changeQuestionSource()" ng-disabled="vm.creatingRoom || vm.savingLobbyTopics">
                     <option value="VOCABULARY">Bài từ vựng</option><option value="COMPREHENSIVE">Đề tổng hợp</option>
                 </select>
-                <div ng-if="vm.questionSource === 'COMPREHENSIVE'" ng-include="'question/views/battle_online_exercise_picker.html?topicSearch=20261006_1'"></div>
+                <div ng-if="vm.questionSource === 'COMPREHENSIVE'" ng-include="'question/views/battle_online_exercise_picker.html?topicSearch=20261006_1&individualQuestions=20261007_1'"></div>
             <div class="battle-online-create-form" ng-if="vm.questionSource === 'VOCABULARY'">
 
                 <label>NGUỒN TỪ VỰNG</label>
@@ -364,7 +364,7 @@
                 <select class="form-control" ng-model="vm.questionSource" ng-change="vm.changeQuestionSource()" ng-disabled="vm.creatingRoom || vm.savingLobbyTopics">
                     <option value="VOCABULARY">Bài từ vựng</option><option value="COMPREHENSIVE">Đề tổng hợp</option>
                 </select>
-                <div ng-if="vm.questionSource === 'COMPREHENSIVE'" ng-include="'question/views/battle_online_exercise_picker.html?topicSearch=20261006_1'"></div>
+                <div ng-if="vm.questionSource === 'COMPREHENSIVE'" ng-include="'question/views/battle_online_exercise_picker.html?topicSearch=20261006_1&individualQuestions=20261007_1'"></div>
             <div class="battle-online-lobby-topic-actions" ng-if="vm.questionSource === 'COMPREHENSIVE'">
                 <button type="button" class="is-save" ng-click="vm.saveLobbyTopics()" ng-disabled="vm.savingLobbyTopics || !vm.selectedExerciseTests.length">LƯU VÀ NẠP ĐỀ</button>
             </div>
@@ -802,7 +802,7 @@
              ================================================= -->
         <aside class="battle-online-card battle-online-side-card"
                ng-if="vm.isHost()">
-            <ng-include src="'question/views/battle_online_host_settings.html?lumNgay=20261006_3'"></ng-include>
+            <ng-include src="'question/views/battle_online_host_settings.html?lumNgay=20261006_3&individualQuestions=20261007_1'"></ng-include>
         </aside>
 
         <!-- NON HOST -->
@@ -1340,8 +1340,8 @@
             <section class="battle-online-exercise" ng-if="vm.room.currentQuestion.exercise">
                 <div ng-if="vm.room.currentQuestion.skillType && vm.room.settings.skillsEnabled !== false">⚡ {{vm.getSkillLabel(vm.room.currentQuestion.skillType)}}</div>
                 <div ng-if="vm.room.currentQuestion.scoreMultiplier > 1">✨ LƯỢT MAY MẮN ×{{vm.room.currentQuestion.scoreMultiplier}} ĐIỂM</div>
-                <battle-exercise-form exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers" disabled="vm.exerciseInputDisabled()"></battle-exercise-form>
-                <button type="button" class="btn btn-primary" ng-click="vm.submitExercise(false)" ng-disabled="vm.exerciseInputDisabled()">{{vm.answerLocked ? 'ĐÃ NỘP' : 'NỘP ĐÁP ÁN'}}</button>
+                <battle-exercise-form exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers" disabled="vm.exerciseInputDisabled()" on-answer="vm.submitExercise(false)"></battle-exercise-form>
+                <button type="button" class="btn btn-primary" ng-if="vm.room.currentQuestion.exercise.answerMode !== 'SINGLE'" ng-click="vm.submitExercise(false)" ng-disabled="vm.exerciseInputDisabled()">{{vm.answerLocked ? 'ĐÃ NỘP' : 'NỘP ĐÁP ÁN'}}</button>
                 <div class="battle-online-guess-host-actions"
                      ng-if="vm.isGuessWordMode() && vm.isHost() && vm.room.settings.guessAdvanceMode === 'HOST_CONTROL' && vm.room.guessPhase === 'WAITING_HOST'">
                     <button type="button" class="is-reveal" ng-if="!vm.room.guessAnswerRevealed" ng-disabled="vm.revealingGuessAnswer" ng-click="vm.revealGuessAnswer()">💡 HIỆN ĐÁP ÁN ĐÚNG</button>
@@ -2482,7 +2482,7 @@
                 </div>
 
                 <div class="battle-online-side-card battle-online-qr-settings-scroll" ng-if="vm.isHost() && vm.room.status === 'LOBBY'">
-                    <ng-include src="'question/views/battle_online_host_settings.html?lumNgay=20261006_3'"></ng-include>
+                    <ng-include src="'question/views/battle_online_host_settings.html?lumNgay=20261006_3&individualQuestions=20261007_1'"></ng-include>
                 </div>
             </div>
         </section>

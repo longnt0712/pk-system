@@ -723,7 +723,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					if (!"HOMEWORK".equals(task.getSection()) || task.getId() == null
 							|| !seenTasks.add(task.getId())) { continue; }
 					LocalDateTime deadline = HomeworkTopicCompletion.deadlineEnd(task.getResolvedDueDate(), task.getResolvedDueTime());
-					if (deadline == null || !deadline.isAfter(start) || !now.isBefore(deadline)) { continue; }
+					LocalDateTime completionEnd = HomeworkTopicCompletion.studentAssignmentCompletionEnd(start, deadline, now);
+					if (completionEnd == null) { continue; }
+					boolean overdue = HomeworkTopicCompletion.studentAssignmentOverdue(deadline, now);
 
 					int required = task.getRequiredAttempts();
 					int completed = 0;
@@ -732,9 +734,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 							|| "DAILY_LISTENING".equals(task.getActivityType()))) {
 						long completedCount = "DAILY_LISTENING".equals(task.getActivityType()) && task.getSourceQuestionId() != null
 								? testResultRepository.countSuccessfulListeningItemAttempts(student.getId(), task.getTopicId(),
-										task.getSourceQuestionId(), start, deadline)
+										task.getSourceQuestionId(), start, completionEnd)
 								: testResultRepository.countSuccessfulAssignmentAttempts(student.getId(), task.getTopicId(),
-										Integer.valueOf(HomeworkTopicCompletion.testType(task)), start, deadline);
+										Integer.valueOf(HomeworkTopicCompletion.testType(task)), start, completionEnd);
 						completed = (int) Math.min(Integer.MAX_VALUE, completedCount);
 					}
 					if (HomeworkTopicCompletion.ieltsEnabled(task)) {
@@ -742,7 +744,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 						for (Integer part : task.getIeltsParts()) {
 							partCounts.put(part, (int) Math.min(Integer.MAX_VALUE, testResultRepository.countIeltsPartAssignmentAttempts(
 									student.getId(), task.getId(), task.getIeltsTestId(), part,
-									Integer.valueOf(HomeworkTopicCompletion.ieltsTestType(task)), start, deadline)));
+									Integer.valueOf(HomeworkTopicCompletion.ieltsTestType(task)), start, completionEnd)));
 						}
 						required = HomeworkTopicCompletion.requiredIeltsAttempts(task);
 						completed = HomeworkTopicCompletion.completedIeltsAttempts(task, partCounts);
@@ -768,7 +770,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					item.setAssignedDate(day.getScheduleDate()); item.setDueDate(task.getResolvedDueDate());
 					item.setDueTime(task.getResolvedDueTime()); item.setRequiredAttempts(required);
 					item.setCompletedAttempts(Math.min(required, completed)); item.setRemainingAttempts(remaining);
-					item.setOverdue(false); result.add(item);
+					item.setOverdue(overdue); result.add(item);
 				}
 			}
 		}

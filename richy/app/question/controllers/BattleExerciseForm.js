@@ -2,13 +2,24 @@
     'use strict';
     angular.module('Hrm.Question').directive('battleExerciseForm', function () {
         return {
-            restrict: 'E', scope: {exercise: '=', answers: '=', disabled: '='},
-            templateUrl: 'question/views/battle_online_exercise_form.html?v=' + window.APP_VERSION,
+            restrict: 'E', scope: {exercise: '=', answers: '=', disabled: '=', onAnswer: '&'},
+            templateUrl: 'question/views/battle_online_exercise_form.html?v=' + window.APP_VERSION + '&individualQuestions=20261007_1',
             link: function (scope) {
+                scope.optionLabel = function (index) {
+                    var label = '';
+                    for (var value = index + 1; value > 0; value = Math.floor((value - 1) / 26)) {
+                        label = String.fromCharCode(65 + (value - 1) % 26) + label;
+                    }
+                    return label;
+                };
                 scope.choose = function (item, option, multiple) {
                     if (scope.disabled) { return; }
                     var values = scope.answers[item.id] || [];
-                    if (!multiple) { scope.answers[item.id] = [option.key]; return; }
+                    if (!multiple) {
+                        scope.answers[item.id] = [option.key];
+                        if (scope.exercise.answerMode === 'SINGLE') { scope.onAnswer(); }
+                        return;
+                    }
                     var index = values.indexOf(option.key);
                     if (index < 0) { values.push(option.key); } else { values.splice(index, 1); }
                     scope.answers[item.id] = values;
@@ -73,7 +84,10 @@
                     }
                     var walker = doc.createTreeWalker(root, 4, null, false), nodes = [], node;
                     while ((node = walker.nextNode())) { nodes.push(node); }
-                    var index = 0;
+                    var index = 0, itemsByGapIndex = {}, renderedItems = {};
+                    (scope.items || []).forEach(function (item, itemIndex) {
+                        itemsByGapIndex[item.gapIndex == null ? itemIndex : item.gapIndex] = item;
+                    });
                     nodes.forEach(function (textNode) {
                         var text = textNode.nodeValue;
                         var chunks = text.split(/\}\{\s*(?:SPACE|HEADING)\s*\}\{/gi);
@@ -82,15 +96,16 @@
                         chunks.forEach(function (chunk, c) {
                             fragment.appendChild(doc.createTextNode(chunk));
                             if (c === chunks.length - 1) { return; }
-                            var item = (scope.items || [])[index++];
+                            var item = itemsByGapIndex[index++];
                             if (!item) { fragment.appendChild(doc.createTextNode('[…]')); return; }
+                            renderedItems[item.id] = true;
                             fragment.appendChild(makeControl(item));
                         });
                         textNode.parentNode.replaceChild(fragment, textNode);
                     });
                     // Older saved questions may have fewer markers than answer rows.
                     // Keep every answer accessible without rewriting the original passage.
-                    (scope.items || []).slice(index).forEach(function (item) {
+                    (scope.items || []).filter(function (item) { return !renderedItems[item.id]; }).forEach(function (item) {
                         var row = doc.createElement('label'); row.textContent = 'Đáp án câu ' + item.number + ' ';
                         row.appendChild(makeControl(item)); root.appendChild(row);
                     });

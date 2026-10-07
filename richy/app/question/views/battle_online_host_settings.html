@@ -287,7 +287,7 @@
 
                     <small>
                         Đếm ngược tổng thời gian.
-                        Mỗi người câu random riêng.
+                        {{vm.questionSource === 'COMPREHENSIVE' ? 'Mỗi người trả lời từng câu riêng.' : 'Mỗi người câu random riêng.'}}
                     </small>
                 </button>
 
@@ -322,7 +322,7 @@
                     <strong>THOÁT KHỎI QUỶ NGU</strong>
 
                     <small>
-                        COUNTDOWN cho 2 đội. Mỗi người nhận câu random riêng;
+                        COUNTDOWN cho 2 đội. Mỗi người nhận câu riêng;
                         trả lời xong sang câu tiếp ngay.
                     </small>
                 </button>
@@ -351,6 +351,16 @@
 
 
             <div class="battle-online-mode-settings">
+                <div ng-if="vm.questionSource === 'COMPREHENSIVE'">
+                    <button type="button" class="btn"
+                            ng-class="vm.hostSettings.shuffleExerciseQuestions ? 'btn-success' : 'btn-default'"
+                            ng-click="vm.hostSettings.shuffleExerciseQuestions = !vm.hostSettings.shuffleExerciseQuestions; vm.hostExerciseShuffleDirty = true"
+                            ng-disabled="vm.savingSettings"
+                            ng-attr-aria-pressed="{{vm.hostSettings.shuffleExerciseQuestions}}">
+                        🔀 Đảo thứ tự câu hỏi: {{vm.hostSettings.shuffleExerciseQuestions ? 'BẬT' : 'TẮT'}}
+                    </button>
+                    <p>{{vm.hostSettings.shuffleExerciseQuestions ? 'Trộn ngẫu nhiên thứ tự các câu con khi bắt đầu trận.' : 'Chơi từng câu con theo thứ tự trong đề.'}} Bấm Lưu mode để áp dụng. Đáp án trắc nghiệm luôn được đảo vị trí.</p>
+                </div>
                 <button type="button" class="btn"
                         ng-class="vm.hostSettings.skillsEnabled !== false ? 'btn-success' : 'btn-default'"
                         ng-click="vm.hostSettings.skillsEnabled = vm.hostSettings.skillsEnabled === false; vm.hostSkillsDirty = true"

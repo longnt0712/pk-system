@@ -863,6 +863,10 @@
 					isToday: dateKey === todayKey,
 					isClassDay: !(entry && (entry.movedToDate || entry.dayOff)) && (weeklyDays[dayOfWeek] === true || !!entry),
 					isDayOff: !!(entry && entry.dayOff),
+					isMovedSource: !!(entry && entry.movedToDate),
+					isMovedTarget: !!(entry && entry.movedFromDate && !entry.movedToDate),
+					isExtraDate: !!entry && weeklyDays[dayOfWeek] !== true && !entry.movedFromDate
+						&& !entry.movedToDate && !entry.dayOff,
 					entry: entry,
 					classCount: entry && entry.classTopicIds ? entry.classTopicIds.length : 0,
 					homeworkCount: entry && entry.homeworkTopicIds ? entry.homeworkTopicIds.length : 0,
@@ -1155,7 +1159,9 @@
                 if (vm.scheduleDayModal) { vm.scheduleDayModal.close(); }
                 vm.scheduleMonthDate = moment(date, 'YYYY-MM-DD', true).startOf('month').toDate();
                 vm.loadScheduleMonth();
-                toastr.success('Đã dời buổi sang ' + moment(date, 'YYYY-MM-DD').format('DD/MM/YYYY') + ' · ' + start + '–' + end + '.');
+				var movedTaskCount = (saved.tasks || []).length;
+				toastr.success('Đã dời buổi cùng ' + movedTaskCount + ' task sang '
+					+ moment(date, 'YYYY-MM-DD').format('DD/MM/YYYY') + ' · ' + start + '–' + end + '.');
             }, function (error) {
                 vm.scheduleMoving = false;
                 toastr.error(error && error.data && error.data.message ? error.data.message : 'Không dời được buổi. Kế hoạch chưa bị ghi đè.');

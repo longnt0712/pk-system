@@ -691,10 +691,18 @@
                 catch (ignoreStorage) { return false; }
             }
 
+            function isFocusedTestState() {
+                var stateName = String((($state || {}).current || {}).name || '');
+                return stateName === 'application.ielts_reading_actual_test'
+                    || stateName === 'application.ielts_listening_actual_test'
+                    || stateName === 'application.ielts_writing_actual_test'
+                    || stateName === 'application.comprehensive_actual_test';
+            }
+
             function shouldDisplay() {
                 var user = readCurrentUser();
                 return !!settings.ieltsRoom && !!user && !!user.id
-                    && (hasStudentRole(user) || hasAdminRole(user)) && !isMuted();
+                    && (hasStudentRole(user) || hasAdminRole(user)) && !isMuted() && !isFocusedTestState();
             }
 
             function spritePosition(row, frame) {
@@ -801,7 +809,7 @@
                     vm.message = 'Bạn còn ' + vm.pendingTaskCount + ' bài cần hoàn thành.';
                 } else {
                     vm.summaryTitle = 'Tuyệt lắm!';
-                    vm.message = 'Hiện tại bạn không còn bài nào cần làm.';
+                    vm.message = 'Hiện tại bạn không có bài lớp giao nào đang chờ hoàn thành.';
                 }
             }
 
@@ -810,7 +818,33 @@
                 var payload;
                 try { payload = angular.fromJson(item.payload); }
                 catch (ignorePayload) { return null; }
-                if (!payload || payload.completed === true) { return null; }
+                if (!payload) { return null; }
+
+                var currentUser = readCurrentUser();
+                function belongsToCurrentUser(candidate) {
+                    if (!candidate || !currentUser || !currentUser.id) { return false; }
+                    var ownerId = candidate.userId != null ? candidate.userId : candidate.ownerId;
+                    return ownerId == null || String(ownerId) === String(currentUser.id);
+                }
+                function savedAt(candidate, fallback) {
+                    var value = (candidate || {}).savedAt || (candidate || {}).updatedAt
+                        || (candidate || {}).createdAt || fallback || 0;
+                    var numeric = Number(value);
+                    if (isFinite(numeric) && numeric > 0) { return numeric; }
+                    var parsed = new Date(value).getTime();
+                    return isFinite(parsed) ? parsed : 0;
+                }
+                if (!belongsToCurrentUser(payload)) { return null; }
+                try {
+                    var localRaw = $window.localStorage.getItem(item.draftKey);
+                    var localPayload = localRaw ? angular.fromJson(localRaw) : null;
+                    if (belongsToCurrentUser(localPayload) && savedAt(localPayload) > savedAt(payload, item.savedAt)) {
+                        payload = localPayload;
+                    } else {
+                        $window.localStorage.setItem(item.draftKey, item.payload);
+                    }
+                } catch (ignoreDraftCache) {}
+                if (payload.completed === true || payload.hiddenFromDashboard === true) { return null; }
 
                 function isPartSpecificIeltsDraft() {
                     if (payload.isPartAssignment === true) { return true; }
@@ -825,13 +859,14 @@
                 var draft = {
                     kind: kind,
                     storageKey: item.draftKey,
-                    savedAt: Number(item.savedAt) || 0,
+                    savedAt: savedAt(payload, item.savedAt),
                     title: item.title || payload.title || 'Bài đang làm dở',
                     assignmentTaskId: payload.assignmentTaskId || null,
                     assignmentPart: payload.assignmentPart || null,
                     assignmentTopicId: payload.assignmentTopicId || null,
                     assignmentCategoryId: payload.assignmentCategoryId || null,
-                    assignmentSourceQuestionId: payload.assignmentSourceQuestionId || (payload.card || {}).id || null
+                    assignmentSourceQuestionId: payload.assignmentSourceQuestionId || (payload.card || {}).id || null,
+                    sourceLabel: payload.assignmentTaskId ? 'Bài lớp giao' : 'Tự luyện'
                 };
 
                 if (kind === 'IELTS') {
@@ -1032,10 +1067,15 @@
                 updatePetForm(user);
             });
             var routeListener = $scope.$on('$stateChangeSuccess', function () {
-                if (vm.visible) {
-                    $timeout(setupDrag, 0);
-                    $timeout(vm.refresh, 600);
+                vm.visible = shouldDisplay();
+                if (!vm.visible) {
+                    vm.panelOpen = false;
+                    vm.minimized = false;
+                    return;
                 }
+                if (vm.petForm === 'hatched') { preloadSprite(); }
+                $timeout(setupDrag, 0);
+                $timeout(vm.refresh, 600);
             });
 
             function handleViewportResize() {

@@ -6,7 +6,7 @@ import java.util.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.util.HtmlUtils;
 
-/** One intact question group per game turn, including its passage and original answer bank. */
+/** One child question per game turn, including its passage and original answer bank. */
 public final class BattleExerciseQuestions {
     private BattleExerciseQuestions() {}
 
@@ -47,6 +47,10 @@ public final class BattleExerciseQuestions {
     }
 
     public static List<Turn> fromTest(QuestionDto test) {
+        return fromTest(test, new Random());
+    }
+
+    static List<Turn> fromTest(QuestionDto test, Random random) {
         List<Turn> turns = new ArrayList<Turn>();
         if (test == null || !"COMPREHENSIVE".equals(test.getTestFormat()) ||
                 test.getQuestionType() == null || !Long.valueOf(11).equals(test.getQuestionType().getId())) {
@@ -54,18 +58,25 @@ public final class BattleExerciseQuestions {
         }
         for (QuestionDto part : children(test)) {
             for (QuestionDto group : children(part)) {
-                Turn turn = build(group, part.getQuestion());
-                turn.sourceTestId = test.getId(); turn.sourceTestTitle = test.getTitle(); turns.add(turn);
+                List<QuestionDto> questions = children(group);
+                if ((group.getType() == 16 || group.getType() == 17) && questions.isEmpty()) {
+                    questions = Collections.singletonList(group);
+                }
+                if (questions.isEmpty()) { throw invalid("Có nhóm chưa có câu hỏi hoặc đáp án."); }
+                for (int q = 0; q < questions.size(); q++) {
+                    Turn turn = build(group, questions.get(q), part.getQuestion(), q, questions.get(0).getQuestion(), random);
+                    turn.sourceTestId = test.getId(); turn.sourceTestTitle = test.getTitle(); turns.add(turn);
+                }
             }
         }
-        if (turns.isEmpty()) { throw invalid("Đề tổng hợp chưa có nhóm câu hỏi."); }
+        if (turns.isEmpty()) { throw invalid("Đề tổng hợp chưa có câu hỏi."); }
         return turns;
     }
 
-    private static Turn build(QuestionDto group, String passage) {
+    private static Turn build(QuestionDto group, QuestionDto source, String passage, int questionIndex, String sharedContent, Random random) {
         Turn turn = new Turn();
-        turn.id = group.getId();
-        if (turn.id == null) { throw invalid("Nhóm câu hỏi chưa được lưu."); }
+        turn.id = source.getId();
+        if (turn.id == null) { throw invalid("Có câu hỏi chưa được lưu."); }
         int type = group.getType();
         String mode;
         switch (type) {
@@ -81,56 +92,41 @@ public final class BattleExerciseQuestions {
         content.type = type; content.answerMode = mode; content.title = group.getTitle();
         content.passageHtml = passage; content.instructionsHtml = group.getQuestion();
         content.minimumWords = type == 16 ? 150 : type == 17 ? 250 : 0;
-        List<QuestionDto> questions = children(group);
-        if ("WRITING".equals(mode) && questions.isEmpty()) { questions = Collections.singletonList(group); }
-        if (questions.isEmpty()) { throw invalid("Có nhóm chưa có câu hỏi hoặc đáp án."); }
-        if (type == 11 || type == 13) { content.contentHtml = questions.get(0).getQuestion(); }
-        for (int q = 0; q < questions.size(); q++) {
-            QuestionDto source = questions.get(q);
-            if (source.getId() == null) { throw invalid("Có câu hỏi chưa được lưu."); }
-            BattleOnlineExerciseDto.Item item = new BattleOnlineExerciseDto.Item();
-            item.id = String.valueOf(source.getId()); item.number = source.getOrdinalNumber(); item.promptHtml = source.getQuestion();
-            Set<String> expected = new LinkedHashSet<String>();
-            List<String> texts = new ArrayList<String>();
-            List<QuestionAnswerDto> answers = new ArrayList<QuestionAnswerDto>(source.getQuestionAnswers() == null
-                    ? Collections.<QuestionAnswerDto>emptyList() : source.getQuestionAnswers());
-            Collections.sort(answers, Comparator.comparingInt(a -> a.getOrdinalNumberQuestionAnswer() == null
-                    ? Integer.MAX_VALUE : a.getOrdinalNumberQuestionAnswer()));
-            for (int a = 0; a < answers.size(); a++) {
-                QuestionAnswerDto answer = answers.get(a);
-                String text = answer.getAnswer() == null ? "" : plain(answer.getAnswer().getAnswer());
-                String key = String.valueOf(a + 1);
-                if (!"TEXT".equals(mode) && text.isEmpty() && answer.getAnswer() != null &&
-                        answer.getAnswer().getAnswer() != null && !answer.getAnswer().getAnswer().trim().isEmpty()) {
-                    text = "Đáp án " + key;
-                }
-                if (!"TEXT".equals(mode) && !"WRITING".equals(mode)) {
-                    item.options.add(new BattleOnlineExerciseDto.Option(key, text, answer.getAnswer() == null ? "" : answer.getAnswer().getAnswer()));
-                }
-                if (answer.isCorrect() && !text.isEmpty()) {
-                    expected.add("TEXT".equals(mode) ? normalize(text) : key); texts.add(text);
-                }
+        if (type == 11 || type == 13) { content.contentHtml = sharedContent; }
+        BattleOnlineExerciseDto.Item item = new BattleOnlineExerciseDto.Item();
+        item.id = String.valueOf(source.getId()); item.number = source.getOrdinalNumber(); item.promptHtml = source.getQuestion();
+        if (type == 4 || type == 11 || type == 13) { item.gapIndex = questionIndex; }
+        Set<String> expected = new LinkedHashSet<String>();
+        List<String> texts = new ArrayList<String>();
+        List<QuestionAnswerDto> answers = new ArrayList<QuestionAnswerDto>(source.getQuestionAnswers() == null
+                ? Collections.<QuestionAnswerDto>emptyList() : source.getQuestionAnswers());
+        Collections.sort(answers, Comparator.comparingInt(a -> a.getOrdinalNumberQuestionAnswer() == null
+                ? Integer.MAX_VALUE : a.getOrdinalNumberQuestionAnswer()));
+        if ("SINGLE".equals(mode) || "MULTIPLE".equals(mode)) { Collections.shuffle(answers, random); }
+        for (int a = 0; a < answers.size(); a++) {
+            QuestionAnswerDto answer = answers.get(a);
+            String text = answer.getAnswer() == null ? "" : plain(answer.getAnswer().getAnswer());
+            String key = String.valueOf(a + 1);
+            if (!"TEXT".equals(mode) && text.isEmpty() && answer.getAnswer() != null &&
+                    answer.getAnswer().getAnswer() != null && !answer.getAnswer().getAnswer().trim().isEmpty()) {
+                text = "Đáp án " + key;
             }
-            if (!"WRITING".equals(mode) && expected.isEmpty()) { throw invalid("Câu " + item.number + " chưa có đáp án đúng."); }
-            if (!"TEXT".equals(mode) && !"MULTIPLE".equals(mode) && !"WRITING".equals(mode) && expected.size() != 1) {
-                throw invalid("Câu " + item.number + " cần đúng một đáp án.");
+            if (!"TEXT".equals(mode) && !"WRITING".equals(mode)) {
+                item.options.add(new BattleOnlineExerciseDto.Option(key, text, answer.getAnswer() == null ? "" : answer.getAnswer().getAnswer()));
             }
-            if ("MULTIPLE".equals(mode) && !content.items.isEmpty()) {
-                BattleOnlineExerciseDto.Item first = content.items.get(0);
-                first.numberEnd = item.number;
-                if (first.options.size() != item.options.size()) { throw invalid("Nhóm chọn nhiều đáp án có danh sách lựa chọn không thống nhất."); }
-                for (int a = 0; a < first.options.size(); a++) {
-                    if (!first.options.get(a).getText().equals(item.options.get(a).getText())) {
-                        throw invalid("Nhóm chọn nhiều đáp án có danh sách lựa chọn không thống nhất.");
-                    }
-                }
-                turn.correct.get(first.id).addAll(expected); turn.correctTexts.get(first.id).addAll(texts);
-            } else {
-                content.items.add(item); turn.correct.put(item.id, expected); turn.correctTexts.put(item.id, texts);
+            if (answer.isCorrect() && !text.isEmpty()) {
+                expected.add("TEXT".equals(mode) ? normalize(text) : key); texts.add(text);
             }
         }
-        turn.prompt = plain(group.getQuestion());
-        if (turn.prompt.isEmpty()) { turn.prompt = "Nhóm câu hỏi " + (content.items.get(0).number == null ? "" : content.items.get(0).number); }
+        if (!"WRITING".equals(mode) && expected.isEmpty()) { throw invalid("Câu " + item.number + " chưa có đáp án đúng."); }
+        if (!"TEXT".equals(mode) && !"MULTIPLE".equals(mode) && !"WRITING".equals(mode) && expected.size() != 1) {
+            throw invalid("Câu " + item.number + " cần đúng một đáp án.");
+        }
+        content.items.add(item); turn.correct.put(item.id, expected); turn.correctTexts.put(item.id, texts);
+        turn.prompt = plain(source.getQuestion());
+        if (turn.prompt.isEmpty() || type == 11 || type == 13) {
+            turn.prompt = "Câu hỏi " + (item.number == null ? "" : item.number);
+        }
         return turn;
     }
 

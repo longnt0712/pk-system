@@ -88,6 +88,19 @@ public final class HomeworkTopicCompletion {
         return new LocalDateTime(parsed.getYear(), parsed.getMonthValue(), parsed.getDayOfMonth(),
                 clock.getHour(), clock.getMinute()).plusMillis(1);
     }
+    /**
+     * Completion evidence for an unfinished assignment is bounded by its original deadline.
+     * Tasks without a deadline stay open and count evidence up to the current request.
+     */
+    public static LocalDateTime studentAssignmentCompletionEnd(LocalDateTime start,
+            LocalDateTime deadline, LocalDateTime now) {
+        if (start == null || now == null || now.isBefore(start)) { return null; }
+        if (deadline != null && !deadline.isAfter(start)) { return null; }
+        return deadline == null ? now.plusMillis(1) : deadline;
+    }
+    public static boolean studentAssignmentOverdue(LocalDateTime deadline, LocalDateTime now) {
+        return deadline != null && now != null && !now.isBefore(deadline);
+    }
     public static void apply(EnrolmentClassScheduleTaskDto task, List<Object[]> completions,
             LocalDateTime start, LocalDateTime end) {
         if (!enabled(task)) { return; }
