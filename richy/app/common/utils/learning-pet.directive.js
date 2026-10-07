@@ -79,7 +79,6 @@
             vm.tasks = [];
             vm.drafts = [];
             vm.pendingTaskCount = 0;
-            vm.overdueCount = 0;
             vm.notificationCount = 0;
             vm.summaryTitle = 'Tiến độ học tập của bạn';
             vm.message = '';
@@ -770,7 +769,7 @@
 
             function derivedAnimation() {
                 if (vm.loading) { return 'working'; }
-                if (vm.error || vm.overdueCount > 0) { return 'failed'; }
+                if (vm.error) { return 'failed'; }
                 if (vm.drafts.length > 0) { return 'review'; }
                 if (vm.pendingTaskCount > 0) { return 'waiting'; }
                 return 'idle';
@@ -798,9 +797,6 @@
                 } else if (vm.hasNewCapybaraEgg) {
                     vm.summaryTitle = 'Bạn có một quả trứng mới!';
                     vm.message = 'Level 3 đã mở khóa trứng capybara. Level 4 trứng sẽ nứt và level 5 sẽ nở.';
-                } else if (vm.overdueCount > 0) {
-                    vm.summaryTitle = 'Có bài cần bạn chú ý';
-                    vm.message = 'Bạn có ' + vm.overdueCount + ' bài đã quá hạn. Mình xem ngay nhé!';
                 } else if (vm.drafts.length > 0) {
                     vm.summaryTitle = 'Bạn có bài đang làm dở';
                     vm.message = 'Bạn đang làm dở ' + vm.drafts.length + ' bài. Làm tiếp cùng mình nhé!';
@@ -898,6 +894,12 @@
                 return draft;
             }
 
+            function activeAssignedTasks(items) {
+                return (angular.isArray(items) ? items : []).filter(function (task) {
+                    return task && !!task.dueDate && task.overdue !== true;
+                });
+            }
+
             vm.refresh = function () {
                 if (!shouldDisplay()) {
                     vm.visible = false;
@@ -912,9 +914,8 @@
                     $http.get(apiRoot + 'enrolment_class/schedule/my-assignments'),
                     $http.get(apiRoot + 'test_result/drafts')
                 ]).then(function (responses) {
-                    vm.tasks = angular.isArray(responses[0].data) ? responses[0].data : [];
+                    vm.tasks = activeAssignedTasks(responses[0].data);
                     vm.pendingTaskCount = vm.tasks.length;
-                    vm.overdueCount = vm.tasks.filter(function (task) { return task && task.overdue; }).length;
                     vm.drafts = [];
                     angular.forEach(angular.isArray(responses[1].data) ? responses[1].data : [], function (item) {
                         var draft = parseDraft(item);

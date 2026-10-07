@@ -16,13 +16,13 @@ function setupLearningPet(level, selected = 'CUTE_JERRY_MOUSE', storage = new Ma
     const state = {current: {name: 'application.dashboard'}};
     const angular = {
         module() { return {directive(name, fn) { factory = fn; }}; },
-        noop() {}, fromJson: JSON.parse,
+        noop() {}, fromJson: JSON.parse, isArray: Array.isArray,
         forEach(items, fn) { items.forEach(fn); }
     };
     const source = fs.readFileSync(path.join(__dirname, '../common/utils/learning-pet.directive.js'), 'utf8');
     const context = nodeVm.createContext({angular, window: {APP_VERSION: 'pet-test'}, expose(value) { hooks = value; }});
     nodeVm.runInContext(source.replace('var permissionsListener =',
-        'expose({form: updatePetForm, message: updateMessage, parseDraft: parseDraft, shouldDisplay: shouldDisplay}); var permissionsListener ='), context);
+        'expose({form: updatePetForm, message: updateMessage, parseDraft: parseDraft, shouldDisplay: shouldDisplay, activeTasks: activeAssignedTasks}); var permissionsListener ='), context);
     const $http = {post(url, body) {
         requests.push({url, body});
         return Promise.resolve({data: {selectedPetKey: body.petKey}});
@@ -260,4 +260,14 @@ test('pet stays hidden while a student is taking an IELTS or comprehensive test'
     assert.equal(h.hooks.shouldDisplay(), false);
     h.state.current.name = 'application.ielts_reading_actual_test';
     assert.equal(h.hooks.shouldDisplay(), false);
+});
+
+test('pet omits overdue assignments so active work is not hidden behind them', () => {
+    const h = setupLearningPet(3, 'MAM_HOC', new Map(), [{name: 'ROLE_STUDENT'}]);
+    const active = h.hooks.activeTasks([
+        {taskId: 1, title: 'Old work', overdue: true},
+        {taskId: 2, title: 'Current work', dueDate: '2026-10-10', overdue: false},
+        {taskId: 3, title: 'No deadline'}
+    ]);
+    assert.deepEqual(Array.from(active, item => item.taskId), [2]);
 });

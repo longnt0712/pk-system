@@ -149,7 +149,9 @@
             vm.assignedTasksError = false;
             var url = settings.api.baseUrl + settings.api.apiV1Url + 'enrolment_class/schedule/my-assignments';
             $http.get(url).then(function (response) {
-                vm.assignedTasks = angular.isArray(response.data) ? response.data : [];
+                vm.assignedTasks = (angular.isArray(response.data) ? response.data : []).filter(function (task) {
+                    return task && !!task.dueDate && task.overdue !== true;
+                });
             }, function () {
                 vm.assignedTasks = [];
                 vm.assignedTasksError = true;

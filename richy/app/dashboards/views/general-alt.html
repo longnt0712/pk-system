@@ -128,14 +128,13 @@
         <div class="student-assignment-grid" ng-if="!vm.assignedTasksLoading && vm.assignedTasks.length">
             <article class="student-assignment-card"
                      ng-repeat="task in vm.assignedTasks track by task.taskId"
-                     ng-class="{'is-overdue': task.overdue, 'is-listening': task.activityType === 'DAILY_LISTENING', 'is-ielts': (task.activityType || '').indexOf('IELTS') === 0 || task.activityType === 'COMPREHENSIVE', 'is-free-task': !task.topicId && !task.ieltsTestId}">
+                     ng-class="{'is-listening': task.activityType === 'DAILY_LISTENING', 'is-ielts': (task.activityType || '').indexOf('IELTS') === 0 || task.activityType === 'COMPREHENSIVE', 'is-free-task': !task.topicId && !task.ieltsTestId}">
                 <div class="student-assignment-icon"><i class="fa" ng-class="vm.assignmentIcon(task)"></i></div>
                 <div class="student-assignment-copy">
                     <div class="student-assignment-badges">
                         <span>{{vm.assignmentTypeLabel(task)}}</span>
                         <span class="is-free" ng-if="!task.topicId && !task.ieltsTestId">Nhiệm vụ lớp</span>
                         <span ng-if="task.ieltsTestId && task.activityType !== 'COMPREHENSIVE'">{{vm.assignmentPartsLabel(task)}}</span>
-                        <span class="is-overdue" ng-if="task.overdue">Quá hạn</span>
                     </div>
                     <h3>{{task.title}}</h3>
                     <p class="student-assignment-topic" ng-if="task.topicId">{{task.categoryName || 'Không phân loại'}} → {{task.topicName}}</p>
@@ -151,7 +150,6 @@
                     <div class="student-assignment-bar"><span ng-style="{'width': (task.completedAttempts * 100 / task.requiredAttempts) + '%'}"></span></div>
                     <div class="student-assignment-footer">
                         <small ng-if="task.dueDate"><i class="fa fa-clock-o"></i> Hạn {{task.dueDate | date:'dd/MM/yyyy'}}{{task.dueTime ? ' ' + task.dueTime : ''}}</small>
-                        <small ng-if="!task.dueDate"><i class="fa fa-clock-o"></i> Không đặt hạn</small>
                         <button type="button" ng-if="task.topicId || task.ieltsTestId" ng-click="vm.openAssignedTask(task)">
                             {{vm.assignmentActionLabel(task)}} <i class="fa fa-arrow-right"></i>
                         </button>

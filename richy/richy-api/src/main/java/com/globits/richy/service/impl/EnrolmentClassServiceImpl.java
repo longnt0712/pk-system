@@ -725,7 +725,6 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					LocalDateTime deadline = HomeworkTopicCompletion.deadlineEnd(task.getResolvedDueDate(), task.getResolvedDueTime());
 					LocalDateTime completionEnd = HomeworkTopicCompletion.studentAssignmentCompletionEnd(start, deadline, now);
 					if (completionEnd == null) { continue; }
-					boolean overdue = HomeworkTopicCompletion.studentAssignmentOverdue(deadline, now);
 
 					int required = task.getRequiredAttempts();
 					int completed = 0;
@@ -770,7 +769,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					item.setAssignedDate(day.getScheduleDate()); item.setDueDate(task.getResolvedDueDate());
 					item.setDueTime(task.getResolvedDueTime()); item.setRequiredAttempts(required);
 					item.setCompletedAttempts(Math.min(required, completed)); item.setRemainingAttempts(remaining);
-					item.setOverdue(overdue); result.add(item);
+					result.add(item);
 				}
 			}
 		}

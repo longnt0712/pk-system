@@ -1,7 +1,7 @@
 <aside class="learning-pet-shell"
        ng-if="pet.visible"
        ng-style="pet.shellStyle"
-       ng-class="{'is-open': pet.panelOpen, 'is-minimized': pet.minimized, 'has-alert': pet.overdueCount > 0, 'is-dragging': pet.dragging, 'is-panel-below': pet.panelBelow, 'is-panel-left': pet.panelAlignLeft}"
+       ng-class="{'is-open': pet.panelOpen, 'is-minimized': pet.minimized, 'is-dragging': pet.dragging, 'is-panel-below': pet.panelBelow, 'is-panel-left': pet.panelAlignLeft}"
        aria-live="polite">
     <section class="learning-pet-panel" ng-if="pet.panelOpen && !pet.minimized">
         <header class="learning-pet-panel-header">
@@ -31,12 +31,11 @@
             <div class="learning-pet-stats">
                 <button type="button" ng-click="pet.selectSection('tasks')" ng-class="{'is-active': pet.activeSection === 'tasks'}"><strong>{{pet.pendingTaskCount}}</strong><span>Bài cần làm</span></button>
                 <button type="button" ng-click="pet.selectSection('drafts')" ng-class="{'is-active': pet.activeSection === 'drafts'}"><strong>{{pet.drafts.length}}</strong><span>Đang làm dở</span></button>
-                <div ng-class="{'has-value': pet.overdueCount > 0}"><strong>{{pet.overdueCount}}</strong><span>Quá hạn</span></div>
             </div>
             <div class="learning-pet-list" ng-if="pet.activeSection === 'tasks' && pet.tasks.length">
                 <button type="button" class="learning-pet-list-item" ng-repeat="task in pet.tasks | limitTo:5 track by task.taskId" ng-click="pet.openTask(task)">
-                    <span class="learning-pet-list-icon" ng-class="{'is-overdue': task.overdue}"><i class="fa" ng-class="pet.taskIcon(task)"></i></span>
-                    <span class="learning-pet-list-copy"><strong>{{task.title || pet.taskTypeLabel(task)}}</strong><small>{{pet.taskTypeLabel(task)}}<span ng-if="task.ieltsPart"> · Part {{task.ieltsPart}}</span></small><small ng-if="task.dueDate" ng-class="{'is-overdue': task.overdue}">Hạn {{task.dueDate | date:'dd/MM/yyyy'}}{{task.dueTime ? ' ' + task.dueTime : ''}}</small></span>
+                    <span class="learning-pet-list-icon"><i class="fa" ng-class="pet.taskIcon(task)"></i></span>
+                    <span class="learning-pet-list-copy"><strong>{{task.title || pet.taskTypeLabel(task)}}</strong><small>{{pet.taskTypeLabel(task)}}<span ng-if="task.ieltsPart"> · Part {{task.ieltsPart}}</span></small><small ng-if="task.dueDate">Hạn {{task.dueDate | date:'dd/MM/yyyy'}}{{task.dueTime ? ' ' + task.dueTime : ''}}</small></span>
                     <i class="fa fa-chevron-right"></i>
                 </button>
             </div>
