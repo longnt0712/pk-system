@@ -184,6 +184,7 @@ public final class DemonDefenseGame {
     // Immutable public fields are serialized by Jackson; no question/answer/private state here.
     public static final class Snapshot {
         public final long startedAt, snapshotAt;
+        public final double dangerProgress = DANGER_PROGRESS;
         public final int wave, warningSeconds;
         public final String phase;
         public final List<Team> teams;
@@ -198,6 +199,7 @@ public final class DemonDefenseGame {
         public final long eliminatedAt, rescueAt, survivedMs;
         public final String rescueUsername;
         public final boolean danger;
+        public final double nearestDemonProgress, nearestDemonSpeed;
         public final List<Demon> demons = new ArrayList<Demon>();
         public final List<Shot> shots;
         Team(TeamState state, long at, long startedAt, int rank, boolean includeArena) {
@@ -206,10 +208,18 @@ public final class DemonDefenseGame {
             this.rank = rank;
             survivedMs = Math.max(0L, (eliminatedAt > 0L ? eliminatedAt : at) - startedAt);
             boolean inDanger = false;
+            double nearestProgress = 0D, nearestSpeed = 0D;
             for (Enemy enemy : state.demons) {
-                inDanger |= enemy.progress(at) >= DANGER_PROGRESS;
+                double progress = enemy.progress(at);
+                double speed = 1D / (enemy.arrivesAt - enemy.spawnedAt);
+                inDanger |= progress >= DANGER_PROGRESS;
+                if (progress > nearestProgress || (progress == nearestProgress && speed > nearestSpeed)) {
+                    nearestProgress = progress; nearestSpeed = speed;
+                }
                 if (includeArena) { demons.add(new Demon(enemy, at)); }
             }
+            nearestDemonProgress = nearestProgress;
+            nearestDemonSpeed = nearestSpeed;
             danger = inDanger && eliminatedAt == 0L;
             shots = includeArena ? new ArrayList<Shot>(state.shots) : Collections.<Shot>emptyList();
         }

@@ -60,7 +60,7 @@ public class BattleOnlinePetSelectionTest {
             assertEquals("CUTE_JERRY_MOUSE", result.getSelectedPetKey());
             assertEquals("CUTE_JERRY_MOUSE", student.getSelectedLearningPet());
             assertEquals(level, result.getVocabularyExperienceLevel());
-            assertEquals(5, result.getUnlockedPetKeys().size());
+            assertEquals(level >= 15 ? 6 : 5, result.getUnlockedPetKeys().size());
             assertTrue(result.getUnlockedPetKeys().contains("CUTE_TOM_CAT"));
             assertTrue(result.getUnlockedPetKeys().contains("CUTE_JERRY_MOUSE"));
         }
@@ -81,16 +81,16 @@ public class BattleOnlinePetSelectionTest {
         Role admin = new Role();
         admin.setName("ROLE_ADMIN");
         student.getRoles().add(admin);
-        for (String key : new String[] {"MAM_HOC", "CAPYBARA_EGG", "CUTE_DOG", "CUTE_TOM_CAT", "CUTE_JERRY_MOUSE"}) {
+        for (String key : new String[] {"MAM_HOC", "CAPYBARA_EGG", "CUTE_DOG", "CUTE_TOM_CAT", "CUTE_JERRY_MOUSE", "CUTE_TUFFY_MOUSE"}) {
             BattleOnlinePetSelectionDto result = choose(key, 0);
             assertEquals(key, student.getSelectedLearningPet());
             assertEquals(key, result.getSelectedPetKey());
             assertTrue(result.isAllPetsUnlocked());
-            assertEquals(5, result.getUnlockedPetKeys().size());
+            assertEquals(6, result.getUnlockedPetKeys().size());
             assertEquals(0, result.getVocabularyExperienceLevel());
             assertEquals(Long.valueOf(0L), student.getTotalVocabularyWordsLearned());
         }
-        verify(users, times(5)).save(student);
+        verify(users, times(6)).save(student);
     }
 
     @Test
@@ -100,7 +100,7 @@ public class BattleOnlinePetSelectionTest {
             Role role = new Role(); role.setName(name); student.getRoles().add(role);
             student.setTotalVocabularyWordsLearned(0L);
             BattleOnlinePetSelectionDto request = new BattleOnlinePetSelectionDto();
-            request.setPetKey("CUTE_JERRY_MOUSE");
+            request.setPetKey("CUTE_TUFFY_MOUSE");
             request.setAllPetsUnlocked(true);
             try {
                 service.selectPet("student", request);
@@ -121,11 +121,11 @@ public class BattleOnlinePetSelectionTest {
         when(entity.createQuery(startsWith("select u.id"))).thenReturn(account);
         when(entity.createQuery(startsWith("select r.id"))).thenReturn(roles);
         when(account.getResultList()).thenReturn(Collections.singletonList(new Object[] {
-                7L, "", "", "Admin", 0L, "CUTE_JERRY_MOUSE"
+                7L, "", "", "Admin", 0L, "CUTE_TUFFY_MOUSE"
         }));
         when(roles.getResultList()).thenReturn(Collections.singletonList(1L));
         Object identity = ReflectionTestUtils.invokeMethod(service, "findPlayerIdentity", "student");
-        assertEquals("CUTE_JERRY_MOUSE", ReflectionTestUtils.getField(identity, "selectedPetKey"));
+        assertEquals("CUTE_TUFFY_MOUSE", ReflectionTestUtils.getField(identity, "selectedPetKey"));
         assertEquals(Boolean.TRUE, ReflectionTestUtils.getField(identity, "allPetsUnlocked"));
         assertEquals(0, ReflectionTestUtils.getField(identity, "vocabularyExperienceLevel"));
         verify(roles).setParameter("userId", 7L);
@@ -134,5 +134,51 @@ public class BattleOnlinePetSelectionTest {
         identity = ReflectionTestUtils.invokeMethod(service, "findPlayerIdentity", "student");
         assertEquals("MAM_HOC", ReflectionTestUtils.getField(identity, "selectedPetKey"));
         assertEquals(Boolean.FALSE, ReflectionTestUtils.getField(identity, "allPetsUnlocked"));
+    }
+
+    @Test
+    public void rejectsTuffyBeforeLevelFifteenWithoutChangingSelection() {
+        try {
+            choose("CUTE_TUFFY_MOUSE", 14);
+            fail("Tuffy must remain locked at level 14");
+        } catch (BattleOnlineException error) {
+            assertEquals(HttpStatus.BAD_REQUEST, error.getStatus());
+            assertTrue(error.getMessage().contains("level 15"));
+        }
+        assertEquals("CUTE_TOM_CAT", student.getSelectedLearningPet());
+        verify(users, never()).save(any(User.class));
+    }
+
+    @Test
+    public void persistsTuffyAtEveryEvolutionStageAndKeepsEarlierPetsUnlocked() {
+        for (int level : new int[] {15, 16, 17, 20}) {
+            BattleOnlinePetSelectionDto result = choose(" cute_tuffy_mouse ", level);
+            assertEquals("CUTE_TUFFY_MOUSE", result.getSelectedPetKey());
+            assertEquals("CUTE_TUFFY_MOUSE", student.getSelectedLearningPet());
+            assertEquals(level, result.getVocabularyExperienceLevel());
+            assertEquals(6, result.getUnlockedPetKeys().size());
+            assertTrue(result.getUnlockedPetKeys().contains("CUTE_JERRY_MOUSE"));
+            assertTrue(result.getUnlockedPetKeys().contains("CUTE_TUFFY_MOUSE"));
+        }
+        verify(users, times(4)).save(student);
+    }
+
+    @Test
+    public void rejoiningKeepsTuffyOnlyWhenTheRealLevelUnlocksIt() {
+        EntityManager entity = mock(EntityManager.class);
+        Query account = mock(Query.class), roles = mock(Query.class);
+        ReflectionTestUtils.setField(service, "entityManager", entity);
+        when(entity.createQuery(startsWith("select u.id"))).thenReturn(account);
+        when(entity.createQuery(startsWith("select r.id"))).thenReturn(roles);
+        when(roles.getResultList()).thenReturn(Collections.emptyList());
+        for (int level : new int[] {14, 15, 16, 17}) {
+            when(account.getResultList()).thenReturn(Collections.singletonList(new Object[] {
+                    7L, "", "", "Student", level * User.VOCABULARY_WORDS_PER_LEVEL, "CUTE_TUFFY_MOUSE"
+            }));
+            Object identity = ReflectionTestUtils.invokeMethod(service, "findPlayerIdentity", "student");
+            assertEquals(level >= 15 ? "CUTE_TUFFY_MOUSE" : "MAM_HOC", ReflectionTestUtils.getField(identity, "selectedPetKey"));
+            assertEquals(level, ReflectionTestUtils.getField(identity, "vocabularyExperienceLevel"));
+            assertEquals(Boolean.FALSE, ReflectionTestUtils.getField(identity, "allPetsUnlocked"));
+        }
     }
 }

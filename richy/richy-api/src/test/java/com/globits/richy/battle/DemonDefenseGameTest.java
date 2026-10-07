@@ -133,6 +133,41 @@ public class DemonDefenseGameTest {
         assertEquals(team(game, 1, 26000, true).kills, team(game, 1, 26000, false).kills);
     }
 
+    @Test public void studentDistanceMatchesNearestHostDemonWithoutSendingTheArena() {
+        DemonDefenseGame game = game(2);
+        game.advance(START + 23500);
+        for (int number : new int[] {1, 2}) {
+            DemonDefenseGame.Team host = team(game, number, 23500, true);
+            DemonDefenseGame.Team student = team(game, number, 23500, false);
+            double nearest = 0D, speed = 0D;
+            for (DemonDefenseGame.Demon demon : host.demons) {
+                if (demon.progress > nearest || (demon.progress == nearest && demon.speed > speed)) {
+                    nearest = demon.progress; speed = demon.speed;
+                }
+            }
+            assertEquals(nearest, student.nearestDemonProgress, 0D);
+            assertEquals(speed, student.nearestDemonSpeed, 0D);
+            assertEquals(host.danger, student.danger);
+            assertTrue(student.danger);
+            assertTrue(student.demons.isEmpty()); assertTrue(student.shots.isEmpty());
+        }
+        assertEquals(DemonDefenseGame.DANGER_PROGRESS, game.snapshot(START + 23500, false).dangerProgress, 0D);
+    }
+
+    @Test public void killingNearestDemonMovesOnlyThatTeamsDistanceBackAndEmptyArenaStartsAtZero() {
+        DemonDefenseGame game = game(1);
+        assertEquals(0D, team(game, 1, 0, false).nearestDemonProgress, 0D);
+        assertEquals(0D, team(game, 1, 0, false).nearestDemonSpeed, 0D);
+        game.advance(START + 24000);
+        double before = team(game, 1, 24000, false).nearestDemonProgress;
+        assertEquals(1, game.shoot(1, "alice", 1, START + 24000).kills);
+        assertTrue(team(game, 1, 24000, false).nearestDemonProgress < before);
+        assertEquals(before, team(game, 2, 24000, false).nearestDemonProgress, 0D);
+        game.shoot(1, "bob", 100, START + 24000);
+        assertEquals(0D, team(game, 1, 24000, false).nearestDemonProgress, 0D);
+        assertEquals(0D, team(game, 1, 24000, false).nearestDemonSpeed, 0D);
+    }
+
     @Test public void timeLimitRanksLivingTeamsByKillsPerInitialMember() {
         Map<Integer, Integer> members = new LinkedHashMap<Integer, Integer>();
         members.put(1, 1); members.put(2, 2);

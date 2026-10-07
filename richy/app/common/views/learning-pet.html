@@ -19,7 +19,7 @@
                         ng-click="pet.openPetPicker($event)" aria-haspopup="dialog">
                     <span class="learning-pet-choice-image">
                         <img ng-src="{{pet.selectedPet().image}}" alt="" aria-hidden="true"
-                             ng-class="{'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE'}">
+                             ng-class="{'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE' || pet.selectedPetKey === 'CUTE_TUFFY_MOUSE'}">
                     </span>
                     <span class="learning-pet-picker-copy">
                         <strong>Chọn pet</strong>
@@ -67,7 +67,8 @@
                     'is-cute-dog-pet': pet.petForm === 'cute-dog-hatched',
                     'is-cute-tom-cat-pet': pet.petForm === 'cute-tom-cat-hatched',
                     'is-jerry-mouse-pet': pet.petForm === 'jerry-mouse-hatched',
-                    'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE'
+                    'is-tuffy-mouse-pet': pet.petForm === 'tuffy-mouse-hatched',
+                    'is-cartoon-pet': pet.selectedPetKey === 'CUTE_TOM_CAT' || pet.selectedPetKey === 'CUTE_JERRY_MOUSE' || pet.selectedPetKey === 'CUTE_TUFFY_MOUSE'
                  }"
                  ng-if="pet.petForm !== 'hatched'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
             <span class="learning-pet-badge" ng-if="pet.notificationCount > 0">{{pet.notificationCount > 99 ? '99+' : pet.notificationCount}}</span>

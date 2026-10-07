@@ -40,9 +40,9 @@ function setup(username = 'alice') {
                 {username: 'bob', teamNumber: 1, streak: 35, frozenUntil: now + 3000, connected: true},
                 {username: 'carol', teamNumber: 2, streak: 20, frozenUntil: now + 3000, connected: true}
             ], recentEvents: [],
-            demonDefense: {startedAt: now - 10000, snapshotAt: now, phase: 'NORMAL', wave: 1,
-                teams: [{number: 1, rank: 1, kills: 10, memberCount: 2, danger: false, demons: [], shots: []},
-                    {number: 2, rank: 2, kills: 5, memberCount: 1, danger: false, demons: [], shots: []}]}};
+            demonDefense: {startedAt: now - 10000, snapshotAt: now, dangerProgress: 0.75, phase: 'NORMAL', wave: 1,
+                teams: [{number: 1, rank: 1, kills: 10, memberCount: 2, danger: false, nearestDemonProgress: 0, nearestDemonSpeed: 0, demons: [], shots: []},
+                    {number: 2, rank: 2, kills: 5, memberCount: 1, danger: false, nearestDemonProgress: 0, nearestDemonSpeed: 0, demons: [], shots: []}]}};
     }
     return {vm, hooks, room, realtimeCalls};
 }
@@ -91,6 +91,63 @@ test('students are warned only for their own living team and cannot see the anim
     room.demonDefense.teams[0].eliminatedAt = Date.now();
     h.hooks.updateDemonDefenseView();
     assert.equal(h.vm.demonWarning, '');
+});
+
+test('the student defense track follows only their own team regardless of ranking order', () => {
+    const alice = setup('alice'), bob = setup('bob'), carol = setup('carol');
+    const room = alice.room();
+    room.demonDefense.teams[0].nearestDemonProgress = 0.375;
+    room.demonDefense.teams[1].nearestDemonProgress = 0.875;
+    room.demonDefense.teams[1].danger = true;
+    room.demonDefense.teams.reverse();
+    for (const h of [alice, bob, carol]) { h.vm.room = room; h.hooks.updateDemonDefenseView(); }
+    assert.equal(alice.vm.getMyDemonTeam().number, 1);
+    assert.equal(alice.vm.getDemonTrackPercent(alice.vm.getMyDemonTeam()), 25);
+    assert.equal(bob.vm.getDemonTrackPercent(bob.vm.getMyDemonTeam()), 25);
+    assert.equal(carol.vm.getMyDemonTeam().number, 2);
+    assert.equal(carol.vm.getDemonTrackPercent(carol.vm.getMyDemonTeam()), 75);
+    assert.equal(alice.vm.getDemonTrackStatus(alice.vm.getMyDemonTeam()), 'AN TOÀN');
+    assert.equal(carol.vm.getDemonTrackStatus(carol.vm.getMyDemonTeam()), 'NGUY HIỂM');
+    room.players[1].spectator = true;
+    assert.equal(alice.vm.getMyDemonTeam(), null);
+    const host = setup('host'); host.vm.room = room;
+    assert.equal(host.vm.getMyDemonTeam(), null);
+    carol.vm.room.settings.mode = 'CLASSIC';
+    assert.equal(carol.vm.getMyDemonTeam(), null);
+});
+
+test('the actual danger threshold appears at the middle and killing the nearest demon moves back', () => {
+    const h = setup(); h.vm.room = h.room();
+    const team = h.vm.getMyDemonTeam();
+    for (const [progress, percent] of [[0, 0], [0.375, 25], [0.75, 50], [0.875, 75], [1, 100]]) {
+        team.nearestDemonProgress = progress;
+        assert.equal(h.vm.getDemonTrackPercent(team), percent);
+    }
+    h.vm.room.demonDefense.dangerProgress = 0.6;
+    team.nearestDemonProgress = 0.6;
+    assert.equal(h.vm.getDemonTrackPercent(team), 50, 'use the server threshold');
+    team.nearestDemonProgress = 0.3;
+    assert.equal(h.vm.getDemonTrackPercent(team), 25, 'a post-shot summary moves the enemy back');
+});
+
+test('student distance interpolates like the host, freezes after elimination and handles old payloads', () => {
+    const student = setup(), host = setup('host');
+    const room = student.room(), team = room.demonDefense.teams[0];
+    team.nearestDemonProgress = 0.72; team.nearestDemonSpeed = 0.00004;
+    student.vm.room = room; host.vm.room = room;
+    host.hooks.applyDemonArena(room.demonDefense);
+    student.vm.demonClock = host.vm.demonClock = room.demonDefense.snapshotAt + 1000;
+    const hostProgress = (host.vm.getDemonPosition({progress:0.72, speed:0.00004}, team) - 7) / 73;
+    assert.ok(Math.abs(student.vm.getDemonTeamProgress(team) - hostProgress) < 0.000001);
+    room.demonDefense.finished = true;
+    assert.equal(student.vm.getDemonTeamProgress(team), 0.72);
+    team.eliminatedAt = Date.now();
+    assert.equal(student.vm.getDemonTrackPercent(team), 100);
+    assert.equal(student.vm.getDemonTrackStatus(team), 'ĐÃ BỊ LOẠI');
+    team.eliminatedAt = 0;
+    delete team.nearestDemonProgress;
+    assert.equal(student.vm.getDemonTeamProgress(team), null);
+    assert.equal(student.vm.getDemonTrackStatus(team), 'ĐANG ĐỒNG BỘ');
 });
 
 test('unfreeze clears the freeze overlay immediately and break-streak shows the actual deduction', () => {

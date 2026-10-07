@@ -55,6 +55,9 @@
             var jerryMouseEggUrl = 'assets/images/learning-pets/jerry-mouse/egg-level-12.png?v=' + version;
             var jerryMouseCrackedEggUrl = 'assets/images/learning-pets/jerry-mouse/egg-level-13.png?v=' + version;
             var jerryMousePetUrl = 'assets/images/learning-pets/jerry-mouse/pet-level-14.png?v=' + version;
+            var tuffyMouseEggUrl = 'assets/images/learning-pets/tuffy-mouse/egg-level-15.png?v=' + version;
+            var tuffyMouseCrackedEggUrl = 'assets/images/learning-pets/tuffy-mouse/egg-level-16.png?v=' + version;
+            var tuffyMousePetUrl = 'assets/images/learning-pets/tuffy-mouse/pet-level-17.png?v=' + version;
             var animations = {
                 idle: {row: 0, durations: [280, 110, 110, 140, 140, 320], loopPause: 10000},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
@@ -95,6 +98,7 @@
             vm.hasNewCuteDogEgg = false;
             vm.hasNewCuteTomCatEgg = false;
             vm.hasNewJerryMouseEgg = false;
+            vm.hasNewTuffyMouseEgg = false;
 
             function readCurrentUser() {
                 if (liveUser && liveUser.id) { return liveUser; }
@@ -108,7 +112,7 @@
                 var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
                 var admin = hasAdminRole(user);
                 // Unlock all evolved forms for admins without changing their experience.
-                if (admin) { level = Math.max(level, 14); }
+                if (admin) { level = Math.max(level, 17); }
                 var selectedPet = String((user || {}).selectedLearningPet || 'MAM_HOC').toUpperCase();
                 if (selectedPet === 'CAPYBARA_EGG' && level < 3) {
                     selectedPet = 'MAM_HOC';
@@ -120,6 +124,9 @@
                     selectedPet = 'MAM_HOC';
                 }
                 if (selectedPet === 'CUTE_JERRY_MOUSE' && level < 12) {
+                    selectedPet = 'MAM_HOC';
+                }
+                if (selectedPet === 'CUTE_TUFFY_MOUSE' && level < 15) {
                     selectedPet = 'MAM_HOC';
                 }
                 vm.selectedPetKey = selectedPet;
@@ -205,6 +212,24 @@
                     vm.hasNewJerryMouseEgg = false;
                 }
 
+                if (level >= 15) {
+                    var tuffyMouseStageImage = level >= 17
+                            ? tuffyMousePetUrl
+                            : (level === 16 ? tuffyMouseCrackedEggUrl : tuffyMouseEggUrl);
+                    vm.availablePets.push({
+                        key: 'CUTE_TUFFY_MOUSE',
+                        name: level >= 17 ? 'Chuột Tuffy' : 'Trứng Chuột Tuffy',
+                        description: level >= 17
+                                ? 'Đã nở hoàn chỉnh'
+                                : (level === 16 ? 'Trứng đang nứt' : 'Mở khóa ở level 15'),
+                        image: tuffyMouseStageImage,
+                        isNew: !admin && hasUnseenTuffyMouseEgg(user)
+                    });
+                    vm.hasNewTuffyMouseEgg = !admin && hasUnseenTuffyMouseEgg(user);
+                } else {
+                    vm.hasNewTuffyMouseEgg = false;
+                }
+
                 if (selectedPet === 'CAPYBARA_EGG') {
                     vm.petForm = level >= 5 ? 'capybara-hatched' : 'capybara-egg';
                     vm.petImage = level >= 5
@@ -231,6 +256,13 @@
                     vm.petImage = level >= 14
                             ? jerryMousePetUrl
                             : (level === 13 ? jerryMouseCrackedEggUrl : jerryMouseEggUrl);
+                    return;
+                }
+                if (selectedPet === 'CUTE_TUFFY_MOUSE') {
+                    vm.petForm = level >= 17 ? 'tuffy-mouse-hatched' : 'tuffy-mouse-egg';
+                    vm.petImage = level >= 17
+                            ? tuffyMousePetUrl
+                            : (level === 16 ? tuffyMouseCrackedEggUrl : tuffyMouseEggUrl);
                     return;
                 }
                 if (hasAdminRole(user)) {
@@ -338,6 +370,28 @@
                 });
             }
 
+            function tuffyMouseSeenKey(user) {
+                return 'learning-pet:tuffy-mouse-seen:v1:' + (user && user.id ? user.id : 'guest');
+            }
+
+            function hasUnseenTuffyMouseEgg(user) {
+                try {
+                    return $window.localStorage.getItem(tuffyMouseSeenKey(user)) !== '1';
+                } catch (ignoreStorage) {
+                    return true;
+                }
+            }
+
+            function markTuffyMouseEggSeen(user) {
+                try {
+                    $window.localStorage.setItem(tuffyMouseSeenKey(user), '1');
+                } catch (ignoreStorage) {}
+                vm.hasNewTuffyMouseEgg = false;
+                angular.forEach(vm.availablePets, function (item) {
+                    if (item.key === 'CUTE_TUFFY_MOUSE') { item.isNew = false; }
+                });
+            }
+
             vm.selectedPet = function () {
                 for (var i = 0; i < vm.availablePets.length; i++) {
                     if (vm.availablePets[i].key === vm.selectedPetKey) { return vm.availablePets[i]; }
@@ -393,6 +447,9 @@
                         }
                         if (user.selectedLearningPet === 'CUTE_JERRY_MOUSE') {
                             markJerryMouseEggSeen(user);
+                        }
+                        if (user.selectedLearningPet === 'CUTE_TUFFY_MOUSE') {
+                            markTuffyMouseEggSeen(user);
                         }
                         updatePetForm(user);
                         updateMessage();
@@ -716,8 +773,12 @@
                         (vm.hasNewCapybaraEgg ? 1 : 0) +
                         (vm.hasNewCuteDogEgg ? 1 : 0) +
                         (vm.hasNewCuteTomCatEgg ? 1 : 0) +
-                        (vm.hasNewJerryMouseEgg ? 1 : 0);
-                if (vm.hasNewJerryMouseEgg) {
+                        (vm.hasNewJerryMouseEgg ? 1 : 0) +
+                        (vm.hasNewTuffyMouseEgg ? 1 : 0);
+                if (vm.hasNewTuffyMouseEgg) {
+                    vm.summaryTitle = 'Bạn có một quả trứng Chuột Tuffy mới!';
+                    vm.message = 'Level 15 đã mở khóa trứng Chuột Tuffy. Level 16 trứng sẽ nứt và level 17 sẽ nở.';
+                } else if (vm.hasNewJerryMouseEgg) {
                     vm.summaryTitle = 'Bạn có một quả trứng Chuột Jerry mới!';
                     vm.message = 'Level 12 đã mở khóa trứng Chuột Jerry. Level 13 trứng sẽ nứt và level 14 sẽ nở.';
                 } else if (vm.hasNewCuteTomCatEgg) {
@@ -905,6 +966,9 @@
                 }
                 if (vm.hasNewJerryMouseEgg) {
                     markJerryMouseEggSeen(readCurrentUser());
+                }
+                if (vm.hasNewTuffyMouseEgg) {
+                    markTuffyMouseEggSeen(readCurrentUser());
                 }
                 updateMessage();
                 vm.activeSection = vm.drafts.length ? 'drafts' : 'tasks';

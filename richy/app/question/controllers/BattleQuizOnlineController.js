@@ -342,13 +342,13 @@
                 var version = $window.APP_VERSION || '';
                 return 'assets/images/learning-pets/lum-ngay/rotten-egg.png' + (version ? '?v=' + encodeURIComponent(version) : '');
             }
-            var pets = ['MAM_HOC','CAPYBARA_EGG','CUTE_DOG','CUTE_TOM_CAT','CUTE_JERRY_MOUSE'];
+            var pets = ['MAM_HOC','CAPYBARA_EGG','CUTE_DOG','CUTE_TOM_CAT','CUTE_JERRY_MOUSE','CUTE_TUFFY_MOUSE'];
             return getPlayerPetImage({selectedPetKey: pets[Math.floor(level / 3)], vocabularyExperienceLevel: level});
         };
         vm.getGiftRewardLabel = function (level, skillType) {
             if (skillType) { return 'Trứng ' + getSkillLabel(skillType); }
             if (level === -1) { return 'Trứng thối'; }
-            var names = ['Mầm Học','Capybara','Cute Dog','Mèo Tom','Chuột Jerry'];
+            var names = ['Mầm Học','Capybara','Cute Dog','Mèo Tom','Chuột Jerry','Chuột Tuffy'];
             return (level % 3 === 0 ? 'Trứng ' : level % 3 === 1 ? 'Trứng vỡ ' : '') + names[Math.floor(level / 3)];
         };
         function focusGiftModal(selector) {
@@ -531,6 +531,10 @@
         vm.getDemonTeamPlayers = getDemonTeamPlayers;
         vm.getDemonShotStyle = getDemonShotStyle;
         vm.getDemonPosition = getDemonPosition;
+        vm.getMyDemonTeam = getMyDemonTeam;
+        vm.getDemonTeamProgress = getDemonTeamProgress;
+        vm.getDemonTrackPercent = getDemonTrackPercent;
+        vm.getDemonTrackStatus = getDemonTrackStatus;
         vm.getDemonGunX = getDemonGunX;
         vm.getDemonPlayerName = getDemonPlayerName;
         vm.getDemonBullets = getDemonBullets;
@@ -797,7 +801,17 @@
             var ownAdminPet = player && player.username &&
                 player.username === (vm.currentUser || {}).username && hasAdminPetAccess();
             if ((player && player.allPetsUnlocked === true) || ownAdminPet) {
-                level = Math.max(level, 14);
+                level = Math.max(level, 17);
+            }
+
+            if (petKey === 'CUTE_TUFFY_MOUSE' && level >= 15) {
+                if (level >= 17) {
+                    return 'assets/images/learning-pets/tuffy-mouse/pet-level-17.png' + suffix;
+                }
+                if (level === 16) {
+                    return 'assets/images/learning-pets/tuffy-mouse/egg-level-16.png' + suffix;
+                }
+                return 'assets/images/learning-pets/tuffy-mouse/egg-level-15.png' + suffix;
             }
 
             if (petKey === 'CUTE_JERRY_MOUSE' && level >= 12) {
@@ -861,7 +875,7 @@
                 ) || 0
             );
             if ((me && me.allPetsUnlocked === true) || hasAdminPetAccess()) {
-                level = Math.max(level, 14);
+                level = Math.max(level, 17);
             }
 
             /*
@@ -909,6 +923,14 @@
                     label: level >= 14
                         ? 'Chuột Jerry'
                         : (level === 13 ? 'Trứng Chuột Jerry đang nứt' : 'Trứng Chuột Jerry')
+                });
+            }
+            if (level >= 15) {
+                battlePetOptions.push({
+                    key: 'CUTE_TUFFY_MOUSE',
+                    label: level >= 17
+                        ? 'Chuột Tuffy'
+                        : (level === 16 ? 'Trứng Chuột Tuffy đang nứt' : 'Trứng Chuột Tuffy')
                 });
             }
             return battlePetOptions;
@@ -1290,6 +1312,40 @@
             return 7 + Math.min(1, demon.progress + elapsed * demon.speed) * 73;
         }
         function getDemonShotStyle(shot) { return {opacity: vm.demonClock - shot.at < 700 ? 1 : 0}; }
+        function getMyDemonTeam() {
+            var me = getMe(), state = vm.room && vm.room.demonDefense;
+            if (!isDemonDefenseMode() || isHost() || !me || me.spectator || !state) { return null; }
+            var teams = state.teams || [];
+            for (var index = 0; index < teams.length; index++) {
+                if (Number(teams[index].number) === Number(me.teamNumber)) { return teams[index]; }
+            }
+            return null;
+        }
+        function getDemonTeamProgress(team) {
+            var state = vm.room && vm.room.demonDefense;
+            if (!state || !team) { return null; }
+            if (team.eliminatedAt) { return 1; }
+            // Student summaries carry one position, rather than the host's full animation feed.
+            if (team.nearestDemonProgress == null || !isFinite(Number(team.nearestDemonProgress))) { return null; }
+            var elapsed = !state.finished && vm.room.status === 'PLAYING'
+                ? Math.max(0, Math.min(1200, vm.demonClock - Number(state.snapshotAt || 0))) : 0;
+            var speed = Math.max(0, Number(team.nearestDemonSpeed) || 0);
+            return Math.max(0, Math.min(1, Number(team.nearestDemonProgress) + elapsed * speed));
+        }
+        function getDemonTrackPercent(team) {
+            var progress = getDemonTeamProgress(team);
+            if (progress === null) { return 0; }
+            var threshold = Number((vm.room.demonDefense || {}).dangerProgress);
+            if (!(threshold > 0 && threshold < 1)) { threshold = 0.75; }
+            // Place the actual game danger threshold at the middle of the horizontal track.
+            return progress <= threshold ? progress / threshold * 50
+                : 50 + (progress - threshold) / (1 - threshold) * 50;
+        }
+        function getDemonTrackStatus(team) {
+            if (team && team.eliminatedAt) { return 'ĐÃ BỊ LOẠI'; }
+            if (getDemonTeamProgress(team) === null) { return 'ĐANG ĐỒNG BỘ'; }
+            return team.danger ? 'NGUY HIỂM' : 'AN TOÀN';
+        }
         function getUnfreezeTargets() {
             var me = getMe();
             return ((vm.room && vm.room.players) || []).filter(function (player) {

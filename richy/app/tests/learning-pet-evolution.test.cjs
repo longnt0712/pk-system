@@ -87,7 +87,7 @@ test('both pet displays use the same Jerry stage at levels 12, 13, 14 and later'
         const options = battle.getBattlePetOptions();
         assert.equal(options.find(item => item.key === 'CUTE_JERRY_MOUSE').label, label);
         assert.strictEqual(battle.getBattlePetOptions(), options, 'option reference stays stable between digests');
-        assert.equal(options.length, 5, 'earlier pets stay available');
+        assert.equal(options.length, level >= 15 ? 6 : 5, 'earlier pets stay available');
     }
 });
 
@@ -119,13 +119,13 @@ test('Tom retains its three existing levels and can be selected after Jerry unlo
 });
 
 test('the evolution manifests reference packaged transparent PNGs', () => {
-    for (const folder of ['cute-tom-cat', 'jerry-mouse']) {
+    for (const folder of ['cute-tom-cat', 'jerry-mouse', 'tuffy-mouse']) {
         const manifest = JSON.parse(fs.readFileSync(path.join(assets, folder, 'pet.json'), 'utf8'));
         for (const stage of manifest.evolution) {
             const png = fs.readFileSync(path.join(assets, folder, stage.file));
             assert.equal(png.subarray(1, 4).toString(), 'PNG');
-            assert.equal(png.readUInt32BE(16), 512);
-            assert.equal(png.readUInt32BE(20), 512);
+            assert.ok(png.readUInt32BE(16) >= 512);
+            assert.equal(png.readUInt32BE(20), png.readUInt32BE(16), 'square pet artwork');
             assert.equal(png[25], 6, 'RGBA image retains transparency');
         }
     }
@@ -139,11 +139,12 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
         ['CAPYBARA_EGG', 'pet-level-5.png'],
         ['CUTE_DOG', 'pet-level-8.png'],
         ['CUTE_TOM_CAT', 'pet-level-11.png'],
-        ['CUTE_JERRY_MOUSE', 'pet-level-14.png']
+        ['CUTE_JERRY_MOUSE', 'pet-level-14.png'],
+        ['CUTE_TUFFY_MOUSE', 'pet-level-17.png']
     ]) {
         const h = setupLearningPet(0, key, new Map(), roles);
         assert.equal(h.pet.selectedPetKey, key);
-        assert.equal(h.pet.availablePets.length, 5);
+        assert.equal(h.pet.availablePets.length, 6);
         assert.match(h.pet.availablePets.find(item => item.key === key).image, new RegExp(file));
         assert.equal(h.pet.notificationCount, 0, 'bypassing levels does not announce level-up eggs');
         assert.equal(h.user().vocabularyExperienceLevel, 0);
@@ -159,10 +160,12 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
 test('the battle picker unlocks grown pets only for admins and keeps other players stages intact', () => {
     const admin = setupBattle(0, [{name: 'ROLE_ADMIN'}]);
     const options = admin.getBattlePetOptions();
-    assert.equal(options.length, 5);
+    assert.equal(options.length, 6);
     assert.strictEqual(admin.getBattlePetOptions(), options);
     assert.equal(options.find(item => item.key === 'CUTE_JERRY_MOUSE').label, 'Chuột Jerry');
     assert.match(admin.getBattlePetOptionImage('CUTE_JERRY_MOUSE'), /pet-level-14.png/);
+    assert.equal(options.find(item => item.key === 'CUTE_TUFFY_MOUSE').label, 'Chuột Tuffy');
+    assert.match(admin.getBattlePetOptionImage('CUTE_TUFFY_MOUSE'), /pet-level-17.png/);
     assert.match(admin.getPlayerPetImage({username: 'student', selectedPetKey: 'CUTE_TOM_CAT', vocabularyExperienceLevel: 0}), /pet-level-11.png/);
     assert.match(admin.getPlayerPetImage({username: 'another-student', selectedPetKey: 'MAM_HOC', vocabularyExperienceLevel: 0}), /egg-level-0.png/);
     assert.equal(admin.currentUser.vocabularyExperienceLevel, 0);
@@ -171,6 +174,60 @@ test('the battle picker unlocks grown pets only for admins and keeps other playe
     assert.equal(admin.getBattlePetOptions().length, 1);
     const student = setupBattle(0, [{name: 'ROLE_STUDENT'}]);
     assert.match(student.getPlayerPetImage({username: 'admin', allPetsUnlocked: true, selectedPetKey: 'CUTE_JERRY_MOUSE', vocabularyExperienceLevel: 0}), /pet-level-14.png/);
+    assert.match(student.getPlayerPetImage({username: 'admin', allPetsUnlocked: true, selectedPetKey: 'CUTE_TUFFY_MOUSE', vocabularyExperienceLevel: 0}), /pet-level-17.png/);
     assert.match(student.getPlayerPetImage({username: 'student', host: true, selectedPetKey: 'CUTE_JERRY_MOUSE', vocabularyExperienceLevel: 0}), /egg-level-0.png/);
     assert.equal(student.getBattlePetOptions().length, 1);
+});
+
+test('Tuffy is locked before level 15 and stale selection falls back to the first pet', () => {
+    const {pet} = setupLearningPet(14, 'CUTE_TUFFY_MOUSE');
+    assert.equal(pet.selectedPetKey, 'MAM_HOC');
+    assert.equal(pet.hasNewTuffyMouseEgg, false);
+    assert.equal(pet.availablePets.some(item => item.key === 'CUTE_TUFFY_MOUSE'), false);
+    const battle = setupBattle(14);
+    assert.equal(battle.getBattlePetOptions().some(item => item.key === 'CUTE_TUFFY_MOUSE'), false);
+    assert.match(battle.getPlayerPetImage({selectedPetKey: 'CUTE_TUFFY_MOUSE', vocabularyExperienceLevel: 0}), /egg-level-0.png/);
+});
+
+test('Tuffy evolves at levels 15, 16 and 17 consistently in the assistant and battle', () => {
+    for (const [level, filename, form, label] of [
+        [15, 'egg-level-15.png', 'tuffy-mouse-egg', 'Trứng Chuột Tuffy'],
+        [16, 'egg-level-16.png', 'tuffy-mouse-egg', 'Trứng Chuột Tuffy đang nứt'],
+        [17, 'pet-level-17.png', 'tuffy-mouse-hatched', 'Chuột Tuffy'],
+        [20, 'pet-level-17.png', 'tuffy-mouse-hatched', 'Chuột Tuffy']
+    ]) {
+        const {pet} = setupLearningPet(level, 'CUTE_TUFFY_MOUSE');
+        const battle = setupBattle(level);
+        const expected = 'assets/images/learning-pets/tuffy-mouse/' + filename + '?v=pet-test';
+        assert.equal(pet.petForm, form);
+        assert.equal(pet.petImage, expected);
+        assert.equal(pet.selectedPet().image, expected);
+        assert.equal(battle.getPlayerPetImage({selectedPetKey: 'CUTE_TUFFY_MOUSE', vocabularyExperienceLevel: level}), expected);
+        assert.equal(battle.getBattlePetOptionImage('CUTE_TUFFY_MOUSE'), expected);
+        const options = battle.getBattlePetOptions();
+        assert.equal(options.find(item => item.key === 'CUTE_TUFFY_MOUSE').label, label);
+        assert.strictEqual(battle.getBattlePetOptions(), options);
+        assert.equal(options.length, 6);
+        if (level <= 17) {
+            assert.equal(battle.getGiftRewardImage(level), expected);
+            assert.match(battle.getGiftRewardLabel(level), /Chuột Tuffy/);
+        }
+    }
+});
+
+test('selecting Tuffy persists the choice and acknowledges the new egg per user', async () => {
+    const h = setupLearningPet(15, 'CUTE_JERRY_MOUSE');
+    assert.equal(h.pet.hasNewTuffyMouseEgg, true);
+    assert.match(h.pet.message, /Level 15.*Level 16.*level 17/);
+    h.pet.selectPet('CUTE_TUFFY_MOUSE');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.requests[0].body.petKey, 'CUTE_TUFFY_MOUSE');
+    assert.equal(h.user().selectedLearningPet, 'CUTE_TUFFY_MOUSE');
+    assert.equal(h.pet.selectedPetKey, 'CUTE_TUFFY_MOUSE');
+    assert.equal(h.pet.hasNewTuffyMouseEgg, false);
+    assert.equal(h.pet.availablePets.find(item => item.key === 'CUTE_TUFFY_MOUSE').isNew, false);
+    assert.deepEqual(h.broadcasts, [['learningPetSelectionChanged', 'CUTE_TUFFY_MOUSE']]);
+    assert.equal(setupLearningPet(15, 'CUTE_TUFFY_MOUSE', h.storage).pet.hasNewTuffyMouseEgg, false);
+    h.hooks.form({id: 8, vocabularyExperienceLevel: 15, selectedLearningPet: 'CUTE_TUFFY_MOUSE'});
+    assert.equal(h.pet.hasNewTuffyMouseEgg, true);
 });

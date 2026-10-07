@@ -53,12 +53,12 @@ window.setupDemonFixture=function(vm,applyRoom,applyArena){
  {username:'david',displayName:'Dũng',teamNumber:2,streak:12,score:10,connected:true}],recentEvents:[
  {id:1,type:'FREEZE',actorUsername:'carol',actorDisplayName:'Chi',targetUsername:'bob',targetDisplayName:'Bình',createdAt:now-4000}],
  currentQuestion:role==='student'?question():null,
- demonDefense:{startedAt:now-45000,snapshotAt:now,wave:2,phase:params.get('phase')||'NORMAL',warningSeconds:3,finished:false,teams:[
- {number:1,rank:1,memberCount:2,kills:45,rescues:2,survivedMs:45000,danger:true,eliminatedAt:0,
+ demonDefense:{startedAt:now-45000,snapshotAt:now,dangerProgress:.75,wave:2,phase:params.get('phase')||'NORMAL',warningSeconds:3,finished:false,teams:[
+ {number:1,rank:1,memberCount:2,kills:45,rescues:2,survivedMs:45000,danger:true,nearestDemonProgress:.79,nearestDemonSpeed:0,eliminatedAt:0,
  demons:[{id:1,progress:.79,speed:0,fast:false},{id:2,progress:.52,speed:0,fast:true},{id:11,progress:.22,speed:0,fast:false,tough:true,health:2}],shots:[]},
- {number:2,rank:2,memberCount:2,kills:32,rescues:1,survivedMs:45000,danger:false,eliminatedAt:0,
+ {number:2,rank:2,memberCount:2,kills:32,rescues:1,survivedMs:45000,danger:false,nearestDemonProgress:.56,nearestDemonSpeed:0,eliminatedAt:0,
  demons:[{id:1,progress:.56,speed:0,fast:false,tough:true,health:1},{id:2,progress:.28,speed:0,fast:true}],shots:[]}]}};
- if(params.get('phase')){room.demonDefense.teams[0].danger=false;}
+ if(params.get('phase')){room.demonDefense.teams[0].danger=false;room.demonDefense.teams[0].nearestDemonProgress=.52;}
  if(params.get('skill')){room.pendingSkillType=params.get('skill');room.pendingSkillTargetUsernames=['carol','david'];room.currentQuestion=null;}
  applyRoom(room,false);if(role==='host'){applyArena(room.demonDefense);}vm.demonWarningSound=false;
 };

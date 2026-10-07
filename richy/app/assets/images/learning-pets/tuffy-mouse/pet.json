@@ -1,0 +1,25 @@
+{
+  "id": "tuffy-mouse",
+  "name": "Chuột Tuffy",
+  "selectionKey": "CUTE_TUFFY_MOUSE",
+  "unlockVocabularyExperienceLevel": 15,
+  "evolution": [
+    {
+      "minimumVocabularyExperienceLevel": 15,
+      "maximumVocabularyExperienceLevel": 15,
+      "form": "egg-intact",
+      "file": "egg-level-15.png"
+    },
+    {
+      "minimumVocabularyExperienceLevel": 16,
+      "maximumVocabularyExperienceLevel": 16,
+      "form": "egg-cracked",
+      "file": "egg-level-16.png"
+    },
+    {
+      "minimumVocabularyExperienceLevel": 17,
+      "form": "hatched",
+      "file": "pet-level-17.png"
+    }
+  ]
+}

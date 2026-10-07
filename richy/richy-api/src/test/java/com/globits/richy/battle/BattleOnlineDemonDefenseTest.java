@@ -206,6 +206,9 @@ public class BattleOnlineDemonDefenseTest {
         student = ReflectionTestUtils.invokeMethod(service, "snapshotLocked", room, "alice");
         assertFalse(host.getDemonDefense().teams.get(0).demons.isEmpty());
         assertTrue(student.getDemonDefense().teams.get(0).demons.isEmpty());
+        assertTrue(student.getDemonDefense().teams.get(0).nearestDemonProgress > 0D);
+        assertTrue(student.getDemonDefense().teams.get(0).nearestDemonSpeed > 0D);
+        assertEquals(DemonDefenseGame.DANGER_PROGRESS, student.getDemonDefense().dangerProgress, 0D);
         assertNull(host.getCurrentQuestion());
     }
     @Test @SuppressWarnings("unchecked") public void disabledSkillsClearThePlanInEveryModeAndRoundTripSettings() {
