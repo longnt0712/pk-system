@@ -859,6 +859,7 @@
                     title: item.title || payload.title || 'Bài đang làm dở',
                     assignmentTaskId: payload.assignmentTaskId || null,
                     assignmentPart: payload.assignmentPart || null,
+                    assignmentParts: payload.assignmentParts || [],
                     assignmentTopicId: payload.assignmentTopicId || null,
                     assignmentCategoryId: payload.assignmentCategoryId || null,
                     assignmentSourceQuestionId: payload.assignmentSourceQuestionId || (payload.card || {}).id || null,
@@ -959,7 +960,8 @@
                 } else if (task.ieltsTestId && (task.activityType === 'IELTS_READING' || task.activityType === 'IELTS_LISTENING' || task.activityType === 'IELTS_WRITING' || task.activityType === 'COMPREHENSIVE')) {
                     $state.go(task.activityType === 'COMPREHENSIVE' ? 'application.comprehensive_actual_test'
                         : (task.activityType === 'IELTS_WRITING' ? 'application.ielts_writing_actual_test' : (task.activityType === 'IELTS_LISTENING' ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test')),
-                        {ieltsReadingTestId: task.ieltsTestId, assignmentTaskId: task.taskId, assignmentPart: task.ieltsPart, sessionMode: 'STUDY'});
+                        {ieltsReadingTestId: task.ieltsTestId, assignmentTaskId: task.taskId, assignmentPart: task.ieltsPart,
+                            assignmentParts: (task.remainingIeltsParts && task.remainingIeltsParts.length ? task.remainingIeltsParts : (task.ieltsParts || [task.ieltsPart])).join(','), sessionMode: 'STUDY'});
                 } else {
                     $state.go('application.englishClass');
                 }
@@ -978,7 +980,8 @@
                 } else if (draft.testId) {
                     $state.go(draft.testMode === 'COMPREHENSIVE' ? 'application.comprehensive_actual_test'
                         : (draft.testMode === 'WRITING' ? 'application.ielts_writing_actual_test' : (draft.isListening ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test')),
-                        {ieltsReadingTestId: draft.testId, assignmentTaskId: draft.assignmentTaskId, assignmentPart: draft.assignmentPart, sessionMode: draft.sessionMode});
+                        {ieltsReadingTestId: draft.testId, assignmentTaskId: draft.assignmentTaskId, assignmentPart: draft.assignmentPart,
+                            assignmentParts: (draft.assignmentParts || []).join(','), sessionMode: draft.sessionMode});
                 }
             };
 

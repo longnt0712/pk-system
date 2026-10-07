@@ -224,6 +224,7 @@
 					ieltsReadingTestId: task.ieltsTestId,
 					assignmentTaskId: task.taskId,
 					assignmentPart: task.ieltsPart,
+					assignmentParts: (task.remainingIeltsParts && task.remainingIeltsParts.length ? task.remainingIeltsParts : (task.ieltsParts || [task.ieltsPart])).join(','),
 					sessionMode: 'STUDY'
 				});
             } else {
@@ -277,7 +278,7 @@
                 if (!draft || !draft.testId || String(draft.userId) !== userId
                         || draft.completed === true || draft.hiddenFromDashboard === true) { return; }
                 var savedAt = new Date(draft.savedAt || 0).getTime();
-                var taskMatch = /:task:(\d+)$/.exec(key);
+                var taskMatch = /:task:(\d+)(?::parts:[\d-]+)?$/.exec(key);
                 var comprehensive = draft.testMode === 'COMPREHENSIVE'
                     || key.indexOf(ieltsPrefix + ':comprehensive') === 0;
                 var writing = draft.testMode === 'WRITING' || key.indexOf(ieltsPrefix + ':writing') === 0;
@@ -296,7 +297,8 @@
                     progressValue: (Number(draft.answeredCount) || 0) + '/' + (Number(draft.totalQuestions) || 40) + ' câu',
                     testId: draft.testId,
                     assignmentTaskId: draft.assignmentTaskId || (taskMatch ? Number(taskMatch[1]) : null),
-                    assignmentPart: ieltsDraftAssignmentPart(key, draft)
+                    assignmentPart: ieltsDraftAssignmentPart(key, draft),
+                    assignmentParts: draft.assignmentParts || []
                 });
             }
 
@@ -407,6 +409,7 @@
                 ieltsReadingTestId: draft.testId,
                 assignmentTaskId: draft.assignmentTaskId,
                 assignmentPart: draft.assignmentPart,
+                assignmentParts: (draft.assignmentParts || []).join(','),
                 sessionMode: draft.sessionMode || (draft.assignmentTaskId ? 'STUDY' : 'SERIOUS')
             });
         };

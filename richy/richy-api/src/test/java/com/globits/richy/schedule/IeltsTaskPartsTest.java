@@ -29,6 +29,36 @@ public class IeltsTaskPartsTest {
     private Object[] submission(int part) {
         return new Object[] {30L, 20L, part, start.plusHours(1), 100L + part, 4, 10L};
     }
+    private Object[] combinedSubmission(String parts) {
+        return new Object[] {30L, 20L, null, start.plusHours(1), 200L, 4, 10L, parts};
+    }
+    @Test public void aCombinedSubmissionCompletesEverySelectedPartAndCountsAsOneRepeat() {
+        EnrolmentClassScheduleTaskDto task = assignment(1, 2, 3);
+        HomeworkTopicCompletion.applyIelts(task, Collections.singletonList(combinedSubmission(",1,2,3,")), start, end);
+        assertEquals("DONE", progress(task));
+        task.setRequiredAttempts(2);
+        HomeworkTopicCompletion.applyIelts(task, Collections.singletonList(combinedSubmission(",1,2,3,")), start, end);
+        assertEquals("PROGRESS_50", progress(task));
+        HomeworkTopicCompletion.applyIelts(task, Arrays.asList(combinedSubmission(",1,2,3,"), combinedSubmission(",1,2,3,")), start, end);
+        assertEquals("DONE", progress(task));
+    }
+    @Test public void selectedSubsetsAndLegacySinglePartResultsCombineWithoutDoubleCounting() {
+        EnrolmentClassScheduleTaskDto task = assignment(1, 3);
+        HomeworkTopicCompletion.applyIelts(task, Collections.singletonList(combinedSubmission(",1,1,2,")), start, end);
+        assertEquals("PROGRESS_50", progress(task));
+        HomeworkTopicCompletion.applyIelts(task, Arrays.asList(combinedSubmission(",1,1,2,"), submission(3)), start, end);
+        assertEquals("DONE", progress(task));
+    }
+    @Test public void resultPartsRoundTripThroughTheDtoAndKeepLegacyResultsReadable() {
+        TestResult result = new TestResult(); result.setCreateDate(start); result.setCompletedPart(2);
+        assertEquals(Arrays.asList(2), result.getCompletedParts());
+        result.setCompletedParts(Arrays.asList(3, 1, 3));
+        assertNull(result.getCompletedPart());
+        assertEquals(Arrays.asList(1, 3), result.getCompletedParts());
+        assertEquals(Arrays.asList(1, 3), new TestResultDto(result).getCompletedParts());
+        result.setCompletedParts(Arrays.asList(2));
+        assertEquals(Integer.valueOf(2), result.getCompletedPart());
+    }
     private EnrolmentClassScheduleTaskDto vocabularyAssignment() {
         EnrolmentClassScheduleTaskDto task = new EnrolmentClassScheduleTaskDto();
         task.setId(10L); task.setTopicId(20L); task.setSection("HOMEWORK");
@@ -46,6 +76,17 @@ public class IeltsTaskPartsTest {
         HomeworkTopicCompletion.applyIelts(task, Arrays.asList(submission(1), submission(1), submission(2)), start, end);
         assertEquals("PROGRESS_50", progress(task));
         HomeworkTopicCompletion.applyIelts(task, Arrays.asList(submission(1), submission(3)), start, end);
+        assertEquals("DONE", progress(task));
+    }
+    @Test public void separateStudyAndSeriousPartSubmissionsMustCompleteTheSameAssignment() {
+        EnrolmentClassScheduleTaskDto task = assignment(1, 2);
+        Object[] studyPart2 = submission(2), seriousPart1 = submission(1);
+        HomeworkTopicCompletion.applyIelts(task, Collections.singletonList(seriousPart1), start, end);
+        assertEquals("PROGRESS_50", progress(task));
+        Object[] otherAssignment = submission(2); otherAssignment[6] = 11L;
+        HomeworkTopicCompletion.applyIelts(task, Arrays.asList(seriousPart1, otherAssignment), start, end);
+        assertEquals("PROGRESS_50", progress(task));
+        HomeworkTopicCompletion.applyIelts(task, Arrays.asList(seriousPart1, studyPart2), start, end);
         assertEquals("DONE", progress(task));
     }
     @Test public void everySelectedPartMustMeetTheRequiredRepeatCount() {

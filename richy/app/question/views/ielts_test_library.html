@@ -127,6 +127,7 @@
                             <strong><i class="fa fa-save"></i> Tiến trình đã lưu trên tài khoản</strong>
                             <span>{{progress.answeredCount || 0}}/{{progress.totalQuestions || (vm.isWritingMode ? 1 : 40)}} {{vm.isWritingMode ? 'Task' : 'câu'}} · {{vm.formatLearningDuration(progress.elapsedSeconds)}}</span>
                             <span ng-if="progress.completed"><i class="fa fa-check-circle"></i> Đã hoàn thành · có thể mở lại để xem</span>
+                            <span ng-if="progress.studiedParts.length"><i class="fa fa-book"></i> Đã học Part {{progress.studiedParts.join(', ')}} · mở lại để ôn và xem ghi chú</span>
                             <span ng-if="progress.savedAt">Lưu lúc {{progress.savedAt | date:'HH:mm dd/MM/yyyy'}}</span>
                         </div>
                         <div class="reading-test-card__progress writing-task-progress"

@@ -161,7 +161,7 @@
                         continue;
                     }
                     var draft = JSON.parse($window.localStorage.getItem(storageKey));
-                    if (!draft || !draft.testId || String(draft.userId) !== userId || draft.sessionMode !== 'STUDY') {
+                    if (!draft || !draft.testId || String(draft.userId) !== userId || draft.sessionMode !== 'STUDY' || draft.assignmentSession) {
                         continue;
                     }
                     var isListeningDraft = draft.isListening === true || draft.testMode === 'LISTENING';
@@ -196,7 +196,7 @@
         vm.testCatalogUrl = function (item) {
             var route = vm.isComprehensiveMode ? 'comprehensive_test/' :
                 (vm.isWritingMode ? 'ielts_writing_actual_test/' : (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'));
-            return route + item.id + (vm.getLearningProgress(item.id) ? '?sessionMode=STUDY' : '');
+            return route + item.id + '?sessionMode=STUDY';
         };
 
         vm.seriousTestCatalogUrl = function (item) {

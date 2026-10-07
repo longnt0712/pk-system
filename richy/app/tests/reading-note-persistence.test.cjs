@@ -16,7 +16,7 @@ function setup(blocked = false) {
         $stateParams: {ieltsReadingTestId: 42},
         readingDraftBaseKey: 'ieltsReadingInProgress:7', readingDraftTaskSuffix: '',
         readingDraftSubmitted: false,
-        angular: {copy: structuredClone, isDefined: value => value !== undefined, forEach: (items, callback) => (items || []).forEach(callback), noop() {}},
+        angular: {copy: structuredClone, isArray: Array.isArray, isDefined: value => value !== undefined, forEach: (items, callback) => (items || []).forEach(callback), noop() {}},
         $timeout: timeout,
         $window: {localStorage: {
             getItem(key) { if (blocked) throw Error('blocked'); return stored.get(key); },
@@ -28,6 +28,8 @@ function setup(blocked = false) {
             deleteLearningDraft(key) { calls.push({deleted: key}); return Promise.resolve(); }
         }
     });
+    context.maximumAssignedPart = 4;
+    vmModule.runInContext(source.slice(source.indexOf('        function normalizeAssignedParts('), source.indexOf('        vm.assignedParts = normalizeAssignedParts(')), context);
     const start = source.indexOf('        function readingDraftStorageKey(');
     const end = source.indexOf('        function loadReadingLearningDrafts()', start);
     vmModule.runInContext(source.slice(start, end), context);
@@ -276,4 +278,78 @@ test('serious completion clears its server draft even when local storage is bloc
     assert.ok(calls.some(call => call.deleted === c.readingDraftStorageKey(42, 'SERIOUS')));
     assert.equal(c.readStoredDraft(c.readingDraftStorageKey(42, 'SERIOUS')), null);
     assert.equal(c.readStoredDraft(c.readingDraftStorageKey(42, 'STUDY')).annotationNotes[0], 'study');
+});
+
+test('a submitted legacy Part 1 seeds the combined assignment without hiding Finish', () => {
+    const {context: c} = setup();
+    Object.assign(c.vm, {assignmentTaskId: 10, isPartAssignment: true, assignedPart: 1, assignedParts: [1, 2, 3]});
+    c.readingDraftTaskSuffix = ':task:10:parts:1-2-3';
+    c.storeReadingDraft('ieltsReadingInProgress:7:reading:test:42:task:10', {
+        userId: 7, testId: 42, testMode: 'READING', sessionMode: 'STUDY', assignmentTaskId: 10,
+        assignmentPart: 1, completed: true, resultId: 100, savedAt: '2026-10-07',
+        results: [{ordinalNumber: 1, clientAnswer: 'rats'}], annotationNotes: [{id: 'n1', specificNote: 'Keep me'}]
+    });
+    const restored = c.readReadingDraft(42, 'STUDY');
+    assert.equal(restored.completed, false); assert.equal(restored.resultId, null);
+    assert.equal(restored.results[0].clientAnswer, 'rats');
+    assert.equal(restored.annotationNotes[0].specificNote, 'Keep me');
+});
+
+test('assigned and personal Study share learning while submitted assignments remain submittable', () => {
+    const {context: c} = setup();
+    Object.assign(c.vm, {assignmentTaskId: 10, isPartAssignment: true, assignedPart: 2, assignedParts: [2]});
+    c.readingDraftTaskSuffix = ':task:10:parts:2';
+    const oldKey = 'ieltsReadingInProgress:7:reading:test:42:task:10';
+    const draft = {userId: 7, testId: 42, sessionMode: 'STUDY', assignmentTaskId: 10, assignmentPart: 1, completed: true};
+    c.storeReadingDraft(oldKey, draft);
+    assert.equal(c.readReadingDraft(42, 'STUDY').completed, false, 'a submitted Part cannot hide Finish on the assignment');
+    const sharedKey = c.readingDraftStorageKey(42, 'STUDY');
+    c.storeReadingDraft(sharedKey, {...draft, assignmentTaskId: null, assignmentPart: null, isPartAssignment: false,
+        annotationNotes: [{id: 'n1', specificNote: 'Shared note'}], studiedParts: [1], partNumbers: [1, 2, 3], completed: false});
+    assert.equal(c.readReadingDraft(42, 'STUDY').annotationNotes[0].specificNote, 'Shared note');
+    c.vm.assignmentTaskId = null; c.vm.isPartAssignment = false; c.readingDraftTaskSuffix = '';
+    assert.equal(c.readingDraftStorageKey(42, 'STUDY'), sharedKey);
+    assert.equal(c.readReadingDraft(42, 'STUDY').annotationNotes[0].specificNote, 'Shared note');
+    assert.deepEqual(Array.from(c.readReadingDraft(42, 'STUDY').studiedParts), [1]);
+});
+
+test('saving a selected Part keeps the answers and notes of temporarily hidden Parts', () => {
+    const {context: c} = setup();
+    Object.assign(c.vm, {ieltsReadingActualTest: {id: 42, title: 'Reading'}, isStartTest: true,
+        assignmentTaskId: 10, isPartAssignment: true, assignedParts: [2], assignedPart: 2,
+        availableIeltsParts: [1, 2, 3], availableIeltsQuestionCount: 40, annotationNotes: [{id: 'n1', specificNote: 'Part 1 note'}]});
+    c.$scope = {counter: 0}; c.syncTimerForPersistence = () => {}; c.getActiveDurationSeconds = () => 60;
+    c.getReadingDraftPartNumbers = () => [2];
+    c.getReadingQuestionEntries = () => [{question: {ordinalNumber: 14}}];
+    c.getAllReadingQuestionEntries = () => Array(40);
+    c.serializeReadingDraftResults = () => [{ordinalNumber: 14, clientAnswer: 'C'}];
+    c.serializeReadingQuestionStates = () => [{ordinalNumber: 14}];
+    c.serializeCompleteListStates = () => [];
+    c.serializeReadingAnnotations = () => [{containerId: 'passage-text-1', start: 0, end: 5, noteId: 'n1'}];
+    const key = c.readingDraftStorageKey(42, 'STUDY');
+    c.storeReadingDraft(key, {results: [{ordinalNumber: 1, clientAnswer: 'rats'}, {ordinalNumber: 14, clientAnswer: 'A'}],
+        studiedParts: [1], annotationNotes: c.vm.annotationNotes});
+    const start = source.indexOf('        function saveReadingDraft()');
+    vmModule.runInContext(source.slice(start, source.indexOf('        function findDraftQuestionState(', start)), c);
+    c.saveReadingDraft();
+    const draft = c.readStoredDraft(key);
+    assert.deepEqual(Array.from(draft.results, row => row.clientAnswer), ['rats', 'C']);
+    assert.equal(draft.assignmentTaskId, null); assert.equal(draft.isPartAssignment, false);
+    assert.equal(draft.totalQuestions, 40); assert.equal(draft.annotationNotes[0].specificNote, 'Part 1 note');
+    c.markStudyDraftCompleted(100);
+    assert.deepEqual(Array.from(c.readStoredDraft(key).studiedParts), [1, 2]);
+    assert.equal(c.readStoredDraft(key).completed, false, 'Part 3 remains available to learn');
+});
+
+test('note anchors follow their text when selected Listening or Writing Parts change the shared pane', () => {
+    const c = vmModule.createContext({textRangeForOffsets: (container, start, end) => ({start, end, text: container.textContent.slice(start, end)})});
+    const start = source.indexOf('        function textRangeForAnnotation(');
+    vmModule.runInContext(source.slice(start, source.indexOf('        function restoreReadingAnnotations(', start)), c);
+    const record = {start: 30, end: 43, quote: 'important text', prefix: 'Task 2: ', suffix: ' to remember'};
+    for (const text of ['Task 2: important text to remember', 'Task 1: previous work. Task 2: important text to remember']) {
+        const restored = c.textRangeForAnnotation({textContent: text}, record);
+        assert.equal(restored.text, 'important text');
+        assert.equal(restored.start, text.indexOf('important text'));
+    }
+    assert.equal(c.textRangeForAnnotation({textContent: 'Task 1 contains other words'}, record), null, 'hidden Part records must not attach to other text');
 });

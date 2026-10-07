@@ -21,6 +21,7 @@ public class StudentAssignedTaskDto implements Serializable {
     private String ieltsTestTitle;
     private Integer ieltsPart;
     private java.util.List<Integer> ieltsParts;
+    private java.util.List<Integer> remainingIeltsParts;
     private String assignedDate;
     private String dueDate;
     private String dueTime;
@@ -61,6 +62,8 @@ public class StudentAssignedTaskDto implements Serializable {
     public void setIeltsPart(Integer value) { ieltsPart = value; }
     public java.util.List<Integer> getIeltsParts() { return ieltsParts; }
     public void setIeltsParts(java.util.List<Integer> value) { ieltsParts = value; }
+    public java.util.List<Integer> getRemainingIeltsParts() { return remainingIeltsParts; }
+    public void setRemainingIeltsParts(java.util.List<Integer> value) { remainingIeltsParts = value; }
     public String getAssignedDate() { return assignedDate; }
     public void setAssignedDate(String value) { assignedDate = value; }
     public String getDueDate() { return dueDate; }

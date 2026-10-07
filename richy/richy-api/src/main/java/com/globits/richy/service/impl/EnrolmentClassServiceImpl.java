@@ -729,6 +729,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					int required = task.getRequiredAttempts();
 					int completed = 0;
 					Integer nextIeltsPart = task.getIeltsPart();
+					List<Integer> remainingIeltsParts = new ArrayList<Integer>();
 					if (task.getTopicId() != null && ("DAILY_VOCAB".equals(task.getActivityType())
 							|| "DAILY_LISTENING".equals(task.getActivityType()))) {
 						long completedCount = "DAILY_LISTENING".equals(task.getActivityType()) && task.getSourceQuestionId() != null
@@ -742,8 +743,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 						Map<Integer, Integer> partCounts = new LinkedHashMap<Integer, Integer>();
 						for (Integer part : task.getIeltsParts()) {
 							partCounts.put(part, (int) Math.min(Integer.MAX_VALUE, testResultRepository.countIeltsPartAssignmentAttempts(
-									student.getId(), task.getId(), task.getIeltsTestId(), part,
+									student.getId(), task.getId(), task.getIeltsTestId(), part, "%," + part + ",%",
 									Integer.valueOf(HomeworkTopicCompletion.ieltsTestType(task)), start, completionEnd)));
+							if (partCounts.get(part) < task.getRequiredAttempts()) { remainingIeltsParts.add(part); }
 						}
 						required = HomeworkTopicCompletion.requiredIeltsAttempts(task);
 						completed = HomeworkTopicCompletion.completedIeltsAttempts(task, partCounts);
@@ -767,6 +769,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					item.setSourceQuestionId(task.getSourceQuestionId()); item.setSourceQuestionTitle(task.getSourceQuestionTitle());
 					item.setIeltsTestId(task.getIeltsTestId()); item.setIeltsTestTitle(task.getIeltsTestTitle());
 					item.setIeltsPart(nextIeltsPart); item.setIeltsParts(task.getIeltsParts());
+					item.setRemainingIeltsParts(remainingIeltsParts);
 					item.setAssignedDate(day.getScheduleDate()); item.setDueDate(task.getResolvedDueDate());
 					item.setDueTime(task.getResolvedDueTime()); item.setRequiredAttempts(required);
 					item.setCompletedAttempts(Math.min(required, completed)); item.setRemainingAttempts(remaining);

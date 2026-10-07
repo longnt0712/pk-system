@@ -2,10 +2,19 @@ package com.globits.richy.testresult;
 
 import com.globits.richy.domain.LearningDraft;
 import com.globits.richy.domain.TestResult;
+import com.globits.richy.domain.Question;
+import com.globits.richy.domain.QuestionAnswer;
+import com.globits.richy.domain.Answer;
+import com.globits.richy.domain.EnrolmentClassScheduleTask;
 import com.globits.richy.dto.LearningDraftDto;
 import com.globits.richy.dto.TestResultDto;
+import com.globits.richy.dto.QuestionAnswerDto;
+import com.globits.richy.dto.QuestionAnswerTestResultDto;
 import com.globits.richy.repository.LearningDraftRepository;
 import com.globits.richy.repository.TestResultRepository;
+import com.globits.richy.repository.QuestionRepository;
+import com.globits.richy.repository.QuestionAnswerRepository;
+import com.globits.richy.repository.EnrolmentClassScheduleTaskRepository;
 import com.globits.richy.service.impl.TestResultServiceImpl;
 import com.globits.security.domain.User;
 import com.globits.security.dto.UserDto;
@@ -128,5 +137,52 @@ public class IeltsNotePersistenceTest {
         assertEquals(STUDY, service.getObjectById(study.getId()).getIeltsLearningState());
         assertEquals(SERIOUS, service.getObjectById(serious.getId()).getIeltsLearningState());
         assertEquals(STUDY, service.getLearningDrafts().get(0).getPayload());
+    }
+
+    private TestResultDto assignedSubmission() {
+        Question test = new Question(); test.setId(42L); test.setTitle("Assigned reading");
+        EnrolmentClassScheduleTask task = new EnrolmentClassScheduleTask(); task.setId(99L);
+        task.setActivityType("IELTS_READING"); task.setIeltsTest(test); task.setIeltsParts(Arrays.asList(1, 2, 3));
+        QuestionRepository questions = mock(QuestionRepository.class);
+        when(questions.findOne(42L)).thenReturn(test);
+        EnrolmentClassScheduleTaskRepository tasks = mock(EnrolmentClassScheduleTaskRepository.class);
+        when(tasks.findOne(99L)).thenReturn(task);
+        QuestionAnswerRepository answers = mock(QuestionAnswerRepository.class);
+        ReflectionTestUtils.setField(service, "questionRepository", questions);
+        ReflectionTestUtils.setField(service, "scheduleTaskRepository", tasks);
+        ReflectionTestUtils.setField(service, "questionAnswerRepository", answers);
+        when(users.findById(7L)).thenReturn(user);
+        TestResultDto dto = new TestResultDto(); dto.setTestType(4); dto.setSourceQuestionId(42L);
+        dto.setAssignmentTaskId(99L); dto.setCompletedParts(Arrays.asList(1, 2, 3));
+        dto.setIeltsSessionMode("STUDY"); dto.setIeltsLearningState(STUDY); dto.setActiveDurationSeconds(120);
+        dto.setTestTakerPerformance("<h2>Part 1</h2><mark data-note-id=\"n1\">text</mark><h2>Part 2</h2><h2>Part 3</h2>");
+        List<QuestionAnswerTestResultDto> rows = new ArrayList<>();
+        for (int ordinal : new int[] {1, 14, 27}) {
+            Question questionPackage = new Question(); questionPackage.setType(2);
+            Question question = new Question(); question.setId((long) ordinal); question.setParent(questionPackage);
+            QuestionAnswer answer = new QuestionAnswer(); answer.setId(100L + ordinal); answer.setQuestion(question);
+            Answer value = new Answer(); value.setAnswer("answer-" + ordinal); answer.setAnswer(value);
+            when(answers.findOne(answer.getId())).thenReturn(answer); when(answers.getOne(answer.getId())).thenReturn(answer);
+            QuestionAnswerTestResultDto row = new QuestionAnswerTestResultDto(); row.setOrdinalNumber(ordinal);
+            QuestionAnswerDto answerDto = new QuestionAnswerDto(); answerDto.setId(answer.getId());
+            row.setQuestionAnswer(answerDto); row.setClientAnswer("answer-" + ordinal); rows.add(row);
+        }
+        dto.setQuestionAnswerTestResult(rows); return dto;
+    }
+
+    @Test public void groupedAssignmentSubmissionRetainsAllPartsAnswersAndNotesInResultDetail() {
+        service.saveLearningDraft(draft(STUDY_KEY, STUDY));
+        TestResultDto saved = service.saveObject(assignedSubmission());
+        TestResultDto detail = service.getObjectById(saved.getId());
+        assertEquals(Arrays.asList(1, 2, 3), detail.getCompletedParts()); assertNull(detail.getCompletedPart());
+        assertEquals(Long.valueOf(99L), detail.getAssignmentTaskId()); assertEquals("SUCCESS", detail.getResultStatus());
+        assertEquals(3, detail.getQuestionAnswerTestResult().size());
+        assertTrue(detail.getTestTakerPerformance().contains("Part 3"));
+        assertEquals(STUDY, detail.getIeltsLearningState());
+        assertEquals(STUDY, service.getLearningDrafts().get(0).getPayload());
+    }
+
+    @Test(expected = IllegalArgumentException.class) public void groupedSubmissionRejectsAnUnassignedPart() {
+        TestResultDto dto = assignedSubmission(); dto.setCompletedParts(Arrays.asList(1, 4)); service.saveObject(dto);
     }
 }

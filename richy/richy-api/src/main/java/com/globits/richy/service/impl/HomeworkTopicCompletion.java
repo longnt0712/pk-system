@@ -148,13 +148,19 @@ public final class HomeworkTopicCompletion {
             Long studentId = (Long) row[0], testId = (Long) row[1];
             Integer part = (Integer) row[2], resultTestType = (Integer) row[5];
             LocalDateTime completed = (LocalDateTime) row[3];
-            if (!task.getIeltsTestId().equals(testId) || !task.getIeltsParts().contains(part)
+            if (!task.getIeltsTestId().equals(testId)
                     || task.getId() == null || !task.getId().equals((Long) row[6])
                     || resultTestType.intValue() != ieltsTestType(task)
                     || completed.isBefore(start) || !completed.isBefore(end)) { continue; }
+            List<Integer> completedParts = com.globits.richy.domain.TestResult.parseCompletedParts(
+                    row.length > 7 ? (String) row[7] : null, part);
+            completedParts.retainAll(task.getIeltsParts());
+            if (completedParts.isEmpty()) { continue; }
             Map<Integer, Integer> partCounts = counts.get(studentId);
             if (partCounts == null) { partCounts = new LinkedHashMap<Integer, Integer>(); counts.put(studentId, partCounts); }
-            partCounts.put(part, partCounts.containsKey(part) ? partCounts.get(part) + 1 : 1);
+            for (Integer completedPart : completedParts) {
+                partCounts.put(completedPart, partCounts.containsKey(completedPart) ? partCounts.get(completedPart) + 1 : 1);
+            }
             int count = completedIeltsAttempts(task, partCounts);
             EnrolmentClassTaskProgressDto existing = null;
             for (EnrolmentClassTaskProgressDto progress : task.getStudentProgress()) {

@@ -53,17 +53,18 @@ public interface TestResultRepository extends JpaRepository<TestResult, Long> {
             @Param("toDate") LocalDateTime toDate);
 
     @Query("select count(distinct r.id) from TestResult r where r.user.id = :studentId "
-            + "and r.assignmentTaskId = :taskId and r.sourceQuestionId = :testId and r.completedPart = :part and r.testType = :testType "
+            + "and r.assignmentTaskId = :taskId and r.sourceQuestionId = :testId and r.testType = :testType "
+            + "and (r.completedPart = :part or r.completedPartsValue like :partToken) "
             + "and (r.testType <> 6 or r.resultStatus = 'SUCCESS') "
             + "and r.createDate >= :fromDate and r.createDate <= :toDate")
     long countIeltsPartAssignmentAttempts(@Param("studentId") Long studentId, @Param("taskId") Long taskId,
             @Param("testId") Long testId,
-            @Param("part") Integer part, @Param("testType") Integer testType,
+            @Param("part") Integer part, @Param("partToken") String partToken, @Param("testType") Integer testType,
             @Param("fromDate") LocalDateTime fromDate, @Param("toDate") LocalDateTime toDate);
 
-    @Query("select r.user.id, r.sourceQuestionId, r.completedPart, r.createDate, r.id, r.testType, r.assignmentTaskId "
+    @Query("select r.user.id, r.sourceQuestionId, r.completedPart, r.createDate, r.id, r.testType, r.assignmentTaskId, r.completedPartsValue "
             + "from TestResult r where r.user.id in :students and r.sourceQuestionId in :tests "
-            + "and r.completedPart is not null and r.testType in (2, 4, 6, 7) "
+            + "and (r.completedPart is not null or r.completedPartsValue is not null) and r.testType in (2, 4, 6, 7) "
             + "and (r.testType <> 6 or r.resultStatus = 'SUCCESS') "
             + "and r.createDate >= :fromDate and r.createDate <= :toDate order by r.createDate asc, r.id asc")
     List<Object[]> findIeltsPartCompletions(@Param("students") List<Long> students, @Param("tests") List<Long> tests,

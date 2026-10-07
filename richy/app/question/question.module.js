@@ -384,7 +384,7 @@
             })
 
             .state('application.ielts_reading_actual_test', {
-                url: '/ielts_reading_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&sessionMode&startFresh',
+                url: '/ielts_reading_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&assignmentParts&sessionMode&startFresh',
                 templateUrl: 'question/views/ielts_reading_actual_test_idp.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'IELTS Reading Actual Test'},
                 controller: 'IELTSReadingActualTestController as vm',
@@ -403,7 +403,7 @@
             })
 
             .state('application.ielts_listening_actual_test', {
-                url: '/ielts_listening_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&sessionMode&startFresh',
+                url: '/ielts_listening_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&assignmentParts&sessionMode&startFresh',
                 templateUrl: 'question/views/ielts_reading_actual_test_idp.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'IELTS Listening Actual Test'},
                 controller: 'IELTSReadingActualTestController as vm',
@@ -422,7 +422,7 @@
             })
 
             .state('application.ielts_writing_actual_test', {
-                url: '/ielts_writing_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&sessionMode&startFresh',
+                url: '/ielts_writing_actual_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&assignmentParts&sessionMode&startFresh',
                 templateUrl: 'question/views/ielts_reading_actual_test_idp.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'IELTS Writing Test'},
                 controller: 'IELTSReadingActualTestController as vm',
@@ -441,7 +441,7 @@
             })
 
             .state('application.comprehensive_actual_test', {
-                url: '/comprehensive_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&sessionMode&startFresh',
+                url: '/comprehensive_test/:ieltsReadingTestId?assignmentTaskId&assignmentPart&assignmentParts&sessionMode&startFresh',
                 templateUrl: 'question/views/ielts_reading_actual_test_idp.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'Bài tập tổng hợp'},
                 controller: 'IELTSReadingActualTestController as vm',

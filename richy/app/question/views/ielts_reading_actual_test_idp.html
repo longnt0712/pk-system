@@ -15,9 +15,9 @@
 <div class="row margin-top-10 wrap-test text-center idp-start-screen" ng-if="vm.isHasTestTakerName === true && vm.isStartTest !== true && vm.isStartingTest !== true">
     <h1 class="start-test-button" ng-show="vm.isHasTestTakerName === true" style="cursor: pointer" ng-click="vm.requestStartTest()">
         <span class="idp-start-icon"><i class="fa fa-play"></i></span>
-        {{vm.isComprehensiveRoute ? 'Bắt đầu bài tập' : 'Start ' + (vm.isWritingRoute ? 'Writing' : (vm.isListeningRoute ? 'Listening' : 'Reading')) + ' ' + (vm.isPartAssignment ? (vm.isWritingRoute ? 'Task ' : 'Part ') + vm.assignedPart : 'test')}}
+        {{vm.isComprehensiveRoute ? 'Bắt đầu bài tập' : 'Start ' + (vm.isWritingRoute ? 'Writing' : (vm.isListeningRoute ? 'Listening' : 'Reading')) + ' ' + (vm.isPartAssignment ? vm.assignedPartsLabel() : 'test')}}
         <small ng-if="vm.isComprehensiveRoute">Các câu hỏi được hiển thị trong một danh sách duy nhất</small>
-        <small ng-if="!vm.isComprehensiveRoute">{{vm.isPartAssignment ? 'Assigned task · ' + (vm.isWritingRoute ? 'Writing Task ' : 'Part ') + vm.assignedPart + ' only' : (vm.isWritingRoute ? 'Task 1: 20 minutes · Task 2: 40 minutes' : '60 minutes · ' + (vm.isListeningRoute ? '4' : '3') + ' parts · 40 questions')}}</small>
+        <small ng-if="!vm.isComprehensiveRoute">{{vm.isPartAssignment ? 'Assigned task · ' + vm.assignedPartsLabel() : (vm.isWritingRoute ? 'Task 1: 20 minutes · Task 2: 40 minutes' : '60 minutes · ' + (vm.isListeningRoute ? '4' : '3') + ' parts · 40 questions')}}</small>
     </h1>
 </div>
 <div class="row margin-top-10 wrap-test text-center idp-start-screen" ng-if="vm.isStartingTest === true && vm.showTestModeDialog !== true">
@@ -115,13 +115,17 @@
             <button type="button" class="idp-tool-icon" title="Highlight and notes" aria-label="Highlight and notes">
                 <i class="fa fa-pencil-square-o"></i>
             </button>
-            <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" type="button" class="idp-top-finish" data-ng-click="vm.saveTestResult()">
-                {{vm.isPartAssignment ? 'Finish Part ' + vm.assignedPart : 'Finish test'}}
+            <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" type="button" class="idp-top-finish" data-ng-click="vm.saveTestResult()">
+                {{vm.isSubmittingTest ? 'Saving...' : 'Finish test'}}
             </button>
         </div>
     </div>
     <div class="row">
         <div class="col-md-12 idp-exam-stage" style="background-color: #E1EDF4;" ng-show="vm.isStartTest && vm.passageNumber != 4">
+            <div class="alert alert-info" ng-if="vm.isPartAssignment && !vm.isPreviewMode" style="margin: 10px 0">
+                <strong>{{vm.testSessionMode === 'SERIOUS' ? 'Serious Test' : 'Study'}} · {{vm.assignedPartsLabel()}}</strong>
+                <span ng-if="vm.nextAssignmentParts.length"> · Tiếp theo: {{vm.nextAssignmentSessionMode === 'SERIOUS' ? 'Serious Test' : 'Study'}} Part {{vm.nextAssignmentParts.join(', ')}}</span>
+            </div>
             <div class="portlet bg-white bordered idp-candidate-bar">
                 <div class="portlet-body">
                     <div class="row" ng-hide="vm.passageNumber == 4">
@@ -139,8 +143,8 @@
                                 <p class="idp-timer" style="font-size: 15px;font-weight: 700;"><i class="fa fa-clock-o"></i><span style="font-weight:bold;font-size:20px;">{{vm.getRemainingMinutes()}}</span> minute<span ng-show="vm.getRemainingMinutes() != 1">s</span><small>{{vm.getTimerStatusLabel()}}</small></p>
                             </div>
                             <div style="padding-top: 15px;padding-right: 40px" class="col-md-4 text-right" ng-show="vm.isStartTest">
-                                <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" style="padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" data-ng-click="vm.saveTestResult()">
-                                    <span class="bold actual-test-font-global">{{vm.isPartAssignment ? 'Finish Part ' + vm.assignedPart : 'Finish test'}}</span>
+                                <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" style="padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" data-ng-click="vm.saveTestResult()">
+                                    <span class="bold actual-test-font-global">{{vm.isSubmittingTest ? 'Saving...' : 'Finish test'}}</span>
                                 </button>
                             </div>
                         </div>
@@ -148,7 +152,7 @@
 
                         <div class="row for-media text-center idp-candidate-mobile" style="width: 100%;background-color: white" ng-show="vm.isStartTest">
                         <div class="col-md-6 margin-top-10">
-                            <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" style="margin-left: 10px;padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">Finish</span></button>
+                            <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" style="margin-left: 10px;padding-left: 20px; padding-right: 20px" class="btn btn-primary idp-finish-btn" data-ng-click="vm.saveTestResult()"> <span class="bold actual-test-font-global">{{vm.isSubmittingTest ? 'Saving...' : 'Finish'}}</span></button>
                         </div>
                         <div class="col-md-6">
                             <p class="idp-timer" ng-click="vm.toggleTimerDetails()">
@@ -1554,7 +1558,6 @@
                         <div class="idp-part-switcher">
                              <section class="idp-part-group"
                                      ng-repeat="part in vm.getIeltsNavigationParts() track by part.number"
-                                     ng-if="!vm.isPartAssignment || part.number === vm.assignedPart"
                                      ng-class="{'is-active': vm.activeIeltsNavigationPart() === part.number}"
                                      ng-click="vm.openIeltsNavigationPart(part)">
                                 <button type="button"
@@ -1608,7 +1611,11 @@
                     <h1><i class="fa fa-calendar"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.testDate | date: 'dd/MM/yyyy HH:mm:ss'}}</h1>
                     <h1><i class="fa fa-pencil"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.correctAnswer}}/{{vm.resultQuestionTotal}}</h1>
                     <h1 class="bold text-red" ng-if="!vm.isPartAssignment && !vm.isFlexibleRoute"><i class="fa fa-graduation-cap"></i> &nbsp;<i class="fa fa-caret-right"></i> {{vm.testResultAfterSubmitting.bandScore}}</h1>
-                    <h1 class="bold text-green" ng-if="vm.isPartAssignment"><i class="fa fa-check-circle"></i> &nbsp;{{vm.isWritingRoute ? 'Writing Task ' : 'Part '}}{{vm.assignedPart}} has been recorded</h1>
+                    <h1 class="bold text-green" ng-if="vm.isPartAssignment"><i class="fa fa-check-circle"></i> &nbsp;{{vm.assignedPartsLabel()}} has been recorded</h1>
+                    <button type="button" class="btn btn-primary" ng-if="vm.assignmentTaskId && vm.nextAssignmentParts.length"
+                            ng-click="vm.continueAssignedParts()">
+                        Tiếp tục {{vm.nextAssignmentSessionMode === 'SERIOUS' ? 'Serious Test' : 'Study'}} · Part {{vm.nextAssignmentParts.join(', ')}}
+                    </button>
                     <button type="button"
                             class="gpt-regrade-btn"
                             ng-if="vm.canRetryWritingGrade(vm.testResultAfterSubmitting)"

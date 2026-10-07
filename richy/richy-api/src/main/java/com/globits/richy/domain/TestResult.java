@@ -2,6 +2,9 @@ package com.globits.richy.domain;
 
 import java.util.Set;
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.TreeSet;
 import javax.persistence.ManyToMany;
 import javax.persistence.JoinTable;
 
@@ -40,6 +43,8 @@ public class TestResult extends BaseObject{
     private Long sourceQuestionId;
     @Column(name="completed_part")
     private Integer completedPart;
+    @Column(name="completed_parts", length=32)
+    private String completedPartsValue;
     @Column(name="assignment_task_id")
     private Long assignmentTaskId;
     @Column(name="ielts_session_mode", length=20)
@@ -72,6 +77,25 @@ public class TestResult extends BaseObject{
     public void setSourceQuestionId(Long value){sourceQuestionId=value;}
     public Integer getCompletedPart(){return completedPart;}
     public void setCompletedPart(Integer value){completedPart=value;}
+    public static List<Integer> parseCompletedParts(String value, Integer legacyPart) {
+        Set<Integer> parts = new TreeSet<Integer>();
+        if (value != null) {
+            for (String token : value.split(",")) {
+                try { parts.add(Integer.valueOf(token.trim())); } catch (NumberFormatException ignored) {}
+            }
+        }
+        if (parts.isEmpty() && legacyPart != null) { parts.add(legacyPart); }
+        return new ArrayList<Integer>(parts);
+    }
+    public List<Integer> getCompletedParts(){return parseCompletedParts(completedPartsValue, completedPart);}
+    public void setCompletedParts(List<Integer> values){
+        Set<Integer> parts = new TreeSet<Integer>();
+        if (values != null) { for (Integer part : values) { if (part != null) { parts.add(part); } } }
+        StringBuilder csv = new StringBuilder(",");
+        for (Integer part : parts) { csv.append(part).append(','); }
+        completedPartsValue = parts.isEmpty() ? null : csv.toString();
+        completedPart = parts.size() == 1 ? parts.iterator().next() : null;
+    }
     public Long getAssignmentTaskId(){return assignmentTaskId;}
     public void setAssignmentTaskId(Long value){assignmentTaskId=value;}
     public String getIeltsSessionMode(){return ieltsSessionMode;}

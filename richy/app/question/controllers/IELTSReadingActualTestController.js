@@ -1035,11 +1035,22 @@
         vm.assignmentTaskId = /^\d+$/.test(String($stateParams.assignmentTaskId || '')) ? Number($stateParams.assignmentTaskId) : null;
         var requestedAssignedPart = /^\d+$/.test(String($stateParams.assignmentPart || '')) ? Number($stateParams.assignmentPart) : null;
         var maximumAssignedPart = vm.isComprehensiveRoute ? 1 : (vm.isWritingRoute ? 2 : (vm.isListeningRoute ? 4 : 3));
-        vm.assignedPart = requestedAssignedPart >= 1 && requestedAssignedPart <= maximumAssignedPart ? requestedAssignedPart : null;
-        // assignmentPart tự nó đã đủ để mở chế độ chỉ làm một Part.
-        // Một số link do giáo viên mở trực tiếp không có assignmentTaskId.
-        vm.isPartAssignment = !!vm.assignedPart;
-        vm.testSessionMode = vm.assignmentTaskId ? 'STUDY' : 'SERIOUS';
+        function normalizeAssignedParts(value) {
+            var parts = angular.isArray(value) ? value : String(value || '').split(',');
+            return parts.map(Number).filter(function (part, index, all) {
+                return part >= 1 && part <= maximumAssignedPart && Math.floor(part) === part && all.indexOf(part) === index;
+            }).sort(function (left, right) { return left - right; });
+        }
+        vm.assignedParts = normalizeAssignedParts($stateParams.assignmentParts);
+        if (!vm.assignedParts.length) { vm.assignedParts = normalizeAssignedParts(requestedAssignedPart); }
+        vm.assignedPart = vm.assignedParts[0] || null;
+        var requestedAssignmentParts = angular.copy(vm.assignedParts);
+        vm.nextAssignmentParts = [];
+        vm.isPartAssignment = vm.assignedParts.length > 0;
+        vm.assignedPartsLabel = function () {
+            return (vm.isWritingRoute ? 'Writing Task ' : 'Part ') + vm.assignedParts.join(', ');
+        };
+        vm.testSessionMode = 'STUDY';
         vm.selectedTestSessionMode = vm.testSessionMode;
         vm.showTestModeDialog = false;
         vm.resultQuestionTotal = 40;
@@ -1613,11 +1624,13 @@
         vm.testResult.user = vm.currentUser;
 
         var readingDraftBaseKey = 'ieltsReadingInProgress:' + (vm.currentUser.id || 'anonymous');
-        var readingDraftTaskSuffix = vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId
+        var legacyReadingDraftTaskSuffix = vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId
             : (vm.assignedPart ? (vm.isWritingRoute ? ':writing-task:' : ':part:') + vm.assignedPart : '');
-        var legacyReadingDraftStorageKey = readingDraftBaseKey + readingDraftTaskSuffix;
+        var readingDraftTaskSuffix = vm.assignmentTaskId && vm.isPartAssignment
+            ? legacyReadingDraftTaskSuffix + ':parts:' + vm.assignedParts.join('-') : legacyReadingDraftTaskSuffix;
+        var legacyReadingDraftStorageKey = readingDraftBaseKey + legacyReadingDraftTaskSuffix;
         var legacyModeDraftStorageKey = readingDraftBaseKey
-            + (vm.isComprehensiveRoute ? ':comprehensive' : (vm.isWritingRoute ? ':writing' : (vm.isListeningRoute ? ':listening' : ':reading'))) + readingDraftTaskSuffix;
+            + (vm.isComprehensiveRoute ? ':comprehensive' : (vm.isWritingRoute ? ':writing' : (vm.isListeningRoute ? ':listening' : ':reading'))) + legacyReadingDraftTaskSuffix;
         var readingDraftAutosaveTimer = null;
         var readingDraftSubmitted = false;
         var readingLearningDraftsReady = null;
@@ -1628,7 +1641,42 @@
             var normalizedMode = String(sessionMode || vm.testSessionMode || vm.selectedTestSessionMode || '').toUpperCase();
             var sessionSuffix = normalizedMode === 'SERIOUS' ? ':serious' : '';
             return readingDraftBaseKey + (vm.isComprehensiveRoute ? ':comprehensive:test:' : (vm.isWritingRoute ? ':writing:test:' : (vm.isListeningRoute ? ':listening:test:' : ':reading:test:')))
-                + String(testId || 'unknown') + sessionSuffix + readingDraftTaskSuffix;
+                + String(testId || 'unknown') + sessionSuffix + (normalizedMode === 'STUDY' ? '' :
+                    (vm.assignmentTaskId ? ':task:' + vm.assignmentTaskId + ':parts:' + vm.assignedParts.join('-') : readingDraftTaskSuffix));
+        }
+
+        function assignmentStudyDraftKey(testId) {
+            return readingDraftStorageKey(testId, 'STUDY') + ':task:' + vm.assignmentTaskId + ':parts:' + vm.assignedParts.join('-');
+        }
+
+        function mergeStudyLearningDrafts(drafts) {
+            drafts.sort(function (left, right) { return new Date(left.savedAt || 0) - new Date(right.savedAt || 0); });
+            var merged = angular.copy(drafts[drafts.length - 1]);
+            function collect(field, keyFor) {
+                var records = {};
+                angular.forEach(drafts, function (draft) {
+                    angular.forEach(draft[field] || [], function (record) { records[keyFor(record)] = angular.copy(record); });
+                });
+                return Object.keys(records).map(function (key) { return records[key]; });
+            }
+            merged.results = collect('results', function (record) { return record.ordinalNumber + ':' + record.answerId; });
+            merged.questionStates = collect('questionStates', function (record) { return record.questionId || record.ordinalNumber; });
+            merged.completeListStates = collect('completeListStates', function (record) { return record.questionId || record.ordinalNumber; });
+            merged.annotationNotes = collect('annotationNotes', function (record) { return record.id; });
+            merged.annotations = collect('annotations', function (record) { return record.containerId + ':' + record.start + ':' + record.end; });
+            var studied = [];
+            angular.forEach(drafts, function (draft) {
+                var completedParts = draft.studiedParts || (draft.completed
+                    ? (draft.assignmentParts || (draft.assignmentPart ? [draft.assignmentPart] : draft.partNumbers)) : []);
+                angular.forEach(completedParts || [], function (part) { if (studied.indexOf(Number(part)) < 0) { studied.push(Number(part)); } });
+            });
+            merged.studiedParts = studied.sort(function (a, b) { return a - b; });
+            merged.completed = studied.length >= maximumAssignedPart;
+            merged.assignmentTaskId = null;
+            merged.assignmentPart = null;
+            merged.assignmentParts = [];
+            merged.isPartAssignment = false;
+            return merged;
         }
 
         var readingDraftMemory = {};
@@ -1762,6 +1810,21 @@
                         : [readingDraftStorageKey(expectedTestId, 'STUDY'), readingDraftStorageKey(expectedTestId, 'SERIOUS'), legacyModeDraftStorageKey, legacyReadingDraftStorageKey];
                 var newestDraft = null;
                 var newestDraftTime = -1;
+                var studyDrafts = [];
+                var sharedStudyKey = readingDraftStorageKey(expectedTestId, 'STUDY');
+                var sharedStudyDraft = readStoredDraft(sharedStudyKey);
+                var sharedStudyFound = false;
+                if (expectedMode === 'STUDY') {
+                    candidateKeys = [sharedStudyKey, legacyModeDraftStorageKey, legacyReadingDraftStorageKey];
+                    candidateKeys = candidateKeys.concat(Object.keys(readingDraftMemory));
+                    try {
+                        for (var storageIndex = 0; storageIndex < $window.localStorage.length; storageIndex++) {
+                            var storageKey = $window.localStorage.key(storageIndex);
+                            if (storageKey.indexOf(readingDraftBaseKey + ':') === 0) { candidateKeys.push(storageKey); }
+                        }
+                    } catch (ignoreStudyKeyListing) {}
+                    candidateKeys = candidateKeys.filter(function (key, index, all) { return all.indexOf(key) === index; });
+                }
                 for (var keyIndex = 0; keyIndex < candidateKeys.length; keyIndex++) {
                     var draft = readStoredDraft(candidateKeys[keyIndex]);
                     if (!draft || String(draft.userId) !== String(vm.currentUser.id) || !draft.testId
@@ -1781,10 +1844,37 @@
                     if (expectedMode && String(draft.sessionMode || '').toUpperCase() !== expectedMode) {
                         continue;
                     }
+                    if (expectedMode === 'STUDY') {
+                        if (candidateKeys[keyIndex] === sharedStudyKey) { sharedStudyFound = true; }
+                        if (!sharedStudyDraft || candidateKeys[keyIndex] === sharedStudyKey) { studyDrafts.push(draft); }
+                    } else if (vm.isPartAssignment) {
+                        if (String(draft.assignmentTaskId || '') !== String(vm.assignmentTaskId || '')) { continue; }
+                        var draftParts = normalizeAssignedParts(draft.assignmentParts || draft.assignmentPart);
+                        if (!draftParts.length || draftParts.some(function (part) { return vm.assignedParts.indexOf(part) < 0; })) { continue; }
+                        var sameParts = draftParts.join(',') === vm.assignedParts.join(',');
+                        // Old single-Part drafts can seed the new combined attempt. A
+                        // submitted Part must never turn the remaining Parts into review.
+                        if (draft.assignmentParts && !sameParts) { continue; }
+                        if (sameParts && draft.completed && vm.assignmentTaskId) { continue; }
+                        if (!sameParts) {
+                            draft = angular.copy(draft);
+                            draft.completed = false;
+                            draft.resultId = null;
+                        }
+                    } else if (draft.isPartAssignment || draft.assignmentTaskId) { continue; }
                     var draftTime = new Date(draft.savedAt || 0).getTime() || 0;
                     if (!newestDraft || draftTime > newestDraftTime) {
                         newestDraft = draft;
                         newestDraftTime = draftTime;
+                    }
+                }
+                if (expectedMode === 'STUDY' && studyDrafts.length) {
+                    newestDraft = sharedStudyFound
+                        ? angular.copy(sharedStudyDraft) : mergeStudyLearningDrafts(studyDrafts);
+                    if (!sharedStudyFound) { storeReadingDraft(sharedStudyKey, newestDraft); }
+                    if (vm.assignmentTaskId) {
+                        newestDraft.completed = false;
+                        newestDraft.resultId = null;
                     }
                 }
                 return newestDraft;
@@ -1915,6 +2005,7 @@
                     assignmentTaskId: vm.assignmentTaskId || null,
                     isPartAssignment: vm.isPartAssignment === true,
                     assignmentPart: vm.isPartAssignment ? (vm.assignedPart || null) : null,
+                    assignmentParts: vm.isPartAssignment ? angular.copy(vm.assignedParts) : [],
                     partNumbers: partNumbers,
                     partCount: partNumbers.length,
                     savedAt: new Date().toISOString(),
@@ -1931,11 +2022,44 @@
                     annotationNotes: angular.copy(vm.annotationNotes || []),
                     annotations: serializeReadingAnnotations(),
                     hiddenFromDashboard: previousDraft.hiddenFromDashboard === true,
+                    studiedParts: angular.copy(previousDraft.studiedParts || []),
                     completed: previousDraft.completed === true,
-                    resultId: previousDraft.resultId || null
+                    resultId: vm.isLearningReview === true ? (previousDraft.resultId || null) : null
                 };
+                if (vm.testSessionMode === 'STUDY') {
+                    var visibleOrdinals = getReadingQuestionEntries().map(function (entry) { return Number(entry.question.ordinalNumber); });
+                    ['results', 'questionStates', 'completeListStates'].forEach(function (field) {
+                        readingDraft[field] = (previousDraft[field] || []).filter(function (record) {
+                            return visibleOrdinals.indexOf(Number(record.ordinalNumber)) < 0;
+                        }).concat(readingDraft[field]);
+                    });
+                    readingDraft.assignmentTaskId = null;
+                    readingDraft.assignmentPart = null;
+                    readingDraft.assignmentParts = [];
+                    readingDraft.isPartAssignment = false;
+                    readingDraft.partNumbers = angular.copy(vm.availableIeltsParts || partNumbers);
+                    readingDraft.partCount = readingDraft.partNumbers.length;
+                    readingDraft.totalQuestions = vm.availableIeltsQuestionCount || getAllReadingQuestionEntries().length;
+                    var sharedAnswered = {};
+                    angular.forEach(readingDraft.results, function (result) {
+                        if (String(result.clientAnswer || '').trim()) { sharedAnswered[result.ordinalNumber] = true; }
+                    });
+                    readingDraft.answeredCount = Object.keys(sharedAnswered).length;
+                }
                 storeReadingDraft(activeDraftKey, readingDraft);
                 saveReadingLearningDraft(activeDraftKey, readingDraft);
+                if (vm.assignmentTaskId && vm.testSessionMode === 'STUDY') {
+                    var assignmentDraft = angular.copy(readingDraft);
+                    assignmentDraft.assignmentSession = true;
+                    assignmentDraft.assignmentTaskId = vm.assignmentTaskId;
+                    assignmentDraft.assignmentPart = vm.assignedPart;
+                    assignmentDraft.assignmentParts = angular.copy(vm.assignedParts);
+                    assignmentDraft.isPartAssignment = true;
+                    assignmentDraft.completed = false;
+                    var assignmentKey = assignmentStudyDraftKey(testId);
+                    storeReadingDraft(assignmentKey, assignmentDraft);
+                    saveReadingLearningDraft(assignmentKey, assignmentDraft);
+                }
                 angular.forEach([legacyModeDraftStorageKey, legacyReadingDraftStorageKey], function (key) {
                     var legacyDraft = readStoredDraft(key);
                     if (legacyDraft && String(legacyDraft.testId) === String(testId)
@@ -1955,11 +2079,29 @@
                 var key = readingDraftStorageKey(testId, 'STUDY');
                 var draft = readStoredDraft(key);
                 if (!draft) { return; }
-                draft.completed = true;
+                var studiedParts = draft.studiedParts || [];
+                angular.forEach(getReadingDraftPartNumbers(), function (part) {
+                    if (studiedParts.indexOf(part) < 0) { studiedParts.push(part); }
+                });
+                draft.studiedParts = studiedParts.sort(function (a, b) { return a - b; });
+                draft.completed = (vm.availableIeltsParts || getReadingDraftPartNumbers()).every(function (part) {
+                    return studiedParts.indexOf(part) >= 0;
+                });
                 draft.resultId = resultId || null;
                 draft.savedAt = new Date().toISOString();
                 storeReadingDraft(key, draft);
                 saveReadingLearningDraft(key, draft);
+                if (vm.assignmentTaskId) {
+                    var assignmentKey = assignmentStudyDraftKey(testId);
+                    var assignmentDraft = readStoredDraft(assignmentKey);
+                    if (assignmentDraft) {
+                        assignmentDraft.completed = true;
+                        assignmentDraft.resultId = resultId || null;
+                        assignmentDraft.savedAt = draft.savedAt;
+                        storeReadingDraft(assignmentKey, assignmentDraft);
+                        saveReadingLearningDraft(assignmentKey, assignmentDraft);
+                    }
+                }
             } catch (ignoreStudyDraftCompletionError) {
                 // The submitted server result is still available when storage is blocked.
             }
@@ -2436,6 +2578,7 @@
             // Giao diện thi cũ có ba workspace hiển thị. Part 4 dùng workspace
             // thứ ba nhưng phải lọc từ payload bốn Part trước khi gộp dữ liệu.
             vm.assignedPart = 4;
+            vm.assignedParts = [4];
             vm.isPartAssignment = true;
         }
         vm.previewKey = $location.search().previewKey;
@@ -2445,7 +2588,8 @@
         vm.isStartingTest = false;
         vm.startTestError = '';
 
-        var requestedSessionMode = String($location.search().sessionMode || '').toUpperCase();
+        var requestedSessionMode = vm.assignmentTaskId ? 'STUDY' :
+            (String($location.search().sessionMode || '').toUpperCase() === 'SERIOUS' ? 'SERIOUS' : 'STUDY');
         var startFreshSeriousTest = requestedSessionMode === 'SERIOUS'
             && String($location.search().startFresh || '') === '1';
         var existingSessionDraft = startFreshSeriousTest ? null
@@ -2457,10 +2601,81 @@
             vm.selectedTestSessionMode = existingSessionDraft.sessionMode;
         }
 
+        function splitAssignedParts(studyDraft) {
+            var seriousParts = requestedAssignmentParts.filter(function (part) {
+                return (studyDraft.annotationNotes || []).some(function (note) {
+                    var notePart = Number(note.partNumber || note.passage);
+                    if (!notePart) {
+                        (studyDraft.annotations || []).some(function (annotation) {
+                            if (annotation.hasNote && annotation.noteId === note.id) {
+                                var containerPart = /-(\d+)$/.exec(annotation.containerId || '');
+                                notePart = containerPart ? Number(containerPart[1]) : null;
+                                return notePart === part;
+                            }
+                            return false;
+                        });
+                    }
+                    return notePart === part;
+                });
+            });
+            return {serious: seriousParts, study: requestedAssignmentParts.filter(function (part) { return seriousParts.indexOf(part) < 0; })};
+        }
+
+        function findPendingAssignedSession() {
+            var keys = Object.keys(typeof readingDraftMemory === 'undefined' ? {} : readingDraftMemory);
+            try {
+                for (var index = 0; index < $window.localStorage.length; index++) { keys.push($window.localStorage.key(index)); }
+            } catch (ignoreAssignmentKeyListing) {}
+            var newest = null;
+            angular.forEach(keys, function (key) {
+                var draft = readStoredDraft(key);
+                var expectedTestMode = vm.isComprehensiveRoute ? 'COMPREHENSIVE' : (vm.isWritingRoute ? 'WRITING' : (vm.isListeningRoute ? 'LISTENING' : 'READING'));
+                if (!draft || draft.completed || String(draft.userId) !== String(vm.currentUser.id)
+                        || String(draft.testId) !== String($stateParams.ieltsReadingTestId)
+                        || String(draft.assignmentTaskId) !== String(vm.assignmentTaskId)
+                        || (draft.testMode && draft.testMode !== expectedTestMode)
+                        || (draft.sessionMode !== 'SERIOUS' && !draft.assignmentSession)) { return; }
+                var parts = normalizeAssignedParts(draft.assignmentParts || draft.assignmentPart);
+                if (!parts.length || parts.some(function (part) { return requestedAssignmentParts.indexOf(part) < 0; })) { return; }
+                if (!newest || new Date(draft.savedAt || 0) > new Date(newest.savedAt || 0)) { newest = draft; }
+            });
+            return newest;
+        }
+
         vm.requestStartTest = function () {
             if (vm.isStartingTest) { return; }
             if (vm.isPreviewMode) {
                 vm.testSessionMode = 'SERIOUS';
+                vm.startTest();
+                return;
+            }
+            if (vm.assignmentTaskId) {
+                waitForReadingLearningDrafts(function () {
+                    if (vm.isStartTest || vm.isStartingTest) { return; }
+                    var studyDraft = readReadingDraft($stateParams.ieltsReadingTestId, 'STUDY') || {};
+                    var groups = splitAssignedParts(studyDraft);
+                    var pendingSession = findPendingAssignedSession();
+                    requestedSessionMode = pendingSession ? pendingSession.sessionMode : (groups.serious.length ? 'SERIOUS' : 'STUDY');
+                    vm.assignedParts = pendingSession ? normalizeAssignedParts(pendingSession.assignmentParts || pendingSession.assignmentPart)
+                        : (requestedSessionMode === 'SERIOUS' ? groups.serious : groups.study);
+                    vm.assignedPart = vm.assignedParts[0];
+                    vm.nextAssignmentParts = requestedAssignmentParts.filter(function (part) { return vm.assignedParts.indexOf(part) < 0; });
+                    vm.nextAssignmentSessionMode = vm.nextAssignmentParts.some(function (part) { return groups.serious.indexOf(part) >= 0; }) ? 'SERIOUS' : 'STUDY';
+                    vm.testSessionMode = vm.selectedTestSessionMode = requestedSessionMode;
+                    vm.isLearningReview = false;
+                    vm.showTestModeDialog = false;
+                    vm.showAudioListening = vm.isListeningRoute && requestedSessionMode === 'STUDY';
+                    vm.showAudio = vm.showAudioListening;
+                    vm.startTest();
+                }, function () {
+                    vm.startTestError = 'Không thể tải tiến trình học. Vui lòng thử lại.';
+                    toastr.error(vm.startTestError, 'Khôi phục bài làm');
+                });
+                return;
+            }
+            if (requestedSessionMode === 'STUDY') {
+                vm.testSessionMode = 'STUDY';
+                vm.selectedTestSessionMode = 'STUDY';
                 vm.startTest();
                 return;
             }
@@ -2471,6 +2686,12 @@
                 return;
             }
             vm.showTestModeDialog = true;
+        };
+
+        vm.continueAssignedParts = function () {
+            if (!vm.nextAssignmentParts.length) { return; }
+            $location.search({assignmentTaskId: vm.assignmentTaskId, assignmentParts: vm.nextAssignmentParts.join(','),
+                assignmentPart: vm.nextAssignmentParts[0], sessionMode: vm.nextAssignmentSessionMode});
         };
 
         vm.confirmLeaveTest = function ($event) {
@@ -2557,6 +2778,17 @@
                 return data;
             }
 
+            if (vm.assignedParts.length > 1) {
+                angular.forEach(data.subQuestions, function (passage) {
+                    passage.subQuestions = (passage.subQuestions || []).filter(function (questionPackage) {
+                        questionPackage.subQuestions = (questionPackage.subQuestions || []).filter(function (question) {
+                            return vm.assignedParts.indexOf(listeningPartNumberForOrdinal(question.ordinalNumber)) >= 0;
+                        });
+                        return questionPackage.subQuestions.length > 0;
+                    });
+                });
+                return data;
+            }
             var assignedPart = Number(vm.assignedPart);
             var passages = data.subQuestions;
             var displayIndex = Math.min(assignedPart, 3) - 1;
@@ -2612,11 +2844,11 @@
             if (!vm.isWritingRoute || !vm.isPartAssignment || !data || !angular.isArray(data.subQuestions)) {
                 return data;
             }
-            var requestedType = Number(vm.assignedPart) === 2 ? 17 : 16;
             var selectedPackages = [];
             angular.forEach(data.subQuestions, function (passage) {
                 angular.forEach((passage && passage.subQuestions) || [], function (questionPackage) {
-                    if (Number(questionPackage.type) === requestedType) { selectedPackages.push(questionPackage); }
+                    var taskNumber = Number(questionPackage.type) === 17 ? 2 : (Number(questionPackage.type) === 16 ? 1 : null);
+                    if (vm.assignedParts.indexOf(taskNumber) >= 0) { selectedPackages.push(questionPackage); }
                 });
             });
             if (!data.subQuestions.length) { return data; }
@@ -2712,6 +2944,18 @@
                     vm.listeningPartAudioUrls = vm.isListeningRoute ? data.subQuestions.map(function (part) {
                         return String(part && part.pronounce || '').trim();
                     }) : [];
+                    vm.availableIeltsParts = [];
+                    vm.availableIeltsQuestionCount = 0;
+                    angular.forEach(data.subQuestions, function (passage, passageIndex) {
+                        angular.forEach(passage.subQuestions || [], function (questionPackage) {
+                            angular.forEach(questionPackage.subQuestions || [], function (question) {
+                                var part = vm.isComprehensiveRoute ? 1 : (vm.isWritingRoute ? (Number(questionPackage.type) === 17 ? 2 : 1)
+                                    : (vm.isListeningRoute ? listeningPartNumberForOrdinal(question.ordinalNumber) : passageIndex + 1));
+                                if (vm.availableIeltsParts.indexOf(part) < 0) { vm.availableIeltsParts.push(part); }
+                                vm.availableIeltsQuestionCount++;
+                            });
+                        });
+                    });
                     data = restrictWritingAssignmentToSelectedTask(data);
                     data = restrictListeningAssignmentToSelectedPart(data);
                     data = normalizeListeningCandidateParts(data);
@@ -2771,7 +3015,7 @@
                                 vm.ieltsReadingActualTest = data;
                             }
                             cachedIeltsNavigationParts = null;
-                            if (vm.isPreviewMode) {
+                if (vm.isPreviewMode) {
                                 vm.passageNumber = vm.isListeningRoute ? Math.min(vm.previewPart, 3) : vm.previewPart;
                                 vm.isStartingTest = false;
                                 vm.showTestModeDialog = false;
@@ -2918,6 +3162,7 @@
         };
 
         vm.saveTestResult = function () {
+            if (vm.isSubmittingTest || readingDraftSubmitted || vm.isPreviewMode || vm.isLearningReview) { return; }
             synchronizeReadingResultsBeforeSubmit();
             // Capture the last keystrokes before submission as well. This is
             // especially important for a Writing task that does not yet meet
@@ -2961,12 +3206,19 @@
 				vm.testResult.questionAnswerTestResult = (vm.testResult.questionAnswerTestResult || []).filter(function (answer) {
 					return allowed[String(answer.ordinalNumber)] === true;
 				});
-				vm.testResult.completedPart = vm.assignedPart;
+                vm.testResult.completedPart = vm.assignedParts.length === 1 ? vm.assignedPart : null;
+                vm.testResult.completedParts = angular.copy(vm.assignedParts);
 				vm.testResult.assignmentTaskId = vm.assignmentTaskId;
-				var assignedLabel = vm.isWritingRoute ? 'Writing Task ' + vm.assignedPart : 'Part ' + vm.assignedPart;
+                var assignedLabel = vm.assignedPartsLabel();
 				vm.testResult.testName += ' · ' + assignedLabel;
-				vm.testResult.testTakerPerformance = '<h2>' + assignedLabel + '</h2>'
-					+ (vm.isWritingRoute ? passage1 : ([passage1, passage2, passage3][Math.min(vm.assignedPart, 3) - 1] || ''));
+                vm.testResult.testTakerPerformance = vm.isWritingRoute ? '<h2>' + assignedLabel + '</h2>' + passage1 :
+                    vm.assignedParts.filter(function (part, index, parts) {
+                        return !vm.isListeningRoute || part !== 4 || parts.indexOf(3) < 0;
+                    }).map(function (part) {
+                        var workspace = vm.isListeningRoute ? Math.min(part, 3) : part;
+                        var label = vm.isListeningRoute && part === 3 && vm.assignedParts.indexOf(4) >= 0 ? 'Part 3, 4' : 'Part ' + part;
+                        return '<h2>' + label + '</h2>' + ([passage1, passage2, passage3][workspace - 1] || '');
+                    }).join('<br><br>');
 				vm.resultQuestionTotal = allowedOrdinals.length || 1;
 			}
 
@@ -2979,7 +3231,9 @@
             }
 
             blockUI.start();
+            vm.isSubmittingTest = true;
             service.saveTestResult(vm.testResult).then(function (data) {
+                vm.isSubmittingTest = false;
                 readingDraftSubmitted = true;
                 if (!vm.isFlexibleRoute || !data || data.resultStatus !== 'FAILED') {
                     markStudyDraftCompleted(data && data.id);
@@ -3001,6 +3255,7 @@
                     showSubmittedTestResult(data.id);
                 }
             }, function failure() {
+                vm.isSubmittingTest = false;
                 blockUI.stop();
                 toastr.error('An error occurred while saving the test result.', 'Notification');
             });
@@ -3048,7 +3303,7 @@
 
         function selectedListeningAudioUrl() {
             var mainAudioUrl = String(vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.pronounce || '').trim();
-            var selectedPart = vm.isPartAssignment ? Number(vm.assignedPart)
+            var selectedPart = vm.isPartAssignment ? (vm.activeIeltsNavigationPart() || Number(vm.assignedPart))
                 : (vm.isPreviewMode ? Number(vm.previewPart) : null);
             if (!selectedPart || !vm.listeningPartAudioUrls) {
                 return mainAudioUrl;
@@ -3397,8 +3652,9 @@
 						var requestedPart = items[0].parent.questionType.code == "IELTSRTP1" ? 1
 							: items[0].parent.questionType.code == "IELTSRTP2" ? 2
 							: items[0].parent.questionType.code == "IELTSRTP3" ? 3 : null;
-						var assignedPassage = displayPassageForAssignedPart();
-						if (vm.isPartAssignment && requestedPart !== assignedPassage) { return; }
+                        if (vm.isPartAssignment && !vm.assignedParts.some(function (part) {
+                            return (vm.isWritingRoute ? 1 : (vm.isListeningRoute ? Math.min(part, 3) : part)) === requestedPart;
+                        })) { return; }
                         if(items[0].parent.questionType.code == "IELTSRTP1"){
                             vm.passageNumber = 1;
                         }
@@ -3466,11 +3722,10 @@
 
             return entries.filter(function (entry) {
                 if (vm.isWritingRoute) {
-                    return Number(entry.packageType) === (Number(vm.assignedPart) === 2 ? 17 : 16);
+                    return vm.assignedParts.indexOf(Number(entry.packageType) === 17 ? 2 : 1) >= 0;
                 }
-                return vm.isListeningRoute
-                    ? listeningPartNumberForOrdinal(entry.question.ordinalNumber) === vm.assignedPart
-                    : entry.passageNumber === vm.assignedPart;
+                return vm.assignedParts.indexOf(vm.isListeningRoute
+                    ? listeningPartNumberForOrdinal(entry.question.ordinalNumber) : entry.passageNumber) >= 0;
             });
         }
 
@@ -3508,8 +3763,8 @@
 
         vm.activeIeltsNavigationPart = function () {
             if (vm.isWritingRoute) {
-                var requestedWritingPart = vm.assignedPart ||
-                    (vm.tempQuestion && vm.tempQuestion.parent && Number(vm.tempQuestion.parent.type) === 17 ? 2 : 1);
+                var requestedWritingPart = vm.tempQuestion && vm.tempQuestion.parent
+                    ? (Number(vm.tempQuestion.parent.type) === 17 ? 2 : 1) : (vm.assignedPart || 1);
                 var writingParts = vm.getIeltsNavigationParts();
                 var writingPartExists = writingParts.some(function (part) {
                     return Number(part.number) === Number(requestedWritingPart);
@@ -3521,7 +3776,7 @@
                 var currentPart = listeningPartNumberForOrdinal(vm.tempQuestion && vm.tempQuestion.ordinalNumber);
                 return currentPart || vm.assignedPart || Math.min(vm.passageNumber || 1, 4);
             }
-            return vm.assignedPart || vm.passageNumber;
+            return vm.passageNumber || vm.assignedPart;
         };
 
         vm.ieltsNavigationAnsweredCount = function (part) {
@@ -4960,6 +5215,9 @@
                             containerId: containerId,
                             start: start,
                             end: start + (marker.textContent || '').length,
+                            quote: marker.textContent || '',
+                            prefix: String(container.textContent || '').slice(Math.max(0, start - 32), start),
+                            suffix: String(container.textContent || '').slice(start + (marker.textContent || '').length, start + (marker.textContent || '').length + 32),
                             highlighted: marker.classList.contains('is-highlighted'),
                             hasNote: marker.classList.contains('has-note'),
                             noteId: marker.getAttribute('data-note-id') || null,
@@ -5000,6 +5258,30 @@
             return range;
         }
 
+        function textRangeForAnnotation(container, record) {
+            if (!record.quote) { return textRangeForOffsets(container, Number(record.start), Number(record.end)); }
+            var text = container.textContent || '';
+            var originalStart = Number(record.start);
+            if (text.slice(originalStart, Number(record.end)) === record.quote &&
+                    ((!record.prefix && !record.suffix) ||
+                    (record.prefix && text.slice(Math.max(0, originalStart - record.prefix.length), originalStart) === record.prefix) ||
+                    (record.suffix && text.slice(Number(record.end), Number(record.end) + record.suffix.length) === record.suffix))) {
+                return textRangeForOffsets(container, originalStart, Number(record.end));
+            }
+            var start = text.indexOf(record.quote);
+            var bestStart = -1, bestScore = -1, tied = false;
+            while (start >= 0) {
+                var score = 0;
+                if (record.prefix && text.slice(Math.max(0, start - record.prefix.length), start) === record.prefix) { score++; }
+                if (record.suffix && text.slice(start + record.quote.length, start + record.quote.length + record.suffix.length) === record.suffix) { score++; }
+                if (score > bestScore) { bestStart = start; bestScore = score; tied = false; }
+                else if (score === bestScore) { tied = true; }
+                start = text.indexOf(record.quote, start + 1);
+            }
+            if (bestStart < 0 || tied) { return null; }
+            return textRangeForOffsets(container, bestStart, bestStart + record.quote.length);
+        }
+
         function restoreReadingAnnotations(records) {
             unrestoredReadingAnnotations = [];
             angular.forEach(records || [], function (record) {
@@ -5008,7 +5290,7 @@
                     unrestoredReadingAnnotations.push(angular.copy(record));
                     return;
                 }
-                var range = textRangeForOffsets(container, Number(record.start), Number(record.end));
+                var range = textRangeForAnnotation(container, record);
                 if (!range || !range.toString()) {
                     unrestoredReadingAnnotations.push(angular.copy(record));
                     return;
@@ -5037,6 +5319,7 @@
                 sessionMode: vm.testSessionMode,
                 activeDurationSeconds: getActiveDurationSeconds(),
                 passageNumber: vm.passageNumber || 1,
+                assignmentParts: vm.isPartAssignment ? angular.copy(vm.assignedParts) : [],
                 results: serializeReadingDraftResults(),
                 questionStates: serializeReadingQuestionStates(),
                 completeListStates: serializeCompleteListStates(),
@@ -5300,6 +5583,7 @@
                 var noteId = 'note-' + Date.now() + '-' + (++annotationSequence);
                 note = {
                     id: noteId,
+                    partNumber: vm.activeIeltsNavigationPart(),
                     header: savedAnnotationRange.toString().trim(),
                     specificNote: ''
                 };
@@ -6817,11 +7101,16 @@
         } else {
             function startPendingReadingDraft() {
                 if (readingDraftDestroyed || startFreshSeriousTest || vm.isStartTest || vm.isStartingTest) { return; }
+                if (vm.assignmentTaskId) { $timeout(function () { vm.requestStartTest(); }, 0); return; }
                 var pendingReadingDraft = readReadingDraft($stateParams.ieltsReadingTestId, requestedSessionMode);
-                if (!pendingReadingDraft || String(pendingReadingDraft.testId) !== String($stateParams.ieltsReadingTestId)) { return; }
+                if (!pendingReadingDraft) {
+                    if (requestedSessionMode === 'STUDY') { $timeout(function () { vm.requestStartTest(); }, 0); }
+                    return;
+                }
+                if (String(pendingReadingDraft.testId) !== String($stateParams.ieltsReadingTestId)) { return; }
                 vm.testSessionMode = pendingReadingDraft.sessionMode === 'STUDY' ? 'STUDY' : 'SERIOUS';
                 vm.selectedTestSessionMode = vm.testSessionMode;
-                vm.isLearningReview = pendingReadingDraft.completed === true;
+                vm.isLearningReview = !vm.assignmentTaskId && pendingReadingDraft.completed === true;
                 $timeout(function () {
                     vm.startTest();
                 }, 0);

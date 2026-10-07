@@ -2,6 +2,7 @@ package com.globits.richy.service.impl;
 
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -706,8 +707,8 @@ public class TestResultServiceImpl implements TestResultService {
 					for (Question questionPackage : part.getSubQuestions()) {
 						if (questionPackage == null || (questionPackage.getType() != 16 && questionPackage.getType() != 17)
 								|| questionPackage.getSubQuestions() == null) { continue; }
-						if (Integer.valueOf(7).equals(dto.getTestType()) && dto.getCompletedPart() != null
-								&& questionPackage.getType() != (dto.getCompletedPart().intValue() == 2 ? 17 : 16)) { continue; }
+						if (Integer.valueOf(7).equals(dto.getTestType()) && !dto.getCompletedParts().isEmpty()
+								&& !dto.getCompletedParts().contains(questionPackage.getType() == 17 ? 2 : 1)) { continue; }
 						writingTaskFound = true;
 						for (Question writingQuestion : questionPackage.getSubQuestions()) {
 							if (writingQuestion != null && writingQuestion.getId() != null) {
@@ -768,13 +769,13 @@ public class TestResultServiceImpl implements TestResultService {
 							&& !assignedTask.getSourceQuestion().getId().equals(dto.getSourceQuestionId()))) {
 				throw new IllegalArgumentException("Kết quả không khớp với bài nghe/Track được giao.");
 			}
-		} else if (Integer.valueOf(7).equals(dto.getTestType()) && dto.getCompletedPart() != null
+		} else if (Integer.valueOf(7).equals(dto.getTestType()) && !dto.getCompletedParts().isEmpty()
 				&& dto.getAssignmentTaskId() == null) {
-			if (dto.getCompletedPart() < 1 || dto.getCompletedPart() > 2
+			if (dto.getCompletedParts().contains(null) || !Arrays.asList(1, 2).containsAll(dto.getCompletedParts())
 					|| dto.getQuestionAnswerTestResult() == null || dto.getQuestionAnswerTestResult().isEmpty()) {
 				throw new IllegalArgumentException("Writing Task được nộp không hợp lệ.");
 			}
-		} else if (dto.getCompletedPart() != null || dto.getAssignmentTaskId() != null) {
+		} else if (!dto.getCompletedParts().isEmpty() || dto.getAssignmentTaskId() != null) {
 			EnrolmentClassScheduleTask assignedTask = dto.getAssignmentTaskId() == null ? null
 					: scheduleTaskRepository.findOne(dto.getAssignmentTaskId());
 			boolean ieltsType = Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType())
@@ -786,10 +787,13 @@ public class TestResultServiceImpl implements TestResultService {
 					|| (Integer.valueOf(6).equals(dto.getTestType()) && "COMPREHENSIVE".equals(assignedTask.getActivityType())));
 			int maximumPart = Integer.valueOf(6).equals(dto.getTestType()) ? 1
 					: (Integer.valueOf(7).equals(dto.getTestType()) ? 2 : (Integer.valueOf(2).equals(dto.getTestType()) ? 4 : 3));
+			boolean validParts = !dto.getCompletedParts().isEmpty();
+			for (Integer part : dto.getCompletedParts()) {
+				if (part == null || part < 1 || part > maximumPart) { validParts = false; }
+			}
 			if (!ieltsType || assignedTask == null || assignedTask.getIeltsTest() == null
 					|| !assignedTask.getIeltsTest().getId().equals(dto.getSourceQuestionId())
-					|| dto.getCompletedPart() == null || !assignedTask.getIeltsParts().contains(dto.getCompletedPart()) || !matchingType
-					|| dto.getCompletedPart() < 1 || dto.getCompletedPart() > maximumPart
+					|| !validParts || !assignedTask.getIeltsParts().containsAll(dto.getCompletedParts()) || !matchingType
 					|| dto.getQuestionAnswerTestResult() == null || dto.getQuestionAnswerTestResult().isEmpty()) {
 				throw new IllegalArgumentException("Kết quả không khớp với đề IELTS và Part được giao.");
 			}
@@ -830,7 +834,7 @@ public class TestResultServiceImpl implements TestResultService {
 			domain.setCreatedBy(currentUserName);
 		}
 		User resultUser = null;
-		if(dto.getTestType() != null && (dto.getTestType() == 1 || dto.getTestType() == 3 || dto.getTestType() == 6 || dto.getTestType() == 7 || dto.getCompletedPart() != null)
+		if(dto.getTestType() != null && (dto.getTestType() == 1 || dto.getTestType() == 3 || dto.getTestType() == 6 || dto.getTestType() == 7 || !dto.getCompletedParts().isEmpty())
 				&& modifiedUser != null && modifiedUser.getId() != null) {
 			// Daily Vocab / Listening chỉ được ghi nhận cho chính tài khoản đang đăng nhập.
 			resultUser = userRepository.findById(modifiedUser.getId());
@@ -862,6 +866,7 @@ public class TestResultServiceImpl implements TestResultService {
 		}
 		domain.setSourceQuestionId(dto.getSourceQuestionId());
 		domain.setCompletedPart(dto.getCompletedPart());
+		domain.setCompletedParts(dto.getCompletedParts());
 		domain.setAssignmentTaskId(dto.getAssignmentTaskId());
 		if (Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType()) || Integer.valueOf(6).equals(dto.getTestType()) || Integer.valueOf(7).equals(dto.getTestType())) {
 			String sessionMode = "STUDY".equalsIgnoreCase(dto.getIeltsSessionMode()) ? "STUDY" : "SERIOUS";
@@ -886,7 +891,7 @@ public class TestResultServiceImpl implements TestResultService {
 					: (Integer.valueOf(6).equals(dto.getTestType()) || Integer.valueOf(7).equals(dto.getTestType()))
 						? (passedComprehensive ? "SUCCESS" : "FAILED")
                     : ((Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType()))
-                            && dto.getCompletedPart() != null ? "SUCCESS" : null));
+                            && !dto.getCompletedParts().isEmpty() ? "SUCCESS" : null));
 		domain.setNumberOfWords(dto.getNumberOfWords());
 		domain.setTestTakerPerformance(dto.getTestTakerPerformance());
 		if(dto.getQuestionAnswerTestResult() !=null && dto.getQuestionAnswerTestResult().size()>0) {

@@ -37,6 +37,7 @@ public class TestResultDto implements Serializable{
 	private List<TestResultTopicDto> topics;
 	private Long sourceQuestionId;
 	private Integer completedPart;
+	private List<Integer> completedParts;
 	private Long assignmentTaskId;
 	private String ieltsSessionMode;
 	private Integer activeDurationSeconds;
@@ -63,6 +64,13 @@ public class TestResultDto implements Serializable{
 	public void setSourceQuestionId(Long value) { sourceQuestionId = value; }
 	public Integer getCompletedPart() { return completedPart; }
 	public void setCompletedPart(Integer value) { completedPart = value; }
+	public List<Integer> getCompletedParts() {
+		if (completedParts != null) { return completedParts; }
+		List<Integer> parts = new ArrayList<Integer>();
+		if (completedPart != null) { parts.add(completedPart); }
+		return parts;
+	}
+	public void setCompletedParts(List<Integer> value) { completedParts = value; }
 	public Long getAssignmentTaskId() { return assignmentTaskId; }
 	public void setAssignmentTaskId(Long value) { assignmentTaskId = value; }
 	public String getIeltsSessionMode() { return ieltsSessionMode; }
@@ -166,6 +174,7 @@ public class TestResultDto implements Serializable{
         resultStatus=domain.getResultStatus();
         sourceQuestionId=domain.getSourceQuestionId();
         completedPart=domain.getCompletedPart();
+        completedParts=domain.getCompletedParts();
         assignmentTaskId=domain.getAssignmentTaskId();
         ieltsSessionMode=domain.getIeltsSessionMode();
         activeDurationSeconds=domain.getActiveDurationSeconds();

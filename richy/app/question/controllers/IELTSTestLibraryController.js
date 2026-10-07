@@ -172,7 +172,7 @@
         }
 
         function collectIeltsDraft(progressByTestId, progressByTestTask, draft, serverSavedAt) {
-            if (!draft || !draft.testId || draft.sessionMode !== 'STUDY') { return; }
+            if (!draft || !draft.testId || draft.sessionMode !== 'STUDY' || draft.assignmentSession) { return; }
             if (vm.currentUser.id && draft.userId && String(draft.userId) !== String(vm.currentUser.id)) { return; }
 
             var isComprehensiveDraft = draft.testMode === 'COMPREHENSIVE';
@@ -188,6 +188,12 @@
             var writingTask = Number(draft.assignmentPart);
             if (vm.isWritingMode && (writingTask === 1 || writingTask === 2)) {
                 keepNewestProgress(progressByTestTask, key + ':' + writingTask, draft, savedAtValue);
+            } else if (vm.isWritingMode) {
+                angular.forEach(draft.partNumbers || [], function (part) {
+                    var taskProgress = angular.copy(draft);
+                    taskProgress.completed = (draft.studiedParts || []).indexOf(Number(part)) >= 0;
+                    keepNewestProgress(progressByTestTask, key + ':' + part, taskProgress, savedAtValue);
+                });
             }
         }
 
@@ -246,7 +252,7 @@
                 (vm.isWritingMode ? 'ielts_writing_actual_test/' : (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'));
             var params = [];
             if (writingTask) { params.push('assignmentPart=' + writingTask); }
-            if (vm.getLearningProgress(item.id, writingTask)) { params.push('sessionMode=STUDY'); }
+            params.push('sessionMode=STUDY');
             return route + item.id + (params.length ? '?' + params.join('&') : '');
         };
 
