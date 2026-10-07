@@ -98,6 +98,7 @@ public final class HomeworkTopicCompletion {
     public static void apply(EnrolmentClassScheduleTaskDto task, List<Object[]> completions,
             LocalDateTime start, LocalDateTime end) {
         if (!enabled(task)) { return; }
+        removeAutomaticProgress(task);
         int required = task.getRequiredAttempts();
         Map<Long, Integer> counts = new LinkedHashMap<Long, Integer>();
         for (Object[] row : completions) {
@@ -105,7 +106,9 @@ public final class HomeworkTopicCompletion {
             LocalDateTime completed = (LocalDateTime) row[2];
             Integer resultTestType = row.length > 4 ? (Integer) row[4] : Integer.valueOf(1);
             Long sourceQuestionId = row.length > 5 ? (Long) row[5] : null;
+            Long assignmentTaskId = row.length > 6 ? (Long) row[6] : null;
             if (!task.getTopicId().equals(topicId) || resultTestType.intValue() != testType(task)
+                    || task.getId() == null || !task.getId().equals(assignmentTaskId)
                     || (task.getSourceQuestionId() != null && !task.getSourceQuestionId().equals(sourceQuestionId))
                     || completed.isBefore(start) || !completed.isBefore(end)) { continue; }
             int count = counts.containsKey(studentId) ? counts.get(studentId) + 1 : 1;
@@ -138,6 +141,7 @@ public final class HomeworkTopicCompletion {
     public static void applyIelts(EnrolmentClassScheduleTaskDto task, List<Object[]> completions,
             LocalDateTime start, LocalDateTime end) {
         if (!ieltsEnabled(task)) { return; }
+        removeAutomaticProgress(task);
         int required = requiredIeltsAttempts(task);
         Map<Long, Map<Integer, Integer>> counts = new LinkedHashMap<Long, Map<Integer, Integer>>();
         for (Object[] row : completions) {
@@ -172,6 +176,14 @@ public final class HomeworkTopicCompletion {
             }
             existing.setAutomatic(true);
             existing.setTestResultId((Long) row[4]); existing.setCompletedAt(completed.toDate());
+        }
+    }
+
+    private static void removeAutomaticProgress(EnrolmentClassScheduleTaskDto task) {
+        for (int index = task.getStudentProgress().size() - 1; index >= 0; index--) {
+            if (task.getStudentProgress().get(index).isAutomatic()) {
+                task.getStudentProgress().remove(index);
+            }
         }
     }
 }

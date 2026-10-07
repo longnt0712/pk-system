@@ -732,9 +732,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					if (task.getTopicId() != null && ("DAILY_VOCAB".equals(task.getActivityType())
 							|| "DAILY_LISTENING".equals(task.getActivityType()))) {
 						long completedCount = "DAILY_LISTENING".equals(task.getActivityType()) && task.getSourceQuestionId() != null
-								? testResultRepository.countSuccessfulListeningItemAttempts(student.getId(), task.getTopicId(),
+								? testResultRepository.countSuccessfulListeningItemAttempts(student.getId(), task.getId(), task.getTopicId(),
 										task.getSourceQuestionId(), start, completionEnd)
-								: testResultRepository.countSuccessfulAssignmentAttempts(student.getId(), task.getTopicId(),
+								: testResultRepository.countSuccessfulAssignmentAttempts(student.getId(), task.getId(), task.getTopicId(),
 										Integer.valueOf(HomeworkTopicCompletion.testType(task)), start, completionEnd);
 						completed = (int) Math.min(Integer.MAX_VALUE, completedCount);
 					}
@@ -750,7 +750,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 						nextIeltsPart = HomeworkTopicCompletion.nextIeltsPart(task, partCounts);
 					}
 					for (EnrolmentClassTaskProgressDto progress : task.getStudentProgress()) {
-						if (student.getId().equals(progress.getStudentUserId()) && "DONE".equals(progress.getStatus())) {
+						if (student.getId().equals(progress.getStudentUserId()) && !progress.isAutomatic()
+								&& "DONE".equals(progress.getStatus())) {
 							completed = required;
 							break;
 						}

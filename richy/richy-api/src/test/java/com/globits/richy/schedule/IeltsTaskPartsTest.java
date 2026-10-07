@@ -29,6 +29,15 @@ public class IeltsTaskPartsTest {
     private Object[] submission(int part) {
         return new Object[] {30L, 20L, part, start.plusHours(1), 100L + part, 4, 10L};
     }
+    private EnrolmentClassScheduleTaskDto vocabularyAssignment() {
+        EnrolmentClassScheduleTaskDto task = new EnrolmentClassScheduleTaskDto();
+        task.setId(10L); task.setTopicId(20L); task.setSection("HOMEWORK");
+        task.setActivityType("DAILY_VOCAB"); task.setRequiredAttempts(2);
+        return task;
+    }
+    private Object[] vocabularySubmission(long taskId, long resultId) {
+        return new Object[] {30L, 20L, start.plusHours(1), resultId, 1, null, taskId};
+    }
     private String progress(EnrolmentClassScheduleTaskDto task) {
         return task.getStudentProgress().get(0).getStatus();
     }
@@ -89,6 +98,18 @@ public class IeltsTaskPartsTest {
         feedback.setStudentUserId(30L); feedback.setStatus("NEEDS_REVIEW"); task.getStudentProgress().add(feedback);
         HomeworkTopicCompletion.applyIelts(task, Arrays.asList(submission(1), submission(3)), start, end);
         assertEquals("NEEDS_REVIEW", progress(task)); assertFalse(feedback.isAutomatic());
+    }
+    @Test public void vocabularyEvidenceMustBelongToTheExactAssignedTask() {
+        EnrolmentClassScheduleTaskDto task = vocabularyAssignment();
+        EnrolmentClassTaskProgressDto stale = new EnrolmentClassTaskProgressDto();
+        stale.setStudentUserId(30L); stale.setStatus("DONE"); stale.setAutomatic(true);
+        task.getStudentProgress().add(stale);
+        HomeworkTopicCompletion.apply(task, Arrays.asList(
+                vocabularySubmission(11L, 101L), vocabularySubmission(11L, 102L)), start, end);
+        assertTrue(task.getStudentProgress().isEmpty());
+        HomeworkTopicCompletion.apply(task, Arrays.asList(
+                vocabularySubmission(10L, 103L), vocabularySubmission(10L, 104L)), start, end);
+        assertEquals("DONE", progress(task));
     }
     @Test public void legacySinglePartTasksKeepTheirOriginalRequirement() {
         EnrolmentClassScheduleTask legacy = new EnrolmentClassScheduleTask(); legacy.setIeltsPart(2);
