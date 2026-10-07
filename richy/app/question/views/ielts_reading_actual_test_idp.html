@@ -82,6 +82,12 @@
                  alt="IELTS Room logo">
         </button>
         <div class="idp-exam-tools">
+            <small ng-if="vm.readingDraftSyncStatus && !vm.isPreviewMode"
+                   role="status" aria-live="polite"
+                   ng-class="{'text-danger': vm.readingDraftSyncStatus === 'error'}"
+                   title="Trạng thái lưu ghi chú và tiến độ lên server">
+                {{vm.readingDraftSyncStatus === 'saved' ? 'Đã đồng bộ' : (vm.readingDraftSyncStatus === 'error' ? 'Chưa đồng bộ · đang thử lại' : 'Đang đồng bộ…')}}
+            </small>
             <span class="idp-top-timer"
                   ng-mouseenter="vm.displayTimer()"
                   ng-mouseleave="vm.displayOnlyMinute()"
@@ -3354,7 +3360,7 @@
         height: 100% !important;
         min-height: 0 !important;
         max-height: none !important;
-        overflow-x: hidden !important;
+        overflow-x: auto !important;
         overflow-y: auto !important;
         overscroll-behavior: contain;
     }
@@ -4059,11 +4065,18 @@
         height: calc(100vh - 350px);
         min-height: 360px;
         max-height: none !important;
-        overflow-x: hidden;
+        overflow-x: auto;
         overflow-y: auto;
         overscroll-behavior: contain;
         scrollbar-color: #a7a9ad #f0f0ee;
         scrollbar-width: thin;
+    }
+
+    /* Imported tables keep their columns; the pane can scroll horizontally. */
+    .idp-reading-page .passage-text img,
+    .idp-reading-page .question-content img {
+        max-width: 100% !important;
+        height: auto !important;
     }
 
     .idp-reading-page .passage-text {

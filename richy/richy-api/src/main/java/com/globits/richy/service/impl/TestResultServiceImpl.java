@@ -873,9 +873,11 @@ public class TestResultServiceImpl implements TestResultService {
 			if (learningState != null && learningState.length() > 2000000) {
 				throw new IllegalArgumentException("Dữ liệu ghi chú của bài IELTS quá lớn.");
 			}
-			domain.setIeltsSessionMode(sessionMode);
-			domain.setActiveDurationSeconds(activeSeconds);
-			domain.setIeltsLearningState(learningState);
+			// Summary DTOs omit the annotation payload. Editing a result from such
+			// a DTO must not erase the snapshot captured when the student submitted.
+			if (newResult || dto.getIeltsSessionMode() != null) { domain.setIeltsSessionMode(sessionMode); }
+			if (newResult || dto.getActiveDurationSeconds() != null) { domain.setActiveDurationSeconds(activeSeconds); }
+			if (newResult || learningState != null) { domain.setIeltsLearningState(learningState); }
 		}
         domain.setResultStatus(Integer.valueOf(1).equals(dto.getTestType())
                 ? (passedDailyVocab ? "SUCCESS" : "FAILED")

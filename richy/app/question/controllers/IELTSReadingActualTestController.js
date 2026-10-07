@@ -1631,49 +1631,121 @@
                 + String(testId || 'unknown') + sessionSuffix + readingDraftTaskSuffix;
         }
 
+        var readingDraftMemory = {};
+        var readingDraftSaveQueues = {};
+        var readingDraftPendingSaves = {};
+        var readingAnnotationsRestoring = false;
+        var readingDraftLoadGeneration = 0;
+        var pendingReadingAnnotations = null;
+        var unrestoredReadingAnnotations = [];
+        var readingAnnotationRestoreTimer = null;
+        var readingDraftWaitTimer = null;
+        var readingDraftDestroyed = false;
+
+        function storeReadingDraft(key, draft) {
+            readingDraftMemory[key] = angular.copy(draft);
+            try {
+                $window.localStorage.setItem(key, JSON.stringify(draft));
+            } catch (ignoreLocalDraftWrite) {
+                // Cloud persistence must still run when local storage is full or blocked.
+            }
+        }
+
         function readStoredDraft(key) {
             try {
                 var raw = $window.localStorage.getItem(key);
-                return raw ? JSON.parse(raw) : null;
+                var stored = raw ? JSON.parse(raw) : null;
+                var memory = readingDraftMemory[key];
+                return memory && (!stored || new Date(memory.savedAt) >= new Date(stored.savedAt)) ? memory : stored;
             } catch (ignoreStoredDraftReadError) {
-                return null;
+                return readingDraftMemory[key] || null;
             }
         }
 
         function saveReadingLearningDraft(key, draft) {
-            service.saveLearningDraft({
+            var payload = {
                 draftKey: key,
                 draftType: 'IELTS',
                 title: draft.title || (draft.testMode === 'COMPREHENSIVE' ? 'Bài tập tổng hợp' :
                     (draft.testMode === 'WRITING' ? 'IELTS Writing Test' : (draft.isListening ? 'IELTS Listening Test' : 'IELTS Reading Test'))),
                 payload: JSON.stringify(draft),
                 savedAt: new Date(draft.savedAt || 0).getTime() || Date.now()
-            }).catch(angular.noop);
+            };
+            // Keep requests for each mode in order so an older snapshot cannot
+            // finish after, and overwrite, a more recent note edit.
+            var previous = readingDraftSaveQueues[key];
+            readingDraftPendingSaves[key] = (readingDraftPendingSaves[key] || 0) + 1;
+            vm.readingDraftSyncStatus = 'saving';
+            function persist() {
+                vm.readingDraftSyncStatus = 'saving';
+                return service.saveLearningDraft(payload).then(function () {
+                    readingDraftPendingSaves[key] -= 1;
+                    vm.readingDraftSyncStatus = readingDraftPendingSaves[key] ? 'saving' : 'saved';
+                }, function () {
+                    readingDraftPendingSaves[key] -= 1;
+                    vm.readingDraftSyncStatus = 'error';
+                });
+            }
+            readingDraftSaveQueues[key] = previous ? previous.then(persist, persist) : persist();
         }
 
         function deleteReadingLearningDraft(key) {
-            if (key) { service.deleteLearningDraft(key).catch(angular.noop); }
+            if (!key) { return; }
+            delete readingDraftMemory[key];
+            function remove() { return service.deleteLearningDraft(key).catch(angular.noop); }
+            var previous = readingDraftSaveQueues[key];
+            readingDraftSaveQueues[key] = previous ? previous.then(remove, remove) : remove();
         }
 
         function loadReadingLearningDrafts() {
             if (vm.isPreviewMode || !vm.currentUser || !vm.currentUser.id) { return null; }
+            var generation = ++readingDraftLoadGeneration;
             return service.getLearningDrafts().then(function (items) {
+                if (generation !== readingDraftLoadGeneration) { return false; }
+                var invalidDraft = false;
                 angular.forEach(items || [], function (item) {
                     if (!item || item.draftType !== 'IELTS' || !item.draftKey
                             || item.draftKey.indexOf(readingDraftBaseKey) !== 0 || !item.payload) { return; }
                     try {
                         var serverDraft = JSON.parse(item.payload);
+                        if (!serverDraft || String(serverDraft.userId) !== String(vm.currentUser.id) || !serverDraft.testId) {
+                            invalidDraft = true;
+                            return;
+                        }
                         var localDraft = readStoredDraft(item.draftKey);
                         var localSavedAt = new Date((localDraft || {}).savedAt || 0).getTime() || 0;
                         if (!localDraft || Number(item.savedAt) >= localSavedAt) {
-                            $window.localStorage.setItem(item.draftKey, item.payload);
+                            storeReadingDraft(item.draftKey, serverDraft);
                         }
-                    } catch (ignoreServerDraft) {}
+                    } catch (invalidServerDraft) { invalidDraft = true; }
                 });
-            }, angular.noop);
+                return !invalidDraft;
+            }, function () { return false; });
         }
 
         readingLearningDraftsReady = loadReadingLearningDrafts();
+
+        function waitForReadingLearningDrafts(onReady, onFailure) {
+            var settled = false;
+            var timeout = $timeout(function () {
+                if (settled || readingDraftDestroyed) { return; }
+                settled = true;
+                onFailure();
+            }, 10000);
+            readingDraftWaitTimer = timeout;
+            readingLearningDraftsReady = loadReadingLearningDrafts();
+            function finish(success) {
+                if (settled || readingDraftDestroyed) { return; }
+                settled = true;
+                $timeout.cancel(timeout);
+                if (success) { onReady(); } else { onFailure(); }
+            }
+            if (readingLearningDraftsReady) {
+                readingLearningDraftsReady.then(finish, function () { finish(false); });
+            } else {
+                finish(true);
+            }
+        }
 
         function readReadingDraft(testId, sessionMode) {
             if (vm.isPreviewMode) {
@@ -1726,13 +1798,13 @@
                 var currentTestId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
                 var currentMode = vm.testSessionMode === 'STUDY' ? 'STUDY' : 'SERIOUS';
                 var currentKey = readingDraftStorageKey(currentTestId, currentMode);
-                $window.localStorage.removeItem(currentKey);
+                try { $window.localStorage.removeItem(currentKey); } catch (ignoreLocalClear) {}
                 deleteReadingLearningDraft(currentKey);
                 angular.forEach([legacyModeDraftStorageKey, legacyReadingDraftStorageKey], function (key) {
                     var legacyDraft = readStoredDraft(key);
                     var legacyMode = String((legacyDraft || {}).sessionMode || 'STUDY').toUpperCase();
                     if (!legacyDraft || (String(legacyDraft.testId) === String(currentTestId) && legacyMode === currentMode)) {
-                        $window.localStorage.removeItem(key);
+                        try { $window.localStorage.removeItem(key); } catch (ignoreLegacyClear) {}
                         deleteReadingLearningDraft(key);
                     }
                 });
@@ -1817,7 +1889,7 @@
 
         function saveReadingDraft() {
             var testId = vm.ieltsReadingActualTest && vm.ieltsReadingActualTest.id;
-            if (vm.isPreviewMode || readingDraftSubmitted || !vm.currentUser.id || !testId || vm.isStartTest !== true || vm.passageNumber == 4) {
+            if (readingAnnotationsRestoring || vm.isStartingTest || vm.isPreviewMode || readingDraftSubmitted || !vm.currentUser.id || !testId || vm.isStartTest !== true || vm.passageNumber == 4) {
                 return;
             }
             try {
@@ -1862,7 +1934,7 @@
                     completed: previousDraft.completed === true,
                     resultId: previousDraft.resultId || null
                 };
-                $window.localStorage.setItem(activeDraftKey, JSON.stringify(readingDraft));
+                storeReadingDraft(activeDraftKey, readingDraft);
                 saveReadingLearningDraft(activeDraftKey, readingDraft);
                 angular.forEach([legacyModeDraftStorageKey, legacyReadingDraftStorageKey], function (key) {
                     var legacyDraft = readStoredDraft(key);
@@ -1886,7 +1958,7 @@
                 draft.completed = true;
                 draft.resultId = resultId || null;
                 draft.savedAt = new Date().toISOString();
-                $window.localStorage.setItem(key, JSON.stringify(draft));
+                storeReadingDraft(key, draft);
                 saveReadingLearningDraft(key, draft);
             } catch (ignoreStudyDraftCompletionError) {
                 // The submitted server result is still available when storage is blocked.
@@ -2075,8 +2147,19 @@
                 setCountdownSeconds(Number(draft.remainingSeconds));
             }
             vm.annotationNotes = angular.copy(draft.annotationNotes || []);
-            $timeout(function () {
-                restoreReadingAnnotations(draft.annotations || []);
+            readingAnnotationsRestoring = true;
+            pendingReadingAnnotations = angular.copy(draft.annotations || []);
+            readingAnnotationRestoreTimer = $timeout(function () {
+                try {
+                    restoreReadingAnnotations(pendingReadingAnnotations);
+                } catch (annotationRestoreError) {
+                    // Preserve the original anchors if a malformed DOM interrupts restoration.
+                    unrestoredReadingAnnotations = angular.copy(pendingReadingAnnotations || []);
+                } finally {
+                    readingAnnotationsRestoring = false;
+                    pendingReadingAnnotations = null;
+                    readingAnnotationRestoreTimer = null;
+                }
             }, 350);
             vm.isStartTest = true;
             vm.isStartingTest = false;
@@ -2132,6 +2215,10 @@
         $window.addEventListener('pagehide', saveReadingDraft);
         $scope.$on('$destroy', function () {
             saveReadingDraft();
+            readingDraftDestroyed = true;
+            readingDraftLoadGeneration += 1;
+            $timeout.cancel(readingAnnotationRestoreTimer);
+            $timeout.cancel(readingDraftWaitTimer);
             $timeout.cancel(readingDraftAutosaveTimer);
             unregisterLocationChangeGuard();
             $window.removeEventListener('beforeunload', handleReadingBeforeUnload);
@@ -2550,6 +2637,7 @@
 
             function failToStartTest(message, title) {
                 blockUI.stop();
+                vm.isStartTest = false;
                 vm.isStartingTest = false;
                 vm.startTestError = message;
                 toastr.error(message, title || 'Unable to start test');
@@ -2643,13 +2731,11 @@
                         vm.resultQuestionTotal = getAllReadingQuestionEntries().length || 1;
                     }
                     blockUI.stop();
-                    vm.isStartTest = true;
+                    vm.isStartTest = vm.isPreviewMode === true;
                     // var timeout10;
                     // timeout10 = $timeout(function(){
                     //     vm.setUpAudio();
                     // },1000);
-                    vm.setUpAudio();
-                    $scope.startCount();
 
                     function secondCallFunction(ieltsReadingActualTest) {
                         var timeout;
@@ -2689,26 +2775,21 @@
                                 vm.passageNumber = vm.isListeningRoute ? Math.min(vm.previewPart, 3) : vm.previewPart;
                                 vm.isStartingTest = false;
                                 vm.showTestModeDialog = false;
+                                vm.setUpAudio();
+                                $scope.startCount();
                                 myCallback(vm.ieltsReadingActualTest);
                             } else {
                                 var hasInitializedLoadedTest = false;
-                                var draftWaitTimeout = null;
                                 var initializeLoadedTest = function () {
                                     if (hasInitializedLoadedTest) { return; }
                                     hasInitializedLoadedTest = true;
-                                    if (draftWaitTimeout) {
-                                        $timeout.cancel(draftWaitTimeout);
-                                        draftWaitTimeout = null;
-                                    }
                                     if (!startFreshSeriousTest) {
                                         try {
                                             restoreReadingDraft();
                                         } catch (draftRestoreError) {
-                                            // A malformed or old draft must never leave the candidate
-                                            // trapped on the loading screen. Keep the test usable and
-                                            // let the next autosave replace the incompatible snapshot.
                                             console.error('Unable to restore IELTS draft.', draftRestoreError);
-                                            toastr.warning('Một phần bản nháp cũ không thể khôi phục, bài vẫn được mở để bạn tiếp tục.', 'Khôi phục bài làm');
+                                            failToStartTest('Không thể khôi phục bản nháp. Vui lòng tải lại trang; ghi chú đã lưu sẽ được giữ nguyên.', 'Khôi phục bài làm');
+                                            return;
                                         }
                                     }
                                     if (vm.isPartAssignment) {
@@ -2726,19 +2807,17 @@
                                     vm.isStartTest = true;
                                     vm.isStartingTest = false;
                                     vm.showTestModeDialog = false;
+                                    vm.setUpAudio();
+                                    $scope.startCount();
                                     $scope.$evalAsync(angular.noop);
                                     myCallback(vm.ieltsReadingActualTest);
                                 };
-                                if (startFreshSeriousTest) {
-                                    initializeLoadedTest();
-                                } else if (readingLearningDraftsReady && angular.isFunction(readingLearningDraftsReady.finally)) {
-                                    readingLearningDraftsReady.finally(initializeLoadedTest);
-                                    // Draft sync is helpful, but a slow/unavailable draft API must never
-                                    // keep the candidate trapped on "Loading test...".
-                                    draftWaitTimeout = $timeout(initializeLoadedTest, 3000);
-                                } else {
-                                    initializeLoadedTest();
-                                }
+                                // Never autosave an empty test before its server draft is loaded.
+                                // Retry starts a fresh request; a timed-out response cannot open the test.
+                                waitForReadingLearningDrafts(initializeLoadedTest, function () {
+                                    vm.showTestModeDialog = true;
+                                    failToStartTest('Chưa tải được ghi chú và tiến độ từ server. Vui lòng kiểm tra mạng rồi bấm Start để thử lại.', 'Khôi phục bài làm');
+                                });
                             }
                         },0);
                     }
@@ -4829,6 +4908,9 @@
         var savedAnnotationRange = null;
         var annotationSequence = 0;
         vm.annotationNotes = [];
+        $scope.$watch(function () { return vm.annotationNotes; }, function (notes, previousNotes) {
+            if (notes !== previousNotes) { saveReadingDraft(); }
+        }, true);
         vm.activeAnnotationNote = null;
         vm.selectionMenuStyle = {};
         vm.annotationNoteStyle = {};
@@ -4863,7 +4945,8 @@
         ];
 
         function serializeReadingAnnotations() {
-            var records = [];
+            if (pendingReadingAnnotations) { return angular.copy(pendingReadingAnnotations); }
+            var records = angular.copy(unrestoredReadingAnnotations);
             angular.forEach(annotationContainerIds, function (containerId) {
                 var container = document.getElementById(containerId);
                 if (!container) { return; }
@@ -4918,17 +5001,25 @@
         }
 
         function restoreReadingAnnotations(records) {
+            unrestoredReadingAnnotations = [];
             angular.forEach(records || [], function (record) {
                 var container = document.getElementById(record.containerId);
-                if (!container || Number(record.end) <= Number(record.start)) { return; }
+                if (!container || Number(record.end) <= Number(record.start)) {
+                    unrestoredReadingAnnotations.push(angular.copy(record));
+                    return;
+                }
                 var range = textRangeForOffsets(container, Number(record.start), Number(record.end));
-                if (!range || !range.toString()) { return; }
+                if (!range || !range.toString()) {
+                    unrestoredReadingAnnotations.push(angular.copy(record));
+                    return;
+                }
                 var restored = [];
                 if (record.highlighted) {
                     restored = addAnnotationClass(range, 'is-highlighted', record.hasNote ? record.noteId : null);
                 } else if (record.hasNote) {
                     restored = addAnnotationClass(range, 'has-note', record.noteId);
                 }
+                if (!restored.length) { unrestoredReadingAnnotations.push(angular.copy(record)); }
                 angular.forEach(restored, function (marker) {
                     if (record.highlighted) { marker.classList.add('is-highlighted'); }
                     if (record.hasNote) {
@@ -5168,6 +5259,7 @@
             }
             addAnnotationClass(savedAnnotationRange, 'is-highlighted');
             hideSelectionMenu(true);
+            saveReadingDraft();
         };
 
         $scope.removeSelectionHighlight = function () {
@@ -5180,6 +5272,7 @@
                 unwrapIfEmptyAnnotation(element);
             });
             hideSelectionMenu(true);
+            saveReadingDraft();
         };
 
         function noteById(noteId) {

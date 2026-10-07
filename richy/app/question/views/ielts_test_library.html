@@ -142,7 +142,7 @@
                             </span>
                         </div>
                     </div>
-                    <div class="reading-test-card__footer" ng-if="!vm.isWritingMode">
+                    <div class="reading-test-card__footer reading-test-card__mode-actions" ng-if="!vm.isWritingMode">
                         <a class="reading-test-card__action is-study" target="_blank" rel="noopener"
                            ng-href="{{vm.testCatalogUrl(item)}}">
                             <span>{{vm.getLearningProgress(item.id) ? (vm.getLearningProgress(item.id).completed ? 'Xem lại bài đã học' : 'Tiếp tục học') : 'Bắt đầu học'}}</span>

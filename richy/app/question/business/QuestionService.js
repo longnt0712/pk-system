@@ -204,7 +204,10 @@
         }
         function getLearningDrafts() {
             return $http.get(baseUrl + 'test_result/drafts').then(function (response) {
-                return angular.isArray(response.data) ? response.data : [];
+                if (!angular.isArray(response.data)) {
+                    return $q.reject(new Error('Invalid learning drafts response'));
+                }
+                return response.data;
             });
         }
 

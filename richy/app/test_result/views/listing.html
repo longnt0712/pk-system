@@ -910,6 +910,7 @@
     .writing-grading-workspace {
         --writing-task-width: 66%;
         --writing-prompt-width: 42%;
+        --writing-scroll-end-space: 120px;
         display: grid;
         grid-template-columns: minmax(0, var(--writing-task-width)) 12px minmax(0, 1fr);
         flex: 1 1 0;
@@ -981,6 +982,7 @@
         min-width: 0;
         min-height: 0;
         padding: 18px;
+        padding-bottom: calc(18px + var(--writing-scroll-end-space));
         overflow-x: hidden;
         overflow-y: auto;
         overscroll-behavior: contain;
@@ -1083,6 +1085,7 @@
         min-height: 0;
         overflow-y: auto;
         line-height: 1.65;
+        padding-bottom: calc(12px + var(--writing-scroll-end-space));
     }
     .writing-feedback-editor .ql-editor table,
     .writing-feedback-readonly table {
@@ -1112,6 +1115,7 @@
         min-height: 0;
         max-height: none;
         padding: 16px 18px;
+        padding-bottom: calc(16px + var(--writing-scroll-end-space));
         overflow-y: auto;
         border: 1px solid #e0e4f1;
         border-radius: 10px;
@@ -1187,6 +1191,7 @@
     }
 
     @media (max-width: 850px) {
+        .writing-grading-workspace { --writing-scroll-end-space: 64px; }
         .writing-task-card__content > .writing-pane-resizer { display: none; }
         .writing-task-card__content {
             grid-template-columns: 1fr;

@@ -3,17 +3,13 @@
         <div class="battle-music-config-header">
             <div>
                 <h2><i class="fa fa-music"></i> Battle Config</h2>
-                <p>Quản lý danh sách nhạc YouTube phát ẩn trong Battle Online 2.</p>
+                <p>Quản lý nhạc chung và nhạc riêng của từng mode Battle Online.</p>
             </div>
-            <button type="button" class="btn btn-success" data-ng-click="vm.addTrack()"
-                    data-ng-disabled="vm.loading || vm.saving">
-                <i class="fa fa-plus"></i> Thêm link nhạc
-            </button>
         </div>
 
         <div class="alert alert-info battle-music-config-note">
             Có thể nhập link <strong>youtube.com/watch?v=...</strong>, <strong>youtu.be/...</strong>
-            hoặc YouTube video ID. Nhạc battle thường phát ngẫu nhiên. Nhạc Diệt Quỷ Ngu lúc nguy hiểm phát khi có đội còn sống gặp nguy hiểm, và trở về nhạc thường khi an toàn.
+            hoặc YouTube video ID. Chọn section phù hợp để thêm hoặc đổi nhạc cho mode đó.
         </div>
 
         <div class="battle-music-config-loading" data-ng-if="vm.loading">
@@ -23,52 +19,72 @@
             Không tải được cấu hình. Vui lòng tải lại trang.
         </div>
 
-        <div class="battle-music-track-list" data-ng-if="!vm.loading && !vm.loadError">
-            <div class="battle-music-track" data-ng-repeat="track in vm.tracks track by $index"
-                 data-ng-class="{'is-disabled': track.enabled === false}">
-                <div class="battle-music-track-index">{{$index + 1}}</div>
-                <div class="battle-music-track-fields">
-                    <label>
-                        <span>Tên hiển thị</span>
-                        <input type="text" class="form-control" data-ng-model="track.name"
-                               maxlength="200" placeholder="Ví dụ: Nhạc chiến đấu 1" />
-                    </label>
-                    <label class="battle-music-url-field">
-                        <span>Link YouTube</span>
-                        <input type="url" class="form-control" data-ng-model="track.url"
-                               placeholder="https://www.youtube.com/watch?v=..." />
-                    </label>
+        <div class="battle-music-sections" data-ng-if="!vm.loading && !vm.loadError">
+            <section class="battle-music-section" data-ng-repeat="section in vm.sections track by section.purpose"
+                     data-ng-class="{'is-danger': section.purpose === 'DEMON_DANGER'}"
+                     aria-labelledby="battle-music-section-{{section.purpose}}">
+                <header class="battle-music-section-header">
+                    <div class="battle-music-section-heading">
+                        <span class="battle-music-section-icon" aria-hidden="true"><i class="fa" data-ng-class="section.icon"></i></span>
+                        <div>
+                            <span class="battle-music-section-label">{{section.label}}</span>
+                            <h3 id="battle-music-section-{{section.purpose}}">{{section.title}} <small>{{vm.sectionCount(section.purpose)}} link</small></h3>
+                            <p>{{section.description}}</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-success" data-ng-click="vm.addTrack(section.purpose)" data-ng-disabled="vm.saving">
+                        <i class="fa fa-plus"></i> {{section.addLabel}}
+                    </button>
+                </header>
+                <p class="battle-music-section-empty" data-ng-if="vm.sectionCount(section.purpose) === 0">Chưa có link nhạc trong section này. Bấm “{{section.addLabel}}” để thêm.</p>
+                <div class="battle-music-track-list">
+                    <div class="battle-music-track" data-ng-repeat="track in (vm.tracks | filter:{purpose:section.purpose}:true)"
+                         data-ng-class="{'is-disabled': track.enabled === false}">
+                        <div class="battle-music-track-index">{{$index + 1}}</div>
+                        <div class="battle-music-track-fields">
+                            <label>
+                                <span>Tên hiển thị</span>
+                                <input type="text" class="form-control" data-ng-model="track.name"
+                                       maxlength="200" placeholder="Ví dụ: Nhạc chiến đấu 1" data-ng-disabled="vm.saving" />
+                            </label>
+                            <label class="battle-music-url-field">
+                                <span>Link YouTube</span>
+                                <input type="url" class="form-control" data-ng-model="track.url"
+                                       placeholder="https://www.youtube.com/watch?v=..." data-ng-disabled="vm.saving" />
+                            </label>
+                        </div>
+                        <label class="battle-music-purpose">
+                            <span>Nhóm nhạc</span>
+                            <select class="form-control" data-ng-model="track.purpose" data-ng-disabled="vm.saving">
+                                <option value="BATTLE">Nhạc chung — tất cả mode</option>
+                                <option value="DEMON_DANGER">Diệt Quỷ Ngu — lúc nguy hiểm</option>
+                            </select>
+                        </label>
+                        <label class="battle-music-enabled">
+                            <input type="checkbox" data-ng-model="track.enabled" data-ng-disabled="vm.saving" />
+                            <span>Bật</span>
+                        </label>
+                        <div class="battle-music-track-actions">
+                            <a class="btn btn-default btn-sm" data-ng-if="track.url" data-ng-href="{{track.url}}"
+                               target="_blank" rel="noopener noreferrer" title="Mở link để kiểm tra">
+                                <i class="fa fa-external-link"></i>
+                            </a>
+                            <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.moveTrack(track, -1)"
+                                    data-ng-disabled="!vm.canMoveTrack(track, -1) || vm.saving" title="Đưa lên trong section này">
+                                <i class="fa fa-arrow-up"></i>
+                            </button>
+                            <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.moveTrack(track, 1)"
+                                    data-ng-disabled="!vm.canMoveTrack(track, 1) || vm.saving" title="Đưa xuống trong section này">
+                                <i class="fa fa-arrow-down"></i>
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm" data-ng-click="vm.removeTrack(track)"
+                                    data-ng-disabled="vm.saving" title="Xóa link">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <label>
-                    <span>Phát khi</span>
-                    <select class="form-control" data-ng-model="track.purpose" data-ng-init="track.purpose = track.purpose || 'BATTLE'">
-                        <option value="BATTLE">Battle thường</option>
-                        <option value="DEMON_DANGER">Diệt Quỷ Ngu — lúc nguy hiểm</option>
-                    </select>
-                </label>
-                <label class="battle-music-enabled">
-                    <input type="checkbox" data-ng-model="track.enabled" />
-                    <span>Bật</span>
-                </label>
-                <div class="battle-music-track-actions">
-                    <a class="btn btn-default btn-sm" data-ng-if="track.url" data-ng-href="{{track.url}}"
-                       target="_blank" rel="noopener noreferrer" title="Mở link để kiểm tra">
-                        <i class="fa fa-external-link"></i>
-                    </a>
-                    <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.moveTrack($index, -1)"
-                            data-ng-disabled="$first || vm.saving" title="Đưa lên">
-                        <i class="fa fa-arrow-up"></i>
-                    </button>
-                    <button type="button" class="btn btn-default btn-sm" data-ng-click="vm.moveTrack($index, 1)"
-                            data-ng-disabled="$last || vm.saving" title="Đưa xuống">
-                        <i class="fa fa-arrow-down"></i>
-                    </button>
-                    <button type="button" class="btn btn-danger btn-sm" data-ng-click="vm.removeTrack($index)"
-                            data-ng-disabled="vm.saving" title="Xóa link">
-                        <i class="fa fa-trash"></i>
-                    </button>
-                </div>
-            </div>
+            </section>
         </div>
 
         <div class="battle-music-config-footer" data-ng-if="!vm.loading && !vm.loadError">
@@ -90,31 +106,67 @@
     .battle-music-config-header p { margin:0; color:#7a879e; }
     .battle-music-config-note { margin-bottom:16px; }
     .battle-music-config-loading { padding:45px; color:#6d7890; text-align:center; }
+    .battle-music-sections { display:flex; flex-direction:column; gap:22px; }
+    .battle-music-section { padding:18px; border:1px solid #dddaf7; border-radius:16px; background:#fcfbff; }
+    .battle-music-section.is-danger { border-color:#f0d5b6; background:#fffcf7; }
+    .battle-music-section-header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:18px; }
+    .battle-music-section-heading { display:flex; align-items:flex-start; gap:12px; min-width:0; }
+    .battle-music-section-icon { display:flex; align-items:center; justify-content:center; flex:0 0 42px; width:42px; height:42px; border-radius:12px; color:#6653d8; background:#eee9ff; font-size:20px; }
+    .battle-music-section.is-danger .battle-music-section-icon { color:#be791c; background:#fff0d5; }
+    .battle-music-section-label { color:#6e59ce; font-size:11px; font-weight:800; letter-spacing:.5px; }
+    .battle-music-section.is-danger .battle-music-section-label { color:#a86a18; }
+    .battle-music-section-header h3 { margin:5px 0 8px; color:#293653; font-size:20px; font-weight:800; }
+    .battle-music-section-header h3 small { display:inline-block; padding:4px 8px; margin-left:8px; border-radius:8px; background:#ebe7fa; color:#6b5a9b; font-size:11px; vertical-align:middle; }
+    .battle-music-section-header p { margin:0; color:#728099; line-height:1.6; }
+    .battle-music-section-header > .btn { flex:0 0 auto; border-radius:9px; }
+    .battle-music-section-empty { margin:0; padding:16px; border:1px dashed #d9dce9; border-radius:12px; color:#7a879e; background:#fff; }
     .battle-music-track-list { display:flex; flex-direction:column; gap:10px; }
     .battle-music-track { display:flex; align-items:flex-end; gap:12px; padding:14px; border:1px solid #dfe5f2; border-radius:13px; background:#f9fbff; transition:.15s ease; }
     .battle-music-track.is-disabled { opacity:.62; background:#f4f5f8; }
     .battle-music-track-index { display:flex; align-items:center; justify-content:center; flex:0 0 34px; width:34px; height:34px; margin-bottom:3px; border-radius:50%; color:#fff; background:linear-gradient(135deg,#5f76fa,#8b56e8); font-weight:800; }
-    .battle-music-track-fields { display:grid; grid-template-columns:minmax(180px,.75fr) minmax(300px,1.75fr); flex:1 1 auto; gap:10px; min-width:0; }
+    .battle-music-track-fields { display:grid; grid-template-columns:minmax(140px,.75fr) minmax(180px,1.75fr); flex:1 1 auto; gap:10px; min-width:0; }
     .battle-music-track-fields label { min-width:0; margin:0; }
     .battle-music-track-fields label > span { display:block; margin-bottom:5px; color:#52617a; font-size:11px; font-weight:800; text-transform:uppercase; }
     .battle-music-enabled { display:flex; align-items:center; gap:6px; min-height:34px; margin:0 2px 3px; color:#43516a; cursor:pointer; }
     .battle-music-enabled input { margin:0; accent-color:#6b60ef; }
+    .battle-music-purpose { flex:0 0 205px; min-width:0; margin:0; }
+    .battle-music-purpose > span { display:block; margin-bottom:5px; color:#52617a; font-size:11px; font-weight:800; text-transform:uppercase; }
     .battle-music-track-actions { display:flex; gap:5px; margin-bottom:3px; }
     .battle-music-config-footer { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:18px; padding-top:16px; border-top:1px solid #e6eaf2; color:#6c7890; }
     .battle-music-config-footer .btn { min-width:190px; border-radius:9px; font-weight:700; }
     .global-dark-mode .battle-music-config-card { border-color:#343d52; background:#202635; }
     .global-dark-mode .battle-music-config-header h2 { color:#eef2ff; }
+    .global-dark-mode .battle-music-section { border-color:#45415d; background:#252b3b; }
+    .global-dark-mode .battle-music-section.is-danger { border-color:#63513c; background:#302b28; }
+    .global-dark-mode .battle-music-section-header h3 { color:#eef2ff; }
+    .global-dark-mode .battle-music-section-label { color:#c2b0ff; }
+    .global-dark-mode .battle-music-section.is-danger .battle-music-section-label { color:#f4c475; }
+    .global-dark-mode .battle-music-section-header p { color:#b1bcd2; }
+    .global-dark-mode .battle-music-section-empty { border-color:#46516b; background:#202635; color:#b1bcd2; }
     .global-dark-mode .battle-music-track { border-color:#3b455b; background:#272f40; }
     .global-dark-mode .battle-music-track.is-disabled { background:#222836; }
     .global-dark-mode .battle-music-track-fields label > span,
-    .global-dark-mode .battle-music-enabled { color:#b9c4d8; }
+    .global-dark-mode .battle-music-enabled,
+    .global-dark-mode .battle-music-purpose > span { color:#b9c4d8; }
     .global-dark-mode .battle-music-track .form-control { border-color:#46516b; background:#1d2330; color:#eef2ff; }
     .global-dark-mode .battle-music-config-footer { border-color:#384156; color:#aeb9cc; }
-    @media (max-width:900px) {
-        .battle-music-config-header, .battle-music-config-footer { align-items:stretch; flex-direction:column; }
+    @media (max-width:1100px) {
+        .battle-music-config-header, .battle-music-config-footer, .battle-music-section-header { align-items:stretch; flex-direction:column; }
         .battle-music-track { align-items:stretch; flex-wrap:wrap; }
         .battle-music-track-fields { grid-template-columns:1fr; flex-basis:calc(100% - 50px); }
+        .battle-music-purpose { flex:1 1 calc(100% - 50px); margin-left:46px; }
         .battle-music-track-actions { margin-left:46px; }
         .battle-music-config-footer .btn { width:100%; }
+    }
+    @media (max-width:480px) {
+        .battle-music-config-card { padding:14px; }
+        .battle-music-section { padding:12px; }
+        .battle-music-track { padding:10px; gap:10px; }
+        .battle-music-track-index { flex-basis:28px; width:28px; height:28px; }
+        .battle-music-track-fields { flex-basis:calc(100% - 38px); }
+        .battle-music-purpose { flex-basis:100%; margin-left:0; }
+        .battle-music-track-actions { margin-left:0; }
+        .battle-music-section-heading { gap:9px; }
+        .battle-music-section-header h3 small { margin-left:0; }
     }
 </style>

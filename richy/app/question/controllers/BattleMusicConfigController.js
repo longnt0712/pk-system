@@ -15,17 +15,34 @@
         vm.loading = true;
         vm.saving = false;
         vm.loadError = false;
+        vm.sections = [
+            {purpose: 'BATTLE', title: 'Nhạc chung', label: 'TẤT CẢ MODE BATTLE ONLINE', icon: 'fa-music',
+                description: 'Phát ngẫu nhiên trong các mode Battle Online. Đây là nhạc nền khi trận đấu diễn ra bình thường.', addLabel: 'Thêm nhạc chung'},
+            {purpose: 'DEMON_DANGER', title: 'Nhạc lúc nguy hiểm', label: 'MODE DIỆT QUỶ NGU', icon: 'fa-exclamation-triangle',
+                description: 'Phát khi có đội còn sống chạm ngưỡng nguy hiểm trong Diệt Quỷ Ngu. Khi an toàn, nhạc chung phát trở lại.', addLabel: 'Thêm nhạc nguy hiểm'}
+        ];
 
-        vm.addTrack = function () {
+        function setTracks(tracks) {
+            vm.tracks = angular.copy(tracks || []);
+            vm.tracks.forEach(function (track) { track.purpose = track.purpose || 'BATTLE'; });
+        }
+
+        vm.sectionCount = function (purpose) {
+            return vm.tracks.filter(function (track) { return track.purpose === purpose; }).length;
+        };
+
+        vm.addTrack = function (purpose) {
             vm.tracks.push({
-                name: 'Battle music ' + (vm.tracks.length + 1),
+                name: (purpose === 'DEMON_DANGER' ? 'Nhạc nguy hiểm ' : 'Battle music ') + (vm.tracks.length + 1),
                 url: '',
                 enabled: true,
-                purpose: 'BATTLE'
+                purpose: purpose || 'BATTLE'
             });
         };
 
-        vm.removeTrack = function (index) {
+        vm.removeTrack = function (track) {
+            var index = vm.tracks.indexOf(track);
+            if (index < 0 || vm.saving) { return; }
             if (vm.tracks.length <= 1) {
                 toastr.warning('Cần giữ lại ít nhất một link nhạc.', 'Battle Config');
                 return;
@@ -33,12 +50,23 @@
             vm.tracks.splice(index, 1);
         };
 
-        vm.moveTrack = function (index, direction) {
-            var target = index + direction;
-            if (target < 0 || target >= vm.tracks.length) { return; }
-            var item = vm.tracks[index];
+        function neighboringTrackIndex(track, direction) {
+            var index = vm.tracks.indexOf(track);
+            if (index < 0 || (direction !== -1 && direction !== 1)) { return -1; }
+            for (var target = index + direction; target >= 0 && target < vm.tracks.length; target += direction) {
+                if (vm.tracks[target].purpose === track.purpose) { return target; }
+            }
+            return -1;
+        }
+
+        vm.canMoveTrack = function (track, direction) { return neighboringTrackIndex(track, direction) >= 0; };
+
+        vm.moveTrack = function (track, direction) {
+            var target = neighboringTrackIndex(track, direction);
+            if (target < 0 || vm.saving) { return; }
+            var index = vm.tracks.indexOf(track);
             vm.tracks[index] = vm.tracks[target];
-            vm.tracks[target] = item;
+            vm.tracks[target] = track;
         };
 
         vm.enabledCount = function () {
@@ -68,7 +96,7 @@
             vm.saving = true;
             service.saveBattleMusicConfig({tracks: tracks}).then(function (saved) {
                 vm.saving = false;
-                vm.tracks = angular.copy((saved && saved.tracks) || []);
+                setTracks(saved && saved.tracks);
                 toastr.success('Đã lưu danh sách nhạc battle.', 'Battle Config');
             }, function (error) {
                 vm.saving = false;
@@ -81,7 +109,7 @@
         service.getBattleMusicConfig().then(function (config) {
             vm.loading = false;
             vm.loadError = false;
-            vm.tracks = angular.copy((config && config.tracks) || []);
+            setTracks(config && config.tracks);
             if (!vm.tracks.length) { vm.addTrack(); }
         }, function () {
             vm.loading = false;
