@@ -3060,6 +3060,7 @@
             var number = parseInt(question.number || question.ordinalNumber || fallbackNumber, 10);
             return {
                 question: question.text || question.question || ('Question number ' + number),
+                videoTimeSeconds: question.videoTimeSeconds == null ? null : question.videoTimeSeconds,
                 questionType: readingQuestionType(19, 'IELTSRTQ', 'IELTS Reading Test Question'),
                 ordinalNumber: number,
                 subQuestions: [],
@@ -3073,6 +3074,7 @@
             return {
                 question: group.instructionHtml || group.instruction || group.question || '',
                 title: group.listTitle || group.title || '',
+                videoTimeSeconds: group.videoTimeSeconds == null ? null : group.videoTimeSeconds,
                 questionType: readingQuestionType(18, 'IELTSRTPK', 'IELTS Reading Test Package'),
                 ordinalNumber: parseInt(group.ordinalNumber || (groupIndex + 1), 10),
                 type: parseInt(group.type, 10) || 1,
@@ -3089,6 +3091,7 @@
             return {
                 question: part.passageHtml || part.passage || part.question || '',
                 pronounce: part.audioUrl || part.pronounce || '',
+                videoUrl: part.videoUrl || null,
                 type: angular.isDefined(part.type) ? Number(part.type) : undefined,
                 questionType: readingQuestionType(
                     passageTypeIds[partIndex],
@@ -3461,6 +3464,17 @@
             });
             var title = info['tieu de'] || info.title || '';
             var audioUrl = info['audio url'] || info.audio || '';
+            var videoUrl = String(info['video url'] || info['link video'] || '').trim();
+            var contentMode = normalizedExcelText(info['loai noi dung'] || info['content type'] || '');
+            if (contentMode === 'video' && !videoUrl) {
+                throw new Error('Điền Video URL trong sheet THONG_TIN trước khi import câu hỏi video.');
+            }
+            if (videoUrl && !vm.isComprehensiveMode) {
+                throw new Error('File có video cần được import tại trang Tạo bài tập tổng hợp.');
+            }
+            if (videoUrl && !video.parseUrl(videoUrl)) {
+                throw new Error('Video URL không hợp lệ. Dùng link YouTube, TikTok đầy đủ hoặc file MP4/WebM/OGG.');
+            }
             var workbookMode = normalizedExcelText(info['loai bai'] || info['test type'] || '');
             if (workbookMode && vm.isComprehensiveMode &&
                     workbookMode.indexOf('tong hop') < 0 && workbookMode.indexOf('comprehensive') < 0) {
@@ -3489,6 +3503,10 @@
                     {passageHtml: '', groups: []}
                 ]
             };
+            if (videoUrl) {
+                source.parts[0].videoUrl = videoUrl;
+                source.parts[0].type = 1;
+            }
             if (vm.isListeningMode) {
                 angular.forEach(source.parts, function (part, partIndex) {
                     part.audioUrl = info['audio part ' + (partIndex + 1)] || '';
@@ -3595,6 +3613,20 @@
                     return;
                 }
                 var questionNumber = parseInt(questionNumberCell, 10);
+                var cueSeconds = null;
+                if (videoUrl) {
+                    var cueCell = String(excelRowValue(row, ['Mốc video', 'Mốc thời gian', 'Video time', 'Timestamp'])).trim();
+                    cueSeconds = cueCell ? video.parseTime(cueCell) : null;
+                    if ((cueCell && cueSeconds == null) || (!cueCell && (Number(group.type) === 1 || group.videoTimeSeconds == null))) {
+                        throw new Error('Dòng ' + (rowIndex + 2) + ': nhập Mốc video theo phút:giây, ví dụ 01:30.');
+                    }
+                    if (Number(group.type) !== 1) {
+                        if (group.videoTimeSeconds != null && cueSeconds != null && group.videoTimeSeconds !== cueSeconds) {
+                            throw new Error('Dòng ' + (rowIndex + 2) + ': các câu trong nhóm ' + groupNumber + ' phải dùng cùng Mốc video.');
+                        }
+                        if (cueSeconds != null) { group.videoTimeSeconds = cueSeconds; }
+                    }
+                }
                 var questionRange = questionRanges[currentPartNumber - 1];
                 if (!questionNumber || questionNumber < questionRange.start || questionNumber > questionRange.end) {
                     throw new Error('Dòng ' + (rowIndex + 2) + ': Part ' + currentPartNumber +
@@ -3623,6 +3655,7 @@
                 );
                 group.questions.push({
                     number: questionNumber,
+                    videoTimeSeconds: Number(group.type) === 1 ? cueSeconds : null,
                     text: excelRowValue(row, ['Nội dung câu hỏi', 'Question']) || ('Question number ' + questionNumber),
                     answers: answers
                 });
@@ -3641,7 +3674,7 @@
         }
 
         vm.importReadingTestFile = function (file, invalidFiles) {
-            var importTitle = 'Import IELTS ' + vm.testModeName;
+            var importTitle = vm.isComprehensiveMode ? 'Import bài tập Tổng hợp' : 'Import IELTS ' + vm.testModeName;
             if ((!file && invalidFiles && invalidFiles.length) || (file && file.size > 10 * 1024 * 1024)) {
                 toastr.warning('File Excel không được lớn hơn 10 MB.', importTitle);
                 return;
@@ -3668,6 +3701,9 @@
                         var importedQuestionCount = importedTest.importedQuestionCount;
                         delete importedTest.importedQuestionCount;
                         vm.ieltsReadingTest = importedTest;
+                        vm.comprehensiveContentMode = importedTest.subQuestions[0].videoUrl ? 'VIDEO' : 'TEXT';
+                        vm.savedBuilderVideoLink = null;
+                        vm.builderVideoSeconds = vm.videoDuration = 0;
                         vm.createPackage = true;
                         vm.getOrdinalNumber(vm.ieltsReadingTest);
                         isHavingQuestions(vm.ieltsReadingTest);
@@ -3698,6 +3734,10 @@
         vm.downloadReadingImportTemplate = function () {
             var modeName = vm.testModeName;
             var modeUpper = String(modeName).toUpperCase();
+            var videoTemplate = vm.isComprehensiveMode && vm.isVideoBuilder();
+            var templateVideoUrl = videoTemplate
+                ? (((vm.ieltsReadingTest || {}).subQuestions || [])[0] || {}).videoUrl || 'https://www.youtube.com/watch?v=M7lc1UVf-VE'
+                : '';
             var audioInstruction = vm.isListeningMode
                 ? 'Bắt buộc nhập URL HTTPS công khai trỏ trực tiếp tới file audio (ví dụ .mp3 hoặc .m4a). Không dùng link trang nghe cần đăng nhập.'
                 : 'Phải để trống. Bài Reading và bài Tổng hợp không sử dụng Audio URL chính.';
@@ -3746,7 +3786,7 @@
                 ['Mục tiêu', vm.isComprehensiveMode
                     ? 'Tạo một bài tập Tổng hợp gồm ' + partCountText + ', sau đó import trực tiếp tại trang Tạo bài tập tổng hợp.'
                     : 'Tạo đúng một bài IELTS ' + modeName + ' gồm ' + partCountText + ' và tối đa 40 câu, sau đó import trực tiếp tại trang IELTS ' + modeName + '.'],
-                ['Bước 1', 'Trong THONG_TIN, giữ Loại bài=' + modeUpper + ', nhập Tiêu đề và Audio URL theo quy tắc bên dưới.'],
+                ['Bước 1', 'Trong THONG_TIN, giữ Loại bài=' + modeUpper + ', nhập Tiêu đề và Audio URL theo quy tắc bên dưới.' + (vm.isComprehensiveMode ? ' Bài có video: điền Video URL và đặt Loại nội dung=VIDEO; bài văn bản: để trống Video URL và dùng TEXT.' : '')],
                 ['Audio URL chính', audioInstruction],
                 ['Audio Part 1–4 (Listening)', vm.isListeningMode ? 'Nên nhập URL audio riêng cho từng Part trong THONG_TIN. Khi giao nhiệm vụ chỉ làm một Part, hệ thống chỉ phát audio của Part đó. Nếu ô Part để trống, hệ thống dùng Audio URL chính.' : 'Không áp dụng cho Reading/Tổng hợp; để trống.'],
                 ['Bước 2', 'Thay toàn bộ dòng ví dụ trong NOI_DUNG bằng dữ liệu của đề thật; giữ nguyên tên sheet và tiêu đề cột.'],
@@ -3776,6 +3816,15 @@
                 ['Kiểm tra trước import', 'Đủ title; đúng ' + partCountText + '; ' + (vm.isComprehensiveMode ? 'số câu liên tục từ 1' : 'đúng khoảng số câu') + '; không trùng số; mỗi câu có đáp án; đáp án đúng khớp danh sách; không còn chữ mẫu.'],
                 ['Dùng với ChatGPT', 'Gửi đề gốc cùng file mẫu này và yêu cầu ChatGPT đọc sheet PROMPT_CHATGPT. ChatGPT phải trả về một file .xlsx theo đúng cấu trúc, không trả JSON/CSV.']
             ];
+            if (vm.isComprehensiveMode) {
+                guideRows.splice(3, 0,
+                    ['VIDEO - dùng chung mẫu này', 'Import bằng nút Import Excel hiện có. Điền Video URL trong THONG_TIN để hệ thống tự chuyển sang bài video: video bên trái, câu hỏi bên phải. Mỗi bài dùng một video. Link và câu hỏi ví dụ chỉ minh họa định dạng; thay bằng dữ liệu thật trước khi xuất bản.'],
+                    ['VIDEO - link hỗ trợ', 'YouTube: link watch, youtu.be, Shorts hoặc live. TikTok: dùng link đầy đủ https://www.tiktok.com/@ten/video/123...; mở link rút gọn để lấy link đầy đủ. Có thể dùng link trực tiếp MP4/WebM/OGG. Video cần xem và nhúng được.'],
+                    ['VIDEO - Mốc video', 'Cột Mốc video trong NOI_DUNG dùng văn bản phút:giây, ví dụ 01:30 = 1 phút 30 giây, 00:00 = đầu video; trên một giờ dùng 1:02:03. Không nhập 01:75 hoặc giờ Excel. Mốc phải nằm trong thời lượng video. Bài văn bản để trống cột này.'],
+                    ['VIDEO - từng câu / nhóm câu', 'Mã 1: mỗi dòng câu hỏi có mốc riêng. Các loại dùng chung nội dung như mã 5, 11, 13: nhập mốc ở dòng đầu nhóm; các dòng sau để trống để kế thừa hoặc lặp đúng mốc đó. Không dùng các mốc khác nhau trong cùng nhóm.'],
+                    ['VIDEO - ví dụ và kiểm tra', 'Ví dụ: câu 1 tại 01:30, câu 2 tại 02:30, nhóm điền từ câu 3–4 tại 03:30. Sửa mốc và câu hỏi theo video thật. Sau import, kiểm tra link, thời lượng, đáp án, Topic và Xem trước rồi xuất bản. Đến mốc, video dừng để học sinh trả lời rồi tiếp tục.']
+                );
+            }
             var guideSheet = XLSX.utils.aoa_to_sheet(guideRows);
             guideSheet['!cols'] = [{wch: 31}, {wch: 125}];
             XLSX.utils.book_append_sheet(workbook, guideSheet, 'HUONG_DAN');
@@ -3797,11 +3846,18 @@
                 ['8. Với mã 1, nhập lựa chọn vào Đáp án 1–12 và đúng một Đáp án đúng. Tất cả Multiple Choice import từ Reading/Listening đều là một cột dọc; không dùng mã 6.'],
                 ['8A. Với mã 5 Multiple Answers, nhóm N số câu phải có đúng N dòng liên tiếp, cùng Part + Nhóm, cùng câu hỏi và cùng danh sách lựa chọn. Ví dụ Questions 21–22: dòng 21 và 22 lặp nguyên câu hỏi và 5 đáp án; nếu A và C đúng thì nhập A ở dòng 21, C ở dòng 22 (hoặc A,C trên cả hai dòng). Importer hợp nhất thành một khối Questions 21–22, tự tích A và C, người dùng chỉ thấy một câu hỏi và một danh sách checkbox.'],
                 ['9. Passage và hướng dẫn dùng HTML đơn giản. Giữ nguyên nội dung đề, chính tả, dấu câu, tên riêng, tiêu đề đoạn và ký hiệu A/B/C…; không tóm tắt.'],
-                ['10. Không tạo macro, công thức, link ngoài, sheet phụ hoặc cột phụ. Không để ô lỗi Excel. File phải mở được bằng Excel và SheetJS.'],
+                ['10. Không tạo macro, công thức, liên kết tới workbook ngoài, sheet phụ hoặc cột phụ. Không để ô lỗi Excel. File phải mở được bằng Excel và SheetJS.' + (vm.isComprehensiveMode ? ' Video URL là trường link video được phép sử dụng.' : '')],
                 ['11. Tự kiểm tra từng dòng trước khi xuất file: ' + (vm.isComprehensiveMode ? 'số câu phải liên tục từ 1; chỉ dùng Part 1' : 'đủ 40 câu nếu đề đủ 40; đúng part') + '; không trùng/thiếu số; KHÔNG có dòng câu nào thiếu Đáp án 1 khi loại yêu cầu đáp án; Đáp án đúng khớp lựa chọn; mã 4 có số }{HEADING}{ bằng số câu; mã 11 và 13 có số }{SPACE}{ bằng số câu. Với mã 13, kiểm tra mọi dòng đều có cùng danh sách đầy đủ và số đáp án đúng không nhỏ hơn số câu. Nếu còn thiếu dù chỉ một đáp án thì phải sửa xong mới tạo file.'],
                 ['KẾT QUẢ ĐẦU RA'],
                 ['Chỉ gửi lại file .xlsx hoàn chỉnh. Không gửi JSON, CSV hoặc hướng dẫn thay thế cho file. Nếu đề gốc thiếu dữ liệu, ghi rõ phần thiếu trong một tin nhắn ngắn và không tự bịa đáp án.']
             ];
+            if (vm.isComprehensiveMode) {
+                promptRows.splice(5, 0,
+                    ['2A. Mẫu Tổng hợp này dùng chung cho văn bản và video. Nếu đề có video, đặt Loại nội dung=VIDEO và điền đúng Video URL trong THONG_TIN. Dùng link YouTube, TikTok đầy đủ hoặc file MP4/WebM/OGG được cung cấp; không tự bịa link. Nếu bài văn bản, đặt TEXT và để trống Video URL cùng cột Mốc video.'],
+                    ['2B. Bài video: nhập Mốc video dưới dạng chuỗi văn bản phút:giây (01:30), hoặc giờ:phút:giây (1:02:03), giữ định dạng Text. Mã 1 cần mốc cho từng dòng. Các loại dùng chung nội dung như mã 5, 11, 13 dùng một mốc cho cả nhóm; dòng đầu nhập mốc, dòng sau để trống hoặc lặp đúng mốc. Không dùng mốc vượt thời lượng video.'],
+                    ['2C. Chỉ đặt câu hỏi và đáp án từ nội dung video/đề thật. Nếu chưa có nội dung video, đáp án hoặc mốc thời gian, báo phần thiếu để người dùng bổ sung; không suy đoán từ tên hay link video.']
+                );
+            }
             var promptSheet = XLSX.utils.aoa_to_sheet(promptRows);
             promptSheet['!cols'] = [{wch: 150}];
             XLSX.utils.book_append_sheet(workbook, promptSheet, 'PROMPT_CHATGPT');
@@ -3812,6 +3868,12 @@
                 ['Tiêu đề', vm.isComprehensiveMode ? 'Bài tập tổng hợp 01' : 'IELTS Academic ' + modeName + ' Test 01'],
                 ['Audio URL', vm.isListeningMode ? 'https://example.com/audio/ielts-listening-test-01.mp3' : '']
             ];
+            if (vm.isComprehensiveMode) {
+                infoRows.push(
+                    ['Loại nội dung', videoTemplate ? 'VIDEO' : 'TEXT'],
+                    ['Video URL', templateVideoUrl]
+                );
+            }
             if (vm.isListeningMode) {
                 infoRows.push(
                     ['Audio Part 1', 'https://example.com/audio/ielts-listening-test-01-part-1.mp3'],
@@ -3825,6 +3887,7 @@
             XLSX.utils.book_append_sheet(workbook, infoSheet, 'THONG_TIN');
 
             var contentHeader = ['Part', vm.isListeningMode ? 'Part HTML' : 'Passage HTML', 'Nhóm', 'Loại câu hỏi', 'Hướng dẫn HTML', 'Số câu', 'Nội dung câu hỏi', 'Đáp án 1', 'Đáp án 2', 'Đáp án 3', 'Đáp án 4', 'Đáp án 5', 'Đáp án 6', 'Đáp án 7', 'Đáp án 8', 'Đáp án 9', 'Đáp án 10', 'Đáp án 11', 'Đáp án 12', 'Danh sách dùng chung (A=... | B=...)', 'Đáp án đúng', 'Tiêu đề danh sách'];
+            if (vm.isComprehensiveMode) { contentHeader.push('Mốc video'); }
             var contentRows;
             if (vm.isComprehensiveMode) {
                 contentRows = [
@@ -3839,10 +3902,10 @@
                     contentHeader,
                     [1, part1PassageExample, 1, 11, '<p><strong>Questions 1–2</strong></p><p>Write ONE WORD ONLY for each answer.</p>', 1, 'Name: }{SPACE}{. Preferred day: }{SPACE}{.', 'Harbour', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
                     ['', '', '', '', '', 2, '', 'Tuesday', '', '', '', '', '', '', '', '', '', '', '', '', 'A', ''],
-                    [2, part2PassageExample, 1, 5, '<p><strong>Questions 11–12</strong></p><p>Choose TWO letters, A–E.</p>', 11, 'Which TWO features had the greatest impact?', 'the local examples', 'the broad focus', 'the practical suggestions', 'the policy implications', 'the visual material', '', '', '', '', '', '', '', 'A', ''],
-                    ['', '', '', '', '', 12, 'Which TWO features had the greatest impact?', 'the local examples', 'the broad focus', 'the practical suggestions', 'the policy implications', 'the visual material', '', '', '', '', '', '', '', 'C', ''],
+                    [2, part2PassageExample, 1, 5, '<p><strong>Questions 11–12</strong></p><p>Choose TWO letters, A–E.</p>', 11, 'Which TWO features had the greatest impact?', 'the local examples', 'the broad focus', 'the practical suggestions', 'the policy implications', 'the visual material', '', '', '', '', '', '', '', '', 'A', ''],
+                    ['', '', '', '', '', 12, 'Which TWO features had the greatest impact?', 'the local examples', 'the broad focus', 'the practical suggestions', 'the policy implications', 'the visual material', '', '', '', '', '', '', '', '', 'C', ''],
                     [3, part3PassageExample, 1, 15, '<p><strong>Questions 21–22</strong></p><p>Match each category with the correct feature and move it into the gap.</p>', 21, 'Impression fossils', '', '', '', '', '', '', '', '', '', '', '', '', 'A=They are very rare. | B=They are three-dimensional. | C=They contain plant-cell information.', 'A', 'Features'],
-                    ['', '', '', '', '', 22, 'Cast fossils', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'B', 'Features'],
+                    ['', '', '', '', '', 22, 'Cast fossils', '', '', '', '', '', '', '', '', '', '', '', '', '', 'B', 'Features'],
                     [4, part4PassageExample, 1, 1, '<p><strong>Questions 31–32</strong></p><p>Choose the correct answer.</p>', 31, 'Nội dung câu hỏi 31', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', '', '', '', '', '', '', '', '', '', '', 'B', ''],
                     ['', '', '', '', '', 32, 'Nội dung câu hỏi 32', 'Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', '', '', '', '', '', '', '', '', '', '', 'C', '']
                 ];
@@ -3857,13 +3920,26 @@
                     ['', '', '', '', '', 28, 'The extinction of the megafauna happened within a particular period.', '', '', '', '', '', '', '', '', '', '', '', '', '', 'C', 'List of Researchers']
                 ];
             }
+            if (vm.isComprehensiveMode) {
+                var exampleVideoCues = ['01:30', '02:30', '03:30', ''];
+                angular.forEach(contentRows.slice(1), function (row, rowIndex) {
+                    row.push(videoTemplate ? exampleVideoCues[rowIndex] : '');
+                });
+            }
             var contentSheet = XLSX.utils.aoa_to_sheet(contentRows);
             contentSheet['!cols'] = [
                 {wch: 8}, {wch: 55}, {wch: 9}, {wch: 18}, {wch: 55}, {wch: 10}, {wch: 35},
                 {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20},
                 {wch: 20}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 90}, {wch: 16}, {wch: 30}
             ];
-            contentSheet['!autofilter'] = {ref: 'A1:V' + contentRows.length};
+            if (vm.isComprehensiveMode) {
+                contentSheet['!cols'].push({wch: 16});
+                angular.forEach(contentRows.slice(1), function (row, rowIndex) {
+                    var cueCell = contentSheet['W' + (rowIndex + 2)];
+                    if (cueCell) { cueCell.z = '@'; }
+                });
+            }
+            contentSheet['!autofilter'] = {ref: 'A1:' + (vm.isComprehensiveMode ? 'W' : 'V') + contentRows.length};
             XLSX.utils.book_append_sheet(workbook, contentSheet, 'NOI_DUNG');
 
             var typeImportNotes = {
