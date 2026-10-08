@@ -48,7 +48,7 @@ function sheetJsBoundary() {
     };
 }
 
-function harness({mode = 'comprehensive', videoMode = false, link = ''} = {}) {
+function harness({mode = 'comprehensive', videoMode = false, link = '', saveResponse, saveFailure, savePending} = {}) {
     const definitions = {}, messages = [], saves = [];
     const angular = {
         isObject: value => value !== null && typeof value === 'object',
@@ -73,26 +73,36 @@ function harness({mode = 'comprehensive', videoMode = false, link = ''} = {}) {
         isWritingMode: false, isListeningMode: mode === 'listening',
         testModeName: mode === 'comprehensive' ? 'Tổng hợp' : mode === 'listening' ? 'Listening' : 'Reading',
         currentUser: {id: 7}, types: [], questionPackageTypes: [{id: 1, name: 'Multiple Choices'}, {id: 11, name: 'Filling Gaps New'}],
-        isVideoBuilder() { return this.isComprehensiveMode && videoMode; },
+        isVideoBuilder() { return this.isComprehensiveMode && (videoMode || this.comprehensiveContentMode === 'VIDEO'); },
         ieltsReadingTest: {subQuestions: [{videoUrl: link}]},
         comprehensiveContentMode: 'TEXT', savedBuilderVideoLink: 'old link', builderVideoSeconds: 99, videoDuration: 999,
         getOrdinalNumber() {}, refreshBuilderValidation() {},
-        saveReadingTest(status) { saves.push({status, test: this.ieltsReadingTest}); return Promise.resolve(); },
+        syncTestTopics() {}, restoreBuilderTopicContext() {}, getPageCreateIELTSReadingTest() {},
         matchingOptionLabel(index) { return String.fromCharCode(65 + index); }
     };
+    const loading = {count: 0, start() { this.count++; }, stop() { this.count--; }};
     const context = {
         angular, XLSX, video, vm: state, $window: {XLSX},
         toastr: Object.fromEntries(['error', 'warning', 'success'].map(type => [type, (message, title) => messages.push({type, message, title})])),
         $scope: {$applyAsync(callback) { callback(); }},
+        $timeout(callback) { return Promise.resolve().then(callback); }, blockUI: loading,
+        service: {saveObject(value) {
+            saves.push({status: value.status, test: structuredClone(value)});
+            if (savePending) { return savePending; }
+            if (saveFailure) { return Promise.reject(saveFailure); }
+            return saveResponse !== undefined ? Promise.resolve(saveResponse) : Promise.resolve(Object.assign(structuredClone(value), {id: 42}));
+        }},
         isHavingQuestions() {},
         FileReader: class {readAsArrayBuffer(file) { this.onload({target: {result: file.workbook}}); }}
     };
     vmModule.createContext(context);
-    vmModule.runInContext(['ensureComprehensiveBuilder', 'ensureWritingTaskPackage', 'ensureMultipleAnswerPackage',
+    vmModule.runInContext(['ensureComprehensiveBuilder', 'ensureWritingTaskPackage', 'ensureMultipleAnswerPackage', 'ensureListeningBuilderParts',
         'plainText', 'isSharedChoicePackage', 'ensureSharedChoicePackage'].map(productionFunction).join('\n') + '\n' +
+        productionFunction('prepareSharedChoicePackagesForSave') + '\n' +
+        section('        function readingTestSaveError(', '        var readingPartRules =') + '\n' +
         section('        function readingQuestionType(', '        vm.status = {id: 3, name: "Tất cả (no listening)"};'), context);
     return {
-        state, messages, saves,
+        state, messages, saves, loading,
         download() { state.downloadReadingImportTemplate(); assert.ok(XLSX.download); return XLSX.download; },
         parse(book) { return context.readingTestFromExcel(book); },
         import(book) { state.importReadingTestFile({name: 'mau_import_bai_tap_tong_hop.xlsx', size: 1000, workbook: book}); }
@@ -134,9 +144,9 @@ test('a teacher fills video fields in the default template and uses the existing
     info(book, 'Video URL', 'https://youtu.be/M7lc1UVf-VE');
     cue(book, 1, '01:30'); cue(book, 2, '02:30'); cue(book, 3, '03:30');
     qa.import(book);
-    await Promise.resolve();
+    await new Promise(resolve => setImmediate(resolve));
     assert.equal(qa.saves.length, 1);
-    assert.equal(qa.saves[0].status, 'draft');
+    assert.equal(qa.saves[0].status, 6);
     assert.equal(qa.state.comprehensiveContentMode, 'VIDEO');
     assert.equal(qa.state.videoDuration, 0);
     assert.equal(qa.state.savedBuilderVideoLink, null);
@@ -150,6 +160,8 @@ test('a teacher fills video fields in the default template and uses the existing
     assert.equal(gaps.subQuestions[1].questionAnswers[0].answer.answer, 'Tuesday');
     assert.equal(gaps.subQuestions[1].questionAnswers[0].correct, true);
     assert.ok(!qa.messages.some(message => message.type === 'error'));
+    assert.equal(qa.loading.count, 0);
+    assert.equal(qa.state.ieltsReadingTest.id, 42);
 });
 
 test('video mode downloads the same full template with the current link and text timestamps', () => {
@@ -203,4 +215,126 @@ test('Reading and Listening keep their existing templates and import their examp
         assert.equal(imported.subQuestions.length, mode === 'reading' ? 3 : 4);
         assert.equal(imported.importedQuestionCount, mode === 'reading' ? 6 : 8);
     }
+});
+
+function fiftyVideoQuestions(qa) {
+    const {book} = qa.download();
+    qa.messages.length = 0;
+    info(book, 'Loại nội dung', 'VIDEO');
+    info(book, 'Video URL', 'https://youtu.be/M7lc1UVf-VE');
+    const header = book.Sheets.NOI_DUNG.rows[0];
+    book.Sheets.NOI_DUNG.rows = [header, ...Array.from({length: 50}, (_, index) => {
+        const row = Array(header.length).fill('');
+        const set = (name, value) => { row[header.indexOf(name)] = value; };
+        set('Part', 1); set('Nhóm', 1); set('Loại câu hỏi', 1); set('Số câu', index + 1);
+        set('Nội dung câu hỏi', 'Video question ' + (index + 1));
+        for (let answer = 1; answer <= 4; answer++) { set('Đáp án ' + answer, 'Choice ' + answer); }
+        set('Đáp án đúng', 'B');
+        const seconds = index * 5;
+        set('Mốc video', String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0'));
+        return row;
+    })];
+    return book;
+}
+
+const flush = () => new Promise(resolve => setImmediate(resolve));
+const importedQuestions = qa => qa.state.ieltsReadingTest.subQuestions[0].subQuestions[0].subQuestions;
+
+test('import waits for the save response, prevents duplicate saves and confirms all 50 video questions only after receiving an id', async () => {
+    let confirm;
+    const qa = harness({savePending: new Promise(resolve => { confirm = resolve; })});
+    const book = fiftyVideoQuestions(qa);
+    qa.import(book);
+    await flush();
+    assert.equal(qa.saves.length, 1);
+    assert.equal(importedQuestions(qa).length, 50);
+    assert.equal(qa.state.importingReadingTest, true);
+    assert.equal(qa.state.savingReadingTest, true);
+    assert.equal(qa.loading.count, 1);
+    assert.ok(!qa.messages.some(message => message.type === 'success'));
+    qa.import(book); qa.state.saveReadingTest('draft');
+    assert.equal(qa.saves.length, 1);
+    confirm(Object.assign(structuredClone(qa.saves[0].test), {id: 123}));
+    await flush();
+    assert.equal(qa.state.ieltsReadingTest.id, 123);
+    assert.equal(importedQuestions(qa).length, 50);
+    assert.match(qa.messages.at(-1).message, /Đã import và lưu bản nháp 50 câu/);
+    assert.equal(qa.state.importingReadingTest, false);
+    assert.equal(qa.state.savingReadingTest, false);
+    assert.equal(qa.loading.count, 0);
+});
+
+test('failed saves and responses without a saved id preserve 50 questions and clear both spinners without claiming success', async () => {
+    for (const scenario of [
+        {saveFailure: {status: 409, data: {message: 'Lỗi cơ sở dữ liệu thử nghiệm'}}, expected: /HTTP 409.*Lỗi cơ sở dữ liệu thử nghiệm/},
+        {saveFailure: {status: 403}, expected: /không có quyền/},
+        {saveFailure: {status: -1, xhrStatus: 'timeout'}, expected: /chưa xác nhận/},
+        {saveResponse: {}, expected: /không trả về mã bài/}
+    ]) {
+        const qa = harness(scenario);
+        qa.import(fiftyVideoQuestions(qa));
+        await flush();
+        assert.equal(importedQuestions(qa).length, 50);
+        assert.equal(importedQuestions(qa)[49].videoTimeSeconds, 245);
+        assert.equal(qa.state.ieltsReadingTest.id, undefined);
+        assert.equal(qa.saves.length, 1);
+        assert.equal(qa.state.importingReadingTest, false);
+        assert.equal(qa.state.savingReadingTest, false);
+        assert.equal(qa.loading.count, 0);
+        assert.match(qa.state.importError, scenario.expected);
+        assert.ok(!qa.messages.some(message => message.type === 'success'));
+    }
+});
+
+test('malformed ChatGPT spreadsheets are rejected with an actionable column or row before replacing the builder', () => {
+    const cases = [
+        {change: rows => { rows[0][5] = 'Question No.'; }, error: /thiếu cột "Số câu"/},
+        {change: rows => { rows[0][8] = rows[0][7]; }, error: /tiêu đề cột bị lặp/},
+        {change: rows => { rows[1][5] = '1.5'; }, error: /Dòng 2: Số câu phải là số nguyên/},
+        {change: rows => { rows[1][5] = ''; }, error: /Dòng 2:.*thiếu Số câu/},
+        {change: rows => { rows[2][3] = 11; }, error: /Dòng 3: các câu trong cùng Nhóm/},
+        {change: rows => { rows[1][8] = ''; }, error: /Dòng 2: Đáp án 1–12 phải nhập liền/},
+        {change: rows => { rows[1][6] = ''; }, error: /Dòng 2, câu 1: thiếu Nội dung/},
+        {change: rows => { rows[1][20] = 'A,B'; }, error: /cần đúng một Đáp án đúng/},
+        {change: rows => { rows[1][20] = '1abc'; }, error: /không khớp/},
+        {change: rows => { rows[2][5] = 1; }, error: /bị thiếu hoặc lặp/}
+    ];
+    for (const {change, error} of cases) {
+        const qa = harness(), book = fiftyVideoQuestions(qa), original = qa.state.ieltsReadingTest;
+        change(book.Sheets.NOI_DUNG.rows);
+        qa.import(book);
+        assert.equal(qa.state.ieltsReadingTest, original);
+        assert.equal(qa.saves.length, 0);
+        assert.equal(qa.state.importingReadingTest, false);
+        assert.match(qa.state.importError, error);
+    }
+});
+
+test('gap counts, shared answer banks and Excel formula cells are checked before saving', () => {
+    const gapQa = harness(), gapBook = gapQa.download().book;
+    gapBook.Sheets.NOI_DUNG.rows[3][6] = 'One gap }{SPACE}{';
+    assert.throws(() => gapQa.parse(gapBook), /có 1 ký hiệu.*cần đúng 2/);
+    const sharedQa = harness({mode: 'listening'}), sharedBook = sharedQa.download().book;
+    const sharedRows = sharedBook.Sheets.NOI_DUNG.rows.filter(row => row[5] === 11 || row[5] === 12);
+    assert.ok(sharedRows.length > 1);
+    sharedRows[1][7] = 'Different choice';
+    assert.throws(() => sharedQa.parse(sharedBook), /danh sách lựa chọn phải giống/);
+    const formulaQa = harness(), formulaBook = formulaQa.download().book;
+    formulaBook.Sheets.NOI_DUNG.A2.f = '1+0';
+    assert.throws(() => formulaQa.parse(formulaBook), /NOI_DUNG, ô A2.*không dùng công thức/);
+});
+
+test('QuestionService preserves the API error body and status and sets a bounded save timeout', async () => {
+    const serviceSource = fs.readFileSync(path.join(__dirname, '../question/business/QuestionService.js'), 'utf8');
+    const start = serviceSource.indexOf('        function saveObject(');
+    const end = serviceSource.indexOf('        function updateTestStatus(', start);
+    const requests = [], serverError = {status: 409, data: {message: 'Database save failed'}};
+    const context = {angular: {isFunction: value => typeof value === 'function'}, baseUrl: '/api/', restUrl: 'question',
+        $q: {reject: Promise.reject.bind(Promise)}, $http(request) { requests.push(request); return Promise.reject(serverError); }};
+    vmModule.runInNewContext(serviceSource.slice(start, end), context);
+    let callbackError;
+    await assert.rejects(context.saveObject({title: 'Test'}, undefined, error => { callbackError = error; }), error => error === serverError);
+    assert.equal(callbackError, serverError);
+    assert.equal(requests[0].url, '/api/question/save');
+    assert.equal(requests[0].timeout, 120000);
 });

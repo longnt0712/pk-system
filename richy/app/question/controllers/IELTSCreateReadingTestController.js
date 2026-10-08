@@ -870,7 +870,25 @@
             });
         }
 
+        function readingTestSaveError(response) {
+            var status = Number(response && response.status);
+            if (status === 401) { return 'Phiên đăng nhập đã hết hạn. Đăng nhập lại rồi lưu bài.'; }
+            if (status === 403) { return 'Tài khoản hiện tại không có quyền lưu bài này.'; }
+            if (status === 413) { return 'Nội dung bài vượt giới hạn máy chủ. Giảm ảnh nhúng hoặc chia thành các bài nhỏ hơn rồi lưu lại.'; }
+            if (status === -1 || (response && response.xhrStatus === 'timeout')) {
+                return 'Máy chủ chưa xác nhận việc lưu bài. Kiểm tra kết nối và danh sách bài trước khi lưu lại.';
+            }
+            var detail = response && response.data && (response.data.message || response.data.error);
+            if (!detail && response && response.message) { detail = response.message; }
+            if (detail && !/^(Internal Server Error|Bad Request|Forbidden|Unauthorized)$/i.test(String(detail))) {
+                return 'Không lưu được bài' + (status > 0 ? ' (HTTP ' + status + ')' : '') + ': ' + String(detail);
+            }
+            return 'Không thể lưu bài ' + vm.testModeName + (status > 0 ? ' (HTTP ' + status + ')' : '') + '. Dữ liệu chưa được xác nhận lưu trên máy chủ.';
+        }
+
         vm.saveReadingTest = function (saveMode) {
+            if (vm.savingReadingTest) { return vm.readingSavePromise; }
+            vm.lastSaveError = '';
             if (vm.isVideoBuilder()) {
                 var videoPassage = vm.ieltsReadingTest.subQuestions[0];
                 var invalidTime = false;
@@ -880,7 +898,8 @@
                     });
                 });
                 if (invalidTime || (videoPassage.videoUrl && !video.parseUrl(videoPassage.videoUrl))) {
-                    toastr.warning('Kiểm tra lại link video và mốc phút:giây trước khi lưu.', 'Chưa thể lưu');
+                    vm.lastSaveError = 'Kiểm tra lại link video và mốc phút:giây trước khi lưu.';
+                    toastr.warning(vm.lastSaveError, 'Chưa thể lưu');
                     return $timeout(angular.noop);
                 }
             }
@@ -889,12 +908,15 @@
             prepareSharedChoicePackagesForSave();
             ensureComprehensiveBuilder(vm.ieltsReadingTest);
             if (vm.isComprehensiveMode) { vm.syncTestTopics(); }
+            vm.savingReadingTest = true;
             blockUI.start();
-            return service.saveObject(vm.ieltsReadingTest).then(function (data) {
-                blockUI.stop();
+            vm.readingSavePromise = $timeout(function () {
+                return service.saveObject(vm.ieltsReadingTest);
+            }, 0).then(function (data) {
                 if (!data || !data.id) {
-                    toastr.error((data && data.message) || 'Không lưu được bài tập.', 'Không thể lưu');
-                    return;
+                    vm.lastSaveError = (data && data.message) || 'Máy chủ không trả về mã bài đã lưu. Bài chưa được xác nhận lưu.';
+                    if (!vm.importingReadingTest) { toastr.error(vm.lastSaveError, 'Không thể lưu'); }
+                    return null;
                 }
                 vm.ieltsReadingTest = ensureComprehensiveBuilder(ensureListeningBuilderParts(data));
                 vm.selectedTestTopics = (vm.ieltsReadingTest.questionTopics || []).map(function (link) { return link.topic; });
@@ -935,12 +957,19 @@
                 vm.getPageCreateIELTSReadingTest();
                 var saveMessage = saveMode === 'publish' ? 'Đã kiểm tra và xuất bản bài ' + vm.testModeName + '.' :
                     (saveMode === 'preview' ? 'Đã lưu dữ liệu để mở bản xem trước.' : 'Đã lưu bản nháp.');
-                toastr.success(saveMessage, 'Thông báo');
+                vm.importError = '';
+                if (!vm.importingReadingTest) { toastr.success(saveMessage, 'Thông báo'); }
                 return data;
-            }, function failure() {
+            }, function failure(response) {
+                vm.lastSaveError = readingTestSaveError(response);
+                if (!vm.importingReadingTest) { toastr.error(vm.lastSaveError, 'Không thể lưu'); }
+                return null;
+            }).finally(function () {
                 blockUI.stop();
-                toastr.error('Không thể lưu bài ' + vm.testModeName + '. Vui lòng thử lại.', 'Thông báo');
+                vm.savingReadingTest = false;
+                vm.readingSavePromise = null;
             });
+            return vm.readingSavePromise;
         };
 
         var readingPartRules = vm.isFlexibleMode ? [
@@ -3312,7 +3341,7 @@
             if (value === '' || value === null || value === undefined) {
                 return fallbackType || 1;
             }
-            var numericType = parseInt(value, 10);
+            var numericType = /^\d+$/.test(String(value).trim()) ? Number(value) : NaN;
             if (numericType >= 1 && numericType <= 15) {
                 if (numericType === 6) { return 1; }
                 if (numericType === 7) { return 5; }
@@ -3329,6 +3358,98 @@
             throw new Error('Loại câu hỏi "' + value + '" không hợp lệ. Vui lòng xem sheet LOAI_CAU_HOI.');
         }
 
+        function excelPositiveInteger(value, field, rowNumber) {
+            var text = String(value).trim();
+            var number = Number(text);
+            if (!/^\d+$/.test(text) || number < 1 || number > 2147483647) {
+                throw new Error('Dòng ' + rowNumber + ': ' + field + ' phải là số nguyên dương, không nhập khoảng số hoặc số thập phân.');
+            }
+            return number;
+        }
+
+        function validateExcelCells(sheet, name) {
+            angular.forEach(sheet, function (cell, address) {
+                if (!/^[A-Z]+[1-9]\d*$/.test(address) || !cell) { return; }
+                if (cell.f || cell.t === 'e') {
+                    throw new Error('Sheet ' + name + ', ô ' + address + ': dùng giá trị trực tiếp, không dùng công thức hoặc ô lỗi Excel.');
+                }
+            });
+        }
+
+        function validateExcelContentColumns(sheet, videoUrl) {
+            var rows = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: '', raw: false});
+            var headers = (rows[0] || []).map(normalizedExcelText);
+            var seen = {};
+            headers.forEach(function (header) {
+                if (!header) { return; }
+                if (seen[header]) { throw new Error('NOI_DUNG có tiêu đề cột bị lặp: ' + header + '. Giữ đúng dòng tiêu đề trong mẫu.'); }
+                seen[header] = true;
+            });
+            var fields = [
+                ['Part', 'Phần'], ['Nhóm', 'Group'], ['Loại câu hỏi', 'Type'],
+                ['Số câu', 'Question number', 'Number'], ['Nội dung câu hỏi', 'Question'],
+                ['Đáp án 1', 'Answer 1'], ['Đáp án đúng', 'Correct answer', 'Correct']
+            ];
+            if (videoUrl) { fields.push(['Mốc video', 'Mốc thời gian', 'Video time', 'Timestamp']); }
+            fields.forEach(function (aliases) {
+                if (!aliases.some(function (alias) { return headers.indexOf(normalizedExcelText(alias)) >= 0; })) {
+                    throw new Error('NOI_DUNG thiếu cột "' + aliases[0] + '". Dùng dòng tiêu đề từ file mẫu; không gộp ô hoặc thêm tiêu đề phía trên.');
+                }
+            });
+        }
+
+        function validateImportedExcelParts(parts) {
+            var numbers = [];
+            angular.forEach(parts, function (part) {
+                angular.forEach(part.groups, function (group) {
+                    var questions = group.questions, first = questions[0];
+                    if (!first) { throw new Error('Nhóm ' + group.ordinalNumber + ': chưa có dòng câu hỏi.'); }
+                    var type = Number(group.type);
+                    var label = 'Dòng ' + first.sourceRow + ', nhóm ' + group.ordinalNumber;
+                    if (type === 11 || type === 13) {
+                        var gaps = (String(first.text).match(/\}\{\s*SPACE\s*\}\{/g) || []).length;
+                        if (!first.hasText || gaps !== questions.length) {
+                            throw new Error(label + ': có ' + gaps + ' ký hiệu }{SPACE}{ nhưng cần đúng ' + questions.length +
+                                '. Đặt toàn bộ nội dung ở dòng đầu nhóm và tạo một dòng đáp án cho từng ô trống.');
+                        }
+                    }
+                    var firstOptions = first.answers.map(function (answer) { return answer.text; });
+                    angular.forEach(questions, function (question, index) {
+                        numbers.push(question.number);
+                        var rowLabel = 'Dòng ' + question.sourceRow + ', câu ' + question.number;
+                        var correct = question.answers.filter(function (answer) { return answer.correct; });
+                        if ([1, 4, 8, 9, 10, 12, 14, 15].indexOf(type) >= 0 && !question.hasText) {
+                            throw new Error(rowLabel + ': thiếu Nội dung câu hỏi.');
+                        }
+                        if ([1, 4, 8, 9, 10, 12, 13, 14, 15].indexOf(type) >= 0 && correct.length !== 1) {
+                            throw new Error(rowLabel + ': loại ' + type + ' cần đúng một Đáp án đúng.');
+                        }
+                        if (type === 1 && question.answers.length < 2) {
+                            throw new Error(rowLabel + ': câu trắc nghiệm cần ít nhất hai lựa chọn.');
+                        }
+                        if ((type === 5 || type === 11 || type === 13) && index > 0 && question.hasText && question.text !== first.text) {
+                            throw new Error(rowLabel + ': nội dung khác dòng đầu nhóm. Tạo Nhóm mới nếu đây là câu/đoạn dùng chung khác.');
+                        }
+                        if ([4, 5, 10, 13, 14, 15].indexOf(type) >= 0 &&
+                                JSON.stringify(question.answers.map(function (answer) { return answer.text; })) !== JSON.stringify(firstOptions)) {
+                            throw new Error(rowLabel + ': danh sách lựa chọn phải giống dòng đầu nhóm, đủ mục và cùng thứ tự.');
+                        }
+                        if (type === 13 && (firstOptions.length < questions.length || !question.answers[index] || !question.answers[index].correct)) {
+                            throw new Error(rowLabel + ': mã 13 cần các từ đúng ở đầu danh sách theo thứ tự câu; Đáp án đúng lần lượt A, B, C...');
+                        }
+                    });
+                });
+            });
+            if (vm.isComprehensiveMode) {
+                numbers.sort(function (left, right) { return left - right; });
+                for (var i = 0; i < numbers.length; i++) {
+                    if (numbers[i] !== i + 1) {
+                        throw new Error('Số câu của bài Tổng hợp phải liên tục từ 1. Kiểm tra câu ' + (i + 1) + ' bị thiếu hoặc lặp.');
+                    }
+                }
+            }
+        }
+
         function markExcelCorrectAnswers(answers, correctValue, questionNumber) {
             var tokens = String(correctValue === null || correctValue === undefined ? '' : correctValue)
                 .split(/[,;|]/)
@@ -3341,7 +3462,7 @@
             var matched = 0;
             angular.forEach(tokens, function (token) {
                 var tokenMatched = false;
-                var answerIndex = parseInt(token, 10) - 1;
+                var answerIndex = /^\d+$/.test(token) ? Number(token) - 1 : -1;
                 if (!/^\d+$/.test(token) && /^[a-z]$/i.test(token)) {
                     answerIndex = token.toUpperCase().charCodeAt(0) - 65;
                 }
@@ -3453,6 +3574,8 @@
             if (!infoSheet || !contentSheet) {
                 throw new Error('File Excel phải có sheet THONG_TIN và NOI_DUNG. Hãy tải file mẫu để nhập đúng cấu trúc.');
             }
+            validateExcelCells(infoSheet, 'THONG_TIN');
+            validateExcelCells(contentSheet, 'NOI_DUNG');
 
             var infoRows = XLSX.utils.sheet_to_json(infoSheet, {header: 1, defval: '', raw: false});
             var info = {};
@@ -3466,6 +3589,9 @@
             var audioUrl = info['audio url'] || info.audio || '';
             var videoUrl = String(info['video url'] || info['link video'] || '').trim();
             var contentMode = normalizedExcelText(info['loai noi dung'] || info['content type'] || '');
+            if (vm.isComprehensiveMode && contentMode && contentMode !== 'text' && contentMode !== 'video') {
+                throw new Error('Loại nội dung trong THONG_TIN phải là TEXT hoặc VIDEO.');
+            }
             if (contentMode === 'video' && !videoUrl) {
                 throw new Error('Điền Video URL trong sheet THONG_TIN trước khi import câu hỏi video.');
             }
@@ -3475,6 +3601,7 @@
             if (videoUrl && !video.parseUrl(videoUrl)) {
                 throw new Error('Video URL không hợp lệ. Dùng link YouTube, TikTok đầy đủ hoặc file MP4/WebM/OGG.');
             }
+            validateExcelContentColumns(contentSheet, videoUrl);
             var workbookMode = normalizedExcelText(info['loai bai'] || info['test type'] || '');
             if (workbookMode && vm.isComprehensiveMode &&
                     workbookMode.indexOf('tong hop') < 0 && workbookMode.indexOf('comprehensive') < 0) {
@@ -3534,7 +3661,7 @@
             angular.forEach(rows, function (row, rowIndex) {
                 var partCell = excelRowValue(row, ['Part', 'Phần']);
                 if (partCell !== '') {
-                    currentPartNumber = parseInt(partCell, 10);
+                    currentPartNumber = excelPositiveInteger(partCell, 'Part', rowIndex + 2);
                 }
                 if (!currentPartNumber || currentPartNumber < 1 || currentPartNumber > maximumPartNumber) {
                     throw new Error('Dòng ' + (rowIndex + 2) + ': Part phải là ' +
@@ -3556,7 +3683,7 @@
 
                 var groupCell = excelRowValue(row, ['Nhóm', 'Group']);
                 if (groupCell !== '') {
-                    currentGroupByPart[currentPartNumber] = parseInt(groupCell, 10);
+                    currentGroupByPart[currentPartNumber] = excelPositiveInteger(groupCell, 'Nhóm', rowIndex + 2);
                 }
                 var groupNumber = currentGroupByPart[currentPartNumber];
                 if (!groupNumber || groupNumber < 1) {
@@ -3567,6 +3694,7 @@
                 var instruction = excelRowValue(row, ['Hướng dẫn HTML', 'Hướng dẫn', 'Instruction HTML']);
                 var group = groupsByPart[currentPartNumber - 1][groupNumber];
                 if (!group) {
+                    if (typeCell === '') { throw new Error('Dòng ' + (rowIndex + 2) + ': nhập Loại câu hỏi ở dòng đầu nhóm ' + groupNumber + '.'); }
                     group = {
                         type: excelQuestionType(typeCell, 1),
                         instructionHtml: instruction || '',
@@ -3579,7 +3707,9 @@
                     part.groups.push(group);
                 } else {
                     if (typeCell !== '') {
-                        group.type = excelQuestionType(typeCell, group.type);
+                        if (excelQuestionType(typeCell, group.type) !== group.type) {
+                            throw new Error('Dòng ' + (rowIndex + 2) + ': các câu trong cùng Nhóm phải có cùng Loại câu hỏi. Tạo Nhóm mới cho loại khác.');
+                        }
                     }
                     if (String(instruction).trim()) {
                         group.instructionHtml = instruction;
@@ -3610,9 +3740,14 @@
 
                 var questionNumberCell = excelRowValue(row, ['Số câu', 'Question number', 'Number']);
                 if (questionNumberCell === '') {
+                    if (String(excelRowValue(row, ['Nội dung câu hỏi', 'Question'])).trim() ||
+                            String(excelRowValue(row, ['Đáp án 1', 'Answer 1'])).trim() ||
+                            String(excelRowValue(row, ['Đáp án đúng', 'Correct answer', 'Correct'])).trim()) {
+                        throw new Error('Dòng ' + (rowIndex + 2) + ': có nội dung câu hỏi hoặc đáp án nhưng thiếu Số câu.');
+                    }
                     return;
                 }
-                var questionNumber = parseInt(questionNumberCell, 10);
+                var questionNumber = excelPositiveInteger(questionNumberCell, 'Số câu', rowIndex + 2);
                 var cueSeconds = null;
                 if (videoUrl) {
                     var cueCell = String(excelRowValue(row, ['Mốc video', 'Mốc thời gian', 'Video time', 'Timestamp'])).trim();
@@ -3638,10 +3773,16 @@
                         answers.push({text: option, correct: false});
                     });
                 } else {
+                    var emptyAnswerSeen = false;
                     for (var answerNumber = 1; answerNumber <= 12; answerNumber++) {
                         var answerText = excelRowValue(row, ['Đáp án ' + answerNumber, 'Answer ' + answerNumber]);
                         if (String(answerText).trim()) {
+                            if (emptyAnswerSeen) {
+                                throw new Error('Dòng ' + (rowIndex + 2) + ': Đáp án 1–12 phải nhập liền từ cột 1, không bỏ trống cột giữa các lựa chọn.');
+                            }
                             answers.push({text: String(answerText).trim(), correct: false});
+                        } else {
+                            emptyAnswerSeen = true;
                         }
                     }
                 }
@@ -3655,6 +3796,8 @@
                 );
                 group.questions.push({
                     number: questionNumber,
+                    sourceRow: rowIndex + 2,
+                    hasText: !!String(excelRowValue(row, ['Nội dung câu hỏi', 'Question'])).trim(),
                     videoTimeSeconds: Number(group.type) === 1 ? cueSeconds : null,
                     text: excelRowValue(row, ['Nội dung câu hỏi', 'Question']) || ('Question number ' + questionNumber),
                     answers: answers
@@ -3669,12 +3812,14 @@
                     part.type = 1;
                 }
             });
+            validateImportedExcelParts(source.parts);
             angular.forEach(source.parts, ensureImportedHeadingPlaceholders);
             return normalizeImportedReadingTest(source);
         }
 
         vm.importReadingTestFile = function (file, invalidFiles) {
             var importTitle = vm.isComprehensiveMode ? 'Import bài tập Tổng hợp' : 'Import IELTS ' + vm.testModeName;
+            if (vm.importingReadingTest || vm.savingReadingTest) { return; }
             if ((!file && invalidFiles && invalidFiles.length) || (file && file.size > 10 * 1024 * 1024)) {
                 toastr.warning('File Excel không được lớn hơn 10 MB.', importTitle);
                 return;
@@ -3691,6 +3836,7 @@
                 return;
             }
 
+            vm.importError = '';
             vm.importingReadingTest = true;
             var reader = new FileReader();
             reader.onload = function (event) {
@@ -3708,24 +3854,34 @@
                         vm.getOrdinalNumber(vm.ieltsReadingTest);
                         isHavingQuestions(vm.ieltsReadingTest);
                         vm.refreshBuilderValidation();
-                        vm.saveReadingTest('draft').finally(function () {
+                        vm.saveReadingTest('draft').then(function (savedTest) {
+                            if (!savedTest || !savedTest.id) {
+                                throw new Error(vm.lastSaveError || 'Máy chủ chưa xác nhận lưu bài.');
+                            }
+                            if (!vm.isComprehensiveMode && importedQuestionCount < 40) {
+                                toastr.warning('Đã import và lưu ' + importedQuestionCount + '/40 câu. Bạn có thể bổ sung trước khi xuất bản.', importTitle);
+                            } else {
+                                toastr.success('Đã import và lưu bản nháp ' + importedQuestionCount + ' câu.', importTitle);
+                            }
+                        }).catch(function (error) {
+                            vm.importError = (error.message || vm.lastSaveError || 'Không thể lưu bài sau import.') +
+                                ' Câu hỏi đã đọc vẫn ở màn hình để bạn kiểm tra và lưu nháp lại.';
+                            toastr.error(vm.importError, 'Import chưa lưu được');
+                        }).finally(function () {
                             vm.importingReadingTest = false;
                         });
-                        if (!vm.isComprehensiveMode && importedQuestionCount < 40) {
-                            toastr.warning('Đã nhập ' + importedQuestionCount + '/40 câu. Bạn có thể bổ sung trước khi xuất bản.', importTitle);
-                        } else if (vm.isComprehensiveMode) {
-                            toastr.success('Đã nhập ' + importedQuestionCount + ' câu vào bài tập tổng hợp.', importTitle);
-                        }
                     } catch (error) {
                         vm.importingReadingTest = false;
-                        toastr.error(error.message || 'File Excel không đúng định dạng.', importTitle);
+                        vm.importError = error.message || 'File Excel không đúng định dạng.';
+                        toastr.error(vm.importError, importTitle);
                     }
                 });
             };
             reader.onerror = function () {
                 $scope.$applyAsync(function () {
                     vm.importingReadingTest = false;
-                    toastr.error('Không thể đọc file Excel đã chọn.', importTitle);
+                    vm.importError = 'Không thể đọc file Excel đã chọn.';
+                    toastr.error(vm.importError, importTitle);
                 });
             };
             reader.readAsArrayBuffer(file);
@@ -3738,6 +3894,8 @@
             var templateVideoUrl = videoTemplate
                 ? (((vm.ieltsReadingTest || {}).subQuestions || [])[0] || {}).videoUrl || 'https://www.youtube.com/watch?v=M7lc1UVf-VE'
                 : '';
+            var contentHeader = ['Part', vm.isListeningMode ? 'Part HTML' : 'Passage HTML', 'Nhóm', 'Loại câu hỏi', 'Hướng dẫn HTML', 'Số câu', 'Nội dung câu hỏi', 'Đáp án 1', 'Đáp án 2', 'Đáp án 3', 'Đáp án 4', 'Đáp án 5', 'Đáp án 6', 'Đáp án 7', 'Đáp án 8', 'Đáp án 9', 'Đáp án 10', 'Đáp án 11', 'Đáp án 12', 'Danh sách dùng chung (A=... | B=...)', 'Đáp án đúng', 'Tiêu đề danh sách'];
+            if (vm.isComprehensiveMode) { contentHeader.push('Mốc video'); }
             var audioInstruction = vm.isListeningMode
                 ? 'Bắt buộc nhập URL HTTPS công khai trỏ trực tiếp tới file audio (ví dụ .mp3 hoặc .m4a). Không dùng link trang nghe cần đăng nhập.'
                 : 'Phải để trống. Bài Reading và bài Tổng hợp không sử dụng Audio URL chính.';
@@ -3816,6 +3974,11 @@
                 ['Kiểm tra trước import', 'Đủ title; đúng ' + partCountText + '; ' + (vm.isComprehensiveMode ? 'số câu liên tục từ 1' : 'đúng khoảng số câu') + '; không trùng số; mỗi câu có đáp án; đáp án đúng khớp danh sách; không còn chữ mẫu.'],
                 ['Dùng với ChatGPT', 'Gửi đề gốc cùng file mẫu này và yêu cầu ChatGPT đọc sheet PROMPT_CHATGPT. ChatGPT phải trả về một file .xlsx theo đúng cấu trúc, không trả JSON/CSV.']
             ];
+            guideRows.push(
+                ['Cấu trúc NOI_DUNG bắt buộc', 'Dòng 1 là tiêu đề cột; không gộp ô hoặc thêm tiêu đề phía trên. Giữ thứ tự và tên: ' + contentHeader.join(' | ')],
+                ['Kiểm tra tự động trước lưu', 'Importer kiểm tra tên cột, số nguyên, số câu bị thiếu/lặp, loại trong cùng nhóm, lựa chọn bị lệch cột, đáp án đúng và số }{SPACE}{. Lỗi sẽ ghi rõ dòng hoặc ô cần sửa; file chưa hợp lệ chưa được gửi lên máy chủ.'],
+                ['Xác nhận đã lưu', 'Chỉ thông báo import thành công sau khi máy chủ trả về mã bài đã lưu. Nếu API báo lỗi, câu hỏi đã đọc vẫn ở màn hình; đọc lỗi, sửa hoặc đăng nhập lại rồi bấm Lưu nháp. Không coi thông báo đã đọc file là đã lưu.']
+            );
             if (vm.isComprehensiveMode) {
                 guideRows.splice(3, 0,
                     ['VIDEO - dùng chung mẫu này', 'Import bằng nút Import Excel hiện có. Điền Video URL trong THONG_TIN để hệ thống tự chuyển sang bài video: video bên trái, câu hỏi bên phải. Mỗi bài dùng một video. Link và câu hỏi ví dụ chỉ minh họa định dạng; thay bằng dữ liệu thật trước khi xuất bản.'],
@@ -3851,8 +4014,16 @@
                 ['KẾT QUẢ ĐẦU RA'],
                 ['Chỉ gửi lại file .xlsx hoàn chỉnh. Không gửi JSON, CSV hoặc hướng dẫn thay thế cho file. Nếu đề gốc thiếu dữ liệu, ghi rõ phần thiếu trong một tin nhắn ngắn và không tự bịa đáp án.']
             ];
+            promptRows.splice(3, 0,
+                ['TRƯỚC KHI LÀM: đọc THONG_TIN, dòng tiêu đề NOI_DUNG, LOAI_CAU_HOI và các ví dụ liên quan. Dùng chính workbook mẫu làm đầu ra; thay dữ liệu trong THONG_TIN và NOI_DUNG, giữ lại các sheet hướng dẫn. Không tạo một bảng mới theo suy đoán.'],
+                ['SCHEMA NOI_DUNG: đúng ' + contentHeader.length + ' cột, dòng 1 theo thứ tự: ' + contentHeader.join(' | ') + '. Không đổi tên, bỏ, dịch hoặc gộp cột. Không thêm hàng tiêu đề/trang bìa trên dòng 1. Ô không sử dụng để trống thật, không ghi None, N/A, dấu gạch hoặc dấu ba chấm.'],
+                ['MỖI DÒNG: một số câu nguyên dương duy nhất; không ghi 1–3 hoặc 1.5. Điền rõ Part, Nhóm và Loại câu hỏi trên từng dòng để tránh nhầm kế thừa. Các dòng cùng Part + Nhóm bắt buộc cùng loại; đổi Nhóm khi thay loại hoặc thay nội dung dùng chung.'],
+                ['LỰA CHỌN: nhập liền từ Đáp án 1, không bỏ trống cột giữa. Mã 1 có ít nhất hai lựa chọn và đúng một đáp án đúng. Mã 5 dùng chung câu hỏi và danh sách lựa chọn trên mọi dòng. Mã 4/10/14/15 dùng một danh sách chung; không thay danh sách giữa nhóm.'],
+                ['KIỂM TRA CUỐI: đọc lại file .xlsx đã lưu, kiểm tra từng dòng và từng nhóm theo các quy tắc dưới đây. Với mã 11/13, đếm }{SPACE}{ và đối chiếu đúng số dòng đáp án. Với mã 13, các dòng lặp cùng danh sách đủ từ và đáp án đúng A/B/C... theo thứ tự. Không trả file còn sai cột, thiếu câu hoặc thiếu đáp án.'],
+                ['NẾU THIẾU DỮ LIỆU: hỏi đúng phần thiếu trước khi tạo file; không suy đoán câu hỏi, đáp án, link hay mốc video. Nếu công cụ hiện tại không tạo được file Excel, nói rõ giới hạn; không thay bằng Markdown/CSV/JSON hoặc hứa đã tạo file nhưng không đính kèm.']
+            );
             if (vm.isComprehensiveMode) {
-                promptRows.splice(5, 0,
+                promptRows.splice(11, 0,
                     ['2A. Mẫu Tổng hợp này dùng chung cho văn bản và video. Nếu đề có video, đặt Loại nội dung=VIDEO và điền đúng Video URL trong THONG_TIN. Dùng link YouTube, TikTok đầy đủ hoặc file MP4/WebM/OGG được cung cấp; không tự bịa link. Nếu bài văn bản, đặt TEXT và để trống Video URL cùng cột Mốc video.'],
                     ['2B. Bài video: nhập Mốc video dưới dạng chuỗi văn bản phút:giây (01:30), hoặc giờ:phút:giây (1:02:03), giữ định dạng Text. Mã 1 cần mốc cho từng dòng. Các loại dùng chung nội dung như mã 5, 11, 13 dùng một mốc cho cả nhóm; dòng đầu nhập mốc, dòng sau để trống hoặc lặp đúng mốc. Không dùng mốc vượt thời lượng video.'],
                     ['2C. Chỉ đặt câu hỏi và đáp án từ nội dung video/đề thật. Nếu chưa có nội dung video, đáp án hoặc mốc thời gian, báo phần thiếu để người dùng bổ sung; không suy đoán từ tên hay link video.']
@@ -3886,8 +4057,6 @@
             infoSheet['!cols'] = [{wch: 22}, {wch: 70}];
             XLSX.utils.book_append_sheet(workbook, infoSheet, 'THONG_TIN');
 
-            var contentHeader = ['Part', vm.isListeningMode ? 'Part HTML' : 'Passage HTML', 'Nhóm', 'Loại câu hỏi', 'Hướng dẫn HTML', 'Số câu', 'Nội dung câu hỏi', 'Đáp án 1', 'Đáp án 2', 'Đáp án 3', 'Đáp án 4', 'Đáp án 5', 'Đáp án 6', 'Đáp án 7', 'Đáp án 8', 'Đáp án 9', 'Đáp án 10', 'Đáp án 11', 'Đáp án 12', 'Danh sách dùng chung (A=... | B=...)', 'Đáp án đúng', 'Tiêu đề danh sách'];
-            if (vm.isComprehensiveMode) { contentHeader.push('Mốc video'); }
             var contentRows;
             if (vm.isComprehensiveMode) {
                 contentRows = [

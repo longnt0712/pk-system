@@ -82,7 +82,7 @@
                                 ngf-select="vm.importReadingTestFile($file, $invalidFiles)"
                                 accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                                 ngf-max-size="10MB"
-                                ng-disabled="vm.importingReadingTest">
+                                ng-disabled="vm.importingReadingTest || vm.savingReadingTest">
                             <i class="fa" ng-class="vm.importingReadingTest ? 'fa-spinner fa-spin' : 'fa-upload'"></i>
                             {{vm.importingReadingTest ? 'Đang import...' : 'Import Excel'}}
                         </button>
@@ -107,6 +107,10 @@
                 <div class="reading-hidden-notice" ng-if="settings.isAdmin == true && vm.showHiddenTests">
                     <i class="fa fa-eye-slash"></i>
                     <div><strong>Danh sách bài test đã ẩn</strong><span>Bấm nút khôi phục ở cột Thao tác để đưa bài về trạng thái bản nháp.</span></div>
+                </div>
+
+                <div class="alert alert-danger" role="alert" ng-if="vm.importError">
+                    <strong>Import chưa hoàn tất.</strong> <span ng-bind="vm.importError"></span>
                 </div>
 
                 <div class="row">
@@ -1470,10 +1474,10 @@
             <button type="button" class="btn btn-default" ng-click="vm.openBuilderReviewModal()">
                 <i class="fa fa-list-ul"></i> Kiểm tra
             </button>
-            <button type="button" class="btn btn-primary" ng-click="vm.saveDraftReadingTest()">
-                <i class="fa fa-save"></i> Lưu nháp
+            <button type="button" class="btn btn-primary" ng-click="vm.saveDraftReadingTest()" ng-disabled="vm.savingReadingTest || vm.importingReadingTest">
+                <i class="fa" ng-class="vm.savingReadingTest ? 'fa-spinner fa-spin' : 'fa-save'"></i> {{vm.savingReadingTest ? 'Đang lưu...' : 'Lưu nháp'}}
             </button>
-            <button type="button" class="btn btn-success" ng-click="vm.publishReadingTest()" ng-disabled="!vm.builderValidation.valid">
+            <button type="button" class="btn btn-success" ng-click="vm.publishReadingTest()" ng-disabled="!vm.builderValidation.valid || vm.savingReadingTest || vm.importingReadingTest">
                 <i class="fa fa-paper-plane"></i> Xuất bản
             </button>
         </div>

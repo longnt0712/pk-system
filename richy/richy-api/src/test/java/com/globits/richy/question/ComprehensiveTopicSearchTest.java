@@ -149,6 +149,66 @@ public class ComprehensiveTopicSearchTest {
         dto = new QuestionDto(manager.find(Question.class, root.getId()));
         assertEquals(Integer.valueOf(120), dto.getSubQuestions().get(0).getSubQuestions().get(0).getSubQuestions().get(0).getVideoTimeSeconds());
     }
+    @Test public void fullSavePersistsFiftyImportedVideoQuestionsAndAnswersWithoutATopic() {
+        QuestionRepository questions = mock(QuestionRepository.class);
+        when(questions.save(org.mockito.Matchers.any(Question.class))).thenAnswer(invocation -> {
+            Question value = (Question) invocation.getArguments()[0];
+            manager.persist(value); return value;
+        });
+        com.globits.richy.repository.AnswerRepository answers = mock(com.globits.richy.repository.AnswerRepository.class);
+        when(answers.save(org.mockito.Matchers.any(Answer.class))).thenAnswer(invocation -> {
+            Answer value = (Answer) invocation.getArguments()[0];
+            manager.persist(value); return value;
+        });
+        com.globits.security.repository.UserRepository users = mock(com.globits.security.repository.UserRepository.class);
+        when(users.getOne(owner.getId())).thenReturn(manager.find(User.class, owner.getId()));
+        ReflectionTestUtils.setField(service, "questionRepository", questions);
+        ReflectionTestUtils.setField(service, "answerRepository", answers);
+        ReflectionTestUtils.setField(service, "userRepository", users);
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+            new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(owner, "unused",
+                Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
+        try {
+            QuestionDto input = new QuestionDto();
+            input.setTitle("Video quiz with 50 questions"); input.setStatus(6); input.setType(0);
+            input.setOrdinalNumber(1); input.setTestFormat("COMPREHENSIVE"); input.setUserId(owner.getId());
+            QuestionTypeDto kind = new QuestionTypeDto(type); input.setQuestionType(kind);
+            List<QuestionDto> parts = new ArrayList<>();
+            for (int i = 1; i <= 3; i++) {
+                QuestionDto part = new QuestionDto(); part.setQuestionType(kind); part.setOrdinalNumber(i);
+                part.setQuestion(""); part.setSubQuestions(new ArrayList<>()); parts.add(part);
+            }
+            parts.get(0).setVideoUrl("https://youtu.be/M7lc1UVf-VE");
+            QuestionDto pack = new QuestionDto(); pack.setQuestionType(kind); pack.setOrdinalNumber(1);
+            pack.setType(1); pack.setQuestion("Choose one answer."); pack.setSubQuestions(new ArrayList<>());
+            for (int i = 1; i <= 50; i++) {
+                QuestionDto cue = new QuestionDto(); cue.setQuestionType(kind); cue.setOrdinalNumber(i);
+                cue.setQuestion("Video question " + i); cue.setVideoTimeSeconds(i * 5);
+                List<QuestionAnswerDto> options = new ArrayList<>();
+                for (int j = 1; j <= 4; j++) {
+                    QuestionAnswerDto option = new QuestionAnswerDto(); AnswerDto answer = new AnswerDto();
+                    answer.setAnswer("Option " + j); option.setAnswer(answer); option.setCorrect(j == 2);
+                    option.setOrdinalNumberQuestionAnswer(j); options.add(option);
+                }
+                cue.setQuestionAnswers(options); pack.getSubQuestions().add(cue);
+            }
+            parts.get(0).getSubQuestions().add(pack); input.setSubQuestions(parts);
+            QuestionDto saved = service.saveObject(input); assertNotNull(saved.getId());
+            manager.flush(); manager.clear();
+            QuestionDto loaded = new QuestionDto(manager.find(Question.class, saved.getId()));
+            assertEquals(6, loaded.getStatus()); assertEquals("COMPREHENSIVE", loaded.getTestFormat());
+            assertEquals("https://youtu.be/M7lc1UVf-VE", loaded.getSubQuestions().get(0).getVideoUrl());
+            List<QuestionDto> cues = loaded.getSubQuestions().get(0).getSubQuestions().get(0).getSubQuestions();
+            assertEquals(50, cues.size());
+            for (QuestionDto cue : cues) {
+                assertEquals(Integer.valueOf(cue.getOrdinalNumber() * 5), cue.getVideoTimeSeconds());
+                assertEquals(4, cue.getQuestionAnswers().size());
+                assertEquals(1, cue.getQuestionAnswers().stream().filter(QuestionAnswerDto::isCorrect).count());
+            }
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
+    }
     @Test public void unassignedSearchKeepsDraftAndHiddenVisibilityRules() {
         QuestionDto dto = filter(9); dto.setWithoutTopics(true); expect(dto, "Draft", "Standalone");
         dto.setStatus(7); expect(dto, "Standalone"); dto.setStatus(8); expect(dto, "Hidden");

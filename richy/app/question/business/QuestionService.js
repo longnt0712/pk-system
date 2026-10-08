@@ -320,10 +320,19 @@
 
         function saveObject(object, successCallback, errorCallback) {
             var url = baseUrl + restUrl + '/save';
-
-            return utils.resolveAlt(url, 'POST', null, object, {
-                'Content-Type': 'application/json; charset=utf-8'
-            }, successCallback, errorCallback);
+            // Keep the status and response body so the builder can explain a
+            // rejected save. resolveAlt only forwards statusText.
+            return $http({
+                method: 'POST', url: url, data: object,
+                headers: {'Content-Type': 'application/json; charset=utf-8'},
+                timeout: 120000
+            }).then(function (response) {
+                if (angular.isFunction(successCallback)) { successCallback(response.data); }
+                return response.data;
+            }, function (response) {
+                if (angular.isFunction(errorCallback)) { errorCallback(response); }
+                return $q.reject(response);
+            });
         }
 
         function updateTestStatus(id, status) {
