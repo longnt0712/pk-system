@@ -48,6 +48,17 @@ public class Question extends BaseObject{
 	@Column(name="pronounce")
 	private String pronounce;
 
+	@Column(name="video_url", length = 2048)
+	private String videoUrl;
+
+	@Column(name="video_time_seconds")
+	private Integer videoTimeSeconds;
+
+	public String getVideoUrl() { return videoUrl; }
+	public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
+	public Integer getVideoTimeSeconds() { return videoTimeSeconds; }
+	public void setVideoTimeSeconds(Integer videoTimeSeconds) { this.videoTimeSeconds = videoTimeSeconds; }
+
 	@Column(name="level", length = 2)
 	private String level; // CEFR: A1, A2, B1, B2, C1, C2
 	

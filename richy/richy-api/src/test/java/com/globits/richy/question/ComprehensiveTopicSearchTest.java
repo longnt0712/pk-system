@@ -124,6 +124,31 @@ public class ComprehensiveTopicSearchTest {
         assertEquals(topic.getId(), catalog.get("Task 1 only").getTopics().get(0).getId());
     }
     @Test public void allPublishedTestsIncludeTaggedAndStandaloneTests() { expect(filter(7), "Tagged", "Standalone"); }
+    @Test public void videoAndQuestionCuesSurviveRecursiveSaveReloadAndDtoMapping() {
+        Question root = question("Video lesson", 6, "COMPREHENSIVE");
+        QuestionDto input = new QuestionDto(), passage = new QuestionDto(), pack = new QuestionDto(), cue = new QuestionDto();
+        passage.setOrdinalNumber(1); passage.setVideoUrl("https://youtu.be/M7lc1UVf-VE");
+        pack.setOrdinalNumber(1); pack.setType(1);
+        cue.setOrdinalNumber(1); cue.setVideoTimeSeconds(90); cue.setQuestion("What happened?");
+        pack.setSubQuestions(Collections.singletonList(cue)); passage.setSubQuestions(Collections.singletonList(pack));
+        input.setSubQuestions(Collections.singletonList(passage));
+        service.setListSubQuestions(input, root, org.joda.time.LocalDateTime.now(), "test");
+        manager.flush(); manager.clear();
+        Question loaded = manager.find(Question.class, root.getId());
+        QuestionDto dto = new QuestionDto(loaded);
+        assertEquals("https://youtu.be/M7lc1UVf-VE", dto.getSubQuestions().get(0).getVideoUrl());
+        assertEquals(Integer.valueOf(90), dto.getSubQuestions().get(0).getSubQuestions().get(0).getSubQuestions().get(0).getVideoTimeSeconds());
+        // Updating an existing cue uses the same recursive service path.
+        QuestionDto savedCue = dto.getSubQuestions().get(0).getSubQuestions().get(0).getSubQuestions().get(0);
+        savedCue.setVideoTimeSeconds(120);
+        QuestionRepository questions = mock(QuestionRepository.class);
+        when(questions.findOne(org.mockito.Matchers.anyLong())).thenAnswer(invocation -> manager.find(Question.class, (Long) invocation.getArguments()[0]));
+        ReflectionTestUtils.setField(service, "questionRepository", questions);
+        service.setListSubQuestions(dto, loaded, org.joda.time.LocalDateTime.now(), "test");
+        manager.flush(); manager.clear();
+        dto = new QuestionDto(manager.find(Question.class, root.getId()));
+        assertEquals(Integer.valueOf(120), dto.getSubQuestions().get(0).getSubQuestions().get(0).getSubQuestions().get(0).getVideoTimeSeconds());
+    }
     @Test public void unassignedSearchKeepsDraftAndHiddenVisibilityRules() {
         QuestionDto dto = filter(9); dto.setWithoutTopics(true); expect(dto, "Draft", "Standalone");
         dto.setStatus(7); expect(dto, "Standalone"); dto.setStatus(8); expect(dto, "Hidden");

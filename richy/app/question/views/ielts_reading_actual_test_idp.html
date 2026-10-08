@@ -187,7 +187,7 @@
                             </div>
                             <div ng-show="!vm.isListeningRoute" class="col-md-12" style="margin-left: 20px;margin-bottom: 0 !important" >
                                 <h3 ng-if="vm.isComprehensiveRoute" class="bold">Danh sách câu hỏi</h3>
-                                <h4 ng-if="vm.isComprehensiveRoute">Làm lần lượt các câu hỏi bên dưới.</h4>
+                                <h4 ng-if="vm.isComprehensiveRoute">{{vm.hasComprehensiveVideo() ? 'Xem video bên trái. Câu hỏi xuất hiện và video dừng tại mốc đã đặt.' : 'Làm lần lượt các câu hỏi bên dưới.'}}</h4>
                                 <div ng-if="vm.isWritingRoute" class="idp-writing-part-instruction">
                                     <h3 class="bold">Part {{vm.activeIeltsNavigationPart()}}</h3>
                                     <h4>
@@ -278,9 +278,23 @@
                             <!--ng-style="(x.selectedMedia == true  && {'color':'black'})"-->
                             <div class="col-md-6 idp-reading-pane"
                                  ng-style="vm.readingPaneStyle()"
-                                 ng-hide="vm.isWritingRoute || (vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6)">
+                                 ng-hide="vm.isWritingRoute || (vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.hasComprehensiveVideo() && !vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6)">
                                 <!--<h3>{{vm.ieltsReadingActualTest.subQuestions[0].type}}</h3>-->
-                                <div class="row">
+                                <section class="comprehensive-video-runtime" ng-if="vm.hasComprehensiveVideo() && vm.isStartTest && vm.passageNumber !== 4">
+                                    <h3><i class="fa fa-play-circle"></i> Xem video và trả lời</h3>
+                                    <comprehensive-video-player video-link="vm.ieltsReadingActualTest.subQuestions[0].videoUrl" video-api="vm.videoApi"
+                                        on-video-progress="vm.onVideoProgress(seconds, duration)" on-video-state="vm.onVideoState(playing)"></comprehensive-video-player>
+                                    <div class="comprehensive-video-clock">{{vm.formatVideoTime(vm.videoTimeline.currentSeconds)}} <span ng-if="vm.videoDuration">/ {{vm.formatVideoTime(vm.videoDuration)}}</span></div>
+                                    <div class="comprehensive-video-pause-card" ng-if="vm.videoTimeline.active.length">
+                                        <strong><i class="fa fa-pause-circle"></i> Câu hỏi tại {{vm.formatVideoTime(vm.videoTimeline.active[0].seconds)}}</strong>
+                                        <p>Trả lời câu hỏi rồi tiếp tục xem video.</p>
+                                        <button type="button" class="btn btn-info" ng-click="vm.continueVideo()" ng-disabled="!vm.videoCanContinue() || !vm.videoApi.ready"><i class="fa fa-play"></i> Tiếp tục video</button>
+                                    </div>
+                                    <p class="comprehensive-video-error" ng-if="vm.videoHasInvalidCues()">Có câu hỏi ở mốc vượt quá thời lượng video. Bấm “Hiện tất cả câu hỏi” để tiếp tục làm bài.</p>
+                                    <p class="comprehensive-video-help">Nếu video bị chặn hoặc không tải được, bạn vẫn có thể làm bài.</p>
+                                    <button type="button" class="btn btn-default btn-sm" ng-click="vm.revealVideoQuestions()" ng-if="!vm.videoFallbackMode">Hiện tất cả câu hỏi</button>
+                                </section>
+                                <div class="row" ng-show="!vm.hasComprehensiveVideo()">
                                     <div class="notes-highlight actual-test-font-global" id="passage-1-notes-highlight-{{$index+1}}" my-draggable ng-repeat="note in vm.notes">
                                         <div  class="close-highlight text-right">
                                             <i class="fa fa-times text-right close-note-icon" ng-click="closeASpecificNote1($index+1)"></i>
@@ -298,15 +312,20 @@
 
                             <div class="idp-split-divider"
                                  ng-style="vm.readingDividerStyle()"
-                                 ng-hide="vm.isWritingRoute || (vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6)"
+                                 ng-hide="vm.isWritingRoute || (vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.hasComprehensiveVideo() && !vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6)"
                                  reading-split-resize="vm.startReadingResize($event)"
                                  ng-dblclick="vm.resetReadingResize()"
                                  title="Drag to resize; double-click to reset"
                                  aria-label="Resize reading and question panels"></div>
 
-                            <div ng-hide="vm.isWritingRoute" ng-style="vm.questionPaneStyle((vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll ng-mousedown="closeNotes1()" id="passage-question-text-1">
+                            <div ng-hide="vm.isWritingRoute" ng-style="vm.questionPaneStyle((vm.isListeningRoute && vm.testSessionMode === 'SERIOUS' && !vm.isPreviewMode) || (!vm.hasComprehensiveVideo() && !vm.isListeningRoute && vm.ieltsReadingActualTest.subQuestions[0].type === 6))" class="col-md-6 question-content idp-question-pane" drag-auto-scroll ng-mousedown="closeNotes1()" id="passage-question-text-1">
+                                <div class="comprehensive-video-next" ng-if="vm.hasComprehensiveVideo() && vm.videoTimeline.next()">
+                                    <i class="fa fa-clock-o"></i> Câu hỏi tiếp theo tại <strong>{{vm.formatVideoTime(vm.videoTimeline.next().seconds)}}</strong>
+                                    <span>Xem video để mở câu hỏi.</span>
+                                </div>
                                 <!--<span style="" my-draggable>Drag Me</span>-->
-                                <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions">
+                                <div class="col-md-12" ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions" ng-show="vm.videoPackageVisible(item)">
+                                    <div class="comprehensive-video-cue-badge" ng-if="vm.hasComprehensiveVideo() && item.type != 1 && item.videoTimeSeconds != null"><i class="fa fa-clock-o"></i> {{vm.formatVideoTime(item.videoTimeSeconds)}}</div>
                                     <hr ng-show="$index != 0" style="border-top: 1px solid;">
                                     <div id="passage-number-1 right_panel" class="row">
                                         <p class="col-md-12 actual-test-font-global" id="question-have-image" compile="item.question" ng-if="item.type != 8 && item.type != 9 && item.type != 16 && item.type != 17">
@@ -486,7 +505,8 @@
 
 
 
-                                    <div class="col-md-12 idp-single-choice-question" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 1">
+                                    <div class="col-md-12 idp-single-choice-question" ng-repeat="q in item.subQuestions" ng-if="q.parent.type == 1 && vm.videoQuestionVisible(q)" ng-class="{'comprehensive-video-active-question': vm.videoQuestionActive(q)}">
+                                        <div class="comprehensive-video-cue-badge" ng-if="vm.hasComprehensiveVideo() && q.videoTimeSeconds != null"><i class="fa fa-clock-o"></i> {{vm.formatVideoTime(q.videoTimeSeconds)}}</div>
                                         <div class="row idp-single-choice-heading">
                                             <div id="question-number-{{q.ordinalNumber}}" ng-click="vm.openQuestionIfNotSelecting(q,item.subQuestions,$event);" ng-class="{'is-current': q.showChildren == true}" class="text-left actual-test-font-global idp-single-choice-title">
                                                 <span class="multiple-choice-question-text"><strong>{{q.ordinalNumber}}</strong>

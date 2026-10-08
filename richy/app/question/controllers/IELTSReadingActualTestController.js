@@ -20,7 +20,8 @@
         '$window',
         'blockUI',
         '$sce',
-        '$cookies'
+        '$cookies',
+        'ComprehensiveVideo'
         // 'dndLists'
         // 'ngSanitize',
         
@@ -1015,7 +1016,7 @@
         };
     });
 
-    function IELTSReadingActualTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies) {
+    function IELTSReadingActualTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,video) {
         $scope.$on('$viewContentLoaded', function () {
             // initialize core components
             App.initAjax();
@@ -1032,6 +1033,81 @@
         vm.isWritingRoute = /\/ielts_writing_actual_test(?:\/|$)/i.test($location.path());
         vm.isListeningRoute = !vm.isComprehensiveRoute && !vm.isWritingRoute && /\/ielts_listening_actual_test(?:\/|$)/i.test($location.path());
         vm.isFlexibleRoute = vm.isComprehensiveRoute || vm.isWritingRoute;
+        vm.videoApi = {};
+        vm.formatVideoTime = video.formatTime;
+        vm.hasComprehensiveVideo = function () {
+            var passage = (((vm.ieltsReadingActualTest || {}).subQuestions || [])[0]) || {};
+            return vm.isComprehensiveRoute && !!String(passage.videoUrl || '').trim();
+        };
+        $scope.$watchGroup([
+            function () { return vm.ieltsReadingActualTest; },
+            function () { return (((vm.ieltsReadingActualTest || {}).subQuestions || [])[0] || {}).videoUrl; }
+        ], function () {
+            var passage = (((vm.ieltsReadingActualTest || {}).subQuestions || [])[0]) || {};
+            vm.videoTimeline = video.timeline(passage.subQuestions || []);
+            vm.videoFallbackMode = false;
+            vm.videoDuration = 0;
+            vm.videoTimeline.cues.forEach(function (cue) {
+                cue.revealed = cue.questions.length > 0 && cue.questions.every(function (q) { return q.answered === true; });
+            });
+        });
+        vm.videoPackageVisible = function (pack) {
+            if (!vm.hasComprehensiveVideo() || !vm.videoTimeline || vm.passageNumber === 4) { return true; }
+            if (Number(pack.type) === 1) {
+                return (pack.subQuestions || []).some(function (q) { return vm.videoTimeline.visible(q); });
+            }
+            return vm.videoTimeline.visible(pack);
+        };
+        vm.videoQuestionVisible = function (question) {
+            return !vm.hasComprehensiveVideo() || !vm.videoTimeline || vm.passageNumber === 4 || vm.videoTimeline.visible(question);
+        };
+        vm.videoQuestionActive = function (question) {
+            return vm.videoTimeline && vm.videoTimeline.active.some(function (cue) { return cue.questions.indexOf(question) !== -1; });
+        };
+        vm.videoCanContinue = function () {
+            return vm.videoTimeline && vm.videoTimeline.active.every(function (cue) {
+                return cue.questions.every(function (question) {
+                    return question.answered === true || (question.questionAnswers || []).some(function (answer) {
+                        return answer.selected === true || !!String(answer.clientAnswer || '').trim();
+                    });
+                });
+            });
+        };
+        vm.onVideoProgress = function (seconds, duration) {
+            if (!vm.hasComprehensiveVideo() || !vm.videoTimeline) { return; }
+            vm.videoDuration = duration;
+            if (vm.videoFallbackMode || vm.passageNumber === 4) { return; }
+            var active = vm.videoTimeline.advance(seconds);
+            if (!active.length) { return; }
+            if (vm.videoApi.pause) { vm.videoApi.pause(); }
+            if (seconds > active[0].seconds + 1 && vm.videoApi.seek) { vm.videoApi.seek(active[0].seconds); }
+            $timeout(function () {
+                var question = active[0].questions[0];
+                var target = question && $window.document.getElementById('question-number-' + question.ordinalNumber);
+                if (target) { target.scrollIntoView({behavior: 'smooth', block: 'center'}); }
+            });
+        };
+        vm.onVideoState = function (playing) {
+            if (playing && vm.videoTimeline && vm.videoTimeline.active.length) {
+                if (vm.videoCanContinue()) { vm.videoTimeline.active = []; }
+                else if (vm.videoApi.pause) { vm.videoApi.pause(); }
+            }
+        };
+        vm.continueVideo = function () {
+            if (!vm.videoCanContinue() || !vm.videoApi.ready) { return; }
+            vm.videoTimeline.active = [];
+            vm.videoApi.play();
+        };
+        vm.revealVideoQuestions = function () {
+            if (vm.videoApi.pause) { vm.videoApi.pause(); }
+            vm.videoFallbackMode = true;
+            vm.videoTimeline.revealAll();
+        };
+        vm.videoHasInvalidCues = function () {
+            return vm.videoDuration > 0 && vm.videoTimeline && vm.videoTimeline.cues.some(function (cue) {
+                return cue.seconds >= vm.videoDuration;
+            });
+        };
         vm.assignmentTaskId = /^\d+$/.test(String($stateParams.assignmentTaskId || '')) ? Number($stateParams.assignmentTaskId) : null;
         var requestedAssignedPart = /^\d+$/.test(String($stateParams.assignmentPart || '')) ? Number($stateParams.assignmentPart) : null;
         var maximumAssignedPart = vm.isComprehensiveRoute ? 1 : (vm.isWritingRoute ? 2 : (vm.isListeningRoute ? 4 : 3));

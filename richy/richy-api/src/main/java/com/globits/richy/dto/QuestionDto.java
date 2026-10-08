@@ -31,6 +31,13 @@ public class QuestionDto implements Serializable  {
 	private String description;
 	private int type = 1;//1: flash_card
 	private String pronounce;
+	private String videoUrl;
+	private Integer videoTimeSeconds;
+
+	public String getVideoUrl() { return videoUrl; }
+	public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
+	public Integer getVideoTimeSeconds() { return videoTimeSeconds; }
+	public void setVideoTimeSeconds(Integer videoTimeSeconds) { this.videoTimeSeconds = videoTimeSeconds; }
 	private Boolean listeningTest;
 	private String testFormat;
 	private String level;
@@ -393,6 +400,8 @@ public class QuestionDto implements Serializable  {
 		this.type = domain.getType();
 		this.description = domain.getDescription();
 		this.pronounce = domain.getPronounce();
+		this.videoUrl = domain.getVideoUrl();
+		this.videoTimeSeconds = domain.getVideoTimeSeconds();
 		this.level = domain.getLevel();
 		this.status = domain.getStatus();
 		this.examples = domain.getExamples();
@@ -514,6 +523,8 @@ public class QuestionDto implements Serializable  {
 				sDto.setQuestion(q.getQuestion());
 				sDto.setTitle(q.getTitle());
 				sDto.setPronounce(q.getPronounce());
+				sDto.setVideoUrl(q.getVideoUrl());
+				sDto.setVideoTimeSeconds(q.getVideoTimeSeconds());
 				sDto.setOrdinalNumber(q.getOrdinalNumber());
 				sDto.setMotherTongue(q.getMotherTongue());
 				sDto.setLevel(q.getLevel());

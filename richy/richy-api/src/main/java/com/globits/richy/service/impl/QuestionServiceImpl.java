@@ -1372,6 +1372,11 @@ public class QuestionServiceImpl implements QuestionService {
 		if(dto == null) {
 			return null;
 		}
+		String videoValidation = com.globits.richy.question.ComprehensiveVideoValidation.validate(dto);
+		if (videoValidation != null) {
+			ret.setMessage(videoValidation);
+			return ret;
+		}
 		String level = null;
 		if(dto.getLevel() != null && !dto.getLevel().trim().isEmpty()) {
 			level = dto.getLevel().trim().toUpperCase(Locale.ROOT);
@@ -1442,6 +1447,8 @@ public class QuestionServiceImpl implements QuestionService {
 		
 		if(test.isShortEnoughString(dto.getPronounce())) {
 			domain.setPronounce(dto.getPronounce());
+			domain.setVideoUrl(dto.getVideoUrl());
+			domain.setVideoTimeSeconds(dto.getVideoTimeSeconds());
 		}else {
 			message = "Should be less than 200 characters";
 			ret.setMessage(message);
@@ -1865,6 +1872,8 @@ public class QuestionServiceImpl implements QuestionService {
 				subQuestion.setDescription(sDto.getDescription());
 				subQuestion.setTitle(sDto.getTitle());
 				subQuestion.setPronounce(sDto.getPronounce());
+				subQuestion.setVideoUrl(sDto.getVideoUrl());
+				subQuestion.setVideoTimeSeconds(sDto.getVideoTimeSeconds());
 				if(sDto.getQuestionType() != null && sDto.getQuestionType().getId() != null) {
 					subQuestion.setQuestionType(questionTypeRepository.getOne(sDto.getQuestionType().getId()));
 				}

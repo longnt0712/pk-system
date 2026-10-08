@@ -21,13 +21,14 @@
         'blockUI',
         '$sce',
         '$cookies',
-        'TopicService'
+        'TopicService',
+        'ComprehensiveVideo'
         // 'dndLists'
         // 'ngSanitize',
         
     ];
 
-    function IELTSCreateReadingTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,topicService) {
+    function IELTSCreateReadingTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,topicService,video) {
         $scope.$on('$viewContentLoaded', function () {
             // initialize core components
             App.initAjax();
@@ -44,6 +45,69 @@
         vm.isWritingMode = /\/create_ielts_writing_test(?:\/|$)/i.test($location.path());
         vm.isListeningMode = !vm.isComprehensiveMode && !vm.isWritingMode && /\/create_ielts_listening_test(?:\/|$)/i.test($location.path());
         vm.isFlexibleMode = vm.isComprehensiveMode || vm.isWritingMode;
+        vm.comprehensiveContentMode = 'TEXT';
+        vm.builderVideoApi = {};
+        vm.videoDuration = 0;
+        vm.formatVideoTime = video.formatTime;
+        vm.isVideoBuilder = function () {
+            var passage = (((vm.ieltsReadingTest || {}).subQuestions || [])[0]) || {};
+            return vm.isComprehensiveMode && (vm.comprehensiveContentMode === 'VIDEO' || !!passage.videoUrl);
+        };
+        vm.setComprehensiveContentMode = function (mode) {
+            if ((mode === 'VIDEO') === vm.isVideoBuilder()) { return; }
+            var passage = (vm.ieltsReadingTest.subQuestions || [])[0];
+            vm.comprehensiveContentMode = mode;
+            if (mode === 'TEXT') { vm.savedBuilderVideoLink = passage.videoUrl; passage.videoUrl = null; }
+            else { passage.videoUrl = vm.savedBuilderVideoLink || passage.videoUrl || ''; passage.type = 1; }
+            vm.videoDuration = 0;
+            vm.changeInTheProcessOfCreatingReadingTest();
+            vm.refreshBuilderValidation();
+        };
+        vm.updateBuilderVideoLink = function () {
+            vm.builderVideoSeconds = vm.videoDuration = 0;
+            vm.changeInTheProcessOfCreatingReadingTest();
+            vm.refreshBuilderValidation();
+        };
+        vm.builderVideoProgress = function (seconds, duration) {
+            vm.builderVideoSeconds = seconds;
+            if (duration > 0 && vm.videoDuration !== duration) { vm.videoDuration = duration; vm.refreshBuilderValidation(); }
+        };
+        vm.videoTimeInput = function (item) {
+            if (!angular.isDefined(item._videoTimeText) && item.videoTimeSeconds != null) {
+                item._videoTimeText = video.formatTime(item.videoTimeSeconds);
+            }
+            return item._videoTimeText || '';
+        };
+        vm.updateVideoTime = function (item) {
+            var value = String(item._videoTimeText || '').trim();
+            item.videoTimeSeconds = video.parseTime(value);
+            item._videoTimeError = value && item.videoTimeSeconds === null ? 'Nhập phút:giây, ví dụ 01:30 (giây từ 00 đến 59).' : '';
+            vm.changeInTheProcessOfCreatingReadingTest();
+            vm.refreshBuilderValidation();
+        };
+        vm.useCurrentVideoTime = function (item) {
+            item._videoTimeText = video.formatTime(vm.builderVideoSeconds);
+            vm.updateVideoTime(item);
+        };
+        vm.previewVideoTime = function (item) {
+            if (item.videoTimeSeconds == null || !vm.builderVideoApi.ready) { return; }
+            vm.builderVideoApi.seek(item.videoTimeSeconds);
+            vm.builderVideoApi.play();
+        };
+        vm.addVideoQuestion = function () {
+            var passage = vm.ieltsReadingTest.subQuestions[0], nextNumber = 1;
+            getPartQuestions(0).forEach(function (entry) { nextNumber = Math.max(nextNumber, Number(entry.question.ordinalNumber) + 1); });
+            var question = {question: '', ordinalNumber: nextNumber, questionType: {id: 19, code: 'IELTSRTQ'},
+                subQuestions: [], questionAnswers: [], videoTimeSeconds: Math.floor(vm.builderVideoSeconds || 0)};
+            for (var answerIndex = 0; answerIndex < 4; answerIndex++) {
+                question.questionAnswers.push({answer: {answer: ''}, ordinalNumberQuestionAnswer: answerIndex + 1, correct: answerIndex === 0});
+            }
+            passage.subQuestions.push({type: 1, ordinalNumber: passage.subQuestions.length + 1, question: '<p>Xem video và chọn đáp án đúng.</p>',
+                questionType: {id: 18, code: 'IELTSRTQ', name: 'IELTS Reading Test Package'}, isHaveChildren: true, subQuestions: [question]});
+            vm.createPackage = true;
+            vm.changeInTheProcessOfCreatingReadingTest();
+            vm.refreshBuilderValidation();
+        };
         vm.testModeName = vm.isComprehensiveMode ? 'Tổng hợp' : (vm.isWritingMode ? 'Writing' : (vm.isListeningMode ? 'Listening' : 'Reading'));
         vm.testModeIcon = vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isWritingMode ? 'fa-pencil' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book'));
 
@@ -807,6 +871,19 @@
         }
 
         vm.saveReadingTest = function (saveMode) {
+            if (vm.isVideoBuilder()) {
+                var videoPassage = vm.ieltsReadingTest.subQuestions[0];
+                var invalidTime = false;
+                (videoPassage.subQuestions || []).forEach(function (pack) {
+                    (Number(pack.type) === 1 ? (pack.subQuestions || []) : [pack]).forEach(function (item) {
+                        if (item._videoTimeError) { invalidTime = true; }
+                    });
+                });
+                if (invalidTime || (videoPassage.videoUrl && !video.parseUrl(videoPassage.videoUrl))) {
+                    toastr.warning('Kiểm tra lại link video và mốc phút:giây trước khi lưu.', 'Chưa thể lưu');
+                    return $timeout(angular.noop);
+                }
+            }
             // Keep the shared A/B/C list in every child question before either
             // Save Draft or Publish serializes the builder model.
             prepareSharedChoicePackagesForSave();
@@ -815,6 +892,10 @@
             blockUI.start();
             return service.saveObject(vm.ieltsReadingTest).then(function (data) {
                 blockUI.stop();
+                if (!data || !data.id) {
+                    toastr.error((data && data.message) || 'Không lưu được bài tập.', 'Không thể lưu');
+                    return;
+                }
                 vm.ieltsReadingTest = ensureComprehensiveBuilder(ensureListeningBuilderParts(data));
                 vm.selectedTestTopics = (vm.ieltsReadingTest.questionTopics || []).map(function (link) { return link.topic; });
                 if (vm.isComprehensiveMode) { vm.restoreBuilderTopicContext(); }
@@ -1421,7 +1502,22 @@
 
                 result.totalQuestions += questionEntries.length;
 
-                if (!vm.isWritingMode && (!vm.isComprehensiveMode || Number(passage.type) !== 6) && !plainText(passage.question)) {
+                if (vm.isVideoBuilder()) {
+                    if (!video.parseUrl(passage.videoUrl)) {
+                        addIssue('Chưa nhập link video hợp lệ (YouTube, TikTok đầy đủ hoặc MP4/WebM/OGG).', 'reading-builder-part-1', partIndex);
+                    }
+                    packages.forEach(function (pack) {
+                        (Number(pack.type) === 1 ? (pack.subQuestions || []) : [pack]).forEach(function (item) {
+                            var label = Number(pack.type) === 1 ? 'Câu ' + item.ordinalNumber : 'Nhóm ' + pack.ordinalNumber;
+                            if (item._videoTimeError || item.videoTimeSeconds == null || item.videoTimeSeconds < 0) {
+                                addIssue(label + ': chưa nhập mốc video hợp lệ, ví dụ 01:30.', 'reading-builder-part-1', partIndex);
+                            } else if (vm.videoDuration > 0 && item.videoTimeSeconds >= vm.videoDuration) {
+                                addIssue(label + ': mốc phải nhỏ hơn thời lượng video (' + video.formatTime(vm.videoDuration) + ').', 'reading-builder-part-1', partIndex);
+                            }
+                        });
+                    });
+                }
+                if (!vm.isWritingMode && !vm.isVideoBuilder() && (!vm.isComprehensiveMode || Number(passage.type) !== 6) && !plainText(passage.question)) {
                     addIssue(vm.isComprehensiveMode ? 'Đang bật hiển thị văn bản nhưng chưa nhập nội dung.' :
                         rule.name + ': chưa nhập nội dung bài đọc.', 'reading-builder-part-' + (partIndex + 1), partIndex);
                 }
@@ -2023,6 +2119,9 @@
             // console.log(vm.ieltsReadingTest.subQuestions[0]);
             service.getOne(id).then(function (data) {
                 vm.ieltsReadingTest = ensureComprehensiveBuilder(ensureListeningBuilderParts(data));
+                vm.comprehensiveContentMode = vm.ieltsReadingTest.subQuestions[0].videoUrl ? 'VIDEO' : 'TEXT';
+                vm.savedBuilderVideoLink = null;
+                vm.builderVideoSeconds = vm.videoDuration = 0;
                 vm.selectedTestTopics = (vm.ieltsReadingTest.questionTopics || []).map(function (link) { return link.topic; });
                 if (vm.isComprehensiveMode) { vm.restoreBuilderTopicContext(); }
                 vm.getOrdinalNumber(vm.ieltsReadingTest);

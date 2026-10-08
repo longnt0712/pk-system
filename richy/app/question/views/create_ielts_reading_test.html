@@ -261,10 +261,10 @@
                     <div class="col-md-6 reading-builder-text-column" ng-if="!vm.isWritingMode">
                         <div class="reading-comprehensive-column-title" ng-if="vm.isComprehensiveMode">
                             <div>
-                                <i class="fa fa-file-text-o"></i>
-                                <span><strong>Văn bản</strong><small>Nội dung tham khảo cho danh sách câu hỏi</small></span>
+                                <i class="fa" ng-class="vm.isVideoBuilder() ? 'fa-play-circle' : 'fa-file-text-o'"></i>
+                                <span><strong>{{vm.isVideoBuilder() ? 'Video' : 'Văn bản'}}</strong><small>{{vm.isVideoBuilder() ? 'Xem video và đặt câu hỏi theo mốc thời gian' : 'Nội dung tham khảo cho danh sách câu hỏi'}}</small></span>
                             </div>
-                            <div class="reading-passage-visibility">
+                            <div class="reading-passage-visibility" ng-if="!vm.isVideoBuilder()">
                                 <span>{{vm.isComprehensivePassageVisible() ? 'Hiện khi làm bài' : 'Ẩn khi làm bài'}}</span>
                                 <button type="button" class="reading-visibility-switch"
                                         ng-class="{'is-on': vm.isComprehensivePassageVisible()}"
@@ -276,6 +276,21 @@
                                 </button>
                             </div>
                         </div>
+                        <div class="comprehensive-content-picker" ng-if="vm.isComprehensiveMode">
+                            <button type="button" ng-class="{'is-active': !vm.isVideoBuilder()}" ng-click="vm.setComprehensiveContentMode('TEXT')"><i class="fa fa-file-text-o"></i> Văn bản</button>
+                            <button type="button" ng-class="{'is-active': vm.isVideoBuilder()}" ng-click="vm.setComprehensiveContentMode('VIDEO')"><i class="fa fa-play-circle"></i> Câu hỏi có video</button>
+                        </div>
+                        <section class="comprehensive-video-builder" ng-if="vm.isVideoBuilder()">
+                            <label for="comprehensive-video-url">Link video</label>
+                            <input id="comprehensive-video-url" type="text" class="form-control" ng-model="vm.ieltsReadingTest.subQuestions[0].videoUrl"
+                                   ng-model-options="{debounce: 500}" ng-change="vm.updateBuilderVideoLink()" placeholder="Dán link YouTube, TikTok hoặc file MP4...">
+                            <small>YouTube: link xem, Shorts hoặc youtu.be. TikTok: dùng link đầy đủ dạng tiktok.com/@.../video/..., mở link rút gọn để lấy link này.</small>
+                            <comprehensive-video-player video-link="vm.ieltsReadingTest.subQuestions[0].videoUrl" video-api="vm.builderVideoApi"
+                                                        on-video-progress="vm.builderVideoProgress(seconds, duration)"></comprehensive-video-player>
+                            <div class="comprehensive-video-clock"><i class="fa fa-clock-o"></i> {{vm.formatVideoTime(vm.builderVideoSeconds)}} <span ng-if="vm.videoDuration">/ {{vm.formatVideoTime(vm.videoDuration)}}</span></div>
+                            <p class="comprehensive-video-help">Thêm câu hỏi bên phải và nhập mốc, ví dụ <strong>01:30</strong>. Video sẽ dừng ở mốc đó để học sinh trả lời.</p>
+                            <button type="button" class="btn btn-info" ng-click="vm.addVideoQuestion()"><i class="fa fa-plus"></i> Thêm câu hỏi tại {{vm.formatVideoTime(vm.builderVideoSeconds)}}</button>
+                        </section>
                         <div class="row" style="margin-bottom: 5px">
                             <div class="col-md-3" ng-if="!vm.isComprehensiveMode">
                                 <ui-select ng-change="vm.changeInTheProcessOfCreatingReadingTest()" data-ng-model="vm.ieltsReadingTest.subQuestions[0].type" sortable="true" close-on-select="true" style="width: 100% !important;">
@@ -298,7 +313,7 @@
                                 <input type="url" class="form-control" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ng-model="vm.ieltsReadingTest.subQuestions[0].pronounce" placeholder="https://.../listening-part-1.mp3">
                                 <small>Khi giao riêng Part 1, hệ thống phát audio này; để trống sẽ dùng audio chính.</small>
                             </div>
-                            <div class="col-md-12">
+                            <div class="col-md-12" ng-if="!vm.isVideoBuilder()">
                                 <textarea ng-change="vm.changeInTheProcessOfCreatingReadingTest()"  ui-tinymce="tinymceOptionsToCreateQuestionForReadingTestPassage" ng-model="vm.ieltsReadingTest.subQuestions[0].question" />
                             </div>
                         </div>
@@ -318,6 +333,7 @@
                                 <span><strong>{{vm.isWritingMode ? 'Đề Writing' : 'Câu hỏi'}}</strong><small>{{vm.isWritingMode ? 'Mỗi Task có đề bài và ô làm bài riêng' : 'Cuộn liên tục từ câu 1 đến câu ' + (vm.builderValidation.totalQuestions || 'n')}}</small></span>
                             </div>
                             <div>
+                                <button type="button" class="btn btn-info btn-sm" ng-if="vm.isVideoBuilder()" ng-click="vm.addVideoQuestion()"><i class="fa fa-plus"></i> Thêm câu hỏi video</button>
                                 <button ng-show="vm.createPackage == false && !vm.isWritingMode" class="btn btn-primary btn-sm" data-ng-click="vm.startCreateQuestionForPassage1()"><i class="fa fa-arrow-right"></i> Bắt đầu tạo</button>
                                 <button class="btn btn-success btn-sm" ng-click="vm.saveReadingTest()"><i class="fa fa-save"></i> Lưu</button>
                             </div>
@@ -347,6 +363,16 @@
                                 </div>
                             </div>
 
+                            <div class="comprehensive-video-cue-field" ng-if="vm.isVideoBuilder() && item.type != 1" ng-init="vm.videoTimeInput(item)">
+                                <label>Mốc xuất hiện nhóm câu hỏi (phút:giây)</label>
+                                <div class="comprehensive-video-cue-controls">
+                                    <input type="text" class="form-control" ng-model="item._videoTimeText" ng-change="vm.updateVideoTime(item)" placeholder="01:30" aria-label="Mốc video của nhóm câu hỏi">
+                                    <button type="button" class="btn btn-default btn-sm" ng-click="vm.useCurrentVideoTime(item)" ng-disabled="!vm.builderVideoApi.ready">Lấy mốc đang xem</button>
+                                    <button type="button" class="btn btn-default btn-sm" ng-click="vm.previewVideoTime(item)" ng-disabled="item.videoTimeSeconds == null || !vm.builderVideoApi.ready"><i class="fa fa-play"></i> Xem tại mốc</button>
+                                </div>
+                                <small>Các câu trong nhóm dùng chung nội dung hoặc danh sách đáp án sẽ xuất hiện cùng lúc.</small>
+                                <span class="comprehensive-video-error" ng-if="item._videoTimeError">{{item._videoTimeError}}</span>
+                            </div>
                             <textarea ng-if="item.type != 16 && item.type != 17" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
 
                             <div class="reading-writing-task-builder-note" ng-if="item.type == 16 || item.type == 17">
@@ -508,6 +534,15 @@
                             <hr ng-if="item.type != 16 && item.type != 17">
                             <div class="row">
                                 <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13 && item.type != 16 && item.type != 17 && (item.type != 5 || $first)" style="margin-top: 20px;">
+                                    <div class="comprehensive-video-cue-field" ng-if="vm.isVideoBuilder() && item.type == 1" ng-init="vm.videoTimeInput(q)">
+                                        <label>Câu {{q.ordinalNumber}} xuất hiện tại (phút:giây)</label>
+                                        <div class="comprehensive-video-cue-controls">
+                                            <input type="text" class="form-control" ng-model="q._videoTimeText" ng-change="vm.updateVideoTime(q)" placeholder="01:30" aria-label="Mốc video của câu {{q.ordinalNumber}}">
+                                            <button type="button" class="btn btn-default btn-sm" ng-click="vm.useCurrentVideoTime(q)" ng-disabled="!vm.builderVideoApi.ready">Lấy mốc đang xem</button>
+                                            <button type="button" class="btn btn-default btn-sm" ng-click="vm.previewVideoTime(q)" ng-disabled="q.videoTimeSeconds == null || !vm.builderVideoApi.ready"><i class="fa fa-play"></i> Xem tại mốc</button>
+                                        </div>
+                                        <span class="comprehensive-video-error" ng-if="q._videoTimeError">{{q._videoTimeError}}</span>
+                                    </div>
                                     <div class="col-md-12">
                                         <div class="row">
                                             <div class="col-md-2">
