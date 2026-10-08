@@ -5,6 +5,7 @@ const path = require('node:path');
 const os = require('node:os');
 const playwright = require(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
 const app = path.join(__dirname, '..');
+const chromePath = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(p => fs.existsSync(p));
 const builder = fs.readFileSync(path.join(app, 'question/views/create_ielts_reading_test.html'), 'utf8');
 const candidate = fs.readFileSync(path.join(app, 'question/views/ielts_reading_actual_test_idp.html'), 'utf8');
 const builderController = fs.readFileSync(path.join(app, 'question/controllers/IELTSCreateReadingTestController.js'), 'utf8');
@@ -45,7 +46,7 @@ async function pageWithAngular(browser, html, width) {
 }
 
 test('real Angular renders video on the left, pauses at 01:30, accepts an answer and resumes on desktop and mobile', async () => {
-    const browser = await playwright.chromium.launch({headless: true, executablePath: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'});
+    const browser = await playwright.chromium.launch({headless: true, executablePath: chromePath});
     try {
         for (const width of [1366, 390]) {
             const html = '<div class="idp-workspace"><div class="portlet-body"><div class="row idp-split-row">' +
@@ -99,7 +100,7 @@ test('real Angular renders video on the left, pauses at 01:30, accepts an answer
 });
 
 test('author enters a cue, previews the cue and sees invalid seconds without losing the saved question', async () => {
-    const browser = await playwright.chromium.launch({headless: true, executablePath: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'});
+    const browser = await playwright.chromium.launch({headless: true, executablePath: chromePath});
     try {
         const page = await pageWithAngular(browser, '<div ng-init="item=vm.ieltsReadingTest.subQuestions[0].subQuestions[0];q=item.subQuestions[0]">' + builderCue + '</div>', 1366);
         await page.evaluate(({builderCode}) => {
@@ -116,6 +117,10 @@ test('author enters a cue, previews the cue and sees invalid seconds without los
         }, {builderCode});
         const input = page.getByRole('textbox', {name: 'Mốc video của câu 1'});
         assert.equal(await input.inputValue(), '01:00');
+        const answerSeconds = page.getByRole('spinbutton', {name: 'Thời gian trả lời câu 1'});
+        assert.equal(await answerSeconds.inputValue(), '20');
+        await answerSeconds.fill('35');
+        assert.equal(await page.evaluate(() => window.qaVm.ieltsReadingTest.subQuestions[0].subQuestions[0].subQuestions[0].videoAnswerSeconds), 35);
         await input.fill('01:30');
         assert.equal(await page.evaluate(() => window.qaVm.ieltsReadingTest.subQuestions[0].subQuestions[0].subQuestions[0].videoTimeSeconds), 90);
         await page.getByRole('button', {name: 'Xem tại mốc'}).click();

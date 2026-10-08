@@ -4,3 +4,6 @@ IF COL_LENGTH('dbo.tbl_question', 'video_url') IS NULL
 
 IF COL_LENGTH('dbo.tbl_question', 'video_time_seconds') IS NULL
     ALTER TABLE dbo.tbl_question ADD video_time_seconds INT NULL;
+
+IF COL_LENGTH('dbo.tbl_question', 'video_answer_seconds') IS NULL
+    ALTER TABLE dbo.tbl_question ADD video_answer_seconds INT NULL;

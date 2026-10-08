@@ -16,6 +16,7 @@ import com.globits.richy.dto.BattleOnlineTeamAssignmentDto;
 import com.globits.richy.dto.BattleOnlineUseSkillDto;
 
 public interface BattleOnlineService {
+    BattleOnlineRoomDto videoEvent(String roomCode, String username, com.globits.richy.dto.BattleOnlineVideoDto dto);
     BattleOnlineGiftClaimResultDto claimGift(String roomCode, String username, BattleOnlineGiftClaimDto request);
 
     BattleOnlinePetSelectionDto selectPet(

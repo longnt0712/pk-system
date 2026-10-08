@@ -11,13 +11,14 @@ function exerciseForm(scope) {
  return scope;
 }
 function setup(username='alice') {
- let Controller,hooks,resolveAnswer; const calls=[],warnings=[];
+ let Controller,hooks,resolveAnswer; const calls=[],warnings=[],videoCalls=[];
  const angular={module(){return {controller(name,fn){Controller=fn;}};},forEach(items,fn){(items||[]).forEach(fn);},copy:plain,fromJson:JSON.parse,noop(){},element(){return {on(){},off(){}};}};
  const source=fs.readFileSync(path.join(__dirname,'../question/controllers/BattleQuizOnlineController.js'),'utf8');
  nodeVm.runInNewContext(source.replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'expose({applyRoom,buildSettingsDto,autoSubmitGuessWordAtTimeout,keydownHandler});'),{angular,expose(value){hooks=value;}});
  const timer=()=>1;timer.cancel=()=>{};
  const window={location:{origin:'http://localhost'},navigator:{},document:{body:{classList:{add(){},remove(){}}},getElementById(){return null;}},localStorage:{getItem(){return null;},setItem(){}}};
- const service={answer(...args){calls.push(args);return new Promise(resolve=>{resolveAnswer=resolve;});}};
+ const service={answer(...args){calls.push(args);return new Promise(resolve=>{resolveAnswer=resolve;});},
+  videoEvent(...args){return new Promise((resolve,reject)=>videoCalls.push({args,resolve,reject}));}};
  const questions={getPageForTests(...args){calls.push(args);return Promise.resolve({content:[{id:100,title:'Đề tổng hợp'}],totalElements:25});},
   getTopicsForGames(){return Promise.resolve({content:[{id:8,name:'Animals',topicCategory:{id:6,name:'Grade 6'}},{id:9,name:'Food',topicCategory:{id:7,name:'Grade 7'}}]});}};
  const vm=new Controller({},{$on(){},$evalAsync(fn){fn();}},{go(){}},{},timer,timer,{get(){return JSON.stringify({id:1,username});}},window,{warning(text){warnings.push(text);},error(){}},{},questions,service);
@@ -27,8 +28,64 @@ function setup(username='alice') {
    players:[{username:'host',spectator:true},{username:'alice',connected:true,spectator:false,teamNumber:1},{username:'bob',connected:true,spectator:false,teamNumber:2}],recentEvents:[],
    currentQuestion:{id:102,sequence:seq,answers:[],exercise:{answerMode:'TEXT',type:11,items:[{id:'103',number:1},{id:'104',number:2}]}}};
  }
- return {vm,hooks,calls,warnings,room,resolve(result){resolveAnswer(result);}};
+ return {vm,hooks,calls,warnings,videoCalls,room,resolve(result){resolveAnswer(result);}};
 }
+function videoRoom(h,mode='CLASSIC',phase='WATCHING',seq=1,revision=1) {
+ const room=h.room(mode,seq); Object.assign(room,{videoSynchronized:true,videoPhase:phase,videoRevision:revision,
+  videoPositionSeconds:7,questionEndsAt:phase==='ANSWERING'?Date.now()+20000:0});
+ Object.assign(room.currentQuestion.exercise,{videoUrl:'https://school.test/clip.mp4',videoSourceId:'100:101',videoTimeSeconds:10,videoAnswerSeconds:20});
+ return room;
+}
+test('video questions are preloaded but stay hidden and cannot submit before the host cue in all modes',()=>{
+ for(const mode of ['CLASSIC','COUNTDOWN','MONEY_BEG','ESCAPE_DUMB_DEMON','DEMON_DEFENSE','GUESS_WORD','LUM_NGAY']) {
+  const h=setup(); h.hooks.applyRoom(videoRoom(h,mode),false);
+  assert.ok(h.vm.room.currentQuestion.exercise,mode); assert.equal(h.vm.videoQuestionOpen(),false,mode);
+  h.vm.exerciseAnswers={'103':['one'],'104':['two']}; h.vm.submitExercise(false); h.vm.submitExercise(true);
+  assert.equal(h.calls.length,0,mode); assert.equal(h.vm.countdown,0,mode);
+  h.hooks.applyRoom(videoRoom(h,mode,'ANSWERING',1,2),true);
+  assert.equal(h.vm.videoQuestionOpen(),true,mode); assert.ok(h.vm.countdown>0 && h.vm.countdown<=20,mode);
+  assert.deepEqual(plain(h.vm.exerciseAnswers),{'103':['one'],'104':['two']});
+  h.vm.submitExercise(false); assert.equal(h.calls.length,1,mode);
+ }
+});
+test('video submission remains locked after the answer response in countdown modes',async()=>{
+ const h=setup();const room=videoRoom(h,'COUNTDOWN','ANSWERING',1,2);h.hooks.applyRoom(room,false);
+ h.vm.exerciseAnswers={'103':['one'],'104':['two']};h.vm.submitExercise(false);
+ room.players[1].answeredCurrentQuestion=true;h.resolve({correct:true,room});
+ await new Promise(setImmediate); assert.equal(h.vm.exerciseInputDisabled(),true);h.vm.submitExercise(false);assert.equal(h.calls.length,1);
+});
+test('host pauses at a cue once, opens the question from the server response and resumes for the next cue',async()=>{
+ const h=setup('host'), actions=[];h.hooks.applyRoom(videoRoom(h),false);
+ h.vm.hostVideoReady({ready:true,play(){actions.push('play');},pause(){actions.push('pause');},seek(t){actions.push(['seek',t]);}});
+ assert.ok(actions.some(a=>Array.isArray(a)&&a[1]===7),'host reload seeks to saved checkpoint');
+ h.vm.hostVideoProgress(10,60);h.vm.hostVideoProgress(10,60);
+ assert.equal(h.videoCalls.length,1);assert.deepEqual(plain(h.videoCalls[0].args),['GAME1',1,'CUE',10]);
+ assert.equal(h.vm.videoQuestionOpen(),false);
+ h.videoCalls[0].resolve(videoRoom(h,'CLASSIC','ANSWERING',1,2));await new Promise(setImmediate);
+ assert.equal(h.vm.videoQuestionOpen(),true);assert.ok(actions.includes('pause'));
+ const plays=actions.filter(a=>a==='play').length;
+ h.hooks.applyRoom(videoRoom(h,'CLASSIC','WATCHING',2,3),true);
+ assert.ok(actions.filter(a=>a==='play').length>plays);
+});
+test('stale video snapshots cannot hide an opened question or return to an earlier cue',()=>{
+ const h=setup();h.hooks.applyRoom(videoRoom(h,'CLASSIC','ANSWERING',2,4),true);
+ h.hooks.applyRoom(videoRoom(h,'CLASSIC','WATCHING',1,1),false);
+ assert.equal(h.vm.room.currentQuestion.sequence,2);assert.equal(h.vm.room.videoPhase,'ANSWERING');
+});
+test('a delayed cue response and old video callbacks cannot block or activate the next video question',()=>{
+ const h=setup('host');h.hooks.applyRoom(videoRoom(h),false);
+ h.vm.hostVideoReady({ready:true,play(){},pause(){},seek(){}},'100:101');
+ h.vm.hostVideoProgress(10,60,'100:101');assert.equal(h.videoCalls.length,1);
+ const next=videoRoom(h,'CLASSIC','WATCHING',2,4);next.currentQuestion.exercise.videoSourceId='100:202';h.hooks.applyRoom(next,true);
+ h.vm.hostVideoProgress(60,60,'100:101');h.vm.hostVideoEnded('100:101');assert.equal(h.videoCalls.length,1);
+ h.vm.hostVideoReady({ready:true,play(){},pause(){},seek(){}},'100:202');
+ h.vm.hostVideoProgress(10,60,'100:202');assert.equal(h.videoCalls.length,2);assert.equal(h.videoCalls[1].args[1],2);
+});
+test('host sends video ended only after the last question answer window has closed',()=>{
+ const h=setup('host');h.hooks.applyRoom(videoRoom(h,'LUM_NGAY','ANSWERING',2,4),false);h.vm.hostVideoEnded();assert.equal(h.videoCalls.length,0);
+ h.hooks.applyRoom(videoRoom(h,'LUM_NGAY','CONTINUING',2,5),true);h.vm.hostVideoSeconds=60;h.vm.hostVideoEnded();
+ assert.deepEqual(plain(h.videoCalls[0].args),['GAME1',2,'ENDED',60]);
+});
 test('selects only comprehensive tests and sends their IDs independently of vocabulary',async()=>{
  const h=setup();h.vm.questionSource='COMPREHENSIVE';await h.vm.loadExerciseTests(2);
  assert.equal(h.calls[0][0].testFormat,'COMPREHENSIVE');assert.equal(h.calls[0][1],2);assert.equal(h.vm.exerciseTotalPages,3);

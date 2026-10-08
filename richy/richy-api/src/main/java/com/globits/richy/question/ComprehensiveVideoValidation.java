@@ -9,6 +9,10 @@ public final class ComprehensiveVideoValidation {
     private ComprehensiveVideoValidation() { }
 
     public static String validate(QuestionDto question) {
+        Integer answerSeconds = question.getVideoAnswerSeconds();
+        if (answerSeconds != null && (answerSeconds < 1 || answerSeconds > 3600)) {
+            return "Thời gian trả lời câu hỏi video phải từ 1 đến 3600 giây.";
+        }
         Integer seconds = question.getVideoTimeSeconds();
         if (seconds != null && (seconds < 0 || seconds > 359999)) {
             return "Mốc video phải từ 00:00 đến 99:59:59.";

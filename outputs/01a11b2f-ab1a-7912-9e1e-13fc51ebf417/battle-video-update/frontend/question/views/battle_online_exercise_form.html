@@ -1,0 +1,61 @@
+<div class="battle-exercise-form">
+    <h3 ng-if="exercise.title">{{exercise.title}}</h3>
+    <details ng-if="exercise.passageHtml" open class="battle-exercise-passage">
+        <summary>Văn bản của đề</summary>
+        <div ng-if="exercise.type !== 4" ng-bind-html="exercise.passageHtml"></div>
+        <battle-exercise-gaps ng-if="exercise.type === 4" content="exercise.passageHtml" items="exercise.items"
+                             answers="answers" disabled="disabled" mode="exercise.answerMode"></battle-exercise-gaps>
+    </details>
+    <div class="battle-exercise-instructions" ng-bind-html="exercise.instructionsHtml"></div>
+    <battle-exercise-gaps ng-if="exercise.type === 11 || exercise.type === 13" content="exercise.contentHtml"
+                         items="exercise.items" answers="answers" disabled="disabled" mode="exercise.answerMode"></battle-exercise-gaps>
+    <div class="battle-exercise-bank" ng-if="exercise.answerMode === 'MATCH'">
+        <small>Kéo đáp án vào ô hoặc chọn trực tiếp trong ô.</small>
+        <span draggable="true" battle-exercise-drag="option" battle-exercise-disabled="disabled"
+              ng-repeat="option in exercise.items[0].options track by option.key" ng-bind-html="option.html || option.text"></span>
+    </div>
+    <div ng-repeat="item in exercise.items track by item.id" ng-if="exercise.answerMode === 'SINGLE'">
+        <div class="battle-online-word">
+            <h2><span ng-bind-html="item.promptHtml"></span></h2>
+        </div>
+        <div class="battle-online-answer-grid">
+            <button type="button" ng-repeat="option in item.options track by option.key"
+                    class="battle-online-answer-btn answer-{{$index % 4}}" ng-disabled="disabled"
+                    ng-class="{'is-selected': selected(item, option)}" ng-click="choose(item, option, false)">
+                <span class="battle-online-answer-key">{{optionLabel($index)}}</span>
+                <span ng-bind-html="option.html || option.text"></span>
+                <small>{{$index + 1}}</small>
+            </button>
+        </div>
+    </div>
+    <div class="battle-exercise-item" ng-repeat="item in exercise.items track by item.id" ng-if="exercise.answerMode !== 'SINGLE' && exercise.type !== 11 && exercise.type !== 13">
+        <div ng-if="exercise.type !== 11 && exercise.type !== 13 && exercise.type !== 2 && exercise.type !== 3">
+            <b ng-if="item.number">{{item.number}}<span ng-if="item.numberEnd">–{{item.numberEnd}}</span>.</b> <span ng-bind-html="item.promptHtml"></span>
+        </div>
+        <battle-exercise-gaps ng-if="exercise.type === 2 || exercise.type === 3" content="item.promptHtml"
+                             items="[item]" answers="answers" disabled="disabled" mode="exercise.answerMode"></battle-exercise-gaps>
+        <div ng-if="exercise.answerMode === 'MULTIPLE'">
+            <label class="battle-exercise-choice" ng-repeat="option in item.options track by option.key">
+                <input ng-attr-type="{{exercise.answerMode === 'MULTIPLE' ? 'checkbox' : 'radio'}}"
+                       ng-attr-name="{{'exercise-' + item.id}}" ng-checked="selected(item, option)" ng-disabled="disabled"
+                       ng-click="choose(item, option, exercise.answerMode === 'MULTIPLE')" />
+                <span><b>{{optionLabel($index)}}.</b> <span ng-bind-html="option.html || option.text"></span></span>
+            </label>
+        </div>
+        <label ng-if="exercise.answerMode === 'TEXT' && exercise.type !== 11 && exercise.type !== 2 && exercise.type !== 3">
+            <span>Đáp án câu {{item.number}}</span>
+            <input type="text" class="form-control" ng-model="answers[item.id][0]" ng-disabled="disabled" maxlength="1000" autocomplete="off" />
+        </label>
+        <label ng-if="exercise.answerMode === 'MATCH' && exercise.type !== 13">
+            <span>Đáp án câu {{item.number}}</span>
+            <select class="form-control" ng-model="answers[item.id][0]" ng-disabled="disabled"
+                    battle-exercise-drop="item" battle-exercise-disabled="disabled"
+                    ng-options="option.key as option.text for option in item.options"><option value="">Chọn / kéo đáp án vào đây</option></select>
+        </label>
+        <label ng-if="exercise.answerMode === 'WRITING'">
+            <span>Bài viết của bạn — {{wordCount(item)}} từ; yêu cầu trên {{exercise.minimumWords}} từ</span>
+            <textarea class="form-control" rows="12" ng-model="answers[item.id][0]" ng-disabled="disabled" maxlength="30000"></textarea>
+        </label>
+    </div>
+    <small ng-if="exercise.answerMode !== 'SINGLE'">Mỗi lượt là một câu hỏi. Trả lời câu hiện tại rồi nộp đáp án.</small>
+</div>

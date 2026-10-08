@@ -6,6 +6,14 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class ComprehensiveVideoValidationTest {
+    @Test public void answerWindowIsOptionalForOldQuestionsAndValidatesNestedValues() {
+        QuestionDto root=new QuestionDto(), child=new QuestionDto(); root.setSubQuestions(Collections.singletonList(child));
+        assertNull(ComprehensiveVideoValidation.validate(root));
+        child.setVideoAnswerSeconds(20); assertNull(ComprehensiveVideoValidation.validate(root));
+        child.setVideoAnswerSeconds(35); assertNull(ComprehensiveVideoValidation.validate(root));
+        child.setVideoAnswerSeconds(0); assertNotNull(ComprehensiveVideoValidation.validate(root));
+        child.setVideoAnswerSeconds(3601); assertNotNull(ComprehensiveVideoValidation.validate(root));
+    }
     @Test public void acceptsSupportedLinksAndRejectsOtherHostsAndSchemes() {
         String[] supported = {"https://youtu.be/M7lc1UVf-VE?t=90", "https://www.youtube.com/watch?v=M7lc1UVf-VE&t=90s",
             "https://youtube.com/shorts/M7lc1UVf-VE", "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE",

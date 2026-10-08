@@ -33,6 +33,9 @@ public class QuestionDto implements Serializable  {
 	private String pronounce;
 	private String videoUrl;
 	private Integer videoTimeSeconds;
+	private Integer videoAnswerSeconds;
+	public Integer getVideoAnswerSeconds() { return videoAnswerSeconds; }
+	public void setVideoAnswerSeconds(Integer videoAnswerSeconds) { this.videoAnswerSeconds = videoAnswerSeconds; }
 
 	public String getVideoUrl() { return videoUrl; }
 	public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
@@ -402,6 +405,7 @@ public class QuestionDto implements Serializable  {
 		this.pronounce = domain.getPronounce();
 		this.videoUrl = domain.getVideoUrl();
 		this.videoTimeSeconds = domain.getVideoTimeSeconds();
+		this.videoAnswerSeconds = domain.getVideoAnswerSeconds();
 		this.level = domain.getLevel();
 		this.status = domain.getStatus();
 		this.examples = domain.getExamples();

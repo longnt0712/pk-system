@@ -33,6 +33,21 @@ public class BattleOnlineRoomDto implements Serializable {
      * CLASSIC.
      */
     private long questionEndsAt;
+    private boolean videoSynchronized;
+    private String videoPhase;
+    private double videoPositionSeconds;
+    private long videoRevision;
+    private long demonTimeOffsetMillis;
+    public long getDemonTimeOffsetMillis() { return demonTimeOffsetMillis; }
+    public void setDemonTimeOffsetMillis(long value) { demonTimeOffsetMillis = value; }
+    public boolean isVideoSynchronized() { return videoSynchronized; }
+    public void setVideoSynchronized(boolean value) { videoSynchronized = value; }
+    public String getVideoPhase() { return videoPhase; }
+    public void setVideoPhase(String value) { videoPhase = value; }
+    public double getVideoPositionSeconds() { return videoPositionSeconds; }
+    public void setVideoPositionSeconds(double value) { videoPositionSeconds = value; }
+    public long getVideoRevision() { return videoRevision; }
+    public void setVideoRevision(long value) { videoRevision = value; }
 
     /*
      * COUNTDOWN.

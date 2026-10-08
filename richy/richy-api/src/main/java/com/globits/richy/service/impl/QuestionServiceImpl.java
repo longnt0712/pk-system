@@ -1451,6 +1451,7 @@ public class QuestionServiceImpl implements QuestionService {
 			domain.setPronounce(dto.getPronounce());
 			domain.setVideoUrl(dto.getVideoUrl());
 			domain.setVideoTimeSeconds(dto.getVideoTimeSeconds());
+			domain.setVideoAnswerSeconds(dto.getVideoAnswerSeconds());
 		}else {
 			message = "Should be less than 200 characters";
 			ret.setMessage(message);
@@ -1876,6 +1877,7 @@ public class QuestionServiceImpl implements QuestionService {
 				subQuestion.setPronounce(sDto.getPronounce());
 				subQuestion.setVideoUrl(sDto.getVideoUrl());
 				subQuestion.setVideoTimeSeconds(sDto.getVideoTimeSeconds());
+				subQuestion.setVideoAnswerSeconds(sDto.getVideoAnswerSeconds());
 				if(sDto.getQuestionType() != null && sDto.getQuestionType().getId() != null) {
 					subQuestion.setQuestionType(questionTypeRepository.getOne(sDto.getQuestionType().getId()));
 				}

@@ -54,6 +54,11 @@ public class Question extends BaseObject{
 	@Column(name="video_time_seconds")
 	private Integer videoTimeSeconds;
 
+	@Column(name = "video_answer_seconds")
+	private Integer videoAnswerSeconds;
+	public Integer getVideoAnswerSeconds() { return videoAnswerSeconds; }
+	public void setVideoAnswerSeconds(Integer videoAnswerSeconds) { this.videoAnswerSeconds = videoAnswerSeconds; }
+
 	public String getVideoUrl() { return videoUrl; }
 	public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
 	public Integer getVideoTimeSeconds() { return videoTimeSeconds; }

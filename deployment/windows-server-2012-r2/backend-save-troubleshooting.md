@@ -1,5 +1,25 @@
 # Kiểm tra lỗi API lưu không phản hồi
 
+## Kết quả báo cáo lúc 18:33 ngày 08/10/2026
+
+`backend-save-log.txt` xác nhận Java PID 320 vẫn giữ port 8085 và đã chạy từ 07:00:04. JAR trong `C:\richy-wine-service` được thay lúc 16:18:24. Service `richy-wine-service` đang Stopped nhưng Java vẫn hoạt động. Wrapper log ghi lần dừng lúc 11:13:10 thất bại với `Access is denied`; các lần khởi động lúc 14:42, 15:00, 16:22 và 17:56 đều thất bại với `Address already in use` trên port 8085. Vì vậy chưa có lần khởi động mới thành công thay thế PID 320 sau khi cập nhật JAR.
+
+Đây là lỗi khởi động lại/triển khai đã được xác nhận. Chưa có trạng thái luồng của Java để xác định bước chờ trong thao tác lưu: máy chủ chỉ có JRE 8, không tìm thấy jcmd/jstack. `.err.log` cập nhật lần cuối lúc 10:50 và các lỗi AccessDeniedException trong đó thuộc endpoint learning draft; không thể dùng chúng để kết luận lỗi lưu Topic/Battle lúc 18:33.
+
+Người vận hành sau đó xác nhận đã End Task tiến trình Java trong Task Manager rồi khởi động lại service thành công. Kết quả phù hợp với lỗi còn sót Java chiếm port được ghi trong log. Cần thử lưu Topic/test và tạo phòng Battle sau lần khởi động này để xác nhận các thao tác nghiệp vụ đã phục hồi.
+
+Kiểm tra từ xa sau thao tác này: trang chủ HTTP 200 trong 0,14 giây; `/service/api/topic/get_one/1` HTTP 401 trong 0,19 giây và `/service/api/battle-music-config/active` HTTP 401 trong 0,12 giây. Hai API được gọi không đăng nhập nên 401 là phản hồi phù hợp; kết quả xác nhận đường API đã phản hồi trở lại, thay cho timeout 12 giây trước đó. Chưa kiểm tra ghi dữ liệu bằng phiên đăng nhập ADMIN.
+
+Ưu tiên đưa backend về đúng Windows service với JAR hiện tại, rồi kiểm tra lưu Topic, test tổng hợp và tạo phòng Battle. `Restart-Backend.ps1` đã bổ sung nhận diện service bị dừng nhưng còn Java giữ port, kiểm tra đúng wrapper trong thư mục JAR, dừng đúng tiến trình Java đó, đợi port trống rồi khởi động service bằng cấu hình hiện có. Script cũng nhận diện được đường dẫn Java mà WinSW dùng không có đuôi `.exe`. Không thay JAR, service XML hay database.
+
+Sau khi giải nén gói phục hồi vào `C:\chan-doan` trên server, mở PowerShell bằng Administrator và chạy:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\chan-doan\Restart-Backend.ps1"
+```
+
+Thao tác này khởi động lại backend và gây gián đoạn ngắn. Kiểm tra report `backend-check-after-restart.txt`: cần PID mới và phản hồi HTTP của API; 401/403/405 từ kiểm tra chưa đăng nhập chỉ xác nhận API đã phản hồi. Sau đó thử lưu bằng tài khoản ADMIN và tải lại danh sách để xác nhận dữ liệu đã lưu. Nếu service không mở port, lấy phần cuối `.out.log` và `.wrapper.log` mới.
+
 ## Thông tin mới: lỗi xảy ra ở một số API lưu
 
 Người vận hành xác nhận vẫn tải danh sách và lưu Test Result được; lưu Topic mới, bài tổng hợp tạo thủ công một câu và bài import Excel đều không được. Không thể kết luận toàn bộ backend ngừng hoạt động từ các GET không đăng nhập bị timeout. Lỗi bài tổng hợp cũng xảy ra khi không dùng Excel, nên cần kiểm tra API lưu Question và Topic trước khi quy lỗi cho parser import.

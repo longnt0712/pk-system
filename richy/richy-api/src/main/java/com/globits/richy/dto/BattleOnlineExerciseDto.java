@@ -14,6 +14,10 @@ public class BattleOnlineExerciseDto implements Serializable {
     public String instructionsHtml;
     public String contentHtml;
     public int minimumWords;
+    public String videoUrl;
+    public String videoSourceId;
+    public Integer videoTimeSeconds;
+    public int videoAnswerSeconds = 20;
     public List<Item> items = new ArrayList<Item>();
 
     public static class Item implements Serializable {

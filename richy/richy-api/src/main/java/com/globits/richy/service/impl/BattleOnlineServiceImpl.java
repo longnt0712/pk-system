@@ -1293,6 +1293,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             resetScoresLocked(room);
+            room.videoSynchronized = hasVideoQuestions(room);
+            room.videoPhase = null;
+            room.videoPositionSeconds = 0D;
+            room.videoDemonPausedAt = 0L;
+            room.videoDemonPauseMillis = 0L;
+            room.videoRevision++;
             room.battleResultsSaved = false;
             room.battleAttemptId = UUID.randomUUID().toString();
             room.recentEvents.clear();
@@ -1343,6 +1349,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             cancelMatchTimer(room.code);
 
             room.status = LOBBY;
+            room.videoSynchronized = false;
+            room.videoPhase = null;
+            room.videoRevision++;
             room.demonDefense = null;
             room.giftDrop = null;
             room.lastDemonSummaryAt = 0L;
@@ -1507,7 +1516,19 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private int minimumSourceQuestions(RoomState room) { return "COMPREHENSIVE".equals(room.settings.questionSource) ? 1 : 4; }
 
     private boolean isExerciseQuestionOrderFixed(RoomState room) {
-        return "COMPREHENSIVE".equals(room.settings.questionSource) && !room.settings.shuffleExerciseQuestions;
+        return hasVideoQuestions(room) || ("COMPREHENSIVE".equals(room.settings.questionSource) && !room.settings.shuffleExerciseQuestions);
+    }
+
+    private boolean hasVideoQuestions(RoomState room) {
+        for (QuestionState question : room.preparedQuestions.values()) {
+            if (videoContent(question) != null) { return true; }
+        }
+        return false;
+    }
+
+    private com.globits.richy.dto.BattleOnlineExerciseDto videoContent(QuestionState question) {
+        if (question == null || question.exercise == null || isBlank(question.exercise.content.videoUrl)) { return null; }
+        return question.exercise.content;
     }
 
     private List<QuestionState> eligibleGuessQuestionsLocked(RoomState room) {
@@ -1623,6 +1644,14 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
 
         room.matchEndsAt = matchStartsAt + matchDurationMs;
+        if (room.videoSynchronized) {
+            // Video playback and the teacher's answer windows determine the match length.
+            room.matchEndsAt = Long.MAX_VALUE;
+            for (int index = 0; index < target; index++) {
+                room.classicQuestions.add(copyQuestionState(eligible.get(index)));
+            }
+            room.classicQuestionIndex = 0;
+        }
         if (MODE_LUM_NGAY.equals(room.settings.mode)) {
             List<String> eggSkills = new ArrayList<String>();
             for (String type : GiftDropGame.SKILL_TYPES) { if (isSkillEnabledLocked(room, type)) { eggSkills.add(type); } }
@@ -1673,10 +1702,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
         }
 
-        scheduleMatchFinish(
+        if (room.videoSynchronized) {
+            startClassicQuestionLocked(room);
+        } else { scheduleMatchFinish(
                 room.code,
                 room.matchEndsAt
-            );
+            ); }
         if (room.demonDefense != null) { scheduleDemonTick(room); }
     }
 
@@ -1773,6 +1804,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     : normalizeGuessAnswer(submitted).equals(normalizeGuessAnswer(question.correctText));
             player.connected = true;
             player.answeredClassicIndex = room.classicQuestionIndex;
+            if (room.videoSynchronized) { room.videoRevision++; }
 
             int correctOrder = 0;
             double scoreDelta;
@@ -1813,7 +1845,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             expectedIndex = room.classicQuestionIndex;
-            advanceSoon = allConnectedClassicAnsweredLocked(room);
+            advanceSoon = !room.videoSynchronized && allConnectedClassicAnsweredLocked(room);
         }
 
         broadcastGeneric(room);
@@ -2023,6 +2055,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
             player.answeredClassicIndex =
                     room.classicQuestionIndex;
+            if (room.videoSynchronized) { room.videoRevision++; }
 
             int correctOrder = 0;
             double scoreDelta;
@@ -2086,7 +2119,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     room.classicQuestionIndex;
 
             advanceSoon =
-                    allConnectedClassicAnsweredLocked(
+                    !room.videoSynchronized && allConnectedClassicAnsweredLocked(
                         room
                     );
         }
@@ -2118,6 +2151,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             long now = System.currentTimeMillis();
 
+            if (room.videoSynchronized) { requireVideoAnswerWindowLocked(room, answerDto); }
+
             advanceDemonDefenseLocked(room, now);
             requirePlaying(room);
 
@@ -2138,6 +2173,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             requireActivePlayer(player);
 
             requireLivingDemonPlayerLocked(room, player);
+
+            if (room.videoSynchronized && (player.answeredClassicIndex == room.classicQuestionIndex ||
+                    player.passwordSelectionRequired || player.pendingPasswordGuessTargetUsername != null)) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Bạn đã nộp câu này hoặc cần hoàn thành thao tác đang chờ.");
+            }
 
             player.connected = true;
 
@@ -2201,6 +2241,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     ? question.exercise.grade(answerDto.getExerciseAnswers())
                     : normalizeAnswerKey(answerDto.getAnswerKey()).equals(question.correctKey);
 
+            if (room.videoSynchronized) { player.answeredClassicIndex = room.classicQuestionIndex; room.videoRevision++; }
+
             if (!correct) {
                 recordWrongWordLocked(
                         player,
@@ -2255,7 +2297,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             DemonDefenseGame.ShotResult demonShot = null;
             if (MODE_DEMON_DEFENSE.equals(room.settings.mode)) {
-                demonShot = correct ? room.demonDefense.shoot(player.teamNumber, player.username, player.streak, now) : null;
+                demonShot = correct ? room.demonDefense.shoot(player.teamNumber, player.username, player.streak, demonGameTime(room, now)) : null;
                 // In this mode score measures actual kills; bonus/luck does not create extra bullets.
                 double previousScore = player.score - scoreDelta;
                 scoreDelta = demonShot == null ? 0D : demonShot.kills;
@@ -3688,6 +3730,97 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
        CLASSIC TIMER
        ========================================================= */
 
+    @Override
+    public BattleOnlineRoomDto videoEvent(String roomCode, String username,
+            com.globits.richy.dto.BattleOnlineVideoDto event) {
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto result;
+        boolean changed = false;
+        synchronized (room) {
+            requireHost(room, requireUsername(username));
+            requirePlaying(room);
+            com.globits.richy.dto.BattleOnlineExerciseDto content = videoContent(currentClassicQuestionLocked(room));
+            if (!room.videoSynchronized || content == null || event == null ||
+                    event.questionSequence != room.classicQuestionIndex + 1L ||
+                    Double.isNaN(event.seconds) || Double.isInfinite(event.seconds) || event.seconds < 0 || event.seconds > 359999) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Video không còn khớp với câu hiện tại.");
+            }
+            if ("CUE".equals(event.event)) {
+                if ("WATCHING".equals(room.videoPhase)) {
+                    if (event.seconds + 0.25D < content.videoTimeSeconds) {
+                        throw new BattleOnlineException(HttpStatus.CONFLICT, "Video chưa đến mốc câu hỏi.");
+                    }
+                    room.videoPositionSeconds = content.videoTimeSeconds;
+                    openVideoAnswerWindowLocked(room, content.videoAnswerSeconds);
+                    changed = true;
+                } else if (!"ANSWERING".equals(room.videoPhase)) {
+                    throw new BattleOnlineException(HttpStatus.CONFLICT, "Câu hỏi video đã kết thúc.");
+                }
+            } else if ("ENDED".equals(event.event)) {
+                if (!"CONTINUING".equals(room.videoPhase)) {
+                    throw new BattleOnlineException(HttpStatus.CONFLICT, "Video vẫn còn câu hỏi cần trả lời.");
+                }
+                moveToNextVideoQuestionLocked(room);
+                changed = true;
+            } else if ("PROGRESS".equals(event.event)) {
+                if (!"ANSWERING".equals(room.videoPhase)) { room.videoPositionSeconds = event.seconds; }
+            } else {
+                throw new BattleOnlineException(HttpStatus.BAD_REQUEST, "Thao tác video không hợp lệ.");
+            }
+            result = snapshotLocked(room, username);
+        }
+        if (changed) { broadcastGeneric(room); }
+        return result;
+    }
+
+    private void requireVideoAnswerWindowLocked(RoomState room, BattleOnlineAnswerDto answer) {
+        if (!"ANSWERING".equals(room.videoPhase) || System.currentTimeMillis() > room.questionEndsAt ||
+                answer == null || answer.getQuestionSequence() != room.classicQuestionIndex + 1L) {
+            throw new BattleOnlineException(HttpStatus.CONFLICT, "Câu hỏi video chưa mở hoặc đã hết giờ.");
+        }
+    }
+
+    private void openVideoAnswerWindowLocked(RoomState room, int seconds) {
+        setVideoDemonPausedLocked(room, false);
+        room.videoPhase = "ANSWERING";
+        room.videoRevision++;
+        room.questionEndsAt = System.currentTimeMillis() + seconds * 1000L;
+        long grace = MODE_GUESS_WORD.equals(room.settings.mode) ? GUESS_AUTO_SUBMIT_GRACE_MS + 150L : 80L;
+        scheduleClassicAdvance(room.code, room.classicQuestionIndex, seconds * 1000L + grace);
+    }
+
+    private void moveToNextVideoQuestionLocked(RoomState room) {
+        int next = room.classicQuestionIndex + 1;
+        if (next >= room.classicQuestions.size()) {
+            room.videoPhase = null;
+            room.videoRevision++;
+            finishMatchLocked(room);
+        } else {
+            room.classicQuestionIndex = next;
+            startClassicQuestionLocked(room);
+        }
+    }
+
+    private void finishVideoAnswerWindowLocked(RoomState room) {
+        if (!"ANSWERING".equals(room.videoPhase) || System.currentTimeMillis() < room.questionEndsAt) { return; }
+        recordUnansweredClassicPlayersLocked(room);
+        if (MODE_GUESS_WORD.equals(room.settings.mode)) { finalizeGuessRoundLocked(room); }
+        QuestionState current = currentClassicQuestionLocked(room);
+        com.globits.richy.dto.BattleOnlineExerciseDto video = videoContent(current);
+        int next = room.classicQuestionIndex + 1;
+        com.globits.richy.dto.BattleOnlineExerciseDto nextVideo = next < room.classicQuestions.size()
+                ? videoContent(room.classicQuestions.get(next)) : null;
+        if (next >= room.classicQuestions.size()) {
+            moveToNextVideoQuestionLocked(room);
+        } else if (video != null && (nextVideo == null || !video.videoSourceId.equals(nextVideo.videoSourceId))) {
+            // Let the host finish the remaining footage before starting another video or ending the match.
+            room.videoPhase = "CONTINUING";
+            setVideoDemonPausedLocked(room, true);
+            room.questionEndsAt = 0L;
+            room.videoRevision++;
+        } else { moveToNextVideoQuestionLocked(room); }
+    }
+
     private void startClassicQuestionLocked(
             RoomState room) {
 
@@ -3707,6 +3840,28 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.classicCorrectAnswerCount = 0;
         room.currentGuessAnswers.clear();
         room.revealedGuessIndices.clear();
+
+        if (room.videoSynchronized) {
+            QuestionState question = currentClassicQuestionLocked(room);
+            com.globits.richy.dto.BattleOnlineExerciseDto content = videoContent(question);
+            room.videoRevision++;
+            if (content != null) {
+                int previous = room.classicQuestionIndex - 1;
+                com.globits.richy.dto.BattleOnlineExerciseDto previousVideo = previous >= 0
+                        ? videoContent(room.classicQuestions.get(previous)) : null;
+                if (previousVideo == null || !content.videoSourceId.equals(previousVideo.videoSourceId)) {
+                    room.videoPositionSeconds = 0D;
+                }
+                room.videoPhase = "WATCHING";
+                setVideoDemonPausedLocked(room, true);
+                room.questionEndsAt = 0L;
+            } else { openVideoAnswerWindowLocked(room, room.settings.secondsPerQuestion); }
+            room.guessPhase = GUESS_PHASE_QUESTION;
+            if (isCountdownLikeMode(room.settings.mode)) {
+                for (PlayerState player : room.players.values()) { assignNextCountdownQuestionLocked(room, player); }
+            }
+            return;
+        }
 
         if (MODE_GUESS_WORD.equals(room.settings.mode)) {
             room.guessPhase = GUESS_PHASE_QUESTION;
@@ -3855,7 +4010,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         synchronized (room) {
             if (
                 !PLAYING.equals(room.status) ||
-                (!MODE_CLASSIC.equals(room.settings.mode) &&
+                (!room.videoSynchronized && !MODE_CLASSIC.equals(room.settings.mode) &&
                  !MODE_GUESS_WORD.equals(room.settings.mode)) ||
                 room.classicQuestionIndex !=
                     expectedIndex
@@ -3863,7 +4018,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 return;
             }
 
-            if (MODE_GUESS_WORD.equals(room.settings.mode)) {
+            if (room.videoSynchronized) {
+                finishVideoAnswerWindowLocked(room);
+            } else if (MODE_GUESS_WORD.equals(room.settings.mode)) {
                 if (GUESS_PHASE_QUESTION.equals(room.guessPhase)) {
                     recordUnansweredClassicPlayersLocked(room);
                     finalizeGuessRoundLocked(room);
@@ -4875,6 +5032,19 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             RoomState room,
             PlayerState player) {
 
+        if (room.videoSynchronized) {
+            QuestionState shared = currentClassicQuestionLocked(room);
+            if (shared == null || player.spectator || player.answeredClassicIndex == room.classicQuestionIndex) {
+                player.currentQuestion = null;
+                return;
+            }
+            if (player.currentQuestionSequence != room.classicQuestionIndex + 1L || player.currentQuestion == null) {
+                player.currentQuestionSequence = room.classicQuestionIndex;
+                setCurrentCountdownQuestionLocked(room, player, shared);
+            }
+            return;
+        }
+
         if (player.spectator || (MODE_DEMON_DEFENSE.equals(room.settings.mode) &&
                 room.demonDefense != null && room.demonDefense.isEliminated(player.teamNumber))) {
             player.currentQuestion = null;
@@ -5426,7 +5596,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private void advanceDemonDefenseLocked(RoomState room, long now) {
         if (!PLAYING.equals(room.status) || !MODE_DEMON_DEFENSE.equals(room.settings.mode) || room.demonDefense == null) { return; }
-        room.demonDefense.advance(Math.min(now, room.matchEndsAt));
+        room.demonDefense.advance(demonGameTime(room, Math.min(now, room.matchEndsAt)));
         for (PlayerState player : room.players.values()) {
             if (!player.spectator && room.demonDefense.isEliminated(player.teamNumber)) {
                 player.currentQuestion = null;
@@ -5436,6 +5606,23 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
         }
         if (room.demonDefense.isFinished() || now >= room.matchEndsAt) { finishMatchLocked(room); }
+    }
+
+    private long demonGameTime(RoomState room, long now) {
+        if (!room.videoSynchronized || room.demonDefense == null) { return now; }
+        return (room.videoDemonPausedAt > 0L ? room.videoDemonPausedAt : now) - room.videoDemonPauseMillis;
+    }
+
+    private void setVideoDemonPausedLocked(RoomState room, boolean paused) {
+        if (room.demonDefense == null) { return; }
+        long now = System.currentTimeMillis();
+        if (paused && room.videoDemonPausedAt == 0L) {
+            room.demonDefense.advance(demonGameTime(room, now));
+            room.videoDemonPausedAt = now;
+        } else if (!paused && room.videoDemonPausedAt > 0L) {
+            room.videoDemonPauseMillis += now - room.videoDemonPausedAt;
+            room.videoDemonPausedAt = 0L;
+        }
     }
 
     private void scheduleDemonTick(final RoomState room) {
@@ -5448,7 +5635,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         if (!PLAYING.equals(room.status) || room.demonDefense != game || rooms.get(room.code) != room) { return; }
                         long now = System.currentTimeMillis();
                         advanceDemonDefenseLocked(room, now);
-                        String after = demonWarningKey(game.snapshot(now, false));
+                        String after = demonWarningKey(game.snapshot(demonGameTime(room, now), false));
                         broadcastSummary = !PLAYING.equals(room.status) || !after.equals(room.lastDemonWarningKey) ||
                                 now - room.lastDemonSummaryAt >= 1000L;
                         room.lastDemonWarningKey = after;
@@ -5471,7 +5658,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         DemonDefenseGame.Snapshot arena;
         synchronized (room) {
             if (!MODE_DEMON_DEFENSE.equals(room.settings.mode) || room.demonDefense == null) { return; }
-            arena = room.demonDefense.snapshot(System.currentTimeMillis(), true);
+            arena = room.demonDefense.snapshot(demonGameTime(room, System.currentTimeMillis()), true);
         }
         // Only the host UI subscribes to this animation feed; students receive small summaries.
         messagingTemplate.convertAndSend("/topic/battle-online/room/" + room.code + "/arena", arena);
@@ -5552,8 +5739,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
 
         room.status = FINISHED;
+        if (room.videoSynchronized) { room.videoPhase = null; room.videoRevision++; }
         if (room.demonDefense != null) {
-            room.demonDefense.stop(Math.min(System.currentTimeMillis(), room.matchEndsAt));
+            room.demonDefense.stop(demonGameTime(room, Math.min(System.currentTimeMillis(), room.matchEndsAt)));
         }
         room.questionEndsAt = 0L;
         room.matchEndsAt = 0L;
@@ -6405,12 +6593,18 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         dto.setQuestionEndsAt(
                 room.questionEndsAt
         );
+        dto.setVideoSynchronized(room.videoSynchronized || (LOBBY.equals(room.status) && hasVideoQuestions(room)));
+        dto.setVideoPhase(room.videoPhase);
+        dto.setVideoPositionSeconds(room.videoPositionSeconds);
+        dto.setVideoRevision(room.videoRevision);
+        dto.setDemonTimeOffsetMillis(room.videoSynchronized && room.demonDefense != null
+                ? room.videoDemonPauseMillis + (room.videoDemonPausedAt > 0L ? System.currentTimeMillis() - room.videoDemonPausedAt : 0L) : 0L);
 
         dto.setMatchEndsAt(
-                room.matchEndsAt
+                room.videoSynchronized ? 0L : room.matchEndsAt
         );
         if (MODE_DEMON_DEFENSE.equals(room.settings.mode) && room.demonDefense != null) {
-            dto.setDemonDefense(room.demonDefense.snapshot(System.currentTimeMillis(),
+            dto.setDemonDefense(room.demonDefense.snapshot(demonGameTime(room, System.currentTimeMillis()),
                     room.hostUsername.equals(viewerUsername)));
         }
 
@@ -6475,7 +6669,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         if (
             PLAYING.equals(room.status) &&
-            (MODE_CLASSIC.equals(room.settings.mode) ||
+            (room.videoSynchronized || MODE_CLASSIC.equals(room.settings.mode) ||
              MODE_GUESS_WORD.equals(room.settings.mode))
         ) {
             QuestionState question =
@@ -6720,7 +6914,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             );
 
             player.setAnsweredCurrentQuestion(
-                    (MODE_CLASSIC.equals(room.settings.mode) ||
+                    (room.videoSynchronized || MODE_CLASSIC.equals(room.settings.mode) ||
                      MODE_GUESS_WORD.equals(room.settings.mode)) &&
                     PLAYING.equals(
                         room.status
@@ -8235,6 +8429,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
     private static class RoomState {
+        long videoDemonPausedAt;
+        long videoDemonPauseMillis;
+        boolean videoSynchronized;
+        String videoPhase;
+        double videoPositionSeconds;
+        long videoRevision;
         String code;
         String status;
         String hostUsername;

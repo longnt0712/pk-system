@@ -3,12 +3,14 @@ param(
     [string]$JarPath = 'C:\richy-wine-service\richy-wine-exec.jar',
     [string]$ExpectedComputer = '118-27-192-59',
     [ValidateRange(1, 65535)][int]$Port = 8085,
+    [ValidatePattern('^[A-Za-z0-9_.-]+$')][string]$ServiceName = 'richy-wine-service',
     [switch]$CheckOnly
 )
 
 # Restart only the Java backend already serving this port. Preserve its JVM
 # and application arguments; never print those arguments or replace the JAR.
 $ErrorActionPreference = 'Stop'
+$restartScriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 function Get-BackendProcessId {
     $processIds = @(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
@@ -20,9 +22,15 @@ function Get-BackendProcessId {
 }
 
 function Get-JavaArguments([string]$CommandLine, [string]$Executable, [string]$TargetJar) {
+    if ([string]::IsNullOrWhiteSpace($Executable) -or [string]::IsNullOrWhiteSpace($CommandLine)) {
+        throw 'The Java executable/startup command is unavailable. No process was stopped.'
+    }
     $exeName = [IO.Path]::GetFileName($Executable)
+    # WinSW can launch a full Java path without the .exe suffix.
+    $executableWithoutExtension = $Executable -replace '(?i)\.exe$', ''
     $commandPattern = '^\s*(?:"' + [Regex]::Escape($Executable) + '"|' +
-        [Regex]::Escape($Executable) + '|"?' + [Regex]::Escape($exeName) +
+        [Regex]::Escape($Executable) + '|"' + [Regex]::Escape($executableWithoutExtension) + '"|' +
+        [Regex]::Escape($executableWithoutExtension) + '|"?' + [Regex]::Escape($exeName) +
         '"?|java(?:w)?)(?:\s+|$)'
     $commandMatch = [Regex]::Match($CommandLine, $commandPattern, [Text.RegularExpressions.RegexOptions]::IgnoreCase)
     if (-not $commandMatch.Success) { throw 'Cannot safely identify the Java executable in its startup command.' }
@@ -42,6 +50,12 @@ function Get-JavaArguments([string]$CommandLine, [string]$Executable, [string]$T
     }
     return ($arguments.Substring(0, $jarMatch.Index) + ' -jar "' + $TargetJar + '"' +
         $arguments.Substring($jarMatch.Index + $jarMatch.Length))
+}
+
+function Test-ServiceWrapperPath([string]$ServiceCommand, [string]$ExpectedWrapperPath) {
+    $pattern = '^\s*(?:"' + [Regex]::Escape($ExpectedWrapperPath) + '"|' +
+        [Regex]::Escape($ExpectedWrapperPath) + ')(?:\s+|$)'
+    return [Regex]::IsMatch($ServiceCommand, $pattern, [Text.RegularExpressions.RegexOptions]::IgnoreCase)
 }
 
 if ($env:COMPUTERNAME -ine $ExpectedComputer) {
@@ -86,17 +100,48 @@ if ($backendService.Count -eq 0 -and $javaRecord.ParentProcessId -gt 4) {
     }
 }
 if ($backendService.Count -gt 1) { throw 'More than one service matched the backend. No process was stopped.' }
+
+# A failed WinSW stop can leave Java listening while its service is Stopped.
+# Recover that exact service, rather than launching another unmanaged Java copy.
+$recoverStoppedService = $false
+if ($backendService.Count -eq 0) {
+    $stoppedService = @(Get-CimInstance Win32_Service -Filter ("Name='" + $ServiceName + "'") |
+        Where-Object { $_.State -eq 'Stopped' })
+    $expectedWrapperPath = Join-Path $javaDirectory ($ServiceName + '.exe')
+    if ($stoppedService.Count -eq 1 -and
+        (Test-Path -LiteralPath $expectedWrapperPath -PathType Leaf) -and
+        (Test-ServiceWrapperPath $stoppedService[0].PathName $expectedWrapperPath)) {
+        $backendService = $stoppedService
+        $recoverStoppedService = $true
+    }
+}
 Write-Output ('Backend PID: ' + $javaProcessId)
 Write-Output ('Started: ' + (Get-Process -Id $javaProcessId).StartTime.ToString('yyyy-MM-dd HH:mm:ss'))
 Write-Output ('JAR: ' + $jarFile.FullName)
 Write-Output ('Java: ' + $javaRecord.ExecutablePath)
 Write-Output ('Working directory for a direct launch: ' + $javaDirectory)
 if ($backendService.Count -eq 1) { Write-Output ('Windows service: ' + $backendService[0].Name) }
+if ($recoverStoppedService) { Write-Output 'Recovery: stop the orphan Java listener, then start its existing Windows service.' }
 if ($CheckOnly) { Write-Output 'Check only. No process or service was restarted.'; return }
 
 # Recheck ownership so a concurrently restarted process is never stopped.
 if ((Get-BackendProcessId) -ne $javaProcessId) { throw 'The listening process changed. Run the script again.' }
-if ($backendService.Count -eq 1) {
+if ($recoverStoppedService) {
+    $currentService = Get-CimInstance Win32_Service -Filter ("Name='" + $backendService[0].Name + "'")
+    if ($currentService.State -ne 'Stopped') { throw 'The service state changed. No process was stopped; run the script again.' }
+    Write-Output ('Stopping orphan Java PID ' + $javaProcessId + '...')
+    Stop-Process -Id $javaProcessId -Force
+    Wait-Process -Id $javaProcessId -Timeout 10 -ErrorAction SilentlyContinue
+    $portDeadline = [DateTime]::UtcNow.AddSeconds(10)
+    do {
+        $remainingListeners = @(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue)
+        if ($remainingListeners.Count -eq 0) { break }
+        Start-Sleep -Seconds 1
+    } while ([DateTime]::UtcNow -lt $portDeadline)
+    if ($remainingListeners.Count -ne 0) { throw 'The port is still occupied. The Windows service was not started.' }
+    Write-Output ('Starting Windows service ' + $backendService[0].Name + ' with its existing configuration...')
+    Start-Service -Name $backendService[0].Name -ErrorAction Stop
+} elseif ($backendService.Count -eq 1) {
     Write-Output 'Restarting the existing Windows backend service...'
     Restart-Service -Name $backendService[0].Name -ErrorAction Stop
 } else {
@@ -132,8 +177,8 @@ if ($readyListeners.Count -eq 0) { throw 'No listener after 60 seconds. Read the
 $confirmedProcessId = Get-BackendProcessId
 if ($confirmedProcessId -eq $javaProcessId) { throw 'The original backend PID is still listening. Restart was not confirmed.' }
 Write-Output ('Confirmed listener PID: ' + $confirmedProcessId)
-$diagnosticScript = Join-Path $PSScriptRoot 'Test-Backend.ps1'
+$diagnosticScript = Join-Path $restartScriptDirectory 'Test-Backend.ps1'
 if (Test-Path -LiteralPath $diagnosticScript) {
     Write-Output 'Checking the local and public APIs...'
-    & $diagnosticScript -Port $Port -JarPath $jarFile.FullName -ReportPath (Join-Path $PSScriptRoot 'backend-check-after-restart.txt')
+    & $diagnosticScript -Port $Port -JarPath $jarFile.FullName -ReportPath (Join-Path $restartScriptDirectory 'backend-check-after-restart.txt')
 }

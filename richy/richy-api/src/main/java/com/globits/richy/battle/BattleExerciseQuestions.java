@@ -57,6 +57,7 @@ public final class BattleExerciseQuestions {
             throw invalid("Hãy chọn đúng đề bài tập tổng hợp.");
         }
         for (QuestionDto part : children(test)) {
+            List<Turn> partTurns = new ArrayList<Turn>();
             for (QuestionDto group : children(part)) {
                 List<QuestionDto> questions = children(group);
                 if ((group.getType() == 16 || group.getType() == 17) && questions.isEmpty()) {
@@ -65,9 +66,28 @@ public final class BattleExerciseQuestions {
                 if (questions.isEmpty()) { throw invalid("Có nhóm chưa có câu hỏi hoặc đáp án."); }
                 for (int q = 0; q < questions.size(); q++) {
                     Turn turn = build(group, questions.get(q), part.getQuestion(), q, questions.get(0).getQuestion(), random);
-                    turn.sourceTestId = test.getId(); turn.sourceTestTitle = test.getTitle(); turns.add(turn);
+                    turn.sourceTestId = test.getId(); turn.sourceTestTitle = test.getTitle();
+                    if (part.getVideoUrl() != null && !part.getVideoUrl().trim().isEmpty()) {
+                        turn.content.videoUrl = part.getVideoUrl().trim();
+                        turn.content.videoSourceId = test.getId() + ":" + part.getId();
+                        turn.content.videoTimeSeconds = group.getType() == 1
+                                ? questions.get(q).getVideoTimeSeconds() : group.getVideoTimeSeconds();
+                        Integer duration = questions.get(q).getVideoAnswerSeconds();
+                        if (duration == null) { duration = group.getVideoAnswerSeconds(); }
+                        turn.content.videoAnswerSeconds = duration == null ? 20 : duration;
+                        if (!com.globits.richy.question.ComprehensiveVideoValidation.isSupportedUrl(turn.content.videoUrl) ||
+                                turn.content.videoTimeSeconds == null || turn.content.videoTimeSeconds < 0 || turn.content.videoTimeSeconds > 359999 ||
+                                turn.content.videoAnswerSeconds < 1 || turn.content.videoAnswerSeconds > 3600) {
+                            throw invalid("Câu hỏi video cần mốc thời gian và thời gian trả lời hợp lệ.");
+                        }
+                    }
+                    partTurns.add(turn);
                 }
             }
+            if (part.getVideoUrl() != null && !part.getVideoUrl().trim().isEmpty()) {
+                Collections.sort(partTurns, Comparator.comparingInt(t -> t.content.videoTimeSeconds));
+            }
+            turns.addAll(partTurns);
         }
         if (turns.isEmpty()) { throw invalid("Đề tổng hợp chưa có câu hỏi."); }
         return turns;

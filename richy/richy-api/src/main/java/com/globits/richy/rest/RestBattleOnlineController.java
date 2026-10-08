@@ -218,6 +218,12 @@ public class RestBattleOnlineController {
         );
     }
 
+    @RequestMapping(value = "/rooms/{roomCode}/video", method = RequestMethod.POST)
+    public BattleOnlineRoomDto videoEvent(@PathVariable String roomCode,
+            @RequestBody com.globits.richy.dto.BattleOnlineVideoDto dto) {
+        return battleOnlineService.videoEvent(roomCode, currentUsername(), dto);
+    }
+
     @RequestMapping(value = "/rooms/{roomCode}/gift", method = RequestMethod.POST)
     public BattleOnlineGiftClaimResultDto claimGift(@PathVariable String roomCode,
             @RequestBody BattleOnlineGiftClaimDto dto) {
