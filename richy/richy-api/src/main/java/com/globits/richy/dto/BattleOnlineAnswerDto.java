@@ -15,6 +15,9 @@ public class BattleOnlineAnswerDto implements Serializable {
     private String answerKey;
     private String answerText;
     private long questionSequence;
+    private long videoQuestionRound;
+    public long getVideoQuestionRound() { return videoQuestionRound; }
+    public void setVideoQuestionRound(long value) { videoQuestionRound = value; }
 
     /*
      * GUESS_WORD: frontend tự nộp phần học sinh đang gõ khi đồng hồ về 0.

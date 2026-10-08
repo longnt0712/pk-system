@@ -365,6 +365,7 @@ public class BattleOnlineDemonDefenseTest {
         request.setTopicIds(null); request.setQuestionSource("COMPREHENSIVE"); request.setExerciseTestIds(java.util.Collections.singletonList(100L));
         BattleOnlineRoomDto created = service.createRoom("host", request);
         assertTrue(created.isQuestionsReady()); assertEquals(200, created.getAvailableQuestionCount());
+        assertTrue(created.getSettings().isShuffleExerciseQuestions());
         assertEquals(200, created.getTotalLessonWords());
         assertEquals("Đề tổng hợp", created.getSettings().getTopicNames().get(0));
         assertTrue(created.getSettings().getTopicIds().isEmpty());

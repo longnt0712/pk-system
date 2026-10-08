@@ -10,7 +10,7 @@ public class BattleOnlineRoomSettingsDto implements Serializable {
     /* Topic được HOST chọn khi tạo phòng hoặc thay đổi trong LOBBY. */
     private String questionSource;
     private List<Long> exerciseTestIds = new ArrayList<Long>();
-    private boolean shuffleExerciseQuestions;
+    private boolean shuffleExerciseQuestions = true;
 
     private List<Long> topicIds = new ArrayList<Long>();
     private List<String> topicNames = new ArrayList<String>();

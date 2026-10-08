@@ -1297,6 +1297,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             room.videoSynchronized = hasVideoQuestions(room);
             room.videoPhase = null;
             room.videoPositionSeconds = 0D;
+            room.videoQuestionRound = 0L;
             room.videoDemonPausedAt = 0L;
             room.videoDemonPauseMillis = 0L;
             room.videoRevision++;
@@ -1758,6 +1759,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         synchronized (room) {
             requirePlaying(room);
+            if (room.videoSynchronized) { requireVideoAnswerWindowLocked(room, answerDto); }
             PlayerState player = requirePlayer(room, username);
             requireActivePlayer(player);
             QuestionState question = currentClassicQuestionLocked(room);
@@ -1994,6 +1996,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         synchronized (room) {
             requirePlaying(room);
+            if (room.videoSynchronized) { requireVideoAnswerWindowLocked(room, answerDto); }
 
             PlayerState player =
                     requirePlayer(room, username);
@@ -3757,7 +3760,24 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     Double.isNaN(event.seconds) || Double.isInfinite(event.seconds) || event.seconds < 0 || event.seconds > 359999) {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Video không còn khớp với câu hiện tại.");
             }
-            if ("CUE".equals(event.event)) {
+            if ("REOPEN".equals(event.event)) {
+                long target = event.targetQuestionSequence - 1L;
+                if (target < 0L || target >= room.classicQuestions.size() || !content.videoSourceId.equals(event.videoSourceId)) {
+                    throw new BattleOnlineException(HttpStatus.CONFLICT, "Câu hỏi không thuộc video đang xem.");
+                }
+                com.globits.richy.dto.BattleOnlineExerciseDto selected = videoContent(room.classicQuestions.get((int) target));
+                if (selected == null || !content.videoSourceId.equals(selected.videoSourceId)) {
+                    throw new BattleOnlineException(HttpStatus.CONFLICT, "Câu hỏi không thuộc video đang xem.");
+                }
+                cancelClassicTimer(room.code);
+                room.classicQuestionIndex = (int) target;
+                room.videoQuestionRound++;
+                for (PlayerState player : room.players.values()) { player.currentQuestion = null; }
+                startClassicQuestionLocked(room);
+                room.videoPositionSeconds = selected.videoTimeSeconds;
+                openVideoAnswerWindowLocked(room, selected.videoAnswerSeconds);
+                changed = true;
+            } else if ("CUE".equals(event.event)) {
                 if ("WATCHING".equals(room.videoPhase)) {
                     if (event.seconds + 0.25D < content.videoTimeSeconds) {
                         throw new BattleOnlineException(HttpStatus.CONFLICT, "Video chưa đến mốc câu hỏi.");
@@ -3785,9 +3805,39 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         return result;
     }
 
+    @Override
+    public List<com.globits.richy.dto.BattleOnlineVideoQuestionPreviewDto> getVideoQuestions(String roomCode, String username) {
+        RoomState room = requireRoom(roomCode);
+        synchronized (room) {
+            requireHost(room, requireUsername(username));
+            requirePlaying(room);
+            com.globits.richy.dto.BattleOnlineExerciseDto current = videoContent(currentClassicQuestionLocked(room));
+            List<com.globits.richy.dto.BattleOnlineVideoQuestionPreviewDto> result = new ArrayList<com.globits.richy.dto.BattleOnlineVideoQuestionPreviewDto>();
+            if (current == null) { return result; }
+            for (int i = 0; i < room.classicQuestions.size(); i++) {
+                QuestionState question = room.classicQuestions.get(i);
+                com.globits.richy.dto.BattleOnlineExerciseDto content = videoContent(question);
+                if (content == null || !current.videoSourceId.equals(content.videoSourceId)) { continue; }
+                String text = content.type == 11 || content.type == 13 ? content.contentHtml
+                        : content.items.isEmpty() ? question.question : content.items.get(0).promptHtml;
+                if (isBlank(text)) { text = question.question; }
+                text = org.springframework.web.util.HtmlUtils.htmlUnescape(clean(text).replaceAll("<[^>]*>", " "))
+                        .replaceAll("\\}\\{(?:SPACE|HEADING|ENTER)\\}\\{", " ___ ")
+                        .replace('\u00a0', ' ').replaceAll("\\s+", " ").trim();
+                if (text.codePointCount(0, text.length()) > 56) { text = text.substring(0, text.offsetByCodePoints(0, 56)) + "…"; }
+                com.globits.richy.dto.BattleOnlineVideoQuestionPreviewDto preview = new com.globits.richy.dto.BattleOnlineVideoQuestionPreviewDto();
+                preview.sequence = i + 1L; preview.seconds = content.videoTimeSeconds == null ? 0 : content.videoTimeSeconds; preview.preview = text;
+                result.add(preview);
+            }
+            return result;
+        }
+    }
+
     private void requireVideoAnswerWindowLocked(RoomState room, BattleOnlineAnswerDto answer) {
-        if (!"ANSWERING".equals(room.videoPhase) || System.currentTimeMillis() > room.questionEndsAt ||
-                answer == null || answer.getQuestionSequence() != room.classicQuestionIndex + 1L) {
+        long grace = MODE_GUESS_WORD.equals(room.settings.mode) && answer != null && answer.isAutoSubmitted() ? GUESS_AUTO_SUBMIT_GRACE_MS : 0L;
+        if (!"ANSWERING".equals(room.videoPhase) || System.currentTimeMillis() > room.questionEndsAt + grace ||
+                answer == null || answer.getQuestionSequence() != room.classicQuestionIndex + 1L ||
+                answer.getVideoQuestionRound() != room.videoQuestionRound) {
             throw new BattleOnlineException(HttpStatus.CONFLICT, "Câu hỏi video chưa mở hoặc đã hết giờ.");
         }
     }
@@ -6617,6 +6667,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         dto.setVideoPhase(room.videoPhase);
         dto.setVideoPositionSeconds(room.videoPositionSeconds);
         dto.setVideoRevision(room.videoRevision);
+        dto.setVideoQuestionRound(room.videoQuestionRound);
         dto.setDemonTimeOffsetMillis(room.videoSynchronized && room.demonDefense != null
                 ? room.videoDemonPauseMillis + (room.videoDemonPausedAt > 0L ? System.currentTimeMillis() - room.videoDemonPausedAt : 0L) : 0L);
 
@@ -8456,6 +8507,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         String videoPhase;
         double videoPositionSeconds;
         long videoRevision;
+        long videoQuestionRound;
         String code;
         String status;
         String hostUsername;
@@ -8561,7 +8613,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         String questionSource = "VOCABULARY";
         List<Long> exerciseTestIds = new ArrayList<Long>();
-        boolean shuffleExerciseQuestions;
+        boolean shuffleExerciseQuestions = true;
         String mode = MODE_CLASSIC;
         boolean skillsEnabled = true;
         int giftSpawnSeconds = 3;

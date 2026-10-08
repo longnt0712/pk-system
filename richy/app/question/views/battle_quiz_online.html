@@ -802,7 +802,7 @@
              ================================================= -->
         <aside class="battle-online-card battle-online-side-card"
                ng-if="vm.isHost()">
-            <ng-include src="'question/views/battle_online_host_settings.html?lumNgay=20261006_3&individualQuestions=20261007_1'"></ng-include>
+            <ng-include src="'question/views/battle_online_host_settings.html?lumNgay=20261006_3&individualQuestions=20261007_1&videoSettings=20261009_1'"></ng-include>
         </aside>
 
         <!-- NON HOST -->
@@ -871,7 +871,7 @@
 
 
             <div class="battle-online-info-row"
-                 ng-if="vm.isCountdownMode()">
+                 ng-if="vm.isCountdownMode() && !vm.room.videoSynchronized">
 
                 <span>Sai bị khóa</span>
                 <strong>{{vm.room.settings.wrongAnswerFreezeSeconds}} giây</strong>
@@ -1041,13 +1041,74 @@
                 on-video-ready="vm.hostVideoReady(api, videoSource)" on-video-progress="vm.hostVideoProgress(seconds, duration, videoSource)"
                 on-video-state="vm.hostVideoState(playing, videoSource)" on-video-ended="vm.hostVideoEnded(videoSource)"></comprehensive-video-player>
         </div>
-        <p ng-if="vm.room.videoPhase === 'WATCHING'">Câu hỏi đã tải sẵn cho học sinh. Video đến mốc sẽ tự dừng để cả lớp trả lời.</p>
-        <p ng-if="vm.room.videoPhase === 'ANSWERING'">Cả lớp đang trả lời • còn {{vm.countdown}} giây. Video tự tiếp tục khi tất cả đã trả lời hoặc hết giờ.</p>
-        <p ng-if="vm.room.videoPhase === 'CONTINUING'">Tiếp tục xem phần còn lại của video.</p>
         <button type="button" class="btn btn-primary" ng-click="vm.playHostVideo()"
-                ng-disabled="!vm.hostVideoApi.ready || vm.room.videoPhase === 'ANSWERING'">▶ Phát / tiếp tục video</button>
+                ng-disabled="!vm.hostVideoApi.ready || (vm.room.videoPhase === 'ANSWERING' && !vm.hostVideoReplay)">▶ Phát / tiếp tục video</button>
+        <button type="button" class="btn btn-default" ng-click="vm.openHostVideoQuestionList()">List câu hỏi</button>
+        <button id="battle-host-video-resume-match" type="button" class="btn btn-default" ng-if="vm.hostVideoReplay"
+                ng-click="vm.resumeHostVideoMatch()" ng-disabled="vm.hostVideoReopening">Về câu hiện tại</button>
+        <button id="battle-host-video-question-open" type="button" class="btn btn-default"
+                ng-if="vm.room.videoPhase === 'ANSWERING'" ng-click="vm.openHostVideoQuestionModal()">Xem câu hỏi</button>
         <p class="comprehensive-video-error" ng-if="vm.videoSyncError" role="alert">{{vm.videoSyncError}}</p>
     </section>
+    <div class="battle-online-host-question-backdrop" ng-if="vm.hostVideoQuestionModalOpen"
+         ng-click="vm.closeHostVideoQuestionModal()">
+        <section id="battle-host-video-question-modal" class="battle-online-host-question-modal" role="dialog"
+                 aria-modal="true" aria-labelledby="battle-host-video-question-title" tabindex="-1"
+                 ng-click="$event.stopPropagation()">
+            <header class="battle-online-host-question-header">
+                <div><small>CẢ LỚP CÙNG TRẢ LỜI</small><h2 id="battle-host-video-question-title">Câu hỏi {{vm.room.currentQuestionIndex}} / {{vm.room.totalQuestions}}</h2></div>
+                <div class="battle-online-host-question-clock" ng-class="{'is-urgent': vm.countdown <= 5}" role="timer" aria-label="Thời gian trả lời còn lại">
+                    <small>CÒN LẠI</small><strong>{{vm.countdown}}<span> giây</span></strong>
+                </div>
+                <button type="button" class="battle-online-host-question-close" ng-click="vm.closeHostVideoQuestionModal()" aria-label="Đóng câu hỏi">×</button>
+            </header>
+            <div class="battle-online-host-question-body">
+                <battle-exercise-form exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers"
+                                      disabled="vm.exerciseInputDisabled()" on-answer="vm.submitExercise(false)"></battle-exercise-form>
+                <button type="button" class="btn btn-primary" ng-if="!vm.isSpectator() && vm.room.currentQuestion.exercise.answerMode !== 'SINGLE'"
+                        ng-click="vm.submitExercise(false)" ng-disabled="vm.exerciseInputDisabled()">{{vm.answerLocked ? 'ĐÃ NỘP' : 'NỘP ĐÁP ÁN'}}</button>
+            </div>
+            <footer>Video tự tiếp tục khi tất cả học sinh đã nộp hoặc hết giờ.</footer>
+        </section>
+    </div>
+    <div class="battle-online-host-question-backdrop" ng-if="vm.hostVideoQuestionListOpen" ng-click="vm.closeHostVideoQuestionList()">
+        <section id="battle-host-video-question-list" class="battle-online-host-question-list" role="dialog" aria-modal="true"
+                 aria-labelledby="battle-host-video-question-list-title" tabindex="-1" ng-click="$event.stopPropagation()">
+            <header class="battle-online-host-question-header">
+                <h2 id="battle-host-video-question-list-title">List câu hỏi</h2>
+                <button type="button" class="battle-online-host-question-close" ng-click="vm.closeHostVideoQuestionList()" aria-label="Đóng danh sách câu hỏi">×</button>
+            </header>
+            <div class="battle-online-host-question-list-body">
+                <p ng-if="vm.hostVideoQuestionListLoading" role="status">Đang tải danh sách…</p>
+                <p ng-if="vm.hostVideoQuestionListError" role="alert">{{vm.hostVideoQuestionListError}} <button type="button" class="btn btn-default" ng-click="vm.openHostVideoQuestionList()">Thử lại</button></p>
+                <p ng-if="!vm.hostVideoQuestionListLoading && !vm.hostVideoQuestionListError && !vm.hostVideoQuestionList.length">Chưa có câu hỏi trong video này.</p>
+                <ol>
+                    <li ng-repeat="question in vm.hostVideoQuestionList track by question.sequence" ng-class="{'is-current': question.sequence === vm.hostVideoQuestionListCurrentSequence()}">
+                        <button type="button" ng-click="vm.seekHostVideoQuestion(question)" ng-disabled="!vm.hostVideoApi.ready || vm.hostVideoReopening"
+                                ng-attr-aria-current="{{question.sequence === vm.hostVideoQuestionListCurrentSequence() ? 'step' : undefined}}">
+                            <time>{{vm.formatTime(question.seconds)}}</time><span>{{question.sequence}}. {{question.preview}}</span>
+                        </button>
+                    </li>
+                </ol>
+            </div>
+        </section>
+    </div>
+    <div class="battle-online-host-question-backdrop" ng-if="vm.hostVideoReplayConfirmOpen">
+        <section id="battle-host-video-replay-confirm" class="battle-online-host-video-replay-confirm" role="dialog" aria-modal="true"
+                 aria-labelledby="battle-host-video-replay-title" tabindex="-1">
+            <h2 id="battle-host-video-replay-title">Mở lại câu này cho cả lớp trả lời?</h2>
+            <p>{{vm.formatTime(vm.hostVideoReplay.seconds)}} · {{vm.hostVideoReplay.sequence}}. {{vm.hostVideoReplay.preview}}</p>
+            <p ng-if="vm.hostVideoReplayError" class="comprehensive-video-error" role="alert">{{vm.hostVideoReplayError}}</p>
+            <div>
+                <button type="button" class="btn btn-default" ng-click="vm.confirmHostVideoReplay(false)" ng-disabled="vm.hostVideoReopening">Chỉ xem lại</button>
+                <button type="button" class="btn btn-primary" ng-click="vm.confirmHostVideoReplay(true)" ng-disabled="vm.hostVideoReopening">{{vm.hostVideoReopening ? 'Đang mở…' : 'Cho lớp trả lời lại'}}</button>
+            </div>
+        </section>
+    </div>
+    <div class="battle-online-video-answer-toast" ng-if="vm.videoAnswerToast" role="status" aria-live="polite" aria-atomic="true"
+         ng-class="vm.videoAnswerToast.correct ? 'is-correct' : 'is-incorrect'">
+        <span aria-hidden="true">{{vm.videoAnswerToast.correct ? '✓' : '✕'}}</span> {{vm.videoAnswerToast.label}}
+    </div>
     <ng-include ng-if="vm.room && vm.room.status === 'PLAYING' && vm.isLumNgayMode() && vm.isHost()"
                 src="'question/views/battle_online_egg_host.html?eggHost=20261008_1'"></ng-include>
     <div class="battle-online-game-layout"
@@ -1357,7 +1418,7 @@
             </section>
 
 
-            <section class="battle-online-exercise" ng-if="vm.room.currentQuestion.exercise" ng-show="vm.videoQuestionOpen()">
+            <section class="battle-online-exercise" ng-if="vm.room.currentQuestion.exercise && !(vm.isHost() && vm.room.videoSynchronized)" ng-show="vm.videoQuestionOpen()">
                 <div ng-if="vm.room.currentQuestion.skillType && vm.room.settings.skillsEnabled !== false">⚡ {{vm.getSkillLabel(vm.room.currentQuestion.skillType)}}</div>
                 <div ng-if="vm.room.currentQuestion.scoreMultiplier > 1">✨ LƯỢT MAY MẮN ×{{vm.room.currentQuestion.scoreMultiplier}} ĐIỂM</div>
                 <battle-exercise-form exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers" disabled="vm.exerciseInputDisabled()" on-answer="vm.submitExercise(false)"></battle-exercise-form>
@@ -1444,7 +1505,7 @@
             </div>
 
             <div class="battle-online-guess-feedback-slot"
-                 ng-if="vm.isGuessWordMode()">
+                 ng-if="vm.isGuessWordMode() && !vm.room.videoSynchronized">
                 <div class="battle-online-feedback"
                      ng-class="vm.lastAnswerCorrect === true ? 'is-correct' : 'is-wrong'"
                      ng-if="vm.lastAnswerCorrect !== null">
@@ -1453,14 +1514,14 @@
             </div>
 
             <div class="battle-online-feedback is-correct"
-                 ng-if="(!vm.isGuessWordMode() || vm.room.currentQuestion.exercise) && vm.lastAnswerCorrect === true">
+                 ng-if="!vm.room.videoSynchronized && (!vm.isGuessWordMode() || vm.room.currentQuestion.exercise) && vm.lastAnswerCorrect === true">
 
                 ✅ {{vm.lastAnswerMessage}}
             </div>
 
 
             <div class="battle-online-feedback is-wrong"
-                 ng-if="(!vm.isGuessWordMode() || vm.room.currentQuestion.exercise) && vm.lastAnswerCorrect === false">
+                 ng-if="!vm.room.videoSynchronized && (!vm.isGuessWordMode() || vm.room.currentQuestion.exercise) && vm.lastAnswerCorrect === false">
 
                 ❌ {{vm.lastAnswerMessage}}
             </div>
@@ -2502,7 +2563,7 @@
                 </div>
 
                 <div class="battle-online-side-card battle-online-qr-settings-scroll" ng-if="vm.isHost() && vm.room.status === 'LOBBY'">
-                    <ng-include src="'question/views/battle_online_host_settings.html?lumNgay=20261006_3&individualQuestions=20261007_1'"></ng-include>
+                    <ng-include src="'question/views/battle_online_host_settings.html?lumNgay=20261006_3&individualQuestions=20261007_1&videoSettings=20261009_1'"></ng-include>
                 </div>
             </div>
         </section>
@@ -2858,6 +2919,64 @@
 
     .battle-online-host-video > p {
         margin: 10px 0;
+    }
+
+    body.battle-host-question-modal-open, body.battle-host-question-list-open, body.battle-host-video-replay-confirm-open { overflow: hidden; }
+    .battle-online-host-question-backdrop {
+        position: fixed; inset: 0; z-index: 1150; display: flex; align-items: center; justify-content: center;
+        padding: 2vh 2vw; background: rgba(14, 20, 40, .72);
+    }
+    .battle-online-host-question-modal {
+        width: 96vw; height: 94vh; height: 94dvh; display: flex; flex-direction: column; overflow: hidden;
+        border: 1px solid var(--bo-line); border-radius: 20px; background: var(--bo-card); color: var(--bo-text);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, .3);
+    }
+    .battle-online-host-question-header {
+        display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px 28px;
+        border-bottom: 1px solid var(--bo-line); background: var(--bo-soft);
+    }
+    .battle-online-host-question-header h2 { margin: 5px 0 0; font-size: clamp(20px, 3vw, 32px); font-weight: 800; }
+    .battle-online-host-question-header small { font-size: 12px; font-weight: 700; color: var(--bo-muted); }
+    .battle-online-host-question-clock { margin-left: auto; text-align: center; white-space: nowrap; color: var(--bo-purple); }
+    .battle-online-host-question-clock small { display: block; }
+    .battle-online-host-question-clock strong { font-size: clamp(28px, 4vw, 52px); font-variant-numeric: tabular-nums; }
+    .battle-online-host-question-clock strong span { font-size: 16px; }
+    .battle-online-host-question-clock.is-urgent { color: #d04444; }
+    .battle-online-host-question-close { flex-shrink: 0; width: 44px; height: 44px; border: 1px solid var(--bo-line); border-radius: 12px; background: var(--bo-card); color: var(--bo-text); font-size: 28px; }
+    .battle-online-host-question-body { flex: 1; min-height: 0; overflow-y: auto; padding: 24px clamp(16px, 4vw, 64px); font-size: clamp(18px, 2vw, 24px); }
+    .battle-online-host-question-body .battle-online-word h2 { font-size: clamp(26px, 3vw, 42px); }
+    .battle-online-host-question-body .battle-online-answer-btn { min-height: 88px; font-size: clamp(18px, 2vw, 26px); }
+    .battle-online-host-question-body .battle-online-answer-btn:disabled { opacity: 1; cursor: default; }
+    .battle-online-host-question-body input, .battle-online-host-question-body select { font-size: 18px; }
+    .battle-online-host-question-modal > footer { padding: 12px 24px; border-top: 1px solid var(--bo-line); color: var(--bo-muted); font-size: 14px; }
+    .battle-online-host-question-list { width: min(780px, 96vw); height: min(720px, 86vh); height: min(720px, 86dvh); display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; background: var(--bo-card); color: var(--bo-text); }
+    .battle-online-host-question-list-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 24px; }
+    .battle-online-host-question-list ol { margin: 0; padding: 0; list-style: none; }
+    .battle-online-host-question-list li { border-bottom: 1px solid var(--bo-line); font-size: 16px; }
+    .battle-online-host-question-list li button { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 12px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; }
+    .battle-online-host-question-list li button:hover, .battle-online-host-question-list li button:focus-visible { background: var(--bo-soft); }
+    .battle-online-host-question-list li.is-current { background: var(--bo-soft); color: var(--bo-purple); box-shadow: inset 4px 0 var(--bo-purple); font-weight: 700; }
+    .battle-online-host-question-list time { flex-shrink: 0; min-width: 54px; color: var(--bo-purple); font-weight: 800; font-variant-numeric: tabular-nums; }
+    .battle-online-host-question-list li span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .battle-online-host-video-replay-confirm { width: min(540px, 94vw); padding: 28px; border-radius: 20px; background: var(--bo-card); color: var(--bo-text); }
+    .battle-online-host-video-replay-confirm h2 { font-size: 24px; margin: 0 0 16px; font-weight: 800; }
+    .battle-online-host-video-replay-confirm > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+    .battle-online-video-answer-toast {
+        position: fixed; right: 18px; bottom: 18px; z-index: 1300; display: flex; align-items: center; gap: 8px;
+        padding: 10px 16px; border: 1px solid; border-radius: 12px; box-shadow: 0 6px 20px rgba(20, 35, 50, .12);
+        font-size: 16px; font-weight: 700; pointer-events: none;
+    }
+    .battle-online-video-answer-toast.is-correct { color: #146c48; background: #e8fbef; border-color: #a8dfbd; }
+    .battle-online-video-answer-toast.is-incorrect { color: #a32e35; background: #fff0f0; border-color: #efb5b8; }
+    @media (max-width: 600px) {
+        .battle-online-host-question-header { gap: 10px; padding: 12px; }
+        .battle-online-host-question-header small { font-size: 10px; }
+        .battle-online-host-question-close { width: 36px; height: 36px; }
+        .battle-online-host-question-clock strong span { display: block; font-size: 12px; }
+        .battle-online-host-question-body { padding: 16px 12px; }
+        .battle-online-host-question-body .battle-online-answer-grid { grid-template-columns: 1fr; }
+        .battle-online-host-question-modal > footer { padding: 10px 12px; font-size: 12px; }
+        .battle-online-video-answer-toast { right: 12px; bottom: 12px; font-size: 14px; }
     }
 
     .battle-online-hero {

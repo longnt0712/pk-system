@@ -25,6 +25,16 @@
                 questionSequence: sequence, event: event, seconds: seconds
             }, {timeout: 10000}).then(function (response) { return response.data; });
         };
+        self.getVideoQuestions = function (roomCode) {
+            return $http.get(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/video-questions', {timeout: 10000})
+                .then(function (response) { return response.data; });
+        };
+        self.reopenVideoQuestion = function (roomCode, currentSequence, targetSequence, videoSourceId) {
+            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/video', {
+                questionSequence: currentSequence, event: 'REOPEN', seconds: 0,
+                targetQuestionSequence: targetSequence, videoSourceId: videoSourceId
+            }, {timeout: 10000}).then(function (response) { return response.data; });
+        };
         var apiUrl = settings.api.baseUrl + settings.api.apiV1Url + 'battle-online';
 
         var socketClient = null;
@@ -153,7 +163,8 @@
             answerKey,
             questionSequence,
             exerciseAnswers,
-            autoSubmitted
+            autoSubmitted,
+            videoQuestionRound
         ) {
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/answer',
@@ -162,6 +173,7 @@
                     answerKey: answerKey,
                     exerciseAnswers: exerciseAnswers,
                     autoSubmitted: autoSubmitted === true,
+                    videoQuestionRound: videoQuestionRound || 0,
                     questionSequence: questionSequence
                 }
             ).then(function (response) { return response.data; });

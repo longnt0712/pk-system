@@ -62,6 +62,7 @@ public class BattleOnlineVideoTest {
         BattleOnlineRoomDto snapshot=service.getRoom("VIDEO1","alice");
         BattleOnlineQuestionDto q=snapshot.getCurrentQuestion(); BattleOnlineAnswerDto d=new BattleOnlineAnswerDto();
         d.setQuestionId(q.getId()); d.setQuestionSequence(q.getSequence()); d.setAnswerKey("EXERCISE");
+        d.setVideoQuestionRound(snapshot.getVideoQuestionRound());
         Map<String,List<String>> values=new LinkedHashMap<String,List<String>>();
         values.put(q.getExercise().items.get(0).id,Collections.singletonList(q.getExercise().items.get(0).options.get(0).getKey()));
         d.setExerciseAnswers(values); return d;
@@ -169,6 +170,23 @@ public class BattleOnlineVideoTest {
         assertEquals(20,turns.get(1).content.videoAnswerSeconds);
     }
 
+    @Test @SuppressWarnings("unchecked") public void hostCueListContainsOnlyTimesAndShortPlainQuestionPreviewsForTheCurrentVideo() throws Exception {
+        setup("COUNTDOWN");
+        List<Object> questions=(List<Object>)get(room,"classicQuestions");
+        BattleExerciseQuestions.Turn turn=(BattleExerciseQuestions.Turn)get(questions.get(0),"exercise");
+        turn.content.items.get(0).promptHtml="<b>What is the name &amp; meaning of the very long question that should only show its first few characters?</b>";
+        List<BattleOnlineVideoQuestionPreviewDto> previews=service.getVideoQuestions("VIDEO1","host");
+        assertEquals(2,previews.size()); assertEquals(1L,previews.get(0).sequence); assertEquals(5,previews.get(0).seconds);
+        assertTrue(previews.get(0).preview.startsWith("What is the name & meaning")); assertTrue(previews.get(0).preview.endsWith("…"));
+        assertTrue(previews.get(0).preview.codePointCount(0,previews.get(0).preview.length())<=57);
+        assertEquals(10,previews.get(1).seconds);
+        com.fasterxml.jackson.databind.JsonNode json=new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(previews.get(0));
+        assertEquals(3,json.size()); assertTrue(json.has("sequence")); assertTrue(json.has("seconds")); assertTrue(json.has("preview"));
+        rejected(() -> service.getVideoQuestions("VIDEO1","alice"));
+        BattleExerciseQuestions.Turn other=(BattleExerciseQuestions.Turn)get(questions.get(1),"exercise");other.content.videoSourceId="different-video";
+        assertEquals(1,service.getVideoQuestions("VIDEO1","host").size());
+    }
+
     @Test public void demonClockPausesDuringFootageAndResumesOnlyDuringAnswerWindows() throws Exception {
         setup("DEMON_DEFENSE"); long now=System.currentTimeMillis();
         long frozen=ReflectionTestUtils.invokeMethod(service,"demonGameTime",room,now);
@@ -182,6 +200,43 @@ public class BattleOnlineVideoTest {
         ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",0);
         long second=ReflectionTestUtils.invokeMethod(service,"demonGameTime",room,now);
         assertEquals(second,(long)ReflectionTestUtils.invokeMethod(service,"demonGameTime",room,now+60000L));
+    }
+
+    @Test public void hostCanReopenACueInEveryModeWithFreshAnswersAndRejectDelayedAnswersFromThePreviousRound() throws Exception {
+        for (String mode : Arrays.asList("CLASSIC","GUESS_WORD","COUNTDOWN","MONEY_BEG","ESCAPE_DUMB_DEMON","DEMON_DEFENSE","LUM_NGAY")) {
+            setup(mode);
+            service.videoEvent("VIDEO1","host",event("CUE",1,5));
+            BattleOnlineAnswerDto stale=answer();
+            service.answer("VIDEO1","alice",stale);
+            double score=(double)get(alice,"score");
+            BattleOnlineVideoDto reopen=event("REOPEN",1,0);reopen.targetQuestionSequence=1;reopen.videoSourceId="100:101";
+            rejected(() -> service.videoEvent("VIDEO1","alice",reopen));
+            long now=System.currentTimeMillis();BattleOnlineRoomDto opened=service.videoEvent("VIDEO1","host",reopen);
+            assertEquals(mode,"ANSWERING",opened.getVideoPhase()); assertEquals(1L,opened.getVideoQuestionRound());
+            assertEquals(5D,opened.getVideoPositionSeconds(),0D); assertTrue(opened.getQuestionEndsAt()>=now+19000);
+            assertEquals(score,(double)get(alice,"score"),0D);
+            assertFalse(opened.getPlayers().stream().filter(p->"alice".equals(p.getUsername())).findFirst().get().isAnsweredCurrentQuestion());
+            rejected(() -> service.answer("VIDEO1","alice",stale));
+            BattleOnlineAnswerDto fresh=answer();assertTrue(service.answer("VIDEO1","alice",fresh).isCorrect());
+            rejected(() -> service.answer("VIDEO1","alice",fresh));
+            assertEquals(2,service.answer("VIDEO1","bob",fresh).getRoom().getCurrentQuestionIndex());
+            // Rewind from a later cue without keeping the old students' answer lock.
+            reopen.questionSequence=2;opened=service.videoEvent("VIDEO1","host",reopen);
+            assertEquals(1,opened.getCurrentQuestionIndex()); assertEquals(2L,opened.getVideoQuestionRound());
+            rejected(() -> service.answer("VIDEO1","alice",fresh));
+            assertTrue(service.answer("VIDEO1","alice",answer()).isCorrect());
+            service.destroy();service=null;
+        }
+    }
+
+    @Test public void reopeningRejectsInvalidCuesOtherVideoSourcesAndFinishedMatches() throws Exception {
+        setup("COUNTDOWN");
+        BattleOnlineVideoDto reopen=event("REOPEN",1,0);reopen.videoSourceId="100:101";
+        for(long sequence : new long[]{0,-1,3,Long.MAX_VALUE}) {reopen.targetQuestionSequence=sequence;rejected(() -> service.videoEvent("VIDEO1","host",reopen));}
+        reopen.targetQuestionSequence=1;reopen.videoSourceId="another-video";rejected(() -> service.videoEvent("VIDEO1","host",reopen));
+        assertEquals(0L,service.getRoom("VIDEO1","host").getVideoQuestionRound());
+        assertEquals("WATCHING",service.getRoom("VIDEO1","host").getVideoPhase());
+        set(room,"status","FINISHED");reopen.videoSourceId="100:101";rejected(() -> service.videoEvent("VIDEO1","host",reopen));
     }
 
     @Test public void groupedVideoQuestionsInheritTheirCueButCanOverrideTheAnswerDuration() {

@@ -37,6 +37,9 @@ public class BattleOnlineRoomDto implements Serializable {
     private String videoPhase;
     private double videoPositionSeconds;
     private long videoRevision;
+    private long videoQuestionRound;
+    public long getVideoQuestionRound() { return videoQuestionRound; }
+    public void setVideoQuestionRound(long value) { videoQuestionRound = value; }
     private long demonTimeOffsetMillis;
     public long getDemonTimeOffsetMillis() { return demonTimeOffsetMillis; }
     public void setDemonTimeOffsetMillis(long value) { demonTimeOffsetMillis = value; }

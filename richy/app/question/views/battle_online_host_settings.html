@@ -416,7 +416,7 @@
 
             <!-- COUNTDOWN -->
             <div class="battle-online-mode-settings is-countdown"
-                 ng-if="vm.hostSettings.mode === 'COUNTDOWN' || vm.hostSettings.mode === 'LUM_NGAY' || vm.hostSettings.mode === 'MONEY_BEG' || vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' || vm.hostSettings.mode === 'DEMON_DEFENSE'">
+                 ng-if="!vm.room.videoSynchronized && (vm.hostSettings.mode === 'COUNTDOWN' || vm.hostSettings.mode === 'LUM_NGAY' || vm.hostSettings.mode === 'MONEY_BEG' || vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' || vm.hostSettings.mode === 'DEMON_DEFENSE')">
 
                 <div class="battle-online-mode-badge">
                     {{vm.hostSettings.mode === 'LUM_NGAY' ? '🎁 LỤM NGAY' : vm.hostSettings.mode === 'DEMON_DEFENSE' ? '👹 DIỆT QUỶ NGU' : vm.hostSettings.mode === 'MONEY_BEG'

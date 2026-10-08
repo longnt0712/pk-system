@@ -1,0 +1,657 @@
+<div class="battle-online-host-settings-content">
+<div class="battle-online-title-row">
+                <div>
+                    <span class="battle-online-small-title">
+                        ⚙️ GAME MODE
+                    </span>
+
+                    <h2>Thiết lập trận</h2>
+                </div>
+            </div>
+
+    <section class="battle-online-lobby-topic-shortcut">
+
+        <div class="battle-online-lobby-topic-shortcut-icon">
+            📚
+        </div>
+
+        <div class="battle-online-lobby-topic-shortcut-copy">
+            <small>{{vm.questionSource === 'COMPREHENSIVE' ? 'ĐỀ CỦA PHÒNG' : 'TOPIC CỦA PHÒNG'}}</small>
+
+            <strong>
+                {{vm.formatTopicNames(vm.room.settings.topicNames)}}
+            </strong>
+
+        <span>
+            Có thể đổi bài từ vựng hoặc đề tổng hợp ngay tại lobby này.
+        </span>
+        </div>
+
+
+        <!-- Form chọn topic được mở trong modal ở battle_quiz_online.html. -->
+        <button type="button"
+                ng-click="vm.openLobbyTopicEditor()"
+                ng-disabled="vm.savingLobbyTopics">
+
+            <i class="fa fa-list-ul"></i>
+
+            CHỌN / ĐỔI NỘI DUNG
+
+        </button>
+
+
+        <!-- =====================================================
+             FORM ĐỔI TOPIC INLINE
+             ===================================================== -->
+        <div class="battle-online-inline-topic-editor"
+                ng-if="false">
+
+            <div class="battle-online-create-form battle-online-lobby-topic-form">
+
+
+                <!-- NGUỒN TỪ VỰNG -->
+                <label>NGUỒN TỪ VỰNG</label>
+
+                <ui-select ng-model="vm.selectedTopicOwner"
+                        class="battle-online-lobby-ui-select"
+                        ng-change="vm.chooseTopicOwner()"
+                        ng-disabled="vm.savingLobbyTopics"
+                        theme="bootstrap">
+
+                    <ui-select-match placeholder="Chọn nguồn từ vựng">
+                        {{$select.selected.name}}
+                    </ui-select-match>
+
+                    <ui-select-choices
+                            repeat="owner in vm.topicOwners | filter:$select.search">
+
+                        <div ng-bind-html="owner.name | highlight:$select.search"></div>
+
+                    </ui-select-choices>
+
+                </ui-select>
+
+
+                <!-- GRADE / CATEGORY -->
+                <label>GRADE / CATEGORY</label>
+
+                <ui-select ng-model="vm.searchTopicDto.topicCategory"
+                        class="battle-online-lobby-ui-select"
+                        ng-change="vm.getTopics()"
+                        ng-disabled="vm.loadingTopicCategories || vm.savingLobbyTopics"
+                        theme="bootstrap">
+
+                    <ui-select-match placeholder="Chọn Grade / Category">
+                        {{$select.selected.name}}
+                    </ui-select-match>
+
+                    <ui-select-choices
+                            repeat="category in vm.topicCategories | filter:$select.search">
+
+                        <div ng-bind-html="category.name | highlight:$select.search"></div>
+
+                    </ui-select-choices>
+
+                </ui-select>
+
+
+                <!-- BÀI TỪ VỰNG -->
+                <label>BÀI TỪ VỰNG</label>
+
+
+                <div class="battle-online-topic-loading"
+                        ng-if="vm.loadingTopics || vm.loadingTopicCategories"
+                        role="status"
+                        aria-live="polite">
+
+                <span class="battle-online-topic-spinner"
+                        aria-hidden="true">
+                </span>
+
+                    {{vm.loadingTopicCategories
+                    ? 'Đang tải category...'
+                    : 'Đang tải bài từ vựng...'}}
+
+                </div>
+
+
+                <button type="button"
+                        class="battle-online-topic-load-error"
+                        ng-if="vm.topicLoadError && !vm.loadingTopics"
+                        ng-click="vm.getTopics()">
+
+                    {{vm.topicLoadError}}
+
+                </button>
+
+
+                <div class="battle-online-topic-picker-row">
+
+                    <ui-select ng-model="vm.selectedTopicToCreate"
+                            class="battle-online-lobby-ui-select"
+                            ng-disabled="vm.loadingTopics ||
+                                        vm.loadingTopicCategories ||
+                                        vm.savingLobbyTopics ||
+                                        !vm.topics.length"
+                            theme="bootstrap">
+
+                        <ui-select-match placeholder="Chọn bài muốn thêm">
+                            {{$select.selected.name}}
+                        </ui-select-match>
+
+                        <ui-select-choices
+                                repeat="topic in vm.topics | filter:$select.search">
+
+                            <div ng-bind-html="topic.name | highlight:$select.search"></div>
+
+                        </ui-select-choices>
+
+                    </ui-select>
+
+
+                    <button type="button"
+                            class="battle-online-add-topic-btn"
+                            ng-disabled="vm.loadingTopics ||
+                                     vm.savingLobbyTopics ||
+                                     !vm.selectedTopicToCreate"
+                            ng-click="vm.addTopicToCreate()">
+
+                        <i class="fa fa-plus"></i>
+                        THÊM BÀI
+
+                    </button>
+
+                </div>
+
+
+                <!-- CÁC BÀI ĐÃ CHỌN -->
+                <div class="battle-online-selected-topics"
+                        ng-if="vm.selectedTopicsToCreate.length">
+
+                    <div class="battle-online-selected-topic"
+                            ng-repeat="topic in vm.selectedTopicsToCreate track by topic.id">
+
+                    <span>
+
+                        <small>
+                            {{topic.ownerName}} • {{topic.categoryName}}
+                        </small>
+
+                        <strong>
+                            {{topic.name}}
+                        </strong>
+
+                    </span>
+
+
+                        <button type="button"
+                                title="Bỏ bài này"
+                                ng-disabled="vm.savingLobbyTopics"
+                                ng-click="vm.removeTopicToCreate(topic)">
+
+                            ×
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ACTION -->
+                <div class="battle-online-lobby-topic-actions">
+
+                    <button type="button"
+                            class="is-cancel"
+                            ng-disabled="vm.savingLobbyTopics"
+                            ng-click="vm.closeLobbyTopicEditor()">
+
+                        HỦY
+
+                    </button>
+
+
+                    <button type="button"
+                            class="is-save"
+                            ng-disabled="vm.savingLobbyTopics ||
+                                     !vm.selectedTopicsToCreate.length"
+                            ng-click="vm.saveLobbyTopics()">
+
+                        <i class="fa"
+                                ng-class="vm.savingLobbyTopics
+                            ? 'fa-circle-o-notch fa-spin'
+                            : 'fa-save'">
+                        </i>
+
+                        {{vm.savingLobbyTopics
+                        ? 'ĐANG ĐỔI BÀI...'
+                        : 'LƯU VÀ NẠP LẠI BÀI'}}
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+            <button type="button"
+                    class="battle-online-spectator-toggle"
+                    ng-class="{'is-active': vm.isSpectator()}"
+                    ng-click="vm.toggleSpectator()"
+                    ng-disabled="vm.changingSpectator || vm.hostSettings.mode === 'DEMON_DEFENSE'">
+                <span>{{vm.isSpectator() ? '👁️' : '🎮'}}</span>
+                <strong>
+                    {{vm.isSpectator() ? 'ĐANG LÀ KHÁN GIẢ' : 'THAM GIA CHƠI'}}
+                </strong>
+                <small>
+                    {{vm.isSpectator()
+                        ? 'Bạn chỉ xem trận và vẫn giữ quyền HOST.'
+                        : 'Bật để xem người khác chơi, không nhận câu và không tính điểm.'}}
+                </small>
+            </button>
+
+
+            <div class="battle-online-mode-grid">
+
+                <button type="button"
+                        class="battle-online-mode-card"
+                        ng-class="{
+                            'is-active': vm.hostSettings.mode === 'CLASSIC'
+                        }"
+                        ng-click="vm.selectMode('CLASSIC')">
+
+                    <span class="battle-online-mode-icon">🎯</span>
+
+                    <strong>CLASSIC</strong>
+
+                    <small>
+                        Số câu + thời gian từng câu.
+                        Mọi người cùng một câu.
+                    </small>
+                </button>
+
+
+                <button type="button"
+                        class="battle-online-mode-card"
+                        ng-class="{
+                            'is-active is-countdown': vm.hostSettings.mode === 'COUNTDOWN'
+                        }"
+                        ng-click="vm.selectMode('COUNTDOWN')">
+
+                    <span class="battle-online-mode-icon">⏳</span>
+
+                    <strong>COUNTDOWN</strong>
+
+                    <small>
+                        Đếm ngược tổng thời gian.
+                        {{vm.questionSource === 'COMPREHENSIVE' ? 'Mỗi người trả lời từng câu riêng.' : 'Mỗi người câu random riêng.'}}
+                    </small>
+                </button>
+
+
+                <button type="button"
+                        class="battle-online-mode-card"
+                        ng-class="{
+                            'is-active is-money-beg': vm.hostSettings.mode === 'MONEY_BEG'
+                        }"
+                        ng-click="vm.selectMode('MONEY_BEG')">
+
+                    <span class="battle-online-mode-icon">🤑</span>
+
+                    <strong>XIN TÍ TIỀN</strong>
+
+                    <small>
+                        Giữ toàn bộ COUNTDOWN. Đoán mật khẩu đối thủ
+                        để xin 40% tổng điểm.
+                    </small>
+                </button>
+
+
+                <button type="button"
+                        class="battle-online-mode-card"
+                        ng-class="{
+                            'is-active is-escape-dumb-demon': vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'
+                        }"
+                        ng-click="vm.selectMode('ESCAPE_DUMB_DEMON')">
+
+                    <span class="battle-online-mode-icon">👹</span>
+
+                    <strong>THOÁT KHỎI QUỶ NGU</strong>
+
+                    <small>
+                        COUNTDOWN cho 2 đội. Mỗi người nhận câu riêng;
+                        trả lời xong sang câu tiếp ngay.
+                    </small>
+                </button>
+
+                <button type="button" class="battle-online-mode-card"
+                        ng-class="{'is-active is-demon-defense': vm.hostSettings.mode === 'DEMON_DEFENSE'}"
+                        ng-click="vm.selectMode('DEMON_DEFENSE')">
+                    <span class="battle-online-mode-icon">🔫</span><strong>DIỆT QUỶ NGU</strong>
+                    <small>Cả đội trả lời để bắn quỷ. Host xem trận đấu; học sinh nhận câu riêng.</small>
+                </button>
+                <button type="button"
+                        class="battle-online-mode-card"
+                        ng-class="{'is-active is-guess-word': vm.hostSettings.mode === 'GUESS_WORD'}"
+                        ng-click="vm.selectMode('GUESS_WORD')">
+                    <span class="battle-online-mode-icon">🔤</span>
+                    <strong>GUESS THE WORD</strong>
+                    <small>Nhìn nghĩa tiếng Việt, đoán đầy đủ từ tiếng Anh nhanh nhất.</small>
+                </button>
+
+                <button type="button" class="battle-online-mode-card"
+                        ng-class="{'is-active': vm.hostSettings.mode === 'LUM_NGAY'}" ng-click="vm.selectMode('LUM_NGAY')">
+                    <span class="battle-online-mode-icon">🎁</span><strong>LỤM NGAY</strong>
+                    <small>Trả lời đúng để bóc quà trong box chung. Trứng và pet level cao hiếm hơn, nhận nhiều điểm hơn.</small>
+                </button>
+            </div>
+
+
+            <div class="battle-online-mode-settings">
+                <div ng-if="vm.questionSource === 'COMPREHENSIVE'">
+                    <button type="button" class="btn"
+                            ng-class="vm.hostSettings.shuffleExerciseQuestions ? 'btn-success' : 'btn-default'"
+                            ng-click="vm.hostSettings.shuffleExerciseQuestions = !vm.hostSettings.shuffleExerciseQuestions; vm.hostExerciseShuffleDirty = true"
+                            ng-disabled="vm.savingSettings"
+                            ng-attr-aria-pressed="{{vm.hostSettings.shuffleExerciseQuestions}}">
+                        🔀 Đảo thứ tự câu hỏi: {{vm.hostSettings.shuffleExerciseQuestions ? 'BẬT' : 'TẮT'}}
+                    </button>
+                    <p>{{vm.hostSettings.shuffleExerciseQuestions ? 'Trộn ngẫu nhiên thứ tự các câu con khi bắt đầu trận.' : 'Chơi từng câu con theo thứ tự trong đề.'}} Bấm Lưu mode để áp dụng. Đáp án trắc nghiệm luôn được đảo vị trí.</p>
+                    <p>Với đề video, câu hỏi luôn theo mốc video của host trong mọi mode. Thời gian trả lời lấy từ từng câu trong đề (mặc định 20 giây); cả lớp chuyển câu cùng nhau và trận kết thúc khi hoàn thành câu cuối. Trận video không có giới hạn tổng số phút.</p>
+                </div>
+                <button type="button" class="btn"
+                        ng-class="vm.hostSettings.skillsEnabled !== false ? 'btn-success' : 'btn-default'"
+                        ng-click="vm.hostSettings.skillsEnabled = vm.hostSettings.skillsEnabled === false; vm.hostSkillsDirty = true"
+                        ng-disabled="vm.savingSettings"
+                        ng-attr-aria-pressed="{{vm.hostSettings.skillsEnabled !== false}}">
+                    ⚡ Cho phép skill trong game: {{vm.hostSettings.skillsEnabled !== false ? 'BẬT' : 'TẮT'}}
+                </button>
+                <p>Mặc định bật tất cả. Bấm vào skill để gạch chéo và tắt; bấm lại để bật. Mỗi mode dùng các skill phù hợp với mode đó.</p>
+                <div class="battle-online-skill-options" ng-class="{'is-muted': vm.hostSettings.skillsEnabled === false}">
+                    <button type="button" class="battle-online-skill-option"
+                            ng-repeat="skill in vm.getHostSkillOptions() track by skill.type"
+                            ng-class="{'is-excluded': !vm.isHostSkillSelected(skill.type)}"
+                            ng-click="vm.toggleHostSkill(skill.type)"
+                            ng-disabled="vm.savingSettings || vm.hostSettings.skillsEnabled === false"
+                            ng-attr-aria-pressed="{{vm.isHostSkillSelected(skill.type)}}"
+                            ng-attr-aria-label="{{skill.name + (vm.isHostSkillSelected(skill.type) ? ': bật, bấm để tắt' : ': tắt, bấm để bật')}}">
+                        <span class="battle-online-skill-option-icon" aria-hidden="true">{{skill.icon}}</span>
+                        <strong>{{skill.name}}</strong>
+                        <small>{{vm.isHostSkillSelected(skill.type) ? 'BẬT' : 'TẮT'}}</small>
+                    </button>
+                </div>
+                <p ng-if="vm.hostSettings.mode === 'LUM_NGAY'">Lụm ngay chỉ cấp Đóng băng, Cướp điểm và Đảo lộn khi bóc trúng trứng skill. Dùng skill đang có trước khi bóc tiếp.</p>
+            </div>
+
+            <!-- CLASSIC -->
+            <div class="battle-online-mode-settings"
+                 ng-if="vm.hostSettings.mode === 'CLASSIC'">
+
+                <div class="battle-online-mode-badge">
+                    🎯 CLASSIC MODE
+                </div>
+
+                <div class="battle-online-setting-grid">
+                    <div>
+                        <label ng-if="!vm.room.videoSynchronized">{{vm.questionSource === 'COMPREHENSIVE' ? 'GIÂY / NHÓM CÂU' : 'GIÂY / CÂU'}}</label>
+
+                        <input type="number"
+                               min="3"
+                               max="120"
+                               class="form-control"
+                               ng-change="vm.markSecondsPerQuestionTouched()"
+                               ng-model="vm.hostSettings.secondsPerQuestion" ng-if="!vm.room.videoSynchronized">
+                    </div>
+
+                </div>
+
+                <p ng-if="!vm.room.videoSynchronized">
+                    Mọi người cùng nhận một câu. Hết giờ câu hoặc tất cả đã trả lời thì sang câu tiếp.
+                </p>
+            </div>
+
+
+            <!-- COUNTDOWN -->
+            <div class="battle-online-mode-settings is-countdown"
+                 ng-if="!vm.room.videoSynchronized && (vm.hostSettings.mode === 'COUNTDOWN' || vm.hostSettings.mode === 'LUM_NGAY' || vm.hostSettings.mode === 'MONEY_BEG' || vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON' || vm.hostSettings.mode === 'DEMON_DEFENSE')">
+
+                <div class="battle-online-mode-badge">
+                    {{vm.hostSettings.mode === 'LUM_NGAY' ? '🎁 LỤM NGAY' : vm.hostSettings.mode === 'DEMON_DEFENSE' ? '👹 DIỆT QUỶ NGU' : vm.hostSettings.mode === 'MONEY_BEG'
+                        ? '🤑 XIN TÍ TIỀN MODE'
+                        : (vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'
+                            ? '👹 THOÁT KHỎI QUỶ NGU'
+                            : '⏳ COUNTDOWN MODE')}}
+                </div>
+
+                <div class="battle-online-setting-grid">
+                    <div>
+                        <label ng-if="!vm.room.videoSynchronized">TỔNG THỜI GIAN (PHÚT)</label>
+
+                        <input type="number"
+                               min="1"
+                               max="180"
+                               class="form-control"
+                               ng-change="vm.markCountdownMinutesTouched()"
+                               ng-model="vm.hostSettings.countdownMinutes" ng-if="!vm.room.videoSynchronized">
+                    </div>
+
+                    <div>
+                        <label>SAI BỊ KHÓA (GIÂY)</label>
+
+                        <input type="number"
+                               min="1"
+                               max="60"
+                               class="form-control"
+                               ng-change="vm.markWrongFreezeTouched()"
+                               ng-model="vm.hostSettings.wrongAnswerFreezeSeconds">
+                    </div>
+                </div>
+
+                <p ng-if="vm.hostSettings.mode === 'COUNTDOWN' && !vm.room.videoSynchronized">
+                    Mỗi account nhận thứ tự từ ngẫu nhiên riêng. Trả lời xong là có câu tiếp ngay, không chờ người khác. Hết số phút là kết thúc.
+                </p>
+                <p ng-if="vm.hostSettings.mode === 'DEMON_DEFENSE'">
+                    Mỗi học sinh có một súng, cả đội bảo vệ chung một hàng quỷ.
+                    Đúng: bắn 1 viên; streak 20/30/40: bắn 2/3/4 viên, tự nhắm quỷ gần nhất.
+                    NGU và RẤT NGU: 1 phát; NGU KHỦNG KHIẾP: 2 phát mới chết.
+                    Sai: streak về 0. PHÁ STREAK trừ 5; ĐÓNG BĂNG khóa một đối thủ 3 giây.
+                    GIẢI BĂNG hiếm được giữ tối đa 1 lượt để cứu đồng đội.
+                    Quỷ tăng theo thời gian và quy mô đội. Chạm vạch phòng thủ là đội bị loại.
+                    Đội sống cuối cùng thắng; hết giờ xét quỷ diệt / thành viên, bằng nhau đồng hạng.
+                    Host điều hành ở chế độ khán giả. Học sinh nhận cảnh báo chữ và màu, không rung.
+                </p>
+
+                <p ng-if="vm.hostSettings.mode === 'MONEY_BEG'">
+                    Đồng hồ chạy ngay khi START. Mỗi người chọn 1 trong 3 mật khẩu;
+                    skill HACK chiếm khoảng 7% số lượt skill. Khi HACK, người chơi
+                    phải tìm đúng mật khẩu trong 6 lựa chọn thuộc 3 nhóm để lấy 40% điểm.
+                </p>
+
+                <p ng-if="vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'">
+                    Mỗi người nhận câu random riêng và trả lời xong có câu tiếp ngay,
+                    không chờ người khác. Đúng đẩy QUỶ NGU sang đối thủ 1 bước;
+                    sai kéo quỷ về đội mình 1 bước; CHÁY LÊN đẩy 2 bước.
+                    HOST có thể chọn một thành viên bất kỳ làm NGƯỜI GÁNH ĐỘI x2.
+                    Không có PHÁ STREAK và CƯỚP ĐIỂM; ĐẢO LỘN làm màn hình
+                    trả lời của đối thủ lật ngược trong 7 giây.
+                    Mỗi nửa thanh dài bằng 20% tổng số câu của bài.
+                </p>
+            </div>
+
+            <div class="battle-online-mode-settings"
+                 ng-if="vm.hostSettings.mode === 'LUM_NGAY'">
+                <div class="battle-online-mode-badge">🎁 BOX QUÀ</div>
+                <div class="battle-online-setting-grid">
+                    <div>
+                        <label ng-attr-for="battle-gift-base-points-{{$id}}">ĐIỂM TRỨNG LEVEL 0</label>
+                        <input ng-attr-id="battle-gift-base-points-{{$id}}" class="form-control" type="number" min="1" max="10000" ng-disabled="vm.savingSettings" ng-model="vm.hostSettings.giftBasePoints" ng-change="vm.hostSkillsDirty = true">
+                    </div>
+                </div>
+                <p>Mỗi người có pool riêng với 3 trứng sẵn có, bóc xong bổ sung ngay. Trả lời đúng chỉ nhận 1 lượt bóc; bóc trứng mới có điểm hoặc skill. Trứng thối luôn cho 0,5 điểm. Quà thường = điểm cơ bản × (level + 1); level càng cao càng hiếm.</p>
+            </div>
+
+            <div class="battle-online-mode-settings is-guess-word"
+                 ng-if="vm.hostSettings.mode === 'GUESS_WORD'">
+                <div class="battle-online-mode-badge">🔤 GUESS THE WORD</div>
+                <div class="battle-online-setting-grid">
+                    <div>
+                        <label ng-if="!vm.room.videoSynchronized">{{vm.questionSource === 'COMPREHENSIVE' ? 'GIÂY / NHÓM CÂU' : 'GIÂY / CÂU'}}</label>
+                        <input type="number" min="3" max="120"
+                               class="form-control"
+                               ng-change="vm.markSecondsPerQuestionTouched()"
+                               ng-model="vm.hostSettings.secondsPerQuestion" ng-if="!vm.room.videoSynchronized">
+                    </div>
+                    <div class="battle-online-guess-voice-setting">
+                        <label>🔊 ÂM LƯỢNG GIỌNG ĐỌC</label>
+                        <div class="battle-online-guess-volume-control">
+                            <input type="range" min="40" max="100" step="5"
+                                   ng-model="vm.guessVoiceVolume"
+                                   ng-change="vm.updateGuessVoiceVolume()">
+                            <strong>{{vm.guessVoiceVolume}}%</strong>
+                            <button type="button" ng-click="vm.previewGuessVoice()">
+                                <i class="fa fa-volume-up"></i> Nghe thử
+                            </button>
+                        </div>
+                        <small>Điều chỉnh âm lượng giọng đọc; nhạc nền vẫn giữ nguyên.</small>
+                    </div>
+                </div>
+                <label>CÁCH CHUYỂN CÂU</label>
+                <div class="battle-online-guess-advance-picker">
+                    <button type="button"
+                            ng-class="{'is-active': vm.hostSettings.guessAdvanceMode === 'AUTO'}"
+                            ng-click="vm.selectGuessAdvanceMode('AUTO')">
+                        <strong>⚡ TỰ ĐỘNG CHUYỂN CÂU</strong>
+                        <small>Học sinh xem đáp án đúng 3 giây rồi tự sang câu tiếp theo.</small>
+                    </button>
+                    <button type="button"
+                            ng-class="{'is-active': vm.hostSettings.guessAdvanceMode === 'HOST_CONTROL'}"
+                            ng-click="vm.selectGuessAdvanceMode('HOST_CONTROL')">
+                        <strong>🎛️ HOST ĐIỀU KHIỂN</strong>
+                        <small>Hết giờ hiện bài làm; host chủ động hiện đáp án và chuyển câu.</small>
+                    </button>
+                </div>
+                <p>Mỗi 2 giây server mở ngẫu nhiên một chữ cái. Học sinh vẫn phải nhập đầy đủ từ; người đúng nhanh hơn nhận nhiều điểm hơn.</p>
+            </div>
+
+            <div class="battle-online-mode-settings battle-online-vocab-settings">
+                <div class="battle-online-mode-badge">📚 {{vm.questionSource === 'COMPREHENSIVE' ? 'NHÓM CÂU SẼ CHƠI' : 'BỘ TỪ SẼ CHƠI'}} — ÁP DỤNG CHO MỌI MODE</div>
+                <div class="battle-online-setting-grid">
+                    <div>
+                        <label>{{vm.questionSource === 'COMPREHENSIVE' ? 'SỐ NHÓM CÂU MUỐN CHƠI' : 'SỐ TỪ MUỐN CHƠI'}}</label>
+                        <input type="number" min="1" max="5000"
+                               class="form-control"
+                               ng-change="vm.markClassicQuestionCountTouched()"
+                               ng-model="vm.hostSettings.questionCount">
+                    </div>
+                    <div class="battle-online-word-count-summary">
+                        <label>{{vm.questionSource === 'COMPREHENSIVE' ? 'SỐ NHÓM SẼ CHƠI / TỔNG SỐ NHÓM' : 'SỐ TỪ SẼ CHƠI / TỔNG PHÙ HỢP'}}</label>
+                        <strong>{{vm.getPlayableQuestionCount()}} / {{vm.room.availableQuestionCount || 0}}</strong>
+                        <small ng-if="vm.getPlayableQuestionCount() < (vm.room.availableQuestionCount || 0) && !vm.room.videoSynchronized">Hệ thống lấy ngẫu nhiên trong nội dung đã chọn.</small>
+                    </div>
+                </div>
+                <label ng-if="vm.questionSource !== 'COMPREHENSIVE'">MỨC TỪ VỰNG</label>
+                <div class="battle-online-level-picker" ng-if="vm.questionSource !== 'COMPREHENSIVE'">
+                    <button type="button"
+                            ng-repeat="level in vm.guessLevelOptions track by level"
+                            ng-class="{
+                                'is-active': vm.isGuessLevelSelected(level),
+                                'is-inactive': !vm.isGuessLevelSelected(level)
+                            }"
+                            ng-click="vm.toggleGuessLevel(level)">{{level}}</button>
+                </div>
+                <p ng-if="vm.questionSource !== 'COMPREHENSIVE'">Bỏ hoặc thêm mức sẽ cập nhật tổng số từ phù hợp. Nếu số muốn chơi nhỏ hơn tổng, mỗi trận sẽ chọn một bộ từ ngẫu nhiên.</p>
+            </div>
+
+
+            <div class="battle-online-mode-settings battle-online-team-settings">
+                <div class="battle-online-mode-badge">
+                    👥 CHIA ĐỘI
+                </div>
+
+                <label>SỐ ĐỘI</label>
+
+                <select class="form-control"
+                        ng-model="vm.hostSettings.teamCount"
+                        ng-options="option.value as option.label for option in vm.getTeamCountOptions()"
+                        ng-disabled="vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'"
+                        ng-change="vm.markTeamCountTouched()">
+                </select>
+
+                <p ng-if="vm.hostSettings.mode !== 'ESCAPE_DUMB_DEMON'">
+                    Khi lưu, server chia cân bằng ban đầu. Người chơi có thể tự chọn đội;
+                    HOST vẫn có thể đổi đội của từng học sinh trong lobby. Skill tấn công chỉ dùng lên đội đối phương.
+                </p>
+
+                <p ng-if="vm.hostSettings.mode === 'ESCAPE_DUMB_DEMON'">
+                    Mode này cố định 2 đội. Server chia cân bằng ban đầu;
+                    người chơi có thể tự chọn đội và HOST vẫn có thể đổi thành viên.
+                </p>
+
+                <div class="battle-online-double-action-setting"
+                     ng-if="vm.hasTeamMode() && vm.hostSettings.mode !== 'DEMON_DEFENSE'">
+                    <div class="battle-online-double-action-title">
+                        ⚡ NGƯỜI GÁNH ĐỘI x2
+                    </div>
+
+                    <p ng-if="!vm.hasTeamMode()">
+                        Hãy lưu mode trước để server chia ĐỘI 1 và ĐỘI 2.
+                    </p>
+
+                    <div ng-if="vm.hasTeamMode()">
+                        <label>
+                            CHỌN 1 NGƯỜI GÁNH ĐỘI
+                        </label>
+
+                        <select class="form-control"
+                                ng-model="vm.hostSettings.doubleActionUsername"
+                                ng-options="player.username as (vm.getPlayerDisplayName(player) + ' — ĐỘI ' + player.teamNumber) for player in vm.getEscapeDoubleActionCandidates()"
+                                ng-change="vm.markDoubleActionTouched()">
+                            <option value="">-- KHÔNG CHỌN --</option>
+                        </select>
+
+                        <p>
+                            Mọi điểm số của người được chọn đều ×2.
+                            <span ng-if="vm.hostSettings.mode === 'LUM_NGAY'">Riêng trứng thối vẫn cho 0,5 điểm.</span>
+                            Trong THOÁT KHỎI QUỶ NGU, tác động đẩy/kéo quỷ cũng ×2.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+
+            <button type="button"
+                    class="battle-online-save-btn"
+                    ng-click="vm.saveSettings(false)"
+                    ng-disabled="vm.savingSettings || vm.savingLobbyTopics">
+
+                💾 LƯU MODE
+            </button>
+
+
+            <button type="button"
+                    class="battle-online-start-btn"
+                    ng-click="vm.startMatch()"
+                    ng-disabled="vm.startingMatch || vm.savingLobbyTopics || vm.lobbyTopicEditorOpen || !vm.room.questionsReady">
+
+                🚀 START BATTLE
+            </button>
+
+
+            <div class="battle-online-host-note"
+                 ng-if="vm.lobbyTopicEditorOpen">
+                Hãy lưu hoặc hủy phần đổi bài trước khi START.
+            </div>
+
+            <div class="battle-online-host-note"
+                 ng-if="!vm.lobbyTopicEditorOpen && !vm.room.questionsReady">
+                {{vm.questionSource === 'COMPREHENSIVE' ? 'Đề cần ít nhất một nhóm câu hợp lệ để START.' : 'Server cần READY tối thiểu 4 từ để START.'}}
+            </div>
+
+            <div class="battle-online-host-note"
+                 ng-if="!vm.lobbyTopicEditorOpen && vm.room.questionsReady">
+                {{vm.questionSource === 'COMPREHENSIVE' ? 'Đề đã sẵn sàng. Có thể START.' : 'Có thể START. Preload vẫn tiếp tục chạy ẩn nếu bài chưa load hết.'}}
+            </div>
+</div>

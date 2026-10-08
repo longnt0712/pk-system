@@ -5,4 +5,6 @@ public class BattleOnlineVideoDto {
     public long questionSequence;
     public double seconds;
     public String event;
+    public long targetQuestionSequence;
+    public String videoSourceId;
 }
