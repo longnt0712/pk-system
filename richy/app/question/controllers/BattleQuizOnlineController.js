@@ -2897,7 +2897,7 @@
                 incoming.guessPhase !== 'QUESTION'
             ) {
                 vm.answerLocked = true;
-            } else if (isGuessWordMode() && incoming.currentQuestion) {
+            } else if (!incoming.videoSynchronized && isGuessWordMode() && incoming.currentQuestion) {
                 var currentGuessPlayer = getMe();
                 vm.answerLocked = !questionChanged && !!(
                     currentGuessPlayer &&
@@ -4065,13 +4065,15 @@
                 vm.room.currentQuestion;
 
             var exerciseGuessRequest = isGuessWordMode() && !!question.exercise;
+            var videoAnswerRequest = vm.room.videoSynchronized === true;
             var submittedRoomCode = vm.room.code;
             var submittedGiftGameId = vm.isLumNgayMode() && vm.room.giftDrop && vm.room.giftDrop.gameId;
             function isCurrentAnswerRequest() {
                 var current = vm.room && vm.room.currentQuestion;
                 if (submittedGiftGameId && (!vm.room || vm.room.code !== submittedRoomCode ||
                         vm.room.status !== 'PLAYING' || !vm.room.giftDrop || vm.room.giftDrop.gameId !== submittedGiftGameId)) { return false; }
-                return !exerciseGuessRequest || (vm.room && vm.room.code === submittedRoomCode &&
+                if (videoAnswerRequest && (!vm.room || vm.room.code !== submittedRoomCode || vm.room.status !== 'PLAYING')) { return false; }
+                return !exerciseGuessRequest || videoAnswerRequest || (vm.room && vm.room.code === submittedRoomCode &&
                     vm.room.status === 'PLAYING' && current && current.id === question.id && current.sequence === question.sequence);
             }
 
@@ -4108,12 +4110,16 @@
                             );
                         }
 
+                        // The final submission can resume the video before its HTTP response arrives.
+                        if (videoAnswerRequest && (!vm.room.currentQuestion || vm.room.status !== 'PLAYING' ||
+                                vm.room.currentQuestion.id !== question.id || vm.room.currentQuestion.sequence !== question.sequence)) { return; }
+
                         vm.lastAnswerCorrect =
                             result.correct ===
                             true;
 
                         vm.lastAnswerMessage =
-                            result.message ||
+                            (videoAnswerRequest && result.correct !== true ? 'SAI RỒI!' : result.message) ||
                             (
                                 result.correct
                                     ? 'CHÍNH XÁC!'
@@ -4150,6 +4156,8 @@
                     },
                     function (error) {
                         if (!isCurrentAnswerRequest()) { return; }
+                        if (videoAnswerRequest && (!vm.room.currentQuestion ||
+                                vm.room.currentQuestion.id !== question.id || vm.room.currentQuestion.sequence !== question.sequence)) { return; }
                         vm.answerLocked = false;
 
                         showRequestError(
@@ -6054,6 +6062,7 @@
         function isWrongAnswerPenaltyActive() {
             return !!(
                 vm.room &&
+                !vm.room.videoSynchronized &&
                 Number(vm.room.wrongAnswerPenaltyUntil || 0) > serverNow()
             );
         }

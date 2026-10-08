@@ -68,7 +68,7 @@ public class BattleOnlineVideoTest {
     }
     private void rejected(Runnable action) { try { action.run(); fail("Must reject"); } catch(BattleOnlineException expected) {} }
 
-    @Test public void allModesPreloadHideAndSynchronizeEachAnswerWindowWithoutEarlyAdvancement() throws Exception {
+    @Test public void allModesPreloadHideAndKeepAnswerWindowOpenWhileAStudentHasNotSubmitted() throws Exception {
         for (String mode : Arrays.asList("CLASSIC","GUESS_WORD","COUNTDOWN","MONEY_BEG","ESCAPE_DUMB_DEMON","DEMON_DEFENSE","LUM_NGAY")) {
             setup(mode);
             BattleOnlineRoomDto initial=service.getRoom("VIDEO1","alice");
@@ -97,6 +97,54 @@ public class BattleOnlineVideoTest {
             assertTrue(second.getQuestionEndsAt()>=before+34000);
             service.destroy(); service=null;
         }
+    }
+
+    @Test public void allModesResumeImmediatelyAfterAllAnswersAndWrongAnswersDoNotFreezeVideoPlayers() throws Exception {
+        for (String mode : Arrays.asList("CLASSIC","GUESS_WORD","COUNTDOWN","MONEY_BEG","ESCAPE_DUMB_DEMON","DEMON_DEFENSE","LUM_NGAY")) {
+            setup(mode);
+            BattleOnlineRoomDto opened=service.videoEvent("VIDEO1","host",event("CUE",1,5));
+            BattleOnlineAnswerDto correct=answer(), wrong=answer();
+            wrong.getExerciseAnswers().replaceAll((key,value) -> Collections.singletonList("wrong"));
+            BattleOnlineAnswerResultDto first=service.answer("VIDEO1","alice",wrong);
+            assertFalse(mode,first.isCorrect()); assertEquals("SAI RỒI!",first.getMessage());
+            assertEquals(mode,0L,first.getRoom().getWrongAnswerPenaltyUntil());
+            assertEquals(mode,0L,(long)get(alice,"wrongAnswerPenaltyUntil"));
+            assertEquals(mode,0L,(long)get(alice,"frozenUntil"));
+            assertEquals(mode,"ANSWERING",first.getRoom().getVideoPhase());
+            assertEquals(opened.getQuestionEndsAt(),first.getRoom().getQuestionEndsAt());
+            assertTrue(first.getRoom().getPlayers().stream().filter(p->"alice".equals(p.getUsername())).findFirst().get().isAnsweredCurrentQuestion());
+            rejected(() -> service.answer("VIDEO1","alice",wrong));
+            assertTrue(System.currentTimeMillis()<opened.getQuestionEndsAt());
+            BattleOnlineRoomDto resumed=service.answer("VIDEO1","bob",correct).getRoom();
+            assertEquals(mode,"WATCHING",resumed.getVideoPhase());
+            assertEquals(mode,2,resumed.getCurrentQuestionIndex()); assertEquals(0L,resumed.getQuestionEndsAt());
+            assertEquals(1,(int)get(alice,"wrongCount"));
+            // A timer from the completed answer window cannot skip the next cue.
+            ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",0);
+            assertEquals(2,service.getRoom("VIDEO1","host").getCurrentQuestionIndex());
+            service.videoEvent("VIDEO1","host",event("CUE",2,10));
+            BattleOnlineAnswerDto finalCorrect=answer(), finalWrong=answer();
+            finalWrong.getExerciseAnswers().replaceAll((key,value) -> Collections.singletonList("wrong"));
+            service.answer("VIDEO1","alice",finalCorrect);
+            assertEquals(mode,"FINISHED",service.answer("VIDEO1","bob",finalWrong).getRoom().getStatus());
+            service.destroy(); service=null;
+        }
+    }
+
+    @Test public void spectatorsAndDisconnectedStudentsDoNotPreventEarlyResume() throws Exception {
+        setup("COUNTDOWN");
+        service.leaveRoom("VIDEO1","bob");
+        service.videoEvent("VIDEO1","host",event("CUE",1,5));
+        assertEquals("WATCHING",service.answer("VIDEO1","alice",answer()).getRoom().getVideoPhase());
+        assertEquals(2,service.getRoom("VIDEO1","host").getCurrentQuestionIndex());
+    }
+
+    @Test public void leavingTheLastUnansweredStudentResumesVideoForTheRemainingClass() throws Exception {
+        setup("COUNTDOWN");
+        service.videoEvent("VIDEO1","host",event("CUE",1,5));
+        service.answer("VIDEO1","alice",answer());
+        assertEquals("WATCHING",service.leaveRoom("VIDEO1","bob").getVideoPhase());
+        assertEquals(2,service.getRoom("VIDEO1","host").getCurrentQuestionIndex());
     }
 
     @Test public void finalQuestionEndsTheMatchWithoutWaitingForTheRemainingVideoOrAMatchTimer() throws Exception {

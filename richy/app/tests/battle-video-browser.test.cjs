@@ -7,22 +7,23 @@ function fragment(start,end){const i=view.indexOf(start),j=view.indexOf(end,i);a
 const hostPane=fragment('    <section class="battle-online-card battle-online-host-video"','    <ng-include ng-if="vm.room && vm.room.status');
 const exercise=fragment('            <section class="battle-online-exercise"','            <div class="battle-online-private-loading"');
 const waiting=fragment('            <div class="battle-online-video-wait"','            <div class="demon-student-tools"');
+const feedback=fragment('            <div class="battle-online-feedback is-wrong"','            <section class="battle-online-guess-review"');
 const css=fs.readFileSync(path.join(app,'assets/css/external/bootstrap.min.css'),'utf8')+'\n'+
  Array.from(view.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g),m=>m[1]).join('\n')+'\n'+fs.readFileSync(path.join(app,'assets/css/comprehensive-video.css'),'utf8');
 async function open(browser,username,width){
  const page=await browser.newPage({viewport:{width,height:900}});
- await page.setContent('<html><head><meta charset="UTF-8"><style>'+css+'</style></head><body><div id="qa" class="battle-online-page" ng-controller="BattleQuizOnlineController as vm">'+hostPane+waiting+exercise+'</div></body></html>');
+ await page.setContent('<html><head><meta charset="UTF-8"><style>'+css+'</style></head><body><div id="qa" class="battle-online-page" ng-controller="BattleQuizOnlineController as vm">'+hostPane+waiting+exercise+feedback+'</div></body></html>');
  await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular.min.js')});
  await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular-sanitize.min.js')});
  await page.evaluate(({username,template})=>{
-  window.APP_VERSION='qa';window.videoCalls=[];window.answerCalls=[];window.videoActions=[];
+  window.APP_VERSION='qa';window.videoCalls=[];window.answerCalls=[];window.answerRequests=[];window.videoActions=[];
   angular.module('Hrm.Question',['ngSanitize']).value('$state',{go(){}}).value('$stateParams',{})
    .value('$cookies',{get(){return JSON.stringify({id:1,username});}})
    .value('toastr',{warning(){},error(){},success(){}}).value('blockUI',{}).value('QuestionService',{})
-   .factory('BattleQuizOnlineService',function($q){return {answer(...args){window.answerCalls.push(args);return $q.defer().promise;},
+   .factory('BattleQuizOnlineService',function($q){return {answer(...args){window.answerCalls.push(args);const request=$q.defer();window.answerRequests.push(request);return request.promise;},
     videoEvent(...args){const request=$q.defer();window.videoCalls.push({args,request});return request.promise;}};})
    .directive('comprehensiveVideoPlayer',function(){return {scope:{onVideoReady:'&',onVideoProgress:'&',onVideoState:'&',onVideoEnded:'&'},
-    template:'<div style="height:250px;background:#19263e;color:white">Video trên màn hình host</div>',link(scope){
+    template:'<div class="comprehensive-video-player"><div class="comprehensive-video-mount"><video></video></div></div>',link(scope){
      const api={ready:true,play(){window.videoActions.push('play');},pause(){window.videoActions.push('pause');},seek(t){window.videoActions.push(['seek',t]);}};
      window.videoAdapter=scope;scope.onVideoReady({api});}};})
    .run(function($templateCache){$templateCache.put('question/views/battle_online_exercise_form.html?v=qa&individualQuestions=20261007_1',template);});
@@ -71,6 +72,14 @@ test('actual Battle templates preload hidden answers in all modes and host video
   const before=await host.evaluate(()=>window.videoActions.filter(a=>a==='play').length);
   await apply(host,room('DEMON_DEFENSE','WATCHING',3,2));
   assert.ok(await host.evaluate(()=>window.videoActions.filter(a=>a==='play').length)>before);
+  for(const viewport of [{width:1920,height:900},{width:1366,height:768},{width:390,height:844},{width:844,height:390}]){
+   await host.setViewportSize(viewport);
+   const card=await host.locator('.battle-online-host-video').boundingBox(),video=await host.locator('video').boundingBox();
+   assert.ok(card.height<viewport.height-30,JSON.stringify({viewport,card}));
+   assert.ok(card.x>=0&&card.x+card.width<=viewport.width,'video card fits horizontally');
+   assert.ok(Math.abs(video.width/video.height-16/9)<0.02,'video keeps its aspect ratio');
+  }
+  await host.setViewportSize({width:1366,height:768});
   const captureDir=path.join(app,'../target');fs.mkdirSync(captureDir,{recursive:true});
   await host.screenshot({path:path.join(captureDir,'battle-video-host.png'),fullPage:true});
   await student.screenshot({path:path.join(captureDir,'battle-video-student.png'),fullPage:true});

@@ -1042,14 +1042,14 @@
                 on-video-state="vm.hostVideoState(playing, videoSource)" on-video-ended="vm.hostVideoEnded(videoSource)"></comprehensive-video-player>
         </div>
         <p ng-if="vm.room.videoPhase === 'WATCHING'">Câu hỏi đã tải sẵn cho học sinh. Video đến mốc sẽ tự dừng để cả lớp trả lời.</p>
-        <p ng-if="vm.room.videoPhase === 'ANSWERING'">Cả lớp đang trả lời • còn {{vm.countdown}} giây. Hết giờ, video sẽ tự tiếp tục.</p>
+        <p ng-if="vm.room.videoPhase === 'ANSWERING'">Cả lớp đang trả lời • còn {{vm.countdown}} giây. Video tự tiếp tục khi tất cả đã trả lời hoặc hết giờ.</p>
         <p ng-if="vm.room.videoPhase === 'CONTINUING'">Tiếp tục xem phần còn lại của video.</p>
         <button type="button" class="btn btn-primary" ng-click="vm.playHostVideo()"
                 ng-disabled="!vm.hostVideoApi.ready || vm.room.videoPhase === 'ANSWERING'">▶ Phát / tiếp tục video</button>
         <p class="comprehensive-video-error" ng-if="vm.videoSyncError" role="alert">{{vm.videoSyncError}}</p>
     </section>
     <ng-include ng-if="vm.room && vm.room.status === 'PLAYING' && vm.isLumNgayMode() && vm.isHost()"
-                src="'question/views/battle_online_egg_host.html?eggHost=20261006_1'"></ng-include>
+                src="'question/views/battle_online_egg_host.html?eggHost=20261008_1'"></ng-include>
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING' && !(vm.isLumNgayMode() && vm.isHost() && vm.isSpectator())"
          ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode()}">
@@ -2841,6 +2841,23 @@
         border: 1px solid var(--bo-line);
         background: var(--bo-card);
         box-shadow: 0 12px 34px rgba(49,61,112,.08);
+    }
+
+    .battle-online-host-video {
+        width: calc((100vh - 180px) * 16 / 9);
+        width: calc((100dvh - 180px) * 16 / 9);
+        max-width: 100%;
+        margin: 0 auto 16px;
+        padding: 12px;
+        border-radius: 16px;
+    }
+
+    .battle-online-host-video .comprehensive-video-mount {
+        min-height: 0;
+    }
+
+    .battle-online-host-video > p {
+        margin: 10px 0;
     }
 
     .battle-online-hero {

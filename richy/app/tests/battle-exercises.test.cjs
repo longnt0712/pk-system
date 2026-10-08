@@ -19,7 +19,7 @@ function setup(username='alice') {
  const window={location:{origin:'http://localhost'},navigator:{},document:{body:{classList:{add(){},remove(){}}},getElementById(){return null;}},localStorage:{getItem(){return null;},setItem(){}}};
  const service={answer(...args){calls.push(args);return new Promise(resolve=>{resolveAnswer=resolve;});},
   videoEvent(...args){return new Promise((resolve,reject)=>videoCalls.push({args,resolve,reject}));}};
- const questions={getPageForTests(...args){calls.push(args);return Promise.resolve({content:[{id:100,title:'Đề tổng hợp'}],totalElements:25});},
+ const questions={getOne(){return Promise.resolve({});},getPageForTests(...args){calls.push(args);return Promise.resolve({content:[{id:100,title:'Đề tổng hợp'}],totalElements:25});},
   getTopicsForGames(){return Promise.resolve({content:[{id:8,name:'Animals',topicCategory:{id:6,name:'Grade 6'}},{id:9,name:'Food',topicCategory:{id:7,name:'Grade 7'}}]});}};
  const vm=new Controller({},{$on(){},$evalAsync(fn){fn();}},{go(){}},{},timer,timer,{get(){return JSON.stringify({id:1,username});}},window,{warning(text){warnings.push(text);},error(){}},{},questions,service);
  function room(mode='CLASSIC',seq=1) {
@@ -53,6 +53,28 @@ test('video submission remains locked after the answer response in countdown mod
  h.vm.exerciseAnswers={'103':['one'],'104':['two']};h.vm.submitExercise(false);
  room.players[1].answeredCurrentQuestion=true;h.resolve({correct:true,room});
  await new Promise(setImmediate); assert.equal(h.vm.exerciseInputDisabled(),true);h.vm.submitExercise(false);assert.equal(h.calls.length,1);
+});
+test('wrong video answers show only incorrect feedback without a review freeze in every mode',async()=>{
+ for(const mode of ['CLASSIC','COUNTDOWN','MONEY_BEG','ESCAPE_DUMB_DEMON','DEMON_DEFENSE','GUESS_WORD','LUM_NGAY']) {
+  const h=setup(),room=videoRoom(h,mode,'ANSWERING',1,2);room.wrongAnswerPenaltyUntil=Date.now()+3000;
+  h.hooks.applyRoom(room,false);assert.equal(h.vm.isWrongAnswerPenaltyActive(),false,mode);
+  h.vm.exerciseAnswers={'103':['one'],'104':['two']};h.vm.submitExercise(false);assert.equal(h.calls.length,1,mode);
+  room.players[1].answeredCurrentQuestion=true;h.resolve({correct:false,message:'A longer review message',room});await new Promise(setImmediate);
+  assert.equal(h.vm.lastAnswerCorrect,false,mode);assert.equal(h.vm.lastAnswerMessage,'SAI RỒI!',mode);
+  assert.equal(h.vm.isWrongAnswerPenaltyActive(),false,mode);assert.equal(h.vm.exerciseInputDisabled(),true,mode);
+ }
+});
+test('the last video answer can advance in its response or over realtime without leaking old feedback',async()=>{
+ for(const mode of ['CLASSIC','COUNTDOWN','GUESS_WORD','LUM_NGAY']) for(const realtimeFirst of [false,true]) {
+  const h=setup();h.hooks.applyRoom(videoRoom(h,mode,'ANSWERING',1,2),false);
+  h.vm.exerciseAnswers={'103':['one'],'104':['two']};h.vm.submitExercise(false);
+  const next=videoRoom(h,mode,'WATCHING',2,4);
+  if(realtimeFirst)h.hooks.applyRoom(next,true);
+  h.resolve({correct:false,message:'SAI RỒI!',room:realtimeFirst?videoRoom(h,mode,'ANSWERING',1,3):next});
+  await new Promise(setImmediate);
+  assert.equal(h.vm.room.currentQuestion.sequence,2,mode);assert.equal(h.vm.lastAnswerCorrect,null,mode);
+  assert.equal(h.vm.lastAnswerMessage,'',mode);assert.equal(h.vm.answerLocked,true,mode);
+ }
 });
 test('host pauses at a cue once, opens the question from the server response and resumes for the next cue',async()=>{
  const h=setup('host'), actions=[];h.hooks.applyRoom(videoRoom(h),false);

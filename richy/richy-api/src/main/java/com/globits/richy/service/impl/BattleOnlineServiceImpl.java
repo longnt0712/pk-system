@@ -778,6 +778,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                  * Giữ score/progress để reconnect.
                  */
                 player.connected = false;
+                if (room.videoSynchronized && allConnectedClassicAnsweredLocked(room)) { finishVideoAnswerWindowLocked(room); }
             } else {
                 room.players.remove(username);
 
@@ -1846,6 +1847,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
             expectedIndex = room.classicQuestionIndex;
             advanceSoon = !room.videoSynchronized && allConnectedClassicAnsweredLocked(room);
+            if (room.videoSynchronized) {
+                completeVideoAnswerLocked(room, result);
+                result.setRoom(snapshotLocked(room, username));
+            }
         }
 
         broadcastGeneric(room);
@@ -2122,6 +2127,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     !room.videoSynchronized && allConnectedClassicAnsweredLocked(
                         room
                     );
+            if (room.videoSynchronized) {
+                completeVideoAnswerLocked(room, result);
+                result.setRoom(snapshotLocked(room, username));
+            }
         }
 
         broadcastGeneric(room);
@@ -2435,6 +2444,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 );
             }
 
+            completeVideoAnswerLocked(room, result);
             result.setRoom(
                     snapshotLocked(
                         room,
@@ -3527,6 +3537,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             String selectedKey,
             long now) {
 
+        if (room.videoSynchronized) { return; }
+
         int seconds = normalizeWrongAnswerFreezeSeconds(
                 room.settings.wrongAnswerFreezeSeconds
         );
@@ -3801,8 +3813,16 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         }
     }
 
+    private void completeVideoAnswerLocked(RoomState room, BattleOnlineAnswerResultDto result) {
+        if (!room.videoSynchronized) { return; }
+        if (!result.isCorrect()) { result.setMessage("SAI RỒI!"); }
+        if (allConnectedClassicAnsweredLocked(room)) { finishVideoAnswerWindowLocked(room); }
+    }
+
     private void finishVideoAnswerWindowLocked(RoomState room) {
-        if (!"ANSWERING".equals(room.videoPhase) || System.currentTimeMillis() < room.questionEndsAt) { return; }
+        if (!"ANSWERING".equals(room.videoPhase) ||
+                (System.currentTimeMillis() < room.questionEndsAt && !allConnectedClassicAnsweredLocked(room))) { return; }
+        cancelClassicTimer(room.code);
         recordUnansweredClassicPlayersLocked(room);
         if (MODE_GUESS_WORD.equals(room.settings.mode)) { finalizeGuessRoundLocked(room); }
         QuestionState current = currentClassicQuestionLocked(room);
@@ -7386,7 +7406,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         for (PlayerState player : room.players.values()) {
             if (
                 !player.connected ||
-                player.spectator
+                player.spectator ||
+                (room.videoSynchronized && room.demonDefense != null && room.demonDefense.isEliminated(player.teamNumber))
             ) {
                 continue;
             }
