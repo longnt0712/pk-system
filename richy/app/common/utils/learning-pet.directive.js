@@ -871,7 +871,7 @@
                     draft.testMode = payload.testMode;
                     draft.isListening = payload.isListening === true || payload.testMode === 'LISTENING' || /listening/i.test(draft.title);
                     draft.testId = payload.testId;
-                    draft.sessionMode = payload.sessionMode || (draft.assignmentTaskId ? 'STUDY' : 'SERIOUS');
+                    draft.sessionMode = payload.sessionMode || (draft.assignmentTaskId ? 'SERIOUS' : 'STUDY');
                     draft.isPartAssignment = isPartAssignment;
                     draft.assignmentPart = isPartAssignment
                         ? (Number(payload.assignmentPart || payload.passageNumber) || null)
@@ -961,7 +961,7 @@
                     $state.go(task.activityType === 'COMPREHENSIVE' ? 'application.comprehensive_actual_test'
                         : (task.activityType === 'IELTS_WRITING' ? 'application.ielts_writing_actual_test' : (task.activityType === 'IELTS_LISTENING' ? 'application.ielts_listening_actual_test' : 'application.ielts_reading_actual_test')),
                         {ieltsReadingTestId: task.ieltsTestId, assignmentTaskId: task.taskId, assignmentPart: task.ieltsPart,
-                            assignmentParts: (task.remainingIeltsParts && task.remainingIeltsParts.length ? task.remainingIeltsParts : (task.ieltsParts || [task.ieltsPart])).join(','), sessionMode: 'STUDY'});
+                            assignmentParts: (task.remainingIeltsParts && task.remainingIeltsParts.length ? task.remainingIeltsParts : (task.ieltsParts || [task.ieltsPart])).join(','), sessionMode: 'SERIOUS'});
                 } else {
                     $state.go('application.englishClass');
                 }

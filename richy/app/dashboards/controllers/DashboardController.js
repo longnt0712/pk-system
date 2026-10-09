@@ -225,7 +225,7 @@
 					assignmentTaskId: task.taskId,
 					assignmentPart: task.ieltsPart,
 					assignmentParts: (task.remainingIeltsParts && task.remainingIeltsParts.length ? task.remainingIeltsParts : (task.ieltsParts || [task.ieltsPart])).join(','),
-					sessionMode: 'STUDY'
+					sessionMode: 'SERIOUS'
 				});
             } else {
                 $state.go('application.englishClass');
@@ -410,7 +410,7 @@
                 assignmentTaskId: draft.assignmentTaskId,
                 assignmentPart: draft.assignmentPart,
                 assignmentParts: (draft.assignmentParts || []).join(','),
-                sessionMode: draft.sessionMode || (draft.assignmentTaskId ? 'STUDY' : 'SERIOUS')
+                sessionMode: draft.sessionMode || (draft.assignmentTaskId ? 'SERIOUS' : 'STUDY')
             });
         };
 

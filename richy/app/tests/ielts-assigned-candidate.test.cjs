@@ -15,6 +15,7 @@ function candidate(parts, format = 'READING') {
         angular: {isArray: Array.isArray, copy: structuredClone, isDefined: value => value !== undefined,
             forEach(items, callback) { Object.keys(items || {}).forEach(key => callback(items[key], Array.isArray(items) ? Number(key) : key)); }},
         readingDraftSubmitted: false,
+        readingDraftAutosaveTimer: null,
         saveReadingDraft() {}, syncTimerForPersistence() {}, getActiveDurationSeconds: () => 60,
         formatTimerClock: () => '01:00', buildIeltsLearningState: () => ({annotationNotes: [{id: 'n1', specificNote: 'Student note'}]}),
         getWritingTaskPackages: () => [],
@@ -38,6 +39,8 @@ function candidate(parts, format = 'READING') {
     run('        vm.saveTestResult = function', '        vm.isShowDetail =');
     run('        vm.changePassage = function', '        function listeningPartNumberForOrdinal(');
     run('        function normalizeListeningCandidateParts(', '        vm.startTest = function');
+    c.vm.testSessionMode = 'SERIOUS';
+    c.vm.selectedTestSessionMode = 'SERIOUS';
     const count = format === 'LISTENING' ? 4 : 3;
     c.vm.ieltsReadingActualTest = {id: 42, title: 'Reading test', subQuestions: Array.from({length: count}, (_, index) => {
         const number = index + 1;
@@ -55,7 +58,7 @@ function candidate(parts, format = 'READING') {
 
 test('three selected Reading Parts appear together and Finish saves every answer and passage', () => {
     const c = candidate('1,2,3');
-    assert.equal(c.vm.testSessionMode, 'STUDY');
+    assert.equal(c.vm.testSessionMode, 'SERIOUS');
     assert.deepEqual(Array.from(c.vm.getIeltsNavigationParts(), part => part.number), [1, 2, 3]);
     c.vm.changePassage(c.vm.ieltsReadingActualTest.subQuestions[1].subQuestions);
     assert.equal(c.vm.passageNumber, 2); assert.equal(c.vm.activeIeltsNavigationPart(), 2);
@@ -98,88 +101,99 @@ test('Listening subsets include Part 4 and preserve both selected navigation tab
     assert.deepEqual(c.submitted.questionAnswerTestResult.map(row => row.ordinalNumber), [11, 12, 31, 32]);
 });
 
-test('Study starts directly for homework even if an old URL requests Serious', () => {
+test('homework always starts directly in Serious mode', () => {
     const c = candidate('1,2'); let started = 0;
-    c.$location = {search: () => ({sessionMode: 'SERIOUS', startFresh: '1'})};
+    c.$location = {search: () => ({sessionMode: 'STUDY'})};
     c.readReadingDraft = () => null; c.vm.startTest = () => { started++; };
     c.waitForReadingLearningDrafts = ready => ready();
     const start = source.indexOf('        var requestedSessionMode =');
     nodeVm.runInContext(source.slice(start, source.indexOf('        vm.confirmLeaveTest =', start)), c);
     c.vm.requestStartTest();
-    assert.equal(started, 1); assert.equal(c.vm.testSessionMode, 'STUDY');
+    assert.equal(started, 1); assert.equal(c.vm.testSessionMode, 'SERIOUS');
+    assert.deepEqual(Array.from(c.vm.assignedParts), [1, 2]);
+    assert.deepEqual(Array.from(c.vm.nextAssignmentParts), []);
     assert.equal(c.vm.showTestModeDialog, false);
     assert.ok(!template.includes('part.number === vm.assignedPart'), 'the template must not hide selected tabs');
 });
 
-test('homework splits noted Parts into Serious and unnoted Parts into Study', () => {
+test('personal Study notes never choose or populate assigned Serious Parts', () => {
     const c = candidate('1,3');
     c.$location = {search: () => ({})};
-    let saved = {partNumbers: [1, 2, 3], studiedParts: [1, 3],
+    const personalStudy = {partNumbers: [1, 2, 3], studiedParts: [1, 3],
         annotationNotes: [{partNumber: 1, specificNote: 'Remember this'}, {partNumber: 3, specificNote: 'Part 3 note'}]};
-    c.readingDraftStorageKey = () => 'study'; c.readStoredDraft = () => saved;
-    c.readReadingDraft = (id, mode) => mode === 'STUDY' ? saved : null;
+    let studyRead = false;
+    c.readingDraftStorageKey = () => 'study'; c.readStoredDraft = () => personalStudy;
+    c.readReadingDraft = (id, mode) => { if (mode === 'STUDY') { studyRead = true; } return null; };
     c.waitForReadingLearningDrafts = ready => ready(); c.vm.startTest = () => {};
     const start = source.indexOf('        var requestedSessionMode =');
     nodeVm.runInContext(source.slice(start, source.indexOf('        vm.confirmLeaveTest =', start)), c);
-    c.vm.requestStartTest(); assert.equal(c.vm.testSessionMode, 'SERIOUS');
+    c.vm.requestStartTest();
+    assert.equal(studyRead, false);
+    assert.equal(c.vm.testSessionMode, 'SERIOUS');
     assert.deepEqual(Array.from(c.vm.assignedParts), [1, 3]);
-    assert.equal(saved.annotationNotes[0].specificNote, 'Remember this', 'Test must keep the personal Study notes');
-    saved = {...saved, annotationNotes: [{partNumber: 1, specificNote: 'Only Part 1 has a note'}]};
-    c.vm.requestStartTest(); assert.equal(c.vm.testSessionMode, 'SERIOUS');
-    assert.deepEqual(Array.from(c.vm.assignedParts), [1], 'only noted Part 1 appears in Serious');
-    assert.deepEqual(Array.from(c.vm.nextAssignmentParts), [3]);
-    assert.equal(c.vm.nextAssignmentSessionMode, 'STUDY');
-    saved = {...saved, annotationNotes: []};
-    c.vm.requestStartTest(); assert.equal(c.vm.testSessionMode, 'STUDY', 'completed but no notes stays in Study');
-    saved = {...saved, annotationNotes: [{partNumber: 1, specificNote: 'Note'}, {partNumber: 3, specificNote: 'Note'}], studiedParts: [1]};
-    c.vm.requestStartTest(); assert.equal(c.vm.testSessionMode, 'SERIOUS', 'the saved notes identify previously studied Parts');
-    saved = null;
-    c.vm.requestStartTest(); assert.equal(c.vm.testSessionMode, 'STUDY', 'no attempt stays in Study');
+    assert.deepEqual(Array.from(c.vm.nextAssignmentParts), []);
+    assert.equal(personalStudy.annotationNotes[0].specificNote, 'Remember this');
     assert.equal(c.vm.showTestModeDialog, false);
 });
 
-test('an unfinished Study assignment stays in Study when the student adds notes and reloads', () => {
+test('an unfinished assigned attempt resumes in Serious without using a Study session', () => {
     const c = candidate('2');
-    const shared = {annotationNotes: [{partNumber: 2, specificNote: 'Added during this attempt'}]};
     const pending = {userId: 7, testId: 42, assignmentTaskId: 10, assignmentParts: [2],
-        sessionMode: 'STUDY', assignmentSession: true, completed: false};
-    c.readingDraftMemory = {pending}; c.readStoredDraft = key => key === 'pending' ? pending : shared;
-    c.readReadingDraft = () => shared; c.waitForReadingLearningDrafts = ready => ready();
+        sessionMode: 'SERIOUS', completed: false,
+        annotationNotes: [{partNumber: 2, specificNote: 'Assigned note'}]};
+    c.readingDraftMemory = {pending}; c.readStoredDraft = key => key === 'pending' ? pending : null;
+    c.readReadingDraft = (id, mode) => mode === 'SERIOUS' ? pending : null;
+    c.waitForReadingLearningDrafts = ready => ready();
     c.$location = {search: () => ({})}; c.vm.startTest = () => {};
     const start = source.indexOf('        var requestedSessionMode =');
     nodeVm.runInContext(source.slice(start, source.indexOf('        vm.confirmLeaveTest =', start)), c);
     c.vm.requestStartTest();
-    assert.equal(c.vm.testSessionMode, 'STUDY');
+    assert.equal(c.vm.testSessionMode, 'SERIOUS');
     assert.deepEqual(Array.from(c.vm.assignedParts), [2]);
     assert.equal(c.vm.isLearningReview, false, 'Finish stays available until the student submits');
 });
 
-test('legacy note anchors split the assignment and Finish submits only the active session Parts', () => {
+test('assigned Serious submission includes all assigned Parts and its own note snapshot', () => {
     const c = candidate('1,3');
-    const shared = {annotationNotes: [{id: 'old-note', specificNote: 'Old Part 3 note'}],
-        annotations: [{containerId: 'passage-text-3', hasNote: true, noteId: 'old-note'}]};
-    c.readingDraftMemory = {}; c.readStoredDraft = () => shared;
-    c.readReadingDraft = () => shared; c.waitForReadingLearningDrafts = ready => ready();
-    let nextParams;
-    c.$location = {search: params => { if (params) { nextParams = params; } return {}; }};
+    c.readingDraftMemory = {}; c.readStoredDraft = () => null;
+    c.readReadingDraft = () => null; c.waitForReadingLearningDrafts = ready => ready();
+    c.$location = {search: () => ({})};
     c.vm.startTest = () => {};
     const start = source.indexOf('        var requestedSessionMode =');
     nodeVm.runInContext(source.slice(start, source.indexOf('        vm.confirmLeaveTest =', start)), c);
     c.vm.requestStartTest();
     assert.equal(c.vm.testSessionMode, 'SERIOUS');
-    assert.deepEqual(Array.from(c.vm.assignedParts), [3]);
-    assert.deepEqual(Array.from(c.vm.getIeltsNavigationParts(), part => part.number), [3]);
+    assert.deepEqual(Array.from(c.vm.assignedParts), [1, 3]);
+    assert.deepEqual(Array.from(c.vm.getIeltsNavigationParts(), part => part.number), [1, 3]);
     c.vm.saveTestResult();
     assert.equal(c.submitted.assignmentTaskId, 10); assert.equal(c.submitted.ieltsSessionMode, 'SERIOUS');
-    assert.deepEqual(c.submitted.questionAnswerTestResult.map(row => row.ordinalNumber), [27, 28]);
-    c.vm.continueAssignedParts();
-    assert.equal(nextParams.assignmentTaskId, 10); assert.equal(nextParams.assignmentParts, '1');
-    assert.equal(nextParams.sessionMode, 'STUDY');
+    assert.deepEqual(c.submitted.questionAnswerTestResult.map(row => row.ordinalNumber), [1, 2, 27, 28]);
+    assert.equal(JSON.parse(c.submitted.ieltsLearningState).annotationNotes[0].specificNote, 'Student note');
+});
+
+test('failed assigned submission keeps its task draft for the next attempt', async () => {
+    const c = candidate('1');
+    c.service.saveTestResult = payload => {
+        c.submitted = structuredClone(payload);
+        return Promise.resolve({id: 501, resultStatus: 'FAILED'});
+    };
+    c.clearReadingDraft = () => { c.cleared = (c.cleared || 0) + 1; };
+    c.markStudyDraftCompleted = () => { c.marked = (c.marked || 0) + 1; };
+    c.showSubmittedTestResult = () => {};
+    c.vm.saveTestResult();
+    await new Promise(setImmediate);
+    assert.equal(c.submitted.assignmentTaskId, 10);
+    assert.equal(c.submitted.ieltsSessionMode, 'SERIOUS');
+    assert.equal(c.marked || 0, 0);
+    assert.equal(c.cleared || 0, 0);
 });
 
 test('real Angular navigation keeps all assigned tabs and Finish accessible on desktop and mobile', async () => {
     const playwright = require(path.join(require('node:os').homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
-    const browser = await playwright.chromium.launch({headless: true, executablePath: 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'});
+    const chromePaths = ['C:/Program Files/Google/Chrome/Application/chrome.exe',
+        'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'];
+    const browser = await playwright.chromium.launch({headless: true,
+        executablePath: chromePaths.find(candidatePath => fs.existsSync(candidatePath))});
     const navStart = template.indexOf('<div class="idp-part-switcher">');
     const navEnd = template.indexOf('<label class="idp-review-control', navStart);
     const finish = template.match(/<button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" type="button"[\s\S]*?<\/button>/)[0];

@@ -4,6 +4,7 @@ import com.globits.richy.domain.LearningDraft;
 import com.globits.richy.domain.TestResult;
 import com.globits.richy.domain.Question;
 import com.globits.richy.domain.QuestionAnswer;
+import com.globits.richy.domain.QuestionAnswerTestResult;
 import com.globits.richy.domain.Answer;
 import com.globits.richy.domain.EnrolmentClassScheduleTask;
 import com.globits.richy.dto.LearningDraftDto;
@@ -161,7 +162,8 @@ public class IeltsNotePersistenceTest {
             Question questionPackage = new Question(); questionPackage.setType(2);
             Question question = new Question(); question.setId((long) ordinal); question.setParent(questionPackage);
             QuestionAnswer answer = new QuestionAnswer(); answer.setId(100L + ordinal); answer.setQuestion(question);
-            Answer value = new Answer(); value.setAnswer("answer-" + ordinal); answer.setAnswer(value);
+            Answer value = new Answer(); value.setAnswer("answer-" + ordinal); answer.setAnswer(value); answer.setCorrect(true);
+            question.setQuestionAnswers(new LinkedHashSet<QuestionAnswer>(Arrays.asList(answer)));
             when(answers.findOne(answer.getId())).thenReturn(answer); when(answers.getOne(answer.getId())).thenReturn(answer);
             QuestionAnswerTestResultDto row = new QuestionAnswerTestResultDto(); row.setOrdinalNumber(ordinal);
             QuestionAnswerDto answerDto = new QuestionAnswerDto(); answerDto.setId(answer.getId());
@@ -176,6 +178,7 @@ public class IeltsNotePersistenceTest {
         TestResultDto detail = service.getObjectById(saved.getId());
         assertEquals(Arrays.asList(1, 2, 3), detail.getCompletedParts()); assertNull(detail.getCompletedPart());
         assertEquals(Long.valueOf(99L), detail.getAssignmentTaskId()); assertEquals("SUCCESS", detail.getResultStatus());
+        assertEquals("SERIOUS", detail.getIeltsSessionMode());
         assertEquals(3, detail.getQuestionAnswerTestResult().size());
         assertTrue(detail.getTestTakerPerformance().contains("Part 3"));
         assertEquals(STUDY, detail.getIeltsLearningState());
@@ -184,5 +187,32 @@ public class IeltsNotePersistenceTest {
 
     @Test(expected = IllegalArgumentException.class) public void groupedSubmissionRejectsAnUnassignedPart() {
         TestResultDto dto = assignedSubmission(); dto.setCompletedParts(Arrays.asList(1, 4)); service.saveObject(dto);
+    }
+
+    private Set<QuestionAnswerTestResult> objectiveAnswers(int total, int correct) {
+        Set<QuestionAnswerTestResult> rows = new LinkedHashSet<>();
+        for (int index = 0; index < total; index++) {
+            Question questionPackage = new Question(); questionPackage.setType(2);
+            Question question = new Question(); question.setId(1000L + index); question.setParent(questionPackage);
+            QuestionAnswer answer = new QuestionAnswer(); answer.setId(2000L + index); answer.setQuestion(question); answer.setCorrect(true);
+            Answer value = new Answer(); value.setAnswer("correct-" + index); answer.setAnswer(value);
+            question.setQuestionAnswers(new LinkedHashSet<QuestionAnswer>(Arrays.asList(answer)));
+            QuestionAnswerTestResult row = new QuestionAnswerTestResult(); row.setQuestionAnswer(answer);
+            row.setOrdinalNumber(index + 1); row.setClientAnswer(index < correct ? "correct-" + index : "wrong");
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    @Test public void objectiveIeltsRequiresAtLeastEightyFivePercent() {
+        assertTrue((Boolean) ReflectionTestUtils.invokeMethod(service, "passedIeltsObjectiveThreshold", objectiveAnswers(20, 17)));
+        assertFalse((Boolean) ReflectionTestUtils.invokeMethod(service, "passedIeltsObjectiveThreshold", objectiveAnswers(20, 16)));
+    }
+
+    @Test public void dailyListeningAcceptsExactlyEightyFivePercent() {
+        TestResultDto dto = new TestResultDto(); dto.setTestType(3); dto.setUser(new UserDto(user));
+        dto.setTestTime("GAPS 85%");
+        TestResultDto saved = service.saveObject(dto);
+        assertEquals("SUCCESS", saved.getResultStatus());
     }
 }

@@ -2664,7 +2664,7 @@
         vm.isStartingTest = false;
         vm.startTestError = '';
 
-        var requestedSessionMode = vm.assignmentTaskId ? 'STUDY' :
+        var requestedSessionMode = vm.assignmentTaskId ? 'SERIOUS' :
             (String($location.search().sessionMode || '').toUpperCase() === 'SERIOUS' ? 'SERIOUS' : 'STUDY');
         var startFreshSeriousTest = requestedSessionMode === 'SERIOUS'
             && String($location.search().startFresh || '') === '1';
@@ -2677,47 +2677,6 @@
             vm.selectedTestSessionMode = existingSessionDraft.sessionMode;
         }
 
-        function splitAssignedParts(studyDraft) {
-            var seriousParts = requestedAssignmentParts.filter(function (part) {
-                return (studyDraft.annotationNotes || []).some(function (note) {
-                    var notePart = Number(note.partNumber || note.passage);
-                    if (!notePart) {
-                        (studyDraft.annotations || []).some(function (annotation) {
-                            if (annotation.hasNote && annotation.noteId === note.id) {
-                                var containerPart = /-(\d+)$/.exec(annotation.containerId || '');
-                                notePart = containerPart ? Number(containerPart[1]) : null;
-                                return notePart === part;
-                            }
-                            return false;
-                        });
-                    }
-                    return notePart === part;
-                });
-            });
-            return {serious: seriousParts, study: requestedAssignmentParts.filter(function (part) { return seriousParts.indexOf(part) < 0; })};
-        }
-
-        function findPendingAssignedSession() {
-            var keys = Object.keys(typeof readingDraftMemory === 'undefined' ? {} : readingDraftMemory);
-            try {
-                for (var index = 0; index < $window.localStorage.length; index++) { keys.push($window.localStorage.key(index)); }
-            } catch (ignoreAssignmentKeyListing) {}
-            var newest = null;
-            angular.forEach(keys, function (key) {
-                var draft = readStoredDraft(key);
-                var expectedTestMode = vm.isComprehensiveRoute ? 'COMPREHENSIVE' : (vm.isWritingRoute ? 'WRITING' : (vm.isListeningRoute ? 'LISTENING' : 'READING'));
-                if (!draft || draft.completed || String(draft.userId) !== String(vm.currentUser.id)
-                        || String(draft.testId) !== String($stateParams.ieltsReadingTestId)
-                        || String(draft.assignmentTaskId) !== String(vm.assignmentTaskId)
-                        || (draft.testMode && draft.testMode !== expectedTestMode)
-                        || (draft.sessionMode !== 'SERIOUS' && !draft.assignmentSession)) { return; }
-                var parts = normalizeAssignedParts(draft.assignmentParts || draft.assignmentPart);
-                if (!parts.length || parts.some(function (part) { return requestedAssignmentParts.indexOf(part) < 0; })) { return; }
-                if (!newest || new Date(draft.savedAt || 0) > new Date(newest.savedAt || 0)) { newest = draft; }
-            });
-            return newest;
-        }
-
         vm.requestStartTest = function () {
             if (vm.isStartingTest) { return; }
             if (vm.isPreviewMode) {
@@ -2728,19 +2687,15 @@
             if (vm.assignmentTaskId) {
                 waitForReadingLearningDrafts(function () {
                     if (vm.isStartTest || vm.isStartingTest) { return; }
-                    var studyDraft = readReadingDraft($stateParams.ieltsReadingTestId, 'STUDY') || {};
-                    var groups = splitAssignedParts(studyDraft);
-                    var pendingSession = findPendingAssignedSession();
-                    requestedSessionMode = pendingSession ? pendingSession.sessionMode : (groups.serious.length ? 'SERIOUS' : 'STUDY');
-                    vm.assignedParts = pendingSession ? normalizeAssignedParts(pendingSession.assignmentParts || pendingSession.assignmentPart)
-                        : (requestedSessionMode === 'SERIOUS' ? groups.serious : groups.study);
+                    requestedSessionMode = 'SERIOUS';
+                    vm.assignedParts = angular.copy(requestedAssignmentParts);
                     vm.assignedPart = vm.assignedParts[0];
-                    vm.nextAssignmentParts = requestedAssignmentParts.filter(function (part) { return vm.assignedParts.indexOf(part) < 0; });
-                    vm.nextAssignmentSessionMode = vm.nextAssignmentParts.some(function (part) { return groups.serious.indexOf(part) >= 0; }) ? 'SERIOUS' : 'STUDY';
+                    vm.nextAssignmentParts = [];
+                    vm.nextAssignmentSessionMode = null;
                     vm.testSessionMode = vm.selectedTestSessionMode = requestedSessionMode;
                     vm.isLearningReview = false;
                     vm.showTestModeDialog = false;
-                    vm.showAudioListening = vm.isListeningRoute && requestedSessionMode === 'STUDY';
+                    vm.showAudioListening = false;
                     vm.showAudio = vm.showAudioListening;
                     vm.startTest();
                 }, function () {
@@ -3311,10 +3266,11 @@
             service.saveTestResult(vm.testResult).then(function (data) {
                 vm.isSubmittingTest = false;
                 readingDraftSubmitted = true;
-                if (!vm.isFlexibleRoute || !data || data.resultStatus !== 'FAILED') {
+                var keepFailedAssignmentDraft = vm.assignmentTaskId && data && data.resultStatus === 'FAILED';
+                if ((!vm.isFlexibleRoute || !data || data.resultStatus !== 'FAILED') && !keepFailedAssignmentDraft) {
                     markStudyDraftCompleted(data && data.id);
                 }
-                if (vm.testSessionMode !== 'STUDY') {
+                if (vm.testSessionMode !== 'STUDY' && !keepFailedAssignmentDraft) {
                     clearReadingDraft();
                 }
                 $timeout.cancel(readingDraftAutosaveTimer);

@@ -247,7 +247,9 @@ test('pet caches cloud drafts, hides dismissed drafts and labels their source', 
 
     item.payload = JSON.stringify({...cloud, assignmentTaskId: 99});
     item.savedAt += 1;
-    assert.equal(h.hooks.parseDraft(item).sourceLabel, 'Bài lớp giao');
+    const assignedDraft = h.hooks.parseDraft(item);
+    assert.equal(assignedDraft.sourceLabel, 'Bài lớp giao');
+    assert.equal(assignedDraft.sessionMode, 'SERIOUS');
     item.payload = JSON.stringify({...cloud, hiddenFromDashboard: true});
     item.savedAt += 1;
     assert.equal(h.hooks.parseDraft(item), null);

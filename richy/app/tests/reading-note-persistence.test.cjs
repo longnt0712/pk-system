@@ -280,44 +280,46 @@ test('serious completion clears its server draft even when local storage is bloc
     assert.equal(c.readStoredDraft(c.readingDraftStorageKey(42, 'STUDY')).annotationNotes[0], 'study');
 });
 
-test('a submitted legacy Part 1 seeds the combined assignment without hiding Finish', () => {
+test('assigned Serious draft restores only the matching task and Parts', () => {
     const {context: c} = setup();
-    Object.assign(c.vm, {assignmentTaskId: 10, isPartAssignment: true, assignedPart: 1, assignedParts: [1, 2, 3]});
-    c.readingDraftTaskSuffix = ':task:10:parts:1-2-3';
-    c.storeReadingDraft('ieltsReadingInProgress:7:reading:test:42:task:10', {
-        userId: 7, testId: 42, testMode: 'READING', sessionMode: 'STUDY', assignmentTaskId: 10,
-        assignmentPart: 1, completed: true, resultId: 100, savedAt: '2026-10-07',
-        results: [{ordinalNumber: 1, clientAnswer: 'rats'}], annotationNotes: [{id: 'n1', specificNote: 'Keep me'}]
+    Object.assign(c.vm, {assignmentTaskId: 10, isPartAssignment: true, assignedPart: 1, assignedParts: [1, 3]});
+    c.readingDraftTaskSuffix = ':task:10:parts:1-3';
+    const taskKey = c.readingDraftStorageKey(42, 'SERIOUS');
+    c.storeReadingDraft(taskKey, {
+        userId: 7, testId: 42, testMode: 'READING', sessionMode: 'SERIOUS', assignmentTaskId: 10,
+        assignmentPart: 1, assignmentParts: [1, 3], completed: false, savedAt: '2026-10-07',
+        results: [{ordinalNumber: 1, clientAnswer: 'rats'}], annotationNotes: [{id: 'n1', specificNote: 'Assigned note'}]
     });
-    const restored = c.readReadingDraft(42, 'STUDY');
-    assert.equal(restored.completed, false); assert.equal(restored.resultId, null);
+    const restored = c.readReadingDraft(42, 'SERIOUS');
+    assert.equal(restored.assignmentTaskId, 10);
+    assert.deepEqual(Array.from(restored.assignmentParts), [1, 3]);
     assert.equal(restored.results[0].clientAnswer, 'rats');
-    assert.equal(restored.annotationNotes[0].specificNote, 'Keep me');
+    assert.equal(restored.annotationNotes[0].specificNote, 'Assigned note');
+    assert.equal(c.readReadingDraft(42, 'STUDY'), null);
 });
 
-test('assigned and personal Study share learning while submitted assignments remain submittable', () => {
+test('assigned Serious and personal Study keep independent notes', () => {
     const {context: c} = setup();
+    const sharedKey = c.readingDraftStorageKey(42, 'STUDY');
+    c.storeReadingDraft(sharedKey, {userId: 7, testId: 42, testMode: 'READING', sessionMode: 'STUDY',
+        assignmentTaskId: null, annotationNotes: [{id: 'study-note', specificNote: 'Personal note'}], savedAt: '2026-10-07'});
     Object.assign(c.vm, {assignmentTaskId: 10, isPartAssignment: true, assignedPart: 2, assignedParts: [2]});
     c.readingDraftTaskSuffix = ':task:10:parts:2';
-    const oldKey = 'ieltsReadingInProgress:7:reading:test:42:task:10';
-    const draft = {userId: 7, testId: 42, sessionMode: 'STUDY', assignmentTaskId: 10, assignmentPart: 1, completed: true};
-    c.storeReadingDraft(oldKey, draft);
-    assert.equal(c.readReadingDraft(42, 'STUDY').completed, false, 'a submitted Part cannot hide Finish on the assignment');
-    const sharedKey = c.readingDraftStorageKey(42, 'STUDY');
-    c.storeReadingDraft(sharedKey, {...draft, assignmentTaskId: null, assignmentPart: null, isPartAssignment: false,
-        annotationNotes: [{id: 'n1', specificNote: 'Shared note'}], studiedParts: [1], partNumbers: [1, 2, 3], completed: false});
-    assert.equal(c.readReadingDraft(42, 'STUDY').annotationNotes[0].specificNote, 'Shared note');
-    c.vm.assignmentTaskId = null; c.vm.isPartAssignment = false; c.readingDraftTaskSuffix = '';
-    assert.equal(c.readingDraftStorageKey(42, 'STUDY'), sharedKey);
-    assert.equal(c.readReadingDraft(42, 'STUDY').annotationNotes[0].specificNote, 'Shared note');
-    assert.deepEqual(Array.from(c.readReadingDraft(42, 'STUDY').studiedParts), [1]);
+    const assignedKey = c.readingDraftStorageKey(42, 'SERIOUS');
+    c.storeReadingDraft(assignedKey, {userId: 7, testId: 42, testMode: 'READING', sessionMode: 'SERIOUS',
+        assignmentTaskId: 10, assignmentPart: 2, assignmentParts: [2], isPartAssignment: true,
+        annotationNotes: [{id: 'assigned-note', specificNote: 'Teacher assignment note'}], savedAt: '2026-10-08'});
+    assert.notEqual(sharedKey, assignedKey);
+    assert.equal(c.readReadingDraft(42, 'STUDY').annotationNotes[0].specificNote, 'Personal note');
+    assert.equal(c.readReadingDraft(42, 'SERIOUS').annotationNotes[0].specificNote, 'Teacher assignment note');
 });
 
-test('saving a selected Part keeps the answers and notes of temporarily hidden Parts', () => {
+test('saving assigned Serious progress stays task-scoped and preserves personal Study notes', () => {
     const {context: c} = setup();
     Object.assign(c.vm, {ieltsReadingActualTest: {id: 42, title: 'Reading'}, isStartTest: true,
         assignmentTaskId: 10, isPartAssignment: true, assignedParts: [2], assignedPart: 2,
-        availableIeltsParts: [1, 2, 3], availableIeltsQuestionCount: 40, annotationNotes: [{id: 'n1', specificNote: 'Part 1 note'}]});
+        testSessionMode: 'SERIOUS', availableIeltsParts: [1, 2, 3], availableIeltsQuestionCount: 40,
+        annotationNotes: [{id: 'n1', specificNote: 'Assigned Part 2 note'}]});
     c.$scope = {counter: 0}; c.syncTimerForPersistence = () => {}; c.getActiveDurationSeconds = () => 60;
     c.getReadingDraftPartNumbers = () => [2];
     c.getReadingQuestionEntries = () => [{question: {ordinalNumber: 14}}];
@@ -326,19 +328,19 @@ test('saving a selected Part keeps the answers and notes of temporarily hidden P
     c.serializeReadingQuestionStates = () => [{ordinalNumber: 14}];
     c.serializeCompleteListStates = () => [];
     c.serializeReadingAnnotations = () => [{containerId: 'passage-text-1', start: 0, end: 5, noteId: 'n1'}];
-    const key = c.readingDraftStorageKey(42, 'STUDY');
-    c.storeReadingDraft(key, {results: [{ordinalNumber: 1, clientAnswer: 'rats'}, {ordinalNumber: 14, clientAnswer: 'A'}],
-        studiedParts: [1], annotationNotes: c.vm.annotationNotes});
+    const studyKey = c.readingDraftStorageKey(42, 'STUDY');
+    c.storeReadingDraft(studyKey, {userId: 7, testId: 42, testMode: 'READING', sessionMode: 'STUDY', savedAt: '2026-10-07',
+        annotationNotes: [{id: 'personal', specificNote: 'Personal Study note'}]});
+    const key = c.readingDraftStorageKey(42, 'SERIOUS');
     const start = source.indexOf('        function saveReadingDraft()');
     vmModule.runInContext(source.slice(start, source.indexOf('        function findDraftQuestionState(', start)), c);
     c.saveReadingDraft();
     const draft = c.readStoredDraft(key);
-    assert.deepEqual(Array.from(draft.results, row => row.clientAnswer), ['rats', 'C']);
-    assert.equal(draft.assignmentTaskId, null); assert.equal(draft.isPartAssignment, false);
-    assert.equal(draft.totalQuestions, 40); assert.equal(draft.annotationNotes[0].specificNote, 'Part 1 note');
-    c.markStudyDraftCompleted(100);
-    assert.deepEqual(Array.from(c.readStoredDraft(key).studiedParts), [1, 2]);
-    assert.equal(c.readStoredDraft(key).completed, false, 'Part 3 remains available to learn');
+    assert.deepEqual(Array.from(draft.results, row => row.clientAnswer), ['C']);
+    assert.equal(draft.assignmentTaskId, 10); assert.equal(draft.isPartAssignment, true);
+    assert.deepEqual(Array.from(draft.assignmentParts), [2]);
+    assert.equal(draft.annotationNotes[0].specificNote, 'Assigned Part 2 note');
+    assert.equal(c.readStoredDraft(studyKey).annotationNotes[0].specificNote, 'Personal Study note');
 });
 
 test('note anchors follow their text when selected Listening or Writing Parts change the shared pane', () => {

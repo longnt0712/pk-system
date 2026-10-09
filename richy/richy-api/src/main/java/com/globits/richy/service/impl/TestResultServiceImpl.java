@@ -690,7 +690,7 @@ public class TestResultServiceImpl implements TestResultService {
 			if (percentage < 0D || percentage > 100D) {
 				throw new IllegalArgumentException("Điểm Daily Listening phải từ 0 đến 100%.");
 			}
-			passedDailyListening = percentage > 85D;
+			passedDailyListening = percentage >= 85D;
 		}
 		if (Integer.valueOf(6).equals(dto.getTestType()) || Integer.valueOf(7).equals(dto.getTestType())) {
 			boolean writingTaskFound = false;
@@ -869,7 +869,8 @@ public class TestResultServiceImpl implements TestResultService {
 		domain.setCompletedParts(dto.getCompletedParts());
 		domain.setAssignmentTaskId(dto.getAssignmentTaskId());
 		if (Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType()) || Integer.valueOf(6).equals(dto.getTestType()) || Integer.valueOf(7).equals(dto.getTestType())) {
-			String sessionMode = "STUDY".equalsIgnoreCase(dto.getIeltsSessionMode()) ? "STUDY" : "SERIOUS";
+			String sessionMode = dto.getAssignmentTaskId() != null ? "SERIOUS"
+					: ("STUDY".equalsIgnoreCase(dto.getIeltsSessionMode()) ? "STUDY" : "SERIOUS");
 			Integer activeSeconds = dto.getActiveDurationSeconds() == null ? 0 : dto.getActiveDurationSeconds();
 			if (activeSeconds < 0 || activeSeconds > 604800) {
 				throw new IllegalArgumentException("Thời gian làm bài IELTS không hợp lệ.");
@@ -884,14 +885,13 @@ public class TestResultServiceImpl implements TestResultService {
 			if (newResult || dto.getActiveDurationSeconds() != null) { domain.setActiveDurationSeconds(activeSeconds); }
 			if (newResult || learningState != null) { domain.setIeltsLearningState(learningState); }
 		}
-        domain.setResultStatus(Integer.valueOf(1).equals(dto.getTestType())
+		domain.setResultStatus(Integer.valueOf(1).equals(dto.getTestType())
                 ? (passedDailyVocab ? "SUCCESS" : "FAILED")
                 : Integer.valueOf(3).equals(dto.getTestType())
                     ? (passedDailyListening ? "SUCCESS" : "FAILED")
-					: (Integer.valueOf(6).equals(dto.getTestType()) || Integer.valueOf(7).equals(dto.getTestType()))
+					: Integer.valueOf(7).equals(dto.getTestType())
 						? (passedComprehensive ? "SUCCESS" : "FAILED")
-                    : ((Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType()))
-                            && !dto.getCompletedParts().isEmpty() ? "SUCCESS" : null));
+						: null);
 		domain.setNumberOfWords(dto.getNumberOfWords());
 		domain.setTestTakerPerformance(dto.getTestTakerPerformance());
 		if(dto.getQuestionAnswerTestResult() !=null && dto.getQuestionAnswerTestResult().size()>0) {
@@ -933,6 +933,14 @@ public class TestResultServiceImpl implements TestResultService {
 				domain.getQuestionAnswerTestResult().clear();
 			}
 		}
+		if (Integer.valueOf(2).equals(dto.getTestType()) || Integer.valueOf(4).equals(dto.getTestType())
+				|| Integer.valueOf(6).equals(dto.getTestType())) {
+			boolean passedObjectiveQuestions = passedIeltsObjectiveThreshold(domain.getQuestionAnswerTestResult());
+			if (Integer.valueOf(6).equals(dto.getTestType())) {
+				passedObjectiveQuestions = passedComprehensive && passedObjectiveQuestions;
+			}
+			domain.setResultStatus(passedObjectiveQuestions ? "SUCCESS" : "FAILED");
+		}
 		
 		
 		domain = testResultRepository.save(domain);
@@ -951,6 +959,22 @@ public class TestResultServiceImpl implements TestResultService {
 		}
 		
 		return new TestResultDto(domain);
+	}
+
+	private boolean passedIeltsObjectiveThreshold(Set<QuestionAnswerTestResult> answers) {
+		if (answers == null || answers.isEmpty()) { return false; }
+		int total = 0;
+		int correct = 0;
+		for (QuestionAnswerTestResult answer : answers) {
+			QuestionAnswer selected = answer == null ? null : answer.getQuestionAnswer();
+			Question question = selected == null ? null : selected.getQuestion();
+			Integer packageType = question == null || question.getParent() == null
+					? null : question.getParent().getType();
+			if (Integer.valueOf(16).equals(packageType) || Integer.valueOf(17).equals(packageType)) { continue; }
+			total++;
+			if (Boolean.TRUE.equals(new QuestionAnswerTestResultDto(answer).getIsCorrectTestResultDetail())) { correct++; }
+		}
+		return total > 0 && correct * 100D / total >= 85D;
 	}
 
     private TestResult findRetryAttempt(TestResultDto dto,User actor) {

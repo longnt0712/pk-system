@@ -563,6 +563,9 @@
             <section class="ielts-learning-state" data-ng-if="vm.testResult.ieltsSessionMode || (vm.ieltsLearningState.annotationNotes || []).length || (vm.ieltsLearningState.annotations || []).length">
                 <div class="ielts-learning-state-summary">
                     <span><strong>Chế độ:</strong> {{vm.testResult.ieltsSessionMode === 'STUDY' ? 'Học tập' : 'Test nghiêm túc'}}</span>
+                    <span data-ng-if="vm.testResult.assignmentTaskId"><strong>Nguồn:</strong> Bài giáo viên giao #{{vm.testResult.assignmentTaskId}}</span>
+                    <span data-ng-if="!vm.testResult.assignmentTaskId"><strong>Nguồn:</strong> Học sinh tự luyện</span>
+                    <span data-ng-if="vm.testResult.resultStatus"><strong>Kết quả:</strong> {{vm.testResult.resultStatus === 'SUCCESS' ? 'Đạt' : 'Chưa đạt'}}</span>
                     <span><strong>Thời gian làm thực tế:</strong> {{vm.formatIeltsActiveDuration(vm.testResult.activeDurationSeconds)}}</span>
                     <span><strong>Highlight:</strong> {{(vm.ieltsLearningState.annotations || []).length}}</span>
                 </div>
