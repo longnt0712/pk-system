@@ -1130,6 +1130,15 @@
         vm.selectedTestSessionMode = vm.testSessionMode;
         vm.showTestModeDialog = false;
         vm.resultQuestionTotal = 40;
+        vm.showStudyAnswerCheck = false;
+        vm.studyAnswerCheck = {
+            rows: [],
+            total: 0,
+            answered: 0,
+            correct: 0,
+            incorrect: 0,
+            unanswered: 0
+        };
 
         function getResultQuestionType(item) {
             return item && item.questionAnswer && item.questionAnswer.question &&
@@ -3907,6 +3916,174 @@
             });
             vm.testResult.questionAnswerTestResult = results;
         }
+
+        function cleanStudyAnswerText(value) {
+            return String(value == null ? '' : value)
+                .replace(/<br\s*\/?\s*>/gi, ' / ')
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/&nbsp;/gi, ' ')
+                .replace(/&amp;/gi, '&')
+                .replace(/&lt;/gi, '<')
+                .replace(/&gt;/gi, '>')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function studyAnswerValue(questionAnswer) {
+            return cleanStudyAnswerText(questionAnswer && questionAnswer.answer &&
+                questionAnswer.answer.answer != null ? questionAnswer.answer.answer : '');
+        }
+
+        function uniqueStudyAnswers(values) {
+            var unique = [];
+            angular.forEach(values || [], function (value) {
+                var cleaned = cleanStudyAnswerText(value);
+                if (cleaned && unique.indexOf(cleaned) < 0) {
+                    unique.push(cleaned);
+                }
+            });
+            return unique;
+        }
+
+        function studyCorrectAnswers(entry, result) {
+            var type = Number(entry.packageType);
+            var sourceQuestion = entry.question;
+            if ((type == 5 || type == 7) && entry.questionPackage &&
+                entry.questionPackage.subQuestions && entry.questionPackage.subQuestions.length) {
+                sourceQuestion = entry.questionPackage.subQuestions[0];
+            }
+            var questionAnswers = (sourceQuestion && sourceQuestion.questionAnswers) || [];
+            var correctAnswers = [];
+
+            angular.forEach(questionAnswers, function (questionAnswer) {
+                if (questionAnswer && questionAnswer.correct === true) {
+                    correctAnswers.push(studyAnswerValue(questionAnswer));
+                }
+            });
+
+            if (!correctAnswers.length) {
+                angular.forEach(questionAnswers, function (questionAnswer) {
+                    if (questionAnswer && questionAnswer.correctAnswer) {
+                        correctAnswers.push(questionAnswer.correctAnswer);
+                    }
+                });
+            }
+
+            if (!correctAnswers.length && result && result.questionAnswer) {
+                if (result.questionAnswer.correctAnswer) {
+                    correctAnswers.push(result.questionAnswer.correctAnswer);
+                } else if (result.correctAnswerForMultipleAnswer) {
+                    correctAnswers.push(result.correctAnswerForMultipleAnswer);
+                }
+            }
+
+            return uniqueStudyAnswers(correctAnswers);
+        }
+
+        function isStudyAnswerCorrect(entry, result, submittedAnswer, correctAnswers) {
+            var type = Number(entry.packageType);
+            var selectedAnswer = result && result.questionAnswer;
+            var normalizedSubmitted = cleanStudyAnswerText(submittedAnswer);
+
+            if (!normalizedSubmitted) { return false; }
+
+            if (type == 2 || type == 3 || type == 11) {
+                var acceptedAnswers = [];
+                angular.forEach(correctAnswers || [], function (answer) {
+                    angular.forEach(String(answer || '').split('/'), function (alternative) {
+                        var normalizedAlternative = cleanStudyAnswerText(alternative).toLowerCase();
+                        if (normalizedAlternative) { acceptedAnswers.push(normalizedAlternative); }
+                    });
+                });
+                return acceptedAnswers.indexOf(normalizedSubmitted.toLowerCase()) >= 0;
+            }
+
+            // Matching Headings and Matching Features are persisted as the
+            // selected answer text. Mirror the server's exact comparison.
+            if (type == 4 || type == 8) {
+                return !!selectedAnswer && normalizedSubmitted === studyAnswerValue(selectedAnswer);
+            }
+
+            if (selectedAnswer && selectedAnswer.correct === true) {
+                return true;
+            }
+
+            return (correctAnswers || []).some(function (answer) {
+                return cleanStudyAnswerText(answer).toLowerCase() === normalizedSubmitted.toLowerCase();
+            });
+        }
+
+        function studyResultForEntry(entry, results) {
+            var question = entry.question || {};
+            var matched = null;
+            angular.forEach(results || [], function (result) {
+                if (matched) { return; }
+                var resultQuestion = result && result.questionAnswer && result.questionAnswer.question;
+                if ((question.id != null && resultQuestion && String(resultQuestion.id) === String(question.id)) ||
+                    (question.ordinalNumber != null && result &&
+                        String(result.ordinalNumber) === String(question.ordinalNumber))) {
+                    matched = result;
+                }
+            });
+            return matched;
+        }
+
+        vm.openStudyAnswerCheck = function () {
+            if (vm.testSessionMode !== 'STUDY' || vm.isWritingRoute || vm.isPreviewMode || vm.isStartTest !== true) {
+                return;
+            }
+
+            synchronizeReadingResultsBeforeSubmit();
+            var results = vm.testResult.questionAnswerTestResult || [];
+            var summary = {
+                rows: [],
+                total: 0,
+                answered: 0,
+                correct: 0,
+                incorrect: 0,
+                unanswered: 0
+            };
+
+            angular.forEach(getReadingQuestionEntries(), function (entry) {
+                var result = studyResultForEntry(entry, results);
+                var submittedAnswer = cleanStudyAnswerText(result && result.clientAnswer);
+                var correctAnswers = studyCorrectAnswers(entry, result);
+                var status = 'unanswered';
+
+                if (submittedAnswer) {
+                    status = isStudyAnswerCorrect(entry, result, submittedAnswer, correctAnswers) ? 'correct' : 'incorrect';
+                    summary.answered++;
+                    summary[status]++;
+                } else {
+                    summary.unanswered++;
+                }
+
+                summary.rows.push({
+                    ordinalNumber: entry.question && entry.question.ordinalNumber,
+                    prompt: cleanStudyAnswerText(entry.question && entry.question.question),
+                    studentAnswer: submittedAnswer || 'Chưa chọn đáp án',
+                    correctAnswer: correctAnswers.length ? correctAnswers.join(' / ') : 'Chưa có dữ liệu đáp án',
+                    status: status,
+                    question: entry.question,
+                    packageQuestions: entry.packageQuestions,
+                    passageQuestions: entry.passageQuestions
+                });
+                summary.total++;
+            });
+
+            vm.studyAnswerCheck = summary;
+            vm.showStudyAnswerCheck = true;
+        };
+
+        vm.closeStudyAnswerCheck = function () {
+            vm.showStudyAnswerCheck = false;
+        };
+
+        vm.openStudyAnswerQuestion = function (row) {
+            if (!row || !row.question) { return; }
+            vm.closeStudyAnswerCheck();
+            vm.openReadingQuestion(row.question, row.packageQuestions, row.passageQuestions);
+        };
 
         function getCurrentReadingQuestionIndex(entries) {
             var currentOrdinalNumber = vm.tempQuestion && vm.tempQuestion.ordinalNumber;

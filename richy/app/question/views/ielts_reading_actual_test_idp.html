@@ -115,6 +115,13 @@
             <button type="button" class="idp-tool-icon" title="Highlight and notes" aria-label="Highlight and notes">
                 <i class="fa fa-pencil-square-o"></i>
             </button>
+            <button ng-if="vm.isStartTest && vm.testSessionMode === 'STUDY' && !vm.isWritingRoute && !vm.isPreviewMode"
+                    type="button"
+                    class="idp-top-check"
+                    data-ng-click="vm.openStudyAnswerCheck()">
+                <i class="fa fa-check-square-o" aria-hidden="true"></i>
+                <span>Check đáp án</span>
+            </button>
             <button ng-if="!vm.isPreviewMode && !vm.isLearningReview" ng-disabled="vm.isSubmittingTest" type="button" class="idp-top-finish" data-ng-click="vm.saveTestResult()">
                 {{vm.isSubmittingTest ? 'Saving...' : 'Finish test'}}
             </button>
@@ -1682,6 +1689,62 @@
     </div>
 
 
+</div>
+
+<div class="idp-study-check-backdrop"
+     ng-if="vm.showStudyAnswerCheck"
+     ng-class="'idp-contrast-' + vm.displayContrast"
+     ng-click="vm.closeStudyAnswerCheck()"
+     role="presentation">
+    <section class="idp-study-check-dialog"
+             ng-click="$event.stopPropagation()"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="idp-study-check-title">
+        <header class="idp-study-check-header">
+            <div>
+                <span class="idp-study-check-kicker">STUDY MODE</span>
+                <h2 id="idp-study-check-title">Kiểm tra đáp án</h2>
+                <p>Đây chỉ là phần xem lại tại chỗ, không nộp bài và không lưu kết quả Homework.</p>
+            </div>
+            <button type="button" class="idp-study-check-close" ng-click="vm.closeStudyAnswerCheck()"
+                    aria-label="Đóng bảng kiểm tra đáp án">
+                <i class="fa fa-times" aria-hidden="true"></i>
+            </button>
+        </header>
+        <div class="idp-study-check-summary" aria-label="Tổng hợp kết quả">
+            <div><strong>{{vm.studyAnswerCheck.total}}</strong><span>Tổng câu</span></div>
+            <div class="is-correct"><strong>{{vm.studyAnswerCheck.correct}}</strong><span>Đúng</span></div>
+            <div class="is-incorrect"><strong>{{vm.studyAnswerCheck.incorrect}}</strong><span>Sai</span></div>
+            <div class="is-unanswered"><strong>{{vm.studyAnswerCheck.unanswered}}</strong><span>Chưa trả lời</span></div>
+        </div>
+        <div class="idp-study-check-list">
+            <article class="idp-study-check-row"
+                     ng-repeat="row in vm.studyAnswerCheck.rows track by row.ordinalNumber"
+                     ng-class="{'is-correct': row.status === 'correct', 'is-incorrect': row.status === 'incorrect', 'is-unanswered': row.status === 'unanswered'}">
+                <div class="idp-study-check-number">{{row.ordinalNumber}}</div>
+                <div class="idp-study-check-content">
+                    <div class="idp-study-check-row-heading">
+                        <strong>Câu {{row.ordinalNumber}}</strong>
+                        <span class="idp-study-check-status" ng-if="row.status === 'correct'"><i class="fa fa-check-circle"></i> Đúng</span>
+                        <span class="idp-study-check-status" ng-if="row.status === 'incorrect'"><i class="fa fa-times-circle"></i> Sai</span>
+                        <span class="idp-study-check-status" ng-if="row.status === 'unanswered'"><i class="fa fa-minus-circle"></i> Chưa trả lời</span>
+                    </div>
+                    <p class="idp-study-check-prompt" ng-if="row.prompt">{{row.prompt}}</p>
+                    <dl class="idp-study-check-answers">
+                        <div><dt>Bạn chọn</dt><dd>{{row.studentAnswer}}</dd></div>
+                        <div><dt>Đáp án đúng</dt><dd>{{row.correctAnswer}}</dd></div>
+                    </dl>
+                </div>
+                <button type="button" class="idp-study-check-jump" ng-click="vm.openStudyAnswerQuestion(row)">
+                    Xem câu <i class="fa fa-arrow-right" aria-hidden="true"></i>
+                </button>
+            </article>
+        </div>
+        <footer class="idp-study-check-footer">
+            <button type="button" ng-click="vm.closeStudyAnswerCheck()">Đóng</button>
+        </footer>
+    </section>
 </div>
 
 <!--<div class="row margin-top-10 wrap-test change-length ">-->
@@ -3788,7 +3851,8 @@
         outline-offset: 1px;
     }
 
-    .idp-top-finish {
+    .idp-top-finish,
+    .idp-top-check {
         min-height: 34px;
         padding: 7px 13px;
         border: 1px solid #b7b9bd;
@@ -3800,10 +3864,30 @@
         cursor: pointer;
     }
 
+    .idp-top-check {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-color: #2f82bf;
+        color: #ffffff;
+        background: #1976b9;
+    }
+
+    .idp-exam-tools .idp-top-check .fa { color: inherit; }
+
     .idp-top-finish:hover,
-    .idp-top-finish:focus {
+    .idp-top-finish:focus,
+    .idp-top-check:hover,
+    .idp-top-check:focus {
         border-color: #777a80;
         background: #e8e8e6;
+    }
+
+    .idp-top-check:hover,
+    .idp-top-check:focus {
+        border-color: #155b8d;
+        color: #ffffff;
+        background: #155b8d;
     }
 
     .idp-exam-stage {
@@ -4610,6 +4694,131 @@
         vertical-align: middle;
     }
 
+    .idp-study-check-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 10120;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 22px;
+        background: rgba(15, 23, 42, .68);
+        backdrop-filter: blur(4px);
+    }
+
+    .idp-study-check-dialog {
+        display: flex;
+        flex-direction: column;
+        width: min(940px, 100%);
+        max-height: calc(100vh - 44px);
+        overflow: hidden;
+        border: 1px solid #d7dfeb;
+        border-radius: 18px;
+        color: #18243e;
+        background: #ffffff;
+        box-shadow: 0 26px 70px rgba(15, 23, 42, .34);
+    }
+
+    .idp-study-check-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 22px 24px 18px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .idp-study-check-kicker { color: #426fd2; font-size: 11px; font-weight: 800; letter-spacing: .13em; }
+    .idp-study-check-header h2 { margin: 4px 0 5px; color: inherit; font-size: 24px; font-weight: 800; }
+    .idp-study-check-header p { margin: 0; color: #667085; font-size: 13px; }
+    .idp-study-check-close {
+        flex: 0 0 38px;
+        width: 38px;
+        height: 38px;
+        border: 0;
+        border-radius: 50%;
+        color: #475467;
+        background: #eef2f7;
+    }
+
+    .idp-study-check-summary {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        padding: 16px 24px;
+        background: #f8fafc;
+    }
+
+    .idp-study-check-summary > div {
+        display: flex;
+        align-items: baseline;
+        gap: 7px;
+        padding: 10px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #ffffff;
+    }
+
+    .idp-study-check-summary strong { font-size: 20px; }
+    .idp-study-check-summary span { color: #667085; font-size: 12px; font-weight: 700; }
+    .idp-study-check-summary .is-correct strong { color: #067647; }
+    .idp-study-check-summary .is-incorrect strong { color: #b42318; }
+    .idp-study-check-summary .is-unanswered strong { color: #8a6116; }
+
+    .idp-study-check-list { flex: 1 1 auto; overflow-y: auto; padding: 4px 24px 18px; }
+    .idp-study-check-row {
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: start;
+        margin-top: 12px;
+        padding: 15px;
+        border: 1px solid #d8e0eb;
+        border-left: 4px solid #98a2b3;
+        border-radius: 12px;
+        background: #ffffff;
+    }
+
+    .idp-study-check-row.is-correct { border-left-color: #12b76a; background: #f6fef9; }
+    .idp-study-check-row.is-incorrect { border-left-color: #f04438; background: #fff8f7; }
+    .idp-study-check-row.is-unanswered { border-left-color: #f79009; background: #fffcf5; }
+    .idp-study-check-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 9px;
+        color: #ffffff;
+        background: #344054;
+        font-size: 16px;
+        font-weight: 800;
+    }
+
+    .idp-study-check-row-heading { display: flex; align-items: center; gap: 10px; }
+    .idp-study-check-status { padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+    .is-correct .idp-study-check-status { color: #067647; background: #dcfae6; }
+    .is-incorrect .idp-study-check-status { color: #b42318; background: #fee4e2; }
+    .is-unanswered .idp-study-check-status { color: #8a6116; background: #fef0c7; }
+    .idp-study-check-prompt { margin: 7px 0 9px; color: #475467; font-size: 13px; line-height: 1.45; }
+    .idp-study-check-answers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 0; }
+    .idp-study-check-answers > div { min-width: 0; padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, .78); }
+    .idp-study-check-answers dt { margin-bottom: 3px; color: #667085; font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+    .idp-study-check-answers dd { margin: 0; overflow-wrap: anywhere; color: #101828; font-size: 13px; font-weight: 700; }
+    .idp-study-check-jump,
+    .idp-study-check-footer button {
+        border: 1px solid #b9c4d3;
+        border-radius: 8px;
+        color: #344054;
+        background: #ffffff;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .idp-study-check-jump { padding: 8px 10px; }
+    .idp-study-check-footer { padding: 13px 24px; border-top: 1px solid #e2e8f0; text-align: right; }
+    .idp-study-check-footer button { padding: 9px 22px; border-color: #355dcc; color: #ffffff; background: #355dcc; }
+
     /* The heading drop area fills the remaining width of its line. */
     .idp-reading-page .passage-text .matching-heading-drop-box {
         display: inline-flex !important;
@@ -5290,6 +5499,9 @@
             font-size: 23px !important;
         }
 
+        .idp-exam-tools > .idp-top-check { min-height: 34px; margin-right: 7px; padding: 6px 9px; }
+        .idp-exam-tools > .idp-top-check span { display: none; }
+
         .idp-exam-name {
             min-width: 0;
         }
@@ -5886,6 +6098,8 @@
     .idp-reading-page.idp-contrast-yellow-black .idp-instruction-bar button,
     .idp-reading-page.idp-contrast-white-black .idp-top-finish,
     .idp-reading-page.idp-contrast-yellow-black .idp-top-finish,
+    .idp-reading-page.idp-contrast-white-black .idp-top-check,
+    .idp-reading-page.idp-contrast-yellow-black .idp-top-check,
     .idp-reading-page.idp-contrast-white-black .idp-single-choice-title:hover,
     .idp-reading-page.idp-contrast-white-black .idp-single-choice-title:focus,
     .idp-reading-page.idp-contrast-yellow-black .idp-single-choice-title:hover,
@@ -5900,6 +6114,18 @@
     .idp-reading-page.idp-contrast-yellow-black .button-question-click {
         border-color: #777777 !important;
         background: #242424 !important;
+    }
+
+    .idp-reading-page.idp-contrast-white-black .idp-multiple-answer-range {
+        border-color: #ffffff !important;
+        color: #ffffff !important;
+        background: #181818 !important;
+    }
+
+    .idp-reading-page.idp-contrast-yellow-black .idp-multiple-answer-range {
+        border-color: #ffe600 !important;
+        color: #ffe600 !important;
+        background: #181818 !important;
     }
 
     .idp-reading-page.idp-contrast-white-black .idp-selectable-question-text,
@@ -6352,6 +6578,40 @@
     .idp-reading-page.idp-contrast-yellow-black .idp-test-mode-intro,
     .idp-reading-page.idp-contrast-yellow-black .idp-test-mode-option small { color: inherit; }
 
+    .idp-study-check-backdrop.idp-contrast-white-black .idp-study-check-dialog,
+    .idp-study-check-backdrop.idp-contrast-yellow-black .idp-study-check-dialog {
+        border-color: #747474;
+        color: #ffffff;
+        background: #050505;
+    }
+
+    .idp-study-check-backdrop.idp-contrast-yellow-black .idp-study-check-dialog { color: #ffe600; }
+    .idp-study-check-backdrop.idp-contrast-white-black .idp-study-check-header,
+    .idp-study-check-backdrop.idp-contrast-white-black .idp-study-check-footer,
+    .idp-study-check-backdrop.idp-contrast-yellow-black .idp-study-check-header,
+    .idp-study-check-backdrop.idp-contrast-yellow-black .idp-study-check-footer { border-color: #606060; }
+    .idp-study-check-backdrop.idp-contrast-white-black .idp-study-check-summary,
+    .idp-study-check-backdrop.idp-contrast-yellow-black .idp-study-check-summary,
+    .idp-study-check-backdrop.idp-contrast-white-black .idp-study-check-summary > div,
+    .idp-study-check-backdrop.idp-contrast-yellow-black .idp-study-check-summary > div,
+    .idp-study-check-backdrop.idp-contrast-white-black .idp-study-check-row,
+    .idp-study-check-backdrop.idp-contrast-yellow-black .idp-study-check-row,
+    .idp-study-check-backdrop.idp-contrast-white-black .idp-study-check-answers > div,
+    .idp-study-check-backdrop.idp-contrast-yellow-black .idp-study-check-answers > div {
+        border-color: #606060;
+        color: inherit;
+        background: #181818;
+    }
+
+    .idp-study-check-backdrop.idp-contrast-white-black .idp-study-check-dialog p,
+    .idp-study-check-backdrop.idp-contrast-white-black .idp-study-check-dialog span,
+    .idp-study-check-backdrop.idp-contrast-white-black .idp-study-check-dialog dt,
+    .idp-study-check-backdrop.idp-contrast-white-black .idp-study-check-dialog dd,
+    .idp-study-check-backdrop.idp-contrast-yellow-black .idp-study-check-dialog p,
+    .idp-study-check-backdrop.idp-contrast-yellow-black .idp-study-check-dialog span,
+    .idp-study-check-backdrop.idp-contrast-yellow-black .idp-study-check-dialog dt,
+    .idp-study-check-backdrop.idp-contrast-yellow-black .idp-study-check-dialog dd { color: inherit; }
+
     @media (max-width: 640px) {
         .idp-test-mode-backdrop { padding: 10px; }
         .idp-test-mode-dialog { padding: 26px 18px 20px; border-radius: 18px; }
@@ -6359,6 +6619,16 @@
         .idp-test-mode-options { grid-template-columns: 1fr; }
         .idp-test-mode-option { min-height: 130px; padding: 17px; }
         .idp-test-mode-option strong { margin-top: 10px; }
+        .idp-study-check-backdrop { padding: 8px; }
+        .idp-study-check-dialog { max-height: calc(100vh - 16px); border-radius: 12px; }
+        .idp-study-check-header { padding: 16px; }
+        .idp-study-check-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px 16px; }
+        .idp-study-check-list { padding: 2px 16px 14px; }
+        .idp-study-check-row { grid-template-columns: 36px minmax(0, 1fr); gap: 10px; padding: 12px; }
+        .idp-study-check-number { width: 34px; height: 34px; }
+        .idp-study-check-answers { grid-template-columns: 1fr; }
+        .idp-study-check-jump { grid-column: 2; justify-self: start; }
+        .idp-study-check-footer { padding: 11px 16px; }
     }
 
     /* Writing Task is an application form, not scalable Reading question
