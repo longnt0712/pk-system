@@ -43,7 +43,7 @@ function studyContext() {
         ], 'Question two'),
         question(3, 3, 2, [
             {text: 'Paris', correct: true}
-        ], 'Question three'),
+        ], '<p>Complete the sentence:</p><div>Paris is }{SPACE}{ capital.</div><p>Drop }{HEADING}{ here.</p>'),
         question(4, 4, 2, [
             {text: 'US / USA', correct: true, clientAnswer: 'usa'}
         ], 'Question four')
@@ -92,6 +92,8 @@ test('Study answer check classifies correct, incorrect and unanswered questions 
     assert.equal(context.vm.studyAnswerCheck.rows[1].studentAnswer, 'B');
     assert.equal(context.vm.studyAnswerCheck.rows[1].correctAnswer, 'A');
     assert.equal(context.vm.studyAnswerCheck.rows[2].studentAnswer, 'Chưa chọn đáp án');
+    assert.equal(context.vm.studyAnswerCheck.rows[2].prompt, 'Complete the sentence:\nParis is _____ capital.\nDrop _____ here.');
+    assert.doesNotMatch(context.vm.studyAnswerCheck.rows[2].prompt, /SPACE|HEADING|<[^>]+>/);
     assert.equal(context.vm.studyAnswerCheck.rows[3].status, 'correct');
 });
 
@@ -108,6 +110,8 @@ test('Study mode template exposes the review modal and keeps dark question range
     assert.match(template, /Bạn chọn/);
     assert.match(template, /Đáp án đúng/);
     assert.match(template, /Chưa trả lời/);
+    assert.match(template, /width:\s*min\(1480px,\s*calc\(100vw - 32px\)\)/);
+    assert.match(template, /\.idp-study-check-prompt\s*\{[^}]*white-space:\s*pre-line/);
     assert.match(template, /idp-contrast-white-black \.idp-multiple-answer-range\s*\{[\s\S]*?color:\s*#ffffff\s*!important;[\s\S]*?background:\s*#181818\s*!important;/);
     assert.match(template, /idp-contrast-yellow-black \.idp-multiple-answer-range\s*\{[\s\S]*?color:\s*#ffe600\s*!important;[\s\S]*?background:\s*#181818\s*!important;/);
 });

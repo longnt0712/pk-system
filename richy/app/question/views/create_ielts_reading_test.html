@@ -252,7 +252,7 @@
 
         <div class="portlet light bordered">
             <div class="portlet-body">
-                <div class="row">
+                <div class="row" ng-class="{'reading-builder-video-scope': vm.isVideoBuilder()}">
                     <div class="col-md-12">
                         <div class="reading-builder-part-heading">
                             <div><span class="reading-builder-part-number">2</span><strong>{{vm.isWritingMode ? 'Writing Tasks' : (vm.isComprehensiveMode ? 'Danh sách câu hỏi' : 'Part 1')}}</strong><small>{{vm.isWritingMode ? 'Chọn Task 1, Task 2 hoặc cả hai' : (vm.isComprehensiveMode ? vm.builderValidation.totalQuestions + ' câu' : (vm.isListeningMode ? 'Câu 1–10' : 'Câu 1–13'))}}</small></div>
@@ -289,6 +289,8 @@
                             <input id="comprehensive-video-url" type="text" class="form-control" ng-model="vm.ieltsReadingTest.subQuestions[0].videoUrl"
                                    ng-model-options="{debounce: 500}" ng-change="vm.updateBuilderVideoLink()" placeholder="Dán link YouTube, TikTok hoặc file MP4...">
                             <small>YouTube: link xem, Shorts hoặc youtu.be. TikTok: dùng link đầy đủ dạng tiktok.com/@.../video/..., mở link rút gọn để lấy link này.</small>
+                        </section>
+                        <section class="comprehensive-video-sticky-panel" ng-if="vm.isVideoBuilder()">
                             <comprehensive-video-player video-link="vm.ieltsReadingTest.subQuestions[0].videoUrl" video-api="vm.builderVideoApi"
                                                         on-video-progress="vm.builderVideoProgress(seconds, duration)"></comprehensive-video-player>
                             <div class="comprehensive-video-clock"><i class="fa fa-clock-o"></i> {{vm.formatVideoTime(vm.builderVideoSeconds)}} <span ng-if="vm.videoDuration">/ {{vm.formatVideoTime(vm.videoDuration)}}</span></div>

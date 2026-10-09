@@ -11,6 +11,16 @@ const angular = {module() { return {
 }; }, noop() {}};
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../question/business/ComprehensiveVideo.js'), 'utf8'), {angular});
 const video = definitions.ComprehensiveVideo.at(-1)({URL}, {});
+const builderTemplate = fs.readFileSync(path.join(__dirname, '../question/views/create_ielts_reading_test.html'), 'utf8');
+const videoCss = fs.readFileSync(path.join(__dirname, '../assets/css/comprehensive-video.css'), 'utf8');
+
+test('builder keeps the video preview sticky only inside its question section on desktop', () => {
+    assert.match(builderTemplate, /reading-builder-video-scope/);
+    assert.match(builderTemplate, /<section class="comprehensive-video-sticky-panel" ng-if="vm\.isVideoBuilder\(\)">/);
+    assert.match(videoCss, /\.reading-builder-video-scope\s*\{[^}]*display:\s*flex[^}]*align-items:\s*stretch/);
+    assert.match(videoCss, /\.reading-builder-video-scope \.comprehensive-video-sticky-panel\s*\{[^}]*position:\s*sticky[^}]*top:\s*16px/);
+    assert.match(videoCss, /@media \(max-width:\s*996px\)[\s\S]*?\.comprehensive-video-sticky-panel\s*\{[^}]*position:\s*static/);
+});
 
 test('normalizes supported YouTube, TikTok and video file URLs and rejects unsafe or unsupported links', () => {
     for (const link of ['https://www.youtube.com/watch?v=M7lc1UVf-VE&t=90s', 'https://youtu.be/M7lc1UVf-VE?si=123',

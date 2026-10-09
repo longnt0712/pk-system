@@ -3929,6 +3929,24 @@
                 .trim();
         }
 
+        function formatStudyQuestionPrompt(value) {
+            return String(value == null ? '' : value)
+                .replace(/(?:\{\{|\}\{|\{)ENTER(?:\}\}|\}\{|\})/gi, '\n')
+                .replace(/(?:\{\{|\}\{|\{)(?:SPACE|HEADING)(?:\}\}|\}\{|\})/gi, ' _____ ')
+                .replace(/<br\s*\/?\s*>/gi, '\n')
+                .replace(/<li[^>]*>/gi, '• ')
+                .replace(/<\/(?:p|div|li|h[1-6])\s*>/gi, '\n')
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/&nbsp;/gi, ' ')
+                .replace(/&amp;/gi, '&')
+                .replace(/&lt;/gi, '<')
+                .replace(/&gt;/gi, '>')
+                .replace(/[ \t]+/g, ' ')
+                .replace(/ *\n */g, '\n')
+                .replace(/\n{3,}/g, '\n\n')
+                .trim();
+        }
+
         function studyAnswerValue(questionAnswer) {
             return cleanStudyAnswerText(questionAnswer && questionAnswer.answer &&
                 questionAnswer.answer.answer != null ? questionAnswer.answer.answer : '');
@@ -4060,7 +4078,7 @@
 
                 summary.rows.push({
                     ordinalNumber: entry.question && entry.question.ordinalNumber,
-                    prompt: cleanStudyAnswerText(entry.question && entry.question.question),
+                    prompt: formatStudyQuestionPrompt(entry.question && entry.question.question),
                     studentAnswer: submittedAnswer || 'Chưa chọn đáp án',
                     correctAnswer: correctAnswers.length ? correctAnswers.join(' / ') : 'Chưa có dữ liệu đáp án',
                     status: status,

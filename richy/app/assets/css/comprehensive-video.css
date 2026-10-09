@@ -3,6 +3,7 @@
 .comprehensive-content-picker button.is-active { color: #137e78; border-color: #35b1a7; background: #eaf8f5; box-shadow: 0 2px 8px rgba(26, 139, 123, .08); }
 .comprehensive-video-builder > label { font-weight: 700; color: #203c50; }
 .comprehensive-video-builder > small { display: block; margin: 9px 0 16px; color: #647586; line-height: 1.6; }
+.comprehensive-video-sticky-panel { padding-bottom: 18px; background: #fff; }
 .comprehensive-video-player { display: block; overflow: hidden; border-radius: 12px !important; }
 .comprehensive-video-mount { width: 100%; aspect-ratio: 16 / 9; min-height: 220px; background: #101e30; position: relative; }
 .comprehensive-video-mount:empty::before { content: 'Dán link để xem video tại đây'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #b8cadd; font-size: 15px; }
@@ -25,7 +26,15 @@
 .comprehensive-video-next span { display: block; font-size: 13px; color: #6c7f91; margin-top: 5px; }
 .comprehensive-video-cue-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; margin: 8px 0; border-radius: 20px !important; color: #176d61; background: #e5f6ee; font-size: 13px; font-weight: 700; }
 .idp-single-choice-question.comprehensive-video-active-question { border: 2px solid #5cb99f; border-radius: 12px !important; background: #f7fcf9; }
+@media (min-width: 997px) {
+    .reading-builder-video-scope { display: flex; flex-wrap: wrap; align-items: stretch; }
+    .reading-builder-video-scope > .reading-builder-text-column,
+    .reading-builder-video-scope > .reading-builder-question-column { float: none; }
+    .reading-builder-video-scope > .reading-builder-text-column { align-self: stretch; }
+    .reading-builder-video-scope .comprehensive-video-sticky-panel { position: sticky; top: 16px; z-index: 8; }
+}
 @media (max-width: 996px) {
+    .comprehensive-video-sticky-panel { position: static; }
     .comprehensive-video-runtime { padding: 12px; }
     .comprehensive-video-runtime .comprehensive-video-mount { min-height: 200px; }
     .comprehensive-video-next { margin: 12px; }

@@ -138,3 +138,27 @@ test('author enters a cue, previews the cue and sees invalid seconds without los
         await page.close();
     } finally { await browser.close(); }
 });
+
+test('author video preview follows the question list and stops at the end of its video section', async () => {
+    const browser = await playwright.chromium.launch({headless: true, executablePath: chromePath});
+    try {
+        const page = await browser.newPage({viewport: {width: 1366, height: 900}});
+        await page.setContent('<!doctype html><html><head><style>' + css +
+            'body{margin:0}.page-spacer{height:120px}.question-filler{height:1800px}.after-section{height:900px}' +
+            '</style></head><body><div class="page-spacer"></div>' +
+            '<div class="row reading-builder-video-scope" id="video-section">' +
+            '<div class="col-md-6 reading-builder-text-column"><div style="height:120px">Thiết lập video</div>' +
+            '<section class="comprehensive-video-sticky-panel" style="height:300px">Video preview</section></div>' +
+            '<div class="col-md-6 reading-builder-question-column"><div class="question-filler">Questions</div></div>' +
+            '</div><div class="after-section"></div></body></html>');
+
+        const initialTop = await page.locator('.comprehensive-video-sticky-panel').evaluate(node => node.getBoundingClientRect().top);
+        assert.ok(initialTop > 16);
+        await page.evaluate(() => window.scrollTo(0, 500));
+        const stickyTop = await page.locator('.comprehensive-video-sticky-panel').evaluate(node => node.getBoundingClientRect().top);
+        assert.ok(Math.abs(stickyTop - 16) < 1, 'preview remains at the configured sticky offset');
+        await page.evaluate(() => window.scrollTo(0, 1900));
+        const boundedTop = await page.locator('.comprehensive-video-sticky-panel').evaluate(node => node.getBoundingClientRect().top);
+        assert.ok(boundedTop < 0, 'preview leaves the viewport after the video question section ends');
+    } finally { await browser.close(); }
+});
