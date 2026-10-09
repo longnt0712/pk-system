@@ -6,6 +6,11 @@ const nodeVm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../question/controllers/IELTSReadingActualTestController.js'), 'utf8');
 const template = fs.readFileSync(path.join(__dirname, '../question/views/ielts_reading_actual_test_idp.html'), 'utf8');
 
+test('question hover styles target the whole question instead of darkening child text', () => {
+    assert.doesNotMatch(template, /\.button-question-not-click\s+:hover/);
+    assert.match(template, /\.button-question-not-click:hover/);
+});
+
 function candidate(parts, format = 'READING') {
     const c = nodeVm.createContext({
         vm: {currentUser: {id: 7}, isWritingRoute: format === 'WRITING', isListeningRoute: format === 'LISTENING',
