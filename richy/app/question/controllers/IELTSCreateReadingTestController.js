@@ -22,13 +22,14 @@
         '$sce',
         '$cookies',
         'TopicService',
-        'ComprehensiveVideo'
+        'ComprehensiveVideo',
+        'ComprehensiveListening'
         // 'dndLists'
         // 'ngSanitize',
         
     ];
 
-    function IELTSCreateReadingTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,topicService,video) {
+    function IELTSCreateReadingTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,topicService,video,listening) {
         $scope.$on('$viewContentLoaded', function () {
             // initialize core components
             App.initAjax();
@@ -167,12 +168,13 @@
             {id: 15, name: "LISTENING - TWO-COLUMN DRAG & DROP", notice: "Left column contains the questions and drop zones; right column contains the shared answer bank"},
             {id: 16, name: "Writing Task 1", notice: "Nhập đề bài ở cột Văn bản; bài viết trên 150 từ được tính là đạt"},
             {id: 17, name: "Writing Task 2", notice: "Nhập đề bài ở cột Văn bản; bài viết trên 250 từ được tính là đạt"},
+            {id: 18, name: "Daily Listening", notice: "Nhập link audio và transcript; hệ thống tự tạo ô trống và đáp án"},
             {id: 2, name: "Filling Gaps — Legacy", notice: "Dữ liệu hệ thống cũ — không dùng cho bài test mới", legacy: true},
             {id: 3, name: "Filling Gaps Enter — Legacy", notice: "Dữ liệu hệ thống cũ — không dùng cho bài test mới", legacy: true}
         ];
         vm.questionPackageTypes = vm.types.filter(function (type) {
             if (vm.isWritingMode) { return Number(type.id) === 16 || Number(type.id) === 17; }
-            return Number(type.id) !== 7 &&
+            return Number(type.id) !== 7 && (vm.isComprehensiveMode || Number(type.id) !== 18) &&
                 (vm.isListeningMode || Number(type.id) !== 15) &&
                 (vm.isComprehensiveMode || (Number(type.id) !== 16 && Number(type.id) !== 17));
         });
@@ -365,6 +367,7 @@
             angular.forEach(test.subQuestions, function (part) {
                 var nextQuestionNumber = 1;
                 angular.forEach((part && part.subQuestions) || [], function (questionPackage) {
+                    if (Number(questionPackage.type) === 18) { questionPackage._listeningGapRate = listening.gapRate(questionPackage); }
                     containsWritingTask = containsWritingTask || Number(questionPackage.type) === 16 || Number(questionPackage.type) === 17;
                     ensureWritingTaskPackage(questionPackage, nextQuestionNumber);
                     ensureMultipleAnswerPackage(questionPackage, true);
@@ -1018,7 +1021,7 @@
         };
 
         function ensureOneEditorPackage(questionPackage) {
-            if (!questionPackage || Number(questionPackage.type) !== 11) {
+            if (!questionPackage || (Number(questionPackage.type) !== 11 && Number(questionPackage.type) !== 18)) {
                 return;
             }
             questionPackage.subQuestions = questionPackage.subQuestions || [];
@@ -1427,6 +1430,12 @@
             if (questionPackage && Number(questionPackage.type) === 7) {
                 questionPackage.type = 5;
             }
+            if (questionPackage && Number(questionPackage.type) === 18) {
+                questionPackage._listeningGapRate = listening.gapRate(questionPackage);
+                if (!plainText(questionPackage.question) || /Question\s*\?\s*to\s*\?/i.test(plainText(questionPackage.question))) {
+                    questionPackage.question = 'Daily Listening';
+                }
+            }
             if (questionPackage && Number(questionPackage.type) === 5) {
                 ensureMultipleAnswerPackage(questionPackage, true);
             }
@@ -1472,6 +1481,60 @@
         vm.updateOneEditorContent = function (questionPackage) {
             ensureOneEditorPackage(questionPackage);
             vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
+        };
+
+        vm.dailyListeningNeedsGenerate = function (pack) { return !listening.isCurrent(pack); };
+        vm.dailyListeningPreview = function (pack) {
+            var index = 0;
+            return String(((pack.subQuestions || [])[0] || {}).question || '').replace(/\}\{SPACE\}\{/gi, function () {
+                var question = pack.subQuestions[index++];
+                return '<strong> [' + (question ? question.ordinalNumber : index) + '] ______ </strong>';
+            });
+        };
+
+        vm.updateDailyListening = function (pack) {
+            listening.configure(pack);
+            vm.changeInTheProcessOfCreatingReadingTest();
+        };
+
+        vm.generateDailyListeningGaps = function (pack, partIndex) {
+            if (!pack || Number(pack.type) !== 18 || !vm.isComprehensiveMode) { return; }
+            try {
+                if (!listening.parseUrl(pack.pronounce)) { throw new Error('Hãy nhập link audio hoặc YouTube hợp lệ.'); }
+                var generated = listening.generate(pack.motherTongue, pack._listeningGapRate);
+                var oldQuestions = pack.subQuestions || [];
+                pack.subQuestions = generated.answers.map(function (answer, index) {
+                    var question = oldQuestions[index] || {questionType: {id: 19, code: 'IELTSRTQ'}, subQuestions: []};
+                    var configuredAnswer = (question.questionAnswers || [])[0] || {answer: {}, ordinalNumberQuestionAnswer: 1};
+                    configuredAnswer.answer = configuredAnswer.answer || {};
+                    configuredAnswer.answer.answer = answer;
+                    configuredAnswer.correct = true;
+                    question.questionAnswers = [configuredAnswer];
+                    question.question = index === 0 ? generated.html : '';
+                    return question;
+                });
+                pack.description = generated.description;
+                pack.isHaveChildren = true;
+                var nextNumber = 1;
+                angular.forEach(vm.ieltsReadingTest.subQuestions[partIndex].subQuestions || [], function (questionPackage) {
+                    angular.forEach(questionPackage.subQuestions || [], function (question) { question.ordinalNumber = nextNumber++; });
+                });
+                vm.getOrdinalNumber(vm.ieltsReadingTest);
+                vm.refreshBuilderValidation();
+                vm.changeInTheProcessOfCreatingReadingTest();
+                toastr.success('Đã tự tạo ' + generated.answers.length + ' ô trống và đáp án.');
+            } catch (invalid) { toastr.warning(invalid.message, 'Chưa thể tạo ô trống'); }
+        };
+
+        vm.addDailyListeningPackage = function () {
+            if (!vm.isComprehensiveMode) { return; }
+            var passage = vm.ieltsReadingTest.subQuestions[0];
+            vm.insertPackageAfter(0, (passage.subQuestions || []).length - 1);
+            var pack = passage.subQuestions[passage.subQuestions.length - 1];
+            pack.type = 18;
+            vm.onReadingPackageTypeChange(pack, 0, passage.subQuestions.length - 1);
+            // A listening-only test does not need a separate reference passage.
+            if (!plainText(passage.question) && !vm.hasWritingTaskPackage() && !vm.isVideoBuilder()) { passage.type = 6; }
         };
 
         vm.appendOneEditorGap = function (questionPackage) {
@@ -1586,7 +1649,15 @@
                     if (Number(questionPackage.type) === 4) {
                         matchingHeadingQuestionCount += (questionPackage.subQuestions || []).length;
                     }
-                    if (Number(questionPackage.type) === 11 && (questionPackage.subQuestions || []).length) {
+                    if (Number(questionPackage.type) === 18) {
+                        if (!vm.isComprehensiveMode) { addIssue('Daily Listening chỉ dùng trong test tổng hợp.', packageTarget, partIndex); }
+                        if (!listening.parseUrl(questionPackage.pronounce)) { addIssue('Daily Listening: chưa có link audio hoặc YouTube hợp lệ.', packageTarget, partIndex); }
+                        if (!String(questionPackage.motherTongue || '').trim()) { addIssue('Daily Listening: chưa nhập transcript.', packageTarget, partIndex); }
+                        var listeningRate = Number(questionPackage._listeningGapRate);
+                        if (!isFinite(listeningRate) || listeningRate < 30 || listeningRate > 100 || listeningRate % 5 !== 0) { addIssue('Daily Listening: tỷ lệ ô trống phải từ 30 đến 100%, theo bước 5%.', packageTarget, partIndex); }
+                        if (!listening.isCurrent(questionPackage)) { addIssue('Daily Listening: bấm Tạo ô trống sau khi nhập hoặc sửa transcript/tỷ lệ.', packageTarget, partIndex); }
+                    }
+                    if ((Number(questionPackage.type) === 11 || Number(questionPackage.type) === 18) && (questionPackage.subQuestions || []).length) {
                         var oneEditorContent = questionPackage.subQuestions[0].question;
                         var gapCount = vm.countOneEditorGaps(oneEditorContent);
                         var expectedGapCount = questionPackage.subQuestions.length;
@@ -1650,7 +1721,7 @@
                     }
 
                     var questionText = plainText(question.question);
-                    if (Number(entry.questionPackage.type) !== 11 && Number(entry.questionPackage.type) !== 13 && (!questionText || /^Question number\s*\d*$/i.test(questionText))) {
+                    if (Number(entry.questionPackage.type) !== 11 && Number(entry.questionPackage.type) !== 18 && Number(entry.questionPackage.type) !== 13 && (!questionText || /^Question number\s*\d*$/i.test(questionText))) {
                         addIssue('Câu ' + (number || '?') + ': chưa nhập nội dung câu hỏi.', questionTarget, partIndex);
                     }
 
@@ -1676,7 +1747,7 @@
                             addIssue('Câu ' + (number || '?') + ': dạng nhiều đáp án cần đánh dấu ít nhất 2 đáp án đúng.', questionTarget, partIndex);
                         } else if (Number(entry.questionPackage.type) !== 2 && Number(entry.questionPackage.type) !== 3 &&
                             Number(entry.questionPackage.type) !== 5 && Number(entry.questionPackage.type) !== 7 &&
-                            Number(entry.questionPackage.type) !== 11 && correctAnswerCount > 1) {
+                            Number(entry.questionPackage.type) !== 11 && Number(entry.questionPackage.type) !== 18 && correctAnswerCount > 1) {
                             addIssue('Câu ' + (number || '?') + ': dạng này chỉ nên có 1 đáp án đúng.', questionTarget, partIndex);
                         }
                     }
@@ -3114,6 +3185,9 @@
             return {
                 question: group.instructionHtml || group.instruction || group.question || '',
                 title: group.listTitle || group.title || '',
+                pronounce: group.audioUrl || group.pronounce || '',
+                motherTongue: group.transcript || group.motherTongue || '',
+                description: group.description || '',
                 videoTimeSeconds: group.videoTimeSeconds == null ? null : group.videoTimeSeconds,
                 questionType: readingQuestionType(18, 'IELTSRTPK', 'IELTS Reading Test Package'),
                 ordinalNumber: parseInt(group.ordinalNumber || (groupIndex + 1), 10),
@@ -3353,6 +3427,9 @@
                 return fallbackType || 1;
             }
             var numericType = /^\d+$/.test(String(value).trim()) ? Number(value) : NaN;
+            if (numericType === 18 || normalizedExcelText(value) === 'daily listening') {
+                throw new Error('Daily Listening được tạo trực tiếp bằng nút Thêm Daily Listening: nhập audio và transcript để hệ thống tự tạo ô trống.');
+            }
             if (numericType >= 1 && numericType <= 15) {
                 if (numericType === 6) { return 1; }
                 if (numericType === 7) { return 5; }
@@ -4141,7 +4218,7 @@
             };
             var typeRows = [['Mã', 'Loại câu hỏi', 'Quy tắc nhập chính xác']];
             angular.forEach(vm.questionPackageTypes, function (type) {
-                if (Number(type.id) === 6 || Number(type.id) === 7) {
+                if (Number(type.id) === 6 || Number(type.id) === 7 || Number(type.id) === 18) {
                     return;
                 }
                 typeRows.push([type.id, type.name, typeImportNotes[type.id] || type.notice]);

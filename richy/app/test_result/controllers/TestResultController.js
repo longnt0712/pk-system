@@ -556,7 +556,7 @@
             if (!submittedAnswer) {
                 return '';
             }
-            if (type == 2 || type == 3 || type == 4 || type == 8 || type == 11 || type == 16 || type == 17) {
+            if (type == 2 || type == 3 || type == 4 || type == 8 || type == 11 || type == 18 || type == 16 || type == 17) {
                 return submittedAnswer;
             }
 
@@ -583,7 +583,7 @@
                     .replace(/^\s*\/|\/\s*$/g, '')
                     .trim();
             }
-            if (type == 2 || type == 3 || type == 11) {
+            if (type == 2 || type == 3 || type == 11 || type == 18) {
                 return questionAnswer && questionAnswer.answer &&
                     questionAnswer.answer.answer != null ? questionAnswer.answer.answer : '';
             }

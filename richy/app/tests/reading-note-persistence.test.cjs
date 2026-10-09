@@ -333,6 +333,8 @@ test('saving assigned Serious progress stays task-scoped and preserves personal 
         annotationNotes: [{id: 'personal', specificNote: 'Personal Study note'}]});
     const key = c.readingDraftStorageKey(42, 'SERIOUS');
     const start = source.indexOf('        function saveReadingDraft()');
+    const audioStart = source.indexOf('        function serializeListeningAudioPositions()');
+    vmModule.runInContext(source.slice(audioStart, source.indexOf('        function getReadingDraftPartNumbers()', audioStart)), c);
     vmModule.runInContext(source.slice(start, source.indexOf('        function findDraftQuestionState(', start)), c);
     c.saveReadingDraft();
     const draft = c.readStoredDraft(key);

@@ -1379,6 +1379,11 @@ public class QuestionServiceImpl implements QuestionService {
 			ret.setMessage(videoValidation);
 			return ret;
 		}
+		String listeningValidation = com.globits.richy.question.ComprehensiveListeningValidation.validate(dto);
+		if (listeningValidation != null) {
+			ret.setMessage(listeningValidation);
+			return ret;
+		}
 		String level = null;
 		if(dto.getLevel() != null && !dto.getLevel().trim().isEmpty()) {
 			level = dto.getLevel().trim().toUpperCase(Locale.ROOT);
@@ -1875,6 +1880,7 @@ public class QuestionServiceImpl implements QuestionService {
 				subQuestion.setDescription(sDto.getDescription());
 				subQuestion.setTitle(sDto.getTitle());
 				subQuestion.setPronounce(sDto.getPronounce());
+				if (sDto.getType() == 18) { subQuestion.setMotherTongue(sDto.getMotherTongue()); }
 				subQuestion.setVideoUrl(sDto.getVideoUrl());
 				subQuestion.setVideoTimeSeconds(sDto.getVideoTimeSeconds());
 				subQuestion.setVideoAnswerSeconds(sDto.getVideoAnswerSeconds());

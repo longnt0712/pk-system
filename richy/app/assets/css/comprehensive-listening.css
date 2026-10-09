@@ -1,0 +1,11 @@
+.comprehensive-listening-builder { padding: 16px; margin: 12px 0; border: 1px solid #cbdde7; border-radius: 10px; background: #f5fafc; }
+.comprehensive-listening-builder > label { display: block; margin-top: 12px; font-weight: 600; }
+.comprehensive-listening-builder textarea { width: 100%; min-height: 180px; resize: vertical; }
+.comprehensive-listening-builder .listening-generation-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 14px 0; }
+.listening-generation-controls input { width: 80px; }
+.comprehensive-listening-player { margin: 12px 0 16px; max-width: 100%; }
+.comprehensive-listening-mount audio, .comprehensive-listening-mount iframe { width: 100%; max-width: 100%; }
+.comprehensive-listening-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.comprehensive-listening-controls label { display: flex; align-items: center; gap: 6px; margin: 0; }
+.comprehensive-listening-error { color: #a52828; margin: 8px 0; }
+.comprehensive-listening-builder .reading-one-editor-answers { margin-top: 14px; }

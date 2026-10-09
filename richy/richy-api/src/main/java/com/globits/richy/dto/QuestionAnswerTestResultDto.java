@@ -114,7 +114,7 @@ public class QuestionAnswerTestResultDto implements Serializable{
 
 		// Filling Gaps New / One Editor (11) is scored exactly like the legacy
 		// filling-gap modes, including alternatives separated by '/'.
-		if(type == 2 || type == 3 || type == 11) {
+		if(type == 2 || type == 3 || type == 11 || type == 18) {
 			if(hasSubmittedAnswer && selectedAnswer.getQuestion().getQuestionAnswers() != null) {
 				for(QuestionAnswer configuredAnswer : selectedAnswer.getQuestion().getQuestionAnswers()) {
 					if(configuredAnswer == null || !configuredAnswer.isCorrect() || configuredAnswer.getAnswer() == null

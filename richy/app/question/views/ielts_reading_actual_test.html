@@ -314,7 +314,8 @@
                                         </span>
                                     </span>
 
-                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11">
+                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11 || item.type == 18">
+                                        <comprehensive-listening-player ng-if="item.type == 18 && vm.passageNumber != 4" audio-link="item.pronounce" position="item._listeningAudioTime"></comprehensive-listening-player>
                                         <span compile="item.oneEditorRenderedQuestion"></span>
                                     </div>
 
@@ -693,7 +694,8 @@
                                         </span>
                                     </span>
 
-                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11">
+                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11 || item.type == 18">
+                                        <comprehensive-listening-player ng-if="item.type == 18 && vm.passageNumber != 4" audio-link="item.pronounce" position="item._listeningAudioTime"></comprehensive-listening-player>
                                         <span compile="item.oneEditorRenderedQuestion"></span>
                                     </div>
 
@@ -1054,7 +1056,8 @@
                                         </span>
                                     </span>
 
-                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11">
+                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11 || item.type == 18">
+                                        <comprehensive-listening-player ng-if="item.type == 18 && vm.passageNumber != 4" audio-link="item.pronounce" position="item._listeningAudioTime"></comprehensive-listening-player>
                                         <span compile="item.oneEditorRenderedQuestion"></span>
                                     </div>
 
@@ -1360,10 +1363,10 @@
                             <!--<td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3"-->
                             <!--ng-style="(!item.isCorrectTestResultDetail) && {'background':'rgba(196, 77, 86,1)'}">{{item.ordinalNumber}}</td>-->
 
-                            <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3 || item.questionAnswer.question.parent.type == 11">
+                            <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3 || item.questionAnswer.question.parent.type == 11 || item.questionAnswer.question.parent.type == 18">
                                 {{item.clientAnswer}}
                             </td>
-                            <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3 || item.questionAnswer.question.parent.type == 11">
+                            <td ng-if="item.questionAnswer.question.parent.type == 2 || item.questionAnswer.question.parent.type == 3 || item.questionAnswer.question.parent.type == 11 || item.questionAnswer.question.parent.type == 18">
                                 {{item.questionAnswer.answer.answer}}
                             </td>
                         </tr>

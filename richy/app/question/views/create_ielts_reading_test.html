@@ -340,6 +340,7 @@
                             </div>
                             <div>
                                 <button type="button" class="btn btn-info btn-sm" ng-if="vm.isVideoBuilder()" ng-click="vm.addVideoQuestion()"><i class="fa fa-plus"></i> Thêm câu hỏi video</button>
+                                <button type="button" class="btn btn-info btn-sm" ng-if="vm.isComprehensiveMode" ng-click="vm.addDailyListeningPackage()"><i class="fa fa-headphones"></i> Thêm Daily Listening</button>
                                 <button ng-show="vm.createPackage == false && !vm.isWritingMode" class="btn btn-primary btn-sm" data-ng-click="vm.startCreateQuestionForPassage1()"><i class="fa fa-arrow-right"></i> Bắt đầu tạo</button>
                                 <button class="btn btn-success btn-sm" ng-click="vm.saveReadingTest()"><i class="fa fa-save"></i> Lưu</button>
                             </div>
@@ -388,7 +389,35 @@
                                            ng-change="vm.changeInTheProcessOfCreatingReadingTest(); vm.refreshBuilderValidation()" aria-label="Thời gian trả lời riêng của câu {{videoQuestion.ordinalNumber}}">
                                 </div>
                             </div>
-                            <textarea ng-if="item.type != 16 && item.type != 17" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+                            <textarea ng-if="item.type != 16 && item.type != 17 && item.type != 18" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" ui-tinymce="tinymceOptionsToCreateQuestionForReadingTest" ng-model="item.question" />
+
+                            <section class="comprehensive-listening-builder" ng-if="item.type == 18">
+                                <label>Tên phần nghe</label>
+                                <input class="form-control" type="text" ng-model="item.question" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" placeholder="Daily Listening" aria-label="Tên phần nghe">
+                                <label>Link audio hoặc YouTube</label>
+                                <input class="form-control" type="text" ng-model="item.pronounce" ng-change="vm.updateDailyListening(item)" placeholder="https://.../audio.mp3 hoặc https://youtu.be/..." aria-label="Link audio hoặc YouTube">
+                                <comprehensive-listening-player audio-link="item.pronounce"></comprehensive-listening-player>
+                                <label>Transcript tiếng Anh</label>
+                                <textarea class="form-control" rows="8" ng-model="item.motherTongue" ng-change="vm.updateDailyListening(item)" placeholder="Dán toàn bộ nội dung bài nghe. Hệ thống sẽ tự chọn từ để tạo ô trống." aria-label="Transcript tiếng Anh"></textarea>
+                                <div class="listening-generation-controls">
+                                    <label>Tỷ lệ ô trống (%)</label>
+                                    <input class="form-control" type="number" min="30" max="100" step="5" ng-model="item._listeningGapRate" ng-model-options="{allowInvalid: true}" ng-change="vm.updateDailyListening(item)" aria-label="Tỷ lệ ô trống">
+                                    <button type="button" class="btn btn-primary" ng-click="vm.generateDailyListeningGaps(item, 0)"><i class="fa fa-magic"></i> {{item.subQuestions.length ? 'Tạo lại ô trống' : 'Tạo ô trống'}}</button>
+                                    <span ng-if="item.subQuestions.length">{{item.subQuestions.length}} ô trống</span>
+                                </div>
+                                <p class="comprehensive-listening-error" ng-if="item.subQuestions.length && vm.dailyListeningNeedsGenerate(item)">Transcript hoặc tỷ lệ đã thay đổi. Bấm Tạo lại ô trống trước khi xuất bản.</p>
+                                <div class="reading-one-editor-runtime" ng-if="item.subQuestions.length" compile="vm.dailyListeningPreview(item)"></div>
+                                <div class="reading-one-editor-answers" ng-if="item.subQuestions.length">
+                                    <div ng-repeat="q in item.subQuestions | orderBy:'ordinalNumber'">
+                                        <label>Đáp án câu {{q.ordinalNumber}}</label>
+                                        <div class="reading-one-editor-answer-row" ng-repeat="a in q.questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
+                                            <input class="form-control" type="text" ng-model="a.answer.answer" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" placeholder="Đáp án được chấp nhận">
+                                            <button type="button" class="reading-answer-remove-button" ng-click="vm.removeReadingQuestionAnswer(q, $index)" ng-disabled="q.questionAnswers.length <= 1" aria-label="Xóa đáp án"><i class="fa fa-trash"></i></button>
+                                        </div>
+                                        <button type="button" class="btn btn-info btn-sm" ng-click="vm.addReadingQuestionAnswer(q, 11)">Thêm đáp án được chấp nhận</button>
+                                    </div>
+                                </div>
+                            </section>
 
                             <div class="reading-writing-task-builder-note" ng-if="item.type == 16 || item.type == 17">
                                 <i class="fa fa-pencil"></i>
@@ -450,7 +479,7 @@
 
 
 
-                            <div class="col-md-12" ng-show="item.isHaveChildren == false">
+                            <div class="col-md-12" ng-show="item.isHaveChildren == false && item.type != 18">
                                 <div class="col-md-12">
                                     <p style="font-size: 15px" class="bold">Configuring Answers for Questions</p>
                                 </div>
@@ -548,7 +577,7 @@
 
                             <hr ng-if="item.type != 16 && item.type != 17">
                             <div class="row">
-                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 13 && item.type != 16 && item.type != 17 && (item.type != 5 || $first)" style="margin-top: 20px;">
+                                <div class="col-md-12" ng-repeat="q in item.subQuestions" ng-if="item.type != 11 && item.type != 18 && item.type != 13 && item.type != 16 && item.type != 17 && (item.type != 5 || $first)" style="margin-top: 20px;">
                                     <div class="comprehensive-video-cue-field" ng-if="vm.isVideoBuilder() && item.type == 1" ng-init="vm.videoTimeInput(q)">
                                         <label>Câu {{q.ordinalNumber}} xuất hiện tại (phút:giây)</label>
                                         <div class="comprehensive-video-cue-controls">

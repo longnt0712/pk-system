@@ -1151,7 +1151,7 @@
             if (!submittedAnswer) {
                 return '';
             }
-            if (type == 2 || type == 3 || type == 4 || type == 8 || type == 11 || type == 16 || type == 17) {
+            if (type == 2 || type == 3 || type == 4 || type == 8 || type == 11 || type == 18 || type == 16 || type == 17) {
                 return submittedAnswer;
             }
 
@@ -1175,7 +1175,7 @@
                     .replace(/^\s*\/|\/\s*$/g, '')
                     .trim();
             }
-            if (type == 2 || type == 3 || type == 11) {
+            if (type == 2 || type == 3 || type == 11 || type == 18) {
                 return questionAnswer && questionAnswer.correctAnswer ? questionAnswer.correctAnswer :
                     (questionAnswer && questionAnswer.answer && questionAnswer.answer.answer != null ?
                         questionAnswer.answer.answer : '');
@@ -2044,6 +2044,18 @@
             return states;
         }
 
+        function serializeListeningAudioPositions() {
+            var positions = {};
+            angular.forEach((vm.ieltsReadingActualTest || {}).subQuestions || [], function (part) {
+                angular.forEach(part.subQuestions || [], function (pack) {
+                    if (Number(pack.type) === 18 && pack.id != null && isFinite(pack._listeningAudioTime)) {
+                        positions[String(pack.id)] = Math.max(0, Number(pack._listeningAudioTime));
+                    }
+                });
+            });
+            return positions;
+        }
+
         function getReadingDraftPartNumbers() {
             var partNumbers = [];
             angular.forEach(getReadingQuestionEntries(), function (entry) {
@@ -2103,6 +2115,7 @@
                     results: results,
                     questionStates: serializeReadingQuestionStates(),
                     completeListStates: serializeCompleteListStates(),
+                    listeningAudioPositions: serializeListeningAudioPositions(),
                     writingInputAudit: vm.isWritingRoute ? writingInputAuditSummary() : null,
                     annotationNotes: angular.copy(vm.annotationNotes || []),
                     annotations: serializeReadingAnnotations(),
@@ -2299,6 +2312,12 @@
                 return;
             }
 
+            angular.forEach((vm.ieltsReadingActualTest || {}).subQuestions || [], function (part) {
+                angular.forEach(part.subQuestions || [], function (pack) {
+                    var position = (draft.listeningAudioPositions || {})[String(pack.id)];
+                    if (Number(pack.type) === 18 && isFinite(position)) { pack._listeningAudioTime = Math.max(0, Number(position)); }
+                });
+            });
             if (vm.isWritingRoute) { restoreWritingInputAudit(draft); }
             vm.testResult.questionAnswerTestResult = [];
             angular.forEach(getReadingQuestionEntries(), function (entry) {
@@ -3862,7 +3881,7 @@
                 var representativeAnswer = null;
                 var submittedAnswer = '';
 
-                if (type == 2 || type == 3 || type == 11 || type == 16 || type == 17) {
+                if (type == 2 || type == 3 || type == 11 || type == 18 || type == 16 || type == 17) {
                     representativeAnswer = questionAnswers.length ? questionAnswers[0] : null;
                     submittedAnswer = representativeAnswer && representativeAnswer.clientAnswer != null ?
                         String(representativeAnswer.clientAnswer).trim() : '';
@@ -3895,7 +3914,7 @@
                         if (!existingResult.questionAnswer || existingResult.questionAnswer.id == null) {
                             existingResult.questionAnswer = representativeAnswer;
                         }
-                        if (submittedAnswer && (type == 2 || type == 3 || type == 11 || type == 16 || type == 17 ||
+                        if (submittedAnswer && (type == 2 || type == 3 || type == 11 || type == 18 || type == 16 || type == 17 ||
                             !existingResult.clientAnswer)) {
                             existingResult.questionAnswer = representativeAnswer;
                             existingResult.clientAnswer = submittedAnswer;
@@ -4005,7 +4024,7 @@
 
             if (!normalizedSubmitted) { return false; }
 
-            if (type == 2 || type == 3 || type == 11) {
+            if (type == 2 || type == 3 || type == 11 || type == 18) {
                 var acceptedAnswers = [];
                 angular.forEach(correctAnswers || [], function (answer) {
                     angular.forEach(String(answer || '').split('/'), function (alternative) {
@@ -4594,7 +4613,7 @@
                 //UPDATE 12 12 2025
                 if(data.subQuestions[k].subQuestions != null){
                     for (var i = 0; i < data.subQuestions[k].subQuestions.length; i++) {
-                        if (data.subQuestions[k].subQuestions[i].type == 11) {
+                        if (data.subQuestions[k].subQuestions[i].type == 11 || data.subQuestions[k].subQuestions[i].type == 18) {
                             buildOneEditorQuestion(data.subQuestions[k].subQuestions[i]);
                         }
                         if (data.subQuestions[k].subQuestions[i].type == 13) {
