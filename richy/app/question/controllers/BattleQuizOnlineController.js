@@ -314,13 +314,15 @@
                 var modal = $window.document.getElementById('battle-host-video-question-list');
                 var viewport = modal && modal.querySelector('.battle-online-host-question-list-body');
                 var row = modal && modal.querySelector('li.is-current');
-                var rows = viewport && viewport.querySelector('ol');
-                if (!row || !rows || !viewport.clientHeight) { return; }
-                // Leave enough space to keep even the first or last cue one third down.
-                var inset = rows.getBoundingClientRect().top - viewport.getBoundingClientRect().top + viewport.scrollTop;
-                rows.style.paddingTop = Math.max(0, viewport.clientHeight / 3 - inset) + 'px';
-                rows.style.paddingBottom = viewport.clientHeight * 2 / 3 + 'px';
-                viewport.scrollTop = Math.max(0, row.getBoundingClientRect().top - viewport.getBoundingClientRect().top + viewport.scrollTop - viewport.clientHeight / 3);
+                if (!row || !viewport || !viewport.clientHeight) { return; }
+                var viewportTop = viewport.getBoundingClientRect().top + 8;
+                var viewportBottom = viewportTop + viewport.clientHeight - 16;
+                var rowBounds = row.getBoundingClientRect();
+                if (rowBounds.top < viewportTop) {
+                    viewport.scrollTop -= viewportTop - rowBounds.top;
+                } else if (rowBounds.bottom > viewportBottom) {
+                    viewport.scrollTop += rowBounds.bottom - viewportBottom;
+                }
             });
         }
         function hostVideoListResize() { scrollHostVideoQuestionList(true); }

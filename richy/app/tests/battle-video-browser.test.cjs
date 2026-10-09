@@ -69,6 +69,8 @@ test('actual Battle templates preload hidden answers in all modes and host video
   await host.getByRole('button',{name:'List câu hỏi',exact:true}).click();
   const list=host.locator('#battle-host-video-question-list');await list.waitFor({state:'visible'});
   assert.equal(await list.locator('li').count(),2);assert.match(await list.innerText(),/0:05\s+1\. What is the name…/);
+  assert.ok((await list.boundingBox()).height<350,'short lists fit their content');
+  assert.ok(await list.locator('li').first().evaluate(row=>row.getBoundingClientRect().top-row.closest('.battle-online-host-question-list-body').getBoundingClientRect().top<24),'no blank spacer before the first cue');
   assert.deepEqual(await host.evaluate(()=>window.listCalls[0]),['VIDEO1']);
   const captureDir=path.join(app,'../target');fs.mkdirSync(captureDir,{recursive:true});
   await host.screenshot({path:path.join(captureDir,'battle-video-host-question-list.png'),fullPage:true});
@@ -131,7 +133,7 @@ test('actual Battle templates preload hidden answers in all modes and host video
  }finally{await browser.close();}
 });
 
-test('host cue list follows the current cue one third down and offers review or a fresh class answer round',async()=>{
+test('host cue list keeps the current cue visible without blank spacers and offers review or a fresh class answer round',async()=>{
  const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(p=>fs.existsSync(p));
  const browser=await playwright.chromium.launch({headless:true,executablePath});
  try {
@@ -143,9 +145,12 @@ test('host cue list follows the current cue one third down and offers review or 
   async function positioned(sequence) {
    await host.waitForFunction(sequence=>{
     const row=document.querySelector('#battle-host-video-question-list li.is-current'),body=document.querySelector('.battle-online-host-question-list-body');
-    return row&&row.innerText.includes(sequence+'.')&&Math.abs(row.getBoundingClientRect().top-body.getBoundingClientRect().top-body.clientHeight/3)<3;
+    if(!row||!body||!row.innerText.includes(sequence+'.'))return false;
+    const bounds=row.getBoundingClientRect(),viewport=body.getBoundingClientRect();
+    return bounds.top>=viewport.top&&bounds.bottom<=viewport.bottom;
    },sequence);
    assert.equal(await list.locator('li.is-current button').getAttribute('aria-current'),'step');
+   assert.deepEqual(await list.locator('ol').evaluate(el=>{const css=getComputedStyle(el);return [css.paddingTop,css.paddingBottom];}),['0px','0px']);
   }
   await positioned(18);
   await host.setViewportSize({width:390,height:844});await positioned(18);
@@ -154,6 +159,10 @@ test('host cue list follows the current cue one third down and offers review or 
   await apply(host,room('COUNTDOWN','WATCHING',2,18));
   assert.equal(await list.locator('.battle-online-host-question-list-body').evaluate(el=>el.scrollTop),manual,'same-cue broadcasts preserve manual scrolling');
   await apply(host,room('COUNTDOWN','WATCHING',3,19));await positioned(19);
+  await apply(host,room('COUNTDOWN','WATCHING',4,1));await positioned(1);
+  assert.ok(await list.locator('.battle-online-host-question-list-body').evaluate(el=>el.scrollTop<=16));
+  await apply(host,room('COUNTDOWN','WATCHING',5,60));await positioned(60);
+  await apply(host,room('COUNTDOWN','WATCHING',6,19));await positioned(19);
   const captureDir=path.join(app,'../target');fs.mkdirSync(captureDir,{recursive:true});
   await host.screenshot({path:path.join(captureDir,'battle-video-host-question-list.png'),fullPage:true});
   await list.getByRole('button',{name:/1:30 18\. What is/}).click();
@@ -169,7 +178,7 @@ test('host cue list follows the current cue one third down and offers review or 
   await list.getByRole('button',{name:/1:30 18\. What is/}).click();await confirm.waitFor({state:'visible'});
   await confirm.getByRole('button',{name:'Cho lớp trả lời lại',exact:true}).click();
   assert.deepEqual(await host.evaluate(()=>window.reopenRequests[0].args),['VIDEO1',19,18,'100:101']);
-  const reopened=room('COUNTDOWN','ANSWERING',4,18);reopened.videoQuestionRound=1;reopened.totalQuestions=60;reopened.currentQuestion.exercise.videoTimeSeconds=90;
+  const reopened=room('COUNTDOWN','ANSWERING',7,18);reopened.videoQuestionRound=1;reopened.totalQuestions=60;reopened.currentQuestion.exercise.videoTimeSeconds=90;
   await host.evaluate(r=>window.qaScope.$apply(()=>window.reopenRequests[0].request.resolve(r)),reopened);
   await host.locator('#battle-host-video-question-modal').waitFor({state:'visible'});
   assert.equal(await confirm.count(),0);
