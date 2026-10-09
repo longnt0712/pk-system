@@ -4,7 +4,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const playwright=require(path.join(os.homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
 const app=path.join(__dirname,'..'), view=fs.readFileSync(path.join(app,'question/views/battle_quiz_online.html'),'utf8');
 function fragment(start,end){const i=view.indexOf(start),j=view.indexOf(end,i);assert.ok(i>=0&&j>i);return view.slice(i,j);}
-const hostPane=fragment('    <section class="battle-online-card battle-online-host-video"','    <ng-include ng-if="vm.room && vm.room.status');
+const hostPane=fragment('    <div id="battle-host-video-stage"','    <ng-include ng-if="vm.room && vm.room.status');
 const exercise=fragment('            <section class="battle-online-exercise"','            <div class="battle-online-private-loading"');
 const waiting=fragment('            <div class="battle-online-video-wait"','            <div class="demon-student-tools"');
 const feedback=fragment('            <div class="battle-online-feedback is-wrong"','            <section class="battle-online-guess-review"');
@@ -16,13 +16,14 @@ async function open(browser,username,width){
  await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular.min.js')});
  await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular-sanitize.min.js')});
  await page.evaluate(({username,template})=>{
-  window.APP_VERSION='qa';window.videoCalls=[];window.answerCalls=[];window.answerRequests=[];window.videoActions=[];window.listCalls=[];window.reopenRequests=[];
+  window.APP_VERSION='qa';window.videoCalls=[];window.timerRequests=[];window.answerCalls=[];window.answerRequests=[];window.videoActions=[];window.listCalls=[];window.reopenRequests=[];
   angular.module('Hrm.Question',['ngSanitize']).value('$state',{go(){}}).value('$stateParams',{})
    .value('$cookies',{get(){return JSON.stringify({id:1,username});}})
    .value('toastr',{warning(){},error(){},success(){}}).value('blockUI',{}).value('QuestionService',{})
    .factory('BattleQuizOnlineService',function($q){return {answer(...args){window.answerCalls.push(args);const request=$q.defer();window.answerRequests.push(request);return request.promise;},
     getVideoQuestions(...args){window.listCalls.push(args);return $q.when(window.videoQuestionPreviews||[{sequence:1,seconds:5,preview:'What is the name…'},{sequence:2,seconds:10,preview:'Who is…'}]);},
     reopenVideoQuestion(...args){const request=$q.defer();window.reopenRequests.push({args,request});return request.promise;},
+    setQuestionTimerPaused(...args){const request=$q.defer();window.timerRequests.push({args,request});return request.promise;},
     videoEvent(...args){const request=$q.defer();window.videoCalls.push({args,request});return request.promise;}};})
    .directive('comprehensiveVideoPlayer',function(){return {scope:{onVideoReady:'&',onVideoProgress:'&',onVideoState:'&',onVideoEnded:'&'},
     template:'<div class="comprehensive-video-player"><div class="comprehensive-video-mount"><video></video></div></div>',link(scope){
@@ -40,7 +41,7 @@ async function open(browser,username,width){
 function room(mode,phase,revision=1,sequence=1){return {code:'VIDEO1',hostUsername:'host',status:'PLAYING',serverTime:Date.now(),
  settings:{mode,questionSource:'COMPREHENSIVE',exerciseTestIds:[100],topicNames:['Video lesson'],teamCount:2,skillsEnabled:false},
  players:[{username:'host',spectator:true,connected:true},{username:'alice',spectator:false,connected:true,teamNumber:1}],recentEvents:[],
- videoSynchronized:true,videoPhase:phase,videoRevision:revision,videoPositionSeconds:3,guessPhase:'QUESTION',
+ videoSynchronized:true,videoPhase:phase,videoRevision:revision,videoPositionSeconds:3,guessPhase:'QUESTION',questionTimerPaused:false,questionTimerRemainingMillis:0,
  currentQuestionIndex:sequence,totalQuestions:2,questionEndsAt:phase==='ANSWERING'?Date.now()+20000:0,matchEndsAt:0,
  currentQuestion:{id:200+sequence,sequence,exercise:{type:1,answerMode:'SINGLE',videoUrl:'https://school.test/video.mp4',videoSourceId:'100:101',
  videoTimeSeconds:10,videoAnswerSeconds:20,instructionsHtml:'<p>Xem video và chọn đáp án.</p>',items:[{id:'201',number:1,
@@ -78,6 +79,8 @@ test('actual Battle templates preload hidden answers in all modes and host video
   const listBox=await list.boundingBox();assert.ok(listBox.x>=0&&listBox.x+listBox.width<=390&&listBox.height<844);
   await host.setViewportSize({width:1280,height:900});
   await host.keyboard.press('Escape');await list.waitFor({state:'hidden'});
+  await host.getByRole('button',{name:'⛶ Toàn màn hình'}).click();
+  await host.waitForFunction(()=>document.fullscreenElement&&document.fullscreenElement.id==='battle-host-video-stage');
   await host.evaluate(()=>window.qaScope.$apply(()=>window.videoAdapter.onVideoProgress({seconds:10,duration:60})));
   assert.equal(await host.evaluate(()=>window.videoCalls[0].args[2]),'CUE');
   await host.evaluate(r=>window.qaScope.$apply(()=>window.videoCalls[0].request.resolve(r)),room('DEMON_DEFENSE','ANSWERING',2));
@@ -87,6 +90,21 @@ test('actual Battle templates preload hidden answers in all modes and host video
   await modal.waitFor({state:'visible'});
   assert.match(await modal.innerText(),/What did you see\?/);
   assert.match(await modal.locator('[role="timer"]').innerText(),/20/);
+  assert.equal(await host.locator('#battle-host-video-stage #battle-host-video-question-modal').count(),1,'question modal belongs to the managed fullscreen stage');
+  assert.equal(await host.locator('comprehensive-video-player').getAttribute('managed-fullscreen'),'true');
+  assert.equal(await host.evaluate(()=>document.fullscreenElement&&document.fullscreenElement.id),'battle-host-video-stage');
+  assert.equal(await modal.isVisible(),true,'question modal stays visible over the managed fullscreen video');
+  await host.evaluate(()=>document.exitFullscreen());
+  await host.waitForFunction(()=>!document.fullscreenElement);
+  await modal.getByRole('button',{name:'⏸ Tạm dừng bấm giờ'}).click();
+  assert.deepEqual(await host.evaluate(()=>window.timerRequests[0].args),['VIDEO1',true]);
+  const paused=room('DEMON_DEFENSE','ANSWERING',3);paused.questionTimerPaused=true;paused.questionTimerRemainingMillis=17000;paused.questionEndsAt=0;
+  await host.evaluate(r=>window.qaScope.$apply(()=>window.timerRequests[0].request.resolve(r)),paused);
+  assert.match(await modal.locator('[role="timer"]').innerText(),/ĐANG TẠM DỪNG/);
+  await modal.getByRole('button',{name:'▶ Tiếp tục bấm giờ'}).click();
+  assert.deepEqual(await host.evaluate(()=>window.timerRequests[1].args),['VIDEO1',false]);
+  const resumedTimer=room('DEMON_DEFENSE','ANSWERING',4);resumedTimer.questionEndsAt=Date.now()+17000;
+  await host.evaluate(r=>window.qaScope.$apply(()=>window.timerRequests[1].request.resolve(r)),resumedTimer);
   assert.equal(await modal.locator('.battle-online-answer-btn').first().isEnabled(),false,'spectator host only displays the question');
   assert.equal(await student.locator('#battle-host-video-question-modal').count(),0,'students have no host popup');
   for(const viewport of [{width:1366,height:768},{width:390,height:844},{width:844,height:390}]){
@@ -97,12 +115,12 @@ test('actual Battle templates preload hidden answers in all modes and host video
   }
   await host.setViewportSize({width:1366,height:768});
   await host.screenshot({path:path.join(captureDir,'battle-video-host-question-modal.png'),fullPage:true});
-  await host.keyboard.press('Tab');assert.equal(await modal.locator('button').first().evaluate(el=>el===document.activeElement),true);
+  await host.keyboard.press('Tab');assert.equal(await modal.evaluate(el=>el.contains(document.activeElement)),true,'Tab focus stays inside the question modal');
   await host.keyboard.press('Escape');await modal.waitFor({state:'hidden'});
-  await apply(host,room('DEMON_DEFENSE','ANSWERING',3));assert.equal(await modal.count(),0,'broadcast does not reopen a dismissed popup');
+  await apply(host,room('DEMON_DEFENSE','ANSWERING',5));assert.equal(await modal.count(),0,'broadcast does not reopen a dismissed popup');
   await host.getByRole('button',{name:'Xem câu hỏi',exact:true}).click();await modal.waitFor({state:'visible'});
   const before=await host.evaluate(()=>window.videoActions.filter(a=>a==='play').length);
-  await apply(host,room('DEMON_DEFENSE','WATCHING',4,2));
+  await apply(host,room('DEMON_DEFENSE','WATCHING',6,2));
   assert.equal(await modal.count(),0,'resumed video closes the question');
   assert.equal(await host.evaluate(()=>document.body.classList.contains('battle-host-question-modal-open')),false);
   assert.ok(await host.evaluate(()=>window.videoActions.filter(a=>a==='play').length)>before);
@@ -128,7 +146,7 @@ test('actual Battle templates preload hidden answers in all modes and host video
   await student.evaluate(result=>window.qaScope.$apply(()=>window.answerRequests[1].resolve(result)),{correct:false,room:next});
   await toast.waitFor({state:'visible'});assert.match(await toast.innerText(),/Incorrect/);
   assert.equal(await student.evaluate(()=>window.qaScope.vm.isWrongAnswerPenaltyActive()),false);
-  const finished=room('DEMON_DEFENSE','ANSWERING',5,2);finished.status='FINISHED';finished.currentQuestion=null;
+  const finished=room('DEMON_DEFENSE','ANSWERING',7,2);finished.status='FINISHED';finished.currentQuestion=null;
   await apply(host,finished);assert.equal(await host.locator('.battle-online-host-video').count(),0,'finish removes the video player');
  }finally{await browser.close();}
 });

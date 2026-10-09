@@ -256,11 +256,38 @@
         vm.hostVideoReplayConfirmOpen = false;
         vm.hostVideoReopening = false;
         vm.hostVideoReplayError = '';
+        vm.hostQuestionTimerBusy = false;
+        vm.hostVideoFullscreen = false;
         vm.videoAnswerToast = null;
         var hostVideoQuestionKey = '', hostVideoQuestionFocus;
         var videoAnswerToastTimer, videoMatchGeneration = 0, lastVideoAnswerToastSequence = 0;
         var videoTransitionKey = '', videoCheckpointPending = false, videoCheckpointAt = 0;
         var videoRetryTimer, hostVideoStateKey = '', hostVideoSourceId = '';
+        vm.toggleHostQuestionTimer = function () {
+            if (vm.hostQuestionTimerBusy || !canShowHostVideoQuestion()) { return; }
+            var code = vm.room.code, pause = vm.room.questionTimerPaused !== true;
+            vm.hostQuestionTimerBusy = true;
+            battleService.setQuestionTimerPaused(code, pause).then(function (room) {
+                if (vm.room && vm.room.code === code) { applyRoom(room, false); }
+            }, showRequestError).finally(function () { vm.hostQuestionTimerBusy = false; });
+        };
+        function syncHostVideoFullscreen() {
+            var stage = $window.document.getElementById('battle-host-video-stage');
+            vm.hostVideoFullscreen = $window.document.fullscreenElement === stage;
+        }
+        function hostVideoFullscreenChanged() {
+            $scope.$evalAsync(syncHostVideoFullscreen);
+        }
+        vm.toggleHostVideoFullscreen = function () {
+            var stage = $window.document.getElementById('battle-host-video-stage');
+            if (!stage) { return; }
+            if ($window.document.fullscreenElement === stage) {
+                if ($window.document.exitFullscreen) { $window.document.exitFullscreen(); }
+            } else if (stage.requestFullscreen) {
+                var request = stage.requestFullscreen();
+                if (request && request.catch) { request.catch(function () { vm.videoSyncError = 'Trình duyệt không cho mở toàn màn hình.'; }); }
+            }
+        };
         vm.videoQuestionOpen = function () { return !vm.room || !vm.room.videoSynchronized || vm.room.videoPhase === 'ANSWERING'; };
         function canShowHostVideoQuestion() {
             return isHost() && vm.room && vm.room.status === 'PLAYING' && vm.room.videoSynchronized &&
@@ -584,9 +611,8 @@
         var giftModalReturnFocus = null;
         vm.isLumNgayMode = function () { return !!vm.room && vm.room.settings.mode === 'LUM_NGAY'; };
         vm.giftClaimDisabled = function () {
-            return !vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() ||
-                vm.claimingGift || vm.answerLocked || vm.usingSkill || !!vm.room.pendingSkillType || vm.room.giftCredits <= 0 ||
-                vm.room.giftCredits == null || vm.countdown <= 0 || isMeFrozen() || isWrongAnswerPenaltyActive();
+            return !vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || vm.room.giftOpening !== true || isSpectator() ||
+                vm.claimingGift || !!vm.room.pendingSkillType || vm.room.giftCredits <= 0 || vm.room.giftCredits == null || vm.countdown <= 0;
         };
         vm.getGiftRewardImage = function (level, skillType) {
             if (skillType) { level = 0; }
@@ -613,8 +639,8 @@
             }, 0);
         }
         vm.openGiftModal = function () {
-            if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() ||
-                    !(vm.room.giftCredits > 0) || vm.room.pendingSkillType || vm.claimingGift || vm.giftModalOpen) { return; }
+            if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || vm.room.giftOpening !== true || isSpectator() ||
+                    vm.claimingGift || vm.giftModalOpen) { return; }
             giftModalReturnFocus = $window.document.activeElement;
             vm.lastGiftReward = null;
             vm.giftModalOpen = true;
@@ -623,6 +649,7 @@
         };
         vm.closeGiftModal = function (force) {
             if (vm.claimingGift && force !== true) { return; }
+            if (force !== true && vm.room && vm.room.status === 'PLAYING' && vm.room.giftOpening === true) { return; }
             vm.giftModalOpen = false;
             vm.lastGiftReward = null;
             $window.document.body.classList.remove('battle-gift-modal-open');
@@ -638,21 +665,41 @@
             }
         };
         vm.dismissGiftReward = function () {
-            if (vm.lastGiftReward) { vm.closeGiftModal(); }
+            if (!vm.lastGiftReward) { return; }
+            if (vm.room && vm.room.status === 'PLAYING' && vm.room.giftOpening === true) {
+                vm.lastGiftReward = null;
+                focusGiftModal('.battle-online-gift-grid button:not([disabled])');
+            } else { vm.closeGiftModal(); }
         };
         vm.claimGift = function (gift) {
             if (!gift || !vm.giftModalOpen || vm.lastGiftReward || vm.giftClaimDisabled()) { return; }
             var code = vm.room.code, gameId = vm.room.giftDrop && vm.room.giftDrop.gameId;
             vm.claimingGift = true;
             return battleService.claimGift(code, gift.id).then(function (result) {
-                if (!vm.room || vm.room.code !== code || vm.room.status !== 'PLAYING' ||
+                if (!vm.room || vm.room.code !== code ||
                         !vm.room.giftDrop || vm.room.giftDrop.gameId !== gameId) { return; }
                 applyRoom(result.room, false);
+                if (!result.room || result.room.status !== 'PLAYING' || result.room.giftOpening !== true) { return; }
                 vm.lastGiftReward = {level: result.rewardLevel, points: result.points};
                 if (result.skillType) { vm.lastGiftReward.skillType = result.skillType; }
                 focusGiftModal('.battle-online-gift-continue');
             }, function (error) { showRequestError(error); refreshPrivateRoomState(); })
             .finally(function () { vm.claimingGift = false; });
+        };
+        vm.finishingGiftOpening = false;
+        vm.finishGiftOpening = function () {
+            if (!isHost() || vm.finishingGiftOpening || !vm.room || vm.room.giftOpening !== true) { return; }
+            var code = vm.room.code; vm.finishingGiftOpening = true;
+            return battleService.finishGiftOpening(code).then(function (room) {
+                if (vm.room && vm.room.code === code) { applyRoom(room, false); }
+            }, showRequestError).finally(function () { vm.finishingGiftOpening = false; });
+        };
+        vm.extendGiftOpening = function () {
+            if (!isHost() || vm.finishingGiftOpening || !vm.room || vm.room.giftOpening !== true) { return; }
+            var code = vm.room.code; vm.finishingGiftOpening = true;
+            return battleService.extendGiftOpening(code).then(function (room) {
+                if (vm.room && vm.room.code === code) { applyRoom(room, false); }
+            }, showRequestError).finally(function () { vm.finishingGiftOpening = false; });
         };
         vm.hostTeamCountDirty = false;
         vm.hostDoubleActionDirty = false;
@@ -2627,6 +2674,8 @@
                 previousRoom
                     ? previousRoom.status
                     : null;
+            var giftOpeningStarted = incoming.giftOpening === true &&
+                (!previousRoom || previousRoom.code !== incoming.code || previousRoom.giftOpening !== true);
 
             var shouldSpeakGuessReveal = !!(
                 incoming.settings &&
@@ -2650,6 +2699,7 @@
                 incoming.status === 'PLAYING' &&
                 incoming.settings &&
                 isCountdownLikeValue(incoming.settings.mode) &&
+                incoming.giftOpening !== true &&
                 !incoming.currentQuestion &&
                 previousQuestion
             ) {
@@ -2773,6 +2823,7 @@
             }
 
             vm.room = incoming;
+            if (incoming.giftOpening !== true && vm.giftModalOpen) { vm.closeGiftModal(true); }
             var videoRoundChanged = !!(previousRoom && Number(previousRoom.videoQuestionRound || 0) !== Number(incoming.videoQuestionRound || 0));
             if (((!previousRoom || previousRoom.code !== incoming.code || previousStatus !== 'PLAYING') && incoming.status === 'PLAYING') || videoRoundChanged) {
                 videoMatchGeneration++; lastVideoAnswerToastSequence = 0; clearVideoAnswerToast();
@@ -2807,6 +2858,16 @@
             syncBattleDisplayName(incoming);
             syncMobilePlayingPageState();
             if (isSpectator()) { vm.closeGiftModal(true); }
+            if (giftOpeningStarted && !isSpectator()) {
+                if (fromGenericSocket === true || !incoming.giftDrop || incoming.giftDrop.gifts == null) {
+                    refreshPrivateRoomState();
+                } else {
+                    vm.openGiftModal();
+                }
+            } else if (incoming.giftOpening === true && !isSpectator() && !vm.giftModalOpen &&
+                    incoming.giftDrop && incoming.giftDrop.gifts != null) {
+                vm.openGiftModal();
+            }
             syncBattleViewMusic();
 
             if (shouldSpeakGuessReveal) {
@@ -3086,6 +3147,7 @@
                     'PLAYING' &&
                 incoming.settings &&
                 isCountdownLikeValue(incoming.settings.mode) &&
+                incoming.giftOpening !== true &&
                 !incoming.currentQuestion &&
                 !incoming.pendingSkillType &&
                 !incoming.passwordSelectionRequired &&
@@ -4321,12 +4383,6 @@
                              * response; pending skill/penalty đã có guard riêng.
                              */
                             vm.answerLocked = false;
-                            if (result.correct === true && vm.room && vm.room.code === submittedRoomCode &&
-                                    result.room && result.room.giftDrop && vm.room.giftDrop &&
-                                    result.room.giftDrop.gameId === vm.room.giftDrop.gameId) {
-                                vm.openGiftModal();
-                            }
-
                             if (
                                 vm.room &&
                                 !vm.room.currentQuestion &&
@@ -6326,7 +6382,11 @@
                 serverTimeOffset;
 
             var endAt =
-                isCountdownMode() && !vm.room.videoSynchronized
+                vm.room.giftOpening === true
+                    ? Number(vm.room.giftOpeningEndsAt || vm.room.matchEndsAt || 0)
+                    : vm.room.questionTimerPaused === true
+                    ? serverNow + Number(vm.room.questionTimerRemainingMillis || 0)
+                    : isCountdownMode() && !vm.room.videoSynchronized
                     ? Number(
                         vm.room.matchEndsAt ||
                         0
@@ -7583,6 +7643,7 @@
             keydownHandler
         );
         angular.element($window).on('resize', hostVideoListResize);
+        angular.element($window.document).on('fullscreenchange', hostVideoFullscreenChanged);
 
         angular.element(
             $window.document
@@ -7609,6 +7670,7 @@
                 $timeout.cancel(videoRetryTimer);
                 vm.closeHostVideoQuestionModal(); vm.closeHostVideoQuestionList(); clearHostVideoReplay(); clearVideoAnswerToast();
                 angular.element($window).off('resize', hostVideoListResize);
+                angular.element($window.document).off('fullscreenchange', hostVideoFullscreenChanged);
                 vm.closeGiftModal(true);
                 if (demonAudioContext) {
                     var closingAudio = demonAudioContext.close();

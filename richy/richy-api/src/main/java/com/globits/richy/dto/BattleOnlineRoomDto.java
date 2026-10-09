@@ -33,6 +33,8 @@ public class BattleOnlineRoomDto implements Serializable {
      * CLASSIC.
      */
     private long questionEndsAt;
+    private boolean questionTimerPaused;
+    private long questionTimerRemainingMillis;
     private boolean videoSynchronized;
     private String videoPhase;
     private double videoPositionSeconds;
@@ -56,6 +58,8 @@ public class BattleOnlineRoomDto implements Serializable {
      * COUNTDOWN.
      */
     private long matchEndsAt;
+    private boolean giftOpening;
+    private long giftOpeningEndsAt;
 
     private long serverTime;
     private long finishedExpiresAt;
@@ -231,6 +235,11 @@ public class BattleOnlineRoomDto implements Serializable {
         this.questionEndsAt = questionEndsAt;
     }
 
+    public boolean isQuestionTimerPaused() { return questionTimerPaused; }
+    public void setQuestionTimerPaused(boolean value) { questionTimerPaused = value; }
+    public long getQuestionTimerRemainingMillis() { return questionTimerRemainingMillis; }
+    public void setQuestionTimerRemainingMillis(long value) { questionTimerRemainingMillis = value; }
+
     public long getMatchEndsAt() {
         return matchEndsAt;
     }
@@ -238,6 +247,11 @@ public class BattleOnlineRoomDto implements Serializable {
     public void setMatchEndsAt(long matchEndsAt) {
         this.matchEndsAt = matchEndsAt;
     }
+
+    public boolean isGiftOpening() { return giftOpening; }
+    public void setGiftOpening(boolean value) { giftOpening = value; }
+    public long getGiftOpeningEndsAt() { return giftOpeningEndsAt; }
+    public void setGiftOpeningEndsAt(long value) { giftOpeningEndsAt = value; }
 
     public long getServerTime() {
         return serverTime;

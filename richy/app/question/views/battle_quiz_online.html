@@ -1034,10 +1034,11 @@
                 <small class="battle-online-music-note">Nhạc phát trên thiết bị host. Danh sách lấy từ Config Battle.</small>
             </section>
     </div>
-    <section class="battle-online-card battle-online-host-video"
-             ng-if="vm.room.status === 'PLAYING' && vm.isHost() && vm.room.currentQuestion.exercise.videoUrl">
+    <div id="battle-host-video-stage" class="battle-online-host-video-stage"
+         ng-if="vm.room.status === 'PLAYING' && vm.isHost() && vm.room.currentQuestion.exercise.videoUrl">
+    <section class="battle-online-card battle-online-host-video">
         <div ng-repeat="videoSource in [vm.room.currentQuestion.exercise.videoSourceId] track by videoSource">
-            <comprehensive-video-player video-link="vm.room.currentQuestion.exercise.videoUrl" video-api="vm.hostVideoApi"
+            <comprehensive-video-player video-link="vm.room.currentQuestion.exercise.videoUrl" video-api="vm.hostVideoApi" managed-fullscreen="true"
                 on-video-ready="vm.hostVideoReady(api, videoSource)" on-video-progress="vm.hostVideoProgress(seconds, duration, videoSource)"
                 on-video-state="vm.hostVideoState(playing, videoSource)" on-video-ended="vm.hostVideoEnded(videoSource)"></comprehensive-video-player>
         </div>
@@ -1048,6 +1049,9 @@
                 ng-click="vm.resumeHostVideoMatch()" ng-disabled="vm.hostVideoReopening">Về câu hiện tại</button>
         <button id="battle-host-video-question-open" type="button" class="btn btn-default"
                 ng-if="vm.room.videoPhase === 'ANSWERING'" ng-click="vm.openHostVideoQuestionModal()">Xem câu hỏi</button>
+        <button type="button" class="btn btn-default" ng-click="vm.toggleHostVideoFullscreen()">
+            {{vm.hostVideoFullscreen ? '⛶ Thu nhỏ' : '⛶ Toàn màn hình'}}
+        </button>
         <p class="comprehensive-video-error" ng-if="vm.videoSyncError" role="alert">{{vm.videoSyncError}}</p>
     </section>
     <div class="battle-online-host-question-backdrop" ng-if="vm.hostVideoQuestionModalOpen"
@@ -1058,8 +1062,12 @@
             <header class="battle-online-host-question-header">
                 <div><small>CẢ LỚP CÙNG TRẢ LỜI</small><h2 id="battle-host-video-question-title">Câu hỏi {{vm.room.currentQuestionIndex}} / {{vm.room.totalQuestions}}</h2></div>
                 <div class="battle-online-host-question-clock" ng-class="{'is-urgent': vm.countdown <= 5}" role="timer" aria-label="Thời gian trả lời còn lại">
-                    <small>CÒN LẠI</small><strong>{{vm.countdown}}<span> giây</span></strong>
+                    <small>{{vm.room.questionTimerPaused ? 'ĐANG TẠM DỪNG' : 'CÒN LẠI'}}</small><strong>{{vm.countdown}}<span> giây</span></strong>
                 </div>
+                <button type="button" class="btn btn-warning battle-online-host-timer-toggle"
+                        ng-click="vm.toggleHostQuestionTimer()" ng-disabled="vm.hostQuestionTimerBusy">
+                    {{vm.room.questionTimerPaused ? '▶ Tiếp tục bấm giờ' : '⏸ Tạm dừng bấm giờ'}}
+                </button>
                 <button type="button" class="battle-online-host-question-close" ng-click="vm.closeHostVideoQuestionModal()" aria-label="Đóng câu hỏi">×</button>
             </header>
             <div class="battle-online-host-question-body">
@@ -1070,6 +1078,7 @@
             </div>
             <footer>Video tự tiếp tục khi tất cả học sinh đã nộp hoặc hết giờ.</footer>
         </section>
+    </div>
     </div>
     <div class="battle-online-host-question-backdrop" ng-if="vm.hostVideoQuestionListOpen" ng-click="vm.closeHostVideoQuestionList()">
         <section id="battle-host-video-question-list" class="battle-online-host-question-list" role="dialog" aria-modal="true"
@@ -1110,7 +1119,7 @@
         <span aria-hidden="true">{{vm.videoAnswerToast.correct ? '✓' : '✕'}}</span> {{vm.videoAnswerToast.label}}
     </div>
     <ng-include ng-if="vm.room && vm.room.status === 'PLAYING' && vm.isLumNgayMode() && vm.isHost()"
-                src="'question/views/battle_online_egg_host.html?eggHost=20261008_1'"></ng-include>
+                src="'question/views/battle_online_egg_host.html?eggHost=20261009_1'"></ng-include>
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING' && !(vm.isLumNgayMode() && vm.isHost() && vm.isSpectator())"
          ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode()}">
@@ -1495,12 +1504,10 @@
 
             <div class="battle-online-gift-slot"
                  ng-if="vm.isLumNgayMode()">
-                <section class="battle-online-gift-box">
+                <section class="battle-online-gift-box" ng-if="!vm.room.giftOpening">
                     <header><strong>🎁 LỤM NGAY</strong><span>{{vm.room.giftDrop.gifts.length || 0}} / {{vm.room.giftDrop.capacity || 0}} món</span></header>
-                    <p>Trả lời đúng để mở modal chọn trứng. Trứng thối cho 0,5 điểm; level cao hiếm hơn và cho nhiều điểm hơn!</p>
+                    <p>Trả lời đúng để tích lũy lượt bóc. Hết phần câu hỏi, bạn có 3 phút để chọn trứng!</p>
                     <b class="battle-online-gift-credits">Lượt bóc của bạn: {{vm.room.giftCredits || 0}}</b>
-                    <button type="button" class="battle-online-gift-open" ng-if="vm.room.giftCredits > 0"
-                            ng-click="vm.openGiftModal()" ng-disabled="vm.giftClaimDisabled() || vm.giftModalOpen">🥚 CHỌN TRỨNG</button>
                 </section>
             </div>
 
@@ -2025,12 +2032,17 @@
         <section id="battle-gift-modal" class="battle-online-gift-modal" role="dialog" aria-modal="true"
                  aria-labelledby="battle-gift-modal-title" tabindex="-1" ng-class="{'is-revealed': vm.lastGiftReward, 'is-rotten': vm.lastGiftReward.level === -1}">
             <header class="battle-online-gift-modal-header">
-                <div><small>🥚 LỤM NGAY</small><h2 id="battle-gift-modal-title">{{vm.lastGiftReward ? 'BẠN BÓC ĐƯỢC!' : 'CHÍNH XÁC! CHỌN MỘT TRỨNG'}}</h2></div>
+                <div><small>🥚 VÒNG BÓC TRỨNG • CÒN {{vm.formatTime(vm.countdown)}}</small><h2 id="battle-gift-modal-title">{{vm.lastGiftReward ? 'BẠN BÓC ĐƯỢC!' : (vm.room.giftCredits > 0 ? 'CHỌN TRỨNG CỦA BẠN' : 'BẠN ĐÃ BÓC XONG')}}</h2></div>
                 <button type="button" class="battle-online-gift-modal-close" aria-label="Đóng modal chọn trứng"
-                        ng-click="$event.stopPropagation(); vm.closeGiftModal()" ng-disabled="vm.claimingGift">×</button>
+                        ng-if="!vm.room.giftOpening" ng-click="$event.stopPropagation(); vm.closeGiftModal()" ng-disabled="vm.claimingGift">×</button>
             </header>
             <div class="battle-online-gift-modal-stage" ng-if="!vm.lastGiftReward">
-                <p class="battle-online-gift-modal-hint">Pool riêng của bạn gồm 3 trứng. Chọn một trứng để nhận điểm hoặc skill!</p>
+                <p class="battle-online-gift-modal-hint" ng-if="vm.room.giftCredits > 0">Bạn có {{vm.room.giftCredits}} lượt. Hệ thống đưa thêm 3 quả để lựa chọn; bạn chỉ bóc đúng số lượt đã kiếm được.</p>
+                <p class="battle-online-gift-modal-hint" ng-if="vm.room.giftCredits <= 0">Đã dùng hết lượt. Đang chờ những người chơi còn lại…</p>
+                <div class="battle-online-gift-host-controls" ng-if="vm.isHost() && vm.room.giftOpening">
+                    <button type="button" class="btn btn-default" ng-click="$event.stopPropagation(); vm.extendGiftOpening()" ng-disabled="vm.finishingGiftOpening">+1 phút</button>
+                    <button type="button" class="btn btn-danger" ng-click="$event.stopPropagation(); vm.finishGiftOpening()" ng-disabled="vm.finishingGiftOpening">Kết thúc ngay</button>
+                </div>
                 <div class="battle-online-gift-modal-meta"><span>{{vm.room.giftDrop.gifts.length || 0}} / {{vm.room.giftDrop.capacity || 0}} trứng</span><b>{{vm.room.giftCredits || 0}} lượt bóc</b></div>
                 <div class="battle-online-gift-grid" ng-if="vm.room.giftDrop.gifts.length">
                     <button type="button" ng-repeat="gift in vm.room.giftDrop.gifts track by gift.id"
@@ -2041,7 +2053,6 @@
                 </div>
                 <p class="battle-online-gift-waiting" ng-if="!vm.room.giftDrop.gifts.length">🥚 Đang tải pool trứng của bạn...</p>
                 <p class="battle-online-gift-modal-hint" ng-if="vm.claimingGift">Đang bóc trứng...</p>
-                <p class="battle-online-gift-modal-hint" ng-if="vm.isMeFrozen() || vm.isWrongAnswerPenaltyActive()">Đang bị khóa. Bạn có thể chọn trứng khi hết thời gian khóa.</p>
             </div>
             <div class="battle-online-gift-reveal" ng-if="vm.lastGiftReward" aria-live="polite">
                 <div class="battle-online-gift-art" ng-class="{'is-skill-egg': vm.lastGiftReward.skillType}">
@@ -2052,8 +2063,8 @@
                 <span ng-if="vm.lastGiftReward.level >= 0">Level {{vm.lastGiftReward.level}}</span>
                 <b class="battle-online-gift-points" ng-if="!vm.lastGiftReward.skillType">+{{vm.lastGiftReward.points}} ĐIỂM</b>
                 <b class="battle-online-gift-skill-label" ng-if="vm.lastGiftReward.skillType">NHẬN SKILL {{vm.getSkillIcon(vm.lastGiftReward.skillType)}}</b>
-                <p>{{vm.lastGiftReward.skillType ? 'Đóng modal để chọn đối thủ dùng skill.' : 'Điểm đã được cộng cho bạn. Bấm vào modal để đóng.'}}</p>
-                <button type="button" class="battle-online-gift-continue" ng-click="$event.stopPropagation(); vm.closeGiftModal()">{{vm.lastGiftReward.skillType ? 'CHỌN ĐỐI THỦ →' : 'TIẾP TỤC TRẢ LỜI →'}}</button>
+                <p>Điểm đã được cộng cho bạn.</p>
+                <button type="button" class="battle-online-gift-continue" ng-click="$event.stopPropagation(); vm.dismissGiftReward()">{{vm.room.giftCredits > 0 ? 'BÓC TIẾP →' : 'ĐÃ BÓC XONG'}}</button>
             </div>
         </section>
     </div>
@@ -2746,6 +2757,10 @@
     .egg-host-time h2 { color:#fff; }
     .egg-host-clock { display:block; margin:20px 0; font-size:clamp(34px,4vw,64px); font-weight:900; font-variant-numeric:tabular-nums; }
     .egg-host-time p { padding:14px 0; border-bottom:1px solid #ffffff30; }
+    .egg-host-final-controls { display:grid; gap:10px; margin-top:auto; }
+    .egg-host-final-controls .btn { min-height:46px; font-weight:900; }
+    .battle-online-gift-host-controls { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; margin:0 0 16px; }
+    .battle-online-gift-host-controls .btn { min-width:140px; min-height:42px; font-weight:800; }
     .egg-host-rank-row { display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid #ece7f7; }
     .egg-host-rank-row img { width:44px; height:44px; object-fit:contain; }
     .egg-host-rank-row .egg-host-player { flex:1; min-width:0; overflow-wrap:anywhere; }
@@ -2913,6 +2928,10 @@
         border-radius: 16px;
     }
 
+    .battle-online-host-video-stage:fullscreen { min-height:100%; padding:16px; overflow:auto; background:#0f172a; }
+    .battle-online-host-video-stage:fullscreen .battle-online-host-video { width:min(calc((100vh - 120px) * 16 / 9),100%); margin:0 auto; }
+    .battle-online-host-video-stage:fullscreen .battle-online-host-question-backdrop { z-index:2147483646; }
+
     .battle-online-host-video .comprehensive-video-mount {
         min-height: 0;
     }
@@ -2942,6 +2961,7 @@
     .battle-online-host-question-clock strong { font-size: clamp(28px, 4vw, 52px); font-variant-numeric: tabular-nums; }
     .battle-online-host-question-clock strong span { font-size: 16px; }
     .battle-online-host-question-clock.is-urgent { color: #d04444; }
+    .battle-online-host-timer-toggle { flex-shrink:0; min-height:44px; font-weight:800; }
     .battle-online-host-question-close { flex-shrink: 0; width: 44px; height: 44px; border: 1px solid var(--bo-line); border-radius: 12px; background: var(--bo-card); color: var(--bo-text); font-size: 28px; }
     .battle-online-host-question-body { flex: 1; min-height: 0; overflow-y: auto; padding: 24px clamp(16px, 4vw, 64px); font-size: clamp(18px, 2vw, 24px); }
     .battle-online-host-question-body .battle-online-word h2 { font-size: clamp(26px, 3vw, 42px); }
@@ -2973,6 +2993,7 @@
         .battle-online-host-question-header small { font-size: 10px; }
         .battle-online-host-question-close { width: 36px; height: 36px; }
         .battle-online-host-question-clock strong span { display: block; font-size: 12px; }
+        .battle-online-host-timer-toggle { padding:8px; font-size:12px; }
         .battle-online-host-question-body { padding: 16px 12px; }
         .battle-online-host-question-body .battle-online-answer-grid { grid-template-columns: 1fr; }
         .battle-online-host-question-modal > footer { padding: 10px 12px; font-size: 12px; }

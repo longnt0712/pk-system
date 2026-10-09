@@ -1300,6 +1300,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             room.videoQuestionRound = 0L;
             room.videoDemonPausedAt = 0L;
             room.videoDemonPauseMillis = 0L;
+            room.questionTimerPaused = false;
+            room.questionTimerRemainingMillis = 0L;
+            room.giftOpening = false;
+            room.giftOpeningEndsAt = 0L;
             room.videoRevision++;
             room.battleResultsSaved = false;
             room.battleAttemptId = UUID.randomUUID().toString();
@@ -1356,6 +1360,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             room.videoRevision++;
             room.demonDefense = null;
             room.giftDrop = null;
+            room.giftOpening = false;
+            room.giftOpeningEndsAt = 0L;
+            room.questionTimerPaused = false;
+            room.questionTimerRemainingMillis = 0L;
             room.lastDemonSummaryAt = 0L;
             room.lastDemonWarningKey = "";
             ensureDemonHostSpectatorLocked(room);
@@ -1636,6 +1644,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         room.classicQuestions.clear();
         room.classicQuestionIndex = -1;
         room.questionEndsAt = 0L;
+        room.questionTimerPaused = false;
+        room.questionTimerRemainingMillis = 0L;
+        room.giftOpening = false;
+        room.giftOpeningEndsAt = 0L;
 
         long matchStartsAt = System.currentTimeMillis();
         long matchDurationMs =
@@ -2161,6 +2173,10 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         synchronized (room) {
             requirePlaying(room);
 
+            if (room.giftOpening) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Phần trả lời đã kết thúc. Hãy dùng lượt bóc trứng của bạn.");
+            }
+
             long now = System.currentTimeMillis();
 
             if (room.videoSynchronized) { requireVideoAnswerWindowLocked(room, answerDto); }
@@ -2475,6 +2491,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         synchronized (room) {
             requirePlaying(room);
+            if (room.giftOpening) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Đang trong vòng bóc trứng, không thể dùng skill.");
+            }
             if (!room.settings.skillsEnabled) {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Host đã tắt skill trong trận này.");
             }
@@ -2658,9 +2677,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Phòng này không có box quà LỤM NGAY.");
             }
             long now = System.currentTimeMillis();
-            if (now >= room.matchEndsAt) {
-                finishMatchLocked(room);
-                throw new BattleOnlineException(HttpStatus.CONFLICT, "Hết thời gian trận.");
+            if (!room.giftOpening) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Chờ hết phần câu hỏi để bắt đầu bóc trứng.");
+            }
+            if (now >= room.giftOpeningEndsAt) {
+                completeMatchLocked(room);
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Đã hết thời gian bóc trứng.");
             }
             PlayerState player = requirePlayer(room, username);
             requireActivePlayer(player);
@@ -2668,7 +2690,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Dùng skill đang có trước khi bóc trứng tiếp.");
             }
             if (player.frozenUntil > now || player.wrongAnswerPenaltyUntil > now || player.giftCredits <= 0) {
-                throw new BattleOnlineException(HttpStatus.CONFLICT, "Trả lời đúng để nhận lượt lụm quà.");
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Bạn đã dùng hết lượt bóc trứng.");
             }
             GiftDropGame.Gift gift = room.giftDrop.claim(username, request != null ? request.getGiftId() : null);
             if (gift == null) { throw new BattleOnlineException(HttpStatus.CONFLICT, "Trứng không còn trong pool của bạn. Chọn trứng khác nhé!"); }
@@ -2683,10 +2705,36 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     ? gift.points : applyDoubleActionScoreLocked(room, player, gift.points);
             room.giftDrop.recordClaim(gift, player.username, displayName(player), awardedPoints, now);
             result.setSkillType(gift.skillType);
-            result.setRewardLevel(gift.rewardLevel); result.setPoints(awardedPoints); result.setRoom(snapshotLocked(room, username));
+            result.setRewardLevel(gift.rewardLevel); result.setPoints(awardedPoints);
+            if (!hasOutstandingGiftCreditsLocked(room)) { completeMatchLocked(room); }
+            result.setRoom(snapshotLocked(room, username));
         }
         broadcastGeneric(room);
         return result;
+    }
+
+    @Override
+    public BattleOnlineRoomDto finishGiftOpening(String roomCode, String username) {
+        username = requireUsername(username); RoomState room = requireRoom(roomCode); BattleOnlineRoomDto result;
+        synchronized (room) {
+            requirePlaying(room); requireHost(room, username); requireGiftOpeningLocked(room);
+            completeMatchLocked(room); result = snapshotLocked(room, username);
+        }
+        broadcastGeneric(room); return result;
+    }
+
+    @Override
+    public BattleOnlineRoomDto extendGiftOpening(String roomCode, String username) {
+        username = requireUsername(username); RoomState room = requireRoom(roomCode); BattleOnlineRoomDto result;
+        synchronized (room) {
+            requirePlaying(room); requireHost(room, username); requireGiftOpeningLocked(room);
+            long now = System.currentTimeMillis();
+            room.giftOpeningEndsAt = Math.max(now, room.giftOpeningEndsAt) + 60000L;
+            room.matchEndsAt = room.giftOpeningEndsAt;
+            scheduleMatchFinish(room.code, room.giftOpeningEndsAt);
+            result = snapshotLocked(room, username);
+        }
+        broadcastGeneric(room); return result;
     }
 
 
@@ -3806,6 +3854,34 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
     @Override
+    public BattleOnlineRoomDto controlQuestionTimer(String roomCode, String username,
+            com.globits.richy.dto.BattleOnlineTimerControlDto request) {
+        username = requireUsername(username); RoomState room = requireRoom(roomCode); BattleOnlineRoomDto result;
+        synchronized (room) {
+            requirePlaying(room); requireHost(room, username);
+            if (!room.videoSynchronized || !"ANSWERING".equals(room.videoPhase)) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Chỉ tạm dừng được khi câu hỏi video đang mở.");
+            }
+            boolean pause = request != null && request.isPaused();
+            long now = System.currentTimeMillis();
+            if (pause && !room.questionTimerPaused) {
+                room.questionTimerRemainingMillis = Math.max(0L, room.questionEndsAt - now);
+                room.questionTimerPaused = true; room.questionEndsAt = 0L;
+                cancelClassicTimer(room.code); room.videoRevision++;
+            } else if (!pause && room.questionTimerPaused) {
+                room.questionTimerPaused = false;
+                room.questionEndsAt = now + Math.max(0L, room.questionTimerRemainingMillis);
+                room.questionTimerRemainingMillis = 0L; room.videoRevision++;
+                long grace = MODE_GUESS_WORD.equals(room.settings.mode) ? GUESS_AUTO_SUBMIT_GRACE_MS + 150L : 80L;
+                scheduleClassicAdvance(room.code, room.classicQuestionIndex,
+                        Math.max(20L, room.questionEndsAt - now + grace));
+            }
+            result = snapshotLocked(room, username);
+        }
+        broadcastGeneric(room); return result;
+    }
+
+    @Override
     public List<com.globits.richy.dto.BattleOnlineVideoQuestionPreviewDto> getVideoQuestions(String roomCode, String username) {
         RoomState room = requireRoom(roomCode);
         synchronized (room) {
@@ -3835,7 +3911,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private void requireVideoAnswerWindowLocked(RoomState room, BattleOnlineAnswerDto answer) {
         long grace = MODE_GUESS_WORD.equals(room.settings.mode) && answer != null && answer.isAutoSubmitted() ? GUESS_AUTO_SUBMIT_GRACE_MS : 0L;
-        if (!"ANSWERING".equals(room.videoPhase) || System.currentTimeMillis() > room.questionEndsAt + grace ||
+        if (!"ANSWERING".equals(room.videoPhase) || (!room.questionTimerPaused && System.currentTimeMillis() > room.questionEndsAt + grace) ||
                 answer == null || answer.getQuestionSequence() != room.classicQuestionIndex + 1L ||
                 answer.getVideoQuestionRound() != room.videoQuestionRound) {
             throw new BattleOnlineException(HttpStatus.CONFLICT, "Câu hỏi video chưa mở hoặc đã hết giờ.");
@@ -3846,6 +3922,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         setVideoDemonPausedLocked(room, false);
         room.videoPhase = "ANSWERING";
         room.videoRevision++;
+        room.questionTimerPaused = false;
+        room.questionTimerRemainingMillis = 0L;
         room.questionEndsAt = System.currentTimeMillis() + seconds * 1000L;
         long grace = MODE_GUESS_WORD.equals(room.settings.mode) ? GUESS_AUTO_SUBMIT_GRACE_MS + 150L : 80L;
         scheduleClassicAdvance(room.code, room.classicQuestionIndex, seconds * 1000L + grace);
@@ -3871,8 +3949,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private void finishVideoAnswerWindowLocked(RoomState room) {
         if (!"ANSWERING".equals(room.videoPhase) ||
-                (System.currentTimeMillis() < room.questionEndsAt && !allConnectedClassicAnsweredLocked(room))) { return; }
+                (room.questionTimerPaused && !allConnectedClassicAnsweredLocked(room)) ||
+                (!room.questionTimerPaused && System.currentTimeMillis() < room.questionEndsAt && !allConnectedClassicAnsweredLocked(room))) { return; }
         cancelClassicTimer(room.code);
+        room.questionTimerPaused = false;
+        room.questionTimerRemainingMillis = 0L;
         recordUnansweredClassicPlayersLocked(room);
         if (MODE_GUESS_WORD.equals(room.settings.mode)) { finalizeGuessRoundLocked(room); }
         QuestionState current = currentClassicQuestionLocked(room);
@@ -3924,6 +4005,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 }
                 room.videoPhase = "WATCHING";
                 setVideoDemonPausedLocked(room, true);
+                room.questionTimerPaused = false;
+                room.questionTimerRemainingMillis = 0L;
                 room.questionEndsAt = 0L;
             } else { openVideoAnswerWindowLocked(room, room.settings.secondsPerQuestion); }
             room.guessPhase = GUESS_PHASE_QUESTION;
@@ -5736,7 +5819,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
     private void scheduleMatchFinish(
             final String roomCode,
-            long matchEndsAt) {
+            final long matchEndsAt) {
 
         cancelMatchTimer(roomCode);
 
@@ -5754,7 +5837,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         @Override
                         public void run() {
                             finishCountdownByTimer(
-                                    roomCode
+                                    roomCode,
+                                    matchEndsAt
                             );
                         }
                     },
@@ -5770,7 +5854,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
 
     private void finishCountdownByTimer(
-            String roomCode) {
+            String roomCode,
+            long expectedEndsAt) {
 
         RoomState room =
                 rooms.get(
@@ -5784,7 +5869,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         synchronized (room) {
             if (
                 !PLAYING.equals(room.status) ||
-                !isCountdownLikeMode(room.settings.mode)
+                !isCountdownLikeMode(room.settings.mode) ||
+                room.matchEndsAt != expectedEndsAt
             ) {
                 return;
             }
@@ -5796,6 +5882,49 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
+    private boolean hasOutstandingGiftCreditsLocked(RoomState room) {
+        for (PlayerState player : room.players.values()) {
+            if (!player.spectator && player.giftCredits > 0) { return true; }
+        }
+        return false;
+    }
+
+    private void requireGiftOpeningLocked(RoomState room) {
+        if (!MODE_LUM_NGAY.equals(room.settings.mode) || !room.giftOpening) {
+            throw new BattleOnlineException(HttpStatus.CONFLICT, "Vòng bóc trứng chưa bắt đầu.");
+        }
+    }
+
+    private void startGiftOpeningLocked(RoomState room) {
+        room.giftOpening = true;
+        room.giftOpeningEndsAt = System.currentTimeMillis() + 180000L;
+        room.matchEndsAt = room.giftOpeningEndsAt;
+        room.questionEndsAt = 0L;
+        room.questionTimerPaused = false;
+        room.questionTimerRemainingMillis = 0L;
+        room.videoPhase = null;
+        room.videoRevision++;
+        cancelClassicTimer(room.code);
+        cancelGuessRevealTimer(room.code);
+        cancelMatchTimer(room.code);
+
+        Map<String, Integer> credits = new LinkedHashMap<String, Integer>();
+        for (PlayerState player : room.players.values()) {
+            player.currentQuestion = null;
+            player.currentSkillType = null;
+            player.pendingSkillType = null;
+            player.pendingSkillTargetUsernames.clear();
+            player.frozenUntil = 0L;
+            player.invertedUntil = 0L;
+            player.burningUntil = 0L;
+            player.wrongAnswerPenaltyUntil = 0L;
+            if (!player.spectator) { credits.put(player.username, player.giftCredits); }
+        }
+        room.giftDrop = new GiftDropGame(room.settings.giftBasePoints, random);
+        room.giftDrop.prepareFinalPools(credits);
+        if (hasOutstandingGiftCreditsLocked(room)) { scheduleMatchFinish(room.code, room.giftOpeningEndsAt); }
+    }
+
     private void finishMatchLocked(
             RoomState room) {
 
@@ -5804,17 +5933,32 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             return;
         }
 
+        if (MODE_LUM_NGAY.equals(room.settings.mode) && !room.giftOpening) {
+            startGiftOpeningLocked(room);
+            if (hasOutstandingGiftCreditsLocked(room)) { return; }
+        }
+
+        completeMatchLocked(room);
+    }
+
+    private void completeMatchLocked(RoomState room) {
+        if (!PLAYING.equals(room.status)) { return; }
+
         if (MODE_CLASSIC.equals(room.settings.mode) || MODE_GUESS_WORD.equals(room.settings.mode)) {
             recordUnansweredClassicPlayersLocked(room);
         }
 
         room.status = FINISHED;
+        room.giftOpening = false;
         if (room.videoSynchronized) { room.videoPhase = null; room.videoRevision++; }
         if (room.demonDefense != null) {
             room.demonDefense.stop(demonGameTime(room, Math.min(System.currentTimeMillis(), room.matchEndsAt)));
         }
         room.questionEndsAt = 0L;
+        room.questionTimerPaused = false;
+        room.questionTimerRemainingMillis = 0L;
         room.matchEndsAt = 0L;
+        room.giftOpeningEndsAt = 0L;
         room.guessReviewEndsAt = 0L;
 
         cancelClassicTimer(room.code);
@@ -6663,6 +6807,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         dto.setQuestionEndsAt(
                 room.questionEndsAt
         );
+        dto.setQuestionTimerPaused(room.questionTimerPaused);
+        dto.setQuestionTimerRemainingMillis(room.questionTimerRemainingMillis);
         dto.setVideoSynchronized(room.videoSynchronized || (LOBBY.equals(room.status) && hasVideoQuestions(room)));
         dto.setVideoPhase(room.videoPhase);
         dto.setVideoPositionSeconds(room.videoPositionSeconds);
@@ -6671,9 +6817,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         dto.setDemonTimeOffsetMillis(room.videoSynchronized && room.demonDefense != null
                 ? room.videoDemonPauseMillis + (room.videoDemonPausedAt > 0L ? System.currentTimeMillis() - room.videoDemonPausedAt : 0L) : 0L);
 
-        dto.setMatchEndsAt(
-                room.videoSynchronized ? 0L : room.matchEndsAt
-        );
+        dto.setGiftOpening(room.giftOpening);
+        dto.setGiftOpeningEndsAt(room.giftOpeningEndsAt);
+        dto.setMatchEndsAt(room.giftOpening ? room.giftOpeningEndsAt : (room.videoSynchronized ? 0L : room.matchEndsAt));
         if (MODE_DEMON_DEFENSE.equals(room.settings.mode) && room.demonDefense != null) {
             dto.setDemonDefense(room.demonDefense.snapshot(demonGameTime(room, System.currentTimeMillis()),
                     room.hostUsername.equals(viewerUsername)));
@@ -7393,6 +7539,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             RoomState room) {
 
         room.giftDrop = null;
+        room.giftOpening = false;
+        room.giftOpeningEndsAt = 0L;
         room.dumbBallPosition = 0;
         room.demonDefense = null;
         room.lastDemonSummaryAt = 0L;
@@ -8563,6 +8711,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
 
         int classicQuestionIndex = -1;
         long questionEndsAt = 0L;
+        boolean questionTimerPaused;
+        long questionTimerRemainingMillis;
         int classicCorrectAnswerCount = 0;
 
         Set<Integer> revealedGuessIndices = new LinkedHashSet<Integer>();
@@ -8581,6 +8731,8 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
          * COUNTDOWN.
          */
         long matchEndsAt = 0L;
+        boolean giftOpening;
+        long giftOpeningEndsAt;
         DemonDefenseGame demonDefense;
         GiftDropGame giftDrop;
         long lastDemonSummaryAt;

@@ -29,6 +29,7 @@ public class BattleOnlineGiftDropTest {
         service = new BattleOnlineServiceImpl(); set(service,"messagingTemplate",mock(SimpMessagingTemplate.class));
         room = state("RoomState"); set(room,"code","GIFTS1"); set(room,"hostUsername","host"); set(room,"status","PLAYING");
         set(room,"matchEndsAt",System.currentTimeMillis()+60000);
+        set(room,"giftOpening",true); set(room,"giftOpeningEndsAt",System.currentTimeMillis()+60000);
         set(get(room,"settings"),"mode","LUM_NGAY"); set(get(room,"settings"),"skillsEnabled",false);
         alice=player("alice"); bob=player("bob"); host=player("host"); set(host,"host",true); set(host,"spectator",true);
         Map<String,Object> players=(Map<String,Object>)get(room,"players"); players.put("alice",alice); players.put("bob",bob); players.put("host",host);
@@ -48,6 +49,7 @@ public class BattleOnlineGiftDropTest {
     }
 
     @Test public void answersEarnCreditsAndUpdateStreakButNeverChangeScoreOrGrantQuestionSkills() throws Exception {
+        set(room,"giftOpening",false);
         set(get(room,"settings"),"skillsEnabled",true); set(get(room,"settings"),"teamCount",2);
         set(get(room,"settings"),"doubleActionUsername","alice"); set(alice,"teamNumber",1);
         set(alice,"score",7.5D); set(alice,"streak",9); set(alice,"currentSkillType","FREEZE");
@@ -63,6 +65,7 @@ public class BattleOnlineGiftDropTest {
     @Test public void eachSkillEggGrantsItsSkillAndUsingItPreservesTheUnansweredQuestion() throws Exception {
         set(get(room,"settings"),"skillsEnabled",true);
         for (final String type : GiftDropGame.SKILL_TYPES) {
+            set(room,"giftOpening",true);
             pool=new GiftDropGame(10,new Random() { public int nextInt(int bound) { return 0; } },Collections.singletonList(type));
             set(room,"giftDrop",pool); service.getRoom("GIFTS1","alice"); answerRequest();
             Object question=get(alice,"currentQuestion"); set(alice,"giftCredits",2); set(alice,"score",0D); set(bob,"score",100D);
@@ -74,6 +77,7 @@ public class BattleOnlineGiftDropTest {
             assertEquals(type,result.getRoom().getGiftDrop().claims.get(0).skillType);
             assertEquals("alice",result.getRoom().getGiftDrop().claims.get(0).username);
             rejected("alice",id); assertEquals(1,get(alice,"giftCredits"));
+            set(room,"giftOpening",false);
             BattleOnlineUseSkillDto skill=new BattleOnlineUseSkillDto(); skill.setTargetUsername("bob");
             BattleOnlineRoomDto used=service.useSkill("GIFTS1","alice",skill);
             assertNull(used.getPendingSkillType()); assertSame(question,get(alice,"currentQuestion")); assertEquals(1L,get(alice,"currentQuestionSequence"));
@@ -85,6 +89,7 @@ public class BattleOnlineGiftDropTest {
     }
 
     @Test public void eachCorrectAnswerEarnsOneCreditAndDuplicateOrWrongAnswersEarnNone() throws Exception {
+        set(room,"giftOpening",false);
         BattleOnlineAnswerDto request=answerRequest();
         BattleOnlineAnswerResultDto result=service.answer("GIFTS1","alice",request);
         assertTrue(result.isCorrect()); assertEquals(Integer.valueOf(1),result.getRoom().getGiftCredits()); assertEquals(Long.valueOf(1),result.getRoom().getGiftCreditVersion());
@@ -189,5 +194,35 @@ public class BattleOnlineGiftDropTest {
         service.updateSettings("GIFTS1","host",config); set(alice,"ready",true); set(bob,"ready",true); service.startMatch("GIFTS1","host");
         assertEquals(Collections.singletonList("INVERT"),get(get(room,"giftDrop"),"skillTypes"));
         assertTrue(((Map<?,?>)get(room,"countdownSkillPlan")).isEmpty());
+    }
+
+    @Test public void finishingQuestionsStartsAThreeMinuteFinalPoolAndLastClaimEndsEarly() {
+        set(alice,"giftCredits",2); set(bob,"giftCredits",1); set(room,"giftOpening",false);
+        long before=System.currentTimeMillis(); ReflectionTestUtils.invokeMethod(service,"finishMatchLocked",room);
+        BattleOnlineRoomDto aliceRoom=service.getRoom("GIFTS1","alice"), bobRoom=service.getRoom("GIFTS1","bob");
+        assertEquals("PLAYING",aliceRoom.getStatus()); assertTrue(aliceRoom.isGiftOpening());
+        assertTrue(aliceRoom.getGiftOpeningEndsAt()>=before+179000L); assertTrue(aliceRoom.getGiftOpeningEndsAt()<=before+181000L);
+        assertEquals(5,aliceRoom.getGiftDrop().capacity); assertEquals(5,aliceRoom.getGiftDrop().gifts.size());
+        assertEquals(4,bobRoom.getGiftDrop().capacity); assertEquals(4,bobRoom.getGiftDrop().gifts.size());
+
+        service.claimGift("GIFTS1","alice",request(aliceRoom.getGiftDrop().gifts.get(0).id));
+        aliceRoom=service.getRoom("GIFTS1","alice");
+        service.claimGift("GIFTS1","alice",request(aliceRoom.getGiftDrop().gifts.get(0).id));
+        assertEquals("PLAYING",service.getRoom("GIFTS1","bob").getStatus());
+        bobRoom=service.getRoom("GIFTS1","bob");
+        BattleOnlineGiftClaimResultDto last=service.claimGift("GIFTS1","bob",request(bobRoom.getGiftDrop().gifts.get(0).id));
+        assertEquals("FINISHED",last.getRoom().getStatus()); assertFalse(last.getRoom().isGiftOpening());
+    }
+
+    @Test public void hostCanExtendOrFinishTheEggRound() {
+        set(alice,"giftCredits",1); set(room,"giftOpening",false);
+        ReflectionTestUtils.invokeMethod(service,"finishMatchLocked",room);
+        long first=service.getRoom("GIFTS1","host").getGiftOpeningEndsAt();
+        BattleOnlineRoomDto extended=service.extendGiftOpening("GIFTS1","host");
+        assertEquals(first+60000L,extended.getGiftOpeningEndsAt());
+        ReflectionTestUtils.invokeMethod(service,"finishCountdownByTimer","GIFTS1",first);
+        assertEquals("PLAYING",service.getRoom("GIFTS1","host").getStatus());
+        try { service.extendGiftOpening("GIFTS1","alice"); fail("Only host may extend"); } catch(BattleOnlineException expected) {}
+        assertEquals("FINISHED",service.finishGiftOpening("GIFTS1","host").getStatus());
     }
 }

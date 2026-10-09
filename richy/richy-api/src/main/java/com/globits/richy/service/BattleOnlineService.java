@@ -18,7 +18,10 @@ import com.globits.richy.dto.BattleOnlineUseSkillDto;
 public interface BattleOnlineService {
     java.util.List<com.globits.richy.dto.BattleOnlineVideoQuestionPreviewDto> getVideoQuestions(String roomCode, String username);
     BattleOnlineRoomDto videoEvent(String roomCode, String username, com.globits.richy.dto.BattleOnlineVideoDto dto);
+    BattleOnlineRoomDto controlQuestionTimer(String roomCode, String username, com.globits.richy.dto.BattleOnlineTimerControlDto dto);
     BattleOnlineGiftClaimResultDto claimGift(String roomCode, String username, BattleOnlineGiftClaimDto request);
+    BattleOnlineRoomDto finishGiftOpening(String roomCode, String username);
+    BattleOnlineRoomDto extendGiftOpening(String roomCode, String username);
 
     BattleOnlinePetSelectionDto selectPet(
             String username,

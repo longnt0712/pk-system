@@ -105,7 +105,7 @@
         function ($window, $interval, $timeout, video) {
             return {
                 restrict: 'E',
-                scope: {videoLink: '=', videoApi: '=', onVideoProgress: '&', onVideoReady: '&', onVideoState: '&', onVideoEnded: '&'},
+                scope: {videoLink: '=', videoApi: '=', managedFullscreen: '=?', onVideoProgress: '&', onVideoReady: '&', onVideoState: '&', onVideoEnded: '&'},
                 template: '<div class="comprehensive-video-player"><div class="comprehensive-video-mount"></div>' +
                     '<p class="comprehensive-video-error" ng-if="error" role="alert">{{error}}</p></div>',
                 link: function (scope, element) {
@@ -145,7 +145,7 @@
                                 if (version !== generation) { return; }
                                 player = new YT.Player(target, {
                                     width: '100%', height: '100%', videoId: source.id,
-                                    playerVars: {playsinline: 1, rel: 0, origin: $window.location.origin},
+                                    playerVars: {playsinline: 1, rel: 0, fs: scope.managedFullscreen ? 0 : 1, origin: $window.location.origin},
                                     events: {
                                         onReady: function (event) {
                                             if (version !== generation) { return; }

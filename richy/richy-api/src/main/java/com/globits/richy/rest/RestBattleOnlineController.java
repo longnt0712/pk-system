@@ -224,6 +224,12 @@ public class RestBattleOnlineController {
         return battleOnlineService.videoEvent(roomCode, currentUsername(), dto);
     }
 
+    @RequestMapping(value = "/rooms/{roomCode}/question-timer", method = RequestMethod.POST)
+    public BattleOnlineRoomDto controlQuestionTimer(@PathVariable String roomCode,
+            @RequestBody com.globits.richy.dto.BattleOnlineTimerControlDto dto) {
+        return battleOnlineService.controlQuestionTimer(roomCode, currentUsername(), dto);
+    }
+
     @RequestMapping(value = "/rooms/{roomCode}/video-questions", method = RequestMethod.GET)
     public java.util.List<com.globits.richy.dto.BattleOnlineVideoQuestionPreviewDto> getVideoQuestions(@PathVariable String roomCode) {
         return battleOnlineService.getVideoQuestions(roomCode, currentUsername());
@@ -233,6 +239,16 @@ public class RestBattleOnlineController {
     public BattleOnlineGiftClaimResultDto claimGift(@PathVariable String roomCode,
             @RequestBody BattleOnlineGiftClaimDto dto) {
         return battleOnlineService.claimGift(roomCode, currentUsername(), dto);
+    }
+
+    @RequestMapping(value = "/rooms/{roomCode}/gift-opening/finish", method = RequestMethod.POST)
+    public BattleOnlineRoomDto finishGiftOpening(@PathVariable String roomCode) {
+        return battleOnlineService.finishGiftOpening(roomCode, currentUsername());
+    }
+
+    @RequestMapping(value = "/rooms/{roomCode}/gift-opening/extend", method = RequestMethod.POST)
+    public BattleOnlineRoomDto extendGiftOpening(@PathVariable String roomCode) {
+        return battleOnlineService.extendGiftOpening(roomCode, currentUsername());
     }
 
     @RequestMapping(value = "/rooms/{roomCode}/skill", method = RequestMethod.POST)

@@ -1,8 +1,13 @@
 <section class="egg-host-board" aria-label="Bảng điều hành Lụm ngay">
     <section class="egg-host-column egg-host-time">
-        <h2>⏳ THỜI GIAN</h2>
-        <small>THỜI GIAN CÒN LẠI</small>
+        <h2>{{vm.room.giftOpening ? '🥚 VÒNG BÓC TRỨNG' : '⏳ THỜI GIAN'}}</h2>
+        <small>{{vm.room.giftOpening ? 'TỰ KẾT THÚC SAU' : 'THỜI GIAN CÒN LẠI'}}</small>
         <b class="egg-host-clock">{{vm.formatTime(vm.countdown)}}</b>
+        <p ng-if="vm.room.giftOpening">Mỗi học sinh được bóc đúng số lượt đã kiếm được. Ai cũng xong thì bảng xếp hạng sẽ hiện ngay.</p>
+        <div class="egg-host-final-controls" ng-if="vm.room.giftOpening">
+            <button type="button" class="btn btn-default" ng-click="vm.extendGiftOpening()" ng-disabled="vm.finishingGiftOpening">+1 phút</button>
+            <button type="button" class="btn btn-danger" ng-click="vm.finishGiftOpening()" ng-disabled="vm.finishingGiftOpening">Kết thúc ngay</button>
+        </div>
     </section>
     <section class="egg-host-column">
         <h2>🏆 RANK</h2>

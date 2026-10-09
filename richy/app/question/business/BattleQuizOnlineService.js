@@ -35,6 +35,10 @@
                 targetQuestionSequence: targetSequence, videoSourceId: videoSourceId
             }, {timeout: 10000}).then(function (response) { return response.data; });
         };
+        self.setQuestionTimerPaused = function (roomCode, paused) {
+            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/question-timer', {paused: paused === true}, {timeout: 10000})
+                .then(function (response) { return response.data; });
+        };
         var apiUrl = settings.api.baseUrl + settings.api.apiV1Url + 'battle-online';
 
         var socketClient = null;
@@ -140,6 +144,16 @@
 
         self.claimGift = function (roomCode, giftId) {
             return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/gift', {giftId: giftId})
+                .then(function (response) { return response.data; });
+        };
+
+        self.finishGiftOpening = function (roomCode) {
+            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/gift-opening/finish', {})
+                .then(function (response) { return response.data; });
+        };
+
+        self.extendGiftOpening = function (roomCode) {
+            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/gift-opening/extend', {})
                 .then(function (response) { return response.data; });
         };
 

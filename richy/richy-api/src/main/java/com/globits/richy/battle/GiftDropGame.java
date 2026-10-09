@@ -2,7 +2,7 @@ package com.globits.richy.battle;
 
 import java.util.*;
 
-/** Private pools of three eggs. The owning room lock serializes claims. */
+/** Private egg pools. The owning room lock serializes claims. */
 public class GiftDropGame {
     public static final int ROTTEN_EGG_LEVEL = -1;
     public static final double ROTTEN_EGG_POINTS = 0.5D;
@@ -44,11 +44,12 @@ public class GiftDropGame {
         public final List<ClosedGift> gifts;
         public final List<ClaimRecord> claims;
         Snapshot(GiftDropGame game, String username) {
-            gameId = game.gameId; version = game.version; capacity = POOL_SIZE;
-            poolVersion = username == null ? null : game.poolFor(username).version;
+            PlayerPool pool = username == null ? null : game.poolFor(username);
+            gameId = game.gameId; version = game.version; capacity = pool == null ? POOL_SIZE : pool.capacity;
+            poolVersion = pool == null ? null : pool.version;
             gifts = username == null ? null : new ArrayList<ClosedGift>();
             if (username != null) {
-                for (Gift gift : game.poolFor(username).gifts.values()) { gifts.add(new ClosedGift(gift.id)); }
+                for (Gift gift : pool.gifts.values()) { gifts.add(new ClosedGift(gift.id)); }
             }
             claims = new ArrayList<ClaimRecord>(game.claims);
         }
@@ -56,6 +57,7 @@ public class GiftDropGame {
     private final String gameId = UUID.randomUUID().toString();
     private static class PlayerPool {
         final Map<String, Gift> gifts = new LinkedHashMap<String, Gift>();
+        int capacity = POOL_SIZE;
         long version;
     }
     private final Map<String, PlayerPool> playerPools = new HashMap<String, PlayerPool>();
@@ -66,6 +68,7 @@ public class GiftDropGame {
     private final int totalWeight;
     private final Random random;
     private long version, nextId;
+    private boolean finalPools;
 
     public GiftDropGame(int basePoints, Random random) {
         this(basePoints, random, Collections.<String>emptyList());
@@ -99,10 +102,25 @@ public class GiftDropGame {
         while (level < weights.length - 1 && draw >= weights[level]) { draw -= weights[level++]; }
         return new Gift(id, level, basePoints * (level + 1));
     }
+    public void prepareFinalPools(Map<String, Integer> credits) {
+        playerPools.clear(); finalPools = true;
+        if (credits != null) {
+            for (Map.Entry<String, Integer> entry : credits.entrySet()) {
+                PlayerPool pool = new PlayerPool();
+                pool.capacity = Math.max(0, entry.getValue() == null ? 0 : entry.getValue()) + POOL_SIZE;
+                for (int i = 0; i < pool.capacity; i++) { Gift gift = drawGift(); pool.gifts.put(gift.id, gift); }
+                pool.version = 1L; playerPools.put(entry.getKey(), pool);
+            }
+        }
+        version++;
+    }
     public Gift claim(String username, String id) {
         PlayerPool pool = playerPools.get(username);
         Gift gift = pool == null ? null : pool.gifts.remove(id);
-        if (gift != null) { Gift replacement = drawGift(); pool.gifts.put(replacement.id, replacement); pool.version++; version++; }
+        if (gift != null) {
+            if (!finalPools) { Gift replacement = drawGift(); pool.gifts.put(replacement.id, replacement); }
+            pool.version++; version++;
+        }
         return gift;
     }
     public void recordClaim(Gift gift, String username, String displayName, double awardedPoints, long now) {

@@ -127,9 +127,28 @@ public class BattleOnlineVideoTest {
             BattleOnlineAnswerDto finalCorrect=answer(), finalWrong=answer();
             finalWrong.getExerciseAnswers().replaceAll((key,value) -> Collections.singletonList("wrong"));
             service.answer("VIDEO1","alice",finalCorrect);
-            assertEquals(mode,"FINISHED",service.answer("VIDEO1","bob",finalWrong).getRoom().getStatus());
+            BattleOnlineRoomDto finalRoom=service.answer("VIDEO1","bob",finalWrong).getRoom();
+            if ("LUM_NGAY".equals(mode)) { assertEquals("PLAYING",finalRoom.getStatus()); assertTrue(finalRoom.isGiftOpening()); }
+            else { assertEquals(mode,"FINISHED",finalRoom.getStatus()); }
             service.destroy(); service=null;
         }
+    }
+
+    @Test public void hostCanPauseAndResumeTheSynchronizedQuestionDeadline() throws Exception {
+        setup("COUNTDOWN"); BattleOnlineRoomDto opened=service.videoEvent("VIDEO1","host",event("CUE",1,5));
+        BattleOnlineTimerControlDto control=new BattleOnlineTimerControlDto(); control.setPaused(true);
+        rejected(() -> service.controlQuestionTimer("VIDEO1","alice",control));
+        BattleOnlineRoomDto paused=service.controlQuestionTimer("VIDEO1","host",control);
+        assertTrue(paused.isQuestionTimerPaused()); assertEquals(0L,paused.getQuestionEndsAt());
+        assertTrue(paused.getQuestionTimerRemainingMillis()>18000L);
+        ReflectionTestUtils.invokeMethod(service,"advanceClassicQuestion","VIDEO1",0);
+        assertEquals("ANSWERING",service.getRoom("VIDEO1","host").getVideoPhase());
+        long remaining=paused.getQuestionTimerRemainingMillis(); Thread.sleep(25L); control.setPaused(false);
+        long resumedAt=System.currentTimeMillis(); BattleOnlineRoomDto resumed=service.controlQuestionTimer("VIDEO1","host",control);
+        assertFalse(resumed.isQuestionTimerPaused()); assertEquals(0L,resumed.getQuestionTimerRemainingMillis());
+        assertTrue(resumed.getQuestionEndsAt()>=resumedAt+remaining-100L);
+        assertTrue(resumed.getQuestionEndsAt()<=resumedAt+remaining+100L);
+        assertTrue(resumed.getQuestionEndsAt()<opened.getQuestionEndsAt()+1000L);
     }
 
     @Test public void spectatorsAndDisconnectedStudentsDoNotPreventEarlyResume() throws Exception {
