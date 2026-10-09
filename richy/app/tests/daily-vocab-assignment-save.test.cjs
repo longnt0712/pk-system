@@ -11,6 +11,18 @@ const controller = fs.readFileSync(path.join(__dirname,
     '../../richy-api/src/main/java/com/globits/richy/rest/RestTestResultController.java'), 'utf8');
 const dailyVocab = fs.readFileSync(path.join(__dirname,
     '../question/controllers/DailyVocabController.js'), 'utf8');
+const dailyVocabView = fs.readFileSync(path.join(__dirname,
+    '../question/views/daily_vocab.html'), 'utf8');
+
+test('assigned Daily Vocab lesson picker is read-only and remains bound to the assigned topic', () => {
+    assert.match(dailyVocab, /vm\.assignmentSelectionLocked\s*=\s*!!vm\.assignmentLaunch\.taskId/);
+    assert.match(dailyVocab, /function chooseActiveDailyResume\(\) \{\s*if \(vm\.assignmentSelectionLocked\) \{ return; \}/);
+    assert.match(dailyVocab, /function enforceAssignedTopicSelection\(\)[\s\S]*?vm\.selectedTopicToSearch\s*=\s*\[assignedTopic\]/);
+    assert.match(dailyVocab, /vm\.getPageFlashCard = function \(\) \{\s*if \(!enforceAssignedTopicSelection\(\)\) \{ return; \}/);
+
+    const selectLocks = dailyVocabView.match(/ng-disabled="vm\.assignmentSelectionLocked"/g) || [];
+    assert.equal(selectLocks.length, 4, 'source, category, topic and search controls must all be locked');
+});
 
 test('assigned Daily Vocab accepts optional topics and stale pending assignment ids', () => {
     const validationStart = service.indexOf('if (dto.getAssignmentTaskId() != null && Integer.valueOf(1).equals(dto.getTestType()))');

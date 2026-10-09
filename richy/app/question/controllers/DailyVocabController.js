@@ -68,6 +68,7 @@
             categoryId: $stateParams.assignmentCategoryId || null,
             applied: false
         };
+        vm.assignmentSelectionLocked = !!vm.assignmentLaunch.taskId;
 
         // =====================================================
         // USER
@@ -181,6 +182,7 @@
         }
 
         function chooseActiveDailyResume() {
+            if (vm.assignmentSelectionLocked) { return; }
             var draft = readActiveDailyDraft();
             if (!draft) { return; }
             try {
@@ -367,6 +369,18 @@
             vm.searchTopicChange();
         }
 
+        function enforceAssignedTopicSelection() {
+            if (!vm.assignmentSelectionLocked) { return true; }
+            var assignedTopic = findById(vm.topics, vm.assignmentLaunch.topicId);
+            if (!assignedTopic) {
+                toastr.warning('Topic của bài được giao không còn trong danh sách.');
+                return false;
+            }
+            vm.selectedTopicToSearch = [assignedTopic];
+            vm.searchDto.questionTopics = pushTopic(vm.selectedTopicToSearch);
+            return true;
+        }
+
         function applyResumeTopics() {
             if (!activeDailyResumeDraft || activeDailyResumeDraft.topicApplied) { return false; }
             var selected = [];
@@ -462,6 +476,7 @@
         };
 
         vm.chooseUsers = function () {
+            if (vm.assignmentSelectionLocked) { return; }
             vm.searchDto.userId = vm.selectedUser.id;
             vm.searchTopicDto.userId = vm.selectedUser.id;
 
@@ -1562,6 +1577,7 @@
         }
 
         vm.getPageFlashCard = function () {
+            if (!enforceAssignedTopicSelection()) { return; }
             vm.searchDto.questionType = {id: 6};
             vm.searchDto.userId =
                 vm.selectedUser.id;
@@ -1591,6 +1607,7 @@
         };
 
         vm.searchTopicChange = function () {
+            if (!enforceAssignedTopicSelection()) { return; }
             vm.searchDto.questionTopics =
                 pushTopic(vm.selectedTopicToSearch);
 

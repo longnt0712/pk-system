@@ -88,6 +88,7 @@
                 <ui-select
                     ng-change="vm.chooseUsers()"
                     data-ng-model="vm.selectedUser"
+                    ng-disabled="vm.assignmentSelectionLocked"
                     sortable="true"
                     close-on-select="true"
                     class="daily-ui-select daily-single-select"
@@ -116,6 +117,7 @@
                 <ui-select
                     data-ng-change="vm.getTopics()"
                     ng-model="vm.searchTopicDto.topicCategory"
+                    ng-disabled="vm.assignmentSelectionLocked"
                     sortable="true"
                     close-on-select="true"
                     class="daily-ui-select daily-single-select">
@@ -145,6 +147,7 @@
                 <ui-select
                     multiple
                     data-ng-model="vm.selectedTopicToSearch"
+                    ng-disabled="vm.assignmentSelectionLocked"
                     sortable="true"
                     close-on-select="true"
                     class="daily-ui-select daily-topic-select"
@@ -173,6 +176,8 @@
 
                 <button
                     ng-click="vm.searchTopicChange()"
+                    ng-disabled="vm.assignmentSelectionLocked"
+                    ng-attr-title="{{vm.assignmentSelectionLocked ? 'Bài giáo viên giao chỉ được xem, không thể chọn thêm topic' : 'Tìm kiếm bài học'}}"
                     class="daily-search-btn"
                     type="button">
                     <i class="fa fa-search"></i>
@@ -186,6 +191,8 @@
         .daily-vocab-page .daily-assignment-ready{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:11px 13px;border:1px solid #a8ead2;border-radius:14px;color:#176548;background:linear-gradient(135deg,#ecfff7,#f2fbff);box-shadow:0 7px 18px rgba(35,166,124,.10)}
         .daily-vocab-page .daily-assignment-ready-icon{display:flex;align-items:center;justify-content:center;flex:0 0 32px;width:32px;height:32px;border-radius:11px;color:#fff;background:linear-gradient(135deg,#26c99b,#57bce8);font-weight:900}
         .daily-vocab-page .daily-assignment-ready strong,.daily-vocab-page .daily-assignment-ready small{display:block}.daily-vocab-page .daily-assignment-ready strong{font-size:12px}.daily-vocab-page .daily-assignment-ready small{margin-top:2px;color:#568274;font-size:9px;line-height:1.35}
+        .daily-vocab-page .daily-ui-select[disabled]{pointer-events:none;opacity:.72}
+        .daily-vocab-page .daily-search-btn[disabled]{cursor:not-allowed;opacity:.55;box-shadow:none}
     </style>
 
 
