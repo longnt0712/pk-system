@@ -484,14 +484,122 @@
             folders.applyFilter(vm.searchDto, vm.catalogTestFolderId, true);
             vm.getPageCreateIELTSReadingTest();
         };
+        vm.catalogPaginationTotal = function () {
+            // Keep the current page selectable when its last item is moved, avoiding an automatic page reload.
+            return Math.max(Number(vm.bsTableControlCreateIELTSReadingTest.options.totalRows || 0),
+                (Number(vm.searchDto.pageIndex || 1) - 1) * Number(vm.searchDto.pageSize || 12) + 1);
+        };
         vm.catalogTestMoved = function (test) {
+            var folderId = test.testFolder ? test.testFolder.id : null;
             if (vm.ieltsReadingTest && String(vm.ieltsReadingTest.id) === String(test.id)) {
                 vm.ieltsReadingTest.testFolder = angular.copy(test.testFolder || null);
-                vm.ieltsReadingTest.testFolderId = test.testFolder ? test.testFolder.id : null;
+                vm.ieltsReadingTest.testFolderId = folderId;
                 vm.selectedTestFolderId = vm.ieltsReadingTest.testFolderId;
             }
-            vm.searchDto.pageIndex = 1;
-            vm.getPageCreateIELTSReadingTest();
+            var staysInCatalog = vm.searchDto.withoutTestFolder ? folderId == null :
+                (vm.searchDto.testFolderId == null || (vm.searchDto.includeSubfolders ?
+                    folders.contains(folderId, vm.searchDto.testFolderId) : String(folderId) === String(vm.searchDto.testFolderId)));
+            var rows = vm.ieltsReadingTests || [], changed = false;
+            var moveVersion;
+            for (var index = 0; index < (vm.ieltsReadingTests || []).length; index++) {
+                var item = vm.ieltsReadingTests[index];
+                if (String(item.id) !== String(test.id)) { continue; }
+                changed = true;
+                if (staysInCatalog) {
+                    item.testFolder = angular.copy(test.testFolder || null);
+                    item.testFolderId = folderId;
+                } else {
+                    vm.ieltsReadingTests.splice(index, 1);
+                    vm.bsTableControlCreateIELTSReadingTest.options.totalRows = Math.max(0,
+                        Number(vm.bsTableControlCreateIELTSReadingTest.options.totalRows || 0) - 1);
+                }
+                break;
+            }
+            function fillVacantSlot() {
+                if (vm.catalogLoading || vm.ieltsReadingTests !== rows || vm.catalogMoveVersion !== moveVersion) { return; }
+                var offset = (Number(vm.searchDto.pageIndex || 1) - 1) * Number(vm.searchDto.pageSize || 12);
+                var expected = Math.min(Number(vm.searchDto.pageSize || 12),
+                    Number(vm.bsTableControlCreateIELTSReadingTest.options.totalRows || 0) - offset);
+                if (rows.length >= expected) { return; }
+                // Fetch only the next missing row, preserving the current cards and avoiding the catalog loader.
+                var dto = angular.copy(vm.searchDto);
+                service.getPageForTests(dto, offset + rows.length + 1, 1).then(function (data) {
+                    if (vm.catalogLoading || vm.ieltsReadingTests !== rows || vm.catalogMoveVersion !== moveVersion) { return; }
+                    var next = ((data || {}).content || [])[0];
+                    if (!next || rows.some(function (row) { return String(row.id) === String(next.id); })) { return; }
+                    rows.push(next);
+                    fillVacantSlot();
+                }, angular.noop);
+            }
+            if (changed) {
+                moveVersion = vm.catalogMoveVersion = (vm.catalogMoveVersion || 0) + 1;
+                fillVacantSlot();
+            }
+        };
+        vm.openCatalogMoveDialog = function (test) {
+            if (!test || !test.id || vm.catalogMoveDialogOpen || vm.catalogMovePending ||
+                    vm.savingReadingTest || vm.importingReadingTest || vm.catalogLoading) { return; }
+            vm.catalogMoveDialogOpen = true;
+            var instance = modal.open({
+                templateUrl: 'question/views/comprehensive_move_test_folder_modal.html?v=' + encodeURIComponent($window.APP_VERSION || 'dev'),
+                controllerAs: 'move',
+                controller: ['$scope', '$uibModalInstance', function (dialogScope, dialogInstance) {
+                    var dialog = this;
+                    dialog.testTitle = test.title;
+                    dialog.currentFolderId = test.testFolder ? test.testFolder.id : null;
+                    dialog.selectedFolderId = dialog.currentFolderId;
+                    dialog.choices = [];
+                    dialog.collapsed = {};
+                    dialog.load = function () {
+                        dialog.loading = true; dialog.error = '';
+                        return folders.load(false).then(function (items) {
+                            dialog.choices = folders.options(items.filter(function (folder) { return folder.canManage; }), false);
+                        }, function () { dialog.error = 'Không tải được folder. Bạn có thể thử lại.'; })
+                            .finally(function () { dialog.loading = false; });
+                    };
+                    dialog.label = function (id) {
+                        if (id == null) { return 'Folder của tôi (cấp gốc)'; }
+                        var match = dialog.choices.filter(function (folder) { return String(folder.id) === String(id); })[0];
+                        return match ? match.label : ((test.testFolder || {}).name || '');
+                    };
+                    dialog.hasChildren = function (folder) {
+                        return dialog.choices.some(function (child) { return child.parentId === folder.id && child.id !== folder.id; });
+                    };
+                    dialog.visible = function (folder) {
+                        var parentId = folder.parentId, seen = {};
+                        while (parentId != null && !seen[parentId]) {
+                            if (dialog.collapsed[parentId]) { return false; }
+                            seen[parentId] = true;
+                            var parent = dialog.choices.filter(function (item) { return item.id === parentId; })[0];
+                            parentId = parent ? parent.parentId : null;
+                        }
+                        return true;
+                    };
+                    dialog.select = function (id) { if (!dialog.saving) { dialog.selectedFolderId = id; } };
+                    dialog.canMove = function () {
+                        return !dialog.loading && !dialog.saving && !vm.catalogMovePending && !vm.catalogLoading &&
+                            !vm.savingReadingTest && !vm.importingReadingTest &&
+                            String(dialog.selectedFolderId) !== String(dialog.currentFolderId) &&
+                            (dialog.selectedFolderId == null || dialog.choices.some(function (folder) { return folder.id === dialog.selectedFolderId; }));
+                    };
+                    dialog.save = function () {
+                        if (!dialog.canMove()) { return; }
+                        dialog.saving = true; dialog.error = ''; vm.catalogMovePending = true;
+                        folders.moveTest(test.id, dialog.selectedFolderId).then(function (saved) {
+                            vm.catalogTestMoved(saved);
+                            toastr.success('Đã chuyển bài đến ' + dialog.label(dialog.selectedFolderId) + '.', 'Thông báo');
+                            dialog.saving = false;
+                            dialogInstance.close(saved);
+                        }, function (response) {
+                            dialog.error = (response.data || {}).message || 'Không chuyển được bài. Bài vẫn ở vị trí cũ, bạn có thể thử lại.';
+                        }).finally(function () { dialog.saving = false; vm.catalogMovePending = false; });
+                    };
+                    dialog.cancel = function () { if (!dialog.saving) { dialogInstance.dismiss('cancel'); } };
+                    dialogScope.$on('modal.closing', function (event) { if (dialog.saving) { event.preventDefault(); } });
+                    dialog.load();
+                }]
+            });
+            instance.result.then(function () { vm.catalogMoveDialogOpen = false; }, function () { vm.catalogMoveDialogOpen = false; });
         };
 
         vm.ieltsReadingTest = {

@@ -1,0 +1,28 @@
+<div class="test-move-dialog">
+    <div class="modal-header">
+        <button type="button" class="close" ng-click="move.cancel()" ng-disabled="move.saving" aria-label="Đóng">&times;</button>
+        <h3 class="modal-title">Di chuyển bài test</h3>
+    </div>
+    <div class="modal-body">
+        <p class="test-move-title" ng-bind="move.testTitle"></p>
+        <p>Vị trí hiện tại: <strong ng-bind="move.label(move.currentFolderId)"></strong></p>
+        <p ng-if="move.loading" role="status">Đang tải folder...</p>
+        <p class="test-folder-error" ng-if="move.error" role="alert">{{move.error}} <button type="button" class="btn btn-link btn-sm" ng-if="!move.choices.length" ng-click="move.load()" ng-disabled="move.saving || move.loading">Thử lại</button></p>
+        <div class="test-move-tree" role="tree" aria-label="Chọn folder đích" ng-if="!move.loading">
+            <div class="test-move-tree-row" role="treeitem" aria-level="1" aria-expanded="true" aria-selected="{{move.selectedFolderId == null}}" ng-class="{'is-selected': move.selectedFolderId == null}">
+                <span class="test-move-toggle"></span>
+                <button type="button" class="test-move-folder" ng-click="move.select(null)" ng-disabled="move.saving"><i class="fa fa-home" aria-hidden="true"></i> Folder của tôi (cấp gốc)<small ng-if="move.currentFolderId == null">Hiện tại</small></button>
+            </div>
+            <div ng-repeat="folder in move.choices track by folder.id" ng-if="move.visible(folder)" class="test-move-tree-row" role="treeitem" ng-attr-aria-level="{{folder.depth + 2}}" ng-attr-aria-expanded="{{move.hasChildren(folder) ? !move.collapsed[folder.id] : undefined}}" aria-selected="{{move.selectedFolderId == folder.id}}" ng-class="{'is-selected': move.selectedFolderId == folder.id}" ng-style="{'padding-left': ((folder.depth + 1) * 20) + 'px'}">
+                <button type="button" class="test-move-toggle" ng-if="move.hasChildren(folder)" ng-click="move.collapsed[folder.id] = !move.collapsed[folder.id]" ng-disabled="move.saving" aria-label="{{(move.collapsed[folder.id] ? 'Mở rộng ' : 'Thu gọn ') + folder.name}}"><i class="fa" ng-class="move.collapsed[folder.id] ? 'fa-caret-right' : 'fa-caret-down'" aria-hidden="true"></i></button>
+                <span class="test-move-toggle" ng-if="!move.hasChildren(folder)"></span>
+                <button type="button" class="test-move-folder" ng-click="move.select(folder.id)" ng-disabled="move.saving" title="{{folder.label}}"><i class="fa fa-folder" aria-hidden="true"></i> {{folder.name}}<small ng-if="move.currentFolderId == folder.id">Hiện tại</small></button>
+            </div>
+        </div>
+        <p class="test-move-destination">Chuyển đến: <strong ng-bind="move.label(move.selectedFolderId)"></strong></p>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-default" ng-click="move.cancel()" ng-disabled="move.saving">Hủy</button>
+        <button type="button" class="btn btn-primary" ng-click="move.save()" ng-disabled="!move.canMove()"><i class="fa fa-spinner fa-spin" ng-if="move.saving" aria-hidden="true"></i> {{move.saving ? 'Đang di chuyển...' : 'Di chuyển đến đây'}}</button>
+    </div>
+</div>

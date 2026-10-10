@@ -57,14 +57,15 @@
 
             <test-folder-explorer ng-if="vm.isComprehensiveMode" folder-id="vm.selectedTestFolderId" all-teachers="true" on-change="vm.applyFolderFilter(folderId)">
                 <article class="test-explorer-file" ng-repeat="item in vm.ieltsReadingTests track by item.id">
+                    <div class="test-explorer-file-content">
                     <a class="test-explorer-file-main" target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item)}}" title="{{item.title}}">
-                        <i class="fa fa-file-text-o test-explorer-file-icon" aria-hidden="true"></i>
                         <span class="test-explorer-name">{{item.title}}<small ng-if="vm.getLearningProgress(item.id)">{{vm.getLearningProgress(item.id).completed ? 'Đã hoàn thành' : 'Đã lưu tiến trình'}}</small></span>
                     </a>
                     <div class="test-explorer-file-actions">
                         <a target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item)}}">{{vm.getLearningProgress(item.id) ? 'Học tiếp' : 'Học bài'}}</a>
                         <a target="_blank" rel="noopener" ng-href="{{vm.seriousTestCatalogUrl(item)}}">Làm test</a>
                         <a ng-href="battle-quiz-online?exerciseId={{item.id}}" title="Chơi Battle"><i class="fa fa-gamepad"></i><span class="sr-only">Chơi Battle</span></a>
+                    </div>
                     </div>
                 </article>
                 <p class="test-explorer-empty" ng-if="!vm.loading && !vm.ieltsReadingTests.length">{{vm.searchDto.textSearch ? 'Không tìm thấy bài test phù hợp.' : 'Folder này chưa có bài test. Bạn có thể mở các folder con ở trên.'}}</p>

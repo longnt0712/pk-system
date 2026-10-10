@@ -36,32 +36,58 @@
 .test-explorer-files {display: contents;}
 .test-explorer-folder, .test-explorer-file {min-width: 0; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #334155; text-align: center;}
 .test-explorer-folder {padding: 12px 8px; width: 100%;}
-.test-explorer-folder:hover, .test-explorer-file:hover, .test-explorer-folder:focus-visible, .test-explorer-file:focus-within {background: #eef2ff; border-color: #c7d2fe;}
+.test-explorer-folder:hover, .test-explorer-folder:focus-visible {background: #eef2ff; border-color: #c7d2fe;}
+.test-explorer-file {--paper-edge: #b8bdf0; --paper-front: #fff; --paper-back: #e0e7ff; --paper-fold: #eef2ff; position: relative; isolation: isolate; border: 0; border-radius: 0; padding: 9px 4px 0 10px; background: transparent; filter: drop-shadow(0 2px 2px rgba(15, 23, 42, .08)); transition: filter .15s;}
+.test-explorer-file::before, .test-explorer-file::after {content: ''; position: absolute; border: 1px solid var(--paper-edge); border-radius: 4px; background: var(--paper-back); pointer-events: none;}
+.test-explorer-file::before {inset: 2px 12px 8px 3px; transform: rotate(-3deg); z-index: -2;}
+.test-explorer-file::after {inset: 5px 8px 4px 7px; transform: rotate(2deg); z-index: -1;}
+.test-explorer-file-content {position: relative; min-height: 160px; border: 1px solid var(--paper-edge); border-radius: 4px; background: var(--paper-front); clip-path: polygon(0 0, calc(100% - 26px) 0, 100% 26px, 100% 100%, 0 100%); transition: background-color .15s, border-color .15s;}
+.test-explorer-file-content::before {content: ''; position: absolute; top: -1px; right: -1px; width: 26px; height: 26px; border-left: 1px solid var(--paper-edge); border-bottom: 1px solid var(--paper-edge); border-bottom-left-radius: 3px; background: linear-gradient(45deg, var(--paper-fold) calc(50% - 1px), var(--paper-edge) 50%, transparent calc(50% + 1px)); pointer-events: none;}
+.test-explorer-file-content::after {content: ''; position: absolute; top: 17px; left: 16px; width: 30px; height: 2px; background: var(--paper-edge); box-shadow: 0 6px 0 var(--paper-edge); opacity: .6; pointer-events: none;}
+.test-explorer-file:hover, .test-explorer-file:focus-within {--paper-edge: #818cf8; --paper-front: #eef2ff; --paper-back: #c7d2fe; --paper-fold: #dbe4ff; filter: drop-shadow(0 0 4px rgba(99, 102, 241, .25)) drop-shadow(0 5px 5px rgba(99, 102, 241, .14));}
 .test-explorer-folder-icon {display: block; font-size: 68px; line-height: 1.1; color: #f5bf31; text-shadow: 0 2px 0 #d99a12; margin-bottom: 12px;}
 .test-explorer-name {display: block; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere;}
 .test-explorer-name small {display: block; color: #64748b; font-size: 11px; margin-top: 3px;}
-.test-explorer-file-main {display: block; border: 0; background: transparent; width: 100%; color: #334155; padding: 12px 8px 6px; text-align: center; text-decoration: none !important;}
-.test-explorer-file-icon {display: block !important; font-size: 56px !important; line-height: 1.35; color: #6366f1; margin-bottom: 9px;}
-.test-explorer-file-actions {display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; padding: 2px 5px 10px;}
+.test-explorer-file-main {display: block; border: 0; background: transparent; width: 100%; color: #334155; padding: 38px 12px 12px; text-align: center; text-decoration: none !important;}
+.test-explorer-file-actions {display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; padding: 2px 7px 14px;}
 .test-explorer-file-actions > a, .test-explorer-file-actions > button {border: 0; background: transparent; color: #4338ca; font-size: 11px; padding: 3px 5px; border-radius: 4px; text-decoration: none;}
 .test-explorer-file-actions > a:hover, .test-explorer-file-actions > button:hover {background: #dbe4ff;}
 .test-explorer-file-actions > button:disabled {opacity: .5;}
+.test-move-title {font-weight: 600; overflow-wrap: anywhere;}
+.test-move-tree {max-height: 360px; overflow: auto; border: 1px solid #dce2eb; border-radius: 8px; padding: 8px; margin: 14px 0;}
+.test-move-tree-row {display: flex; align-items: center; min-height: 38px; border-radius: 5px;}
+.test-move-tree-row:hover {background: #f1f5f9;}
+.test-move-tree-row.is-selected {background: #eef2ff; box-shadow: inset 0 0 0 1px #a5b4fc;}
+.test-move-toggle {display: inline-flex; align-items: center; justify-content: center; width: 24px; min-width: 24px; height: 30px; border: 0; background: transparent; color: #64748b;}
+.test-move-folder {flex: 1; min-width: 0; text-align: left; border: 0; background: transparent; padding: 8px 6px; color: #334155; overflow-wrap: anywhere;}
+.test-move-folder .fa {color: #eab308; margin-right: 7px;}
+.test-move-folder small {color: #64748b; margin-left: 10px;}
+.test-move-destination {margin-bottom: 0; overflow-wrap: anywhere;}
+.global-dark-mode .test-move-dialog {background: #252525; color: #ededed;}
+.global-dark-mode .test-move-tree {border-color: #4b5563;}
+.global-dark-mode .test-move-folder {color: #ededed;}
+.global-dark-mode .test-move-tree-row:hover {background: #333;}
+.global-dark-mode .test-move-tree-row.is-selected {background: #37304c;}
+.global-dark-mode .test-move-folder small {color: #aaa;}
 .test-explorer-folder-arrow {display: none !important;}
 .test-explorer-empty {grid-column: 1 / -1; color: #64748b; padding: 18px 8px; margin: 0;}
-.test-folder-explorer.is-list .test-explorer-items {grid-template-columns: 1fr; gap: 2px;}
+.test-folder-explorer.is-list .test-explorer-items {grid-template-columns: 1fr; gap: 6px;}
 .test-folder-explorer.is-list .test-explorer-folder {display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 12px;}
 .test-folder-explorer.is-list .test-explorer-folder-icon {font-size: 25px; margin: 0; width: 26px; flex-shrink: 0;}
 .test-folder-explorer.is-list .test-explorer-folder-arrow {display: inline-block !important; color: #94a3b8; margin-left: auto;}
-.test-folder-explorer.is-list .test-explorer-file {display: flex; align-items: center; flex-wrap: wrap;}
-.test-folder-explorer.is-list .test-explorer-file-main {display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; text-align: left; padding: 10px 12px;}
-.test-folder-explorer.is-list .test-explorer-file-icon {font-size: 25px !important; margin: 0; flex-shrink: 0; width: 26px;}
-.test-folder-explorer.is-list .test-explorer-file-actions {padding: 5px 10px;}
+.test-folder-explorer.is-list .test-explorer-file::before, .test-folder-explorer.is-list .test-explorer-file::after {transform: none;}
+.test-folder-explorer.is-list .test-explorer-file-content {display: flex; align-items: center; flex-wrap: wrap; min-height: 58px; padding: 8px 22px 5px 0;}
+.test-folder-explorer.is-list .test-explorer-file-content::after {display: none;}
+.test-folder-explorer.is-list .test-explorer-file-main {display: flex; align-items: center; flex: 1; min-width: 0; text-align: left; padding: 10px 12px;}
+.test-folder-explorer.is-list .test-explorer-file-actions {padding: 5px 6px;}
 .global-dark-mode .test-folder-explorer {background: #191919; border-color: #3b3b3b;}
 .global-dark-mode .test-explorer-toolbar {background: #252525; border-color: #3b3b3b;}
 .global-dark-mode .test-explorer-toolbar button, .global-dark-mode .test-explorer-file-main, .global-dark-mode .test-explorer-folder {color: #ededed;}
 .global-dark-mode .test-explorer-toolbar button:hover, .global-dark-mode .test-explorer-view {background: #333 !important;}
 .global-dark-mode .test-explorer-path .is-current, .global-dark-mode .test-explorer-file-actions > a, .global-dark-mode .test-explorer-file-actions > button {color: #c4b5fd;}
-.global-dark-mode .test-explorer-folder:hover, .global-dark-mode .test-explorer-file:hover, .global-dark-mode .test-explorer-file:focus-within {background: #333; border-color: #636363;}
+.global-dark-mode .test-explorer-folder:hover {background: #333; border-color: #636363;}
+.global-dark-mode .test-explorer-file {--paper-edge: #7c78ad; --paper-front: #252525; --paper-back: #373052; --paper-fold: #373052;}
+.global-dark-mode .test-explorer-file:hover, .global-dark-mode .test-explorer-file:focus-within {--paper-edge: #c4b5fd; --paper-front: #34324a; --paper-back: #51446e; --paper-fold: #51446e;}
 .global-dark-mode .test-explorer-name small, .global-dark-mode .test-explorer-empty {color: #aaa;}
 .global-dark-mode .test-explorer-drag-help {color: #aaa;}
 .global-dark-mode .test-explorer-move-status {color: #86efac;}
@@ -72,5 +98,5 @@
     .test-explorer-toolbar button {padding: 6px;}
     .test-explorer-view span {display: none;}
     .test-explorer-items {grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); padding: 10px; gap: 6px;}
-    .test-folder-explorer.is-list .test-explorer-file-actions {width: 100%; justify-content: flex-start; padding-left: 50px;}
+    .test-folder-explorer.is-list .test-explorer-file-actions {width: 100%; justify-content: flex-start; padding-left: 12px;}
 }

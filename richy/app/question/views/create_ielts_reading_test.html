@@ -84,23 +84,25 @@
                 <div class="row">
 
                     <div class="col-md-12" ng-if="settings.isAdmin == true">
-                        <test-folder-explorer ng-if="vm.isComprehensiveMode" folder-id="vm.catalogTestFolderId" manage="true" moving="vm.catalogMovePending" move-disabled="vm.savingReadingTest || vm.importingReadingTest || vm.catalogLoading" on-change="vm.applyCatalogFolderFilter(folderId)" on-moved="vm.catalogTestMoved(test)">
+                        <test-folder-explorer ng-if="vm.isComprehensiveMode" folder-id="vm.catalogTestFolderId" manage="true" moving="vm.catalogMovePending" move-disabled="vm.savingReadingTest || vm.importingReadingTest || vm.catalogLoading || vm.catalogMoveDialogOpen" on-change="vm.applyCatalogFolderFilter(folderId)" on-moved="vm.catalogTestMoved(test)">
                             <article class="test-explorer-file" test-folder-drag="item" ng-repeat="item in vm.ieltsReadingTests track by item.id" title="Kéo bài vào folder để chuyển và lưu">
+                                <div class="test-explorer-file-content">
                                 <button type="button" class="test-explorer-file-main" ng-click="editCreateIELTSReadingTest(item.id)" title="Mở bài {{item.title}} trong trình soạn thảo">
-                                    <i class="fa fa-file-text-o test-explorer-file-icon" aria-hidden="true"></i>
                                     <span class="test-explorer-name">{{item.title}}<small>{{item.status == 7 ? 'Đã xuất bản' : (item.status == 8 ? 'Đã ẩn' : 'Bản nháp')}}</small></span>
                                 </button>
                                 <div class="test-explorer-file-actions">
                                     <button type="button" ng-click="editCreateIELTSReadingTest(item.id)">Sửa bài</button>
                                     <a draggable="false" target="_blank" rel="noopener" ng-href="comprehensive_test/{{item.id}}">Xem bài</a>
+                                    <button type="button" ng-click="vm.openCatalogMoveDialog(item)" ng-disabled="vm.catalogMovePending || vm.catalogMoveDialogOpen || vm.savingReadingTest || vm.importingReadingTest || vm.catalogLoading"><i class="fa fa-folder-open-o" aria-hidden="true"></i> Di chuyển</button>
                                     <button type="button" ng-if="!vm.showHiddenTests" ng-click="hideReadingTest(item.id)" ng-disabled="vm.catalogStatusUpdating[item.id]" title="Ẩn bài"><i class="fa fa-eye-slash"></i><span class="sr-only">Ẩn bài</span></button>
                                     <button type="button" ng-if="vm.showHiddenTests" ng-click="restoreReadingTest(item.id)" ng-disabled="vm.catalogStatusUpdating[item.id]">Khôi phục</button>
+                                </div>
                                 </div>
                             </article>
                             <p class="test-explorer-empty" ng-if="!vm.catalogLoading && !vm.ieltsReadingTests.length">{{vm.searchDto.textSearch ? 'Không tìm thấy bài test phù hợp.' : 'Folder này chưa có bài test. Bạn có thể tạo bài bên dưới hoặc mở folder con.'}}</p>
                             <p class="test-explorer-empty" ng-if="vm.catalogLoading" role="status">Đang tải bài test...</p>
                         </test-folder-explorer>
-                        <ul ng-if="vm.isComprehensiveMode && vm.bsTableControlCreateIELTSReadingTest.options.totalRows > vm.searchDto.pageSize" uib-pagination total-items="vm.bsTableControlCreateIELTSReadingTest.options.totalRows" ng-model="vm.searchDto.pageIndex" items-per-page="vm.searchDto.pageSize" ng-change="pageChanged()" max-size="5" boundary-links="true" first-text="Đầu" last-text="Cuối" previous-text="Trước" next-text="Sau"></ul>
+                        <ul ng-if="vm.isComprehensiveMode && vm.catalogPaginationTotal() > vm.searchDto.pageSize" uib-pagination total-items="vm.catalogPaginationTotal()" ng-model="vm.searchDto.pageIndex" items-per-page="vm.searchDto.pageSize" ng-change="pageChanged()" max-size="5" boundary-links="true" first-text="Đầu" last-text="Cuối" previous-text="Trước" next-text="Sau"></ul>
                         <table ng-if="!vm.isComprehensiveMode" id="bsTableControl" bs-table-control="vm.bsTableControlCreateIELTSReadingTest"></table>
                     </div>
                 </div>

@@ -73,8 +73,51 @@ test('successful move updates the open editor folder without replacing unsaved c
  vm.catalogTestMoved({id:20,testFolder:{id:2,name:'Week 1'}});
  assert.equal(vm.selectedTestFolderId,2); assert.equal(vm.ieltsReadingTest.testFolderId,2);
  assert.equal(vm.ieltsReadingTest.title,'Unsaved title'); assert.strictEqual(vm.ieltsReadingTest.subQuestions,questions);
- assert.equal(vm.searchDto.pageIndex,1); assert.equal(vm.reloaded,true);
+ assert.equal(vm.searchDto.pageIndex,3); assert.equal(vm.reloaded,undefined);
  vm.catalogTestMoved({id:20,testFolder:null}); assert.equal(vm.selectedTestFolderId,null);
+});
+test('moves update only the affected catalog row, respect folder/search filters, and never reload the list',async()=>{
+ const {folders}=setup();await folders.load(false);
+ const source=fs.readFileSync(path.join(__dirname,'../question/controllers/IELTSCreateReadingTestController.js'),'utf8');
+ const start=source.indexOf('vm.catalogTestMoved = function'),end=source.indexOf('\n        };',start)+11;
+ for(const scenario of [
+  {filter:{withoutTestFolder:true},target:1,visible:false},
+  {filter:{testFolderId:1,includeSubfolders:false},target:2,visible:false},
+  {filter:{testFolderId:1,includeSubfolders:true,textSearch:'Lesson'},target:2,visible:true},
+  {filter:{testFolderId:1,includeSubfolders:true,textSearch:'Lesson'},target:3,visible:false},
+  {filter:{testFolderId:1,includeSubfolders:true,textSearch:'Lesson'},target:null,visible:false},
+  {filter:{testFolderId:null,withoutTestFolder:false,textSearch:'Lesson'},target:2,visible:true},
+  {filter:{testFolderId:null,withoutTestFolder:false,textSearch:'Lesson'},target:null,visible:true}
+ ]){
+  const moved={id:20,title:'Lesson',learningDraft:{answer:'Keep'},testFolder:{id:1}},other={id:21,title:'Other'};
+  const rows=[moved,other],vm={searchDto:{pageIndex:3,pageSize:2,...scenario.filter},ieltsReadingTests:rows,
+   bsTableControlCreateIELTSReadingTest:{options:{data:rows,totalRows:6}},getPageCreateIELTSReadingTest(){throw new Error('Unexpected list fetch');}};
+  nodeVm.runInNewContext(source.slice(start,end),{vm,folders,angular:{copy:structuredClone}});
+  const saved={id:20,title:'Server response must not replace the row',testFolder:scenario.target==null?null:{id:scenario.target}};
+  vm.catalogTestMoved(saved);
+  assert.strictEqual(vm.ieltsReadingTests,rows);assert.strictEqual(rows.at(-1),other);assert.equal(vm.searchDto.pageIndex,3);
+  assert.equal(rows.includes(moved),scenario.visible);assert.equal(vm.bsTableControlCreateIELTSReadingTest.options.totalRows,scenario.visible?6:5);
+  if(scenario.visible){assert.equal(moved.testFolderId,scenario.target);assert.equal(moved.title,'Lesson');assert.equal(moved.learningDraft.answer,'Keep');}
+  vm.catalogTestMoved(saved);assert.equal(vm.bsTableControlCreateIELTSReadingTest.options.totalRows,scenario.visible?6:5);
+ }
+});
+test('moving from a full page fetches just one replacement row and discards responses after navigation',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../question/controllers/IELTSCreateReadingTestController.js'),'utf8');
+ const start=source.indexOf('vm.catalogTestMoved = function'),end=source.indexOf('\n        };',start)+11;
+ for(const navigate of [false,true]){
+  const rows=[{id:20,testFolder:null},{id:21,title:'Keep this row'}],requests=[];
+  const vm={ieltsReadingTests:rows,searchDto:{pageIndex:2,pageSize:2,withoutTestFolder:true},
+   bsTableControlCreateIELTSReadingTest:{options:{data:rows,totalRows:5}},getPageCreateIELTSReadingTest(){throw new Error('Unexpected reload');}};
+  const service={getPageForTests(dto,index,size){return new Promise(resolve=>requests.push({dto:plain(dto),index,size,resolve}));}};
+  nodeVm.runInNewContext(source.slice(start,end),{vm,service,angular:{copy:structuredClone,noop(){}}});
+  vm.catalogTestMoved({id:20,testFolder:{id:1}});
+  assert.equal(requests.length,1);assert.equal(requests[0].index,4);assert.equal(requests[0].size,1);
+  assert.equal(requests[0].dto.withoutTestFolder,true);assert.equal(vm.searchDto.pageIndex,2);
+  assert.strictEqual(rows[0].id,21);assert.equal(vm.catalogLoading,undefined);
+  if(navigate)vm.ieltsReadingTests=[{id:50,title:'New folder'}];
+  requests[0].resolve({content:[{id:22,title:'Next row'}]});await Promise.resolve();
+  assert.deepEqual(vm.ieltsReadingTests.map(row=>row.id),navigate?[50]:[21,22]);assert.equal(requests.length,1);
+ }
 });
 test('full test saves wait until a folder move completes to avoid reverting its destination',async()=>{
  const source=fs.readFileSync(path.join(__dirname,'../question/controllers/IELTSCreateReadingTestController.js'),'utf8');
