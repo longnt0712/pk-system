@@ -32,6 +32,11 @@
                             <i class="fa fa-bar-chart"></i> Thống kê
                         </button>
 
+                        <button type="button" class="btn btn-primary margin-left-10"
+                                ng-if="vm.canEditTntt()" ng-click="vm.openTnttBulkModal()">
+                            <i class="fa fa-pencil-square-o" aria-hidden="true"></i> Sửa/Thêm thông tin TNTT
+                        </button>
+
                         <button class="btn btn-warning margin-left-10" ng-click="vm.advancedSearch()"
                                 ng-disabled="vm.isIeltsRoomDomain && vm.showUnassignedStudents">
                             <i class="fa fa-filter"></i> Tìm kiếm nâng cao
@@ -702,6 +707,136 @@
                     ng-click="vm.loadStudentStatistics()">
                 <i class="fa fa-bar-chart"></i> Xác nhận thống kê
             </button>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="tntt_bulk_modal.html">
+    <div class="tntt-bulk-modal">
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="vm.closeTnttBulkModal()"
+                    ng-disabled="vm.tnttBulk.saving" aria-label="Đóng">&times;</button>
+            <h4 class="modal-title">Sửa/Thêm thông tin TNTT</h4>
+        </div>
+        <div class="modal-body">
+            <p><strong>{{vm.tnttBulk.rows.length}} học sinh</strong> trong danh sách đang hiển thị.
+                Lọc lớp hoặc tìm kiếm ở danh sách học sinh trước khi mở bảng này.</p>
+            <p class="tntt-bulk-hint">Tích ô ở tiêu đề để mở sửa cả cột, hoặc tích ô bên cạnh thông tin để sửa riêng từng học sinh.
+                Bỏ tích chỉ khóa ô; thay đổi đã nhập vẫn được giữ đến khi bấm Lưu.</p>
+            <div class="tntt-bulk-table-wrap" role="region" aria-label="Bảng thông tin TNTT" tabindex="0">
+                <table class="table table-bordered tntt-bulk-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">STT</th>
+                            <th scope="col">Họ và tên</th>
+                            <th scope="col">Mã học sinh</th>
+                            <th scope="col">Ngày sinh</th>
+                            <th scope="col">
+                                <label class="tntt-column-toggle">
+                                    <input type="checkbox" ng-model="vm.tnttBulk.columns.tnttMemberType"
+                                           ng-change="vm.toggleTnttColumn('tnttMemberType')"
+                                           ng-disabled="vm.tnttBulk.saving || !vm.tnttBulk.rows.length"
+                                           aria-label="Sửa cả cột thành phần TNTT">
+                                    Thành phần TNTT
+                                </label>
+                            </th>
+                            <th scope="col">
+                                <label class="tntt-column-toggle">
+                                    <input type="checkbox" ng-model="vm.tnttBulk.columns.tnttBranch"
+                                           ng-change="vm.toggleTnttColumn('tnttBranch')"
+                                           ng-disabled="vm.tnttBulk.saving || !vm.tnttBulk.rows.length"
+                                           aria-label="Sửa cả cột ngành TNTT">
+                                    Ngành TNTT
+                                </label>
+                            </th>
+                            <th scope="col">
+                                <label class="tntt-column-toggle">
+                                    <input type="checkbox" ng-model="vm.tnttBulk.columns.tnttLevel"
+                                           ng-change="vm.toggleTnttColumn('tnttLevel')"
+                                           ng-disabled="vm.tnttBulk.saving || !vm.tnttBulk.rows.length"
+                                           aria-label="Sửa cả cột cấp TNTT">
+                                    Cấp TNTT
+                                </label>
+                            </th>
+                            <th scope="col">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="row in vm.tnttBulk.rows track by row.id"
+                            ng-class="{'tntt-row-changed': vm.tnttRowChanged(row), 'tntt-row-error': row.error}">
+                            <td>{{$index + 1}}</td>
+                            <th scope="row">{{row.name}}</th>
+                            <td>{{row.username}}</td>
+                            <td class="text-nowrap">{{(row.birthDate | date:'dd/MM/yyyy') || '—'}}</td>
+                            <td>
+                                <div class="tntt-cell-editor">
+                                    <input type="checkbox" ng-model="row.edit.tnttMemberType"
+                                           ng-change="vm.syncTnttColumn('tnttMemberType')" ng-disabled="vm.tnttBulk.saving"
+                                           aria-label="Sửa thành phần TNTT của {{row.name}}">
+                                    <select class="form-control input-sm" ng-model="row.profile.tnttMemberType"
+                                            ng-options="item.code as item.name for item in vm.tnttMemberTypes"
+                                            ng-disabled="vm.tnttBulk.saving || !row.edit.tnttMemberType"
+                                            ng-change="vm.changeTnttMemberType(row.profile); vm.tnttDraftChanged(row)"
+                                            aria-label="Thành phần TNTT của {{row.name}}">
+                                        <option value="">Chưa xác định</option>
+                                    </select>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="tntt-cell-editor" ng-if="row.profile.tnttMemberType === 'DOAN_SINH'">
+                                    <input type="checkbox" ng-model="row.edit.tnttBranch"
+                                           ng-change="vm.syncTnttColumn('tnttBranch')" ng-disabled="vm.tnttBulk.saving"
+                                           aria-label="Sửa ngành TNTT của {{row.name}}">
+                                    <select class="form-control input-sm" ng-model="row.profile.tnttBranch"
+                                            ng-options="item.code as item.name for item in vm.tnttBranches"
+                                            ng-disabled="vm.tnttBulk.saving || !row.edit.tnttBranch"
+                                            ng-change="vm.changeTnttBranch(row.profile); vm.tnttDraftChanged(row)"
+                                            aria-label="Ngành TNTT của {{row.name}}">
+                                        <option value="">Chưa xác định ngành</option>
+                                    </select>
+                                </div>
+                                <small class="text-muted" ng-if="row.profile.tnttMemberType !== 'DOAN_SINH'">
+                                    {{row.profile.tnttMemberType ? 'Không áp dụng' : 'Chọn Đoàn sinh trước'}}
+                                </small>
+                            </td>
+                            <td>
+                                <div ng-if="row.profile.tnttMemberType === 'DOAN_SINH' || row.profile.tnttMemberType === 'HUYNH_TRUONG'">
+                                    <div class="tntt-cell-editor">
+                                        <input type="checkbox" ng-model="row.edit.tnttLevel"
+                                               ng-change="vm.syncTnttColumn('tnttLevel')" ng-disabled="vm.tnttBulk.saving"
+                                               aria-label="Sửa cấp TNTT của {{row.name}}">
+                                        <select class="form-control input-sm" ng-model="row.profile.tnttLevel"
+                                                ng-options="item.value as item.name for item in (row.profile.tnttMemberType === 'HUYNH_TRUONG' ? vm.tnttLeaderLevels : vm.tnttLevels)"
+                                                ng-disabled="vm.tnttBulk.saving || !row.edit.tnttLevel || (row.profile.tnttMemberType === 'DOAN_SINH' && !row.profile.tnttBranch)"
+                                                ng-change="vm.tnttDraftChanged(row)" aria-label="Cấp TNTT của {{row.name}}">
+                                            <option value="">Chưa xác định cấp</option>
+                                        </select>
+                                    </div>
+                                    <small class="text-muted" ng-if="row.profile.tnttMemberType === 'DOAN_SINH' && !row.profile.tnttBranch">Chọn ngành trước</small>
+                                </div>
+                                <small class="text-muted" ng-if="row.profile.tnttMemberType !== 'DOAN_SINH' && row.profile.tnttMemberType !== 'HUYNH_TRUONG'">
+                                    {{row.profile.tnttMemberType ? 'Không áp dụng' : 'Chọn thành phần trước'}}
+                                </small>
+                            </td>
+                            <td aria-live="polite">
+                                <span class="text-danger" ng-if="row.error">{{row.error}}</span>
+                                <span class="text-success" ng-if="!row.error && row.saved">Đã lưu</span>
+                                <span class="text-primary" ng-if="!row.error && !row.saved && vm.tnttRowChanged(row)">Đã thay đổi</span>
+                            </td>
+                        </tr>
+                        <tr ng-if="!vm.tnttBulk.rows.length"><td colspan="8" class="text-center text-muted">Không có học sinh trong danh sách hiện tại.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <div class="tntt-bulk-save-status" aria-live="polite">
+                <span ng-if="vm.tnttBulk.saving">Đang lưu {{vm.tnttBulk.completed}}/{{vm.tnttBulk.total}} học sinh…</span>
+                <span ng-if="!vm.tnttBulk.saving">{{vm.tnttBulk.message || (vm.tnttChangedCount() + ' học sinh có thay đổi')}}</span>
+            </div>
+            <button type="button" class="btn btn-default" ng-click="vm.closeTnttBulkModal()" ng-disabled="vm.tnttBulk.saving">Đóng</button>
+            <button type="button" class="btn btn-primary" ng-click="vm.saveTnttBulk()"
+                    ng-disabled="vm.tnttBulk.saving || !vm.tnttChangedCount()">Lưu thay đổi</button>
         </div>
     </div>
 </script>
@@ -1499,6 +1634,25 @@
     .tntt-profile-fields { padding: 12px 15px; border: 1px solid #dce3ec; border-radius: 6px; }
     .tntt-profile-fields legend { width: auto; margin: 0; padding: 0 6px; border: 0; font-size: 15px; font-weight: 600; }
     .tntt-profile-fields .help-block { margin-bottom: 0; }
+    .tntt-bulk-window .modal-dialog { width: calc(100% - 40px); max-width: 1280px; }
+    .tntt-bulk-hint { color: #52617a; font-size: 13px; }
+    .tntt-bulk-table-wrap { max-height: 55vh; overflow: auto; border: 1px solid #dce3ec; }
+    .tntt-bulk-table { min-width: 1130px; margin-bottom: 0; }
+    .tntt-bulk-table > thead > tr > th { position: sticky; top: 0; z-index: 1; background: #f0f4fa; vertical-align: middle; white-space: nowrap; }
+    .tntt-bulk-table > tbody > tr > th, .tntt-bulk-table > tbody > tr > td { vertical-align: middle; }
+    .tntt-bulk-table > tbody > tr > th { min-width: 170px; font-weight: 500; }
+    .tntt-bulk-table > tbody > tr > td:last-child { min-width: 120px; max-width: 200px; font-size: 12px; }
+    .tntt-column-toggle { display: flex; align-items: center; gap: 7px; margin: 0; cursor: pointer; }
+    .tntt-column-toggle input, .tntt-cell-editor input { margin: 0; flex-shrink: 0; }
+    .tntt-cell-editor { display: flex; align-items: center; gap: 7px; min-width: 170px; }
+    .tntt-cell-editor .form-control { min-width: 150px; }
+    .tntt-row-changed { background: #f1f7ff; }
+    .tntt-row-error { background: #fff0f0; }
+    .tntt-bulk-save-status { float: left; max-width: 70%; text-align: left; padding: 7px 0; }
+    @media (max-width: 767px) {
+        .tntt-bulk-window .modal-dialog { width: calc(100% - 20px); margin: 10px; }
+        .tntt-bulk-save-status { float: none; max-width: 100%; padding: 0 0 10px; }
+    }
     @media (max-width: 991px) { .tntt-profile-fields .row > div + div { margin-top: 10px; } }
     .order-table .student-level-cell { vertical-align: middle; }
     .student-level-summary { min-width: 180px; max-width: 240px; margin: 0 auto; text-align: left; }

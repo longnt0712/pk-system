@@ -1071,6 +1071,25 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 		}
 	}
 
+	@Override
+	@PreAuthorize("hasRole('ADMIN') or hasRole('STUDENT_MANAGERMENT') or hasRole('EDUCATION_MANAGERMENT')")
+	@Transactional(rollbackFor = Exception.class)
+	public PersonDto saveTnttProfile(Long userId, PersonDto profile) {
+		if (profile == null || (!profile.isTnttMemberTypeSpecified()
+				&& !profile.isTnttBranchSpecified() && !profile.isTnttLevelSpecified())) {
+			throw new TnttProfileSupport.InvalidProfileException("Vui lòng chọn thông tin TNTT cần cập nhật.");
+		}
+		User user = userRepository.findById(userId);
+		if (user == null) return null;
+		Person person = user.getPerson() == null ? new Person() : user.getPerson();
+		// Apply only TNTT fields to the current entity, preserving names, classes and account permissions.
+		TnttProfileSupport.apply(profile, person);
+		user.setPerson(person);
+		person.setUser(user);
+		user = userRepository.save(user);
+		return new PersonDto(user.getPerson());
+	}
+
 	private boolean currentUserHasRole(String roleName) {
 		Authentication authentication =
 				SecurityContextHolder.getContext().getAuthentication();

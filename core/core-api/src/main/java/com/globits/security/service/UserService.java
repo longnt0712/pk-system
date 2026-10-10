@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 
 import com.globits.core.service.GenericService;
+import com.globits.core.dto.PersonDto;
 import com.globits.security.domain.Role;
 import com.globits.security.domain.User;
 import com.globits.security.dto.UserDto;
@@ -24,6 +25,8 @@ public interface UserService extends GenericService<User, Long> {
 	public UserDto save(UserDto user);
 	
 	public UserDto saveBasicInfo(UserDto user);
+
+	public PersonDto saveTnttProfile(Long userId, PersonDto profile);
 
 	public Page<UserDto> findByPage(int pageIndex, int pageSize);
 

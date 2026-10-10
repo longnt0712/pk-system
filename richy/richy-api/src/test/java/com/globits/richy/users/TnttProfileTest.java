@@ -210,4 +210,49 @@ public class TnttProfileTest {
             }
         }
     }
+
+    @Test public void dedicatedUpdatePreservesOtherProfileFieldsAndAccountPermissions() throws Exception {
+        UserServiceImpl service = service(null);
+        service.save(request());
+        storedUser.getPerson().setFirstName("An");
+        storedUser.getPerson().setEnrollmentClassId(123);
+        storedUser.getPerson().setBirthDate(new java.util.Date(1262304000000L));
+        com.globits.security.domain.Role studentRole = new com.globits.security.domain.Role();
+        studentRole.setName("ROLE_STUDENT"); storedUser.getRoles().add(studentRole);
+        String password = storedUser.getPassword();
+        PersonDto response = service.saveTnttProfile(7L, mapper.readValue(
+                "{\"tnttLevel\":3,\"firstName\":\"Changed\",\"enrollmentClassId\":999}", PersonDto.class));
+        assertEquals(Integer.valueOf(3), response.getTnttLevel());
+        assertEquals("AU_NHI", response.getTnttBranch());
+        assertEquals("An", storedUser.getPerson().getFirstName());
+        assertEquals(Integer.valueOf(123), storedUser.getPerson().getEnrollmentClassId());
+        assertEquals(new java.util.Date(1262304000000L), storedUser.getPerson().getBirthDate());
+        assertEquals("student", storedUser.getUsername());
+        assertEquals("student@example.test", storedUser.getEmail());
+        assertEquals(password, storedUser.getPassword());
+        assertEquals(1, storedUser.getRoles().size());
+        response = service.saveTnttProfile(7L, mapper.readValue("{\"tnttLevel\":null}", PersonDto.class));
+        assertNull(response.getTnttLevel()); assertEquals("AU_NHI", response.getTnttBranch());
+    }
+
+    @Test public void dedicatedUpdateRejectsInvalidOrEmptyPatchesWithoutChangingStoredProfile() throws Exception {
+        UserServiceImpl service = service(null); service.save(request());
+        for (PersonDto patch : new PersonDto[]{profile("DOAN_SINH", "AU_NHI", 4), new PersonDto()}) {
+            try { service.saveTnttProfile(7L, patch); fail("Invalid patch was saved"); }
+            catch (TnttProfileSupport.InvalidProfileException expected) { }
+        }
+        assertEquals(1, saves);
+        assertEquals(Integer.valueOf(2), storedUser.getPerson().getTnttLevel());
+        assertEquals("AU_NHI", storedUser.getPerson().getTnttBranch());
+    }
+
+    @Test public void dedicatedEndpointReturnsNotFoundInsteadOfCreatingMissingUsers() throws Exception {
+        UserServiceImpl service = service(null);
+        RestUserController controller = new RestUserController();
+        setField(controller, "userService", service);
+        assertEquals(HttpStatus.NOT_FOUND, controller.saveTnttProfile(999L,
+                profile("DOAN_SINH", "AU_NHI", 1)).getStatusCode());
+        assertEquals(0, saves);
+        assertNull(storedUser);
+    }
 }

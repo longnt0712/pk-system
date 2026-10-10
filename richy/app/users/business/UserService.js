@@ -20,6 +20,10 @@
         self.getTableDefinition = getTableDefinition;
         self.getUsers = getUsers;
         self.getUser = getUser;
+        self.saveTnttProfile = function (userId, profile) {
+            return $http.put(baseUrl + 'users/' + encodeURIComponent(userId) + '/tntt-profile', profile)
+                .then(function (response) { return response.data; });
+        };
         self.saveUser = saveUser;
         self.deleteUsers = deleteUsers;
         self.getAllRoles = getAllRoles;

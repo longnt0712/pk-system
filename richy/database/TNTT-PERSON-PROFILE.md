@@ -2,9 +2,10 @@
 
 Chạy `tntt-person-profile.sql` trong database đang dùng **trước khi cập nhật backend**. Script dành cho SQL Server 2008 trở lên, có thể chạy lại, không tự gán ngành/cấp cho dữ liệu cũ.
 
-Cập nhật backend có chứa `core-api` mới và hai file frontend:
+Cập nhật backend có chứa `core-api` mới và ba file frontend:
 
 - `users/controllers/UserController.js`
+- `users/business/UserService.js`
 - `users/views/users.html`
 
 Trong **Danh sách học sinh → Thêm/Cập nhật người dùng → Thông tin TNTT**:
@@ -16,6 +17,16 @@ Trong **Danh sách học sinh → Thêm/Cập nhật người dùng → Thông t
 - Khi đổi thành phần hoặc ngành, cấp cũ được bỏ để chọn lại đúng cấp trong thành phần/ngành mới.
 
 Danh sách hiển thị một cột **Ngành / Cấp TNTT**, có thể sắp xếp theo thứ tự thành phần, ngành và cấp. Xuất Excel/ảnh có ba cột riêng: Thành phần TNTT, Ngành TNTT, Cấp TNTT. Các trường và cột TNTT được ẩn trên domain IELTS Room.
+
+Nút **Sửa/Thêm thông tin TNTT** mở bảng gồm họ tên, mã học sinh (tên đăng nhập), ngày sinh và ba cột TNTT của danh sách đang hiển thị (giữ bộ lọc, trang và thứ tự). Quản trị viên, quản lý học sinh và quản lý giáo dục được dùng nút này trên trang TNTT.
+
+- Tích ô ở tiêu đề để bật/tắt sửa cả cột; tích ô cạnh từng thông tin để sửa riêng ô đó.
+- Ô tích chỉ điều khiển việc mở sửa. Bỏ tích không xóa thay đổi đã nhập và không tự ghi dữ liệu.
+- Bấm **Lưu thay đổi** để lưu các dòng có thay đổi; đóng modal khi chưa lưu sẽ bỏ bản nháp.
+- Ngành chỉ áp dụng cho đoàn sinh; cấp áp dụng cho đoàn sinh hoặc Huynh trưởng, theo cùng quy tắc với hồ sơ cá nhân.
+- Lỗi lưu hiển thị trên từng dòng. Những dòng đã lưu giữ nguyên; bấm Lưu lần nữa để thử lại các dòng chưa lưu.
+
+API `PUT /api/users/{userId}/tntt-profile` nhận các trường TNTT thay đổi trong `PersonDto`, trả về hồ sơ cá nhân đã lưu; không cập nhật tên, ngày sinh, lớp hoặc quyền tài khoản. Trường không gửi giữ nguyên; `null` xóa giá trị. Đổi thành phần/ngành mà không gửi cấp sẽ bỏ cấp cũ. API dùng cùng quyền cập nhật thông tin cơ bản; trả 400 cho TNTT không hợp lệ và 404 khi không tìm thấy học sinh.
 
 Dữ liệu lưu trên `tbl_person`:
 

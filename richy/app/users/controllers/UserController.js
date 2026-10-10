@@ -326,16 +326,16 @@
                 .indexOf(person.tnttBranch);
             return typeIndex * 1000 + (branchIndex < 0 ? 9 : branchIndex) * 10 + (person.tnttLevel || 0);
         };
-        vm.changeTnttMemberType = function () {
-            vm.user.person.tnttBranch = null;
-            vm.user.person.tnttLevel = null;
+        vm.changeTnttMemberType = function (person) {
+            person = person || vm.user.person;
+            person.tnttBranch = null;
+            person.tnttLevel = null;
         };
-        vm.changeTnttBranch = function () {
-            vm.user.person.tnttLevel = null;
+        vm.changeTnttBranch = function (person) {
+            (person || vm.user.person).tnttLevel = null;
         };
-        vm.validateTnttProfile = function () {
-            if (vm.isIeltsRoomDomain) return true;
-            var person = vm.user.person || {};
+        vm.getTnttProfileError = function (person) {
+            person = person || {};
             var type = person.tnttMemberType || null;
             var branch = person.tnttBranch || null;
             var level = person.tnttLevel == null ? null : person.tnttLevel;
@@ -344,14 +344,133 @@
             else if (branch && !vm.getTnttBranchName(person)) error = 'Ngành sinh hoạt chỉ áp dụng cho đoàn sinh và phải là ngành hợp lệ.';
             else if (level != null && !vm.getTnttLevelName(person)) error = 'Cấp TNTT không phù hợp với thành phần đã chọn.';
             else if (type === 'DOAN_SINH' && level != null && !branch) error = 'Vui lòng chọn ngành trước khi chọn cấp đoàn sinh.';
+            return error;
+        };
+        vm.validateTnttProfile = function () {
+            if (vm.isIeltsRoomDomain) return true;
+            var person = vm.user.person || {};
+            var error = vm.getTnttProfileError(person);
             if (error) { toastr.error(error, 'Thông báo'); return false; }
             // Send explicit null when clearing a field, including the empty select option.
-            person.tnttMemberType = type;
-            person.tnttBranch = branch;
-            person.tnttLevel = level;
+            person.tnttMemberType = person.tnttMemberType || null;
+            person.tnttBranch = person.tnttBranch || null;
+            person.tnttLevel = person.tnttLevel == null ? null : person.tnttLevel;
             return true;
         };
         // End TNTT profile.
+
+        // TNTT bulk editor.
+        var tnttFields = ['tnttMemberType', 'tnttBranch', 'tnttLevel'];
+        function copyTnttProfile(person) {
+            person = person || {};
+            return {
+                tnttMemberType: person.tnttMemberType || null,
+                tnttBranch: person.tnttBranch || null,
+                tnttLevel: person.tnttLevel == null ? null : person.tnttLevel
+            };
+        }
+        vm.canEditTntt = function () {
+            return !vm.isIeltsRoomDomain && !!(vm.isRoleAdmin || vm.isRoleStudentManagerment || vm.isRoleEducationManagerment);
+        };
+        vm.openTnttBulkModal = function () {
+            if (!vm.canEditTntt() || (vm.tnttBulk && vm.tnttBulk.saving)) return;
+            vm.tnttBulk = {
+                rows: vm.getDisplayedUsers().map(function (user) {
+                    var person = user.person || {};
+                    return {
+                        id: user.id,
+                        name: ((person.lastName || '') + ' ' + (person.firstName || '')).trim()
+                            || person.displayName || user.username,
+                        username: user.username,
+                        birthDate: person.birthDate,
+                        profile: copyTnttProfile(person),
+                        original: copyTnttProfile(person),
+                        edit: {tnttMemberType: false, tnttBranch: false, tnttLevel: false},
+                        error: '', saved: false
+                    };
+                }),
+                columns: {tnttMemberType: false, tnttBranch: false, tnttLevel: false},
+                saving: false, completed: 0, total: 0, message: ''
+            };
+            vm.tnttBulkModalInstance = modal.open({
+                animation: true, templateUrl: 'tntt_bulk_modal.html', scope: $scope,
+                size: 'lg', windowClass: 'tntt-bulk-window', backdrop: 'static', keyboard: false
+            });
+        };
+        vm.toggleTnttColumn = function (field) {
+            if (vm.tnttBulk.saving || tnttFields.indexOf(field) < 0) return;
+            vm.tnttBulk.rows.forEach(function (row) { row.edit[field] = vm.tnttBulk.columns[field]; });
+        };
+        vm.syncTnttColumn = function (field) {
+            vm.tnttBulk.columns[field] = vm.tnttBulk.rows.length > 0 && vm.tnttBulk.rows.every(function (row) {
+                return row.edit[field];
+            });
+        };
+        vm.tnttRowChanged = function (row) {
+            var current = copyTnttProfile(row.profile);
+            return tnttFields.some(function (field) { return current[field] !== row.original[field]; });
+        };
+        vm.tnttChangedCount = function () {
+            return vm.tnttBulk ? vm.tnttBulk.rows.filter(vm.tnttRowChanged).length : 0;
+        };
+        vm.tnttDraftChanged = function (row) {
+            row.error = ''; row.saved = false; vm.tnttBulk.message = '';
+        };
+        vm.closeTnttBulkModal = function () {
+            if (!vm.tnttBulk.saving) vm.tnttBulkModalInstance.dismiss();
+        };
+        vm.saveTnttBulk = function () {
+            if (!vm.canEditTntt() || vm.tnttBulk.saving) return;
+            var bulk = vm.tnttBulk;
+            var changed = bulk.rows.filter(vm.tnttRowChanged);
+            if (!changed.length) return;
+            var invalid = false;
+            changed.forEach(function (row) {
+                row.error = vm.getTnttProfileError(row.profile);
+                if (row.error) invalid = true;
+            });
+            if (invalid) {
+                bulk.message = 'Vui lòng kiểm tra các dòng báo lỗi trước khi lưu.';
+                return;
+            }
+            bulk.saving = true; bulk.completed = 0; bulk.total = changed.length; bulk.message = '';
+            var saved = 0;
+            // Sequential requests keep server load bounded and allow failed rows to be retried independently.
+            var queue = $q.when();
+            changed.forEach(function (row) {
+                queue = queue.then(function () {
+                    var current = copyTnttProfile(row.profile);
+                    var patch = {};
+                    tnttFields.forEach(function (field) {
+                        if (current[field] !== row.original[field]) patch[field] = current[field];
+                    });
+                    // Re-selecting the same rank after changing branch/type must still persist that rank.
+                    if (patch.hasOwnProperty('tnttMemberType') || patch.hasOwnProperty('tnttBranch'))
+                        patch.tnttLevel = current.tnttLevel;
+                    return service.saveTnttProfile(row.id, patch).then(function (person) {
+                        row.profile = copyTnttProfile(person);
+                        row.original = copyTnttProfile(person);
+                        row.error = ''; row.saved = true; saved++;
+                        vm.users.forEach(function (user) {
+                            if (user.id !== row.id) return;
+                            user.person = user.person || {};
+                            tnttFields.forEach(function (field) { user.person[field] = row.profile[field]; });
+                        });
+                    }, function (response) {
+                        row.error = response && response.data && response.data.message
+                            || 'Không lưu được. Vui lòng thử lại.';
+                    }).finally(function () { bulk.completed++; });
+                });
+            });
+            return queue.finally(function () {
+                bulk.saving = false;
+                var failed = changed.length - saved;
+                bulk.message = 'Đã lưu ' + saved + '/' + changed.length + ' học sinh.'
+                    + (failed ? ' ' + failed + ' dòng chưa lưu; bấm Lưu để thử lại.' : '');
+                if (!failed) toastr.success(bulk.message, 'Thông báo');
+            });
+        };
+        // End TNTT bulk editor.
 
 		vm.vocabularyLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 		vm.showVocabularyExperienceSection = [

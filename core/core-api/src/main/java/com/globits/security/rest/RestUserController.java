@@ -132,6 +132,15 @@ public class RestUserController {
 		return userService.save(user);
 	}
 
+	@PreAuthorize("hasRole('ADMIN') or hasRole('STUDENT_MANAGERMENT') or hasRole('EDUCATION_MANAGERMENT')")
+	@PutMapping(path = "/api/users/{userId}/tntt-profile")
+	public ResponseEntity<PersonDto> saveTnttProfile(@PathVariable("userId") Long userId,
+			@RequestBody PersonDto profile) {
+		PersonDto saved = userService.saveTnttProfile(userId, profile);
+		return saved == null ? new ResponseEntity<PersonDto>(HttpStatus.NOT_FOUND)
+				: ResponseEntity.ok(saved);
+	}
+
 	@PreAuthorize("hasRole('ROLE_ADMIN')")
 	@DeleteMapping(value = "/api/users/{userId}")
 	public UserDto removeUser(@PathVariable("userId") String userId) {
