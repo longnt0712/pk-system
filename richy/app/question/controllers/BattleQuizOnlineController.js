@@ -611,8 +611,10 @@
         var giftModalReturnFocus = null;
         vm.isLumNgayMode = function () { return !!vm.room && vm.room.settings.mode === 'LUM_NGAY'; };
         vm.giftClaimDisabled = function () {
-            return !vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || vm.room.giftOpening !== true || isSpectator() ||
-                vm.claimingGift || !!vm.room.pendingSkillType || vm.room.giftCredits <= 0 || vm.room.giftCredits == null || vm.countdown <= 0;
+            if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() || vm.claimingGift ||
+                    !!vm.room.pendingSkillType || vm.room.giftCredits <= 0 || vm.room.giftCredits == null || vm.countdown <= 0) { return true; }
+            if (vm.room.videoSynchronized) { return vm.room.giftOpening !== true; }
+            return vm.answerLocked || vm.usingSkill || isMeFrozen() || isWrongAnswerPenaltyActive();
         };
         vm.getGiftRewardImage = function (level, skillType) {
             if (skillType) { level = 0; }
@@ -639,8 +641,10 @@
             }, 0);
         }
         vm.openGiftModal = function () {
-            if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || vm.room.giftOpening !== true || isSpectator() ||
-                    vm.claimingGift || vm.giftModalOpen) { return; }
+            var finalOpening = vm.room && vm.room.giftOpening === true;
+            if (!vm.isLumNgayMode() || vm.room.status !== 'PLAYING' || isSpectator() || vm.claimingGift ||
+                    vm.giftModalOpen || (vm.room.videoSynchronized && !finalOpening) ||
+                    (!finalOpening && !(vm.room.giftCredits > 0)) || vm.room.pendingSkillType) { return; }
             giftModalReturnFocus = $window.document.activeElement;
             vm.lastGiftReward = null;
             vm.giftModalOpen = true;
@@ -679,7 +683,8 @@
                 if (!vm.room || vm.room.code !== code ||
                         !vm.room.giftDrop || vm.room.giftDrop.gameId !== gameId) { return; }
                 applyRoom(result.room, false);
-                if (!result.room || result.room.status !== 'PLAYING' || result.room.giftOpening !== true) { return; }
+                if (!result.room || result.room.status !== 'PLAYING' ||
+                        (result.room.videoSynchronized && result.room.giftOpening !== true)) { return; }
                 vm.lastGiftReward = {level: result.rewardLevel, points: result.points};
                 if (result.skillType) { vm.lastGiftReward.skillType = result.skillType; }
                 focusGiftModal('.battle-online-gift-continue');
@@ -2823,7 +2828,8 @@
             }
 
             vm.room = incoming;
-            if (incoming.giftOpening !== true && vm.giftModalOpen) { vm.closeGiftModal(true); }
+            if (vm.giftModalOpen && (incoming.status !== 'PLAYING' ||
+                    (previousRoom && previousRoom.giftOpening === true && incoming.giftOpening !== true))) { vm.closeGiftModal(true); }
             var videoRoundChanged = !!(previousRoom && Number(previousRoom.videoQuestionRound || 0) !== Number(incoming.videoQuestionRound || 0));
             if (((!previousRoom || previousRoom.code !== incoming.code || previousStatus !== 'PLAYING') && incoming.status === 'PLAYING') || videoRoundChanged) {
                 videoMatchGeneration++; lastVideoAnswerToastSequence = 0; clearVideoAnswerToast();
@@ -4383,6 +4389,11 @@
                              * response; pending skill/penalty đã có guard riêng.
                              */
                             vm.answerLocked = false;
+                            if (result.correct === true && vm.isLumNgayMode() && vm.room &&
+                                    vm.room.code === submittedRoomCode && result.room && result.room.giftDrop &&
+                                    vm.room.giftDrop && result.room.giftDrop.gameId === vm.room.giftDrop.gameId) {
+                                vm.openGiftModal();
+                            }
                             if (
                                 vm.room &&
                                 !vm.room.currentQuestion &&

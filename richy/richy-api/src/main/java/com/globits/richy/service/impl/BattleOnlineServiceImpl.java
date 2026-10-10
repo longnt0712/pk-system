@@ -2677,19 +2677,27 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Phòng này không có box quà LỤM NGAY.");
             }
             long now = System.currentTimeMillis();
-            if (!room.giftOpening) {
-                throw new BattleOnlineException(HttpStatus.CONFLICT, "Chờ hết phần câu hỏi để bắt đầu bóc trứng.");
-            }
-            if (now >= room.giftOpeningEndsAt) {
-                completeMatchLocked(room);
-                throw new BattleOnlineException(HttpStatus.CONFLICT, "Đã hết thời gian bóc trứng.");
+            if (room.videoSynchronized) {
+                if (!room.giftOpening) {
+                    throw new BattleOnlineException(HttpStatus.CONFLICT, "Chờ hết video để bắt đầu bóc trứng.");
+                }
+                if (now >= room.giftOpeningEndsAt) {
+                    completeMatchLocked(room);
+                    throw new BattleOnlineException(HttpStatus.CONFLICT, "Đã hết thời gian bóc trứng.");
+                }
+            } else if (now >= room.matchEndsAt) {
+                finishMatchLocked(room);
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Hết thời gian trận.");
             }
             PlayerState player = requirePlayer(room, username);
             requireActivePlayer(player);
             if (player.pendingSkillType != null) {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Dùng skill đang có trước khi bóc trứng tiếp.");
             }
-            if (player.frozenUntil > now || player.wrongAnswerPenaltyUntil > now || player.giftCredits <= 0) {
+            if (player.frozenUntil > now || player.wrongAnswerPenaltyUntil > now) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Bạn chưa thể bóc trứng lúc này.");
+            }
+            if (player.giftCredits <= 0) {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Bạn đã dùng hết lượt bóc trứng.");
             }
             GiftDropGame.Gift gift = room.giftDrop.claim(username, request != null ? request.getGiftId() : null);
@@ -2706,7 +2714,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             room.giftDrop.recordClaim(gift, player.username, displayName(player), awardedPoints, now);
             result.setSkillType(gift.skillType);
             result.setRewardLevel(gift.rewardLevel); result.setPoints(awardedPoints);
-            if (!hasOutstandingGiftCreditsLocked(room)) { completeMatchLocked(room); }
+            if (room.giftOpening && !hasOutstandingGiftCreditsLocked(room)) { completeMatchLocked(room); }
             result.setRoom(snapshotLocked(room, username));
         }
         broadcastGeneric(room);
@@ -5933,7 +5941,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             return;
         }
 
-        if (MODE_LUM_NGAY.equals(room.settings.mode) && !room.giftOpening) {
+        if (MODE_LUM_NGAY.equals(room.settings.mode) && room.videoSynchronized && !room.giftOpening) {
             startGiftOpeningLocked(room);
             if (hasOutstandingGiftCreditsLocked(room)) { return; }
         }

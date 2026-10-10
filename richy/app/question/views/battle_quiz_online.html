@@ -1506,8 +1506,11 @@
                  ng-if="vm.isLumNgayMode()">
                 <section class="battle-online-gift-box" ng-if="!vm.room.giftOpening">
                     <header><strong>🎁 LỤM NGAY</strong><span>{{vm.room.giftDrop.gifts.length || 0}} / {{vm.room.giftDrop.capacity || 0}} món</span></header>
-                    <p>Trả lời đúng để tích lũy lượt bóc. Hết phần câu hỏi, bạn có 3 phút để chọn trứng!</p>
+                    <p ng-if="vm.room.videoSynchronized">Trả lời đúng để tích lũy lượt bóc. Hết video, bạn có 3 phút để chọn trứng!</p>
+                    <p ng-if="!vm.room.videoSynchronized">Mỗi câu đúng sẽ hiện 3 quả trứng để bạn chọn và bóc ngay 1 quả.</p>
                     <b class="battle-online-gift-credits">Lượt bóc của bạn: {{vm.room.giftCredits || 0}}</b>
+                    <button type="button" class="battle-online-gift-open" ng-if="!vm.room.videoSynchronized && vm.room.giftCredits > 0"
+                            ng-click="vm.openGiftModal()" ng-disabled="vm.giftClaimDisabled() || vm.giftModalOpen">🥚 CHỌN TRỨNG</button>
                 </section>
             </div>
 
@@ -2032,13 +2035,18 @@
         <section id="battle-gift-modal" class="battle-online-gift-modal" role="dialog" aria-modal="true"
                  aria-labelledby="battle-gift-modal-title" tabindex="-1" ng-class="{'is-revealed': vm.lastGiftReward, 'is-rotten': vm.lastGiftReward.level === -1}">
             <header class="battle-online-gift-modal-header">
-                <div><small>🥚 VÒNG BÓC TRỨNG • CÒN {{vm.formatTime(vm.countdown)}}</small><h2 id="battle-gift-modal-title">{{vm.lastGiftReward ? 'BẠN BÓC ĐƯỢC!' : (vm.room.giftCredits > 0 ? 'CHỌN TRỨNG CỦA BẠN' : 'BẠN ĐÃ BÓC XONG')}}</h2></div>
+                <div>
+                    <small ng-if="vm.room.giftOpening">🥚 VÒNG BÓC TRỨNG • CÒN {{vm.formatTime(vm.countdown)}}</small>
+                    <small ng-if="!vm.room.giftOpening">🥚 LỤM NGAY</small>
+                    <h2 id="battle-gift-modal-title">{{vm.lastGiftReward ? 'BẠN BÓC ĐƯỢC!' : (vm.room.giftOpening ? (vm.room.giftCredits > 0 ? 'CHỌN TRỨNG CỦA BẠN' : 'BẠN ĐÃ BÓC XONG') : 'CHÍNH XÁC! CHỌN 1 TRỨNG')}}</h2>
+                </div>
                 <button type="button" class="battle-online-gift-modal-close" aria-label="Đóng modal chọn trứng"
                         ng-if="!vm.room.giftOpening" ng-click="$event.stopPropagation(); vm.closeGiftModal()" ng-disabled="vm.claimingGift">×</button>
             </header>
             <div class="battle-online-gift-modal-stage" ng-if="!vm.lastGiftReward">
-                <p class="battle-online-gift-modal-hint" ng-if="vm.room.giftCredits > 0">Bạn có {{vm.room.giftCredits}} lượt. Hệ thống đưa thêm 3 quả để lựa chọn; bạn chỉ bóc đúng số lượt đã kiếm được.</p>
-                <p class="battle-online-gift-modal-hint" ng-if="vm.room.giftCredits <= 0">Đã dùng hết lượt. Đang chờ những người chơi còn lại…</p>
+                <p class="battle-online-gift-modal-hint" ng-if="vm.room.giftOpening && vm.room.giftCredits > 0">Bạn có {{vm.room.giftCredits}} lượt. Hệ thống đưa thêm 3 quả để lựa chọn; bạn chỉ bóc đúng số lượt đã kiếm được.</p>
+                <p class="battle-online-gift-modal-hint" ng-if="vm.room.giftOpening && vm.room.giftCredits <= 0">Đã dùng hết lượt. Đang chờ những người chơi còn lại…</p>
+                <p class="battle-online-gift-modal-hint" ng-if="!vm.room.giftOpening">Chọn 1 trong 3 quả trứng. Bóc xong bạn sẽ tiếp tục trả lời câu kế tiếp.</p>
                 <div class="battle-online-gift-host-controls" ng-if="vm.isHost() && vm.room.giftOpening">
                     <button type="button" class="btn btn-default" ng-click="$event.stopPropagation(); vm.extendGiftOpening()" ng-disabled="vm.finishingGiftOpening">+1 phút</button>
                     <button type="button" class="btn btn-danger" ng-click="$event.stopPropagation(); vm.finishGiftOpening()" ng-disabled="vm.finishingGiftOpening">Kết thúc ngay</button>
@@ -2064,7 +2072,7 @@
                 <b class="battle-online-gift-points" ng-if="!vm.lastGiftReward.skillType">+{{vm.lastGiftReward.points}} ĐIỂM</b>
                 <b class="battle-online-gift-skill-label" ng-if="vm.lastGiftReward.skillType">NHẬN SKILL {{vm.getSkillIcon(vm.lastGiftReward.skillType)}}</b>
                 <p>Điểm đã được cộng cho bạn.</p>
-                <button type="button" class="battle-online-gift-continue" ng-click="$event.stopPropagation(); vm.dismissGiftReward()">{{vm.room.giftCredits > 0 ? 'BÓC TIẾP →' : 'ĐÃ BÓC XONG'}}</button>
+                <button type="button" class="battle-online-gift-continue" ng-click="$event.stopPropagation(); vm.dismissGiftReward()">{{vm.room.giftOpening ? (vm.room.giftCredits > 0 ? 'BÓC TIẾP →' : 'ĐÃ BÓC XONG') : 'TIẾP TỤC →'}}</button>
             </div>
         </section>
     </div>

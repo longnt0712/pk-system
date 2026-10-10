@@ -135,6 +135,18 @@ public class BattleOnlineGiftDropTest {
         assertEquals(2,pool.snapshot().claims.size());
     }
 
+    @Test public void nonVideoAnswersCanOpenOneOfThreeEggsImmediatelyAndFinishWithoutAFinalEggPhase() {
+        set(room,"videoSynchronized",false); set(room,"giftOpening",false); set(room,"giftOpeningEndsAt",0L);
+        set(alice,"giftCredits",1); String id=pool.snapshot("alice").gifts.get(0).id;
+        BattleOnlineGiftClaimResultDto claimed=service.claimGift("GIFTS1","alice",request(id));
+        assertEquals("PLAYING",claimed.getRoom().getStatus()); assertFalse(claimed.getRoom().isGiftOpening());
+        assertEquals(Integer.valueOf(0),claimed.getRoom().getGiftCredits()); assertEquals(3,claimed.getRoom().getGiftDrop().capacity);
+        assertEquals(3,claimed.getRoom().getGiftDrop().gifts.size());
+        set(alice,"giftCredits",1); ReflectionTestUtils.invokeMethod(service,"finishMatchLocked",room);
+        BattleOnlineRoomDto finished=service.getRoom("GIFTS1","alice");
+        assertEquals("FINISHED",finished.getStatus()); assertFalse(finished.isGiftOpening());
+    }
+
     @Test public void selectedTeamCarrierAlsoReceivesDoubleGiftPoints() {
         set(get(room,"settings"),"teamCount",2); set(get(room,"settings"),"doubleActionUsername","alice"); set(alice,"teamNumber",1); set(alice,"giftCredits",1);
         BattleOnlineGiftClaimResultDto result=service.claimGift("GIFTS1","alice",request(pool.snapshot("alice").gifts.get(0).id));
@@ -197,7 +209,7 @@ public class BattleOnlineGiftDropTest {
     }
 
     @Test public void finishingQuestionsStartsAThreeMinuteFinalPoolAndLastClaimEndsEarly() {
-        set(alice,"giftCredits",2); set(bob,"giftCredits",1); set(room,"giftOpening",false);
+        set(room,"videoSynchronized",true); set(alice,"giftCredits",2); set(bob,"giftCredits",1); set(room,"giftOpening",false);
         long before=System.currentTimeMillis(); ReflectionTestUtils.invokeMethod(service,"finishMatchLocked",room);
         BattleOnlineRoomDto aliceRoom=service.getRoom("GIFTS1","alice"), bobRoom=service.getRoom("GIFTS1","bob");
         assertEquals("PLAYING",aliceRoom.getStatus()); assertTrue(aliceRoom.isGiftOpening());
@@ -215,7 +227,7 @@ public class BattleOnlineGiftDropTest {
     }
 
     @Test public void hostCanExtendOrFinishTheEggRound() {
-        set(alice,"giftCredits",1); set(room,"giftOpening",false);
+        set(room,"videoSynchronized",true); set(alice,"giftCredits",1); set(room,"giftOpening",false);
         ReflectionTestUtils.invokeMethod(service,"finishMatchLocked",room);
         long first=service.getRoom("GIFTS1","host").getGiftOpeningEndsAt();
         BattleOnlineRoomDto extended=service.extendGiftOpening("GIFTS1","host");

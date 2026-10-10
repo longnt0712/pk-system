@@ -15,7 +15,7 @@ function setup(username='alice') {
   answer(...args){answerCalls.push(args);return new Promise(resolve=>{resolveAnswer=resolve;});},getRoom(){return Promise.resolve(plain(vm.room));},disconnectRealtime(){}};
  const vm=new Controller({},{$on(name,fn){if(name==='$destroy')cleanup=fn;},$evalAsync(fn){fn();}},{go(){}},{},timer,timer,{get(){return JSON.stringify({id:1,username});}},window,{warning(){},error(){}},{},{},service);
  function room(credits=1,version=1,gameId='match1') {
-  const now=Date.now(); return {code:'GIFTS1',hostUsername:'host',status:'PLAYING',serverTime:now,matchEndsAt:now+180000,giftOpening:true,giftOpeningEndsAt:now+180000,questionEndsAt:0,
+  const now=Date.now(); return {code:'GIFTS1',hostUsername:'host',status:'PLAYING',serverTime:now,matchEndsAt:now+180000,videoSynchronized:false,giftOpening:true,giftOpeningEndsAt:now+180000,questionEndsAt:0,
    settings:{mode:'LUM_NGAY',teamCount:0,skillsEnabled:false,giftSpawnSeconds:3,giftBasePoints:10},players:[{username:'host',spectator:true},{username:'alice',connected:true,spectator:false}],recentEvents:[],
    currentQuestion:null,giftDrop:{gameId,version,poolVersion:version,capacity:credits+3,gifts:[{id:'gift1'},{id:'gift2'},{id:'gift3'}]},giftCredits:credits,giftCreditVersion:version};
  }
@@ -42,7 +42,7 @@ test('only an active player with credit can pick during the final egg phase',()=
   if(state==='spectator')room.players[1].spectator=true;
   if(state==='finished')room.status='FINISHED';
   if(state==='pending-skill')room.pendingSkillType='FREEZE';
-  if(state==='before-phase')room.giftOpening=false;
+  if(state==='before-phase'){room.videoSynchronized=true;room.giftOpening=false;}
   h.hooks.applyRoom(room,false);
   if(state==='claiming')h.vm.claimingGift=true;
   h.vm.openGiftModal();
@@ -98,17 +98,28 @@ test('a late claim response from the previous match does not reveal its old priz
  assert.equal(h.vm.room.giftDrop.gameId,'match2');assert.equal(h.vm.lastGiftReward,null);
 });
 test('answers only earn credits; the modal opens when the server starts the egg phase',async()=>{
- for(const exercise of [false,true]) for(const correct of [false,true]) {
+ for(const correct of [false,true]) {
   const h=setup(),room=h.room(0);room.giftOpening=false;room.giftOpeningEndsAt=0;room.matchEndsAt=Date.now()+60000;
-  room.currentQuestion={id:7,sequence:1,question:'hello',answers:[{key:'A',text:'xin chào'}]};if(exercise)room.currentQuestion.exercise={answerMode:'TEXT',type:11,items:[{id:'103',number:1}]};
+  room.videoSynchronized=true;room.videoPhase='ANSWERING';room.questionEndsAt=Date.now()+30000;room.currentQuestion={id:7,sequence:1,question:'hello',answers:[{key:'A',text:'xin chào'}],exercise:{videoUrl:'https://example.test/video',answerMode:'TEXT',type:11,items:[{id:'103',number:1}]}};
   h.hooks.applyRoom(room,false);h.vm.exerciseAnswers={'103':['answer']};
-  if(exercise)h.vm.submitExercise(false);else h.vm.answer(room.currentQuestion.answers[0]);
+  h.vm.submitExercise(false);
   assert.equal(h.answerCalls.length,1);const next=h.room(correct?1:0,2);next.giftOpening=false;next.giftOpeningEndsAt=0;
-  next.currentQuestion={id:8,sequence:2,question:'next',answers:[{key:'A',text:'next'}]};
+  next.videoSynchronized=true;next.videoPhase='ANSWERING';next.questionEndsAt=Date.now()+30000;next.currentQuestion={id:8,sequence:2,question:'next',answers:[{key:'A',text:'next'}],exercise:{videoUrl:'https://example.test/video',answerMode:'TEXT',type:11,items:[{id:'104',number:2}]}};
   h.resolveAnswer({correct,correctAnswer:'xin chào',room:next});await Promise.resolve();
   assert.equal(h.vm.giftModalOpen,false);assert.equal(h.vm.answerLocked,false);
-  if(correct){const opening=h.room(1,3);h.hooks.applyRoom(opening,false);assert.equal(h.vm.giftModalOpen,true);}
+  if(correct){const opening=h.room(1,3);opening.videoSynchronized=true;h.hooks.applyRoom(opening,false);assert.equal(h.vm.giftModalOpen,true);}
  }
+});
+test('a non-video correct answer immediately shows three eggs and one pick returns to the quiz',async()=>{
+ const h=setup(),active=h.room(0);active.videoSynchronized=false;active.giftOpening=false;active.giftOpeningEndsAt=0;
+ active.giftDrop.capacity=3;active.currentQuestion={id:7,sequence:1,question:'hello',answers:[{key:'A',text:'xin chào'}]};h.hooks.applyRoom(active,false);
+ h.vm.answer(active.currentQuestion.answers[0]);assert.equal(h.answerCalls.length,1);
+ const next=h.room(1,2);next.videoSynchronized=false;next.giftOpening=false;next.giftOpeningEndsAt=0;next.giftDrop.capacity=3;
+ next.currentQuestion={id:8,sequence:2,question:'next',answers:[{key:'A',text:'next'}]};h.resolveAnswer({correct:true,room:next});await Promise.resolve();
+ assert.equal(h.vm.giftModalOpen,true);assert.equal(h.vm.room.giftDrop.gifts.length,3);assert.equal(h.vm.room.giftCredits,1);assert.equal(h.vm.giftClaimDisabled(),false);
+ const pending=h.vm.claimGift({id:'gift1'}),claimed=h.room(0,3);claimed.videoSynchronized=false;claimed.giftOpening=false;claimed.giftOpeningEndsAt=0;claimed.giftDrop.capacity=3;
+ claimed.giftDrop.gifts=[{id:'gift2'},{id:'gift3'},{id:'gift4'}];h.resolve({rewardLevel:2,points:30,room:claimed});await pending;
+ assert.deepEqual(plain(h.vm.lastGiftReward),{level:2,points:30});h.vm.dismissGiftReward();assert.equal(h.vm.giftModalOpen,false);
 });
 test('modal blocks question submission and keyboard shortcuts until it is dismissed',()=>{
  const h=setup(),active=h.room();active.currentQuestion={id:7,sequence:1,question:'hello',answers:[{key:'A',text:'xin chào'}]};h.hooks.applyRoom(active,false);h.vm.openGiftModal();assert.equal(h.bodyClasses.has('battle-gift-modal-open'),true);
