@@ -6,6 +6,8 @@ import com.globits.richy.domain.QuestionAnswer;
 import com.globits.richy.domain.QuestionAnswerTestResult;
 import com.globits.richy.dto.QuestionAnswerTestResultDto;
 import com.globits.richy.dto.QuestionDto;
+import com.globits.richy.dto.QuestionAnswerDto;
+import com.globits.richy.dto.AnswerDto;
 import com.globits.richy.service.impl.QuestionServiceImpl;
 import java.util.Collections;
 import org.junit.Test;
@@ -21,7 +23,7 @@ public class ComprehensiveListeningValidationTest {
         }
     }
 
-    @Test public void publishedTestsNeedAudioTranscriptAndExactlyOneQuestionPerGap() {
+    @Test public void pastedTranscriptCanBePublishedWithoutCreatingGaps() {
         QuestionDto root = new QuestionDto(), pack = new QuestionDto(), question = new QuestionDto();
         root.setTestFormat("COMPREHENSIVE"); root.setStatus(6); pack.setType(18);
         root.setSubQuestions(Collections.singletonList(pack));
@@ -29,9 +31,12 @@ public class ComprehensiveListeningValidationTest {
         root.setStatus(7); assertNotNull(ComprehensiveListeningValidation.validate(root));
         pack.setPronounce("https://school.test/audio.mp3"); pack.setMotherTongue("We learn daily.");
         assertNotNull(ComprehensiveListeningValidation.validate(root));
-        pack.setSubQuestions(Collections.singletonList(question)); question.setQuestion("We }{SPACE}{ daily.");
+        pack.setSubQuestions(Collections.singletonList(question)); question.setQuestion("Daily Listening");
+        QuestionAnswerDto response = new QuestionAnswerDto(); AnswerDto marker = new AnswerDto();
+        marker.setAnswer(ComprehensiveListeningScore.RESPONSE); response.setAnswer(marker); response.setCorrect(true);
+        question.setQuestionAnswers(Collections.singletonList(response));
         assertNull(ComprehensiveListeningValidation.validate(root));
-        question.setQuestion("We }{SPACE}{ }{SPACE}{.");
+        pack.setMotherTongue("London Paris");
         assertNotNull(ComprehensiveListeningValidation.validate(root));
     }
 
@@ -53,7 +58,7 @@ public class ComprehensiveListeningValidationTest {
         QuestionDto root = new QuestionDto(), pack = new QuestionDto();
         pack.setType(18); pack.setQuestion("Daily Listening"); pack.setOrdinalNumber(1);
         pack.setMotherTongue("Alice visits London, then buys tickets.");
-        pack.setPronounce("https://school.test/audio.mp3"); pack.setDescription("{\"gapRate\":50}");
+        pack.setPronounce("https://school.test/audio.mp3"); pack.setDescription("{\"runtimeGaps\":true}");
         root.setSubQuestions(Collections.singletonList(pack));
         Question stored = new Question();
         new QuestionServiceImpl().setListSubQuestions(root, stored, org.joda.time.LocalDateTime.now(), "teacher");

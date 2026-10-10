@@ -6,6 +6,7 @@ import java.util.Comparator;
 import com.globits.richy.domain.Question;
 import com.globits.richy.domain.QuestionAnswer;
 import com.globits.richy.domain.QuestionAnswerTestResult;
+import com.globits.richy.question.ComprehensiveListeningScore;
 
 public class QuestionAnswerTestResultDto implements Serializable{
 	private Long id;
@@ -21,6 +22,10 @@ public class QuestionAnswerTestResultDto implements Serializable{
 	private Boolean isCorrectTestResultDetail = false;
 	
 	private String correctAnswerForMultipleAnswer = "";
+	private Integer listeningTotalGaps;
+	private Integer listeningCorrectGaps;
+	public Integer getListeningTotalGaps() { return listeningTotalGaps; }
+	public Integer getListeningCorrectGaps() { return listeningCorrectGaps; }
 	
 	
 	
@@ -89,6 +94,14 @@ public class QuestionAnswerTestResultDto implements Serializable{
 
 		Integer type = selectedAnswer.getQuestion().getParent().getType();
 		if(type == null) {
+			return;
+		}
+		if (ComprehensiveListeningScore.isResponse(selectedAnswer)) {
+			ComprehensiveListeningScore score = ComprehensiveListeningScore.evaluate(
+					selectedAnswer.getQuestion().getParent().getMotherTongue(), domain.getClientAnswer());
+			this.listeningTotalGaps = score.getTotal();
+			this.listeningCorrectGaps = score.getCorrect();
+			this.isCorrectTestResultDetail = score.isPassed();
 			return;
 		}
 		String submittedAnswer = normalize(domain.getClientAnswer());

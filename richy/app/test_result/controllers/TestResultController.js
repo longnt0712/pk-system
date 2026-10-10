@@ -553,6 +553,10 @@
             }
             var type = getResultQuestionType(item);
             var submittedAnswer = item && item.clientAnswer != null ? String(item.clientAnswer).trim() : '';
+            if (type == 18 && item.listeningTotalGaps != null) {
+                return item.listeningCorrectGaps + '/' + item.listeningTotalGaps + ' ô đúng (' +
+                    Math.round(item.listeningCorrectGaps * 10000 / (item.listeningTotalGaps || 1)) / 100 + '%)';
+            }
             if (!submittedAnswer) {
                 return '';
             }
@@ -571,6 +575,8 @@
             }
             var type = getResultQuestionType(item);
             var questionAnswer = item && item.questionAnswer;
+
+            if (type == 18 && questionAnswer && questionAnswer.answer && questionAnswer.answer.answer === 'DAILY_LISTENING_RESPONSE') { return 'Đúng từ 90% tổng số ô trống'; }
 
             if (type == 16 || type == 17) {
                 return type == 17 ? 'Trên 250 từ' : 'Trên 150 từ';

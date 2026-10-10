@@ -43,6 +43,18 @@ public class QuestionDto implements Serializable  {
 	public void setVideoTimeSeconds(Integer videoTimeSeconds) { this.videoTimeSeconds = videoTimeSeconds; }
 	private Boolean listeningTest;
 	private String testFormat;
+	private Long testFolderId;
+	private TestFolderDto testFolder;
+	private boolean withoutTestFolder;
+	private boolean includeSubfolders = true;
+	public Long getTestFolderId() { return testFolderId; }
+	public void setTestFolderId(Long value) { testFolderId = value; }
+	public TestFolderDto getTestFolder() { return testFolder; }
+	public void setTestFolder(TestFolderDto value) { testFolder = value; }
+	public boolean isWithoutTestFolder() { return withoutTestFolder; }
+	public void setWithoutTestFolder(boolean value) { withoutTestFolder = value; }
+	public boolean isIncludeSubfolders() { return includeSubfolders; }
+	public void setIncludeSubfolders(boolean value) { includeSubfolders = value; }
 	private String level;
 	private int status = 3;//1: chưa thuộc; 2: đã thuộc; 3: tat ca; 4: quan trong
 	private String examples;
@@ -420,6 +432,10 @@ public class QuestionDto implements Serializable  {
 		this.motherTongue = domain.getMotherTongue();
 		this.website = domain.getWebsite();
 		this.testFormat = domain.getTestFormat();
+		if (domain.getTestFolder() != null) {
+			this.testFolderId = domain.getTestFolder().getId();
+			this.testFolder = new TestFolderDto(domain.getTestFolder());
+		}
 		if(domain.getUser() != null && domain.getUser().getId() != null) {
 			this.user = new UserDto();
 			this.user.setId(domain.getUser().getId());

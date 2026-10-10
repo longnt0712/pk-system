@@ -8,7 +8,7 @@
             <div class="ielts-builder-mode-hero__copy">
                 <span>{{vm.isComprehensiveMode ? 'FREE-FORM TEST BUILDER' : 'IELTS TEST BUILDER'}}</span>
                 <h1>{{vm.isComprehensiveMode ? 'Tạo bài tập tổng hợp' : 'Tạo đề IELTS ' + vm.testModeName}}</h1>
-                <p ng-if="vm.isComprehensiveMode">Tạo số lượng câu hỏi tùy ý trong một danh sách duy nhất và gán topic cho bài.</p>
+                <p ng-if="vm.isComprehensiveMode">Tạo số lượng câu hỏi tùy ý trong một danh sách duy nhất và lưu bài vào folder riêng của bạn.</p>
                 <p ng-if="!vm.isComprehensiveMode && !vm.isListeningMode && !vm.isWritingMode">Trang này chỉ hiển thị và tạo đề Reading. Đề Reading không sử dụng audio chính.</p>
                 <p ng-if="!vm.isComprehensiveMode && vm.isListeningMode">Trang này chỉ hiển thị và tạo đề Listening. Audio chính là trường bắt buộc trước khi xuất bản.</p>
                 <p ng-if="vm.isWritingMode">Tạo riêng Task 1, Task 2 hoặc một bài gồm cả hai Task. Các đề Writing cũ vẫn được giữ nguyên.</p>
@@ -41,38 +41,6 @@
                                 <button ng-click="vm.codeChange()" class="btn btn-default" type="submit"><i class="glyphicon glyphicon-search"></i></button>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-8 reading-catalog-topic-filters" ng-if="vm.isComprehensiveMode">
-                        <select class="form-control" ng-model="vm.catalogTopicFilterMode" ng-change="vm.applyCatalogTopicFilter()" aria-label="Lọc bài theo topic">
-                            <option value="ALL">Tất cả bài</option>
-                            <option value="TOPIC">Theo topic</option>
-                            <option value="UNASSIGNED">Chưa gắn topic</option>
-                        </select>
-                        <ui-select theme="bootstrap" ng-model="vm.builderTopicSource" ng-change="vm.builderTopicSourceChanged()"
-                                   ng-disabled="vm.catalogTopicFilterMode !== 'TOPIC'">
-                            <ui-select-match placeholder="Chọn nguồn..."><span class="reading-topic-source-label"><i class="fa fa-database"></i> {{vm.topicSourceLabel(vm.builderTopicSource)}}</span></ui-select-match>
-                            <ui-select-choices repeat="source in vm.topicSources | filter:$select.search">
-                                <div ng-bind-html="vm.topicSourceLabel(source) | highlight:$select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                        <ui-select theme="bootstrap" ng-model="vm.builderTopicCategory"
-                                   ng-change="vm.builderTopicCategoryChanged()"
-                                   ng-disabled="vm.catalogTopicFilterMode !== 'TOPIC' || vm.builderTopicsLoading || !vm.builderTopicCategories.length">
-                            <ui-select-match placeholder="Chọn category...">{{vm.builderTopicCategory.name}}</ui-select-match>
-                            <ui-select-choices repeat="category in vm.builderTopicCategories | filter:$select.search">
-                                <div ng-bind-html="category.name | highlight:$select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                        <ui-select multiple theme="bootstrap" ng-model="vm.selectedTestTopics"
-                                   ng-change="vm.builderTopicsChanged()" close-on-select="false"
-                                   ng-disabled="vm.catalogTopicFilterMode !== 'TOPIC' || vm.builderTopicsLoading || !vm.builderTopicCategory || !vm.availableTopics.length">
-                            <ui-select-match placeholder="Chọn một hoặc nhiều topic...">{{$item.name}}</ui-select-match>
-                            <ui-select-choices repeat="topic in vm.availableTopics | filter:$select.search">
-                                <div ng-bind-html="topic.name | highlight:$select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                        <span class="reading-catalog-topic-status" ng-if="vm.builderTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải toàn bộ topic...</span>
-                        <span class="reading-catalog-topic-status is-error" ng-if="vm.builderTopicsError && !vm.builderTopicsLoading">{{vm.builderTopicsError}}</span>
                     </div>
                     <div class="reading-admin-toolbar__actions" ng-class="vm.isComprehensiveMode ? 'col-md-12' : 'col-md-8'">
                         <button type="button" class="btn btn-default" ng-if="!vm.isWritingMode" ng-click="vm.downloadReadingImportTemplate()">
@@ -116,7 +84,24 @@
                 <div class="row">
 
                     <div class="col-md-12" ng-if="settings.isAdmin == true">
-                        <table id="bsTableControl" bs-table-control="vm.bsTableControlCreateIELTSReadingTest"></table>
+                        <test-folder-explorer ng-if="vm.isComprehensiveMode" folder-id="vm.catalogTestFolderId" manage="true" on-change="vm.applyCatalogFolderFilter(folderId)">
+                            <article class="test-explorer-file" ng-repeat="item in vm.ieltsReadingTests track by item.id">
+                                <button type="button" class="test-explorer-file-main" ng-click="editCreateIELTSReadingTest(item.id)" title="Mở bài {{item.title}} trong trình soạn thảo">
+                                    <i class="fa fa-file-text-o test-explorer-file-icon" aria-hidden="true"></i>
+                                    <span class="test-explorer-name">{{item.title}}<small>{{item.status == 7 ? 'Đã xuất bản' : (item.status == 8 ? 'Đã ẩn' : 'Bản nháp')}}</small></span>
+                                </button>
+                                <div class="test-explorer-file-actions">
+                                    <button type="button" ng-click="editCreateIELTSReadingTest(item.id)">Sửa bài</button>
+                                    <a target="_blank" rel="noopener" ng-href="comprehensive_test/{{item.id}}">Xem bài</a>
+                                    <button type="button" ng-if="!vm.showHiddenTests" ng-click="hideReadingTest(item.id)" ng-disabled="vm.catalogStatusUpdating[item.id]" title="Ẩn bài"><i class="fa fa-eye-slash"></i><span class="sr-only">Ẩn bài</span></button>
+                                    <button type="button" ng-if="vm.showHiddenTests" ng-click="restoreReadingTest(item.id)" ng-disabled="vm.catalogStatusUpdating[item.id]">Khôi phục</button>
+                                </div>
+                            </article>
+                            <p class="test-explorer-empty" ng-if="!vm.catalogLoading && !vm.ieltsReadingTests.length">{{vm.searchDto.textSearch ? 'Không tìm thấy bài test phù hợp.' : 'Folder này chưa có bài test. Bạn có thể tạo bài bên dưới hoặc mở folder con.'}}</p>
+                            <p class="test-explorer-empty" ng-if="vm.catalogLoading" role="status">Đang tải bài test...</p>
+                        </test-folder-explorer>
+                        <ul ng-if="vm.isComprehensiveMode && vm.bsTableControlCreateIELTSReadingTest.options.totalRows > vm.searchDto.pageSize" uib-pagination total-items="vm.bsTableControlCreateIELTSReadingTest.options.totalRows" ng-model="vm.searchDto.pageIndex" items-per-page="vm.searchDto.pageSize" ng-change="pageChanged()" max-size="5" boundary-links="true" first-text="Đầu" last-text="Cuối" previous-text="Trước" next-text="Sau"></ul>
+                        <table ng-if="!vm.isComprehensiveMode" id="bsTableControl" bs-table-control="vm.bsTableControlCreateIELTSReadingTest"></table>
                     </div>
                 </div>
 
@@ -173,55 +158,10 @@
                         <label>{{vm.isComprehensiveMode ? 'Tên bài tập' : 'Tên bài thi'}} <span class="font-red">*</span></label>
                         <input ng-change="vm.changeInTheProcessOfCreatingReadingTest()" style="height: 50px" data-ng-model="vm.ieltsReadingTest.title" type="text" class="form-control" placeholder="{{vm.isComprehensiveMode ? 'Ví dụ: Bài ôn tập tuần 1' : 'Ví dụ: IELTS Academic ' + vm.testModeName + ' Test 01'}}" />
                         <div ng-if="vm.isComprehensiveMode" class="margin-top-10">
-                            <div class="comprehensive-topic-assignment">
-                                <div class="comprehensive-topic-assignment__heading">
-                                    <div>
-                                        <span class="comprehensive-topic-assignment__icon" aria-hidden="true">
-                                            <svg viewBox="0 0 24 24" focusable="false">
-                                                <path d="M4 5.5h6.5M7.25 5.5v13M7.25 12h5.25M12.5 9.5h7v5h-7zM4.75 16h5v5h-5zM15 3h5v5h-5z"></path>
-                                            </svg>
-                                        </span>
-                                        <span><strong>Phân loại bài tập</strong><small>Chọn lần lượt Nguồn → Category → Topic</small></span>
-                                    </div>
-                                    <b ng-if="vm.builderTopicsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải tất cả topic...</b>
-                                </div>
-                                <div class="comprehensive-topic-assignment__grid">
-                                    <div>
-                                        <label>1. Nguồn <span class="font-red">*</span></label>
-                                        <ui-select theme="bootstrap" ng-model="vm.builderTopicSource" ng-change="vm.builderTopicSourceChanged()">
-                                            <ui-select-match placeholder="Chọn nguồn..."><span class="reading-topic-source-label">{{vm.topicSourceLabel(vm.builderTopicSource)}}</span></ui-select-match>
-                                            <ui-select-choices repeat="source in vm.topicSources | filter:$select.search">
-                                                <div ng-bind-html="vm.topicSourceLabel(source) | highlight:$select.search"></div>
-                                            </ui-select-choices>
-                                        </ui-select>
-                                    </div>
-                                    <div>
-                                        <label>2. Category <span class="font-red">*</span></label>
-                                        <ui-select theme="bootstrap" ng-model="vm.builderTopicCategory"
-                                                   ng-change="vm.builderTopicCategoryChanged()"
-                                                   ng-disabled="vm.builderTopicsLoading || !vm.builderTopicCategories.length">
-                                            <ui-select-match placeholder="Chọn category...">{{$select.selected.name}}</ui-select-match>
-                                            <ui-select-choices repeat="category in vm.builderTopicCategories | filter:$select.search">
-                                                <div ng-bind-html="category.name | highlight:$select.search"></div>
-                                            </ui-select-choices>
-                                        </ui-select>
-                                    </div>
-                                    <div>
-                                        <label>3. Topic gán cho bài <span class="font-red">*</span></label>
-                                        <ui-select multiple theme="bootstrap" ng-model="vm.selectedTestTopics"
-                                                   ng-change="vm.builderTopicsChanged()" close-on-select="false"
-                                                   ng-disabled="vm.builderTopicsLoading || !vm.builderTopicCategory || !vm.availableTopics.length">
-                                            <ui-select-match placeholder="Chọn một hoặc nhiều topic...">{{$item.name}}</ui-select-match>
-                                            <ui-select-choices repeat="topic in vm.availableTopics | filter:$select.search">
-                                                <div ng-bind-html="topic.name | highlight:$select.search"></div>
-                                            </ui-select-choices>
-                                        </ui-select>
-                                    </div>
-                                </div>
-                                <div class="comprehensive-topic-assignment__footer">
-                                    <small ng-if="!vm.builderTopicsError"><i class="fa fa-info-circle"></i> Đã tải {{vm.builderSourceTopics.length}} topic từ nguồn đã chọn. Topic sẽ đi cùng bài và kết quả của người làm.</small>
-                                    <small class="is-error" ng-if="vm.builderTopicsError"><i class="fa fa-exclamation-triangle"></i> {{vm.builderTopicsError}}</small>
-                                </div>
+                            <div class="comprehensive-folder-assignment">
+                                <label><i class="fa fa-folder-open"></i> Lưu bài vào folder</label>
+                                <test-folder-picker folder-id="vm.selectedTestFolderId" manage="true" on-change="vm.testFolderChanged(folderId)"></test-folder-picker>
+                                <p>Chọn folder của bạn hoặc tạo folder con. Có thể lưu bài ở “Chưa vào folder” rồi sắp xếp sau.</p>
                             </div>
                         </div>
                         <div ng-if="vm.isListeningMode">
@@ -399,24 +339,7 @@
                                 <comprehensive-listening-player audio-link="item.pronounce"></comprehensive-listening-player>
                                 <label>Transcript tiếng Anh</label>
                                 <textarea class="form-control" rows="8" ng-model="item.motherTongue" ng-change="vm.updateDailyListening(item)" placeholder="Dán toàn bộ nội dung bài nghe. Hệ thống sẽ tự chọn từ để tạo ô trống." aria-label="Transcript tiếng Anh"></textarea>
-                                <div class="listening-generation-controls">
-                                    <label>Tỷ lệ ô trống (%)</label>
-                                    <input class="form-control" type="number" min="30" max="100" step="5" ng-model="item._listeningGapRate" ng-model-options="{allowInvalid: true}" ng-change="vm.updateDailyListening(item)" aria-label="Tỷ lệ ô trống">
-                                    <button type="button" class="btn btn-primary" ng-click="vm.generateDailyListeningGaps(item, 0)"><i class="fa fa-magic"></i> {{item.subQuestions.length ? 'Tạo lại ô trống' : 'Tạo ô trống'}}</button>
-                                    <span ng-if="item.subQuestions.length">{{item.subQuestions.length}} ô trống</span>
-                                </div>
-                                <p class="comprehensive-listening-error" ng-if="item.subQuestions.length && vm.dailyListeningNeedsGenerate(item)">Transcript hoặc tỷ lệ đã thay đổi. Bấm Tạo lại ô trống trước khi xuất bản.</p>
-                                <div class="reading-one-editor-runtime" ng-if="item.subQuestions.length" compile="vm.dailyListeningPreview(item)"></div>
-                                <div class="reading-one-editor-answers" ng-if="item.subQuestions.length">
-                                    <div ng-repeat="q in item.subQuestions | orderBy:'ordinalNumber'">
-                                        <label>Đáp án câu {{q.ordinalNumber}}</label>
-                                        <div class="reading-one-editor-answer-row" ng-repeat="a in q.questionAnswers | orderBy:'ordinalNumberQuestionAnswer'">
-                                            <input class="form-control" type="text" ng-model="a.answer.answer" ng-change="vm.changeInTheProcessOfCreatingReadingTest()" placeholder="Đáp án được chấp nhận">
-                                            <button type="button" class="reading-answer-remove-button" ng-click="vm.removeReadingQuestionAnswer(q, $index)" ng-disabled="q.questionAnswers.length <= 1" aria-label="Xóa đáp án"><i class="fa fa-trash"></i></button>
-                                        </div>
-                                        <button type="button" class="btn btn-info btn-sm" ng-click="vm.addReadingQuestionAnswer(q, 11)">Thêm đáp án được chấp nhận</button>
-                                    </div>
-                                </div>
+                                <p class="reading-one-editor-notice">Chỉ cần dán transcript rồi lưu bài. Khi học sinh mở bài, hệ thống tự tạo ô trống; gõ đúng được ghi nhận ngay, đạt từ 90% ô đúng là hoàn thành phần nghe.</p>
                             </section>
 
                             <div class="reading-writing-task-builder-note" ng-if="item.type == 16 || item.type == 17">

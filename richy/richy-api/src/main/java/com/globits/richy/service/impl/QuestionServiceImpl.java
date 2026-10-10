@@ -73,6 +73,10 @@ public class QuestionServiceImpl implements QuestionService {
 	@Autowired
 	QuestionRepository questionRepository;
 	@Autowired
+	com.globits.richy.repository.TestFolderRepository testFolderRepository;
+	@Autowired
+	TestFolderServiceImpl testFolderService;
+	@Autowired
 	QuestionTypeRepository questionTypeRepository;
 	@Autowired
 	QuestionAnswerRepository questionAnswerRepository;
@@ -491,6 +495,14 @@ public class QuestionServiceImpl implements QuestionService {
 		}
 		List<Long> ids = new ArrayList<Long>();
 		
+		List<Long> testFolderIds = new ArrayList<Long>();
+		if (searchDto.isWithoutTestFolder()) {
+			whereClause += " and s.testFolder is null ";
+		} else if (searchDto.getTestFolderId() != null) {
+			testFolderIds = testFolderService.descendantIds(searchDto.getTestFolderId(), searchDto.isIncludeSubfolders());
+			if (testFolderIds.isEmpty()) { return new PageImpl<QuestionForTestsDto>(new ArrayList<QuestionForTestsDto>(), pageable, 0L); }
+			whereClause += " and s.testFolder.id in :testFolderIds ";
+		}
 		if(!searchDto.isWithoutTopics() && searchDto.getQuestionTopics() != null && searchDto.getQuestionTopics().size() > 0) {
 			List<Long> topicIds = new ArrayList<Long>();
 			for (QuestionTopicDto dto : searchDto.getQuestionTopics()) {
@@ -590,6 +602,9 @@ public class QuestionServiceImpl implements QuestionService {
 		
 		Query q = manager.createQuery(sql, QuestionForTestsDto.class);
 		Query qCount = manager.createQuery(sqlCount);
+		if (!testFolderIds.isEmpty()) {
+			q.setParameter("testFolderIds", testFolderIds); qCount.setParameter("testFolderIds", testFolderIds);
+		}
 
 		if (hasTopicRelationFilter && searchDto.getTopicOwnerUserId() != null) {
 			q.setParameter("topicOwnerUserId", searchDto.getTopicOwnerUserId());
@@ -1385,6 +1400,17 @@ public class QuestionServiceImpl implements QuestionService {
 			return ret;
 		}
 		String level = null;
+		com.globits.richy.domain.TestFolder selectedTestFolder = null;
+		if (dto.getTestFolderId() != null) {
+			if (!"COMPREHENSIVE".equals(dto.getTestFormat())) { ret.setMessage("Folder chỉ dùng cho test tổng hợp."); return ret; }
+			selectedTestFolder = testFolderRepository.findOne(dto.getTestFolderId());
+			if (selectedTestFolder == null) { ret.setMessage("Folder không còn tồn tại. Hãy chọn lại folder."); return ret; }
+			if (!isAdmin && (modifiedUser == null || selectedTestFolder.getOwner() == null
+					|| !selectedTestFolder.getOwner().getId().equals(modifiedUser.getId()))) {
+				ret.setMessage("Hãy chọn folder của bạn để lưu test."); return ret;
+			}
+		}
+		if ("COMPREHENSIVE".equals(dto.getTestFormat())) { dto.setQuestionTopics(new ArrayList<QuestionTopicDto>()); }
 		if(dto.getLevel() != null && !dto.getLevel().trim().isEmpty()) {
 			level = dto.getLevel().trim().toUpperCase(Locale.ROOT);
 			if(!CEFR_LEVELS.contains(level)) {
@@ -1504,6 +1530,7 @@ public class QuestionServiceImpl implements QuestionService {
 		domain.setTitle(dto.getTitle());
 		domain.setWebsite(dto.getWebsite());
 		domain.setTestFormat(dto.getTestFormat());
+		domain.setTestFolder(selectedTestFolder);
 		domain.setLevel(level);
 		if(dto.getParent() != null && dto.getParent().getId() !=null) {
 			Question object = questionRepository.getOne(dto.getParent().getId());

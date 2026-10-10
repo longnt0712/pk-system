@@ -3,12 +3,10 @@ package com.globits.richy.question;
 import com.globits.richy.dto.QuestionDto;
 import java.net.URI;
 import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import com.globits.richy.dto.QuestionAnswerDto;
 
 /** Validates Daily Listening packages without fetching their media URLs. */
 public final class ComprehensiveListeningValidation {
-    private static final Pattern GAP = Pattern.compile("\\}\\{SPACE\\}\\{", Pattern.CASE_INSENSITIVE);
     private ComprehensiveListeningValidation() { }
 
     public static String validate(QuestionDto root) {
@@ -25,15 +23,17 @@ public final class ComprehensiveListeningValidation {
                 if (link == null || link.trim().isEmpty() || question.getMotherTongue() == null || question.getMotherTongue().trim().isEmpty()) {
                     return "Daily Listening cần có audio và transcript trước khi xuất bản.";
                 }
-                if (question.getSubQuestions() == null || question.getSubQuestions().isEmpty()) {
-                    return "Hãy tạo ô trống cho Daily Listening trước khi xuất bản.";
+                if (!ComprehensiveListeningScore.hasCandidates(question.getMotherTongue())) {
+                    return "Transcript Daily Listening chưa có từ phù hợp để tạo ô trống.";
                 }
-                String content = question.getSubQuestions().get(0).getQuestion();
-                Matcher matcher = GAP.matcher(content == null ? "" : content);
-                int count = 0;
-                while (matcher.find()) { count++; }
-                if (count != question.getSubQuestions().size()) {
-                    return "Số ô trống Daily Listening phải khớp với số câu hỏi.";
+                if (question.getSubQuestions() == null || question.getSubQuestions().size() != 1
+                        || question.getSubQuestions().get(0).getQuestionAnswers() == null
+                        || question.getSubQuestions().get(0).getQuestionAnswers().size() != 1) {
+                    return "Phần Daily Listening cần một mục lưu bài làm.";
+                }
+                QuestionAnswerDto response = question.getSubQuestions().get(0).getQuestionAnswers().get(0);
+                if (response == null || response.getAnswer() == null || !ComprehensiveListeningScore.RESPONSE.equals(response.getAnswer().getAnswer())) {
+                    return "Cấu hình phần Daily Listening chưa hợp lệ.";
                 }
             }
         }

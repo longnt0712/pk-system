@@ -13,6 +13,9 @@ public class QuestionForTestsDto implements Serializable  {
 	private String title;
 	private String pronounce;
 	private String testFormat;
+	private TestFolderDto testFolder;
+	public TestFolderDto getTestFolder() { return testFolder; }
+	public void setTestFolder(TestFolderDto value) { testFolder = value; }
 	private boolean hasWritingTask1;
 	private boolean hasWritingTask2;
 	private List<TopicDto> topics = new ArrayList<TopicDto>();
@@ -67,6 +70,7 @@ public class QuestionForTestsDto implements Serializable  {
 		this.title = domain.getTitle();
 		this.pronounce = domain.getPronounce();
 		this.testFormat = domain.getTestFormat();
+		if (domain.getTestFolder() != null) { this.testFolder = new TestFolderDto(domain.getTestFolder()); }
 		this.status = domain.getStatus();
 		if (domain.getSubQuestions() != null) {
 			for (Question part : domain.getSubQuestions()) {
@@ -92,6 +96,10 @@ public class QuestionForTestsDto implements Serializable  {
 	public QuestionForTestsDto(Long id, String title, String pronounce, int status, String testFormat) {
 		this.id = id; this.title = title; this.pronounce = pronounce; this.status = status;
 		this.testFormat = testFormat;
+	}
+	public QuestionForTestsDto(Long id, String title, String pronounce, int status, String testFormat, com.globits.richy.domain.TestFolder folder) {
+		this(id, title, pronounce, status, testFormat);
+		if (folder != null) { this.testFolder = new TestFolderDto(folder); }
 	}
 
 }

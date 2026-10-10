@@ -5,11 +5,11 @@
 
     IELTSTestLibraryController.$inject = [
         '$rootScope', '$scope', '$location', '$window', '$cookies',
-        'settings', 'QuestionService', 'blockUI'
+        'settings', 'QuestionService', 'blockUI', 'ComprehensiveFolders'
     ];
 
     function IELTSTestLibraryController($rootScope, $scope, $location, $window, $cookies,
-                                        settings, service, blockUI) {
+                                        settings, service, blockUI, folders) {
         $scope.$on('$viewContentLoaded', function () {
             App.initAjax();
         });
@@ -49,113 +49,11 @@
             listeningTest: vm.isComprehensiveMode || vm.isWritingMode ? null : vm.isListeningMode,
             testFormat: vm.isWritingMode ? 'WRITING' : (vm.isComprehensiveMode ? 'COMPREHENSIVE' : null)
         };
-        var DEFAULT_TOPIC_SOURCE_ID = 26;
-        var DEFAULT_TOPIC_CATEGORY_NAME = 'GRADE 6';
-        var topicFilterRequestId = 0;
         var testRequestId = 0;
-
-        vm.topicSources = [];
-        vm.selectedTopicSource = null;
-        vm.selectedTopicCategory = null;
-        vm.selectedTopic = null;
-        vm.sourceTopics = [];
-        vm.topicCategories = [];
-        vm.topics = [];
-        vm.topicFiltersLoading = false;
-        vm.topicFiltersError = '';
-        vm.topicFilterMode = 'ALL';
-
-        function buildTopicSources() {
-            var sources = [{id: DEFAULT_TOPIC_SOURCE_ID, name: 'EM YÊU INH LÍCH'}];
-            var currentUserId = vm.currentUser && vm.currentUser.id;
-            if (currentUserId != null && String(currentUserId) !== String(DEFAULT_TOPIC_SOURCE_ID)) {
-                sources.push({id: currentUserId, name: 'TỪ CỦA TÔI'});
-            }
-            return sources;
-        }
-
-        vm.topicSourceLabel = function (source) {
-            if (source && String(source.id) === String(DEFAULT_TOPIC_SOURCE_ID)) {
-                return 'EM YÊU INH LỊCH';
-            }
-            return (source && source.name) || 'EM YÊU INH LỊCH';
-        };
-
-        function topicCategoriesFromTopics(topics) {
-            var categories = [];
-            var seen = {};
-            angular.forEach(topics || [], function (topic) {
-                var category = topic && topic.topicCategory;
-                if (!category || category.id == null || seen[String(category.id)]) { return; }
-                seen[String(category.id)] = true;
-                categories.push(category);
-            });
-            return categories.sort(function (left, right) {
-                return String(left.name || '').localeCompare(String(right.name || ''));
-            });
-        }
-
-        function topicsForCategory(topics, category) {
-            if (!category || category.id == null) { return []; }
-            return (topics || []).filter(function (topic) {
-                return topic && topic.topicCategory &&
-                    String(topic.topicCategory.id) === String(category.id);
-            });
-        }
-
-        function defaultTopicCategory(categories) {
-            var matched = null;
-            angular.forEach(categories || [], function (category) {
-                if (!matched && category && String(category.name || '').trim().toUpperCase() === DEFAULT_TOPIC_CATEGORY_NAME) {
-                    matched = category;
-                }
-            });
-            return matched;
-        }
-
-        vm.loadTopicSource = function () {
-            if (!vm.isComprehensiveMode) { return; }
-            var requestId = ++topicFilterRequestId;
-            vm.topicFiltersLoading = true;
-            vm.topicFiltersError = '';
-            vm.selectedTopicCategory = null;
-            vm.selectedTopic = null;
-            vm.sourceTopics = [];
-            vm.topicCategories = [];
-            vm.topics = [];
-
-            service.getTopicsForGames({userId: vm.selectedTopicSource && vm.selectedTopicSource.id}, 1, 10000000).then(function (data) {
-                if (requestId !== topicFilterRequestId) { return; }
-                vm.sourceTopics = (data && data.content) || [];
-                vm.topicCategories = topicCategoriesFromTopics(vm.sourceTopics);
-                vm.selectedTopicCategory = defaultTopicCategory(vm.topicCategories);
-                vm.topics = topicsForCategory(vm.sourceTopics, vm.selectedTopicCategory);
-                if (!vm.sourceTopics.length) { vm.topicFiltersError = 'Nguồn này chưa có topic.'; }
-                vm.topicFiltersLoading = false;
-                vm.applyTopicFilter();
-            }, function () {
-                if (requestId !== topicFilterRequestId) { return; }
-                vm.topicFiltersLoading = false;
-                vm.topicFiltersError = 'Không tải được danh sách topic.';
-                vm.applyTopicFilter();
-            });
-        };
-
-        vm.topicCategoryChanged = function () {
-            vm.selectedTopic = null;
-            vm.topics = topicsForCategory(vm.sourceTopics, vm.selectedTopicCategory);
-            vm.applyTopicFilter();
-        };
-
-        vm.applyTopicFilter = function () {
-            if (!vm.isComprehensiveMode) { return; }
-            var filterByTopics = vm.topicFilterMode === 'TOPIC';
-            vm.searchDto.withoutTopics = vm.topicFilterMode === 'UNASSIGNED';
-            vm.searchDto.questionTopics = [];
-            vm.searchDto.topicOwnerUserId = filterByTopics && vm.selectedTopicSource ? vm.selectedTopicSource.id : null;
-            vm.searchDto.topicCategoryId = filterByTopics && vm.selectedTopicCategory ? vm.selectedTopicCategory.id : null;
-            vm.searchDto.topicId = filterByTopics && vm.selectedTopic ? vm.selectedTopic.id : null;
-            vm.searchDto.pageIndex = 1;
+        vm.selectedTestFolderId = null;
+        vm.applyFolderFilter = function (id) {
+            if (id !== undefined) { vm.selectedTestFolderId = id; }
+            folders.applyFilter(vm.searchDto, vm.selectedTestFolderId, true);
             vm.loadTests();
         };
 
@@ -284,6 +182,7 @@
         };
 
         vm.search = function () {
+            if (vm.isComprehensiveMode) { folders.applyFilter(vm.searchDto, vm.selectedTestFolderId, true); }
             vm.searchDto.pageIndex = 1;
             vm.searchDto.findExactWord = false;
             vm.loadTests();
@@ -309,12 +208,6 @@
         });
 
         vm.refreshLearningProgress();
-        if (vm.isComprehensiveMode) {
-            vm.topicSources = buildTopicSources();
-            vm.selectedTopicSource = vm.topicSources[0] || null;
-            vm.loadTopicSource();
-        } else {
-            vm.loadTests();
-        }
+        if (vm.isComprehensiveMode) { vm.applyFolderFilter(); } else { vm.loadTests(); }
     }
 })();

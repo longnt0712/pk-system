@@ -96,8 +96,8 @@ function harness({mode = 'comprehensive', videoMode = false, link = '', saveResp
         FileReader: class {readAsArrayBuffer(file) { this.onload({target: {result: file.workbook}}); }}
     };
     vmModule.createContext(context);
-    vmModule.runInContext(['ensureComprehensiveBuilder', 'ensureWritingTaskPackage', 'ensureMultipleAnswerPackage', 'ensureListeningBuilderParts',
-        'plainText', 'isSharedChoicePackage', 'ensureSharedChoicePackage'].map(productionFunction).join('\n') + '\n' +
+    vmModule.runInContext(['ensureComprehensiveBuilder', 'ensureDailyListeningPackage', 'ensureWritingTaskPackage', 'ensureMultipleAnswerPackage', 'ensureListeningBuilderParts',
+        'plainText', 'isSharedChoicePackage', 'ensureSharedChoicePackage', 'prepareTestFolderForSave'].map(productionFunction).join('\n') + '\n' +
         productionFunction('prepareSharedChoicePackagesForSave') + '\n' +
         section('        function readingTestSaveError(', '        var readingPartRules =') + '\n' +
         section('        function readingQuestionType(', '        vm.status = {id: 3, name: "Tất cả (no listening)"};'), context);

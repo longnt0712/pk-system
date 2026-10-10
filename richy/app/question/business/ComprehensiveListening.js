@@ -17,80 +17,143 @@
             return {provider: 'audio', url: raw, start: 0};
         }
 
-        function settings(pack) {
-            // Package description stores authoring settings; the transcript and
-            // media URL use the same persisted fields as existing Daily Listening.
-            try { var value = JSON.parse(pack.description || '{}'); return value && typeof value === 'object' ? value : {}; } catch (invalid) { return {}; }
-        }
-
         function fingerprint(text) {
             var hash = 2166136261;
             for (var i = 0; i < text.length; i++) { hash = Math.imul(hash ^ text.charCodeAt(i), 16777619); }
             return String(hash >>> 0);
         }
 
-        function gapRate(pack) {
-            var value = Number(pack._listeningGapRate == null ? settings(pack).gapRate : pack._listeningGapRate);
-            return isFinite(value) && value >= 30 && value <= 100 && value % 5 === 0 ? value : 50;
+        var responseMarker = 'DAILY_LISTENING_RESPONSE';
+        var tokenPattern = /^([^A-Za-z0-9À-ỹ]*)((?:\d+(?:[.,:\-]\d+)*)|(?:[A-Za-zÀ-ỹ][A-Za-z0-9À-ỹ'’\-]*))([^A-Za-z0-9À-ỹ]*)$/;
+        var dates = /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?$|^(?:january|february|march|april|may|june|july|august|september|october|november|december)$/i;
+
+        function normalize(value) {
+            return String(value || '').toLowerCase().replace(/đ/g, 'd').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[`~!@#$%^&£*()_|+\-=?;:'"“”‘’,.<>\{\}\[\]\\\/]/g, '').replace(/\s+/g, ' ').trim();
         }
 
-        function isCurrent(pack) {
-            var saved = settings(pack);
-            return saved.source === fingerprint(String(pack.motherTongue || '')) && saved.generatedRate === gapRate(pack);
-        }
-
-        function configure(pack) {
-            var saved = settings(pack);
-            saved.gapRate = Number(pack._listeningGapRate);
-            pack.description = JSON.stringify(saved);
-        }
-
-        function escapeHtml(text) {
-            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/\{/g, '&#123;').replace(/\}/g, '&#125;');
-        }
-
-        function generate(transcript, percent, random) {
-            var text = String(transcript || '').replace(/\r\n?/g, '\n');
-            percent = Number(percent);
-            if (!text.trim()) { throw new Error('Hãy nhập transcript tiếng Anh.'); }
-            if (!isFinite(percent) || percent < 30 || percent > 100 || percent % 5 !== 0) {
-                throw new Error('Tỷ lệ ô trống phải từ 30 đến 100%, theo bước 5%.');
-            }
-            random = random || Math.random;
-            var candidates = [], selected = [], tokens = text.split(/(\s+)/);
-            var tokenPattern = /^([^A-Za-z0-9À-ỹ]*)((?:\d+(?:[.,:\-]\d+)*)|(?:[A-Za-zÀ-ỹ][A-Za-z0-9À-ỹ'’\-]*))([^A-Za-z0-9À-ỹ]*)$/;
-            var dates = /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?$|^(?:january|february|march|april|may|june|july|august|september|october|november|december)$/i;
+        function candidates(transcript) {
+            var tokens = String(transcript || '').replace(/\r\n?/g, '\n').match(/\s+|\S+/g) || [];
+            var ordinary = [], required = [];
             tokens.forEach(function (token, index) {
-                var word = token.match(tokenPattern);
-                if (!word) { return; }
-                var answer = word[2], singleUpper = /^[A-Z]$/.test(answer);
-                // Keep the old Daily Listening rule: proper names/words starting
-                // with an uppercase letter stay visible, except single letters.
+                var match = token.match(tokenPattern);
+                if (!match) { return; }
+                var answer = match[2], singleUpper = /^[A-Z]$/.test(answer);
                 if (!singleUpper && answer.charAt(0) !== answer.charAt(0).toLowerCase()) { return; }
                 if (!singleUpper && answer.length < 2 && !/^\d$/.test(answer)) { return; }
-                candidates.push(index);
-                if (singleUpper || /^\d+(?:[.,:\-]\d+)*$/.test(answer) || dates.test(answer) || random() < percent / 100) {
-                    selected.push(index);
-                }
+                (singleUpper || /^\d+(?:[.,:\-]\d+)*$/.test(answer) || dates.test(answer) ? required : ordinary).push(index);
             });
-            if (!candidates.length) { throw new Error('Transcript chưa có từ phù hợp để tạo ô trống.'); }
-            if (!selected.length) { selected.push(candidates[Math.floor(random() * candidates.length) % candidates.length]); }
-            var answers = [], html = '', visible = '';
-            function flush() {
-                if (visible) { html += '<span ng-non-bindable>' + escapeHtml(visible).replace(/\n/g, '<br>') + '</span>'; visible = ''; }
-            }
-            tokens.forEach(function (token, index) {
-                if (selected.indexOf(index) < 0) { visible += token; return; }
-                var word = token.match(tokenPattern);
-                visible += word[1]; flush();
-                html += '}{SPACE}{'; visible += word[3]; answers.push(word[2]);
-            });
-            flush();
-            return {html: '<p>' + html + '</p>', answers: answers,
-                description: JSON.stringify({gapRate: percent, generatedRate: percent, source: fingerprint(String(transcript || ''))})};
+            return {tokens: tokens, ordinary: ordinary, required: required,
+                count: required.length + Math.ceil(ordinary.length * 0.35)};
         }
 
-        return {parseUrl: parseUrl, generate: generate, gapRate: gapRate, isCurrent: isCurrent, configure: configure};
+        function start(transcript, saved, random) {
+            var source = candidates(transcript), snapshot;
+            if (!source.count) { throw new Error('Transcript chưa có từ phù hợp để tạo ô trống.'); }
+            try { snapshot = typeof saved === 'string' ? JSON.parse(saved) : saved; } catch (invalid) { snapshot = null; }
+            var eligible = source.ordinary.concat(source.required), seen = {};
+            var valid = snapshot && snapshot.version === 1 && snapshot.source === fingerprint(String(transcript || '')) &&
+                Array.isArray(snapshot.gaps) && snapshot.gaps.length === source.count && snapshot.gaps.every(function (gap) {
+                    if (!gap || !Number.isInteger(gap.index) || eligible.indexOf(gap.index) < 0 || seen[gap.index] || typeof gap.value !== 'string') { return false; }
+                    seen[gap.index] = true; return true;
+                }) && source.required.every(function (index) { return seen[index]; });
+            var indexes;
+            if (valid) { indexes = snapshot.gaps.map(function (gap) { return gap.index; }); }
+            else {
+                random = random || Math.random;
+                var shuffled = source.ordinary.slice();
+                for (var i = shuffled.length - 1; i > 0; i--) {
+                    var j = Math.floor(random() * (i + 1)), swap = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = swap;
+                }
+                indexes = source.required.concat(shuffled.slice(0, source.count - source.required.length));
+            }
+            indexes.sort(function (a, b) { return a - b; });
+            var session = {source: fingerprint(String(transcript || '')), gaps: [], tokens: []}, gapMap = {};
+            indexes.forEach(function (index) {
+                var word = source.tokens[index].match(tokenPattern), value = '';
+                if (valid) { snapshot.gaps.forEach(function (gap) { if (gap.index === index) { value = gap.value; } }); }
+                var gap = {index: index, answer: word[2], value: value};
+                gapMap[index] = gap; session.gaps.push(gap);
+            });
+            source.tokens.forEach(function (token, index) {
+                var gap = gapMap[index], word = gap && token.match(tokenPattern);
+                session.tokens.push(gap ? {before: word[1], gap: gap, after: word[3]} : {text: token});
+            });
+            update(session);
+            return session;
+        }
+
+        function update(session) {
+            session.correct = 0;
+            session.gaps.forEach(function (gap) {
+                gap.correct = !!normalize(gap.value) && normalize(gap.value) === normalize(gap.answer);
+                if (gap.correct) { session.correct++; }
+            });
+            session.total = session.gaps.length;
+            session.percent = Math.round(session.correct * 10000 / session.total) / 100;
+            session.passed = session.correct * 100 >= session.total * 90;
+        }
+
+        function serialize(session) {
+            return JSON.stringify({version: 1, source: session.source,
+                gaps: session.gaps.map(function (gap) { return {index: gap.index, value: gap.value || ''}; })});
+        }
+
+        function isRuntime(pack) {
+            var answer = ((((pack || {}).subQuestions || [])[0] || {}).questionAnswers || [])[0];
+            return Number((pack || {}).type) === 18 && answer && answer.answer && answer.answer.answer === responseMarker;
+        }
+
+        return {parseUrl: parseUrl,
+            responseMarker: responseMarker, candidates: candidates, start: start, update: update, serialize: serialize, isRuntime: isRuntime};
+    }]);
+
+    angular.module('Hrm.Question').directive('comprehensiveListeningExercise', ['ComprehensiveListening', '$timeout', function (listening, $timeout) {
+        return {
+            restrict: 'E', scope: {pack: '=', onChange: '&'},
+            template: '<section class="comprehensive-listening-exercise" id="question-number-{{pack.subQuestions[0].ordinalNumber}}">' +
+                '<div class="listening-progress" ng-class="{\'is-complete\': session.passed}" role="status">' +
+                '<strong>{{session.correct}}/{{session.total}} ô đúng · {{session.percent}}%</strong> ' +
+                '<span>{{session.passed ? "Đã hoàn thành" : "Đạt từ 90% ô đúng để hoàn thành"}}</span></div>' +
+                '<p class="comprehensive-listening-error" ng-if="error" role="alert">{{error}}</p>' +
+                '<div class="listening-transcript"><span ng-repeat="token in session.tokens track by $index">' +
+                '<span ng-if="!token.gap">{{token.text}}</span><span ng-if="token.gap">{{token.before}}' +
+                '<input ng-if="!token.gap.correct" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" ' +
+                'ng-model="token.gap.value" ng-change="changed(token.gap)" class="listening-gap-input" ' +
+                'aria-label="Ô điền từ {{token.gap.number}}" data-gap-index="{{token.gap.index}}">' +
+                '<span ng-if="token.gap.correct" class="listening-gap-correct">{{token.gap.answer}}</span>{{token.after}}</span></span></div></section>',
+            link: function (scope, element) {
+                var slot, lastValue, focusTimer;
+                function publish() {
+                    lastValue = listening.serialize(scope.session); slot.clientAnswer = lastValue;
+                    scope.pack._listeningSession = scope.session; scope.onChange();
+                }
+                scope.$watch(function () {
+                    slot = (((scope.pack || {}).subQuestions || [])[0] || {}).questionAnswers;
+                    slot = slot && slot[0]; return slot && slot.clientAnswer;
+                }, function (value) {
+                    if (!slot || (scope.session && value === lastValue)) { return; }
+                    try {
+                        scope.session = listening.start(scope.pack.motherTongue, value); scope.error = '';
+                        scope.session.gaps.forEach(function (gap, index) { gap.number = index + 1; });
+                        publish();
+                    } catch (invalid) { scope.error = invalid.message; }
+                });
+                scope.changed = function (gap) {
+                    listening.update(scope.session); publish();
+                    if (gap.correct) {
+                        $timeout.cancel(focusTimer);
+                        focusTimer = $timeout(function () {
+                            var inputs = element[0].querySelectorAll('input[data-gap-index]');
+                            for (var i = 0; i < inputs.length; i++) {
+                                if (Number(inputs[i].getAttribute('data-gap-index')) > gap.index) { inputs[i].focus(); break; }
+                            }
+                        }, 80);
+                    }
+                };
+                scope.$on('$destroy', function () { $timeout.cancel(focusTimer); });
+            }
+        };
     }]);
 
     angular.module('Hrm.Question').directive('comprehensiveListeningPlayer', ['$window', '$interval', '$timeout', 'ComprehensiveListening', 'ComprehensiveVideo',

@@ -27,7 +27,7 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 	        Long userId,
 	        Long questionTypeId
 	);
-	@Query("select new com.globits.richy.dto.QuestionForTestsDto(q.id, q.title, q.pronounce, q.status, q.testFormat) from Question q "
+	@Query("select new com.globits.richy.dto.QuestionForTestsDto(q.id, q.title, q.pronounce, q.status, q.testFormat, f) from Question q left join q.testFolder f "
 	        + "where q.questionType.id = 11 and q.status = 7 order by lower(q.title), q.id")
 	List<QuestionForTestsDto> findPublishedIeltsTests();
 	@Query("select distinct test.id, task.type from Question task join task.parent part join part.parent test "

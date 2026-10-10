@@ -34,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.globits.richy.domain.Answer;
 import com.globits.richy.domain.QuestionAnswer;
 import com.globits.richy.domain.QuestionAnswerTestResult;
+import com.globits.richy.question.ComprehensiveListeningScore;
 import com.globits.richy.domain.TestResult;
 import com.globits.richy.domain.LearningDraft;
 import com.globits.richy.domain.EnrolmentClassScheduleTask;
@@ -937,7 +938,8 @@ public class TestResultServiceImpl implements TestResultService {
 				|| Integer.valueOf(6).equals(dto.getTestType())) {
 			boolean passedObjectiveQuestions = passedIeltsObjectiveThreshold(domain.getQuestionAnswerTestResult());
 			if (Integer.valueOf(6).equals(dto.getTestType())) {
-				passedObjectiveQuestions = passedComprehensive && passedObjectiveQuestions;
+				passedObjectiveQuestions = passedComprehensive && passedObjectiveQuestions
+						&& passedComprehensiveListening(dto.getSourceQuestionId(), domain.getQuestionAnswerTestResult());
 			}
 			domain.setResultStatus(passedObjectiveQuestions ? "SUCCESS" : "FAILED");
 		}
@@ -965,16 +967,52 @@ public class TestResultServiceImpl implements TestResultService {
 		if (answers == null || answers.isEmpty()) { return false; }
 		int total = 0;
 		int correct = 0;
+		boolean listeningFound = false;
 		for (QuestionAnswerTestResult answer : answers) {
 			QuestionAnswer selected = answer == null ? null : answer.getQuestionAnswer();
 			Question question = selected == null ? null : selected.getQuestion();
 			Integer packageType = question == null || question.getParent() == null
 					? null : question.getParent().getType();
 			if (Integer.valueOf(16).equals(packageType) || Integer.valueOf(17).equals(packageType)) { continue; }
+			if (ComprehensiveListeningScore.isResponse(selected)) {
+				listeningFound = true;
+				if (!Boolean.TRUE.equals(new QuestionAnswerTestResultDto(answer).getIsCorrectTestResultDetail())) { return false; }
+				continue;
+			}
 			total++;
 			if (Boolean.TRUE.equals(new QuestionAnswerTestResultDto(answer).getIsCorrectTestResultDetail())) { correct++; }
 		}
-		return total > 0 && correct * 100D / total >= 85D;
+		return total > 0 ? correct * 100D / total >= 85D : listeningFound;
+	}
+
+	private boolean passedComprehensiveListening(Long sourceId, Set<QuestionAnswerTestResult> answers) {
+		Question source = sourceId == null ? null : questionRepository.findOne(sourceId);
+		if (source == null || !"COMPREHENSIVE".equals(source.getTestFormat())) { return false; }
+		if (source.getSubQuestions() == null) { return true; }
+		for (Question part : source.getSubQuestions()) {
+			if (part == null || part.getSubQuestions() == null) { continue; }
+			for (Question pack : part.getSubQuestions()) {
+				if (pack == null || pack.getType() != 18 || pack.getSubQuestions() == null) { continue; }
+				for (Question question : pack.getSubQuestions()) {
+					if (question == null || question.getQuestionAnswers() == null) { continue; }
+					for (QuestionAnswer slot : question.getQuestionAnswers()) {
+						if (!ComprehensiveListeningScore.isResponse(slot)) { continue; }
+						int matches = 0;
+						if (answers != null) {
+							for (QuestionAnswerTestResult answer : answers) {
+								if (answer != null && answer.getQuestionAnswer() != null && slot.getId() != null
+										&& slot.getId().equals(answer.getQuestionAnswer().getId())) {
+									matches++;
+									if (!Boolean.TRUE.equals(new QuestionAnswerTestResultDto(answer).getIsCorrectTestResultDetail())) { return false; }
+								}
+							}
+						}
+						if (matches != 1) { return false; }
+					}
+				}
+			}
+		}
+		return true;
 	}
 
     private TestResult findRetryAttempt(TestResultDto dto,User actor) {

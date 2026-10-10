@@ -1447,20 +1447,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					}
 				}
 				task.setIeltsTest(test); task.setIeltsPart(selectedParts.get(0)); task.setIeltsParts(selectedParts); task.setSourceQuestion(null);
-				if (comprehensiveActivity) {
-					Topic topic = value.getTopicId() == null ? null : topicRepository.findOne(value.getTopicId());
-					boolean unchangedLegacyTask = topic == null && oldTask != null && oldTask.getTopic() == null
-							&& oldTask.getIeltsTest() != null && oldTask.getIeltsTest().getId().equals(test.getId());
-					Long linkCount = topic == null ? Long.valueOf(0L)
-							: questionTopicRepository.countByQuestionIdAndTopicId(test.getId(), topic.getId());
-					if (!unchangedLegacyTask && (topic == null || linkCount == null || linkCount.longValue() < 1L)) {
-						throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST,
-								"Bài tập tổng hợp không thuộc Topic đã chọn.");
-					}
-					task.setTopic(topic);
-				} else {
-					task.setTopic(null);
-				}
+				task.setTopic(null);
 				task.setAutoCompleteFromTopic(false);
 			} else if (value.getTopicId() != null) {
 				Topic topic = topicRepository.findOne(value.getTopicId());

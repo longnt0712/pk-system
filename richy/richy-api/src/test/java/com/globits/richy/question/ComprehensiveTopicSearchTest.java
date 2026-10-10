@@ -40,8 +40,10 @@ public class ComprehensiveTopicSearchTest {
         config.getProperties().put("hibernate.connection.datasource", dataSource);
         ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false);
         scanner.addIncludeFilter(new AnnotationTypeFilter(Entity.class));
-        for (org.springframework.beans.factory.config.BeanDefinition definition : scanner.findCandidateComponents("com.globits")) {
-            config.addAnnotatedClass(Class.forName(definition.getBeanClassName()));
+        for (String basePackage : Arrays.asList("com.globits.richy", "com.globits.core", "com.globits.security")) {
+            for (org.springframework.beans.factory.config.BeanDefinition definition : scanner.findCandidateComponents(basePackage)) {
+                config.addAnnotatedClass(Class.forName(definition.getBeanClassName()));
+            }
         }
         factory = config.buildSessionFactory();
     }
@@ -124,6 +126,40 @@ public class ComprehensiveTopicSearchTest {
         assertEquals(topic.getId(), catalog.get("Task 1 only").getTopics().get(0).getId());
     }
     @Test public void allPublishedTestsIncludeTaggedAndStandaloneTests() { expect(filter(7), "Tagged", "Standalone"); }
+    @Test public void folderSearchSupportsDirectChildrenDescendantsUnfiledAndPaging() throws Exception {
+        TestFolder root = new TestFolder(); root.setName("Practice"); root.setOwner(owner); manager.persist(root);
+        TestFolder child = new TestFolder(); child.setName("Week 1"); child.setOwner(owner); child.setParent(root); manager.persist(child);
+        Question direct = question("Root lesson", 7, "COMPREHENSIVE"); direct.setTestFolder(root);
+        Question nested = question("Child lesson", 7, "COMPREHENSIVE"); nested.setTestFolder(child);
+        question("Hidden lesson", 8, "COMPREHENSIVE").setTestFolder(root);
+        manager.flush();
+        com.globits.richy.repository.TestFolderRepository repository = mock(com.globits.richy.repository.TestFolderRepository.class);
+        when(repository.findOne(root.getId())).thenReturn(root);
+        when(repository.findAll()).thenReturn(Arrays.asList(root, child));
+        com.globits.richy.service.impl.TestFolderServiceImpl folders = new com.globits.richy.service.impl.TestFolderServiceImpl();
+        ReflectionTestUtils.setField(folders, "repository", repository); ReflectionTestUtils.setField(service, "testFolderService", folders);
+        QuestionDto dto = filter(7); dto.setTestFolderId(root.getId()); dto.setIncludeSubfolders(false); expect(dto, "Root lesson");
+        dto.setIncludeSubfolders(true); expect(dto, "Root lesson", "Child lesson");
+        Page<QuestionForTestsDto> first = service.getPageObjectForTests(dto, 1, 1), second = service.getPageObjectForTests(dto, 2, 1);
+        assertEquals(2, first.getTotalElements()); assertEquals(2, second.getTotalElements());
+        assertNotEquals(first.getContent().get(0).getId(), second.getContent().get(0).getId());
+        assertNotNull(first.getContent().get(0).getTestFolder());
+        dto.setTestFolderId(null); dto.setWithoutTestFolder(true); expect(dto, "Tagged", "Standalone");
+        dto.setWithoutTestFolder(false); dto.setTestFolderId(999L); expect(dto);
+        assertEquals(child.getId(), new QuestionDto(nested).getTestFolderId());
+        QuestionType assignmentKind = manager.find(QuestionType.class, 11L);
+        if (assignmentKind == null) {
+            manager.createNativeQuery("insert into tbl_question_type (id, name, create_date, created_by) values (11, 'Published tests', CURRENT_TIMESTAMP, 'test')").executeUpdate();
+            assignmentKind = manager.find(QuestionType.class, 11L);
+        }
+        direct.setQuestionType(assignmentKind); nested.setQuestionType(assignmentKind);
+        question("Unfiled assignment", 7, "COMPREHENSIVE").setQuestionType(assignmentKind);
+        manager.flush();
+        String query = QuestionRepository.class.getMethod("findPublishedIeltsTests").getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+        List<QuestionForTestsDto> assignments = manager.createQuery(query, QuestionForTestsDto.class).getResultList();
+        assertTrue(assignments.stream().anyMatch(test -> test.getId().equals(direct.getId()) && test.getTestFolder().getId().equals(root.getId())));
+        assertTrue(assignments.stream().anyMatch(test -> "Unfiled assignment".equals(test.getTitle()) && test.getTestFolder() == null));
+    }
     @Test public void videoAndQuestionCuesSurviveRecursiveSaveReloadAndDtoMapping() {
         Question root = question("Video lesson", 6, "COMPREHENSIVE");
         QuestionDto input = new QuestionDto(), passage = new QuestionDto(), pack = new QuestionDto(), cue = new QuestionDto();
@@ -150,6 +186,9 @@ public class ComprehensiveTopicSearchTest {
         assertEquals(Integer.valueOf(120), dto.getSubQuestions().get(0).getSubQuestions().get(0).getSubQuestions().get(0).getVideoTimeSeconds());
     }
     @Test public void fullSavePersistsFiftyImportedVideoQuestionsAndAnswersWithoutATopic() {
+        TestFolder folder = new TestFolder(); folder.setName("Videos"); folder.setOwner(owner); manager.persist(folder);
+        com.globits.richy.repository.TestFolderRepository folderRepository = mock(com.globits.richy.repository.TestFolderRepository.class);
+        when(folderRepository.findOne(folder.getId())).thenReturn(folder); ReflectionTestUtils.setField(service, "testFolderRepository", folderRepository);
         QuestionRepository questions = mock(QuestionRepository.class);
         when(questions.save(org.mockito.Matchers.any(Question.class))).thenAnswer(invocation -> {
             Question value = (Question) invocation.getArguments()[0];
@@ -172,6 +211,9 @@ public class ComprehensiveTopicSearchTest {
             QuestionDto input = new QuestionDto();
             input.setTitle("Video quiz with 50 questions"); input.setStatus(6); input.setType(0);
             input.setOrdinalNumber(1); input.setTestFormat("COMPREHENSIVE"); input.setUserId(owner.getId());
+            input.setTestFolderId(folder.getId());
+            QuestionTopicDto oldTopic = new QuestionTopicDto(); oldTopic.setTopic(new TopicDto(topic));
+            input.setQuestionTopics(Collections.singletonList(oldTopic));
             QuestionTypeDto kind = new QuestionTypeDto(type); input.setQuestionType(kind);
             List<QuestionDto> parts = new ArrayList<>();
             for (int i = 1; i <= 3; i++) {
@@ -197,6 +239,8 @@ public class ComprehensiveTopicSearchTest {
             manager.flush(); manager.clear();
             QuestionDto loaded = new QuestionDto(manager.find(Question.class, saved.getId()));
             assertEquals(6, loaded.getStatus()); assertEquals("COMPREHENSIVE", loaded.getTestFormat());
+            assertEquals(folder.getId(), loaded.getTestFolderId()); assertEquals("Videos", loaded.getTestFolder().getName());
+            assertTrue(loaded.getQuestionTopics() == null || loaded.getQuestionTopics().isEmpty());
             assertEquals("https://youtu.be/M7lc1UVf-VE", loaded.getSubQuestions().get(0).getVideoUrl());
             List<QuestionDto> cues = loaded.getSubQuestions().get(0).getSubQuestions().get(0).getSubQuestions();
             assertEquals(50, cues.size());

@@ -196,6 +196,12 @@ public class IeltsTaskPartsTest {
         assertEquals(Arrays.asList(2), prepare(task, test("WRITING", 2)).getIeltsParts());
         assertEquals(Arrays.asList(1, 2), prepare(task, test("WRITING", 1, 2)).getIeltsParts());
     }
+    @Test public void comprehensiveAssignmentDoesNotRequireTopic() {
+        EnrolmentClassScheduleTaskDto task = assignment(1); task.setActivityType("COMPREHENSIVE");
+        EnrolmentClassScheduleTask saved = prepare(task, test("COMPREHENSIVE"));
+        assertNull(saved.getTopic()); assertEquals(Long.valueOf(20L), saved.getIeltsTest().getId());
+        assertEquals(Collections.singletonList(1), saved.getIeltsParts());
+    }
     @Test public void assignmentCatalogPopulatesWritingTasksOnScalarProjections() {
         EnrolmentClassServiceImpl service = new EnrolmentClassServiceImpl();
         QuestionRepository repository = mock(QuestionRepository.class);

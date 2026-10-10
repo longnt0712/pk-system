@@ -42,10 +42,10 @@
     });
 
     EnrolmentClassController.$inject = [
-        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService', '$state', '$stateParams'
+        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService', '$state', '$stateParams', 'ComprehensiveFolders'
     ];
 
-    function EnrolmentClassController($rootScope, $scope, toastr, modal, service, $state, $stateParams) {
+    function EnrolmentClassController($rootScope, $scope, toastr, modal, service, $state, $stateParams, folders) {
         $scope.$on('$viewContentLoaded', function () {
             App.initAjax();
         });
@@ -2042,30 +2042,11 @@
 
 		vm.initializeComprehensiveAssignment = function (keepSelection) {
 			if (!vm.taskEditor || vm.taskEditor.activityType !== 'COMPREHENSIVE') { return; }
-			if (keepSelection && vm.taskEditor.topicId != null && vm.scheduleTopicsLoading) { return; }
-			var selectedTopic = null;
-			if (keepSelection && vm.taskEditor.topicId != null) {
-				angular.forEach(vm.scheduleTopics, function (topic) {
-					if (!selectedTopic && String(topic.id) === String(vm.taskEditor.topicId)) { selectedTopic = topic; }
-				});
-			}
-			vm.taskEditor.topicSourceId = selectedTopic && selectedTopic.userId != null
-				? selectedTopic.userId : DEFAULT_SCHEDULE_TOPIC_SOURCE_ID;
-			vm.rebuildComprehensiveTaskCategories();
-			if (selectedTopic) {
-				vm.taskEditor.categoryKey = selectedTopic.categoryId == null
-					? 'uncategorized' : String(selectedTopic.categoryId);
-				return;
-			}
-			vm.taskEditor.topicId = null;
-			vm.taskEditor.ieltsTestId = null;
-			vm.taskEditor.categoryKey = null;
-			angular.forEach(vm.comprehensiveTaskCategories, function (category) {
-				if (vm.taskEditor.categoryKey == null && String(category.name || '').trim().toUpperCase()
-						=== DEFAULT_SCHEDULE_TOPIC_CATEGORY_NAME) {
-					vm.taskEditor.categoryKey = category.id;
-				}
-			});
+			vm.taskEditor.topicId = null; vm.taskEditor.topicSourceId = null; vm.taskEditor.categoryKey = null;
+			if (!keepSelection) { vm.taskEditor.ieltsTestId = null; vm.taskEditor.testFolderId = null; }
+		};
+		vm.comprehensiveFolderChanged = function (id) {
+			if (vm.taskEditor) { if (id !== undefined) { vm.taskEditor.testFolderId = id; } vm.taskEditor.ieltsTestId = null; }
 		};
 
 		vm.comprehensiveSourceChanged = function () {
@@ -2218,10 +2199,7 @@
 			return vm.assignableIeltsTests.filter(function (test) {
 				var isComprehensive = test.testFormat === 'COMPREHENSIVE';
 				var isWriting = test.testFormat === 'WRITING';
-				var belongsToTopic = !comprehensive || (vm.taskEditor.topicId != null && (test.topics || []).some(function (topic) {
-					return topic && String(topic.id) === String(vm.taskEditor.topicId);
-				}));
-				return comprehensive ? isComprehensive && belongsToTopic
+				return comprehensive ? isComprehensive && folders.contains(test.testFolder && test.testFolder.id, vm.taskEditor.testFolderId)
 					: (writing ? isWriting : (!isComprehensive && !isWriting && listening === !!(test.pronounce && String(test.pronounce).trim())));
 			});
 		};
@@ -2277,9 +2255,7 @@
 					|| Number(task.requiredAttempts) > 100)) {
 				toastr.warning('Số lần phải làm cần từ 1 đến 100.'); return;
 			}
-			if (task.activityType === 'COMPREHENSIVE' && (task.topicSourceId == null || !task.categoryKey || !task.topicId)) {
-				toastr.warning('Hãy chọn đầy đủ Nguồn, Category và Topic trước khi chọn bài tập tổng hợp.'); return;
-			}
+			if (task.activityType === 'COMPREHENSIVE') { task.topicId = null; delete task.testFolderId; }
 			var availableParts = vm.ieltsPartsForTask(task);
 			if (vm.isIeltsTask(task) && (!task.ieltsTestId || !angular.isArray(task.ieltsParts) || !task.ieltsParts.length
 					|| task.ieltsParts.some(function (part) { return availableParts.indexOf(part) < 0; }))) {
@@ -2330,7 +2306,7 @@
 			if (vm.isIeltsTask(task) && !ieltsTest) { toastr.warning('Đề bài tập không còn tồn tại. Hãy chọn lại.'); return; }
 			if (task.activityType === 'COMPREHENSIVE' && !vm.ieltsTestsForTask().some(function (item) {
 				return String(item.id) === String(task.ieltsTestId);
-			})) { toastr.warning('Bài tập tổng hợp không thuộc Topic đã chọn. Hãy chọn lại.'); return; }
+			})) { toastr.warning('Bài tập tổng hợp không thuộc folder đã chọn. Hãy chọn lại.'); return; }
 			task.ieltsTestTitle = ieltsTest ? ieltsTest.title : '';
 			task.studentProgress = scheduleTaskPayload(task).studentProgress;
 			delete task.showProgress; delete task.dueDateValue; delete task.categoryKey; delete task.topicSourceId;

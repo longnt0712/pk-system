@@ -314,7 +314,11 @@
                                         </span>
                                     </span>
 
-                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11 || item.type == 18">
+                                    <section ng-if="item.type == 18 &amp;&amp; vm.isRuntimeDailyListening(item) &amp;&amp; vm.passageNumber != 4" class="comprehensive-listening-runtime">
+                                        <comprehensive-listening-player audio-link="item.pronounce" position="item._listeningAudioTime"></comprehensive-listening-player>
+                                        <comprehensive-listening-exercise pack="item" on-change="vm.changeDailyListeningAnswer(item)"></comprehensive-listening-exercise>
+                                    </section>
+                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11 || (item.type == 18 &amp;&amp; !vm.isRuntimeDailyListening(item))">
                                         <comprehensive-listening-player ng-if="item.type == 18 && vm.passageNumber != 4" audio-link="item.pronounce" position="item._listeningAudioTime"></comprehensive-listening-player>
                                         <span compile="item.oneEditorRenderedQuestion"></span>
                                     </div>
@@ -694,7 +698,11 @@
                                         </span>
                                     </span>
 
-                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11 || item.type == 18">
+                                    <section ng-if="item.type == 18 &amp;&amp; vm.isRuntimeDailyListening(item) &amp;&amp; vm.passageNumber != 4" class="comprehensive-listening-runtime">
+                                        <comprehensive-listening-player audio-link="item.pronounce" position="item._listeningAudioTime"></comprehensive-listening-player>
+                                        <comprehensive-listening-exercise pack="item" on-change="vm.changeDailyListeningAnswer(item)"></comprehensive-listening-exercise>
+                                    </section>
+                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11 || (item.type == 18 &amp;&amp; !vm.isRuntimeDailyListening(item))">
                                         <comprehensive-listening-player ng-if="item.type == 18 && vm.passageNumber != 4" audio-link="item.pronounce" position="item._listeningAudioTime"></comprehensive-listening-player>
                                         <span compile="item.oneEditorRenderedQuestion"></span>
                                     </div>
@@ -1056,7 +1064,11 @@
                                         </span>
                                     </span>
 
-                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11 || item.type == 18">
+                                    <section ng-if="item.type == 18 &amp;&amp; vm.isRuntimeDailyListening(item) &amp;&amp; vm.passageNumber != 4" class="comprehensive-listening-runtime">
+                                        <comprehensive-listening-player audio-link="item.pronounce" position="item._listeningAudioTime"></comprehensive-listening-player>
+                                        <comprehensive-listening-exercise pack="item" on-change="vm.changeDailyListeningAnswer(item)"></comprehensive-listening-exercise>
+                                    </section>
+                                    <div class="reading-one-editor-runtime actual-test-font-global" ng-if="item.type == 11 || (item.type == 18 &amp;&amp; !vm.isRuntimeDailyListening(item))">
                                         <comprehensive-listening-player ng-if="item.type == 18 && vm.passageNumber != 4" audio-link="item.pronounce" position="item._listeningAudioTime"></comprehensive-listening-player>
                                         <span compile="item.oneEditorRenderedQuestion"></span>
                                     </div>

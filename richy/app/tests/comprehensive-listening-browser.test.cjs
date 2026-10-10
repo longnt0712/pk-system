@@ -16,10 +16,10 @@ function section(source, start, end) {
     return source.slice(from, to);
 }
 const builderHtml = section(builderTemplate, '<section class="comprehensive-listening-builder"', '</section>') + '</section>';
-const runtimeHtml = section(runtimeTemplate, '<div class="idp-one-editor-runtime', '</div>') + '</div>';
-const builderCode = section(builderSource, '        vm.dailyListeningNeedsGenerate =', '        vm.addDailyListeningPackage =');
-const renderCode = section(runtimeSource, '        function buildOneEditorQuestion(', '        function shuffleCompleteListWords(');
-const answerCode = section(runtimeSource, '        vm.changeTextQuestionAnswer =', '        vm.hoverAnswerMatchingHeading=');
+const runtimeHtml = section(runtimeTemplate, '<section ng-if="item.type == 18', '</section>') + '</section>';
+const builderCode = section(builderSource, '        function ensureDailyListeningPackage(', '        vm.isComprehensivePassageVisible =') +
+    section(builderSource, '        vm.updateDailyListening =', '        vm.addDailyListeningPackage =');
+const answerCode = section(runtimeSource, '        vm.isRuntimeDailyListening =', '        vm.changeTextQuestionAnswer =');
 const css = fs.readFileSync(path.join(app, 'assets/css/external/bootstrap.min.css'), 'utf8') +
     fs.readFileSync(path.join(app, 'assets/css/comprehensive-listening.css'), 'utf8');
 
@@ -61,7 +61,7 @@ async function pageWithAngular(browser, origin, width, html) {
     return page;
 }
 
-test('teacher pastes transcript, generates a mixed-test section, and a student fills and restores its answers on desktop and mobile', async () => {
+test('teacher only pastes text; student gets runtime gaps, instant feedback, 90% completion and stable resume on desktop/mobile', async () => {
     const origin = 'http://daily-listening.test';
     const browser = await playwright.chromium.launch({headless: true, executablePath: chromePath});
     try {
@@ -70,63 +70,67 @@ test('teacher pastes transcript, generates a mixed-test section, and a student f
             const errors = []; author.on('pageerror', error => errors.push(error.message));
             await author.evaluate(({builderCode}) => {
                 angular.module('Hrm.Question').controller('Qa', ['ComprehensiveListening', function (listening) {
-                    const vm = this, pack = {type: 18, question: 'Daily Listening', _listeningGapRate: 50, subQuestions: []};
-                    Object.assign(vm, {isComprehensiveMode: true, ieltsReadingTest: {subQuestions: [{subQuestions: [
-                        {type: 1, subQuestions: [{ordinalNumber: 1}]}, pack, {type: 16, subQuestions: [{ordinalNumber: 2}]}]}]},
-                        getOrdinalNumber() {}, refreshBuilderValidation() {}, changeInTheProcessOfCreatingReadingTest() {}});
-                    new Function('vm', 'listening', 'angular', 'toastr', builderCode)(vm, listening, angular, {success() {}, warning(message) { throw new Error(message); }});
+                    const vm = this, pack = {type: 18, question: 'Daily Listening', subQuestions: []};
+                    Object.assign(vm, {ieltsReadingTest: {subQuestions: [{subQuestions: [
+                        {type: 1, subQuestions: [{ordinalNumber: 1}]}, pack, {type: 16, subQuestions: [{ordinalNumber: 3}]}]}]},
+                        changeInTheProcessOfCreatingReadingTest() {}});
+                    new Function('vm','listening','plainText', builderCode + '\nensureDailyListeningPackage(vm.ieltsReadingTest.subQuestions[0].subQuestions[1],2);')(vm,listening,value=>String(value||'').trim());
                     window.qaVm = vm;
                 }]);
                 angular.bootstrap(document.getElementById('qa'), ['Hrm.Question']);
             }, {builderCode});
             await author.getByRole('textbox', {name: 'Link audio hoặc YouTube', exact: true}).fill(origin + '/audio.wav');
-            await author.getByRole('textbox', {name: 'Transcript tiếng Anh', exact: true}).fill('Alice visits London, then buys 12.5 tickets.');
-            await author.getByRole('spinbutton', {name: 'Tỷ lệ ô trống', exact: true}).fill('100');
-            await author.getByRole('button', {name: 'Tạo ô trống', exact: true}).click();
-            await author.getByText('5 ô trống', {exact: true}).waitFor();
-            assert.equal(await author.getByRole('textbox', {name: 'Transcript tiếng Anh', exact: true}).inputValue(), 'Alice visits London, then buys 12.5 tickets.');
-            assert.ok(await author.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+            await author.getByRole('textbox', {name: 'Transcript tiếng Anh', exact: true}).fill('We hear 1 2 3 4 5 6 7 8 9.');
+            assert.equal(await author.getByRole('spinbutton').count(), 0);
+            assert.equal(await author.getByRole('button', {name: /Tạo.*ô trống/}).count(), 0);
             const saved = await author.evaluate(() => {
                 const pack = structuredClone(window.qaVm.ieltsReadingTest.subQuestions[0].subQuestions[1]); pack.id = 42;
-                pack.subQuestions.forEach((question, index) => { question.id = index + 100; question.parent = {type: 18};
-                    question.questionAnswers.forEach(answer => { answer.id = index + 1000; answer.question = {id: question.id, parent: {type: 18}}; }); });
+                pack.subQuestions[0].id = 100;
+                const answer = pack.subQuestions[0].questionAnswers[0]; answer.id = 1000; answer.question = {id:100,parent:{type:18}};
                 return pack;
             });
+            assert.equal(saved.subQuestions.length, 1);
+            assert.equal(saved.subQuestions[0].questionAnswers[0].answer.answer, 'DAILY_LISTENING_RESPONSE');
             const student = await pageWithAngular(browser, origin, width, '<div ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions">' + runtimeHtml + '</div>');
             student.on('pageerror', error => errors.push(error.message));
-            await student.evaluate(({saved, renderCode, answerCode}) => {
-                angular.module('Hrm.Question').controller('Qa', function () {
+            await student.evaluate(({saved,answerCode}) => {
+                angular.module('Hrm.Question').controller('Qa', ['ComprehensiveListening', function (listening) {
                     const vm = this;
-                    Object.assign(vm, {passageNumber: 1, ieltsReadingActualTest: {subQuestions: [{subQuestions: [saved]}]}, testResult: {questionAnswerTestResult: []}, clickShowChildren() {}});
-                    new Function('angular', 'pack', renderCode + '\nbuildOneEditorQuestion(pack);')(angular, saved);
-                    new Function('vm', 'angular', 'document', answerCode)(vm, angular, document);
+                    Object.assign(vm, {passageNumber: 1, ieltsReadingActualTest: {subQuestions: [{subQuestions: [saved]}]}, testResult: {questionAnswerTestResult: []}});
+                    new Function('vm','listening','saveReadingDraft',answerCode)(vm,listening,()=>{ window.qaDraft = JSON.stringify(vm.testResult); });
                     window.qaVm = vm;
-                });
+                }]);
                 angular.bootstrap(document.getElementById('qa'), ['Hrm.Question']);
-            }, {saved, renderCode, answerCode});
-            assert.equal(await student.locator('.reading-one-editor-input').count(), 5);
-            await student.getByRole('button', {name: 'Phát audio', exact: true}).waitFor();
-            await student.locator('.reading-one-editor-input').first().fill('visits');
-            assert.equal(await student.evaluate(() => window.qaVm.testResult.questionAnswerTestResult[0].clientAnswer), 'visits');
+            }, {saved,answerCode});
+            assert.equal(await student.locator('.listening-gap-input').count(), 10);
+            await student.locator('.listening-gap-input').first().fill('wrong');
+            await student.getByText('0/10 ô đúng · 0%', {exact: true}).waitFor();
+            for (let i = 0; i < 8; i++) {
+                const gap = await student.evaluate(() => window.qaVm.ieltsReadingActualTest.subQuestions[0].subQuestions[0]._listeningSession.gaps.find(gap=>!gap.correct));
+                await student.locator('[data-gap-index="'+gap.index+'"]').fill(gap.answer.toUpperCase());
+            }
+            await student.getByText('8/10 ô đúng · 80%', {exact: true}).waitFor();
+            assert.equal(await student.getByText('Đã hoàn thành', {exact: true}).count(), 0);
+            assert.equal(await student.evaluate(() => window.qaVm.testResult.questionAnswerTestResult.length), 1);
+            const before = await student.evaluate(() => window.qaVm.testResult.questionAnswerTestResult[0].clientAnswer);
             await student.getByRole('button', {name: 'Tiến 3 giây'}).click();
             await student.waitForFunction(() => document.querySelector('audio').currentTime === 3);
             await student.getByRole('combobox', {name: 'Tốc độ audio'}).selectOption('1.5');
             assert.equal(await student.locator('audio').evaluate(audio => audio.playbackRate), 1.5);
-            const retained = await student.evaluate(() => JSON.parse(JSON.stringify(window.qaVm.ieltsReadingActualTest)));
-            assert.equal(retained.subQuestions[0].subQuestions[0].subQuestions[0].questionAnswers[0].clientAnswer, 'visits');
-            assert.equal(retained.subQuestions[0].subQuestions[0]._listeningAudioTime, 3);
-            await student.evaluate(() => {
-                const root = angular.element(document.getElementById('qa')).scope();
-                root.$apply(() => { window.qaVm.passageNumber = 4; });
-            });
-            assert.equal(await student.locator('audio').count(), 0, 'submitting/results removes and stops the audio player');
-            await student.evaluate(() => {
-                const root = angular.element(document.getElementById('qa')).scope();
-                root.$apply(() => { window.qaVm.passageNumber = 1; });
-            });
+            await student.evaluate(() => angular.element(document.getElementById('qa')).scope().$apply(()=>{window.qaVm.passageNumber=4;}));
+            assert.equal(await student.locator('audio').count(), 0);
+            await student.evaluate(() => angular.element(document.getElementById('qa')).scope().$apply(()=>{window.qaVm.passageNumber=1;}));
             await student.waitForFunction(() => document.querySelector('audio').currentTime === 3);
-            assert.equal(await student.locator('.reading-one-editor-input').first().inputValue(), 'visits');
+            await student.getByText('8/10 ô đúng · 80%', {exact: true}).waitFor();
+            assert.equal(await student.evaluate(() => window.qaVm.testResult.questionAnswerTestResult[0].clientAnswer), before);
+            const next = await student.evaluate(() => window.qaVm.ieltsReadingActualTest.subQuestions[0].subQuestions[0]._listeningSession.gaps.find(gap=>!gap.correct));
+            await student.locator('[data-gap-index="'+next.index+'"]').fill(next.answer);
+            await student.getByText('9/10 ô đúng · 90%', {exact: true}).waitFor();
+            await student.getByText('Đã hoàn thành', {exact: true}).waitFor();
+            assert.equal(await student.evaluate(() => window.qaVm.ieltsReadingActualTest.subQuestions[0].subQuestions[0].subQuestions[0].answered), true);
+            assert.equal(JSON.parse(await student.evaluate(() => window.qaDraft)).questionAnswerTestResult.length, 1);
             assert.ok(await student.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+            assert.ok(await author.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
             assert.deepEqual(errors, []);
             const output = path.join(app, '../../.tmp'); fs.mkdirSync(output, {recursive: true});
             await author.screenshot({path: path.join(output, 'comprehensive-listening-author-' + width + '.png'), fullPage: true});

@@ -21,7 +21,8 @@
         'blockUI',
         '$sce',
         '$cookies',
-        'ComprehensiveVideo'
+        'ComprehensiveVideo',
+        'ComprehensiveListening'
         // 'dndLists'
         // 'ngSanitize',
         
@@ -1016,7 +1017,7 @@
         };
     });
 
-    function IELTSReadingActualTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,video) {
+    function IELTSReadingActualTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,video,listening) {
         $scope.$on('$viewContentLoaded', function () {
             // initialize core components
             App.initAjax();
@@ -1147,6 +1148,10 @@
 
         vm.getResultYourAnswer = function (item) {
             var type = getResultQuestionType(item);
+            if (type == 18 && item.listeningTotalGaps != null) {
+                return item.listeningCorrectGaps + '/' + item.listeningTotalGaps + ' ô đúng (' +
+                    Math.round(item.listeningCorrectGaps * 10000 / (item.listeningTotalGaps || 1)) / 100 + '%)';
+            }
             var submittedAnswer = item && item.clientAnswer != null ? String(item.clientAnswer).trim() : '';
             if (!submittedAnswer) {
                 return '';
@@ -1163,6 +1168,8 @@
         vm.getResultCorrectAnswer = function (item) {
             var type = getResultQuestionType(item);
             var questionAnswer = item && item.questionAnswer;
+
+            if (type == 18 && questionAnswer && questionAnswer.answer && questionAnswer.answer.answer === listening.responseMarker) { return 'Đúng từ 90% tổng số ô trống'; }
 
             if (type == 16 || type == 17) {
                 return type == 17 ? 'Trên 250 từ' : 'Trên 150 từ';
@@ -3695,6 +3702,10 @@
             // elmnt1.scrollIntoView();
 
             var elmnt2 = document.getElementById('text-question-number-'+ordinalNumber);
+            if (!elmnt2) {
+                var listeningSection = document.getElementById('question-number-' + ordinalNumber);
+                elmnt2 = listeningSection && listeningSection.querySelector('.listening-gap-input');
+            }
             if(elmnt2 != null){
                 elmnt2.focus();
                 elmnt2.focus();
@@ -3868,6 +3879,9 @@
                 var question = entry.question || {};
                 var questionAnswers = question.questionAnswers || [];
                 var type = Number(entry.packageType);
+                if (type === 18 && listening.isRuntime(entry.questionPackage) && !questionAnswers[0].clientAnswer) {
+                    questionAnswers[0].clientAnswer = listening.serialize(listening.start(entry.questionPackage.motherTongue));
+                }
                 var existingResults = [];
 
                 angular.forEach(results, function (result) {
@@ -4022,6 +4036,10 @@
             var selectedAnswer = result && result.questionAnswer;
             var normalizedSubmitted = cleanStudyAnswerText(submittedAnswer);
 
+            if (type === 18 && listening.isRuntime(entry.questionPackage)) {
+                return listening.start(entry.questionPackage.motherTongue, result && result.clientAnswer).passed;
+            }
+
             if (!normalizedSubmitted) { return false; }
 
             if (type == 2 || type == 3 || type == 11 || type == 18) {
@@ -4085,6 +4103,11 @@
                 var result = studyResultForEntry(entry, results);
                 var submittedAnswer = cleanStudyAnswerText(result && result.clientAnswer);
                 var correctAnswers = studyCorrectAnswers(entry, result);
+                if (Number(entry.packageType) === 18 && listening.isRuntime(entry.questionPackage)) {
+                    var listeningSession = listening.start(entry.questionPackage.motherTongue, result && result.clientAnswer);
+                    submittedAnswer = listeningSession.correct + '/' + listeningSession.total + ' ô đúng (' + listeningSession.percent + '%)';
+                    correctAnswers = ['Đúng từ 90% tổng số ô trống'];
+                }
                 var status = 'unanswered';
 
                 if (submittedAnswer) {
@@ -4613,7 +4636,7 @@
                 //UPDATE 12 12 2025
                 if(data.subQuestions[k].subQuestions != null){
                     for (var i = 0; i < data.subQuestions[k].subQuestions.length; i++) {
-                        if (data.subQuestions[k].subQuestions[i].type == 11 || data.subQuestions[k].subQuestions[i].type == 18) {
+                        if (data.subQuestions[k].subQuestions[i].type == 11 || (data.subQuestions[k].subQuestions[i].type == 18 && !listening.isRuntime(data.subQuestions[k].subQuestions[i]))) {
                             buildOneEditorQuestion(data.subQuestions[k].subQuestions[i]);
                         }
                         if (data.subQuestions[k].subQuestions[i].type == 13) {
@@ -6182,6 +6205,20 @@
             console.log(vm.testResult.questionAnswerTestResult);
         };
         
+        vm.isRuntimeDailyListening = listening.isRuntime;
+        vm.changeDailyListeningAnswer = function (pack) {
+            var question = pack.subQuestions[0], answer = question.questionAnswers[0];
+            var results = vm.testResult.questionAnswerTestResult || [];
+            question.answered = !!(pack._listeningSession && pack._listeningSession.passed);
+            vm.testResult.questionAnswerTestResult = results.filter(function (result) {
+                return result.ordinalNumber != question.ordinalNumber;
+            });
+            if (answer.id != null) {
+                vm.testResult.questionAnswerTestResult.push({questionAnswer: answer, ordinalNumber: question.ordinalNumber, clientAnswer: answer.clientAnswer});
+            }
+            saveReadingDraft();
+        };
+
         vm.changeTextQuestionAnswer = function (questionAnswer,answer,question) {
             // console.log(questionAnswer);
             // console.log(answer);

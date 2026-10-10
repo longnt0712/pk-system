@@ -21,15 +21,15 @@
         'blockUI',
         '$sce',
         '$cookies',
-        'TopicService',
         'ComprehensiveVideo',
-        'ComprehensiveListening'
+        'ComprehensiveListening',
+        'ComprehensiveFolders'
         // 'dndLists'
         // 'ngSanitize',
         
     ];
 
-    function IELTSCreateReadingTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,topicService,video,listening) {
+    function IELTSCreateReadingTestController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,video,listening,folders) {
         $scope.$on('$viewContentLoaded', function () {
             // initialize core components
             App.initAjax();
@@ -366,8 +366,10 @@
             var containsWritingTask = false;
             angular.forEach(test.subQuestions, function (part) {
                 var nextQuestionNumber = 1;
+                var listeningConverted = false;
                 angular.forEach((part && part.subQuestions) || [], function (questionPackage) {
-                    if (Number(questionPackage.type) === 18) { questionPackage._listeningGapRate = listening.gapRate(questionPackage); }
+                    listeningConverted = listeningConverted || (Number(questionPackage.type) === 18 && !listening.isRuntime(questionPackage));
+                    ensureDailyListeningPackage(questionPackage, nextQuestionNumber);
                     containsWritingTask = containsWritingTask || Number(questionPackage.type) === 16 || Number(questionPackage.type) === 17;
                     ensureWritingTaskPackage(questionPackage, nextQuestionNumber);
                     ensureMultipleAnswerPackage(questionPackage, true);
@@ -375,6 +377,12 @@
                         nextQuestionNumber = Math.max(nextQuestionNumber, (parseInt(question.ordinalNumber, 10) || 0) + 1);
                     });
                 });
+                if (listeningConverted) {
+                    nextQuestionNumber = 1;
+                    angular.forEach(part.subQuestions || [], function (pack) {
+                        angular.forEach(pack.subQuestions || [], function (question) { question.ordinalNumber = nextQuestionNumber++; });
+                    });
+                }
             });
             if (containsWritingTask) { test.subQuestions[0].type = 1; }
             return test;
@@ -414,6 +422,26 @@
             questionPackage.subQuestions = [question];
         }
 
+        function ensureDailyListeningPackage(pack, fallbackOrdinalNumber) {
+            if (!pack || Number(pack.type) !== 18) { return; }
+            if (!plainText(pack.question) || /Question\s*\?\s*to\s*\?/i.test(plainText(pack.question))) { pack.question = 'Daily Listening'; }
+            var question = (pack.subQuestions || [])[0] || {};
+            question.question = 'Daily Listening';
+            question.questionType = question.questionType || {id: 19, code: 'IELTSRTQ'};
+            question.ordinalNumber = parseInt(question.ordinalNumber, 10) || fallbackOrdinalNumber || 1;
+            question.subQuestions = [];
+            var answer = (question.questionAnswers || [])[0] || {};
+            answer.answer = answer.answer || {};
+            answer.answer.answer = listening.responseMarker;
+            answer.correct = true;
+            answer.ordinalNumberQuestionAnswer = 1;
+            answer.question = question.id ? {id: question.id} : {};
+            question.questionAnswers = [answer];
+            pack.subQuestions = [question];
+            pack.isHaveChildren = true;
+            pack.description = JSON.stringify({runtimeGaps: true});
+        }
+
         vm.isComprehensivePassageVisible = function () {
             var passage = (((vm.ieltsReadingTest || {}).subQuestions || [])[0]) || {};
             return Number(passage.type) !== 6;
@@ -439,229 +467,23 @@
             vm.refreshBuilderValidation();
         };
 
-        var DEFAULT_TOPIC_SOURCE_ID = 26;
-        var DEFAULT_TOPIC_CATEGORY_NAME = 'GRADE 6';
-        var builderTopicRequestId = 0;
-        var catalogTopicRequestId = 0;
-
-        vm.topicSources = [];
-        vm.builderTopicSource = null;
-        vm.builderTopicCategory = null;
-        vm.builderTopicCategories = [];
-        vm.builderSourceTopics = [];
-        vm.availableTopics = [];
-        vm.selectedTestTopics = [];
-        vm.builderTopicsLoading = false;
-        vm.builderTopicsError = '';
-
-        vm.catalogTopicSource = null;
-        vm.catalogTopicCategory = null;
-        vm.catalogTopic = null;
-        vm.catalogTopicCategories = [];
-        vm.catalogSourceTopics = [];
-        vm.catalogTopics = [];
-        vm.catalogTopicsLoading = false;
-        vm.catalogTopicsError = '';
-        vm.catalogTopicFilterMode = 'ALL';
-
-        function buildTopicSources() {
-            var sources = [{id: DEFAULT_TOPIC_SOURCE_ID, name: 'EM YÊU INH LÍCH'}];
-            var currentUserId = vm.currentUser && vm.currentUser.id;
-            if (currentUserId != null && String(currentUserId) !== String(DEFAULT_TOPIC_SOURCE_ID)) {
-                sources.push({id: currentUserId, name: 'TỪ CỦA TÔI'});
-            }
-            return sources;
-        }
-
-        vm.topicSourceLabel = function (source) {
-            if (source && String(source.id) === String(DEFAULT_TOPIC_SOURCE_ID)) {
-                return 'EM YÊU INH LỊCH';
-            }
-            return (source && source.name) || 'EM YÊU INH LỊCH';
-        };
-
-        function topicCategoriesFromTopics(topics) {
-            var categories = [];
-            var seen = {};
-            angular.forEach(topics || [], function (topic) {
-                var category = topic && topic.topicCategory;
-                if (!category || category.id == null || seen[String(category.id)]) { return; }
-                seen[String(category.id)] = true;
-                categories.push(category);
-            });
-            return categories.sort(function (left, right) {
-                return String(left.name || '').localeCompare(String(right.name || ''));
-            });
-        }
-
-        function topicsForCategory(topics, category) {
-            if (!category || category.id == null) { return []; }
-            return (topics || []).filter(function (topic) {
-                return topic && topic.topicCategory &&
-                    String(topic.topicCategory.id) === String(category.id);
-            });
-        }
-
-        function findItemById(items, id) {
-            var matched = null;
-            angular.forEach(items || [], function (item) {
-                if (!matched && item && String(item.id) === String(id)) { matched = item; }
-            });
-            return matched;
-        }
-
-        function defaultTopicCategory(categories) {
-            var matched = null;
-            angular.forEach(categories || [], function (category) {
-                if (!matched && category && String(category.name || '').trim().toUpperCase() === DEFAULT_TOPIC_CATEGORY_NAME) {
-                    matched = category;
-                }
-            });
-            return matched;
-        }
-
-        function loadAllTopicsForSource(source, requestId, onSuccess, onFailure) {
-            if (!source || source.id == null) {
-                onSuccess([]);
-                return;
-            }
-            service.getTopicsForGames({userId: source.id}, 1, 10000000).then(function (data) {
-                onSuccess((data && data.content) || [], requestId);
-            }, function () {
-                onFailure(requestId);
-            });
-        }
-
-        function setBuilderCategory(categoryId) {
-            vm.builderTopicCategory = findItemById(vm.builderTopicCategories, categoryId);
-            vm.availableTopics = topicsForCategory(vm.builderSourceTopics, vm.builderTopicCategory);
-        }
-
-        vm.loadBuilderTopicSource = function (keepSelectedTopics, preferredCategoryId, refreshCatalog) {
-            var requestId = ++builderTopicRequestId;
-            vm.builderTopicsLoading = true;
-            vm.builderTopicsError = '';
-            vm.builderSourceTopics = [];
-            vm.builderTopicCategories = [];
-            vm.builderTopicCategory = null;
-            vm.availableTopics = [];
-            if (!keepSelectedTopics) { vm.selectedTestTopics = []; }
-
-            loadAllTopicsForSource(vm.builderTopicSource, requestId, function (topics, completedRequestId) {
-                if (completedRequestId !== builderTopicRequestId) { return; }
-                vm.builderSourceTopics = topics;
-                vm.builderTopicCategories = topicCategoriesFromTopics(topics);
-                if (preferredCategoryId != null) {
-                    setBuilderCategory(preferredCategoryId);
-                } else {
-                    vm.builderTopicCategory = defaultTopicCategory(vm.builderTopicCategories);
-                    vm.availableTopics = topicsForCategory(vm.builderSourceTopics, vm.builderTopicCategory);
-                }
-                vm.builderTopicsLoading = false;
-                if (!topics.length) { vm.builderTopicsError = 'Nguồn này chưa có topic để chọn.'; }
-                if (refreshCatalog) { vm.applyCatalogTopicFilter(); }
-            }, function (failedRequestId) {
-                if (failedRequestId !== builderTopicRequestId) { return; }
-                vm.builderTopicsLoading = false;
-                vm.builderTopicsError = 'Không tải được topic. Bấm đổi nguồn để thử lại.';
-                if (refreshCatalog) { vm.applyCatalogTopicFilter(); }
-            });
-        };
-
-        vm.builderTopicSourceChanged = function () {
-            vm.loadBuilderTopicSource(false, null, true);
-            vm.syncTestTopics();
-        };
-
-        vm.builderTopicCategoryChanged = function () {
-            vm.selectedTestTopics = [];
-            vm.availableTopics = topicsForCategory(vm.builderSourceTopics, vm.builderTopicCategory);
-            vm.syncTestTopics();
-            vm.applyCatalogTopicFilter();
-        };
-
-        vm.builderTopicsChanged = function () {
-            vm.syncTestTopics();
-            vm.applyCatalogTopicFilter();
-        };
-
-        vm.restoreBuilderTopicContext = function () {
-            var firstTopic = (vm.selectedTestTopics || [])[0];
-            if (!firstTopic) { return; }
-            var source = findItemById(vm.topicSources, firstTopic.userId) || vm.builderTopicSource;
-            var categoryId = firstTopic.topicCategory && firstTopic.topicCategory.id;
-            if (source && (!vm.builderTopicSource || String(source.id) !== String(vm.builderTopicSource.id))) {
-                vm.builderTopicSource = source;
-                vm.loadBuilderTopicSource(true, categoryId, true);
-                return;
-            }
-            setBuilderCategory(categoryId);
-            vm.applyCatalogTopicFilter();
-        };
-
-        vm.loadCatalogTopicSource = function () {
-            var requestId = ++catalogTopicRequestId;
-            vm.catalogTopicsLoading = true;
-            vm.catalogTopicsError = '';
-            vm.catalogTopicCategory = null;
-            vm.catalogTopic = null;
-            vm.catalogSourceTopics = [];
-            vm.catalogTopicCategories = [];
-            vm.catalogTopics = [];
-
-            loadAllTopicsForSource(vm.catalogTopicSource, requestId, function (topics, completedRequestId) {
-                if (completedRequestId !== catalogTopicRequestId) { return; }
-                vm.catalogSourceTopics = topics;
-                vm.catalogTopicCategories = topicCategoriesFromTopics(topics);
-                vm.catalogTopicCategory = defaultTopicCategory(vm.catalogTopicCategories);
-                vm.catalogTopics = topicsForCategory(vm.catalogSourceTopics, vm.catalogTopicCategory);
-                vm.catalogTopicsLoading = false;
-                if (!topics.length) { vm.catalogTopicsError = 'Nguồn này chưa có topic.'; }
-                vm.applyCatalogTopicFilter();
-            }, function (failedRequestId) {
-                if (failedRequestId !== catalogTopicRequestId) { return; }
-                vm.catalogTopicsLoading = false;
-                vm.catalogTopicsError = 'Không tải được danh sách topic.';
-                vm.applyCatalogTopicFilter();
-            });
-        };
-
-        vm.catalogTopicCategoryChanged = function () {
-            vm.catalogTopic = null;
-            vm.catalogTopics = topicsForCategory(vm.catalogSourceTopics, vm.catalogTopicCategory);
-            vm.applyCatalogTopicFilter();
-        };
-
-        vm.applyCatalogTopicFilter = function () {
+        vm.selectedTestFolderId = null;
+        vm.catalogTestFolderId = null;
+        function prepareTestFolderForSave() {
             if (!vm.isComprehensiveMode) { return; }
-            // The catalogue filter and the builder intentionally share the same
-            // source/category/topics so both controls always show identical values.
-            var filterByTopics = vm.catalogTopicFilterMode === 'TOPIC';
-            vm.searchDto.withoutTopics = vm.catalogTopicFilterMode === 'UNASSIGNED';
-            vm.searchDto.questionTopics = (filterByTopics ? vm.selectedTestTopics || [] : []).map(function (topic) {
-                return {topic: {id: topic.id}};
-            });
-            vm.searchDto.topicOwnerUserId = filterByTopics && vm.builderTopicSource ? vm.builderTopicSource.id : null;
-            vm.searchDto.topicCategoryId = filterByTopics && vm.builderTopicCategory ? vm.builderTopicCategory.id : null;
-            vm.searchDto.topicId = null;
-            vm.searchDto.pageIndex = 1;
-            vm.getPageCreateIELTSReadingTest();
-        };
-
-        vm.syncTestTopics = function () {
-            vm.ieltsReadingTest.questionTopics = (vm.selectedTestTopics || []).map(function (topic) {
-                return {topic: {id: topic.id, name: topic.name}};
-            });
+            vm.ieltsReadingTest.testFolderId = vm.selectedTestFolderId || null;
+            vm.ieltsReadingTest.questionTopics = [];
+        }
+        vm.testFolderChanged = function (id) {
+            if (id !== undefined) { vm.selectedTestFolderId = id; }
+            prepareTestFolderForSave();
             vm.changeInTheProcessOfCreatingReadingTest();
         };
-        if (vm.isComprehensiveMode) {
-            vm.topicSources = buildTopicSources();
-            vm.builderTopicSource = vm.topicSources[0] || null;
-            vm.catalogTopicSource = vm.topicSources[0] || null;
-            $timeout(function () {
-                vm.loadBuilderTopicSource(false, null, true);
-            }, 0);
-        }
+        vm.applyCatalogFolderFilter = function (id) {
+            if (id !== undefined) { vm.catalogTestFolderId = id; }
+            folders.applyFilter(vm.searchDto, vm.catalogTestFolderId, true);
+            vm.getPageCreateIELTSReadingTest();
+        };
 
         vm.ieltsReadingTest = {
             questionType: {
@@ -685,11 +507,19 @@
             vm.searchDto.questionType = {id: 11};
             vm.searchDto.listeningTest = vm.isFlexibleMode ? null : vm.isListeningMode;
             vm.searchDto.testFormat = vm.isWritingMode ? 'WRITING' : (vm.isComprehensiveMode ? 'COMPREHENSIVE' : null);
+            if (vm.isComprehensiveMode) {
+                vm.searchDto.userId = vm.currentUser.id;
+                var pageIndex = vm.searchDto.pageIndex;
+                folders.applyFilter(vm.searchDto, vm.catalogTestFolderId, true);
+                vm.searchDto.pageIndex = pageIndex;
+            }
+            vm.catalogLoading = true;
             blockUI.start();
             service.getPageForTests(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
                 if (requestId !== testCatalogRequestId) { return; }
                 blockUI.stop();
                 data = data || {content: [], totalElements: 0};
+                vm.catalogLoading = false;
                 vm.ieltsReadingTests = data.content || [];
                 vm.refreshLearningProgress();
                 vm.bsTableControlCreateIELTSReadingTest.options.data = vm.ieltsReadingTests;
@@ -701,6 +531,7 @@
                 if (requestId !== testCatalogRequestId) { return; }
                 blockUI.stop();
                 vm.ieltsReadingTests = [];
+                vm.catalogLoading = false;
                 vm.bsTableControlCreateIELTSReadingTest.options.data = [];
                 vm.bsTableControlCreateIELTSReadingTest.options.totalRows = 0;
                 toastr.error('Không tải được danh sách bài test.', 'Lỗi');
@@ -911,7 +742,7 @@
             // Save Draft or Publish serializes the builder model.
             prepareSharedChoicePackagesForSave();
             ensureComprehensiveBuilder(vm.ieltsReadingTest);
-            if (vm.isComprehensiveMode) { vm.syncTestTopics(); }
+            prepareTestFolderForSave();
             vm.savingReadingTest = true;
             blockUI.start();
             vm.readingSavePromise = $timeout(function () {
@@ -923,8 +754,7 @@
                     return null;
                 }
                 vm.ieltsReadingTest = ensureComprehensiveBuilder(ensureListeningBuilderParts(data));
-                vm.selectedTestTopics = (vm.ieltsReadingTest.questionTopics || []).map(function (link) { return link.topic; });
-                if (vm.isComprehensiveMode) { vm.restoreBuilderTopicContext(); }
+                vm.selectedTestFolderId = vm.ieltsReadingTest.testFolderId || null;
                 vm.getOrdinalNumber(data);
                 isHavingQuestions(vm.ieltsReadingTest);
 
@@ -1021,7 +851,7 @@
         };
 
         function ensureOneEditorPackage(questionPackage) {
-            if (!questionPackage || (Number(questionPackage.type) !== 11 && Number(questionPackage.type) !== 18)) {
+            if (!questionPackage || Number(questionPackage.type) !== 11) {
                 return;
             }
             questionPackage.subQuestions = questionPackage.subQuestions || [];
@@ -1421,8 +1251,8 @@
             var previousWritingQuestion = questionPackage && questionPackage.subQuestions && questionPackage.subQuestions[0];
             var previousWritingAnswer = previousWritingQuestion && previousWritingQuestion.questionAnswers && previousWritingQuestion.questionAnswers[0];
             var wasWritingPackage = previousWritingAnswer && previousWritingAnswer.answer &&
-                /^WRITING_TASK_[12]_RESPONSE$/.test(String(previousWritingAnswer.answer.answer || ''));
-            if (wasWritingPackage && Number(questionPackage.type) !== 16 && Number(questionPackage.type) !== 17) {
+                /^(WRITING_TASK_[12]_RESPONSE|DAILY_LISTENING_RESPONSE)$/.test(String(previousWritingAnswer.answer.answer || ''));
+            if (wasWritingPackage && Number(questionPackage.type) !== 16 && Number(questionPackage.type) !== 17 && Number(questionPackage.type) !== 18) {
                 questionPackage.question = example;
                 questionPackage.subQuestions = [];
                 questionPackage.isHaveChildren = false;
@@ -1431,10 +1261,11 @@
                 questionPackage.type = 5;
             }
             if (questionPackage && Number(questionPackage.type) === 18) {
-                questionPackage._listeningGapRate = listening.gapRate(questionPackage);
-                if (!plainText(questionPackage.question) || /Question\s*\?\s*to\s*\?/i.test(plainText(questionPackage.question))) {
-                    questionPackage.question = 'Daily Listening';
-                }
+                ensureDailyListeningPackage(questionPackage, 1);
+                var nextNumber = 1;
+                angular.forEach(vm.ieltsReadingTest.subQuestions[partIndex].subQuestions || [], function (pack) {
+                    angular.forEach(pack.subQuestions || [], function (question) { question.ordinalNumber = nextNumber++; });
+                });
             }
             if (questionPackage && Number(questionPackage.type) === 5) {
                 ensureMultipleAnswerPackage(questionPackage, true);
@@ -1483,48 +1314,7 @@
             vm.changeInTheProcessOfCreatingReadingTest(questionPackage);
         };
 
-        vm.dailyListeningNeedsGenerate = function (pack) { return !listening.isCurrent(pack); };
-        vm.dailyListeningPreview = function (pack) {
-            var index = 0;
-            return String(((pack.subQuestions || [])[0] || {}).question || '').replace(/\}\{SPACE\}\{/gi, function () {
-                var question = pack.subQuestions[index++];
-                return '<strong> [' + (question ? question.ordinalNumber : index) + '] ______ </strong>';
-            });
-        };
-
-        vm.updateDailyListening = function (pack) {
-            listening.configure(pack);
-            vm.changeInTheProcessOfCreatingReadingTest();
-        };
-
-        vm.generateDailyListeningGaps = function (pack, partIndex) {
-            if (!pack || Number(pack.type) !== 18 || !vm.isComprehensiveMode) { return; }
-            try {
-                if (!listening.parseUrl(pack.pronounce)) { throw new Error('Hãy nhập link audio hoặc YouTube hợp lệ.'); }
-                var generated = listening.generate(pack.motherTongue, pack._listeningGapRate);
-                var oldQuestions = pack.subQuestions || [];
-                pack.subQuestions = generated.answers.map(function (answer, index) {
-                    var question = oldQuestions[index] || {questionType: {id: 19, code: 'IELTSRTQ'}, subQuestions: []};
-                    var configuredAnswer = (question.questionAnswers || [])[0] || {answer: {}, ordinalNumberQuestionAnswer: 1};
-                    configuredAnswer.answer = configuredAnswer.answer || {};
-                    configuredAnswer.answer.answer = answer;
-                    configuredAnswer.correct = true;
-                    question.questionAnswers = [configuredAnswer];
-                    question.question = index === 0 ? generated.html : '';
-                    return question;
-                });
-                pack.description = generated.description;
-                pack.isHaveChildren = true;
-                var nextNumber = 1;
-                angular.forEach(vm.ieltsReadingTest.subQuestions[partIndex].subQuestions || [], function (questionPackage) {
-                    angular.forEach(questionPackage.subQuestions || [], function (question) { question.ordinalNumber = nextNumber++; });
-                });
-                vm.getOrdinalNumber(vm.ieltsReadingTest);
-                vm.refreshBuilderValidation();
-                vm.changeInTheProcessOfCreatingReadingTest();
-                toastr.success('Đã tự tạo ' + generated.answers.length + ' ô trống và đáp án.');
-            } catch (invalid) { toastr.warning(invalid.message, 'Chưa thể tạo ô trống'); }
-        };
+        vm.updateDailyListening = function () { vm.changeInTheProcessOfCreatingReadingTest(); };
 
         vm.addDailyListeningPackage = function () {
             if (!vm.isComprehensiveMode) { return; }
@@ -1576,9 +1366,6 @@
 
             if (!plainText(test.title)) {
                 addIssue('Chưa nhập tên bài thi.', 'reading-builder-info');
-            }
-            if (vm.isComprehensiveMode && !(vm.selectedTestTopics || []).length) {
-                addIssue('Chưa chọn topic cho bài tập.', 'reading-builder-info');
             }
             if (vm.isListeningMode && !plainText(test.pronounce)) {
                 addIssue('Bài Listening chưa có link audio chính.', 'reading-builder-info');
@@ -1653,11 +1440,11 @@
                         if (!vm.isComprehensiveMode) { addIssue('Daily Listening chỉ dùng trong test tổng hợp.', packageTarget, partIndex); }
                         if (!listening.parseUrl(questionPackage.pronounce)) { addIssue('Daily Listening: chưa có link audio hoặc YouTube hợp lệ.', packageTarget, partIndex); }
                         if (!String(questionPackage.motherTongue || '').trim()) { addIssue('Daily Listening: chưa nhập transcript.', packageTarget, partIndex); }
-                        var listeningRate = Number(questionPackage._listeningGapRate);
-                        if (!isFinite(listeningRate) || listeningRate < 30 || listeningRate > 100 || listeningRate % 5 !== 0) { addIssue('Daily Listening: tỷ lệ ô trống phải từ 30 đến 100%, theo bước 5%.', packageTarget, partIndex); }
-                        if (!listening.isCurrent(questionPackage)) { addIssue('Daily Listening: bấm Tạo ô trống sau khi nhập hoặc sửa transcript/tỷ lệ.', packageTarget, partIndex); }
+                        if (String(questionPackage.motherTongue || '').trim() && !listening.candidates(questionPackage.motherTongue).count) {
+                            addIssue('Daily Listening: transcript chưa có từ phù hợp để tạo ô trống.', packageTarget, partIndex);
+                        }
                     }
-                    if ((Number(questionPackage.type) === 11 || Number(questionPackage.type) === 18) && (questionPackage.subQuestions || []).length) {
+                    if (Number(questionPackage.type) === 11 && (questionPackage.subQuestions || []).length) {
                         var oneEditorContent = questionPackage.subQuestions[0].question;
                         var gapCount = vm.countOneEditorGaps(oneEditorContent);
                         var expectedGapCount = questionPackage.subQuestions.length;
@@ -2233,8 +2020,7 @@
                 vm.comprehensiveContentMode = vm.ieltsReadingTest.subQuestions[0].videoUrl ? 'VIDEO' : 'TEXT';
                 vm.savedBuilderVideoLink = null;
                 vm.builderVideoSeconds = vm.videoDuration = 0;
-                vm.selectedTestTopics = (vm.ieltsReadingTest.questionTopics || []).map(function (link) { return link.topic; });
-                if (vm.isComprehensiveMode) { vm.restoreBuilderTopicContext(); }
+                vm.selectedTestFolderId = vm.ieltsReadingTest.testFolderId || null;
                 vm.getOrdinalNumber(vm.ieltsReadingTest);
 
                 isHavingQuestions(vm.ieltsReadingTest);
@@ -4073,7 +3859,7 @@
                     ['VIDEO - link hỗ trợ', 'YouTube: link watch, youtu.be, Shorts hoặc live. TikTok: dùng link đầy đủ https://www.tiktok.com/@ten/video/123...; mở link rút gọn để lấy link đầy đủ. Có thể dùng link trực tiếp MP4/WebM/OGG. Video cần xem và nhúng được.'],
                     ['VIDEO - Mốc video', 'Cột Mốc video trong NOI_DUNG dùng văn bản phút:giây, ví dụ 01:30 = 1 phút 30 giây, 00:00 = đầu video; trên một giờ dùng 1:02:03. Không nhập 01:75 hoặc giờ Excel. Mốc phải nằm trong thời lượng video. Bài văn bản để trống cột này.'],
                     ['VIDEO - từng câu / nhóm câu', 'Mã 1: mỗi dòng câu hỏi có mốc riêng. Các loại dùng chung nội dung như mã 5, 11, 13: nhập mốc ở dòng đầu nhóm; các dòng sau để trống để kế thừa hoặc lặp đúng mốc đó. Không dùng các mốc khác nhau trong cùng nhóm.'],
-                    ['VIDEO - ví dụ và kiểm tra', 'Ví dụ: câu 1 tại 01:30, câu 2 tại 02:30, nhóm điền từ câu 3–4 tại 03:30. Sửa mốc và câu hỏi theo video thật. Sau import, kiểm tra link, thời lượng, đáp án, Topic và Xem trước rồi xuất bản. Đến mốc, video dừng để học sinh trả lời rồi tiếp tục.']
+                    ['VIDEO - ví dụ và kiểm tra', 'Ví dụ: câu 1 tại 01:30, câu 2 tại 02:30, nhóm điền từ câu 3–4 tại 03:30. Sửa mốc và câu hỏi theo video thật. Sau import, kiểm tra link, thời lượng, đáp án, Folder và Xem trước rồi xuất bản. Đến mốc, video dừng để học sinh trả lời rồi tiếp tục.']
                 );
             }
             var guideSheet = XLSX.utils.aoa_to_sheet(guideRows);

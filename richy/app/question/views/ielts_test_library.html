@@ -6,7 +6,7 @@
             <div class="ielts-library-hero__copy">
                 <span>{{vm.isComprehensiveMode ? 'BÀI TẬP TỰ DO' : 'IELTS TEST LIBRARY'}}</span>
                 <h1>{{vm.isComprehensiveMode ? 'Bài tập tổng hợp' : 'Thư viện IELTS ' + vm.testModeName}}</h1>
-                <p ng-if="vm.isComprehensiveMode">Chọn một bài và làm lần lượt danh sách câu hỏi, không chia Passage hay Part.</p>
+                <p ng-if="vm.isComprehensiveMode">Mở folder để tìm bài tập của từng giáo viên. Chuyển giữa dạng biểu tượng và danh sách bằng nút ở góc phải.</p>
                 <p ng-if="!vm.isComprehensiveMode && !vm.isListeningMode && !vm.isWritingMode">Chọn đề Reading để học hoặc làm bài test với giao diện thi thật.</p>
                 <p ng-if="!vm.isComprehensiveMode && vm.isListeningMode">Chọn đề Listening để nghe, luyện tập hoặc làm bài test.</p>
                 <p ng-if="vm.isWritingMode">Chọn bài Writing gồm Task 1, Task 2 hoặc cả hai; tiến trình viết được lưu để làm tiếp.</p>
@@ -43,66 +43,35 @@
                 <span class="reading-test-catalog__count">{{vm.totalItems}} bài test</span>
             </div>
 
-            <div class="reading-library-filter-bar" ng-class="{'has-topic-filters': vm.isComprehensiveMode}">
+            <div class="reading-library-filter-bar">
                 <div class="reading-test-search">
                     <i class="fa fa-search" aria-hidden="true"></i>
                     <input ng-model="vm.searchDto.textSearch"
                            ng-keyup="vm.enterSearchCode($event)"
                            type="search"
-                           placeholder="Tìm bài test theo tên..."
+                           placeholder="{{vm.isComprehensiveMode ? 'Tìm tên bài trong folder và folder con...' : 'Tìm bài test theo tên...'}}"
                            aria-label="Tìm bài test theo tên">
                     <button type="button" ng-click="vm.search()">Tìm kiếm</button>
                 </div>
-                <div class="reading-library-topic-filters" ng-if="vm.isComprehensiveMode">
-                    <div>
-                        <label>Lọc bài</label>
-                        <select class="form-control" ng-model="vm.topicFilterMode" ng-change="vm.applyTopicFilter()" aria-label="Lọc bài theo topic">
-                            <option value="ALL">Tất cả bài</option>
-                            <option value="TOPIC">Theo topic</option>
-                            <option value="UNASSIGNED">Chưa gắn topic</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label><i class="fa fa-database"></i> Nguồn</label>
-                        <ui-select theme="bootstrap" ng-model="vm.selectedTopicSource" ng-change="vm.loadTopicSource()"
-                                   ng-disabled="vm.topicFilterMode !== 'TOPIC'">
-                            <ui-select-match placeholder="Chọn nguồn..."><span ng-bind="vm.topicSourceLabel($select.selected)"></span></ui-select-match>
-                            <ui-select-choices repeat="source in vm.topicSources | filter:$select.search">
-                                <div ng-bind-html="vm.topicSourceLabel(source) | highlight:$select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                    </div>
-                    <div>
-                        <label><i class="fa fa-folder-open-o"></i> Category</label>
-                        <ui-select theme="bootstrap" ng-model="vm.selectedTopicCategory"
-                                   ng-change="vm.topicCategoryChanged()"
-                                   ng-disabled="vm.topicFilterMode !== 'TOPIC' || vm.topicFiltersLoading || !vm.topicCategories.length">
-                            <ui-select-match allow-clear="true" placeholder="Tất cả category...">{{$select.selected.name}}</ui-select-match>
-                            <ui-select-choices repeat="category in vm.topicCategories | filter:$select.search">
-                                <div ng-bind-html="category.name | highlight:$select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                    </div>
-                    <div>
-                        <label><i class="fa fa-tag"></i> Topic</label>
-                        <ui-select theme="bootstrap" ng-model="vm.selectedTopic"
-                                   ng-change="vm.applyTopicFilter()"
-                                   ng-disabled="vm.topicFilterMode !== 'TOPIC' || vm.topicFiltersLoading || !vm.selectedTopicCategory || !vm.topics.length">
-                            <ui-select-match allow-clear="true" placeholder="Tất cả topic...">{{$select.selected.name}}</ui-select-match>
-                            <ui-select-choices repeat="topic in vm.topics | filter:$select.search">
-                                <div ng-bind-html="topic.name | highlight:$select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                    </div>
-                </div>
             </div>
 
-            <div class="reading-library-filter-status" ng-if="vm.isComprehensiveMode && (vm.topicFiltersLoading || vm.topicFiltersError)">
-                <span ng-if="vm.topicFiltersLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải toàn bộ category và topic...</span>
-                <span class="is-error" ng-if="vm.topicFiltersError && !vm.topicFiltersLoading"><i class="fa fa-exclamation-triangle"></i> {{vm.topicFiltersError}}</span>
-            </div>
+            <test-folder-explorer ng-if="vm.isComprehensiveMode" folder-id="vm.selectedTestFolderId" all-teachers="true" on-change="vm.applyFolderFilter(folderId)">
+                <article class="test-explorer-file" ng-repeat="item in vm.ieltsReadingTests track by item.id">
+                    <a class="test-explorer-file-main" target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item)}}" title="{{item.title}}">
+                        <i class="fa fa-file-text-o test-explorer-file-icon" aria-hidden="true"></i>
+                        <span class="test-explorer-name">{{item.title}}<small ng-if="vm.getLearningProgress(item.id)">{{vm.getLearningProgress(item.id).completed ? 'Đã hoàn thành' : 'Đã lưu tiến trình'}}</small></span>
+                    </a>
+                    <div class="test-explorer-file-actions">
+                        <a target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item)}}">{{vm.getLearningProgress(item.id) ? 'Học tiếp' : 'Học bài'}}</a>
+                        <a target="_blank" rel="noopener" ng-href="{{vm.seriousTestCatalogUrl(item)}}">Làm test</a>
+                        <a ng-href="battle-quiz-online?exerciseId={{item.id}}" title="Chơi Battle"><i class="fa fa-gamepad"></i><span class="sr-only">Chơi Battle</span></a>
+                    </div>
+                </article>
+                <p class="test-explorer-empty" ng-if="!vm.loading && !vm.ieltsReadingTests.length">{{vm.searchDto.textSearch ? 'Không tìm thấy bài test phù hợp.' : 'Folder này chưa có bài test. Bạn có thể mở các folder con ở trên.'}}</p>
+                <p class="test-explorer-empty" ng-if="vm.loading" role="status">Đang tải bài test...</p>
+            </test-folder-explorer>
 
-            <div class="reading-test-grid" ng-if="vm.ieltsReadingTests.length">
+            <div class="reading-test-grid" ng-if="!vm.isComprehensiveMode && vm.ieltsReadingTests.length">
                 <article class="reading-test-card"
                          ng-class="{'is-listening': vm.isListeningMode, 'is-writing': vm.isWritingMode, 'is-reading': !vm.isListeningMode && !vm.isComprehensiveMode && !vm.isWritingMode, 'is-comprehensive': vm.isComprehensiveMode, 'has-learning-progress': vm.isWritingMode ? vm.hasWritingLearningProgress(item) : !!vm.getLearningProgress(item.id)}"
                          ng-repeat="item in vm.ieltsReadingTests track by item.id">
@@ -113,6 +82,7 @@
                     <div class="reading-test-card__visual"><i class="fa" ng-class="vm.testModeIcon"></i></div>
                     <div class="reading-test-card__body">
                         <h3>{{item.title}}</h3>
+                        <p class="reading-test-card__folder" ng-if="vm.isComprehensiveMode"><i class="fa fa-folder-open"></i> {{item.testFolder ? item.testFolder.ownerName + ' / ' + item.testFolder.name : 'Chưa vào folder'}}</p>
                         <p>{{vm.isComprehensiveMode ? 'Hoàn thành danh sách câu hỏi của bài.' : (vm.isWritingMode ? 'Làm các Writing Task có trong bài và lưu tiến trình bất cứ lúc nào.' : (vm.isListeningMode ? 'Nghe và hoàn thành 4 Part của bài thi.' : 'Đọc 3 passages và hoàn thành 40 câu hỏi.'))}}</p>
                         <div class="reading-test-card__topics" ng-if="vm.isWritingMode">
                             <span ng-if="item.hasWritingTask1"><i class="fa fa-pencil"></i> Task 1</span>
@@ -171,7 +141,7 @@
                 </article>
             </div>
 
-            <div class="reading-test-empty" ng-if="!vm.loading && !vm.ieltsReadingTests.length">
+            <div class="reading-test-empty" ng-if="!vm.isComprehensiveMode && !vm.loading && !vm.ieltsReadingTests.length">
                 <i class="fa fa-search"></i>
                 <h3>Không tìm thấy bài test</h3>
                 <p>Hãy thử tìm bằng một từ khóa khác.</p>
@@ -194,8 +164,8 @@
     .ielts-test-library-page.is-writing-library { --library-accent: #7c3aed; --library-accent-2: #ec4899; }
     .writing-task-card-actions { flex-wrap: wrap; }
     .writing-task-card-actions .reading-test-card__action { min-width: 0; flex: 1 1 30%; }
-    .reading-library-filter-bar.has-topic-filters { display: grid; grid-template-columns: minmax(320px, 1.2fr) minmax(620px, 1.8fr); align-items: end; gap: 16px; margin-bottom: 34px; }
-    .reading-library-filter-bar.has-topic-filters .reading-test-search { width: 100%; max-width: none; margin-bottom: 0; }
+    .reading-library-filter-bar.has-folder-filters { display: grid; grid-template-columns: minmax(320px, 1.2fr) minmax(240px, 1fr); align-items: end; gap: 16px; margin-bottom: 34px; }
+    .reading-library-filter-bar.has-folder-filters .reading-test-search { width: 100%; max-width: none; margin-bottom: 0; }
     .reading-library-topic-filters { display: grid; grid-template-columns: .9fr .9fr 1fr 1.15fr; gap: 10px; }
     .reading-library-topic-filters label { display: block; margin-bottom: 6px; color: #435477; font-size: 11px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
     .reading-library-topic-filters label i { margin-right: 4px; color: var(--library-accent); }
@@ -210,11 +180,11 @@
     .global-dark-mode .reading-library-topic-filters label { color: #d9e2f4; }
     .global-dark-mode .reading-library-topic-filters .ui-select-toggle { border-color: #414a61; color: #fff; background: #202634; }
     @media (max-width: 1200px) {
-        .reading-library-filter-bar.has-topic-filters { grid-template-columns: 1fr; }
+        .reading-library-filter-bar.has-folder-filters { grid-template-columns: 1fr; }
     }
     @media (max-width: 767px) {
         .reading-library-topic-filters { grid-template-columns: 1fr; }
-        .reading-library-filter-bar.has-topic-filters { margin-bottom: 26px; }
+        .reading-library-filter-bar.has-folder-filters { margin-bottom: 26px; }
         .reading-library-filter-status { margin-top: -16px; }
     }
 </style>

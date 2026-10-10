@@ -122,6 +122,11 @@ public class Question extends BaseObject{
 	 */
 	@Column(name="test_format", length = 30)
 	private String testFormat;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "test_folder_id")
+	private TestFolder testFolder;
+	public TestFolder getTestFolder() { return testFolder; }
+	public void setTestFolder(TestFolder value) { testFolder = value; }
 
 	public String getTestFormat() {
 		return testFormat;
