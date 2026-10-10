@@ -3,6 +3,8 @@ package com.globits.security.rest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Collections;
+import java.util.Map;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
@@ -16,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -30,6 +33,7 @@ import com.globits.core.dto.PersonDto;
 import com.globits.core.utils.CommonUtils;
 import com.globits.core.utils.ImageUtils;
 import com.globits.core.utils.SecurityUtils;
+import com.globits.core.utils.TnttProfileSupport;
 import com.globits.security.domain.User;
 import com.globits.security.dto.PasswordChangeDto;
 import com.globits.security.dto.PhotoCropperDto;
@@ -41,6 +45,12 @@ import com.globits.security.service.UserService;
 public class RestUserController {
 	@Autowired
 	private UserService userService;
+
+	@ExceptionHandler(TnttProfileSupport.InvalidProfileException.class)
+	public ResponseEntity<Map<String, String>> invalidTnttProfile(
+			TnttProfileSupport.InvalidProfileException error) {
+		return ResponseEntity.badRequest().body(Collections.singletonMap("message", error.getMessage()));
+	}
 
 	@PreAuthorize("isAuthenticated()")
 	@GetMapping(path = "/api/users")

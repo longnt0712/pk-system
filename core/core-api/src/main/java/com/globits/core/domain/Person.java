@@ -43,6 +43,16 @@ public class Person extends BaseObject {
 	
 	@Column(name = "sacrament", nullable = true)
 	protected String sacrament; //đã lãnh tới bí tích
+
+	@Column(name = "tntt_member_type", length = 24, nullable = true)
+	private String tnttMemberType;
+
+	@Column(name = "tntt_branch", length = 24, nullable = true)
+	private String tnttBranch;
+
+	// I / II / III; 4 is Huynh trưởng Đặc cấp.
+	@Column(name = "tntt_level", nullable = true)
+	private Integer tnttLevel;
 	
 	@Column(name = "first_name", nullable = true)
 	protected String firstName;
@@ -173,6 +183,13 @@ public class Person extends BaseObject {
 	
 	@Column(name = "person_note")
 	private String personNote;
+
+	public String getTnttMemberType() { return tnttMemberType; }
+	public void setTnttMemberType(String value) { tnttMemberType = value; }
+	public String getTnttBranch() { return tnttBranch; }
+	public void setTnttBranch(String value) { tnttBranch = value; }
+	public Integer getTnttLevel() { return tnttLevel; }
+	public void setTnttLevel(Integer value) { tnttLevel = value; }
 
 	public String getPersonNote() {
 		return personNote;

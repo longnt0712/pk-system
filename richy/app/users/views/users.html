@@ -203,6 +203,12 @@
                                         <i class="fa" ng-class="vm.getSortIcon('vocabularyExperience')"></i>
                                     </th>
 
+                                    <th scope="col" ng-if="!vm.isIeltsRoomDomain" class="sortable"
+                                        ng-click="vm.sortBy('tnttProfile')" style="min-width: 160px;">
+                                        NGÀNH / CẤP TNTT
+                                        <i class="fa" ng-class="vm.getSortIcon('tnttProfile')"></i>
+                                    </th>
+
                                     <th scope="col" ng-if="!vm.isIeltsRoomDomain" class="sortable" ng-click="vm.sortBy('zaloStatus')">
                                         CÓ BỐ MẸ TRONG NHÓM ZALO?
                                         <i class="fa" ng-class="vm.getSortIcon('zaloStatus')"></i>
@@ -279,6 +285,7 @@
                                             </div>
                                         </div>
                                     </td>
+                                    <td ng-if="!vm.isIeltsRoomDomain">{{vm.getTnttProfileLabel(user) || '—'}}</td>
                                     <td ng-if="!vm.isIeltsRoomDomain" ng-class="vm.getZaloStatusClass(user.person.zaloStatus)">
                                         {{ vm.getZaloStatusName(user.person.zaloStatus) }}
                                     </td>
@@ -719,6 +726,45 @@
                 <div class="margin-top-10" ng-class="vm.isIeltsRoomDomain ? 'col-md-6' : 'col-md-4'">
                     <label class="bold">Tên</label>
                     <input id="vm.user.person.firstName" data-ng-model="vm.user.person.firstName" type="text" autofocus="autofocus" class="form-control" />
+                </div>
+                <div class="col-md-12 margin-top-10" ng-if="!vm.isIeltsRoomDomain">
+                    <fieldset class="tntt-profile-fields">
+                        <legend>Thông tin TNTT</legend>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="bold" for="tntt-member-type">Thành phần TNTT</label>
+                                <select id="tntt-member-type" class="form-control"
+                                        ng-model="vm.user.person.tnttMemberType"
+                                        ng-options="item.code as item.name for item in vm.tnttMemberTypes"
+                                        ng-change="vm.changeTnttMemberType()">
+                                    <option value="">Chưa xác định</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6" ng-if="vm.user.person.tnttMemberType === 'DOAN_SINH'">
+                                <label class="bold" for="tntt-branch">Ngành sinh hoạt</label>
+                                <select id="tntt-branch" class="form-control"
+                                        ng-model="vm.user.person.tnttBranch"
+                                        ng-options="item.code as item.name for item in vm.tnttBranches"
+                                        ng-change="vm.changeTnttBranch()">
+                                    <option value="">Chưa xác định ngành</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6" ng-class="{'margin-top-10': vm.user.person.tnttMemberType === 'DOAN_SINH'}"
+                                 ng-if="vm.user.person.tnttMemberType === 'DOAN_SINH' || vm.user.person.tnttMemberType === 'HUYNH_TRUONG'">
+                                <label class="bold" for="tntt-level">
+                                    {{vm.user.person.tnttMemberType === 'HUYNH_TRUONG' ? 'Cấp Huynh trưởng' : 'Cấp trong ngành'}}
+                                </label>
+                                <select id="tntt-level" class="form-control" ng-model="vm.user.person.tnttLevel"
+                                        ng-options="item.value as item.name for item in (vm.user.person.tnttMemberType === 'HUYNH_TRUONG' ? vm.tnttLeaderLevels : vm.tnttLevels)"
+                                        ng-disabled="vm.user.person.tnttMemberType === 'DOAN_SINH' && !vm.user.person.tnttBranch">
+                                    <option value="">Chưa xác định cấp</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p class="help-block" ng-if="vm.user.person.tnttMemberType === 'DOAN_SINH' && !vm.user.person.tnttBranch">
+                            Chọn ngành sinh hoạt trước khi chọn cấp.
+                        </p>
+                    </fieldset>
                 </div>
                 <div class="col-md-6 margin-top-10" ng-if="!vm.isIeltsRoomDomain">
                     <label class="bold">Ngày sinh</label>
@@ -1450,6 +1496,10 @@
 </style>
 
 <style>
+    .tntt-profile-fields { padding: 12px 15px; border: 1px solid #dce3ec; border-radius: 6px; }
+    .tntt-profile-fields legend { width: auto; margin: 0; padding: 0 6px; border: 0; font-size: 15px; font-weight: 600; }
+    .tntt-profile-fields .help-block { margin-bottom: 0; }
+    @media (max-width: 991px) { .tntt-profile-fields .row > div + div { margin-top: 10px; } }
     .order-table .student-level-cell { vertical-align: middle; }
     .student-level-summary { min-width: 180px; max-width: 240px; margin: 0 auto; text-align: left; }
     .student-level-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 7px; }

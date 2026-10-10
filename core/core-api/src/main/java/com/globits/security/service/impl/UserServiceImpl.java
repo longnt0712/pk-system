@@ -36,6 +36,7 @@ import org.joda.time.LocalDateTime;
 import com.globits.core.domain.Ethnics;
 import com.globits.core.domain.Person;
 import com.globits.core.dto.PersonDto;
+import com.globits.core.utils.TnttProfileSupport;
 import com.globits.core.repository.EthnicsRepository;
 import com.globits.core.repository.PersonRepository;
 import com.globits.core.service.impl.GenericServiceImpl;
@@ -790,6 +791,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 			person.setSacrament(personDto.getSacrament());
 			person.setPhoneNumber(personDto.getPhoneNumber());
 			person.setPersonNote(personDto.getPersonNote());
+			TnttProfileSupport.apply(personDto, person);
 
 			if (personDto.getEthnics() != null && CommonUtils.isPositive(personDto.getEthnics().getId(), true)) {
 
@@ -919,6 +921,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 			person.setSacrament(personDto.getSacrament());
 			person.setPhoneNumber(personDto.getPhoneNumber());
 			person.setPersonNote(personDto.getPersonNote());
+			TnttProfileSupport.apply(personDto, person);
 
 			if (personDto.getEthnics() != null && CommonUtils.isPositive(personDto.getEthnics().getId(), true)) {
 
@@ -1036,6 +1039,7 @@ public class UserServiceImpl extends  GenericServiceImpl<User,Long> implements U
 			person.setSacrament(personDto.getSacrament());
 			person.setPhoneNumber(personDto.getPhoneNumber());
 			person.setPersonNote(personDto.getPersonNote());
+			TnttProfileSupport.apply(personDto, person);
 
 			if (personDto.getEthnics() != null && CommonUtils.isPositive(personDto.getEthnics().getId(), true)) {
 

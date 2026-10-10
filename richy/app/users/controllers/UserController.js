@@ -268,6 +268,91 @@
         vm.users = [];
         vm.selectedUsers = [];
 
+        // TNTT profile: member type, student branch, and rank are independent of account permissions.
+        vm.tnttMemberTypes = [
+            {code: 'DOAN_SINH', name: 'Đoàn sinh'},
+            {code: 'DU_TRUONG', name: 'Dự trưởng'},
+            {code: 'HUYNH_TRUONG', name: 'Huynh trưởng'},
+            {code: 'TRO_TA', name: 'Trợ tá'},
+            {code: 'TRO_UY', name: 'Trợ úy'},
+            {code: 'TUYEN_UY', name: 'Tuyên úy'}
+        ];
+        vm.tnttBranches = [
+            {code: 'CHIEN_CON', name: 'Chiên con'},
+            {code: 'AU_NHI', name: 'Ấu nhi'},
+            {code: 'THIEU_NHI', name: 'Thiếu nhi'},
+            {code: 'NGHIA_SI', name: 'Nghĩa sĩ'},
+            {code: 'HIEP_SI', name: 'Hiệp sĩ'}
+        ];
+        vm.tnttLevels = [
+            {value: 1, name: 'Cấp I'},
+            {value: 2, name: 'Cấp II'},
+            {value: 3, name: 'Cấp III'}
+        ];
+        vm.tnttLeaderLevels = vm.tnttLevels.concat([{value: 4, name: 'Đặc cấp'}]);
+
+        function tnttOptionName(options, value, key) {
+            for (var i = 0; i < options.length; i++) {
+                if (options[i][key] === value) return options[i].name;
+            }
+            return '';
+        }
+
+        vm.getTnttMemberTypeName = function (person) {
+            return tnttOptionName(vm.tnttMemberTypes, (person || {}).tnttMemberType, 'code');
+        };
+        vm.getTnttBranchName = function (person) {
+            return person && person.tnttMemberType === 'DOAN_SINH'
+                ? tnttOptionName(vm.tnttBranches, person.tnttBranch, 'code') : '';
+        };
+        vm.getTnttLevelName = function (person) {
+            if (!person) return '';
+            var options = person.tnttMemberType === 'HUYNH_TRUONG' ? vm.tnttLeaderLevels
+                : person.tnttMemberType === 'DOAN_SINH' ? vm.tnttLevels : [];
+            return tnttOptionName(options, person.tnttLevel, 'value');
+        };
+        vm.getTnttProfileLabel = function (user) {
+            var person = (user || {}).person || {};
+            var name = vm.getTnttBranchName(person) || vm.getTnttMemberTypeName(person);
+            var rank = vm.getTnttLevelName(person);
+            return name ? name + (rank ? ' — ' + rank : '') : '';
+        };
+        vm.getTnttSortValue = function (person) {
+            person = person || {};
+            var typeIndex = vm.tnttMemberTypes.map(function (item) { return item.code; })
+                .indexOf(person.tnttMemberType);
+            if (typeIndex < 0) return 9999;
+            var branchIndex = vm.tnttBranches.map(function (item) { return item.code; })
+                .indexOf(person.tnttBranch);
+            return typeIndex * 1000 + (branchIndex < 0 ? 9 : branchIndex) * 10 + (person.tnttLevel || 0);
+        };
+        vm.changeTnttMemberType = function () {
+            vm.user.person.tnttBranch = null;
+            vm.user.person.tnttLevel = null;
+        };
+        vm.changeTnttBranch = function () {
+            vm.user.person.tnttLevel = null;
+        };
+        vm.validateTnttProfile = function () {
+            if (vm.isIeltsRoomDomain) return true;
+            var person = vm.user.person || {};
+            var type = person.tnttMemberType || null;
+            var branch = person.tnttBranch || null;
+            var level = person.tnttLevel == null ? null : person.tnttLevel;
+            var error = '';
+            if (type && !vm.getTnttMemberTypeName(person)) error = 'Thành phần TNTT không hợp lệ.';
+            else if (branch && !vm.getTnttBranchName(person)) error = 'Ngành sinh hoạt chỉ áp dụng cho đoàn sinh và phải là ngành hợp lệ.';
+            else if (level != null && !vm.getTnttLevelName(person)) error = 'Cấp TNTT không phù hợp với thành phần đã chọn.';
+            else if (type === 'DOAN_SINH' && level != null && !branch) error = 'Vui lòng chọn ngành trước khi chọn cấp đoàn sinh.';
+            if (error) { toastr.error(error, 'Thông báo'); return false; }
+            // Send explicit null when clearing a field, including the empty select option.
+            person.tnttMemberType = type;
+            person.tnttBranch = branch;
+            person.tnttLevel = level;
+            return true;
+        };
+        // End TNTT profile.
+
 		vm.vocabularyLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 		vm.showVocabularyExperienceSection = [
 			'ieltsroom.com',
@@ -1254,6 +1339,8 @@
                 vm.user.person = {};
             }
 
+            if (!vm.validateTnttProfile()) return;
+
             if (!vm.user.person.firstName || !vm.user.person.lastName) {
                 toastr.error('Vui lòng nhập đầy đủ họ tên người dùng!', 'Thông báo');
                 focus('vm.user.person.displayName');
@@ -1317,7 +1404,7 @@
                         vm.getUsers();
 
                     }, function errorCallback(response) {
-                        toastr.error('Có lỗi xảy ra khi lưu.', 'Thông báo');
+                        toastr.error(response.data && response.data.message || 'Có lỗi xảy ra khi lưu.', 'Thông báo');
                     });
                 });
             });
@@ -1330,6 +1417,8 @@
             if (!vm.user.person) {
                 vm.user.person = {};
             }
+
+            if (!vm.validateTnttProfile()) return;
 
             if (!vm.user.person.firstName || !vm.user.person.lastName) {
                 toastr.error('Vui lòng nhập đầy đủ họ tên người dùng!', 'Thông báo');
@@ -1405,7 +1494,7 @@
                         vm.getUsers();
 
                     }, function errorCallback(response) {
-                        toastr.error('Có lỗi xảy ra khi lưu.', 'Thông báo');
+                        toastr.error(response.data && response.data.message || 'Có lỗi xảy ra khi lưu.', 'Thông báo');
                     });
                 });
             });
@@ -1662,6 +1751,8 @@
 				enrollmentClassIds: [],
                 person: {}
             };
+
+            if (!vm.isIeltsRoomDomain) vm.user.person.tnttMemberType = 'DOAN_SINH';
 
             vm.modalInstance = modal.open({
                 animation: true,
@@ -2067,6 +2158,9 @@
 
                 case 'vocabularyExperience':
                     return getVocabularyTotalWords(user);
+
+                case 'tnttProfile':
+                    return vm.getTnttSortValue(person);
 
                 case 'zaloStatus':
                     return vm.getZaloStatusName(person.zaloStatus).toLowerCase();
@@ -3102,6 +3196,17 @@
             //     }
             // }
         ];
+
+        if (!vm.isIeltsRoomDomain) {
+            vm.exportColumns.push(
+                {key: 'tnttMemberType', title: 'THÀNH PHẦN TNTT', checked: true,
+                    getter: function (user) { return vm.getTnttMemberTypeName((user || {}).person); }},
+                {key: 'tnttBranch', title: 'NGÀNH TNTT', checked: true,
+                    getter: function (user) { return vm.getTnttBranchName((user || {}).person); }},
+                {key: 'tnttLevel', title: 'CẤP TNTT', checked: true,
+                    getter: function (user) { return vm.getTnttLevelName((user || {}).person); }}
+            );
+        }
 
         vm.exportPreviewRows = [];
 

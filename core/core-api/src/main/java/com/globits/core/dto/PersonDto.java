@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -12,6 +13,7 @@ import javax.persistence.Column;
 
 import com.globits.core.domain.Person;
 import com.globits.core.domain.PersonAddress;
+import com.globits.core.utils.TnttProfileSupport;
 
 public class PersonDto extends AuditableEntityDto {
 
@@ -19,6 +21,13 @@ public class PersonDto extends AuditableEntityDto {
 
 	protected String patron;
 	protected String sacrament;
+
+	private String tnttMemberType;
+	private String tnttBranch;
+	private Integer tnttLevel;
+	private boolean tnttMemberTypeSpecified;
+	private boolean tnttBranchSpecified;
+	private boolean tnttLevelSpecified;
 
 	protected String firstName;
 
@@ -84,6 +93,31 @@ public class PersonDto extends AuditableEntityDto {
 	private String diocese;// giáo phận
 	
 	private String personNote;
+
+	public String getTnttMemberType() { return tnttMemberType; }
+	@JsonSetter("tnttMemberType")
+	public void setTnttMemberType(String value) {
+		tnttMemberTypeSpecified = true;
+		tnttMemberType = value;
+	}
+	public String getTnttBranch() { return tnttBranch; }
+	@JsonSetter("tnttBranch")
+	public void setTnttBranch(String value) {
+		tnttBranchSpecified = true;
+		tnttBranch = value;
+	}
+	public Integer getTnttLevel() { return tnttLevel; }
+	@JsonSetter("tnttLevel")
+	public void setTnttLevel(Integer value) {
+		tnttLevelSpecified = true;
+		tnttLevel = value;
+	}
+	@JsonIgnore
+	public boolean isTnttMemberTypeSpecified() { return tnttMemberTypeSpecified; }
+	@JsonIgnore
+	public boolean isTnttBranchSpecified() { return tnttBranchSpecified; }
+	@JsonIgnore
+	public boolean isTnttLevelSpecified() { return tnttLevelSpecified; }
 
 	public String getPersonNote() {
 		return personNote;
@@ -164,6 +198,7 @@ public class PersonDto extends AuditableEntityDto {
 		person.setPatron(patron);
 		person.setSacrament(sacrament);
 		person.setDiocese(diocese);
+		TnttProfileSupport.apply(this, person);
 	
 		if (nationality != null) {
 			person.setNationality(nationality.toEntity());
@@ -520,6 +555,9 @@ public class PersonDto extends AuditableEntityDto {
 			this.diocese = p.getDiocese();
 			this.enrollmentClassId = p.getEnrollmentClassId();
 			this.patron = p.getPatron();
+			setTnttMemberType(p.getTnttMemberType());
+			setTnttBranch(p.getTnttBranch());
+			setTnttLevel(p.getTnttLevel());
 			this.personNote = p.getPersonNote();
 			if (p.getUser() != null) {
 				this.userId = p.getUser().getId();
