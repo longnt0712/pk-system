@@ -124,6 +124,32 @@ test('actual modal opens from toolbar, edits columns and retries only failed row
                 {id: 7, patch: {tnttBranch: 'THIEU_NHI', tnttLevel: 2}}
             ]);
             assert.equal(await page.getByRole('button', {name: 'Lưu thay đổi', exact: true}).isDisabled(), true);
+            // One checkbox unlocks all columns; one common choice fills each column across the table.
+            const all = page.getByRole('checkbox', {name: 'Sửa tất cả cột TNTT', exact: true});
+            await all.check();
+            for (const label of ['Sửa cả cột thành phần TNTT', 'Sửa cả cột ngành TNTT', 'Sửa cả cột cấp TNTT'])
+                assert.equal(await page.getByRole('checkbox', {name: label, exact: true}).isChecked(), true);
+            assert.equal(await blankType.isEnabled(), true);
+            const commonType = page.getByRole('combobox', {name: 'Áp dụng thành phần TNTT cho cả cột', exact: true});
+            const commonBranch = page.getByRole('combobox', {name: 'Áp dụng ngành TNTT cho cả cột', exact: true});
+            const commonLevel = page.getByRole('combobox', {name: 'Áp dụng cấp TNTT cho cả cột', exact: true});
+            await selectCode(commonType, 'DOAN_SINH');
+            await selectCode(commonBranch, 'AU_NHI');
+            await selectCode(commonLevel, '1');
+            assert.equal(await page.evaluate(() => window.qaVm.tnttChangedCount()), 3);
+            assert.ok((await page.evaluate(() => window.qaVm.tnttBulk.rows.map(row => row.profile)))
+                .every(profile => profile.tnttMemberType === 'DOAN_SINH' && profile.tnttBranch === 'AU_NHI' && profile.tnttLevel === 1));
+            assert.equal(requests.length, 3); // Applying values still edits drafts only.
+            await page.screenshot({path: path.join(repo, `.tmp/tntt-bulk-fill-all-${width}.png`)});
+            await all.uncheck();
+            assert.equal(await commonType.isDisabled(), true);
+            assert.equal(await branch.isDisabled(), true);
+            assert.equal(await page.evaluate(() => window.qaVm.tnttChangedCount()), 3);
+            await page.getByRole('button', {name: 'Lưu thay đổi', exact: true}).click();
+            await page.waitForFunction(() => !window.qaVm.tnttBulk.saving && window.qaVm.tnttChangedCount() === 0);
+            assert.equal(requests.length, 6);
+            assert.ok(server.every(user => user.person.tnttMemberType === 'DOAN_SINH'
+                && user.person.tnttBranch === 'AU_NHI' && user.person.tnttLevel === 1));
             await page.getByRole('button', {name: 'Đóng', exact: true}).last().click();
             await page.locator('.tntt-bulk-modal').waitFor({state: 'detached'});
             await page.evaluate(() => {

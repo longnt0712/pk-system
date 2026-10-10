@@ -80,6 +80,78 @@ test('saving patches only changed rows and retains rank reselected after a branc
     assert.equal(calls.length, 1);
 });
 
+test('one master checkbox unlocks every TNTT column and follows individual column changes', () => {
+    const {vm} = setup(); vm.openTnttBulkModal();
+    const original = json(vm.tnttBulk.rows.map(row => row.profile));
+    vm.tnttBulk.editAll = true; vm.toggleTnttEditAll();
+    assert.ok(Object.values(vm.tnttBulk.columns).every(Boolean));
+    assert.ok(vm.tnttBulk.rows.every(row => Object.values(row.edit).every(Boolean)));
+    assert.deepEqual(json(vm.tnttBulk.rows.map(row => row.profile)), original);
+    vm.tnttBulk.rows[0].edit.tnttMemberType = false; vm.syncTnttColumn('tnttMemberType');
+    assert.equal(vm.tnttBulk.editAll, false);
+    vm.tnttBulk.columns.tnttMemberType = true; vm.toggleTnttColumn('tnttMemberType');
+    assert.equal(vm.tnttBulk.editAll, true);
+    vm.tnttBulk.rows[2].profile.tnttLevel = 3;
+    vm.tnttBulk.editAll = false; vm.toggleTnttEditAll();
+    assert.ok(vm.tnttBulk.rows.every(row => Object.values(row.edit).every(value => !value)));
+    assert.equal(vm.tnttChangedCount(), 1);
+});
+
+test('common type, branch and level choices fill the whole table but save only after clicking save', async () => {
+    const {vm, calls} = setup(); vm.openTnttBulkModal();
+    vm.tnttBulk.editAll = true; vm.toggleTnttEditAll();
+    const apply = (field, value) => {vm.tnttBulk.values[field] = value; vm.applyTnttColumnValue(field);};
+    apply('tnttMemberType', 'DOAN_SINH');
+    assert.equal(vm.tnttBulk.rows[1].profile.tnttLevel, null);
+    assert.equal(vm.tnttBulk.rows[2].profile.tnttLevel, 2); // Same member type retains the previous rank.
+    apply('tnttBranch', 'AU_NHI');
+    assert.equal(vm.tnttBulk.rows[2].profile.tnttLevel, 2); // Same branch also retains its rank.
+    apply('tnttBranch', 'NGHIA_SI');
+    assert.ok(vm.tnttBulk.rows.every(row => row.profile.tnttLevel === null));
+    apply('tnttLevel', 3);
+    assert.ok(vm.tnttBulk.rows.every(row => row.profile.tnttMemberType === 'DOAN_SINH'
+        && row.profile.tnttBranch === 'NGHIA_SI' && row.profile.tnttLevel === 3));
+    assert.equal(vm.tnttChangedCount(), 3);
+    assert.equal(calls.length, 0);
+    assert.equal(vm.users[0].person.tnttBranch, 'AU_NHI');
+    assert.equal(vm.tnttBulk.values.tnttLevel, null); // Allows choosing the same value again.
+    await vm.saveTnttBulk();
+    assert.equal(calls.length, 3);
+    assert.equal(vm.tnttChangedCount(), 0);
+    assert.ok(vm.users.every(user => user.person.tnttBranch === 'NGHIA_SI' && user.person.tnttLevel === 3));
+});
+
+test('common choices respect branch and leader rules, clear dependent ranks, and reject writes while locked or busy', () => {
+    const {vm} = setup(); vm.openTnttBulkModal();
+    const apply = (field, value) => {vm.tnttBulk.values[field] = value; vm.applyTnttColumnValue(field);};
+    apply('tnttMemberType', 'DOAN_SINH');
+    assert.equal(vm.tnttChangedCount(), 0); // Header is still locked.
+    vm.tnttBulk.editAll = true; vm.toggleTnttEditAll();
+    apply('tnttLevel', 4);
+    assert.equal(vm.tnttBulk.rows[2].profile.tnttLevel, 2);
+    assert.match(vm.tnttBulk.message, /2 dòng không phù hợp/);
+    apply('tnttBranch', 'THIEU_NHI');
+    assert.equal(vm.tnttBulk.rows[2].profile.tnttLevel, null);
+    assert.equal(vm.tnttBulk.rows[1].profile.tnttBranch, null);
+    assert.equal(vm.tnttBulk.rows[0].profile.tnttMemberType, null);
+    apply('tnttLevel', 1);
+    assert.equal(vm.tnttBulk.rows[2].profile.tnttLevel, 1);
+    assert.equal(vm.tnttBulk.rows[1].profile.tnttLevel, 1);
+    apply('tnttBranch', '__CLEAR__');
+    assert.equal(vm.tnttBulk.rows[2].profile.tnttBranch, null);
+    assert.equal(vm.tnttBulk.rows[2].profile.tnttLevel, null);
+    apply('tnttLevel', 2);
+    assert.equal(vm.tnttBulk.rows[2].profile.tnttLevel, null); // Student still needs a branch.
+    apply('tnttLevel', '__CLEAR__');
+    assert.equal(vm.tnttBulk.rows[1].profile.tnttLevel, null);
+    vm.tnttBulk.saving = true;
+    apply('tnttMemberType', '__CLEAR__');
+    assert.equal(vm.tnttBulk.rows[1].profile.tnttMemberType, 'HUYNH_TRUONG');
+    vm.tnttBulk.saving = false;
+    apply('tnttMemberType', '__CLEAR__');
+    assert.ok(vm.tnttBulk.rows.every(row => Object.values(row.profile).every(value => value === null)));
+});
+
 test('one failed row keeps its draft and retry excludes successfully saved rows', async () => {
     const {vm, service, calls} = setup(); vm.openTnttBulkModal();
     const student = vm.tnttBulk.rows.find(row => row.id === 7);

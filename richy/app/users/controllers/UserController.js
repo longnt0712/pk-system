@@ -361,6 +361,9 @@
 
         // TNTT bulk editor.
         var tnttFields = ['tnttMemberType', 'tnttBranch', 'tnttLevel'];
+        vm.tnttBulkMemberTypes = [{code: '__CLEAR__', name: 'Xóa thành phần'}].concat(vm.tnttMemberTypes);
+        vm.tnttBulkBranches = [{code: '__CLEAR__', name: 'Xóa ngành'}].concat(vm.tnttBranches);
+        vm.tnttBulkLevels = [{value: '__CLEAR__', name: 'Xóa cấp'}].concat(vm.tnttLeaderLevels);
         function copyTnttProfile(person) {
             person = person || {};
             return {
@@ -390,6 +393,8 @@
                     };
                 }),
                 columns: {tnttMemberType: false, tnttBranch: false, tnttLevel: false},
+                editAll: false,
+                values: {tnttMemberType: null, tnttBranch: null, tnttLevel: null},
                 saving: false, completed: 0, total: 0, message: ''
             };
             vm.tnttBulkModalInstance = modal.open({
@@ -397,14 +402,62 @@
                 size: 'lg', windowClass: 'tntt-bulk-window', backdrop: 'static', keyboard: false
             });
         };
+        function syncTnttEditAll() {
+            vm.tnttBulk.editAll = tnttFields.every(function (field) { return vm.tnttBulk.columns[field]; });
+        }
+        vm.toggleTnttEditAll = function () {
+            if (vm.tnttBulk.saving) return;
+            tnttFields.forEach(function (field) {
+                vm.tnttBulk.columns[field] = vm.tnttBulk.editAll;
+                vm.tnttBulk.rows.forEach(function (row) { row.edit[field] = vm.tnttBulk.editAll; });
+            });
+        };
         vm.toggleTnttColumn = function (field) {
             if (vm.tnttBulk.saving || tnttFields.indexOf(field) < 0) return;
             vm.tnttBulk.rows.forEach(function (row) { row.edit[field] = vm.tnttBulk.columns[field]; });
+            syncTnttEditAll();
         };
         vm.syncTnttColumn = function (field) {
             vm.tnttBulk.columns[field] = vm.tnttBulk.rows.length > 0 && vm.tnttBulk.rows.every(function (row) {
                 return row.edit[field];
             });
+            syncTnttEditAll();
+        };
+        vm.applyTnttColumnValue = function (field) {
+            var bulk = vm.tnttBulk;
+            if (!vm.canEditTntt() || bulk.saving || tnttFields.indexOf(field) < 0 || !bulk.columns[field]) return;
+            var value = bulk.values[field];
+            if (value == null) return;
+            var optionKey = field === 'tnttLevel' ? 'value' : 'code';
+            var options = field === 'tnttMemberType' ? vm.tnttBulkMemberTypes
+                : field === 'tnttBranch' ? vm.tnttBulkBranches : vm.tnttBulkLevels;
+            var label = tnttOptionName(options, value, optionKey);
+            if (!label) return;
+            if (value === '__CLEAR__') value = null;
+            var applied = 0;
+            bulk.rows.forEach(function (row) {
+                var profile = copyTnttProfile(row.profile);
+                // Apply only where the chosen value is valid; leave other member types unchanged.
+                if (field === 'tnttBranch' && profile.tnttMemberType !== 'DOAN_SINH') return;
+                if (field === 'tnttLevel' && profile.tnttMemberType !== 'DOAN_SINH'
+                    && profile.tnttMemberType !== 'HUYNH_TRUONG') return;
+                if (profile[field] !== value) {
+                    profile[field] = value;
+                    if (field === 'tnttMemberType') vm.changeTnttMemberType(profile);
+                    if (field === 'tnttBranch') vm.changeTnttBranch(profile);
+                }
+                if (vm.getTnttProfileError(profile)) return;
+                applied++;
+                if (tnttFields.some(function (key) { return profile[key] !== row.profile[key]; })) {
+                    row.profile = profile;
+                    vm.tnttDraftChanged(row);
+                }
+            });
+            bulk.values[field] = null;
+            var skipped = bulk.rows.length - applied;
+            bulk.message = 'Đã áp dụng “' + label + '” cho ' + applied + '/' + bulk.rows.length + ' học sinh.'
+                + (skipped ? ' ' + skipped + ' dòng không phù hợp được giữ nguyên.' : '')
+                + ' Bấm Lưu thay đổi để ghi dữ liệu.';
         };
         vm.tnttRowChanged = function (row) {
             var current = copyTnttProfile(row.profile);

@@ -21,6 +21,9 @@ Danh sách hiển thị một cột **Ngành / Cấp TNTT**, có thể sắp x�
 Nút **Sửa/Thêm thông tin TNTT** mở bảng gồm họ tên, mã học sinh (tên đăng nhập), ngày sinh và ba cột TNTT của danh sách đang hiển thị (giữ bộ lọc, trang và thứ tự). Quản trị viên, quản lý học sinh và quản lý giáo dục được dùng nút này trên trang TNTT.
 
 - Tích ô ở tiêu đề để bật/tắt sửa cả cột; tích ô cạnh từng thông tin để sửa riêng ô đó.
+- Tích **Sửa tất cả cột TNTT** để mở sửa cả ba cột bằng một lần tích. Bỏ tích khóa lại các ô nhưng giữ bản nháp.
+- Chọn giá trị trong ô **Áp dụng cả cột…** dưới tiêu đề để điền một lần cho mọi học sinh phù hợp. Ví dụ: chọn Đoàn sinh → Ấu nhi → Cấp I để điền cho toàn bộ bảng, rồi bấm Lưu thay đổi. Các lựa chọn **Xóa thành phần/ngành/cấp** xóa giá trị trong bản nháp.
+- Ngành chỉ điền cho đoàn sinh. Cấp I–III điền cho đoàn sinh đã chọn ngành và Huynh trưởng; Đặc cấp chỉ điền cho Huynh trưởng. Dòng không phù hợp giữ nguyên và số dòng này hiển thị trong thông báo.
 - Ô tích chỉ điều khiển việc mở sửa. Bỏ tích không xóa thay đổi đã nhập và không tự ghi dữ liệu.
 - Bấm **Lưu thay đổi** để lưu các dòng có thay đổi; đóng modal khi chưa lưu sẽ bỏ bản nháp.
 - Ngành chỉ áp dụng cho đoàn sinh; cấp áp dụng cho đoàn sinh hoặc Huynh trưởng, theo cùng quy tắc với hồ sơ cá nhân.

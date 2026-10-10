@@ -721,8 +721,13 @@
         <div class="modal-body">
             <p><strong>{{vm.tnttBulk.rows.length}} học sinh</strong> trong danh sách đang hiển thị.
                 Lọc lớp hoặc tìm kiếm ở danh sách học sinh trước khi mở bảng này.</p>
-            <p class="tntt-bulk-hint">Tích ô ở tiêu đề để mở sửa cả cột, hoặc tích ô bên cạnh thông tin để sửa riêng từng học sinh.
-                Bỏ tích chỉ khóa ô; thay đổi đã nhập vẫn được giữ đến khi bấm Lưu.</p>
+            <label class="tntt-edit-all-toggle">
+                <input type="checkbox" ng-model="vm.tnttBulk.editAll" ng-change="vm.toggleTnttEditAll()"
+                       ng-disabled="vm.tnttBulk.saving || !vm.tnttBulk.rows.length" aria-label="Sửa tất cả cột TNTT">
+                Sửa tất cả cột TNTT
+            </label>
+            <p class="tntt-bulk-hint">Tích “Sửa tất cả” để mở sửa cả ba cột. Chọn giá trị ở ô “Áp dụng cả cột” để điền cho mọi học sinh phù hợp.
+                Chọn thành phần → ngành → cấp. Đổi thành phần/ngành sẽ bỏ cấp cũ; bấm Lưu thay đổi để ghi dữ liệu.</p>
             <div class="tntt-bulk-table-wrap" role="region" aria-label="Bảng thông tin TNTT" tabindex="0">
                 <table class="table table-bordered tntt-bulk-table">
                     <thead>
@@ -739,6 +744,13 @@
                                            aria-label="Sửa cả cột thành phần TNTT">
                                     Thành phần TNTT
                                 </label>
+                                <select class="form-control input-sm tntt-column-value" ng-model="vm.tnttBulk.values.tnttMemberType"
+                                        ng-options="item.code as item.name for item in vm.tnttBulkMemberTypes"
+                                        ng-change="vm.applyTnttColumnValue('tnttMemberType')"
+                                        ng-disabled="vm.tnttBulk.saving || !vm.tnttBulk.columns.tnttMemberType || !vm.tnttBulk.rows.length"
+                                        aria-label="Áp dụng thành phần TNTT cho cả cột">
+                                    <option value="">Áp dụng cả cột…</option>
+                                </select>
                             </th>
                             <th scope="col">
                                 <label class="tntt-column-toggle">
@@ -748,6 +760,13 @@
                                            aria-label="Sửa cả cột ngành TNTT">
                                     Ngành TNTT
                                 </label>
+                                <select class="form-control input-sm tntt-column-value" ng-model="vm.tnttBulk.values.tnttBranch"
+                                        ng-options="item.code as item.name for item in vm.tnttBulkBranches"
+                                        ng-change="vm.applyTnttColumnValue('tnttBranch')"
+                                        ng-disabled="vm.tnttBulk.saving || !vm.tnttBulk.columns.tnttBranch || !vm.tnttBulk.rows.length"
+                                        aria-label="Áp dụng ngành TNTT cho cả cột">
+                                    <option value="">Áp dụng cả cột…</option>
+                                </select>
                             </th>
                             <th scope="col">
                                 <label class="tntt-column-toggle">
@@ -757,6 +776,13 @@
                                            aria-label="Sửa cả cột cấp TNTT">
                                     Cấp TNTT
                                 </label>
+                                <select class="form-control input-sm tntt-column-value" ng-model="vm.tnttBulk.values.tnttLevel"
+                                        ng-options="item.value as item.name for item in vm.tnttBulkLevels"
+                                        ng-change="vm.applyTnttColumnValue('tnttLevel')"
+                                        ng-disabled="vm.tnttBulk.saving || !vm.tnttBulk.columns.tnttLevel || !vm.tnttBulk.rows.length"
+                                        aria-label="Áp dụng cấp TNTT cho cả cột">
+                                    <option value="">Áp dụng cả cột…</option>
+                                </select>
                             </th>
                             <th scope="col">Trạng thái</th>
                         </tr>
@@ -1644,6 +1670,9 @@
     .tntt-bulk-table > tbody > tr > td:last-child { min-width: 120px; max-width: 200px; font-size: 12px; }
     .tntt-column-toggle { display: flex; align-items: center; gap: 7px; margin: 0; cursor: pointer; }
     .tntt-column-toggle input, .tntt-cell-editor input { margin: 0; flex-shrink: 0; }
+    .tntt-edit-all-toggle { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; margin-bottom: 10px; border: 1px solid #dce3ec; border-radius: 6px; background: #f0f4fa; cursor: pointer; }
+    .tntt-edit-all-toggle input { margin: 0; }
+    .tntt-column-value { margin-top: 8px; min-width: 170px; }
     .tntt-cell-editor { display: flex; align-items: center; gap: 7px; min-width: 170px; }
     .tntt-cell-editor .form-control { min-width: 150px; }
     .tntt-row-changed { background: #f1f7ff; }
