@@ -11,7 +11,7 @@ function setup() {
   {id:5,name:'Cycle',parentId:5,ownerId:7,ownerName:'Teacher A'}];
  const folders=definitions.ComprehensiveFolders.at(-1)({getTestFolders(){return Promise.resolve(items);},saveTestFolder(dto){return Promise.resolve({...dto,id:20});}},
   {$broadcast(name){broadcasts.push(name);}},{when:Promise.resolve.bind(Promise)});
- return {folders,items,broadcasts};
+ return {folders,items,broadcasts,definitions};
 }
 const plain=value=>JSON.parse(JSON.stringify(value));
 test('picker shows owned paths, teacher names in shared library, and safely handles orphan/cycle data',()=>{
@@ -54,4 +54,35 @@ for (const builder of [true,false]) test((builder?'builder':'library')+' folder 
 test('folder edits invalidate cached pickers and notify all visible folder views',async()=>{
  const {folders,broadcasts}=setup(); await folders.load(false); await folders.save({name:'Week 2',parentId:1});
  assert.deepEqual(broadcasts,['comprehensiveFoldersChanged']);
+});
+test('moving a test sends only its id and destination folder, including root',async()=>{
+ const {definitions}=setup(), requests=[];
+ const api=definitions.TestFolderService.at(-1)({post(url,dto){requests.push({url,dto:plain(dto)});return Promise.resolve({data:{id:dto.testId}});}},
+  {api:{baseUrl:'/service/',apiV1Url:'api/'}});
+ assert.equal((await api.moveTest(20,2)).id,20); await api.moveTest(20,null);
+ assert.deepEqual(requests,[{url:'/service/api/test_folder/move_test',dto:{testId:20,folderId:2}},
+  {url:'/service/api/test_folder/move_test',dto:{testId:20,folderId:null}}]);
+});
+test('successful move updates the open editor folder without replacing unsaved content',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../question/controllers/IELTSCreateReadingTestController.js'),'utf8');
+ const start=source.indexOf('vm.catalogTestMoved = function'), end=source.indexOf('\n        };',start)+11;
+ assert.ok(start>=0 && end>start);
+ const questions=[{question:'Unsaved question'}], vm={ieltsReadingTest:{id:20,title:'Unsaved title',subQuestions:questions},
+  searchDto:{pageIndex:3},getPageCreateIELTSReadingTest(){this.reloaded=true;}};
+ nodeVm.runInNewContext(source.slice(start,end),{vm,angular:{copy:structuredClone}});
+ vm.catalogTestMoved({id:20,testFolder:{id:2,name:'Week 1'}});
+ assert.equal(vm.selectedTestFolderId,2); assert.equal(vm.ieltsReadingTest.testFolderId,2);
+ assert.equal(vm.ieltsReadingTest.title,'Unsaved title'); assert.strictEqual(vm.ieltsReadingTest.subQuestions,questions);
+ assert.equal(vm.searchDto.pageIndex,1); assert.equal(vm.reloaded,true);
+ vm.catalogTestMoved({id:20,testFolder:null}); assert.equal(vm.selectedTestFolderId,null);
+});
+test('full test saves wait until a folder move completes to avoid reverting its destination',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../question/controllers/IELTSCreateReadingTestController.js'),'utf8');
+ const start=source.indexOf('vm.saveReadingTest = function'),end=source.indexOf('\n        };',start)+11;
+ assert.ok(start>=0 && end>start);
+ const vm={catalogMovePending:true},messages=[];
+ nodeVm.runInNewContext(source.slice(start,end),{vm,angular:{noop(){}},$timeout(callback){callback();return Promise.resolve();},
+  toastr:{warning(message){messages.push(message);}}});
+ await vm.saveReadingTest('DRAFT');assert.equal(messages.length,1);assert.match(messages[0],/Đang chuyển bài/);
+ assert.equal(vm.savingReadingTest,undefined);
 });

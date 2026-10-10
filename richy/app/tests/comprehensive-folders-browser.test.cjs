@@ -43,6 +43,7 @@ async function fixture(browser,width,teacher) {
      // The student fixture needs a published child test too.
      window.testData[2].status=7;
      window.testRequests=[];
+     window.moveCalls=[];
      return {
       getLearningDrafts(){return q.when([]);},
       getTestFolders(all){return window.failFolders?q.reject({status:500}):q.when(window.folderData.filter(folder=>all || folder.ownerId===7));},
@@ -51,6 +52,15 @@ async function fixture(browser,width,teacher) {
        let folder=window.folderData.find(item=>item.id===dto.id);
        if(folder)Object.assign(folder,dto);else{folder={...dto,id:10+window.folderData.length,ownerId:7,ownerName:'Teacher A',canManage:true};window.folderData.push(folder);}
        return q.when({...folder});
+      },
+      moveTest(testId,folderId){
+       window.moveCalls.push({testId,folderId});const deferred=q.defer();
+       function finish(){
+        if(window.failMove){deferred.reject({data:{message:'Không lưu được vị trí. Bài vẫn ở folder cũ.'}});return;}
+        const test=window.testData.find(item=>item.id===testId);test.testFolder=window.folderData.find(folder=>folder.id===folderId)||null;
+        deferred.resolve({...test});
+       }
+       if(window.holdMove)window.releaseMove=finish;else finish();return deferred.promise;
       },
       getPageForTests(dto,index,size){
        window.testRequests.push({...dto});
@@ -170,5 +180,66 @@ test('folder picker works on a fresh class page without loading QuestionService 
   await page.waitForFunction(()=>angular.element(document.getElementById('qa')).scope().vm.folderId===2);
   assert.deepEqual(calls.find(call=>call.method==='POST').body,{name:'New folder',parentId:null});
   assert.equal(calls[0].allTeachers,'false');
+ }finally{await browser.close();}
+});
+
+test('native drag and drop autosaves in both views, supports child/root moves and preserves failed moves and unsaved editor content',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try {for(const view of ['grid','list']){
+  const {page,errors}=await fixture(browser,1366,true);
+  if(view==='list')await page.getByRole('button',{name:'Chuyển sang dạng danh sách',exact:true}).click();
+  await page.evaluate(()=>{
+   const scope=angular.element(document.getElementById('qa')).scope();
+   scope.$apply(()=>{window.qaVm.ieltsReadingTest={id:11,title:'Unsaved title',subQuestions:[{question:'Unsaved transcript'}]};window.holdMove=true;});
+  });
+  const file=title=>page.locator('.test-explorer-file').filter({hasText:title});
+  const folder=name=>page.locator('.test-explorer-folder').filter({hasText:name});
+  const drag=async(title,target)=>{
+   await page.waitForFunction(title=>Array.from(document.querySelectorAll('.test-explorer-file')).some(element=>element.textContent.includes(title) && element.draggable),title);
+   await file(title).locator('.test-explorer-file-icon').dragTo(target);
+  };
+  await page.evaluate(()=>angular.element(document.getElementById('qa')).scope().$apply(()=>window.qaVm.savingReadingTest=true));
+  assert.equal(await file('Bài cũ chưa vào folder').getAttribute('draggable'),'false');
+  await page.evaluate(()=>angular.element(document.getElementById('qa')).scope().$apply(()=>window.qaVm.savingReadingTest=false));
+  await drag('Bài cũ chưa vào folder',folder('Listening'));
+  await page.getByRole('status').filter({hasText:'Đang chuyển bài...'}).waitFor();
+  assert.equal(await file('Bài cũ chưa vào folder').count(),1);
+  assert.equal(await file('Bài cũ chưa vào folder').getAttribute('draggable'),'false');
+  assert.deepEqual(await page.evaluate(()=>window.moveCalls),[{testId:11,folderId:1}]);
+  assert.equal(await page.evaluate(()=>window.qaVm.catalogMovePending),true);
+  await page.evaluate(()=>{window.holdMove=false;window.releaseMove();});
+  await page.waitForFunction(()=>document.querySelectorAll('.test-explorer-file').length===0);
+  await page.getByRole('status').filter({hasText:'Đã chuyển'}).waitFor();
+  assert.deepEqual(await page.evaluate(()=>({id:qaVm.selectedTestFolderId,title:qaVm.ieltsReadingTest.title,question:qaVm.ieltsReadingTest.subQuestions[0].question})),
+   {id:1,title:'Unsaved title',question:'Unsaved transcript'});
+  await folder('Listening').click();
+  await file('Bài cũ chưa vào folder').waitFor();
+  await drag('Bài cũ chưa vào folder',folder('Week 1'));
+  await page.waitForFunction(()=>window.testData.find(test=>test.id===11).testFolder.id===2);
+  assert.equal(await file('Bài cũ chưa vào folder').count(),0);
+  await folder('Week 1').click();await file('Bài cũ chưa vào folder').waitFor();
+  await drag('Bài cũ chưa vào folder',page.locator('.test-explorer-path').getByRole('button',{name:'Listening',exact:true}));
+  await page.waitForFunction(()=>window.testData.find(test=>test.id===11).testFolder.id===1);
+  await drag('Bài luyện nghe tuần 1',page.locator('.test-explorer-path').getByRole('button',{name:/Folder của tôi/}));
+  await page.waitForFunction(()=>window.testData.find(test=>test.id===13).testFolder===null);
+  await page.locator('.test-explorer-path').getByRole('button',{name:/Folder của tôi/}).click();
+  await file('Bài luyện nghe tuần 1').waitFor();await page.evaluate(()=>window.failMove=true);
+  await drag('Bài luyện nghe tuần 1',folder('Listening'));
+  await page.getByRole('alert').filter({hasText:'Không lưu được vị trí'}).waitFor();
+  assert.equal(await file('Bài luyện nghe tuần 1').count(),1);
+  assert.equal(await page.evaluate(()=>window.testData.find(test=>test.id===13).testFolder),null);
+  await page.evaluate(()=>window.failMove=false);
+  await drag('Bài luyện nghe tuần 1',folder('Listening'));
+  await page.waitForFunction(()=>window.testData.find(test=>test.id===13).testFolder?.id===1);
+  assert.equal(await file('Bài luyện nghe tuần 1').count(),0);
+  assert.equal(await page.evaluate(()=>window.lastEdit),undefined);assert.deepEqual(errors,[]);await page.close();
+ }
+ const {page}=await fixture(browser,1366,false);
+ assert.notEqual(await page.locator('.test-explorer-file').getAttribute('draggable'),'true');
+ await page.locator('.test-explorer-folder').first().evaluate(element=>{
+  const transfer=new DataTransfer();transfer.setData('application/x-comprehensive-test','11');
+  element.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:transfer}));
+ });
+ assert.deepEqual(await page.evaluate(()=>window.moveCalls),[]);
  }finally{await browser.close();}
 });

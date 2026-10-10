@@ -50,7 +50,7 @@
                                 ngf-select="vm.importReadingTestFile($file, $invalidFiles)"
                                 accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                                 ngf-max-size="10MB"
-                                ng-disabled="vm.importingReadingTest || vm.savingReadingTest">
+                                ng-disabled="vm.importingReadingTest || vm.savingReadingTest || vm.catalogMovePending">
                             <i class="fa" ng-class="vm.importingReadingTest ? 'fa-spinner fa-spin' : 'fa-upload'"></i>
                             {{vm.importingReadingTest ? 'Đang import...' : 'Import Excel'}}
                         </button>
@@ -84,15 +84,15 @@
                 <div class="row">
 
                     <div class="col-md-12" ng-if="settings.isAdmin == true">
-                        <test-folder-explorer ng-if="vm.isComprehensiveMode" folder-id="vm.catalogTestFolderId" manage="true" on-change="vm.applyCatalogFolderFilter(folderId)">
-                            <article class="test-explorer-file" ng-repeat="item in vm.ieltsReadingTests track by item.id">
+                        <test-folder-explorer ng-if="vm.isComprehensiveMode" folder-id="vm.catalogTestFolderId" manage="true" moving="vm.catalogMovePending" move-disabled="vm.savingReadingTest || vm.importingReadingTest || vm.catalogLoading" on-change="vm.applyCatalogFolderFilter(folderId)" on-moved="vm.catalogTestMoved(test)">
+                            <article class="test-explorer-file" test-folder-drag="item" ng-repeat="item in vm.ieltsReadingTests track by item.id" title="Kéo bài vào folder để chuyển và lưu">
                                 <button type="button" class="test-explorer-file-main" ng-click="editCreateIELTSReadingTest(item.id)" title="Mở bài {{item.title}} trong trình soạn thảo">
                                     <i class="fa fa-file-text-o test-explorer-file-icon" aria-hidden="true"></i>
                                     <span class="test-explorer-name">{{item.title}}<small>{{item.status == 7 ? 'Đã xuất bản' : (item.status == 8 ? 'Đã ẩn' : 'Bản nháp')}}</small></span>
                                 </button>
                                 <div class="test-explorer-file-actions">
                                     <button type="button" ng-click="editCreateIELTSReadingTest(item.id)">Sửa bài</button>
-                                    <a target="_blank" rel="noopener" ng-href="comprehensive_test/{{item.id}}">Xem bài</a>
+                                    <a draggable="false" target="_blank" rel="noopener" ng-href="comprehensive_test/{{item.id}}">Xem bài</a>
                                     <button type="button" ng-if="!vm.showHiddenTests" ng-click="hideReadingTest(item.id)" ng-disabled="vm.catalogStatusUpdating[item.id]" title="Ẩn bài"><i class="fa fa-eye-slash"></i><span class="sr-only">Ẩn bài</span></button>
                                     <button type="button" ng-if="vm.showHiddenTests" ng-click="restoreReadingTest(item.id)" ng-disabled="vm.catalogStatusUpdating[item.id]">Khôi phục</button>
                                 </div>
@@ -1440,10 +1440,10 @@
             <button type="button" class="btn btn-default" ng-click="vm.openBuilderReviewModal()">
                 <i class="fa fa-list-ul"></i> Kiểm tra
             </button>
-            <button type="button" class="btn btn-primary" ng-click="vm.saveDraftReadingTest()" ng-disabled="vm.savingReadingTest || vm.importingReadingTest">
+            <button type="button" class="btn btn-primary" ng-click="vm.saveDraftReadingTest()" ng-disabled="vm.savingReadingTest || vm.importingReadingTest || vm.catalogMovePending">
                 <i class="fa" ng-class="vm.savingReadingTest ? 'fa-spinner fa-spin' : 'fa-save'"></i> {{vm.savingReadingTest ? 'Đang lưu...' : 'Lưu nháp'}}
             </button>
-            <button type="button" class="btn btn-success" ng-click="vm.publishReadingTest()" ng-disabled="!vm.builderValidation.valid || vm.savingReadingTest || vm.importingReadingTest">
+            <button type="button" class="btn btn-success" ng-click="vm.publishReadingTest()" ng-disabled="!vm.builderValidation.valid || vm.savingReadingTest || vm.importingReadingTest || vm.catalogMovePending">
                 <i class="fa fa-paper-plane"></i> Xuất bản
             </button>
         </div>

@@ -4,7 +4,8 @@
         var baseUrl = settings.api.baseUrl + settings.api.apiV1Url + 'test_folder';
         return {
             getTestFolders: function (allTeachers) { return $http.get(baseUrl, {params: {allTeachers: allTeachers === true}}).then(function (response) { return response.data; }); },
-            saveTestFolder: function (folder) { return $http.post(baseUrl + '/save', folder).then(function (response) { return response.data; }); }
+            saveTestFolder: function (folder) { return $http.post(baseUrl + '/save', folder).then(function (response) { return response.data; }); },
+            moveTest: function (testId, folderId) { return $http.post(baseUrl + '/move_test', {testId: testId, folderId: folderId == null ? null : folderId}).then(function (response) { return response.data; }); }
         };
     }]);
     angular.module('Hrm.Question').factory('ComprehensiveFolders', ['TestFolderService', '$rootScope', '$q', function (service, $rootScope, $q) {
@@ -61,7 +62,8 @@
                 cached = {}; $rootScope.$broadcast('comprehensiveFoldersChanged'); return saved;
             });
         }
-        return {options: options, load: load, save: save, applyFilter: applyFilter, contains: contains};
+        function moveTest(testId, folderId) { return service.moveTest(testId, folderId); }
+        return {options: options, load: load, save: save, applyFilter: applyFilter, contains: contains, moveTest: moveTest};
     }]);
 
     angular.module('Hrm.Question').directive('testFolderPicker', ['ComprehensiveFolders', function (folders) {
@@ -108,7 +110,32 @@
     angular.module('Hrm.Question').directive('testFolderExplorer', ['ComprehensiveFolders', '$window', function (folders, $window) {
         return {
             restrict: 'E', transclude: true,
-            scope: {folderId: '=', allTeachers: '=?', manage: '=?', onChange: '&'},
+            scope: {folderId: '=', allTeachers: '=?', manage: '=?', onChange: '&', onMoved: '&?', moving: '=?', moveDisabled: '=?'},
+            controller: ['$scope', function (scope) {
+                var explorer = this;
+                explorer.canDrag = function (test) { return scope.manage === true && !scope.moveDisabled && !explorer.busy && !!(test && test.id); };
+                explorer.canDrop = function (id) {
+                    if (!explorer.canDrag(explorer.draggedTest)) { return false; }
+                    return id == null || (scope.folders || []).some(function (folder) { return String(folder.id) === String(id) && folder.canManage; });
+                };
+                // Keep feedback visible during dragging so drop targets do not shift under the pointer.
+                explorer.startDrag = function (test) { explorer.draggedTest = test; scope.draggingTest = test; };
+                explorer.endDrag = function () { explorer.draggedTest = null; scope.draggingTest = null; };
+                explorer.dropTest = function (test, id) {
+                    if (!explorer.canDrop(id)) { return; }
+                    var oldId = test.testFolder ? test.testFolder.id : null;
+                    if (String(oldId) === String(id)) { return; }
+                    explorer.busy = true; scope.moving = true; scope.moveError = scope.moveMessage = '';
+                    scope.$evalAsync(function () {
+                        folders.moveTest(test.id, id).then(function (saved) {
+                            scope.moveMessage = 'Đã chuyển “' + test.title + '” ' + (saved.testFolder ? 'vào folder ' + saved.testFolder.name : 'về cấp gốc') + '.';
+                            if (scope.onMoved) { scope.onMoved({test: saved}); }
+                        }, function (response) {
+                            scope.moveError = (response.data || {}).message || 'Không chuyển được bài. Bài vẫn ở vị trí cũ, bạn có thể kéo lại.';
+                        }).finally(function () { explorer.busy = false; scope.moving = false; });
+                    });
+                };
+            }],
             templateUrl: function () { return 'question/views/test_folder_explorer.html?v=' + encodeURIComponent($window.APP_VERSION || 'dev'); },
             link: function (scope) {
                 var storageKey = 'comprehensiveTestFolderView';
@@ -155,4 +182,54 @@
             }
         };
     }]);
+
+    angular.module('Hrm.Question').directive('testFolderDrag', function () {
+        return {
+            restrict: 'A', require: '^testFolderExplorer',
+            link: function (scope, element, attrs, explorer) {
+                scope.$watch(function () { return explorer.canDrag(scope.$eval(attrs.testFolderDrag)); }, function (enabled) {
+                    element.attr('draggable', enabled ? 'true' : 'false'); element.toggleClass('is-draggable', enabled);
+                });
+                function start(event) {
+                    var nativeEvent = event.originalEvent || event, test = scope.$eval(attrs.testFolderDrag);
+                    if (!explorer.canDrag(test) || !nativeEvent.dataTransfer) { event.preventDefault(); return; }
+                    nativeEvent.dataTransfer.effectAllowed = 'move';
+                    nativeEvent.dataTransfer.setData('application/x-comprehensive-test', String(test.id));
+                    nativeEvent.dataTransfer.setData('text/plain', test.title || String(test.id));
+                    explorer.startDrag(test); element.addClass('is-dragging'); scope.$evalAsync(angular.noop);
+                }
+                function end() { explorer.endDrag(); element.removeClass('is-dragging'); scope.$evalAsync(angular.noop); }
+                element.on('dragstart', start); element.on('dragend', end);
+                scope.$on('$destroy', function () { element.off('dragstart', start); element.off('dragend', end); });
+            }
+        };
+    });
+    angular.module('Hrm.Question').directive('testFolderDrop', function () {
+        return {
+            restrict: 'A', require: '^testFolderExplorer',
+            link: function (scope, element, attrs, explorer) {
+                function over(event) {
+                    if (!explorer.canDrop(scope.$eval(attrs.testFolderDrop))) { return; }
+                    event.preventDefault();
+                    var nativeEvent = event.originalEvent || event;
+                    if (nativeEvent.dataTransfer) { nativeEvent.dataTransfer.dropEffect = 'move'; }
+                    element.addClass('is-drop-target');
+                }
+                function leave(event) {
+                    var related = (event.originalEvent || event).relatedTarget;
+                    if (!related || !element[0].contains(related)) { element.removeClass('is-drop-target'); }
+                }
+                function drop(event) {
+                    var id = scope.$eval(attrs.testFolderDrop), test = explorer.draggedTest;
+                    if (!explorer.canDrop(id)) { return; }
+                    event.preventDefault(); event.stopPropagation();
+                    explorer.dropTest(test, id == null ? null : id);
+                    explorer.endDrag(); element.removeClass('is-drop-target'); scope.$evalAsync(angular.noop);
+                }
+                scope.$watch(function () { return explorer.draggedTest; }, function (test) { if (!test) { element.removeClass('is-drop-target'); } });
+                element.on('dragover', over); element.on('dragleave', leave); element.on('drop', drop);
+                scope.$on('$destroy', function () { element.off('dragover', over); element.off('dragleave', leave); element.off('drop', drop); });
+            }
+        };
+    });
 })();

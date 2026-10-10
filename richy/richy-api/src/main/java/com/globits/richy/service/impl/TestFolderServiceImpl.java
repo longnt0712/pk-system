@@ -1,7 +1,10 @@
 package com.globits.richy.service.impl;
 
 import com.globits.richy.domain.TestFolder;
+import com.globits.richy.domain.Question;
+import com.globits.richy.dto.QuestionForTestsDto;
 import com.globits.richy.dto.TestFolderDto;
+import com.globits.richy.repository.QuestionRepository;
 import com.globits.richy.repository.TestFolderRepository;
 import com.globits.security.domain.User;
 import java.util.*;
@@ -17,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class TestFolderServiceImpl {
     @Autowired private TestFolderRepository repository;
+    @Autowired private QuestionRepository questionRepository;
 
     public List<TestFolderDto> list(boolean allTeachers) {
         List<TestFolderDto> result = new ArrayList<TestFolderDto>();
@@ -89,5 +93,34 @@ public class TestFolderServiceImpl {
             }
         }
         return result;
+    }
+
+    public QuestionForTestsDto moveTest(Long testId, Long folderId) {
+        User user = currentUser();
+        if (testId == null) { throw new IllegalArgumentException("Hãy chọn bài test cần chuyển."); }
+        Question test = questionRepository.findOne(testId);
+        if (test == null) { throw new IllegalArgumentException("Bài test không còn tồn tại."); }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean admin = auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (!admin && (test.getUser() == null || !user.getId().equals(test.getUser().getId()))) {
+            throw new AccessDeniedException("Bạn không có quyền chuyển bài test này.");
+        }
+        if (!"COMPREHENSIVE".equals(test.getTestFormat()) || test.getQuestionType() == null
+                || !Long.valueOf(11L).equals(test.getQuestionType().getId()) || test.getParent() != null) {
+            throw new IllegalArgumentException("Chỉ có thể chuyển bài test tổng hợp vào folder.");
+        }
+        TestFolder folder = folderId == null ? null : repository.findOne(folderId);
+        if (folderId != null && folder == null) { throw new IllegalArgumentException("Folder không còn tồn tại. Hãy tải lại danh sách."); }
+        if (folder != null && (folder.getOwner() == null || test.getUser() == null
+                || !folder.getOwner().getId().equals(test.getUser().getId()))) {
+            throw new AccessDeniedException("Folder và bài test phải thuộc cùng giáo viên.");
+        }
+        Long oldFolderId = test.getTestFolder() == null ? null : test.getTestFolder().getId();
+        if (!Objects.equals(oldFolderId, folderId)) {
+            test.setTestFolder(folder);
+            test.setModifyDate(LocalDateTime.now()); test.setModifiedBy(user.getUsername());
+            questionRepository.save(test);
+        }
+        return new QuestionForTestsDto(test.getId(), test.getTitle(), test.getPronounce(), test.getStatus(), test.getTestFormat(), folder);
     }
 }

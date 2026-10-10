@@ -484,6 +484,15 @@
             folders.applyFilter(vm.searchDto, vm.catalogTestFolderId, true);
             vm.getPageCreateIELTSReadingTest();
         };
+        vm.catalogTestMoved = function (test) {
+            if (vm.ieltsReadingTest && String(vm.ieltsReadingTest.id) === String(test.id)) {
+                vm.ieltsReadingTest.testFolder = angular.copy(test.testFolder || null);
+                vm.ieltsReadingTest.testFolderId = test.testFolder ? test.testFolder.id : null;
+                vm.selectedTestFolderId = vm.ieltsReadingTest.testFolderId;
+            }
+            vm.searchDto.pageIndex = 1;
+            vm.getPageCreateIELTSReadingTest();
+        };
 
         vm.ieltsReadingTest = {
             questionType: {
@@ -723,6 +732,10 @@
 
         vm.saveReadingTest = function (saveMode) {
             if (vm.savingReadingTest) { return vm.readingSavePromise; }
+            if (vm.catalogMovePending) {
+                toastr.warning('Đang chuyển bài vào folder. Hãy chờ lưu xong.', 'Chưa thể lưu bài');
+                return $timeout(angular.noop);
+            }
             vm.lastSaveError = '';
             if (vm.isVideoBuilder()) {
                 var videoPassage = vm.ieltsReadingTest.subQuestions[0];
@@ -3693,7 +3706,7 @@
 
         vm.importReadingTestFile = function (file, invalidFiles) {
             var importTitle = vm.isComprehensiveMode ? 'Import bài tập Tổng hợp' : 'Import IELTS ' + vm.testModeName;
-            if (vm.importingReadingTest || vm.savingReadingTest) { return; }
+            if (vm.importingReadingTest || vm.savingReadingTest || vm.catalogMovePending) { return; }
             if ((!file && invalidFiles && invalidFiles.length) || (file && file.size > 10 * 1024 * 1024)) {
                 toastr.warning('File Excel không được lớn hơn 10 MB.', importTitle);
                 return;

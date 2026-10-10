@@ -1,17 +1,20 @@
-<section class="test-folder-explorer" ng-class="'is-' + viewMode">
+<section class="test-folder-explorer" ng-class="['is-' + viewMode, {'is-dragging-test': draggingTest, 'is-moving-test': moving}]" aria-busy="{{moving || loading}}">
     <div class="test-explorer-toolbar">
-        <button type="button" class="test-explorer-up" ng-click="goUp()" ng-disabled="folderId == null || loading" aria-label="Lên folder cha" title="Lên folder cha"><i class="fa fa-arrow-up"></i></button>
+        <button type="button" class="test-explorer-up" test-folder-drop="current ? current.parentId : null" ng-click="goUp()" ng-disabled="folderId == null || loading" aria-label="Lên folder cha" title="Lên folder cha"><i class="fa fa-arrow-up"></i></button>
         <nav class="test-explorer-path" aria-label="Đường dẫn folder">
-            <button type="button" ng-click="openFolder(null)" ng-class="{'is-current': folderId == null}"><i class="fa fa-home"></i> {{allTeachers ? 'Thư viện' : 'Folder của tôi'}}</button>
+            <button type="button" test-folder-drop="null" ng-click="openFolder(null)" ng-class="{'is-current': folderId == null}"><i class="fa fa-home"></i> {{allTeachers ? 'Thư viện' : 'Folder của tôi'}}</button>
             <span class="test-explorer-owner" ng-if="allTeachers && current"><i class="fa fa-angle-right"></i> {{current.ownerName}}</span>
-            <span ng-repeat="folder in breadcrumbs track by folder.id"><i class="fa fa-angle-right"></i><button type="button" ng-click="openFolder(folder.id)" ng-class="{'is-current': folder.id == folderId}">{{folder.name}}</button></span>
+            <span ng-repeat="folder in breadcrumbs track by folder.id"><i class="fa fa-angle-right"></i><button type="button" test-folder-drop="folder.id" ng-click="openFolder(folder.id)" ng-class="{'is-current': folder.id == folderId}">{{folder.name}}</button></span>
         </nav>
         <button type="button" class="test-explorer-view" ng-click="toggleView()" aria-label="{{viewMode === 'grid' ? 'Chuyển sang dạng danh sách' : 'Chuyển sang dạng biểu tượng'}}" title="{{viewMode === 'grid' ? 'Dạng danh sách' : 'Dạng biểu tượng'}}"><i class="fa" ng-class="viewMode === 'grid' ? 'fa-list' : 'fa-th-large'"></i><span>{{viewMode === 'grid' ? 'Danh sách' : 'Biểu tượng'}}</span></button>
     </div>
     <div class="test-explorer-actions" ng-if="manage">
         <button type="button" class="btn btn-default btn-sm" ng-click="create()" ng-disabled="loading || saving"><i class="fa fa-folder" aria-hidden="true"></i> {{current ? 'Tạo folder con' : 'Tạo folder'}}</button>
         <button type="button" class="btn btn-default btn-sm" ng-if="current.canManage" ng-click="rename()" ng-disabled="saving">Đổi tên folder</button>
+        <span class="test-explorer-drag-help">Kéo bài vào folder để lưu ngay. Thả vào đường dẫn để chuyển về folder cha.</span>
     </div>
+    <p class="test-explorer-move-status" ng-if="moving || moveMessage" role="status" aria-live="polite"><i class="fa fa-spinner fa-spin" ng-if="moving" aria-hidden="true"></i> {{moving ? 'Đang chuyển bài...' : moveMessage}}</p>
+    <p class="test-folder-error" ng-if="moveError" role="alert">{{moveError}}</p>
     <p class="test-folder-error" ng-if="error" role="alert">{{error}} <button type="button" class="btn btn-link btn-sm" ng-click="reload(true)">Thử lại</button></p>
     <div class="test-folder-editor" ng-if="editor">
         <label>Tên folder<input type="text" class="form-control" maxlength="200" ng-model="editor.name" aria-label="Tên folder"></label>
@@ -20,7 +23,7 @@
     </div>
     <p ng-if="loading" role="status">Đang tải folder...</p>
     <div class="test-explorer-items">
-        <button type="button" class="test-explorer-folder" ng-repeat="folder in children track by folder.id" ng-click="openFolder(folder.id)" title="Mở folder {{folder.name}}">
+        <button type="button" class="test-explorer-folder" test-folder-drop="folder.id" ng-repeat="folder in children track by folder.id" ng-click="openFolder(folder.id)" title="Mở folder {{folder.name}}">
             <span class="test-explorer-folder-icon" aria-hidden="true"><i class="fa fa-folder"></i></span>
             <span class="test-explorer-name">{{folder.name}}<small ng-if="allTeachers && folderId == null">{{folder.ownerName}}</small></span>
             <i class="fa fa-angle-right test-explorer-folder-arrow" aria-hidden="true"></i>

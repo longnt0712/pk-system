@@ -1,8 +1,12 @@
 package com.globits.richy.question;
 
 import com.globits.richy.domain.TestFolder;
+import com.globits.richy.domain.Question;
+import com.globits.richy.domain.QuestionType;
+import com.globits.richy.dto.QuestionForTestsDto;
 import com.globits.richy.dto.TestFolderDto;
 import com.globits.richy.repository.TestFolderRepository;
+import com.globits.richy.repository.QuestionRepository;
 import com.globits.richy.service.impl.TestFolderServiceImpl;
 import com.globits.security.domain.User;
 import java.util.*;
@@ -20,6 +24,8 @@ public class TestFolderServiceTest {
     private TestFolderServiceImpl service;
     private Map<Long, TestFolder> folders;
     private User teacher, other;
+    private Question test;
+    private QuestionRepository questions;
     @Before public void setup() {
         folders = new LinkedHashMap<>();
         teacher = new User(); teacher.setId(7L); teacher.setUsername("teacher");
@@ -34,6 +40,12 @@ public class TestFolderServiceTest {
             folders.put(folder.getId(), folder); return folder;
         });
         service = new TestFolderServiceImpl(); ReflectionTestUtils.setField(service, "repository", repository);
+        test = new Question(); test.setId(20L); test.setTitle("Listening lesson"); test.setUser(teacher); test.setStatus(7);
+        test.setQuestion("Transcript stays unchanged"); test.setTestFormat("COMPREHENSIVE");
+        QuestionType kind = new QuestionType(); kind.setId(11L); test.setQuestionType(kind);
+        questions = mock(QuestionRepository.class); when(questions.findOne(20L)).thenReturn(test);
+        when(questions.save(any(Question.class))).thenAnswer(call -> call.getArguments()[0]);
+        ReflectionTestUtils.setField(service, "questionRepository", questions);
     }
     private void login(User user) {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(user, "unused",
@@ -71,5 +83,36 @@ public class TestFolderServiceTest {
         TestFolderDto renamed = service.save(folder);
         assertEquals(folder.getId(), renamed.getId()); assertEquals(teacher.getId(), renamed.getOwnerId());
         assertEquals("Practice", renamed.getName()); assertEquals(1, folders.size());
+    }
+    @Test public void movesToChildAndRootWhilePreservingTestContentAndStatus() {
+        TestFolderDto root = save("Practice", null), child = save("Week 1", root.getId());
+        Question question = new Question(); question.setQuestion("Existing question");
+        test.setSubQuestions(Collections.singleton(question));
+        QuestionForTestsDto moved = service.moveTest(20L, child.getId());
+        assertEquals(child.getId(), moved.getTestFolder().getId()); assertEquals("Week 1", moved.getTestFolder().getName());
+        assertEquals("Transcript stays unchanged", test.getQuestion()); assertEquals("Listening lesson", test.getTitle());
+        assertEquals(7, test.getStatus()); assertSame(teacher, test.getUser()); assertSame(question, test.getSubQuestions().iterator().next());
+        assertNotNull(test.getModifyDate()); assertEquals("teacher", test.getModifiedBy());
+        service.moveTest(20L, null); assertNull(test.getTestFolder()); verify(questions, times(2)).save(test);
+    }
+    @Test public void droppingIntoCurrentFolderIsANoOp() {
+        TestFolderDto folder = save("Practice", null); test.setTestFolder(folders.get(folder.getId()));
+        assertEquals(folder.getId(), service.moveTest(20L, folder.getId()).getTestFolder().getId());
+        verify(questions, never()).save(any(Question.class)); assertNull(test.getModifyDate());
+    }
+    @Test public void cannotMoveAnotherTeachersTestOrMoveAcrossTeachersTrees() {
+        TestFolderDto own = save("Practice", null); login(other); TestFolderDto theirs = save("Other", null);
+        try { service.moveTest(20L, theirs.getId()); fail("Expected access denied"); } catch (AccessDeniedException expected) {}
+        login(teacher);
+        try { service.moveTest(20L, theirs.getId()); fail("Expected access denied"); } catch (AccessDeniedException expected) {}
+        assertNull(test.getTestFolder()); verify(questions, never()).save(any(Question.class));
+        assertNotNull(service.moveTest(20L, own.getId()).getTestFolder());
+    }
+    @Test public void invalidDestinationAndNonComprehensiveTestsNeverSaveChanges() {
+        TestFolderDto folder = save("Practice", null);
+        try { service.moveTest(20L, 999L); fail("Expected invalid destination"); } catch (IllegalArgumentException expected) {}
+        test.setTestFormat(null);
+        try { service.moveTest(20L, folder.getId()); fail("Expected invalid test type"); } catch (IllegalArgumentException expected) {}
+        verify(questions, never()).save(any(Question.class)); assertNull(test.getTestFolder());
     }
 }

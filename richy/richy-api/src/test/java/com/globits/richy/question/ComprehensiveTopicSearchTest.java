@@ -253,6 +253,40 @@ public class ComprehensiveTopicSearchTest {
             org.springframework.security.core.context.SecurityContextHolder.clearContext();
         }
     }
+    @Test public void folderMoveIsPersistedWithoutReplacingQuestionsOrAnswers() {
+        QuestionType kind = manager.find(QuestionType.class, 11L);
+        if (kind == null) {
+            manager.createNativeQuery("insert into tbl_question_type (id, name, create_date, created_by) values (11, 'Published tests', CURRENT_TIMESTAMP, 'test')").executeUpdate();
+            kind = manager.find(QuestionType.class, 11L);
+        }
+        Question root = question("Move me", 7, "COMPREHENSIVE"); root.setQuestionType(kind); root.setUser(owner);
+        root.setQuestion("Original text"); root.setVideoUrl("https://youtu.be/M7lc1UVf-VE");
+        Question child = question("Existing question", 7, null); child.setParent(root); child.setQuestion("Original question");
+        Answer answer = new Answer(); answer.setAnswer("Original answer"); manager.persist(answer);
+        QuestionAnswer link = new QuestionAnswer(); link.setQuestion(child); link.setAnswer(answer); link.setCorrect(true); manager.persist(link);
+        TestFolder folder = new TestFolder(); folder.setName("Practice"); folder.setOwner(owner); manager.persist(folder); manager.flush();
+        QuestionRepository questions = mock(QuestionRepository.class);
+        when(questions.findOne(root.getId())).thenAnswer(call -> manager.find(Question.class, root.getId()));
+        when(questions.save(org.mockito.Matchers.any(Question.class))).thenAnswer(call -> manager.merge(call.getArguments()[0]));
+        com.globits.richy.repository.TestFolderRepository folders = mock(com.globits.richy.repository.TestFolderRepository.class);
+        when(folders.findOne(folder.getId())).thenAnswer(call -> manager.find(TestFolder.class, folder.getId()));
+        com.globits.richy.service.impl.TestFolderServiceImpl moves = new com.globits.richy.service.impl.TestFolderServiceImpl();
+        ReflectionTestUtils.setField(moves, "questionRepository", questions); ReflectionTestUtils.setField(moves, "repository", folders);
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+            new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(owner, "unused",
+                Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"))));
+        try {
+            moves.moveTest(root.getId(), folder.getId()); manager.flush(); manager.clear();
+            Question saved = manager.find(Question.class, root.getId());
+            assertEquals(folder.getId(), saved.getTestFolder().getId()); assertEquals("Original text", saved.getQuestion());
+            assertEquals(7, saved.getStatus()); assertEquals(owner.getId(), saved.getUser().getId());
+            assertEquals("https://youtu.be/M7lc1UVf-VE", saved.getVideoUrl());
+            assertEquals("Original question", manager.find(Question.class, child.getId()).getQuestion());
+            assertEquals("Original answer", manager.find(QuestionAnswer.class, link.getId()).getAnswer().getAnswer());
+            moves.moveTest(root.getId(), null); manager.flush(); manager.clear();
+            assertNull(manager.find(Question.class, root.getId()).getTestFolder());
+        } finally { org.springframework.security.core.context.SecurityContextHolder.clearContext(); }
+    }
     @Test public void unassignedSearchKeepsDraftAndHiddenVisibilityRules() {
         QuestionDto dto = filter(9); dto.setWithoutTopics(true); expect(dto, "Draft", "Standalone");
         dto.setStatus(7); expect(dto, "Standalone"); dto.setStatus(8); expect(dto, "Hidden");

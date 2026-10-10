@@ -1,6 +1,7 @@
 package com.globits.richy.rest;
 
 import com.globits.richy.dto.TestFolderDto;
+import com.globits.richy.dto.TestFolderMoveDto;
 import com.globits.richy.service.impl.TestFolderServiceImpl;
 import java.util.Collections;
 import java.util.List;
@@ -20,6 +21,12 @@ public class RestTestFolderController {
     @RequestMapping(value = "/save", method = RequestMethod.POST)
     public ResponseEntity<?> save(@RequestBody TestFolderDto dto) {
         try { return ResponseEntity.ok(service.save(dto)); }
+        catch (IllegalArgumentException invalid) { return ResponseEntity.badRequest().body(Collections.singletonMap("message", invalid.getMessage())); }
+    }
+    @Secured({"ROLE_ADMIN", "ROLE_USER"})
+    @RequestMapping(value = "/move_test", method = RequestMethod.POST)
+    public ResponseEntity<?> moveTest(@RequestBody TestFolderMoveDto dto) {
+        try { return ResponseEntity.ok(service.moveTest(dto == null ? null : dto.getTestId(), dto == null ? null : dto.getFolderId())); }
         catch (IllegalArgumentException invalid) { return ResponseEntity.badRequest().body(Collections.singletonMap("message", invalid.getMessage())); }
     }
 }
