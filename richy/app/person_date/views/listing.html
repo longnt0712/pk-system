@@ -60,9 +60,10 @@
                             <button type="button"
                                     class="btn qr-camera-toggle"
                                     ng-class="vm.scanning ? 'btn-danger' : 'btn-primary'"
+                                    ng-disabled="vm.attendanceConfigLoading && !vm.scanning"
                                     ng-click="vm.toggleCamera()">
                                 <i class="fa" ng-class="vm.scanning ? 'fa-stop-circle' : 'fa-camera'"></i>
-                                {{vm.scanning ? 'Tắt camera' : 'Mở camera'}}
+                                {{vm.scanning ? 'Tắt camera' : (vm.attendanceConfigLoading ? 'Đang tải giờ điểm danh...' : 'Mở camera')}}
                             </button>
                         </div>
 
@@ -109,6 +110,12 @@
                                     <li>
                                         <a href="" class="attendance-tool-menu-item is-statistics" ng-click="vm.openStudentCountStatisticsModal()">
                                             <i class="fa fa-bar-chart"></i> Thống kê theo ngày
+                                        </a>
+                                    </li>
+                                    <li role="separator" class="divider" ng-if="vm.canManageAttendanceConfig()"></li>
+                                    <li ng-if="vm.canManageAttendanceConfig()">
+                                        <a href="" class="attendance-tool-menu-item" ng-click="vm.openAttendanceConfig()">
+                                            <i class="fa fa-clock-o"></i> Cấu hình giờ điểm danh
                                         </a>
                                     </li>
                                 </ul>
@@ -211,6 +218,7 @@
                                             ng-class="{
                                             'status-class-green': personDate.statusMass == 1,
                                             'status-class-red': personDate.statusMass == 2,
+                                            'status-class-late': personDate.statusMass == 3,
                                             'status-class-warning': personDate.statusMass == 6,
                                             'status-class-info': personDate.statusMass == 5
                                         }">
@@ -220,10 +228,8 @@
                                             <ui-select-match allow-clear="false" placeholder="CÓ ĐI LỄ KHÔNG?">
                                                 {{$select.selected.name}}
                                             </ui-select-match>
-                                            <ui-select-choices repeat="so.id as so in vm.statusMasses | propsFilter:{name:$select.search}"
-                                                    ui-disable-choice="so.id != 6 && so.id != 5">
+                                            <ui-select-choices repeat="so.id as so in vm.statusMasses | propsFilter:{name:$select.search}">
                                                 <div class="bold"
-                                                        ng-class="{'text-muted': so.id != 6 && so.id != 5}"
                                                         ng-bind-html="so.name | highlight:$select.search">
                                                 </div>
                                             </ui-select-choices>
@@ -246,6 +252,7 @@
                                             ng-class="{
                                             'status-class-green': personDate.statusClass == 1,
                                             'status-class-red': personDate.statusClass == 2,
+                                            'status-class-late': personDate.statusClass == 3,
                                             'status-class-warning': personDate.statusClass == 6,
                                             'status-class-info': personDate.statusClass == 5
                                         }">
@@ -255,10 +262,8 @@
                                             <ui-select-match allow-clear="false" placeholder="CÓ ĐI HỌC GIÁO LÝ KHÔNG?">
                                                 {{$select.selected.name}}
                                             </ui-select-match>
-                                            <ui-select-choices repeat="so.id as so in vm.statusClasses | propsFilter:{name:$select.search}"
-                                                    ui-disable-choice="so.id != 6">
+                                            <ui-select-choices repeat="so.id as so in vm.statusClasses | propsFilter:{name:$select.search}">
                                                 <div class="bold"
-                                                        ng-class="{'text-muted': so.id != 6}"
                                                         ng-bind-html="so.name | highlight:$select.search">
                                                 </div>
                                             </ui-select-choices>
@@ -282,6 +287,7 @@
                                             ng-class="{
                                             'status-class-green': personDate.extraClass == 1,
                                             'status-class-red': personDate.extraClass == 2,
+                                            'status-class-late': personDate.extraClass == 3,
                                             'status-class-warning': personDate.extraClass == 6,
                                             'status-class-info': personDate.extraClass == 5
                                         }">
@@ -291,10 +297,8 @@
                                             <ui-select-match allow-clear="false" placeholder="HỌC NGOẠI KHÓA?">
                                                 {{$select.selected.name}}
                                             </ui-select-match>
-                                            <ui-select-choices repeat="so.id as so in vm.extraClasses | propsFilter:{name:$select.search}"
-                                                    ui-disable-choice="so.id != 6">
+                                            <ui-select-choices repeat="so.id as so in vm.extraClasses | propsFilter:{name:$select.search}">
                                                 <div class="bold"
-                                                        ng-class="{'text-muted': so.id != 6}"
                                                         ng-bind-html="so.name | highlight:$select.search">
                                                 </div>
                                             </ui-select-choices>
@@ -813,6 +817,83 @@
         </div>
     </div>
 </script>
+<script type="text/ng-template" id="attendance_config_modal.html">
+    <form name="attendanceConfigForm" class="attendance-config-modal" ng-submit="vm.saveAttendanceConfig()" novalidate>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" ng-disabled="vm.attendanceConfigSaving" aria-label="Đóng">&times;</button>
+            <h4 class="modal-title"><i class="fa fa-clock-o"></i> Cấu hình giờ điểm danh</h4>
+        </div>
+        <div class="modal-body">
+            <p class="text-muted">Dùng chung cho các thiết bị, theo giờ Việt Nam. Giáo viên luôn tự chọn trạng thái khi điểm danh tay.</p>
+            <fieldset ng-disabled="vm.attendanceConfigSaving">
+                <div class="attendance-config-section">
+                    <h5><i class="fa fa-university"></i> Điểm danh Lễ</h5>
+                    <div class="attendance-config-fields">
+                        <div class="form-group">
+                            <label for="attendance-mass-start">Giờ bắt đầu Lễ</label>
+                            <input id="attendance-mass-start" name="massStartTime" type="text" class="form-control"
+                                   ng-model="vm.attendanceConfigDraft.massStartTime" placeholder="08:00" maxlength="5"
+                                   ng-pattern="/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="attendance-mass-late">Muộn từ bao nhiêu phút</label>
+                            <input id="attendance-mass-late" name="massLateMinutes" type="number" class="form-control"
+                                   ng-model="vm.attendanceConfigDraft.massLateMinutes" min="0" max="1439" step="1" required>
+                        </div>
+                    </div>
+                    <label class="attendance-config-toggle">
+                        <input type="checkbox" ng-model="vm.attendanceConfigDraft.massAutoLate"> Tự ghi MUỘN khi quét QR Lễ
+                    </label>
+                    <p class="attendance-config-preview" ng-if="vm.attendanceConfigDraft.massAutoLate && vm.attendanceLateTime(vm.attendanceConfigDraft.massStartTime, vm.attendanceConfigDraft.massLateMinutes)">
+                        Từ <strong>{{vm.attendanceLateTime(vm.attendanceConfigDraft.massStartTime, vm.attendanceConfigDraft.massLateMinutes)}}</strong> ghi MUỘN.
+                    </p>
+                    <p class="attendance-config-preview" ng-if="!vm.attendanceConfigDraft.massAutoLate">Quét QR Lễ luôn ghi CÓ ĐI LỄ trong thời gian cho phép.</p>
+                </div>
+                <div class="attendance-config-section">
+                    <h5><i class="fa fa-book"></i> Điểm danh Giáo lý</h5>
+                    <div class="attendance-config-fields">
+                        <div class="form-group">
+                            <label for="attendance-class-start">Giờ bắt đầu Giáo lý</label>
+                            <input id="attendance-class-start" name="classStartTime" type="text" class="form-control"
+                                   ng-model="vm.attendanceConfigDraft.classStartTime" placeholder="09:00" maxlength="5"
+                                   ng-pattern="/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="attendance-class-late">Số phút du di trước khi tính muộn</label>
+                            <input id="attendance-class-late" name="classLateMinutes" type="number" class="form-control"
+                                   ng-model="vm.attendanceConfigDraft.classLateMinutes" min="0" max="1439" step="1" required>
+                        </div>
+                    </div>
+                    <label class="attendance-config-toggle">
+                        <input type="checkbox" ng-model="vm.attendanceConfigDraft.classAutoLate"> Tự ghi MUỘN khi quét QR Giáo lý
+                    </label>
+                    <p class="attendance-config-preview" ng-if="vm.attendanceConfigDraft.classAutoLate && vm.attendanceLateTime(vm.attendanceConfigDraft.classStartTime, vm.attendanceConfigDraft.classLateMinutes)">
+                        Từ <strong>{{vm.attendanceLateTime(vm.attendanceConfigDraft.classStartTime, vm.attendanceConfigDraft.classLateMinutes)}}</strong> ghi MUỘN.
+                    </p>
+                    <p class="attendance-config-preview" ng-if="!vm.attendanceConfigDraft.classAutoLate">Quét QR Giáo lý luôn ghi CÓ ĐI HỌC trong thời gian cho phép. Giáo viên có thể đổi sang MUỘN.</p>
+                </div>
+                <div class="form-group attendance-config-switch">
+                    <label for="attendance-qr-switch">Giờ khóa QR Lễ và mở QR Giáo lý / Ngoại khóa</label>
+                    <input id="attendance-qr-switch" name="qrSwitchTime" type="text" class="form-control"
+                           ng-model="vm.attendanceConfigDraft.qrSwitchTime" placeholder="09:00" maxlength="5"
+                           ng-pattern="/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/" required>
+                    <small>Chuyển ngay tại mốc này. Giờ bắt đầu Giáo lý và số phút du di ở trên dùng để tính muộn.</small>
+                </div>
+            </fieldset>
+            <div class="alert alert-danger" role="alert" ng-if="vm.attendanceConfigError">{{vm.attendanceConfigError}}</div>
+            <p class="text-danger" ng-if="attendanceConfigForm.$invalid">Nhập giờ theo HH:mm và số phút nguyên từ 0 đến 1439.</p>
+            <small class="text-muted">Áp dụng cho lượt điểm danh tiếp theo. Giữ nguyên kết quả đã lưu và giờ điểm danh đầu tiên khi quét lại.</small>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-default" ng-click="$dismiss()" ng-disabled="vm.attendanceConfigSaving">Hủy</button>
+            <button type="submit" class="btn btn-primary" ng-disabled="attendanceConfigForm.$invalid || vm.attendanceConfigSaving">
+                <i class="fa" ng-class="vm.attendanceConfigSaving ? 'fa-spinner fa-spin' : 'fa-save'"></i>
+                {{vm.attendanceConfigSaving ? 'Đang lưu...' : 'Lưu cấu hình'}}
+            </button>
+        </div>
+    </form>
+</script>
+
 <script type="text/ng-template" id="qr_attendance_type_modal.html">
     <div class="qr-attendance-type-modal">
         <div class="modal-header">
@@ -832,8 +913,10 @@
                 <span class="qr-attendance-type-icon is-mass"><i class="fa fa-university"></i></span>
                 <span>
                     <strong>Điểm danh Lễ</strong>
-                    <small ng-if="vm.isMassAttendanceAllowed()">Có thể chọn trước 09:00 sáng.</small>
-                    <small class="text-danger" ng-if="!vm.isMassAttendanceAllowed()">Đã khóa sau 09:00 sáng.</small>
+                    <small ng-if="vm.isMassAttendanceAllowed()">Có thể chọn trước {{vm.attendanceConfig.qrSwitchTime}}.</small>
+                    <small class="text-danger" ng-if="!vm.isMassAttendanceAllowed()">Đã khóa từ {{vm.attendanceConfig.qrSwitchTime}}.</small>
+                    <small ng-if="vm.attendanceConfig.massAutoLate">Từ {{vm.attendanceLateTime(vm.attendanceConfig.massStartTime, vm.attendanceConfig.massLateMinutes)}} tự ghi MUỘN.</small>
+                    <small ng-if="!vm.attendanceConfig.massAutoLate">Tắt tự tính muộn; quét QR ghi CÓ ĐI LỄ.</small>
                 </span>
             </label>
 
@@ -848,7 +931,9 @@
                 <span>
                     <strong>Điểm danh Giáo lý</strong>
                     <small ng-if="vm.isClassAttendanceAllowed()">Chỉ cập nhật trạng thái học Giáo lý.</small>
-                    <small class="text-danger" ng-if="!vm.isClassAttendanceAllowed()">Chỉ mở từ 09:10 sáng.</small>
+                    <small class="text-danger" ng-if="!vm.isClassAttendanceAllowed()">Chỉ mở từ {{vm.attendanceConfig.qrSwitchTime}}.</small>
+                    <small ng-if="vm.attendanceConfig.classAutoLate">Từ {{vm.attendanceLateTime(vm.attendanceConfig.classStartTime, vm.attendanceConfig.classLateMinutes)}} tự ghi MUỘN.</small>
+                    <small ng-if="!vm.attendanceConfig.classAutoLate">Tắt tự tính muộn; quét QR ghi CÓ ĐI HỌC.</small>
                 </span>
             </label>
 
@@ -863,7 +948,7 @@
                 <span>
                     <strong>Điểm danh Ngoại khóa</strong>
                     <small ng-if="vm.isClassAttendanceAllowed()">Chỉ cập nhật trạng thái học Ngoại khóa.</small>
-                    <small class="text-danger" ng-if="!vm.isClassAttendanceAllowed()">Chỉ mở từ 09:10 sáng.</small>
+                    <small class="text-danger" ng-if="!vm.isClassAttendanceAllowed()">Chỉ mở từ {{vm.attendanceConfig.qrSwitchTime}}.</small>
                 </span>
             </label>
         </div>
@@ -880,6 +965,20 @@
 </script>
 
 <style>
+    .attendance-config-modal fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+    .attendance-config-section { margin: 16px 0; padding: 16px; border: 1px solid #dce3ef; border-radius: 12px; background: #f8faff; }
+    .attendance-config-section h5 { margin: 0 0 14px; font-size: 16px; font-weight: 700; color: #354269; }
+    .attendance-config-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .attendance-config-fields label { display: block; min-height: 40px; }
+    .attendance-config-toggle { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .attendance-config-toggle input { margin: 0; flex: 0 0 auto; }
+    .attendance-config-preview { margin: 8px 0 0; color: #455579; }
+    .attendance-config-switch input { max-width: 160px; margin-bottom: 6px; }
+    .attendance-config-switch small { display: block; color: #65718a; }
+    @media (max-width: 480px) {
+        .attendance-config-fields { grid-template-columns: minmax(0, 1fr); gap: 0; }
+        .attendance-config-fields label { min-height: 0; }
+    }
     .attendance-class-selection-date {
         margin: 5px 28px 0 0;
         color: #6c7890;
@@ -1323,8 +1422,9 @@
             <button ng-class="{
                 'btn-success': vm.checkPerson.status == 1,
                 'btn-danger': vm.checkPerson.status == 2,
+                'btn-warning': vm.checkPerson.status == 3 || vm.checkPerson.status == 6,
                 'btn-info': vm.checkPerson.status == 5,
-                'btn-warning': vm.checkPerson.status == 6
+                'btn-primary': vm.checkPerson.status == null
             }"
                     type="button"
                     ng-click="$dismiss()"
@@ -2231,6 +2331,11 @@
 
     .status-class-warning {
         background: #FFC107 !important;
+    }
+
+    .status-class-late {
+        background: #ffedd5 !important;
+        color: #9a3412;
     }
 
     .status-class-info {

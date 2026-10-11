@@ -10,6 +10,7 @@ import javax.persistence.Query;
 
 import org.joda.time.LocalDate;
 import org.joda.time.LocalDateTime;
+import org.joda.time.DateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -31,6 +32,9 @@ import com.globits.richy.dto.PersonDateDto;
 import com.globits.richy.repository.EnrolmentClassRepository;
 import com.globits.richy.repository.PersonDateRepository;
 import com.globits.richy.service.PersonDateService;
+import com.globits.richy.service.AttendanceConfigService;
+import com.globits.richy.dto.AttendanceConfigDto;
+import com.globits.richy.attendance.AttendanceRules;
 import com.globits.security.domain.User;
 import com.globits.security.repository.UserRepository;
 
@@ -47,6 +51,8 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 	private PersonDateRepository personDateRepository;
 	@Autowired
 	private UserRepository userRepository;
+	@Autowired
+	private AttendanceConfigService attendanceConfigService;
 	
 //	@Override
 //	public Page<PersonDateDto> getPageObject(PersonDateDto searchDto, int pageIndex, int pageSize) {
@@ -400,7 +406,7 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 	public PersonDateDto saveObject(PersonDateDto dto) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		User modifiedUser = null;
-		LocalDateTime currentDate = LocalDateTime.now();
+		LocalDateTime currentDate = DateTime.now(AttendanceRules.TIME_ZONE).toLocalDateTime();
 		String currentUserName = "Unknown User";
 		if (authentication != null) {
 			modifiedUser = (User) authentication.getPrincipal();
@@ -476,14 +482,14 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 		// 1: có đi lễ ; 2: không đi lễ; 3: muộn; 5: ca đoàn; 6: Phép (lễ)
 		if(dto.getStatusClass() != null) {
 			if(dto.getStatusClass() == 1) {// có đi học giáo lý
-			    LocalDateTime localDateTime = LocalDateTime.now();
+			    LocalDateTime localDateTime = DateTime.now(AttendanceRules.TIME_ZONE).toLocalDateTime();
 			    domain.setTimeGoToClass(localDateTime);
 			}
 			if(dto.getStatusClass() == 2) {// không đi học giáo lý
 			    domain.setTimeGoToClass(null);
 			}
 			if(dto.getStatusClass() == 3) {// muộn => tách ra để sau này sửa thêm
-			    LocalDateTime localDateTime = LocalDateTime.now();
+			    LocalDateTime localDateTime = DateTime.now(AttendanceRules.TIME_ZONE).toLocalDateTime();
 			    domain.setTimeGoToClass(localDateTime);
 			}
 			if(dto.getStatusClass() == 6) {// Phép
@@ -494,14 +500,14 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 		
 		if(dto.getExtraClass() != null) {
 			if(dto.getExtraClass() == 1) {// có đi học giáo lý
-			    LocalDateTime localDateTime = LocalDateTime.now();
+			    LocalDateTime localDateTime = DateTime.now(AttendanceRules.TIME_ZONE).toLocalDateTime();
 			    domain.setTimeGoToExtraClass(localDateTime);
 			}
 			if(dto.getExtraClass() == 2) {// không đi học giáo lý
 			    domain.setTimeGoToExtraClass(null);
 			}
 			if(dto.getExtraClass() == 3) {// muộn => tách ra để sau này sửa thêm
-			    LocalDateTime localDateTime = LocalDateTime.now();
+			    LocalDateTime localDateTime = DateTime.now(AttendanceRules.TIME_ZONE).toLocalDateTime();
 			    domain.setTimeGoToExtraClass(localDateTime);
 			}
 			if(dto.getExtraClass() == 6) {// Phép
@@ -512,18 +518,18 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 		
 		if(dto.getStatusMass() != null) {
 			if(dto.getStatusMass() == 1) {// có đi LỄ
-			    LocalDateTime localDateTime = LocalDateTime.now();
+			    LocalDateTime localDateTime = DateTime.now(AttendanceRules.TIME_ZONE).toLocalDateTime();
 			    domain.setTimeGoToChurch(localDateTime);
 			}
 			if(dto.getStatusMass() == 2) {// không đi LỄ
 			    domain.setTimeGoToChurch(null);
 			}
 			if(dto.getStatusMass() == 3) {// muộn => tách ra để sau này sửa thêm
-			    LocalDateTime localDateTime = LocalDateTime.now();
+			    LocalDateTime localDateTime = DateTime.now(AttendanceRules.TIME_ZONE).toLocalDateTime();
 			    domain.setTimeGoToChurch(localDateTime);
 			}
 			if(dto.getStatusMass() == 5) {//ca đoàn
-			    LocalDateTime localDateTime = LocalDateTime.now();
+			    LocalDateTime localDateTime = DateTime.now(AttendanceRules.TIME_ZONE).toLocalDateTime();
 			    domain.setTimeGoToChurch(localDateTime);
 			}
 			if(dto.getStatusMass() == 6) {// Phép
@@ -560,15 +566,14 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 				|| (dto.getExtraClass() != null && !markExtraClass)) {
 			throw new IllegalArgumentException("Loại điểm danh QR không hợp lệ.");
 		}
-		LocalDateTime qrScanTime = LocalDateTime.now();
-		if (markMass && qrScanTime.getHourOfDay() >= 9) {
-			throw new IllegalArgumentException("Đã quá 09:00 sáng, không thể điểm danh Lễ.");
+		AttendanceConfigDto config = attendanceConfigService.getConfig();
+		LocalDateTime qrScanTime = DateTime.now(AttendanceRules.TIME_ZONE).toLocalDateTime();
+		boolean massOpen = AttendanceRules.isMassOpen(config, qrScanTime);
+		if (markMass && !massOpen) {
+			throw new IllegalArgumentException("QR Lễ đã khóa từ " + config.getQrSwitchTime() + ".");
 		}
-		boolean beforeClassAttendanceTime = qrScanTime.getHourOfDay() < 9
-				|| (qrScanTime.getHourOfDay() == 9 && qrScanTime.getMinuteOfHour() < 10);
-		if ((markClass || markExtraClass) && beforeClassAttendanceTime) {
-			throw new IllegalArgumentException(
-					"Chưa đến 09:10 sáng, không thể điểm danh Giáo lý hoặc Ngoại khóa.");
+		if ((markClass || markExtraClass) && massOpen) {
+			throw new IllegalArgumentException("QR Giáo lý và Ngoại khóa chỉ mở từ " + config.getQrSwitchTime() + ".");
 		}
 
 		Integer targetSchoolId = normalizeAttendanceSchoolId(dto.getSchoolId());
@@ -590,20 +595,26 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 			User modifiedUser = (User) authentication.getPrincipal();
 			currentUserName = modifiedUser.getUsername();
 		}
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = qrScanTime;
 		PersonDate firstSaved = null;
 		for (PersonDate domain : matches) {
 			// Cập nhật đúng loại được chọn trên mọi bản ghi của học sinh trong ngày,
 			// không phụ thuộc lớp đang được lọc trên giao diện.
 			if (markMass) {
-				domain.setStatusMass(1);
-				domain.setTimeGoToChurch(now);
+				if (!hasRecordedQrAttendance(domain.getStatusMass(), domain.getTimeGoToChurch(), true)) {
+					domain.setStatusMass(AttendanceRules.qrStatus(config, true, now));
+					domain.setTimeGoToChurch(now);
+				}
 			} else if (markClass) {
-				domain.setStatusClass(1);
-				domain.setTimeGoToClass(now);
+				if (!hasRecordedQrAttendance(domain.getStatusClass(), domain.getTimeGoToClass(), false)) {
+					domain.setStatusClass(AttendanceRules.qrStatus(config, false, now));
+					domain.setTimeGoToClass(now);
+				}
 			} else {
-				domain.setExtraClass(1);
-				domain.setTimeGoToExtraClass(now);
+				if (!hasRecordedQrAttendance(domain.getExtraClass(), domain.getTimeGoToExtraClass(), false)) {
+					domain.setExtraClass(1);
+					domain.setTimeGoToExtraClass(now);
+				}
 			}
 			domain.setModifiedBy(currentUserName);
 			domain.setModifyDate(now);
@@ -613,6 +624,11 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 			}
 		}
 		return new PersonDateDto(firstSaved);
+	}
+
+	private boolean hasRecordedQrAttendance(Integer status, LocalDateTime time, boolean mass) {
+		return time != null && (Integer.valueOf(1).equals(status) || Integer.valueOf(3).equals(status)
+				|| (mass && Integer.valueOf(5).equals(status)));
 	}
 
 	@Override

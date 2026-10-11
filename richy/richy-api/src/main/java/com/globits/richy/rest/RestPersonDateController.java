@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.globits.richy.dto.PersonDateBulkCreateDto;
 import com.globits.richy.dto.PersonDateClassReportDto;
 import com.globits.richy.dto.PersonDateDto;
+import com.globits.richy.dto.AttendanceConfigDto;
+import com.globits.richy.service.AttendanceConfigService;
 import com.globits.richy.service.PersonDateService;
 
 
@@ -26,6 +28,22 @@ import com.globits.richy.service.PersonDateService;
 public class RestPersonDateController {
 	@Autowired
 	private PersonDateService service;
+	@Autowired
+	private AttendanceConfigService attendanceConfigService;
+
+	@Secured({"ROLE_ADMIN","ROLE_STUDENT_MANAGERMENT","ROLE_EDUCATION_MANAGERMENT"})
+	@RequestMapping(value = "/attendance_config", method = RequestMethod.GET)
+	public AttendanceConfigDto getAttendanceConfig() {
+		AttendanceConfigDto config = attendanceConfigService.getConfig();
+		config.setServerTimeMillis(org.joda.time.DateTimeUtils.currentTimeMillis());
+		return config;
+	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT"})
+	@RequestMapping(value = "/attendance_config", method = RequestMethod.PUT)
+	public AttendanceConfigDto saveAttendanceConfig(@RequestBody AttendanceConfigDto config) {
+		return attendanceConfigService.saveConfig(config);
+	}
 
 	@org.springframework.web.bind.annotation.ExceptionHandler(IllegalArgumentException.class)
 	public ResponseEntity<Map<String, String>> invalidAttendanceRequest(IllegalArgumentException error) {

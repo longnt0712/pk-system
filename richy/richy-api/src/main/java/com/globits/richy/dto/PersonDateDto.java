@@ -1,14 +1,13 @@
 package com.globits.richy.dto;
 
 import java.io.Serializable;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.joda.time.LocalDateTime;
 
 import com.globits.core.dto.PersonDto;
 import com.globits.richy.domain.PersonDate;
+import com.globits.richy.attendance.AttendanceRules;
 import com.globits.security.dto.UserDto;
 
 public class PersonDateDto implements Serializable{
@@ -173,43 +172,11 @@ public class PersonDateDto implements Serializable{
 			this.setUser(userDto);
 		}
 		
-		try {
-			this.createDate = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(domain.getCreateDate().toString());
-		} catch (ParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		try {
-			this.modifiedDate = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(domain.getModifyDate().toString());
-		} catch (ParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		try {
-			if(domain.getTimeGoToChurch() != null) {
-				this.timeGoToChurch = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(domain.getTimeGoToChurch().toString());	
-			}
-			if(domain.getTimeGoToClass() != null) {
-				this.timeGoToClass = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(domain.getTimeGoToClass().toString());	
-			}
-		} catch (ParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		try {
-			if(domain.getTimeGoToExtraClass() != null) {
-				this.timeGoToExtraClass = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(domain.getTimeGoToExtraClass().toString());	
-			}
-			if(domain.getTimeGoToExtraClass() != null) {
-				this.timeGoToExtraClass = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(domain.getTimeGoToExtraClass().toString());	
-			}
-		} catch (ParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		this.createDate = attendanceDate(domain.getCreateDate());
+		this.modifiedDate = attendanceDate(domain.getModifyDate());
+		this.timeGoToChurch = attendanceDate(domain.getTimeGoToChurch());
+		this.timeGoToClass = attendanceDate(domain.getTimeGoToClass());
+		this.timeGoToExtraClass = attendanceDate(domain.getTimeGoToExtraClass());
 		
 		this.statusMass = domain.getStatusMass();
 		this.statusClass = domain.getStatusClass();
@@ -217,6 +184,10 @@ public class PersonDateDto implements Serializable{
 		this.extraClass = domain.getExtraClass();
 		this.description = domain.getDescription();
 		this.modifiedBy = domain.getModifiedBy();
+	}
+
+	private static Date attendanceDate(LocalDateTime value) {
+		return value == null ? null : value.toDate(AttendanceRules.TIME_ZONE.toTimeZone());
 	}
 	
 }

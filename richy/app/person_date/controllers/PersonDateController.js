@@ -674,10 +674,12 @@
             vm.totalStudent = 0;
             vm.totalMass1 = 0;
             vm.totalMass2 = 0;
+            vm.totalMass3 = 0;
             vm.totalMass5 = 0;
             vm.totalMass6 = 0;
             vm.totalClass1 = 0;
             vm.totalClass2 = 0;
+            vm.totalClass3 = 0;
             vm.totalClass5 = 0;
             vm.totalClass6 = 0;
 
@@ -693,16 +695,18 @@
             angular.forEach(vm.personDates || [], function (value) {
                 if (value.statusMass == 1) vm.totalMass1 += 1;
                 if (value.statusMass == 2) vm.totalMass2 += 1;
+                if (value.statusMass == 3) vm.totalMass3 += 1;
                 if (value.statusMass == 5) vm.totalMass5 += 1;
                 if (value.statusMass == 6) vm.totalMass6 += 1;
                 if (value.statusClass == 1) vm.totalClass1 += 1;
                 if (value.statusClass == 2) vm.totalClass2 += 1;
+                if (value.statusClass == 3) vm.totalClass3 += 1;
                 if (value.statusClass == 5) vm.totalClass5 += 1;
                 if (value.statusClass == 6) vm.totalClass6 += 1;
             });
 
-            vm.totalGoToChurch = vm.totalMass1 + vm.totalMass5;
-            vm.totalGoToClass = vm.totalClass1 + vm.totalClass5;
+            vm.totalGoToChurch = vm.totalMass1 + vm.totalMass3 + vm.totalMass5;
+            vm.totalGoToClass = vm.totalClass1 + vm.totalClass3 + vm.totalClass5;
             vm.totalAbsentChurch = vm.totalMass2 + vm.totalMass6;
             vm.totalAbsentClass = vm.totalClass2 + vm.totalClass6;
         }
@@ -1181,14 +1185,14 @@
 
         function addAttendance(target, attendance) {
             var status = attendance ? Number(attendance.statusClass) : null;
-            if (status === 1) target.present += 1;
+            if (status === 1 || status === 3) target.present += 1;
             else if (status === 6) target.excused += 1;
             else if (status === 2) target.unexcused += 1;
             else target.unmarked += 1;
 
             var massStatus = attendance ? Number(attendance.statusMass) : null;
-            // Giữ đúng quy ước tổng hiện có: có đi lễ + ca đoàn.
-            if (massStatus === 1 || massStatus === 5) {
+            // Muộn vẫn là có mặt, cùng với có đi lễ và ca đoàn.
+            if (massStatus === 1 || massStatus === 3 || massStatus === 5) {
                 target.massPresent += 1;
             } else if (massStatus === 6) {
                 target.massExcused += 1;
@@ -1536,14 +1540,105 @@
         vm.pendingCheckType = null;
         vm.qrAttendanceTypeModalInstance = null;
 
+        // Shared QR schedule. Manual attendance deliberately bypasses these rules.
+        vm.attendanceConfig = null;
+        vm.attendanceConfigLoading = false;
+        vm.attendanceConfigSaving = false;
+        vm.attendanceConfigModalInstance = null;
+        var attendanceClockOffsetMs = 0;
+        var attendanceConfigRequest = null;
+
+        vm.canManageAttendanceConfig = function () {
+            return !!(vm.isRoleAdmin || vm.isRoleEducationManagerment);
+        };
+
+        vm.loadAttendanceConfig = function () {
+            if (attendanceConfigRequest) return attendanceConfigRequest;
+            vm.attendanceConfigLoading = true;
+            attendanceConfigRequest = service.getAttendanceConfig().then(function (config) {
+                if (!config || attendanceTimeMinutes(config.qrSwitchTime) === null) {
+                    return $q.reject({message: 'Không tải được cấu hình giờ điểm danh.'});
+                }
+                vm.attendanceConfig = config;
+                attendanceClockOffsetMs = config.serverTimeMillis != null && isFinite(Number(config.serverTimeMillis))
+                    ? Number(config.serverTimeMillis) - Date.now() : 0;
+                return config;
+            }).finally(function () {
+                vm.attendanceConfigLoading = false;
+                attendanceConfigRequest = null;
+            });
+            return attendanceConfigRequest;
+        };
+
+        function attendanceTimeMinutes(value) {
+            if (!/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(String(value || ''))) return null;
+            var parts = value.split(':');
+            return Number(parts[0]) * 60 + Number(parts[1]);
+        }
+
+        vm.attendanceLateTime = function (start, minutes) {
+            var startMinutes = attendanceTimeMinutes(start);
+            if (startMinutes === null || minutes === null || minutes === undefined || minutes === '') return '';
+            var threshold = startMinutes + Number(minutes);
+            if (!isFinite(threshold) || threshold % 1 !== 0 || threshold < 0 || threshold >= 1440) return '';
+            return ('0' + Math.floor(threshold / 60)).slice(-2) + ':' + ('0' + (threshold % 60)).slice(-2);
+        };
+
+        vm.openAttendanceConfig = function () {
+            if (!vm.canManageAttendanceConfig() || vm.attendanceConfigModalInstance) return;
+            return vm.loadAttendanceConfig().then(function (config) {
+                if (vm.attendanceConfigModalInstance) return;
+                vm.attendanceConfigDraft = angular.copy(config);
+                vm.attendanceConfigError = '';
+                vm.attendanceConfigModalInstance = modal.open({
+                    animation: true,
+                    templateUrl: 'attendance_config_modal.html',
+                    scope: $scope,
+                    size: 'md',
+                    backdrop: 'static'
+                });
+                vm.attendanceConfigModalInstance.result.then(angular.noop, angular.noop).finally(function () {
+                    vm.attendanceConfigModalInstance = null;
+                });
+            }).catch(function (error) {
+                toastr.error(attendanceSaveErrorMessage(error), 'Cấu hình điểm danh');
+            });
+        };
+
+        vm.saveAttendanceConfig = function () {
+            if (!vm.canManageAttendanceConfig() || vm.attendanceConfigSaving) return;
+            vm.attendanceConfigSaving = true;
+            vm.attendanceConfigError = '';
+            return service.saveAttendanceConfig(angular.copy(vm.attendanceConfigDraft)).then(function (config) {
+                vm.attendanceConfig = config;
+                vm.attendanceConfigModalInstance.close('saved');
+                toastr.success('Đã lưu cấu hình điểm danh.', 'Thông báo');
+            }).catch(function (error) {
+                vm.attendanceConfigError = attendanceSaveErrorMessage(error);
+            }).finally(function () {
+                vm.attendanceConfigSaving = false;
+            });
+        };
+
+        function vietnamTimeMinutes() {
+            var now = new Date(Date.now() + attendanceClockOffsetMs + 7 * 60 * 60 * 1000);
+            return now.getUTCHours() * 60 + now.getUTCMinutes();
+        }
+
+        function qrMassClosedMessage() {
+            return 'QR Lễ đã khóa từ ' + vm.attendanceConfig.qrSwitchTime + '.';
+        }
+
+        function qrClassNotOpenMessage() {
+            return 'QR Giáo lý và Ngoại khóa chỉ mở từ ' + vm.attendanceConfig.qrSwitchTime + '.';
+        }
+
         vm.isMassAttendanceAllowed = function () {
-            return new Date().getHours() < 9;
+            return !!vm.attendanceConfig && vietnamTimeMinutes() < attendanceTimeMinutes(vm.attendanceConfig.qrSwitchTime);
         };
 
         vm.isClassAttendanceAllowed = function () {
-            var now = new Date();
-            return now.getHours() > 9 ||
-                (now.getHours() === 9 && now.getMinutes() >= 10);
+            return !!vm.attendanceConfig && vietnamTimeMinutes() >= attendanceTimeMinutes(vm.attendanceConfig.qrSwitchTime);
         };
 
         vm.openQrAttendanceTypeModal = function () {
@@ -1556,13 +1651,17 @@
                 backdrop: 'static'
             });
 
-            vm.qrAttendanceTypeModalInstance.result.finally(function () {
+            vm.qrAttendanceTypeModalInstance.result.then(angular.noop, angular.noop).finally(function () {
                 vm.qrAttendanceTypeModalInstance = null;
                 vm.pendingCheckType = null;
             });
         };
 
         vm.confirmQrAttendanceType = function () {
+            if (!vm.attendanceConfig) {
+                toastr.warning('Vui lòng tải cấu hình giờ điểm danh trước khi mở camera.', 'Thông báo');
+                return;
+            }
             var selectedType = Number(vm.pendingCheckType);
             if (selectedType !== 1 && selectedType !== 2 && selectedType !== 3) {
                 toastr.warning('Vui lòng chọn loại điểm danh.', 'Thông báo');
@@ -1570,12 +1669,12 @@
             }
             if (selectedType === 1 && !vm.isMassAttendanceAllowed()) {
                 vm.pendingCheckType = null;
-                toastr.warning('Đã quá 09:00 sáng, không thể điểm danh Lễ.', 'Thông báo');
+                toastr.warning(qrMassClosedMessage(), 'Thông báo');
                 return;
             }
             if ((selectedType === 2 || selectedType === 3) && !vm.isClassAttendanceAllowed()) {
                 vm.pendingCheckType = null;
-                toastr.warning('Chưa đến 09:10 sáng, không thể điểm danh Giáo lý hoặc Ngoại khóa.', 'Thông báo');
+                toastr.warning(qrClassNotOpenMessage(), 'Thông báo');
                 return;
             }
 
@@ -1600,7 +1699,11 @@
                 return;
             }
             vm.qrAttendanceDate = selectedDate;
-            vm.openQrAttendanceTypeModal();
+            return vm.loadAttendanceConfig().then(function () {
+                vm.openQrAttendanceTypeModal();
+            }).catch(function (error) {
+                toastr.error(attendanceSaveErrorMessage(error), 'Không mở được điểm danh QR');
+            });
         };
 
         vm.start = function () {
@@ -1813,19 +1916,10 @@
             if (selectedType !== 1 && selectedType !== 2 && selectedType !== 3) {
                 return $q.reject({message: 'Vui lòng chọn loại điểm danh trước khi quét.'});
             }
-            if (selectedType === 1 && !vm.isMassAttendanceAllowed()) {
-                var massClosedMessage = 'Đã quá 09:00 sáng, không thể điểm danh Lễ.';
-                toastr.warning(massClosedMessage, 'Thông báo');
-                if (vm.scanning) vm.stop();
-                return $q.reject({message: massClosedMessage});
+            if (!vm.attendanceConfig) {
+                return $q.reject({message: 'Chưa tải được cấu hình giờ điểm danh.'});
             }
-            if ((selectedType === 2 || selectedType === 3) && !vm.isClassAttendanceAllowed()) {
-                var classNotOpenMessage = 'Chưa đến 09:10 sáng, không thể điểm danh Giáo lý hoặc Ngoại khóa.';
-                toastr.warning(classNotOpenMessage, 'Thông báo');
-                if (vm.scanning) vm.stop();
-                return $q.reject({message: classNotOpenMessage});
-            }
-
+            // The server checks the current schedule on every scan, including changes from another device.
             var request = {
                 schoolId: vm.directorySchoolId,
                 user: {username: normalizedUsername}
@@ -1840,9 +1934,7 @@
                     return $q.reject({message: 'Máy chủ không xác nhận được bản ghi điểm danh.'});
                 }
 
-                var selectedTypeSaved = (selectedType === 1 && data.statusMass == 1)
-                    || (selectedType === 2 && data.statusClass == 1)
-                    || (selectedType === 3 && data.extraClass == 1);
+                var selectedTypeSaved = vm.isAttendanceChecked(data, selectedType);
                 if (!selectedTypeSaved) {
                     return $q.reject({message: 'Máy chủ chưa lưu đúng loại điểm danh đã chọn.'});
                 }
@@ -1864,7 +1956,11 @@
                 return data;
             }).catch(function (error) {
                 vm.personDate = {};
-                toastr.error(attendanceSaveErrorMessage(error), 'Điểm danh QR thất bại');
+                var message = attendanceSaveErrorMessage(error);
+                if (vm.scanning && /^QR (Lễ đã khóa|Giáo lý và Ngoại khóa chỉ mở)/.test(message)) {
+                    vm.stop();
+                }
+                toastr.error(message, 'Điểm danh QR thất bại');
                 return $q.reject(error);
             });
         };

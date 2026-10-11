@@ -48,6 +48,16 @@
         }
 
         var restUrl = 'person_date';
+        self.getAttendanceConfig = function () {
+            return $http.get(baseUrl + restUrl + '/attendance_config', {cache: false}).then(function (response) {
+                return response.data;
+            });
+        };
+        self.saveAttendanceConfig = function (config) {
+            return $http.put(baseUrl + restUrl + '/attendance_config', config).then(function (response) {
+                return response.data;
+            });
+        };
         function getAllGroups() {
             var url = baseUrl + 'usergroup/all';
             return utils.resolve(url, 'GET', angular.noop, angular.noop);
@@ -87,9 +97,9 @@
 
         function saveByQr(object, attendanceDate) {
             var url = baseUrl + restUrl + '/save_by_qr/' + encodeURIComponent(attendanceDate);
-            return utils.resolveAlt(url, 'POST', null, object, {
-                'Content-Type': 'application/json; charset=utf-8'
-            }, angular.noop, angular.noop);
+            return $http.post(url, object).then(function (response) {
+                return response.data;
+            });
         }
 
         function getAttendanceClassStatuses(attendanceDate, schoolId) {
