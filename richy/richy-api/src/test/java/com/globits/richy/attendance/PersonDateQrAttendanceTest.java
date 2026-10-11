@@ -119,13 +119,59 @@ public class PersonDateQrAttendanceTest {
     }
 
     @Test public void repeatedQrKeepsFirstAttendanceTimeStatusAndTeacherCorrections() {
-        at("08:04:00"); scan(1); LocalDateTime firstTime = row.getTimeGoToChurch();
-        at("08:30:00"); config.setMassLateMinutes(0); scan(1);
+        at("08:04:00"); assertFalse(scan(1).getQrAlreadyRecorded());
+        LocalDateTime firstTime = row.getTimeGoToChurch(), firstModified = row.getModifyDate();
+        String firstModifiedBy = row.getModifiedBy();
+        at("08:30:00"); config.setMassLateMinutes(0); assertTrue(scan(1).getQrAlreadyRecorded());
         assertEquals(Integer.valueOf(1), row.getStatusMass()); assertEquals(firstTime, row.getTimeGoToChurch());
+        assertEquals(firstModified, row.getModifyDate()); assertEquals(firstModifiedBy, row.getModifiedBy());
+        verify(repository, times(1)).save(any(PersonDate.class));
         PersonDateDto manual = request(1, 3); manual.setId(7L);
         service.saveObject(manual); LocalDateTime correctedTime = row.getTimeGoToChurch();
-        at("08:40:00"); scan(1);
+        at("08:40:00"); assertTrue(scan(1).getQrAlreadyRecorded());
         assertEquals(Integer.valueOf(3), row.getStatusMass()); assertEquals(correctedTime, row.getTimeGoToChurch());
+        verify(repository, times(2)).save(any(PersonDate.class));
+    }
+
+    @Test public void duplicateNoticeIsSpecificToTheSelectedAttendanceType() {
+        at("08:00:00"); assertFalse(scan(1).getQrAlreadyRecorded());
+        at("09:00:00"); assertFalse(scan(2).getQrAlreadyRecorded());
+        assertFalse(scan(3).getQrAlreadyRecorded());
+        LocalDateTime firstClassTime = row.getTimeGoToClass(), firstExtraTime = row.getTimeGoToExtraClass();
+        at("09:30:00"); assertTrue(scan(2).getQrAlreadyRecorded());
+        assertTrue(scan(3).getQrAlreadyRecorded());
+        assertEquals(firstClassTime, row.getTimeGoToClass()); assertEquals(firstExtraTime, row.getTimeGoToExtraClass());
+        verify(repository, times(3)).save(any(PersonDate.class));
+    }
+
+    @Test public void lateAndChoirAttendanceAreReportedAsAlreadyRecorded() {
+        config.setClassAutoLate(true);
+        at("09:15:00"); assertFalse(scan(2).getQrAlreadyRecorded());
+        at("10:00:00"); PersonDateDto repeated = scan(2);
+        assertTrue(repeated.getQrAlreadyRecorded()); assertEquals(Integer.valueOf(3), repeated.getStatusClass());
+        assertEquals(new LocalDateTime(2026, 10, 11, 9, 15), row.getTimeGoToClass());
+        at("08:00:00"); PersonDateDto choir = request(1, 5); choir.setId(7L); service.saveObject(choir);
+        LocalDateTime choirTime = row.getTimeGoToChurch();
+        at("08:40:00"); repeated = scan(1);
+        assertTrue(repeated.getQrAlreadyRecorded()); assertEquals(Integer.valueOf(5), repeated.getStatusMass());
+        assertEquals(choirTime, row.getTimeGoToChurch());
+        verify(repository, times(2)).save(any(PersonDate.class));
+    }
+
+    @Test public void cancelledAttendanceCanBeScannedAgainAsANewAttendance() {
+        at("08:00:00"); scan(1);
+        PersonDateDto cancel = request(1, 2); cancel.setId(7L); service.saveObject(cancel);
+        at("08:30:00"); PersonDateDto saved = scan(1);
+        assertFalse(saved.getQrAlreadyRecorded()); assertEquals(Integer.valueOf(3), saved.getStatusMass());
+        assertEquals(new LocalDateTime(2026, 10, 11, 8, 30), row.getTimeGoToChurch());
+    }
+
+    @Test public void duplicateFlagIsCalculatedByTheServerAndIncludedInTheQrJsonResponse() throws Exception {
+        PersonDateDto dto = request(1, 1); dto.setQrAlreadyRecorded(true);
+        assertFalse(service.saveByQr(dto, "2026-10-11").getQrAlreadyRecorded());
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        assertTrue(mapper.readTree(mapper.writeValueAsString(scan(1))).get("qrAlreadyRecorded").asBoolean());
+        assertFalse(mapper.readTree(mapper.writeValueAsString(new PersonDateDto(row))).has("qrAlreadyRecorded"));
     }
 
     @Test public void manualAttendanceDoesNotUseQrTimeOrAutomaticLateRules() {

@@ -1952,6 +1952,11 @@
                     ? data.statusMass
                     : (selectedType === 2 ? data.statusClass : data.extraClass);
                 vm.checkPerson.qrCheckType = selectedType;
+                if (data.qrAlreadyRecorded === true) {
+                    var typeName = selectedType === 1 ? 'Lễ' : (selectedType === 2 ? 'Giáo lý' : 'Ngoại khóa');
+                    toastr.info((data.user.username || normalizedUsername) + ' đã được điểm danh ' + typeName
+                        + ' ngày ' + attendanceDate.split('-').reverse().join('/') + '.', 'Đã điểm danh trước đó');
+                }
                 vm.confirmCheck();
                 return data;
             }).catch(function (error) {

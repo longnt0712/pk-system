@@ -1430,11 +1430,16 @@
                     ng-click="$dismiss()"
                     class="btn"
                     data-dismiss="modal">
-                <i class="fa fa-check"></i> THÀNH CÔNG - CLICK ĐỂ ĐÓNG
+                <i class="fa" ng-class="vm.checkPerson.qrAlreadyRecorded ? 'fa-info-circle' : 'fa-check'"></i>
+                {{vm.checkPerson.qrAlreadyRecorded ? 'ĐÃ ĐIỂM DANH TRƯỚC ĐÓ' : 'THÀNH CÔNG'}} - CLICK ĐỂ ĐÓNG
             </button>
         </div>
 
         <div class="modal-body">
+            <div class="alert alert-info" ng-if="vm.checkPerson.qrAlreadyRecorded" role="status">
+                Học sinh đã được điểm danh {{vm.checkPerson.qrCheckType == 1 ? 'Lễ' : (vm.checkPerson.qrCheckType == 2 ? 'Giáo lý' : 'Ngoại khóa')}}
+                trong ngày này. Giữ nguyên kết quả và giờ điểm danh đã lưu.
+            </div>
             <div class="tntt-card tntt-card--stack">
                 <div class="tntt-stt">#{{$index + 1}}</div>
 
@@ -1457,7 +1462,8 @@
                     <span class="tntt-chip">🎂 {{vm.checkPerson.user.person.birthDate | date:'dd/MM/yyyy'}}</span>
                     <span class="tntt-chip">🆔 <span class="tntt-ellipsis">{{vm.checkPerson.user.username}}</span></span>
                     <span class="tntt-chip" ng-if="vm.checkPerson.qrCheckType">
-                        ✅ Vừa điểm danh: {{vm.checkPerson.qrCheckType == 1 ? 'Lễ' : (vm.checkPerson.qrCheckType == 2 ? 'Giáo lý' : 'Ngoại khóa')}}
+                        {{vm.checkPerson.qrAlreadyRecorded ? 'ℹ️ Đã điểm danh trước đó:' : '✅ Vừa điểm danh:'}}
+                        {{vm.checkPerson.qrCheckType == 1 ? 'Lễ' : (vm.checkPerson.qrCheckType == 2 ? 'Giáo lý' : 'Ngoại khóa')}}
                     </span>
 
                     <span class="tntt-chip tntt-class-chip">

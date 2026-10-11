@@ -25,7 +25,11 @@ tự tính muộn. Điểm danh tay không áp dụng ngưỡng giờ QR hoặc 
 giáo viên có thể chọn MUỘN hoặc sửa lại trạng thái.
 
 QR quét lại giữ trạng thái và thời gian của bản ghi đã điểm danh (có đi, muộn,
-hoặc ca đoàn Lễ), kể cả trạng thái giáo viên đã chỉnh. Giáo viên có thể hủy điểm
+hoặc ca đoàn Lễ), kể cả trạng thái giáo viên đã chỉnh. Máy chủ trả
+`qrAlreadyRecorded = true` cho loại đã điểm danh; giao diện báo **Đã điểm danh
+trước đó**, giữ nguyên giờ và người cập nhật đã lưu. Lễ, Giáo lý và Ngoại khóa
+được kiểm tra riêng: đã điểm danh Lễ vẫn có thể điểm danh Giáo lý lần đầu.
+Giáo viên có thể hủy điểm
 danh để xóa giờ, sau đó quét lại để ghi nhận lần mới. Mỗi lượt QR chỉ cập nhật
 loại được chọn; không tính lại dữ liệu lịch sử khi đổi cấu hình.
 MUỘN được tính là có mặt trong tổng điểm danh và thống kê theo ngày.

@@ -31,7 +31,8 @@ function setup({time = '08:00:00', manager = true, loadError = null, savedQr = n
     };
     const context = nodeVm.createContext({vm, service, Date: Clock, console,
         angular: {copy, noop() {}, forEach: (values, action) => (values || []).forEach(action)},
-        toastr: {error: message => messages.push(message), warning: message => messages.push(message), success: message => messages.push(message)},
+        toastr: {error: message => messages.push(message), warning: message => messages.push(message),
+            success: message => messages.push(message), info: message => {messages.push(message); calls.push(['info', message]);}},
         $q: {reject: value => Promise.reject(value)}, $scope: {}, $timeout: callback => callback(),
         modal: {open(options) { let resolve, reject; const result = new Promise((yes, no) => {resolve = yes; reject = no;});
             const modal = {options, result, close: resolve, dismiss: reject}; modals.push(modal); return modal; }},
@@ -148,6 +149,34 @@ test('class QR accepts late when enabled and present at end of class when disabl
         assert.equal(h.vm.personDates[0].statusClass, status); assert.equal(h.vm.personDates[0].statusMass, 2);
         assert.equal(h.messages.length, 0);
     }
+});
+
+test('a repeated scan shows the server duplicate notice for each type and keeps the saved time', async () => {
+    for (const [type, name, statusField, timeField] of [
+        [1, 'Lễ', 'statusMass', 'timeGoToChurch'], [2, 'Giáo lý', 'statusClass', 'timeGoToClass'],
+        [3, 'Ngoại khóa', 'extraClass', 'timeGoToExtraClass']
+    ]) {
+        const savedTime = '2026-10-11T01:04:00Z';
+        const h = setup({savedQr: {id: 7, user: {id: 10, username: 'HS001'},
+            [statusField]: 3, [timeField]: savedTime, qrAlreadyRecorded: true}});
+        await h.vm.loadAttendanceConfig(); h.vm.checkType = type;
+        await h.vm.saveByScanQr('HS001');
+        assert.equal(h.messages.at(-1), `HS001 đã được điểm danh ${name} ngày 11/10/2026.`);
+        assert.equal(h.vm.checkPerson.qrAlreadyRecorded, true);
+        assert.equal(h.vm.checkPerson.qrCheckType, type);
+        assert.equal(h.vm.personDates[0][timeField], savedTime);
+        assert.equal(h.vm.personDates[0][statusField], 3);
+        assert.ok(h.calls.some(call => call[0] === 'confirmed'));
+    }
+});
+
+test('first-time scans do not show a duplicate notice even when the visible row is already marked', async () => {
+    const h = setup({savedQr: {id: 7, user: {id: 10}, statusMass: 1, qrAlreadyRecorded: false}});
+    h.vm.personDates[0].statusMass = 3;
+    await h.vm.loadAttendanceConfig(); h.vm.checkType = 1; await h.vm.saveByScanQr('HS001');
+    assert.equal(h.vm.checkPerson.qrAlreadyRecorded, false);
+    assert.equal(h.vm.personDates[0].statusMass, 1);
+    assert.equal(h.messages.length, 0);
 });
 
 test('manual late and present remain teacher choices even after the QR cutoff', async () => {

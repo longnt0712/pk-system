@@ -9,6 +9,7 @@ import com.globits.core.dto.PersonDto;
 import com.globits.richy.domain.PersonDate;
 import com.globits.richy.attendance.AttendanceRules;
 import com.globits.security.dto.UserDto;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 public class PersonDateDto implements Serializable{
 	private Long id;
@@ -33,6 +34,7 @@ public class PersonDateDto implements Serializable{
 	private Date timeGoToClass;
 	private Long groupId;
 	private Date timeGoToExtraClass;
+	private Boolean qrAlreadyRecorded;
 
 
 	private LocalDateTime startDate;
@@ -152,6 +154,13 @@ public class PersonDateDto implements Serializable{
 	}
 	public void setCreateDate(Date createDate) {
 		this.createDate = createDate;
+	}
+	@JsonInclude(JsonInclude.Include.NON_NULL)
+	public Boolean getQrAlreadyRecorded() {
+		return qrAlreadyRecorded;
+	}
+	public void setQrAlreadyRecorded(Boolean qrAlreadyRecorded) {
+		this.qrAlreadyRecorded = qrAlreadyRecorded;
 	}
 	public PersonDateDto() {
 		

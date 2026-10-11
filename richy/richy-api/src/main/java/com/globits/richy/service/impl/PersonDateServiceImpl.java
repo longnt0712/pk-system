@@ -597,33 +597,37 @@ public class PersonDateServiceImpl extends GenericServiceImpl<PersonDate, Long> 
 		}
 		LocalDateTime now = qrScanTime;
 		PersonDate firstSaved = null;
+		boolean allAlreadyRecorded = true;
 		for (PersonDate domain : matches) {
 			// Cập nhật đúng loại được chọn trên mọi bản ghi của học sinh trong ngày,
 			// không phụ thuộc lớp đang được lọc trên giao diện.
-			if (markMass) {
-				if (!hasRecordedQrAttendance(domain.getStatusMass(), domain.getTimeGoToChurch(), true)) {
+			boolean alreadyRecorded = markMass
+					? hasRecordedQrAttendance(domain.getStatusMass(), domain.getTimeGoToChurch(), true)
+					: (markClass ? hasRecordedQrAttendance(domain.getStatusClass(), domain.getTimeGoToClass(), false)
+							: hasRecordedQrAttendance(domain.getExtraClass(), domain.getTimeGoToExtraClass(), false));
+			if (!alreadyRecorded) {
+				allAlreadyRecorded = false;
+				if (markMass) {
 					domain.setStatusMass(AttendanceRules.qrStatus(config, true, now));
 					domain.setTimeGoToChurch(now);
-				}
-			} else if (markClass) {
-				if (!hasRecordedQrAttendance(domain.getStatusClass(), domain.getTimeGoToClass(), false)) {
+				} else if (markClass) {
 					domain.setStatusClass(AttendanceRules.qrStatus(config, false, now));
 					domain.setTimeGoToClass(now);
-				}
-			} else {
-				if (!hasRecordedQrAttendance(domain.getExtraClass(), domain.getTimeGoToExtraClass(), false)) {
+				} else {
 					domain.setExtraClass(1);
 					domain.setTimeGoToExtraClass(now);
 				}
+				domain.setModifiedBy(currentUserName);
+				domain.setModifyDate(now);
+				domain = personDateRepository.save(domain);
 			}
-			domain.setModifiedBy(currentUserName);
-			domain.setModifyDate(now);
-			PersonDate saved = personDateRepository.save(domain);
 			if (firstSaved == null) {
-				firstSaved = saved;
+				firstSaved = domain;
 			}
 		}
-		return new PersonDateDto(firstSaved);
+		PersonDateDto result = new PersonDateDto(firstSaved);
+		result.setQrAlreadyRecorded(allAlreadyRecorded);
+		return result;
 	}
 
 	private boolean hasRecordedQrAttendance(Integer status, LocalDateTime time, boolean mass) {
