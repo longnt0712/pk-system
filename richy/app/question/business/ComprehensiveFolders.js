@@ -108,7 +108,66 @@
         };
     }]);
 
-    angular.module('Hrm.Question').directive('testFolderExplorer', ['ComprehensiveFolders', '$window', function (folders, $window) {
+    angular.module('Hrm.Question').directive('testTitleEditor', ['QuestionService', '$timeout', function (service, $timeout) {
+        return {
+            restrict: 'E', scope: {test: '=', disabled: '=?', saving: '=?', onRenamed: '&?'},
+            template: '<div class="test-title-editor" ng-class="{\'is-editing\': editing}">' +
+                '<button type="button" class="test-title-display" ng-if="!editing" ng-dblclick="begin()" ng-keydown="beginKey($event)" ng-disabled="disabled" title="{{test.title}} — Nhấp đúp hoặc nhấn F2 để đổi tên"><span class="test-explorer-name">{{test.title}}</span></button>' +
+                '<div ng-if="editing"><textarea class="form-control" ng-model="draft.title" maxlength="255" ng-keydown="editKey($event)" ng-disabled="saving" aria-label="Tên bài test"></textarea>' +
+                '<div class="test-title-editor-actions"><button type="button" class="btn btn-primary btn-sm" ng-click="save()" ng-disabled="saving">{{saving ? "Đang lưu..." : "Lưu tên"}}</button>' +
+                '<button type="button" class="btn btn-default btn-sm" ng-click="cancel()" ng-disabled="saving">Hủy</button></div>' +
+                '<small class="test-title-editor-hint">Enter để lưu · Esc để hủy</small><p class="test-folder-error" role="alert" ng-if="error">{{error}}</p></div></div>',
+            link: function (scope, element) {
+                var focusTimer;
+                scope.begin = function () {
+                    if (scope.disabled || scope.saving || scope.editing) { return; }
+                    scope.draft = {title: scope.test.title || ''}; scope.error = ''; scope.editing = true;
+                    focusTimer = $timeout(function () { var input = element[0].querySelector('textarea'); if (input) { input.focus(); input.select(); } });
+                };
+                scope.beginKey = function (event) { if (event.key === 'F2' || event.key === 'Enter') { event.preventDefault(); scope.begin(); } };
+                scope.cancel = function () { if (!scope.saving) { scope.editing = false; scope.error = ''; } };
+                scope.editKey = function (event) {
+                    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); scope.cancel(); }
+                    if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); scope.save(); }
+                };
+                scope.save = function () {
+                    if (scope.saving || scope.disabled) { return; }
+                    var title = String(scope.draft.title || '').trim(), previousTitle = scope.test.title;
+                    if (!title) { scope.error = 'Tên bài test không được để trống.'; return; }
+                    if (title.length > 255) { scope.error = 'Tên bài test không được quá 255 ký tự.'; return; }
+                    if (title === previousTitle) { scope.cancel(); return; }
+                    scope.saving = true; scope.error = '';
+                    return service.updateTestTitle(scope.test.id, title).then(function (saved) {
+                        scope.test.title = saved.title; scope.editing = false;
+                        if (scope.onRenamed) { scope.onRenamed({test: scope.test, previousTitle: previousTitle}); }
+                    }, function (response) { scope.error = (response.data || {}).message || 'Không lưu được tên bài. Bạn có thể thử lại.'; })
+                        .finally(function () { scope.saving = false; });
+                };
+                function preventDrag(event) { event.preventDefault(); event.stopPropagation(); }
+                element.on('dragstart', preventDrag);
+                scope.$on('$destroy', function () { $timeout.cancel(focusTimer); element.off('dragstart', preventDrag); });
+            }
+        };
+    }]);
+
+    // Delay pointer clicks just long enough for a double click to rename instead of opening the folder.
+    angular.module('Hrm.Question').directive('testFolderOpen', ['$timeout', function ($timeout) {
+        return {restrict: 'A', link: function (scope, element, attrs) {
+            var clickTimer;
+            function open(event) {
+                $timeout.cancel(clickTimer);
+                if (event.detail > 1) { return; }
+                var name = element[0].querySelector('.test-explorer-name');
+                if (event.detail === 0 || !name || !name.contains(event.target)) { scope.$apply(function () { scope.$eval(attrs.testFolderOpen); }); }
+                else { clickTimer = $timeout(function () { scope.$eval(attrs.testFolderOpen); }, 500); }
+            }
+            function cancel() { $timeout.cancel(clickTimer); }
+            element.on('click', open); element.on('dblclick', cancel);
+            scope.$on('$destroy', function () { cancel(); element.off('click', open); element.off('dblclick', cancel); });
+        }};
+    }]);
+
+    angular.module('Hrm.Question').directive('testFolderExplorer', ['ComprehensiveFolders', '$window', '$timeout', function (folders, $window, $timeout) {
         return {
             restrict: 'E', transclude: true,
             scope: {folderId: '=', allTeachers: '=?', manage: '=?', testMode: '=?', onChange: '&', onMoved: '&?', moving: '=?', moveDisabled: '=?'},
@@ -138,7 +197,7 @@
                 };
             }],
             templateUrl: function () { return 'question/views/test_folder_explorer.html?v=' + encodeURIComponent($window.APP_VERSION || 'dev'); },
-            link: function (scope) {
+            link: function (scope, element) {
                 var storageKey = scope.testMode && scope.testMode !== 'COMPREHENSIVE' ? 'testFolderView:' + scope.testMode : 'comprehensiveTestFolderView';
                 scope.viewMode = 'grid';
                 try { scope.viewMode = $window.localStorage.getItem(storageKey) === 'list' ? 'list' : 'grid'; } catch (ignoreStorage) {}
@@ -163,7 +222,7 @@
                             || String(a.name || '').localeCompare(String(b.name || ''));
                     });
                 }
-                scope.openFolder = function (id) { scope.folderId = id == null ? null : id; scope.editor = null; scope.error = ''; scope.onChange({folderId: scope.folderId}); };
+                scope.openFolder = function (id) { scope.folderId = id == null ? null : id; scope.editor = null; if (!scope.renamingFolderSaving) { scope.renamingFolder = null; } scope.error = ''; scope.onChange({folderId: scope.folderId}); };
                 scope.goUp = function () { scope.openFolder(scope.current ? scope.current.parentId : null); };
                 scope.reload = function (refresh) {
                     scope.loading = true; scope.error = '';
@@ -171,6 +230,27 @@
                         function () { scope.error = 'Không tải được folder.'; }).finally(function () { scope.loading = false; });
                 };
                 scope.create = function () { scope.editor = {name: '', parentId: scope.folderId || null, testMode: scope.testMode || 'COMPREHENSIVE'}; scope.error = ''; };
+                scope.startRenameFolder = function (folder, event) {
+                    if (event) { event.preventDefault(); event.stopPropagation(); }
+                    if (!scope.manage || !folder.canManage || scope.renamingFolderSaving || scope.moving) { return; }
+                    scope.renamingFolder = {id: folder.id, name: folder.name, parentId: folder.parentId, testMode: scope.testMode || 'COMPREHENSIVE'};
+                    scope.renameFolderError = '';
+                    $timeout(function () { var input = element[0].querySelector('.test-explorer-folder-rename input'); if (input) { input.focus(); input.select(); } });
+                };
+                scope.renameFolderKey = function (event) {
+                    if (event.key === 'Escape' && !scope.renamingFolderSaving) { event.preventDefault(); scope.renamingFolder = null; }
+                    if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); scope.saveRenamedFolder(); }
+                };
+                scope.saveRenamedFolder = function () {
+                    if (!scope.renamingFolder || scope.renamingFolderSaving) { return; }
+                    var editor = scope.renamingFolder, name = String(editor.name || '').trim();
+                    if (!name) { scope.renameFolderError = 'Tên folder không được để trống.'; return; }
+                    scope.renamingFolderSaving = true; scope.renameFolderError = '';
+                    return folders.save(angular.extend({}, editor, {name: name})).then(function () {
+                        if (scope.renamingFolder === editor) { scope.renamingFolder = null; }
+                    }, function (response) { scope.renameFolderError = (response.data || {}).message || 'Không lưu được tên folder. Bạn có thể thử lại.'; })
+                        .finally(function () { scope.renamingFolderSaving = false; });
+                };
                 scope.rename = function () { scope.editor = {id: scope.current.id, name: scope.current.name, parentId: scope.current.parentId, testMode: scope.testMode || 'COMPREHENSIVE'}; scope.error = ''; };
                 scope.save = function () {
                     if (scope.saving || !scope.editor) { return; } scope.saving = true; scope.error = '';
@@ -193,7 +273,7 @@
                 });
                 function start(event) {
                     var nativeEvent = event.originalEvent || event, test = scope.$eval(attrs.testFolderDrag);
-                    if (!explorer.canDrag(test) || !nativeEvent.dataTransfer) { event.preventDefault(); return; }
+                    if (!explorer.canDrag(test) || !nativeEvent.dataTransfer || element[0].querySelector('.test-title-editor.is-editing')) { event.preventDefault(); return; }
                     nativeEvent.dataTransfer.effectAllowed = 'move';
                     nativeEvent.dataTransfer.setData('application/x-comprehensive-test', String(test.id));
                     nativeEvent.dataTransfer.setData('text/plain', test.title || String(test.id));

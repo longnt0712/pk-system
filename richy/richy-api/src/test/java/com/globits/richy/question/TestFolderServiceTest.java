@@ -145,6 +145,29 @@ public class TestFolderServiceTest {
         assertNull(test.getTestFolder()); verify(questions, never()).save(any(Question.class));
         assertNotNull(service.moveTest(20L, own.getId()).getTestFolder());
     }
+    @Test public void adminCanOrganizeLegacyTestsWithAnotherOrMissingOwnerInAllModes() {
+        login(other);
+        Map<String, TestFolderDto> destinations = new LinkedHashMap<>();
+        for (String mode : Arrays.asList("READING", "LISTENING", "WRITING", "COMPREHENSIVE")) {
+            destinations.put(mode, saveMode(mode, "Practice", null));
+        }
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(other, "unused",
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+        Question question = new Question(); question.setQuestion("Original answers stay here");
+        test.setSubQuestions(Collections.singleton(question));
+        for (String mode : destinations.keySet()) {
+            test.setTestFormat("READING".equals(mode) || "LISTENING".equals(mode) ? null : mode);
+            test.setPronounce("LISTENING".equals(mode) ? "audio.mp3" : null);
+            for (User legacyOwner : Arrays.asList(teacher, null)) {
+                test.setUser(legacyOwner);
+                assertEquals(destinations.get(mode).getId(), service.moveTest(20L, destinations.get(mode).getId()).getTestFolder().getId());
+                assertSame(legacyOwner, test.getUser()); assertEquals(7, test.getStatus());
+                assertEquals("Transcript stays unchanged", test.getQuestion());
+                assertSame(question, test.getSubQuestions().iterator().next());
+                service.moveTest(20L, null); assertNull(test.getTestFolder());
+            }
+        }
+    }
     @Test public void invalidDestinationAndNonComprehensiveTestsNeverSaveChanges() {
         TestFolderDto folder = save("Practice", null);
         try { service.moveTest(20L, 999L); fail("Expected invalid destination"); } catch (IllegalArgumentException expected) {}

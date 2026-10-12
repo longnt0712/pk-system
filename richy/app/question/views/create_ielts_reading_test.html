@@ -84,18 +84,19 @@
                 <div class="row">
 
                     <div class="col-md-12" ng-if="settings.isAdmin == true">
-                        <test-folder-explorer folder-id="vm.catalogTestFolderId" test-mode="vm.folderTestMode" manage="true" moving="vm.catalogMovePending" move-disabled="vm.savingReadingTest || vm.importingReadingTest || vm.catalogLoading || vm.catalogMoveDialogOpen" on-change="vm.applyCatalogFolderFilter(folderId)" on-moved="vm.catalogTestMoved(test)">
+                        <test-folder-explorer folder-id="vm.catalogTestFolderId" test-mode="vm.folderTestMode" manage="true" moving="vm.catalogMovePending" move-disabled="vm.savingReadingTest || vm.importingReadingTest || vm.catalogLoading || vm.catalogMoveDialogOpen || vm.isCatalogTitleSaving()" on-change="vm.applyCatalogFolderFilter(folderId)" on-moved="vm.catalogTestMoved(test)">
                             <article class="test-explorer-file" test-folder-drag="item" ng-repeat="item in vm.ieltsReadingTests track by item.id" title="Kéo bài vào folder để chuyển và lưu">
                                 <div class="test-explorer-file-content">
-                                <button type="button" class="test-explorer-file-main" ng-click="editCreateIELTSReadingTest(item.id)" title="Mở bài {{item.title}} trong trình soạn thảo">
-                                    <span class="test-explorer-name">{{item.title}}<small>{{item.status == 7 ? 'Đã xuất bản' : (item.status == 8 ? 'Đã ẩn' : 'Bản nháp')}}</small></span>
-                                </button>
+                                <div class="test-explorer-file-main" title="Nhấp đúp vào tên để đổi tên bài {{item.title}}">
+                                    <test-title-editor test="item" saving="vm.catalogTitleUpdating[item.id]" disabled="vm.catalogMovePending || vm.savingReadingTest || vm.importingReadingTest || vm.catalogStatusUpdating[item.id]" on-renamed="vm.catalogTestRenamed(test, previousTitle)"></test-title-editor>
+                                    <small class="test-explorer-status">{{item.status == 7 ? 'Đã xuất bản' : (item.status == 8 ? 'Đã ẩn' : 'Bản nháp')}}</small>
+                                </div>
                                 <div class="test-explorer-file-actions">
                                     <button type="button" ng-click="editCreateIELTSReadingTest(item.id)">Sửa bài</button>
                                     <a draggable="false" target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item)}}">Xem bài</a>
-                                    <button type="button" ng-click="vm.openCatalogMoveDialog(item)" ng-disabled="vm.catalogMovePending || vm.catalogMoveDialogOpen || vm.savingReadingTest || vm.importingReadingTest || vm.catalogLoading"><i class="fa fa-folder-open-o" aria-hidden="true"></i> Di chuyển</button>
-                                    <button type="button" ng-if="!vm.showHiddenTests" ng-click="hideReadingTest(item.id)" ng-disabled="vm.catalogStatusUpdating[item.id]" title="Ẩn bài"><i class="fa fa-eye-slash"></i><span class="sr-only">Ẩn bài</span></button>
-                                    <button type="button" ng-if="vm.showHiddenTests" ng-click="restoreReadingTest(item.id)" ng-disabled="vm.catalogStatusUpdating[item.id]">Khôi phục</button>
+                                    <button type="button" ng-click="vm.openCatalogMoveDialog(item)" ng-disabled="vm.catalogMovePending || vm.catalogMoveDialogOpen || vm.savingReadingTest || vm.importingReadingTest || vm.catalogLoading || vm.isCatalogTitleSaving()"><i class="fa fa-folder-open-o" aria-hidden="true"></i> Di chuyển</button>
+                                    <button type="button" ng-if="!vm.showHiddenTests" ng-click="hideReadingTest(item.id)" ng-disabled="vm.catalogStatusUpdating[item.id] || vm.catalogTitleUpdating[item.id]" title="Ẩn bài"><i class="fa fa-eye-slash"></i><span class="sr-only">Ẩn bài</span></button>
+                                    <button type="button" ng-if="vm.showHiddenTests" ng-click="restoreReadingTest(item.id)" ng-disabled="vm.catalogStatusUpdating[item.id] || vm.catalogTitleUpdating[item.id]">Khôi phục</button>
                                 </div>
                                 </div>
                             </article>

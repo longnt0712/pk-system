@@ -7,6 +7,8 @@ import java.util.Collections;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,11 +25,13 @@ public class RestTestFolderController {
     public ResponseEntity<?> save(@RequestBody TestFolderDto dto) {
         try { return ResponseEntity.ok(service.save(dto)); }
         catch (IllegalArgumentException invalid) { return ResponseEntity.badRequest().body(Collections.singletonMap("message", invalid.getMessage())); }
+        catch (AccessDeniedException denied) { return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Collections.singletonMap("message", denied.getMessage())); }
     }
     @Secured({"ROLE_ADMIN", "ROLE_USER"})
     @RequestMapping(value = "/move_test", method = RequestMethod.POST)
     public ResponseEntity<?> moveTest(@RequestBody TestFolderMoveDto dto) {
         try { return ResponseEntity.ok(service.moveTest(dto == null ? null : dto.getTestId(), dto == null ? null : dto.getFolderId())); }
         catch (IllegalArgumentException invalid) { return ResponseEntity.badRequest().body(Collections.singletonMap("message", invalid.getMessage())); }
+        catch (AccessDeniedException denied) { return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Collections.singletonMap("message", denied.getMessage())); }
     }
 }

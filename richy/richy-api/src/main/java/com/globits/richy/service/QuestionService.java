@@ -25,6 +25,7 @@ public interface QuestionService {
 	public List<QuestionLevelDto> getFlashCardLevels(QuestionDto searchDto);
 	public QuestionLevelDto updateFlashCardLevel(Long id, String level);
 	public QuestionForTestsDto updateTestStatus(Long id, int status);
+	public QuestionForTestsDto updateTestTitle(Long id, String title);
 	public boolean deleteObject(Long id);
 	
 	public QuestionDto getRandomObject(int from, int to);

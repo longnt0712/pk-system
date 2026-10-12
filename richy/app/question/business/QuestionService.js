@@ -33,6 +33,7 @@
         
         self.saveObject = saveObject;
         self.updateTestStatus = updateTestStatus;
+        self.updateTestTitle = updateTestTitle;
         self.getFlashCardLevels = getFlashCardLevels;
         self.updateFlashCardLevel = updateFlashCardLevel;
         self.getLearningDrafts = getLearningDrafts;
@@ -333,6 +334,14 @@
                 if (angular.isFunction(errorCallback)) { errorCallback(response); }
                 return $q.reject(response);
             });
+        }
+
+        function updateTestTitle(id, title) {
+            return utils.resolveAlt(
+                baseUrl + restUrl + '/update_test_title/' + id,
+                'POST', null, {title: title},
+                {'Content-Type': 'application/json; charset=utf-8'}
+            );
         }
 
         function updateTestStatus(id, status) {

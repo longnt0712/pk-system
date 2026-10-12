@@ -131,6 +131,20 @@ public class RestQuestionController {
     }
 
     @Secured({"ROLE_ADMIN", "ROLE_USER"})
+    @RequestMapping(value = "/update_test_title/{id}", method = RequestMethod.POST)
+    public ResponseEntity<?> updateTestTitle(@PathVariable Long id, @RequestBody QuestionForTestsDto dto) {
+        try {
+            return ResponseEntity.ok(service.updateTestTitle(id, dto == null ? null : dto.getTitle()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(Collections.singletonMap("message", e.getMessage()));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Collections.singletonMap("message", e.getMessage()));
+        }
+    }
+
+    @Secured({"ROLE_ADMIN", "ROLE_USER"})
     @RequestMapping(value = "/delete/{id}", method = RequestMethod.DELETE)
     public boolean saveOne(@PathVariable Long id) {
         return service.deleteObject(id);

@@ -491,6 +491,17 @@
             return Math.max(Number(vm.bsTableControlCreateIELTSReadingTest.options.totalRows || 0),
                 (Number(vm.searchDto.pageIndex || 1) - 1) * Number(vm.searchDto.pageSize || 12) + 1);
         };
+        vm.catalogTitleUpdating = {};
+        vm.isCatalogTitleSaving = function () {
+            return Object.keys(vm.catalogTitleUpdating).some(function (id) { return vm.catalogTitleUpdating[id]; });
+        };
+        vm.catalogTestRenamed = function (test, previousTitle) {
+            // Preserve a title already being edited in the builder, along with all unsaved questions.
+            if (vm.ieltsReadingTest && String(vm.ieltsReadingTest.id) === String(test.id) &&
+                    vm.ieltsReadingTest.title === previousTitle) {
+                vm.ieltsReadingTest.title = test.title;
+            }
+        };
         vm.catalogTestMoved = function (test) {
             var folderId = test.testFolder ? test.testFolder.id : null;
             if (vm.ieltsReadingTest && String(vm.ieltsReadingTest.id) === String(test.id)) {
@@ -843,6 +854,10 @@
             if (vm.savingReadingTest) { return vm.readingSavePromise; }
             if (vm.catalogMovePending) {
                 toastr.warning('Đang chuyển bài vào folder. Hãy chờ lưu xong.', 'Chưa thể lưu bài');
+                return $timeout(angular.noop);
+            }
+            if (vm.isCatalogTitleSaving && vm.isCatalogTitleSaving()) {
+                toastr.warning('Đang lưu tên bài test. Hãy chờ lưu xong.', 'Chưa thể lưu bài');
                 return $timeout(angular.noop);
             }
             vm.lastSaveError = '';

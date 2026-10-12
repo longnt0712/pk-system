@@ -137,7 +137,7 @@ public class TestFolderServiceImpl {
         if (folder != null && !folder.getTestMode().equals(modeForTest(test.getTestFormat(), test.getPronounce()))) {
             throw new IllegalArgumentException("Folder và bài test phải thuộc cùng loại test.");
         }
-        if (folder != null && (folder.getOwner() == null || test.getUser() == null
+        if (!admin && folder != null && (folder.getOwner() == null || test.getUser() == null
                 || !folder.getOwner().getId().equals(test.getUser().getId()))) {
             throw new AccessDeniedException("Folder và bài test phải thuộc cùng giáo viên.");
         }

@@ -50,8 +50,17 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
      window.testData.forEach(test=>{test.testFormat=testMode==='WRITING'||testMode==='COMPREHENSIVE'?testMode:null;test.pronounce=testMode==='LISTENING'?'audio.mp3':null;test.hasWritingTask1=test.hasWritingTask2=testMode==='WRITING';});
      window.testRequests=[];
      window.moveCalls=[];
+     window.renameCalls=[];
      return {
       getLearningDrafts(){return q.when([]);},
+      updateTestTitle(id,title){
+       window.renameCalls.push({id,title});const deferred=q.defer();
+       function finish(){
+        if(window.failRename){deferred.reject({data:{message:'Không lưu được tên bài.'}});return;}
+        const test=window.testData.find(item=>item.id===id);test.title=title;deferred.resolve({id,title});
+       }
+       if(window.holdRename)window.releaseRename=finish;else finish();return deferred.promise;
+      },
       getTestFolders(all,mode){return window.failFolders?q.reject({status:500}):q.when(window.folderData.filter(folder=>folder.testMode===(mode||'COMPREHENSIVE')&&(all || folder.ownerId===7)));},
       saveTestFolder(dto){
        if(window.failSave)return q.reject({data:{message:'Đã có folder cùng tên.'}});
@@ -102,6 +111,96 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
  await mount();return {page,errors,mount};
 }
 
+test('twelve tests form four equal columns and three rows independently of folders, with responsive columns',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE']){
+  const {page,errors}=await fixture(browser,1920,true,mode);
+  await page.evaluate(()=>{
+   window.testData=Array.from({length:12},(_,index)=>({id:100+index,userId:7,status:7,testFolder:null,
+    title:index%2?'IELTS Academic Reading — The invention of television / Bluefin tuna / Children and playing':'Cambridge IELTS '+(index+1)}));
+   angular.element(document.getElementById('qa')).scope().$apply(()=>qaVm.getPageCreateIELTSReadingTest());
+  });
+  await page.waitForFunction(()=>document.querySelectorAll('.test-explorer-file').length===12);
+  for(const [width,columns] of [[1920,4],[1366,4],[768,2],[390,1]]){
+   await page.setViewportSize({width,height:1000});
+   const layout=await page.locator('.test-explorer-file').evaluateAll(cards=>cards.map(card=>{
+    const rect=card.getBoundingClientRect();return {x:Math.round(rect.x),y:Math.round(rect.y),height:Math.round(rect.height)};
+   }));
+   assert.equal(new Set(layout.map(card=>card.x)).size,columns);
+   assert.equal(new Set(layout.map(card=>card.y)).size,12/columns);
+   assert.equal(new Set(layout.map(card=>card.height)).size,1);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+  }
+  await page.setViewportSize({width:1366,height:1000});
+  await page.locator('.test-folder-explorer').screenshot({path:path.join(repo,'.tmp/test-grid-four-columns-'+mode.toLowerCase()+'.png')});
+  assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
+test('double click renames test titles in place in every mode and both views; Enter saves and Escape cancels',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE']){
+  const {page,errors}=await fixture(browser,1366,true,mode);
+  const card=page.locator('.test-explorer-file').first();
+  for(const view of ['grid','list']){
+   if(view==='list')await page.getByRole('button',{name:'Chuyển sang dạng danh sách',exact:true}).click();
+   await page.evaluate(()=>delete window.lastEdit);
+   await card.locator('.test-title-display').dblclick();
+   const input=card.getByRole('textbox',{name:'Tên bài test'});await input.waitFor();
+   await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Tên bài test');
+   assert.equal(await page.evaluate(()=>window.lastEdit),undefined);
+   await input.fill('   '+mode+' tên mới '+view+'   ');await input.press('Enter');
+   await card.locator('.test-title-display').filter({hasText:mode+' tên mới '+view}).waitFor();
+   assert.equal(await page.evaluate(()=>window.renameCalls.at(-1).title),mode+' tên mới '+view);
+   assert.equal(await page.evaluate(()=>window.testData[0].status),7);
+   await card.locator('.test-title-display').dblclick();await input.fill('Không lưu');await input.press('Escape');
+   assert.equal(await card.locator('.test-title-display').innerText(),mode+' tên mới '+view);
+   await card.getByRole('button',{name:'Sửa bài',exact:true}).click();
+   assert.equal(await page.evaluate(()=>window.lastEdit),11);
+  }
+  await card.locator('.test-title-display').dblclick();const input=card.getByRole('textbox',{name:'Tên bài test'});
+  await input.fill(' ');await input.press('Enter');await card.getByRole('alert').filter({hasText:'không được để trống'}).waitFor();
+  assert.equal(await page.evaluate(()=>window.renameCalls.length),2);
+  await page.evaluate(()=>window.failRename=true);await input.fill('Thử lại tên');await input.press('Enter');
+  await card.getByRole('alert').filter({hasText:'Không lưu được tên bài'}).waitFor();
+  assert.equal(await input.inputValue(),'Thử lại tên');
+  assert.equal(await page.evaluate(()=>qaVm.ieltsReadingTests[0].title),mode+' tên mới list');
+  await page.evaluate(()=>{window.failRename=false;window.holdRename=true;});
+  await input.press('Enter');await page.waitForFunction(()=>!!window.releaseRename);
+  assert.equal(await input.isDisabled(),true);assert.equal(await card.getByRole('button',{name:'Hủy',exact:true}).isDisabled(),true);
+  await page.evaluate(()=>angular.element(document.getElementById('qa')).scope().$apply(()=>window.releaseRename()));
+  await card.locator('.test-title-display').filter({hasText:'Thử lại tên'}).waitFor();
+  assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
+test('double click renames owned folders without opening them and preserves nested paths and retryable errors',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE']){
+  const {page,errors}=await fixture(browser,1366,true,mode);
+  await page.locator('.test-explorer-folder .test-explorer-name').first().dblclick();
+  const input=page.getByRole('textbox',{name:'Tên folder mới'});await input.waitFor();
+  await page.waitForTimeout(450);
+  assert.equal(await page.evaluate(()=>qaVm.catalogTestFolderId),null);
+  await input.fill('Folder '+mode);await input.press('Enter');
+  await page.getByRole('button',{name:'Folder '+mode,exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>window.folderData[0].testMode),mode);
+  assert.equal(await page.getByRole('combobox',{name:'Chọn folder'}).locator('option').filter({hasText:'Folder '+mode+' / Week 1'}).count(),1);
+  await page.getByRole('button',{name:'Folder '+mode,exact:true}).focus();await page.keyboard.press('F2');
+  await input.fill('Không lưu');await input.press('Escape');
+  await page.getByRole('button',{name:'Folder '+mode,exact:true}).waitFor();
+  await page.evaluate(()=>window.failSave=true);
+  await page.locator('.test-explorer-folder .test-explorer-name').first().dblclick();await input.fill('Trùng tên');await input.press('Enter');
+  await page.locator('.test-explorer-folder-rename').getByRole('alert').filter({hasText:'Đã có folder cùng tên'}).waitFor();
+  assert.equal(await page.evaluate(()=>window.folderData[0].name),'Folder '+mode);
+  await page.evaluate(()=>window.failSave=false);await input.press('Enter');
+  await page.getByRole('button',{name:'Trùng tên',exact:true}).click();
+  await page.getByRole('button',{name:'Week 1',exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>qaVm.catalogTestFolderId),1);
+  assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
 test('Reading, Listening and Writing browse and manage their own folders on desktop and mobile',async()=>{
  const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
  try{for(const mode of ['READING','LISTENING','WRITING'])for(const width of [1366,390])for(const teacher of [true,false]){
@@ -109,6 +208,7 @@ test('Reading, Listening and Writing browse and manage their own folders on desk
   assert.equal(await page.locator('.test-explorer-folder').count(),teacher?1:2);
   assert.equal(await page.getByRole('button',{name:/Folder loại khác/}).count(),0);
   await page.getByRole('button',{name:/^Listening/}).click();
+  await page.locator('.test-explorer-file').filter({hasText:'Daily Listening cơ bản'}).waitFor();
   assert.equal(await page.locator('.test-explorer-file').count(),1);
   assert.match(await page.locator('.test-explorer-file-main').getAttribute(teacher?'title':'href'),teacher?/Daily Listening/:new RegExp('ielts_'+mode.toLowerCase()+'_actual_test/12'));
   if(teacher){
@@ -129,6 +229,7 @@ test('Reading, Listening and Writing browse and manage their own folders on desk
     assert.match(await page.getByRole('link',{name:'Bắt đầu Task 2',exact:true}).getAttribute('href'),/assignmentPart=2/);
    }
    await page.getByRole('button',{name:/^Week 1/}).click();
+   await page.locator('.test-explorer-file').filter({hasText:'tuần 1'}).waitFor();
    assert.match(await page.locator('.test-explorer-file-main').getAttribute('href'),new RegExp('ielts_'+mode.toLowerCase()+'_actual_test/13'));
    await page.evaluate(()=>window.failTests=true);
    await page.getByRole('button',{name:'Lên folder cha',exact:true}).click();
@@ -167,10 +268,12 @@ test('real folder views support grid/list, breadcrumbs, direct contents, nested 
   assert.equal(await page.evaluate(()=>localStorage.getItem('comprehensiveTestFolderView')),'list');
   await page.reload();await mount();await page.locator('.test-folder-explorer.is-list').waitFor();
   await page.getByRole('button',{name:/^Listening/}).click();
+  await page.locator('.test-explorer-file').filter({hasText:'Daily Listening cơ bản'}).waitFor();
   assert.equal(await page.locator('.test-explorer-folder').count(),1);
   assert.equal(await page.locator('.test-explorer-file').count(),1);
   assert.match(await page.locator('.test-explorer-file').innerText(),/Daily Listening/);
   await page.getByRole('button',{name:/^Week 1/}).click();
+  await page.locator('.test-explorer-file').filter({hasText:'tuần 1'}).waitFor();
   assert.equal(await page.locator('.test-explorer-folder').count(),0);
   assert.match(await page.locator('.test-explorer-file').innerText(),/tuần 1/);
   await page.getByRole('button',{name:'Lên folder cha',exact:true}).click();

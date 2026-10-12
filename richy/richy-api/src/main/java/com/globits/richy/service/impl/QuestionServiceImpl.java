@@ -1370,6 +1370,37 @@ public class QuestionServiceImpl implements QuestionService {
 
 	@Override
 	@Transactional
+	public QuestionForTestsDto updateTestTitle(Long id, String title) {
+		String normalizedTitle = title == null ? "" : title.trim();
+		if (id == null || normalizedTitle.isEmpty() || normalizedTitle.length() > 255) {
+			throw new IllegalArgumentException("Tên bài test phải có từ 1 đến 255 ký tự.");
+		}
+		Question domain = questionRepository.findOne(id);
+		if (domain == null || domain.getParent() != null || domain.getQuestionType() == null
+				|| !Long.valueOf(11L).equals(domain.getQuestionType().getId())) {
+			throw new IllegalArgumentException("Không tìm thấy bài test.");
+		}
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
+			throw new SecurityException("Bạn không có quyền đổi tên bài test này.");
+		}
+		User currentUser = (User) authentication.getPrincipal();
+		boolean isAdmin = authentication.getAuthorities() != null && authentication.getAuthorities().stream()
+				.anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+		if (!isAdmin && (currentUser.getId() == null || domain.getUser() == null || !currentUser.getId().equals(domain.getUser().getId()))) {
+			throw new SecurityException("Bạn không có quyền đổi tên bài test này.");
+		}
+		domain.setTitle(normalizedTitle);
+		domain.setModifiedBy(currentUser.getUsername());
+		domain.setModifyDate(LocalDateTime.now());
+		questionRepository.save(domain);
+		QuestionForTestsDto result = new QuestionForTestsDto();
+		result.setId(domain.getId()); result.setTitle(domain.getTitle());
+		return result;
+	}
+
+	@Override
+	@Transactional
 	public QuestionDto saveObject(QuestionDto dto) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		User modifiedUser = null;

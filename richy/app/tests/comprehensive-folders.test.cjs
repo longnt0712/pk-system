@@ -63,6 +63,25 @@ test('moving a test sends only its id and destination folder, including root',as
  assert.deepEqual(requests,[{url:'/service/api/test_folder/move_test',dto:{testId:20,folderId:2}},
   {url:'/service/api/test_folder/move_test',dto:{testId:20,folderId:null}}]);
 });
+test('renaming updates an open test title while preserving unsaved questions and a separately edited title',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../question/controllers/IELTSCreateReadingTestController.js'),'utf8');
+ const start=source.indexOf('vm.catalogTestRenamed = function'),end=source.indexOf('\n        };',start)+11;
+ const questions=[{question:'Unsaved question'}],vm={ieltsReadingTest:{id:20,title:'Old title',subQuestions:questions}};
+ nodeVm.runInNewContext(source.slice(start,end),{vm});
+ vm.catalogTestRenamed({id:20,title:'New title'},'Old title');assert.equal(vm.ieltsReadingTest.title,'New title');
+ assert.strictEqual(vm.ieltsReadingTest.subQuestions,questions);
+ vm.ieltsReadingTest.title='Unsaved builder title';vm.catalogTestRenamed({id:20,title:'Other title'},'New title');
+ assert.equal(vm.ieltsReadingTest.title,'Unsaved builder title');
+});
+test('renaming calls a dedicated API with only the new title',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../question/business/QuestionService.js'),'utf8');
+ const start=source.indexOf('        function updateTestTitle('),end=source.indexOf('        function updateTestStatus(',start);
+ const calls=[];
+ const context={baseUrl:'/api/',restUrl:'question',utils:{resolveAlt(...args){calls.push(args);return Promise.resolve({id:20,title:'New title'});}}};
+ nodeVm.runInNewContext(source.slice(start,end),context);context.updateTestTitle(20,'New title');
+ assert.equal(calls[0][0],'/api/question/update_test_title/20');assert.equal(calls[0][1],'POST');
+ assert.deepEqual(plain(calls[0][3]),{title:'New title'});
+});
 test('successful move updates the open editor folder without replacing unsaved content',()=>{
  const source=fs.readFileSync(path.join(__dirname,'../question/controllers/IELTSCreateReadingTestController.js'),'utf8');
  const start=source.indexOf('vm.catalogTestMoved = function'), end=source.indexOf('\n        };',start)+11;
@@ -119,7 +138,7 @@ test('moving from a full page fetches just one replacement row and discards resp
   assert.deepEqual(vm.ieltsReadingTests.map(row=>row.id),navigate?[50]:[21,22]);assert.equal(requests.length,1);
  }
 });
-test('full test saves wait until a folder move completes to avoid reverting its destination',async()=>{
+test('full test saves wait for pending folder moves or title saves',async()=>{
  const source=fs.readFileSync(path.join(__dirname,'../question/controllers/IELTSCreateReadingTestController.js'),'utf8');
  const start=source.indexOf('vm.saveReadingTest = function'),end=source.indexOf('\n        };',start)+11;
  assert.ok(start>=0 && end>start);
@@ -127,6 +146,8 @@ test('full test saves wait until a folder move completes to avoid reverting its 
  nodeVm.runInNewContext(source.slice(start,end),{vm,angular:{noop(){}},$timeout(callback){callback();return Promise.resolve();},
   toastr:{warning(message){messages.push(message);}}});
  await vm.saveReadingTest('DRAFT');assert.equal(messages.length,1);assert.match(messages[0],/Đang chuyển bài/);
+ vm.catalogMovePending=false;vm.isCatalogTitleSaving=()=>true;
+ await vm.saveReadingTest('DRAFT');assert.equal(messages.length,2);assert.match(messages[1],/Đang lưu tên bài/);
  assert.equal(vm.savingReadingTest,undefined);
 });
 
