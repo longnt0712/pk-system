@@ -208,7 +208,7 @@
         vm.searchDto.upper = 100;
         vm.searchDto.lower = 0;
         vm.searchDto.type = 100;
-        vm.searchDto.pageSize = 12;
+        vm.searchDto.pageSize = 20;
         vm.searchDto.pageIndex = 1;
         vm.currentPosition = 0;
         vm.currentCard = {};
@@ -489,7 +489,7 @@
         vm.catalogPaginationTotal = function () {
             // Keep the current page selectable when its last item is moved, avoiding an automatic page reload.
             return Math.max(Number(vm.bsTableControlCreateIELTSReadingTest.options.totalRows || 0),
-                (Number(vm.searchDto.pageIndex || 1) - 1) * Number(vm.searchDto.pageSize || 12) + 1);
+                (Number(vm.searchDto.pageIndex || 1) - 1) * Number(vm.searchDto.pageSize || 20) + 1);
         };
         vm.catalogTitleUpdating = {};
         vm.isCatalogTitleSaving = function () {
@@ -530,8 +530,8 @@
             }
             function fillVacantSlot() {
                 if (vm.catalogLoading || vm.ieltsReadingTests !== rows || vm.catalogMoveVersion !== moveVersion) { return; }
-                var offset = (Number(vm.searchDto.pageIndex || 1) - 1) * Number(vm.searchDto.pageSize || 12);
-                var expected = Math.min(Number(vm.searchDto.pageSize || 12),
+                var offset = (Number(vm.searchDto.pageIndex || 1) - 1) * Number(vm.searchDto.pageSize || 20);
+                var expected = Math.min(Number(vm.searchDto.pageSize || 20),
                     Number(vm.bsTableControlCreateIELTSReadingTest.options.totalRows || 0) - offset);
                 if (rows.length >= expected) { return; }
                 // Fetch only the next missing row, preserving the current cards and avoiding the catalog loader.
@@ -667,7 +667,7 @@
             });
         };
 
-        vm.searchDto.pageSize = 12;
+        vm.searchDto.pageSize = 20;
         vm.showHiddenTests = false;
         if(settings.isAdmin){
             // 9 is a search-only status: show drafts and published tests, excluding hidden tests.

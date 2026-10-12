@@ -11,7 +11,7 @@ const teacherHtml=section(builderHtml,'<test-folder-explorer folder-id="vm.catal
  section(builderHtml,'<ul ng-if="vm.catalogPaginationTotal()', '</ul>')+'</ul>'+
  '<h3>Lưu bài vào folder</h3><test-folder-picker folder-id="vm.selectedTestFolderId" test-mode="vm.folderTestMode" manage="true"></test-folder-picker>';
 const teacherCode=section(builderSource,'        vm.applyCatalogFolderFilter =','        vm.ieltsReadingTest =')+
- section(builderSource,'        var testCatalogRequestId =','        vm.searchDto.pageSize = 12;');
+ section(builderSource,'        var testCatalogRequestId =','        vm.showHiddenTests = false;');
 const css=['assets/css/external/bootstrap.min.css','assets/css/ielts-test-library.css','assets/css/external/font-awesome.min.css','assets/css/comprehensive-folders.css'].map(file=>fs.readFileSync(path.join(app,file),'utf8')).join('\n');
 
 async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
@@ -27,7 +27,7 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
  await page.goto('http://folders.test');
  async function mount() {
   await page.setContent('<!doctype html><html><head><meta charset="utf-8"><style>'+css+
-   'body{padding:20px;}main{max-width:1120px;margin:auto;}*{box-sizing:border-box;}@media(max-width:600px){body{padding:10px;}}</style></head><body><main id="qa" ng-controller="'+(teacher?'Qa':'IELTSTestLibraryController')+' as vm">'+(teacher?teacherHtml:libraryHtml)+'</main></body></html>');
+   'body{padding:20px;}main{max-width:1120px;margin:auto;}*{box-sizing:border-box;}@media(min-width:1600px){main{max-width:none;}}@media(max-width:600px){body{padding:10px;}}</style></head><body><main id="qa" ng-controller="'+(teacher?'Qa':'IELTSTestLibraryController')+' as vm">'+(teacher?teacherHtml:libraryHtml)+'</main></body></html>');
   await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular.min.js')});
   await page.addScriptTag({path:path.join(app,'assets/scripts/external/ui-bootstrap-tpls.min.js')});
   await page.evaluate(({testMode})=>{
@@ -94,7 +94,7 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
   await page.evaluate(({teacher,teacherCode,testMode})=>{
    angular.module('Hrm.Question').factory('TestFolderService',['QuestionService',function(service){return service;}]);
    if(teacher)angular.module('Hrm.Question').controller('Qa',['ComprehensiveFolders','QuestionService','$scope','$uibModal','$window',function(folders,service,scope,modal,browserWindow){
-    const vm=this;Object.assign(vm,{isComprehensiveMode:testMode==='COMPREHENSIVE',isWritingMode:testMode==='WRITING',isListeningMode:testMode==='LISTENING',folderTestMode:testMode,isFlexibleMode:testMode==='COMPREHENSIVE'||testMode==='WRITING',currentUser:{id:7},searchDto:{pageIndex:1,pageSize:12,status:9},
+    const vm=this;Object.assign(vm,{isComprehensiveMode:testMode==='COMPREHENSIVE',isWritingMode:testMode==='WRITING',isListeningMode:testMode==='LISTENING',folderTestMode:testMode,isFlexibleMode:testMode==='COMPREHENSIVE'||testMode==='WRITING',currentUser:{id:7},searchDto:{pageIndex:1,status:9},
      catalogTestFolderId:null,selectedTestFolderId:null,ieltsReadingTests:[],bsTableControlCreateIELTSReadingTest:{options:{}},refreshLearningProgress(){}});
     vm.testCatalogUrl=item=>(testMode==='COMPREHENSIVE'?'comprehensive_test/':'ielts_'+testMode.toLowerCase()+'_actual_test/')+item.id+'?sessionMode=STUDY';
     scope.editCreateIELTSReadingTest=id=>window.lastEdit=id;
@@ -111,28 +111,33 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
  await mount();return {page,errors,mount};
 }
 
-test('twelve tests form four equal columns and three rows independently of folders, with responsive columns',async()=>{
+test('all four test modes show twenty tests per page in admin and library, with ten columns on large screens',async()=>{
  const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
- try{for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE']){
-  const {page,errors}=await fixture(browser,1920,true,mode);
+ try{for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE'])for(const teacher of [true,false]){
+  const {page,errors}=await fixture(browser,1920,teacher,mode);
   await page.evaluate(()=>{
-   window.testData=Array.from({length:12},(_,index)=>({id:100+index,userId:7,status:7,testFolder:null,
+   window.testData=Array.from({length:21},(_,index)=>({id:100+index,userId:7,status:7,testFolder:null,
     title:index%2?'IELTS Academic Reading — The invention of television / Bluefin tuna / Children and playing':'Cambridge IELTS '+(index+1)}));
-   angular.element(document.getElementById('qa')).scope().$apply(()=>qaVm.getPageCreateIELTSReadingTest());
+   angular.element(document.getElementById('qa')).scope().$apply(()=>qaVm.getPageCreateIELTSReadingTest?qaVm.getPageCreateIELTSReadingTest():qaVm.loadTests());
   });
-  await page.waitForFunction(()=>document.querySelectorAll('.test-explorer-file').length===12);
-  for(const [width,columns] of [[1920,4],[1366,4],[768,2],[390,1]]){
+  await page.waitForFunction(()=>document.querySelectorAll('.test-explorer-file').length===20);
+  assert.equal(await page.evaluate(()=>window.testRequests.at(-1).requestedPageSize),20);
+  for(const [width,columns] of [[1920,10],[1366,5],[768,2],[390,1]]){
    await page.setViewportSize({width,height:1000});
    const layout=await page.locator('.test-explorer-file').evaluateAll(cards=>cards.map(card=>{
     const rect=card.getBoundingClientRect();return {x:Math.round(rect.x),y:Math.round(rect.y),height:Math.round(rect.height)};
    }));
    assert.equal(new Set(layout.map(card=>card.x)).size,columns);
-   assert.equal(new Set(layout.map(card=>card.y)).size,12/columns);
+   assert.equal(new Set(layout.map(card=>card.y)).size,20/columns);
    assert.equal(new Set(layout.map(card=>card.height)).size,1);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
   }
-  await page.setViewportSize({width:1366,height:1000});
-  await page.locator('.test-folder-explorer').screenshot({path:path.join(repo,'.tmp/test-grid-four-columns-'+mode.toLowerCase()+'.png')});
+  await page.setViewportSize({width:1920,height:1000});
+  await page.locator('.test-folder-explorer').screenshot({path:path.join(repo,'.tmp/test-grid-ten-columns-'+mode.toLowerCase()+'-'+(teacher?'admin':'library')+'.png')});
+  await page.locator('ul.pagination').getByRole('link',{name:teacher?'Sau':'›',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelectorAll('.test-explorer-file').length===1);
+  assert.equal(await page.evaluate(()=>qaVm.ieltsReadingTests[0].id),120);
+  assert.equal(await page.evaluate(()=>window.testRequests.at(-1).requestedPageIndex),2);
   assert.deepEqual(errors,[]);await page.close();
  }}finally{await browser.close();}
 });

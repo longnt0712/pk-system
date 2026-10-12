@@ -193,7 +193,7 @@ test('IELTS saves use the chosen folder and retain Listening type before audio a
 test('IELTS admin catalog includes legacy tests with another or missing owner and paginates them',async()=>{
  const {folders}=setup();
  const source=fs.readFileSync(path.join(__dirname,'../question/controllers/IELTSCreateReadingTestController.js'),'utf8');
- const start=source.indexOf('var testCatalogRequestId ='),end=source.indexOf('vm.searchDto.pageSize = 12;',start);
+ const start=source.indexOf('var testCatalogRequestId ='),end=source.indexOf('vm.searchDto.pageSize = 20;',start);
  const existing=[{id:1,title:'Recent import',userId:7},{id:2,title:'Older manual test',userId:8},
   {id:3,title:'Legacy test without owner',userId:null}];
  for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE']){
