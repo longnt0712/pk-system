@@ -43,7 +43,7 @@
             upper: 100,
             lower: 0,
             type: 100,
-            pageSize: 20,
+            pageSize: 10,
             pageIndex: 1,
             status: 7,
             questionType: {id: 11},

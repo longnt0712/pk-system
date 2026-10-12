@@ -111,24 +111,24 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
  await mount();return {page,errors,mount};
 }
 
-test('all four test modes show twenty tests per page in admin and library, with ten columns on large screens',async()=>{
+test('all four test modes show ten tests per page in admin and library, with ten columns on large screens',async()=>{
  const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
  try{for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE'])for(const teacher of [true,false]){
   const {page,errors}=await fixture(browser,1920,teacher,mode);
   await page.evaluate(()=>{
-   window.testData=Array.from({length:21},(_,index)=>({id:100+index,userId:7,status:7,testFolder:null,
+   window.testData=Array.from({length:11},(_,index)=>({id:100+index,userId:7,status:7,testFolder:null,
     title:index%2?'IELTS Academic Reading — The invention of television / Bluefin tuna / Children and playing':'Cambridge IELTS '+(index+1)}));
    angular.element(document.getElementById('qa')).scope().$apply(()=>qaVm.getPageCreateIELTSReadingTest?qaVm.getPageCreateIELTSReadingTest():qaVm.loadTests());
   });
-  await page.waitForFunction(()=>document.querySelectorAll('.test-explorer-file').length===20);
-  assert.equal(await page.evaluate(()=>window.testRequests.at(-1).requestedPageSize),20);
+  await page.waitForFunction(()=>document.querySelectorAll('.test-explorer-file').length===10);
+  assert.equal(await page.evaluate(()=>window.testRequests.at(-1).requestedPageSize),10);
   for(const [width,columns] of [[1920,10],[1366,5],[768,2],[390,1]]){
    await page.setViewportSize({width,height:1000});
    const layout=await page.locator('.test-explorer-file').evaluateAll(cards=>cards.map(card=>{
     const rect=card.getBoundingClientRect();return {x:Math.round(rect.x),y:Math.round(rect.y),height:Math.round(rect.height)};
    }));
    assert.equal(new Set(layout.map(card=>card.x)).size,columns);
-   assert.equal(new Set(layout.map(card=>card.y)).size,20/columns);
+   assert.equal(new Set(layout.map(card=>card.y)).size,10/columns);
    assert.equal(new Set(layout.map(card=>card.height)).size,1);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
   }
@@ -136,7 +136,7 @@ test('all four test modes show twenty tests per page in admin and library, with 
   await page.locator('.test-folder-explorer').screenshot({path:path.join(repo,'.tmp/test-grid-ten-columns-'+mode.toLowerCase()+'-'+(teacher?'admin':'library')+'.png')});
   await page.locator('ul.pagination').getByRole('link',{name:teacher?'Sau':'›',exact:true}).click();
   await page.waitForFunction(()=>document.querySelectorAll('.test-explorer-file').length===1);
-  assert.equal(await page.evaluate(()=>qaVm.ieltsReadingTests[0].id),120);
+  assert.equal(await page.evaluate(()=>qaVm.ieltsReadingTests[0].id),110);
   assert.equal(await page.evaluate(()=>window.testRequests.at(-1).requestedPageIndex),2);
   assert.deepEqual(errors,[]);await page.close();
  }}finally{await browser.close();}
