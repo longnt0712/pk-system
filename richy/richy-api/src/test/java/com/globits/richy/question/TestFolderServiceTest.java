@@ -55,6 +55,43 @@ public class TestFolderServiceTest {
     private TestFolderDto save(String name, Long parent) {
         TestFolderDto dto = new TestFolderDto(); dto.setName(name); dto.setParentId(parent); return service.save(dto);
     }
+    private TestFolderDto saveMode(String mode, String name, Long parent) {
+        TestFolderDto dto = new TestFolderDto(); dto.setTestMode(mode); dto.setName(name); dto.setParentId(parent); return service.save(dto);
+    }
+    @Test public void eachTestModeHasItsOwnTreeAndSiblingNames() {
+        for (String mode : Arrays.asList("COMPREHENSIVE", "READING", "LISTENING", "WRITING")) {
+            TestFolderDto root = saveMode(mode, "Practice", null), child = saveMode(mode, "Week 1", root.getId());
+            assertEquals(mode, child.getTestMode()); assertEquals(2, service.list(false, mode).size());
+            assertEquals(Arrays.asList(root.getId(), child.getId()), service.descendantIds(root.getId(), true));
+        }
+        assertEquals(2, service.list(false).size());
+    }
+    @Test public void folderParentAndRenameCannotChangeTestMode() {
+        TestFolderDto root = saveMode("READING", "Practice", null);
+        try { saveMode("LISTENING", "Week 1", root.getId()); fail("Expected mode mismatch"); } catch (IllegalArgumentException expected) {}
+        root.setTestMode("WRITING");
+        try { service.save(root); fail("Expected mode mismatch"); } catch (IllegalArgumentException expected) {}
+        root.setTestMode(null); root.setName("Renamed"); assertEquals("READING", service.save(root).getTestMode());
+    }
+    @Test public void ieltsMovesPersistOnlyToMatchingFoldersAndSupportUnfiledRoot() {
+        TestFolderDto comprehensive = save("Comprehensive", null);
+        for (String mode : Arrays.asList("READING", "LISTENING", "WRITING")) {
+            TestFolderDto root = saveMode(mode, "Practice", null), child = saveMode(mode, "Week 1", root.getId());
+            test.setTestFormat("WRITING".equals(mode) ? "WRITING" : null);
+            test.setPronounce("LISTENING".equals(mode) ? " audio.mp3 " : " ");
+            assertEquals(child.getId(), service.moveTest(20L, child.getId()).getTestFolder().getId());
+            try { service.moveTest(20L, comprehensive.getId()); fail("Expected mode mismatch"); } catch (IllegalArgumentException expected) {}
+            assertEquals(child.getId(), test.getTestFolder().getId());
+            assertEquals("Transcript stays unchanged", test.getQuestion());
+            service.moveTest(20L, null); assertNull(test.getTestFolder());
+        }
+    }
+    @Test public void listeningDraftCanMoveBeforeAudioIsAdded() {
+        TestFolderDto folder = saveMode("LISTENING", "Practice", null);
+        test.setTestFormat("LISTENING"); test.setPronounce(null);
+        assertEquals(folder.getId(), service.moveTest(20L, folder.getId()).getTestFolder().getId());
+        assertNull(test.getPronounce());
+    }
     @Test public void ownTreeSupportsNestedFoldersAndSameNamesForOtherTeachers() {
         TestFolderDto root = save("  Listening  ", null), child = save("Week 1", root.getId());
         assertEquals("Listening", root.getName()); assertEquals(teacher.getId(), child.getOwnerId());

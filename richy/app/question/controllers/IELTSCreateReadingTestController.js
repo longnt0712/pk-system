@@ -46,6 +46,7 @@
         vm.isWritingMode = /\/create_ielts_writing_test(?:\/|$)/i.test($location.path());
         vm.isListeningMode = !vm.isComprehensiveMode && !vm.isWritingMode && /\/create_ielts_listening_test(?:\/|$)/i.test($location.path());
         vm.isFlexibleMode = vm.isComprehensiveMode || vm.isWritingMode;
+        vm.folderTestMode = vm.isComprehensiveMode ? 'COMPREHENSIVE' : (vm.isWritingMode ? 'WRITING' : (vm.isListeningMode ? 'LISTENING' : 'READING'));
         vm.comprehensiveContentMode = 'TEXT';
         vm.builderVideoApi = {};
         vm.videoDuration = 0;
@@ -470,9 +471,10 @@
         vm.selectedTestFolderId = null;
         vm.catalogTestFolderId = null;
         function prepareTestFolderForSave() {
-            if (!vm.isComprehensiveMode) { return; }
             vm.ieltsReadingTest.testFolderId = vm.selectedTestFolderId || null;
-            vm.ieltsReadingTest.questionTopics = [];
+            // A Listening draft must retain its type even before an audio link is entered.
+            if (vm.folderTestMode) { vm.ieltsReadingTest.testFormat = vm.folderTestMode; }
+            if (vm.isComprehensiveMode) { vm.ieltsReadingTest.questionTopics = []; }
         }
         vm.testFolderChanged = function (id) {
             if (id !== undefined) { vm.selectedTestFolderId = id; }
@@ -481,7 +483,7 @@
         };
         vm.applyCatalogFolderFilter = function (id) {
             if (id !== undefined) { vm.catalogTestFolderId = id; }
-            folders.applyFilter(vm.searchDto, vm.catalogTestFolderId, true);
+            folders.applyFilter(vm.searchDto, vm.catalogTestFolderId, true, !vm.isComprehensiveMode);
             vm.getPageCreateIELTSReadingTest();
         };
         vm.catalogPaginationTotal = function () {
@@ -498,7 +500,7 @@
             }
             var staysInCatalog = vm.searchDto.withoutTestFolder ? folderId == null :
                 (vm.searchDto.testFolderId == null || (vm.searchDto.includeSubfolders ?
-                    folders.contains(folderId, vm.searchDto.testFolderId) : String(folderId) === String(vm.searchDto.testFolderId)));
+                    folders.contains(folderId, vm.searchDto.testFolderId, vm.folderTestMode) : String(folderId) === String(vm.searchDto.testFolderId)));
             var rows = vm.ieltsReadingTests || [], changed = false;
             var moveVersion;
             for (var index = 0; index < (vm.ieltsReadingTests || []).length; index++) {
@@ -552,7 +554,7 @@
                     dialog.collapsed = {};
                     dialog.load = function () {
                         dialog.loading = true; dialog.error = '';
-                        return folders.load(false).then(function (items) {
+                        return folders.load(false, false, vm.folderTestMode).then(function (items) {
                             dialog.choices = folders.options(items.filter(function (folder) { return folder.canManage; }), false);
                         }, function () { dialog.error = 'Không tải được folder. Bạn có thể thử lại.'; })
                             .finally(function () { dialog.loading = false; });
@@ -624,12 +626,10 @@
             vm.searchDto.questionType = {id: 11};
             vm.searchDto.listeningTest = vm.isFlexibleMode ? null : vm.isListeningMode;
             vm.searchDto.testFormat = vm.isWritingMode ? 'WRITING' : (vm.isComprehensiveMode ? 'COMPREHENSIVE' : null);
-            if (vm.isComprehensiveMode) {
-                vm.searchDto.userId = vm.currentUser.id;
-                var pageIndex = vm.searchDto.pageIndex;
-                folders.applyFilter(vm.searchDto, vm.catalogTestFolderId, true);
-                vm.searchDto.pageIndex = pageIndex;
-            }
+            vm.searchDto.userId = vm.currentUser.id;
+            var pageIndex = vm.searchDto.pageIndex;
+            folders.applyFilter(vm.searchDto, vm.catalogTestFolderId, true, !vm.isComprehensiveMode);
+            vm.searchDto.pageIndex = pageIndex;
             vm.catalogLoading = true;
             blockUI.start();
             service.getPageForTests(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {

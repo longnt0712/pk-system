@@ -16,7 +16,8 @@ public class RestTestFolderController {
     @Autowired private TestFolderServiceImpl service;
     @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})
     @RequestMapping(method = RequestMethod.GET)
-    public List<TestFolderDto> list(@RequestParam(value = "allTeachers", defaultValue = "false") boolean allTeachers) { return service.list(allTeachers); }
+    public List<TestFolderDto> list(@RequestParam(value = "allTeachers", defaultValue = "false") boolean allTeachers,
+            @RequestParam(value = "testMode", defaultValue = "COMPREHENSIVE") String testMode) { return service.list(allTeachers, testMode); }
     @Secured({"ROLE_ADMIN", "ROLE_USER"})
     @RequestMapping(value = "/save", method = RequestMethod.POST)
     public ResponseEntity<?> save(@RequestBody TestFolderDto dto) {

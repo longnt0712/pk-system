@@ -129,3 +129,42 @@ test('full test saves wait until a folder move completes to avoid reverting its 
  await vm.saveReadingTest('DRAFT');assert.equal(messages.length,1);assert.match(messages[0],/Đang chuyển bài/);
  assert.equal(vm.savingReadingTest,undefined);
 });
+
+test('folder API and caches isolate Reading, Listening, Writing and Comprehensive',async()=>{
+ const {definitions}=setup(),requests=[];
+ const api=definitions.TestFolderService.at(-1)({get(url,config){requests.push(plain(config.params));return Promise.resolve({data:[{id:requests.length,testMode:config.params.testMode}]});}},
+  {api:{baseUrl:'/service/',apiV1Url:'api/'}});
+ const folders=definitions.ComprehensiveFolders.at(-1)(api,{$broadcast(){}},{when:Promise.resolve.bind(Promise)});
+ for(const mode of ['COMPREHENSIVE','READING','LISTENING','WRITING']){
+  const items=await folders.load(false,false,mode);assert.equal(items[0].testMode,mode);
+  assert.strictEqual(await folders.load(false,false,mode),items);
+ }
+ assert.deepEqual(requests.map(item=>item.testMode),['COMPREHENSIVE','READING','LISTENING','WRITING']);
+ assert.equal((await folders.load(false))[0].testMode,'COMPREHENSIVE');assert.equal(requests.length,4);
+});
+
+test('IELTS folder navigation preserves topic filters and the folder selected for saving',()=>{
+ const {folders}=setup();
+ const source=fs.readFileSync(path.join(__dirname,'../question/controllers/IELTSCreateReadingTestController.js'),'utf8');
+ const start=source.indexOf('vm.applyCatalogFolderFilter = function'),end=source.indexOf('\n        };',start)+11;
+ for(const mode of ['READING','LISTENING','WRITING']){
+  const vm={isComprehensiveMode:false,folderTestMode:mode,catalogTestFolderId:1,selectedTestFolderId:2,
+   searchDto:{questionTopics:[{topic:{id:9}}],topicId:9,pageIndex:3},getPageCreateIELTSReadingTest(){}};
+  nodeVm.runInNewContext(source.slice(start,end),{vm,folders});vm.applyCatalogFolderFilter();
+  assert.equal(vm.searchDto.testFolderId,1);assert.equal(vm.searchDto.topicId,9);assert.equal(vm.searchDto.questionTopics[0].topic.id,9);
+  assert.equal(vm.selectedTestFolderId,2);assert.equal(vm.searchDto.pageIndex,1);
+ }
+});
+
+test('IELTS saves use the chosen folder and retain Listening type before audio and existing topics',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../question/controllers/IELTSCreateReadingTestController.js'),'utf8');
+ const start=source.indexOf('function prepareTestFolderForSave()'),end=source.indexOf('vm.applyCatalogFolderFilter',start);
+ for(const mode of ['READING','LISTENING','WRITING']){
+  const topics=[{topic:{id:9}}],vm={folderTestMode:mode,isComprehensiveMode:false,selectedTestFolderId:8,
+   ieltsReadingTest:{questionTopics:topics,pronounce:null},changeInTheProcessOfCreatingReadingTest(){this.changed=true;}};
+  nodeVm.runInNewContext(source.slice(start,end),{vm});vm.testFolderChanged();
+  assert.equal(vm.ieltsReadingTest.testFolderId,8);assert.equal(vm.ieltsReadingTest.testFormat,mode);
+  assert.strictEqual(vm.ieltsReadingTest.questionTopics,topics);assert.equal(vm.changed,true);
+  vm.testFolderChanged(null);assert.equal(vm.ieltsReadingTest.testFolderId,null);
+ }
+});

@@ -11,12 +11,19 @@ BEGIN
         modify_date DATETIME2 NULL,
         modified_by NVARCHAR(100) NULL,
         name NVARCHAR(200) NOT NULL,
+        test_mode VARCHAR(20) NOT NULL CONSTRAINT DF_test_folder_mode DEFAULT 'COMPREHENSIVE',
         parent_id BIGINT NULL,
         owner_id BIGINT NOT NULL,
         CONSTRAINT FK_test_folder_parent FOREIGN KEY (parent_id) REFERENCES dbo.tbl_test_folder(id),
         CONSTRAINT FK_test_folder_owner FOREIGN KEY (owner_id) REFERENCES dbo.tbl_user(id)
     );
     CREATE INDEX IX_test_folder_owner_parent ON dbo.tbl_test_folder(owner_id, parent_id);
+END;
+
+IF COL_LENGTH('dbo.tbl_test_folder', 'test_mode') IS NULL
+BEGIN
+    ALTER TABLE dbo.tbl_test_folder ADD test_mode VARCHAR(20) NOT NULL
+        CONSTRAINT DF_test_folder_mode DEFAULT 'COMPREHENSIVE' WITH VALUES;
 END;
 
 IF COL_LENGTH('dbo.tbl_question', 'test_folder_id') IS NULL

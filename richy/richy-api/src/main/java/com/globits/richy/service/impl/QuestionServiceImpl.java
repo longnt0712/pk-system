@@ -573,11 +573,10 @@ public class QuestionServiceImpl implements QuestionService {
 		if (searchDto.getTestFormat() != null && !searchDto.getTestFormat().trim().isEmpty()) {
 			whereClause += " and s.testFormat = :testFormat ";
 		} else if (searchDto.getListeningTest() != null) {
-			whereClause += " and (s.testFormat is null or s.testFormat not in ('COMPREHENSIVE','WRITING')) ";
 			if (searchDto.getListeningTest()) {
-				whereClause += " and (s.pronounce is not null and length(trim(s.pronounce)) > 0) ";
+				whereClause += " and (s.testFormat = 'LISTENING' or ((s.testFormat is null or s.testFormat not in ('COMPREHENSIVE','WRITING','READING','LISTENING')) and s.pronounce is not null and length(trim(s.pronounce)) > 0)) ";
 			} else {
-				whereClause += " and (s.pronounce is null or length(trim(s.pronounce)) = 0) ";
+				whereClause += " and (s.testFormat = 'READING' or ((s.testFormat is null or s.testFormat not in ('COMPREHENSIVE','WRITING','READING','LISTENING')) and (s.pronounce is null or length(trim(s.pronounce)) = 0))) ";
 			}
 		}
 		
@@ -1402,9 +1401,11 @@ public class QuestionServiceImpl implements QuestionService {
 		String level = null;
 		com.globits.richy.domain.TestFolder selectedTestFolder = null;
 		if (dto.getTestFolderId() != null) {
-			if (!"COMPREHENSIVE".equals(dto.getTestFormat())) { ret.setMessage("Folder chỉ dùng cho test tổng hợp."); return ret; }
 			selectedTestFolder = testFolderRepository.findOne(dto.getTestFolderId());
 			if (selectedTestFolder == null) { ret.setMessage("Folder không còn tồn tại. Hãy chọn lại folder."); return ret; }
+			if (!selectedTestFolder.getTestMode().equals(TestFolderServiceImpl.modeForTest(dto.getTestFormat(), dto.getPronounce()))) {
+				ret.setMessage("Folder và bài test phải thuộc cùng loại test."); return ret;
+			}
 			if (!isAdmin && (modifiedUser == null || selectedTestFolder.getOwner() == null
 					|| !selectedTestFolder.getOwner().getId().equals(modifiedUser.getId()))) {
 				ret.setMessage("Hãy chọn folder của bạn để lưu test."); return ret;

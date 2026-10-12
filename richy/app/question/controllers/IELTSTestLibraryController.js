@@ -31,6 +31,7 @@
         vm.isComprehensiveMode = /\/comprehensive_tests(?:\/|$)/i.test($location.path());
         vm.isWritingMode = /\/ielts_writing_tests(?:\/|$)/i.test($location.path());
         vm.isListeningMode = !vm.isComprehensiveMode && !vm.isWritingMode && /\/ielts_listening_tests(?:\/|$)/i.test($location.path());
+        vm.folderTestMode = vm.isComprehensiveMode ? 'COMPREHENSIVE' : (vm.isWritingMode ? 'WRITING' : (vm.isListeningMode ? 'LISTENING' : 'READING'));
         vm.testModeName = vm.isComprehensiveMode ? 'Tổng hợp' : (vm.isWritingMode ? 'Writing' : (vm.isListeningMode ? 'Listening' : 'Reading'));
         vm.testModeIcon = vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isWritingMode ? 'fa-pencil' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book'));
         vm.ieltsReadingTests = [];
@@ -163,6 +164,7 @@
         vm.loadTests = function () {
             var requestId = ++testRequestId;
             vm.loading = true;
+            vm.loadError = '';
             blockUI.start();
             service.getPageForTests(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
                 if (requestId !== testRequestId) { return; }
@@ -173,6 +175,7 @@
                 if (requestId !== testRequestId) { return; }
                 vm.ieltsReadingTests = [];
                 vm.totalItems = 0;
+                vm.loadError = 'Không tải được danh sách bài test. Hãy thử lại.';
             }).finally(function () {
                 if (requestId === testRequestId) {
                     vm.loading = false;
@@ -182,7 +185,7 @@
         };
 
         vm.search = function () {
-            if (vm.isComprehensiveMode) { folders.applyFilter(vm.searchDto, vm.selectedTestFolderId, true); }
+            folders.applyFilter(vm.searchDto, vm.selectedTestFolderId, true);
             vm.searchDto.pageIndex = 1;
             vm.searchDto.findExactWord = false;
             vm.loadTests();
@@ -208,6 +211,6 @@
         });
 
         vm.refreshLearningProgress();
-        if (vm.isComprehensiveMode) { vm.applyFolderFilter(); } else { vm.loadTests(); }
+        vm.applyFolderFilter();
     }
 })();

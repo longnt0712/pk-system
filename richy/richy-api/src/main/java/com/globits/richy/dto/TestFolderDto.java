@@ -5,6 +5,7 @@ import com.globits.richy.domain.TestFolder;
 public class TestFolderDto {
     private Long id;
     private String name;
+    private String testMode;
     private Long parentId;
     private boolean canManage;
     private Long ownerId;
@@ -13,7 +14,7 @@ public class TestFolderDto {
     public String getOwnerName() { return ownerName; }
     public TestFolderDto() { }
     public TestFolderDto(TestFolder folder) {
-        id = folder.getId(); name = folder.getName();
+        id = folder.getId(); name = folder.getName(); testMode = folder.getTestMode();
         parentId = folder.getParent() == null ? null : folder.getParent().getId();
         if (folder.getOwner() != null) { ownerId = folder.getOwner().getId(); ownerName = folder.getOwner().getUsername(); }
     }
@@ -21,6 +22,8 @@ public class TestFolderDto {
     public void setId(Long value) { id = value; }
     public String getName() { return name; }
     public void setName(String value) { name = value; }
+    public String getTestMode() { return testMode; }
+    public void setTestMode(String value) { testMode = value; }
     public Long getParentId() { return parentId; }
     public void setParentId(Long value) { parentId = value; }
     public boolean isCanManage() { return canManage; }

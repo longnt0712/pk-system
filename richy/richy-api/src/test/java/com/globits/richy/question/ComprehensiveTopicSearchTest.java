@@ -253,6 +253,41 @@ public class ComprehensiveTopicSearchTest {
             org.springframework.security.core.context.SecurityContextHolder.clearContext();
         }
     }
+    @Test public void ieltsFullSavesPersistMatchingFoldersAndRejectAnotherTestMode() {
+        com.globits.richy.repository.TestFolderRepository folders = mock(com.globits.richy.repository.TestFolderRepository.class);
+        QuestionRepository questions = mock(QuestionRepository.class);
+        when(questions.save(org.mockito.Matchers.any(Question.class))).thenAnswer(call -> {
+            Question value = (Question) call.getArguments()[0]; manager.persist(value); return value;
+        });
+        com.globits.security.repository.UserRepository users = mock(com.globits.security.repository.UserRepository.class);
+        when(users.getOne(owner.getId())).thenReturn(owner);
+        ReflectionTestUtils.setField(service, "testFolderRepository", folders);
+        ReflectionTestUtils.setField(service, "questionRepository", questions); ReflectionTestUtils.setField(service, "userRepository", users);
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+            new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(owner, "unused",
+                Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
+        try {
+            for (String mode : Arrays.asList("READING", "LISTENING", "WRITING")) {
+                TestFolder folder = new TestFolder(); folder.setName(mode); folder.setTestMode(mode); folder.setOwner(owner); manager.persist(folder);
+                when(folders.findOne(folder.getId())).thenReturn(folder);
+                QuestionDto input = new QuestionDto(); input.setTitle(mode + " lesson"); input.setStatus(6); input.setOrdinalNumber(1);
+                input.setQuestionType(new QuestionTypeDto(type)); input.setUserId(owner.getId()); input.setTestFolderId(folder.getId());
+                input.setTestFormat(mode); input.setPronounce(null);
+                QuestionDto saved = service.saveObject(input); assertNotNull(saved.getId()); manager.flush();
+                assertEquals(folder.getId(), manager.find(Question.class, saved.getId()).getTestFolder().getId());
+                input.setId(null); input.setTestFormat("COMPREHENSIVE");
+                assertNull(service.saveObject(input).getId());
+            }
+        } finally { org.springframework.security.core.context.SecurityContextHolder.clearContext(); }
+    }
+    @Test public void ieltsCatalogRecognizesExplicitTypesAndLegacyAudioDiscriminator() {
+        question("Reading typed", 7, "READING"); question("Listening draft", 6, "LISTENING");
+        question("Listening typed", 7, "LISTENING"); question("Legacy listening", 7, null).setPronounce("audio.mp3");
+        QuestionDto dto = filter(7); dto.setTestFormat(null); dto.setListeningTest(true);
+        expect(dto, "Listening typed", "Legacy listening");
+        dto.setStatus(9); expect(dto, "Listening typed", "Listening draft", "Legacy listening");
+        dto.setStatus(7); dto.setListeningTest(false); expect(dto, "Reading", "Reading typed");
+    }
     @Test public void folderMoveIsPersistedWithoutReplacingQuestionsOrAnswers() {
         QuestionType kind = manager.find(QuestionType.class, 11L);
         if (kind == null) {

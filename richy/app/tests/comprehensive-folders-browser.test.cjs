@@ -7,14 +7,14 @@ const libraryHtml=fs.readFileSync(path.join(app,'question/views/ielts_test_libra
 const builderHtml=fs.readFileSync(path.join(app,'question/views/create_ielts_reading_test.html'),'utf8');
 const builderSource=fs.readFileSync(path.join(app,'question/controllers/IELTSCreateReadingTestController.js'),'utf8');
 function section(source,start,end) {const from=source.indexOf(start),to=source.indexOf(end,from);assert.ok(from>=0 && to>from,start);return source.slice(from,to);}
-const teacherHtml=section(builderHtml,'<test-folder-explorer ng-if="vm.isComprehensiveMode"','</test-folder-explorer>')+'</test-folder-explorer>'+
- section(builderHtml,'<ul ng-if="vm.isComprehensiveMode && vm.catalogPaginationTotal()', '</ul>')+'</ul>'+
- '<h3>Lưu bài vào folder</h3><test-folder-picker folder-id="vm.selectedTestFolderId" manage="true"></test-folder-picker>';
+const teacherHtml=section(builderHtml,'<test-folder-explorer folder-id="vm.catalogTestFolderId"','</test-folder-explorer>')+'</test-folder-explorer>'+
+ section(builderHtml,'<ul ng-if="vm.catalogPaginationTotal()', '</ul>')+'</ul>'+
+ '<h3>Lưu bài vào folder</h3><test-folder-picker folder-id="vm.selectedTestFolderId" test-mode="vm.folderTestMode" manage="true"></test-folder-picker>';
 const teacherCode=section(builderSource,'        vm.applyCatalogFolderFilter =','        vm.ieltsReadingTest =')+
  section(builderSource,'        var testCatalogRequestId =','        vm.searchDto.pageSize = 12;');
 const css=['assets/css/external/bootstrap.min.css','assets/css/ielts-test-library.css','assets/css/external/font-awesome.min.css','assets/css/comprehensive-folders.css'].map(file=>fs.readFileSync(path.join(app,file),'utf8')).join('\n');
 
-async function fixture(browser,width,teacher) {
+async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
  const page=await browser.newPage({viewport:{width,height:900}}), errors=[];
  page.setDefaultTimeout(10000); page.on('pageerror',error=>errors.push(error.message));
  await page.route('**/*',route=>{
@@ -30,26 +30,29 @@ async function fixture(browser,width,teacher) {
    'body{padding:20px;}main{max-width:1120px;margin:auto;}*{box-sizing:border-box;}@media(max-width:600px){body{padding:10px;}}</style></head><body><main id="qa" ng-controller="'+(teacher?'Qa':'IELTSTestLibraryController')+' as vm">'+(teacher?teacherHtml:libraryHtml)+'</main></body></html>');
   await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular.min.js')});
   await page.addScriptTag({path:path.join(app,'assets/scripts/external/ui-bootstrap-tpls.min.js')});
-  await page.evaluate(()=>{
+  await page.evaluate(({testMode})=>{
    window.App={initAjax(){}};
    angular.module('Hrm.Question',['ui.bootstrap']).value('settings',{}).value('$cookies',{get(){return '{"id":7}';}})
-    .value('$location',{path(){return '/comprehensive_tests';}}).value('blockUI',{start(){},stop(){}})
+    .value('$location',{path(){return testMode==='COMPREHENSIVE'?'/comprehensive_tests':'/ielts_'+testMode.toLowerCase()+'_tests';}}).value('blockUI',{start(){},stop(){}})
     .run(['$rootScope',function(root){root.settings={layout:{}};}])
     .factory('QuestionService',['$q',function(q){
      window.folderData=[{id:1,name:'Listening',parentId:null,ownerId:7,ownerName:'Teacher A',canManage:true},
       {id:2,name:'Week 1',parentId:1,ownerId:7,ownerName:'Teacher A',canManage:true},
       {id:3,name:'Reading',parentId:null,ownerId:8,ownerName:'Teacher B',canManage:false}];
+     window.folderData.forEach(folder=>folder.testMode=testMode);
+     window.folderData.push({id:99,name:'Folder loại khác',parentId:null,ownerId:7,ownerName:'Teacher A',canManage:true,testMode:testMode==='READING'?'WRITING':'READING'});
      window.testData=[{id:11,title:'Bài cũ chưa vào folder',testFolder:null,userId:7,status:7},
       {id:12,title:'Daily Listening cơ bản',testFolder:window.folderData[0],userId:7,status:7},
       {id:13,title:'Bài luyện nghe tuần 1',testFolder:window.folderData[1],userId:7,status:6},
       {id:14,title:'Reading của giáo viên B',testFolder:window.folderData[2],userId:8,status:7}];
      // The student fixture needs a published child test too.
      window.testData[2].status=7;
+     window.testData.forEach(test=>{test.testFormat=testMode==='WRITING'||testMode==='COMPREHENSIVE'?testMode:null;test.pronounce=testMode==='LISTENING'?'audio.mp3':null;test.hasWritingTask1=test.hasWritingTask2=testMode==='WRITING';});
      window.testRequests=[];
      window.moveCalls=[];
      return {
       getLearningDrafts(){return q.when([]);},
-      getTestFolders(all){return window.failFolders?q.reject({status:500}):q.when(window.folderData.filter(folder=>all || folder.ownerId===7));},
+      getTestFolders(all,mode){return window.failFolders?q.reject({status:500}):q.when(window.folderData.filter(folder=>folder.testMode===(mode||'COMPREHENSIVE')&&(all || folder.ownerId===7)));},
       saveTestFolder(dto){
        if(window.failSave)return q.reject({data:{message:'Đã có folder cùng tên.'}});
        let folder=window.folderData.find(item=>item.id===dto.id);
@@ -66,6 +69,7 @@ async function fixture(browser,width,teacher) {
        if(window.holdMove)window.releaseMove=finish;else finish();return deferred.promise;
       },
       getPageForTests(dto,index,size){
+       if(window.failTests)return q.reject({status:500});
        window.testRequests.push({...dto,requestedPageIndex:index,requestedPageSize:size});
        const folders=new Map(window.folderData.map(folder=>[folder.id,folder]));
        function inside(id){if(!dto.testFolderId)return true;while(id){if(id===dto.testFolderId)return true;if(!dto.includeSubfolders)return false;id=folders.get(id)?.parentId;}return false;}
@@ -75,14 +79,15 @@ async function fixture(browser,width,teacher) {
       }
      };
     }]);
-  });
+  },{testMode});
   await page.addScriptTag({path:path.join(app,'question/business/ComprehensiveFolders.js')});
   if(!teacher)await page.addScriptTag({path:path.join(app,'question/controllers/IELTSTestLibraryController.js')});
-  await page.evaluate(({teacher,teacherCode})=>{
+  await page.evaluate(({teacher,teacherCode,testMode})=>{
    angular.module('Hrm.Question').factory('TestFolderService',['QuestionService',function(service){return service;}]);
    if(teacher)angular.module('Hrm.Question').controller('Qa',['ComprehensiveFolders','QuestionService','$scope','$uibModal','$window',function(folders,service,scope,modal,browserWindow){
-    const vm=this;Object.assign(vm,{isComprehensiveMode:true,isFlexibleMode:true,currentUser:{id:7},searchDto:{pageIndex:1,pageSize:12,status:9},
+    const vm=this;Object.assign(vm,{isComprehensiveMode:testMode==='COMPREHENSIVE',isWritingMode:testMode==='WRITING',isListeningMode:testMode==='LISTENING',folderTestMode:testMode,isFlexibleMode:testMode==='COMPREHENSIVE'||testMode==='WRITING',currentUser:{id:7},searchDto:{pageIndex:1,pageSize:12,status:9},
      catalogTestFolderId:null,selectedTestFolderId:null,ieltsReadingTests:[],bsTableControlCreateIELTSReadingTest:{options:{}},refreshLearningProgress(){}});
+    vm.testCatalogUrl=item=>(testMode==='COMPREHENSIVE'?'comprehensive_test/':'ielts_'+testMode.toLowerCase()+'_actual_test/')+item.id+'?sessionMode=STUDY';
     scope.editCreateIELTSReadingTest=id=>window.lastEdit=id;
     scope.pageChanged=()=>vm.getPageCreateIELTSReadingTest();
     scope.hideReadingTest=id=>window.lastHide=id;scope.restoreReadingTest=id=>window.lastRestore=id;
@@ -91,11 +96,56 @@ async function fixture(browser,width,teacher) {
    }]);
    angular.bootstrap(document.getElementById('qa'),['Hrm.Question']);
    if(!teacher)window.qaVm=angular.element(document.getElementById('qa')).scope().vm;
-  },{teacher,teacherCode});
+  },{teacher,teacherCode,testMode});
   await page.locator('.test-explorer-folder').first().waitFor();
  }
  await mount();return {page,errors,mount};
 }
+
+test('Reading, Listening and Writing browse and manage their own folders on desktop and mobile',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{for(const mode of ['READING','LISTENING','WRITING'])for(const width of [1366,390])for(const teacher of [true,false]){
+  const {page,errors}=await fixture(browser,width,teacher,mode);
+  assert.equal(await page.locator('.test-explorer-folder').count(),teacher?1:2);
+  assert.equal(await page.getByRole('button',{name:/Folder loại khác/}).count(),0);
+  await page.getByRole('button',{name:/^Listening/}).click();
+  assert.equal(await page.locator('.test-explorer-file').count(),1);
+  assert.match(await page.locator('.test-explorer-file-main').getAttribute(teacher?'title':'href'),teacher?/Daily Listening/:new RegExp('ielts_'+mode.toLowerCase()+'_actual_test/12'));
+  if(teacher){
+   await page.getByRole('button',{name:'Tạo folder con',exact:true}).click();
+   await page.locator('.test-folder-explorer').getByRole('textbox',{name:'Tên folder'}).fill('IELTS Week 2');
+   await page.locator('.test-folder-explorer').getByRole('button',{name:'Lưu folder',exact:true}).click();
+   await page.getByRole('button',{name:'IELTS Week 2',exact:true}).waitFor();
+   assert.equal(await page.evaluate(()=>window.folderData.find(folder=>folder.name==='IELTS Week 2').testMode),mode);
+   const select=page.getByRole('combobox',{name:'Chọn folder'});
+   await select.selectOption({label:'Listening / IELTS Week 2'});
+   assert.equal(await select.locator('option').filter({hasText:'Folder loại khác'}).count(),0);
+   await page.locator('.test-explorer-file').dragTo(page.getByRole('button',{name:'IELTS Week 2',exact:true}));
+   await page.waitForFunction(()=>window.testData.find(test=>test.id===12).testFolder.name==='IELTS Week 2');
+   await page.getByRole('button',{name:'IELTS Week 2',exact:true}).click();
+  }else{
+   if(mode==='WRITING'){
+    assert.match(await page.getByRole('link',{name:'Bắt đầu Task 1',exact:true}).getAttribute('href'),/assignmentPart=1/);
+    assert.match(await page.getByRole('link',{name:'Bắt đầu Task 2',exact:true}).getAttribute('href'),/assignmentPart=2/);
+   }
+   await page.getByRole('button',{name:/^Week 1/}).click();
+   assert.match(await page.locator('.test-explorer-file-main').getAttribute('href'),new RegExp('ielts_'+mode.toLowerCase()+'_actual_test/13'));
+   await page.evaluate(()=>window.failTests=true);
+   await page.getByRole('button',{name:'Lên folder cha',exact:true}).click();
+   await page.getByRole('alert').filter({hasText:'Không tải được danh sách'}).waitFor();
+   assert.equal(await page.locator('.test-explorer-empty').filter({hasText:'Folder này chưa có'}).count(),0);
+   await page.evaluate(()=>window.failTests=false);
+   await page.getByRole('button',{name:'Thử lại',exact:true}).click();
+   await page.locator('.test-explorer-file').waitFor();
+  }
+  await page.screenshot({path:path.join(repo,'.tmp/ielts-folders-'+mode.toLowerCase()+'-'+(teacher?'teacher':'library')+'-grid-'+width+'.png'),fullPage:true});
+  await page.getByRole('button',{name:'Chuyển sang dạng danh sách',exact:true}).click();
+  await page.locator('.test-folder-explorer.is-list').waitFor();
+  await page.screenshot({path:path.join(repo,'.tmp/ielts-folders-'+mode.toLowerCase()+'-'+(teacher?'teacher':'library')+'-list-'+width+'.png'),fullPage:true});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+  assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
 
 test('real folder views support grid/list, breadcrumbs, direct contents, nested search, ownership and mobile layout',async()=>{
  const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
@@ -188,7 +238,7 @@ test('folder picker works on a fresh class page without loading QuestionService 
   await page.getByRole('textbox',{name:'Tên folder',exact:true}).fill('New folder');
   await page.getByRole('button',{name:'Lưu folder',exact:true}).click();
   await page.waitForFunction(()=>angular.element(document.getElementById('qa')).scope().vm.folderId===2);
-  assert.deepEqual(calls.find(call=>call.method==='POST').body,{name:'New folder',parentId:null});
+  assert.deepEqual(calls.find(call=>call.method==='POST').body,{name:'New folder',parentId:null,testMode:'COMPREHENSIVE'});
   assert.equal(calls[0].allTeachers,'false');
  }finally{await browser.close();}
 });

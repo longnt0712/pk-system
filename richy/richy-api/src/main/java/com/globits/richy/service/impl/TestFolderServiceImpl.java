@@ -23,9 +23,28 @@ public class TestFolderServiceImpl {
     @Autowired private QuestionRepository questionRepository;
 
     public List<TestFolderDto> list(boolean allTeachers) {
+        return list(allTeachers, "COMPREHENSIVE");
+    }
+
+    public static String normalizeMode(String value) {
+        String mode = value == null || value.trim().isEmpty() ? "COMPREHENSIVE" : value.trim().toUpperCase(Locale.ROOT);
+        if (!Arrays.asList("COMPREHENSIVE", "READING", "LISTENING", "WRITING").contains(mode)) {
+            throw new IllegalArgumentException("Loại folder phải là Tổng hợp, Reading, Listening hoặc Writing.");
+        }
+        return mode;
+    }
+
+    public static String modeForTest(String format, String audio) {
+        if (Arrays.asList("COMPREHENSIVE", "WRITING", "READING", "LISTENING").contains(format)) { return format; }
+        return audio != null && !audio.trim().isEmpty() ? "LISTENING" : "READING";
+    }
+
+    public List<TestFolderDto> list(boolean allTeachers, String testMode) {
+        String mode = normalizeMode(testMode);
         List<TestFolderDto> result = new ArrayList<TestFolderDto>();
         User user = currentUser();
         for (TestFolder folder : repository.findAll()) {
+            if (!mode.equals(folder.getTestMode())) { continue; }
             if (!allTeachers && (folder.getOwner() == null || !folder.getOwner().getId().equals(user.getId()))) { continue; }
             TestFolderDto dto = new TestFolderDto(folder); dto.setCanManage(canManage(folder)); result.add(dto);
         }
@@ -52,9 +71,12 @@ public class TestFolderServiceImpl {
         TestFolder folder = dto.getId() == null ? new TestFolder() : repository.findOne(dto.getId());
         if (folder == null) { throw new IllegalArgumentException("Folder không còn tồn tại."); }
         if (folder.getId() != null && !canManage(folder)) { throw new AccessDeniedException("Bạn không có quyền sửa folder này."); }
+        String mode = normalizeMode(dto.getTestMode() == null && folder.getId() != null ? folder.getTestMode() : dto.getTestMode());
+        if (folder.getId() != null && !mode.equals(folder.getTestMode())) { throw new IllegalArgumentException("Không thể đổi loại test của folder."); }
         User owner = folder.getId() == null ? currentUser() : folder.getOwner();
         TestFolder parent = dto.getParentId() == null ? null : repository.findOne(dto.getParentId());
         if (dto.getParentId() != null && parent == null) { throw new IllegalArgumentException("Folder cha không còn tồn tại."); }
+        if (parent != null && !mode.equals(parent.getTestMode())) { throw new IllegalArgumentException("Folder cha phải thuộc cùng loại test."); }
         if (parent != null && (parent.getOwner() == null || !parent.getOwner().getId().equals(owner.getId()))) {
             throw new IllegalArgumentException("Folder cha phải thuộc cùng giáo viên.");
         }
@@ -67,6 +89,7 @@ public class TestFolderServiceImpl {
         for (TestFolder sibling : repository.findAll()) {
             Long parentId = sibling.getParent() == null ? null : sibling.getParent().getId();
             if (sibling.getOwner() != null && sibling.getOwner().getId().equals(owner.getId())
+                    && mode.equals(sibling.getTestMode())
                     && !Objects.equals(sibling.getId(), folder.getId()) && Objects.equals(parentId, dto.getParentId())
                     && name.equalsIgnoreCase(sibling.getName())) {
                 throw new IllegalArgumentException("Đã có folder cùng tên trong folder cha này.");
@@ -75,7 +98,7 @@ public class TestFolderServiceImpl {
         LocalDateTime now = LocalDateTime.now();
         if (folder.getId() == null) { folder.setCreatedBy(auth.getName()); folder.setCreateDate(now); }
         folder.setModifiedBy(auth.getName()); folder.setModifyDate(now);
-        folder.setName(name); folder.setParent(parent); folder.setOwner(owner);
+        folder.setName(name); folder.setParent(parent); folder.setOwner(owner); folder.setTestMode(mode);
         TestFolderDto result = new TestFolderDto(repository.save(folder)); result.setCanManage(true); return result;
     }
 
@@ -105,12 +128,15 @@ public class TestFolderServiceImpl {
         if (!admin && (test.getUser() == null || !user.getId().equals(test.getUser().getId()))) {
             throw new AccessDeniedException("Bạn không có quyền chuyển bài test này.");
         }
-        if (!"COMPREHENSIVE".equals(test.getTestFormat()) || test.getQuestionType() == null
+        if (test.getQuestionType() == null
                 || !Long.valueOf(11L).equals(test.getQuestionType().getId()) || test.getParent() != null) {
-            throw new IllegalArgumentException("Chỉ có thể chuyển bài test tổng hợp vào folder.");
+            throw new IllegalArgumentException("Chỉ có thể chuyển bài test Tổng hợp, Reading, Listening hoặc Writing vào folder.");
         }
         TestFolder folder = folderId == null ? null : repository.findOne(folderId);
         if (folderId != null && folder == null) { throw new IllegalArgumentException("Folder không còn tồn tại. Hãy tải lại danh sách."); }
+        if (folder != null && !folder.getTestMode().equals(modeForTest(test.getTestFormat(), test.getPronounce()))) {
+            throw new IllegalArgumentException("Folder và bài test phải thuộc cùng loại test.");
+        }
         if (folder != null && (folder.getOwner() == null || test.getUser() == null
                 || !folder.getOwner().getId().equals(test.getUser().getId()))) {
             throw new AccessDeniedException("Folder và bài test phải thuộc cùng giáo viên.");

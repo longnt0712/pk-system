@@ -9,6 +9,8 @@ import javax.persistence.*;
 public class TestFolder extends BaseObject {
     @Column(name = "name", nullable = false, length = 200)
     private String name;
+    @Column(name = "test_mode", nullable = false, length = 20)
+    private String testMode = "COMPREHENSIVE";
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private TestFolder parent;
@@ -19,6 +21,8 @@ public class TestFolder extends BaseObject {
     public void setOwner(User value) { owner = value; }
     public String getName() { return name; }
     public void setName(String value) { name = value; }
+    public String getTestMode() { return testMode == null ? "COMPREHENSIVE" : testMode; }
+    public void setTestMode(String value) { testMode = value; }
     public TestFolder getParent() { return parent; }
     public void setParent(TestFolder value) { parent = value; }
 }

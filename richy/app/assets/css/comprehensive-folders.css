@@ -53,6 +53,9 @@
 .test-explorer-file-actions > a, .test-explorer-file-actions > button {border: 0; background: transparent; color: #4338ca; font-size: 11px; padding: 3px 5px; border-radius: 4px; text-decoration: none;}
 .test-explorer-file-actions > a:hover, .test-explorer-file-actions > button:hover {background: #dbe4ff;}
 .test-explorer-file-actions > button:disabled {opacity: .5;}
+.test-explorer-file-details {padding: 0 12px 6px; font-size: 11px; color: #64748b; overflow-wrap: anywhere;}
+.test-explorer-file-details p {margin: 4px 0;}
+.test-explorer-topic {display: inline-block; margin: 2px 4px 2px 0;}
 .test-move-title {font-weight: 600; overflow-wrap: anywhere;}
 .test-move-tree {max-height: 360px; overflow: auto; border: 1px solid #dce2eb; border-radius: 8px; padding: 8px; margin: 14px 0;}
 .test-move-tree-row {display: flex; align-items: center; min-height: 38px; border-radius: 5px;}
@@ -89,6 +92,7 @@
 .global-dark-mode .test-explorer-file {--paper-edge: #7c78ad; --paper-front: #252525; --paper-back: #373052; --paper-fold: #373052;}
 .global-dark-mode .test-explorer-file:hover, .global-dark-mode .test-explorer-file:focus-within {--paper-edge: #c4b5fd; --paper-front: #34324a; --paper-back: #51446e; --paper-fold: #51446e;}
 .global-dark-mode .test-explorer-name small, .global-dark-mode .test-explorer-empty {color: #aaa;}
+.global-dark-mode .test-explorer-file-details {color: #aaa;}
 .global-dark-mode .test-explorer-drag-help {color: #aaa;}
 .global-dark-mode .test-explorer-move-status {color: #86efac;}
 .global-dark-mode .test-folder-explorer.is-dragging-test .is-drop-target {background: #14532d !important;}

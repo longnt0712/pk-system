@@ -3,7 +3,7 @@
     angular.module('Hrm.Question').factory('TestFolderService', ['$http', 'settings', function ($http, settings) {
         var baseUrl = settings.api.baseUrl + settings.api.apiV1Url + 'test_folder';
         return {
-            getTestFolders: function (allTeachers) { return $http.get(baseUrl, {params: {allTeachers: allTeachers === true}}).then(function (response) { return response.data; }); },
+            getTestFolders: function (allTeachers, testMode) { return $http.get(baseUrl, {params: {allTeachers: allTeachers === true, testMode: testMode || 'COMPREHENSIVE'}}).then(function (response) { return response.data; }); },
             saveTestFolder: function (folder) { return $http.post(baseUrl + '/save', folder).then(function (response) { return response.data; }); },
             moveTest: function (testId, folderId) { return $http.post(baseUrl + '/move_test', {testId: testId, folderId: folderId == null ? null : folderId}).then(function (response) { return response.data; }); }
         };
@@ -29,27 +29,28 @@
             (items || []).slice().sort(sort).forEach(function (folder) { if (!seen[folder.id]) { visit(folder, '', 0); } });
             return output;
         }
-        function load(allTeachers, refresh) {
-            var key = allTeachers ? 'all' : 'mine';
+        function load(allTeachers, refresh, testMode) {
+            var key = (testMode || 'COMPREHENSIVE') + ':' + (allTeachers ? 'all' : 'mine');
             if (pending[key]) { return pending[key]; }
             if (cached[key] && !refresh) { return $q.when(cached[key]); }
-            pending[key] = service.getTestFolders(allTeachers).then(function (items) {
+            pending[key] = service.getTestFolders(allTeachers, testMode || 'COMPREHENSIVE').then(function (items) {
                 cached[key] = items || []; return cached[key];
             }).finally(function () { delete pending[key]; });
             return pending[key];
         }
-        function applyFilter(dto, id, browsing) {
+        function applyFilter(dto, id, browsing, keepTopics) {
             dto.testFolderId = id != null && Number(id) > 0 ? Number(id) : null;
             var searching = !!String(dto.textSearch || '').trim();
             dto.withoutTestFolder = Number(id) === -1 || (browsing && id == null && !searching);
             dto.includeSubfolders = !browsing || searching;
-            dto.questionTopics = []; dto.topicId = dto.topicOwnerUserId = dto.topicCategoryId = null; dto.withoutTopics = false;
+            if (!keepTopics) { dto.questionTopics = []; dto.topicId = dto.topicOwnerUserId = dto.topicCategoryId = null; dto.withoutTopics = false; }
             dto.pageIndex = 1;
         }
-        function contains(id, selected) {
+        function contains(id, selected, testMode) {
             if (selected == null) { return true; }
             if (Number(selected) === -1) { return id == null; }
-            var all = cached.all || cached.mine || [], byId = {}, seen = {};
+            var prefix = (testMode || 'COMPREHENSIVE') + ':';
+            var all = cached[prefix + 'all'] || cached[prefix + 'mine'] || [], byId = {}, seen = {};
             all.forEach(function (folder) { byId[folder.id] = folder; });
             while (id != null && !seen[id]) {
                 if (String(id) === String(selected)) { return true; }
@@ -68,7 +69,7 @@
 
     angular.module('Hrm.Question').directive('testFolderPicker', ['ComprehensiveFolders', function (folders) {
         return {
-            restrict: 'E', scope: {folderId: '=', showAll: '=?', manage: '=?', allTeachers: '=?', onChange: '&'},
+            restrict: 'E', scope: {folderId: '=', showAll: '=?', manage: '=?', allTeachers: '=?', testMode: '=?', onChange: '&'},
             template: '<div class="test-folder-picker">' +
                 '<select class="form-control" ng-model="folderId" ng-options="folder.id as folder.label for folder in choices" ng-change="changed()" ng-disabled="loading || saving" aria-label="Chọn folder">' +
                 '<option value="">{{showAll ? "Tất cả folder" : "Chưa vào folder"}}</option></select>' +
@@ -85,7 +86,7 @@
             link: function (scope) {
                 scope.reload = function (refresh) {
                     scope.loading = true; scope.error = '';
-                    return folders.load(scope.allTeachers === true, refresh).then(function (items) {
+                    return folders.load(scope.allTeachers === true, refresh, scope.testMode).then(function (items) {
                         scope.options = folders.options(items, scope.allTeachers === true);
                         scope.choices = (scope.showAll ? [{id: -1, label: 'Chưa vào folder'}] : []).concat(scope.options);
                     }, function () { scope.error = 'Không tải được folder.'; }).finally(function () { scope.loading = false; });
@@ -93,8 +94,8 @@
                 scope.selected = function () { return (scope.options || []).filter(function (folder) { return folder.id == scope.folderId; })[0] || {}; };
                 scope.parentLabel = function (id) { var match = (scope.options || []).filter(function (folder) { return folder.id == id; })[0]; return match ? match.label : ''; };
                 scope.changed = function () { scope.onChange({folderId: scope.folderId == null ? null : scope.folderId}); };
-                scope.create = function (child) { scope.editor = {name: '', parentId: child ? scope.folderId : null}; scope.error = ''; };
-                scope.rename = function () { var folder = scope.selected(); scope.editor = {id: folder.id, name: folder.name, parentId: folder.parentId}; scope.error = ''; };
+                scope.create = function (child) { scope.editor = {name: '', parentId: child ? scope.folderId : null, testMode: scope.testMode || 'COMPREHENSIVE'}; scope.error = ''; };
+                scope.rename = function () { var folder = scope.selected(); scope.editor = {id: folder.id, name: folder.name, parentId: folder.parentId, testMode: scope.testMode || 'COMPREHENSIVE'}; scope.error = ''; };
                 scope.save = function () {
                     if (scope.saving || !scope.editor) { return; } scope.saving = true; scope.error = '';
                     folders.save(scope.editor).then(function (saved) {
@@ -110,7 +111,7 @@
     angular.module('Hrm.Question').directive('testFolderExplorer', ['ComprehensiveFolders', '$window', function (folders, $window) {
         return {
             restrict: 'E', transclude: true,
-            scope: {folderId: '=', allTeachers: '=?', manage: '=?', onChange: '&', onMoved: '&?', moving: '=?', moveDisabled: '=?'},
+            scope: {folderId: '=', allTeachers: '=?', manage: '=?', testMode: '=?', onChange: '&', onMoved: '&?', moving: '=?', moveDisabled: '=?'},
             controller: ['$scope', function (scope) {
                 var explorer = this;
                 explorer.canDrag = function (test) { return scope.manage === true && !scope.moveDisabled && !explorer.busy && !!(test && test.id); };
@@ -138,7 +139,7 @@
             }],
             templateUrl: function () { return 'question/views/test_folder_explorer.html?v=' + encodeURIComponent($window.APP_VERSION || 'dev'); },
             link: function (scope) {
-                var storageKey = 'comprehensiveTestFolderView';
+                var storageKey = scope.testMode && scope.testMode !== 'COMPREHENSIVE' ? 'testFolderView:' + scope.testMode : 'comprehensiveTestFolderView';
                 scope.viewMode = 'grid';
                 try { scope.viewMode = $window.localStorage.getItem(storageKey) === 'list' ? 'list' : 'grid'; } catch (ignoreStorage) {}
                 scope.toggleView = function () {
@@ -166,11 +167,11 @@
                 scope.goUp = function () { scope.openFolder(scope.current ? scope.current.parentId : null); };
                 scope.reload = function (refresh) {
                     scope.loading = true; scope.error = '';
-                    return folders.load(scope.allTeachers === true, refresh).then(function (items) { scope.folders = items; rebuild(); },
+                    return folders.load(scope.allTeachers === true, refresh, scope.testMode).then(function (items) { scope.folders = items; rebuild(); },
                         function () { scope.error = 'Không tải được folder.'; }).finally(function () { scope.loading = false; });
                 };
-                scope.create = function () { scope.editor = {name: '', parentId: scope.folderId || null}; scope.error = ''; };
-                scope.rename = function () { scope.editor = {id: scope.current.id, name: scope.current.name, parentId: scope.current.parentId}; scope.error = ''; };
+                scope.create = function () { scope.editor = {name: '', parentId: scope.folderId || null, testMode: scope.testMode || 'COMPREHENSIVE'}; scope.error = ''; };
+                scope.rename = function () { scope.editor = {id: scope.current.id, name: scope.current.name, parentId: scope.current.parentId, testMode: scope.testMode || 'COMPREHENSIVE'}; scope.error = ''; };
                 scope.save = function () {
                     if (scope.saving || !scope.editor) { return; } scope.saving = true; scope.error = '';
                     folders.save(scope.editor).then(function () { scope.editor = null; return scope.reload(true); },
