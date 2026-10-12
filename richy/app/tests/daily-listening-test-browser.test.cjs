@@ -5,7 +5,7 @@ const app=path.join(__dirname,'..'),repo=path.resolve(app,'../..');
 const chrome=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(fs.existsSync);
 const old={id:21,question:'Listening cũ',pronounce:'http://daily-listening-creator.test/audio.wav',motherTongue:'<p>one two three four five six seven eight nine ten.</p>',
  questionType:{id:6},status:5,user:{id:7},questionTopics:[{id:10,topic:{id:2}}],questionAnswers:[{id:8,answer:{id:9,answer:'Keep'}}],correctAnswer:3,timeReviewd:142};
-const css=['assets/css/external/bootstrap.min.css','assets/css/external/font-awesome.min.css','assets/css/daily-listening-builder.css','assets/css/comprehensive-listening.css','assets/css/comprehensive-folders.css'].map(name=>fs.readFileSync(path.join(app,name),'utf8')).join('\n');
+const css=['assets/css/external/bootstrap.min.css','assets/css/external/font-awesome.min.css','assets/css/components-md.min.css','assets/css/test-builder.css','assets/css/daily-listening-builder.css','assets/css/comprehensive-listening.css','assets/css/comprehensive-folders.css'].map(name=>fs.readFileSync(path.join(app,name),'utf8')).join('\n');
 const shared={...old,title:old.question,questionType:{id:11},testFormat:'DAILY_LISTENING',status:7};
 async function fixture(browser,width,learner=false,record=shared){
  const page=await browser.newPage({viewport:{width,height:950},timezoneId:'Asia/Bangkok'}),errors=[];page.setDefaultTimeout(12000);
@@ -25,7 +25,7 @@ async function fixture(browser,width,learner=false,record=shared){
  async function mount(){
   const template=fs.readFileSync(path.join(app,'question/views/'+(learner?'view.html':'create_daily_listening_test.html')),'utf8');
   await page.setContent('<!doctype html><html><head><meta charset="utf-8"><style>'+css+
-   'body{padding:16px;}main{max-width:1200px;margin:auto;}*{box-sizing:border-box;}@media(max-width:600px){body{padding:8px;}}</style></head><body><main id="qa" ng-controller="'+(learner?'ViewController':'DailyListeningTestController')+' as vm">'+template+'</main></body></html>');
+   'body{padding:16px!important;}main{max-width:1200px;margin:auto;padding:0 15px;}*{box-sizing:border-box;}@media(max-width:600px){body{padding:8px!important;}}</style></head><body><main id="qa" ng-controller="'+(learner?'ViewController':'DailyListeningTestController')+' as vm">'+template+'</main></body></html>');
   for(const script of ['jquery.min.js','angular.min.js','angular-sanitize.min.js','ui-bootstrap-tpls.min.js'])await page.addScriptTag({path:path.join(app,'assets/scripts/external/'+script)});
   await page.evaluate(({learner,record})=>{
    window.App={initAjax(){}};localStorage.setItem('fillingGapRatePercent','100');

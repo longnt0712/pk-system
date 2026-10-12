@@ -12,7 +12,7 @@ const teacherHtml=section(builderHtml,'<test-folder-explorer folder-id="vm.catal
  '<h3>Lưu bài vào folder</h3><test-folder-picker folder-id="vm.selectedTestFolderId" test-mode="vm.folderTestMode" manage="true"></test-folder-picker>';
 const teacherCode=section(builderSource,'        vm.applyCatalogFolderFilter =','        vm.ieltsReadingTest =')+
  section(builderSource,'        var testCatalogRequestId =','        vm.showHiddenTests = false;');
-const css=['assets/css/external/bootstrap.min.css','assets/css/ielts-test-library.css','assets/css/external/font-awesome.min.css','assets/css/comprehensive-folders.css'].map(file=>fs.readFileSync(path.join(app,file),'utf8')).join('\n');
+const css=['assets/css/external/bootstrap.min.css','assets/css/ielts-test-library.css','assets/css/external/font-awesome.min.css','assets/css/test-builder.css','assets/css/comprehensive-folders.css'].map(file=>fs.readFileSync(path.join(app,file),'utf8')).join('\n');
 
 async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
  const page=await browser.newPage({viewport:{width,height:900}}), errors=[];

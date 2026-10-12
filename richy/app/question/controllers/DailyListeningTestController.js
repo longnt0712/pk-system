@@ -11,7 +11,7 @@
             settings.isAdmin = true;
             vm.items = [];
             vm.totalItems = 0;
-            vm.searchDto = {textSearch: '', pageIndex: 1, pageSize: 12};
+            vm.searchDto = {textSearch: '', pageIndex: 1, pageSize: 10};
             vm.folderTestMode = 'DAILY_LISTENING';
             vm.catalogTestFolderId = null;
             function text(value) {
@@ -21,6 +21,10 @@
             }
             function ownerId(item) { return item.userId || (item.user || {}).id; }
             function isListening(item) { return item && Number((item.questionType || {}).id) === 11 && item.testFormat === 'DAILY_LISTENING'; }
+            function showEditor() {
+                var editor = $window.document.getElementById && $window.document.getElementById('daily-listening-editor');
+                if (editor && editor.scrollIntoView) { editor.scrollIntoView({behavior: 'smooth', block: 'start'}); }
+            }
             vm.preview = function (item) { return text(item.motherTongue).slice(0, 160); };
             vm.practiceUrl = function (item) { return 'daily_listening/' + encodeURIComponent(item.id); };
             vm.load = function () {
@@ -130,6 +134,7 @@
                     testFolderId: Number(vm.catalogTestFolderId) > 0 ? Number(vm.catalogTestFolderId) : null};
                 vm.transcript = ''; vm.originalTranscript = ''; vm.originalTranscriptText = '';
                 vm.error = ''; vm.savedMessage = '';
+                if (vm.initialized) { showEditor(); }
             };
             vm.edit = function (item) {
                 if (vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
@@ -144,6 +149,7 @@
                     vm.originalTranscript = data.motherTongue || '';
                     vm.originalTranscriptText = text(vm.originalTranscript);
                     vm.transcript = vm.originalTranscriptText;
+                    showEditor();
                 }, function () { vm.error = 'Không tải được nội dung bài. Bạn có thể thử lại.'; })
                     .finally(function () { vm.editing = false; });
             };
@@ -247,6 +253,7 @@
                 }, function () { vm.importDialogOpen = false; if (importCount) { vm.searchDto.textSearch = ''; vm.applyCatalogFolderFilter(null); } });
             };
             vm.newTest();
+            vm.initialized = true;
             vm.applyCatalogFolderFilter();
         }
     ]);
