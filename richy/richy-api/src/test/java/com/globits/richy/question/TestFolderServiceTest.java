@@ -59,7 +59,7 @@ public class TestFolderServiceTest {
         TestFolderDto dto = new TestFolderDto(); dto.setTestMode(mode); dto.setName(name); dto.setParentId(parent); return service.save(dto);
     }
     @Test public void eachTestModeHasItsOwnTreeAndSiblingNames() {
-        for (String mode : Arrays.asList("COMPREHENSIVE", "READING", "LISTENING", "WRITING")) {
+        for (String mode : Arrays.asList("COMPREHENSIVE", "READING", "LISTENING", "WRITING", "DAILY_LISTENING")) {
             TestFolderDto root = saveMode(mode, "Practice", null), child = saveMode(mode, "Week 1", root.getId());
             assertEquals(mode, child.getTestMode()); assertEquals(2, service.list(false, mode).size());
             assertEquals(Arrays.asList(root.getId(), child.getId()), service.descendantIds(root.getId(), true));
@@ -91,6 +91,16 @@ public class TestFolderServiceTest {
         test.setTestFormat("LISTENING"); test.setPronounce(null);
         assertEquals(folder.getId(), service.moveTest(20L, folder.getId()).getTestFolder().getId());
         assertNull(test.getPronounce());
+    }
+    @Test public void sharedDailyListeningCanMoveToOwnNestedFoldersWithoutChangingTranscriptOrOwner() {
+        TestFolderDto root = saveMode("DAILY_LISTENING", "Daily", null), child = saveMode("DAILY_LISTENING", "Week 1", root.getId());
+        test.setTestFormat("DAILY_LISTENING"); test.setUser(other); test.setMotherTongue("Original listening transcript");
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(teacher, "", Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+        assertEquals(child.getId(), service.moveTest(20L, child.getId()).getTestFolder().getId());
+        assertSame(other, test.getUser()); assertEquals("Original listening transcript", test.getMotherTongue());
+        TestFolderDto reading = saveMode("READING", "Reading", null);
+        try { service.moveTest(20L, reading.getId()); fail(); } catch (IllegalArgumentException expected) {}
+        assertEquals(child.getId(), test.getTestFolder().getId()); service.moveTest(20L, null); assertNull(test.getTestFolder());
     }
     @Test public void ownTreeSupportsNestedFoldersAndSameNamesForOtherTeachers() {
         TestFolderDto root = save("  Listening  ", null), child = save("Week 1", root.getId());

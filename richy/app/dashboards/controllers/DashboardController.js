@@ -325,6 +325,7 @@
                     kind: 'DAILY_LISTENING',
                     storageKey: key,
                     title: draft.card.question || 'Daily Listening',
+                    dailyListeningId: draft.card.testFormat === 'DAILY_LISTENING' ? draft.card.id : null,
                     savedAt: Number(draft.updatedAt) || 0,
                     progressLabel: 'Tiến độ',
                     progressValue: (Number(draft.percentage) || 0) + '%',
@@ -393,6 +394,10 @@
                 return;
             }
             if (draft.kind === 'DAILY_LISTENING') {
+                if (draft.dailyListeningId && !draft.assignmentTaskId) {
+                    $state.go('application.daily_listening_actual_test', {dailyListeningId: draft.dailyListeningId});
+                    return;
+                }
                 try { $window.sessionStorage.setItem('daily-listening-dashboard-resume:v1:' + vm.myUser.id, '1'); } catch (ignoreListeningResumeFlagError) {}
                 $state.go('application.view', {
                     listFlashCard: 0,

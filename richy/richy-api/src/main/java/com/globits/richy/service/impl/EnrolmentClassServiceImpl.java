@@ -1458,7 +1458,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					Long linkCount = sourceQuestion == null ? Long.valueOf(0L)
 							: questionTopicRepository.countByQuestionIdAndTopicId(sourceQuestion.getId(), topic.getId());
 					if (sourceQuestion == null || sourceQuestion.getQuestionType() == null
-							|| !Long.valueOf(6L).equals(sourceQuestion.getQuestionType().getId())
+							|| (!Long.valueOf(6L).equals(sourceQuestion.getQuestionType().getId()) && !DailyListeningServiceImpl.isDailyTest(sourceQuestion))
 							|| linkCount == null || linkCount.longValue() < 1L) {
 						throw new EnrolmentClassScheduleException(HttpStatus.BAD_REQUEST, "Bài nghe/Track không thuộc Topic đã chọn.");
 					}

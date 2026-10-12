@@ -63,9 +63,67 @@ public class ComprehensiveTopicSearchTest {
         manager.flush(); manager.clear();
     }
     @After public void rollback() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
         if (manager != null) { if (manager.getTransaction().isActive()) manager.getTransaction().rollback(); manager.close(); }
     }
     private Topic topic(String name) { Topic value = new Topic(); value.setName(name); value.setTopicCategory(category); value.setUser(owner); manager.persist(value); return value; }
+    @Test public void dailyLibraryAndLegacyPickerUseSharedQueriesWithoutSourceOrReviewBounds() throws Exception {
+        for (long id : Arrays.asList(6L, 11L)) {
+            if (manager.find(QuestionType.class, id) == null) {
+                manager.createNativeQuery("insert into tbl_question_type (id, name, create_date, created_by) values (" + id + ", 'Test type', CURRENT_TIMESTAMP, 'test')").executeUpdate();
+            }
+        }
+        QuestionType dailyType = manager.find(QuestionType.class, 11L), cardType = manager.find(QuestionType.class, 6L);
+        Question shared = question("Shared daily", 7, "DAILY_LISTENING"); shared.setQuestionType(dailyType); shared.setQuestion("Shared daily"); shared.setUser(owner); shared.setTimeReviewd(142);
+        shared.setPronounce("https://school.test/audio.mp3"); shared.setMotherTongue("Shared transcript");
+        Question hidden = question("Hidden daily", 8, "DAILY_LISTENING"); hidden.setQuestionType(dailyType);
+        Question old = question("Legacy listening", 5, null); old.setQuestionType(cardType); old.setTimeReviewd(142); old.setQuestion("Legacy listening");
+        old.setPronounce("https://school.test/old.mp3"); old.setMotherTongue("Old transcript");
+        Question unmarked = question("Legacy unmarked", 1, null); unmarked.setQuestionType(cardType); unmarked.setQuestion("Legacy unmarked");
+        unmarked.setPronounce("https://school.test/unmarked.mp3"); unmarked.setMotherTongue("Unmarked transcript");
+        manager.flush();
+        com.globits.richy.service.impl.DailyListeningServiceImpl daily = new com.globits.richy.service.impl.DailyListeningServiceImpl();
+        ReflectionTestUtils.setField(daily, "manager", manager);
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(owner, "",
+                Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
+        QuestionDto search = new QuestionDto(); search.setUserId(-1L); search.setLower(500); search.setUpper(0);
+        Page<QuestionDto> page = daily.list(search, 1, 12, false);
+        assertEquals(1, page.getTotalElements()); assertEquals(shared.getId(), page.getContent().get(0).getId());
+        assertEquals(142, page.getContent().get(0).getTimeReviewd());
+        page = daily.list(search, 1, 1, true); assertEquals(2, page.getTotalElements()); assertEquals(1, page.getContent().size());
+        search.setTextSearch("unmarked"); assertEquals(unmarked.getId(), daily.list(search, 1, 20, true).getContent().get(0).getId());
+        com.globits.richy.repository.QuestionTypeRepository types = mock(com.globits.richy.repository.QuestionTypeRepository.class);
+        when(types.getOne(11L)).thenReturn(dailyType); ReflectionTestUtils.setField(service, "questionTypeRepository", types);
+        QuestionDto ielts = new QuestionDto(); ielts.setStatus(7); ielts.setLower(0); ielts.setUpper(Integer.MAX_VALUE);
+        QuestionTypeDto kind = new QuestionTypeDto(); kind.setId(11L); ielts.setQuestionType(kind);
+        for (boolean listening : Arrays.asList(true, false)) { ielts.setListeningTest(listening); assertEquals(0, service.getPageObjectForTests(ielts, 1, 20).getTotalElements()); }
+        String homeworkCatalog = QuestionRepository.class.getMethod("findPublishedIeltsTests").getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+        assertEquals(0, manager.createQuery(homeworkCatalog).getResultList().size());
+        TestFolder root = new TestFolder(); root.setName("Daily"); root.setTestMode("DAILY_LISTENING"); root.setOwner(owner); manager.persist(root);
+        TestFolder child = new TestFolder(); child.setName("Week 1"); child.setTestMode("DAILY_LISTENING"); child.setOwner(owner); child.setParent(root); manager.persist(child);
+        shared.setTestFolder(child); manager.flush();
+        com.globits.richy.repository.TestFolderRepository folderRepository = mock(com.globits.richy.repository.TestFolderRepository.class);
+        when(folderRepository.findOne(root.getId())).thenReturn(root);
+        com.globits.richy.service.impl.TestFolderServiceImpl folderService = mock(com.globits.richy.service.impl.TestFolderServiceImpl.class);
+        when(folderService.descendantIds(root.getId(), false)).thenReturn(Collections.singletonList(root.getId()));
+        when(folderService.descendantIds(root.getId(), true)).thenReturn(Arrays.asList(root.getId(), child.getId()));
+        ReflectionTestUtils.setField(daily, "folders", folderRepository); ReflectionTestUtils.setField(daily, "folderService", folderService);
+        search = new QuestionDto(); search.setWithoutTestFolder(true); assertEquals(0, daily.list(search, 1, 12, false).getTotalElements());
+        search.setWithoutTestFolder(false); search.setTestFolderId(root.getId()); search.setIncludeSubfolders(false); assertEquals(0, daily.list(search, 1, 12, false).getTotalElements());
+        search.setIncludeSubfolders(true); assertEquals(1, daily.list(search, 1, 12, false).getTotalElements());
+        TestResult history = new TestResult(); history.setUser(manager.find(User.class, owner.getId())); history.setTestType(3); history.setSourceQuestionId(old.getId()); manager.persist(history);
+        LearningDraft draft = new LearningDraft(); draft.setUser(owner); draft.setDraftKey("daily-listening-progress:v1:" + owner.getId() + ":" + old.getId());
+        draft.setDraftType("DAILY_LISTENING"); draft.setPayload("{\"card\":{\"id\":" + old.getId() + "}}"); draft.setSavedAt(1L); manager.persist(draft);
+        QuestionRepository questions = mock(QuestionRepository.class); when(questions.findOne(old.getId())).thenReturn(old);
+        when(questions.save(old)).thenReturn(old); when(types.findOne(11L)).thenReturn(dailyType);
+        ReflectionTestUtils.setField(daily, "questions", questions); ReflectionTestUtils.setField(daily, "questionTypes", types);
+        Long oldId = old.getId(); String payload = draft.getPayload(); daily.migrate(oldId); manager.flush(); manager.clear();
+        assertEquals("DAILY_LISTENING", manager.find(Question.class, oldId).getTestFormat());
+        assertEquals(oldId, manager.find(TestResult.class, history.getId()).getSourceQuestionId());
+        assertEquals(payload, manager.find(LearningDraft.class, draft.getId()).getPayload());
+        assertEquals(2, daily.list(new QuestionDto(), 1, 12, false).getTotalElements());
+        assertEquals(1, daily.list(new QuestionDto(), 1, 12, true).getTotalElements());
+    }
     private Question question(String title, int status, String format) {
         Question value = new Question(); value.setTitle(title); value.setQuestionType(type); value.setStatus(status);
         value.setTestFormat(format); value.setOrdinalNumber(1); manager.persist(value); return value;

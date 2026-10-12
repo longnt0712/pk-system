@@ -24,6 +24,23 @@
         self.getPage = getPage;
         self.getPageForGames = getPageForGames;
         self.getPageForTests = getPageForTests;
+        function dailyListeningRequest(path, payload) {
+            return $http.post(baseUrl + 'daily_listening/' + path, payload, {
+                headers: {'Content-Type': 'application/json; charset=utf-8'}
+            }).then(function (response) { return response.data; }, function (response) { return $q.reject(response); });
+        }
+        self.getDailyListeningTests = function (search, page, size) {
+            return dailyListeningRequest('get_page/' + page + '/' + size, search);
+        };
+        self.getLegacyDailyListening = function (search, page, size) {
+            return dailyListeningRequest('legacy/' + page + '/' + size, search);
+        };
+        self.saveDailyListening = function (dto) {
+            return dailyListeningRequest('save', dto);
+        };
+        self.migrateDailyListening = function (id) {
+            return dailyListeningRequest('migrate/' + encodeURIComponent(id), {});
+        };
         self.getPageForDailyVocab = getPageForDailyVocab;
         self.getPageOnlyQuestion = getPageOnlyQuestion;
 

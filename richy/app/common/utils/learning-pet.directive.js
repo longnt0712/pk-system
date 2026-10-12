@@ -886,6 +886,7 @@
                     draft.progressValue = (Number(payload.currentPosition) || 0) + '/' + (Number(payload.totalCard) || (payload.questions || []).length || 0) + ' từ';
                 } else if (kind === 'DAILY_LISTENING') {
                     draft.typeLabel = 'Daily Listening';
+                    draft.dailyListeningId = (payload.card || {}).testFormat === 'DAILY_LISTENING' ? payload.card.id : null;
                     draft.title = item.title || (payload.card || {}).question || 'Daily Listening';
                     draft.progressLabel = 'Tiến độ';
                     draft.progressValue = (Number(payload.percentage) || 0) + '%';
@@ -975,6 +976,10 @@
                     try { $window.sessionStorage.setItem('daily-vocab-dashboard-resume:v1:' + user.id, '1'); } catch (ignoreVocabFlag) {}
                     $state.go('application.daily_vocab', {listFlashCard: 0});
                 } else if (draft.kind === 'DAILY_LISTENING') {
+                    if (draft.dailyListeningId && !draft.assignmentTaskId) {
+                        $state.go('application.daily_listening_actual_test', {dailyListeningId: draft.dailyListeningId});
+                        return;
+                    }
                     try { $window.sessionStorage.setItem('daily-listening-dashboard-resume:v1:' + user.id, '1'); } catch (ignoreListeningFlag) {}
                     $state.go('application.view', {listFlashCard: 0, assignmentTaskId: draft.assignmentTaskId, assignmentTopicId: draft.assignmentTopicId, assignmentCategoryId: draft.assignmentCategoryId, assignmentSourceQuestionId: draft.assignmentSourceQuestionId});
                 } else if (draft.testId) {

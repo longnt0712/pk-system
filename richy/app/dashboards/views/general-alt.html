@@ -445,6 +445,18 @@
             </a>
         </div>
 
+        <div class="learning-tile-wrap"
+             ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin)">
+            <a href="daily_listening_tests" class="learning-tile learning-tile-daily-listening">
+                <span class="learning-tile-icon"><i class="fa fa-headphones"></i></span>
+                <span class="learning-tile-title">DAILY LISTENING</span>
+                <span class="learning-tile-desc">Nghe và điền từ mỗi ngày</span>
+                <span class="learning-tile-go"><i class="fa fa-arrow-right"></i></span>
+                <span class="learning-blob learning-blob-1"></span>
+                <span class="learning-blob learning-blob-2"></span>
+            </a>
+        </div>
+
         <!-- BÀI TẬP TỔNG HỢP -->
         <div class="learning-tile-wrap"
              ng-if="settings.ieltsRoom == true && (vm.isRoleView || vm.isRoleUser || vm.isRoleAdmin)">
@@ -1564,6 +1576,8 @@
                         #d557b5 100%
                 );
     }
+
+    .learning-tile-daily-listening {background: linear-gradient(135deg, #0e7490 0%, #4f46e5 100%);}
 
     @media (max-width: 767px) {
         .learning-hub-brand-mark { display:none !important; }

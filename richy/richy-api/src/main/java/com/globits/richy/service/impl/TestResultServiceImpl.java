@@ -691,7 +691,8 @@ public class TestResultServiceImpl implements TestResultService {
 			if (percentage < 0D || percentage > 100D) {
 				throw new IllegalArgumentException("Điểm Daily Listening phải từ 0 đến 100%.");
 			}
-			passedDailyListening = percentage >= 85D;
+			Question dailySource = dto.getSourceQuestionId() == null ? null : questionRepository.findOne(dto.getSourceQuestionId());
+			passedDailyListening = percentage >= (DailyListeningServiceImpl.isDailyTest(dailySource) ? 90D : 85D);
 		}
 		if (Integer.valueOf(6).equals(dto.getTestType()) || Integer.valueOf(7).equals(dto.getTestType())) {
 			boolean writingTaskFound = false;

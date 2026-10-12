@@ -574,9 +574,9 @@ public class QuestionServiceImpl implements QuestionService {
 			whereClause += " and s.testFormat = :testFormat ";
 		} else if (searchDto.getListeningTest() != null) {
 			if (searchDto.getListeningTest()) {
-				whereClause += " and (s.testFormat = 'LISTENING' or ((s.testFormat is null or s.testFormat not in ('COMPREHENSIVE','WRITING','READING','LISTENING')) and s.pronounce is not null and length(trim(s.pronounce)) > 0)) ";
+				whereClause += " and (s.testFormat = 'LISTENING' or ((s.testFormat is null or s.testFormat not in ('COMPREHENSIVE','WRITING','READING','LISTENING','DAILY_LISTENING')) and s.pronounce is not null and length(trim(s.pronounce)) > 0)) ";
 			} else {
-				whereClause += " and (s.testFormat = 'READING' or ((s.testFormat is null or s.testFormat not in ('COMPREHENSIVE','WRITING','READING','LISTENING')) and (s.pronounce is null or length(trim(s.pronounce)) = 0))) ";
+				whereClause += " and (s.testFormat = 'READING' or ((s.testFormat is null or s.testFormat not in ('COMPREHENSIVE','WRITING','READING','LISTENING','DAILY_LISTENING')) and (s.pronounce is null or length(trim(s.pronounce)) = 0))) ";
 			}
 		}
 		

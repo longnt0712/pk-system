@@ -1,7 +1,8 @@
 <div class="daily-listening-import-dialog">
-    <div class="modal-header"><button type="button" class="close" ng-click="transfer.cancel()" ng-disabled="transfer.busy" aria-label="Đóng">&times;</button><h3 class="modal-title">Lấy bài nghe từ flashcard cũ</h3></div>
+    <div class="modal-header"><button type="button" class="close" ng-click="transfer.cancel()" ng-disabled="transfer.busy" aria-label="Đóng">&times;</button><h3 class="modal-title">Chuyển bài cũ vào kho Daily Listening chung</h3></div>
     <div class="modal-body">
-        <p>Chọn các flashcard có audio và transcript để đưa vào Daily Listening.</p>
+        <p>Chọn bài nghe cũ để chuyển thành tài nguyên chung. ID, audio, transcript và kết quả đã làm được giữ lại; bài đã chuyển sẽ rời danh sách flashcard.</p>
+        <label><input type="checkbox" ng-model="transfer.includeUnmarked" ng-change="transfer.unmarkedChanged()" ng-disabled="transfer.busy || transfer.loading"> Bao gồm flashcard chưa đánh dấu Listening</label>
         <form class="daily-listening-search" ng-submit="transfer.search()"><input type="search" class="form-control" aria-label="Tìm flashcard cũ" ng-model="transfer.searchDto.textSearch" placeholder="Tìm tên bài hoặc transcript..." ng-disabled="transfer.busy"><button type="submit" class="btn btn-default" ng-disabled="transfer.busy || transfer.loading">Tìm</button></form>
         <p ng-if="transfer.loading" role="status">Đang tải flashcard...</p>
         <p ng-if="transfer.error" class="test-folder-error" role="alert">{{transfer.error}} <button type="button" class="btn btn-link" ng-if="!transfer.items.length" ng-click="transfer.load()" ng-disabled="transfer.busy">Thử lại</button></p>
@@ -12,7 +13,7 @@
                 <input type="checkbox" ng-model="transfer.selected[item.id]" ng-disabled="transfer.busy || !transfer.eligible(item)" aria-label="Chọn {{item.question}}">
                 <span><strong ng-bind="item.question"></strong><span class="daily-listening-import-preview" ng-bind="transfer.preview(item)"></span><small ng-if="!transfer.eligible(item)">Cần có link audio hợp lệ và transcript để chuyển.</small><span ng-if="transfer.errors[item.id]" class="test-folder-error" role="alert" ng-bind="transfer.errors[item.id]"></span></span>
             </label>
-            <p ng-if="!transfer.loading && !transfer.items.length">Không còn flashcard phù hợp trên trang này. Bài đã đánh dấu Listening có sẵn ở danh sách Daily Listening.</p>
+            <p ng-if="!transfer.loading && !transfer.items.length">Không còn bài nghe cũ phù hợp trên trang này. Bài đã chuyển có trong kho Daily Listening chung.</p>
         </div>
         <ul ng-if="transfer.totalItems > transfer.searchDto.pageSize" uib-pagination total-items="transfer.totalItems" ng-model="transfer.searchDto.pageIndex" items-per-page="transfer.searchDto.pageSize" ng-change="transfer.load()" ng-disabled="transfer.busy" max-size="3" previous-text="Trước" next-text="Sau"></ul>
     </div>

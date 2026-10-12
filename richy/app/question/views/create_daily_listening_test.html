@@ -13,29 +13,34 @@
     <div class="daily-listening-layout">
         <section class="daily-listening-panel daily-listening-catalog" aria-label="Danh sách Daily Listening">
             <div class="daily-listening-panel-title"><h2>Bài nghe <small>({{vm.totalItems}})</small></h2><button type="button" class="btn btn-primary" ng-click="vm.newTest()" ng-disabled="vm.saving || vm.editing || vm.importDialogOpen"><i class="fa fa-plus" aria-hidden="true"></i> Tạo bài mới</button></div>
-            <label for="daily-listening-source">Nguồn bài nghe</label>
-            <select id="daily-listening-source" class="form-control" ng-model="vm.sourceId" ng-options="source.id as source.name for source in vm.sources" ng-change="vm.sourceChanged()" ng-disabled="vm.saving || vm.editing || vm.importDialogOpen"></select>
-            <div class="daily-listening-import-action"><button type="button" class="btn btn-default" ng-click="vm.importOldListening()" ng-disabled="vm.saving || vm.editing || vm.importDialogOpen"><i class="fa fa-clone" aria-hidden="true"></i> Lấy từ flashcard cũ</button><p>Bài đã đánh dấu Listening hiện sẵn trong nguồn đã chọn. Dùng nút này để chọn thêm bài có audio và transcript.</p></div>
+            <div class="daily-listening-import-action"><a href="daily_listening_tests">Mở thư viện Daily Listening</a><p>Bài nghe là tài nguyên chung trong TEST ROOM.</p><button type="button" class="btn btn-default" ng-click="vm.importOldListening()" ng-disabled="vm.saving || vm.editing || vm.importDialogOpen"><i class="fa fa-clone" aria-hidden="true"></i> Chuyển bài cũ vào kho chung</button></div>
             <form class="daily-listening-search" ng-submit="vm.search()">
                 <input class="form-control" type="search" ng-model="vm.searchDto.textSearch" aria-label="Tìm Daily Listening" placeholder="Tìm tên bài hoặc transcript...">
                 <button type="submit" class="btn btn-default" ng-disabled="vm.loading">Tìm</button>
             </form>
             <p ng-if="vm.loading" role="status">Đang tải bài nghe...</p>
             <p class="test-folder-error" ng-if="vm.listError" role="alert">{{vm.listError}} <button type="button" class="btn btn-link" ng-click="vm.load()">Thử lại</button></p>
-            <p class="daily-listening-empty" ng-if="!vm.loading && !vm.listError && !vm.items.length">{{vm.searchDto.textSearch ? 'Không tìm thấy bài nghe phù hợp.' : 'Chưa có bài nghe. Dán transcript bên cạnh để tạo bài đầu tiên.'}}</p>
-            <article class="daily-listening-catalog-item" ng-repeat="item in vm.items track by item.id" ng-class="{'is-selected': vm.draft.id == item.id}">
-                <h3 ng-bind="item.question"></h3><p ng-bind="vm.preview(item)"></p>
-                <div><button type="button" class="btn btn-default btn-sm" ng-click="vm.edit(item)" ng-disabled="vm.saving || vm.editing">Sửa bài</button> <a class="btn btn-link btn-sm" target="_blank" rel="noopener" ng-href="{{vm.practiceUrl(item)}}">Mở bài nghe</a></div>
-            </article>
-            <ul ng-if="vm.totalItems > vm.searchDto.pageSize" uib-pagination total-items="vm.totalItems" ng-model="vm.searchDto.pageIndex" items-per-page="vm.searchDto.pageSize" ng-change="vm.load()" max-size="3" previous-text="Trước" next-text="Sau"></ul>
+            <p class="daily-listening-empty" ng-if="!vm.loading && !vm.listError && !vm.items.length">{{vm.searchDto.textSearch ? 'Không tìm thấy bài nghe phù hợp.' : 'Folder này chưa có bài nghe. Bạn có thể mở folder con hoặc tạo bài mới.'}}</p>
+            <test-folder-explorer folder-id="vm.catalogTestFolderId" test-mode="vm.folderTestMode" manage="true" moving="vm.catalogMovePending" move-disabled="vm.saving || vm.editing || vm.loading || vm.importDialogOpen || vm.catalogMoveDialogOpen" on-change="vm.applyCatalogFolderFilter(folderId)" on-moved="vm.catalogTestMoved(test)">
+                <article class="test-explorer-file daily-listening-catalog-item" test-folder-drag="item" ng-repeat="item in vm.items track by item.id" ng-class="{'is-selected': vm.draft.id == item.id}">
+                    <div class="test-explorer-file-content">
+                        <div class="test-explorer-file-main"><h3 class="test-explorer-name" ng-bind="item.title || item.question"></h3></div>
+                        <p class="test-explorer-file-details" ng-bind="vm.preview(item)"></p>
+                        <div class="test-explorer-file-actions"><button type="button" ng-click="vm.edit(item)" ng-disabled="vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen">Sửa bài</button><a draggable="false" target="_blank" rel="noopener" ng-href="{{vm.practiceUrl(item)}}">Mở bài nghe</a><button type="button" ng-click="vm.openCatalogMoveDialog(item)" ng-disabled="vm.saving || vm.editing || vm.loading || vm.catalogMovePending || vm.catalogMoveDialogOpen || vm.importDialogOpen"><i class="fa fa-folder-open-o" aria-hidden="true"></i> Di chuyển</button></div>
+                    </div>
+                </article>
+            </test-folder-explorer>
+            <ul ng-if="vm.catalogPaginationTotal() > vm.searchDto.pageSize" uib-pagination total-items="vm.catalogPaginationTotal()" ng-model="vm.searchDto.pageIndex" items-per-page="vm.searchDto.pageSize" ng-change="vm.load()" max-size="3" previous-text="Trước" next-text="Sau"></ul>
         </section>
         <section class="daily-listening-panel daily-listening-editor" aria-label="Soạn Daily Listening" aria-busy="{{vm.editing || vm.saving}}">
             <h2>{{vm.draft.id ? 'Sửa bài nghe' : 'Bài nghe mới'}}</h2>
             <p ng-if="vm.editing" role="status">Đang tải nội dung bài...</p>
             <form ng-submit="vm.save()">
-                <fieldset ng-disabled="vm.saving || vm.editing">
+                <fieldset ng-disabled="vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen">
                     <label for="daily-listening-title">Tên bài <small>(có thể bỏ trống để lấy từ transcript)</small></label>
                     <input id="daily-listening-title" type="text" class="form-control" maxlength="200" ng-model="vm.draft.question" placeholder="Ví dụ: A day at school">
+                    <label>Folder lưu bài</label>
+                    <test-folder-picker folder-id="vm.draft.testFolderId" test-mode="'DAILY_LISTENING'" manage="true" on-change="vm.draft.testFolderId=folderId"></test-folder-picker>
                     <label for="daily-listening-audio">Link audio hoặc YouTube</label>
                     <input id="daily-listening-audio" type="text" class="form-control" ng-model="vm.draft.pronounce" placeholder="https://.../audio.mp3 hoặc https://youtu.be/...">
                     <comprehensive-listening-player audio-link="vm.draft.pronounce"></comprehensive-listening-player>

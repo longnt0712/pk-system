@@ -25,8 +25,10 @@
 .global-dark-mode .daily-listening-import-dialog {background: #252525; color: #ededed;}
 .global-dark-mode .daily-listening-import-item {border-color: #454545;}
 .global-dark-mode .daily-listening-import-preview, .global-dark-mode .daily-listening-import-action p {color: #bbb;}
-.daily-listening-catalog-item {padding: 14px; margin-bottom: 12px; border: 1px solid #dce2eb; border-radius: 8px; overflow-wrap: anywhere;}
-.daily-listening-catalog-item.is-selected {border-color: #818cf8; background: #eef2ff;}
+.daily-listening-catalog .test-explorer-items, .daily-listening-catalog .test-explorer-files {grid-template-columns: repeat(2, minmax(0, 1fr));}
+.daily-listening-catalog .test-folder-explorer.is-list .test-explorer-items, .daily-listening-catalog .test-folder-explorer.is-list .test-explorer-files {grid-template-columns: 1fr;}
+.daily-listening-catalog-item {overflow-wrap: anywhere;}
+.daily-listening-catalog-item.is-selected {--paper-edge: #818cf8; --paper-front: #eef2ff;}
 .daily-listening-catalog-item h3 {font-size: 16px; margin: 0 0 8px; line-height: 1.5;}
 .daily-listening-catalog-item p, .daily-listening-empty {color: #64748b;}
 .daily-listening-editor label {display: block; margin: 18px 0 7px;}
@@ -37,8 +39,7 @@
 .daily-listening-help {color: #64748b; margin: 12px 0;}
 .daily-listening-saved {color: #047857;}
 .global-dark-mode .daily-listening-panel {background: #252525; border-color: #454545; color: #ededed;}
-.global-dark-mode .daily-listening-catalog-item {border-color: #454545;}
-.global-dark-mode .daily-listening-catalog-item.is-selected {background: #34324a; border-color: #a5b4fc;}
+.global-dark-mode .daily-listening-catalog-item.is-selected {--paper-front: #34324a; --paper-edge: #a5b4fc;}
 .global-dark-mode .daily-listening-catalog-item p, .global-dark-mode .daily-listening-help {color: #bbb;}
 .global-dark-mode .daily-listening-saved {color: #86efac;}
 @media (max-width: 800px) {.daily-listening-layout {grid-template-columns: 1fr;} .daily-listening-editor {grid-row: 1;} .daily-listening-panel {padding: 16px;} .daily-listening-hero {padding: 16px;} .daily-listening-hero h1 {font-size: 24px;}}

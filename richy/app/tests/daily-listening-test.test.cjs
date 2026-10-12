@@ -4,92 +4,79 @@ const app=path.join(__dirname,'..');
 const source=fs.readFileSync(path.join(app,'question/controllers/DailyListeningTestController.js'),'utf8');
 const legacy=fs.readFileSync(path.join(app,'question/controllers/ViewController.js'),'utf8');
 const plain=value=>JSON.parse(JSON.stringify(value));
-const tick=async()=>{for(let i=0;i<6;i++)await Promise.resolve();};
+const tick=async()=>{for(let i=0;i<12;i++)await Promise.resolve();};
 function section(text,start,end){const from=text.indexOf(start),to=text.indexOf(end,from);assert.ok(from>=0&&to>from,start);return text.slice(from,to);}
 function setup(overrides={}){
- let definition;const angular={copy:structuredClone,module(){return{controller(name,controller){definition=controller.at(-1);}};}};
+ let definition;const angular={copy:structuredClone,noop(){},module(){return{controller(name,controller){definition=controller.at(-1);}};}};
  nodeVm.runInNewContext(source,{angular});
- const old={id:21,question:'Old listening',pronounce:'https://school.test/old.mp3',motherTongue:'<p>We listen every day.</p>',
-  questionType:{id:6},status:5,user:{id:7},questionTopics:[{id:10,topic:{id:2}}],questionAnswers:[{id:8,answer:{id:9,answer:'Keep'}}],correctAnswer:3,timeReviewd:142};
+ const old={id:21,question:'Old listening',title:'Old listening',pronounce:'https://school.test/old.mp3',motherTongue:'<p>We listen every day.</p>',
+  questionType:{id:11},testFormat:'DAILY_LISTENING',status:7,user:{id:26},questionTopics:[{id:10,topic:{id:2}}],questionAnswers:[{id:8,answer:{id:9,answer:'Keep'}}],correctAnswer:3,timeReviewd:142};
  const requests=[],saves=[],vm={},redirects=[];
- const service={getPage(dto,index,size){requests.push({dto:plain(dto),index,size});
-  // Match the legacy backend's defaults: omitted bounds are lower=3, upper=0.
-  const lower=dto.lower==null?3:dto.lower,upper=dto.upper==null?0:dto.upper;
-  const content=old.timeReviewd>=lower&&old.timeReviewd<=upper?[structuredClone(old)]:[];
-  return Promise.resolve({content,totalElements:content.length});},
-  getOne(){return Promise.resolve(structuredClone(old));},saveObject(dto){saves.push(structuredClone(dto));return Promise.resolve({...dto,id:dto.id||22});},...overrides.service};
+ const service={getDailyListeningTests(dto,index,size){requests.push({dto:plain(dto),index,size});return Promise.resolve({content:[structuredClone(old)],totalElements:1});},
+  getOne(){return Promise.resolve(structuredClone(old));},saveDailyListening(dto){saves.push(structuredClone(dto));return Promise.resolve({...dto,title:dto.question,id:dto.id||22});},...overrides.service};
  const document={createElement(){return{innerHTML:'',get textContent(){return this.innerHTML.replace(/<[^>]*>/g,'');}};}};
+ const folders={applyFilter(dto,id){dto.testFolderId=id>0?id:null;dto.withoutTestFolder=id==null&&!dto.textSearch;dto.includeSubfolders=!!dto.textSearch;dto.pageIndex=1;},contains:(id,selected)=>id===selected,...overrides.folders};
  definition.call(vm,{get(){return JSON.stringify({id:7,roles:[{name:overrides.role||'ROLE_ADMIN'}]});}},
-  {path(value){redirects.push(value);}},{document},{},service,{parseUrl(url){return /^https?:\/\//.test(url)?{}:null;}},{success(){}},overrides.modal,{when:Promise.resolve.bind(Promise)});
+  {path(value){redirects.push(value);}},{document},{},service,{parseUrl(url){return /^https?:\/\//.test(url)?{}:null;}},{success(){}},overrides.modal,{when:Promise.resolve.bind(Promise)},folders);
  return {vm,old,requests,saves,redirects};
 }
-test('the separate creator lists owned legacy Listening flashcards and blocks student authoring',async()=>{
- const {vm,requests}=setup();await tick();
- assert.equal(vm.items[0].id,21);assert.equal(vm.totalItems,1);
- assert.deepEqual(requests[0].dto,{questionType:{id:6},status:5,type:100,userId:7,lower:0,upper:2147483647,textSearch:'',findExactWord:false,pageIndex:1,pageSize:12});
- const restricted=setup({role:'ROLE_STUDENT'});assert.deepEqual(restricted.redirects,['/comprehensive_tests']);assert.equal(restricted.requests.length,0);
+test('shared catalog has no source or teacher filter and edits imported content without changing its original owner',async()=>{
+ const {vm,old,requests,saves}=setup();await tick();assert.equal(vm.items.length,1);assert.equal(requests[0].dto.userId,undefined);assert.equal(vm.sources,undefined);
+ await vm.edit(old);assert.equal(vm.transcript,'We listen every day.');vm.draft.question='New title';await vm.save();
+ assert.equal(saves[0].id,21);assert.equal(saves[0].motherTongue,old.motherTongue);assert.deepEqual(saves[0].questionTopics,old.questionTopics);
+ assert.deepEqual(saves[0].questionAnswers,old.questionAnswers);assert.equal(saves[0].userId,26);assert.equal(vm.items[0].title,'New title');assert.equal(requests.length,1);
 });
-test('editing an old listening preserves its id, formatted transcript, topics, answers and counters',async()=>{
- const {vm,old,saves,requests}=setup();await tick();await vm.edit(old);
- assert.equal(vm.transcript,'We listen every day.');vm.draft.question='New title';await vm.save();
- assert.equal(saves[0].id,21);assert.equal(saves[0].motherTongue,old.motherTongue);
- assert.deepEqual(saves[0].questionTopics,old.questionTopics);assert.deepEqual(saves[0].questionAnswers,old.questionAnswers);
- assert.equal(saves[0].correctAnswer,3);assert.equal(saves[0].status,5);assert.equal(saves[0].userId,7);
- assert.equal(vm.items[0].question,'New title');assert.equal(requests.length,1);
+test('pasting text saves a shared test in the selected folder, with no manually configured gaps',async()=>{
+ const {vm,saves}=setup();await tick();vm.catalogTestFolderId=5;vm.newTest();vm.transcript='We hear a new story every morning.';vm.draft.pronounce='https://school.test/new.mp3';await vm.save();
+ assert.equal(saves[0].questionType.id,11);assert.equal(saves[0].testFormat,'DAILY_LISTENING');assert.equal(saves[0].status,7);assert.equal(saves[0].testFolderId,5);
+ assert.equal(saves[0].motherTongue,vm.transcript);assert.deepEqual(saves[0].questionAnswers,[]);assert.equal(vm.practiceUrl(vm.draft),'daily_listening/22');
 });
-test('a pasted transcript creates a legacy Listening record with no gaps or manually entered answers',async()=>{
- const {vm,saves}=setup();await tick();vm.transcript='We hear a new story every morning.';vm.draft.pronounce='https://school.test/new.mp3';await vm.save();
- assert.equal(saves[0].question,'We hear a new story every morning.');assert.equal(saves[0].motherTongue,vm.transcript);
- assert.equal(saves[0].questionType.id,6);assert.equal(saves[0].status,5);assert.deepEqual(saves[0].questionAnswers,[]);
- assert.deepEqual(saves[0].questionTopics,[]);assert.equal(vm.practiceUrl(vm.draft),'daily_listening/22');
-});
-test('failed and duplicate saves preserve the draft and show success only after a saved id',async()=>{
- let resolveSave;const {vm}=setup({service:{saveObject(){return new Promise(resolve=>{resolveSave=resolve;});}}});await tick();
+test('save failure and duplicate submission retain pasted text',async()=>{
+ let resolveSave;const {vm}=setup({service:{saveDailyListening(){return new Promise(resolve=>{resolveSave=resolve;});}}});await tick();
  vm.transcript='We keep the transcript.';vm.draft.pronounce='https://school.test/new.mp3';const pending=vm.save();assert.equal(vm.saving,true);assert.equal(vm.save(),undefined);
  resolveSave({message:'Save failed'});await pending;assert.equal(vm.saving,false);assert.equal(vm.transcript,'We keep the transcript.');assert.equal(vm.savedMessage,'');assert.match(vm.error,/Save failed/);
 });
-test('shared legacy sources are selectable and editing preserves the original teacher instead of reassigning the record',async()=>{
- const record={id:51,status:5,questionType:{id:6},user:{id:26},question:'Shared lesson',pronounce:'https://school.test/shared.mp3',motherTongue:'Old transcript'};
- const saves=[],queries=[];
- const {vm}=setup({service:{getPage(dto){queries.push(plain(dto));return Promise.resolve({content:[],totalElements:0});},
-  getOne(){return Promise.resolve(structuredClone(record));},saveObject(dto){saves.push(plain(dto));return Promise.resolve({...dto,user:{id:26}});}}});await tick();
- vm.sourceId=26;await vm.sourceChanged();assert.equal(queries.at(-1).userId,26);
- await vm.edit(record);vm.draft.question='Edited shared title';await vm.save();assert.equal(saves[0].id,51);assert.equal(saves[0].userId,26);
- assert.equal(vm.draft.userId,26);vm.newTest();await tick();assert.equal(vm.sourceId,7);assert.equal(vm.draft.userId,7);
+test('selected legacy records migrate by id, keep partial successes and retry only failures',async()=>{
+ const records=[{id:1,question:'First',pronounce:'https://school.test/1.mp3',motherTongue:'First transcript'},{id:2,question:'Second',pronounce:'https://school.test/2.mp3',motherTongue:'Second transcript'}];
+ let transfer,close,fail=true;const writes=[];
+ const modal={open(config){transfer={};const result=new Promise(resolve=>{close=resolve;});config.controller.at(-1).call(transfer,{$on(){}},{close});return{result};}};
+ const {vm}=setup({modal,service:{getLegacyDailyListening(dto){assert.equal(dto.userId,undefined);return Promise.resolve({content:records,totalElements:2});},
+  migrateDailyListening(id){writes.push(id);return fail&&id===2?Promise.reject({data:{message:'Try again'}}):Promise.resolve({id,questionType:{id:11},testFormat:'DAILY_LISTENING',status:7});}}});await tick();
+ vm.importOldListening();await tick();transfer.selectAll();await transfer.save();assert.equal(transfer.moved,1);assert.equal(transfer.selected[2],true);assert.equal(vm.importDialogOpen,true);
+ fail=false;await transfer.save();await tick();assert.deepEqual(writes,[1,2,2]);assert.equal(vm.importDialogOpen,false);
 });
-test('a new lesson created while browsing a shared source still belongs to its author and returns to the owned catalog',async()=>{
- const queries=[],saves=[];const {vm}=setup({service:{getPage(dto){queries.push(plain(dto));return Promise.resolve({content:[],totalElements:0});},
-  saveObject(dto){saves.push(plain(dto));return Promise.resolve({...dto,id:70,user:{id:7}});}}});await tick();
- vm.sourceId=26;await vm.sourceChanged();vm.transcript='A new personal lesson.';vm.draft.pronounce='https://school.test/new.mp3';await vm.save();await tick();
- assert.equal(saves[0].userId,7);assert.equal(vm.sourceId,7);assert.equal(vm.searchDto.userId,7);assert.equal(queries.at(-1).userId,7);
+test('moving one row preserves unsaved editor text and fills only the vacant pagination slot',async()=>{
+ let reads=0;const requests=[];const {vm}=setup({service:{getDailyListeningTests(dto,index,size){requests.push({dto:plain(dto),index,size});reads++;return Promise.resolve(reads===1?{content:[{id:21},{id:22}],totalElements:3}:{content:[{id:23}],totalElements:2});}}});await tick();
+ vm.draft={id:21,question:'Unsaved title'};vm.transcript='Unsaved transcript';vm.items[1].custom='Keep row';const rows=vm.items;
+ vm.catalogTestMoved({id:21,testFolder:{id:5,name:'Week 1'}});await tick();assert.equal(vm.items,rows);assert.deepEqual(vm.items.map(item=>item.id),[22,23]);
+ assert.equal(vm.items[0].custom,'Keep row');assert.equal(vm.draft.testFolderId,5);assert.equal(vm.draft.question,'Unsaved title');assert.equal(vm.transcript,'Unsaved transcript');
+ assert.equal(requests[1].size,1);assert.equal(requests[1].index,2);assert.equal(vm.loading,false);
 });
-test('selected old flashcards migrate in place with full content and owner preserved, and failed rows remain retryable',async()=>{
- const records=[1,2].map(id=>({id,question:'Old '+id,questionType:{id:6},status:1,user:{id:26},pronounce:'https://school.test/old.mp3',
-  motherTongue:'<p>Original transcript</p>',questionTopics:[{id:41,topic:{id:7}}],questionAnswers:[{id:42,answer:{id:43,answer:'Keep'}}],timeReviewd:142,correctAnswer:50}));
- let transfer,resolveResult,failSecond=true;const writes=[];
- const modal={open(config){const result=new Promise(resolve=>{resolveResult=resolve;});transfer={};
-  config.controller.at(-1).call(transfer,{$on(){}},{close(value){resolveResult(value);}});return{result};}};
- const {vm}=setup({modal,service:{
-  getPage(dto){const content=records.filter(item=>item.user.id===dto.userId&&(dto.status===5?item.status===5:item.status!==5)).map(item=>structuredClone(item));return Promise.resolve({content,totalElements:content.length});},
-  getOne(id){return Promise.resolve(structuredClone(records.find(record=>record.id===Number(id))));},
-  saveObject(dto){writes.push(plain(dto));if(dto.id===2&&failSecond)return Promise.reject({data:{message:'Retry this row'}});
-   Object.assign(records.find(record=>record.id===dto.id),structuredClone(dto));return Promise.resolve(structuredClone(dto));}
- }});await tick();vm.sourceId=26;await vm.sourceChanged();vm.importOldListening();await tick();
- transfer.selectAll();assert.equal(transfer.count(),2);const pending=transfer.save();assert.equal(transfer.save(),undefined);await pending;
- assert.equal(transfer.moved,1);assert.equal(transfer.items.length,1);assert.equal(transfer.selected[2],true);assert.equal(transfer.errors[2],'Retry this row');
- assert.equal(writes[0].id,1);assert.equal(writes[0].status,5);assert.equal(writes[0].userId,26);
- assert.equal(writes[0].motherTongue,'<p>Original transcript</p>');assert.equal(writes[0].timeReviewd,142);assert.equal(writes[0].correctAnswer,50);
- assert.deepEqual(writes[0].questionAnswers,records[1].questionAnswers);assert.deepEqual(writes[0].questionTopics,records[1].questionTopics);
- failSecond=false;await transfer.save();await tick();assert.equal(records.length,2);assert.equal(transfer.moved,2);assert.equal(vm.importDialogOpen,false);
- assert.equal(vm.items.length,2);assert.equal(writes.filter(item=>item.id===1).length,1);assert.equal(writes.filter(item=>item.id===2).length,2);
+test('move dialog uses the Daily Listening folder tree, retains failure and retries without reloading the catalog',async()=>{
+ let move,fail=true;const calls=[];const modal={open(config){move={};let resolve,reject;const result=new Promise((ok,no)=>{resolve=ok;reject=no;});config.controller.at(-1).call(move,{$on(){}},{close:resolve,dismiss:reject});return{result};}};
+ const {vm,requests}=setup({modal,folders:{load(all,refresh,mode){assert.equal(mode,'DAILY_LISTENING');return Promise.resolve([{id:5,name:'Daily',canManage:true},{id:6,name:'Week 1',parentId:5,canManage:true}]);},options:items=>items,
+  moveTest(id,folder){calls.push([id,folder]);return fail?Promise.reject({data:{message:'Move failed'}}):Promise.resolve({id,testFolder:{id:folder}});}}});await tick();
+ vm.openCatalogMoveDialog(vm.items[0]);await tick();move.select(6);await move.save();assert.match(move.error,/Move failed/);assert.equal(vm.items.length,1);assert.equal(vm.catalogMoveDialogOpen,true);
+ fail=false;await move.save();await tick();assert.deepEqual(calls,[[21,6],[21,6]]);assert.equal(vm.items.length,0);assert.equal(requests.length,1);assert.equal(vm.catalogMoveDialogOpen,false);
 });
-test('invalid or changed legacy records are not migrated',async()=>{
- let transfer;const invalid={id:1,question:'Word without audio',questionType:{id:6},status:1,user:{id:7},motherTongue:'Text',pronounce:''};
- const ready={...invalid,id:2,pronounce:'https://school.test/old.mp3'};let written=false;
- const modal={open(config){transfer={};config.controller.at(-1).call(transfer,{$on(){}},{close(){}});return{result:new Promise(()=>{})};}};
- const {vm}=setup({modal,service:{getPage(){return Promise.resolve({content:[invalid,ready],totalElements:2});},getOne(){return Promise.resolve({...ready,user:{id:8}});},saveObject(){written=true;}}});await tick();
- vm.importOldListening();await tick();transfer.selectAll();assert.equal(transfer.selected[1],undefined);assert.equal(transfer.count(),1);
- await transfer.save();assert.equal(written,false);assert.equal(transfer.selected[2],true);assert.match(transfer.errors[2],/Bài đã thay đổi/);
+test('student roles cannot open the shared authoring page',()=>{const {redirects,requests}=setup({role:'ROLE_VIEWER'});assert.deepEqual(redirects,['/comprehensive_tests']);assert.equal(requests.length,0);});
+test('Daily Listening service calls the shared APIs and retains backend validation messages',async()=>{
+ let Service;nodeVm.runInNewContext(fs.readFileSync(path.join(app,'question/business/QuestionService.js'),'utf8'),{angular:{module(){return{service(name,value){Service=value;}};}}});
+ const calls=[],failure={status:400,data:{message:'Transcript is required'}};
+ const api=new Service({post(url,dto){calls.push([url,plain(dto)]);return url.endsWith('/save')?Promise.reject(failure):Promise.resolve({data:{id:21}});}},
+  {reject:Promise.reject.bind(Promise)},()=>{}, {api:{baseUrl:'https://school.test/',apiV1Url:'api/'}},{});
+ await api.getDailyListeningTests({},2,12);await api.getLegacyDailyListening({status:5},1,20);await api.migrateDailyListening(21);
+ await assert.rejects(api.saveDailyListening({question:'Title'}),error=>error===failure);
+ assert.deepEqual(calls.map(item=>item[0]),['https://school.test/api/daily_listening/get_page/2/12','https://school.test/api/daily_listening/legacy/1/20','https://school.test/api/daily_listening/migrate/21','https://school.test/api/daily_listening/save']);
+});
+test('dashboard and learning pet resume shared listening directly while preserving assigned legacy launches',()=>{
+ for(const [name,start,end] of [['dashboards/controllers/DashboardController.js','        vm.resumeDraft =','        vm.cancelDraft ='],
+  ['common/utils/learning-pet.directive.js','            vm.resumeDraft =','            vm.selectSection =']]){
+  const calls=[],vm={myUser:{id:7}},context={vm,readCurrentUser:()=>({id:7}),$window:{sessionStorage:{setItem(){}}},$state:{go(state,params){calls.push({state,params:plain(params)});}}};
+  nodeVm.runInNewContext(section(fs.readFileSync(path.join(app,name),'utf8'),start,end),context);
+  vm.resumeDraft({kind:'DAILY_LISTENING',dailyListeningId:21});assert.equal(calls[0].state,'application.daily_listening_actual_test');assert.equal(calls[0].params.dailyListeningId,21);
+  vm.resumeDraft({kind:'DAILY_LISTENING',dailyListeningId:21,assignmentTaskId:10,assignmentSourceQuestionId:21});assert.equal(calls[1].state,'application.view');assert.equal(calls[1].params.assignmentTaskId,10);
+ }
 });
 test('standalone playback loads the exact legacy record without a topic or the shared source filter',async()=>{
  for(const valid of [true,false]){
@@ -104,6 +91,18 @@ test('standalone playback loads the exact legacy record without a topic or the s
   if(valid){assert.equal(vm.currentCard.id,21);assert.equal(vm.fillingGapQuestion,'Gaps: Transcript');assert.equal(vm.showGapTitleTable,false);assert.equal(calls.includes('gaps'),true);}
   else{assert.match(vm.standaloneListeningError,/Không tải/);assert.equal(calls.includes('gaps'),false);}
  }
+});
+test('shared library uses published Daily Listening tests and opens the existing gap runtime for students',async()=>{
+ let definition;const angular={copy:structuredClone,module(){return{controller(name,controller){definition=controller;}};}};
+ nodeVm.runInNewContext(fs.readFileSync(path.join(app,'question/controllers/IELTSTestLibraryController.js'),'utf8'),{angular});
+ const vm={},queries=[];
+ definition.call(vm,{settings:{layout:{}}},{$on(){}},{path:()=>'/daily_listening_tests'},
+  {addEventListener(){},removeEventListener(){},localStorage:{length:0}}, {get:()=>JSON.stringify({id:9,roles:[{name:'ROLE_VIEWER'}]})},{},
+  {getPageForTests(dto){queries.push(plain(dto));return Promise.resolve({content:[{id:21,title:'Shared lesson'}],totalElements:1});},getLearningDrafts(){throw Error('IELTS drafts requested');}},
+  {start(){},stop(){}},{applyFilter(dto,id){dto.testFolderId=id||null;dto.withoutTestFolder=id==null;dto.pageIndex=1;}});
+ await tick();assert.equal(vm.isDailyListeningMode,true);assert.equal(vm.folderTestMode,'DAILY_LISTENING');assert.equal(queries[0].testFormat,'DAILY_LISTENING');
+ assert.equal(queries[0].upper,2147483647);assert.equal(queries[0].userId,undefined);assert.equal(vm.testCatalogUrl({id:21}),'daily_listening/21');
+ assert.equal(vm.ieltsReadingTests.length,1);
 });
 test('the old gap checker still checks instantly and the standalone lesson completes at 90%, without changing other modes',()=>{
  for(const [standalone,correct,expected] of [[true,8,0],[true,9,1],[false,9,0],[false,10,1]]){

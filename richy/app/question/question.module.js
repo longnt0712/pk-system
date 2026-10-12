@@ -363,6 +363,20 @@
                 }
             })
 
+            .state('application.daily_listening_tests', {
+                url: '/daily_listening_tests',
+                templateUrl: 'question/views/ielts_test_library.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'Thư viện Daily Listening'},
+                controller: 'IELTSTestLibraryController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({name: 'Hrm.Question', insertBefore: '#ng_load_plugins_before', files: [
+                            'question/controllers/IELTSTestLibraryController.js?v=' + window.APP_VERSION,
+                            'question/business/QuestionService.js?v=' + window.APP_VERSION
+                        ]});
+                    }]
+                }
+            })
             .state('application.create_daily_listening_test', {
                 url: '/create_daily_listening_test',
                 templateUrl: 'question/views/create_daily_listening_test.html?v=' + window.APP_VERSION,

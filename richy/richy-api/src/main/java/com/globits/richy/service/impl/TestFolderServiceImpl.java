@@ -28,14 +28,14 @@ public class TestFolderServiceImpl {
 
     public static String normalizeMode(String value) {
         String mode = value == null || value.trim().isEmpty() ? "COMPREHENSIVE" : value.trim().toUpperCase(Locale.ROOT);
-        if (!Arrays.asList("COMPREHENSIVE", "READING", "LISTENING", "WRITING").contains(mode)) {
-            throw new IllegalArgumentException("Loại folder phải là Tổng hợp, Reading, Listening hoặc Writing.");
+        if (!Arrays.asList("COMPREHENSIVE", "READING", "LISTENING", "WRITING", "DAILY_LISTENING").contains(mode)) {
+            throw new IllegalArgumentException("Loại folder phải là Tổng hợp, Reading, Listening, Writing hoặc Daily Listening.");
         }
         return mode;
     }
 
     public static String modeForTest(String format, String audio) {
-        if (Arrays.asList("COMPREHENSIVE", "WRITING", "READING", "LISTENING").contains(format)) { return format; }
+        if (Arrays.asList("COMPREHENSIVE", "WRITING", "READING", "LISTENING", "DAILY_LISTENING").contains(format)) { return format; }
         return audio != null && !audio.trim().isEmpty() ? "LISTENING" : "READING";
     }
 
@@ -130,7 +130,7 @@ public class TestFolderServiceImpl {
         }
         if (test.getQuestionType() == null
                 || !Long.valueOf(11L).equals(test.getQuestionType().getId()) || test.getParent() != null) {
-            throw new IllegalArgumentException("Chỉ có thể chuyển bài test Tổng hợp, Reading, Listening hoặc Writing vào folder.");
+            throw new IllegalArgumentException("Chỉ có thể chuyển bài test Tổng hợp, Reading, Listening, Writing hoặc Daily Listening vào folder.");
         }
         TestFolder folder = folderId == null ? null : repository.findOne(folderId);
         if (folderId != null && folder == null) { throw new IllegalArgumentException("Folder không còn tồn tại. Hãy tải lại danh sách."); }

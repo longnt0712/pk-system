@@ -566,8 +566,12 @@
             blockUI.start();
             vm.standaloneListeningLoading = vm.isStandaloneDailyListening;
             vm.standaloneListeningError = '';
-            var request = vm.isStandaloneDailyListening ? service.getOne(vm.standaloneDailyListeningId).then(function (card) {
-                if (!card || Number((card.questionType || {}).id) !== 6 || Number(card.status) !== 5) {
+            var listeningCardId = vm.isStandaloneDailyListening ? vm.standaloneDailyListeningId :
+                (vm.mode.id === 8 ? vm.assignmentLaunch.sourceQuestionId : null);
+            var request = listeningCardId ? service.getOne(listeningCardId).then(function (card) {
+                var shared = card && Number((card.questionType || {}).id) === 11 && card.testFormat === 'DAILY_LISTENING' && Number(card.status) === 7;
+                var old = card && Number((card.questionType || {}).id) === 6 && (!vm.isStandaloneDailyListening || Number(card.status) === 5);
+                if (!shared && !old) {
                     throw new Error('Không tìm thấy bài Daily Listening.');
                 }
                 return {content: [card], totalElements: 1};
@@ -3530,7 +3534,7 @@
                 vm.testResult.testType = 3;
                 vm.testResult.testName = vm.currentCard.question;
                 vm.testResult.testTime = "GAPS " + vm.percentage + "%";
-                vm.testResult.resultStatus = (vm.isStandaloneDailyListening ? Number(vm.percentage) >= 90 : Number(vm.percentage) > 85) ? 'SUCCESS' : 'FAILED';
+                vm.testResult.resultStatus = (vm.isStandaloneDailyListening || (vm.currentCard || {}).testFormat === 'DAILY_LISTENING' ? Number(vm.percentage) >= 90 : Number(vm.percentage) > 85) ? 'SUCCESS' : 'FAILED';
                 vm.testResult.sourceQuestionId = vm.currentCard && vm.currentCard.id
                     ? vm.currentCard.id
                     : null;
@@ -5606,7 +5610,7 @@
                 vm.testResult.testTime = 'GAPS ' + vm.percentage + '%';
             }
 
-            if ((allFilled && allCorrect) || (vm.isStandaloneDailyListening && correctCount / keys.length >= 0.9)) {
+            if ((allFilled && allCorrect) || ((vm.isStandaloneDailyListening || (vm.currentCard || {}).testFormat === 'DAILY_LISTENING') && correctCount / keys.length >= 0.9)) {
                 vm.isSaveTestResult = true;
                 vm.saveTestResult();
             }

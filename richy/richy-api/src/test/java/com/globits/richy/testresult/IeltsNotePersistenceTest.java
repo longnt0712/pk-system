@@ -215,4 +215,17 @@ public class IeltsNotePersistenceTest {
         TestResultDto saved = service.saveObject(dto);
         assertEquals("SUCCESS", saved.getResultStatus());
     }
+
+    @Test public void sharedDailyListeningRequiresNinetyPercentWithTheOriginalSourceId() {
+        QuestionRepository questions = mock(QuestionRepository.class);
+        Question source = new Question(); source.setId(21L); source.setTestFormat("DAILY_LISTENING");
+        com.globits.richy.domain.QuestionType type = new com.globits.richy.domain.QuestionType(); type.setId(11L); source.setQuestionType(type);
+        when(questions.findOne(21L)).thenReturn(source); ReflectionTestUtils.setField(service, "questionRepository", questions);
+        for (int percentage : Arrays.asList(85, 89, 90, 100)) {
+            TestResultDto dto = new TestResultDto(); dto.setTestType(3); dto.setUser(new UserDto(user)); dto.setSourceQuestionId(21L);
+            dto.setTestTime("GAPS " + percentage + "%");
+            TestResultDto saved = service.saveObject(dto);
+            assertEquals(percentage >= 90 ? "SUCCESS" : "FAILED", saved.getResultStatus()); assertEquals(Long.valueOf(21L), saved.getSourceQuestionId());
+        }
+    }
 }

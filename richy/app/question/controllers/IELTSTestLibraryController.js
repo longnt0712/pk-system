@@ -28,27 +28,28 @@
             vm.currentUser = {};
         }
 
+        vm.isDailyListeningMode = /\/daily_listening_tests(?:\/|$)/i.test($location.path());
         vm.isComprehensiveMode = /\/comprehensive_tests(?:\/|$)/i.test($location.path());
         vm.isWritingMode = /\/ielts_writing_tests(?:\/|$)/i.test($location.path());
         vm.isListeningMode = !vm.isComprehensiveMode && !vm.isWritingMode && /\/ielts_listening_tests(?:\/|$)/i.test($location.path());
-        vm.folderTestMode = vm.isComprehensiveMode ? 'COMPREHENSIVE' : (vm.isWritingMode ? 'WRITING' : (vm.isListeningMode ? 'LISTENING' : 'READING'));
-        vm.testModeName = vm.isComprehensiveMode ? 'Tổng hợp' : (vm.isWritingMode ? 'Writing' : (vm.isListeningMode ? 'Listening' : 'Reading'));
-        vm.testModeIcon = vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isWritingMode ? 'fa-pencil' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book'));
+        vm.folderTestMode = vm.isDailyListeningMode ? 'DAILY_LISTENING' : (vm.isComprehensiveMode ? 'COMPREHENSIVE' : (vm.isWritingMode ? 'WRITING' : (vm.isListeningMode ? 'LISTENING' : 'READING')));
+        vm.testModeName = vm.isDailyListeningMode ? 'Daily Listening' : (vm.isComprehensiveMode ? 'Tổng hợp' : (vm.isWritingMode ? 'Writing' : (vm.isListeningMode ? 'Listening' : 'Reading')));
+        vm.testModeIcon = vm.isDailyListeningMode ? 'fa-headphones' : (vm.isComprehensiveMode ? 'fa-list-alt' : (vm.isWritingMode ? 'fa-pencil' : (vm.isListeningMode ? 'fa-headphones' : 'fa-book')));
         vm.ieltsReadingTests = [];
         vm.learningProgressByTestId = {};
         vm.learningProgressByTestTask = {};
         vm.totalItems = 0;
         vm.loading = false;
         vm.searchDto = {
-            upper: 100,
+            upper: vm.isDailyListeningMode ? 2147483647 : 100,
             lower: 0,
             type: 100,
             pageSize: 10,
             pageIndex: 1,
             status: 7,
             questionType: {id: 11},
-            listeningTest: vm.isComprehensiveMode || vm.isWritingMode ? null : vm.isListeningMode,
-            testFormat: vm.isWritingMode ? 'WRITING' : (vm.isComprehensiveMode ? 'COMPREHENSIVE' : null)
+            listeningTest: vm.isComprehensiveMode || vm.isWritingMode || vm.isDailyListeningMode ? null : vm.isListeningMode,
+            testFormat: vm.isDailyListeningMode ? 'DAILY_LISTENING' : (vm.isWritingMode ? 'WRITING' : (vm.isComprehensiveMode ? 'COMPREHENSIVE' : null))
         };
         var testRequestId = 0;
         vm.selectedTestFolderId = null;
@@ -111,6 +112,7 @@
         }
 
         vm.refreshLearningProgress = function () {
+            if (vm.isDailyListeningMode) { return; }
             var progressByTestId = {};
             var progressByTestTask = {};
             readLocalLearningProgress(progressByTestId, progressByTestTask);
@@ -147,6 +149,7 @@
         };
 
         vm.testCatalogUrl = function (item, writingTask) {
+            if (vm.isDailyListeningMode) { return 'daily_listening/' + item.id; }
             var route = vm.isComprehensiveMode ? 'comprehensive_test/' :
                 (vm.isWritingMode ? 'ielts_writing_actual_test/' : (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'));
             var params = [];
@@ -156,6 +159,7 @@
         };
 
         vm.seriousTestCatalogUrl = function (item, writingTask) {
+            if (vm.isDailyListeningMode) { return vm.testCatalogUrl(item); }
             var route = vm.isComprehensiveMode ? 'comprehensive_test/' :
                 (vm.isWritingMode ? 'ielts_writing_actual_test/' : (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'));
             return route + item.id + '?sessionMode=SERIOUS&startFresh=1' + (writingTask ? '&assignmentPart=' + writingTask : '');
