@@ -4,7 +4,7 @@
         <div class="portlet light bordered">
             <div class="portlet-body">
 
-                <div class="row">
+                <div class="row" ng-if="!vm.isStandaloneDailyListening">
 
                     <div class="col-md-12 bold margin-bottom-10 ">
                         <ui-select ng-change="vm.chooseUsers()" data-ng-model="vm.selectedUser" sortable="true" close-on-select="true" style="width: 100% !important;">
@@ -176,6 +176,12 @@
                     </div>
 
                 </div>
+                <section ng-if="vm.isStandaloneDailyListening" class="daily-listening-standalone-heading">
+                    <h1>Daily Listening</h1>
+                    <p>Nghe và điền từ vào gaps. Đạt ít nhất 90% gaps là hoàn thành.</p>
+                    <p ng-if="vm.standaloneListeningLoading" role="status">Đang tải bài nghe...</p>
+                    <p ng-if="vm.standaloneListeningError" role="alert">{{vm.standaloneListeningError}} <button type="button" class="btn btn-default btn-sm" ng-click="vm.getPageFlashCard()">Thử lại</button></p>
+                </section>
                 <div ng-hide="vm.mode.id == 9 || vm.mode.id == 10" class="row">
                     <div class="col-md-12 bold text-center" style="margin-top:7px">
                         <span>{{vm.showDateTime}}</span>
@@ -875,7 +881,7 @@
                                 <h2 class="bold" ng-bind-html="vm.currentCard.question"></h2>
 
                                 <div class="gap-top-info-line">
-                                    <button type="button" class="btn btn-default gap-toggle-title-btn" ng-click="vm.toggleGapTitleTable()" title="{{vm.showGapTitleTable ? 'Ẩn bảng Title' : 'Hiện bảng Title'}}">
+                                    <button ng-if="!vm.isStandaloneDailyListening" type="button" class="btn btn-default gap-toggle-title-btn" ng-click="vm.toggleGapTitleTable()" title="{{vm.showGapTitleTable ? 'Ẩn bảng Title' : 'Hiện bảng Title'}}">
                                         <i ng-class="vm.showGapTitleTable ? 'fa fa-eye-slash' : 'fa fa-list'"></i> {{ vm.showGapTitleTable ? 'Ẩn Title' : 'Hiện Title' }}
                                     </button>
 

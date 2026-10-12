@@ -172,6 +172,11 @@
         $rootScope.settings.layout.pageSidebarClosed = false;
 
         var vm = this;
+        vm.isStandaloneDailyListening = $stateParams.dailyListeningId != null;
+        vm.standaloneDailyListeningId = /^\d+$/.test(String($stateParams.dailyListeningId || '')) && Number($stateParams.dailyListeningId) > 0
+            ? Number($stateParams.dailyListeningId) : null;
+        vm.standaloneListeningLoading = false;
+        vm.standaloneListeningError = '';
         vm.showVoiceOption = true;
         vm.blockCopyPasteOnlyMode8 = false;
 
@@ -553,14 +558,23 @@
             vm.allMcqShowUnderFourAnswers = true;
             vm.allMcqAnswersWereShuffled = false;
 
-            if(vm.searchDto.questionTopics == null || vm.searchDto.questionTopics.length <= 0){
+            if(!vm.isStandaloneDailyListening && (vm.searchDto.questionTopics == null || vm.searchDto.questionTopics.length <= 0)){
                 alert('Phải chọn bài từ vựng cần học rồi ấn tìm kiếm');
                 return;
             }
 
             blockUI.start();
-            service.getPageForGames(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
+            vm.standaloneListeningLoading = vm.isStandaloneDailyListening;
+            vm.standaloneListeningError = '';
+            var request = vm.isStandaloneDailyListening ? service.getOne(vm.standaloneDailyListeningId).then(function (card) {
+                if (!card || Number((card.questionType || {}).id) !== 6 || Number(card.status) !== 5) {
+                    throw new Error('Không tìm thấy bài Daily Listening.');
+                }
+                return {content: [card], totalElements: 1};
+            }) : service.getPageForGames(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize);
+            request.then(function (data) {
                 blockUI.stop();
+                vm.standaloneListeningLoading = false;
                 if (vm.mode.id === 8 && vm.assignmentLaunch.sourceQuestionId && data && angular.isArray(data.content)) {
                     data.content = data.content.filter(function (question) {
                         return question && String(question.id) === String(vm.assignmentLaunch.sourceQuestionId);
@@ -612,7 +626,7 @@
                 if(vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15 || vm.mode.id == 12){
 
                     if (vm.mode.id == 8 || vm.mode.id == 11 || vm.mode.id == 15) {
-                        vm.showGapTitleTable = true;
+                        vm.showGapTitleTable = !vm.isStandaloneDailyListening;
                     }
 
                     if (vm.mode.id == 12) {
@@ -696,6 +710,11 @@
                     vm.showMcqQuestion = false;
                     vm.scrollToMcqTop();
                 }
+            }, function () {
+                blockUI.stop(); vm.standaloneListeningLoading = false;
+                if (vm.isStandaloneDailyListening) {
+                    vm.standaloneListeningError = 'Không tải được bài Daily Listening. Bạn có thể thử lại.';
+                } else { toastr.error('Không tải được danh sách bài.'); }
             });
         };
 
@@ -1308,7 +1327,8 @@
             );
         };
 
-        vm.getPageTopicCategory();
+        if (vm.isStandaloneDailyListening) { $timeout(function () { vm.getPageFlashCard(); }, 0); }
+        else { vm.getPageTopicCategory(); }
 
         vm.changePageSize = function () {
 
@@ -3510,7 +3530,7 @@
                 vm.testResult.testType = 3;
                 vm.testResult.testName = vm.currentCard.question;
                 vm.testResult.testTime = "GAPS " + vm.percentage + "%";
-                vm.testResult.resultStatus = Number(vm.percentage) > 85 ? 'SUCCESS' : 'FAILED';
+                vm.testResult.resultStatus = (vm.isStandaloneDailyListening ? Number(vm.percentage) >= 90 : Number(vm.percentage) > 85) ? 'SUCCESS' : 'FAILED';
                 vm.testResult.sourceQuestionId = vm.currentCard && vm.currentCard.id
                     ? vm.currentCard.id
                     : null;
@@ -3754,6 +3774,7 @@
                 for (var i = 0; i < window.localStorage.length; i++) {
                     var key = window.localStorage.key(i);
                     if (!key || key.indexOf(prefix) !== 0) { continue; }
+                    if (vm.isStandaloneDailyListening && key !== dailyListeningDraftKey(vm.standaloneDailyListeningId)) { continue; }
 
                     var draft = null;
                     try { draft = JSON.parse(window.localStorage.getItem(key)); } catch (ignore) {}
@@ -4052,7 +4073,7 @@
             try {
                 var dashboardListeningResumeKey = 'daily-listening-dashboard-resume:v1:'
                     + String(vm.currentUser && vm.currentUser.id || '');
-                if (window.sessionStorage.getItem(dashboardListeningResumeKey) === '1') {
+                if (!vm.isStandaloneDailyListening && window.sessionStorage.getItem(dashboardListeningResumeKey) === '1') {
                     window.sessionStorage.removeItem(dashboardListeningResumeKey);
                     $timeout(function () { vm.resumeDailyListeningDraft(); }, 0);
                 }
@@ -5585,7 +5606,7 @@
                 vm.testResult.testTime = 'GAPS ' + vm.percentage + '%';
             }
 
-            if (allFilled && allCorrect) {
+            if ((allFilled && allCorrect) || (vm.isStandaloneDailyListening && correctCount / keys.length >= 0.9)) {
                 vm.isSaveTestResult = true;
                 vm.saveTestResult();
             }

@@ -1,0 +1,33 @@
+.daily-listening-builder {padding: 10px 0 28px; color: #334155;}
+.daily-listening-hero {display: flex; align-items: center; flex-wrap: wrap; gap: 18px; padding: 22px; margin-bottom: 20px; border-radius: 16px; background: linear-gradient(135deg, #5b4bce, #8a5ad2); color: #fff;}
+.daily-listening-hero-icon {font-size: 30px; padding: 16px; border: 1px solid rgba(255,255,255,.3); border-radius: 14px;}
+.daily-listening-hero h1 {margin: 0 0 6px; font-size: 28px; color: #fff;}
+.daily-listening-hero p {margin: 0;}
+.daily-listening-mode-switch {display: flex; flex-wrap: wrap; gap: 5px; width: 100%;}
+.daily-listening-mode-switch a {padding: 9px 12px; color: #fff; border-radius: 8px; text-decoration: none;}
+.daily-listening-mode-switch a:hover {background: rgba(255,255,255,.15);}
+.daily-listening-mode-switch a.is-active {color: #4338ca; background: #fff; font-weight: 600;}
+.daily-listening-layout {display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 1.6fr); gap: 20px; align-items: start;}
+.daily-listening-panel {min-width: 0; padding: 20px; border: 1px solid #dce2eb; border-radius: 12px; background: #fff;}
+.daily-listening-panel h2 {font-size: 21px; margin: 0 0 18px;}
+.daily-listening-panel-title {display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 18px;}
+.daily-listening-panel-title h2 {margin: 0;}
+.daily-listening-search {display: flex; gap: 8px; margin-bottom: 16px;}
+.daily-listening-search input {min-width: 0;}
+.daily-listening-catalog-item {padding: 14px; margin-bottom: 12px; border: 1px solid #dce2eb; border-radius: 8px; overflow-wrap: anywhere;}
+.daily-listening-catalog-item.is-selected {border-color: #818cf8; background: #eef2ff;}
+.daily-listening-catalog-item h3 {font-size: 16px; margin: 0 0 8px; line-height: 1.5;}
+.daily-listening-catalog-item p, .daily-listening-empty {color: #64748b;}
+.daily-listening-editor label {display: block; margin: 18px 0 7px;}
+.daily-listening-editor label small {font-weight: normal;}
+.daily-listening-editor textarea {resize: vertical; min-height: 200px;}
+.daily-listening-editor fieldset {min-width: 0; border: 0; padding: 0; margin: 0;}
+.daily-listening-editor-actions {display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px;}
+.daily-listening-help {color: #64748b; margin: 12px 0;}
+.daily-listening-saved {color: #047857;}
+.global-dark-mode .daily-listening-panel {background: #252525; border-color: #454545; color: #ededed;}
+.global-dark-mode .daily-listening-catalog-item {border-color: #454545;}
+.global-dark-mode .daily-listening-catalog-item.is-selected {background: #34324a; border-color: #a5b4fc;}
+.global-dark-mode .daily-listening-catalog-item p, .global-dark-mode .daily-listening-help {color: #bbb;}
+.global-dark-mode .daily-listening-saved {color: #86efac;}
+@media (max-width: 800px) {.daily-listening-layout {grid-template-columns: 1fr;} .daily-listening-editor {grid-row: 1;} .daily-listening-panel {padding: 16px;} .daily-listening-hero {padding: 16px;} .daily-listening-hero h1 {font-size: 24px;}}

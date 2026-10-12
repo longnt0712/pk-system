@@ -1,0 +1,49 @@
+<div class="daily-listening-builder">
+    <section class="daily-listening-hero">
+        <div class="daily-listening-hero-icon"><i class="fa fa-headphones" aria-hidden="true"></i></div>
+        <div><h1>Tạo Daily Listening</h1><p>Dán transcript và link bài nghe. Học sinh mở bài sẽ được tự tạo gaps để điền từ.</p></div>
+        <nav class="daily-listening-mode-switch" aria-label="Chọn loại bài test">
+            <a href="create_ielts_reading_test">Reading</a>
+            <a href="create_ielts_listening_test">Listening</a>
+            <a href="create_ielts_writing_test">Writing</a>
+            <a href="create_comprehensive_test">Tổng hợp</a>
+            <a href="create_daily_listening_test" class="is-active" aria-current="page">Daily Listening</a>
+        </nav>
+    </section>
+    <div class="daily-listening-layout">
+        <section class="daily-listening-panel daily-listening-catalog" aria-label="Danh sách Daily Listening">
+            <div class="daily-listening-panel-title"><h2>Bài của bạn <small>({{vm.totalItems}})</small></h2><button type="button" class="btn btn-primary" ng-click="vm.newTest()" ng-disabled="vm.saving || vm.editing"><i class="fa fa-plus" aria-hidden="true"></i> Tạo bài mới</button></div>
+            <form class="daily-listening-search" ng-submit="vm.search()">
+                <input class="form-control" type="search" ng-model="vm.searchDto.textSearch" aria-label="Tìm Daily Listening" placeholder="Tìm tên bài hoặc transcript...">
+                <button type="submit" class="btn btn-default" ng-disabled="vm.loading">Tìm</button>
+            </form>
+            <p ng-if="vm.loading" role="status">Đang tải bài nghe...</p>
+            <p class="test-folder-error" ng-if="vm.listError" role="alert">{{vm.listError}} <button type="button" class="btn btn-link" ng-click="vm.load()">Thử lại</button></p>
+            <p class="daily-listening-empty" ng-if="!vm.loading && !vm.listError && !vm.items.length">{{vm.searchDto.textSearch ? 'Không tìm thấy bài nghe phù hợp.' : 'Chưa có bài nghe. Dán transcript bên cạnh để tạo bài đầu tiên.'}}</p>
+            <article class="daily-listening-catalog-item" ng-repeat="item in vm.items track by item.id" ng-class="{'is-selected': vm.draft.id == item.id}">
+                <h3 ng-bind="item.question"></h3><p ng-bind="vm.preview(item)"></p>
+                <div><button type="button" class="btn btn-default btn-sm" ng-click="vm.edit(item)" ng-disabled="vm.saving || vm.editing">Sửa bài</button> <a class="btn btn-link btn-sm" target="_blank" rel="noopener" ng-href="{{vm.practiceUrl(item)}}">Mở bài nghe</a></div>
+            </article>
+            <ul ng-if="vm.totalItems > vm.searchDto.pageSize" uib-pagination total-items="vm.totalItems" ng-model="vm.searchDto.pageIndex" items-per-page="vm.searchDto.pageSize" ng-change="vm.load()" max-size="3" previous-text="Trước" next-text="Sau"></ul>
+        </section>
+        <section class="daily-listening-panel daily-listening-editor" aria-label="Soạn Daily Listening" aria-busy="{{vm.editing || vm.saving}}">
+            <h2>{{vm.draft.id ? 'Sửa bài nghe' : 'Bài nghe mới'}}</h2>
+            <p ng-if="vm.editing" role="status">Đang tải nội dung bài...</p>
+            <form ng-submit="vm.save()">
+                <fieldset ng-disabled="vm.saving || vm.editing">
+                    <label for="daily-listening-title">Tên bài <small>(có thể bỏ trống để lấy từ transcript)</small></label>
+                    <input id="daily-listening-title" type="text" class="form-control" maxlength="200" ng-model="vm.draft.question" placeholder="Ví dụ: A day at school">
+                    <label for="daily-listening-audio">Link audio hoặc YouTube</label>
+                    <input id="daily-listening-audio" type="text" class="form-control" ng-model="vm.draft.pronounce" placeholder="https://.../audio.mp3 hoặc https://youtu.be/...">
+                    <comprehensive-listening-player audio-link="vm.draft.pronounce"></comprehensive-listening-player>
+                    <label for="daily-listening-transcript">Transcript</label>
+                    <textarea id="daily-listening-transcript" class="form-control" rows="12" ng-model="vm.transcript" placeholder="Dán nội dung bài nghe tại đây..."></textarea>
+                    <p class="daily-listening-help">Hệ thống tự tạo gaps khi mở bài, ghi nhận ngay khi gõ đúng. Đạt ít nhất 90% gaps là hoàn thành.</p>
+                    <p class="test-folder-error" ng-if="vm.error" role="alert" ng-bind="vm.error"></p>
+                    <p class="daily-listening-saved" ng-if="vm.savedMessage" role="status" ng-bind="vm.savedMessage"></p>
+                    <div class="daily-listening-editor-actions"><button type="submit" class="btn btn-success"><i class="fa" ng-class="vm.saving ? 'fa-spinner fa-spin' : 'fa-save'" aria-hidden="true"></i> {{vm.saving ? 'Đang lưu...' : 'Lưu bài nghe'}}</button><a ng-if="vm.draft.id" class="btn btn-default" target="_blank" rel="noopener" ng-href="{{vm.practiceUrl(vm.draft)}}">Mở bài đã lưu</a></div>
+                </fieldset>
+            </form>
+        </section>
+    </div>
+</div>

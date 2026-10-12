@@ -363,6 +363,35 @@
                 }
             })
 
+            .state('application.create_daily_listening_test', {
+                url: '/create_daily_listening_test',
+                templateUrl: 'question/views/create_daily_listening_test.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'Tạo Daily Listening'},
+                controller: 'DailyListeningTestController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({name: 'Hrm.Question', insertBefore: '#ng_load_plugins_before', files: [
+                            'question/controllers/DailyListeningTestController.js?v=' + window.APP_VERSION,
+                            'question/business/QuestionService.js?v=' + window.APP_VERSION
+                        ]});
+                    }]
+                }
+            })
+            .state('application.daily_listening_actual_test', {
+                url: '/daily_listening/:dailyListeningId',
+                templateUrl: 'question/views/view.html?v=' + window.APP_VERSION,
+                data: {pageTitle: 'Daily Listening'},
+                controller: 'ViewController as vm',
+                resolve: {
+                    deps: ['$ocLazyLoad', function ($ocLazyLoad) {
+                        return $ocLazyLoad.load({name: 'Hrm.Question', insertBefore: '#ng_load_plugins_before', files: [
+                            'question/controllers/ViewController.js?v=' + window.APP_VERSION,
+                            'question/business/QuestionService.js?v=' + window.APP_VERSION,
+                            'topic/business/TopicService.js?v=' + window.APP_VERSION
+                        ]});
+                    }]
+                }
+            })
             .state('application.create_comprehensive_test', {
                 url: '/create_comprehensive_test',
                 templateUrl: 'question/views/create_ielts_reading_test.html?v=' + window.APP_VERSION,

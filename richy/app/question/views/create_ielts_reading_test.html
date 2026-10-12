@@ -26,6 +26,7 @@
                 <a href="create_comprehensive_test" ng-class="{'is-active': vm.isComprehensiveMode}">
                     <i class="fa fa-list-alt"></i> Tổng hợp
                 </a>
+                <a href="create_daily_listening_test"><i class="fa fa-headphones"></i> Daily Listening</a>
             </nav>
         </section>
     </div>
@@ -282,7 +283,6 @@
                             </div>
                             <div>
                                 <button type="button" class="btn btn-info btn-sm" ng-if="vm.isVideoBuilder()" ng-click="vm.addVideoQuestion()"><i class="fa fa-plus"></i> Thêm câu hỏi video</button>
-                                <button type="button" class="btn btn-info btn-sm" ng-if="vm.isComprehensiveMode" ng-click="vm.addDailyListeningPackage()"><i class="fa fa-headphones"></i> Thêm Daily Listening</button>
                                 <button ng-show="vm.createPackage == false && !vm.isWritingMode" class="btn btn-primary btn-sm" data-ng-click="vm.startCreateQuestionForPassage1()"><i class="fa fa-arrow-right"></i> Bắt đầu tạo</button>
                                 <button class="btn btn-success btn-sm" ng-click="vm.saveReadingTest()"><i class="fa fa-save"></i> Lưu</button>
                             </div>
@@ -302,7 +302,8 @@
                                     <button type="button" class="btn btn-danger" ng-click="vm.removeReadingPackage(0, $index, item)"><i class="fa fa-trash"></i> Xóa nhóm</button>
                                 </div>
                                 <div class="col-md-6">
-                                    <ui-select ng-change="vm.onReadingPackageTypeChange(item, 0, $index)" data-ng-model="item.type" sortable="true" close-on-select="true" style="width: 100% !important;">
+                                    <p class="form-control-static" ng-if="item.type == 18">Daily Listening (bài đã tạo trước đây)</p>
+                                    <ui-select ng-if="item.type != 18" ng-change="vm.onReadingPackageTypeChange(item, 0, $index)" data-ng-model="item.type" sortable="true" close-on-select="true" style="width: 100% !important;">
                                         <ui-select-match allow-clear="true" placeholder="">{{$select.selected.name}}</ui-select-match>
                                         <ui-select-choices repeat="type.id as type in vm.questionPackageTypes | propsFilter: {name: $select.search}" ui-disable-choice="type.legacy === true">
                                             <div class="bold" ng-bind-html="type.name | highlight: $select.search"></div>

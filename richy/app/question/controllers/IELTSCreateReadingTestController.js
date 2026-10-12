@@ -175,7 +175,7 @@
         ];
         vm.questionPackageTypes = vm.types.filter(function (type) {
             if (vm.isWritingMode) { return Number(type.id) === 16 || Number(type.id) === 17; }
-            return Number(type.id) !== 7 && (vm.isComprehensiveMode || Number(type.id) !== 18) &&
+            return Number(type.id) !== 7 && Number(type.id) !== 18 &&
                 (vm.isListeningMode || Number(type.id) !== 15) &&
                 (vm.isComprehensiveMode || (Number(type.id) !== 16 && Number(type.id) !== 17));
         });
@@ -3351,7 +3351,7 @@
             }
             var numericType = /^\d+$/.test(String(value).trim()) ? Number(value) : NaN;
             if (numericType === 18 || normalizedExcelText(value) === 'daily listening') {
-                throw new Error('Daily Listening được tạo trực tiếp bằng nút Thêm Daily Listening: nhập audio và transcript để hệ thống tự tạo ô trống.');
+                throw new Error('Daily Listening được tạo ở mục Tạo Daily Listening: nhập audio và transcript để hệ thống tự tạo ô trống.');
             }
             if (numericType >= 1 && numericType <= 15) {
                 if (numericType === 6) { return 1; }
