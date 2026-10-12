@@ -168,3 +168,29 @@ test('IELTS saves use the chosen folder and retain Listening type before audio a
   vm.testFolderChanged(null);assert.equal(vm.ieltsReadingTest.testFolderId,null);
  }
 });
+
+test('IELTS admin catalog includes legacy tests with another or missing owner and paginates them',async()=>{
+ const {folders}=setup();
+ const source=fs.readFileSync(path.join(__dirname,'../question/controllers/IELTSCreateReadingTestController.js'),'utf8');
+ const start=source.indexOf('var testCatalogRequestId ='),end=source.indexOf('vm.searchDto.pageSize = 12;',start);
+ const existing=[{id:1,title:'Recent import',userId:7},{id:2,title:'Older manual test',userId:8},
+  {id:3,title:'Legacy test without owner',userId:null}];
+ for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE']){
+  const vm={isComprehensiveMode:mode==='COMPREHENSIVE',isWritingMode:mode==='WRITING',isListeningMode:mode==='LISTENING',
+   isFlexibleMode:mode==='WRITING'||mode==='COMPREHENSIVE',currentUser:{id:7},catalogTestFolderId:null,
+   searchDto:{pageIndex:1,pageSize:2,userId:999},bsTableControlCreateIELTSReadingTest:{options:{}},refreshLearningProgress(){}};
+  const requests=[],service={getPageForTests(dto,index,size){requests.push(plain(dto));const rows=existing.filter(row=>dto.userId==null||row.userId===dto.userId);
+   return Promise.resolve({content:rows.slice((index-1)*size,index*size),totalElements:rows.length});}};
+  nodeVm.runInNewContext(source.slice(start,end),{vm,folders,service,blockUI:{start(){},stop(){}},toastr:{error(){}},console:{log(){}}});
+  vm.getPageCreateIELTSReadingTest();await Promise.resolve();
+  assert.equal(requests[0].userId,mode==='COMPREHENSIVE'?7:null);
+  assert.equal(vm.bsTableControlCreateIELTSReadingTest.options.totalRows,mode==='COMPREHENSIVE'?1:3);
+  assert.equal(vm.ieltsReadingTests[0].id,1);
+  if(mode!=='COMPREHENSIVE'){
+   assert.equal(vm.ieltsReadingTests[1].id,2);
+   vm.searchDto.pageIndex=2;vm.getPageCreateIELTSReadingTest();await Promise.resolve();assert.equal(vm.ieltsReadingTests[0].id,3);
+   vm.catalogTestFolderId=4;vm.getPageCreateIELTSReadingTest();await Promise.resolve();
+   assert.equal(requests.at(-1).testFolderId,4);assert.equal(requests.at(-1).userId,null);
+  }
+ }
+});

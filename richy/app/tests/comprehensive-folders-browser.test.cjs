@@ -204,6 +204,31 @@ test('real folder views support grid/list, breadcrumbs, direct contents, nested 
  }}finally{await browser.close();}
 });
 
+test('IELTS admin displays older manual tests regardless of their owner, including older pages and title search',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{for(const mode of ['READING','LISTENING','WRITING']){
+  const {page,errors}=await fixture(browser,1366,true,mode);
+  await page.evaluate(()=>{
+   const scope=angular.element(document.getElementById('qa')).scope();
+   window.testData=[{id:101,title:'Recent import',testFolder:null,userId:7,status:7},
+    {id:102,title:'Older manual test',testFolder:null,userId:8,status:7},
+    {id:103,title:'Legacy test without owner',testFolder:null,userId:null,status:6}];
+   scope.$apply(()=>{qaVm.searchDto.pageSize=2;qaVm.getPageCreateIELTSReadingTest();});
+  });
+  await page.locator('.test-explorer-file').filter({hasText:'Older manual test'}).waitFor();
+  assert.equal(await page.evaluate(()=>qaVm.bsTableControlCreateIELTSReadingTest.options.totalRows),3);
+  await page.locator('ul.pagination').getByRole('link',{name:'Sau',exact:true}).click();
+  await page.locator('.test-explorer-file').filter({hasText:'Legacy test without owner'}).waitFor();
+  await page.evaluate(()=>{
+   const scope=angular.element(document.getElementById('qa')).scope();
+   scope.$apply(()=>{qaVm.searchDto.textSearch='Older manual';qaVm.searchDto.pageIndex=1;qaVm.getPageCreateIELTSReadingTest();});
+  });
+  await page.locator('.test-explorer-file').filter({hasText:'Older manual test'}).waitFor();
+  assert.equal(await page.locator('.test-explorer-file').count(),1);
+  assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
 test('folder picker works on a fresh class page without loading QuestionService first',async()=>{
  const browser=await playwright.chromium.launch({headless:true,executablePath:chrome}), calls=[];
  const apiFolders=[{id:1,name:'Practice',ownerId:7,ownerName:'Teacher',parentId:null,canManage:true}];

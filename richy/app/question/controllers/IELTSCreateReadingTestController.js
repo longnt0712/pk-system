@@ -626,7 +626,8 @@
             vm.searchDto.questionType = {id: 11};
             vm.searchDto.listeningTest = vm.isFlexibleMode ? null : vm.isListeningMode;
             vm.searchDto.testFormat = vm.isWritingMode ? 'WRITING' : (vm.isComprehensiveMode ? 'COMPREHENSIVE' : null);
-            vm.searchDto.userId = vm.currentUser.id;
+            // IELTS administrators also manage legacy tests saved under another or missing owner.
+            vm.searchDto.userId = vm.isComprehensiveMode ? vm.currentUser.id : null;
             var pageIndex = vm.searchDto.pageIndex;
             folders.applyFilter(vm.searchDto, vm.catalogTestFolderId, true, !vm.isComprehensiveMode);
             vm.searchDto.pageIndex = pageIndex;
