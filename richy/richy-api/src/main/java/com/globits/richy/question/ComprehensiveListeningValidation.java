@@ -50,12 +50,14 @@ public final class ComprehensiveListeningValidation {
     public static boolean isSupportedUrl(String link) {
         if (link.length() > 2048) { return false; }
         try {
-            URI uri = new URI(link);
+            // Browsers encode spaces in legacy audio filenames before requesting them.
+            // Validate that URL without rewriting the original stored audio link.
+            URI uri = new URI(link.replace(" ", "%20"));
             String host = uri.getHost(), scheme = uri.getScheme();
             if (!("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme)) || host == null || uri.getUserInfo() != null) { return false; }
             host = host.toLowerCase(Locale.ROOT);
             if (host.matches("(?:.*\\.)?(?:youtube\\.com|youtube-nocookie\\.com|youtu\\.be)")) {
-                return ComprehensiveVideoValidation.isSupportedUrl(link);
+                return ComprehensiveVideoValidation.isSupportedUrl(uri.toASCIIString());
             }
             return !host.matches("(?:.*\\.)?tiktok\\.com");
         } catch (Exception invalid) { return false; }

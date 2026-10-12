@@ -63,6 +63,18 @@ public class DailyListeningServiceTest {
         legacy.setQuestion(null); QuestionDto saved = service.migrate(21L);
         assertEquals("We listen every day.", saved.getTitle()); assertNull(legacy.getQuestion());
     }
+    @Test public void migrationPreservesAnExistingAudioLinkWithSpacesAndKeepsTheOriginalId() {
+        String audio = "https://ieltsroom.com/upload/audio/il-collection/youpass/iLD.SAMUEL PROUT.2.mp3";
+        legacy.setPronounce(audio); QuestionDto saved = service.migrate(21L);
+        assertEquals(Long.valueOf(21), saved.getId()); assertEquals(audio, saved.getPronounce());
+        assertEquals("DAILY_LISTENING", saved.getTestFormat()); assertSame(originalOwner, legacy.getUser());
+        assertEquals(142, saved.getTimeReviewd()); assertEquals("<p>We listen every day.</p>", saved.getMotherTongue());
+        service.migrate(21L); verify(repository, times(1)).save(legacy);
+    }
+    @Test public void newSharedListeningAlsoAcceptsAudioFilenamesWithSpaces() {
+        QuestionDto input = content(); input.setPronounce("https://ieltsroom.com/upload/audio/il-collection/youpass/iLD.FIELD TRIP REPORT.1.mp3");
+        assertEquals(input.getPronounce(), service.save(input).getPronounce());
+    }
     @Test public void saveCreatesARealSharedTestAndIgnoresClientOwnershipAndCounters() {
         QuestionDto input = content(); input.setUserId(99L); input.setTimeReviewd(999);
         QuestionDto saved = service.save(input);

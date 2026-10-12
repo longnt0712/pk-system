@@ -69,6 +69,14 @@ test('supports direct audio and YouTube with a start time and rejects unsupporte
         'https://youtu.be/no-id', 'https://www.tiktok.com/@person/video/6718335390845095173']) { assert.equal(listening.parseUrl(value), null); }
 });
 
+test('legacy audio filenames with spaces remain eligible and use the same encoded path in the browser', () => {
+    const link = 'https://ieltsroom.com/upload/audio/il-collection/youpass/iLD.SAMUEL PROUT.2.mp3';
+    assert.equal(listening.parseUrl(link).provider, 'audio');
+    assert.equal(listening.parseUrl(link).url, link);
+    assert.equal(new URL(link).pathname, '/upload/audio/il-collection/youpass/iLD.SAMUEL%20PROUT.2.mp3');
+    assert.equal(listening.parseUrl(link.replace(' ', '%20')).provider, 'audio');
+});
+
 test('authoring stores only the transcript and one response slot, requiring no gap generation or answer entry', () => {
     const pack = {type: 18, pronounce: 'https://school.test/audio.mp3', motherTongue: 'We learn daily.', subQuestions: []};
     const context = {listening, plainText: value => String(value || '').trim()};

@@ -23,6 +23,18 @@ public class ComprehensiveListeningValidationTest {
         }
     }
 
+    @Test public void acceptsLegacyAudioFilenamesWithSpacesAsBrowsersDo() {
+        String link = "https://ieltsroom.com/upload/audio/il-collection/youpass/iLD.SAMUEL PROUT.2.mp3";
+        assertTrue(ComprehensiveListeningValidation.isSupportedUrl(link));
+        assertTrue(ComprehensiveListeningValidation.isSupportedUrl(link.replace(" ", "%20")));
+        assertTrue(ComprehensiveListeningValidation.isSupportedUrl("https://ieltsroom.com/upload/audio/il-collection/youpass/iLD.MANOR FARM SUMMER FRUIT PICKING.2.mp3"));
+        assertTrue(ComprehensiveListeningValidation.isSupportedUrl("https://school.test/a track.mp3?title=two words"));
+        assertTrue(ComprehensiveListeningValidation.isSupportedUrl("https://www.youtube.com/watch?v=M7lc1UVf-VE&list=my playlist"));
+        for (String invalid : new String[]{"https://school test/audio.mp3", "https://user name:pass@school.test/a track.mp3", "file:///a track.mp3", "javascript:alert(1)", "https://youtu.be/no id"}) {
+            assertFalse(invalid, ComprehensiveListeningValidation.isSupportedUrl(invalid));
+        }
+    }
+
     @Test public void pastedTranscriptCanBePublishedWithoutCreatingGaps() {
         QuestionDto root = new QuestionDto(), pack = new QuestionDto(), question = new QuestionDto();
         root.setTestFormat("COMPREHENSIVE"); root.setStatus(6); pack.setType(18);
