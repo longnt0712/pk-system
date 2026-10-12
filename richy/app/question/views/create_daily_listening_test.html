@@ -12,7 +12,10 @@
     </section>
     <div class="daily-listening-layout">
         <section class="daily-listening-panel daily-listening-catalog" aria-label="Danh sách Daily Listening">
-            <div class="daily-listening-panel-title"><h2>Bài của bạn <small>({{vm.totalItems}})</small></h2><button type="button" class="btn btn-primary" ng-click="vm.newTest()" ng-disabled="vm.saving || vm.editing"><i class="fa fa-plus" aria-hidden="true"></i> Tạo bài mới</button></div>
+            <div class="daily-listening-panel-title"><h2>Bài nghe <small>({{vm.totalItems}})</small></h2><button type="button" class="btn btn-primary" ng-click="vm.newTest()" ng-disabled="vm.saving || vm.editing || vm.importDialogOpen"><i class="fa fa-plus" aria-hidden="true"></i> Tạo bài mới</button></div>
+            <label for="daily-listening-source">Nguồn bài nghe</label>
+            <select id="daily-listening-source" class="form-control" ng-model="vm.sourceId" ng-options="source.id as source.name for source in vm.sources" ng-change="vm.sourceChanged()" ng-disabled="vm.saving || vm.editing || vm.importDialogOpen"></select>
+            <div class="daily-listening-import-action"><button type="button" class="btn btn-default" ng-click="vm.importOldListening()" ng-disabled="vm.saving || vm.editing || vm.importDialogOpen"><i class="fa fa-clone" aria-hidden="true"></i> Lấy từ flashcard cũ</button><p>Bài đã đánh dấu Listening hiện sẵn trong nguồn đã chọn. Dùng nút này để chọn thêm bài có audio và transcript.</p></div>
             <form class="daily-listening-search" ng-submit="vm.search()">
                 <input class="form-control" type="search" ng-model="vm.searchDto.textSearch" aria-label="Tìm Daily Listening" placeholder="Tìm tên bài hoặc transcript...">
                 <button type="submit" class="btn btn-default" ng-disabled="vm.loading">Tìm</button>

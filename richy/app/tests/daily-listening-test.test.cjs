@@ -10,19 +10,23 @@ function setup(overrides={}){
  let definition;const angular={copy:structuredClone,module(){return{controller(name,controller){definition=controller.at(-1);}};}};
  nodeVm.runInNewContext(source,{angular});
  const old={id:21,question:'Old listening',pronounce:'https://school.test/old.mp3',motherTongue:'<p>We listen every day.</p>',
-  questionType:{id:6},status:5,user:{id:7},questionTopics:[{id:10,topic:{id:2}}],questionAnswers:[{id:8,answer:{id:9,answer:'Keep'}}],correctAnswer:3};
+  questionType:{id:6},status:5,user:{id:7},questionTopics:[{id:10,topic:{id:2}}],questionAnswers:[{id:8,answer:{id:9,answer:'Keep'}}],correctAnswer:3,timeReviewd:142};
  const requests=[],saves=[],vm={},redirects=[];
- const service={getPage(dto,index,size){requests.push({dto:plain(dto),index,size});return Promise.resolve({content:[structuredClone(old)],totalElements:1});},
+ const service={getPage(dto,index,size){requests.push({dto:plain(dto),index,size});
+  // Match the legacy backend's defaults: omitted bounds are lower=3, upper=0.
+  const lower=dto.lower==null?3:dto.lower,upper=dto.upper==null?0:dto.upper;
+  const content=old.timeReviewd>=lower&&old.timeReviewd<=upper?[structuredClone(old)]:[];
+  return Promise.resolve({content,totalElements:content.length});},
   getOne(){return Promise.resolve(structuredClone(old));},saveObject(dto){saves.push(structuredClone(dto));return Promise.resolve({...dto,id:dto.id||22});},...overrides.service};
  const document={createElement(){return{innerHTML:'',get textContent(){return this.innerHTML.replace(/<[^>]*>/g,'');}};}};
  definition.call(vm,{get(){return JSON.stringify({id:7,roles:[{name:overrides.role||'ROLE_ADMIN'}]});}},
-  {path(value){redirects.push(value);}},{document},{},service,{parseUrl(url){return /^https:\/\//.test(url)?{}:null;}},{success(){}});
+  {path(value){redirects.push(value);}},{document},{},service,{parseUrl(url){return /^https?:\/\//.test(url)?{}:null;}},{success(){}},overrides.modal,{when:Promise.resolve.bind(Promise)});
  return {vm,old,requests,saves,redirects};
 }
 test('the separate creator lists owned legacy Listening flashcards and blocks student authoring',async()=>{
  const {vm,requests}=setup();await tick();
  assert.equal(vm.items[0].id,21);assert.equal(vm.totalItems,1);
- assert.deepEqual(requests[0].dto,{questionType:{id:6},status:5,type:100,userId:7,textSearch:'',findExactWord:false,pageIndex:1,pageSize:12});
+ assert.deepEqual(requests[0].dto,{questionType:{id:6},status:5,type:100,userId:7,lower:0,upper:2147483647,textSearch:'',findExactWord:false,pageIndex:1,pageSize:12});
  const restricted=setup({role:'ROLE_STUDENT'});assert.deepEqual(restricted.redirects,['/comprehensive_tests']);assert.equal(restricted.requests.length,0);
 });
 test('editing an old listening preserves its id, formatted transcript, topics, answers and counters',async()=>{
@@ -43,6 +47,49 @@ test('failed and duplicate saves preserve the draft and show success only after 
  let resolveSave;const {vm}=setup({service:{saveObject(){return new Promise(resolve=>{resolveSave=resolve;});}}});await tick();
  vm.transcript='We keep the transcript.';vm.draft.pronounce='https://school.test/new.mp3';const pending=vm.save();assert.equal(vm.saving,true);assert.equal(vm.save(),undefined);
  resolveSave({message:'Save failed'});await pending;assert.equal(vm.saving,false);assert.equal(vm.transcript,'We keep the transcript.');assert.equal(vm.savedMessage,'');assert.match(vm.error,/Save failed/);
+});
+test('shared legacy sources are selectable and editing preserves the original teacher instead of reassigning the record',async()=>{
+ const record={id:51,status:5,questionType:{id:6},user:{id:26},question:'Shared lesson',pronounce:'https://school.test/shared.mp3',motherTongue:'Old transcript'};
+ const saves=[],queries=[];
+ const {vm}=setup({service:{getPage(dto){queries.push(plain(dto));return Promise.resolve({content:[],totalElements:0});},
+  getOne(){return Promise.resolve(structuredClone(record));},saveObject(dto){saves.push(plain(dto));return Promise.resolve({...dto,user:{id:26}});}}});await tick();
+ vm.sourceId=26;await vm.sourceChanged();assert.equal(queries.at(-1).userId,26);
+ await vm.edit(record);vm.draft.question='Edited shared title';await vm.save();assert.equal(saves[0].id,51);assert.equal(saves[0].userId,26);
+ assert.equal(vm.draft.userId,26);vm.newTest();await tick();assert.equal(vm.sourceId,7);assert.equal(vm.draft.userId,7);
+});
+test('a new lesson created while browsing a shared source still belongs to its author and returns to the owned catalog',async()=>{
+ const queries=[],saves=[];const {vm}=setup({service:{getPage(dto){queries.push(plain(dto));return Promise.resolve({content:[],totalElements:0});},
+  saveObject(dto){saves.push(plain(dto));return Promise.resolve({...dto,id:70,user:{id:7}});}}});await tick();
+ vm.sourceId=26;await vm.sourceChanged();vm.transcript='A new personal lesson.';vm.draft.pronounce='https://school.test/new.mp3';await vm.save();await tick();
+ assert.equal(saves[0].userId,7);assert.equal(vm.sourceId,7);assert.equal(vm.searchDto.userId,7);assert.equal(queries.at(-1).userId,7);
+});
+test('selected old flashcards migrate in place with full content and owner preserved, and failed rows remain retryable',async()=>{
+ const records=[1,2].map(id=>({id,question:'Old '+id,questionType:{id:6},status:1,user:{id:26},pronounce:'https://school.test/old.mp3',
+  motherTongue:'<p>Original transcript</p>',questionTopics:[{id:41,topic:{id:7}}],questionAnswers:[{id:42,answer:{id:43,answer:'Keep'}}],timeReviewd:142,correctAnswer:50}));
+ let transfer,resolveResult,failSecond=true;const writes=[];
+ const modal={open(config){const result=new Promise(resolve=>{resolveResult=resolve;});transfer={};
+  config.controller.at(-1).call(transfer,{$on(){}},{close(value){resolveResult(value);}});return{result};}};
+ const {vm}=setup({modal,service:{
+  getPage(dto){const content=records.filter(item=>item.user.id===dto.userId&&(dto.status===5?item.status===5:item.status!==5)).map(item=>structuredClone(item));return Promise.resolve({content,totalElements:content.length});},
+  getOne(id){return Promise.resolve(structuredClone(records.find(record=>record.id===Number(id))));},
+  saveObject(dto){writes.push(plain(dto));if(dto.id===2&&failSecond)return Promise.reject({data:{message:'Retry this row'}});
+   Object.assign(records.find(record=>record.id===dto.id),structuredClone(dto));return Promise.resolve(structuredClone(dto));}
+ }});await tick();vm.sourceId=26;await vm.sourceChanged();vm.importOldListening();await tick();
+ transfer.selectAll();assert.equal(transfer.count(),2);const pending=transfer.save();assert.equal(transfer.save(),undefined);await pending;
+ assert.equal(transfer.moved,1);assert.equal(transfer.items.length,1);assert.equal(transfer.selected[2],true);assert.equal(transfer.errors[2],'Retry this row');
+ assert.equal(writes[0].id,1);assert.equal(writes[0].status,5);assert.equal(writes[0].userId,26);
+ assert.equal(writes[0].motherTongue,'<p>Original transcript</p>');assert.equal(writes[0].timeReviewd,142);assert.equal(writes[0].correctAnswer,50);
+ assert.deepEqual(writes[0].questionAnswers,records[1].questionAnswers);assert.deepEqual(writes[0].questionTopics,records[1].questionTopics);
+ failSecond=false;await transfer.save();await tick();assert.equal(records.length,2);assert.equal(transfer.moved,2);assert.equal(vm.importDialogOpen,false);
+ assert.equal(vm.items.length,2);assert.equal(writes.filter(item=>item.id===1).length,1);assert.equal(writes.filter(item=>item.id===2).length,2);
+});
+test('invalid or changed legacy records are not migrated',async()=>{
+ let transfer;const invalid={id:1,question:'Word without audio',questionType:{id:6},status:1,user:{id:7},motherTongue:'Text',pronounce:''};
+ const ready={...invalid,id:2,pronounce:'https://school.test/old.mp3'};let written=false;
+ const modal={open(config){transfer={};config.controller.at(-1).call(transfer,{$on(){}},{close(){}});return{result:new Promise(()=>{})};}};
+ const {vm}=setup({modal,service:{getPage(){return Promise.resolve({content:[invalid,ready],totalElements:2});},getOne(){return Promise.resolve({...ready,user:{id:8}});},saveObject(){written=true;}}});await tick();
+ vm.importOldListening();await tick();transfer.selectAll();assert.equal(transfer.selected[1],undefined);assert.equal(transfer.count(),1);
+ await transfer.save();assert.equal(written,false);assert.equal(transfer.selected[2],true);assert.match(transfer.errors[2],/Bài đã thay đổi/);
 });
 test('standalone playback loads the exact legacy record without a topic or the shared source filter',async()=>{
  for(const valid of [true,false]){

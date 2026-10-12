@@ -14,6 +14,17 @@
 .daily-listening-panel-title h2 {margin: 0;}
 .daily-listening-search {display: flex; gap: 8px; margin-bottom: 16px;}
 .daily-listening-search input {min-width: 0;}
+.daily-listening-import-action {margin: 12px 0 16px;}
+.daily-listening-import-action p {margin: 8px 0 0; font-size: 12px; color: #64748b;}
+.daily-listening-import-items {max-height: 380px; overflow: auto; margin-top: 10px;}
+.daily-listening-import-item {display: flex; gap: 10px; padding: 14px 10px; margin: 0; border-top: 1px solid #dce2eb; font-weight: normal; cursor: pointer;}
+.daily-listening-import-item > input {flex-shrink: 0; margin-top: 4px;}
+.daily-listening-import-item > span {min-width: 0; overflow-wrap: anywhere;}
+.daily-listening-import-preview, .daily-listening-import-item small, .daily-listening-import-item .test-folder-error {display: block; margin-top: 5px;}
+.daily-listening-import-preview, .daily-listening-import-item small {color: #64748b;}
+.global-dark-mode .daily-listening-import-dialog {background: #252525; color: #ededed;}
+.global-dark-mode .daily-listening-import-item {border-color: #454545;}
+.global-dark-mode .daily-listening-import-preview, .global-dark-mode .daily-listening-import-action p {color: #bbb;}
 .daily-listening-catalog-item {padding: 14px; margin-bottom: 12px; border: 1px solid #dce2eb; border-radius: 8px; overflow-wrap: anywhere;}
 .daily-listening-catalog-item.is-selected {border-color: #818cf8; background: #eef2ff;}
 .daily-listening-catalog-item h3 {font-size: 16px; margin: 0 0 8px; line-height: 1.5;}

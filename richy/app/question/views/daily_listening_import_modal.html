@@ -1,0 +1,20 @@
+<div class="daily-listening-import-dialog">
+    <div class="modal-header"><button type="button" class="close" ng-click="transfer.cancel()" ng-disabled="transfer.busy" aria-label="Đóng">&times;</button><h3 class="modal-title">Lấy bài nghe từ flashcard cũ</h3></div>
+    <div class="modal-body">
+        <p>Chọn các flashcard có audio và transcript để đưa vào Daily Listening.</p>
+        <form class="daily-listening-search" ng-submit="transfer.search()"><input type="search" class="form-control" aria-label="Tìm flashcard cũ" ng-model="transfer.searchDto.textSearch" placeholder="Tìm tên bài hoặc transcript..." ng-disabled="transfer.busy"><button type="submit" class="btn btn-default" ng-disabled="transfer.busy || transfer.loading">Tìm</button></form>
+        <p ng-if="transfer.loading" role="status">Đang tải flashcard...</p>
+        <p ng-if="transfer.error" class="test-folder-error" role="alert">{{transfer.error}} <button type="button" class="btn btn-link" ng-if="!transfer.items.length" ng-click="transfer.load()" ng-disabled="transfer.busy">Thử lại</button></p>
+        <p ng-if="transfer.message" class="daily-listening-saved" role="status" ng-bind="transfer.message"></p>
+        <button type="button" class="btn btn-link" ng-click="transfer.selectAll()" ng-disabled="transfer.loading || transfer.busy">Chọn bài hợp lệ trên trang này</button>
+        <div class="daily-listening-import-items">
+            <label class="daily-listening-import-item" ng-repeat="item in transfer.items track by item.id">
+                <input type="checkbox" ng-model="transfer.selected[item.id]" ng-disabled="transfer.busy || !transfer.eligible(item)" aria-label="Chọn {{item.question}}">
+                <span><strong ng-bind="item.question"></strong><span class="daily-listening-import-preview" ng-bind="transfer.preview(item)"></span><small ng-if="!transfer.eligible(item)">Cần có link audio hợp lệ và transcript để chuyển.</small><span ng-if="transfer.errors[item.id]" class="test-folder-error" role="alert" ng-bind="transfer.errors[item.id]"></span></span>
+            </label>
+            <p ng-if="!transfer.loading && !transfer.items.length">Không còn flashcard phù hợp trên trang này. Bài đã đánh dấu Listening có sẵn ở danh sách Daily Listening.</p>
+        </div>
+        <ul ng-if="transfer.totalItems > transfer.searchDto.pageSize" uib-pagination total-items="transfer.totalItems" ng-model="transfer.searchDto.pageIndex" items-per-page="transfer.searchDto.pageSize" ng-change="transfer.load()" ng-disabled="transfer.busy" max-size="3" previous-text="Trước" next-text="Sau"></ul>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-default" ng-click="transfer.cancel()" ng-disabled="transfer.busy">Đóng</button><button type="button" class="btn btn-primary" ng-click="transfer.save()" ng-disabled="transfer.busy || transfer.loading || !transfer.count()">{{transfer.busy ? 'Đang chuyển...' : 'Đưa sang Daily Listening (' + transfer.count() + ')'}} </button></div>
+</div>
