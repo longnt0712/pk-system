@@ -21,9 +21,7 @@
             vm.folderTestMode = 'DAILY_LISTENING';
             vm.catalogTestFolderId = null;
             function text(value) {
-                var element = $window.document.createElement('div');
-                element.innerHTML = String(value || '').replace(/<br\s*\/?\s*>|<\/p>|<\/div>/gi, '\n');
-                return (element.textContent || '').trim();
+                return listening.transcriptText(value);
             }
             function ownerId(item) { return item.userId || (item.user || {}).id; }
             function isListening(item) { return item && Number((item.questionType || {}).id) === 11 && item.testFormat === 'DAILY_LISTENING'; }
@@ -31,7 +29,7 @@
                 var editor = $window.document.getElementById && $window.document.getElementById('daily-listening-editor');
                 if (editor && editor.scrollIntoView) { editor.scrollIntoView({behavior: 'smooth', block: 'start'}); }
             }
-            vm.preview = function (item) { return text(item.motherTongue).slice(0, 160); };
+            vm.preview = function (item) { return text(item.motherTongue).trim().slice(0, 160); };
             vm.practiceUrl = function (item) { return 'daily_listening/' + encodeURIComponent(item.id); };
             vm.load = function () {
                 var currentRequest = ++requestId;
@@ -165,7 +163,7 @@
                 if (!String(vm.transcript || '').trim()) { vm.error = 'Hãy dán transcript của bài nghe.'; return; }
                 if (!listening.parseUrl(vm.draft.pronounce)) { vm.error = 'Hãy nhập link audio hoặc YouTube hợp lệ.'; return; }
                 var payload = angular.copy(vm.draft);
-                payload.question = String(payload.question || '').trim() || text(vm.transcript).replace(/\s+/g, ' ').slice(0, 100);
+                payload.question = String(payload.question || '').trim() || text(vm.transcript).replace(/\s+/g, ' ').trim().slice(0, 100);
                 if (payload.question.length > 200) { vm.error = 'Tên bài tối đa 200 ký tự.'; return; }
                 payload.pronounce = String(payload.pronounce || '').trim();
                 payload.motherTongue = vm.transcript === vm.originalTranscriptText ? vm.originalTranscript : vm.transcript;
@@ -204,7 +202,7 @@
                         var transfer = this;
                         transfer.items = []; transfer.selected = {}; transfer.errors = {}; transfer.moved = 0;
                         transfer.searchDto = {status: 5, textSearch: '', pageIndex: 1, pageSize: 20};
-                        transfer.eligible = function (item) { return !!(item && item.id && listening.parseUrl(item.pronounce) && text(item.motherTongue)); };
+                        transfer.eligible = function (item) { return !!(item && item.id && listening.parseUrl(item.pronounce) && text(item.motherTongue).trim()); };
                         transfer.preview = vm.preview;
                         transfer.load = function () {
                             if (transfer.busy) { return; }

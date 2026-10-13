@@ -24,6 +24,19 @@
         }
 
         var responseMarker = 'DAILY_LISTENING_RESPONSE';
+        function transcriptText(value) {
+            var source = String(value || '').replace(/\r\n?/g, '\n');
+            if (!/<\/?(?:p|div|br|span|h[1-6]|ul|ol|li|table|tr|td|blockquote)\b[^>]*>/i.test(source)) { return source; }
+            // A template parses imported HTML without activating its elements.
+            var template = $window.document.createElement('template');
+            template.innerHTML = source.replace(/<br\b[^>]*>/gi, '\n')
+                .replace(/<\/(?:p|div|h[1-6]|li|tr|blockquote)>/gi, '\n');
+            var content = template.content || template;
+            if (content.querySelectorAll) {
+                Array.prototype.forEach.call(content.querySelectorAll('script, style'), function (node) { node.parentNode.removeChild(node); });
+            }
+            return (content.textContent || '').trim();
+        }
         var tokenPattern = /^([^A-Za-z0-9À-ỹ]*)((?:\d+(?:[.,:\-]\d+)*)|(?:[A-Za-zÀ-ỹ][A-Za-z0-9À-ỹ'’\-]*))([^A-Za-z0-9À-ỹ]*)$/;
         var dates = /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?$|^(?:january|february|march|april|may|june|july|august|september|october|november|december)$/i;
 
@@ -104,7 +117,7 @@
             return Number((pack || {}).type) === 18 && answer && answer.answer && answer.answer.answer === responseMarker;
         }
 
-        return {parseUrl: parseUrl,
+        return {parseUrl: parseUrl, transcriptText: transcriptText,
             responseMarker: responseMarker, candidates: candidates, start: start, update: update, serialize: serialize, isRuntime: isRuntime};
     }]);
 

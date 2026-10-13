@@ -314,3 +314,54 @@ test('Daily Listening folder move button works on mobile in grid and list, moves
   assert.deepEqual(errors,[]);await page.close();
  }finally{await browser.close();}
 });
+
+function readRenderedTranscript(page){return page.locator('.daily-listening-transcript').filter({visible:true}).first().evaluate(element=>{
+ const copy=element.cloneNode(true);copy.querySelectorAll('.gap-inline-wrap').forEach(wrap=>{
+  const index=wrap.querySelector('input').id.replace('gap-number-','');wrap.replaceWith(document.createTextNode(window.qaVm.gapAnswers[index]));
+ });return copy.textContent;
+});}
+
+test('pasted Daily Listening layout survives save and reopen and is identical in learner gaps, including resumed progress',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ const transcript='  Mom: one two\n\nCandace: three four\nfive\t six\nseven eight\nnine ten.\n';
+ try{for(const width of [1366,390]){
+  const creator=await fixture(browser,width);let page=creator.page;
+  await page.getByRole('textbox',{name:/Tên bài/}).fill('Dialogue layout');await page.getByRole('textbox',{name:'Link audio hoặc YouTube',exact:true}).fill('http://daily-listening-creator.test/audio.wav');
+  await page.getByRole('textbox',{name:'Transcript',exact:true}).fill(transcript);await page.getByRole('button',{name:'Lưu bài nghe',exact:true}).click();await page.getByRole('status').filter({hasText:'Đã lưu bài'}).waitFor();
+  const saved=await page.evaluate(()=>records.find(row=>row.id===qaVm.draft.id));assert.equal(saved.motherTongue,transcript);
+  await page.locator('article').filter({has:page.getByRole('heading',{name:'Dialogue layout',exact:true})}).getByRole('button',{name:'Sửa bài',exact:true}).click();
+  await page.waitForFunction(()=>qaVm.editing===false);assert.equal(await page.getByRole('textbox',{name:'Transcript',exact:true}).inputValue(),transcript);
+  assert.deepEqual(creator.errors,[]);await page.close();
+  const learner=await fixture(browser,width,true,saved);page=learner.page;await page.locator('input[id^="gap-number-"]').first().waitFor();
+  assert.equal(await readRenderedTranscript(page),transcript);assert.equal(await page.locator('.daily-listening-transcript').first().evaluate(el=>getComputedStyle(el).whiteSpace),'pre-wrap');
+  const answers=await page.evaluate(()=>Object.entries(qaVm.gapAnswers));assert.equal(answers.length,10);assert.equal(answers.some(([,answer])=>/\s/.test(answer)),false);
+  await page.locator('#gap-number-'+answers[0][0]).fill(answers[0][1]);await page.waitForFunction(index=>qaVm.gapCorrectMap[index]===true,answers[0][0]);
+  await page.evaluate(()=>angular.element(document.getElementById('qa')).scope().$apply(()=>qaVm.saveDailyListeningDraft()));
+  await page.reload();await learner.mount();await page.getByRole('button',{name:'Tiếp tục',exact:true}).click();await page.waitForFunction(()=>qaVm.dailyListeningDraftRestored===true);
+  assert.equal(await readRenderedTranscript(page),transcript);assert.equal(await page.locator('#gap-number-'+answers[0][0]).inputValue(),answers[0][1]);
+  for(let position=1;position<9;position++){
+   const [index,answer]=answers[position];await page.locator('#gap-number-'+index).fill(answer);
+   try{await page.waitForFunction(index=>qaVm.gapCorrectMap[index]===true,index);}catch(error){
+    const state=await page.evaluate(()=>({values:qaVm.gapValues,correct:qaVm.gapCorrectMap,answers:qaVm.gapAnswers,active:document.activeElement.id,inputs:Array.from(document.querySelectorAll('input[id^="gap-number-"]')).map(input=>[input.id,input.value])}));
+    throw new Error(JSON.stringify({width,index,answer,state}));
+   }
+   if(position<8)await page.waitForFunction(next=>document.activeElement.id==='gap-number-'+next,answers[position+1][0]);
+  }
+  await page.waitForFunction(()=>window.results.length===1);assert.equal(await page.evaluate(()=>results[0].testTime),'GAPS 90%');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);await page.screenshot({path:path.join(repo,'.tmp/daily-transcript-layout-'+width+'.png'),fullPage:true});
+  assert.deepEqual(learner.errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
+test('imported HTML paragraphs render like the editor and plain transcript markup stays literal',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{for(const [stored,expected] of [
+  ['<p>Mom: one &amp; two</p><p><br></p><p>Candace: three<br>four &quot;five&quot;</p>','Mom: one & two\n\n\nCandace: three\nfour "five"'],
+  ["Mom: don't say <secret> or {{vm.currentUser.id}} &copy; 3 < 5.\n\nCandace: hello again.","Mom: don't say <secret> or {{vm.currentUser.id}} &copy; 3 < 5.\n\nCandace: hello again."]
+ ]){
+  const {page,errors}=await fixture(browser,1366,true,{...shared,motherTongue:stored});await page.locator('input[id^="gap-number-"]').first().waitFor();
+  assert.equal(await readRenderedTranscript(page),expected);assert.equal(await page.locator('.daily-listening-transcript secret').count(),0);
+  const editorText=await page.evaluate(stored=>angular.element(document.getElementById('qa')).injector().get('ComprehensiveListening').transcriptText(stored),stored);assert.equal(editorText,expected);
+  assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});

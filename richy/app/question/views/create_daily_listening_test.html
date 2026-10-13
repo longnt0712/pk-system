@@ -70,7 +70,7 @@
             <div class="portlet light bordered"><div class="portlet-body"><div class="row"><div class="col-md-8 col-md-offset-2">
                 <h3 class="reading-builder-section-title"><span>2</span> Nội dung bài nghe</h3>
                 <label for="daily-listening-transcript">Transcript <span class="font-red" aria-hidden="true">*</span></label>
-                <textarea id="daily-listening-transcript" class="form-control" rows="12" aria-required="true" ng-model="vm.transcript" placeholder="Dán nội dung bài nghe tại đây..."></textarea>
+                <textarea id="daily-listening-transcript" class="form-control" rows="12" aria-required="true" ng-trim="false" ng-model="vm.transcript" placeholder="Dán nội dung bài nghe tại đây..."></textarea>
                 <p class="daily-listening-help"><i class="fa fa-headphones" aria-hidden="true"></i> Hệ thống tự tạo gaps khi mở bài, ghi nhận ngay khi gõ đúng. Đạt ít nhất 90% gaps là hoàn thành.</p>
                 <p class="test-folder-error" ng-if="vm.error" role="alert" ng-bind="vm.error"></p>
                 <p class="daily-listening-saved" ng-if="vm.savedMessage" role="status" ng-bind="vm.savedMessage"></p>

@@ -19,6 +19,7 @@
         '$sce',
         '$cookies',
         'TopicService',
+        'ComprehensiveListening',
 
     ];
     angular.module('Hrm.Question').directive('inputFieldSelection', function(){
@@ -161,7 +162,7 @@
         };
     });
 
-    function ViewController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,topicService) {
+    function ViewController($rootScope, $scope, toastr, $timeout, settings, utils, modal, service, $location,$stateParams,$window,blockUI,$sce,$cookies,topicService,listening) {
         $scope.$on('$viewContentLoaded', function () {
 
             App.initAjax();
@@ -5084,6 +5085,10 @@
             function startsWithLetter(word) {
                 return /^[A-Za-zÀ-ỹĂăÂâĐđÊêÔôƠơƯư]/.test(word);
             }
+            function escapeTranscriptHtml(str) {
+                return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            }
 
             function startsWithUppercaseLetter(word) {
                 return /^[A-ZÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴ]/.test(word);
@@ -5104,12 +5109,16 @@
             vm.gapValues = {};
             vm.gapCorrectMap = {};
 
-            var x = String(text).split(' ');
+            var preserveLayout = vm.isStandaloneDailyListening || (vm.currentCard || {}).testFormat === 'DAILY_LISTENING';
+            var source = preserveLayout ? listening.transcriptText(text) : String(text);
+            var x = preserveLayout ? (source.match(/\S+/g) || []) : source.split(' ');
+            var spacing = preserveLayout ? source.split(/\S+/g) : null;
             var processedText = '';
             var indexGap = 0;
             var gapRate = vm.getGapRate ? vm.getGapRate() : 0.35;
 
             for (var i = 0; i < x.length; i++) {
+                if (preserveLayout) { processedText += spacing[i]; }
                 var originalWord = x[i];
                 var trimmedWord = (originalWord || '').trim();
 
@@ -5149,6 +5158,7 @@
                 if (shouldMakeGap) {
                     var gapWord = originalWord;
                     var gapWordEscaped = escapeForNgString(gapWord);
+                    if (preserveLayout) { gapWordEscaped = escapeTranscriptHtml(gapWordEscaped); }
 
                     vm.gapAnswers[i] = gapWord;
                     vm.gapCorrectMap[i] = false;
@@ -5182,9 +5192,9 @@
                         'ng-click="sayIt(\'' + gapWordEscaped + '\')"></i>' +
                         '</span>';
 
-                    processedText += ' ' + input;
+                    processedText += (preserveLayout ? '' : ' ') + input;
                 } else {
-                    processedText += ' ' + originalWord;
+                    processedText += preserveLayout ? '<span ng-non-bindable>' + escapeTranscriptHtml(originalWord) + '</span>' : ' ' + originalWord;
                 }
             }
 
@@ -5195,7 +5205,8 @@
                 vm.testResult.testTime = 'GAPS 0%';
             }
 
-            return processedText.trim();
+            if (preserveLayout) { processedText += spacing[x.length]; }
+            return preserveLayout ? processedText : processedText.trim();
         }
 
         function processFillingGapsVni2(text, forceShowAnswer, shouldRegenerate) {

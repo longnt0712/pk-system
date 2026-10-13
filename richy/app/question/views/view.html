@@ -1014,6 +1014,7 @@
                                     <div class="col-md-12">
                                         <div class="bold" ng-class="{
                                                  'gap-english-content': vm.mode.id == 8,
+                                                 'daily-listening-transcript': vm.isStandaloneDailyListening || vm.currentCard.testFormat == 'DAILY_LISTENING',
                                                  'gap-vni-tntt-content': vm.mode.id == 11 || vm.mode.id == 15
                                              }" compile="vm.fillingGapQuestion"></div>
                                     </div>
@@ -1047,6 +1048,7 @@
                                         <div class="col-md-12">
                                             <div class="bold" ng-class="{
                                                      'gap-english-content': vm.mode.id == 8,
+                                                     'daily-listening-transcript': vm.isStandaloneDailyListening || vm.currentCard.testFormat == 'DAILY_LISTENING',
                                                      'gap-vni-tntt-content': vm.mode.id == 11 || vm.mode.id == 15
                                                  }" compile="vm.fillingGapQuestion"></div>
                                         </div>
@@ -5602,6 +5604,11 @@
         font-size: 1.25em;
         color: #ff6b6b;
         font-weight: 900;
+    }
+    .daily-listening-transcript {
+        white-space: pre-wrap;
+        text-align: left;
+        tab-size: 4;
     }
 
     /* Correct answer text only */

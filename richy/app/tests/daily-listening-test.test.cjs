@@ -15,9 +15,11 @@ function setup(overrides={}){
  const service={getDailyListeningTests(dto,index,size){requests.push({dto:plain(dto),index,size});return Promise.resolve({content:[structuredClone(old)],totalElements:1});},
   getOne(){return Promise.resolve(structuredClone(old));},saveDailyListening(dto){saves.push(structuredClone(dto));return Promise.resolve({...dto,title:dto.question,id:dto.id||22});},...overrides.service};
  const document={createElement(){return{innerHTML:'',get textContent(){return this.innerHTML.replace(/<[^>]*>/g,'');}};}};
+ const helpers={};nodeVm.runInNewContext(fs.readFileSync(path.join(app,'question/business/ComprehensiveListening.js'),'utf8'),{angular:{module(){return{factory(name,definition){helpers[name]=definition;return this;},directive(){return this;}};}}});
+ const transcriptText=helpers.ComprehensiveListening.at(-1)({document},{}).transcriptText;
  const folders={applyFilter(dto,id){dto.testFolderId=id>0?id:null;dto.withoutTestFolder=id==null&&!dto.textSearch;dto.includeSubfolders=!!dto.textSearch;dto.pageIndex=1;},contains:(id,selected)=>id===selected,...overrides.folders};
  definition.call(vm,{get(){return JSON.stringify({id:7,roles:[{name:overrides.role||'ROLE_ADMIN'}]});}},
-  {path(value){redirects.push(value);}},{document},{},service,{parseUrl(url){return /^https?:\/\//.test(url)?{}:null;}},{success(){}},overrides.modal,{when:Promise.resolve.bind(Promise)},folders);
+  {path(value){redirects.push(value);}},{document},{},service,{transcriptText,parseUrl(url){return /^https?:\/\//.test(url)?{}:null;}},{success(){}},overrides.modal,{when:Promise.resolve.bind(Promise)},folders);
  return {vm,old,requests,saves,redirects};
 }
 test('shared catalog has no source or teacher filter and edits imported content without changing its original owner',async()=>{
@@ -149,4 +151,22 @@ test('draft Daily Listening preview is available to its authoring admin while le
    createQuestionsWithOptions:items=>structuredClone(items),processFillingGapsByMode:text=>'Gaps: '+text,$scope:{chooseFillingGaps(){}}});
   vm.getPageFlashCard();await tick();assert.equal(!!vm.currentCard,allowed);if(!allowed)assert.match(vm.standaloneListeningError,/Không tải/);
  }
+});
+
+test('Daily Listening gaps retain every newline, blank line and space without combining words across lines',()=>{
+ const transcript='  one two\n\nthree four\r\nfive\t six\nseven eight\nnine ten.\n';
+ const vm={isStandaloneDailyListening:true,mode:{id:8},currentCard:{testFormat:'DAILY_LISTENING'},getGapRate:()=>1,testResult:{}};
+ const context={vm,listening:{transcriptText:value=>value.replace(/\r\n?/g,'\n')}};
+ nodeVm.runInNewContext(section(legacy,'        function processFillingGaps(text)','        function processFillingGapsVni2('),context);
+ const html=context.processFillingGaps(transcript);
+ const reconstructed=html.replace(/<span class="gap-inline-wrap">[\s\S]*?<\/span>/g,part=>vm.gapAnswers[part.match(/id="gap-number-(\d+)"/)[1]]);
+ assert.equal(reconstructed,transcript.replace(/\r\n?/g,'\n'));assert.equal(vm.numberOfGaps,10);
+ assert.equal(Object.values(vm.gapAnswers).some(answer=>/\s/.test(answer)),false);
+});
+
+test('Daily Listening save and reopen preserve leading spacing, blank lines and literal entities in plain transcripts',async()=>{
+ const transcript='  Mom: one two.\n\nCandace: three four &copy; <secret>.\n';
+ const {vm,saves}=setup({service:{getOne(){return Promise.resolve({id:21,title:'Saved layout',questionType:{id:11},testFormat:'DAILY_LISTENING',pronounce:'https://school.test/audio.mp3',motherTongue:transcript,status:7});}}});
+ await vm.edit({id:21});assert.equal(vm.transcript,transcript);vm.draft.question='New title';await vm.save();assert.equal(saves[0].motherTongue,transcript);
+ vm.transcript='Next line\n\n  keeps indentation\n';await vm.save();assert.equal(saves[1].motherTongue,vm.transcript);
 });

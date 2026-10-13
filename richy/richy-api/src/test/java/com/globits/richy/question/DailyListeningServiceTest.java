@@ -87,6 +87,14 @@ public class DailyListeningServiceTest {
         service.save(input); assertSame(originalOwner, legacy.getUser()); assertEquals(142, legacy.getTimeReviewd());
         assertEquals(1, legacy.getQuestionAnswers().size()); assertEquals("A new transcript.", legacy.getMotherTongue());
     }
+    @Test public void savingAndEditingPreserveTranscriptLinesAndIndentationExactly() {
+        String transcript = "  Mom: one two.\n\nCandace: three four.\nfive\t six.\n";
+        QuestionDto input = content(); input.setMotherTongue(transcript);
+        assertEquals(transcript, service.save(input).getMotherTongue());
+        service.migrate(21L); input.setId(21L);
+        assertEquals(transcript, service.save(input).getMotherTongue());
+        assertEquals(transcript, legacy.getMotherTongue()); assertEquals(142, legacy.getTimeReviewd());
+    }
     @Test public void savingAnUnpublishedLessonKeepsItDraftAndPreservesItsHistory() {
         service.migrate(21L); legacy.setStatus(6);
         QuestionDto input = content(); input.setId(21L); input.setStatus(6);
