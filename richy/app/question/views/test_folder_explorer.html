@@ -11,7 +11,13 @@
     <div class="test-explorer-actions" ng-if="manage">
         <button type="button" class="btn btn-default btn-sm" ng-click="create()" ng-disabled="loading || saving"><i class="fa fa-folder" aria-hidden="true"></i> {{current ? 'Tạo folder con' : 'Tạo folder'}}</button>
         <button type="button" class="btn btn-default btn-sm" ng-if="current.canManage" ng-click="rename()" ng-disabled="saving">Đổi tên folder</button>
-        <span class="test-explorer-drag-help">Kéo bài vào folder để lưu ngay. Thả vào đường dẫn để chuyển về folder cha.</span>
+        <span class="test-explorer-drag-help">Kéo bài hoặc folder vào folder khác. Folder con và bài bên trong sẽ đi cùng.</span>
+    </div>
+    <div class="test-explorer-selection" ng-if="manage && files.length">
+        <button type="button" class="btn btn-default btn-sm" ng-click="selectAllFiles()" ng-disabled="moving || moveDisabled">Chọn tất cả trên trang</button>
+        <span aria-live="polite">Đã chọn {{selectedCount()}} bài</span>
+        <button type="button" class="btn btn-primary btn-sm" ng-click="moveSelected()" ng-disabled="!selectedCount() || moving || moveDisabled"><i class="fa fa-folder-open-o" aria-hidden="true"></i> Di chuyển đã chọn</button>
+        <button type="button" class="btn btn-link btn-sm" ng-click="clearSelection()" ng-if="selectedCount()" ng-disabled="moving">Bỏ chọn</button>
     </div>
     <p class="test-explorer-move-status" ng-if="moving || moveMessage" role="status" aria-live="polite"><i class="fa fa-spinner fa-spin" ng-if="moving" aria-hidden="true"></i> {{moving ? 'Đang chuyển bài...' : moveMessage}}</p>
     <p class="test-folder-error" ng-if="moveError" role="alert">{{moveError}}</p>
@@ -19,11 +25,11 @@
     <div class="test-folder-editor" ng-if="editor">
         <label>Tên folder<input type="text" class="form-control" maxlength="200" ng-model="editor.name" aria-label="Tên folder"></label>
         <button type="button" class="btn btn-primary btn-sm" ng-click="save()" ng-disabled="saving || !editor.name.trim()">{{saving ? 'Đang lưu...' : 'Lưu folder'}}</button>
-        <button type="button" class="btn btn-default btn-sm" ng-click="editor=null" ng-disabled="saving">Hủy</button>
+        <button type="button" class="btn btn-default btn-sm" ng-click="cancelEditor()" ng-disabled="saving">Hủy</button>
     </div>
     <p ng-if="loading" role="status">Đang tải folder...</p>
     <div class="test-explorer-items">
-        <div class="test-explorer-folder-entry" test-folder-drop="folder.id" ng-repeat="folder in children track by folder.id">
+        <div class="test-explorer-folder-entry" test-folder-container-drag="folder" test-folder-drop="folder.id" ng-repeat="folder in children track by folder.id">
         <button type="button" class="test-explorer-folder" ng-if="!renamingFolder || renamingFolder.id != folder.id" test-folder-open="openFolder(folder.id)" ng-keydown="$event.key === 'F2' && startRenameFolder(folder, $event)" title="Mở folder {{folder.name}}">
             <span class="test-explorer-folder-icon" aria-hidden="true"><i class="fa fa-folder"></i></span>
             <span class="test-explorer-name" ng-dblclick="startRenameFolder(folder, $event)" title="{{manage && folder.canManage ? 'Nhấp đúp để đổi tên folder' : folder.name}}">{{folder.name}}<small ng-if="allTeachers && folderId == null">{{folder.ownerName}}</small></span>
@@ -34,7 +40,7 @@
             <input type="text" class="form-control" maxlength="200" ng-model="renamingFolder.name" ng-keydown="renameFolderKey($event)" ng-disabled="renamingFolderSaving" aria-label="Tên folder mới">
             <div class="test-title-editor-actions">
                 <button type="button" class="btn btn-primary btn-sm" ng-click="saveRenamedFolder()" ng-disabled="renamingFolderSaving">{{renamingFolderSaving ? 'Đang lưu...' : 'Lưu tên'}}</button>
-                <button type="button" class="btn btn-default btn-sm" ng-click="renamingFolder=null" ng-disabled="renamingFolderSaving">Hủy</button>
+                <button type="button" class="btn btn-default btn-sm" ng-click="cancelRenameFolder()" ng-disabled="renamingFolderSaving">Hủy</button>
             </div>
             <small class="test-title-editor-hint">Enter để lưu · Esc để hủy</small>
             <p class="test-folder-error" role="alert" ng-if="renameFolderError">{{renameFolderError}}</p>

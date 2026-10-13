@@ -30,7 +30,7 @@ async function fixture(browser,width,learner=false,record=shared){
   await page.evaluate(({learner,record})=>{
    window.App={initAjax(){}};localStorage.setItem('fillingGapRatePercent','100');
    window.records=[structuredClone(record),{...structuredClone(record),id:22,question:'Other teacher',title:'Other teacher',user:{id:8}},
-    {...structuredClone(record),id:23,question:'Vocabulary',status:1,questionType:{id:6},testFormat:null,pronounce:''}];window.saveCalls=[];window.pageCalls=[];window.results=[];
+    {...structuredClone(record),id:23,question:'Vocabulary',status:1,questionType:{id:6},testFormat:null,pronounce:''}];window.statusCalls=[];window.saveCalls=[];window.pageCalls=[];window.results=[];
    const cookie=JSON.stringify({id:7,username:'Teacher',roles:[{name:'ROLE_ADMIN'}],person:{firstName:'Teacher'}});
    angular.module('Hrm.Question',['ui.bootstrap','ngSanitize']).value('settings',{})
     .value('$cookies',{get(){return cookie;},getAll(){return{'education.user':cookie};}})
@@ -40,8 +40,9 @@ async function fixture(browser,width,learner=false,record=shared){
     .value('toastr',{success(){},error(){},warning(){},info(){}})
     .run(['$rootScope',root=>{root.settings={layout:{}};}])
     .factory('QuestionService',['$q',function(q){return{
+     updateTestStatus(id,status){window.statusCalls.push({id,status});const d=q.defer();function finish(){if(window.failStatus){d.reject({data:{message:'Xuất bản lỗi thử nghiệm'}});return;}const row=window.records.find(item=>item.id===id);row.status=status;d.resolve({id,status});}if(window.holdStatus)window.releaseStatus=finish;else finish();return d.promise;},
      getDailyListeningTests(dto,index,size){window.pageCalls.push(structuredClone(dto));
-      const data=window.records.filter(item=>item.questionType.id===11&&item.testFormat==='DAILY_LISTENING'&&item.status===7&&
+      const data=window.records.filter(item=>item.questionType.id===11&&item.testFormat==='DAILY_LISTENING'&&(item.status===7 || dto.status===9&&item.status===6)&&
        (!dto.withoutTestFolder||!item.testFolderId)&&(!dto.testFolderId||item.testFolderId===dto.testFolderId)&&(!dto.textSearch||item.question.includes(dto.textSearch)));
       return q.when({content:structuredClone(data.slice((index-1)*size,index*size)),totalElements:data.length});},
      getLegacyDailyListening(dto,index,size){const data=window.records.filter(item=>item.questionType.id===6&&(dto.status===3||item.status===5)&&item.pronounce&&item.motherTongue&&(!dto.textSearch||item.question.includes(dto.textSearch)));
@@ -65,7 +66,7 @@ async function fixture(browser,width,learner=false,record=shared){
    angular.module('Hrm.Question').factory('TestFolderService',['$q',q=>({
     getTestFolders(all,mode){window.folderCalls.push(mode);return q.when(structuredClone(window.folders));},
     saveTestFolder(dto){const saved={...structuredClone(dto),id:dto.id||window.folders.length+1,ownerId:7,ownerName:'Teacher',canManage:true};const index=window.folders.findIndex(item=>item.id===saved.id);if(index>=0)window.folders[index]=saved;else window.folders.push(saved);return q.when(saved);},
-    moveTest(id,folderId){window.moveCalls.push({id,folderId});const deferred=q.defer();function finish(){if(window.failMove){deferred.reject({data:{message:'Di chuyển lỗi thử nghiệm'}});return;}
+    moveTest(id,folderId){window.moveCalls.push({id,folderId});const deferred=q.defer();function finish(){if(window.failMove || window.failMoveId===id){deferred.reject({data:{message:'Di chuyển lỗi thử nghiệm'}});return;}
      const item=window.records.find(item=>item.id===id);item.testFolderId=folderId;item.testFolder=structuredClone(window.folders.find(folder=>folder.id===folderId)||null);deferred.resolve(structuredClone(item));}
      if(window.holdMove)window.releaseMove=finish;else finish();return deferred.promise;}
    })]);
@@ -219,6 +220,63 @@ test('Daily Listening creates nested folders, switches views and moves without r
   assert.equal(await page.evaluate(()=>window.records.find(item=>item.id===22).user.id),8);
   await explorer.locator('.test-explorer-folder').filter({hasText:'Daily'}).click();await file('Listening cũ').waitFor();
   await page.screenshot({path:path.join(repo,'.tmp/daily-listening-folders-'+width+'.png'),fullPage:true});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
+test('Daily Listening toggles publication in both views without fetching the catalog and retains unsaved edits on save',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{const {page,errors}=await fixture(browser,1366);const card=page.locator('article').filter({hasText:'Listening cũ'});
+  await card.getByRole('button',{name:'Sửa bài',exact:true}).click();await page.waitForFunction(()=>qaVm.draft.id===21);
+  await page.getByRole('textbox',{name:'Transcript',exact:true}).fill('My unsaved listening transcript.');
+  await page.getByRole('textbox',{name:/Tên bài/}).fill('My unsaved title');
+  const before=await page.evaluate(()=>{window.keptStatus=document.querySelectorAll('article')[1];return pageCalls.length;});
+  for(const view of ['grid','list']){
+   if(view==='list')await page.getByRole('button',{name:'Chuyển sang dạng danh sách',exact:true}).click();
+   await page.evaluate(()=>holdStatus=true);await card.getByRole('button',{name:'Đã xuất bản',exact:true}).click();
+   assert.equal(await page.getByRole('button',{name:'Lưu bài nghe',exact:true}).isDisabled(),true);
+   await page.evaluate(()=>{holdStatus=false;releaseStatus();});await card.getByRole('button',{name:'Bản nháp',exact:true}).waitFor();
+   assert.equal(await page.evaluate(()=>qaVm.draft.status),6);assert.equal(await page.evaluate(()=>pageCalls.length),before);
+   assert.equal(await page.evaluate(()=>keptStatus===document.querySelectorAll('article')[1]),true);
+   assert.equal(await page.getByRole('textbox',{name:'Transcript',exact:true}).inputValue(),'My unsaved listening transcript.');
+   await page.evaluate(()=>failStatus=true);await card.getByRole('button',{name:'Bản nháp',exact:true}).click();await card.getByRole('alert').waitFor();
+   await page.evaluate(()=>failStatus=false);await card.getByRole('button',{name:'Bản nháp',exact:true}).click();await card.getByRole('button',{name:'Đã xuất bản',exact:true}).waitFor();
+  }
+  await card.getByRole('button',{name:'Đã xuất bản',exact:true}).click();await card.getByRole('button',{name:'Bản nháp',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Lưu bài nghe',exact:true}).click();await page.getByRole('status').filter({hasText:'Đã lưu bài'}).waitFor();
+  assert.equal(await page.evaluate(()=>saveCalls.at(-1).status),6);assert.equal(await page.evaluate(()=>pageCalls.length),before);
+  assert.deepEqual(errors,[]);await page.close();
+ }finally{await browser.close();}
+});
+
+test('Daily Listening folder Cancel and autofocus, bulk partial retry, and dragging a folder retain all descendants',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{for(const width of [1366,390]){
+  const {page,errors}=await fixture(browser,width),explorer=page.locator('test-folder-explorer');
+  for(const [component,label] of [[explorer,'Tạo folder'],[page.locator('test-folder-picker'),'+ Folder']]){
+   await component.getByRole('button',{name:label,exact:true}).click();const input=component.getByRole('textbox',{name:'Tên folder',exact:true});await input.waitFor();
+   await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Tên folder');assert.equal(await input.evaluate(el=>el===document.activeElement),true);
+   await input.fill('Discard me');await component.getByRole('button',{name:'Hủy',exact:true}).click();await input.waitFor({state:'hidden'});
+  }
+  await page.evaluate(()=>{
+   folders.push({id:1,name:'Source',testMode:'DAILY_LISTENING',parentId:null,ownerId:7,canManage:true},{id:2,name:'Child',testMode:'DAILY_LISTENING',parentId:1,ownerId:7,canManage:true},{id:3,name:'Destination',testMode:'DAILY_LISTENING',parentId:null,ownerId:7,canManage:true});
+   records.push({...structuredClone(records[0]),id:24,title:'Keep',question:'Keep'},{...structuredClone(records[0]),id:25,title:'Nested',testFolderId:2,testFolder:folders[1]});
+   angular.element(document.getElementById('qa')).scope().$apply(()=>{qaVm.load();angular.element(document.getElementById('qa')).injector().get('$rootScope').$broadcast('comprehensiveFoldersChanged');});
+  });
+  await page.waitForFunction(()=>document.querySelectorAll('article').length===3);
+  await explorer.getByRole('checkbox',{name:'Chọn bài Listening cũ',exact:true}).check();await explorer.getByRole('checkbox',{name:'Chọn bài Other teacher',exact:true}).check();
+  const before=await page.evaluate(()=>{window.keepMove=document.querySelectorAll('article')[2];window.failMoveId=22;return pageCalls.length;});
+  await explorer.getByRole('button',{name:'Di chuyển đã chọn',exact:true}).click();const dialog=page.getByRole('dialog');
+  await dialog.locator('.test-move-folder').filter({hasText:'Source'}).click();await dialog.getByRole('button',{name:'Di chuyển đến đây',exact:true}).click();
+  await dialog.getByRole('alert').filter({hasText:'Còn 1 bài'}).waitFor();await page.evaluate(()=>delete window.failMoveId);
+  await dialog.getByRole('button',{name:'Di chuyển đến đây',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  assert.deepEqual(await page.evaluate(()=>moveCalls.map(c=>c.id)),[21,22,22]);assert.equal(await page.evaluate(()=>pageCalls.length),before);
+  assert.equal(await page.evaluate(()=>keepMove===document.querySelector('article')),true);
+  await explorer.locator('.test-explorer-folder-entry').filter({hasText:'Source'}).dragTo(explorer.getByRole('button',{name:'Destination',exact:true}));
+  await page.waitForFunction(()=>folders.find(f=>f.id===1).parentId===3);
+  assert.equal(await page.evaluate(()=>folders.find(f=>f.id===2).parentId),1);assert.equal(await page.evaluate(()=>records.find(r=>r.id===25).testFolderId),2);
+  assert.equal(await page.evaluate(()=>pageCalls.length),before);
+  await page.screenshot({path:path.join(repo,'.tmp/daily-listening-multi-move-'+width+'.png'),fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);assert.deepEqual(errors,[]);await page.close();
  }}finally{await browser.close();}
 });

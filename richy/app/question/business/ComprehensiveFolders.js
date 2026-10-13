@@ -64,10 +64,19 @@
             });
         }
         function moveTest(testId, folderId) { return service.moveTest(testId, folderId); }
-        return {options: options, load: load, save: save, applyFilter: applyFilter, contains: contains, moveTest: moveTest};
+        function moveFolder(folder, parentId) {
+            return service.saveTestFolder({id: folder.id, name: folder.name, parentId: parentId, testMode: folder.testMode}).then(function (saved) {
+                Object.keys(cached).forEach(function (key) {
+                    cached[key].forEach(function (item) { if (String(item.id) === String(saved.id)) { angular.extend(item, saved); } });
+                });
+                $rootScope.$broadcast('comprehensiveFolderMoved', saved);
+                return saved;
+            });
+        }
+        return {options: options, load: load, save: save, applyFilter: applyFilter, contains: contains, moveTest: moveTest, moveFolder: moveFolder};
     }]);
 
-    angular.module('Hrm.Question').directive('testFolderPicker', ['ComprehensiveFolders', function (folders) {
+    angular.module('Hrm.Question').directive('testFolderPicker', ['ComprehensiveFolders', '$timeout', function (folders, $timeout) {
         return {
             restrict: 'E', scope: {folderId: '=', showAll: '=?', manage: '=?', allTeachers: '=?', testMode: '=?', onChange: '&'},
             template: '<div class="test-folder-picker">' +
@@ -82,8 +91,17 @@
                 '<label>Tên folder<input class="form-control" type="text" maxlength="200" ng-model="editor.name" aria-label="Tên folder"></label>' +
                 '<p>{{editor.parentId ? "Folder cha: " + parentLabel(editor.parentId) : "Folder ở cấp cao nhất"}}</p>' +
                 '<button type="button" class="btn btn-primary btn-sm" ng-click="save()" ng-disabled="saving || !editor.name.trim()">{{saving ? "Đang lưu..." : "Lưu folder"}}</button> ' +
-                '<button type="button" class="btn btn-default btn-sm" ng-click="editor=null" ng-disabled="saving">Hủy</button></div></div>',
-            link: function (scope) {
+                '<button type="button" class="btn btn-default btn-sm" ng-click="cancelEditor()" ng-disabled="saving">Hủy</button></div></div>',
+            link: function (scope, element) {
+                var editorFocusTimer;
+                function focusEditor() {
+                    $timeout.cancel(editorFocusTimer);
+                    editorFocusTimer = $timeout(function () {
+                        var input = element[0].querySelector('.test-folder-editor input');
+                        if (scope.editor && input) { input.focus(); input.select(); }
+                    });
+                }
+                scope.cancelEditor = function () { if (!scope.saving) { $timeout.cancel(editorFocusTimer); scope.editor = null; scope.error = ''; } };
                 scope.reload = function (refresh) {
                     scope.loading = true; scope.error = '';
                     return folders.load(scope.allTeachers === true, refresh, scope.testMode).then(function (items) {
@@ -94,8 +112,8 @@
                 scope.selected = function () { return (scope.options || []).filter(function (folder) { return folder.id == scope.folderId; })[0] || {}; };
                 scope.parentLabel = function (id) { var match = (scope.options || []).filter(function (folder) { return folder.id == id; })[0]; return match ? match.label : ''; };
                 scope.changed = function () { scope.onChange({folderId: scope.folderId == null ? null : scope.folderId}); };
-                scope.create = function (child) { scope.editor = {name: '', parentId: child ? scope.folderId : null, testMode: scope.testMode || 'COMPREHENSIVE'}; scope.error = ''; };
-                scope.rename = function () { var folder = scope.selected(); scope.editor = {id: folder.id, name: folder.name, parentId: folder.parentId, testMode: scope.testMode || 'COMPREHENSIVE'}; scope.error = ''; };
+                scope.create = function (child) { scope.editor = {name: '', parentId: child ? scope.folderId : null, testMode: scope.testMode || 'COMPREHENSIVE'}; scope.error = ''; focusEditor(); };
+                scope.rename = function () { var folder = scope.selected(); scope.editor = {id: folder.id, name: folder.name, parentId: folder.parentId, testMode: scope.testMode || 'COMPREHENSIVE'}; scope.error = ''; focusEditor(); };
                 scope.save = function () {
                     if (scope.saving || !scope.editor) { return; } scope.saving = true; scope.error = '';
                     folders.save(scope.editor).then(function (saved) {
@@ -103,7 +121,42 @@
                     }, function (response) { scope.error = (response.data || {}).message || 'Không lưu được folder.'; }).finally(function () { scope.saving = false; });
                 };
                 scope.$on('comprehensiveFoldersChanged', function () { scope.reload(true); });
+                scope.$on('comprehensiveFolderMoved', function () { scope.reload(false); });
+                scope.$on('$destroy', function () { $timeout.cancel(editorFocusTimer); });
                 scope.reload();
+            }
+        };
+    }]);
+
+    angular.module('Hrm.Question').directive('testPublicationStatus', ['QuestionService', function (service) {
+        return {
+            restrict: 'E', scope: {test: '=', disabled: '=?', onChanged: '&?', onBusyChange: '&?'},
+            template: '<div class="test-publication-control">' +
+                '<button type="button" class="test-publication-badge" ng-class="{\'is-published\': test.status == 7, \'is-draft\': test.status != 7 && test.status != 8, \'is-hidden\': test.status == 8}" ' +
+                'ng-click="toggle()" ng-disabled="disabled || saving || test.status == 8" aria-pressed="{{test.status == 7}}" title="{{test.status == 7 ? \'Chuyển thành bản nháp\' : (test.status == 8 ? \'Bài đang ẩn\' : \'Xuất bản bài test\')}}">' +
+                '<i class="fa" ng-class="saving ? \'fa-spinner fa-spin\' : (test.status == 7 ? \'fa-check-circle\' : (test.status == 8 ? \'fa-eye-slash\' : \'fa-pencil\'))" aria-hidden="true"></i> ' +
+                '{{saving ? "Đang lưu..." : (test.status == 7 ? "Đã xuất bản" : (test.status == 8 ? "Đã ẩn" : "Bản nháp"))}}</button>' +
+                '<p class="test-folder-error" ng-if="error" role="alert" ng-bind="error"></p></div>',
+            link: function (scope) {
+                scope.toggle = function () {
+                    if (scope.disabled || scope.saving || !scope.test || !scope.test.id || Number(scope.test.status) === 8) { return; }
+                    var status = Number(scope.test.status) === 7 ? 6 : 7;
+                    scope.saving = true; scope.error = '';
+                    if (scope.onBusyChange) { scope.onBusyChange({test: scope.test, busy: true}); }
+                    return service.updateTestStatus(scope.test.id, status).then(function (saved) {
+                        if (!saved || String(saved.id) !== String(scope.test.id) || Number(saved.status) !== status) {
+                            throw new Error('Máy chủ chưa xác nhận thay đổi trạng thái. Bạn có thể thử lại.');
+                        }
+                        var previousStatus = scope.test.status;
+                        scope.test.status = status;
+                        if (scope.onChanged) { scope.onChanged({test: scope.test, previousStatus: previousStatus}); }
+                    }).catch(function (response) {
+                        scope.error = ((response || {}).data || {}).message || (response || {}).message || 'Không đổi được trạng thái. Bài vẫn giữ trạng thái cũ, bạn có thể thử lại.';
+                    }).finally(function () {
+                        scope.saving = false;
+                        if (scope.onBusyChange) { scope.onBusyChange({test: scope.test, busy: false}); }
+                    });
+                };
             }
         };
     }]);
@@ -167,20 +220,111 @@
         }};
     }]);
 
-    angular.module('Hrm.Question').directive('testFolderExplorer', ['ComprehensiveFolders', '$window', '$timeout', function (folders, $window, $timeout) {
+    angular.module('Hrm.Question').directive('testFolderExplorer', ['ComprehensiveFolders', '$window', '$timeout', '$uibModal', '$q', function (folders, $window, $timeout, modal, $q) {
         return {
             restrict: 'E', transclude: true,
-            scope: {folderId: '=', allTeachers: '=?', manage: '=?', testMode: '=?', onChange: '&', onMoved: '&?', moving: '=?', moveDisabled: '=?'},
+            scope: {folderId: '=', files: '=?', allTeachers: '=?', manage: '=?', testMode: '=?', onChange: '&', onMoved: '&?', moving: '=?', moveDisabled: '=?'},
             controller: ['$scope', function (scope) {
                 var explorer = this;
+                var selected = {};
+                explorer.isSelected = function (test) { return !!selected[test.id]; };
+                explorer.toggleSelected = function (test) { if (explorer.canDrag(test) && !scope.moving) { if (selected[test.id]) { delete selected[test.id]; } else { selected[test.id] = test; } } };
+                scope.selectedCount = function () { return Object.keys(selected).length; };
+                scope.clearSelection = function () { if (!scope.moving) { selected = {}; } };
+                scope.selectAllFiles = function () { (scope.files || []).forEach(function (test) { if (explorer.canDrag(test)) { selected[test.id] = test; } }); };
+                scope.$watchCollection('files', function (files) {
+                    var visible = {};
+                    (files || []).forEach(function (test) { visible[test.id] = test; });
+                    Object.keys(selected).forEach(function (id) { if (visible[id]) { selected[id] = visible[id]; } else { delete selected[id]; } });
+                });
                 explorer.canDrag = function (test) { return scope.manage === true && !scope.moveDisabled && !explorer.busy && !!(test && test.id); };
+                explorer.canDragFolder = function (folder) { return explorer.canDrag(folder) && !scope.saving && !scope.editor && !scope.renamingFolder && !!folder.canManage; };
                 explorer.canDrop = function (id) {
+                    if (explorer.draggedFolder) {
+                        var source = explorer.draggedFolder, destination = (scope.folders || []).filter(function (folder) { return String(folder.id) === String(id); })[0];
+                        if (!explorer.canDragFolder(source) || (id != null && (!destination || !destination.canManage || destination.ownerId !== source.ownerId))) { return false; }
+                        var node = destination, seen = {};
+                        while (node && !seen[node.id]) {
+                            if (String(node.id) === String(source.id)) { return false; }
+                            seen[node.id] = true;
+                            node = (scope.folders || []).filter(function (folder) { return String(folder.id) === String(node.parentId); })[0];
+                        }
+                        return !node;
+                    }
                     if (!explorer.canDrag(explorer.draggedTest)) { return false; }
                     return id == null || (scope.folders || []).some(function (folder) { return String(folder.id) === String(id) && folder.canManage; });
                 };
                 // Keep feedback visible during dragging so drop targets do not shift under the pointer.
                 explorer.startDrag = function (test) { explorer.draggedTest = test; scope.draggingTest = test; };
-                explorer.endDrag = function () { explorer.draggedTest = null; scope.draggingTest = null; };
+                explorer.startFolderDrag = function (folder) { explorer.draggedFolder = folder; scope.draggingTest = folder; };
+                explorer.endDrag = function () { explorer.draggedTest = explorer.draggedFolder = null; scope.draggingTest = null; };
+                explorer.dropFolder = function (folder, id) {
+                    if (!explorer.canDrop(id) || String(folder.parentId) === String(id)) { return; }
+                    explorer.busy = true; scope.moving = true; scope.moveError = scope.moveMessage = '';
+                    scope.$evalAsync(function () {
+                        folders.moveFolder(folder, id).then(function () {
+                            scope.moveMessage = 'Đã chuyển folder “' + folder.name + '” cùng toàn bộ folder con và bài bên trong.';
+                        }, function (response) { scope.moveError = (response.data || {}).message || 'Không chuyển được folder. Folder vẫn ở vị trí cũ, bạn có thể kéo lại.'; })
+                            .finally(function () { explorer.busy = false; scope.moving = false; });
+                    });
+                };
+                scope.moveSelected = function () {
+                    if (!scope.selectedCount() || scope.moveDisabled || scope.moving || explorer.busy) { return; }
+                    scope.moveError = scope.moveMessage = '';
+                    var tests = Object.keys(selected).map(function (id) { return selected[id]; });
+                    explorer.busy = true;
+                    var instance = modal.open({
+                        templateUrl: 'question/views/comprehensive_move_test_folder_modal.html?v=' + encodeURIComponent($window.APP_VERSION || 'dev'),
+                        controllerAs: 'move',
+                        controller: ['$scope', '$uibModalInstance', function (dialogScope, dialogInstance) {
+                            var dialog = this;
+                            dialog.multiple = true; dialog.testTitle = 'Đã chọn ' + tests.length + ' bài test';
+                            dialog.selectedFolderId = scope.folderId || null; dialog.choices = []; dialog.collapsed = {}; dialog.failures = [];
+                            dialog.load = function () {
+                                dialog.loading = true; dialog.error = '';
+                                return folders.load(false, false, scope.testMode).then(function (items) {
+                                    dialog.choices = folders.options(items.filter(function (folder) { return folder.canManage; }), false);
+                                }, function () { dialog.error = 'Không tải được folder. Bạn có thể thử lại.'; }).finally(function () { dialog.loading = false; });
+                            };
+                            dialog.label = function (id) { var folder = dialog.choices.filter(function (item) { return String(item.id) === String(id); })[0]; return id == null ? 'Folder của tôi (cấp gốc)' : (folder || {}).label; };
+                            dialog.hasChildren = function (folder) { return dialog.choices.some(function (item) { return item.parentId === folder.id; }); };
+                            dialog.visible = function (folder) {
+                                var id = folder.parentId, seen = {};
+                                while (id != null && !seen[id]) { if (dialog.collapsed[id]) { return false; } seen[id] = true; var parent = dialog.choices.filter(function (item) { return item.id === id; })[0]; id = parent ? parent.parentId : null; }
+                                return true;
+                            };
+                            dialog.select = function (id) { if (!dialog.saving) { dialog.selectedFolderId = id; } };
+                            dialog.canMove = function () { return !dialog.loading && !dialog.saving && !scope.moveDisabled && tests.length > 0 && (dialog.selectedFolderId == null || dialog.choices.some(function (folder) { return folder.id === dialog.selectedFolderId; })); };
+                            dialog.save = function () {
+                                if (!dialog.canMove()) { return; }
+                                dialog.saving = true; scope.moving = true; dialog.error = ''; dialog.failures = []; dialog.completed = 0;
+                                var destination = dialog.selectedFolderId, succeeded = [], failed = [], queue = $q.when();
+                                tests.forEach(function (test) {
+                                    queue = queue.then(function () {
+                                        var current = test.testFolder ? test.testFolder.id : null;
+                                        return (String(current) === String(destination) ? $q.when(test) : folders.moveTest(test.id, destination)).then(function (saved) {
+                                            if (!saved || String(saved.id) !== String(test.id) || String(saved.testFolder ? saved.testFolder.id : null) !== String(destination)) { throw new Error('Máy chủ chưa xác nhận vị trí mới.'); }
+                                            succeeded.push(saved); delete selected[test.id]; dialog.completed++;
+                                        }).catch(function (response) {
+                                            failed.push(test); dialog.failures.push({id: test.id, title: test.title || test.question, message: ((response || {}).data || {}).message || (response || {}).message || 'Không chuyển được bài.'});
+                                        });
+                                    });
+                                });
+                                return queue.finally(function () {
+                                    succeeded.forEach(function (saved, index) { if (scope.onMoved) { scope.onMoved({test: saved, deferFill: index < succeeded.length - 1}); } });
+                                    tests = failed; dialog.saving = false; scope.moving = false;
+                                    scope.moveMessage = 'Đã chuyển ' + succeeded.length + ' bài đến ' + dialog.label(destination) + '.';
+                                    if (failed.length) { dialog.testTitle = 'Còn ' + failed.length + ' bài đã chọn'; dialog.error = 'Còn ' + failed.length + ' bài chưa chuyển. Các bài này vẫn được chọn để thử lại.'; }
+                                    else { dialogInstance.close(); }
+                                });
+                            };
+                            dialog.cancel = function () { if (!dialog.saving) { dialogInstance.dismiss('cancel'); } };
+                            dialogScope.$on('modal.closing', function (event) { if (dialog.saving) { event.preventDefault(); } });
+                            dialog.load();
+                        }]
+                    });
+                    instance.result.finally(function () { explorer.busy = false; }).catch(angular.noop);
+                };
                 explorer.dropTest = function (test, id) {
                     if (!explorer.canDrop(id)) { return; }
                     var oldId = test.testFolder ? test.testFolder.id : null;
@@ -198,6 +342,15 @@
             }],
             templateUrl: function () { return 'question/views/test_folder_explorer.html?v=' + encodeURIComponent($window.APP_VERSION || 'dev'); },
             link: function (scope, element) {
+                var editorFocusTimer;
+                function focusEditor() {
+                    $timeout.cancel(editorFocusTimer);
+                    editorFocusTimer = $timeout(function () {
+                        var input = element[0].querySelector('.test-folder-editor input');
+                        if (scope.editor && input) { input.focus(); input.select(); }
+                    });
+                }
+                scope.cancelEditor = function () { if (!scope.saving) { $timeout.cancel(editorFocusTimer); scope.editor = null; scope.error = ''; } };
                 var storageKey = scope.testMode && scope.testMode !== 'COMPREHENSIVE' ? 'testFolderView:' + scope.testMode : 'comprehensiveTestFolderView';
                 scope.viewMode = 'grid';
                 try { scope.viewMode = $window.localStorage.getItem(storageKey) === 'list' ? 'list' : 'grid'; } catch (ignoreStorage) {}
@@ -229,7 +382,7 @@
                     return folders.load(scope.allTeachers === true, refresh, scope.testMode).then(function (items) { scope.folders = items; rebuild(); },
                         function () { scope.error = 'Không tải được folder.'; }).finally(function () { scope.loading = false; });
                 };
-                scope.create = function () { scope.editor = {name: '', parentId: scope.folderId || null, testMode: scope.testMode || 'COMPREHENSIVE'}; scope.error = ''; };
+                scope.create = function () { scope.editor = {name: '', parentId: scope.folderId || null, testMode: scope.testMode || 'COMPREHENSIVE'}; scope.error = ''; focusEditor(); };
                 scope.startRenameFolder = function (folder, event) {
                     if (event) { event.preventDefault(); event.stopPropagation(); }
                     if (!scope.manage || !folder.canManage || scope.renamingFolderSaving || scope.moving) { return; }
@@ -237,6 +390,7 @@
                     scope.renameFolderError = '';
                     $timeout(function () { var input = element[0].querySelector('.test-explorer-folder-rename input'); if (input) { input.focus(); input.select(); } });
                 };
+                scope.cancelRenameFolder = function () { if (!scope.renamingFolderSaving) { scope.renamingFolder = null; scope.renameFolderError = ''; } };
                 scope.renameFolderKey = function (event) {
                     if (event.key === 'Escape' && !scope.renamingFolderSaving) { event.preventDefault(); scope.renamingFolder = null; }
                     if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); scope.saveRenamedFolder(); }
@@ -251,7 +405,7 @@
                     }, function (response) { scope.renameFolderError = (response.data || {}).message || 'Không lưu được tên folder. Bạn có thể thử lại.'; })
                         .finally(function () { scope.renamingFolderSaving = false; });
                 };
-                scope.rename = function () { scope.editor = {id: scope.current.id, name: scope.current.name, parentId: scope.current.parentId, testMode: scope.testMode || 'COMPREHENSIVE'}; scope.error = ''; };
+                scope.rename = function () { scope.editor = {id: scope.current.id, name: scope.current.name, parentId: scope.current.parentId, testMode: scope.testMode || 'COMPREHENSIVE'}; scope.error = ''; focusEditor(); };
                 scope.save = function () {
                     if (scope.saving || !scope.editor) { return; } scope.saving = true; scope.error = '';
                     folders.save(scope.editor).then(function () { scope.editor = null; return scope.reload(true); },
@@ -259,11 +413,39 @@
                 };
                 scope.$watch('folderId', rebuild);
                 scope.$on('comprehensiveFoldersChanged', function () { scope.reload(true); });
+                scope.$on('comprehensiveFolderMoved', function () { rebuild(); });
+                scope.$on('$destroy', function () { $timeout.cancel(editorFocusTimer); });
                 scope.reload();
             }
         };
     }]);
 
+    angular.module('Hrm.Question').directive('testFolderSelect', function () {
+        return {restrict: 'E', require: '^testFolderExplorer', scope: {test: '=', disabled: '=?'},
+            template: '<label class="test-file-select" title="Chọn bài để di chuyển"><input type="checkbox" ng-checked="selected()" ng-click="toggle($event)" ng-disabled="disabled || !canSelect()" aria-label="Chọn bài {{test.title || test.question}}"><span class="sr-only">Chọn bài</span></label>',
+            link: function (scope, element, attrs, explorer) {
+                scope.selected = function () { return explorer.isSelected(scope.test); };
+                scope.canSelect = function () { return explorer.canDrag(scope.test); };
+                scope.toggle = function (event) { event.stopPropagation(); if (!scope.disabled) { explorer.toggleSelected(scope.test); } };
+                scope.$watch(scope.selected, function (value) { var card = element[0].closest('.test-explorer-file'); if (card) { card.classList.toggle('is-checked', value); } });
+            }};
+    });
+    angular.module('Hrm.Question').directive('testFolderContainerDrag', function () {
+        return {restrict: 'A', require: '^testFolderExplorer', link: function (scope, element, attrs, explorer) {
+            scope.$watch(function () { return explorer.canDragFolder(scope.$eval(attrs.testFolderContainerDrag)); }, function (enabled) { element.attr('draggable', enabled ? 'true' : 'false'); });
+            function start(event) {
+                var nativeEvent = event.originalEvent || event, folder = scope.$eval(attrs.testFolderContainerDrag);
+                if (!explorer.canDragFolder(folder) || !nativeEvent.dataTransfer) { event.preventDefault(); return; }
+                event.stopPropagation(); nativeEvent.dataTransfer.effectAllowed = 'move';
+                nativeEvent.dataTransfer.setData('application/x-test-folder', String(folder.id));
+                nativeEvent.dataTransfer.setData('text/plain', folder.name);
+                explorer.startFolderDrag(folder); element.addClass('is-dragging'); scope.$evalAsync(angular.noop);
+            }
+            function end() { explorer.endDrag(); element.removeClass('is-dragging'); scope.$evalAsync(angular.noop); }
+            element.on('dragstart', start); element.on('dragend', end);
+            scope.$on('$destroy', function () { element.off('dragstart', start); element.off('dragend', end); });
+        }};
+    });
     angular.module('Hrm.Question').directive('testFolderDrag', function () {
         return {
             restrict: 'A', require: '^testFolderExplorer',
@@ -304,10 +486,11 @@
                     var id = scope.$eval(attrs.testFolderDrop), test = explorer.draggedTest;
                     if (!explorer.canDrop(id)) { return; }
                     event.preventDefault(); event.stopPropagation();
-                    explorer.dropTest(test, id == null ? null : id);
+                    if (explorer.draggedFolder) { explorer.dropFolder(explorer.draggedFolder, id == null ? null : id); }
+                    else { explorer.dropTest(test, id == null ? null : id); }
                     explorer.endDrag(); element.removeClass('is-drop-target'); scope.$evalAsync(angular.noop);
                 }
-                scope.$watch(function () { return explorer.draggedTest; }, function (test) { if (!test) { element.removeClass('is-drop-target'); } });
+                scope.$watch(function () { return explorer.draggedTest || explorer.draggedFolder; }, function (test) { if (!test) { element.removeClass('is-drop-target'); } });
                 element.on('dragover', over); element.on('dragleave', leave); element.on('drop', drop);
                 scope.$on('$destroy', function () { element.off('dragover', over); element.off('dragleave', leave); element.off('drop', drop); });
             }

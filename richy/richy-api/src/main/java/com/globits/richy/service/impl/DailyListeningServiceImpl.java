@@ -42,12 +42,13 @@ public class DailyListeningServiceImpl {
 
     @Transactional(readOnly = true)
     public Page<QuestionDto> list(QuestionDto search, int pageIndex, int pageSize, boolean legacy) {
-        if (legacy) { administrator(); }
+        boolean authoring = !legacy && search != null && search.getStatus() == 9;
+        if (legacy || authoring) { administrator(); }
         int size = Math.min(100, Math.max(1, pageSize));
         PageRequest page = new PageRequest(Math.max(0, pageIndex - 1), size);
         String where = legacy
                 ? "s.questionType.id = 6 and s.parent is null and s.pronounce is not null and length(trim(s.pronounce)) > 0 and s.motherTongue is not null and length(trim(s.motherTongue)) > 0"
-                : "s.questionType.id = 11 and s.testFormat = 'DAILY_LISTENING' and s.status = 7 and s.parent is null";
+                : "s.questionType.id = 11 and s.testFormat = 'DAILY_LISTENING' and s.parent is null" + (authoring ? " and s.status in (6, 7)" : " and s.status = 7");
         if (legacy && (search == null || search.getStatus() != 3)) { where += " and s.status = 5"; }
         String text = search == null || search.getTextSearch() == null ? "" : search.getTextSearch().trim();
         List<Long> folderIds = Collections.emptyList();
@@ -90,6 +91,7 @@ public class DailyListeningServiceImpl {
         }
         // Update content only; never overwrite ownership, review counters, answers or relationships from a client DTO.
         question.setQuestion(title); question.setTitle(title); question.setPronounce(audio); question.setMotherTongue(dto.getMotherTongue());
+        question.setStatus(dto.getStatus() == 6 ? 6 : 7);
         question.setTestFolder(folder); touch(question, author);
         return new QuestionDto(questions.save(question));
     }
@@ -122,7 +124,8 @@ public class DailyListeningServiceImpl {
         if (type == null) { throw new IllegalArgumentException("Chưa có cấu hình loại bài test (11)."); }
         return type;
     }
-    private void validateContent(String audio, String transcript) {
+    public static void validateForPublishing(Question question) { validateContent(question.getPronounce(), question.getMotherTongue()); }
+    private static void validateContent(String audio, String transcript) {
         if (audio == null || !ComprehensiveListeningValidation.isSupportedUrl(audio.trim())) {
             throw new IllegalArgumentException("Cần link audio hoặc YouTube hợp lệ (http/https).");
         }

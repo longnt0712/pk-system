@@ -32,14 +32,15 @@
                     <a class="btn btn-default" href="daily_listening_tests"><i class="fa fa-book" aria-hidden="true"></i> Mở thư viện Daily Listening</a>
                 </div>
             </div>
-            <test-folder-explorer folder-id="vm.catalogTestFolderId" test-mode="vm.folderTestMode" manage="true" moving="vm.catalogMovePending" move-disabled="vm.saving || vm.editing || vm.loading || vm.importDialogOpen || vm.catalogMoveDialogOpen" on-change="vm.applyCatalogFolderFilter(folderId)" on-moved="vm.catalogTestMoved(test)">
+            <test-folder-explorer files="vm.items" folder-id="vm.catalogTestFolderId" test-mode="vm.folderTestMode" manage="true" moving="vm.catalogMovePending" move-disabled="vm.saving || vm.editing || vm.loading || vm.importDialogOpen || vm.catalogMoveDialogOpen || vm.isCatalogStatusSaving()" on-change="vm.applyCatalogFolderFilter(folderId)" on-moved="vm.catalogTestMoved(test, deferFill)">
                 <article class="test-explorer-file daily-listening-catalog-item" test-folder-drag="item" ng-repeat="item in vm.items track by item.id" ng-class="{'is-selected': vm.draft.id == item.id}" title="Kéo bài vào folder để chuyển và lưu">
                     <div class="test-explorer-file-content">
-                        <div class="test-explorer-file-main"><h3 class="test-explorer-name" ng-bind="item.title || item.question"></h3><small class="test-explorer-status">Đã xuất bản</small></div>
+                        <test-folder-select test="item" disabled="vm.catalogStatusUpdating[item.id]"></test-folder-select>
+                        <div class="test-explorer-file-main"><h3 class="test-explorer-name" ng-bind="item.title || item.question"></h3><test-publication-status test="item" disabled="vm.catalogMovePending || vm.catalogMoveDialogOpen || vm.saving || vm.editing || vm.importDialogOpen" on-busy-change="vm.catalogStatusUpdating[test.id]=busy" on-changed="vm.catalogTestStatusChanged(test, previousStatus)"></test-publication-status></div>
                         <div class="test-explorer-file-actions">
-                            <button type="button" ng-click="vm.edit(item)" ng-disabled="vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen">Sửa bài</button>
-                            <a draggable="false" target="_blank" rel="noopener" ng-href="{{vm.practiceUrl(item)}}">Mở bài nghe</a>
-                            <button type="button" ng-click="vm.openCatalogMoveDialog(item)" ng-disabled="vm.saving || vm.editing || vm.loading || vm.catalogMovePending || vm.catalogMoveDialogOpen || vm.importDialogOpen"><i class="fa fa-folder-open-o" aria-hidden="true"></i> Di chuyển</button>
+                            <button type="button" class="test-explorer-action--edit" ng-click="vm.edit(item)" ng-disabled="vm.catalogStatusUpdating[item.id] || vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen"><i class="fa fa-pencil" aria-hidden="true"></i> Sửa bài</button>
+                            <a class="test-explorer-action--view" draggable="false" target="_blank" rel="noopener" ng-href="{{vm.practiceUrl(item)}}"><i class="fa fa-headphones" aria-hidden="true"></i> Mở bài nghe</a>
+                            <button type="button" class="test-explorer-action--move" ng-click="vm.openCatalogMoveDialog(item)" ng-disabled="vm.saving || vm.editing || vm.loading || vm.catalogMovePending || vm.catalogMoveDialogOpen || vm.importDialogOpen || vm.isCatalogStatusSaving()"><i class="fa fa-folder-open-o" aria-hidden="true"></i> Di chuyển</button>
                         </div>
                     </div>
                 </article>
@@ -51,7 +52,7 @@
         </div></div>
     </section>
     <section id="daily-listening-editor" class="col-md-12 daily-listening-editor reading-builder-section" aria-label="Soạn Daily Listening" aria-busy="{{vm.editing || vm.saving}}">
-        <form ng-submit="vm.save()"><fieldset ng-disabled="vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen">
+        <form ng-submit="vm.save()"><fieldset ng-disabled="vm.catalogStatusUpdating[vm.draft.id] || vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen">
             <div class="portlet light bordered"><div class="portlet-body"><div class="row"><div class="col-md-6 col-md-offset-3">
                 <h3 class="reading-builder-section-title"><span>1</span> {{vm.draft.id ? 'Sửa bài nghe' : 'Bài nghe mới'}}</h3>
                 <p ng-if="vm.editing" role="status">Đang tải nội dung bài...</p>

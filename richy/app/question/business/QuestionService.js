@@ -365,13 +365,9 @@
             if (!id) {
                 return $q.reject({data: {message: 'Test id is required.'}});
             }
-            return utils.resolveAlt(
-                baseUrl + restUrl + '/update_test_status/' + id + '/' + status,
-                'POST',
-                null,
-                null,
-                {'Content-Type': 'application/json; charset=utf-8'}
-            );
+            return $http.post(baseUrl + restUrl + '/update_test_status/' + id + '/' + status, null, {
+                headers: {'Content-Type': 'application/json; charset=utf-8'}
+            }).then(function (response) { return response.data; }, function (response) { return $q.reject(response); });
         }
 
         function getFlashCardLevels(searchDto) {

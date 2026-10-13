@@ -66,6 +66,18 @@ public class TestFolderServiceTest {
         }
         assertEquals(2, service.list(false).size());
     }
+    @Test public void reparentingKeepsNestedFoldersAndTheirTestsAttachedInEveryMode() {
+        for (String mode : Arrays.asList("READING", "LISTENING", "WRITING", "COMPREHENSIVE", "DAILY_LISTENING")) {
+            TestFolderDto source = saveMode(mode, "Source", null), destination = saveMode(mode, "Destination", null);
+            TestFolderDto child = saveMode(mode, "Child", source.getId());
+            test.setTestFolder(folders.get(child.getId())); Object attachment = test.getTestFolder();
+            source.setParentId(destination.getId()); service.save(source);
+            assertEquals(destination.getId(), folders.get(source.getId()).getParent().getId());
+            assertEquals(source.getId(), folders.get(child.getId()).getParent().getId()); assertSame(attachment, test.getTestFolder());
+            assertEquals(Arrays.asList(destination.getId(), source.getId(), child.getId()), service.descendantIds(destination.getId(), true));
+        }
+        verify(questions, never()).save(any(Question.class));
+    }
     @Test public void folderParentAndRenameCannotChangeTestMode() {
         TestFolderDto root = saveMode("READING", "Practice", null);
         try { saveMode("LISTENING", "Week 1", root.getId()); fail("Expected mode mismatch"); } catch (IllegalArgumentException expected) {}

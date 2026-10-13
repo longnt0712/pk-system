@@ -87,6 +87,12 @@ public class DailyListeningServiceTest {
         service.save(input); assertSame(originalOwner, legacy.getUser()); assertEquals(142, legacy.getTimeReviewd());
         assertEquals(1, legacy.getQuestionAnswers().size()); assertEquals("A new transcript.", legacy.getMotherTongue());
     }
+    @Test public void savingAnUnpublishedLessonKeepsItDraftAndPreservesItsHistory() {
+        service.migrate(21L); legacy.setStatus(6);
+        QuestionDto input = content(); input.setId(21L); input.setStatus(6);
+        assertEquals(6, service.save(input).getStatus()); assertEquals(142, legacy.getTimeReviewd());
+        assertSame(originalOwner, legacy.getUser()); assertEquals(1, legacy.getQuestionAnswers().size());
+    }
     @Test public void onlyDailyFoldersCanBeUsedAndAnOrdinaryFlashcardCannotBeOverwritten() {
         QuestionDto input = content(); input.setId(21L);
         try { service.save(input); fail(); } catch (IllegalArgumentException expected) {}

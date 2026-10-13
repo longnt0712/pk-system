@@ -77,6 +77,7 @@ public class ComprehensiveTopicSearchTest {
         Question shared = question("Shared daily", 7, "DAILY_LISTENING"); shared.setQuestionType(dailyType); shared.setQuestion("Shared daily"); shared.setUser(owner); shared.setTimeReviewd(142);
         shared.setPronounce("https://school.test/audio.mp3"); shared.setMotherTongue("Shared transcript");
         Question hidden = question("Hidden daily", 8, "DAILY_LISTENING"); hidden.setQuestionType(dailyType);
+        Question unpublished = question("Draft daily", 6, "DAILY_LISTENING"); unpublished.setQuestionType(dailyType);
         Question old = question("Legacy listening", 5, null); old.setQuestionType(cardType); old.setTimeReviewd(142); old.setQuestion("Legacy listening");
         old.setPronounce("https://school.test/old.mp3"); old.setMotherTongue("Old transcript");
         Question unmarked = question("Legacy unmarked", 1, null); unmarked.setQuestionType(cardType); unmarked.setQuestion("Legacy unmarked");
@@ -90,7 +91,15 @@ public class ComprehensiveTopicSearchTest {
         Page<QuestionDto> page = daily.list(search, 1, 12, false);
         assertEquals(1, page.getTotalElements()); assertEquals(shared.getId(), page.getContent().get(0).getId());
         assertEquals(142, page.getContent().get(0).getTimeReviewd());
-        page = daily.list(search, 1, 1, true); assertEquals(2, page.getTotalElements()); assertEquals(1, page.getContent().size());
+        search.setStatus(9); assertEquals(2, daily.list(search, 1, 12, false).getTotalElements());
+        assertEquals(1, daily.list(search, 2, 1, false).getContent().size());
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(owner, "",
+                Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_VIEWER"))));
+        try { daily.list(search, 1, 12, false); fail("Students cannot request drafts"); } catch (org.springframework.security.access.AccessDeniedException expected) {}
+        search.setStatus(7); assertEquals(1, daily.list(search, 1, 12, false).getTotalElements());
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(owner, "",
+                Collections.singletonList(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
+        search.setStatus(3); page = daily.list(search, 1, 1, true); assertEquals(2, page.getTotalElements()); assertEquals(1, page.getContent().size());
         search.setTextSearch("unmarked"); assertEquals(unmarked.getId(), daily.list(search, 1, 20, true).getContent().get(0).getId());
         com.globits.richy.repository.QuestionTypeRepository types = mock(com.globits.richy.repository.QuestionTypeRepository.class);
         when(types.getOne(11L)).thenReturn(dailyType); ReflectionTestUtils.setField(service, "questionTypeRepository", types);

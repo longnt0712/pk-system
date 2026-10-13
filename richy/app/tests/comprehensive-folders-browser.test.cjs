@@ -7,7 +7,7 @@ const libraryHtml=fs.readFileSync(path.join(app,'question/views/ielts_test_libra
 const builderHtml=fs.readFileSync(path.join(app,'question/views/create_ielts_reading_test.html'),'utf8');
 const builderSource=fs.readFileSync(path.join(app,'question/controllers/IELTSCreateReadingTestController.js'),'utf8');
 function section(source,start,end) {const from=source.indexOf(start),to=source.indexOf(end,from);assert.ok(from>=0 && to>from,start);return source.slice(from,to);}
-const teacherHtml=section(builderHtml,'<test-folder-explorer folder-id="vm.catalogTestFolderId"','</test-folder-explorer>')+'</test-folder-explorer>'+
+const teacherHtml=section(builderHtml,'<test-folder-explorer files="vm.ieltsReadingTests"','</test-folder-explorer>')+'</test-folder-explorer>'+
  section(builderHtml,'<ul ng-if="vm.catalogPaginationTotal()', '</ul>')+'</ul>'+
  '<h3>Lưu bài vào folder</h3><test-folder-picker folder-id="vm.selectedTestFolderId" test-mode="vm.folderTestMode" manage="true"></test-folder-picker>';
 const teacherCode=section(builderSource,'        vm.applyCatalogFolderFilter =','        vm.ieltsReadingTest =')+
@@ -50,8 +50,9 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
      window.testData.forEach(test=>{test.testFormat=testMode==='WRITING'||testMode==='COMPREHENSIVE'?testMode:null;test.pronounce=testMode==='LISTENING'?'audio.mp3':null;test.hasWritingTask1=test.hasWritingTask2=testMode==='WRITING';});
      window.testRequests=[];
      window.moveCalls=[];
-     window.renameCalls=[];
+     window.renameCalls=[];window.statusCalls=[];window.folderSaveCalls=[];
      return {
+      updateTestStatus(id,status){window.statusCalls.push({id,status});const d=q.defer();function finish(){if(window.failStatus){d.reject({data:{message:'Xuất bản lỗi thử nghiệm'}});return;}const row=window.testData.find(item=>item.id===id);row.status=status;d.resolve({id,status});}if(window.holdStatus)window.releaseStatus=finish;else finish();return d.promise;},
       getLearningDrafts(){return q.when([]);},
       updateTestTitle(id,title){
        window.renameCalls.push({id,title});const deferred=q.defer();
@@ -62,7 +63,7 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
        if(window.holdRename)window.releaseRename=finish;else finish();return deferred.promise;
       },
       getTestFolders(all,mode){return window.failFolders?q.reject({status:500}):q.when(window.folderData.filter(folder=>folder.testMode===(mode||'COMPREHENSIVE')&&(all || folder.ownerId===7)));},
-      saveTestFolder(dto){
+      saveTestFolder(dto){window.folderSaveCalls.push(structuredClone(dto));
        if(window.failSave)return q.reject({data:{message:'Đã có folder cùng tên.'}});
        let folder=window.folderData.find(item=>item.id===dto.id);
        if(folder)Object.assign(folder,dto);else{folder={...dto,id:10+window.folderData.length,ownerId:7,ownerName:'Teacher A',canManage:true};window.folderData.push(folder);}
@@ -71,7 +72,7 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
       moveTest(testId,folderId){
        window.moveCalls.push({testId,folderId});const deferred=q.defer();
        function finish(){
-        if(window.failMove){deferred.reject({data:{message:'Không lưu được vị trí. Bài vẫn ở folder cũ.'}});return;}
+        if(window.failMove || window.failMoveId===testId){deferred.reject({data:{message:'Không lưu được vị trí. Bài vẫn ở folder cũ.'}});return;}
         const test=window.testData.find(item=>item.id===testId);test.testFolder=window.folderData.find(folder=>folder.id===folderId)||null;
         deferred.resolve({...test});
        }
@@ -530,6 +531,87 @@ test('every teacher test has a move dialog with an owned folder tree, root selec
   await dialog.getByRole('button',{name:'Hủy',exact:true}).click();await dialog.waitFor({state:'hidden'});
   assert.equal(await page.evaluate(()=>window.moveCalls.length),movesBeforeCancel);
   assert.equal(await file('Daily Listening cơ bản').count(),1);
+  assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
+test('publication badges toggle only the selected record in all modes and views, preserve editor text, and retry failures',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE']){
+  const {page,errors}=await fixture(browser,1366,true,mode);
+  await page.evaluate(()=>{testData.push({id:15,title:'Keep this card',status:7,userId:7,testFolder:null});angular.element(document.getElementById('qa')).scope().$apply(()=>qaVm.getPageCreateIELTSReadingTest());});
+  await page.waitForFunction(()=>document.querySelectorAll('article').length===2);
+  const card=page.locator('article').filter({hasText:'Bài cũ chưa vào folder'});
+  for(const view of ['grid','list']){
+   if(view==='list')await page.getByRole('button',{name:'Chuyển sang dạng danh sách',exact:true}).click();
+   await card.getByRole('checkbox').check();
+   const before=await page.evaluate(()=>{window.keptNode=document.querySelectorAll('article')[1];qaVm.ieltsReadingTest={id:11,title:'Unsaved title',status:7,subQuestions:[{question:'Unsaved question'}]};window.holdStatus=true;return testRequests.length;});
+   await card.getByRole('button',{name:'Đã xuất bản',exact:true}).click();
+   assert.equal(await card.getByRole('button',{name:'Đang lưu...',exact:true}).isDisabled(),true);
+   assert.equal(await card.getByRole('button',{name:'Di chuyển',exact:true}).isDisabled(),true);
+   await page.evaluate(()=>{holdStatus=false;releaseStatus();});await card.getByRole('button',{name:'Bản nháp',exact:true}).waitFor();
+   assert.equal(await page.evaluate(()=>keptNode===document.querySelectorAll('article')[1]),true);
+   assert.equal(await page.evaluate(()=>testRequests.length),before);
+   assert.equal(await page.evaluate(()=>qaVm.ieltsReadingTest.status),6);
+   assert.equal(await page.evaluate(()=>qaVm.ieltsReadingTest.subQuestions[0].question),'Unsaved question');
+   assert.equal(await card.getByRole('checkbox').isChecked(),true);
+   await page.evaluate(()=>failStatus=true);await card.getByRole('button',{name:'Bản nháp',exact:true}).click();await card.getByRole('alert').waitFor();
+   assert.equal(await page.evaluate(()=>qaVm.ieltsReadingTests.find(row=>row.id===11).status),6);
+   await page.evaluate(()=>failStatus=false);await card.getByRole('button',{name:'Bản nháp',exact:true}).click();await card.getByRole('button',{name:'Đã xuất bản',exact:true}).waitFor();
+   assert.equal(await page.evaluate(()=>testRequests.length),before);
+  }
+  assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
+test('folder create and rename autofocus and Cancel closes the actual form in every mode, explorer and picker',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE']){
+  const {page,errors}=await fixture(browser,1366,true,mode);
+  for(const [component,createName] of [[page.locator('test-folder-explorer'),'Tạo folder'],[page.locator('test-folder-picker'),'+ Folder']]){
+   await component.getByRole('button',{name:createName,exact:true}).click();const input=component.getByRole('textbox',{name:'Tên folder',exact:true});await input.waitFor();
+   await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Tên folder');assert.equal(await input.evaluate(el=>el===document.activeElement),true);await input.fill('Not saved');
+   await component.getByRole('button',{name:'Hủy',exact:true}).click();await input.waitFor({state:'hidden'});
+   await component.getByRole('button',{name:createName,exact:true}).click();await input.waitFor();assert.equal(await input.inputValue(),'');await component.getByRole('button',{name:'Hủy',exact:true}).click();
+  }
+  await page.getByRole('button',{name:'Listening',exact:true}).click();
+  const explorer=page.locator('test-folder-explorer');await explorer.getByRole('button',{name:'Đổi tên folder',exact:true}).click();
+  const input=explorer.getByRole('textbox',{name:'Tên folder',exact:true});await input.waitFor();
+  await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Tên folder');assert.equal(await input.evaluate(el=>el===document.activeElement&&el.selectionEnd-el.selectionStart===el.value.length),true);
+  await explorer.getByRole('button',{name:'Hủy',exact:true}).click();await input.waitFor({state:'hidden'});
+  assert.equal(await page.evaluate(()=>folderSaveCalls.length),0);assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
+test('bulk move retries only failed selected files, retains other cards, and folder dragging preserves its subtree without list reloads',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE']){
+  const {page,errors}=await fixture(browser,1366,true,mode);
+  await page.evaluate(mode=>{
+   testData.push({id:15,title:'Bulk second',status:7,userId:7,testFolder:null},{id:16,title:'Untouched',status:7,userId:7,testFolder:null});
+   folderData.push({id:4,name:'Destination',parentId:null,ownerId:7,ownerName:'Teacher A',canManage:true,testMode:mode});
+   angular.element(document.getElementById('qa')).scope().$apply(()=>{qaVm.getPageCreateIELTSReadingTest();angular.element(document.getElementById('qa')).injector().get('$rootScope').$broadcast('comprehensiveFoldersChanged');});
+  },mode);
+  await page.waitForFunction(()=>document.querySelectorAll('article').length===3);
+  const card=title=>page.locator('article').filter({hasText:title});await card('Bài cũ').getByRole('checkbox').check();await card('Bulk second').getByRole('checkbox').check();
+  const before=await page.evaluate(()=>{window.keepBulk=document.querySelectorAll('article')[2];window.failMoveId=15;return testRequests.length;});
+  await page.getByRole('button',{name:'Di chuyển đã chọn',exact:true}).click();const dialog=page.getByRole('dialog');
+  await dialog.locator('.test-move-folder').filter({hasText:'Listening'}).click();await dialog.getByRole('button',{name:'Di chuyển đến đây',exact:true}).click();
+  await dialog.getByRole('alert').filter({hasText:'Còn 1 bài'}).waitFor();assert.equal(await card('Bài cũ').count(),0);assert.equal(await card('Bulk second').getByRole('checkbox').isChecked(),true);
+  await page.evaluate(()=>delete window.failMoveId);await dialog.getByRole('button',{name:'Di chuyển đến đây',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  assert.deepEqual(await page.evaluate(()=>moveCalls.map(c=>c.testId)),[11,15,15]);assert.equal(await page.evaluate(()=>testRequests.length),before);
+  assert.equal(await page.evaluate(()=>keepBulk===document.querySelector('article')),true);
+  const source=page.locator('.test-explorer-folder-entry').filter({hasText:'Listening'}), destination=page.getByRole('button',{name:'Destination',exact:true});
+  await source.dragTo(destination);await page.waitForFunction(()=>folderData.find(f=>f.id===1).parentId===4);
+  assert.equal(await page.evaluate(()=>folderData.find(f=>f.id===2).parentId),1);assert.equal(await page.evaluate(()=>testData.find(r=>r.id===13).testFolder.id),2);
+  assert.equal(await page.evaluate(()=>testRequests.length),before);assert.equal(await page.evaluate(()=>keepBulk===document.querySelector('article')),true);
+  await page.getByRole('button',{name:'Destination',exact:true}).click();await page.getByRole('button',{name:'Listening',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Listening',exact:true}).click();await page.getByRole('button',{name:'Week 1',exact:true}).waitFor();
+  const saves=await page.evaluate(()=>folderSaveCalls.length);
+  await page.locator('.test-explorer-folder-entry').filter({hasText:'Week 1'}).dragTo(page.locator('.test-explorer-path').getByRole('button',{name:'Listening',exact:true}));
+  assert.equal(await page.evaluate(()=>folderSaveCalls.length),saves);
+  await page.locator('.test-explorer-path > button').click();
+  await page.locator('.test-folder-explorer').screenshot({path:path.join(repo,'.tmp/test-catalog-actions-'+mode.toLowerCase()+'.png')});
   assert.deepEqual(errors,[]);await page.close();
  }}finally{await browser.close();}
 });

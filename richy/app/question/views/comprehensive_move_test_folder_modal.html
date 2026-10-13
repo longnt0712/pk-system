@@ -5,7 +5,9 @@
     </div>
     <div class="modal-body">
         <p class="test-move-title" ng-bind="move.testTitle"></p>
-        <p>Vị trí hiện tại: <strong ng-bind="move.label(move.currentFolderId)"></strong></p>
+        <p ng-if="!move.multiple">Vị trí hiện tại: <strong ng-bind="move.label(move.currentFolderId)"></strong></p>
+        <p ng-if="move.multiple && move.saving" role="status">Đã chuyển {{move.completed}} bài...</p>
+        <ul class="test-folder-error" ng-if="move.failures.length"><li ng-repeat="item in move.failures track by item.id">{{item.title}}: {{item.message}}</li></ul>
         <p ng-if="move.loading" role="status">Đang tải folder...</p>
         <p class="test-folder-error" ng-if="move.error" role="alert">{{move.error}} <button type="button" class="btn btn-link btn-sm" ng-if="!move.choices.length" ng-click="move.load()" ng-disabled="move.saving || move.loading">Thử lại</button></p>
         <div class="test-move-tree" role="tree" aria-label="Chọn folder đích" ng-if="!move.loading">

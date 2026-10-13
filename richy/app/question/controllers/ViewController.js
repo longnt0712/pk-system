@@ -569,7 +569,7 @@
             var listeningCardId = vm.isStandaloneDailyListening ? vm.standaloneDailyListeningId :
                 (vm.mode.id === 8 ? vm.assignmentLaunch.sourceQuestionId : null);
             var request = listeningCardId ? service.getOne(listeningCardId).then(function (card) {
-                var shared = card && Number((card.questionType || {}).id) === 11 && card.testFormat === 'DAILY_LISTENING' && Number(card.status) === 7;
+                var shared = card && Number((card.questionType || {}).id) === 11 && card.testFormat === 'DAILY_LISTENING' && (Number(card.status) === 7 || (vm.isRoleAdmin && Number(card.status) === 6));
                 var old = card && Number((card.questionType || {}).id) === 6 && (!vm.isStandaloneDailyListening || Number(card.status) === 5);
                 if (!shared && !old) {
                     throw new Error('Không tìm thấy bài Daily Listening.');

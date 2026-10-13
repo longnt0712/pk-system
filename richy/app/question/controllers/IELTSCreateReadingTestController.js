@@ -492,8 +492,22 @@
                 (Number(vm.searchDto.pageIndex || 1) - 1) * Number(vm.searchDto.pageSize || 10) + 1);
         };
         vm.catalogTitleUpdating = {};
+        vm.catalogStatusUpdating = {};
         vm.isCatalogTitleSaving = function () {
             return Object.keys(vm.catalogTitleUpdating).some(function (id) { return vm.catalogTitleUpdating[id]; });
+        };
+        vm.isCatalogStatusSaving = function () {
+            return Object.keys(vm.catalogStatusUpdating || {}).some(function (id) { return vm.catalogStatusUpdating[id]; });
+        };
+        vm.catalogTestStatusChanged = function (test, previousStatus) {
+            (vm.ieltsReadingTests || []).some(function (row) {
+                if (String(row.id) !== String(test.id)) { return false; }
+                row.status = test.status; return true;
+            });
+            if (vm.ieltsReadingTest && String(vm.ieltsReadingTest.id) === String(test.id) && Number(vm.ieltsReadingTest.status) === Number(previousStatus)) {
+                vm.ieltsReadingTest.status = test.status;
+                if (vm.refreshBuilderValidation) { vm.refreshBuilderValidation(); }
+            }
         };
         vm.catalogTestRenamed = function (test, previousTitle) {
             // Preserve a title already being edited in the builder, along with all unsaved questions.
@@ -502,7 +516,7 @@
                 vm.ieltsReadingTest.title = test.title;
             }
         };
-        vm.catalogTestMoved = function (test) {
+        vm.catalogTestMoved = function (test, deferFill) {
             var folderId = test.testFolder ? test.testFolder.id : null;
             if (vm.ieltsReadingTest && String(vm.ieltsReadingTest.id) === String(test.id)) {
                 vm.ieltsReadingTest.testFolder = angular.copy(test.testFolder || null);
@@ -546,11 +560,11 @@
             }
             if (changed) {
                 moveVersion = vm.catalogMoveVersion = (vm.catalogMoveVersion || 0) + 1;
-                fillVacantSlot();
+                if (!deferFill) { fillVacantSlot(); }
             }
         };
         vm.openCatalogMoveDialog = function (test) {
-            if (!test || !test.id || vm.catalogMoveDialogOpen || vm.catalogMovePending ||
+            if (!test || !test.id || vm.isCatalogStatusSaving() || vm.catalogMoveDialogOpen || vm.catalogMovePending ||
                     vm.savingReadingTest || vm.importingReadingTest || vm.catalogLoading) { return; }
             vm.catalogMoveDialogOpen = true;
             var instance = modal.open({
@@ -854,6 +868,11 @@
             if (vm.savingReadingTest) { return vm.readingSavePromise; }
             if (vm.catalogMovePending) {
                 toastr.warning('Đang chuyển bài vào folder. Hãy chờ lưu xong.', 'Chưa thể lưu bài');
+                return $timeout(angular.noop);
+            }
+            if ((vm.catalogStatusUpdating || {})[(vm.ieltsReadingTest || {}).id]) {
+                vm.lastSaveError = 'Hãy chờ cập nhật trạng thái bài này trước khi lưu nội dung.';
+                toastr.warning(vm.lastSaveError, 'Đang đổi trạng thái');
                 return $timeout(angular.noop);
             }
             if (vm.isCatalogTitleSaving && vm.isCatalogTitleSaving()) {
@@ -1776,6 +1795,7 @@
         };
 
         vm.saveDraftReadingTest = function () {
+            if ((vm.catalogStatusUpdating || {})[(vm.ieltsReadingTest || {}).id]) { return vm.saveReadingTest('draft'); }
             vm.ieltsReadingTest.status = 6;
             vm.refreshBuilderValidation();
             return vm.saveReadingTest('draft');
@@ -1833,6 +1853,7 @@
         };
 
         vm.publishReadingTest = function () {
+            if ((vm.catalogStatusUpdating || {})[(vm.ieltsReadingTest || {}).id]) { return vm.saveReadingTest('publish'); }
             var validation = vm.refreshBuilderValidation();
             if (!validation.valid) {
                 toastr.warning('Bài thi còn ' + validation.issues.length + ' mục cần hoàn thiện.', 'Chưa thể xuất bản');
@@ -2148,6 +2169,7 @@
         };
 
         $scope.editCreateIELTSReadingTest= function (id) {
+            if ((vm.catalogStatusUpdating || {})[id] || vm.catalogMovePending) { return; }
             vm.createPackage = true;
             vm.isShowConfigureQuestion = false;
 
@@ -2995,7 +3017,6 @@
             vm.getPageCreateIELTSReadingTest();
         };
 
-        vm.catalogStatusUpdating = {};
 
         function findReadingTestCatalogRow(id) {
             var matched = null;

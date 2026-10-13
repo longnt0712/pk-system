@@ -139,3 +139,14 @@ test('Daily Listening has its own creation and playback routes and is hidden fro
  }
  assert.doesNotMatch(fs.readFileSync(path.join(app,'question/views/create_ielts_reading_test.html'),'utf8'),/ng-click="vm.addDailyListeningPackage\(\)"/);
 });
+
+test('draft Daily Listening preview is available to its authoring admin while learners only open published resources',async()=>{
+ for(const [admin,status,allowed] of [[true,6,true],[false,6,false],[false,7,true],[true,8,false]]){
+  const vm={isRoleAdmin:admin,isStandaloneDailyListening:true,standaloneDailyListeningId:21,searchDto:{questionTopics:[]},selectedUser:{id:999},mode:{id:8},assignmentLaunch:{},resetFlipCard(){},setUpTable(){this.bsTableControl={options:{}};},setUpAudio(){}};
+  nodeVm.runInNewContext(section(legacy,'        vm.getPageFlashCard = function','        vm.createQuiz ='),{vm,
+   angular:{copy:structuredClone,isArray:Array.isArray,isUndefined:value=>value===undefined,forEach(items,fn){items.forEach(fn);}},
+   service:{getOne(id){return Promise.resolve({id,question:'Shared',motherTongue:'Transcript',questionType:{id:11},testFormat:'DAILY_LISTENING',status});}},blockUI:{start(){},stop(){}},toastr:{error(){}},
+   createQuestionsWithOptions:items=>structuredClone(items),processFillingGapsByMode:text=>'Gaps: '+text,$scope:{chooseFillingGaps(){}}});
+  vm.getPageFlashCard();await tick();assert.equal(!!vm.currentCard,allowed);if(!allowed)assert.match(vm.standaloneListeningError,/Không tải/);
+ }
+});

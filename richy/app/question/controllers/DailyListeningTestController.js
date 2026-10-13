@@ -11,7 +11,13 @@
             settings.isAdmin = true;
             vm.items = [];
             vm.totalItems = 0;
-            vm.searchDto = {textSearch: '', pageIndex: 1, pageSize: 10};
+            vm.searchDto = {status: 9, textSearch: '', pageIndex: 1, pageSize: 10};
+            vm.catalogStatusUpdating = {};
+            vm.isCatalogStatusSaving = function () { return Object.keys(vm.catalogStatusUpdating).some(function (id) { return vm.catalogStatusUpdating[id]; }); };
+            vm.catalogTestStatusChanged = function (test, previousStatus) {
+                vm.items.some(function (row) { if (String(row.id) !== String(test.id)) { return false; } row.status = test.status; return true; });
+                if (vm.draft && String(vm.draft.id) === String(test.id) && Number(vm.draft.status) === Number(previousStatus)) { vm.draft.status = test.status; }
+            };
             vm.folderTestMode = 'DAILY_LISTENING';
             vm.catalogTestFolderId = null;
             function text(value) {
@@ -51,7 +57,7 @@
                 return vm.searchDto.withoutTestFolder ? id == null : (vm.searchDto.testFolderId == null ||
                     (vm.searchDto.includeSubfolders ? folders.contains(id, vm.searchDto.testFolderId, vm.folderTestMode) : String(id) === String(vm.searchDto.testFolderId)));
             }
-            vm.catalogTestMoved = function (test) {
+            vm.catalogTestMoved = function (test, deferFill) {
                 var id = test.testFolder ? test.testFolder.id : null;
                 if (vm.draft && String(vm.draft.id) === String(test.id)) {
                     vm.draft.testFolder = angular.copy(test.testFolder || null); vm.draft.testFolderId = id;
@@ -76,10 +82,10 @@
                         rows.push(next); fillSlot();
                     }, angular.noop);
                 }
-                fillSlot();
+                if (!deferFill) { fillSlot(); }
             };
             vm.openCatalogMoveDialog = function (test) {
-                if (vm.catalogMoveDialogOpen || vm.catalogMovePending || vm.saving || vm.editing || vm.loading || vm.importDialogOpen) { return; }
+                if (vm.isCatalogStatusSaving() || vm.catalogMoveDialogOpen || vm.catalogMovePending || vm.saving || vm.editing || vm.loading || vm.importDialogOpen) { return; }
                 vm.catalogMoveDialogOpen = true;
                 var instance = modal.open({templateUrl: 'question/views/comprehensive_move_test_folder_modal.html?v=' + encodeURIComponent($window.APP_VERSION || 'dev'),
                     controllerAs: 'move', controller: ['$scope', '$uibModalInstance', function (scope, dialogInstance) {
@@ -137,7 +143,7 @@
                 if (vm.initialized) { showEditor(); }
             };
             vm.edit = function (item) {
-                if (vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
+                if (vm.catalogStatusUpdating[item.id] || vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
                 vm.editing = true; vm.error = ''; vm.savedMessage = '';
                 return service.getOne(item.id).then(function (data) {
                     if (!isListening(data)) {
@@ -154,7 +160,7 @@
                     .finally(function () { vm.editing = false; });
             };
             vm.save = function () {
-                if (vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
+                if (vm.catalogStatusUpdating[vm.draft.id] || vm.saving || vm.editing || vm.catalogMovePending || vm.catalogMoveDialogOpen) { return; }
                 vm.error = ''; vm.savedMessage = '';
                 if (!String(vm.transcript || '').trim()) { vm.error = 'Hãy dán transcript của bài nghe.'; return; }
                 if (!listening.parseUrl(vm.draft.pronounce)) { vm.error = 'Hãy nhập link audio hoặc YouTube hợp lệ.'; return; }
@@ -165,7 +171,7 @@
                 payload.motherTongue = vm.transcript === vm.originalTranscriptText ? vm.originalTranscript : vm.transcript;
                 payload.questionType = {id: 11};
                 payload.testFormat = 'DAILY_LISTENING';
-                payload.status = 7;
+                payload.status = Number(vm.draft.status) === 6 ? 6 : 7;
                 payload.userId = ownerId(vm.draft) || vm.currentUser.id;
                 vm.saving = true;
                 return service.saveDailyListening(payload).then(function (saved) {

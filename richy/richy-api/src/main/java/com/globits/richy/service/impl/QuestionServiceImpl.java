@@ -1335,6 +1335,7 @@ public class QuestionServiceImpl implements QuestionService {
 	}
 
 	@Override
+	@Transactional
 	public QuestionForTestsDto updateTestStatus(Long id, int status) {
 		if(id == null) {
 			throw new IllegalArgumentException("Test id is required");
@@ -1344,12 +1345,13 @@ public class QuestionServiceImpl implements QuestionService {
 		}
 
 		Question domain = questionRepository.findOne(id);
-		if(domain == null) {
+		if(domain == null || domain.getParent() != null || domain.getQuestionType() == null
+				|| !Long.valueOf(11L).equals(domain.getQuestionType().getId())) {
 			throw new IllegalArgumentException("Test was not found");
 		}
 
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		if(authentication == null || !(authentication.getPrincipal() instanceof User)) {
+		if(authentication == null || !authentication.isAuthenticated() || !(authentication.getPrincipal() instanceof User)) {
 			throw new SecurityException("You do not have permission to update this test");
 		}
 		User currentUser = (User) authentication.getPrincipal();
@@ -1361,6 +1363,17 @@ public class QuestionServiceImpl implements QuestionService {
 			throw new SecurityException("You do not have permission to update this test");
 		}
 
+		if (status == 7) {
+			if (DailyListeningServiceImpl.isDailyTest(domain)) {
+				DailyListeningServiceImpl.validateForPublishing(domain);
+			} else {
+				QuestionDto stored = new QuestionDto(domain); stored.setStatus(7);
+				String validation = com.globits.richy.question.ComprehensiveVideoValidation.validate(stored);
+				if (validation == null) { validation = com.globits.richy.question.ComprehensiveListeningValidation.validate(stored); }
+				if (validation != null) { throw new IllegalArgumentException(validation); }
+			}
+		}
+		if (domain.getStatus() == status) { return new QuestionForTestsDto(domain); }
 		domain.setStatus(status);
 		domain.setModifiedBy(currentUser.getUsername());
 		domain.setModifyDate(LocalDateTime.now());

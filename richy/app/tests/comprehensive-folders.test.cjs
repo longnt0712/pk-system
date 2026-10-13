@@ -2,14 +2,14 @@ const {test}=require('node:test'), assert=require('node:assert/strict');
 const fs=require('node:fs'), path=require('node:path'), nodeVm=require('node:vm');
 function setup() {
  const definitions={}, broadcasts=[];
- const angular={extend:Object.assign,module(){return {factory(name,definition){definitions[name]=definition;return this;},directive(){return this;}};}};
+ const angular={extend:Object.assign,module(){return {factory(name,definition){definitions[name]=definition;return this;},directive(name,definition){definitions[name]=definition;return this;}};}};
  nodeVm.runInNewContext(fs.readFileSync(path.join(__dirname,'../question/business/ComprehensiveFolders.js'),'utf8'),{angular});
  const items=[{id:2,name:'Week 1',parentId:1,ownerId:7,ownerName:'Teacher A'},
   {id:1,name:'Listening',parentId:null,ownerId:7,ownerName:'Teacher A'},
   {id:3,name:'Listening',parentId:null,ownerId:8,ownerName:'Teacher B'},
   {id:4,name:'Orphan',parentId:99,ownerId:7,ownerName:'Teacher A'},
   {id:5,name:'Cycle',parentId:5,ownerId:7,ownerName:'Teacher A'}];
- const folders=definitions.ComprehensiveFolders.at(-1)({getTestFolders(){return Promise.resolve(items);},saveTestFolder(dto){return Promise.resolve({...dto,id:20});}},
+ const folders=definitions.ComprehensiveFolders.at(-1)({getTestFolders(){return Promise.resolve(items);},saveTestFolder(dto){return Promise.resolve({...dto,id:dto.id||20});}},
   {$broadcast(name){broadcasts.push(name);}},{when:Promise.resolve.bind(Promise)});
  return {folders,items,broadcasts,definitions};
 }
@@ -214,4 +214,42 @@ test('IELTS admin catalog includes legacy tests with another or missing owner an
    assert.equal(requests.at(-1).testFolderId,4);assert.equal(requests.at(-1).userId,null);
   }
  }
+});
+
+test('status control sends one metadata request, validates acknowledgement, and preserves old status on failure and retry',async()=>{
+ const {definitions}=setup(),definition=definitions.testPublicationStatus.at(-1);
+ const requests=[],busy=[],changes=[],testRow={id:20,status:7,title:'Keep title',testFolder:{id:2},answers:['Keep']};
+ let fail=false,bad=false,resolve;
+ const control=definition({updateTestStatus(id,status){requests.push({id,status});return new Promise((yes,no)=>{resolve=()=>fail?no({data:{message:'Detailed validation error'}}):yes(bad?{id:99,status}:{id,status});});}});
+ const scope={test:testRow,onBusyChange:({busy:pending})=>busy.push(pending),onChanged:value=>changes.push(plain(value))};control.link(scope);
+ const originalFolder=testRow.testFolder,originalAnswers=testRow.answers;
+ const first=scope.toggle();scope.toggle();assert.equal(requests.length,1);assert.equal(testRow.status,7);resolve();await first;
+ assert.equal(testRow.status,6);assert.equal(changes[0].previousStatus,7);assert.strictEqual(testRow.testFolder,originalFolder);assert.strictEqual(testRow.answers,originalAnswers);
+ fail=true;const second=scope.toggle();resolve();await second;assert.equal(testRow.status,6);assert.equal(scope.error,'Detailed validation error');assert.equal(scope.saving,false);
+ fail=false;bad=true;const third=scope.toggle();resolve();await third;assert.equal(testRow.status,6);assert.match(scope.error,/chưa xác nhận/);
+ bad=false;const retry=scope.toggle();resolve();await retry;assert.equal(testRow.status,7);assert.equal(scope.error,'');assert.deepEqual(busy,[true,false,true,false,true,false,true,false]);
+});
+
+test('folder drag refuses self, descendants, foreign owners and read-only folders',()=>{
+ const {definitions}=setup();const directive=definitions.testFolderExplorer.at(-1)({}, {}, ()=>{}, {}, {});
+ const root={id:1,parentId:null,ownerId:7,canManage:true},child={id:2,parentId:1,ownerId:7,canManage:true},grandchild={id:3,parentId:2,ownerId:7,canManage:true},destination={id:4,parentId:null,ownerId:7,canManage:true},foreign={id:5,parentId:null,ownerId:8,canManage:true};
+ const scope={manage:true,folders:[root,child,grandchild,destination,foreign],$watchCollection(){}};const explorer={};directive.controller.at(-1).call(explorer,scope);
+ explorer.startFolderDrag(root);assert.equal(explorer.canDrop(1),false);assert.equal(explorer.canDrop(2),false);assert.equal(explorer.canDrop(3),false);assert.equal(explorer.canDrop(5),false);
+ assert.equal(explorer.canDrop(4),true);assert.equal(explorer.canDrop(null),true);scope.moveDisabled=true;assert.equal(explorer.canDrop(4),false);
+ scope.moveDisabled=false;assert.equal(explorer.canDragFolder({...root,canManage:false}),false);explorer.endDrag();assert.equal(explorer.canDrop(4),false);
+});
+
+test('folder reparenting patches cached paths and broadcasts the tree change without re-fetching the catalog',async()=>{
+ const {folders,broadcasts}=setup();const cached=await folders.load(false);const root=cached.find(folder=>folder.id===1);
+ await folders.moveFolder(root,3);assert.equal(root.parentId,3);assert.strictEqual(await folders.load(false),cached);
+ assert.equal(folders.options(cached,false).find(folder=>folder.id===2).parentId,1);assert.deepEqual(broadcasts,['comprehensiveFolderMoved']);
+});
+
+test('publication API preserves server validation details and sends no content payload',async()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../question/business/QuestionService.js'),'utf8');
+ const start=source.indexOf('        function updateTestStatus('),end=source.indexOf('        function getFlashCardLevels(',start);
+ const calls=[],failure={status:400,data:{message:'Missing audio'}};
+ const context={baseUrl:'/api/',restUrl:'question',$q:{reject:Promise.reject.bind(Promise)},$http:{post(url,body){calls.push({url,body});return Promise.reject(failure);}}};
+ nodeVm.runInNewContext(source.slice(start,end),context);await assert.rejects(context.updateTestStatus(20,7),error=>error===failure);
+ assert.deepEqual(calls,[{url:'/api/question/update_test_status/20/7',body:null}]);
 });
