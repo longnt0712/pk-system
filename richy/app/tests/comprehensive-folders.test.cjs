@@ -1,6 +1,6 @@
 const {test}=require('node:test'), assert=require('node:assert/strict');
 const fs=require('node:fs'), path=require('node:path'), nodeVm=require('node:vm');
-function setup() {
+function setup(overrides={}) {
  const definitions={}, broadcasts=[];
  const angular={extend:Object.assign,module(){return {factory(name,definition){definitions[name]=definition;return this;},directive(name,definition){definitions[name]=definition;return this;}};}};
  nodeVm.runInNewContext(fs.readFileSync(path.join(__dirname,'../question/business/ComprehensiveFolders.js'),'utf8'),{angular});
@@ -9,7 +9,7 @@ function setup() {
   {id:3,name:'Listening',parentId:null,ownerId:8,ownerName:'Teacher B'},
   {id:4,name:'Orphan',parentId:99,ownerId:7,ownerName:'Teacher A'},
   {id:5,name:'Cycle',parentId:5,ownerId:7,ownerName:'Teacher A'}];
- const folders=definitions.ComprehensiveFolders.at(-1)({getTestFolders(){return Promise.resolve(items);},saveTestFolder(dto){return Promise.resolve({...dto,id:dto.id||20});}},
+ const folders=definitions.ComprehensiveFolders.at(-1)({getTestFolders(){return Promise.resolve(items);},saveTestFolder(dto){return Promise.resolve({...dto,id:dto.id||20});},...overrides},
   {$broadcast(name){broadcasts.push(name);}},{when:Promise.resolve.bind(Promise)});
  return {folders,items,broadcasts,definitions};
 }
@@ -252,4 +252,11 @@ test('publication API preserves server validation details and sends no content p
  const context={baseUrl:'/api/',restUrl:'question',$q:{reject:Promise.reject.bind(Promise)},$http:{post(url,body){calls.push({url,body});return Promise.reject(failure);}}};
  nodeVm.runInNewContext(source.slice(start,end),context);await assert.rejects(context.updateTestStatus(20,7),error=>error===failure);
  assert.deepEqual(calls,[{url:'/api/question/update_test_status/20/7',body:null}]);
+});
+
+test('folder move needs a matching server acknowledgement before changing cached paths',async()=>{
+ for(const saved of [null,{id:99,parentId:3},{id:1,parentId:4}]){
+  const {folders,broadcasts}=setup({saveTestFolder(){return Promise.resolve(saved);}});const cached=await folders.load(false),source=cached.find(item=>item.id===1);
+  await assert.rejects(folders.moveFolder(source,3),/chưa xác nhận/);assert.equal(source.parentId,null);assert.deepEqual(broadcasts,[]);assert.strictEqual(await folders.load(false),cached);
+ }
 });

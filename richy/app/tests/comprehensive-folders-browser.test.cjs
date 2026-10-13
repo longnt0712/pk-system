@@ -64,10 +64,13 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
       },
       getTestFolders(all,mode){return window.failFolders?q.reject({status:500}):q.when(window.folderData.filter(folder=>folder.testMode===(mode||'COMPREHENSIVE')&&(all || folder.ownerId===7)));},
       saveTestFolder(dto){window.folderSaveCalls.push(structuredClone(dto));
-       if(window.failSave)return q.reject({data:{message:'Đã có folder cùng tên.'}});
-       let folder=window.folderData.find(item=>item.id===dto.id);
-       if(folder)Object.assign(folder,dto);else{folder={...dto,id:10+window.folderData.length,ownerId:7,ownerName:'Teacher A',canManage:true};window.folderData.push(folder);}
-       return q.when({...folder});
+       const deferred=q.defer();function finish(){
+        if(window.failSave || window.failFolderSave){deferred.reject({data:{message:'Đã có folder cùng tên.'}});return;}
+        let folder=window.folderData.find(item=>item.id===dto.id);
+        if(folder)Object.assign(folder,dto);else{folder={...dto,id:10+window.folderData.length,ownerId:7,ownerName:'Teacher A',canManage:true};window.folderData.push(folder);}
+        deferred.resolve({...folder});
+       }
+       if(window.holdFolderSave)window.releaseFolderSave=finish;else finish();return deferred.promise;
       },
       moveTest(testId,folderId){
        window.moveCalls.push({testId,folderId});const deferred=q.defer();
@@ -612,6 +615,48 @@ test('bulk move retries only failed selected files, retains other cards, and fol
   assert.equal(await page.evaluate(()=>folderSaveCalls.length),saves);
   await page.locator('.test-explorer-path > button').click();
   await page.locator('.test-folder-explorer').screenshot({path:path.join(repo,'.tmp/test-catalog-actions-'+mode.toLowerCase()+'.png')});
+  assert.deepEqual(errors,[]);await page.close();
+ }}finally{await browser.close();}
+});
+
+test('folder move buttons open a guarded tree in all four creator modes and both views, cancel and retry in place',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{for(const mode of ['READING','LISTENING','WRITING','COMPREHENSIVE']){
+  const {page,errors}=await fixture(browser,1366,true,mode);const explorer=page.locator('test-folder-explorer');
+  await page.evaluate(mode=>{
+   folderData.push({id:4,name:'Destination',parentId:null,ownerId:7,canManage:true,testMode:mode},{id:5,name:'Read only',parentId:null,ownerId:7,canManage:false,testMode:mode});
+   angular.element(document.getElementById('qa')).scope().$apply(()=>angular.element(document.getElementById('qa')).injector().get('$rootScope').$broadcast('comprehensiveFoldersChanged'));
+  },mode);
+  await explorer.getByRole('button',{name:'Destination',exact:true}).waitFor();
+  assert.equal(await explorer.getByRole('button',{name:'Di chuyển folder Read only',exact:true}).count(),0);
+  for(const view of ['grid','list']){
+   if(view==='list')await explorer.getByRole('button',{name:'Chuyển sang dạng danh sách',exact:true}).click();
+   const before=await page.evaluate(()=>{window.keptFolderFile=document.querySelector('article');return testRequests.length;});
+   const folderButton=explorer.getByRole('button',{name:'Di chuyển folder Listening',exact:true});
+   await folderButton.click();let dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:'Di chuyển folder',exact:true}).waitFor();
+   assert.equal(await page.evaluate(()=>qaVm.catalogTestFolderId),null);
+   assert.equal(await dialog.getByRole('button',{name:'Di chuyển đến đây',exact:true}).isDisabled(),true);
+   assert.equal(await dialog.locator('.test-move-folder').filter({hasText:'Listening'}).isDisabled(),true);
+   assert.equal(await dialog.locator('.test-move-folder').filter({hasText:'Week 1'}).isDisabled(),true);
+   assert.equal(await dialog.locator('.test-move-folder').filter({hasText:'Read only'}).count(),0);
+   await dialog.locator('.test-move-folder').filter({hasText:'Destination'}).click();await dialog.getByRole('button',{name:'Hủy',exact:true}).click();await dialog.waitFor({state:'hidden'});
+   assert.equal(await page.evaluate(()=>folderData.find(f=>f.id===1).parentId),null);assert.equal(await page.evaluate(()=>testRequests.length),before);
+   await folderButton.click();dialog=page.getByRole('dialog');await dialog.locator('.test-move-folder').filter({hasText:'Destination'}).click();
+   await page.evaluate(()=>failFolderSave=true);await dialog.getByRole('button',{name:'Di chuyển đến đây',exact:true}).click();await dialog.getByRole('alert').waitFor();
+   assert.equal(await page.evaluate(()=>folderData.find(f=>f.id===1).parentId),null);
+   await page.evaluate(()=>{failFolderSave=false;holdFolderSave=true;});await dialog.getByRole('button',{name:'Di chuyển đến đây',exact:true}).click();
+   assert.equal(await dialog.getByRole('button',{name:'Hủy',exact:true}).isDisabled(),true);await page.keyboard.press('Escape');assert.equal(await dialog.isVisible(),true);
+   await page.evaluate(()=>{holdFolderSave=false;releaseFolderSave();});await dialog.waitFor({state:'hidden'});
+   assert.equal(await page.evaluate(()=>folderData.find(f=>f.id===1).parentId),4);assert.equal(await page.evaluate(()=>folderData.find(f=>f.id===2).parentId),1);
+   assert.equal(await page.evaluate(()=>testData.find(r=>r.id===13).testFolder.id),2);assert.equal(await page.evaluate(()=>testRequests.length),before);
+   assert.equal(await page.evaluate(()=>keptFolderFile===document.querySelector('article')),true);
+   await explorer.getByRole('button',{name:'Destination',exact:true}).click();await explorer.getByRole('button',{name:'Di chuyển folder Listening',exact:true}).click();
+   dialog=page.getByRole('dialog');await dialog.locator('.test-move-folder').filter({hasText:'Folder của tôi (cấp gốc)'}).click();await dialog.getByRole('button',{name:'Di chuyển đến đây',exact:true}).click();await dialog.waitFor({state:'hidden'});
+   assert.equal(await page.evaluate(()=>folderData.find(f=>f.id===1).parentId),null);
+   await explorer.locator('.test-explorer-path > button').click();await folderButton.waitFor();
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+   if(mode==='COMPREHENSIVE')await explorer.screenshot({path:path.join(repo,'.tmp/folder-move-button-'+view+'.png')});
+  }
   assert.deepEqual(errors,[]);await page.close();
  }}finally{await browser.close();}
 });

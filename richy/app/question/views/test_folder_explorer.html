@@ -35,6 +35,9 @@
             <span class="test-explorer-name" ng-dblclick="startRenameFolder(folder, $event)" title="{{manage && folder.canManage ? 'Nhấp đúp để đổi tên folder' : folder.name}}">{{folder.name}}<small ng-if="allTeachers && folderId == null">{{folder.ownerName}}</small></span>
             <i class="fa fa-angle-right test-explorer-folder-arrow" aria-hidden="true"></i>
         </button>
+        <div class="test-explorer-folder-actions" ng-if="manage && folder.canManage && (!renamingFolder || renamingFolder.id != folder.id)">
+            <button type="button" class="test-explorer-action--move" ng-click="moveFolder(folder, $event)" ng-disabled="loading || saving || moving || moveDisabled || folderMoveDialogOpen || editor || renamingFolder" aria-label="Di chuyển folder {{folder.name}}"><i class="fa fa-folder-open-o" aria-hidden="true"></i> Di chuyển</button>
+        </div>
         <div class="test-explorer-folder-rename" ng-if="renamingFolder.id == folder.id">
             <span class="test-explorer-folder-icon" aria-hidden="true"><i class="fa fa-folder"></i></span>
             <input type="text" class="form-control" maxlength="200" ng-model="renamingFolder.name" ng-keydown="renameFolderKey($event)" ng-disabled="renamingFolderSaving" aria-label="Tên folder mới">

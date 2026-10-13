@@ -62,10 +62,13 @@ async function fixture(browser,width,learner=false,record=shared){
   },{learner,record});
   for(const helper of ['ComprehensiveVideo','ComprehensiveListening','ComprehensiveFolders'])await page.addScriptTag({path:path.join(app,'question/business/'+helper+'.js')});
   await page.evaluate(()=>{
-   window.folders=[];window.folderCalls=[];window.moveCalls=[];
+   window.folders=[];window.folderCalls=[];window.moveCalls=[];window.folderSaveCalls=[];
    angular.module('Hrm.Question').factory('TestFolderService',['$q',q=>({
     getTestFolders(all,mode){window.folderCalls.push(mode);return q.when(structuredClone(window.folders));},
-    saveTestFolder(dto){const saved={...structuredClone(dto),id:dto.id||window.folders.length+1,ownerId:7,ownerName:'Teacher',canManage:true};const index=window.folders.findIndex(item=>item.id===saved.id);if(index>=0)window.folders[index]=saved;else window.folders.push(saved);return q.when(saved);},
+    saveTestFolder(dto){window.folderSaveCalls.push(structuredClone(dto));const deferred=q.defer();function finish(){
+     if(window.failFolderSave){deferred.reject({data:{message:'Không chuyển được folder thử nghiệm'}});return;}
+     const saved={...structuredClone(dto),id:dto.id||window.folders.length+1,ownerId:7,ownerName:'Teacher',canManage:true};const index=window.folders.findIndex(item=>item.id===saved.id);if(index>=0)window.folders[index]=saved;else window.folders.push(saved);deferred.resolve(saved);
+    }if(window.holdFolderSave)window.releaseFolderSave=finish;else finish();return deferred.promise;},
     moveTest(id,folderId){window.moveCalls.push({id,folderId});const deferred=q.defer();function finish(){if(window.failMove || window.failMoveId===id){deferred.reject({data:{message:'Di chuyển lỗi thử nghiệm'}});return;}
      const item=window.records.find(item=>item.id===id);item.testFolderId=folderId;item.testFolder=structuredClone(window.folders.find(folder=>folder.id===folderId)||null);deferred.resolve(structuredClone(item));}
      if(window.holdMove)window.releaseMove=finish;else finish();return deferred.promise;}
@@ -279,4 +282,35 @@ test('Daily Listening folder Cancel and autofocus, bulk partial retry, and dragg
   await page.screenshot({path:path.join(repo,'.tmp/daily-listening-multi-move-'+width+'.png'),fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);assert.deepEqual(errors,[]);await page.close();
  }}finally{await browser.close();}
+});
+
+test('Daily Listening folder move button works on mobile in grid and list, moves descendants together and keeps editor text',async()=>{
+ const browser=await playwright.chromium.launch({headless:true,executablePath:chrome});
+ try{const {page,errors}=await fixture(browser,390),explorer=page.locator('test-folder-explorer');
+  await page.getByRole('textbox',{name:'Transcript',exact:true}).fill('Unsaved pasted text');
+  await page.evaluate(()=>{
+   folders.push({id:1,name:'Source',parentId:null,ownerId:7,canManage:true,testMode:'DAILY_LISTENING'},{id:2,name:'Child',parentId:1,ownerId:7,canManage:true,testMode:'DAILY_LISTENING'},{id:3,name:'Destination',parentId:null,ownerId:7,canManage:true,testMode:'DAILY_LISTENING'});
+   records.push({...structuredClone(records[0]),id:25,title:'Nested',testFolderId:2,testFolder:folders[1]});
+   angular.element(document.getElementById('qa')).scope().$apply(()=>angular.element(document.getElementById('qa')).injector().get('$rootScope').$broadcast('comprehensiveFoldersChanged'));
+  });
+  for(const view of ['grid','list']){
+   if(view==='list')await explorer.getByRole('button',{name:'Chuyển sang dạng danh sách',exact:true}).click();
+   await explorer.getByRole('button',{name:'Di chuyển folder Source',exact:true}).click();let dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:'Di chuyển folder',exact:true}).waitFor();
+   assert.equal(await dialog.locator('.test-move-folder').filter({hasText:'Source'}).isDisabled(),true);assert.equal(await dialog.locator('.test-move-folder').filter({hasText:'Child'}).isDisabled(),true);
+   await dialog.getByRole('button',{name:'Hủy',exact:true}).click();await dialog.waitFor({state:'hidden'});
+   const before=await page.evaluate(()=>{window.keptDailyFile=document.querySelector('article');return pageCalls.length;});
+   await explorer.getByRole('button',{name:'Di chuyển folder Source',exact:true}).click();dialog=page.getByRole('dialog');await dialog.locator('.test-move-folder').filter({hasText:'Destination'}).click();
+   await page.evaluate(()=>failFolderSave=true);await dialog.getByRole('button',{name:'Di chuyển đến đây',exact:true}).click();await dialog.getByRole('alert').waitFor();
+   assert.equal(await page.evaluate(()=>folders[0].parentId),null);await page.evaluate(()=>failFolderSave=false);
+   await dialog.getByRole('button',{name:'Di chuyển đến đây',exact:true}).click();await dialog.waitFor({state:'hidden'});
+   assert.equal(await page.evaluate(()=>folders[0].parentId),3);assert.equal(await page.evaluate(()=>folders[1].parentId),1);assert.equal(await page.evaluate(()=>records.find(r=>r.id===25).testFolderId),2);
+   assert.equal(await page.evaluate(()=>pageCalls.length),before);assert.equal(await page.evaluate(()=>keptDailyFile===document.querySelector('article')),true);
+   assert.equal(await page.getByRole('textbox',{name:'Transcript',exact:true}).inputValue(),'Unsaved pasted text');
+   await explorer.getByRole('button',{name:'Destination',exact:true}).click();await explorer.getByRole('button',{name:'Di chuyển folder Source',exact:true}).click();
+   dialog=page.getByRole('dialog');await dialog.locator('.test-move-folder').filter({hasText:'Folder của tôi (cấp gốc)'}).click();await dialog.getByRole('button',{name:'Di chuyển đến đây',exact:true}).click();await dialog.waitFor({state:'hidden'});
+   await explorer.locator('.test-explorer-path > button').click();await explorer.getByRole('button',{name:'Di chuyển folder Source',exact:true}).waitFor();
+   await explorer.screenshot({path:path.join(repo,'.tmp/daily-folder-move-button-'+view+'.png')});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+  }
+  assert.deepEqual(errors,[]);await page.close();
+ }finally{await browser.close();}
 });
