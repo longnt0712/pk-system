@@ -1415,8 +1415,9 @@
             setExamViewportZoom(false);
         });
 
-        /* Adjustable Reading / Questions split for mouse, pen and touch. */
+        /* Adjustable exam panels for mouse, pen and touch. */
         vm.readingPanePercent = 50;
+        vm.writingPromptPercent = 42;
         var readingResizeState = null;
         var readingResizeFrame = null;
         var pendingReadingResizePoint = null;
@@ -1430,6 +1431,17 @@
             }
         } catch (ignoreReadingPaneStorageError) {
             vm.readingPanePercent = 50;
+        }
+
+        try {
+            var savedWritingPromptPercent = parseFloat(
+                $window.localStorage.getItem('ieltsWritingPromptPercent')
+            );
+            if (!isNaN(savedWritingPromptPercent)) {
+                vm.writingPromptPercent = Math.max(10, Math.min(90, savedWritingPromptPercent));
+            }
+        } catch (ignoreWritingPaneStorageError) {
+            // Keep the default split when storage is unavailable.
         }
 
         function stopReadingResize() {
@@ -1467,8 +1479,8 @@
 
             try {
                 $window.localStorage.setItem(
-                    'ieltsReadingPanePercent',
-                    String(vm.readingPanePercent)
+                    readingResizeState.writing ? 'ieltsWritingPromptPercent' : 'ieltsReadingPanePercent',
+                    String(readingResizeState.writing ? vm.writingPromptPercent : vm.readingPanePercent)
                 );
             } catch (ignoreReadingPaneStorageError) {
                 // The split still works when localStorage is unavailable.
@@ -1485,9 +1497,15 @@
             var nextPercent = readingResizeState.vertical
                 ? ((point.y - splitBounds.top) / splitBounds.height) * 100
                 : ((point.x - splitBounds.left) / splitBounds.width) * 100;
-            vm.readingPanePercent = Math.round(
-                Math.max(5, Math.min(95, nextPercent)) * 10
+            var minPercent = readingResizeState.writing ? 10 : 5;
+            var percent = Math.round(
+                Math.max(minPercent, Math.min(100 - minPercent, nextPercent)) * 10
             ) / 10;
+            if (readingResizeState.writing) {
+                vm.writingPromptPercent = percent;
+            } else {
+                vm.readingPanePercent = percent;
+            }
             $scope.$evalAsync();
         }
 
@@ -1498,7 +1516,7 @@
             applyReadingResizePoint(point);
         }
 
-        vm.startReadingResize = function ($event) {
+        function startPanelResize($event, writing) {
             if (!$event) {
                 return;
             }
@@ -1509,7 +1527,7 @@
 
             var splitRow = $event.currentTarget.parentNode;
             var splitBounds = splitRow.getBoundingClientRect();
-            var verticalSplit = $window.innerWidth <= 996;
+            var verticalSplit = writing || $window.innerWidth <= 996;
 
             function eventPoint(event) {
                 var source = event.touches && event.touches.length
@@ -1539,6 +1557,7 @@
                 onMove: onMove,
                 bounds: splitBounds,
                 vertical: verticalSplit,
+                writing: writing,
                 target: $event.currentTarget,
                 pointerId: $event.pointerId != null ? $event.pointerId : null
             };
@@ -1555,6 +1574,42 @@
                 $window.document.addEventListener('mousemove', onMove, false);
                 $window.document.addEventListener('mouseup', stopReadingResize, false);
             }
+        }
+
+        vm.startReadingResize = function ($event) {
+            startPanelResize($event, false);
+        };
+
+        vm.startWritingResize = function ($event) {
+            if ($window.innerWidth <= 767) {
+                startPanelResize($event, true);
+            }
+        };
+
+        function saveWritingSplit() {
+            try {
+                $window.localStorage.setItem('ieltsWritingPromptPercent', String(vm.writingPromptPercent));
+            } catch (ignoreWritingPaneStorageError) {
+                // The split still works when storage is unavailable.
+            }
+        }
+
+        vm.resetWritingResize = function () {
+            stopReadingResize();
+            vm.writingPromptPercent = 42;
+            saveWritingSplit();
+        };
+
+        vm.onWritingResizeKeydown = function ($event) {
+            var percent = vm.writingPromptPercent;
+            if ($event.key === 'ArrowUp') { percent -= 5; }
+            else if ($event.key === 'ArrowDown') { percent += 5; }
+            else if ($event.key === 'Home') { percent = 10; }
+            else if ($event.key === 'End') { percent = 90; }
+            else { return; }
+            $event.preventDefault();
+            vm.writingPromptPercent = Math.max(10, Math.min(90, percent));
+            saveWritingSplit();
         };
 
         vm.readingPaneStyle = function () {

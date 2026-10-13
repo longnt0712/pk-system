@@ -242,11 +242,22 @@
                             <div class="idp-writing-workspace" ng-if="vm.isWritingRoute">
                                 <section class="idp-writing-task-screen"
                                          id="writing-task-screen-{{item.type == 17 ? 2 : 1}}"
+                                         ng-attr-style="--writing-prompt-percent: {{vm.writingPromptPercent}}%;"
                                          ng-repeat="item in vm.ieltsReadingActualTest.subQuestions[0].subQuestions"
                                          ng-show="vm.activeIeltsNavigationPart() === (item.type == 17 ? 2 : 1)">
                                     <article class="idp-writing-prompt-pane">
                                         <div class="idp-writing-prompt-copy actual-test-font-global" compile="item.question"></div>
                                     </article>
+                                    <div class="idp-split-divider idp-writing-split-divider"
+                                         ng-style="{'top': vm.writingPromptPercent + '%'}"
+                                         reading-split-resize="vm.startWritingResize($event)"
+                                         ng-dblclick="vm.resetWritingResize()"
+                                         ng-keydown="vm.onWritingResizeKeydown($event)"
+                                         role="separator" tabindex="0" aria-orientation="horizontal"
+                                         aria-valuemin="10" aria-valuemax="90"
+                                         ng-attr-aria-valuenow="{{vm.writingPromptPercent}}"
+                                         title="Kéo lên xuống để đổi chiều cao · nhấp đúp để đặt lại"
+                                         aria-label="Điều chỉnh chiều cao phần đề và bài viết"></div>
                                     <article class="idp-writing-answer-pane">
                                         <textarea class="writing-task-runtime__textarea"
                                                   ng-model="item.subQuestions[0].questionAnswers[0].clientAnswer"
@@ -2194,12 +2205,18 @@
 
     .idp-writing-task-screen {
         display: grid;
+        position: relative;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         width: 100%;
         height: 100%;
         min-height: 620px;
         border-bottom: 10px solid #dfe4ea;
         background: #ffffff;
+    }
+
+    .idp-writing-task-screen > .idp-writing-split-divider {
+        display: none !important;
+        outline: none;
     }
 
     .idp-writing-prompt-pane,
@@ -2550,9 +2567,23 @@
 
         .idp-writing-task-screen {
             grid-template-columns: 1fr;
-            grid-template-rows: minmax(230px, 42%) minmax(330px, 58%);
+            grid-template-rows: minmax(0, var(--writing-prompt-percent, 42%)) minmax(0, 1fr);
             height: 100%;
-            min-height: 640px;
+            min-height: 0;
+            border-bottom: 0;
+        }
+
+        .idp-writing-workspace {
+            overflow: hidden;
+        }
+
+        .idp-writing-task-screen > .idp-writing-split-divider {
+            display: block !important;
+        }
+
+        .idp-writing-split-divider:focus-visible::after {
+            outline: 3px solid #2f82bf;
+            outline-offset: 2px;
         }
 
         .idp-writing-prompt-pane {
@@ -2562,7 +2593,7 @@
         }
 
         .idp-writing-answer-pane {
-            padding: 16px 18px 12px;
+            padding: 28px 18px 12px;
         }
 
         .idp-writing-answer-pane .writing-task-runtime__textarea {
