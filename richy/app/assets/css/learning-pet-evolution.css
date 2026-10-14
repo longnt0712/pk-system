@@ -21,7 +21,8 @@
 .learning-pet-egg.is-cute-dog-pet,
 .learning-pet-egg.is-cute-tom-cat-pet,
 .learning-pet-egg.is-jerry-mouse-pet,
-.learning-pet-egg.is-tuffy-mouse-pet {
+.learning-pet-egg.is-tuffy-mouse-pet,
+.learning-pet-egg.is-pikachu-pet {
     width: 104px;
     height: 108px;
 }
@@ -101,7 +102,8 @@
 /* The battle view uses pixelated rendering for older pet artwork. */
 img[src*="assets/images/learning-pets/cute-tom-cat/"],
 img[src*="assets/images/learning-pets/jerry-mouse/"],
-img[src*="assets/images/learning-pets/tuffy-mouse/"] {
+img[src*="assets/images/learning-pets/tuffy-mouse/"],
+img[src*="assets/images/learning-pets/pikachu/"] {
     image-rendering: auto !important;
 }
 

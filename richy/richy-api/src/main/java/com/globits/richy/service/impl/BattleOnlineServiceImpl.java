@@ -100,11 +100,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     private static final String PET_CUTE_TOM_CAT = "CUTE_TOM_CAT";
     private static final String PET_CUTE_JERRY_MOUSE = "CUTE_JERRY_MOUSE";
     private static final String PET_CUTE_TUFFY_MOUSE = "CUTE_TUFFY_MOUSE";
+    private static final String PET_CUTE_PIKACHU = "CUTE_PIKACHU";
     private static final int CAPYBARA_UNLOCK_LEVEL = 3;
     private static final int CUTE_DOG_UNLOCK_LEVEL = 6;
     private static final int CUTE_TOM_CAT_UNLOCK_LEVEL = 9;
     private static final int CUTE_JERRY_MOUSE_UNLOCK_LEVEL = 12;
     private static final int CUTE_TUFFY_MOUSE_UNLOCK_LEVEL = 15;
+    private static final int CUTE_PIKACHU_UNLOCK_LEVEL = 18;
 
     private static final String GUESS_ADVANCE_AUTO = "AUTO";
     private static final String GUESS_ADVANCE_HOST_CONTROL = "HOST_CONTROL";
@@ -323,6 +325,16 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             );
         }
 
+        if (
+            !allPetsUnlocked && PET_CUTE_PIKACHU.equals(selectedPet) &&
+            level < CUTE_PIKACHU_UNLOCK_LEVEL
+        ) {
+            throw new BattleOnlineException(
+                    HttpStatus.BAD_REQUEST,
+                    "Trứng Pikachu được mở khóa khi đạt level 18."
+            );
+        }
+
         user.setSelectedLearningPet(selectedPet);
         userRepository.save(user);
 
@@ -377,6 +389,9 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (allPetsUnlocked || level >= CUTE_TUFFY_MOUSE_UNLOCK_LEVEL) {
             unlocked.add(PET_CUTE_TUFFY_MOUSE);
         }
+        if (allPetsUnlocked || level >= CUTE_PIKACHU_UNLOCK_LEVEL) {
+            unlocked.add(PET_CUTE_PIKACHU);
+        }
         result.setUnlockedPetKeys(unlocked);
         return result;
     }
@@ -405,8 +420,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (PET_CUTE_JERRY_MOUSE.equals(normalized)) {
             return PET_CUTE_JERRY_MOUSE;
         }
-        return PET_CUTE_TUFFY_MOUSE.equals(normalized)
-                ? PET_CUTE_TUFFY_MOUSE : PET_MAM_HOC;
+        if (PET_CUTE_TUFFY_MOUSE.equals(normalized)) {
+            return PET_CUTE_TUFFY_MOUSE;
+        }
+        return PET_CUTE_PIKACHU.equals(normalized)
+                ? PET_CUTE_PIKACHU : PET_MAM_HOC;
     }
 
 
@@ -8215,6 +8233,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         if (
             !identity.allPetsUnlocked && PET_CUTE_TUFFY_MOUSE.equals(identity.selectedPetKey) &&
             identity.vocabularyExperienceLevel < CUTE_TUFFY_MOUSE_UNLOCK_LEVEL
+        ) {
+            identity.selectedPetKey = PET_MAM_HOC;
+        }
+        if (
+            !identity.allPetsUnlocked && PET_CUTE_PIKACHU.equals(identity.selectedPetKey) &&
+            identity.vocabularyExperienceLevel < CUTE_PIKACHU_UNLOCK_LEVEL
         ) {
             identity.selectedPetKey = PET_MAM_HOC;
         }

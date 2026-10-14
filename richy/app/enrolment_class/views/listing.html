@@ -1497,6 +1497,10 @@
                     </ui-select>
                     <small>Daily task chỉ hoàn thành khi học sinh nộp đúng bài đích này.</small>
                 </div>
+                <div class="form-group">
+                    <label><input type="checkbox" data-ng-model="vm.taskEditor.shuffleQuestions"> Đảo thứ tự câu hỏi và đáp án</label>
+                    <small class="help-block">Mỗi lượt làm có thứ tự riêng; tiếp tục bản nháp sẽ giữ thứ tự đang làm.</small>
+                </div>
             </div>
             <p class="class-task-help" data-ng-if="vm.assignableIeltsTestsLoading && vm.isIeltsTask(vm.taskEditor)"><i class="fa fa-spinner fa-spin"></i> Đang tải danh sách đề IELTS...</p>
             <div class="class-task-editor-grid" data-ng-if="!vm.isIeltsTask(vm.taskEditor)">

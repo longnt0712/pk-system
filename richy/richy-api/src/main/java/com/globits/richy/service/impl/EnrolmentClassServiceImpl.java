@@ -59,6 +59,7 @@ import com.globits.richy.dto.QuestionForTestsDto;
 import com.globits.richy.dto.QuestionForGamesDto;
 import com.globits.richy.repository.EnrolmentClassRepository;
 import com.globits.richy.repository.EnrolmentClassScheduleDayRepository;
+import com.globits.richy.repository.EnrolmentClassScheduleTaskRepository;
 import com.globits.richy.repository.EnrolmentClassWeeklySessionRepository;
 import com.globits.richy.repository.TopicRepository;
 import com.globits.richy.repository.TopicCategoryRepository;
@@ -81,6 +82,8 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 	UserRepository userRepository;
 	@Autowired
 	EnrolmentClassScheduleDayRepository scheduleDayRepository;
+	@Autowired
+	EnrolmentClassScheduleTaskRepository scheduleTaskRepository;
 	@Autowired
 	TestResultRepository testResultRepository;
 	@Autowired
@@ -764,6 +767,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 					StudentAssignedTaskDto item = new StudentAssignedTaskDto();
 					item.setTaskId(task.getId()); item.setClassId(classId); item.setClassName(selectedClass.getName());
 					item.setTitle(task.getTitle()); item.setNotes(task.getNotes()); item.setActivityType(task.getActivityType());
+					item.setShuffleQuestions(task.getShuffleQuestions());
 					item.setTopicId(task.getTopicId()); item.setTopicName(task.getTopicName());
 					item.setCategoryId(task.getCategoryId()); item.setCategoryName(task.getCategoryName());
 					item.setSourceQuestionId(task.getSourceQuestionId()); item.setSourceQuestionTitle(task.getSourceQuestionTitle());
@@ -786,6 +790,26 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			}
 		});
 		return result.size() > 20 ? new ArrayList<StudentAssignedTaskDto>(result.subList(0, 20)) : result;
+	}
+
+	@Override
+	public StudentAssignedTaskDto getAssignedTask(Long taskId) {
+		EnrolmentClassScheduleTask task = taskId == null ? null : scheduleTaskRepository.findOne(taskId);
+		if (task == null || task.getScheduleDay() == null) {
+			throw new EnrolmentClassScheduleException(HttpStatus.NOT_FOUND, "Bài được giao không còn tồn tại.");
+		}
+		User currentUser = getCurrentUser();
+		EnrolmentClass selectedClass = task.getScheduleDay().getEnrolmentClass();
+		if (currentUser == null || selectedClass == null || !canViewClass(currentUser, selectedClass)
+				|| (!canEditClass(currentUser, selectedClass)
+						&& !studentClassAndAncestorIds(currentUser).contains(selectedClass.getId()))) {
+			throw new AccessDeniedException("Bạn không được mở bài được giao của lớp này.");
+		}
+		StudentAssignedTaskDto dto = new StudentAssignedTaskDto();
+		dto.setTaskId(task.getId()); dto.setClassId(selectedClass.getId());
+		dto.setActivityType(task.getActivityType()); dto.setShuffleQuestions(task.getShuffleQuestions());
+		if (task.getIeltsTest() != null) { dto.setIeltsTestId(task.getIeltsTest().getId()); }
+		return dto;
 	}
 
 	private Set<Long> studentClassAndAncestorIds(User student) {
@@ -1132,6 +1156,7 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 				task.setTopic(prepared.getTopic()); task.setDisplayOrder(prepared.getDisplayOrder());
 				task.setAutoCompleteFromTopic(prepared.getAutoCompleteFromTopic());
 				task.setActivityType(prepared.getActivityType()); task.setRequiredAttempts(prepared.getRequiredAttempts());
+				task.setShuffleQuestions(prepared.getShuffleQuestions());
 				task.setIeltsTest(prepared.getIeltsTest()); task.setIeltsPart(prepared.getIeltsPart());
 				task.setIeltsParts(prepared.getIeltsParts());
 				task.setSourceQuestion(prepared.getSourceQuestion());
@@ -1398,6 +1423,9 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			}
 			task.setRequiredAttempts(requiredAttempts);
 			boolean comprehensiveActivity = "COMPREHENSIVE".equals(activityType);
+			task.setShuffleQuestions(comprehensiveActivity
+					? (value.getShuffleQuestions() != null ? value.getShuffleQuestions()
+							: (oldTask == null ? Boolean.TRUE : oldTask.getShuffleQuestions())) : null);
 			boolean writingActivity = "IELTS_WRITING".equals(activityType);
 			boolean ieltsActivity = "IELTS_READING".equals(activityType) || "IELTS_LISTENING".equals(activityType)
 					|| writingActivity || comprehensiveActivity;

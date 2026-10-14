@@ -39,6 +39,7 @@ public interface EnrolmentClassService {
 	public EnrolmentClassDto saveTopicCategoryVisibility(Long classId, EnrolmentClassDto dto);
 	public List<EnrolmentClassScheduleDayDto> getScheduleDays(Long classId, String fromDate, String toDate);
 	public List<StudentAssignedTaskDto> getMyAssignedTasks();
+	public StudentAssignedTaskDto getAssignedTask(Long taskId);
 	public EnrolmentClassScheduleDayDto saveScheduleDay(Long classId, EnrolmentClassScheduleDayDto dto);
     public boolean deleteExtraScheduleDay(Long classId, Long dayId, Long version);
     public EnrolmentClassScheduleDayDto getScheduleSession(Long classId, String date);

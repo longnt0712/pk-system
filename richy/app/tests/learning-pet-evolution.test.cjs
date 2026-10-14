@@ -89,7 +89,7 @@ test('both pet displays use the same Jerry stage at levels 12, 13, 14 and later'
         const options = battle.getBattlePetOptions();
         assert.equal(options.find(item => item.key === 'CUTE_JERRY_MOUSE').label, label);
         assert.strictEqual(battle.getBattlePetOptions(), options, 'option reference stays stable between digests');
-        assert.equal(options.length, level >= 15 ? 6 : 5, 'earlier pets stay available');
+        assert.equal(options.length, level >= 18 ? 7 : (level >= 15 ? 6 : 5), 'earlier pets stay available');
     }
 });
 
@@ -121,7 +121,7 @@ test('Tom retains its three existing levels and can be selected after Jerry unlo
 });
 
 test('the evolution manifests reference packaged transparent PNGs', () => {
-    for (const folder of ['cute-tom-cat', 'jerry-mouse', 'tuffy-mouse']) {
+    for (const folder of ['cute-tom-cat', 'jerry-mouse', 'tuffy-mouse', 'pikachu']) {
         const manifest = JSON.parse(fs.readFileSync(path.join(assets, folder, 'pet.json'), 'utf8'));
         for (const stage of manifest.evolution) {
             const png = fs.readFileSync(path.join(assets, folder, stage.file));
@@ -142,11 +142,12 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
         ['CUTE_DOG', 'pet-level-8.png'],
         ['CUTE_TOM_CAT', 'pet-level-11.png'],
         ['CUTE_JERRY_MOUSE', 'pet-level-14.png'],
-        ['CUTE_TUFFY_MOUSE', 'pet-level-17.png']
+        ['CUTE_TUFFY_MOUSE', 'pet-level-17.png'],
+        ['CUTE_PIKACHU', 'pet-level-20.png']
     ]) {
         const h = setupLearningPet(0, key, new Map(), roles);
         assert.equal(h.pet.selectedPetKey, key);
-        assert.equal(h.pet.availablePets.length, 6);
+        assert.equal(h.pet.availablePets.length, 7);
         assert.match(h.pet.availablePets.find(item => item.key === key).image, new RegExp(file));
         assert.equal(h.pet.notificationCount, 0, 'bypassing levels does not announce level-up eggs');
         assert.equal(h.user().vocabularyExperienceLevel, 0);
@@ -162,12 +163,14 @@ test('admins can choose every fully evolved pet at level zero without gaining ex
 test('the battle picker unlocks grown pets only for admins and keeps other players stages intact', () => {
     const admin = setupBattle(0, [{name: 'ROLE_ADMIN'}]);
     const options = admin.getBattlePetOptions();
-    assert.equal(options.length, 6);
+    assert.equal(options.length, 7);
     assert.strictEqual(admin.getBattlePetOptions(), options);
     assert.equal(options.find(item => item.key === 'CUTE_JERRY_MOUSE').label, 'Chuột Jerry');
     assert.match(admin.getBattlePetOptionImage('CUTE_JERRY_MOUSE'), /pet-level-14.png/);
     assert.equal(options.find(item => item.key === 'CUTE_TUFFY_MOUSE').label, 'Chuột Tuffy');
     assert.match(admin.getBattlePetOptionImage('CUTE_TUFFY_MOUSE'), /pet-level-17.png/);
+    assert.equal(options.find(item => item.key === 'CUTE_PIKACHU').label, 'Pikachu');
+    assert.match(admin.getBattlePetOptionImage('CUTE_PIKACHU'), /pet-level-20.png/);
     assert.match(admin.getPlayerPetImage({username: 'student', selectedPetKey: 'CUTE_TOM_CAT', vocabularyExperienceLevel: 0}), /pet-level-11.png/);
     assert.match(admin.getPlayerPetImage({username: 'another-student', selectedPetKey: 'MAM_HOC', vocabularyExperienceLevel: 0}), /egg-level-0.png/);
     assert.equal(admin.currentUser.vocabularyExperienceLevel, 0);
@@ -177,6 +180,8 @@ test('the battle picker unlocks grown pets only for admins and keeps other playe
     const student = setupBattle(0, [{name: 'ROLE_STUDENT'}]);
     assert.match(student.getPlayerPetImage({username: 'admin', allPetsUnlocked: true, selectedPetKey: 'CUTE_JERRY_MOUSE', vocabularyExperienceLevel: 0}), /pet-level-14.png/);
     assert.match(student.getPlayerPetImage({username: 'admin', allPetsUnlocked: true, selectedPetKey: 'CUTE_TUFFY_MOUSE', vocabularyExperienceLevel: 0}), /pet-level-17.png/);
+    assert.match(student.getPlayerPetImage({username: 'admin', allPetsUnlocked: true, selectedPetKey: 'CUTE_PIKACHU', vocabularyExperienceLevel: 0}), /pet-level-20.png/);
+    assert.match(student.getPlayerPetImage({username: 'student', host: true, selectedPetKey: 'CUTE_PIKACHU', vocabularyExperienceLevel: 0}), /egg-level-0.png/);
     assert.match(student.getPlayerPetImage({username: 'student', host: true, selectedPetKey: 'CUTE_JERRY_MOUSE', vocabularyExperienceLevel: 0}), /egg-level-0.png/);
     assert.equal(student.getBattlePetOptions().length, 1);
 });
@@ -209,7 +214,7 @@ test('Tuffy evolves at levels 15, 16 and 17 consistently in the assistant and ba
         const options = battle.getBattlePetOptions();
         assert.equal(options.find(item => item.key === 'CUTE_TUFFY_MOUSE').label, label);
         assert.strictEqual(battle.getBattlePetOptions(), options);
-        assert.equal(options.length, 6);
+        assert.equal(options.length, level >= 18 ? 7 : 6);
         if (level <= 17) {
             assert.equal(battle.getGiftRewardImage(level), expected);
             assert.match(battle.getGiftRewardLabel(level), /Chuột Tuffy/);
@@ -232,6 +237,70 @@ test('selecting Tuffy persists the choice and acknowledges the new egg per user'
     assert.equal(setupLearningPet(15, 'CUTE_TUFFY_MOUSE', h.storage).pet.hasNewTuffyMouseEgg, false);
     h.hooks.form({id: 8, vocabularyExperienceLevel: 15, selectedLearningPet: 'CUTE_TUFFY_MOUSE'});
     assert.equal(h.pet.hasNewTuffyMouseEgg, true);
+});
+
+test('Pikachu is locked below level 18 even with a stale saved selection', () => {
+    const {pet} = setupLearningPet(17, 'CUTE_PIKACHU');
+    assert.equal(pet.selectedPetKey, 'MAM_HOC');
+    assert.equal(pet.hasNewPikachuEgg, false);
+    assert.equal(pet.availablePets.some(item => item.key === 'CUTE_PIKACHU'), false);
+    const battle = setupBattle(17);
+    assert.equal(battle.getBattlePetOptions().some(item => item.key === 'CUTE_PIKACHU'), false);
+    assert.match(battle.getPlayerPetImage({selectedPetKey: 'CUTE_PIKACHU', vocabularyExperienceLevel: 0}), /egg-level-0.png/);
+});
+
+test('Pikachu evolves consistently in the assistant, battle and reward preview', () => {
+    for (const [level, filename, form, label] of [
+        [18, 'egg-level-18.png', 'pikachu-egg', 'Trứng Pikachu'],
+        [19, 'egg-level-19.png', 'pikachu-egg', 'Trứng Pikachu đang nứt'],
+        [20, 'pet-level-20.png', 'pikachu-hatched', 'Pikachu'],
+        [25, 'pet-level-20.png', 'pikachu-hatched', 'Pikachu']
+    ]) {
+        const {pet} = setupLearningPet(level, 'CUTE_PIKACHU');
+        const battle = setupBattle(level);
+        const expected = 'assets/images/learning-pets/pikachu/' + filename + '?v=pet-test';
+        assert.equal(pet.petForm, form);
+        assert.equal(pet.petImage, expected);
+        assert.equal(pet.selectedPet().image, expected);
+        assert.equal(battle.getPlayerPetImage({selectedPetKey: 'CUTE_PIKACHU', vocabularyExperienceLevel: level}), expected);
+        assert.equal(battle.getBattlePetOptionImage('CUTE_PIKACHU'), expected);
+        const options = battle.getBattlePetOptions();
+        assert.equal(options.find(item => item.key === 'CUTE_PIKACHU').label, label);
+        assert.strictEqual(battle.getBattlePetOptions(), options);
+        assert.equal(options.length, 7);
+        assert.ok(options.some(item => item.key === 'CUTE_TUFFY_MOUSE'));
+        if (level <= 20) {
+            assert.equal(battle.getGiftRewardImage(level), expected);
+            assert.match(battle.getGiftRewardLabel(level), /Pikachu/);
+        }
+    }
+});
+
+test('selecting Pikachu saves the choice and acknowledges its new egg per user', async () => {
+    const h = setupLearningPet(18, 'CUTE_TUFFY_MOUSE');
+    assert.equal(h.pet.hasNewPikachuEgg, true);
+    assert.match(h.pet.message, /Level 18.*Level 19.*level 20/);
+    h.pet.selectPet('CUTE_PIKACHU');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.requests[0].url, '/api/v1/battle-online/pet-selection');
+    assert.equal(h.requests[0].body.petKey, 'CUTE_PIKACHU');
+    assert.equal(h.user().selectedLearningPet, 'CUTE_PIKACHU');
+    assert.equal(h.pet.selectedPetKey, 'CUTE_PIKACHU');
+    assert.equal(h.pet.hasNewPikachuEgg, false);
+    assert.equal(h.pet.availablePets.find(item => item.key === 'CUTE_PIKACHU').isNew, false);
+    assert.deepEqual(h.broadcasts, [['learningPetSelectionChanged', 'CUTE_PIKACHU']]);
+    assert.equal(setupLearningPet(18, 'CUTE_PIKACHU', h.storage).pet.hasNewPikachuEgg, false);
+    h.hooks.form({id: 8, vocabularyExperienceLevel: 18, selectedLearningPet: 'CUTE_PIKACHU'});
+    assert.equal(h.pet.hasNewPikachuEgg, true);
+});
+
+test('opening the assistant acknowledges the Pikachu notification', () => {
+    const h = setupLearningPet(18, 'CUTE_TUFFY_MOUSE');
+    assert.equal(h.pet.hasNewPikachuEgg, true);
+    h.pet.openPanel();
+    assert.equal(h.pet.hasNewPikachuEgg, false);
+    assert.equal(h.pet.availablePets.find(item => item.key === 'CUTE_PIKACHU').isNew, false);
+    assert.equal(h.pet.notificationCount, 0);
 });
 
 test('pet caches cloud drafts, hides dismissed drafts and labels their source', () => {

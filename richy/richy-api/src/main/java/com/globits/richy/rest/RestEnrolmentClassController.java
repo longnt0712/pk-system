@@ -90,6 +90,12 @@ public class RestEnrolmentClassController {
 		return service.getMyAssignedTasks();
 	}
 
+	@Secured({"ROLE_ADMIN","ROLE_USER","ROLE_VIEWER","ROLE_STUDENT","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/schedule/assignment/{taskId}", method = RequestMethod.GET)
+	public StudentAssignedTaskDto getAssignedTask(@PathVariable Long taskId) {
+		return service.getAssignedTask(taskId);
+	}
+
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT","ROLE_STAFF"})
 	@RequestMapping(value = "/team_board/{classId}", method = RequestMethod.GET)
 	public EnrolmentClassTeamBoardDto getTeamBoard(@PathVariable Long classId) {

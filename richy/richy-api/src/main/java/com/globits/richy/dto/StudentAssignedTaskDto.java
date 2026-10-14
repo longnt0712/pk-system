@@ -11,6 +11,9 @@ public class StudentAssignedTaskDto implements Serializable {
     private String title;
     private String notes;
     private String activityType;
+    private Boolean shuffleQuestions;
+    public Boolean getShuffleQuestions() { return shuffleQuestions; }
+    public void setShuffleQuestions(Boolean value) { shuffleQuestions = value; }
     private Long topicId;
     private String topicName;
     private Long categoryId;

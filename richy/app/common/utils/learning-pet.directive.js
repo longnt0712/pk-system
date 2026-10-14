@@ -58,6 +58,9 @@
             var tuffyMouseEggUrl = 'assets/images/learning-pets/tuffy-mouse/egg-level-15.png?v=' + version;
             var tuffyMouseCrackedEggUrl = 'assets/images/learning-pets/tuffy-mouse/egg-level-16.png?v=' + version;
             var tuffyMousePetUrl = 'assets/images/learning-pets/tuffy-mouse/pet-level-17.png?v=' + version;
+            var pikachuEggUrl = 'assets/images/learning-pets/pikachu/egg-level-18.png?v=' + version;
+            var pikachuCrackedEggUrl = 'assets/images/learning-pets/pikachu/egg-level-19.png?v=' + version;
+            var pikachuPetUrl = 'assets/images/learning-pets/pikachu/pet-level-20.png?v=' + version;
             var animations = {
                 idle: {row: 0, durations: [280, 110, 110, 140, 140, 320], loopPause: 10000},
                 right: {row: 1, durations: [120, 120, 120, 120, 120, 120, 120, 220]},
@@ -98,6 +101,7 @@
             vm.hasNewCuteTomCatEgg = false;
             vm.hasNewJerryMouseEgg = false;
             vm.hasNewTuffyMouseEgg = false;
+            vm.hasNewPikachuEgg = false;
 
             function readCurrentUser() {
                 if (liveUser && liveUser.id) { return liveUser; }
@@ -111,7 +115,7 @@
                 var level = Math.max(0, Number((user || {}).vocabularyExperienceLevel) || 0);
                 var admin = hasAdminRole(user);
                 // Unlock all evolved forms for admins without changing their experience.
-                if (admin) { level = Math.max(level, 17); }
+                if (admin) { level = Math.max(level, 20); }
                 var selectedPet = String((user || {}).selectedLearningPet || 'MAM_HOC').toUpperCase();
                 if (selectedPet === 'CAPYBARA_EGG' && level < 3) {
                     selectedPet = 'MAM_HOC';
@@ -126,6 +130,9 @@
                     selectedPet = 'MAM_HOC';
                 }
                 if (selectedPet === 'CUTE_TUFFY_MOUSE' && level < 15) {
+                    selectedPet = 'MAM_HOC';
+                }
+                if (selectedPet === 'CUTE_PIKACHU' && level < 18) {
                     selectedPet = 'MAM_HOC';
                 }
                 vm.selectedPetKey = selectedPet;
@@ -229,6 +236,24 @@
                     vm.hasNewTuffyMouseEgg = false;
                 }
 
+                if (level >= 18) {
+                    var pikachuStageImage = level >= 20
+                            ? pikachuPetUrl
+                            : (level === 19 ? pikachuCrackedEggUrl : pikachuEggUrl);
+                    vm.availablePets.push({
+                        key: 'CUTE_PIKACHU',
+                        name: level >= 20 ? 'Pikachu' : 'Trứng Pikachu',
+                        description: level >= 20
+                                ? 'Đã nở hoàn chỉnh'
+                                : (level === 19 ? 'Trứng đang nứt' : 'Mở khóa ở level 18'),
+                        image: pikachuStageImage,
+                        isNew: !admin && hasUnseenPikachuEgg(user)
+                    });
+                    vm.hasNewPikachuEgg = !admin && hasUnseenPikachuEgg(user);
+                } else {
+                    vm.hasNewPikachuEgg = false;
+                }
+
                 if (selectedPet === 'CAPYBARA_EGG') {
                     vm.petForm = level >= 5 ? 'capybara-hatched' : 'capybara-egg';
                     vm.petImage = level >= 5
@@ -262,6 +287,13 @@
                     vm.petImage = level >= 17
                             ? tuffyMousePetUrl
                             : (level === 16 ? tuffyMouseCrackedEggUrl : tuffyMouseEggUrl);
+                    return;
+                }
+                if (selectedPet === 'CUTE_PIKACHU') {
+                    vm.petForm = level >= 20 ? 'pikachu-hatched' : 'pikachu-egg';
+                    vm.petImage = level >= 20
+                            ? pikachuPetUrl
+                            : (level === 19 ? pikachuCrackedEggUrl : pikachuEggUrl);
                     return;
                 }
                 if (hasAdminRole(user)) {
@@ -391,6 +423,28 @@
                 });
             }
 
+            function pikachuSeenKey(user) {
+                return 'learning-pet:pikachu-seen:v1:' + (user && user.id ? user.id : 'guest');
+            }
+
+            function hasUnseenPikachuEgg(user) {
+                try {
+                    return $window.localStorage.getItem(pikachuSeenKey(user)) !== '1';
+                } catch (ignoreStorage) {
+                    return true;
+                }
+            }
+
+            function markPikachuEggSeen(user) {
+                try {
+                    $window.localStorage.setItem(pikachuSeenKey(user), '1');
+                } catch (ignoreStorage) {}
+                vm.hasNewPikachuEgg = false;
+                angular.forEach(vm.availablePets, function (item) {
+                    if (item.key === 'CUTE_PIKACHU') { item.isNew = false; }
+                });
+            }
+
             vm.selectedPet = function () {
                 for (var i = 0; i < vm.availablePets.length; i++) {
                     if (vm.availablePets[i].key === vm.selectedPetKey) { return vm.availablePets[i]; }
@@ -449,6 +503,9 @@
                         }
                         if (user.selectedLearningPet === 'CUTE_TUFFY_MOUSE') {
                             markTuffyMouseEggSeen(user);
+                        }
+                        if (user.selectedLearningPet === 'CUTE_PIKACHU') {
+                            markPikachuEggSeen(user);
                         }
                         updatePetForm(user);
                         updateMessage();
@@ -781,8 +838,12 @@
                         (vm.hasNewCuteDogEgg ? 1 : 0) +
                         (vm.hasNewCuteTomCatEgg ? 1 : 0) +
                         (vm.hasNewJerryMouseEgg ? 1 : 0) +
-                        (vm.hasNewTuffyMouseEgg ? 1 : 0);
-                if (vm.hasNewTuffyMouseEgg) {
+                        (vm.hasNewTuffyMouseEgg ? 1 : 0) +
+                        (vm.hasNewPikachuEgg ? 1 : 0);
+                if (vm.hasNewPikachuEgg) {
+                    vm.summaryTitle = 'Bạn có một quả trứng Pikachu mới!';
+                    vm.message = 'Level 18 đã mở khóa trứng Pikachu. Level 19 trứng sẽ nứt và level 20 sẽ nở.';
+                } else if (vm.hasNewTuffyMouseEgg) {
                     vm.summaryTitle = 'Bạn có một quả trứng Chuột Tuffy mới!';
                     vm.message = 'Level 15 đã mở khóa trứng Chuột Tuffy. Level 16 trứng sẽ nứt và level 17 sẽ nở.';
                 } else if (vm.hasNewJerryMouseEgg) {
@@ -1013,6 +1074,9 @@
                 }
                 if (vm.hasNewTuffyMouseEgg) {
                     markTuffyMouseEggSeen(readCurrentUser());
+                }
+                if (vm.hasNewPikachuEgg) {
+                    markPikachuEggSeen(readCurrentUser());
                 }
                 updateMessage();
                 vm.activeSection = vm.drafts.length ? 'drafts' : 'tasks';

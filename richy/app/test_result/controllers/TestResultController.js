@@ -543,6 +543,22 @@
                 }
             });
 
+            // The submitted layout uses IDs; original ordinals still identify the source questions.
+            if (Number(testResult.testType) === 6 && testResult.ieltsLearningState) {
+                try {
+                    var layout = JSON.parse(testResult.ieltsLearningState).comprehensiveShuffle;
+                    if (layout && layout.enabled && Array.isArray(layout.questionOrder)) {
+                        rows.sort(function (left, right) {
+                            function position(row) {
+                                var question = row.questionAnswer && row.questionAnswer.question;
+                                var index = question ? layout.questionOrder.indexOf(question.id) : -1;
+                                return index < 0 ? layout.questionOrder.length + Number(row.ordinalNumber) : index;
+                            }
+                            return position(left) - position(right);
+                        });
+                    }
+                } catch (ignoreLegacyShuffleState) {}
+            }
             testResult.questionAnswerTestResult = rows;
             return testResult;
         }

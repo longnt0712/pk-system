@@ -58,6 +58,10 @@
         self.deleteLearningDraft = deleteLearningDraft;
         self.saveMaterial = saveMaterial;
         self.getOne = getOne;
+        self.getAssignedTask = function (taskId) {
+            return utils.resolve(baseUrl + 'enrolment_class/schedule/assignment/' + encodeURIComponent(taskId),
+                'GET', angular.noop, angular.noop);
+        };
         self.deleteObject = deleteObject;
         self.getTableDefinition = getTableDefinition;
         self.getTableDefinitionCreateIELTSWritingTest = getTableDefinitionCreateIELTSWritingTest;

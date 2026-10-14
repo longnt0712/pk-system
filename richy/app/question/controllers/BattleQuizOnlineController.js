@@ -642,13 +642,13 @@
                 var version = $window.APP_VERSION || '';
                 return 'assets/images/learning-pets/lum-ngay/rotten-egg.png' + (version ? '?v=' + encodeURIComponent(version) : '');
             }
-            var pets = ['MAM_HOC','CAPYBARA_EGG','CUTE_DOG','CUTE_TOM_CAT','CUTE_JERRY_MOUSE','CUTE_TUFFY_MOUSE'];
+            var pets = ['MAM_HOC','CAPYBARA_EGG','CUTE_DOG','CUTE_TOM_CAT','CUTE_JERRY_MOUSE','CUTE_TUFFY_MOUSE','CUTE_PIKACHU'];
             return getPlayerPetImage({selectedPetKey: pets[Math.floor(level / 3)], vocabularyExperienceLevel: level});
         };
         vm.getGiftRewardLabel = function (level, skillType) {
             if (skillType) { return 'Trứng ' + getSkillLabel(skillType); }
             if (level === -1) { return 'Trứng thối'; }
-            var names = ['Mầm Học','Capybara','Cute Dog','Mèo Tom','Chuột Jerry','Chuột Tuffy'];
+            var names = ['Mầm Học','Capybara','Cute Dog','Mèo Tom','Chuột Jerry','Chuột Tuffy','Pikachu'];
             return (level % 3 === 0 ? 'Trứng ' : level % 3 === 1 ? 'Trứng vỡ ' : '') + names[Math.floor(level / 3)];
         };
         function focusGiftModal(selector) {
@@ -1125,7 +1125,17 @@
             var ownAdminPet = player && player.username &&
                 player.username === (vm.currentUser || {}).username && hasAdminPetAccess();
             if ((player && player.allPetsUnlocked === true) || ownAdminPet) {
-                level = Math.max(level, 17);
+                level = Math.max(level, 20);
+            }
+
+            if (petKey === 'CUTE_PIKACHU' && level >= 18) {
+                if (level >= 20) {
+                    return 'assets/images/learning-pets/pikachu/pet-level-20.png' + suffix;
+                }
+                if (level === 19) {
+                    return 'assets/images/learning-pets/pikachu/egg-level-19.png' + suffix;
+                }
+                return 'assets/images/learning-pets/pikachu/egg-level-18.png' + suffix;
             }
 
             if (petKey === 'CUTE_TUFFY_MOUSE' && level >= 15) {
@@ -1199,7 +1209,7 @@
                 ) || 0
             );
             if ((me && me.allPetsUnlocked === true) || hasAdminPetAccess()) {
-                level = Math.max(level, 17);
+                level = Math.max(level, 20);
             }
 
             /*
@@ -1255,6 +1265,14 @@
                     label: level >= 17
                         ? 'Chuột Tuffy'
                         : (level === 16 ? 'Trứng Chuột Tuffy đang nứt' : 'Trứng Chuột Tuffy')
+                });
+            }
+            if (level >= 18) {
+                battlePetOptions.push({
+                    key: 'CUTE_PIKACHU',
+                    label: level >= 20
+                        ? 'Pikachu'
+                        : (level === 19 ? 'Trứng Pikachu đang nứt' : 'Trứng Pikachu')
                 });
             }
             return battlePetOptions;

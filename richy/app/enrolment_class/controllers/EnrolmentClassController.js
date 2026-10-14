@@ -2084,6 +2084,7 @@
 			vm.taskEditor = angular.copy(task || {section: section, title: '', notes: '', status: 'TODO', topicId: null,
 				activityType: 'DAILY_VOCAB', requiredAttempts: 1, studentProgress: []});
 			vm.taskEditor.activityType = vm.taskEditor.activityType || 'DAILY_VOCAB';
+			vm.taskEditor.shuffleQuestions = task ? task.shuffleQuestions === true : true;
 			if (vm.isIeltsTask(vm.taskEditor)) {
 				vm.taskEditor.ieltsParts = angular.isArray(vm.taskEditor.ieltsParts) ? vm.taskEditor.ieltsParts.slice()
 					: (vm.taskEditor.ieltsPart != null ? [Number(vm.taskEditor.ieltsPart)] : vm.ieltsPartsForTask());
@@ -2154,6 +2155,7 @@
 				vm.taskEditor.sourceQuestionId = null; vm.scheduleListeningItems = [];
 				vm.taskEditor.ieltsTestId = null; vm.taskEditor.ieltsPart = 1;
 				vm.taskEditor.ieltsParts = [1];
+				vm.taskEditor.shuffleQuestions = true;
 				vm.initializeComprehensiveAssignment(false);
 			} else if (vm.isIeltsTask(vm.taskEditor)) {
 				vm.taskEditor.topicId = null; vm.taskEditor.categoryKey = null;
@@ -2242,6 +2244,7 @@
 				ieltsTestId: task.ieltsTestId || null, ieltsPart: task.ieltsPart || null,
 				ieltsParts: angular.isArray(task.ieltsParts) ? task.ieltsParts.slice() : null,
 				activityType: task.activityType || 'DAILY_VOCAB',
+				shuffleQuestions: task.activityType === 'COMPREHENSIVE' ? task.shuffleQuestions === true : null,
 				autoCompleteFromTopic: task.autoCompleteFromTopic !== false,
 				requiredAttempts: Math.max(1, Number(task.requiredAttempts) || 1),
 				studentProgress: progress};

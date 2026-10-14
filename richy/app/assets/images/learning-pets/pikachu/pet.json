@@ -1,0 +1,25 @@
+{
+  "id": "pikachu",
+  "name": "Pikachu",
+  "selectionKey": "CUTE_PIKACHU",
+  "unlockVocabularyExperienceLevel": 18,
+  "evolution": [
+    {
+      "minimumVocabularyExperienceLevel": 18,
+      "maximumVocabularyExperienceLevel": 18,
+      "form": "egg-intact",
+      "file": "egg-level-18.png"
+    },
+    {
+      "minimumVocabularyExperienceLevel": 19,
+      "maximumVocabularyExperienceLevel": 19,
+      "form": "egg-cracked",
+      "file": "egg-level-19.png"
+    },
+    {
+      "minimumVocabularyExperienceLevel": 20,
+      "form": "hatched",
+      "file": "pet-level-20.png"
+    }
+  ]
+}

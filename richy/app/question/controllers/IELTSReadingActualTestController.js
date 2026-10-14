@@ -2164,6 +2164,7 @@
                     testMode: vm.isComprehensiveRoute ? 'COMPREHENSIVE' : (vm.isWritingRoute ? 'WRITING' : (vm.isListeningRoute ? 'LISTENING' : 'READING')),
                     sessionMode: vm.testSessionMode,
                     assignmentTaskId: vm.assignmentTaskId || null,
+                    comprehensiveShuffle: angular.copy(vm.comprehensiveShuffleState || null),
                     isPartAssignment: vm.isPartAssignment === true,
                     assignmentPart: vm.isPartAssignment ? (vm.assignedPart || null) : null,
                     assignmentParts: vm.isPartAssignment ? angular.copy(vm.assignedParts) : [],
@@ -2846,6 +2847,75 @@
             vm.showTestModeDialog = false;
         };
 
+        // Shuffle presentation only. Original question/answer IDs and ordinals remain the grading keys.
+        function shuffledComprehensiveItems(items, seed, salt) {
+            var result = (items || []).slice();
+            var state = Number(seed) >>> 0;
+            for (var letter = 0; letter < salt.length; letter++) {
+                state = (Math.imul(state ^ salt.charCodeAt(letter), 16777619)) >>> 0;
+            }
+            function random() {
+                state = (state + 0x6D2B79F5) >>> 0;
+                var value = Math.imul(state ^ (state >>> 15), 1 | state);
+                value ^= value + Math.imul(value ^ (value >>> 7), 61 | value);
+                return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+            }
+            for (var index = result.length - 1; index > 0; index--) {
+                var other = Math.floor(random() * (index + 1));
+                var temporary = result[index]; result[index] = result[other]; result[other] = temporary;
+            }
+            return result;
+        }
+
+        vm.questionAnswerDisplayOrder = function (answer) {
+            return answer._shuffleOrder == null ? Number(answer.ordinalNumberQuestionAnswer) : answer._shuffleOrder;
+        };
+
+        function applyComprehensiveAssignmentShuffle(data) {
+            if (!vm.isComprehensiveRoute || !vm.assignmentTaskId || vm.isPreviewMode) { return data; }
+            var draft = startFreshSeriousTest ? null : readReadingDraft(data.id, vm.testSessionMode);
+            // A resumed attempt keeps its layout, including drafts created before shuffle was available.
+            vm.comprehensiveShuffleState = draft
+                ? angular.copy(draft.comprehensiveShuffle || {enabled: false})
+                : {enabled: vm.assignmentShuffleQuestions === true, seed: Math.floor(Math.random() * 4294967296)};
+            var layout = vm.comprehensiveShuffleState;
+            if (!layout.enabled) { return data; }
+            var questionOrder = [], answerOrders = {};
+            angular.forEach(data.subQuestions || [], function (passage, passageIndex) {
+                var passageKey = String(passage.id == null ? passageIndex : passage.id);
+                // Heading packages are linked to placeholders in the passage by their original order.
+                var movablePackages = (passage.subQuestions || []).filter(function (pack) { return Number(pack.type) !== 4; });
+                movablePackages = shuffledComprehensiveItems(movablePackages, layout.seed, 'packages:' + passageKey);
+                var movableIndex = 0;
+                passage.subQuestions = (passage.subQuestions || []).map(function (pack) {
+                    return Number(pack.type) === 4 ? pack : movablePackages[movableIndex++];
+                });
+                angular.forEach(passage.subQuestions, function (pack, packageIndex) {
+                    var packageKey = String(pack.id == null ? passageKey + ':' + packageIndex : pack.id);
+                    var type = Number(pack.type);
+                    // Shared text, heading placeholders, multiple-answer slots and audio gaps stay together.
+                    if ([1, 6, 9, 10, 12].indexOf(type) >= 0) {
+                        pack.subQuestions = shuffledComprehensiveItems(pack.subQuestions, layout.seed, 'questions:' + packageKey);
+                    }
+                    var sharedOptions = [4, 5, 7, 8, 9, 10, 12].indexOf(type) >= 0;
+                    angular.forEach(pack.subQuestions || [], function (question) {
+                        questionOrder.push(question.id);
+                        if ([1, 4, 5, 6, 7, 8, 9, 10, 12].indexOf(type) < 0) { return; }
+                        var options = (question.questionAnswers || []).slice().sort(function (left, right) {
+                            return Number(left.ordinalNumberQuestionAnswer) - Number(right.ordinalNumberQuestionAnswer);
+                        });
+                        question.questionAnswers = shuffledComprehensiveItems(options, layout.seed,
+                            'answers:' + (sharedOptions ? packageKey : question.id));
+                        angular.forEach(question.questionAnswers, function (answer, answerIndex) { answer._shuffleOrder = answerIndex; });
+                        answerOrders[String(question.id)] = question.questionAnswers.map(function (answer) { return answer.id; });
+                    });
+                });
+            });
+            layout.questionOrder = questionOrder;
+            layout.answerOrders = answerOrders;
+            return data;
+        }
+
         function normalizeLocalReadingPreview(data) {
             angular.forEach(data.subQuestions || [], function (passage, passageIndex) {
                 angular.forEach(passage.subQuestions || [], function (questionPackage, packageIndex) {
@@ -3083,6 +3153,7 @@
                     data = restrictListeningAssignmentToSelectedPart(data);
                     data = normalizeListeningCandidateParts(data);
                     data = normalizeLegacyMultipleAnswerPackages(data);
+                    data = applyComprehensiveAssignmentShuffle(data);
                     cachedIeltsNavigationParts = null;
                     vm.ieltsReadingActualTest = data;
                     if (vm.isWritingRoute) {
@@ -3215,7 +3286,18 @@
 
             if ($stateParams.ieltsReadingTestId != null) {
                 blockUI.start();
-                service.getOne($stateParams.ieltsReadingTestId).then(loadReadingTest, function failure() {
+                var testRequest;
+                if (vm.isComprehensiveRoute && vm.assignmentTaskId && !vm.isPreviewMode) {
+                    testRequest = service.getAssignedTask(vm.assignmentTaskId).then(function (task) {
+                        if (!task || task.activityType !== 'COMPREHENSIVE'
+                                || String(task.ieltsTestId) !== String($stateParams.ieltsReadingTestId)) {
+                            throw new Error('Bài được giao không khớp với đề tổng hợp.');
+                        }
+                        vm.assignmentShuffleQuestions = task.shuffleQuestions === true;
+                        return service.getOne($stateParams.ieltsReadingTestId);
+                    });
+                } else { testRequest = service.getOne($stateParams.ieltsReadingTestId); }
+                testRequest.then(loadReadingTest, function failure() {
                     failToStartTest('The test could not be loaded. Please check your connection and try again.');
                 });
             } else {
@@ -3839,6 +3921,11 @@
             });
 
             entries.sort(function (left, right) {
+                var order = vm.comprehensiveShuffleState && vm.comprehensiveShuffleState.questionOrder;
+                if (order) {
+                    var leftIndex = order.indexOf(left.question.id), rightIndex = order.indexOf(right.question.id);
+                    if (leftIndex >= 0 && rightIndex >= 0) { return leftIndex - rightIndex; }
+                }
                 return Number(left.question.ordinalNumber) - Number(right.question.ordinalNumber);
             });
             return entries;
@@ -4335,6 +4422,11 @@
         }
 
         function shuffleCompleteListWords(words) {
+            if (vm.isComprehensiveRoute && vm.assignmentTaskId && vm.comprehensiveShuffleState) {
+                var layout = vm.comprehensiveShuffleState;
+                return layout.enabled ? shuffledComprehensiveItems(words, layout.seed,
+                    'words:' + words.map(function (word) { return word.answerId; }).join(',')) : words.slice();
+            }
             var shuffled = words.slice();
             for (var index = shuffled.length - 1; index > 0; index--) {
                 var randomIndex = Math.floor(Math.random() * (index + 1));
@@ -4574,6 +4666,10 @@
                     clientAnswer: questionAnswer.answer ? questionAnswer.answer.answer : ''
                 };
             });
+            if (vm.comprehensiveShuffleState && vm.comprehensiveShuffleState.enabled) {
+                questionPackage.sentenceEndingBank = shuffledComprehensiveItems(questionPackage.sentenceEndingBank,
+                    vm.comprehensiveShuffleState.seed, 'endings:' + questionPackage.id);
+            }
             angular.forEach(questions, function () {
                 questionPackage.sentenceEndingSlots.push({items: []});
             });
@@ -5662,6 +5758,7 @@
                 activeDurationSeconds: getActiveDurationSeconds(),
                 passageNumber: vm.passageNumber || 1,
                 assignmentParts: vm.isPartAssignment ? angular.copy(vm.assignedParts) : [],
+                comprehensiveShuffle: angular.copy(vm.comprehensiveShuffleState || null),
                 results: serializeReadingDraftResults(),
                 questionStates: serializeReadingQuestionStates(),
                 completeListStates: serializeCompleteListStates(),
