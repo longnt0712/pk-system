@@ -357,3 +357,81 @@ test('note anchors follow their text when selected Listening or Writing Parts ch
     }
     assert.equal(c.textRangeForAnnotation({textContent: 'Task 1 contains other words'}, record), null, 'hidden Part records must not attach to other text');
 });
+
+test('preview is recognized before initialization can fetch or overwrite personal learning drafts', async () => {
+    for (const route of ['ielts_reading_actual_test', 'ielts_listening_actual_test', 'ielts_writing_actual_test', 'comprehensive_test']) {
+        const {context: c} = setup();
+        c.$location = {path: () => '/' + route + '/preview-local', search: () => ({preview: '1'})};
+        const start = source.indexOf('        var vm = this;', source.indexOf('    function IELTSReadingActualTestController('));
+        vmModule.runInContext('(function () {' + source.slice(start, source.indexOf('        vm.videoApi = {};', start)) + '}).call(vm);', c);
+        const key = c.readingDraftStorageKey(42, 'STUDY');
+        const draft = {userId: 7, testId: 42, testMode: 'READING', sessionMode: 'STUDY', savedAt: '2026-10-07',
+            results: [{ordinalNumber: 1, clientAnswer: 'rats'}], annotationNotes: [{id: 'n1', specificNote: 'Keep this note'}],
+            annotations: [{containerId: 'passage-text-1', start: 0, end: 4, hasNote: true, noteId: 'n1'}]};
+        c.storeReadingDraft(key, draft);
+        let requests = 0;
+        c.service.getLearningDrafts = () => {
+            requests++;
+            return Promise.resolve([{draftKey: key, draftType: 'IELTS', savedAt: Date.now(), payload: JSON.stringify({...draft, annotationNotes: [], annotations: []})}]);
+        };
+        await c.loadReadingLearningDrafts();
+        assert.equal(requests, 0, route + ' must not fetch personal learning drafts');
+        assert.equal(c.vm.isPreviewMode, true);
+        assert.equal(c.readStoredDraft(key).annotationNotes[0].specificNote, 'Keep this note');
+        assert.equal(c.readStoredDraft(key).annotations[0].noteId, 'n1');
+    }
+});
+
+test('a late learning-draft response cannot rewrite browser storage after entering Preview', async () => {
+    const {context: c} = setup();
+    const key = c.readingDraftStorageKey(42, 'STUDY');
+    const draft = {userId: 7, testId: 42, testMode: 'READING', sessionMode: 'STUDY', savedAt: '2026-10-07', annotationNotes: ['Keep this note']};
+    c.storeReadingDraft(key, draft);
+    let resolve;
+    c.service.getLearningDrafts = () => new Promise(done => { resolve = done; });
+    const loading = c.loadReadingLearningDrafts();
+    c.vm.isPreviewMode = true;
+    resolve([{draftKey: key, draftType: 'IELTS', savedAt: Date.now(), payload: JSON.stringify({...draft, annotationNotes: []})}]);
+    await loading;
+    assert.equal(c.readStoredDraft(key).annotationNotes[0], 'Keep this note');
+});
+
+test('leaving a Study page after its passage DOM is removed retains note anchors and answers', () => {
+    const {context: c, calls} = setup();
+    c.vm.ieltsReadingActualTest = {id: 42, title: 'Study test'};
+    Object.assign(c.vm, {isStartTest: true, passageNumber: 1, annotationNotes: [{id: 'n1', specificNote: 'Keep this note'}]});
+    c.$scope = {counter: 100};
+    c.syncTimerForPersistence = () => {};
+    c.getActiveDurationSeconds = () => 30;
+    c.getReadingQuestionEntries = () => [{passageNumber: 1, question: {ordinalNumber: 1}}];
+    c.getAllReadingQuestionEntries = c.getReadingQuestionEntries;
+    c.serializeReadingDraftResults = () => [{ordinalNumber: 1, clientAnswer: 'rats'}];
+    c.serializeReadingQuestionStates = c.serializeCompleteListStates = () => [];
+    c.serializeListeningAudioPositions = () => ({});
+    c.annotationContainerIds = ['passage-text-1'];
+    const marker = {textContent: 'rats', classList: {contains: name => name === 'has-note'},
+        getAttribute: name => name === 'data-note-id' ? 'n1' : null};
+    let container = {textContent: 'rats live here', querySelectorAll: () => [marker]};
+    c.document = {getElementById: () => container, createRange: () => ({selectNodeContents() {}, setEndBefore() {}, toString: () => ''})};
+    const serializeStart = source.indexOf('        function serializeReadingAnnotations()');
+    vmModule.runInContext(source.slice(serializeStart, source.indexOf('        function textRangeForOffsets(', serializeStart)), c);
+    const saveStart = source.indexOf('        function getReadingDraftPartNumbers()');
+    vmModule.runInContext(source.slice(saveStart, source.indexOf('        function markStudyDraftCompleted(', saveStart)), c);
+    c.saveReadingDraft();
+    const key = c.readingDraftStorageKey(42, 'STUDY');
+    assert.equal(c.readStoredDraft(key).annotations[0].noteId, 'n1');
+    container = null;
+    c.saveReadingDraft();
+    const saved = c.readStoredDraft(key);
+    assert.equal(saved.annotations.length, 1, 'route teardown must not erase anchors');
+    assert.equal(saved.annotations[0].noteId, 'n1');
+    assert.equal(saved.annotationNotes[0].specificNote, 'Keep this note');
+    assert.equal(saved.results[0].clientAnswer, 'rats');
+    assert.equal(JSON.parse(calls[0].payload).annotations[0].noteId, 'n1');
+    // An explicit removal while the passage is mounted must still persist.
+    container = {textContent: 'rats live here', querySelectorAll: () => []};
+    c.vm.annotationNotes = [];
+    c.saveReadingDraft();
+    assert.equal(c.readStoredDraft(key).annotations.length, 0);
+    assert.equal(c.readStoredDraft(key).annotationNotes.length, 0);
+});

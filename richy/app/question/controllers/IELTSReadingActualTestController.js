@@ -1029,6 +1029,7 @@
         $rootScope.settings.layout.pageSidebarClosed = false;
 
         var vm = this;
+        vm.isPreviewMode = $location.search().preview === '1' || $location.search().preview === 1;
         var writingTaskDraftTimer = null;
         vm.isComprehensiveRoute = /\/comprehensive_test(?:\/|$)/i.test($location.path());
         vm.isWritingRoute = /\/ielts_writing_actual_test(?:\/|$)/i.test($location.path());
@@ -1833,6 +1834,7 @@
         var readingDraftLoadGeneration = 0;
         var pendingReadingAnnotations = null;
         var unrestoredReadingAnnotations = [];
+        var lastReadingAnnotations = [];
         var readingAnnotationRestoreTimer = null;
         var readingDraftWaitTimer = null;
         var readingDraftDestroyed = false;
@@ -1896,7 +1898,7 @@
             if (vm.isPreviewMode || !vm.currentUser || !vm.currentUser.id) { return null; }
             var generation = ++readingDraftLoadGeneration;
             return service.getLearningDrafts().then(function (items) {
-                if (generation !== readingDraftLoadGeneration) { return false; }
+                if (vm.isPreviewMode || readingDraftDestroyed || generation !== readingDraftLoadGeneration) { return false; }
                 var invalidDraft = false;
                 angular.forEach(items || [], function (item) {
                     if (!item || item.draftType !== 'IELTS' || !item.draftKey
@@ -2457,6 +2459,7 @@
             vm.annotationNotes = angular.copy(draft.annotationNotes || []);
             readingAnnotationsRestoring = true;
             pendingReadingAnnotations = angular.copy(draft.annotations || []);
+            lastReadingAnnotations = angular.copy(pendingReadingAnnotations);
             readingAnnotationRestoreTimer = $timeout(function () {
                 try {
                     restoreReadingAnnotations(pendingReadingAnnotations);
@@ -2737,7 +2740,6 @@
         console.log('IELTS Reading Actual Test');
         vm.searchDto.pageSize = 10;
         // console.log($stateParams.ieltsReadingTestId);
-        vm.isPreviewMode = $location.search().preview === '1' || $location.search().preview === 1;
         vm.previewPart = Math.max(1, Math.min(vm.isComprehensiveRoute ? 1 : (vm.isListeningRoute ? 4 : 3),
             parseInt($location.search().previewPart, 10) || 1));
         if (vm.isPreviewMode && vm.isListeningRoute && vm.previewPart === 4) {
@@ -5524,11 +5526,25 @@
         ];
 
         function serializeReadingAnnotations() {
-            if (pendingReadingAnnotations) { return angular.copy(pendingReadingAnnotations); }
+            if (pendingReadingAnnotations) {
+                lastReadingAnnotations = angular.copy(pendingReadingAnnotations);
+                return angular.copy(pendingReadingAnnotations);
+            }
             var records = angular.copy(unrestoredReadingAnnotations);
             angular.forEach(annotationContainerIds, function (containerId) {
                 var container = document.getElementById(containerId);
-                if (!container) { return; }
+                if (!container) {
+                    // Angular can remove a passage before the route's destroy save.
+                    // Keep its last anchors; mounted passages still reflect deletions.
+                    angular.forEach(lastReadingAnnotations, function (record) {
+                        if (record.containerId !== containerId || records.some(function (existing) {
+                            return existing.containerId === record.containerId && existing.start === record.start &&
+                                existing.end === record.end && existing.noteId === record.noteId;
+                        })) { return; }
+                        records.push(angular.copy(record));
+                    });
+                    return;
+                }
                 angular.forEach(container.querySelectorAll('.ielts-annotation'), function (marker) {
                     try {
                         var before = document.createRange();
@@ -5550,6 +5566,7 @@
                     } catch (ignoreAnnotationSerializeError) {}
                 });
             });
+            lastReadingAnnotations = angular.copy(records);
             return records;
         }
 
@@ -5607,6 +5624,7 @@
         }
 
         function restoreReadingAnnotations(records) {
+            lastReadingAnnotations = angular.copy(records || []);
             unrestoredReadingAnnotations = [];
             angular.forEach(records || [], function (record) {
                 var container = document.getElementById(record.containerId);

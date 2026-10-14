@@ -264,7 +264,7 @@
         vm.testCatalogUrl = function (item) {
             var route = vm.isComprehensiveMode ? 'comprehensive_test/' :
                 (vm.isWritingMode ? 'ielts_writing_actual_test/' : (vm.isListeningMode ? 'ielts_listening_actual_test/' : 'ielts_reading_actual_test/'));
-            return route + item.id + '?sessionMode=STUDY';
+            return route + item.id + '?preview=1';
         };
 
         vm.seriousTestCatalogUrl = function (item) {
