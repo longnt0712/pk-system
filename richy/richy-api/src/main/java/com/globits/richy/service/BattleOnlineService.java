@@ -94,6 +94,10 @@ public interface BattleOnlineService {
             String username
     );
 
+    BattleOnlineRoomDto extendMatchTime(String roomCode, String username);
+
+    BattleOnlineRoomDto finishMatch(String roomCode, String username);
+
     BattleOnlineAnswerResultDto answer(
             String roomCode,
             String username,

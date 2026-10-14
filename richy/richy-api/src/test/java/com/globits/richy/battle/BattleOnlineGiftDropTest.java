@@ -135,7 +135,7 @@ public class BattleOnlineGiftDropTest {
         assertEquals(2,pool.snapshot().claims.size());
     }
 
-    @Test public void nonVideoAnswersCanOpenOneOfThreeEggsImmediatelyAndFinishWithoutAFinalEggPhase() {
+    @Test public void nonVideoAnswersCanOpenEggsImmediatelyAndKeepUnusedCreditsForTheFinalPhase() {
         set(room,"videoSynchronized",false); set(room,"giftOpening",false); set(room,"giftOpeningEndsAt",0L);
         set(alice,"giftCredits",1); String id=pool.snapshot("alice").gifts.get(0).id;
         BattleOnlineGiftClaimResultDto claimed=service.claimGift("GIFTS1","alice",request(id));
@@ -144,7 +144,10 @@ public class BattleOnlineGiftDropTest {
         assertEquals(3,claimed.getRoom().getGiftDrop().gifts.size());
         set(alice,"giftCredits",1); ReflectionTestUtils.invokeMethod(service,"finishMatchLocked",room);
         BattleOnlineRoomDto finished=service.getRoom("GIFTS1","alice");
-        assertEquals("FINISHED",finished.getStatus()); assertFalse(finished.isGiftOpening());
+        assertEquals("PLAYING",finished.getStatus()); assertTrue(finished.isGiftOpening());
+        assertEquals(Integer.valueOf(1),finished.getGiftCredits()); assertNull(finished.getCurrentQuestion());
+        BattleOnlineGiftClaimResultDto last=service.claimGift("GIFTS1","alice",request(finished.getGiftDrop().gifts.get(0).id));
+        assertEquals("FINISHED",last.getRoom().getStatus());
     }
 
     @Test public void selectedTeamCarrierAlsoReceivesDoubleGiftPoints() {

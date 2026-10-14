@@ -88,6 +88,16 @@
             ).then(function (response) { return response.data; });
         };
 
+        self.extendMatchTime = function (roomCode) {
+            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/time-extension', {}, {timeout: 10000})
+                .then(function (response) { return response.data; });
+        };
+
+        self.finishMatch = function (roomCode) {
+            return $http.post(apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/finish', {}, {timeout: 10000})
+                .then(function (response) { return response.data; });
+        };
+
         self.setReady = function (roomCode, ready) {
             return $http.post(
                 apiUrl + '/rooms/' + normalizeRoomCode(roomCode) + '/ready',

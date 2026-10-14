@@ -1411,6 +1411,64 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
     }
 
 
+    @Override
+    public BattleOnlineRoomDto extendMatchTime(String roomCode, String username) {
+        username = requireUsername(username);
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto result;
+        synchronized (room) {
+            requireHost(room, username);
+            requirePlaying(room);
+            long now = System.currentTimeMillis();
+            if (room.giftOpening) {
+                if (now >= room.giftOpeningEndsAt) {
+                    throw new BattleOnlineException(HttpStatus.CONFLICT, "Vòng bóc trứng đã hết giờ.");
+                }
+                room.giftOpeningEndsAt += 60000L;
+                room.matchEndsAt = room.giftOpeningEndsAt;
+                scheduleMatchFinish(room.code, room.matchEndsAt);
+            } else if (room.videoSynchronized || !isCountdownLikeMode(room.settings.mode)) {
+                if ((room.videoSynchronized && !"ANSWERING".equals(room.videoPhase)) ||
+                        (MODE_GUESS_WORD.equals(room.settings.mode) && !GUESS_PHASE_QUESTION.equals(room.guessPhase)) ||
+                        (!room.questionTimerPaused && now >= room.questionEndsAt)) {
+                    throw new BattleOnlineException(HttpStatus.CONFLICT, "Chỉ cộng giờ khi câu hỏi đang mở.");
+                }
+                if (room.questionTimerPaused) {
+                    room.questionTimerRemainingMillis += 10000L;
+                } else {
+                    room.questionEndsAt += 10000L;
+                    long grace = MODE_GUESS_WORD.equals(room.settings.mode) ? GUESS_AUTO_SUBMIT_GRACE_MS + 150L : 80L;
+                    scheduleClassicAdvance(room.code, room.classicQuestionIndex, room.questionEndsAt - now + grace);
+                }
+                if (room.videoSynchronized) { room.videoRevision++; }
+            } else {
+                if (now >= room.matchEndsAt) {
+                    throw new BattleOnlineException(HttpStatus.CONFLICT, "Trận đấu đã hết giờ.");
+                }
+                room.matchEndsAt += 60000L;
+                scheduleMatchFinish(room.code, room.matchEndsAt);
+            }
+            result = snapshotLocked(room, username);
+        }
+        broadcastGeneric(room);
+        return result;
+    }
+
+    @Override
+    public BattleOnlineRoomDto finishMatch(String roomCode, String username) {
+        username = requireUsername(username);
+        RoomState room = requireRoom(roomCode);
+        BattleOnlineRoomDto result;
+        synchronized (room) {
+            requireHost(room, username);
+            requirePlaying(room);
+            finishMatchLocked(room);
+            result = snapshotLocked(room, username);
+        }
+        broadcastGeneric(room);
+        return result;
+    }
+
     private void startClassicLocked(RoomState room) {
         int requested =
                 clamp(
@@ -1783,7 +1841,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     (autoSubmitted ? GUESS_AUTO_SUBMIT_GRACE_MS : 0L);
 
             if (!GUESS_PHASE_QUESTION.equals(room.guessPhase) ||
-                question == null || now > answerDeadline) {
+                question == null || (!room.questionTimerPaused && now > answerDeadline)) {
                 throw new BattleOnlineException(
                         HttpStatus.CONFLICT,
                         "Câu hỏi đã hết giờ."
@@ -2026,7 +2084,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             }
 
             if (
-                System.currentTimeMillis() >
+                !room.questionTimerPaused && System.currentTimeMillis() >
                 room.questionEndsAt
             ) {
                 throw new BattleOnlineException(
@@ -2677,14 +2735,13 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Phòng này không có box quà LỤM NGAY.");
             }
             long now = System.currentTimeMillis();
-            if (room.videoSynchronized) {
-                if (!room.giftOpening) {
-                    throw new BattleOnlineException(HttpStatus.CONFLICT, "Chờ hết video để bắt đầu bóc trứng.");
-                }
+            if (room.giftOpening) {
                 if (now >= room.giftOpeningEndsAt) {
                     completeMatchLocked(room);
                     throw new BattleOnlineException(HttpStatus.CONFLICT, "Đã hết thời gian bóc trứng.");
                 }
+            } else if (room.videoSynchronized) {
+                throw new BattleOnlineException(HttpStatus.CONFLICT, "Chờ hết video để bắt đầu bóc trứng.");
             } else if (now >= room.matchEndsAt) {
                 finishMatchLocked(room);
                 throw new BattleOnlineException(HttpStatus.CONFLICT, "Hết thời gian trận.");
@@ -4183,6 +4240,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                 finishVideoAnswerWindowLocked(room);
             } else if (MODE_GUESS_WORD.equals(room.settings.mode)) {
                 if (GUESS_PHASE_QUESTION.equals(room.guessPhase)) {
+                    if (System.currentTimeMillis() < room.questionEndsAt && !allConnectedClassicAnsweredLocked(room)) { return; }
                     recordUnansweredClassicPlayersLocked(room);
                     finalizeGuessRoundLocked(room);
                     cancelGuessRevealTimer(room.code);
@@ -4205,9 +4263,11 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                         );
                     }
                 } else if (GUESS_PHASE_REVIEW.equals(room.guessPhase)) {
+                    if (System.currentTimeMillis() < room.guessReviewEndsAt) { return; }
                     advanceGuessQuestionLocked(room);
                 }
             } else {
+                if (System.currentTimeMillis() < room.questionEndsAt && !allConnectedClassicAnsweredLocked(room)) { return; }
                 recordUnansweredClassicPlayersLocked(room);
                 int next = room.classicQuestionIndex + 1;
 
@@ -5193,6 +5253,12 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             RoomState room,
             PlayerState player) {
 
+        if (room.giftOpening) {
+            player.currentQuestion = null;
+            player.currentSkillType = null;
+            return;
+        }
+
         if (room.videoSynchronized) {
             QuestionState shared = currentClassicQuestionLocked(room);
             if (shared == null || player.spectator || player.answeredClassicIndex == room.classicQuestionIndex) {
@@ -5941,7 +6007,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
             return;
         }
 
-        if (MODE_LUM_NGAY.equals(room.settings.mode) && room.videoSynchronized && !room.giftOpening) {
+        if (MODE_LUM_NGAY.equals(room.settings.mode) && !room.giftOpening) {
             startGiftOpeningLocked(room);
             if (hasOutstandingGiftCreditsLocked(room)) { return; }
         }
@@ -6893,7 +6959,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
         );
 
         if (
-            PLAYING.equals(room.status) &&
+            PLAYING.equals(room.status) && !room.giftOpening &&
             (room.videoSynchronized || MODE_CLASSIC.equals(room.settings.mode) ||
              MODE_GUESS_WORD.equals(room.settings.mode))
         ) {

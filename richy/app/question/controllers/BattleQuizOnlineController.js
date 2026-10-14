@@ -257,6 +257,26 @@
         vm.hostVideoReopening = false;
         vm.hostVideoReplayError = '';
         vm.hostQuestionTimerBusy = false;
+        vm.matchControlBusy = false;
+        vm.canExtendMatchTime = function () {
+            if (!vm.room || vm.room.status !== 'PLAYING' || !isHost() || vm.countdown <= 0) { return false; }
+            if (vm.room.giftOpening) { return true; }
+            if (vm.room.videoSynchronized) { return vm.room.videoPhase === 'ANSWERING'; }
+            return !isGuessWordMode() || vm.room.guessPhase === 'QUESTION';
+        };
+        function runHostMatchControl(action) {
+            if (!vm.room || vm.room.status !== 'PLAYING' || !isHost() || vm.matchControlBusy) { return; }
+            var code = vm.room.code;
+            vm.matchControlBusy = true;
+            return battleService[action](code).then(function (room) {
+                if (vm.room && vm.room.code === code) { applyRoom(room, false); }
+            }, showRequestError).finally(function () { vm.matchControlBusy = false; });
+        }
+        vm.extendMatchTime = function () {
+            if (!vm.canExtendMatchTime()) { return; }
+            return runHostMatchControl('extendMatchTime');
+        };
+        vm.finishMatch = function () { return runHostMatchControl('finishMatch'); };
         vm.hostVideoFullscreen = false;
         vm.videoAnswerToast = null;
         var hostVideoQuestionKey = '', hostVideoQuestionFocus;
@@ -2827,6 +2847,17 @@
                 resetPasswordGuessDisplay();
             }
 
+            if (incoming.giftOpening === true && giftOpeningStarted && fromGenericSocket === true) {
+                incoming.currentQuestion = null;
+                incoming.pendingSkillType = null;
+                incoming.pendingSkillTargetUsernames = [];
+                incoming.wrongAnswerPenaltyUntil = 0;
+                incoming.wrongAnswerQuestion = null;
+                incoming.wrongAnswerCorrectAnswer = null;
+                incoming.wrongAnswerSelectedAnswer = null;
+                vm.answerLocked = false;
+                clearSkillHitEffect();
+            }
             vm.room = incoming;
             if (vm.giftModalOpen && (incoming.status !== 'PLAYING' ||
                     (previousRoom && previousRoom.giftOpening === true && incoming.giftOpening !== true))) { vm.closeGiftModal(true); }

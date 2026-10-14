@@ -15,8 +15,8 @@ async function open(browser,username,width){
  await page.setContent('<html><head><meta charset="UTF-8"><style>'+css+'</style></head><body><div id="qa" class="battle-online-page" ng-controller="BattleQuizOnlineController as vm">'+hostPane+waiting+exercise+feedback+'</div></body></html>');
  await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular.min.js')});
  await page.addScriptTag({path:path.join(app,'assets/scripts/external/angular-sanitize.min.js')});
- await page.evaluate(({username,template})=>{
-  window.APP_VERSION='qa';window.videoCalls=[];window.timerRequests=[];window.answerCalls=[];window.answerRequests=[];window.videoActions=[];window.listCalls=[];window.reopenRequests=[];
+ await page.evaluate(({username,template,controlsTemplate})=>{
+  window.APP_VERSION='qa';window.videoCalls=[];window.timerRequests=[];window.answerCalls=[];window.answerRequests=[];window.videoActions=[];window.listCalls=[];window.reopenRequests=[];window.matchControlRequests=[];
   angular.module('Hrm.Question',['ngSanitize']).value('$state',{go(){}}).value('$stateParams',{})
    .value('$cookies',{get(){return JSON.stringify({id:1,username});}})
    .value('toastr',{warning(){},error(){},success(){}}).value('blockUI',{}).value('QuestionService',{})
@@ -24,13 +24,17 @@ async function open(browser,username,width){
     getVideoQuestions(...args){window.listCalls.push(args);return $q.when(window.videoQuestionPreviews||[{sequence:1,seconds:5,preview:'What is the name…'},{sequence:2,seconds:10,preview:'Who is…'}]);},
     reopenVideoQuestion(...args){const request=$q.defer();window.reopenRequests.push({args,request});return request.promise;},
     setQuestionTimerPaused(...args){const request=$q.defer();window.timerRequests.push({args,request});return request.promise;},
+    extendMatchTime(...args){const request=$q.defer();window.matchControlRequests.push({action:'extend',args,request});return request.promise;},
+    finishMatch(...args){const request=$q.defer();window.matchControlRequests.push({action:'finish',args,request});return request.promise;},
     videoEvent(...args){const request=$q.defer();window.videoCalls.push({args,request});return request.promise;}};})
    .directive('comprehensiveVideoPlayer',function(){return {scope:{onVideoReady:'&',onVideoProgress:'&',onVideoState:'&',onVideoEnded:'&'},
     template:'<div class="comprehensive-video-player"><div class="comprehensive-video-mount"><video></video></div></div>',link(scope){
      const api={ready:true,play(){window.videoActions.push('play');},pause(){window.videoActions.push('pause');},seek(t){window.videoActions.push(['seek',t]);}};
      window.videoAdapter=scope;scope.onVideoReady({api});}};})
-   .run(function($templateCache){$templateCache.put('question/views/battle_online_exercise_form.html?v=qa&individualQuestions=20261007_1',template);});
- },{username,template:fs.readFileSync(path.join(app,'question/views/battle_online_exercise_form.html'),'utf8')});
+   .run(function($templateCache){$templateCache.put('question/views/battle_online_exercise_form.html?v=qa&individualQuestions=20261007_1',template);
+    $templateCache.put('question/views/battle_online_match_controls.html?matchControls=20261014_1',controlsTemplate);});
+ },{username,template:fs.readFileSync(path.join(app,'question/views/battle_online_exercise_form.html'),'utf8'),
+  controlsTemplate:fs.readFileSync(path.join(app,'question/views/battle_online_match_controls.html'),'utf8')});
  const source=fs.readFileSync(path.join(app,'question/controllers/BattleQuizOnlineController.js'),'utf8')
   .replace(/loadBattleViewMusicConfig\(\);\s*getPageTopicCategory\(\);/,'window.battleHooks = {applyRoom: applyRoom};');
  await page.addScriptTag({content:source});
@@ -47,6 +51,51 @@ function room(mode,phase,revision=1,sequence=1){return {code:'VIDEO1',hostUserna
  videoTimeSeconds:10,videoAnswerSeconds:20,instructionsHtml:'<p>Xem video và chọn đáp án.</p>',items:[{id:'201',number:1,
  promptHtml:'<b>What did you see?</b>',options:[{key:'A',text:'A cat'},{key:'B',text:'A dog'}]}]}}};}
 async function apply(page,snapshot){await page.evaluate(r=>{window.qaScope.$apply(()=>window.battleHooks.applyRoom(r,false));},snapshot);}
+
+test('host match buttons use ten seconds for questions, one minute for match and egg clocks, and finish during video playback',async()=>{
+ const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(p=>fs.existsSync(p));
+ const browser=await playwright.chromium.launch({headless:true,executablePath});
+ try {
+  const host=await open(browser,'host',390),student=await open(browser,'alice',390);
+  for(const page of [host,student]) {
+   await page.evaluate(()=>{
+    const el=document.createElement('div');el.id='match-controls-qa';el.setAttribute('ng-include',"'question/views/battle_online_match_controls.html?matchControls=20261014_1'");
+    document.getElementById('qa').appendChild(el);
+    angular.element(document.getElementById('qa')).injector().get('$compile')(el)(window.qaScope);
+    window.qaScope.$digest();
+   });
+  }
+  let revision=1;
+  for(const mode of ['CLASSIC','GUESS_WORD','COUNTDOWN','MONEY_BEG','ESCAPE_DUMB_DEMON','DEMON_DEFENSE','LUM_NGAY']) {
+   const snapshot=room(mode,'ANSWERING',revision++);await apply(host,snapshot);await apply(student,snapshot);
+   assert.equal(await student.locator('#match-controls-qa button').count(),0,'students cannot control '+mode);
+   const controls=host.locator('.battle-online-host-question-controls');await controls.getByRole('button',{name:'+10 giây',exact:true}).click();
+   const box=await controls.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=390,'timer buttons fit the mobile modal');
+   const count=await host.evaluate(()=>window.matchControlRequests.length);
+   assert.deepEqual(await host.evaluate(()=>window.matchControlRequests.at(-1).args),['VIDEO1']);
+   assert.equal(await controls.getByRole('button',{name:'Kết thúc',exact:true}).isEnabled(),false,'requests serialize');
+   snapshot.videoRevision=revision++;snapshot.questionEndsAt+=10000;
+   await host.evaluate(r=>window.qaScope.$apply(()=>window.matchControlRequests.at(-1).request.resolve(r)),snapshot);
+   assert.equal(await host.evaluate(()=>window.matchControlRequests.length),count);
+   assert.ok(await host.evaluate(()=>window.qaScope.vm.countdown)>=29);
+   const regular=room(mode,'ANSWERING',revision++);regular.videoSynchronized=false;regular.currentQuestion=null;regular.matchEndsAt=Date.now()+120000;
+   await apply(host,regular);
+   const label=['CLASSIC','GUESS_WORD'].includes(mode)?'+10 giây':'+1 phút';
+   assert.equal(await host.locator('#match-controls-qa').getByRole('button',{name:label,exact:true}).isEnabled(),true,mode+' regular clock');
+  }
+  const egg=room('LUM_NGAY','ANSWERING',revision++);egg.giftOpening=true;egg.currentQuestion=null;egg.giftOpeningEndsAt=Date.now()+180000;
+  await apply(host,egg);
+  const controls=host.locator('#match-controls-qa');assert.equal(await controls.getByRole('button',{name:'+1 phút',exact:true}).isEnabled(),true);
+  assert.equal(await controls.getByRole('button',{name:'Kết thúc bóc trứng',exact:true}).isEnabled(),true);
+  const watching=room('CLASSIC','WATCHING',revision++);await apply(host,watching);
+  assert.equal(await controls.getByRole('button',{name:'+10 giây',exact:true}).isEnabled(),false);
+  await controls.getByRole('button',{name:'Kết thúc',exact:true}).click();
+  assert.equal(await host.evaluate(()=>window.matchControlRequests.at(-1).action),'finish');
+  watching.status='FINISHED';watching.currentQuestion=null;watching.videoRevision=revision++;
+  await host.evaluate(r=>window.qaScope.$apply(()=>window.matchControlRequests.at(-1).request.resolve(r)),watching);
+  assert.equal(await controls.getByRole('button').count(),0);
+ } finally { await browser.close(); }
+});
 test('actual Battle templates preload hidden answers in all modes and host video controls pause/resume across cues',async()=>{
  const executablePath=['C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find(p=>fs.existsSync(p));
  const browser=await playwright.chromium.launch({headless:true,executablePath});

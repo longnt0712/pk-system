@@ -178,6 +178,16 @@ public class RestBattleOnlineController {
         );
     }
 
+    @RequestMapping(value = "/rooms/{roomCode}/time-extension", method = RequestMethod.POST)
+    public BattleOnlineRoomDto extendMatchTime(@PathVariable String roomCode) {
+        return battleOnlineService.extendMatchTime(roomCode, currentUsername());
+    }
+
+    @RequestMapping(value = "/rooms/{roomCode}/finish", method = RequestMethod.POST)
+    public BattleOnlineRoomDto finishMatch(@PathVariable String roomCode) {
+        return battleOnlineService.finishMatch(roomCode, currentUsername());
+    }
+
     @RequestMapping(value = "/rooms/{roomCode}/answer", method = RequestMethod.POST)
     public BattleOnlineAnswerResultDto answer(
             @PathVariable String roomCode,

@@ -1052,6 +1052,7 @@
         <button type="button" class="btn btn-default" ng-click="vm.toggleHostVideoFullscreen()">
             {{vm.hostVideoFullscreen ? '⛶ Thu nhỏ' : '⛶ Toàn màn hình'}}
         </button>
+        <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
         <p class="comprehensive-video-error" ng-if="vm.videoSyncError" role="alert">{{vm.videoSyncError}}</p>
     </section>
     <div class="battle-online-host-question-backdrop" ng-if="vm.hostVideoQuestionModalOpen"
@@ -1070,6 +1071,7 @@
                 </button>
                 <button type="button" class="battle-online-host-question-close" ng-click="vm.closeHostVideoQuestionModal()" aria-label="Đóng câu hỏi">×</button>
             </header>
+            <div class="battle-online-host-question-controls" ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
             <div class="battle-online-host-question-body">
                 <battle-exercise-form exercise="vm.room.currentQuestion.exercise" answers="vm.exerciseAnswers"
                                       disabled="vm.exerciseInputDisabled()" on-answer="vm.submitExercise(false)"></battle-exercise-form>
@@ -1119,7 +1121,7 @@
         <span aria-hidden="true">{{vm.videoAnswerToast.correct ? '✓' : '✕'}}</span> {{vm.videoAnswerToast.label}}
     </div>
     <ng-include ng-if="vm.room && vm.room.status === 'PLAYING' && vm.isLumNgayMode() && vm.isHost()"
-                src="'question/views/battle_online_egg_host.html?eggHost=20261009_1'"></ng-include>
+                src="'question/views/battle_online_egg_host.html?eggHost=20261014_1'"></ng-include>
     <div class="battle-online-game-layout"
          ng-if="vm.room && vm.room.status === 'PLAYING' && !(vm.isLumNgayMode() && vm.isHost() && vm.isSpectator())"
          ng-class="{'is-guess-word-layout': vm.isGuessWordMode(), 'is-demon-layout': vm.isDemonDefenseMode(), 'is-host-spectator-layout': vm.isHost() && vm.isSpectator() && !vm.isGuessWordMode()}">
@@ -1211,6 +1213,7 @@
                  ng-if="vm.isGuessWordMode()">
                 <span>🔤 GUESS THE WORD • CÂU <b>{{vm.room.currentQuestionIndex}}</b> / {{vm.room.totalQuestions}}</span>
                 <div class="battle-online-countdown" ng-class="{'is-danger': vm.countdown <= 3}">⏱ {{vm.countdown}}</div>
+                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
             </div>
 
             <div class="battle-online-guess-timer" ng-if="vm.isGuessWordMode()">
@@ -1235,6 +1238,8 @@
 
                     ⏱ {{vm.countdown}}
                 </div>
+
+                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
 
             </div>
 
@@ -1263,6 +1268,8 @@
 
                     ⏱ {{vm.formatTime(vm.countdown)}}
                 </div>
+
+                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
 
             </div>
 
@@ -1614,6 +1621,8 @@
                     ⏱ {{vm.formatTime(vm.countdown)}}
                 </div>
 
+                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
+
             </div>
 
             <section class="battle-online-dumb-meter"
@@ -1679,12 +1688,14 @@
                 <strong>{{vm.room.currentQuestion.question}}</strong>
                 <span>{{vm.room.currentQuestion.pronounce}}</span>
                 <b>⏱ {{vm.countdown}}s</b>
+                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
             </div>
 
             <div class="battle-online-spectator-question"
                  ng-if="vm.isCountdownMode()">
                 <small>THỜI GIAN CÒN LẠI</small>
                 <strong>⏳ {{vm.formatTime(vm.countdown)}}</strong>
+                <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
                 <span>Mỗi người chơi đang nhận câu hỏi riêng.</span>
             </div>
 
@@ -1829,7 +1840,7 @@
          FINISHED
          ===================================================== -->
     <ng-include ng-if="vm.isHost() && vm.isDemonDefenseMode() && (vm.room.status === 'PLAYING' || vm.room.status === 'FINISHED')"
-                src="'question/views/battle_online_demon_arena.html'"></ng-include>
+                src="'question/views/battle_online_demon_arena.html?matchControls=20261014_1'"></ng-include>
 
     <section class="battle-online-card battle-online-finished"
              ng-if="vm.room && vm.room.status === 'FINISHED'">
@@ -2048,8 +2059,7 @@
                 <p class="battle-online-gift-modal-hint" ng-if="vm.room.giftOpening && vm.room.giftCredits <= 0">Đã dùng hết lượt. Đang chờ những người chơi còn lại…</p>
                 <p class="battle-online-gift-modal-hint" ng-if="!vm.room.giftOpening">Chọn 1 trong 3 quả trứng. Bóc xong bạn sẽ tiếp tục trả lời câu kế tiếp.</p>
                 <div class="battle-online-gift-host-controls" ng-if="vm.isHost() && vm.room.giftOpening">
-                    <button type="button" class="btn btn-default" ng-click="$event.stopPropagation(); vm.extendGiftOpening()" ng-disabled="vm.finishingGiftOpening">+1 phút</button>
-                    <button type="button" class="btn btn-danger" ng-click="$event.stopPropagation(); vm.finishGiftOpening()" ng-disabled="vm.finishingGiftOpening">Kết thúc ngay</button>
+                    <div ng-include="'question/views/battle_online_match_controls.html?matchControls=20261014_1'"></div>
                 </div>
                 <div class="battle-online-gift-modal-meta"><span>{{vm.room.giftDrop.gifts.length || 0}} / {{vm.room.giftDrop.capacity || 0}} trứng</span><b>{{vm.room.giftCredits || 0}} lượt bóc</b></div>
                 <div class="battle-online-gift-grid" ng-if="vm.room.giftDrop.gifts.length">
@@ -2970,6 +2980,9 @@
     .battle-online-host-question-clock strong span { font-size: 16px; }
     .battle-online-host-question-clock.is-urgent { color: #d04444; }
     .battle-online-host-timer-toggle { flex-shrink:0; min-height:44px; font-weight:800; }
+    .battle-online-match-controls { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; }
+    .battle-online-match-controls .btn { min-height:44px; font-weight:700; }
+    .battle-online-host-question-controls { padding:10px 16px; border-bottom:1px solid #e2e8f0; }
     .battle-online-host-question-close { flex-shrink: 0; width: 44px; height: 44px; border: 1px solid var(--bo-line); border-radius: 12px; background: var(--bo-card); color: var(--bo-text); font-size: 28px; }
     .battle-online-host-question-body { flex: 1; min-height: 0; overflow-y: auto; padding: 24px clamp(16px, 4vw, 64px); font-size: clamp(18px, 2vw, 24px); }
     .battle-online-host-question-body .battle-online-word h2 { font-size: clamp(26px, 3vw, 42px); }

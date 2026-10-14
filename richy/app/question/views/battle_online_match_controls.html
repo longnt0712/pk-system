@@ -1,0 +1,6 @@
+<div class="battle-online-match-controls" ng-if="vm.isHost() && vm.room.status === 'PLAYING'" aria-label="Điều khiển thời gian trận đấu">
+    <button type="button" class="btn btn-default" ng-click="$event.stopPropagation(); vm.extendMatchTime()"
+            ng-disabled="vm.matchControlBusy || !vm.canExtendMatchTime()">{{vm.room.giftOpening || (vm.isCountdownMode() && !vm.room.videoSynchronized) ? '+1 phút' : '+10 giây'}}</button>
+    <button type="button" class="btn btn-danger" ng-click="$event.stopPropagation(); vm.finishMatch()"
+            ng-disabled="vm.matchControlBusy">{{vm.room.giftOpening ? 'Kết thúc bóc trứng' : 'Kết thúc'}}</button>
+</div>
