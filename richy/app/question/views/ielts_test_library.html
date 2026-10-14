@@ -1,17 +1,24 @@
 <div class="row margin-top-10 ielts-test-library-page"
-     ng-class="vm.isComprehensiveMode ? 'is-comprehensive-library' : (vm.isWritingMode ? 'is-writing-library' : (vm.isListeningMode ? 'is-listening-library' : 'is-reading-library'))">
+     ng-class="vm.isDailyListeningMode ? 'is-daily-listening-library' : (vm.isComprehensiveMode ? 'is-comprehensive-library' : (vm.isWritingMode ? 'is-writing-library' : (vm.isListeningMode ? 'is-listening-library' : 'is-reading-library')))">
     <div class="col-md-12">
         <section class="ielts-library-hero">
-            <div class="ielts-library-hero__icon"><i class="fa" ng-class="vm.testModeIcon"></i></div>
             <div class="ielts-library-hero__copy">
-                <span>{{vm.isDailyListeningMode ? 'KHO BÀI NGHE CHUNG' : (vm.isComprehensiveMode ? 'BÀI TẬP TỰ DO' : 'IELTS TEST LIBRARY')}}</span>
+                <span class="library-overline"><i class="fa fa-bookmark" aria-hidden="true"></i> GÓC LUYỆN TẬP CỦA BẠN</span>
                 <h1>{{vm.isDailyListeningMode ? 'Thư viện Daily Listening' : (vm.isComprehensiveMode ? 'Bài tập tổng hợp' : 'Thư viện IELTS ' + vm.testModeName)}}</h1>
-                <p>Mở folder để tìm bài của từng giáo viên. Chuyển giữa dạng biểu tượng và danh sách bằng nút ở góc phải.</p>
-                <p ng-if="!vm.isComprehensiveMode && !vm.isListeningMode && !vm.isWritingMode && !vm.isDailyListeningMode">Chọn đề Reading để học hoặc làm bài test với giao diện thi thật.</p>
-                <p ng-if="vm.isDailyListeningMode">Mở bài nghe để điền từ. Hệ thống tự tạo gaps và hoàn thành khi đúng ít nhất 90%.</p>
-                <p ng-if="!vm.isComprehensiveMode && vm.isListeningMode">Chọn đề Listening để nghe, luyện tập hoặc làm bài test.</p>
-                <p ng-if="vm.isWritingMode">Chọn bài Writing gồm Task 1, Task 2 hoặc cả hai; tiến trình viết được lưu để làm tiếp.</p>
+                <p ng-if="!vm.isComprehensiveMode && !vm.isListeningMode && !vm.isWritingMode && !vm.isDailyListeningMode">Mỗi bài đọc, một bước tiến. Chọn bộ đề yêu thích và luyện tập theo nhịp của bạn.</p>
+                <p ng-if="vm.isDailyListeningMode">Nghe từng đoạn, điền từng từ. Dành một chút thời gian mỗi ngày để nghe tốt hơn.</p>
+                <p ng-if="!vm.isComprehensiveMode && vm.isListeningMode">Lắng nghe, khám phá và tiến bộ. Tìm bộ đề phù hợp để bắt đầu buổi luyện nghe.</p>
+                <p ng-if="vm.isWritingMode">Từ ý tưởng đến bài viết. Luyện từng Task và tiếp tục bài viết theo nhịp của bạn.</p>
+                <p ng-if="vm.isComprehensiveMode">Một thư viện, nhiều cách học. Khám phá bài tập được chuẩn bị bởi các giáo viên.</p>
+                <div class="library-hero-tags"><span><i class="fa fa-compass" aria-hidden="true"></i> Luyện tập chủ động</span><span><i class="fa fa-bookmark-o" aria-hidden="true"></i> Tiếp nối mỗi ngày</span></div>
             </div>
+            <div class="library-hero-art" aria-hidden="true">
+                <span class="library-art-orbit"></span>
+                <span class="library-art-book library-art-book--back">IELTS</span>
+                <span class="library-art-book library-art-book--front"><small>YOUR NEXT CHAPTER</small><strong>{{vm.testModeName}}</strong><i class="fa" ng-class="vm.testModeIcon"></i><span>LEARN &amp; GROW</span></span>
+                <span class="library-art-spark"><i class="fa fa-star"></i></span>
+            </div>
+        </section>
             <nav class="ielts-library-mode-switch" aria-label="Chọn thư viện IELTS">
                 <a href="ielts_reading_tests" ng-class="{'is-active': !vm.isListeningMode && !vm.isComprehensiveMode && !vm.isWritingMode && !vm.isDailyListeningMode}">
                     <i class="fa fa-book"></i> Reading
@@ -27,7 +34,6 @@
                 </a>
                 <a href="daily_listening_tests" ng-class="{'is-active': vm.isDailyListeningMode}"><i class="fa fa-headphones"></i> Daily Listening</a>
             </nav>
-        </section>
     </div>
 
     <div class="col-md-12">
@@ -36,14 +42,14 @@
                 <div>
                     <span class="reading-test-catalog__eyebrow" ng-if="vm.isComprehensiveMode">BÀI TẬP TỔNG HỢP</span>
                     <span class="reading-test-catalog__eyebrow" ng-if="!vm.isComprehensiveMode">{{vm.isDailyListeningMode ? 'DAILY LISTENING' : 'IELTS ' + (vm.testModeName | uppercase)}} LIBRARY</span>
-                    <h2>Chọn bài {{vm.testModeName}}</h2>
+                    <h2>{{vm.searchDto.textSearch ? 'Kết quả tìm kiếm' : (vm.selectedTestFolderId ? 'Bài trong bộ đề' : 'Khám phá bộ đề')}}</h2>
                     <p ng-if="vm.isComprehensiveMode">Danh sách câu hỏi linh hoạt theo từng bài.</p>
                     <p ng-if="!vm.isComprehensiveMode && !vm.isListeningMode && !vm.isWritingMode && !vm.isDailyListeningMode">Đọc 3 passages và hoàn thành 40 câu hỏi.</p>
                     <p ng-if="vm.isDailyListeningMode">Chọn bài nghe và tiếp tục phần điền từ đã lưu.</p>
                     <p ng-if="!vm.isComprehensiveMode && vm.isListeningMode">Nghe audio và hoàn thành 4 Part, mỗi Part 10 câu.</p>
                     <p ng-if="vm.isWritingMode">Viết Task 1, Task 2 hoặc hoàn thành cả hai Task theo cấu trúc của từng đề.</p>
                 </div>
-                <span class="reading-test-catalog__count">{{vm.totalItems}} bài test</span>
+                <span class="reading-test-catalog__count" ng-if="vm.totalItems > 0"><i class="fa fa-files-o" aria-hidden="true"></i> {{vm.totalItems}} {{vm.isDailyListeningMode ? 'bài nghe' : 'bài test'}}</span>
             </div>
 
             <div class="reading-library-filter-bar">
@@ -52,21 +58,23 @@
                     <input ng-model="vm.searchDto.textSearch"
                            ng-keyup="vm.enterSearchCode($event)"
                            type="search"
-                           placeholder="Tìm tên bài trong folder và folder con..."
+                           placeholder="Bạn muốn luyện bài nào hôm nay?"
                            aria-label="Tìm bài test theo tên">
-                    <button type="button" ng-click="vm.search()">Tìm kiếm</button>
+                    <button type="button" ng-click="vm.search()"><i class="fa fa-arrow-right" aria-hidden="true"></i><span>Tìm kiếm</span></button>
                 </div>
             </div>
 
             <test-folder-explorer folder-id="vm.selectedTestFolderId" test-mode="vm.folderTestMode" all-teachers="true" on-change="vm.applyFolderFilter(folderId)">
-                <article class="test-explorer-file" ng-repeat="item in vm.ieltsReadingTests track by item.id">
+                <article class="test-explorer-file" ng-repeat="item in vm.ieltsReadingTests track by item.id" ng-class="{'library-test-in-progress': !vm.isWritingMode && vm.getLearningProgress(item.id), 'library-test-complete': !vm.isWritingMode && vm.getLearningProgress(item.id).completed}">
                     <div class="test-explorer-file-content">
                     <a class="test-explorer-file-main" target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item)}}" title="{{item.title}}">
-                        <span class="test-explorer-name">{{item.title}}<small ng-if="!vm.isWritingMode && vm.getLearningProgress(item.id)">{{vm.getLearningProgress(item.id).completed ? 'Đã hoàn thành' : 'Đã lưu tiến trình'}}</small><small ng-if="vm.isWritingMode">{{item.hasWritingTask1 ? 'Task 1' : ''}}{{item.hasWritingTask1 && item.hasWritingTask2 ? ' · ' : ''}}{{item.hasWritingTask2 ? 'Task 2' : ''}}</small><small ng-if="vm.searchDto.textSearch && item.testFolder">{{item.testFolder.ownerName}} / {{item.testFolder.name}}</small></span>
+                        <span class="library-test-cover" aria-hidden="true"><i class="fa" ng-class="vm.testModeIcon"></i><small>{{vm.testModeName}}</small><span>{{$index + 1 < 10 ? '0' : ''}}{{$index + 1}}</span></span>
+                        <span class="test-explorer-name"><span class="library-test-title">{{item.title}}</span><small ng-if="!vm.isWritingMode && vm.getLearningProgress(item.id)">{{vm.getLearningProgress(item.id).completed ? 'Đã hoàn thành' : 'Đã lưu tiến trình'}}</small><small ng-if="vm.isWritingMode">{{item.hasWritingTask1 ? 'Task 1' : ''}}{{item.hasWritingTask1 && item.hasWritingTask2 ? ' · ' : ''}}{{item.hasWritingTask2 ? 'Task 2' : ''}}</small><small ng-if="vm.searchDto.textSearch && item.testFolder">{{item.testFolder.ownerName}} / {{item.testFolder.name}}</small></span>
                     </a>
                     <div class="test-explorer-file-details" ng-if="!vm.isComprehensiveMode && !vm.isDailyListeningMode">
                         <span class="test-explorer-topic" ng-repeat="topic in item.topics track by topic.id"><i class="fa fa-tag"></i> {{topic.name}}</span>
                         <p ng-if="!vm.isWritingMode && vm.getLearningProgress(item.id)" ng-init="progress=vm.getLearningProgress(item.id)">
+                            <progress class="library-learning-progress" max="{{progress.totalQuestions || 40}}" value="{{progress.answeredCount || 0}}" aria-label="Tiến trình làm bài"></progress>
                             {{progress.answeredCount || 0}}/{{progress.totalQuestions || 40}} câu · {{vm.formatLearningDuration(progress.elapsedSeconds)}}
                             <span ng-if="progress.studiedParts.length"> · Đã học Part {{progress.studiedParts.join(', ')}}</span>
                             <span ng-if="progress.savedAt"> · {{progress.savedAt | date:'HH:mm dd/MM/yyyy'}}</span>
@@ -75,15 +83,15 @@
                         <p ng-if="vm.isWritingMode && item.hasWritingTask2 && vm.getLearningProgress(item.id, 2)" ng-init="taskTwoProgress=vm.getLearningProgress(item.id, 2)">Task 2 · {{vm.formatLearningDuration(taskTwoProgress.elapsedSeconds)}} · {{taskTwoProgress.completed ? 'Đã hoàn thành' : 'Đang học'}}</p>
                     </div>
                     <div class="test-explorer-file-actions">
-                        <a ng-if="!vm.isWritingMode" target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item)}}">{{vm.getLearningProgress(item.id) ? 'Học tiếp' : 'Học bài'}}</a>
-                        <a ng-if="vm.isWritingMode && item.hasWritingTask1" target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item, 1)}}">{{vm.getLearningProgress(item.id, 1) ? (vm.getLearningProgress(item.id, 1).completed ? 'Xem lại Task 1' : 'Tiếp tục Task 1') : 'Bắt đầu Task 1'}}</a>
-                        <a ng-if="vm.isWritingMode && item.hasWritingTask2" target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item, 2)}}">{{vm.getLearningProgress(item.id, 2) ? (vm.getLearningProgress(item.id, 2).completed ? 'Xem lại Task 2' : 'Tiếp tục Task 2') : 'Bắt đầu Task 2'}}</a>
-                        <a ng-if="!vm.isDailyListeningMode" target="_blank" rel="noopener" ng-href="{{vm.seriousTestCatalogUrl(item)}}">{{vm.isWritingMode ? 'Làm bài Writing' : 'Làm test'}}</a>
-                        <a ng-if="vm.isComprehensiveMode" ng-href="battle-quiz-online?exerciseId={{item.id}}" title="Chơi Battle"><i class="fa fa-gamepad"></i><span class="sr-only">Chơi Battle</span></a>
+                        <a class="library-action--study" ng-if="!vm.isWritingMode" target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item)}}"><i class="fa fa-play" aria-hidden="true"></i>{{vm.getLearningProgress(item.id) ? 'Học tiếp' : 'Học bài'}}<i class="fa fa-arrow-right" aria-hidden="true"></i></a>
+                        <a class="library-action--study" ng-if="vm.isWritingMode && item.hasWritingTask1" target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item, 1)}}">{{vm.getLearningProgress(item.id, 1) ? (vm.getLearningProgress(item.id, 1).completed ? 'Xem lại Task 1' : 'Tiếp tục Task 1') : 'Bắt đầu Task 1'}}</a>
+                        <a class="library-action--study" ng-if="vm.isWritingMode && item.hasWritingTask2" target="_blank" rel="noopener" ng-href="{{vm.testCatalogUrl(item, 2)}}">{{vm.getLearningProgress(item.id, 2) ? (vm.getLearningProgress(item.id, 2).completed ? 'Xem lại Task 2' : 'Tiếp tục Task 2') : 'Bắt đầu Task 2'}}</a>
+                        <a class="library-action--test" ng-if="!vm.isDailyListeningMode" target="_blank" rel="noopener" ng-href="{{vm.seriousTestCatalogUrl(item)}}"><i class="fa fa-clock-o" aria-hidden="true"></i>{{vm.isWritingMode ? 'Làm bài Writing' : 'Làm test'}}</a>
+                        <a ng-if="vm.isComprehensiveMode" ng-href="battle-quiz-online?exerciseId={{item.id}}" title="Chơi Battle"><i class="fa fa-gamepad" aria-hidden="true"></i><span>Chơi Battle</span></a>
                     </div>
                     </div>
                 </article>
-                <p class="test-explorer-empty" ng-if="!vm.loading && !vm.loadError && !vm.ieltsReadingTests.length">{{vm.searchDto.textSearch ? 'Không tìm thấy bài test phù hợp.' : 'Folder này chưa có bài test. Bạn có thể mở các folder con ở trên.'}}</p>
+                <p class="test-explorer-empty library-empty-state" ng-if="!vm.loading && !vm.loadError && !vm.ieltsReadingTests.length"><i class="fa fa-search" aria-hidden="true"></i><strong>{{vm.searchDto.textSearch ? 'Chưa tìm thấy bài phù hợp' : 'Bộ đề này chưa có bài học'}}</strong><span>{{vm.searchDto.textSearch ? 'Thử một tên bài khác hoặc tìm từ thư viện gốc.' : 'Bạn có thể mở các bộ đề con ở trên để khám phá thêm.'}}</span></p>
                 <p class="test-explorer-empty test-folder-error" ng-if="vm.loadError" role="alert">{{vm.loadError}} <button type="button" class="btn btn-link btn-sm" ng-click="vm.loadTests()">Thử lại</button></p>
                 <p class="test-explorer-empty" ng-if="vm.loading" role="status">Đang tải bài test...</p>
             </test-folder-explorer>
@@ -99,33 +107,3 @@
         </section>
     </div>
 </div>
-
-<style>
-    .ielts-test-library-page.is-comprehensive-library { --library-accent: #169b8d; --library-accent-2: #357fce; }
-    .ielts-test-library-page.is-writing-library { --library-accent: #7c3aed; --library-accent-2: #ec4899; }
-    .writing-task-card-actions { flex-wrap: wrap; }
-    .writing-task-card-actions .reading-test-card__action { min-width: 0; flex: 1 1 30%; }
-    .reading-library-filter-bar.has-folder-filters { display: grid; grid-template-columns: minmax(320px, 1.2fr) minmax(240px, 1fr); align-items: end; gap: 16px; margin-bottom: 34px; }
-    .reading-library-filter-bar.has-folder-filters .reading-test-search { width: 100%; max-width: none; margin-bottom: 0; }
-    .reading-library-topic-filters { display: grid; grid-template-columns: .9fr .9fr 1fr 1.15fr; gap: 10px; }
-    .reading-library-topic-filters label { display: block; margin-bottom: 6px; color: #435477; font-size: 11px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
-    .reading-library-topic-filters label i { margin-right: 4px; color: var(--library-accent); }
-    .reading-library-topic-filters .ui-select-container,
-    .reading-library-topic-filters .ui-select-toggle { width: 100% !important; }
-    .reading-library-topic-filters .ui-select-toggle { min-height: 42px; padding-top: 10px; border-color: #d9e3f4; border-radius: 10px !important; color: #354665; background: #f8fbff; }
-    .reading-library-filter-status { margin: -24px 0 26px; color: #35788c; font-size: 12px; font-weight: 700; }
-    .reading-library-filter-status .is-error { color: #b45309; }
-    .reading-test-card__topics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-    .reading-test-card__topics span { padding: 5px 8px; border-radius: 999px; color: var(--library-accent); background: #eef8f7; font-size: 11px; font-weight: 700; }
-    .global-dark-mode .reading-test-card__topics span { background: #263442; }
-    .global-dark-mode .reading-library-topic-filters label { color: #d9e2f4; }
-    .global-dark-mode .reading-library-topic-filters .ui-select-toggle { border-color: #414a61; color: #fff; background: #202634; }
-    @media (max-width: 1200px) {
-        .reading-library-filter-bar.has-folder-filters { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 767px) {
-        .reading-library-topic-filters { grid-template-columns: 1fr; }
-        .reading-library-filter-bar.has-folder-filters { margin-bottom: 26px; }
-        .reading-library-filter-status { margin-top: -16px; }
-    }
-</style>
