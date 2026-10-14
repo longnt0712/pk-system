@@ -482,10 +482,11 @@
             vm.changeInTheProcessOfCreatingReadingTest();
         };
         vm.applyCatalogFolderFilter = function (id) {
-            if (id !== undefined) { vm.catalogTestFolderId = id; }
+            if (id !== undefined) { vm.catalogTestFolderId = id; updateCatalogFolderUrl(); }
             folders.applyFilter(vm.searchDto, vm.catalogTestFolderId, true, !vm.isComprehensiveMode);
             vm.getPageCreateIELTSReadingTest();
         };
+        var updateCatalogFolderUrl = folders.bindUrl($scope, $location, vm, 'catalogTestFolderId', vm.applyCatalogFolderFilter);
         vm.catalogPaginationTotal = function () {
             // Keep the current page selectable when its last item is moved, avoiding an automatic page reload.
             return Math.max(Number(vm.bsTableControlCreateIELTSReadingTest.options.totalRows || 0),

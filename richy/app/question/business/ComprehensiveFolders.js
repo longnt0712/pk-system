@@ -46,6 +46,25 @@
             if (!keepTopics) { dto.questionTopics = []; dto.topicId = dto.topicOwnerUserId = dto.topicCategoryId = null; dto.withoutTopics = false; }
             dto.pageIndex = 1;
         }
+        function bindUrl(scope, location, target, property, onChange) {
+            var path = location.path();
+            function read() {
+                var value = location.search().folder;
+                return typeof value === 'string' && /^[1-9]\d*$/.test(value) && Number(value) < 9007199254740992 ? Number(value) : null;
+            }
+            target[property] = read();
+            var unbind = scope.$on('$locationChangeSuccess', function () {
+                if (location.path() !== path) { return; }
+                var id = read();
+                if (target[property] === id) { return; }
+                target[property] = id;
+                onChange();
+            });
+            scope.$on('$destroy', unbind);
+            return function () {
+                if (location.path() === path) { location.search('folder', target[property] == null ? null : String(target[property])); }
+            };
+        }
         function contains(id, selected, testMode) {
             if (selected == null) { return true; }
             if (Number(selected) === -1) { return id == null; }
@@ -76,7 +95,7 @@
                 return saved;
             });
         }
-        return {options: options, load: load, save: save, applyFilter: applyFilter, contains: contains, moveTest: moveTest, moveFolder: moveFolder};
+        return {options: options, load: load, save: save, applyFilter: applyFilter, bindUrl: bindUrl, contains: contains, moveTest: moveTest, moveFolder: moveFolder};
     }]);
 
     angular.module('Hrm.Question').directive('testFolderPicker', ['ComprehensiveFolders', '$timeout', function (folders, $timeout) {

@@ -33,7 +33,7 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
   await page.evaluate(({testMode})=>{
    window.App={initAjax(){}};
    angular.module('Hrm.Question',['ui.bootstrap']).value('settings',{}).value('$cookies',{get(){return '{"id":7}';}})
-    .value('$location',{path(){return testMode==='COMPREHENSIVE'?'/comprehensive_tests':'/ielts_'+testMode.toLowerCase()+'_tests';}}).value('blockUI',{start(){},stop(){}})
+    .value('$location',{path(){return testMode==='COMPREHENSIVE'?'/comprehensive_tests':'/ielts_'+testMode.toLowerCase()+'_tests';},search(){return {};}}).value('blockUI',{start(){},stop(){}})
     .run(['$rootScope',function(root){root.settings={layout:{}};}])
     .factory('QuestionService',['$q',function(q){
      window.folderData=[{id:1,name:'Listening',parentId:null,ownerId:7,ownerName:'Teacher A',canManage:true},
@@ -97,14 +97,14 @@ async function fixture(browser,width,teacher,testMode='COMPREHENSIVE') {
   if(!teacher)await page.addScriptTag({path:path.join(app,'question/controllers/IELTSTestLibraryController.js')});
   await page.evaluate(({teacher,teacherCode,testMode})=>{
    angular.module('Hrm.Question').factory('TestFolderService',['QuestionService',function(service){return service;}]);
-   if(teacher)angular.module('Hrm.Question').controller('Qa',['ComprehensiveFolders','QuestionService','$scope','$uibModal','$window',function(folders,service,scope,modal,browserWindow){
+   if(teacher)angular.module('Hrm.Question').controller('Qa',['ComprehensiveFolders','QuestionService','$scope','$uibModal','$window','$location',function(folders,service,scope,modal,browserWindow,location){
     const vm=this;Object.assign(vm,{isComprehensiveMode:testMode==='COMPREHENSIVE',isWritingMode:testMode==='WRITING',isListeningMode:testMode==='LISTENING',folderTestMode:testMode,isFlexibleMode:testMode==='COMPREHENSIVE'||testMode==='WRITING',currentUser:{id:7},searchDto:{pageIndex:1,status:9},
      catalogTestFolderId:null,selectedTestFolderId:null,ieltsReadingTests:[],bsTableControlCreateIELTSReadingTest:{options:{}},refreshLearningProgress(){}});
     vm.testCatalogUrl=item=>(testMode==='COMPREHENSIVE'?'comprehensive_test/':'ielts_'+testMode.toLowerCase()+'_actual_test/')+item.id+'?sessionMode=STUDY';
     scope.editCreateIELTSReadingTest=id=>window.lastEdit=id;
     scope.pageChanged=()=>vm.getPageCreateIELTSReadingTest();
     scope.hideReadingTest=id=>window.lastHide=id;scope.restoreReadingTest=id=>window.lastRestore=id;
-    new Function('vm','folders','service','blockUI','toastr','modal','$window',teacherCode)(vm,folders,service,{start(){},stop(){}},{error(){},success(){}},modal,browserWindow);
+    new Function('vm','folders','service','blockUI','toastr','modal','$window','$scope','$location',teacherCode)(vm,folders,service,{start(){},stop(){}},{error(){},success(){}},modal,browserWindow,scope,location);
     vm.getPageCreateIELTSReadingTest();window.qaVm=vm;
    }]);
    angular.bootstrap(document.getElementById('qa'),['Hrm.Question']);

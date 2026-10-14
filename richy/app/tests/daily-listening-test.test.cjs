@@ -17,7 +17,7 @@ function setup(overrides={}){
  const document={createElement(){return{innerHTML:'',get textContent(){return this.innerHTML.replace(/<[^>]*>/g,'');}};}};
  const helpers={};nodeVm.runInNewContext(fs.readFileSync(path.join(app,'question/business/ComprehensiveListening.js'),'utf8'),{angular:{module(){return{factory(name,definition){helpers[name]=definition;return this;},directive(){return this;}};}}});
  const transcriptText=helpers.ComprehensiveListening.at(-1)({document},{}).transcriptText;
- const folders={applyFilter(dto,id){dto.testFolderId=id>0?id:null;dto.withoutTestFolder=id==null&&!dto.textSearch;dto.includeSubfolders=!!dto.textSearch;dto.pageIndex=1;},contains:(id,selected)=>id===selected,...overrides.folders};
+ const folders={applyFilter(dto,id){dto.testFolderId=id>0?id:null;dto.withoutTestFolder=id==null&&!dto.textSearch;dto.includeSubfolders=!!dto.textSearch;dto.pageIndex=1;},bindUrl(){return ()=>{};},contains:(id,selected)=>id===selected,...overrides.folders};
  definition.call(vm,{get(){return JSON.stringify({id:7,roles:[{name:overrides.role||'ROLE_ADMIN'}]});}},
   {path(value){redirects.push(value);}},{document},{},service,{transcriptText,parseUrl(url){return /^https?:\/\//.test(url)?{}:null;}},{success(){}},overrides.modal,{when:Promise.resolve.bind(Promise)},folders);
  return {vm,old,requests,saves,redirects};
@@ -101,7 +101,7 @@ test('shared library uses published Daily Listening tests and opens the existing
  definition.call(vm,{settings:{layout:{}}},{$on(){}},{path:()=>'/daily_listening_tests'},
   {addEventListener(){},removeEventListener(){},localStorage:{length:0}}, {get:()=>JSON.stringify({id:9,roles:[{name:'ROLE_VIEWER'}]})},{},
   {getPageForTests(dto){queries.push(plain(dto));return Promise.resolve({content:[{id:21,title:'Shared lesson'}],totalElements:1});},getLearningDrafts(){throw Error('IELTS drafts requested');}},
-  {start(){},stop(){}},{applyFilter(dto,id){dto.testFolderId=id||null;dto.withoutTestFolder=id==null;dto.pageIndex=1;}});
+  {start(){},stop(){}},{bindUrl(){return ()=>{};},applyFilter(dto,id){dto.testFolderId=id||null;dto.withoutTestFolder=id==null;dto.pageIndex=1;}});
  await tick();assert.equal(vm.isDailyListeningMode,true);assert.equal(vm.folderTestMode,'DAILY_LISTENING');assert.equal(queries[0].testFormat,'DAILY_LISTENING');
  assert.equal(queries[0].upper,2147483647);assert.equal(queries[0].userId,undefined);assert.equal(vm.testCatalogUrl({id:21}),'daily_listening/21');
  assert.equal(vm.ieltsReadingTests.length,1);

@@ -1,8 +1,8 @@
 (function () {
     'use strict';
     angular.module('Hrm.Question').controller('DailyListeningTestController', [
-        '$cookies', '$location', '$window', 'settings', 'QuestionService', 'ComprehensiveListening', 'toastr', '$uibModal', '$q', 'ComprehensiveFolders',
-        function ($cookies, $location, $window, settings, service, listening, toastr, modal, $q, folders) {
+        '$cookies', '$location', '$window', 'settings', 'QuestionService', 'ComprehensiveListening', 'toastr', '$uibModal', '$q', 'ComprehensiveFolders', '$scope',
+        function ($cookies, $location, $window, settings, service, listening, toastr, modal, $q, folders, $scope) {
             var vm = this, requestId = 0;
             try { vm.currentUser = JSON.parse($cookies.get('education.user') || '{}'); }
             catch (ignoreCookie) { vm.currentUser = {}; }
@@ -43,10 +43,11 @@
                 }).finally(function () { if (currentRequest === requestId) { vm.loading = false; } });
             };
             vm.applyCatalogFolderFilter = function (id) {
-                if (id !== undefined) { vm.catalogTestFolderId = id; }
+                if (id !== undefined) { vm.catalogTestFolderId = id; updateCatalogFolderUrl(); }
                 folders.applyFilter(vm.searchDto, vm.catalogTestFolderId, true);
                 return vm.load();
             };
+            var updateCatalogFolderUrl = folders.bindUrl($scope, $location, vm, 'catalogTestFolderId', vm.applyCatalogFolderFilter);
             vm.search = function () { return vm.applyCatalogFolderFilter(); };
             vm.catalogPaginationTotal = function () {
                 return Math.max(vm.totalItems, (vm.searchDto.pageIndex - 1) * vm.searchDto.pageSize + 1);

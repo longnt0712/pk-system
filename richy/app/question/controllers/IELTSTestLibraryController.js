@@ -54,10 +54,11 @@
         var testRequestId = 0;
         vm.selectedTestFolderId = null;
         vm.applyFolderFilter = function (id) {
-            if (id !== undefined) { vm.selectedTestFolderId = id; }
+            if (id !== undefined) { vm.selectedTestFolderId = id; updateFolderUrl(); }
             folders.applyFilter(vm.searchDto, vm.selectedTestFolderId, true);
             vm.loadTests();
         };
+        var updateFolderUrl = folders.bindUrl($scope, $location, vm, 'selectedTestFolderId', vm.applyFolderFilter);
 
         function draftSavedAt(draft, serverSavedAt) {
             return new Date((draft || {}).savedAt || (draft || {}).updatedAt || serverSavedAt || 0).getTime() || 0;

@@ -34,7 +34,7 @@ async function fixture(browser,width,learner=false,record=shared){
    const cookie=JSON.stringify({id:7,username:'Teacher',roles:[{name:'ROLE_ADMIN'}],person:{firstName:'Teacher'}});
    angular.module('Hrm.Question',['ui.bootstrap','ngSanitize']).value('settings',{})
     .value('$cookies',{get(){return cookie;},getAll(){return{'education.user':cookie};}})
-    .value('$location',{path(){return learner?'/daily_listening/21':'/create_daily_listening_test';}})
+    .value('$location',{path(){return learner?'/daily_listening/21':'/create_daily_listening_test';},search(){return {};}})
     .value('$stateParams',learner?{dailyListeningId:String(record.id)}:{})
     .value('Utilities',{}).value('blockUI',{start(){},stop(){}}).value('TopicService',{})
     .value('toastr',{success(){},error(){},warning(){},info(){}})

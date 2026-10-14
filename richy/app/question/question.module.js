@@ -228,7 +228,8 @@
             })
 
             .state('application.ielts_reading_tests', {
-                url: '/ielts_reading_tests',
+                url: '/ielts_reading_tests?folder',
+                reloadOnSearch: false,
                 templateUrl: 'question/views/ielts_test_library.html?v=' + window.APP_VERSION + '&comprehensiveBattle=20261006_1',
                 data: {pageTitle: 'IELTS Reading Library'},
                 controller: 'IELTSTestLibraryController as vm',
@@ -247,7 +248,8 @@
             })
 
             .state('application.ielts_listening_tests', {
-                url: '/ielts_listening_tests',
+                url: '/ielts_listening_tests?folder',
+                reloadOnSearch: false,
                 templateUrl: 'question/views/ielts_test_library.html?v=' + window.APP_VERSION + '&comprehensiveBattle=20261006_1',
                 data: {pageTitle: 'IELTS Listening Library'},
                 controller: 'IELTSTestLibraryController as vm',
@@ -266,7 +268,8 @@
             })
 
             .state('application.ielts_writing_tests', {
-                url: '/ielts_writing_tests',
+                url: '/ielts_writing_tests?folder',
+                reloadOnSearch: false,
                 templateUrl: 'question/views/ielts_test_library.html?v=' + window.APP_VERSION + '&comprehensiveBattle=20261006_1',
                 data: {pageTitle: 'IELTS Writing Library'},
                 controller: 'IELTSTestLibraryController as vm',
@@ -285,7 +288,8 @@
             })
 
             .state('application.comprehensive_tests', {
-                url: '/comprehensive_tests',
+                url: '/comprehensive_tests?folder',
+                reloadOnSearch: false,
                 templateUrl: 'question/views/ielts_test_library.html?v=' + window.APP_VERSION + '&comprehensiveBattle=20261006_1',
                 data: {pageTitle: 'Bài tập tổng hợp'},
                 controller: 'IELTSTestLibraryController as vm',
@@ -304,7 +308,8 @@
             })
 
             .state('application.create_ielts_reading_test', {
-                url: '/create_ielts_reading_test',
+                url: '/create_ielts_reading_test?folder',
+                reloadOnSearch: false,
                 templateUrl: 'question/views/create_ielts_reading_test.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'Create IELTS Reading Test'},
                 controller: 'IELTSCreateReadingTestController as vm',
@@ -324,7 +329,8 @@
             })
 
             .state('application.create_ielts_listening_test', {
-                url: '/create_ielts_listening_test',
+                url: '/create_ielts_listening_test?folder',
+                reloadOnSearch: false,
                 templateUrl: 'question/views/create_ielts_reading_test.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'Create IELTS Listening Test'},
                 controller: 'IELTSCreateReadingTestController as vm',
@@ -344,7 +350,8 @@
             })
 
             .state('application.create_ielts_writing_test', {
-                url: '/create_ielts_writing_test',
+                url: '/create_ielts_writing_test?folder',
+                reloadOnSearch: false,
                 templateUrl: 'question/views/create_ielts_reading_test.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'Create IELTS Writing Test'},
                 controller: 'IELTSCreateReadingTestController as vm',
@@ -364,7 +371,8 @@
             })
 
             .state('application.daily_listening_tests', {
-                url: '/daily_listening_tests',
+                url: '/daily_listening_tests?folder',
+                reloadOnSearch: false,
                 templateUrl: 'question/views/ielts_test_library.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'Thư viện Daily Listening'},
                 controller: 'IELTSTestLibraryController as vm',
@@ -378,7 +386,8 @@
                 }
             })
             .state('application.create_daily_listening_test', {
-                url: '/create_daily_listening_test',
+                url: '/create_daily_listening_test?folder',
+                reloadOnSearch: false,
                 templateUrl: 'question/views/create_daily_listening_test.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'Tạo Daily Listening'},
                 controller: 'DailyListeningTestController as vm',
@@ -407,7 +416,8 @@
                 }
             })
             .state('application.create_comprehensive_test', {
-                url: '/create_comprehensive_test',
+                url: '/create_comprehensive_test?folder',
+                reloadOnSearch: false,
                 templateUrl: 'question/views/create_ielts_reading_test.html?v=' + window.APP_VERSION,
                 data: {pageTitle: 'Tạo bài tập tổng hợp'},
                 controller: 'IELTSCreateReadingTestController as vm',
