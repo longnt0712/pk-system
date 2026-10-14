@@ -20,17 +20,16 @@ const initialization = section(source, '        var vm = this;', '        vm.vid
 const persistence = section(source, '        var readingDraftBaseKey =', '        var currentPerson =');
 const annotations = section(source, '        var savedAnnotationRange =', '        vm.setReviewQuestion =');
 const preview = section(builder, '        function clearOldReadingPreviews()', '        vm.publishReadingTest =');
-const catalogUrl = section(builder, '        vm.testCatalogUrl = function', '        vm.seriousTestCatalogUrl =');
 const libraryUrl = section(library, '        vm.testCatalogUrl = function', '        vm.seriousTestCatalogUrl =');
-const viewLink = builderTemplate.match(/<a class="test-explorer-action--view"[\s\S]*?<\/a>/)[0];
+const catalogActions = section(builderTemplate, '<div class="test-explorer-file-actions">', '</div>') + '</div>';
 const catalogHtml = `<!doctype html><html><head><meta charset="utf-8"><base href="http://ielts-notes.test/"></head><body>
-<main id="catalog" ng-controller="Catalog as vm">${viewLink}<button ng-click="vm.previewReadingTest(1)">Preview Part 1</button></main>
+<main id="catalog" ng-controller="Catalog as vm">${catalogActions}<button ng-click="vm.previewReadingTest(1)">Preview Part 1</button></main>
 <script src="jquery.js"></script><script src="angular.js"></script><script>
 angular.module('CatalogApp', []).controller('Catalog', ['$scope', '$window', function ($scope, $window) {
     const vm = this; $scope.item = {id: 42, title: 'Reading test'};
     vm.ieltsReadingTest = {id: 42, title: 'Reading test', subQuestions: []};
     const toastr = {error(message) { throw Error(message); }, warning(message) { throw Error(message); }};
-    new Function('vm', '$window', 'angular', 'toastr', ${JSON.stringify(catalogUrl + preview)})(vm, $window, angular, toastr);
+    new Function('vm', '$window', 'angular', 'toastr', ${JSON.stringify(preview)})(vm, $window, angular, toastr);
 }]);
 angular.bootstrap(document.getElementById('catalog'), ['CatalogApp']);
 </script></body></html>`;
@@ -88,17 +87,15 @@ angular.module('QaApp', []).controller('Qa', ['$scope', '$window', '$timeout', '
 angular.bootstrap(document.getElementById('qa'), ['QaApp']);
 </script></body></html>`;
 
-test('builder Xem bai opens a saved Preview in every IELTS mode while the learner library still opens Study', () => {
+test('the learner library opens Study in every IELTS mode', () => {
     for (const [mode, route] of [['READING', 'ielts_reading_actual_test'], ['LISTENING', 'ielts_listening_actual_test'], ['WRITING', 'ielts_writing_actual_test'], ['COMPREHENSIVE', 'comprehensive_test']]) {
         const vm = {isComprehensiveMode: mode === 'COMPREHENSIVE', isWritingMode: mode === 'WRITING', isListeningMode: mode === 'LISTENING'};
-        new Function('vm', catalogUrl)(vm);
-        assert.equal(vm.testCatalogUrl({id: 42}), route + '/42?preview=1', mode);
         new Function('vm', libraryUrl)(vm);
         assert.equal(vm.testCatalogUrl({id: 42}), route + '/42?sessionMode=STUDY', mode);
     }
 });
 
-test('Study note and standalone highlight survive teardown, builder Xem bai and Preview, and return to Study; explicit deletion still persists', async () => {
+test('Study annotations survive builder Preview and return to Study; the catalog has no Xem bai action and deletion still persists', async () => {
     const browser = await playwright.chromium.launch({headless: true, executablePath});
     try {
         const context = await browser.newContext();
@@ -165,14 +162,14 @@ test('Study note and standalone highlight survive teardown, builder Xem bai and 
         assert.deepEqual(after.annotations, before.annotations, 'destroy save must preserve anchors');
         assert.equal(after.results[0].clientAnswer, 'rats');
         await page.goto('http://ielts-notes.test/builder');
-        for (const action of [{role: 'link', name: 'Xem bài'}, {role: 'button', name: 'Preview Part 1'}]) {
+        assert.equal(await page.getByRole('link', {name: 'Xem bài', exact: true}).count(), 0);
+        for (const action of [{role: 'button', name: 'Preview Part 1'}]) {
             const requestCount = requests.length;
             const popupPromise = page.waitForEvent('popup');
             await page.getByRole(action.role, {name: action.name, exact: true}).click();
             const popup = await popupPromise;
             await popup.waitForFunction(() => window.qaVm && window.qaVm.ready === true);
             assert.equal(await popup.evaluate(() => qaVm.isPreviewMode), true, action.name);
-            if (action.role === 'link') { assert.match(popup.url(), /ielts_reading_actual_test\/42\?preview=1/); }
             await popup.evaluate(() => qaScope.$apply(() => { qaVm.annotationNotes = []; qaVm.persist(); }));
             assert.equal(requests.length, requestCount, action.name + ' must make no learning-draft requests');
             const saved = await popup.evaluate(key => JSON.parse(localStorage.getItem(key)), key);
