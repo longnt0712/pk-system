@@ -92,6 +92,9 @@
         self.getAssignableIeltsTests = function () {
             return utils.resolve(baseUrl + '/schedule/ielts-tests', 'GET', angular.noop, angular.noop);
         };
+        self.getAssignableDailyListeningTests = function () {
+            return utils.resolve(baseUrl + '/schedule/daily-listening-tests', 'GET', angular.noop, angular.noop);
+        };
 
         self.getScheduleSession = function (classId, date) {
             return utils.resolve(baseUrl + '/schedule/' + classId + '/session?date=' + encodeURIComponent(date),

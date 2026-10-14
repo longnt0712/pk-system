@@ -133,6 +133,43 @@ public class ComprehensiveTopicSearchTest {
         assertEquals(2, daily.list(new QuestionDto(), 1, 12, false).getTotalElements());
         assertEquals(1, daily.list(new QuestionDto(), 1, 12, true).getTotalElements());
     }
+    @Test public void assignmentListeningCatalogKeepsFoldersAndTopicsAndExcludesUnpublishedTests() throws Exception {
+        for (long id : new long[] {6L, 11L}) {
+            if (manager.find(QuestionType.class, id) == null) {
+                manager.createNativeQuery("insert into tbl_question_type (id, name, create_date, created_by) values ("
+                        + id + ", 'Assignment kind', CURRENT_TIMESTAMP, 'test')").executeUpdate();
+            }
+        }
+        QuestionType dailyType = manager.find(QuestionType.class, 11L);
+        TestFolder folder = new TestFolder(); folder.setName("Daily practice"); folder.setTestMode("DAILY_LISTENING"); folder.setOwner(owner); manager.persist(folder);
+        Question published = question("Published Daily", 7, "DAILY_LISTENING"); published.setQuestionType(dailyType); published.setTestFolder(folder); link(published, topic);
+        Question draft = question("Draft Daily", 6, "DAILY_LISTENING"); draft.setQuestionType(dailyType); link(draft, topic);
+        Question hidden = question("Hidden Daily", 8, "DAILY_LISTENING"); hidden.setQuestionType(dailyType); link(hidden, topic);
+        Question legacy = question(null, 3, null); legacy.setQuestion("Old Track"); legacy.setQuestionType(manager.find(QuestionType.class, 6L)); link(legacy, topic);
+        manager.flush();
+        String catalogQuery = QuestionRepository.class.getMethod("findAssignableDailyListeningTests")
+                .getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+        String topicQuery = QuestionTopicRepository.class.getMethod("findAssignableDailyListeningTopicIds")
+                .getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+        QuestionRepository questions = mock(QuestionRepository.class);
+        when(questions.findAssignableDailyListeningTests()).thenReturn(manager.createQuery(catalogQuery, QuestionForTestsDto.class).getResultList());
+        QuestionTopicRepository links = mock(QuestionTopicRepository.class);
+        when(links.findAssignableDailyListeningTopicIds()).thenReturn(manager.createQuery(topicQuery, Object[].class).getResultList());
+        EnrolmentClassServiceImpl assignments = new EnrolmentClassServiceImpl();
+        ReflectionTestUtils.setField(assignments, "questionRepository", questions); ReflectionTestUtils.setField(assignments, "questionTopicRepository", links);
+        List<QuestionForTestsDto> catalog = assignments.getAssignableDailyListeningTests();
+        assertEquals(new HashSet<String>(Arrays.asList("Published Daily", "Old Track")), catalog.stream().map(QuestionForTestsDto::getTitle).collect(Collectors.toSet()));
+        QuestionForTestsDto selected = catalog.stream().filter(item -> item.getId().equals(published.getId())).findFirst().get();
+        assertEquals(folder.getId(), selected.getTestFolder().getId()); assertEquals(topic.getId(), selected.getTopics().get(0).getId());
+        when(questions.findOne(published.getId())).thenReturn(published);
+        when(questions.findOne(draft.getId())).thenReturn(draft);
+        when(links.findQuestionIdsByTopicId(topic.getId())).thenReturn(Arrays.asList(published.getId(), draft.getId()));
+        com.globits.richy.repository.TopicRepository topicRepository = mock(com.globits.richy.repository.TopicRepository.class);
+        when(topicRepository.findOne(topic.getId())).thenReturn(topic); ReflectionTestUtils.setField(assignments, "topicRepository", topicRepository);
+        List<QuestionForGamesDto> eligible = assignments.getScheduleListeningItems(topic.getId());
+        assertEquals(1, eligible.size()); assertEquals("Published Daily", eligible.get(0).getQuestion());
+    }
+
     private Question question(String title, int status, String format) {
         Question value = new Question(); value.setTitle(title); value.setQuestionType(type); value.setStatus(status);
         value.setTestFormat(format); value.setOrdinalNumber(1); manager.persist(value); return value;

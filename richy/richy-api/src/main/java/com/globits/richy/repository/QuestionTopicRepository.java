@@ -36,4 +36,7 @@ public interface QuestionTopicRepository extends JpaRepository<QuestionTopic, Lo
 	@Query("select qt.question.id, qt.topic.id from QuestionTopic qt "
 	        + "where qt.question.questionType.id = 11 and qt.question.status = 7 and (qt.question.testFormat is null or qt.question.testFormat <> 'DAILY_LISTENING')")
 	List<Object[]> findPublishedTestTopicIds();
+	@Query("select distinct qt.question.id, qt.topic.id from QuestionTopic qt where qt.question.questionType.id = 6 "
+	        + "or (qt.question.questionType.id = 11 and qt.question.testFormat = 'DAILY_LISTENING' and qt.question.status = 7)")
+	List<Object[]> findAssignableDailyListeningTopicIds();
 }

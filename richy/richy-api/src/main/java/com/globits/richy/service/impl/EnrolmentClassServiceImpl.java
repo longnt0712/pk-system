@@ -1539,9 +1539,11 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			if (questionId == null || !seen.add(questionId)) { continue; }
 			Question question = questionRepository.findOne(questionId);
 			if (question != null && question.getQuestionType() != null
-					&& Long.valueOf(6L).equals(question.getQuestionType().getId())) {
+					&& (Long.valueOf(6L).equals(question.getQuestionType().getId())
+							|| (DailyListeningServiceImpl.isDailyTest(question) && question.getStatus() == 7))) {
 				QuestionForGamesDto item = new QuestionForGamesDto();
-				item.setId(question.getId()); item.setQuestion(question.getQuestion());
+				item.setId(question.getId()); item.setQuestion(DailyListeningServiceImpl.isDailyTest(question)
+						? question.getTitle() : question.getQuestion());
 				result.add(item);
 			}
 		}
@@ -1573,6 +1575,20 @@ public class EnrolmentClassServiceImpl implements EnrolmentClassService {
 			if (test == null) { continue; }
 			TopicDto topic = new TopicDto(); topic.setId((Long) link[1]);
 			test.getTopics().add(topic);
+		}
+		return result;
+	}
+
+	@Override
+	public List<QuestionForTestsDto> getAssignableDailyListeningTests() {
+		List<QuestionForTestsDto> result = questionRepository.findAssignableDailyListeningTests();
+		Map<Long, QuestionForTestsDto> byId = new HashMap<Long, QuestionForTestsDto>();
+		for (QuestionForTestsDto test : result) { byId.put(test.getId(), test); }
+		for (Object[] link : questionTopicRepository.findAssignableDailyListeningTopicIds()) {
+			QuestionForTestsDto test = byId.get((Long) link[0]);
+			if (test != null) {
+				TopicDto topic = new TopicDto(); topic.setId((Long) link[1]); test.getTopics().add(topic);
+			}
 		}
 		return result;
 	}

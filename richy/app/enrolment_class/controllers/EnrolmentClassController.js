@@ -42,10 +42,10 @@
     });
 
     EnrolmentClassController.$inject = [
-        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService', '$state', '$stateParams', 'ComprehensiveFolders'
+        '$rootScope', '$scope', 'toastr', '$uibModal', 'EnrolmentClassService', '$state', '$stateParams', 'ComprehensiveFolders', 'ClassAssignmentPicker'
     ];
 
-    function EnrolmentClassController($rootScope, $scope, toastr, modal, service, $state, $stateParams, folders) {
+    function EnrolmentClassController($rootScope, $scope, toastr, modal, service, $state, $stateParams, folders, assignmentPicker) {
         $scope.$on('$viewContentLoaded', function () {
             App.initAjax();
         });
@@ -2146,8 +2146,9 @@
 				toastr.error('Không tải được danh sách bài nghe/Track.', 'Lỗi');
 			});
 		};
-		vm.taskActivityTypeChanged = function () {
+		vm.taskActivityTypeChanged = function (browse) {
 			if (!vm.taskEditor) { return; }
+			vm.taskEditor.testFolderId = null; vm.taskEditor.ieltsTestTitle = ''; vm.taskEditor.sourceQuestionTitle = '';
 			vm.taskEditor.autoCompleteFromTopic = vm.taskEditor.activityType === 'DAILY_VOCAB'
 				|| vm.taskEditor.activityType === 'DAILY_LISTENING';
 			if (vm.taskEditor.activityType === 'COMPREHENSIVE') {
@@ -2171,7 +2172,50 @@
 					vm.loadTaskListeningItems(false);
 				}
 			}
+			if (browse && (vm.isIeltsTask(vm.taskEditor) || vm.taskEditor.activityType === 'DAILY_LISTENING')) {
+				vm.openTaskExercisePicker();
+			}
 		};
+
+        vm.taskSelectedExerciseTitle = function () {
+            var task = vm.taskEditor;
+            if (!task) { return ''; }
+            if (task.activityType === 'DAILY_LISTENING') {
+                var item = vm.scheduleListeningItems.filter(function (file) { return String(file.id) === String(task.sourceQuestionId); })[0];
+                return task.sourceQuestionTitle || (item && item.question) || '';
+            }
+            var test = vm.assignableIeltsTests.filter(function (file) { return String(file.id) === String(task.ieltsTestId); })[0];
+            return task.ieltsTestTitle || (test && test.title) || '';
+        };
+
+        vm.openTaskExercisePicker = function () {
+            var task = vm.taskEditor;
+            if (!task || vm.taskExercisePickerOpen || vm.scheduleDaySaving || vm.homeworkCellSaving) { return; }
+            vm.taskExercisePickerOpen = true;
+            var type = task.activityType;
+            assignmentPicker.open({activityType: type, topicId: task.topicId,
+                selectedId: type === 'DAILY_LISTENING' ? task.sourceQuestionId : task.ieltsTestId}).then(function (selection) {
+                if (vm.taskEditor !== task || task.activityType !== type) { return; }
+                var test = selection.test;
+                task.testFolderId = test.testFolder ? test.testFolder.id : null;
+                if (type === 'DAILY_LISTENING') {
+                    scheduleListeningItemsRequest++;
+                    vm.scheduleListeningItemsLoading = false;
+                    var topic = selection.topic;
+                    task.topicId = topic.id; task.topicName = topic.name; task.categoryId = topic.categoryId;
+                    task.categoryName = topic.categoryName; task.categoryKey = topic.categoryId == null ? 'uncategorized' : String(topic.categoryId);
+                    task.sourceQuestionId = test.id; task.sourceQuestionTitle = test.title;
+                    if (!vm.scheduleTopics.some(function (item) { return String(item.id) === String(topic.id); })) { vm.scheduleTopics.push(topic); }
+                    vm.scheduleListeningItems = [{id: test.id, question: test.title}];
+                } else {
+                    task.ieltsTestId = test.id; task.ieltsTestTitle = test.title;
+                    var index = vm.assignableIeltsTests.findIndex(function (item) { return String(item.id) === String(test.id); });
+                    if (index < 0) { vm.assignableIeltsTests.push(test); } else { vm.assignableIeltsTests[index] = test; }
+                    vm.selectAllTaskParts();
+                }
+                if (!(task.title || '').trim()) { task.title = test.title || ''; }
+            }, angular.noop).finally(function () { vm.taskExercisePickerOpen = false; });
+        };
 		vm.isIeltsTask = function (task) {
 			return !!task && (task.activityType === 'IELTS_READING' || task.activityType === 'IELTS_LISTENING'
 				|| task.activityType === 'IELTS_WRITING' || task.activityType === 'COMPREHENSIVE');

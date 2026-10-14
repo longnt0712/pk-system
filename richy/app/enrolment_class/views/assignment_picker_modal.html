@@ -1,0 +1,38 @@
+<div class="class-assignment-picker">
+    <div class="modal-header">
+        <button type="button" class="close" ng-click="picker.cancel()" aria-label="Đóng">&times;</button>
+        <h3 class="modal-title" id="class-assignment-picker-title"><i class="fa fa-folder-open-o" aria-hidden="true"></i> Chọn bài {{picker.name}}</h3>
+        <p>Mở folder rồi chọn bài cần giao cho lớp.</p>
+    </div>
+    <div class="modal-body">
+        <label class="class-assignment-search">Tìm bài trong thư viện
+            <input type="search" class="form-control" ng-model="picker.search" placeholder="Nhập tên bài..." aria-label="Tìm bài" ng-disabled="picker.loading">
+        </label>
+        <p ng-if="picker.loading" role="status"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Đang tải bài tập...</p>
+        <p class="test-folder-error" role="alert" ng-if="picker.error">{{picker.error}} <button type="button" class="btn btn-link btn-sm" ng-click="picker.load()">Thử lại</button></p>
+        <test-folder-explorer folder-id="picker.folderId" test-mode="picker.mode" all-teachers="true" on-change="picker.openFolder(folderId)">
+            <button type="button" class="test-explorer-file class-assignment-file" ng-repeat="file in picker.visibleFiles() track by file.id"
+                    ng-click="picker.select(file)" ng-class="{'is-selected': picker.selected.id === file.id}" aria-pressed="{{picker.selected.id === file.id}}">
+                <span class="class-assignment-file-icon"><i class="fa" ng-class="picker.dailyListening || picker.mode === 'LISTENING' ? 'fa-headphones' : picker.mode === 'WRITING' ? 'fa-pencil' : 'fa-file-text-o'" aria-hidden="true"></i></span>
+                <span class="class-assignment-file-info"><strong>{{file.title || ('Bài #' + file.id)}}</strong><small>{{picker.folderLabel(file)}}</small>
+                    <small ng-if="picker.dailyListening && !picker.topicsFor(file).length" class="class-assignment-topic-warning">Cần gắn Topic cho bài này trước khi giao.</small>
+                </span>
+                <i class="fa fa-check-circle class-assignment-check" ng-if="picker.selected.id === file.id" aria-hidden="true"></i>
+            </button>
+            <p class="class-assignment-empty" ng-if="!picker.loading && !picker.error && !picker.visibleFiles().length">{{picker.search ? 'Không tìm thấy bài phù hợp.' : 'Folder này chưa có bài được phép giao. Hãy mở folder con hoặc chọn folder khác.'}}</p>
+        </test-folder-explorer>
+    </div>
+    <div class="modal-footer">
+        <div class="class-assignment-selection" aria-live="polite">
+            <strong>{{picker.selected ? picker.selected.title : 'Chưa chọn bài'}}</strong>
+            <label ng-if="picker.dailyListening && picker.selected && picker.topicsFor(picker.selected).length">Topic ghi nhận bài tập
+                <select class="form-control" ng-model="picker.selectedTopicId" ng-options="topic.id as (topic.name + (topic.categoryName ? ' · ' + topic.categoryName : '')) for topic in picker.topicsFor(picker.selected)"></select>
+            </label>
+            <small ng-if="picker.dailyListening && picker.selected && !picker.topicsFor(picker.selected).length">Bài này chưa gắn Topic để ghi nhận kết quả của lớp.</small>
+        </div>
+        <div class="class-assignment-actions">
+            <button type="button" class="btn btn-default" ng-click="picker.cancel()">Hủy</button>
+            <button type="button" class="btn btn-primary" ng-click="picker.confirm()" ng-disabled="!picker.canSelect()">Chọn bài này</button>
+        </div>
+    </div>
+</div>

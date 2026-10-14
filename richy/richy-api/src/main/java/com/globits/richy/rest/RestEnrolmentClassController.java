@@ -215,6 +215,12 @@ public class RestEnrolmentClassController {
 	public List<QuestionForTestsDto> getAssignableIeltsTests() {
 		return service.getAssignableIeltsTests();
 	}
+
+	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
+	@RequestMapping(value = "/schedule/daily-listening-tests", method = RequestMethod.GET)
+	public List<QuestionForTestsDto> getAssignableDailyListeningTests() {
+		return service.getAssignableDailyListeningTests();
+	}
 	
 	@Secured({"ROLE_ADMIN","ROLE_EDUCATION_MANAGERMENT","ROLE_STUDENT_MANAGERMENT"})
 	@RequestMapping(value = "/save", method = RequestMethod.POST)

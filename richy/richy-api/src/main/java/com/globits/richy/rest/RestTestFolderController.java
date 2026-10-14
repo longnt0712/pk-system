@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/test_folder")
 public class RestTestFolderController {
     @Autowired private TestFolderServiceImpl service;
-    @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER"})
+    @Secured({"ROLE_ADMIN", "ROLE_USER", "ROLE_VIEWER", "ROLE_EDUCATION_MANAGERMENT", "ROLE_STUDENT_MANAGERMENT"})
     @RequestMapping(method = RequestMethod.GET)
     public List<TestFolderDto> list(@RequestParam(value = "allTeachers", defaultValue = "false") boolean allTeachers,
             @RequestParam(value = "testMode", defaultValue = "COMPREHENSIVE") String testMode) { return service.list(allTeachers, testMode); }

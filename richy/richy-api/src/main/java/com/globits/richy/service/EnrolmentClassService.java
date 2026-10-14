@@ -47,6 +47,7 @@ public interface EnrolmentClassService {
 	public List<TopicForListAllDto> getScheduleTopics();
 	public List<QuestionForGamesDto> getScheduleListeningItems(Long topicId);
 	public List<QuestionForTestsDto> getAssignableIeltsTests();
+	public List<QuestionForTestsDto> getAssignableDailyListeningTests();
 	public List<UserDto> getScheduleStudents(Long classId);
     public List<PersonDateDto> getScheduleAttendance(Long classId, String date);
     public PersonDateDto updateScheduleAttendance(Long classId, Long studentUserId, String date, PersonDateDto dto);

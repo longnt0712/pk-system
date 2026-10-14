@@ -26,6 +26,8 @@
                             name: 'Hrm.EnrolmentClass',
                             insertBefore: '#ng_load_plugins_before',
                             files: [
+                                'assets/css/class-assignment-picker.css?v=' + version,
+								'enrolment_class/business/ClassAssignmentPicker.js?v=' + version,
 								'enrolment_class/controllers/EnrolmentClassController.js?v=' + version,
 								'enrolment_class/business/EnrolmentClassService.js?v=' + version
                             ]

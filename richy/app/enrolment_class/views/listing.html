@@ -1441,7 +1441,7 @@
             <div class="class-task-editor-grid">
                 <div class="form-group">
                     <label>Loại bài học</label>
-                    <select class="form-control" data-ng-model="vm.taskEditor.activityType" data-ng-change="vm.taskActivityTypeChanged()">
+                    <select class="form-control" data-ng-model="vm.taskEditor.activityType" data-ng-change="vm.taskActivityTypeChanged(true)">
                         <option value="DAILY_VOCAB">Daily Vocab</option>
                         <option value="DAILY_LISTENING">Daily Listening</option>
                         <option value="IELTS_READING">IELTS Reading</option>
@@ -1461,12 +1461,11 @@
             <div class="class-task-editor-grid" data-ng-if="vm.isIeltsTask(vm.taskEditor) && vm.taskEditor.activityType !== 'COMPREHENSIVE'">
                 <div class="form-group">
                     <label>{{'Đề ' + (vm.taskEditor.activityType === 'IELTS_LISTENING' ? 'Listening' : (vm.taskEditor.activityType === 'IELTS_WRITING' ? 'Writing' : 'Reading'))}} <span class="font-red">*</span></label>
-                    <ui-select class="class-task-wrapping-select" theme="bootstrap" data-ng-model="vm.taskEditor.ieltsTestId" data-ng-change="vm.selectAllTaskParts()" data-ng-disabled="vm.assignableIeltsTestsLoading" required>
-                        <ui-select-match placeholder="Chọn đề bài tập...">{{$select.selected.title}}</ui-select-match>
-                        <ui-select-choices repeat="test.id as test in vm.ieltsTestsForTask() | propsFilter:{title:$select.search}">
-                            <div data-ng-bind-html="test.title | highlight:$select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
+                    <div class="class-task-exercise-choice">
+                        <span>{{vm.taskSelectedExerciseTitle() || 'Chưa chọn đề bài tập'}}</span>
+                        <button type="button" class="btn btn-default" data-ng-click="vm.openTaskExercisePicker()" data-ng-disabled="vm.taskExercisePickerOpen"><i class="fa fa-folder-open-o"></i> {{vm.taskEditor.ieltsTestId ? 'Đổi bài' : 'Chọn bài'}}</button>
+                    </div>
+                    <input type="hidden" name="ieltsExercise" data-ng-model="vm.taskEditor.ieltsTestId" required>
                 </div>
                 <div class="form-group">
                     <div class="class-task-parts-heading">
@@ -1484,17 +1483,12 @@
             </div>
             <div data-ng-if="vm.taskEditor.activityType === 'COMPREHENSIVE'">
                 <div class="form-group">
-                    <label>Folder chứa bài</label>
-                    <test-folder-picker folder-id="vm.taskEditor.testFolderId" show-all="true" all-teachers="true" on-change="vm.comprehensiveFolderChanged(folderId)"></test-folder-picker>
-                </div>
-                <div class="form-group">
                     <label>Bài tập tổng hợp (đích) <span class="font-red">*</span></label>
-                    <ui-select class="class-task-wrapping-select" theme="bootstrap" data-ng-model="vm.taskEditor.ieltsTestId" data-ng-disabled="vm.assignableIeltsTestsLoading" required>
-                        <ui-select-match placeholder="Chọn bài tập tổng hợp...">{{$select.selected.title}}</ui-select-match>
-                        <ui-select-choices repeat="test.id as test in vm.ieltsTestsForTask() | propsFilter:{title:$select.search}">
-                            <div data-ng-bind-html="test.title | highlight:$select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
+                    <div class="class-task-exercise-choice">
+                        <span>{{vm.taskSelectedExerciseTitle() || 'Chưa chọn bài tập tổng hợp'}}</span>
+                        <button type="button" class="btn btn-default" data-ng-click="vm.openTaskExercisePicker()" data-ng-disabled="vm.taskExercisePickerOpen"><i class="fa fa-folder-open-o"></i> {{vm.taskEditor.ieltsTestId ? 'Đổi bài' : 'Chọn bài'}}</button>
+                    </div>
+                    <input type="hidden" name="comprehensiveExercise" data-ng-model="vm.taskEditor.ieltsTestId" required>
                     <small>Daily task chỉ hoàn thành khi học sinh nộp đúng bài đích này.</small>
                 </div>
                 <div class="form-group">
@@ -1503,7 +1497,7 @@
                 </div>
             </div>
             <p class="class-task-help" data-ng-if="vm.assignableIeltsTestsLoading && vm.isIeltsTask(vm.taskEditor)"><i class="fa fa-spinner fa-spin"></i> Đang tải danh sách đề IELTS...</p>
-            <div class="class-task-editor-grid" data-ng-if="!vm.isIeltsTask(vm.taskEditor)">
+            <div class="class-task-editor-grid" data-ng-if="!vm.isIeltsTask(vm.taskEditor) && vm.taskEditor.activityType !== 'DAILY_LISTENING'">
                 <div class="form-group">
                     <label>Category (không bắt buộc)</label>
                     <ui-select theme="bootstrap" data-ng-model="vm.taskEditor.categoryKey" data-ng-change="vm.taskCategoryChanged()"
@@ -1525,16 +1519,15 @@
                     </ui-select>
                 </div>
             </div>
-            <div class="class-task-editor-grid" data-ng-if="vm.taskEditor.activityType === 'DAILY_LISTENING' && vm.taskEditor.topicId">
+            <div class="class-task-editor-grid" data-ng-if="vm.taskEditor.activityType === 'DAILY_LISTENING'">
                 <div class="form-group">
                     <label>Bài nghe / Track cần làm <span class="font-red">*</span></label>
-                    <ui-select class="class-task-wrapping-select" theme="bootstrap" data-ng-model="vm.taskEditor.sourceQuestionId" required
-                               data-ng-disabled="vm.scheduleListeningItemsLoading">
-                        <ui-select-match placeholder="Chọn Track cụ thể...">{{$select.selected.question}}</ui-select-match>
-                        <ui-select-choices repeat="item.id as item in vm.scheduleListeningItems | propsFilter:{question:$select.search}">
-                            <div data-ng-bind-html="item.question | highlight:$select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
+                    <div class="class-task-exercise-choice">
+                        <span>{{vm.taskSelectedExerciseTitle() || 'Chưa chọn bài Daily Listening'}}</span>
+                        <button type="button" class="btn btn-default" data-ng-click="vm.openTaskExercisePicker()" data-ng-disabled="vm.taskExercisePickerOpen"><i class="fa fa-folder-open-o"></i> {{vm.taskEditor.sourceQuestionId ? 'Đổi bài' : 'Chọn bài'}}</button>
+                    </div>
+                    <input type="hidden" name="listeningExercise" data-ng-model="vm.taskEditor.sourceQuestionId" required>
+                    <small data-ng-if="vm.taskEditor.topicId">Topic: {{vm.taskEditor.topicName}}</small>
                     <small data-ng-if="vm.scheduleListeningItemsLoading"><i class="fa fa-spinner fa-spin"></i> Đang tải các bài con...</small>
                     <small data-ng-if="!vm.scheduleListeningItemsLoading">Kết quả chỉ được tính khi học sinh hoàn thành đúng Track này.</small>
                 </div>
