@@ -291,6 +291,11 @@ test('real folder views support grid/list, breadcrumbs, direct contents, nested 
    await page.getByRole('searchbox',{name:'Tìm bài test theo tên'}).fill('tuần');await page.getByRole('button',{name:'Tìm kiếm',exact:true}).click();
    assert.match(await page.locator('.test-explorer-file').innerText(),/tuần 1/);
    const link=await page.locator('.test-explorer-file-main').getAttribute('href');assert.match(link,/comprehensive_test\/13\?sessionMode=STUDY/);
+   await page.getByRole('searchbox',{name:'Tìm bài test theo tên'}).fill('no-matching-test-title');
+   await page.getByRole('button',{name:'Tìm kiếm',exact:true}).click();
+   await page.waitForFunction(()=>!qaVm.loading && qaVm.ieltsReadingTests.length===0);
+   assert.ok(await page.locator('.test-explorer-folder').count()>0,'nested folders remain visible during search');
+   assert.equal(await page.getByText('Chưa tìm thấy bài phù hợp',{exact:true}).isVisible(),true);
   }else{
    await page.getByRole('button',{name:'Tạo folder con',exact:true}).click();
    await page.locator('.test-folder-explorer').getByRole('textbox',{name:'Tên folder',exact:true}).fill('Week 2');

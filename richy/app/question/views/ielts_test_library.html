@@ -91,7 +91,7 @@
                     </div>
                     </div>
                 </article>
-                <p class="test-explorer-empty library-empty-state" ng-if="!vm.loading && !vm.loadError && !vm.ieltsReadingTests.length"><i class="fa fa-search" aria-hidden="true"></i><strong>{{vm.searchDto.textSearch ? 'Chưa tìm thấy bài phù hợp' : 'Bộ đề này chưa có bài học'}}</strong><span>{{vm.searchDto.textSearch ? 'Thử một tên bài khác hoặc tìm từ thư viện gốc.' : 'Bạn có thể mở các bộ đề con ở trên để khám phá thêm.'}}</span></p>
+                <p class="test-explorer-empty library-empty-state" ng-class="{'is-search-empty': vm.searchDto.textSearch}" ng-if="!vm.loading && !vm.loadError && !vm.ieltsReadingTests.length"><i class="fa fa-search" aria-hidden="true"></i><strong>{{vm.searchDto.textSearch ? 'Chưa tìm thấy bài phù hợp' : 'Bộ đề này chưa có bài học'}}</strong><span>{{vm.searchDto.textSearch ? 'Thử một tên bài khác hoặc tìm từ thư viện gốc.' : 'Bạn có thể mở các bộ đề con ở trên để khám phá thêm.'}}</span></p>
                 <p class="test-explorer-empty test-folder-error" ng-if="vm.loadError" role="alert">{{vm.loadError}} <button type="button" class="btn btn-link btn-sm" ng-click="vm.loadTests()">Thử lại</button></p>
                 <p class="test-explorer-empty" ng-if="vm.loading" role="status">Đang tải bài test...</p>
             </test-folder-explorer>
