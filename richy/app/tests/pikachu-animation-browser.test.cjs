@@ -130,6 +130,7 @@ test('hatched Pikachu stays still and flashes lightning occasionally while panel
         assert.equal(await page.locator('.learning-pet-character').isVisible(), true);
         for (const [petForm, selectedPetKey, petImage] of [
             ['pikachu-egg', 'CUTE_PIKACHU', 'assets/images/learning-pets/pikachu/egg-level-18.png'],
+            ['pikachu-egg', 'CUTE_PIKACHU', 'assets/images/learning-pets/pikachu/egg-level-19.png'],
             ['cute-tom-cat-hatched', 'CUTE_TOM_CAT', 'assets/images/learning-pets/cute-tom-cat/pet-level-11.png']
         ]) {
             await update(page, {petForm, selectedPetKey, petImage});

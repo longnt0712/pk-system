@@ -1,1 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc"><title id="title">Trứng Pikachu — level 18</title><desc id="desc">Trứng vàng cùng màu với ảnh Pikachu tham chiếu, tai xòe có chóp đen, má đỏ và đuôi tia sét.</desc><g transform="translate(385 205) scale(1.85)" stroke="#000" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M166 286 162 271 176 275 183 249 171 245 181 210 195 184C235 188 283 202 304 213L265 254 215 236 195 267 184 265 179 287Z" fill="#f7df00"/><path d="m166 286-4-15 14 4 7-26 8 13-7 3-5 22Z" fill="#a14400" stroke="none"/><path d="M195 205 264 246 296 218 265 254 215 236 195 267 184 265Z" fill="#e38900" stroke="none"/><path d="M166 286 162 271 176 275 183 249 171 245 181 210 195 184C235 188 283 202 304 213L265 254 215 236 195 267 184 265 179 287Z" fill="none"/></g><g stroke="#000" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"><path d="M355 358C265 328 165 224 120 125 232 139 354 238 417 309Z" fill="#f7df00"/><path d="M120 125C157 130 193 148 227 168L206 233C165 194 136 156 120 125Z" fill="#000" stroke="none"/><path d="M581 320C607 220 637 95 697 50 729 131 718 253 662 365Z" fill="#f7df00"/><path d="M697 50C715 96 721 145 714 189L646 137C663 96 681 65 697 50Z" fill="#000" stroke="none"/><path d="M489 309C612 303 727 468 756 642 789 834 681 940 490 944 302 947 201 840 230 648 258 474 371 313 489 309Z" fill="#f7df00"/><path d="M239 779C258 885 351 941 490 935 636 933 720 882 749 798 682 864 595 899 491 898 381 899 295 862 239 779Z" fill="#e38900" stroke="none"/><ellipse cx="282" cy="634" rx="31" ry="47" fill="#ff0300" stroke-width="9" transform="rotate(-13 282 634)"/><ellipse cx="702" cy="634" rx="31" ry="47" fill="#ff0300" stroke-width="9" transform="rotate(13 702 634)"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+<title id="title">Trứng Pikachu — level 18</title><desc id="desc">Vỏ trứng vàng cam theo mẫu Pikachu mới, tai trái dựng cao và tai phải xòe ngang lấy từ ảnh gốc, cùng má đỏ san hô và đuôi vàng của ảnh tham chiếu.</desc>
+<defs>
+  <linearGradient id="shell-gold" x1=".18" y1=".08" x2=".78" y2=".94"><stop stop-color="#fff08a"/><stop offset=".32" stop-color="#ffdf32"/><stop offset=".76" stop-color="#ffd11e"/><stop offset="1" stop-color="#ffbe19"/></linearGradient>
+  <linearGradient id="shell-orange" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#f6a32d"/><stop offset="1" stop-color="#ed861c"/></linearGradient>
+  <linearGradient id="cheek-coral" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff8653"/><stop offset=".55" stop-color="#f65b34"/><stop offset="1" stop-color="#e84622"/></linearGradient>
+  <image id="reference-art" href="reference-jumping-original.png" width="640" height="1138"/>
+  <mask id="reference-ears" maskUnits="userSpaceOnUse" x="0" y="0" width="640" height="1138" style="mask-type:luminance">
+    <path fill="white" stroke="white" stroke-width="5" stroke-linejoin="round" d="M251 38Q258 89 257 144Q255 209 215 275L176 313 160 327Q149 294 152 267Q154 235 173 192Q207 112 251 38Z M329 293Q401 221 492 190Q558 171 627 165Q580 225 521 269Q468 312 380 324L350 315Z"/>
+  </mask>
+  <mask id="reference-head" maskUnits="userSpaceOnUse" x="0" y="0" width="640" height="1138" style="mask-type:luminance">
+    <path fill="white" stroke="white" stroke-width="6" stroke-linejoin="round" d="M251 38Q258 89 257 144Q255 209 215 275Q246 267 282 279Q307 281 329 293Q401 221 492 190Q558 171 627 165Q580 225 521 269Q468 312 380 324Q399 354 408 393Q394 410 384 432Q369 450 348 463Q337 489 325 512Q306 540 274 542Q253 540 239 535Q190 520 161 487Q128 467 125 438Q120 415 133 403Q137 369 153 342L160 327Q149 294 152 267Q154 235 173 192Q207 112 251 38Z"/>
+  </mask>
+  <mask id="reference-tail" maskUnits="userSpaceOnUse" x="0" y="0" width="640" height="1138" style="mask-type:luminance">
+    <path fill="white" stroke="white" stroke-width="5" stroke-linejoin="round" d="M443 476 561 379 588 567 431 595 414 556 434 558 408 534Z"/>
+  </mask>
+  <clipPath id="intact-shell"><path d="M492 341C619 335 736 501 764 675C795 862 696 951 507 953C315 955 217 861 246 676C274 502 379 348 492 341Z"/></clipPath>
+  <clipPath id="cracked-shell"><path d="M251 650 294 685 339 657 386 693 435 659 484 698 535 660 584 693 632 657 682 687 740 650C790 816 710 950 507 953C306 955 219 828 251 650Z"/></clipPath>
+</defs><g transform="translate(120 40) scale(1.4)"><use href="#reference-art" mask="url(#reference-tail)"/></g>
+<g transform="translate(150 18) scale(1.25)"><use href="#reference-art" mask="url(#reference-ears)"/></g>
+<path d="M492 341C619 335 736 501 764 675C795 862 696 951 507 953C315 955 217 861 246 676C274 502 379 348 492 341Z" fill="url(#shell-gold)" stroke="#161621" stroke-width="11" stroke-linejoin="round"/>
+<g clip-path="url(#intact-shell)"><path d="M688 430C716 566 715 704 660 799C589 897 413 932 273 832C318 918 405 958 525 951C685 945 766 860 771 732C776 608 739 494 688 430Z" fill="url(#shell-orange)"/>
+  <path d="M252 785C323 869 446 908 563 882C647 868 702 838 755 783C718 898 632 951 506 952C371 951 287 897 252 785Z" fill="#f59a24"/>
+  <path d="M350 473C377 413 421 379 462 375C432 394 413 424 402 463C383 477 367 480 350 473Z" fill="#fff6bb" opacity=".9"/>
+  <path d="M310 532C323 517 337 511 350 509L336 545 317 557Z" fill="#fff6bb" opacity=".75"/><ellipse cx="284" cy="691" rx="30" ry="44" fill="url(#cheek-coral)" stroke="#302026" stroke-width="8" transform="rotate(-13 284 691)"/>
+  <ellipse cx="720" cy="691" rx="29" ry="43" fill="url(#cheek-coral)" stroke="#302026" stroke-width="8" transform="rotate(13 720 691)"/>
+  <ellipse cx="279" cy="675" rx="9" ry="15" fill="#ffc18a" opacity=".8" transform="rotate(-22 279 675)"/>
+  <ellipse cx="713" cy="676" rx="8" ry="13" fill="#ffc18a" opacity=".7" transform="rotate(15 713 676)"/></g>
+<path d="M492 341C619 335 736 501 764 675C795 862 696 951 507 953C315 955 217 861 246 676C274 502 379 348 492 341Z" fill="none" stroke="#161621" stroke-width="11" stroke-linejoin="round"/>
+</svg>
