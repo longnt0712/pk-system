@@ -1,0 +1,25 @@
+{
+  "id": "cute-dog",
+  "name": "Cute Dog",
+  "selectionKey": "CUTE_DOG",
+  "unlockVocabularyExperienceLevel": 6,
+  "evolution": [
+    {
+      "minimumVocabularyExperienceLevel": 6,
+      "maximumVocabularyExperienceLevel": 6,
+      "form": "egg-intact",
+      "file": "egg-level-6.png"
+    },
+    {
+      "minimumVocabularyExperienceLevel": 7,
+      "maximumVocabularyExperienceLevel": 7,
+      "form": "egg-cracked",
+      "file": "egg-level-7.png"
+    },
+    {
+      "minimumVocabularyExperienceLevel": 8,
+      "form": "hatched",
+      "file": "pet-level-8.png"
+    }
+  ]
+}

@@ -29,11 +29,49 @@ test('Lụm ngay can be selected and its score settings are clamped',()=>{
 });
 test('each level uses an existing distinct egg/cracked egg/pet artwork',()=>{
  const h=setup(),seen=new Set();
- for(let level=0;level<=14;level++) {
+ const names=['Mầm Học','Capybara','Cute Dog','Mèo Tom','Chuột Jerry','Chuột Tuffy','Pikachu'];
+ for(let level=0;level<=20;level++) {
   const src=h.vm.getGiftRewardImage(level).split('?')[0];assert.ok(fs.existsSync(path.join(__dirname,'..',src)),src);seen.add(src);
-  if(level%3<2) assert.ok(h.vm.getGiftRewardLabel(level).startsWith(level%3===0?'Trứng ':'Trứng vỡ '));
+  assert.equal(h.vm.getGiftRewardLabel(level),(level%3===0?'Trứng ':level%3===1?'Trứng vỡ ':'')+names[Math.floor(level/3)]);
  }
- assert.equal(seen.size,15);
+ assert.equal(seen.size,21);
+});
+
+test('new pet stages retain server artwork and labels through claim reveal and host history',async()=>{
+ for(const [level,file,label] of [[21,'egg-level-21.png','Trứng Pet mới'],[22,'egg-level-22.png?format=png','Trứng vỡ Pet mới'],[23,'pet-level-23.png','Pet mới']]) {
+  const h=setup();h.vm.openGiftModal();const pending=h.vm.claimGift({id:'gift1'});
+  const reward={rewardImage:'assets/images/learning-pets/future-pet/'+file,rewardLabel:label};
+  const next=h.room(0,2);next.giftDrop.claims=[{id:'gift1',username:'alice',rewardLevel:level,points:240,...reward}];
+  h.resolve({room:next,rewardLevel:level,points:240,...reward});await pending;
+  assert.deepEqual(plain(h.vm.lastGiftReward),{level,points:240,...reward});
+  const image=reward.rewardImage+(file.includes('?')?'&':'?')+'v=qa';
+  assert.equal(h.vm.getGiftRewardImage(level,null,h.vm.lastGiftReward),image);
+  assert.equal(h.vm.getGiftRewardLabel(level,null,h.vm.lastGiftReward),label);
+  const host=setup('host');host.hooks.applyRoom(next,true);
+  const claim=host.vm.room.giftDrop.claims[0];
+  assert.equal(host.vm.getGiftRewardImage(claim.rewardLevel,claim.skillType,claim),image);
+  assert.equal(host.vm.getGiftRewardLabel(claim.rewardLevel,claim.skillType,claim),label);
+ }
+ const reveal=fs.readFileSync(path.join(__dirname,'../question/views/battle_quiz_online.html'),'utf8');
+ const host=fs.readFileSync(path.join(__dirname,'../question/views/battle_online_egg_host.html'),'utf8');
+ for(const helper of ['getGiftRewardImage','getGiftRewardLabel']) {
+  assert.ok(reveal.includes('vm.'+helper+'(vm.lastGiftReward.level, vm.lastGiftReward.skillType, vm.lastGiftReward)'));
+  assert.ok(host.includes('vm.'+helper+'(claim.rewardLevel, claim.skillType, claim)'));
+ }
+});
+
+test('legacy and special egg rewards keep safe fallback artwork and labels',()=>{
+ const h=setup(),metadata={rewardImage:'assets/images/learning-pets/future-pet/pet-level-23.png',rewardLabel:'Pet mới'};
+ assert.equal(h.vm.getGiftRewardImage(-1,null,metadata),h.vm.getGiftRewardImage(-1));
+ assert.equal(h.vm.getGiftRewardLabel(-1,null,metadata),'Trứng thối');
+ assert.equal(h.vm.getGiftRewardImage(-2,'INVERT',metadata),h.vm.getGiftRewardImage(0));
+ assert.equal(h.vm.getGiftRewardLabel(-2,'INVERT',metadata),h.vm.getGiftRewardLabel(-2,'INVERT'));
+ for(const level of [21,undefined,NaN,-2]) {
+  assert.equal(h.vm.getGiftRewardImage(level),h.vm.getGiftRewardImage(0));
+  assert.equal(h.vm.getGiftRewardLabel(level),'Trứng Mầm Học');
+ }
+ assert.equal(h.vm.getGiftRewardImage(20,null,{rewardImage:' '}),h.vm.getGiftRewardImage(20));
+ assert.equal(h.vm.getGiftRewardLabel(20,null,{rewardLabel:' '}),'Pikachu');
 });
 test('only an active player with credit can pick during the final egg phase',()=>{
  for(const state of ['no-credit','spectator','claiming','finished','pending-skill','before-phase']) {

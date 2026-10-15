@@ -18,7 +18,15 @@
   <clipPath id="cracked-shell"><path d="M251 650 294 685 339 657 386 693 435 659 484 698 535 660 584 693 632 657 682 687 740 650C790 816 710 950 507 953C306 955 219 828 251 650Z"/></clipPath>
 </defs><g transform="translate(120 40) scale(1.4)"><use href="#reference-art" mask="url(#reference-tail)"/></g>
 <path d="M252 648 287 612 337 650 385 622 432 653 484 619 535 655 584 623 631 652 683 613 739 649 761 742H236Z" fill="#c97c26" stroke="#161621" stroke-width="10" stroke-linejoin="round"/>
-<g transform="translate(150 18) scale(1.25)"><use href="#reference-art" mask="url(#reference-head)"/></g>
+<g transform="translate(150 18) scale(1.25)">
+  <!-- The raised arm covers this cheek in the poster. Restore its face contour
+       before clipping the poster so that the cracked form has a complete head. -->
+  <path d="M394 377Q416 405 410 439Q405 475 377 498Q352 518 325 512L337 481 355 447Z" fill="#ffe132" stroke="#191921" stroke-width="3" stroke-linejoin="round"/>
+  <use href="#reference-art" mask="url(#reference-head)"/>
+  <path d="M405 391Q414 416 408 442Q399 480 371 500L341 511Q346 481 358 456Q378 435 393 412Z" fill="#ffe132"/>
+  <path d="M379 385C395 396 393 419 380 436C365 458 341 463 329 450C313 437 318 413 331 394C346 374 366 372 379 385Z" fill="url(#cheek-coral)" stroke="#302026" stroke-width="3"/>
+  <path d="M338 391Q347 382 359 383Q358 387 348 392Q341 396 337 395Z" fill="#ffb18a" opacity=".9"/>
+</g>
 <path d="M251 650 294 685 339 657 386 693 435 659 484 698 535 660 584 693 632 657 682 687 740 650C790 816 710 950 507 953C306 955 219 828 251 650Z" fill="url(#shell-gold)" stroke="#161621" stroke-width="11" stroke-linejoin="round"/>
 <g clip-path="url(#cracked-shell)"><path d="M688 430C716 566 715 704 660 799C589 897 413 932 273 832C318 918 405 958 525 951C685 945 766 860 771 732C776 608 739 494 688 430Z" fill="url(#shell-orange)"/>
   <path d="M252 785C323 869 446 908 563 882C647 868 702 838 755 783C718 898 632 951 506 952C371 951 287 897 252 785Z" fill="#f59a24"/>

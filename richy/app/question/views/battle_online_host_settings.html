@@ -345,7 +345,7 @@
                 <button type="button" class="battle-online-mode-card"
                         ng-class="{'is-active': vm.hostSettings.mode === 'LUM_NGAY'}" ng-click="vm.selectMode('LUM_NGAY')">
                     <span class="battle-online-mode-icon">🎁</span><strong>LỤM NGAY</strong>
-                    <small>Trả lời đúng để bóc quà trong box chung. Trứng và pet level cao hiếm hơn, nhận nhiều điểm hơn.</small>
+                    <small>Trả lời đúng để bóc quà trong pool riêng. Trứng và pet level cao hiếm hơn, nhận nhiều điểm hơn.</small>
                 </button>
             </div>
 
@@ -490,7 +490,7 @@
                         <input ng-attr-id="battle-gift-base-points-{{$id}}" class="form-control" type="number" min="1" max="10000" ng-disabled="vm.savingSettings" ng-model="vm.hostSettings.giftBasePoints" ng-change="vm.hostSkillsDirty = true">
                     </div>
                 </div>
-                <p>Mỗi người có pool riêng với 3 trứng sẵn có, bóc xong bổ sung ngay. Trả lời đúng chỉ nhận 1 lượt bóc; bóc trứng mới có điểm hoặc skill. Trứng thối luôn cho 0,5 điểm. Quà thường = điểm cơ bản × (level + 1); level càng cao càng hiếm.</p>
+                <p>Mỗi người có pool riêng với 3 trứng sẵn có, bóc xong bổ sung ngay. Trả lời đúng chỉ nhận 1 lượt bóc; bóc trứng mới có điểm hoặc skill. Trứng thối luôn cho 0,5 điểm. Quà thường = điểm cơ bản × (level + 1). Từ sau Jerry đã nở, mỗi giai đoạn trứng hoặc pet mới giảm tiếp 0,01 điểm phần trăm; tỉ lệ thấp nhất là 0,01%.</p>
             </div>
 
             <div class="battle-online-mode-settings is-guess-word"

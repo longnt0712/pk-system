@@ -2788,6 +2788,7 @@ public class BattleOnlineServiceImpl implements BattleOnlineService {
                     ? gift.points : applyDoubleActionScoreLocked(room, player, gift.points);
             room.giftDrop.recordClaim(gift, player.username, displayName(player), awardedPoints, now);
             result.setSkillType(gift.skillType);
+            result.setRewardImage(gift.rewardImage); result.setRewardLabel(gift.rewardLabel);
             result.setRewardLevel(gift.rewardLevel); result.setPoints(awardedPoints);
             if (room.giftOpening && !hasOutstandingGiftCreditsLocked(room)) { completeMatchLocked(room); }
             result.setRoom(snapshotLocked(room, username));
