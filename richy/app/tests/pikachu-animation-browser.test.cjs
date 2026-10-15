@@ -58,6 +58,35 @@ async function update(page, values) {
     await page.evaluate(values => window.petScope.$apply(() => Object.assign(window.petScope.pet, values)), values);
 }
 
+test('the cracked Pikachu has a complete opaque cheek and face where the source arm was removed', async () => {
+    const {page, context} = await open();
+    try {
+        const face = await page.evaluate(async () => {
+            const image = new Image();
+            image.src = '/assets/images/learning-pets/pikachu/egg-level-19.png';
+            await image.decode();
+            const canvas = document.createElement('canvas');
+            canvas.width = image.naturalWidth;
+            canvas.height = image.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(image, 0, 0);
+            // This area must be solid cheek/face, although the original poster's
+            // raised arm obscures it. A diagonal cutout previously left it empty.
+            const cheek = ctx.getImageData(610, 555, 31, 46).data;
+            let minimumAlpha = 255;
+            for (let index = 3; index < cheek.length; index += 4) {
+                minimumAlpha = Math.min(minimumAlpha, cheek[index]);
+            }
+            return {width: image.naturalWidth, height: image.naturalHeight,
+                minimumAlpha, cornerAlpha: ctx.getImageData(0, 0, 1, 1).data[3]};
+        });
+        assert.equal(face.width, 1024);
+        assert.equal(face.height, 1024);
+        assert.equal(face.cornerAlpha, 0, 'the asset keeps its transparent background');
+        assert.equal(face.minimumAlpha, 255, 'the cheek has no transparent cutout');
+    } finally { await context.close(); }
+});
+
 test('hatched Pikachu stays still and flashes lightning occasionally while panel controls and other pet forms keep working', async () => {
     const {page, context, errors} = await open();
     try {
