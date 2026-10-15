@@ -22,12 +22,16 @@ public class PetRewardCatalogTest {
     }
 
     @Test public void packagedWebsiteManifestsSupplyEveryStageIncludingDogTuffyAndPikachu() {
-        List<PetRewardCatalog.Reward> rewards = PetRewardCatalog.rewards();
-        assertEquals(21,rewards.size());
-        for (int level = 0; level < rewards.size(); level++) {
-            assertEquals(level,rewards.get(level).level);
-            assertTrue(rewards.get(level).image.startsWith("assets/images/learning-pets/"));
-            assertFalse(rewards.get(level).label.contains("undefined"));
+        List<PetRewardCatalog.Reward> packaged = PetRewardCatalog.rewards();
+        assertTrue(packaged.size() >= 21);
+        Map<Integer,PetRewardCatalog.Reward> rewards = new HashMap<Integer,PetRewardCatalog.Reward>();
+        for (PetRewardCatalog.Reward reward : packaged) {
+            rewards.put(reward.level,reward);
+            assertTrue(reward.image.startsWith("assets/images/learning-pets/"));
+            assertFalse(reward.label.contains("undefined"));
+        }
+        for (int level = 0; level <= 20; level++) {
+            assertNotNull("Existing stage " + level,rewards.get(level));
         }
         assertEquals("assets/images/learning-pets/mam-hoc/pet-hatched-fallback.png",rewards.get(2).image);
         assertEquals("Mầm Học",rewards.get(2).label);
@@ -36,7 +40,7 @@ public class PetRewardCatalogTest {
         assertEquals("Trứng Chuột Tuffy",rewards.get(15).label);
         assertEquals("assets/images/learning-pets/pikachu/egg-level-19.png",rewards.get(19).image);
         assertEquals("Pikachu",rewards.get(20).label);
-        try { rewards.clear(); fail("Shared catalog must be immutable"); } catch (UnsupportedOperationException expected) { }
+        try { packaged.clear(); fail("Shared catalog must be immutable"); } catch (UnsupportedOperationException expected) { }
     }
 
     @Test public void futureResourceManifestsAreReadAndSortedWithoutAnyCatalogEdit() throws Exception {
@@ -47,10 +51,14 @@ public class PetRewardCatalogTest {
         });
         assertEquals(4,rewards.size());
         assertEquals(21,rewards.get(0).level); assertEquals("Trứng Pet mới",rewards.get(0).label);
+        assertEquals("future-pet",rewards.get(0).petId); assertEquals("egg-intact",rewards.get(0).form); assertEquals(0,rewards.get(0).stageIndex);
         assertEquals("assets/images/learning-pets/future-pet/egg-level-21.webp",rewards.get(0).image);
         assertEquals(22,rewards.get(1).level); assertEquals("Trứng vỡ Pet mới",rewards.get(1).label);
+        assertEquals("future-pet",rewards.get(1).petId); assertEquals("egg-cracked",rewards.get(1).form); assertEquals(1,rewards.get(1).stageIndex);
         assertEquals(23,rewards.get(2).level); assertEquals("Pet mới",rewards.get(2).label);
+        assertEquals("future-pet",rewards.get(2).petId); assertEquals("hatched",rewards.get(2).form); assertEquals(2,rewards.get(2).stageIndex);
         assertEquals(120,rewards.get(3).level); assertEquals("Pet sau",rewards.get(3).label);
+        assertEquals("later-pet",rewards.get(3).petId); assertEquals(2,rewards.get(3).stageIndex);
     }
 
     @Test public void spriteAtlasesUseTheirSingleImageFallbackForBothAtlasFormats() throws Exception {

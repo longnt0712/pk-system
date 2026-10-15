@@ -57,14 +57,25 @@ public class GiftDropGameTest {
         return firstTicketForLevel(game,random,level + 1) - firstTicketForLevel(game,random,level);
     }
 
-    @Test public void eachHigherStageIsRarerAndEveryStageHasItsMatchingPointsAndArtwork() {
-        TicketRandom random = new TicketRandom();
-        GiftDropGame game = new GiftDropGame(10,random);
-        int previousTickets = 1000000;
+    private List<PetRewardCatalog.Reward> knownCatalog() {
+        List<PetRewardCatalog.Reward> known = new ArrayList<PetRewardCatalog.Reward>();
         for (PetRewardCatalog.Reward reward : PetRewardCatalog.rewards()) {
+            if (reward.level <= 20) { known.add(reward); }
+        }
+        return known;
+    }
+
+    @Test public void originalRewardsKeepTheirRarityAndEveryStageHasItsMatchingPointsAndArtwork() {
+        TicketRandom random = new TicketRandom();
+        GiftDropGame game = new GiftDropGame(10,random,Collections.<String>emptyList(),knownCatalog());
+        int previousTickets = 1000000;
+        for (PetRewardCatalog.Reward reward : knownCatalog()) {
             int first = firstTicketForLevel(game,random,reward.level);
             int tickets = ticketsForLevel(game,random,reward.level);
-            assertTrue("Level " + reward.level,tickets > 0 && tickets < previousTickets);
+            assertTrue("Level " + reward.level,tickets > 0);
+            if (reward.level < 15 || reward.level % 3 != 0) {
+                assertTrue("Level " + reward.level,tickets < previousTickets);
+            }
             previousTickets = tickets;
             GiftDropGame.Gift gift = giftAt(game,random,first);
             assertEquals(reward.level,gift.rewardLevel); assertEquals((reward.level + 1) * 10D,gift.points,0D);
@@ -74,33 +85,48 @@ public class GiftDropGameTest {
         assertEquals(GiftDropGame.ROTTEN_EGG_LEVEL,giftAt(game,random,0).rewardLevel);
     }
 
-    @Test public void newStagesDecreaseByPointZeroOnePercentagePointsFromJerryForAllSkillChoices() {
-        int[] jerryTicketsBySkillCount = {3598,3425,3268,3125};
+    @Test public void eachFamilyReducesTheCorrespondingJerryFormByPointZeroOnePercentagePointsForAllSkills() {
+        int[][] expectedTickets = {{6300,4700,3600},{6200,4600,3500},{6100,4500,3400},{6000,4400,3300}};
+        List<PetRewardCatalog.Reward> catalog = knownCatalog();
+        for (int level = 21; level <= 23; level++) {
+            catalog.add(new PetRewardCatalog.Reward(level,"assets/images/learning-pets/future/stage-" + level + ".png","Future " + level));
+        }
         for (int mask = 0; mask < (1 << GiftDropGame.SKILL_TYPES.size()); mask++) {
             List<String> skills = new ArrayList<String>();
             for (int index = 0; index < GiftDropGame.SKILL_TYPES.size(); index++) {
                 if ((mask & (1 << index)) != 0) { skills.add(GiftDropGame.SKILL_TYPES.get(index)); }
             }
             TicketRandom random = new TicketRandom();
-            GiftDropGame game = new GiftDropGame(10, random, skills);
-            int previousTickets = jerryTicketsBySkillCount[skills.size()];
-            assertEquals(previousTickets,ticketsForLevel(game,random,14));
-            for (int level = 15; level <= 20; level++) {
+            GiftDropGame game = new GiftDropGame(10,random,skills,catalog);
+            for (int level = 12; level <= 23; level++) {
                 int tickets = ticketsForLevel(game,random,level);
-                assertEquals("Level " + level + " with skills " + skills,previousTickets - 100,tickets);
+                assertEquals("Level " + level + " with skills " + skills,expectedTickets[(level - 12) / 3][level % 3],tickets);
                 int first = firstTicketForLevel(game,random,level);
                 assertEquals(level,giftAt(game,random,first).rewardLevel);
                 assertEquals(level,giftAt(game,random,first + tickets - 1).rewardLevel);
                 if (first > 0) { assertEquals(level - 1,giftAt(game,random,first - 1).rewardLevel); }
-                previousTickets = tickets;
             }
-            assertEquals(20,giftAt(game,random,999999).rewardLevel);
+            assertEquals(23,giftAt(game,random,999999).rewardLevel);
+        }
+    }
+
+    @Test public void rarityUsesManifestFamilyAndFormWhenStageLevelsAreNonconsecutiveAndInterleaved() {
+        List<PetRewardCatalog.Reward> catalog = knownCatalog();
+        catalog.add(new PetRewardCatalog.Reward(21,"alpha-pet.png","Alpha","alpha","hatched"));
+        catalog.add(new PetRewardCatalog.Reward(22,"beta-egg.png","Beta","beta","egg-intact"));
+        catalog.add(new PetRewardCatalog.Reward(30,"alpha-egg.png","Alpha","alpha","egg-intact"));
+        catalog.add(new PetRewardCatalog.Reward(31,"beta-pet.png","Beta","beta","hatched"));
+        catalog.add(new PetRewardCatalog.Reward(35,"alpha-cracked.png","Alpha","alpha","egg-cracked"));
+        TicketRandom random = new TicketRandom();
+        GiftDropGame game = new GiftDropGame(10,random,Collections.<String>emptyList(),catalog);
+        for (int[] expected : new int[][] {{21,3300},{22,5900},{30,6000},{31,3200},{35,4400}}) {
+            assertEquals("Level " + expected[0],expected[1],ticketsForLevel(game,random,expected[0]));
         }
     }
 
     @Test public void injectedFutureRewardsHaveNoLevelCapAndClaimsKeepTheirMetadata() {
-        for (final int level : new int[] {21,22,23,120}) {
-            List<PetRewardCatalog.Reward> rewards = new ArrayList<PetRewardCatalog.Reward>(PetRewardCatalog.rewards());
+        for (final int level : new int[] {21,22,23,120,210}) {
+            List<PetRewardCatalog.Reward> rewards = knownCatalog();
             for (int future = 21; future <= level; future++) {
                 rewards.add(new PetRewardCatalog.Reward(future,"assets/images/learning-pets/future/pet-level-" + future + ".png","Pet " + future));
             }
@@ -116,7 +142,8 @@ public class GiftDropGameTest {
             assertEquals(gift.rewardLevel,claim.rewardLevel); assertEquals(gift.rewardImage,claim.rewardImage);
             assertEquals(gift.rewardLabel,claim.rewardLabel); assertEquals(gift.points,claim.points,0D);
             assertNull(game.claim("alice",gift.id));
-            if (level == 120) { assertEquals("Distant stages retain the minimum 0.01% draw chance",100,ticketsForLevel(game,random,level)); }
+            if (level == 120) { assertEquals(2700,ticketsForLevel(game,random,level)); }
+            if (level == 210) { assertEquals("Distant stages retain the minimum 0.01% draw chance",100,ticketsForLevel(game,random,level)); }
         }
     }
 

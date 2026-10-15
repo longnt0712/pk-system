@@ -11,11 +11,12 @@ public class GiftDropGame {
     private static final int SKILL_EGG_WEIGHT = 2500;
     public static final int POOL_SIZE = 3;
     private static final int ROTTEN_EGG_WEIGHT = 10000;
-    // Each new stage is 0.01 percentage points rarer than the previous stage,
-    // starting with the original final Jerry reward. Keep future stages drawable.
+    // Each new pet is 0.01 percentage points rarer in each matching form column.
+    // Jerry's intact/cracked/hatched reference rates are 0.63% / 0.47% / 0.36%.
     private static final int NEW_REWARD_MIN_LEVEL = 15;
     private static final int DRAW_RESOLUTION = 1000000;
     private static final int NEW_REWARD_STEP = 100;
+    private static final int[] JERRY_FORM_TICKETS = {6300, 4700, 3600};
     public static class Gift {
         public final String id;
         public final int rewardLevel;
@@ -113,30 +114,37 @@ public class GiftDropGame {
         Arrays.fill(originalWeights, 0, skillTypes.size(), SKILL_EGG_WEIGHT);
         originalWeights[skillTypes.size()] = ROTTEN_EGG_WEIGHT;
         int originalTotal = ROTTEN_EGG_WEIGHT + skillTypes.size() * SKILL_EGG_WEIGHT;
-        int anchorIndex = -1;
+        int[] fixedTickets = new int[originalWeights.length];
+        int fixedTotal = 0, fixedOriginalWeight = 0;
         for (int i = 0; i < commonRewards.size(); i++) {
             int level = commonRewards.get(i).level;
             int weight = rewardWeight(level);
             int index = skillTypes.size() + 1 + i;
             originalWeights[index] = weight; originalTotal += weight;
-            if (level == NEW_REWARD_MIN_LEVEL - 1) { anchorIndex = index; }
+            if (level >= NEW_REWARD_MIN_LEVEL - 3) {
+                fixedTickets[index] = JERRY_FORM_TICKETS[commonRewards.get(i).stageIndex];
+                fixedTotal += fixedTickets[index]; fixedOriginalWeight += weight;
+            }
         }
-        int jerryTickets = (int) Math.round(DRAW_RESOLUTION * (double) rewardWeight(NEW_REWARD_MIN_LEVEL - 1) / originalTotal);
+        Map<String, Integer> newFamilies = new LinkedHashMap<String, Integer>();
         int newTotal = 0;
         for (int i = 0; i < newWeights.length; i++) {
-            newWeights[i] = Math.max(NEW_REWARD_STEP, jerryTickets - NEW_REWARD_STEP * (i + 1));
+            PetRewardCatalog.Reward reward = newRewards.get(i);
+            Integer familyOrder = newFamilies.get(reward.petId);
+            if (familyOrder == null) { familyOrder = newFamilies.size() + 1; newFamilies.put(reward.petId, familyOrder); }
+            newWeights[i] = Math.max(NEW_REWARD_STEP,
+                    JERRY_FORM_TICKETS[reward.stageIndex] - NEW_REWARD_STEP * familyOrder);
             newTotal += newWeights[i];
         }
-        int anchorTickets = anchorIndex < 0 ? 0 : jerryTickets;
-        int remainingTickets = DRAW_RESOLUTION - newTotal - anchorTickets;
+        int remainingTickets = DRAW_RESOLUTION - newTotal - fixedTotal;
         if (remainingTickets <= 0) { throw new IllegalArgumentException("Pet reward probabilities exceed 100%"); }
-        int remainingWeight = originalTotal - (anchorIndex < 0 ? 0 : originalWeights[anchorIndex]);
+        int remainingWeight = originalTotal - fixedOriginalWeight;
         int cumulativeWeight = 0, assignedTickets = 0, commonTotal = 0;
-        // Preserve Jerry's reference probability. Other original rewards share
+        // Preserve all three Jerry reference probabilities. Other original rewards share
         // the remaining probability in their existing weight ratios.
         for (int i = 0; i < originalWeights.length; i++) {
             int tickets;
-            if (i == anchorIndex) { tickets = anchorTickets; }
+            if (fixedTickets[i] > 0) { tickets = fixedTickets[i]; }
             else {
                 cumulativeWeight += originalWeights[i];
                 int cumulativeTickets = (int) ((long) cumulativeWeight * remainingTickets / remainingWeight);

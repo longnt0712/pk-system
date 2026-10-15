@@ -106,7 +106,11 @@ public class BattleOnlineGiftDropTest {
         assertEquals(5D+result.getPoints(),(Double)get(alice,"score"),0D); assertEquals(Integer.valueOf(1),result.getRoom().getGiftCredits());
         assertEquals(1,result.getRoom().getGiftDrop().claims.size());
         assertEquals(result.getPoints(),result.getRoom().getGiftDrop().claims.get(0).points,0D);
-        PetRewardCatalog.Reward selectedReward = PetRewardCatalog.rewards().get(result.getRewardLevel());
+        PetRewardCatalog.Reward selectedReward = null;
+        for (PetRewardCatalog.Reward reward : PetRewardCatalog.rewards()) {
+            if (reward.level == result.getRewardLevel()) { selectedReward = reward; break; }
+        }
+        assertNotNull(selectedReward);
         assertEquals(selectedReward.image,result.getRewardImage());
         assertEquals(selectedReward.label,result.getRewardLabel());
         assertEquals(result.getRewardImage(),result.getRoom().getGiftDrop().claims.get(0).rewardImage);

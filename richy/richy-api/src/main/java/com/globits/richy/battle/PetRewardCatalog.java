@@ -18,12 +18,24 @@ public final class PetRewardCatalog {
     public static final class Reward {
         public final int level;
         public final String image, label;
+        public final String petId, form;
+        public final int stageIndex;
 
         public Reward(int level, String image, String label) {
-            if (level < 0 || image == null || label == null) {
+            this(level, image, label, "level-family-" + (level / 3),
+                    level % 3 == 0 ? "egg-intact" : level % 3 == 1 ? "egg-cracked" : "hatched");
+        }
+
+        public Reward(int level, String image, String label, String petId, String form) {
+            if (level < 0 || image == null || label == null || petId == null || petId.trim().isEmpty()) {
                 throw new IllegalArgumentException("Pet reward requires a level, image and label");
             }
+            if ("egg-intact".equals(form)) { stageIndex = 0; }
+            else if ("egg-cracked".equals(form)) { stageIndex = 1; }
+            else if ("hatched".equals(form)) { stageIndex = 2; }
+            else { throw new IllegalArgumentException("Unknown pet reward form"); }
             this.level = level; this.image = image; this.label = label;
+            this.petId = petId; this.form = form;
         }
     }
 
@@ -77,7 +89,7 @@ public final class PetRewardCatalog {
                         || !file.matches("[a-zA-Z0-9_-]+\\.(png|webp|svg|avif|jpg|jpeg)")) {
                     throw new IOException("Invalid or duplicate pet reward level/image: " + manifest.getDescription());
                 }
-                rewards.add(new Reward(level, "assets/images/learning-pets/" + id + "/" + file, prefix + name));
+                rewards.add(new Reward(level, "assets/images/learning-pets/" + id + "/" + file, prefix + name, id, form));
             }
         }
         if (rewards.isEmpty()) { throw new IOException("No pet reward manifests were packaged"); }
