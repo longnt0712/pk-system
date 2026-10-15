@@ -39,6 +39,7 @@ async function open(options = {}) {
                 visible: true, panelOpen: false, minimized: false, dragging: false,
                 petForm: 'pikachu-hatched', selectedPetKey: 'CUTE_PIKACHU',
                 petImage: 'assets/images/learning-pets/pikachu/pet-level-20.png',
+                pikachuLightningImage: 'assets/images/learning-pets/pikachu/pet-lightning.png',
                 availablePets: [], tasks: [], drafts: [], activeSection: 'tasks',
                 notificationCount: 2, pendingTaskCount: 0, summaryTitle: 'Bài cần làm',
                 togglePanel() { this.panelOpen = !this.panelOpen; this.clicks = (this.clicks || 0) + 1; },
@@ -57,40 +58,71 @@ async function update(page, values) {
     await page.evaluate(values => window.petScope.$apply(() => Object.assign(window.petScope.pet, values)), values);
 }
 
-test('hatched Pikachu waves and emits electricity while panel controls and other pet forms keep working', async () => {
+test('hatched Pikachu stays still and flashes lightning occasionally while panel controls and other pet forms keep working', async () => {
     const {page, context, errors} = await open();
     try {
+        assert.doesNotMatch(template, /learning-pet-pikachu__(?:arm|shoulder)/, 'the old waving layers are removed');
         const effects = await page.locator('.learning-pet-pikachu').evaluate(pet => {
-            const arm = pet.querySelector('.learning-pet-pikachu__arm');
-            window.originalPikachuArm = arm;
-            const wave = arm.getAnimations().find(animation => animation.animationName === 'learning-pet-pikachu-wave');
-            const ring = pet.querySelector('.learning-pet-pikachu__electricity').getAnimations({subtree: true})
-                .find(animation => animation.animationName === 'learning-pet-pikachu-electric-ring');
-            function samples(animation, property) {
-                if (!animation) return [];
-                animation.pause();
-                const duration = animation.effect.getTiming().duration;
-                return [0, .12, .24, .4, .65].map(fraction => {
-                    animation.currentTime = duration * fraction;
-                    return getComputedStyle(animation.effect.target)[property];
-                });
+            const body = pet.querySelector('.learning-pet-pikachu__body');
+            const electricity = pet.querySelector('.learning-pet-pikachu__electricity');
+            window.originalPikachuBody = body;
+            const animations = pet.getAnimations({subtree: true});
+            const lightning = animations.find(animation => animation.animationName === 'learning-pet-pikachu-lightning');
+            const opacities = [], bodyTransforms = [], wrapperTransforms = [];
+            if (lightning) {
+                const duration = lightning.effect.getTiming().duration;
+                // Inspect a complete cycle deterministically instead of waiting for a flash.
+                const offsets = Array.from({length: 101}, (_, index) => index / 100);
+                offsets.push(...lightning.effect.getKeyframes().map(frame => frame.computedOffset));
+                for (const animation of animations) animation.pause();
+                for (const fraction of offsets) {
+                    for (const animation of animations) animation.currentTime = duration * fraction;
+                    opacities.push(Number(getComputedStyle(lightning.effect.target).opacity));
+                    bodyTransforms.push(getComputedStyle(body).transform);
+                    wrapperTransforms.push(getComputedStyle(pet).transform);
+                }
             }
             return {
-                waves: samples(wave, 'transform'), rings: samples(ring, 'opacity'),
+                opacities, bodyTransforms, wrapperTransforms,
+                duration: lightning && lightning.effect.getTiming().duration,
+                animationNames: animations.map(animation => animation.animationName),
+                bodyCount: pet.querySelectorAll('.learning-pet-pikachu__body').length,
+                boltCount: electricity.querySelectorAll('.learning-pet-pikachu__bolt').length,
+                ringCount: electricity.querySelectorAll('.learning-pet-pikachu__ring').length,
+                usesOriginalBoltArtwork: [...electricity.querySelectorAll('.learning-pet-pikachu__bolt')].every(bolt => {
+                    const image = bolt.matches('img') ? bolt : bolt.querySelector('img');
+                    return image && new URL(image.src).pathname.endsWith('/pikachu/pet-lightning.png') &&
+                        image.naturalWidth === body.naturalWidth && image.naturalHeight === body.naturalHeight;
+                }),
+                customBoltPaths: electricity.querySelectorAll('path').length,
+                bodyClip: getComputedStyle(body).clipPath,
                 decorative: pet.getAttribute('aria-hidden'),
-                passthrough: getComputedStyle(arm).pointerEvents
+                bodyPassthrough: getComputedStyle(body).pointerEvents,
+                effectPassthrough: getComputedStyle(electricity).pointerEvents
             };
         });
-        assert.ok(new Set(effects.waves).size > 1, 'the arm actually rotates over the wave cycle');
-        assert.ok(new Set(effects.rings).size > 1, 'electricity visibly pulses over its cycle');
+        assert.equal(effects.bodyCount, 1, 'one complete body replaces the old arm cutout');
+        assert.equal(effects.ringCount, 0, 'the old electric ring is removed');
+        assert.ok(effects.boltCount > 0, 'lightning bolts are present');
+        assert.equal(effects.usesOriginalBoltArtwork, true, 'flashes reuse the exact lightning artwork from the reference');
+        assert.equal(effects.customBoltPaths, 0, 'flashes do not introduce custom lightning shapes');
+        assert.ok(effects.duration >= 5000, 'flashes are spaced over a slow cycle');
+        assert.ok(effects.opacities.some(opacity => opacity >= .7), 'lightning visibly flashes');
+        assert.ok(effects.opacities.filter(opacity => opacity <= .05).length > effects.opacities.length * .6,
+            'lightning rests for most of its cycle');
+        assert.ok(effects.bodyTransforms.every(transform => transform === 'none'), 'the body never waves or bounces');
+        assert.ok(effects.wrapperTransforms.every(transform => transform === 'none'), 'the wrapper stays still too');
+        assert.equal(effects.animationNames.some(name => /wave|breathe/.test(name)), false, 'Pikachu has no waving or breathing animation');
+        assert.equal(effects.bodyClip, 'none', 'the complete illustration is not clipped into old arm layers');
         assert.equal(effects.decorative, 'true');
-        assert.equal(effects.passthrough, 'none');
+        assert.equal(effects.bodyPassthrough, 'none');
+        assert.equal(effects.effectPassthrough, 'none');
         await update(page, {notificationCount: 8});
         await page.locator('.learning-pet-character').click();
         assert.equal(await page.evaluate(() => window.petScope.pet.clicks), 1);
         assert.equal(await page.evaluate(() => window.petScope.pet.panelOpen), true);
-        assert.equal(await page.evaluate(() => window.originalPikachuArm === document.querySelector('.learning-pet-pikachu__arm')), true,
-            'badge and panel updates preserve the waving element');
+        assert.equal(await page.evaluate(() => window.originalPikachuBody === document.querySelector('.learning-pet-pikachu__body')), true,
+            'badge and panel updates preserve the illustration');
         await page.locator('.learning-pet-character').click();
         await page.locator('.learning-pet-minimize').click();
         assert.equal(await page.locator('.learning-pet-character').isVisible(), false);
@@ -112,7 +144,7 @@ test('Pikachu fits mobile screens, pauses during a drag, and respects reduced mo
     const {page, context, errors} = await open({viewport: {width: 390, height: 844}, hasTouch: true});
     try {
         const bounds = await page.locator('.learning-pet-pikachu__electricity').boundingBox();
-        assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= 390, 'electric ring stays inside the mobile viewport');
+        assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= 390, 'lightning stays inside the mobile viewport');
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         await update(page, {dragging: true});
         assert.equal(await page.locator('.learning-pet-pikachu').evaluate(pet => pet.getAnimations({subtree: true})
@@ -122,7 +154,14 @@ test('Pikachu fits mobile screens, pauses during a drag, and respects reduced mo
             .some(animation => animation.playState === 'running')), true, 'motion resumes after a drag');
         await page.emulateMedia({reducedMotion: 'reduce'});
         assert.equal(await page.locator('.learning-pet-pikachu').evaluate(pet => pet.getAnimations({subtree: true})
-            .some(animation => animation.playState === 'running')), false, 'reduced motion stops the arm, ring and sparks');
+            .some(animation => animation.playState === 'running')), false, 'reduced motion stops lightning flashes');
+        assert.equal(await page.locator('.learning-pet-pikachu__bolt').evaluateAll(bolts => bolts.some(bolt => {
+            for (let node = bolt; node && node !== document.body; node = node.parentElement) {
+                const style = getComputedStyle(node);
+                if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) <= .05) return false;
+            }
+            return true;
+        })), false, 'reduced motion hides the flashing bolts');
         assert.deepEqual(errors, []);
     } finally { await context.close(); }
 });

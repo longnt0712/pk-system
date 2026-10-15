@@ -72,22 +72,9 @@
                  }"
                  ng-if="pet.petForm !== 'hatched' && pet.petForm !== 'pikachu-hatched'" ng-src="{{pet.petImage}}" draggable="false" alt="" aria-hidden="true" />
             <span class="learning-pet-pikachu" ng-if="pet.petForm === 'pikachu-hatched'" aria-hidden="true">
-                <svg class="learning-pet-pikachu__electricity" viewBox="0 0 120 124" focusable="false" aria-hidden="true">
-                    <path class="learning-pet-pikachu__ring" d="M61 7 72 11 77 8 84 19 94 18 97 31 108 34 105 47 115 56 108 68 113 78 101 85 100 98 86 100 81 113 67 109 57 118 45 110 33 112 29 100 16 96 18 81 7 76 14 62 6 51 14 40 10 28 24 24 27 12 41 14 48 5Z" />
-                    <g class="learning-pet-pikachu__sparks">
-                        <path d="M19 31 12 41 22 40 15 53M97 30 106 40 96 42 106 53M18 80 10 89 22 89 17 100M99 77 109 86 99 89 105 99" />
-                        <path class="learning-pet-pikachu__spark-core" d="m42 11 5 7-8 3m37 82 8 2-5 8" />
-                    </g>
-                </svg>
-                <svg class="learning-pet-pikachu__shoulder" viewBox="0 0 1024 1024" focusable="false" aria-hidden="true">
-                    <path d="M600 546Q654 540 714 549L712 588 600 606Z" fill="#ffe000" />
-                    <path d="M600 546Q654 540 714 549" fill="none" stroke="#10100c" stroke-width="8" stroke-linecap="round" />
-                    <path d="M493 571Q528 565 549 551Q553 592 540 627L520 684 490 687Z" fill="#ffe000" />
-                    <path d="M549 551Q553 592 540 627L520 684" fill="none" stroke="#10100c" stroke-width="8" stroke-linecap="round" />
-                </svg>
                 <img class="learning-pet-pikachu__body" ng-src="{{pet.petImage}}" draggable="false" alt="" />
-                <span class="learning-pet-pikachu__arm">
-                    <img ng-src="{{pet.petImage}}" draggable="false" alt="" />
+                <span class="learning-pet-pikachu__electricity" aria-hidden="true">
+                    <img class="learning-pet-pikachu__bolt" ng-src="{{pet.pikachuLightningImage}}" draggable="false" alt="" />
                 </span>
             </span>
             <span class="learning-pet-badge" ng-if="pet.notificationCount > 0">{{pet.notificationCount > 99 ? '99+' : pet.notificationCount}}</span>
