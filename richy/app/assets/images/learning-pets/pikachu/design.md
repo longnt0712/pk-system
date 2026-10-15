@@ -19,3 +19,7 @@ The existing Tom, Jerry and Tuffy egg stages inform the progression: an intact s
 The original uploaded 308 × 350 PNG is preserved as `reference-original.png`. Its background is separated into transparency in `reference-transparent.png`, preserving the small eye highlights and the illustration's colored pixels. The two stages that show Pikachu embed that transparent raster directly in their SVGs; the egg shells and paws remain editable vector shapes. Thus these SVGs contain raster artwork rather than a vector redraw of Pikachu.
 
 All SVGs use a 1024 × 1024 viewBox. All runtime PNGs are square RGBA images with actual transparent pixels, stored locally alongside their SVG sources. Resizing the supplied raster does not add detail to its original resolution. The application does not request image assets from external servers.
+
+## Assistant animation
+
+The hatched assistant composes the existing `pet-level-20.png` in two CSS-clipped layers: a stationary body and the raised arm rotating about the shoulder. The original artwork files, egg stages, selection thumbnails and battle portraits stay intact. A decorative SVG adds a jagged yellow electric ring and small lightning sparks behind the character, with three brief pulses during each greeting and a rest between cycles. The layers ignore pointer events so opening, dragging and minimizing the assistant continue to work. Dragging pauses the animation; reduced-motion mode keeps the arm still and shows only a dim, static ring.

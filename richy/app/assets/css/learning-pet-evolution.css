@@ -27,6 +27,136 @@
     height: 108px;
 }
 
+/* Animate the supplied Pikachu artwork in layers, without redrawing the character. */
+.learning-pet-pikachu {
+    position: relative;
+    display: block;
+    width: 104px;
+    height: 108px;
+    isolation: isolate;
+    pointer-events: none;
+    user-select: none;
+    transform-origin: 50% 86%;
+}
+
+.learning-pet-pikachu img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: auto;
+    pointer-events: none;
+}
+
+.learning-pet-pikachu > .learning-pet-pikachu__body {
+    position: absolute;
+    top: 1.85185%;
+    left: 0;
+    height: 96.2963%;
+    /* Cut only the raised arm; the animated copy overlaps the shoulder. */
+    clip-path: polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0,
+        48.8% 57.7%, 50.8% 55.2%, 52.6% 54.6%, 54.1% 53.1%, 55.2% 50.9%,
+        55.7% 48%, 58.1% 46.6%, 62% 45.4%, 65.5% 45.4%, 67.2% 46.9%,
+        67% 48.5%, 68.3% 49.8%, 67.9% 52.1%, 66.5% 54.2%, 64.8% 56.5%,
+        61.9% 60.1%, 58.1% 63.5%, 53.8% 66.2%, 50.5% 67.6%,
+        48.8% 64.5%, 48.8% 57.7%, 0 0);
+}
+
+.learning-pet-pikachu__shoulder {
+    position: absolute;
+    top: 1.85185%;
+    left: 0;
+    width: 100%;
+    height: 96.2963%;
+    pointer-events: none;
+}
+
+.learning-pet-pikachu__arm {
+    position: absolute;
+    inset: 1.85185% 0;
+    display: block;
+    clip-path: polygon(45.9% 57.1%, 50.8% 55.2%, 52.6% 54.6%, 54.1% 53.1%,
+        55.2% 50.9%, 55.7% 48%, 58.1% 46.6%, 62% 45.4%, 65.5% 45.4%,
+        67.2% 46.9%, 67% 48.5%, 68.3% 49.8%, 67.9% 52.1%, 66.5% 54.2%,
+        64.8% 56.5%, 61.9% 60.1%, 58.1% 63.5%, 53.8% 66.2%,
+        50.5% 67.6%, 47.6% 63.5%);
+    transform-origin: 48.8% 61%;
+    animation: learning-pet-pikachu-wave 4.8s ease-in-out infinite;
+}
+
+.learning-pet-pikachu__electricity {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    fill: none;
+    stroke: #ffda21;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 2px #fff6a8) drop-shadow(0 0 4px #ffbf0099);
+    pointer-events: none;
+}
+
+.learning-pet-pikachu__ring {
+    opacity: 0;
+    transform-origin: 60px 62px;
+    animation: learning-pet-pikachu-electric-ring 4.8s steps(1, end) infinite;
+}
+
+.learning-pet-pikachu__sparks {
+    opacity: 0;
+    stroke-width: 2.5;
+    transform-origin: 60px 62px;
+    animation: learning-pet-pikachu-electric-sparks 4.8s steps(1, end) infinite;
+}
+
+.learning-pet-pikachu__spark-core { stroke: #fff9dc; stroke-width: 1.8; }
+
+.learning-pet-shell:not(.is-open) .learning-pet-pikachu {
+    animation: learning-pet-egg-breathe 2.8s ease-in-out infinite;
+}
+
+.learning-pet-shell.is-dragging .learning-pet-pikachu,
+.learning-pet-shell.is-dragging .learning-pet-pikachu__arm,
+.learning-pet-shell.is-dragging .learning-pet-pikachu__ring,
+.learning-pet-shell.is-dragging .learning-pet-pikachu__sparks {
+    animation-play-state: paused;
+}
+
+@keyframes learning-pet-pikachu-wave {
+    0%, 48%, 100% { transform: rotate(0deg); }
+    10% { transform: rotate(-19deg); }
+    18% { transform: rotate(12deg); }
+    26% { transform: rotate(-17deg); }
+    34% { transform: rotate(10deg); }
+    42% { transform: rotate(-12deg); }
+}
+
+/* Three brief electric pulses, followed by a rest between greetings. */
+@keyframes learning-pet-pikachu-electric-ring {
+    0%, 10%, 50%, 100% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+    12%, 24%, 37% { opacity: .95; transform: translate(.6px, -.4px) rotate(1deg); }
+    20%, 33%, 45% { opacity: .2; transform: translate(-.6px, .4px) rotate(-1deg); }
+}
+
+@keyframes learning-pet-pikachu-electric-sparks {
+    0%, 10%, 20%, 33%, 45%, 100% { opacity: 0; transform: scale(.96); }
+    12%, 24%, 37% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .learning-pet-shell .learning-pet-pikachu,
+    .learning-pet-shell .learning-pet-pikachu__arm,
+    .learning-pet-shell .learning-pet-pikachu__ring,
+    .learning-pet-shell .learning-pet-pikachu__sparks {
+        animation: none !important;
+    }
+    .learning-pet-pikachu__ring { opacity: .25; }
+    .learning-pet-pikachu__sparks { display: none; }
+}
+
 .learning-pet-collection {
     padding: 12px 14px 4px;
 }
