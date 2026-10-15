@@ -31,7 +31,14 @@
     <div class="test-explorer-items">
         <div class="test-explorer-folder-entry" test-folder-container-drag="folder" test-folder-drop="folder.id" ng-repeat="folder in children track by folder.id">
         <button type="button" class="test-explorer-folder" ng-if="!renamingFolder || renamingFolder.id != folder.id" test-folder-open="openFolder(folder.id)" ng-keydown="$event.key === 'F2' && startRenameFolder(folder, $event)" title="Mở folder {{folder.name}}">
-            <span class="test-explorer-folder-icon" aria-hidden="true"><i class="fa fa-folder"></i></span>
+            <span class="test-explorer-folder-icon" aria-hidden="true">
+                <i class="fa fa-folder"></i>
+                <span class="library-folder-apps" ng-if="allTeachers && !manage">
+                    <i class="fa fa-file-text"></i><i class="fa fa-headphones"></i><i class="fa fa-pencil"></i>
+                    <i class="fa fa-book"></i><i class="fa fa-list-ul"></i><i class="fa fa-play"></i>
+                    <i class="fa fa-bookmark"></i><i class="fa fa-check"></i><i class="fa fa-graduation-cap"></i>
+                </span>
+            </span>
             <span class="test-explorer-name" ng-dblclick="startRenameFolder(folder, $event)" title="{{manage && folder.canManage ? 'Nhấp đúp để đổi tên folder' : folder.name}}">{{folder.name}}<small ng-if="allTeachers && folderId == null">{{folder.ownerName}}</small></span>
             <i class="fa fa-angle-right test-explorer-folder-arrow" aria-hidden="true"></i>
         </button>
