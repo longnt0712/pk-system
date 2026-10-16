@@ -276,6 +276,130 @@
         vm.showLevelTable = false;
         vm.levelTableLoading = false;
         vm.levelTableWords = [];
+        vm.selectedListeningCardIds = {};
+        vm.listeningDeleteBusy = false;
+        vm.listeningDeleteConfirmOpen = false;
+        vm.flashCardsLoading = false;
+
+        vm.isListeningFlashCardList = function () {
+            return !!vm.status && vm.status.id === 5 && vm.searchDto.status === 5;
+        };
+
+        function getSelectableListeningCards() {
+            if (!vm.isListeningFlashCardList() || vm.flashCardsLoading) {
+                return [];
+            }
+            return (vm.questions || []).filter(function (item) {
+                return item && item.id && item.status === 5 && !item._rowSaving && !item._levelSaving;
+            });
+        }
+
+        vm.getSelectedListeningCards = function () {
+            return getSelectableListeningCards().filter(function (item) {
+                return vm.selectedListeningCardIds[item.id] === true;
+            });
+        };
+
+        vm.allListeningCardsSelected = function () {
+            var cards = getSelectableListeningCards();
+            return cards.length > 0 && cards.length === vm.getSelectedListeningCards().length;
+        };
+
+        vm.toggleAllListeningCards = function () {
+            if (vm.listeningDeleteBusy || vm.listeningDeleteConfirmOpen) {
+                return;
+            }
+            var selectAll = !vm.allListeningCardsSelected();
+            vm.selectedListeningCardIds = {};
+            angular.forEach(getSelectableListeningCards(), function (item) {
+                if (selectAll) {
+                    vm.selectedListeningCardIds[item.id] = true;
+                }
+            });
+        };
+
+        function confirmDeleteListeningCards(cards) {
+            if (!cards.length || vm.listeningDeleteBusy || vm.listeningDeleteConfirmOpen) {
+                return;
+            }
+            // Snapshot the visible selection before opening the confirmation dialog.
+            cards = cards.map(function (item) {
+                return {id: item.id, question: item.question, motherTongue: item.motherTongue};
+            });
+            vm.listeningDeleteConfirmOpen = true;
+            var modalInstance = modal.open({
+                animation: true,
+                templateUrl: 'confirm_delete_listening_cards_modal.html',
+                scope: $scope,
+                size: 'md',
+                controller: ['$scope', function (confirmScope) {
+                    confirmScope.listeningCardsToDelete = cards;
+                }]
+            });
+
+            modalInstance.result.then(function (confirm) {
+                vm.listeningDeleteConfirmOpen = false;
+                if (confirm !== 'yes') {
+                    return;
+                }
+                vm.listeningDeleteBusy = true;
+                vm.listeningDeleteCompleted = 0;
+                vm.listeningDeleteTotal = cards.length;
+                blockUI.start();
+                var deletedCount = 0;
+                var failedCount = 0;
+
+                function deleteNext(index) {
+                    vm.listeningDeleteCompleted = index;
+                    if (index < cards.length) {
+                        // Use the existing API sequentially and inspect its boolean result.
+                        service.deleteObject(cards[index].id).then(function (deleted) {
+                            if (deleted === true) {
+                                deletedCount++;
+                            } else {
+                                failedCount++;
+                            }
+                            deleteNext(index + 1);
+                        }, function () {
+                            failedCount++;
+                            deleteNext(index + 1);
+                        });
+                        return;
+                    }
+
+                    vm.listeningDeleteBusy = false;
+                    blockUI.stop();
+                    if (failedCount > 0) {
+                        toastr.error('Không thể xóa ' + failedCount + ' thẻ. Vui lòng thử lại.');
+                    }
+                    if (deletedCount > 0) {
+                        toastr.success('Đã xóa ' + deletedCount + ' flashcard Listening.');
+                        var remaining = Math.max(0, vm.searchDto.totalItems - deletedCount);
+                        var lastPage = Math.max(1, Math.ceil(remaining / vm.searchDto.pageSize));
+                        vm.searchDto.pageIndex = Math.min(vm.searchDto.pageIndex, lastPage);
+                        vm.getPageFlashCard();
+                        if (vm.showLevelTable) {
+                            vm.loadLevelTable();
+                        }
+                    }
+                }
+
+                deleteNext(0);
+            }, function () {
+                vm.listeningDeleteConfirmOpen = false;
+            });
+        }
+
+        vm.deleteListeningCard = function (item) {
+            var cards = getSelectableListeningCards().filter(function (card) {
+                return card === item;
+            });
+            confirmDeleteListeningCards(cards);
+        };
+
+        vm.deleteSelectedListeningCards = function () {
+            confirmDeleteListeningCards(vm.getSelectedListeningCards());
+        };
 
         // $scope.setPage = function (pageNo) {
         //     $scope.currentPage = pageNo;
@@ -317,12 +441,16 @@
 
 
         vm.getPageFlashCard = function () {
+            vm.selectedListeningCardIds = {};
+            vm.flashCardsLoading = true;
             vm.searchDto.questionType = {id: 6};
             vm.searchDto.username = vm.currentUser.username;
             vm.searchDto.userId = vm.currentUser.id;
             blockUI.start();
-            service.getPage(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
+            return service.getPage(vm.searchDto, vm.searchDto.pageIndex, vm.searchDto.pageSize).then(function (data) {
                 vm.questions = data.content;
+                vm.flashCardsLoading = false;
+                vm.selectedListeningCardIds = {};
                 blockUI.stop();
                 
                 //tạm thời
@@ -330,7 +458,7 @@
                 vm.searchDto.totalItems = data.totalElements;
                 vm.currentPosition = 0;
                 // console.log(data.content);
-                if(angular.isUndefined(vm.questions)){
+                if(!vm.questions || vm.questions.length === 0){
                     vm.questions = [];
                     vm.currentCard = {};
                     vm.totalCard = 0;
@@ -368,6 +496,10 @@
                 shuffleArray2(vm.questions6);
                 shuffleArray2(vm.questions7);
 
+            }, function () {
+                vm.flashCardsLoading = false;
+                blockUI.stop();
+                toastr.error('Không thể tải danh sách flashcard. Vui lòng thử lại.');
             });
         };
         vm.clickShowListFlashCard = function () {

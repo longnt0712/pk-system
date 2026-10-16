@@ -366,17 +366,38 @@
                         </div>
                     </div>
 
+                    <div class="listening-delete-toolbar" ng-if="vm.isListeningFlashCardList() && vm.showListFlashCard"
+                         role="group" aria-label="Xóa flashcard Listening">
+                        <button type="button" class="btn btn-default" ng-click="vm.toggleAllListeningCards()"
+                                ng-disabled="vm.flashCardsLoading || vm.listeningDeleteBusy || vm.listeningDeleteConfirmOpen || !vm.questions.length">
+                            {{vm.allListeningCardsSelected() ? 'Bỏ chọn trên trang' : 'Chọn tất cả trên trang'}}
+                        </button>
+                        <span aria-live="polite">Đã chọn {{vm.getSelectedListeningCards().length}} thẻ</span>
+                        <button type="button" class="btn btn-danger" ng-click="vm.deleteSelectedListeningCards()"
+                                ng-disabled="vm.listeningDeleteBusy || vm.listeningDeleteConfirmOpen || !vm.getSelectedListeningCards().length">
+                            <i class="fa fa-trash" aria-hidden="true"></i> Xóa đã chọn ({{vm.getSelectedListeningCards().length}})
+                        </button>
+                        <span ng-if="vm.listeningDeleteBusy" role="status">
+                            <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+                            Đang xóa {{vm.listeningDeleteCompleted}}/{{vm.listeningDeleteTotal}} thẻ...
+                        </span>
+                    </div>
+
                     <div ng-if="vm.showListFlashCard == true" class="row" ng-repeat="item in vm.questions">
 
                         <div class="row hover-item">
 
-                            <div class="col-md-3 hover-item">
+                            <div class="col-md-3 hover-item flashcard-word-cell">
+                                <input type="checkbox" ng-if="vm.isListeningFlashCardList() && item.status === 5"
+                                       ng-model="vm.selectedListeningCardIds[item.id]"
+                                       ng-disabled="vm.flashCardsLoading || vm.listeningDeleteBusy || vm.listeningDeleteConfirmOpen || item._rowSaving || item._levelSaving"
+                                       aria-label="Chọn flashcard {{item.question}} (ID {{item.id}})">
                                 <input ng-model="item.question" type="text" class="form-control input-underline-only" placeholder="word..">
                             </div>
                             <div class="col-md-1 hover-item">
                                 <input placeholder="pronounce..." class="form-control input-underline-only" ng-model="item.pronounce"/>
                             </div>
-                            <div class="col-md-5 hover-item">
+                            <div class="hover-item" ng-class="vm.isListeningFlashCardList() ? 'col-md-4' : 'col-md-5'">
                                 <input ng-model="item.motherTongue" type="text" class="form-control input-underline-only" placeholder="First language...">
                             </div>
                             <div class="col-md-1 hover-item">
@@ -393,7 +414,7 @@
                             <!--<div class="col-md-1 hover-item">-->
                             <!--<input ng-if="settings.isAdmin == true" placeholder="website..." class="form-control input-underline-only" ng-model="item.website"  />-->
                             <!--</div>-->
-                            <div class="col-md-2">
+                            <div ng-class="vm.isListeningFlashCardList() ? 'col-md-3' : 'col-md-2'">
                                 <!--<i class="fa fa-save" style="font-size: 18px; padding-top: 12px" data-ng-click="vm.editFlashCard(item)"></i>-->
                                 <!--<i ng-show="item.showDetail == false" class="fa fa-eye" style="font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.showDetailFlashCard(item)"></i>-->
                                 <!--<i ng-show="item.showDetail == true" class="fa fa-eye" style="color: gold;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="vm.hideDetailFlashCard(item)"></i>-->
@@ -417,7 +438,13 @@
                                 <i class="fa fa-volume-up" style="cursor:pointer;font-size: 18px; padding-top: 12px" ng-click="sayIt(item.question)" style=""></i> &nbsp; &nbsp;
 
                                 <i class="fa fa-copy" title="Duplicate" style="cursor:pointer;font-size: 18px; padding-top: 12px" ng-click="vm.duplicateFlashCard(item)"> </i>
-                                <!--<i class="fa-solid fa-trash" style="cursor:pointer;font-size: 18px; padding-top: 12px; padding-left: 10px" data-ng-click="deleteObject(item.id)"></i>-->
+                                <button type="button" class="btn btn-link listening-card-delete text-danger"
+                                        ng-if="vm.isListeningFlashCardList() && item.status === 5"
+                                        ng-click="vm.deleteListeningCard(item)"
+                                        ng-disabled="vm.flashCardsLoading || vm.listeningDeleteBusy || vm.listeningDeleteConfirmOpen || item._rowSaving || item._levelSaving"
+                                        title="Xóa flashcard" aria-label="Xóa flashcard {{item.question}} (ID {{item.id}})">
+                                    <i class="fa fa-trash" aria-hidden="true"></i> Xóa
+                                </button>
                             </div>
 
 
@@ -1263,6 +1290,31 @@
     </div>
 </script>
 
+<script type="text/ng-template" id="confirm_delete_listening_cards_modal.html">
+    <div modal-movable>
+        <div class="modal-header">
+            <button type="button" class="close" ng-click="$dismiss()" aria-label="Đóng"></button>
+            <h4 class="modal-title"><i class="fa fa-trash" aria-hidden="true"></i> Xác nhận xóa flashcard Listening</h4>
+        </div>
+        <div class="modal-body">
+            <p>Bạn có chắc chắn muốn xóa <strong>{{listeningCardsToDelete.length}} flashcard Listening</strong> sau đây?</p>
+            <ul class="listening-delete-preview">
+                <li ng-repeat="card in listeningCardsToDelete track by card.id">
+                    <strong>{{card.question}}</strong> <small>(ID {{card.id}})</small>
+                    <div ng-if="card.motherTongue">{{card.motherTongue}}</div>
+                </li>
+            </ul>
+            <p>Thẻ sẽ bị xóa khỏi dữ liệu. Thao tác này không thể hoàn tác.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" ng-click="$dismiss()" class="btn btn-default">Hủy</button>
+            <button type="button" ng-click="$close('yes')" class="btn btn-danger">
+                <i class="fa fa-trash" aria-hidden="true"></i> Xóa {{listeningCardsToDelete.length}} thẻ
+            </button>
+        </div>
+    </div>
+</script>
+
 <script type="text/ng-template" id="confirm_delete_modal.html">
     <div modal-movable>
         <div class="modal-header">
@@ -1761,6 +1813,16 @@
     html.global-dark-mode .hover-item [style*="color:gold"] {
         color: #ffd95e !important;
     }
+
+    .listening-delete-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0; }
+    .flashcard-word-cell { display: flex; align-items: center; gap: 10px; }
+    .flashcard-word-cell > .form-control { min-width: 0; }
+    .flashcard-word-cell > input[type="checkbox"] { flex-shrink: 0; width: 18px; height: 18px; margin: 0; }
+    .listening-card-delete { padding: 6px !important; margin-left: 6px; color: #c9302c !important; }
+    .listening-delete-preview { max-height: 240px; overflow-y: auto; padding-left: 24px; }
+    .listening-delete-preview li { margin-bottom: 8px; overflow-wrap: anywhere; }
+    html.global-dark-mode .listening-card-delete,
+    html.global-dark-mode .listening-card-delete .fa { color: #ff9595 !important; }
 
     .level-table-toggle { min-width: 180px; border-radius: 10px !important; }
     .level-table-panel {
