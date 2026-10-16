@@ -3140,8 +3140,12 @@
                     vm.availableIeltsParts = [];
                     vm.availableIeltsQuestionCount = 0;
                     angular.forEach(data.subQuestions, function (passage, passageIndex) {
-                        angular.forEach(passage.subQuestions || [], function (questionPackage) {
-                            angular.forEach(questionPackage.subQuestions || [], function (question) {
+                        // Unused passages/packages may arrive as null. Legacy answer
+                        // handlers also traverse them while restoring sentence endings.
+                        passage.subQuestions = passage.subQuestions || [];
+                        angular.forEach(passage.subQuestions, function (questionPackage) {
+                            questionPackage.subQuestions = questionPackage.subQuestions || [];
+                            angular.forEach(questionPackage.subQuestions, function (question) {
                                 var part = vm.isComprehensiveRoute ? 1 : (vm.isWritingRoute ? (Number(questionPackage.type) === 17 ? 2 : 1)
                                     : (vm.isListeningRoute ? listeningPartNumberForOrdinal(question.ordinalNumber) : passageIndex + 1));
                                 if (vm.availableIeltsParts.indexOf(part) < 0) { vm.availableIeltsParts.push(part); }
